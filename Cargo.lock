@@ -3150,7 +3150,6 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-apple-calendar",
  "tauri-plugin-autostart",
- "tauri-plugin-chat-completion",
  "tauri-plugin-clipboard-manager",
  "tauri-plugin-db",
  "tauri-plugin-decorum",
@@ -3162,6 +3161,7 @@ dependencies = [
  "tauri-plugin-listener",
  "tauri-plugin-local-llm",
  "tauri-plugin-local-stt",
+ "tauri-plugin-misc",
  "tauri-plugin-oauth",
  "tauri-plugin-os",
  "tauri-plugin-positioner",
@@ -3172,7 +3172,6 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-plugin-template",
  "tauri-plugin-updater",
- "tauri-plugin-utils",
  "tauri-specta",
  "thiserror 2.0.11",
  "time",
@@ -11332,22 +11331,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tauri-plugin-chat-completion"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "specta",
- "specta-typescript",
- "tauri",
- "tauri-plugin",
- "tauri-plugin-template",
- "tauri-specta",
- "thiserror 2.0.11",
- "tracing",
-]
-
-[[package]]
 name = "tauri-plugin-clipboard-manager"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11561,6 +11544,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-misc"
+version = "0.1.0"
+dependencies = [
+ "buffer",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-plugin",
+ "tauri-specta",
+ "tracing",
+]
+
+[[package]]
 name = "tauri-plugin-oauth"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11734,21 +11732,6 @@ dependencies = [
  "url",
  "windows-sys 0.59.0",
  "zip 2.2.2",
-]
-
-[[package]]
-name = "tauri-plugin-utils"
-version = "0.1.0"
-dependencies = [
- "buffer",
- "serde",
- "serde_json",
- "specta",
- "specta-typescript",
- "tauri",
- "tauri-plugin",
- "tauri-specta",
- "tracing",
 ]
 
 [[package]]

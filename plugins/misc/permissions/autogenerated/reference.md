@@ -16,7 +16,7 @@ Default permissions for the plugin
 <tr>
 <td>
 
-`utils:allow-opinionated-md-to-html`
+`misc:allow-opinionated-md-to-html`
 
 </td>
 <td>
@@ -29,7 +29,7 @@ Enables the opinionated_md_to_html command without any pre-configured scope.
 <tr>
 <td>
 
-`utils:deny-opinionated-md-to-html`
+`misc:deny-opinionated-md-to-html`
 
 </td>
 <td>

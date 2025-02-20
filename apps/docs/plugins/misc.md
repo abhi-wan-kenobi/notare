@@ -1,7 +1,7 @@
 ---
-title: Utils
-description: Utility functions
-id: utils
+title: Miscellaneous
+description: Small utilities that don't fit anywhere else, at least for now
+id: misc
 ---
 
 # {{ $frontmatter.title }}

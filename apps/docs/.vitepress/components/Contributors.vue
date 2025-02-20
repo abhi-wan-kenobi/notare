@@ -18,14 +18,22 @@ const loadedImages = ref<Set<string>>(new Set());
 const imageLoaded = (name: string) => {
   loadedImages.value.add(name);
 };
+
+const handleClick = (url?: string | null) => {
+  if (!url) {
+    return;
+  }
+  window.open(url, "_blank");
+};
 </script>
 
 <template>
   <div class="flex -space-x-2 rtl:space-x-reverse">
-    <div
+    <button
       v-for="contributor in data"
       :key="contributor.name"
       class="relative"
+      @click="handleClick(contributor.html_url)"
     >
       <img
         v-show="!loadedImages.has(contributor.name)"
@@ -44,6 +52,6 @@ const imageLoaded = (name: string) => {
         loading="lazy"
         @load="imageLoaded(contributor.name)"
       />
-    </div>
+    </button>
   </div>
 </template>

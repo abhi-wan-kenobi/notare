@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
+// import { useEffect, useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { Channel } from "@tauri-apps/api/core";
+// import { Channel } from "@tauri-apps/api/core";
 
 import PastSessions from "@/components/past-sessions";
 import UpcomingEvents from "@/components/upcoming-events";
 import WorkspaceAIButton from "@/components/workspace-ai-button";
 
 import { commands } from "@/types";
-import { commands as localSttCommands } from "@hypr/plugin-local-stt";
-import { commands as localLlmCommands } from "@hypr/plugin-local-llm";
+// import { commands as localSttCommands } from "@hypr/plugin-local-stt";
+// import { commands as localLlmCommands } from "@hypr/plugin-local-llm";
 
 export const Route = createFileRoute("/_nav/")({
   component: Component,

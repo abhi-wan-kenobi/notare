@@ -46,9 +46,8 @@ pub async fn main() {
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_listener::init())
-        .plugin(tauri_plugin_utils::init())
+        .plugin(tauri_plugin_misc::init())
         .plugin(tauri_plugin_db::init())
-        .plugin(tauri_plugin_chat_completion::init())
         .plugin(tauri_plugin_template::init())
         .plugin(tauri_plugin_local_llm::init())
         .plugin(tauri_plugin_local_stt::init())
@@ -91,6 +90,14 @@ pub async fn main() {
 
             specta_builder.mount_events(&app);
             store::UserStore::load(&app).unwrap();
+
+            {
+                use tauri_plugin_template::TemplatePluginExt;
+                for (name, template) in tauri_plugin_misc::TEMPLATES {
+                    app.register_template(name.to_string(), template.to_string())
+                        .unwrap();
+                }
+            }
 
             let user_id = {
                 use tauri_plugin_db::DatabasePluginExt;

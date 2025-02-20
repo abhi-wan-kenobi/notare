@@ -3,10 +3,7 @@
     "**/routeTree.gen.ts": true
   },
   "search.exclude": {
-    "**/routeTree.gen.ts": true,
-    "lago": true,
-    "lago-openapi": true,
-    "nango": true
+    "**/routeTree.gen.ts": true
   },
   "files.readonlyInclude": {
     "**/routeTree.gen.ts": true

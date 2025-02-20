@@ -1,43 +1,43 @@
 use tauri::Wry;
 
 mod commands;
+mod ext;
 
-const PLUGIN_NAME: &str = "chat-completion";
+const PLUGIN_NAME: &str = "utils";
 
 // NOTE: template name must match js/index.ts
 pub const TEMPLATES: &[(&str, &str)] = &[
     (
-        "chat-completion:create-title-system",
+        "misc:create-title-system",
         include_str!("../templates/create_title.system.jinja"),
     ),
     (
-        "chat-completion:create-title-user",
+        "misc:create-title-user",
         include_str!("../templates/create_title.user.jinja"),
     ),
     (
-        "chat-completion:enhance-system",
+        "misc:enhance-system",
         include_str!("../templates/enhance.system.jinja"),
     ),
     (
-        "chat-completion:enhance-user",
+        "misc:enhance-user",
         include_str!("../templates/enhance.user.jinja"),
     ),
     (
-        "chat-completion:postprocess-enhance-system",
+        "misc:postprocess-enhance-system",
         include_str!("../templates/postprocess_enhance.system.jinja"),
     ),
     (
-        "chat-completion:postprocess-enhance-user",
+        "misc:postprocess-enhance-user",
         include_str!("../templates/postprocess_enhance.user.jinja"),
     ),
 ];
 
 fn make_specta_builder() -> tauri_specta::Builder<Wry> {
-    tauri_specta::Builder::<Wry>::new()
+    tauri_specta::Builder::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
-            commands::create_title,
-            commands::enhance,
+            commands::opinionated_md_to_html::<Wry>
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
@@ -47,16 +47,6 @@ pub fn init() -> tauri::plugin::TauriPlugin<Wry> {
 
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
-        .setup(|_app, _api| {
-            // TODO
-
-            // use tauri_plugin_template::TemplatePluginExt;
-            // for (name, template) in TEMPLATES {
-            //     app.register_template(name.to_string(), template.to_string())
-            //         .unwrap();
-            // }
-            Ok(())
-        })
         .build()
 }
 

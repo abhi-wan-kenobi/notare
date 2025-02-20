@@ -1,9 +1,9 @@
 {
-  "name": "@hypr/plugin-chat-completion",
+  "name": "@hypr/plugin-misc",
   "private": true,
   "main": "./js/index.ts",
   "scripts": {
-    "codegen": "cargo test -p tauri-plugin-chat-completion"
+    "codegen": "cargo test -p tauri-plugin-misc"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.2.0"
