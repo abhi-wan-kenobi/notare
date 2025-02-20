@@ -38,6 +38,7 @@
     "local-stt:default",
     "apple-calendar:default",
     "chat-completion:default",
+    "utils:default",
     {
       "identifier": "http:default",
       "allow": [

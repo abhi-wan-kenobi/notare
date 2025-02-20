@@ -3172,6 +3172,7 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-plugin-template",
  "tauri-plugin-updater",
+ "tauri-plugin-utils",
  "tauri-specta",
  "thiserror 2.0.11",
  "time",

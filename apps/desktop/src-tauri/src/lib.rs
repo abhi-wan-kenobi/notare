@@ -46,6 +46,7 @@ pub async fn main() {
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_listener::init())
+        .plugin(tauri_plugin_utils::init())
         .plugin(tauri_plugin_db::init())
         .plugin(tauri_plugin_chat_completion::init())
         .plugin(tauri_plugin_template::init())
