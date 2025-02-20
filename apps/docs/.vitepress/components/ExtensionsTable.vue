@@ -2,7 +2,6 @@
 import { h, withDirectives } from "vue";
 import { vTooltip as tooltip } from "floating-vue";
 import { createColumnHelper } from "@tanstack/vue-table";
-import { VPBadge } from "vitepress/theme";
 
 import type { ExtensionFrontmatter } from "../types";
 import BaseTable from "./BaseTable.vue";
@@ -28,20 +27,6 @@ const columns = [
           info.getValue(),
         ),
         [[tooltip, info.row.original.frontmatter.description]],
-      ),
-  }),
-  columnHelper.accessor("frontmatter.tags", {
-    header: "Tags",
-    cell: (info) =>
-      h(
-        "div",
-        { class: "flex flex-wrap gap-2" },
-        info.getValue().map((tag) =>
-          h(VPBadge, {
-            type: "tip",
-            text: tag.charAt(0).toUpperCase() + tag.slice(1),
-          }),
-        ),
       ),
   }),
   columnHelper.accessor("frontmatter.implemented", {

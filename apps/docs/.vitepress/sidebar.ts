@@ -55,6 +55,10 @@ const sidebar: DefaultTheme.SidebarItem[] = [
     text: "Start Here",
     items: [
       {
+        text: "Introduction",
+        link: "/",
+      },
+      {
         text: "Quickstart",
         link: "/quickstart",
       },
