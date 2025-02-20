@@ -11,6 +11,7 @@ import PluginLink from "../components/PluginLink.vue";
 import PluginSourceList from "../components/PluginSourceList.vue";
 import Contributors from "../components/Contributors.vue";
 import TitleWithContributors from "../components/TitleWithContributors.vue";
+import Card from "../components/Card.vue";
 
 /** @type {import('vitepress').Theme} */
 export default {
@@ -24,5 +25,6 @@ export default {
     app.component("PluginSourceList", PluginSourceList);
     app.component("Contributors", Contributors);
     app.component("TitleWithContributors", TitleWithContributors);
+    app.component("Card", Card);
   },
 };

@@ -13,6 +13,7 @@ const extensions: DefaultTheme.SidebarItem = {
         { text: "Linear", link: "/extensions/linear" },
         { text: "Notion", link: "/extensions/notion" },
         { text: "Timer", link: "/extensions/timer" },
+        { text: "Weather", link: "/extensions/weather" },
       ].sort((a, b) => a.text.localeCompare(b.text)),
       collapsed: true,
     },
