@@ -13,9 +13,6 @@ async getUserId() : Promise<string> {
 async runEnhance(req: EnhanceRequest, onEvent: TAURI_CHANNEL<string>) : Promise<null> {
     return await TAURI_INVOKE("run_enhance", { req, onEvent });
 },
-async listBuiltinTemplates() : Promise<Template[]> {
-    return await TAURI_INVOKE("list_builtin_templates");
-},
 async openPermissionSettings(permission: OSPermission) : Promise<void> {
     await TAURI_INVOKE("open_permission_settings", { permission });
 },
@@ -46,7 +43,8 @@ async showWindow(window: ShowHyprWindow) : Promise<void> {
 
 /** user-defined types **/
 
-export type Config = { id: string; user_id: string; general: ConfigGeneral; notification: ConfigNotification }
+export type Config = { id: string; user_id: string; general: ConfigGeneral; notification: ConfigNotification; ai: ConfigAI }
+export type ConfigAI = { api_base: string | null; api_key: string | null }
 export type ConfigGeneral = { autostart: boolean; speech_language: string; display_language: string; jargons: string[]; tags: string[] }
 export type ConfigNotification = { before: boolean; auto: boolean }
 export type EnhanceRequest = { pre_meeting_editor: string; in_meeting_editor: string; template: Template; config: Config; event: Event | null; participants: Human[]; timeline_view: TimelineView }

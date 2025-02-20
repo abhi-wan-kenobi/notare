@@ -24,13 +24,11 @@ export const Route = createFileRoute("/_nav/note/$id")({
     return queryClient.fetchQuery({
       queryKey: ["note", { id }],
       queryFn: async () => {
-        const [session, config, builtinTemplates, customTemplates] =
-          await Promise.all([
-            dbCommands.getSession({ id }),
-            dbCommands.getConfig(),
-            commands.listBuiltinTemplates(),
-            dbCommands.listTemplates(),
-          ]);
+        const [session, config, customTemplates] = await Promise.all([
+          dbCommands.getSession({ id }),
+          dbCommands.getConfig(),
+          dbCommands.listTemplates(),
+        ]);
         if (!session) {
           throw redirect({ to: "/" });
         }
@@ -38,7 +36,7 @@ export const Route = createFileRoute("/_nav/note/$id")({
         return {
           session,
           config: config as Config,
-          templates: [...builtinTemplates, ...customTemplates],
+          templates: [...customTemplates],
         };
       },
     });

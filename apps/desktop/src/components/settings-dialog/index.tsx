@@ -15,7 +15,7 @@ import ProfileComponent from "./views/profile";
 import { SettingsSidebar } from "./sidebar";
 
 import type { NavNames } from "./types";
-import { commands, type Template } from "@/types";
+import { type Template } from "@/types";
 import { commands as dbCommands } from "@hypr/plugin-db";
 
 export default function SettingsDialog() {
@@ -29,11 +29,8 @@ export default function SettingsDialog() {
   const templates = useQuery({
     queryKey: ["settings", "templates"],
     queryFn: async () => {
-      const [builtin, custom] = await Promise.all([
-        commands.listBuiltinTemplates(),
-        dbCommands.listTemplates(),
-      ]);
-      return { builtin: builtin || [], custom: custom || [] };
+      const [custom] = await Promise.all([dbCommands.listTemplates()]);
+      return { builtin: [], custom: custom || [] };
     },
   });
 

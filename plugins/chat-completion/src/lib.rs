@@ -47,12 +47,14 @@ pub fn init() -> tauri::plugin::TauriPlugin<Wry> {
 
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
-        .setup(|app, _api| {
-            use tauri_plugin_template::TemplatePluginExt;
-            for (name, template) in TEMPLATES {
-                app.register_template(name.to_string(), template.to_string())
-                    .unwrap();
-            }
+        .setup(|_app, _api| {
+            // TODO
+
+            // use tauri_plugin_template::TemplatePluginExt;
+            // for (name, template) in TEMPLATES {
+            //     app.register_template(name.to_string(), template.to_string())
+            //         .unwrap();
+            // }
             Ok(())
         })
         .build()
