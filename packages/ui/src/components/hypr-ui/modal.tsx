@@ -91,7 +91,9 @@ interface ModalBodyProps {
 
 export function ModalBody({ children, className }: ModalBodyProps) {
   return (
-    <div className={cn("flex-1 overflow-auto p-6", className)}>{children}</div>
+    <div className={cn("flex-1 overflow-auto p-6 h-full", className)}>
+      {children}
+    </div>
   );
 }
 
@@ -131,7 +133,10 @@ interface ModalDescriptionProps {
   className?: string;
 }
 
-export function ModalDescription({ children, className }: ModalDescriptionProps) {
+export function ModalDescription({
+  children,
+  className,
+}: ModalDescriptionProps) {
   return (
     <p className={cn("text-sm text-muted-foreground", className)}>{children}</p>
   );
