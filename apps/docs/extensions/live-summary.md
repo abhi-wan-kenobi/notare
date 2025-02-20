@@ -9,7 +9,7 @@ plugins: [listener, db]
 tags: [live]
 ---
 
-# {{ $frontmatter.title }}
+<TitleWithContributors :title="$frontmatter.title" />
 
 **{{ $frontmatter.description }}**
 

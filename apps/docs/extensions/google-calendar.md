@@ -9,7 +9,7 @@ plugins: [db]
 tags: [calendar]
 ---
 
-# {{ $frontmatter.title }}
+<TitleWithContributors :title="$frontmatter.title" />
 
 **{{ $frontmatter.description }}**
 

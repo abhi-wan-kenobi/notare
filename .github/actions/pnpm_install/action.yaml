@@ -13,7 +13,7 @@ runs:
         run_install: false
 
     - uses: useblacksmith/setup-node@v5
-      if: inputs.blacksmith && runner.os == 'Linux'
+      if: ${{ inputs.blacksmith && runner.os == 'Linux' }}
       with:
         node-version: "20"
         cache: "pnpm"

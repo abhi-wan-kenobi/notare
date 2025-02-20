@@ -1,22 +1,49 @@
 <script setup lang="ts">
-import type { Contributor } from "../../data/contributors.data.mts";
+import { ref } from "vue";
+
+import { type Contributor } from "../../data/contributors.data.mts";
 
 const props = defineProps<{
   data: Contributor[];
 }>();
 
-const PLACEHOLDER_AVATAR = "https://www.gravatar.com/avatar/?d=mp";
+const STATIC_AVATAR = "https://www.gravatar.com/avatar/?d=mp";
+
+const fallback = (name: string) => {
+  return `https://avatar.iran.liara.run/username?username=${name.replace(" ", "+")}`;
+};
+
+const loadedImages = ref<Set<string>>(new Set());
+
+const imageLoaded = (name: string) => {
+  loadedImages.value.add(name);
+};
 </script>
 
 <template>
-  <div class="flex -space-x-4 rtl:space-x-reverse">
-    <img
-      v-for="contributor in props.data"
+  <div class="flex -space-x-2 rtl:space-x-reverse">
+    <div
+      v-for="contributor in data"
       :key="contributor.name"
-      class="w-10 h-10 border-2 border-white rounded-full dark:border-gray-800"
-      :src="contributor.avatar || PLACEHOLDER_AVATAR"
-      :alt="contributor.name"
-      v-tooltip="contributor.name"
+      class="relative"
     >
+      <img
+        v-show="!loadedImages.has(contributor.name)"
+        class="w-8 h-8 rounded-full"
+        :src="STATIC_AVATAR"
+        :alt="contributor.name"
+        v-tooltip="contributor.name"
+        loading="lazy"
+      />
+      <img
+        v-show="loadedImages.has(contributor.name)"
+        class="w-8 h-8 rounded-full"
+        :src="contributor.avatar_url || fallback(contributor.name)"
+        :alt="contributor.name"
+        v-tooltip="contributor.name"
+        loading="lazy"
+        @load="imageLoaded(contributor.name)"
+      />
+    </div>
   </div>
 </template>

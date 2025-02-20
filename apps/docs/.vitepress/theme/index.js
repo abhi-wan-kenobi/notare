@@ -10,6 +10,7 @@ import ExtensionTags from "../components/ExtensionTags.vue";
 import PluginLink from "../components/PluginLink.vue";
 import PluginSourceList from "../components/PluginSourceList.vue";
 import Contributors from "../components/Contributors.vue";
+import TitleWithContributors from "../components/TitleWithContributors.vue";
 
 /** @type {import('vitepress').Theme} */
 export default {
@@ -22,5 +23,6 @@ export default {
     app.component("PluginLink", PluginLink);
     app.component("PluginSourceList", PluginSourceList);
     app.component("Contributors", Contributors);
+    app.component("TitleWithContributors", TitleWithContributors);
   },
 };

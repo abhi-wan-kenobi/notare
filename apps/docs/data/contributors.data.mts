@@ -1,4 +1,5 @@
 import { defineLoader } from "vitepress";
+
 import git from "isomorphic-git";
 import { Octokit } from "octokit";
 
@@ -7,7 +8,8 @@ import path from "path";
 
 export interface Contributor {
   name: string;
-  avatar?: string;
+  html_url?: string;
+  avatar_url?: string;
 }
 
 declare const data: Contributor[];
@@ -15,7 +17,7 @@ export { data };
 
 const getGithubUsers = async () => {
   try {
-    const octokit = new Octokit();
+    const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
     const { data } = await octokit.rest.repos.listContributors({
       owner: "fastrepl",
       repo: "hypr",
@@ -57,7 +59,8 @@ export default defineLoader({
 
       const defaultContributor = {
         name: author.name,
-        avatar: avatarExists ? avatar : undefined,
+        avatar_url: avatarExists ? avatar : undefined,
+        html_url: undefined,
       };
 
       contributors[author.name] =

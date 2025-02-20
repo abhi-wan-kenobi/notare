@@ -9,9 +9,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/pnpm_install
+      - run: pnpm install -w wrangler
       - run: pnpm -F docs build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: cloudflare/wrangler-action@v3
         with:
+          packageManager: pnpm
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy ./apps/docs/.vitepress/dist --project-name hyprnote-docs
