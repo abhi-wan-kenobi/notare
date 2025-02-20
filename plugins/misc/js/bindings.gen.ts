@@ -9,6 +9,9 @@
 export const commands = {
 async opinionatedMdToHtml(text: string) : Promise<string> {
     return await TAURI_INVOKE("plugin:utils|opinionated_md_to_html", { text });
+},
+async listTemplateNames() : Promise<TemplateName[]> {
+    return await TAURI_INVOKE("plugin:utils|list_template_names");
 }
 }
 
@@ -22,7 +25,7 @@ async opinionatedMdToHtml(text: string) : Promise<string> {
 
 /** user-defined types **/
 
-
+export type TemplateName = "misc:create-title-system" | "misc:create-title-user" | "misc:enhance-system" | "misc:enhance-user" | "misc:postprocess-enhance-system" | "misc:postprocess-enhance-user"
 
 /** tauri-specta globals **/
 

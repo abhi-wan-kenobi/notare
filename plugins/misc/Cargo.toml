@@ -22,6 +22,7 @@ tracing = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 specta = { workspace = true, features = ["serde_json"] }
+strum = { workspace = true, features = ["derive"] }
 
 tauri = { workspace = true }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }

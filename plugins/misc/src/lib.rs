@@ -2,42 +2,18 @@ use tauri::Wry;
 
 mod commands;
 mod ext;
+mod model;
+
+pub use model::*;
 
 const PLUGIN_NAME: &str = "utils";
-
-// NOTE: template name must match js/index.ts
-pub const TEMPLATES: &[(&str, &str)] = &[
-    (
-        "misc:create-title-system",
-        include_str!("../templates/create_title.system.jinja"),
-    ),
-    (
-        "misc:create-title-user",
-        include_str!("../templates/create_title.user.jinja"),
-    ),
-    (
-        "misc:enhance-system",
-        include_str!("../templates/enhance.system.jinja"),
-    ),
-    (
-        "misc:enhance-user",
-        include_str!("../templates/enhance.user.jinja"),
-    ),
-    (
-        "misc:postprocess-enhance-system",
-        include_str!("../templates/postprocess_enhance.system.jinja"),
-    ),
-    (
-        "misc:postprocess-enhance-user",
-        include_str!("../templates/postprocess_enhance.user.jinja"),
-    ),
-];
 
 fn make_specta_builder() -> tauri_specta::Builder<Wry> {
     tauri_specta::Builder::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
-            commands::opinionated_md_to_html::<Wry>
+            commands::opinionated_md_to_html::<Wry>,
+            commands::list_template_names::<Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

@@ -11552,6 +11552,7 @@ dependencies = [
  "serde_json",
  "specta",
  "specta-typescript",
+ "strum 0.26.3",
  "tauri",
  "tauri-plugin",
  "tauri-specta",
