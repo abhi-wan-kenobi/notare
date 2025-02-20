@@ -11736,6 +11736,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-utils"
+version = "0.1.0"
+dependencies = [
+ "buffer",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-plugin",
+ "tauri-specta",
+ "tracing",
+]
+
+[[package]]
 name = "tauri-runtime"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
