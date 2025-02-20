@@ -5,9 +5,8 @@ source: https://github.com/fastrepl/hypr/tree/main/extensions/notion
 implemented: false
 default: false
 cloudOnly: true
-plugins:
-  - listener
-  - db
+plugins: [listener, db]
+tags: [knowledge]
 ---
 
 # {{ $frontmatter.title }}
@@ -16,7 +15,7 @@ plugins:
 
 <ExtensionTags :frontmatter="$frontmatter" />
 
-## Reference
+## Resources
 
 <ul>
   <li><a :href="$frontmatter.source">Github source</a></li>

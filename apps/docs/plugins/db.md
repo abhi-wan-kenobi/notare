@@ -8,9 +8,9 @@ id: db
 
 **{{ $frontmatter.description }}**
 
-## Reference
+## Resources
 
 <ul>
-  <li><PluginBindingLink :id="$frontmatter.id" /></li>
+  <PluginSourceList :id="$frontmatter.id" />
   <li><a :href="`https://github.com/fastrepl/hypr/tree/main/crates/db/src/user`">Rust data types</a></li>
 </ul>

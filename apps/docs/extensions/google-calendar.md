@@ -1,12 +1,12 @@
 ---
-title: Live Summary
-description: Show a live summary during the meeting
-source: https://github.com/fastrepl/hypr/tree/main/extensions/live-summary
-implemented: true
-default: true
-cloudOnly: false
-plugins: [listener, db]
-tags: [live]
+title: Google Calendar
+description: Create a google calendar event from the meeting
+source: https://github.com/fastrepl/hypr/tree/main/extensions/google-calendar
+implemented: false
+default: false
+cloudOnly: true
+plugins: [db]
+tags: [calendar]
 ---
 
 # {{ $frontmatter.title }}

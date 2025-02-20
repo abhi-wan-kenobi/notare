@@ -5,9 +5,8 @@ source: https://github.com/fastrepl/hypr/tree/main/extensions/live-transcript
 implemented: true
 default: true
 cloudOnly: false
-plugins:
-  - listener
-  - db
+plugins: [listener, db]
+tags: [live]
 ---
 
 # {{ $frontmatter.title }}
@@ -16,7 +15,7 @@ plugins:
 
 <ExtensionTags :frontmatter="$frontmatter" />
 
-## Reference
+## Resources
 
 <ul>
   <li><a :href="$frontmatter.source">Github source</a></li>

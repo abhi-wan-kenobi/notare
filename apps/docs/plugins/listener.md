@@ -9,8 +9,8 @@ id: listener
 **{{ $frontmatter.description }}**
 
 
-## Reference
+## Resources
 
 <ul>
-  <li><PluginBindingLink :id="$frontmatter.id" /></li>
+  <PluginSourceList :id="$frontmatter.id" />
 </ul>

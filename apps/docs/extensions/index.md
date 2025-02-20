@@ -10,5 +10,3 @@ Since most of the complex logics are extracted as [plugins](/plugins/index.md), 
 Also, it is 100% `Typescript` + `React`. So feel free to share your ideas and [contribute new extension](/development/extension).
 
 <ExtensionsTable :data="data" />
-
-https://cdn.crabnebula.app/download/fastrepl/hypr/latest/dmg-aarch64

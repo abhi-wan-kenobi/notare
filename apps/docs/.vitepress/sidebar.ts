@@ -7,11 +7,12 @@ const extensions: DefaultTheme.SidebarItem = {
     {
       text: "List of extensions",
       items: [
+        { text: "Google Calendar", link: "/extensions/google-calendar" },
         { text: "Live summary", link: "/extensions/live-summary" },
         { text: "Live transcript", link: "/extensions/live-transcript" },
         { text: "Linear", link: "/extensions/linear" },
         { text: "Notion", link: "/extensions/notion" },
-      ],
+      ].sort((a, b) => a.text.localeCompare(b.text)),
       collapsed: true,
     },
   ],
@@ -30,7 +31,7 @@ const plugins: DefaultTheme.SidebarItem = {
         { text: "Local LLM", link: "/plugins/local-llm" },
         { text: "Local STT", link: "/plugins/local-stt" },
         { text: "Apple Calendar", link: "/plugins/apple-calendar" },
-      ],
+      ].sort((a, b) => a.text.localeCompare(b.text)),
       collapsed: true,
     },
   ],

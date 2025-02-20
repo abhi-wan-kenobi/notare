@@ -19,5 +19,11 @@ const props = defineProps<{
       type="warning"
       text="Not implemented"
     />
+    <Badge
+      v-for="tag in props.frontmatter.tags"
+      :key="tag"
+      type="default"
+      :text="tag.charAt(0).toUpperCase() + tag.slice(1)"
+    />
   </div>
 </template>
