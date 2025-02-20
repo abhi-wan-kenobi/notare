@@ -3,24 +3,48 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 
 import { type Client } from "@hypr/client";
-import { LiveSummaryResponse } from "@hypr/client/gen/types";
-export { postApiNativeLiveSummaryOptions } from "@hypr/client/gen/tanstack";
-
-import { commands as listenerCommands } from "@hypr/plugin-listener";
+// import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { commands as dbCommands } from "@hypr/plugin-db";
-import { postApiNativeLiveSummary } from "@hypr/client/gen/sdk";
+import { commands as templateCommands } from "@hypr/plugin-template";
+
+import { postApiNativeChatCompletions } from "@hypr/client/gen/sdk";
+import type { CreateChatCompletionRequest } from "@hypr/client/gen/types";
+
+import type { Extension } from "../../types";
+import { liveSummaryResponseJsonSchema } from "./types";
+
+import systemTemplate from "./system.jinja?raw";
+import userTemplate from "./user.jinja?raw";
 
 interface LiveSummaryToastProps {
   client: Client;
   onClose: () => void;
 }
 
+const TEMPLATE_LIVE_SUMMARY_SYSTEM = "live-summary-system";
+const TEMPLATE_LIVE_SUMMARY_USER = "live-summary-user";
+
 const DEFAULT_INTERVAL = 10 * 1000;
 
-export default function LiveSummaryToast({
-  onClose,
-  client,
-}: LiveSummaryToastProps) {
+const extension: Extension = {
+  init: async () => {
+    await Promise.all([
+      templateCommands.registerTemplate(
+        TEMPLATE_LIVE_SUMMARY_SYSTEM,
+        systemTemplate,
+      ),
+      templateCommands.registerTemplate(
+        TEMPLATE_LIVE_SUMMARY_USER,
+        userTemplate,
+      ),
+    ]);
+  },
+  modal: (client, onClose) => {
+    return <LiveSummaryToast client={client} onClose={onClose} />;
+  },
+};
+
+function LiveSummaryToast({ onClose, client }: LiveSummaryToastProps) {
   const [progress, setProgress] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -30,7 +54,7 @@ export default function LiveSummaryToast({
   });
 
   const summary = useQuery({
-    queryKey: ["summary"],
+    queryKey: ["live-summary", "run"],
     enabled: !!config.data,
     refetchInterval: DEFAULT_INTERVAL,
     staleTime: 0,
@@ -40,16 +64,40 @@ export default function LiveSummaryToast({
         return null;
       }
 
-      const timeline_view = await listenerCommands.getSessionTimeline({
-        last_n_seconds: 30,
-      });
+      // const timeline_view = await listenerCommands.getSessionTimeline({
+      //   last_n_seconds: 30,
+      // });
 
-      const { data } = await postApiNativeLiveSummary({
-        client,
-        body: {
-          config: config.data,
-          timeline_view,
+      const systemMessageContent = await templateCommands.render(
+        TEMPLATE_LIVE_SUMMARY_SYSTEM,
+        {},
+      );
+
+      const userMessageContent = await templateCommands.render(
+        TEMPLATE_LIVE_SUMMARY_USER,
+        {},
+      );
+
+      const body: CreateChatCompletionRequest = {
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemMessageContent },
+          { role: "user", content: userMessageContent },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "live_summary",
+            schema: liveSummaryResponseJsonSchema,
+          },
         },
+        temperature: 0,
+        max_tokens: 300,
+      };
+
+      const { data } = await postApiNativeChatCompletions({
+        client,
+        body,
         signal,
         throwOnError: true,
       });
@@ -170,7 +218,8 @@ function ProgressCircle({ progress }: { progress: number }) {
 function Summary({
   summary,
 }: {
-  summary: LiveSummaryResponse | null | undefined;
+  // TODO
+  summary: any | null | undefined;
 }) {
   if (!summary) {
     return null;
@@ -178,9 +227,9 @@ function Summary({
 
   return (
     <div className="space-y-4 text-sm text-neutral-700">
-      {summary.blocks.map((block, index) => (
+      {summary.blocks.map((block: any, index: number) => (
         <div key={index} className="space-y-2">
-          {block.points.map((point, index) => (
+          {block.points.map((point: any, index: number) => (
             <div key={index} className="flex items-start gap-2">
               <div className="mt-1.5 size-1.5 shrink-0 rounded-full bg-neutral-300" />
               <div className="text-neutral-900 leading-normal">{point}</div>
@@ -191,3 +240,5 @@ function Summary({
     </div>
   );
 }
+
+export default extension;

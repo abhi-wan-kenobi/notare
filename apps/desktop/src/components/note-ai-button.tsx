@@ -9,7 +9,7 @@ import { client } from "@/client";
 
 import Modal from "./shared/modal";
 
-import LiveSummaryToast from "@hypr/extension-live-summary";
+import LiveSummaryExtension from "@hypr/extension-live-summary";
 
 export default function NoteAIButton() {
   const { isDynamic, isOpen, setIsOpen, handleOpen } = useAITrigger();
@@ -102,8 +102,8 @@ export default function NoteAIButton() {
   return (
     <div className="fixed bottom-4 right-4 z-10">
       <AnimatePresence mode="wait">
-        {store.listening && showToast ? (
-          <LiveSummaryToast
+        {LiveSummaryExtension.modal && store.listening && showToast ? (
+          <LiveSummaryExtension.modal
             client={client}
             onClose={() => {
               setShowToast(false);

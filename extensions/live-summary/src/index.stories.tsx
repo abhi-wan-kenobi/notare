@@ -4,10 +4,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { mockIPC } from "@tauri-apps/api/mocks";
 
-import { LiveSummaryResponse } from "@hypr/client/gen/types";
 import { createConfig, createClient } from "@hypr/client";
 
-import component from "./index";
+import type { LiveSummaryResponse } from "./types";
+import extension from "./index";
 
 const queryClient = new QueryClient();
 
@@ -21,8 +21,8 @@ const client = createClient(
 
 const meta = {
   title: "Extensions/Live Summary",
-  component,
-} satisfies Meta<typeof component>;
+  component: extension.modal,
+} satisfies Meta<typeof extension.modal>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

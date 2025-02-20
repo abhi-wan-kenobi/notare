@@ -3150,6 +3150,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-apple-calendar",
  "tauri-plugin-autostart",
+ "tauri-plugin-chat-completion",
  "tauri-plugin-clipboard-manager",
  "tauri-plugin-db",
  "tauri-plugin-decorum",
@@ -3172,7 +3173,6 @@ dependencies = [
  "tauri-plugin-template",
  "tauri-plugin-updater",
  "tauri-specta",
- "template",
  "thiserror 2.0.11",
  "time",
  "tokio",
@@ -11331,6 +11331,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-chat-completion"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-plugin",
+ "tauri-plugin-template",
+ "tauri-specta",
+ "thiserror 2.0.11",
+ "tracing",
+]
+
+[[package]]
 name = "tauri-plugin-clipboard-manager"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11858,13 +11874,6 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "template"
-version = "0.1.0"
-dependencies = [
- "db",
 ]
 
 [[package]]

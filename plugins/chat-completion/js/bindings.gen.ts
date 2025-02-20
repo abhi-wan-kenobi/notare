@@ -7,11 +7,11 @@
 
 
 export const commands = {
-async render(name: string, ctx: JsonValue) : Promise<string> {
-    return await TAURI_INVOKE("plugin:template|render", { name, ctx });
+async createTitle(payload: string) : Promise<string> {
+    return await TAURI_INVOKE("plugin:chat-completion|create_title", { payload });
 },
-async registerTemplate(name: string, template: string) : Promise<null> {
-    return await TAURI_INVOKE("plugin:template|register_template", { name, template });
+async enhance(payload: string) : Promise<string> {
+    return await TAURI_INVOKE("plugin:chat-completion|enhance", { payload });
 }
 }
 
@@ -25,7 +25,7 @@ async registerTemplate(name: string, template: string) : Promise<null> {
 
 /** user-defined types **/
 
-export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
+
 
 /** tauri-specta globals **/
 
