@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import SettingsDialog from "@/components/settings-dialog";
+import SettingsPanel from "@/components/settings-panel";
 import { NewNoteButton } from "@/components/app-header/new-note-button";
 import { BackButton } from "@/components/app-header/back-button";
 import { type OsType, type as getOsType } from "@tauri-apps/plugin-os";
@@ -44,7 +44,7 @@ export default function Header() {
         >
           <SearchIconButton />
           <NewNoteButton />
-          <SettingsDialog />
+          <SettingsPanel />
         </div>
       </header>
 

@@ -16,7 +16,7 @@ import type { NavNames } from "./types";
 import { type Template } from "@/types";
 import { commands as dbCommands } from "@hypr/plugin-db";
 
-export default function SettingsDialog() {
+export default function SettingsPanel() {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<NavNames | "Profile">("General");
   const [searchQuery, setSearchQuery] = useState("");
