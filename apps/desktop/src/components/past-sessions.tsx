@@ -2,11 +2,26 @@ import { useCallback, useEffect, useState } from "react";
 import { Trans } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { format, isThisYear } from "date-fns";
-
-import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
+import { 
+  format, 
+  isThisYear, 
+  isToday, 
+  isYesterday, 
+  isThisWeek,
+  differenceInCalendarDays,
+  startOfToday
+} from "date-fns";
+import { Avatar, AvatarFallback } from "@hypr/ui/components/hypr-ui/avatar";
 import { type Human } from "@/types";
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
+import {
+  Card,
+  CardContent,
+  CardTitle,
+  CardDescription,
+  CardHeader,
+} from "@hypr/ui/components/hypr-ui/card";
+import { Laptop, Users2 } from "lucide-react";
 
 export default function PastSessions() {
   const data = useQuery({
@@ -40,26 +55,104 @@ function SessionList({ data }: { data: Session[] }) {
     [navigate],
   );
 
+  const formatDateHeader = (date: Date) => {
+    if (isToday(date)) {
+      return "Today";
+    }
+    
+    if (isYesterday(date)) {
+      return "Yesterday";
+    }
+
+    const daysDiff = differenceInCalendarDays(startOfToday(), date);
+    
+    // For dates within the last week (but not yesterday)
+    if (daysDiff > 1 && daysDiff <= 7) {
+      // If it's this week, just show the day name
+      if (isThisWeek(date)) {
+        return format(date, "EEEE");
+      }
+      // If it's last week, prefix with "Last"
+      return `Last ${format(date, "EEEE")}`;
+    }
+
+    // For dates in the current year
+    if (isThisYear(date)) {
+      return format(date, "MMM d");
+    }
+
+    // For dates in different years
+    return format(date, "MMM d, yyyy");
+  };
+
+  // Group sessions by date
+  const groupedSessions = data.reduce((groups, session) => {
+    const timestamp = parseFloat(session.timestamp);
+    const date = new Date(timestamp);
+    const dateKey = format(date, "yyyy-MM-dd");
+    
+    if (!groups[dateKey]) {
+      groups[dateKey] = {
+        date,
+        sessions: [],
+      };
+    }
+    
+    groups[dateKey].sessions.push(session);
+    return groups;
+  }, {} as Record<string, { date: Date; sessions: Session[] }>);
+
+  // Sort dates in descending order
+  const sortedDates = Object.keys(groupedSessions).sort((a, b) => b.localeCompare(a));
+
   return (
-    <div className="flex flex-col gap-4">
-      {data.map((session) => {
-        const timestamp = parseFloat(session.timestamp);
-        const date = new Date(timestamp);
-        const formattedDate = isThisYear(date)
-          ? format(date, "MMM d (EEE), h:mm a")
-          : format(date, "MMM d (EEE), h:mm a, yyyy");
+    <div className="flex flex-col gap-6">
+      {sortedDates.map((dateKey) => {
+        const { date, sessions } = groupedSessions[dateKey];
+        const formattedDate = formatDateHeader(date);
 
         return (
-          <div
-            key={session.id}
-            onClick={() => handleClickSession(session)}
-            className="flex cursor-pointer flex-col gap-2 rounded-lg border border-border bg-card p-4 hover:bg-neutral-50"
-          >
-            <div className="text-lg font-medium">{session.title}</div>
-            <div className="text-sm text-muted-foreground">{formattedDate}</div>
-            {session.calendar_event_id && (
-              <ParticipantList eventId={session.calendar_event_id} />
-            )}
+          <div key={dateKey} className="space-y-4">
+            <h3 className="text-base font-semibold text-neutral-600">
+              {formattedDate}
+            </h3>
+            <div className="flex flex-col gap-4">
+              {sessions.map((session) => {
+                const timestamp = parseFloat(session.timestamp);
+                const sessionDate = new Date(timestamp);
+                const formattedTime = format(sessionDate, "h:mm a");
+
+                return (
+                  <Card
+                    key={session.id}
+                    variant="outline"
+                    className="cursor-pointer transition-all hover:bg-neutral-50"
+                    onClick={() => handleClickSession(session)}
+                  >
+                    <CardHeader>
+                      <CardTitle
+                        className="inline-flex items-center text-lg font-semibold"
+                        as="h4"
+                      >
+                        <div className="mr-2 rounded-lg bg-neutral-100 p-1">
+                          {/* TODO: Need to change icon if calendar event has video call link attached */}
+                          {/* <Laptop className="size-5 text-neutral-600" /> */}
+                          <Users2 className="size-5 text-neutral-600" />
+                        </div>
+                        {session.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <CardDescription>{formattedTime}</CardDescription>
+                      {session.calendar_event_id && (
+                        <ParticipantList eventId={session.calendar_event_id} />
+                      )}
+                      {/* TODO: Add tags */}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
         );
       })}
@@ -89,8 +182,8 @@ function ParticipantList({ eventId }: { eventId: string }) {
           key={participant.id}
           className="inline-flex items-center gap-1 rounded-full border bg-neutral-100 px-1.5 py-1 text-xs font-medium"
         >
-          <Avatar className="h-5 w-5">
-            <AvatarFallback className="bg-neutral-200 font-semibold">
+          <Avatar className="size-4">
+            <AvatarFallback className="bg-neutral-200 text-xs font-semibold">
               {participant.full_name?.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>

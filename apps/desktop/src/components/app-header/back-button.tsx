@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useRouter, useLocation } from "@tanstack/react-router";
+import { Button } from "@hypr/ui/components/hypr-ui/button";
 
 export function BackButton() {
   const { history } = useRouter();
@@ -17,12 +18,15 @@ export function BackButton() {
   }
 
   return (
-    <button
-      className="ml-[70px] text-gray-600 hover:text-gray-900 disabled:opacity-0"
+    <Button
+      variant="ghost"
+      size="icon"
+      className="ml-[70px] hover:bg-neutral-200 disabled:opacity-0"
       onClick={handleClickBack}
       disabled={!history.canGoBack()}
+      aria-label="Go back"
     >
-      <ArrowLeft size={14} />
-    </button>
+      <ArrowLeft className="size-4" />
+    </Button>
   );
 }

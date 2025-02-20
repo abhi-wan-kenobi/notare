@@ -54,7 +54,7 @@ export default function Modal({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2 }}
-      className="animate-fade-in flex origin-bottom-right flex-col rounded-xl border bg-white shadow-2xl"
+      className="animate-fade-in flex w-[400px] origin-bottom-right flex-col rounded-xl border bg-white shadow-2xl"
       style={{
         maxHeight: "80vh",
         minHeight: 240,

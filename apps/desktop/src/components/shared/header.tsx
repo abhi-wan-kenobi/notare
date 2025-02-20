@@ -19,7 +19,7 @@ export default function Header({
 }: HeaderProps) {
   if (showHistory) {
     return (
-      <div className="flex items-center justify-between px-4 py-2">
+      <div className="flex items-center justify-between py-2 pl-2 pr-4">
         <div className="flex items-center gap-2">
           <button
             type="button"

@@ -8,13 +8,13 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@hypr/ui/components/ui/carousel";
+} from "@hypr/ui/components/hypr-ui/carousel";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-} from "@hypr/ui/components/ui/card";
+} from "@hypr/ui/components/hypr-ui/card";
 import { Badge } from "@hypr/ui/components/ui/badge";
 
 import { type Event } from "@/types";
@@ -120,12 +120,11 @@ function EventCard({ event }: { event: Event }) {
 
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2 text-sm">
-          <span>
-            {new Date(event.start_date).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
+          {new Date(event.start_date).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+
           <Badge variant="outline" className={getEventStatusClass(event)}>
             {formatRemainingTime(new Date(event.start_date))}
           </Badge>

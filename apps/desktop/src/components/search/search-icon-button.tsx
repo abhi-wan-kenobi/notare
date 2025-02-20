@@ -1,16 +1,19 @@
 import { SearchIcon } from "lucide-react";
+import { Button } from "@hypr/ui/components/hypr-ui/button";
 import { useSearchStore } from "../../stores/use-search-store";
 
 export function SearchIconButton() {
   const { open } = useSearchStore();
 
   return (
-    <button
-      className="flex items-center justify-center rounded-md p-1 text-sm font-medium text-neutral-600 ring-offset-background transition-colors duration-200 hover:bg-neutral-200 sm:hidden"
+    <Button
+      variant="ghost"
+      size="icon"
+      className="hover:bg-neutral-200 sm:hidden"
       onClick={open}
+      aria-label="Search"
     >
-      <SearchIcon className="h-4 w-4" />
-      <span className="sr-only">Search</span>
-    </button>
+      <SearchIcon className="size-4" />
+    </Button>
   );
 }

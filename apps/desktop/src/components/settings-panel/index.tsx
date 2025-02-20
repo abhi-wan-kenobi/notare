@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SettingsIcon } from "lucide-react";
+import { Button } from "@hypr/ui/components/hypr-ui/button";
 import { Modal, ModalBody } from "@hypr/ui/components/hypr-ui/modal";
 import { DialogView } from "./views";
 import GeneralComponent from "./views/general";
@@ -66,14 +67,15 @@ export default function SettingsPanel() {
 
   return (
     <>
-      <button
+      <Button
+        variant="ghost"
+        size="icon"
+        className="hover:bg-neutral-200"
         onClick={() => setOpen(true)}
-        className="flex items-center justify-center rounded-md p-1 text-sm font-medium text-neutral-600 ring-offset-background transition-colors duration-200 hover:bg-neutral-200"
         aria-label="Settings"
       >
         <SettingsIcon className="h-4 w-4" />
-        <span className="sr-only">Settings</span>
-      </button>
+      </Button>
 
       <Modal open={open} onClose={() => setOpen(false)} size="full">
         <ModalBody className="p-0">
