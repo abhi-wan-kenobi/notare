@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SettingsIcon } from "lucide-react";
-import { cn } from "@hypr/ui/lib/utils";
-
+import { Modal, ModalBody } from "@hypr/ui/components/hypr-ui/modal";
 import { DialogView } from "./views";
 import GeneralComponent from "./views/general";
 import CalendarComponent from "./views/calendar";
@@ -13,7 +12,6 @@ import NotificationsComponent from "./views/notifications";
 import TeamComponent from "./views/team";
 import ProfileComponent from "./views/profile";
 import { SettingsSidebar } from "./sidebar";
-
 import type { NavNames } from "./types";
 import { type Template } from "@/types";
 import { commands as dbCommands } from "@hypr/plugin-db";
@@ -55,13 +53,10 @@ export default function SettingsDialog() {
         e.preventDefault();
         setOpen((prev) => !prev);
       }
-      if (e.key === "Escape" && open) {
-        setOpen(false);
-      }
     };
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
-  }, [open]);
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -80,59 +75,43 @@ export default function SettingsDialog() {
         <span className="sr-only">Settings</span>
       </button>
 
-      {open && (
-        <>
-          <div
-            className="fixed inset-0 z-50 bg-black/50"
-            aria-hidden="true"
-            onClick={() => setOpen(false)}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="settings-title"
-            className={cn(
-              "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
-              "h-[calc(100vh-96px)] w-[calc(100vw-96px)]",
-              "overflow-clip rounded-lg bg-background shadow-lg",
-            )}
-          >
-            <div className="flex h-full w-full gap-0 overflow-clip p-0">
-              <SettingsSidebar
-                active={active}
-                setActive={setActive}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                customTemplates={templates.data?.custom || []}
-                builtinTemplates={templates.data?.builtin || []}
-                onTemplateSelect={handleTemplateSelect}
-                onCreateTemplate={handleCreateTemplate}
-              />
+      <Modal open={open} onClose={() => setOpen(false)} size="full">
+        <ModalBody className="p-0">
+          <div className="flex h-full w-full gap-0 overflow-clip">
+            <SettingsSidebar
+              active={active}
+              setActive={setActive}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              customTemplates={templates.data?.custom || []}
+              builtinTemplates={templates.data?.builtin || []}
+              onTemplateSelect={handleTemplateSelect}
+              onCreateTemplate={handleCreateTemplate}
+            />
 
-              <DialogView title={active} selectedTemplate={selectedTemplate}>
-                {active === "General" && <GeneralComponent />}
-                {active === "Calendar" && <CalendarComponent />}
-                {active === "Notifications" && <NotificationsComponent />}
-                {active === "Templates" && selectedTemplate && (
-                  <TemplateEditor
-                    disabled={false}
-                    template={selectedTemplate}
-                    onTemplateUpdate={handleUpdateTemplate}
-                    isCreator={
-                      // TODO: Replace with actual user ID check
-                      selectedTemplate.user_id === "current_user_id"
-                    }
-                  />
-                )}
-                {active === "Tags" && <TagsComponent />}
-                {active === "Team" && <TeamComponent />}
-                {active === "Billing" && <BillingComponent />}
-                {active === "Profile" && <ProfileComponent />}
-              </DialogView>
-            </div>
+            <DialogView title={active} selectedTemplate={selectedTemplate}>
+              {active === "General" && <GeneralComponent />}
+              {active === "Calendar" && <CalendarComponent />}
+              {active === "Notifications" && <NotificationsComponent />}
+              {active === "Templates" && selectedTemplate && (
+                <TemplateEditor
+                  disabled={false}
+                  template={selectedTemplate}
+                  onTemplateUpdate={handleUpdateTemplate}
+                  isCreator={
+                    // TODO: Replace with actual user ID check
+                    selectedTemplate.user_id === "current_user_id"
+                  }
+                />
+              )}
+              {active === "Tags" && <TagsComponent />}
+              {active === "Team" && <TeamComponent />}
+              {active === "Billing" && <BillingComponent />}
+              {active === "Profile" && <ProfileComponent />}
+            </DialogView>
           </div>
-        </>
-      )}
+        </ModalBody>
+      </Modal>
     </>
   );
 }
