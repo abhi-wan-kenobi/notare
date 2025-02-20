@@ -15,7 +15,7 @@
 		<a href="https://hyprnote.com/download/linux">Linux</a>
     <br />
     <br />
-    <i>~ Hyprnote is currently in public beta, and is available for macOS, Windows, and Linux. Join the <a href="https://hyprnote.com/discord">Hyprnote Discord</a> to help test future releases and join the community. ~</i>
+    <i>Hyprnote is currently in public beta, and is available for macOS, Windows, and Linux. Join the <a href="https://hyprnote.com/discord">Hyprnote Discord</a> to help test future releases and join the community.</i>
     <br />
   </p>
 </p>
@@ -24,3 +24,5 @@
 > NOTE: Hyprnote is under active development, and is currently in public beta. This repository is updated regularly with changes and new releases.
 
 Hyprnote is the open-source alternative to Granola, designed for professionals with packed schedules. It's an AI notepad that takes your raw notes and turns them into a perfect meeting note.
+
+![gh_cover](https://github.com/user-attachments/assets/b839e2a9-58f6-455c-9b6a-e57c90264e04)
