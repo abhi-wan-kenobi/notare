@@ -218,39 +218,16 @@ fn main() {
                 ));
 
             let native_router = ApiRouter::new()
-                .route(
+                .api_route(
                     "/chat/completions",
-                    post(native::openai::handler).layer(TimeoutLayer::new(Duration::from_secs(10))),
+                    api_post(native::openai::handler)
+                        .layer(TimeoutLayer::new(Duration::from_secs(10))),
                 )
                 .api_route(
                     "/user/integrations",
                     api_get(native::user::list_integrations),
                 )
                 .api_route("/subscription", api_get(native::subscription::handler))
-                .api_route(
-                    "/create_title",
-                    api_post(native::create_title::handler)
-                        .layer(TimeoutLayer::new(Duration::from_secs(10))),
-                )
-                .api_route(
-                    "/live_summary",
-                    api_post(native::live_summary::handler)
-                        .layer(TimeoutLayer::new(Duration::from_secs(10))),
-                )
-                .api_route(
-                    "/postprocess_enhance",
-                    api_post(native::postprocess_enhance::handler)
-                        .layer(TimeoutLayer::new(Duration::from_secs(10))),
-                )
-                .route(
-                    "/enhance",
-                    post(native::enhance::handler)
-                        .layer(TimeoutLayer::new(Duration::from_secs(20)))
-                        .layer(axum::middleware::from_fn_with_state(
-                            AuthState::from_ref(&state),
-                            middleware::check_membership("pro".to_string()),
-                        )),
-                )
                 .route("/listen/realtime", get(native::listen::realtime::handler))
                 .route("/listen/recorded", post(native::listen::recorded::handler));
             // .layer(
@@ -340,10 +317,6 @@ fn main() {
             let monitor = async { worker::monitor(worker_state).await.unwrap() };
             let _result = tokio::join!(http, monitor);
         });
-}
-
-fn export_ts_types() -> anyhow::Result<()> {
-    Ok(())
 }
 
 fn get_env(key: &str) -> String {

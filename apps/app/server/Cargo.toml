@@ -15,7 +15,6 @@ hypr-db = { path = "../../../crates/db", package = "db", features = ["admin", "u
 hypr-nango = { path = "../../../crates/nango", package = "nango" }
 hypr-notion = { path = "../../../crates/notion", package = "notion" }
 hypr-openai = { path = "../../../crates/openai", package = "openai" }
-hypr-prompt = { path = "../../../crates/prompt", package = "prompt" }
 hypr-s3 = { path = "../../../crates/s3", package = "s3" }
 hypr-slack = { path = "../../../crates/slack", package = "slack" }
 hypr-stt = { path = "../../../crates/stt", package = "stt", features = ["realtime", "recorded"] }

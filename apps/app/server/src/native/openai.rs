@@ -1,8 +1,8 @@
+use aide::axum::IntoApiResponse;
 use axum::{
     body::Body,
     extract::State,
     http::{Response, StatusCode},
-    response::IntoResponse,
     Json,
 };
 
@@ -12,7 +12,7 @@ use crate::state::AppState;
 pub async fn handler(
     State(state): State<AppState>,
     Json(input): Json<hypr_openai::CreateChatCompletionRequest>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
+) -> Result<impl IntoApiResponse, (StatusCode, String)> {
     let reqwest_response = state
         .openai
         .chat_completion(&input)

@@ -13,13 +13,10 @@ outlook = []
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 
+chrono = { workspace = true }
+itertools = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-
-itertools = { workspace = true }
-
-chrono = { workspace = true }
-chrono-tz = { workspace = true }
 
 google-calendar = "0.7.0"
 graph-rs-sdk = { workspace = true }
