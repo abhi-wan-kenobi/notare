@@ -7,11 +7,17 @@
 
 
 export const commands = {
-async render(name: string, ctx: JsonValue) : Promise<string> {
-    return await TAURI_INVOKE("plugin:template|render", { name, ctx });
+async calendarAccessStatus() : Promise<boolean> {
+    return await TAURI_INVOKE("plugin:apple-calendar|calendar_access_status");
 },
-async registerTemplate(name: string, template: string) : Promise<null> {
-    return await TAURI_INVOKE("plugin:template|register_template", { name, template });
+async contactsAccessStatus() : Promise<boolean> {
+    return await TAURI_INVOKE("plugin:apple-calendar|contacts_access_status");
+},
+async requestCalendarAccess() : Promise<void> {
+    await TAURI_INVOKE("plugin:apple-calendar|request_calendar_access");
+},
+async requestContactsAccess() : Promise<void> {
+    await TAURI_INVOKE("plugin:apple-calendar|request_contacts_access");
 }
 }
 
@@ -25,7 +31,7 @@ async registerTemplate(name: string, template: string) : Promise<null> {
 
 /** user-defined types **/
 
-export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
+
 
 /** tauri-specta globals **/
 

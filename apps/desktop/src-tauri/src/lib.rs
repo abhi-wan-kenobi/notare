@@ -6,7 +6,6 @@ mod store;
 mod tray;
 mod vault;
 mod windows;
-mod workers;
 
 use tauri::Manager;
 
@@ -45,7 +44,7 @@ pub async fn main() {
 
     let _guard = tauri_plugin_sentry::minidump::init(&client);
 
-    let builder = tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_listener::init())
         .plugin(tauri_plugin_db::init())
         .plugin(tauri_plugin_template::init())
@@ -72,6 +71,11 @@ pub async fn main() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             windows::ShowHyprWindow::MainWithoutDemo.show(app).unwrap();
         }));
+
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.plugin(tauri_plugin_apple_calendar::init());
+    }
 
     let specta_builder = make_specta_builder();
 
@@ -131,14 +135,6 @@ pub async fn main() {
                 let autostart_manager = app.autolaunch();
                 autostart_manager.enable().unwrap();
             }
-
-            // tokio::spawn(async move {
-            //     let state = workers::WorkerState {
-            //         db,
-            //         user_id: user_id.clone(),
-            //     };
-            //     workers::monitor(state).await.unwrap();
-            // });
 
             tray::create_tray(&app).unwrap();
             windows::ShowHyprWindow::MainWithoutDemo.show(&app).unwrap();

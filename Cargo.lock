@@ -3240,8 +3240,6 @@ name = "desktop"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "apalis",
- "apalis-cron",
  "audio 0.1.0",
  "bridge",
  "bytes",
@@ -3264,6 +3262,7 @@ dependencies = [
  "strum 0.26.3",
  "tauri",
  "tauri-build",
+ "tauri-plugin-apple-calendar",
  "tauri-plugin-autostart",
  "tauri-plugin-clipboard-manager",
  "tauri-plugin-db",
@@ -11579,6 +11578,29 @@ dependencies = [
  "tauri-utils",
  "toml 0.8.20",
  "walkdir",
+]
+
+[[package]]
+name = "tauri-plugin-apple-calendar"
+version = "0.1.0"
+dependencies = [
+ "apalis",
+ "apalis-cron",
+ "calendar",
+ "chrono",
+ "db",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-plugin",
+ "tauri-plugin-db",
+ "tauri-specta",
+ "thiserror 2.0.11",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

@@ -1,52 +1,61 @@
+use std::sync::Mutex;
+
 use tauri::{Manager, Wry};
 
 mod commands;
 mod error;
-mod model;
-mod server;
+mod worker;
 
 pub use error::{Error, Result};
 
-const PLUGIN_NAME: &str = "local-llm";
-
-type SharedState = std::sync::Arc<tokio::sync::Mutex<State>>;
+pub type ManagedState = Mutex<State>;
 
 #[derive(Default)]
 pub struct State {
-    pub api_base: String,
-    pub model: Option<kalosm_llama::Llama>,
-    pub server: Option<crate::server::ServerHandle>,
+    pub worker_handle: Option<tokio::task::JoinHandle<()>>,
+}
+
+const PLUGIN_NAME: &str = "apple-calendar";
+
+pub trait AppleCalendarExt<R: tauri::Runtime> {
+    fn start_worker(&self, user_id: impl Into<String>) -> Result<()>;
+}
+
+impl<R: tauri::Runtime, T: Manager<R>> crate::AppleCalendarExt<R> for T {
+    fn start_worker(&self, user_id: impl Into<String>) -> Result<()> {
+        let db = self.state::<hypr_db::user::UserDatabase>().inner().clone();
+        let user_id = user_id.into();
+
+        let state = self.state::<ManagedState>();
+        let mut s = state.lock().unwrap();
+
+        s.worker_handle = Some(tokio::runtime::Handle::current().spawn(async move {
+            let _ = worker::monitor(worker::WorkerState { db, user_id }).await;
+        }));
+
+        Ok(())
+    }
 }
 
 fn make_specta_builder() -> tauri_specta::Builder<Wry> {
     tauri_specta::Builder::<Wry>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
-            commands::load_model::<Wry>,
-            commands::unload_model,
-            commands::stop_server,
+            commands::calendar_access_status,
+            commands::contacts_access_status,
+            commands::request_calendar_access,
+            commands::request_contacts_access,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
 
 pub fn init() -> tauri::plugin::TauriPlugin<Wry> {
     let specta_builder = make_specta_builder();
-    let state = SharedState::default();
 
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
         .setup(|app, _api| {
-            tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async {
-                    let handle = server::run_server(state.clone()).await.unwrap();
-                    let mut state = state.lock().await;
-                    state.api_base = format!("http://{}", handle.addr);
-                    state.server = Some(handle);
-                    tracing::info!(api_base = state.api_base, "llm_server_started");
-                });
-            });
-
-            app.manage(state);
+            app.manage(ManagedState::default());
             Ok(())
         })
         .build()

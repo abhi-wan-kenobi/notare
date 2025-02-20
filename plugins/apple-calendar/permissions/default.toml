@@ -1,0 +1,8 @@
+[default]
+description = "Default permissions for the plugin"
+permissions = [
+    "allow-calendar-access-status",
+    "allow-contacts-access-status",
+    "allow-request-calendar-access",
+    "allow-request-contacts-access",
+]
