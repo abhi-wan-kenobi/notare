@@ -46,6 +46,7 @@ const development: DefaultTheme.SidebarItem = {
     { text: "Contributing", link: "/development/contributing" },
     { text: "Extension", link: "/development/extension" },
     { text: "Plugin", link: "/development/plugin" },
+    { text: "Miscellaneous", link: "/development/miscellaneous" },
   ],
 };
 

@@ -1,6 +1,6 @@
 ---
 title: Local STT
-description: Local STT plugin
+description: Run local STT inference server
 id: local-stt
 ---
 

@@ -8,6 +8,11 @@ import { data } from "../data/extensions.data.mts";
 
 Currently, there are **2 types of extensions**:
 
+- `Copilot`
+  - Provide proactive help during the meeting.
+- `Widget`
+  - Display information or actions that can be used before, during, or after the meeting.
+
 <Image
   alt="Extensions"
   src="/extensions-abstract-light.png"

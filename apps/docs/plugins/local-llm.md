@@ -1,6 +1,6 @@
 ---
 title: Local LLM
-description: Local LLM plugin
+description: Run local LLM inference server
 id: local-llm
 ---
 
