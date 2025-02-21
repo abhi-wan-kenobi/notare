@@ -1,22 +1,18 @@
-import { useState } from "react";
-import {
-  Check,
-  TagIcon,
-  ChevronRight,
-  Users2Icon,
-  CalendarIcon,
-} from "lucide-react";
-
+import { useMemo, useState } from "react";
+import { Check, TagIcon, Users2Icon, CalendarIcon, Mail } from "lucide-react";
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from "@hypr/ui/components/ui/popover";
-import { Input } from "@hypr/ui/components/ui/input";
-import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
-
+} from "@hypr/ui/components/hypr-ui/popover";
+import { Input } from "@hypr/ui/components/hypr-ui/input";
+import { Avatar, AvatarFallback } from "@hypr/ui/components/hypr-ui/avatar";
+import { Button } from "@hypr/ui/components/hypr-ui/button";
 import { mockParticipants } from "@/mocks/participants";
 import { type Tag, mockTags } from "@/mocks/tags";
+import { type Human } from "@/types";
+import { RiLinkedinBoxFill } from "@remixicon/react";
+import { toast } from "sonner";
 
 export default function Chips() {
   return (
@@ -45,9 +41,7 @@ export function EventChip() {
           <div className="text-sm text-neutral-600">
             Thu, Jan 23 8:00 PM - 9:00 PM
           </div>
-          <button className="mt-2 rounded-md border border-border px-2 py-1 hover:bg-neutral-100">
-            View in calendar
-          </button>
+          <Button variant="outline">View in calendar</Button>
         </div>
       </PopoverContent>
     </Popover>
@@ -63,6 +57,101 @@ export function ParticipantsChip() {
       .toUpperCase();
   };
 
+  const ParticipantsList = ({ participants }: { participants: Human[] }) => {
+    // Group participants by organization
+    const groupedParticipants = useMemo(() => {
+      const groups: Record<string, Human[]> = {
+        "No Organization": [],
+      };
+
+      participants.forEach((participant) => {
+        const orgId = participant.organization_id || "No Organization";
+        if (!groups[orgId]) {
+          groups[orgId] = [];
+        }
+        groups[orgId].push(participant);
+      });
+
+      return groups;
+    }, [participants]);
+
+    return (
+      <div className="space-y-2">
+        {Object.entries(groupedParticipants).map(([orgId, members]) => (
+          <div key={orgId} className="space-y-1">
+            <div className="pb-1">
+              <p className="text-xs font-medium text-neutral-500">
+                {orgId === "No Organization" ? "Others" : orgId}
+              </p>
+            </div>
+            <div className="space-y-0.5">
+              {members.map((member) => (
+                <div
+                  key={member.id}
+                  tabIndex={-1}
+                  className="flex w-full items-start justify-between rounded py-2 text-sm"
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        className="size-6"
+                        style={{ backgroundColor: "gray" }}
+                      >
+                        <AvatarFallback className="text-xs">
+                          {getInitials(member.full_name ?? "UNKNOWN")}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      <div className="flex flex-col">
+                        <span className="font-medium">{member.full_name}</span>
+                        {member.job_title && (
+                          <span className="text-xs text-neutral-500">
+                            {member.job_title}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {!member.linkedin_username && (
+                        <a
+                          href={`https://linkedin.com/in/${member.linkedin_username}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <RiLinkedinBoxFill className="size-5 text-neutral-400 transition-colors hover:text-neutral-600" />
+                        </a>
+                      )}
+                      {member.email && (
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              await navigator.clipboard.writeText(
+                                member.email!,
+                              );
+                              toast.success("Email copied to clipboard");
+                            } catch (err) {
+                              toast.error("Failed to copy email");
+                            }
+                          }}
+                          className="text-neutral-400 transition-colors hover:text-neutral-600"
+                          title={member.email}
+                        >
+                          <Mail className="size-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <Popover>
       <PopoverTrigger>
@@ -75,25 +164,12 @@ export function ParticipantsChip() {
           )}
         </div>
       </PopoverTrigger>
-      <PopoverContent className="p-0 shadow-lg" align="start">
-        <div className="space-y-1">
-          {mockParticipants.map((option) => (
-            <button
-              key={option.id}
-              className="flex w-full items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-neutral-100"
-            >
-              <div className="flex items-center gap-2">
-                <Avatar className="h-6 w-6" style={{ backgroundColor: "gray" }}>
-                  <AvatarFallback className="text-xs">
-                    {getInitials(option.full_name ?? "UNKNOWN")}
-                  </AvatarFallback>
-                </Avatar>
-                <span>{option.full_name}</span>
-              </div>
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          ))}
-        </div>
+      <PopoverContent
+        className="shadow-lg"
+        align="start"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <ParticipantsList participants={mockParticipants} />
       </PopoverContent>
     </Popover>
   );
@@ -156,7 +232,10 @@ export function TagChips() {
           )}
         </div>
       </PopoverTrigger>
-      <PopoverContent className="overflow-clip p-0 shadow-lg" align="start">
+      <PopoverContent
+        className="overflow-clip p-0 py-2 shadow-lg"
+        align="start"
+      >
         <div className="space-y-1">
           {mockTags.map((tag) => {
             const isSelected = selected.some((t) => t.id === tag.id);
@@ -183,12 +262,12 @@ export function TagChips() {
               className="rounded-none border-none pr-8 focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-0"
             />
             {newTagName.trim() && (
-              <button
+              <Button
                 onClick={handleCreateTag}
                 className="absolute right-2 top-1/2 -translate-y-1/2 transform rounded-full bg-white p-1 text-green-500 transition ease-in-out hover:bg-green-500 hover:text-white"
               >
                 <Check className="h-4 w-4" />
-              </button>
+              </Button>
             )}
           </div>
         </div>

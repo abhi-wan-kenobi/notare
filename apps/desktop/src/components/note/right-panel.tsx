@@ -1,5 +1,5 @@
 import { useSession } from "@/contexts";
-import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@hypr/ui/components/hypr-ui/avatar";
 import {
   Tabs,
   TabsList,

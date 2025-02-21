@@ -18,6 +18,8 @@ import { I18nProvider } from "@lingui/react";
 import { messages as enMessages } from "./locales/en/messages";
 import { messages as koMessages } from "./locales/ko/messages";
 
+import { Toaster } from "@hypr/ui/components/hypr-ui/sonner";
+
 i18n.load({
   en: enMessages,
   ko: koMessages,
@@ -93,6 +95,7 @@ if (!rootElement.innerHTML) {
               <I18nProvider i18n={i18n}>
                 <HyprProvider>
                   <App />
+                  <Toaster position="top-center" />
                 </HyprProvider>
               </I18nProvider>
             </QueryClientProvider>

@@ -1,12 +1,12 @@
 import clsx from "clsx";
 import SettingsPanel from "@/components/settings-panel";
-import { NewNoteButton } from "@/components/app-header/new-note-button";
-import { BackButton } from "@/components/app-header/back-button";
+import { NewNoteButton } from "@/components/toolbar/new-note-button";
+import { BackButton } from "@/components/toolbar/back-button";
 import { type OsType, type as getOsType } from "@tauri-apps/plugin-os";
 import { useEffect, useState } from "react";
-import { SearchBar, SearchIconButton, SearchCommandDialog } from "../search";
+import { SearchBar, SearchIconButton, OmniSearch } from "../search";
 
-export default function Header() {
+export default function Toolbar() {
   const [osType, setOsType] = useState<OsType>("macos");
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export default function Header() {
         </div>
       </header>
 
-      <SearchCommandDialog />
+      <OmniSearch />
     </>
   );
 }

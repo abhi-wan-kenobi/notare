@@ -121,6 +121,7 @@ function SessionList({ data }: { data: Session[] }) {
             <h3 className="text-base font-semibold text-neutral-600">
               {formattedDate}
             </h3>
+
             <div className="flex flex-col gap-4">
               {sessions.map((session) => {
                 const timestamp = parseFloat(session.timestamp);
@@ -139,7 +140,7 @@ function SessionList({ data }: { data: Session[] }) {
                         className="inline-flex items-center text-lg font-semibold"
                         as="h4"
                       >
-                        <div className="mr-2 rounded-lg bg-neutral-100 p-1">
+                        <div className="mr-2 rounded-lg border bg-neutral-100 p-1">
                           {/* TODO: Need to change icon if calendar event has video call link attached */}
                           {/* <Laptop className="size-5 text-neutral-600" /> */}
                           <Users2 className="size-5 text-neutral-600" />

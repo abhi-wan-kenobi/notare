@@ -10,7 +10,7 @@ import {
 } from "@hypr/ui/components/ui/command";
 import { useSearchStore } from "@/stores/use-search-store";
 
-export function SearchCommandDialog() {
+export function OmniSearch() {
   const { isOpen, toggle } = useSearchStore();
 
   useEffect(() => {
