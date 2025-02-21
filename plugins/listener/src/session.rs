@@ -2,7 +2,7 @@ use futures_util::StreamExt;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 
-use hypr_audio::{AsyncSource, AsyncSourceTranscribeExt};
+use hypr_audio::AsyncSource;
 
 pub struct SessionState {
     status: SessionStatus,
@@ -205,7 +205,6 @@ fn get_amplitude(chunk: &[f32]) -> u16 {
 pub mod commands {
     use super::{SessionEvent, SessionState, SessionStatus};
     use tauri::{ipc::Channel, Manager, State};
-    use tauri_plugin_local_stt::LocalSttExt;
 
     #[tauri::command]
     #[specta::specta]
@@ -235,9 +234,6 @@ pub mod commands {
         session: State<'_, tokio::sync::Mutex<SessionState>>,
         on_event: Channel<SessionEvent>,
     ) -> Result<(), String> {
-        let local_stt = app.state::<tauri_plugin_local_stt::SharedState>();
-        let _model = local_stt.lock().unwrap().model.clone();
-
         let app_dir = app.path().app_data_dir().unwrap();
 
         let bridge = hypr_bridge::Client::builder()

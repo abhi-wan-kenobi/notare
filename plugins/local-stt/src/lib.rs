@@ -2,9 +2,11 @@ use tauri::{Manager, Wry};
 
 mod commands;
 mod error;
+mod ext;
 mod model;
 
 pub use error::{Error, Result};
+pub use ext::LocalSttPluginExt;
 
 pub type SharedState = std::sync::Mutex<State>;
 
@@ -15,22 +17,12 @@ pub struct State {
 
 const PLUGIN_NAME: &str = "local-stt";
 
-pub trait LocalSttExt<R: tauri::Runtime> {
-    fn local_stt_state(&self) -> &SharedState;
-}
-
-impl<R: tauri::Runtime, T: Manager<R>> crate::LocalSttExt<R> for T {
-    fn local_stt_state(&self) -> &SharedState {
-        self.state::<SharedState>().inner()
-    }
-}
-
 fn make_specta_builder() -> tauri_specta::Builder<Wry> {
     tauri_specta::Builder::<Wry>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
             commands::load_model::<Wry>,
-            commands::unload_model
+            commands::unload_model::<Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

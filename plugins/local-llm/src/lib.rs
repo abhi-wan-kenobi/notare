@@ -2,10 +2,12 @@ use tauri::{Manager, Wry};
 
 mod commands;
 mod error;
+mod ext;
 mod model;
 mod server;
 
 pub use error::{Error, Result};
+pub use ext::LocalLlmPluginExt;
 
 const PLUGIN_NAME: &str = "local-llm";
 
@@ -23,8 +25,8 @@ fn make_specta_builder() -> tauri_specta::Builder<Wry> {
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
             commands::load_model::<Wry>,
-            commands::unload_model,
-            commands::stop_server,
+            commands::unload_model::<Wry>,
+            commands::stop_server::<Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

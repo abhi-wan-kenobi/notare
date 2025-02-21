@@ -1,9 +1,11 @@
 use tauri::{Manager, Wry};
 
 mod error;
+mod ext;
 mod session;
 
 pub use error::{Error, Result};
+pub use ext::ListenerPluginExt;
 
 const PLUGIN_NAME: &str = "listener";
 

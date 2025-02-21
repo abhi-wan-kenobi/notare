@@ -15,9 +15,11 @@ tauri-plugin = { workspace = true, features = ["build"] }
 specta-typescript = { workspace = true }
 
 [dependencies]
+tauri-plugin-local-stt = { path = "../local-stt" }
+
 hypr-audio = { path = "../../crates/audio", package = "audio" }
 hypr-bridge = { path = "../../crates/bridge", package = "bridge" }
-tauri-plugin-local-stt = { path = "../local-stt" }
+hypr-db = { path = "../../crates/db", package = "db", default-features = false, features = ["user"] }
 
 tauri = { workspace = true, features = ["specta"] }
 tracing = { workspace = true }

@@ -11464,6 +11464,7 @@ version = "0.1.0"
 dependencies = [
  "audio 0.1.0",
  "bridge",
+ "db",
  "futures-util",
  "hound",
  "serde",
