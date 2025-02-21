@@ -57,7 +57,7 @@ export function Modal({
           "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
           "overflow-clip rounded-lg bg-background shadow-lg",
           sizeClasses[size],
-          className
+          className,
         )}
       >
         {children}
@@ -76,7 +76,7 @@ export function ModalHeader({ children, className }: ModalHeaderProps) {
     <div
       className={cn(
         "flex h-14 items-center justify-between border-b px-6",
-        className
+        className,
       )}
     >
       {children}
@@ -107,7 +107,7 @@ export function ModalFooter({ children, className }: ModalFooterProps) {
     <div
       className={cn(
         "flex items-center justify-end gap-2 border-t px-6 py-4",
-        className
+        className,
       )}
     >
       {children}

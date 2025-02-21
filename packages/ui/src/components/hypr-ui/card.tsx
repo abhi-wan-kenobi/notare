@@ -14,11 +14,11 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
         variant === "default" && "bg-background border shadow-sm",
         variant === "outline" && "border",
         variant === "ghost" && "border-none shadow-none",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  ),
 );
 Card.displayName = "Card";
 
@@ -35,11 +35,11 @@ export const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
         spacing === "default" && "space-y-1.5 p-6",
         spacing === "compact" && "space-y-1 p-4",
         spacing === "loose" && "space-y-2 p-8",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  ),
 );
 CardHeader.displayName = "CardHeader";
 
@@ -51,27 +51,26 @@ export const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
   ({ className, as: Component = "h3", ...props }, ref) => (
     <Component
       ref={ref}
-      className={cn(
-        "font-semibold leading-none tracking-tight",
-        className
-      )}
+      className={cn("font-semibold leading-none tracking-tight", className)}
       {...props}
     />
-  )
+  ),
 );
 CardTitle.displayName = "CardTitle";
 
-interface CardDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement> {}
+interface CardDescriptionProps
+  extends React.HTMLAttributes<HTMLParagraphElement> {}
 
-export const CardDescription = forwardRef<HTMLParagraphElement, CardDescriptionProps>(
-  ({ className, ...props }, ref) => (
-    <p
-      ref={ref}
-      className={cn("text-sm text-neutral-500", className)}
-      {...props}
-    />
-  )
-);
+export const CardDescription = forwardRef<
+  HTMLParagraphElement,
+  CardDescriptionProps
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-neutral-500", className)}
+    {...props}
+  />
+));
 CardDescription.displayName = "CardDescription";
 
 interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -86,11 +85,11 @@ export const CardContent = forwardRef<HTMLDivElement, CardContentProps>(
         spacing === "default" && "p-6 pt-0",
         spacing === "compact" && "p-4 pt-0",
         spacing === "loose" && "p-8 pt-0",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  ),
 );
 CardContent.displayName = "CardContent";
 
@@ -114,10 +113,10 @@ export const CardFooter = forwardRef<HTMLDivElement, CardFooterProps>(
         align === "between" && "justify-between",
         align === "around" && "justify-around",
         align === "evenly" && "justify-evenly",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  ),
 );
 CardFooter.displayName = "CardFooter";

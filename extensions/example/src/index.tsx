@@ -1,9 +1,9 @@
 import type { Extension } from "../../types";
 
+import init from "./init";
+
 const extension: Extension = {
-  init: async () => {
-    console.log("Example extension initialized");
-  },
+  init,
   modal: () => {
     return <div>Example extension</div>;
   },

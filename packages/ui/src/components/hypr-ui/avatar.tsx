@@ -20,11 +20,11 @@ export const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
         // Shape variants
         shape === "circle" && "rounded-full",
         shape === "square" && "rounded-lg",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  ),
 );
 Avatar.displayName = "Avatar";
 
@@ -61,16 +61,13 @@ export const AvatarImage = forwardRef<HTMLImageElement, AvatarImageProps>(
     return (
       <img
         ref={ref}
-        className={cn(
-          "aspect-square h-full w-full object-cover",
-          className
-        )}
+        className={cn("aspect-square h-full w-full object-cover", className)}
         alt={alt}
         onError={handleError}
         {...props}
       />
     );
-  }
+  },
 );
 AvatarImage.displayName = "AvatarImage";
 
@@ -111,12 +108,12 @@ export const AvatarFallback = forwardRef<HTMLDivElement, AvatarFallbackProps>(
           variant === "success" && "bg-green-100 text-green-600",
           variant === "warning" && "bg-yellow-100 text-yellow-600",
           variant === "danger" && "bg-red-100 text-red-600",
-          className
+          className,
         )}
         {...props}
       />
     );
-  }
+  },
 );
 AvatarFallback.displayName = "AvatarFallback";
 

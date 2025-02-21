@@ -24,5 +24,5 @@ const rendered = await templateCommands.render("<TEMPLATE_NAME>", {});
 
 <ul>
   <PluginSourceList :id="$frontmatter.id" />
-  <li><a :href="`https://github.com/fastrepl/hypr/tree/main/plugins/template/src`">Additional template filters and functions</a></li>
+  <li><a :href="`https://github.com/fastrepl/hypr/tree/main/plugins/template/src/engine.rs`">Additional template filters and functions</a></li>
 </ul>

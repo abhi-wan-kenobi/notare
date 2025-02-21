@@ -3,6 +3,7 @@
 Default permissions for the plugin
 
 - `allow-opinionated-md-to-html`
+- `allow-list-template-names`
 
 ## Permission Table
 

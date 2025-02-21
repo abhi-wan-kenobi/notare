@@ -33,11 +33,7 @@ export const Main: Story = {
       handlers: [
         http.post("http://localhost:1234/api/native/live_summary", () => {
           const res = {
-            blocks: [
-              {
-                points: ["first point", "second point", "third point"],
-              },
-            ],
+            points: ["first point", "second point", "third point"],
           } satisfies LiveSummaryResponse;
 
           return HttpResponse.json(res);

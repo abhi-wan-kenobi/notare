@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
+default = ["local", "cloud"]
 local = ["hypr-onnx", "knf-rs"]
 cloud = ["reqwest", "url"]
 

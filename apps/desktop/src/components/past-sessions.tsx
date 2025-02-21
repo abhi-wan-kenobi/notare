@@ -2,14 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { Trans } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { 
-  format, 
-  isThisYear, 
-  isToday, 
-  isYesterday, 
+import {
+  format,
+  isThisYear,
+  isToday,
+  isYesterday,
   isThisWeek,
   differenceInCalendarDays,
-  startOfToday
+  startOfToday,
 } from "date-fns";
 import { Avatar, AvatarFallback } from "@hypr/ui/components/hypr-ui/avatar";
 import { type Human } from "@/types";
@@ -59,13 +59,13 @@ function SessionList({ data }: { data: Session[] }) {
     if (isToday(date)) {
       return "Today";
     }
-    
+
     if (isYesterday(date)) {
       return "Yesterday";
     }
 
     const daysDiff = differenceInCalendarDays(startOfToday(), date);
-    
+
     // For dates within the last week (but not yesterday)
     if (daysDiff > 1 && daysDiff <= 7) {
       // If it's this week, just show the day name
@@ -86,24 +86,29 @@ function SessionList({ data }: { data: Session[] }) {
   };
 
   // Group sessions by date
-  const groupedSessions = data.reduce((groups, session) => {
-    const timestamp = parseFloat(session.timestamp);
-    const date = new Date(timestamp);
-    const dateKey = format(date, "yyyy-MM-dd");
-    
-    if (!groups[dateKey]) {
-      groups[dateKey] = {
-        date,
-        sessions: [],
-      };
-    }
-    
-    groups[dateKey].sessions.push(session);
-    return groups;
-  }, {} as Record<string, { date: Date; sessions: Session[] }>);
+  const groupedSessions = data.reduce(
+    (groups, session) => {
+      const timestamp = parseFloat(session.timestamp);
+      const date = new Date(timestamp);
+      const dateKey = format(date, "yyyy-MM-dd");
+
+      if (!groups[dateKey]) {
+        groups[dateKey] = {
+          date,
+          sessions: [],
+        };
+      }
+
+      groups[dateKey].sessions.push(session);
+      return groups;
+    },
+    {} as Record<string, { date: Date; sessions: Session[] }>,
+  );
 
   // Sort dates in descending order
-  const sortedDates = Object.keys(groupedSessions).sort((a, b) => b.localeCompare(a));
+  const sortedDates = Object.keys(groupedSessions).sort((a, b) =>
+    b.localeCompare(a),
+  );
 
   return (
     <div className="flex flex-col gap-6">
