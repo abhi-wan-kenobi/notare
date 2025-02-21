@@ -2,9 +2,10 @@
 
 Default permissions for the plugin
 
-- `allow-stop-server`
 - `allow-load-model`
 - `allow-unload-model`
+- `allow-start-server`
+- `allow-stop-server`
 
 ## Permission Table
 
@@ -37,6 +38,32 @@ Enables the load_model command without any pre-configured scope.
 <td>
 
 Denies the load_model command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-llm:allow-start-server`
+
+</td>
+<td>
+
+Enables the start_server command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-llm:deny-start-server`
+
+</td>
+<td>
+
+Denies the start_server command without any pre-configured scope.
 
 </td>
 </tr>

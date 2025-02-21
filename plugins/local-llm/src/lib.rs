@@ -26,6 +26,7 @@ fn make_specta_builder() -> tauri_specta::Builder<Wry> {
         .commands(tauri_specta::collect_commands![
             commands::load_model::<Wry>,
             commands::unload_model::<Wry>,
+            commands::start_server::<Wry>,
             commands::stop_server::<Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
@@ -33,22 +34,11 @@ fn make_specta_builder() -> tauri_specta::Builder<Wry> {
 
 pub fn init() -> tauri::plugin::TauriPlugin<Wry> {
     let specta_builder = make_specta_builder();
-    let state = SharedState::default();
 
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
         .setup(|app, _api| {
-            tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async {
-                    let handle = server::run_server(state.clone()).await.unwrap();
-                    let mut state = state.lock().await;
-                    state.api_base = format!("http://{}", handle.addr);
-                    state.server = Some(handle);
-                    tracing::info!(api_base = state.api_base, "llm_server_started");
-                });
-            });
-
-            app.manage(state);
+            app.manage(SharedState::default());
             Ok(())
         })
         .build()
