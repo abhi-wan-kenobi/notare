@@ -15,14 +15,20 @@ tauri-plugin = { workspace = true, features = ["build"] }
 specta-typescript = { workspace = true }
 
 [dependencies]
+hypr-bridge = { path = "../../crates/bridge", package = "bridge" }
+
 tauri = { workspace = true }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
 serde = { workspace = true }
 specta = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tracing = { workspace = true }
+
+axum = { workspace = true, features = ["ws"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 kalosm-common = { workspace = true }
 rwhisper = { workspace = true, features = ["metal"] }

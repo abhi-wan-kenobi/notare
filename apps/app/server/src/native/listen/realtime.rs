@@ -19,18 +19,17 @@ use hypr_bridge::{ListenInputChunk, ListenOutputChunk};
 use hypr_db::user::TranscriptChunk;
 use hypr_stt::realtime::RealtimeSpeechToText;
 
-use super::Params;
 use crate::state::STTState;
 
 pub async fn handler(
-    Query(params): Query<Params>,
+    Query(params): Query<hypr_bridge::ListenParams>,
     ws: WebSocketUpgrade,
     State(state): State<STTState>,
 ) -> impl IntoResponse {
     ws.on_upgrade(|socket| websocket(socket, state, params))
 }
 
-async fn websocket(socket: WebSocket, state: STTState, params: Params) {
+async fn websocket(socket: WebSocket, state: STTState, params: hypr_bridge::ListenParams) {
     tracing::info!("websocket_connected");
 
     let (mut ws_sender, mut ws_receiver) = socket.split();

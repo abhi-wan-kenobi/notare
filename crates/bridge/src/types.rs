@@ -97,3 +97,11 @@ common_derives! {
         pub points: Vec<String>,
     }
 }
+
+common_derives! {
+    pub struct ListenParams {
+        #[specta(type = String)]
+        #[schemars(with = "String")]
+        pub language: codes_iso_639::part_1::LanguageCode,
+    }
+}

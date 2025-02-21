@@ -12,6 +12,12 @@ async loadModel(onProgress: TAURI_CHANNEL<number>) : Promise<null> {
 },
 async unloadModel() : Promise<null> {
     return await TAURI_INVOKE("plugin:local-stt|unload_model");
+},
+async startServer() : Promise<null> {
+    return await TAURI_INVOKE("plugin:local-stt|start_server");
+},
+async stopServer() : Promise<null> {
+    return await TAURI_INVOKE("plugin:local-stt|stop_server");
 }
 }
 

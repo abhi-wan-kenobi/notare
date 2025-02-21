@@ -4,15 +4,18 @@ mod commands;
 mod error;
 mod ext;
 mod model;
+mod server;
 
 pub use error::{Error, Result};
 pub use ext::LocalSttPluginExt;
 
-pub type SharedState = std::sync::Mutex<State>;
+pub type SharedState = std::sync::Arc<std::sync::Mutex<State>>;
 
 #[derive(Default)]
 pub struct State {
+    pub api_base: String,
     pub model: Option<rwhisper::Whisper>,
+    pub server: Option<crate::server::ServerHandle>,
 }
 
 const PLUGIN_NAME: &str = "local-stt";
@@ -23,6 +26,8 @@ fn make_specta_builder() -> tauri_specta::Builder<Wry> {
         .commands(tauri_specta::collect_commands![
             commands::load_model::<Wry>,
             commands::unload_model::<Wry>,
+            commands::start_server::<Wry>,
+            commands::stop_server::<Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

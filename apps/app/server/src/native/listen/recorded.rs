@@ -4,13 +4,12 @@ use axum::{
     Json,
 };
 
-use super::Params;
 use crate::state::STTState;
 
 use hypr_stt::recorded::{RecordedSpeech, RecordedSpeechToText};
 
 pub async fn handler(
-    Query(params): Query<Params>,
+    Query(params): Query<hypr_bridge::ListenParams>,
     State(state): State<STTState>,
 ) -> impl IntoResponse {
     let stt = state.recorded_stt.for_language(params.language).await;
