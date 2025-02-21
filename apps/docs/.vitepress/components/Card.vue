@@ -27,7 +27,13 @@ const handleClick = () => {
     @click="handleClick"
     class="px-8 rounded-xl bg-[--vp-c-bg-elv] hover:bg-[--vp-c-bg-alt]"
   >
-    <h3 class="font-semibold mb-2 text-[--vp-c-text-1]">{{ title }}</h3>
-    <p class="text-[--vp-c-text-2]">{{ body }}</p>
+    <h3
+      class="font-semibold text-[--vp-c-text-1] text-sm sm:text-base md:text-lg"
+    >
+      {{ title }}
+    </h3>
+    <p class="text-[--vp-c-text-2] text-xs sm:text-sm md:text-base">
+      {{ body }}
+    </p>
   </div>
 </template>

@@ -3,14 +3,14 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { mockIPC } from "@tauri-apps/api/mocks";
 
-import component from "./index";
+import extension from "./index";
 
 const queryClient = new QueryClient();
 
 const meta = {
   title: "Extensions/Live Transcript",
-  component,
-} satisfies Meta<typeof component>;
+  component: extension.panelSmall,
+} satisfies Meta<typeof extension.panelSmall>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

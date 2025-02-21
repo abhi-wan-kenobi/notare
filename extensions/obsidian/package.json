@@ -4,11 +4,14 @@
   "license": "MIT",
   "keywords": [],
   "description": "Obsidian",
-  "main": "index.js",
+  "main": "src/index.tsx",
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hypr/obsidian": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
   }
 }

@@ -10,9 +10,6 @@ export const commands = {
 async getUserId() : Promise<string> {
     return await TAURI_INVOKE("get_user_id");
 },
-async runEnhance(req: EnhanceRequest, onEvent: TAURI_CHANNEL<string>) : Promise<null> {
-    return await TAURI_INVOKE("run_enhance", { req, onEvent });
-},
 async openPermissionSettings(permission: OSPermission) : Promise<void> {
     await TAURI_INVOKE("open_permission_settings", { permission });
 },
@@ -43,20 +40,8 @@ async showWindow(window: ShowHyprWindow) : Promise<void> {
 
 /** user-defined types **/
 
-export type Config = { id: string; user_id: string; general: ConfigGeneral; notification: ConfigNotification; ai: ConfigAI }
-export type ConfigAI = { api_base: string | null; api_key: string | null }
-export type ConfigGeneral = { autostart: boolean; speech_language: string; display_language: string; jargons: string[]; tags: string[] }
-export type ConfigNotification = { before: boolean; auto: boolean }
-export type EnhanceRequest = { pre_meeting_editor: string; in_meeting_editor: string; template: Template; config: Config; event: Event | null; participants: Human[]; timeline_view: TimelineView }
-export type Event = { id: string; user_id: string; tracking_id: string; calendar_id: string; name: string; note: string; start_date: string; end_date: string; google_event_url: string | null }
-export type Human = { id: string; organization_id: string | null; is_user: boolean; full_name: string | null; email: string | null; job_title: string | null; linkedin_username: string | null }
 export type OSPermission = "calendar" | "contacts" | "audioRecording" | "screenRecording" | "microphone" | "accessibility"
 export type ShowHyprWindow = "Demo" | "MainWithoutDemo" | "MainWithDemo"
-export type TAURI_CHANNEL<TSend> = null
-export type Template = { id: string; user_id: string; title: string; description: string; sections: TemplateSection[]; tags: string[] }
-export type TemplateSection = { title: string; description: string }
-export type TimelineView = { items: TimelineViewItem[] }
-export type TimelineViewItem = { start: number; end: number; speaker: string; text: string }
 
 /** tauri-specta globals **/
 

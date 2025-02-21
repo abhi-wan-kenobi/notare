@@ -542,6 +542,10 @@ importers:
       '@hypr/obsidian':
         specifier: workspace:*
         version: link:../../packages/obsidian
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.7.3
 
   extensions/world-clocks:
     dependencies:

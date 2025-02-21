@@ -6,7 +6,7 @@ export * from "@hypr/client/gen/tanstack";
 import { fetch } from "@tauri-apps/plugin-http";
 import { Channel } from "@tauri-apps/api/core";
 
-import { commands, EnhanceRequest, NangoIntegration } from "@/types";
+import { NangoIntegration } from "@/types";
 
 export const baseUrl = import.meta.env.DEV
   ? "http://localhost:1234"
@@ -24,7 +24,8 @@ export function getIntegrationURL(type: NangoIntegration) {
   return new URL(`/integrations?provider=${type}`, baseUrl).toString();
 }
 
-export function enhance(req: EnhanceRequest) {
+// TODO: replace with ai sdk
+export function enhance(req: any) {
   const channel = new Channel<string>();
   const encoder = new TextEncoder();
 
@@ -36,10 +37,11 @@ export function enhance(req: EnhanceRequest) {
         } catch (_ignored) {}
       };
 
-      commands.runEnhance(req, channel).finally(() => {
-        channel.onmessage = () => {};
-        controller.close();
-      });
+      // TODO
+      // commands.runEnhance(req, channel).finally(() => {
+      //   channel.onmessage = () => {};
+      //   controller.close();
+      // });
     },
   });
 }

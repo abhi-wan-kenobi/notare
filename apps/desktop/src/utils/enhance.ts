@@ -1,11 +1,11 @@
 import { useCallback, useRef, useState } from "react";
 
-import type { EnhanceRequest } from "@/types";
 import { enhance } from "@/client";
 
 type EnhanceStatus = "idle" | "loading" | "error" | "success";
 
-export function useEnhance(input: EnhanceRequest) {
+// TOOD: replace with ai sdk
+export function useEnhance(input: any) {
   const [data, setData] = useState<string>("");
   const [status, setStatus] = useState<EnhanceStatus>("idle");
   const [error, setError] = useState<undefined | Error>(undefined);
