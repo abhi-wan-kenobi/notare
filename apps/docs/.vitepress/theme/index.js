@@ -14,6 +14,7 @@ import Contributors from "../components/Contributors.vue";
 import TitleWithContributors from "../components/TitleWithContributors.vue";
 import Card from "../components/Card.vue";
 import Image from "../components/Image.vue";
+import PluginCommands from "../components/PluginCommands.vue";
 
 /** @type {import('vitepress').Theme} */
 export default {
@@ -29,5 +30,6 @@ export default {
     app.component("TitleWithContributors", TitleWithContributors);
     app.component("Card", Card);
     app.component("Image", Image);
+    app.component("PluginCommands", PluginCommands);
   },
 };
