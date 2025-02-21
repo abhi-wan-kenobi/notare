@@ -325,6 +325,9 @@ importers:
       '@tanstack/vue-table':
         specifier: ^8.21.2
         version: 8.21.2(vue@3.5.13(typescript@5.7.3))
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
       floating-vue:
         specifier: ^5.2.2
         version: 5.2.2(vue@3.5.13(typescript@5.7.3))

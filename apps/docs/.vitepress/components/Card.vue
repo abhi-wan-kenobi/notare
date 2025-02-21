@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from "vitepress";
+import { clsx } from "clsx";
+
 const props = defineProps({
   title: {
     type: String,
@@ -25,14 +27,24 @@ const handleClick = () => {
 <template>
   <div
     @click="handleClick"
-    class="px-8 rounded-xl bg-[--vp-c-bg-elv] hover:bg-[--vp-c-bg-alt]"
+    :class='
+      clsx(
+        "cursor-pointer px-8 rounded-xl",
+        "bg-[--vp-c-bg-elv] hover:bg-[--vp-c-bg-alt]",
+      )
+    '
   >
     <h3
-      class="font-semibold text-[--vp-c-text-1] text-sm sm:text-base md:text-lg"
+      :class='
+        clsx(
+          "font-semibold text-[--vp-c-text-1]",
+          "text-sm sm:text-base md:text-lg",
+        )
+      '
     >
       {{ title }}
     </h3>
-    <p class="text-[--vp-c-text-2] text-xs sm:text-sm md:text-base">
+    <p :class='clsx("text-[--vp-c-text-2]", "text-xs sm:text-sm md:text-base")'>
       {{ body }}
     </p>
   </div>
