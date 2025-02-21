@@ -2,10 +2,9 @@
 
 Default permissions for the plugin
 
-- `allow-get-session-status`
 - `allow-start-session`
 - `allow-stop-session`
-- `allow-get-session-timeline`
+- `allow-get-timeline`
 
 ## Permission Table
 
@@ -19,25 +18,12 @@ Default permissions for the plugin
 <tr>
 <td>
 
-`listener:allow-get-session-status`
+`listener:allow-get-timeline`
 
 </td>
 <td>
 
-Enables the get_session_status command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`listener:deny-get-session-status`
-
-</td>
-<td>
-
-Denies the get_session_status command without any pre-configured scope.
+Enables the get_timeline command without any pre-configured scope.
 
 </td>
 </tr>
@@ -45,25 +31,12 @@ Denies the get_session_status command without any pre-configured scope.
 <tr>
 <td>
 
-`listener:allow-get-session-timeline`
+`listener:deny-get-timeline`
 
 </td>
 <td>
 
-Enables the get_session_timeline command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`listener:deny-get-session-timeline`
-
-</td>
-<td>
-
-Denies the get_session_timeline command without any pre-configured scope.
+Denies the get_timeline command without any pre-configured scope.
 
 </td>
 </tr>

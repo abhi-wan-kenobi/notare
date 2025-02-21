@@ -11473,7 +11473,6 @@ dependencies = [
  "strum 0.26.3",
  "tauri",
  "tauri-plugin",
- "tauri-plugin-local-stt",
  "tauri-specta",
  "thiserror 2.0.11",
  "tokio",

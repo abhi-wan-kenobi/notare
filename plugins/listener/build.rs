@@ -1,9 +1,4 @@
-const COMMANDS: &[&str] = &[
-    "start_session",
-    "stop_session",
-    "get_session_status",
-    "get_session_timeline",
-];
+const COMMANDS: &[&str] = &["get_timeline", "start_session", "stop_session"];
 
 fn main() {
     tauri_plugin::Builder::new(COMMANDS).build();

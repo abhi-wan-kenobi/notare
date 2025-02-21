@@ -1,22 +1,35 @@
 use tauri::{Manager, Wry};
 
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
+mod commands;
 mod error;
 mod ext;
-mod session;
 
 pub use error::{Error, Result};
 pub use ext::ListenerPluginExt;
 
 const PLUGIN_NAME: &str = "listener";
 
+type SharedState = Mutex<State>;
+
+#[derive(Default)]
+pub struct State {
+    timeline: Option<Arc<Mutex<hypr_bridge::Timeline>>>,
+    mic_stream_handle: Option<tokio::task::JoinHandle<()>>,
+    speaker_stream_handle: Option<tokio::task::JoinHandle<()>>,
+    listen_stream_handle: Option<tokio::task::JoinHandle<()>>,
+    silence_stream_tx: Option<std::sync::mpsc::Sender<()>>,
+}
+
 fn make_specta_builder() -> tauri_specta::Builder<Wry> {
     tauri_specta::Builder::<Wry>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
-            session::commands::get_session_status,
-            session::commands::get_session_timeline,
-            session::commands::start_session::<Wry>,
-            session::commands::stop_session,
+            commands::get_timeline::<Wry>,
+            commands::start_session::<Wry>,
+            commands::stop_session::<Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
@@ -27,7 +40,7 @@ pub fn init() -> tauri::plugin::TauriPlugin<Wry> {
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
         .setup(|app, _api| {
-            app.manage(tokio::sync::Mutex::new(session::SessionState::default()));
+            app.manage(SharedState::default());
             Ok(())
         })
         .build()
