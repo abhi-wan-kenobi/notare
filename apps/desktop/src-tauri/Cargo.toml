@@ -40,7 +40,7 @@ tauri-plugin-local-stt = { path = "../../../plugins/local-stt" }
 tauri-plugin-misc = { path = "../../../plugins/misc" }
 tauri-plugin-template = { path = "../../../plugins/template" }
 
-tauri = { workspace = true, features = ["tray-icon", "image-png", "macos-private-api"] }
+tauri = { workspace = true, features = ["specta", "tray-icon", "image-png", "macos-private-api"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-decorum = "1.1.1"

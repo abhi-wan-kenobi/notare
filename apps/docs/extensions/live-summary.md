@@ -2,6 +2,7 @@
 title: Live Summary
 description: Show a live summary during the meeting
 source: https://github.com/fastrepl/hypr/tree/main/extensions/live-summary
+type: [copilot]
 implemented: true
 default: true
 cloudOnly: false

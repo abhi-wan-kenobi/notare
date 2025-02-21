@@ -2,6 +2,7 @@
 title: Notion
 description: Create a notion page from the meeting
 source: https://github.com/fastrepl/hypr/tree/main/extensions/notion
+type: [widget]
 implemented: false
 default: false
 cloudOnly: true

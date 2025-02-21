@@ -2,6 +2,7 @@
 title: Google Calendar
 description: Create a google calendar event from the meeting
 source: https://github.com/fastrepl/hypr/tree/main/extensions/google-calendar
+type: [widget]
 implemented: false
 default: false
 cloudOnly: true

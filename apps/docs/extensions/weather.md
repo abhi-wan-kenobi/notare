@@ -2,6 +2,7 @@
 title: Weather
 description: Displays weather for all participants
 source: https://github.com/fastrepl/hypr/tree/main/extensions/weather
+type: [widget]
 implemented: false
 default: false
 cloudOnly: false

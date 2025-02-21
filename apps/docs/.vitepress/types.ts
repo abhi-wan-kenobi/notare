@@ -38,6 +38,7 @@ const vitepressFrontmatterSchema = z.object({
 
 export const extensionFrontmatterSchema = z
   .object({
+    type: z.array(z.enum(["copilot", "widget"])),
     source: z.string(),
     default: z.boolean(),
     cloudOnly: z.boolean(),

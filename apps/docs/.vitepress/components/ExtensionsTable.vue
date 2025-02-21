@@ -2,6 +2,7 @@
 import { h, withDirectives } from "vue";
 import { vTooltip as tooltip } from "floating-vue";
 import { createColumnHelper } from "@tanstack/vue-table";
+import { VPBadge } from "vitepress/theme";
 
 import type { ExtensionFrontmatter } from "../types";
 import BaseTable from "./BaseTable.vue";
@@ -28,6 +29,19 @@ const columns = [
         ),
         [[tooltip, info.row.original.frontmatter.description]],
       ),
+  }),
+  columnHelper.accessor("frontmatter.type", {
+    header: "Type",
+    cell: (info) =>
+      info
+        .getValue()
+        .map((type) =>
+          h(
+            VPBadge,
+            { variant: "tip" },
+            type.charAt(0).toUpperCase() + type.slice(1),
+          ),
+        ),
   }),
   columnHelper.accessor("frontmatter.implemented", {
     header: "Implemented",

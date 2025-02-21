@@ -3,6 +3,7 @@ import FloatingVue from "floating-vue";
 
 import "virtual:uno.css";
 import "floating-vue/dist/style.css";
+import "./global.css";
 
 import ExtensionsTable from "../components/ExtensionsTable.vue";
 import PluginsTable from "../components/PluginsTable.vue";
@@ -12,6 +13,7 @@ import PluginSourceList from "../components/PluginSourceList.vue";
 import Contributors from "../components/Contributors.vue";
 import TitleWithContributors from "../components/TitleWithContributors.vue";
 import Card from "../components/Card.vue";
+import Image from "../components/Image.vue";
 
 /** @type {import('vitepress').Theme} */
 export default {
@@ -26,5 +28,6 @@ export default {
     app.component("Contributors", Contributors);
     app.component("TitleWithContributors", TitleWithContributors);
     app.component("Card", Card);
+    app.component("Image", Image);
   },
 };
