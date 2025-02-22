@@ -76,7 +76,7 @@ async fn websocket(
     }
 
     let model = state.model.as_ref().unwrap();
-    let audio_source = WsAudioSource::new(ws_receiver, 16000);
+    let audio_source = WsAudioSource::new(ws_receiver, 16 * 1000);
     let mut stream = audio_source.transcribe(model.clone());
 
     while let Some(chunk) = stream.next().await {
@@ -106,15 +106,17 @@ impl kalosm_sound::AsyncSource for WsAudioSource {
             let item = receiver.next().await;
 
             match item {
-                Some(Ok(Message::Binary(data))) => {
-                    let samples: Vec<f32> = data
+                Some(Ok(Message::Text(data))) => {
+                    let input: hypr_bridge::ListenInputChunk = serde_json::from_str(&data).unwrap();
+
+                    let samples: Vec<f32> = input
+                        .audio
                         .chunks_exact(2)
                         .map(|chunk| {
                             let sample = i16::from_le_bytes([chunk[0], chunk[1]]);
                             sample as f32 / 32767.0
                         })
                         .collect();
-                    println!("samples-len: {:?}", samples.len());
                     Some((samples, receiver))
                 }
                 _ => None,
@@ -133,7 +135,6 @@ mod tests {
     use super::*;
 
     use futures_util::StreamExt;
-    use rodio::Source;
 
     #[tokio::test]
     async fn test_listen() {

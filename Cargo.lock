@@ -11526,6 +11526,7 @@ dependencies = [
  "rodio 0.20.1",
  "rwhisper",
  "serde",
+ "serde_json",
  "specta",
  "specta-typescript",
  "tauri",
