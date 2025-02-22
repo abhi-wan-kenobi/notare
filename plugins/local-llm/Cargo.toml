@@ -12,6 +12,7 @@ description = ""
 tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
+dirs = { workspace = true }
 reqwest = { workspace = true, features = ["json", "stream"] }
 specta-typescript = { workspace = true }
 

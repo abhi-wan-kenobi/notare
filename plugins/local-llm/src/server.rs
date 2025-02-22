@@ -217,7 +217,8 @@ fn build_response(
 
 #[cfg(test)]
 mod tests {
-    use super::run_server;
+    use super::*;
+
     use async_openai::types::{
         ChatCompletionRequestMessage, ChatCompletionRequestUserMessageArgs,
         CreateChatCompletionRequest, CreateChatCompletionResponse,
@@ -244,11 +245,15 @@ mod tests {
         {
             let mut state = state.lock().await;
             state.model = Some(
-                kalosm_llama::Llama::builder()
-                    .with_source(kalosm_llama::LlamaSource::llama_3_2_3b_chat())
-                    .build()
-                    .await
-                    .unwrap(),
+                crate::model::model_builder(
+                    dirs::home_dir()
+                        .unwrap()
+                        .join("Library/Application Support/com.hyprnote.dev/"),
+                    kalosm_llama::LlamaSource::tiny_llama_1_1b_chat(),
+                )
+                .build()
+                .await
+                .unwrap(),
             );
         }
 

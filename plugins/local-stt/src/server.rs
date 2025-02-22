@@ -66,3 +66,50 @@ async fn websocket(
 ) {
     tracing::info!("websocket_connected");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_health() {
+        let state = crate::SharedState::default();
+        let server = run_server(state).await.unwrap();
+
+        let client = reqwest::Client::new();
+        let response = client
+            .get(format!("http://{}/health", server.addr))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_listen() {
+        let state = crate::SharedState::default();
+        {
+            let mut state = state.lock().unwrap();
+            state.model = Some(
+                crate::model::model_builder(
+                    dirs::home_dir()
+                        .unwrap()
+                        .join("Library/Application Support/com.hyprnote.dev/"),
+                )
+                .with_source(rwhisper::WhisperSource::QuantizedTiny)
+                .build()
+                .await
+                .unwrap(),
+            );
+        }
+
+        let server = run_server(state).await.unwrap();
+        let client = reqwest::Client::new();
+        let response = client
+            .get(format!("http://{}/health", server.addr))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+}
