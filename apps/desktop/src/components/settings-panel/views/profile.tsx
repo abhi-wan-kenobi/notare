@@ -108,7 +108,11 @@ export default function ProfileComponent() {
               <FormItem className="max-w-sm">
                 <FormLabel>Username</FormLabel>
                 <FormControl>
-                  <Input placeholder="Your Name" {...field} />
+                  <Input
+                    placeholder="Your Name"
+                    {...field}
+                    className="focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -122,7 +126,10 @@ export default function ProfileComponent() {
               <FormItem className="max-w-sm">
                 <FormLabel>Job Title</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    className="focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -163,6 +170,7 @@ export default function ProfileComponent() {
                   <Textarea
                     placeholder="Add a few words about your company."
                     {...field}
+                    className="focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
                 </FormControl>
                 <FormMessage />
@@ -187,7 +195,7 @@ export default function ProfileComponent() {
                       linkedin.com/in/
                     </span>
                     <Input
-                      className="rounded-l-none"
+                      className="rounded-l-none focus-visible:ring-0 focus-visible:ring-offset-0"
                       placeholder="username"
                       {...field}
                     />

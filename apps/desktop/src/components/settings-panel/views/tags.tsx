@@ -211,6 +211,7 @@ export default function TagsComponent() {
                 placeholder="Enter tag name"
                 value={newTagName}
                 onChange={(e) => setNewTagName(e.target.value)}
+                className="focus-visible:ring-0 focus-visible:ring-offset-0"
               />
             </div>
 

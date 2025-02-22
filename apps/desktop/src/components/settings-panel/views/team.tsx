@@ -196,6 +196,7 @@ export default function TeamComponent() {
                 placeholder="Search names or emails"
                 value={inviteEmails}
                 onChange={(e) => setInviteEmails(e.target.value)}
+                className="focus-visible:ring-0 focus-visible:ring-offset-0"
               />
             </div>
 

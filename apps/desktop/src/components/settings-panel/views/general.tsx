@@ -1,11 +1,10 @@
 import { z } from "zod";
-import { forwardRef, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LANGUAGES_ISO_639_1 } from "@huggingface/languages";
 import { Trans } from "@lingui/react/macro";
-import { cn } from "@/utils";
 
 import {
   Form,
@@ -24,7 +23,7 @@ import {
   SelectValue,
 } from "@hypr/ui/components/ui/select";
 import { Switch } from "@hypr/ui/components/ui/switch";
-import { Badge } from "@hypr/ui/components/ui/badge";
+import { Input } from "@hypr/ui/components/ui/input";
 import { type ConfigGeneral, commands as dbCommands } from "@hypr/plugin-db";
 
 type ISO_639_1_CODE = keyof typeof LANGUAGES_ISO_639_1;
@@ -39,83 +38,6 @@ const schema = z.object({
 });
 
 type Schema = z.infer<typeof schema>;
-
-const TagInput = forwardRef<
-  HTMLDivElement,
-  {
-    value: string;
-    onChange: (value: string) => void;
-    placeholder?: string;
-    className?: string;
-  }
->(({ value, onChange, placeholder, className }, ref) => {
-  const [inputValue, setInputValue] = useState("");
-  const tags = value
-    ? value
-        .split(",")
-        .filter(Boolean)
-        .map((t) => t.trim())
-    : [];
-
-  const addTag = (tag: string) => {
-    const trimmedTag = tag.trim();
-    if (trimmedTag && !tags.includes(trimmedTag)) {
-      onChange([...tags, trimmedTag].join(", "));
-    }
-    setInputValue("");
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    onChange(tags.filter((tag) => tag !== tagToRemove).join(", "));
-  };
-
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "flex w-full flex-wrap gap-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
-        className,
-      )}
-    >
-      {tags.map((tag) => (
-        <Badge
-          key={tag}
-          variant="secondary"
-          className="flex h-fit items-center gap-1"
-        >
-          {tag}
-          <button
-            type="button"
-            onClick={() => removeTag(tag)}
-            className="outline-none hover:text-destructive"
-          >
-            ×
-          </button>
-        </Badge>
-      ))}
-      <input
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === ",") {
-            e.preventDefault();
-            addTag(inputValue);
-          } else if (e.key === "Backspace" && !inputValue && tags.length > 0) {
-            removeTag(tags[tags.length - 1]);
-          }
-        }}
-        onBlur={() => {
-          if (inputValue) {
-            addTag(inputValue);
-          }
-        }}
-        placeholder={tags.length === 0 ? placeholder : ""}
-        className="flex-1 bg-transparent outline-none placeholder:text-neutral-400"
-      />
-    </div>
-  );
-});
-TagInput.displayName = "TagInput";
 
 export default function General() {
   const queryClient = useQueryClient();
@@ -219,11 +141,11 @@ export default function General() {
                 </div>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger className="max-w-[100px]">
+                    <SelectTrigger className="max-w-[100px] focus:outline-none focus:ring-0 focus:ring-offset-0">
                       <SelectValue placeholder="Select language" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent align="end">
                     {SUPPORTED_LANGUAGES.map((code) => (
                       <SelectItem key={code} value={code}>
                         {LANGUAGES_ISO_639_1[code].nativeName}
@@ -251,10 +173,11 @@ export default function General() {
                   </FormDescription>
                 </div>
                 <FormControl>
-                  <TagInput
-                    placeholder="Type and press Comma(,) or Enter to add jargons (e.g., Blitz Meeting, PaC Squad)"
+                  <Input
+                    placeholder="Type jargons (e.g., Blitz Meeting, PaC Squad)"
                     {...field}
                     value={field.value ?? ""}
+                    className="focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
                 </FormControl>
                 <FormMessage />

@@ -21,10 +21,10 @@ export function SettingsView({ active, setActive }: SettingsViewProps) {
                   className={cn(
                     "flex w-full items-center gap-2 rounded-lg p-2 text-sm",
                     "text-neutral-600",
-                    "hover:bg-neutral-100",
+                    "focus:outline-none",
                     item.name === active
-                      ? "bg-neutral-200 font-bold text-neutral-700"
-                      : "",
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-neutral-100",
                   )}
                 >
                   <item.icon className="h-4 w-4" />
@@ -42,10 +42,10 @@ export function SettingsView({ active, setActive }: SettingsViewProps) {
           className={cn(
             "flex w-full items-center gap-2 rounded-lg p-2 text-sm",
             "text-neutral-600",
-            "hover:bg-neutral-100",
+            "focus:outline-none",
             active === "Profile"
-              ? "bg-neutral-200 font-bold text-neutral-700"
-              : "",
+              ? "bg-primary text-primary-foreground"
+              : "hover:bg-neutral-100",
           )}
         >
           <UserIcon className="h-4 w-4" />

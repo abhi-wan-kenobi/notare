@@ -1,10 +1,10 @@
-import { type Template } from "@/types";
 import { ChevronLeftIcon, FilePlusIcon } from "lucide-react";
 import { TemplateList } from "../components/template-list";
 import { type NavNames } from "../types";
 import { data } from "../constants";
 import { cn } from "@hypr/ui/lib/utils";
 import { useHypr } from "@/contexts/hypr";
+import { type Template } from "@hypr/plugin-db";
 
 export interface TemplateViewProps {
   searchQuery: string;
