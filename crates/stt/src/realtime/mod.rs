@@ -143,7 +143,7 @@ mod tests {
 
     fn system_audio_as_stream(
     ) -> impl Stream<Item = Result<Bytes, std::io::Error>> + Send + Unpin + 'static {
-        let source = hypr_audio::SpeakerInput::new().unwrap();
+        let source = hypr_audio::SpeakerInput::new(None).unwrap();
         let stream = source.stream().unwrap().resample(16 * 1000).chunks(128);
 
         stream.map(|chunk| {

@@ -9,7 +9,7 @@ mod server;
 pub use error::{Error, Result};
 pub use ext::LocalSttPluginExt;
 
-pub type SharedState = std::sync::Arc<std::sync::Mutex<State>>;
+pub type SharedState = std::sync::Arc<tokio::sync::Mutex<State>>;
 
 #[derive(Default)]
 pub struct State {

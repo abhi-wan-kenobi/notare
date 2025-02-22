@@ -3,6 +3,7 @@ pub use kalosm_sound::{MicInput, MicStream};
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures_util::StreamExt;
 
     #[tokio::test]
     async fn test_mic() {

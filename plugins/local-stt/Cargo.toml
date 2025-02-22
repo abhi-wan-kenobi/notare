@@ -12,6 +12,13 @@ description = ""
 tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
+hypr-data = { path = "../../crates/data", package = "data" }
+rodio = { workspace = true, features = ["wav"] }
+
+futures-core = { workspace = true }
+
+bytes = { workspace = true }
+codes-iso-639 = { workspace = true }
 dirs = { workspace = true }
 reqwest = { workspace = true }
 specta-typescript = { workspace = true }
@@ -30,7 +37,10 @@ specta = { workspace = true }
 tracing = { workspace = true }
 
 axum = { workspace = true, features = ["ws"] }
+futures-core = { workspace = true }
+futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 kalosm-common = { workspace = true }
+kalosm-sound = { workspace = true }
 rwhisper = { workspace = true, features = ["metal"] }

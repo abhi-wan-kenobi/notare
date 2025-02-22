@@ -3,7 +3,7 @@ use tauri::{ipc::Channel, Manager, Runtime};
 
 pub trait LocalSttPluginExt<R: Runtime> {
     fn load_model(&self, on_progress: Channel<u8>) -> impl Future<Output = Result<(), String>>;
-    fn unload_model(&self) -> Result<(), String>;
+    fn unload_model(&self) -> impl Future<Output = Result<(), String>>;
     fn start_server(&self) -> impl Future<Output = Result<(), String>>;
     fn stop_server(&self) -> impl Future<Output = Result<(), String>>;
 }
@@ -20,15 +20,15 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
             .map_err(|e| e.to_string())?;
 
         let state = self.state::<crate::SharedState>();
-        let mut s = state.lock().map_err(|e| e.to_string())?;
+        let mut s = state.lock().await;
         s.model = Some(model);
         Ok(())
     }
 
     #[tracing::instrument(skip_all)]
-    fn unload_model(&self) -> Result<(), String> {
+    async fn unload_model(&self) -> Result<(), String> {
         let state = self.state::<crate::SharedState>();
-        let mut s = state.lock().map_err(|e| e.to_string())?;
+        let mut s = state.lock().await;
         s.model.take();
         Ok(())
     }
@@ -40,7 +40,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
             .await
             .map_err(|e| e.to_string())?;
 
-        let mut s = state.lock().map_err(|e| e.to_string())?;
+        let mut s = state.lock().await;
         s.api_base = format!("http://{}", &server.addr);
         s.server = Some(server);
         Ok(())
@@ -49,7 +49,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
     #[tracing::instrument(skip_all)]
     async fn stop_server(&self) -> Result<(), String> {
         let state = self.state::<crate::SharedState>();
-        let mut s = state.lock().map_err(|e| e.to_string())?;
+        let mut s = state.lock().await;
         s.server.take();
         Ok(())
     }

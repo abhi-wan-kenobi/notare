@@ -1,4 +1,5 @@
 pub const AUDIO: &[u8] = include_wav!("./audio.wav");
+pub const AUDIO_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/src/english_1/audio.wav");
 
 pub const TRANSCRIPTION_JSON: &str = include_str!("./transcription.json");
 

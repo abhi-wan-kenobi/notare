@@ -12,7 +12,7 @@ pub async fn load_model<R: tauri::Runtime>(
 #[tauri::command]
 #[specta::specta]
 pub async fn unload_model<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
-    app.unload_model()
+    app.unload_model().await
 }
 
 #[tauri::command]
