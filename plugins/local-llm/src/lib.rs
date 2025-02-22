@@ -48,6 +48,11 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 mod test {
     use super::*;
 
+    use async_openai::types::{
+        ChatCompletionRequestMessage, ChatCompletionRequestUserMessage,
+        ChatCompletionRequestUserMessageContent, CreateChatCompletionRequest,
+    };
+
     #[test]
     fn export_types() {
         make_specta_builder::<tauri::Wry>()
@@ -68,8 +73,67 @@ mod test {
             .unwrap()
     }
 
-    #[test]
-    fn test_local_llm() {
-        let _app = create_app(tauri::test::mock_builder());
+    #[tokio::test]
+    async fn test_local_llm() {
+        let app = create_app(tauri::test::mock_builder());
+        app.start_server().await.unwrap();
+
+        let api_base = {
+            let state = app.state::<crate::SharedState>();
+            let state = state.lock().await;
+            state.api_base.clone()
+        };
+
+        let client = reqwest::Client::new();
+
+        let req = CreateChatCompletionRequest {
+            model: "llama3.2".to_string(),
+            messages: vec![ChatCompletionRequestMessage::User(
+                ChatCompletionRequestUserMessage {
+                    content: ChatCompletionRequestUserMessageContent::Text(
+                        "Hello, world!".to_string(),
+                    ),
+                    ..Default::default()
+                },
+            )],
+            ..Default::default()
+        };
+
+        let res = client
+            .get(format!("{}/health", api_base))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(res.status(), axum::http::StatusCode::OK);
+
+        let res = client
+            .post(format!("{}/chat/completions", api_base))
+            .json(&req)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(res.status(), axum::http::StatusCode::SERVICE_UNAVAILABLE);
+
+        let channel = tauri::ipc::Channel::new(|_progress: tauri::ipc::InvokeResponseBody| Ok(()));
+
+        let _ = app.load_model(channel).await.unwrap();
+
+        let res = client
+            .post(format!("{}/chat/completions", api_base))
+            .json(&req)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(res.status(), axum::http::StatusCode::OK);
+
+        let _ = app.unload_model().await.unwrap();
+
+        let res = client
+            .post(format!("{}/chat/completions", api_base))
+            .json(&req)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(res.status(), axum::http::StatusCode::SERVICE_UNAVAILABLE);
     }
 }

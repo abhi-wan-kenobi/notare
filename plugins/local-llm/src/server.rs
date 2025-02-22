@@ -12,9 +12,10 @@ use kalosm_llama::prelude::*;
 use kalosm_streams::text_stream::TextStream;
 
 use async_openai::types::{
-    ChatChoice, ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageContent,
-    ChatCompletionRequestUserMessageContent, ChatCompletionResponseMessage,
-    CreateChatCompletionRequest, CreateChatCompletionResponse, Role,
+    ChatChoice, ChatChoiceStream, ChatCompletionRequestMessage,
+    ChatCompletionRequestSystemMessageContent, ChatCompletionRequestUserMessageContent,
+    ChatCompletionResponseMessage, ChatCompletionStreamResponseDelta, CreateChatCompletionRequest,
+    CreateChatCompletionResponse, CreateChatCompletionStreamResponse, Role,
 };
 
 #[derive(Clone)]
@@ -98,6 +99,26 @@ async fn chat_completions(
         usage: None,
     };
 
+    let empty_stream_response = CreateChatCompletionStreamResponse {
+        id: empty_response.id.clone(),
+        choices: vec![],
+        created: empty_response.created,
+        model: empty_response.model.clone(),
+        service_tier: None,
+        system_fingerprint: None,
+        object: "chat.completion.chunk".to_string(),
+        usage: None,
+    };
+
+    #[allow(deprecated)]
+    let empty_stream_response_delta = ChatCompletionStreamResponseDelta {
+        content: None,
+        function_call: None,
+        tool_calls: None,
+        role: None,
+        refusal: None,
+    };
+
     let state = state.lock().await;
 
     let model = match &state.model {
@@ -108,7 +129,23 @@ async fn chat_completions(
     if request.stream.unwrap_or(false) {
         let stream = build_response(model, &request)
             .words()
-            .map(|word| Ok::<_, std::convert::Infallible>(sse::Event::default().data(word)));
+            .map(move |word| CreateChatCompletionStreamResponse {
+                choices: vec![ChatChoiceStream {
+                    index: 0,
+                    delta: ChatCompletionStreamResponseDelta {
+                        content: Some(word),
+                        ..empty_stream_response_delta.clone()
+                    },
+                    finish_reason: None,
+                    logprobs: None,
+                }],
+                ..empty_stream_response.clone()
+            })
+            .map(|chunk| {
+                Ok::<_, std::convert::Infallible>(
+                    sse::Event::default().data(serde_json::to_string(&chunk).unwrap()),
+                )
+            });
 
         sse::Sse::new(stream).into_response()
     } else {
@@ -184,6 +221,7 @@ mod tests {
     use async_openai::types::{
         ChatCompletionRequestMessage, ChatCompletionRequestUserMessageArgs,
         CreateChatCompletionRequest, CreateChatCompletionResponse,
+        CreateChatCompletionStreamResponse,
     };
     use futures_util::StreamExt;
 
@@ -263,13 +301,27 @@ mod tests {
             .await
             .unwrap();
 
-        let mut chunks = Vec::new();
-        let mut stream = response.bytes_stream();
-        while let Some(Ok(chunk)) = stream.next().await {
-            chunks.push(chunk);
-        }
+        let stream = response.bytes_stream().map(|chunk| {
+            chunk.map(|data| {
+                let text = String::from_utf8_lossy(&data);
+                let stripped = text.split("data: ").collect::<Vec<&str>>()[1];
+                let c: CreateChatCompletionStreamResponse = serde_json::from_str(stripped).unwrap();
+                c.choices
+                    .first()
+                    .unwrap()
+                    .delta
+                    .content
+                    .as_ref()
+                    .unwrap()
+                    .clone()
+            })
+        });
 
-        let content = String::from_utf8(chunks.concat()).unwrap();
+        let content = stream
+            .filter_map(|r| async move { r.ok() })
+            .collect::<String>()
+            .await;
+
         assert!(content.contains("Seoul"));
     }
 }

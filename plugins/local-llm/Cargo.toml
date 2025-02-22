@@ -13,19 +13,20 @@ tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["json", "stream"] }
-serde_json = { workspace = true }
 specta-typescript = { workspace = true }
 
 [dependencies]
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
 
 serde = { workspace = true }
+serde_json = { workspace = true }
 specta = { workspace = true }
+
 tauri = { workspace = true, features = ["test"] }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
-uuid = { workspace = true, features = ["v4"] }
 
 async-openai = { workspace = true }
 axum = { workspace = true }
