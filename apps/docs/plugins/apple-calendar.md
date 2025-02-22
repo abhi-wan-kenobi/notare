@@ -1,12 +1,17 @@
 ---
 title: Apple Calendar
-description: Apple Calendar plugin
+description: Access to the Apple Calendar on your device
 id: apple-calendar
 ---
 
 # {{ $frontmatter.title }}
 
 **{{ $frontmatter.description }}**
+
+## Notes
+
+- This plugin is only available on `macOS`.
+- `Worker` is used to continuously sync the calendar & events to the database.
 
 ## Commands
 

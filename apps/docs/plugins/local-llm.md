@@ -8,6 +8,10 @@ id: local-llm
 
 **{{ $frontmatter.description }}**
 
+## Notes
+
+- The server is intended to be `openai-compatible`.
+
 ## Commands
 
 ```ts-vue

@@ -14,6 +14,7 @@ const extensions: DefaultTheme.SidebarItem = {
         { text: "Notion", link: "/extensions/notion" },
         { text: "Timer", link: "/extensions/timer" },
         { text: "Weather", link: "/extensions/weather" },
+        { text: "Slack", link: "/extensions/slack" },
       ].sort((a, b) => a.text.localeCompare(b.text)),
       collapsed: true,
     },

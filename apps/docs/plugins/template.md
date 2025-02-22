@@ -10,14 +10,26 @@ id: template
 
 Powered by [minijinja](https://docs.rs/minijinja/latest/minijinja/), with [preserve_order](https://docs.rs/minijinja/latest/minijinja/index.html#optional-features), [json](https://docs.rs/minijinja/latest/minijinja/index.html#optional-features) and [pycompat](https://docs.rs/minijinja-contrib/latest/minijinja_contrib/pycompat/fn.unknown_method_callback.html) enabled.
 
-## Usage
+## Notes
 
-Note that template should be registered before rendering. Usually, it is extension's responsibility to do so.
+Template must be registered before rendering. 
 
 ```ts
 await commands.registerTemplate("<TEMPLATE_NAME>", "<TEMPLATE_CONTENT>");
 const rendered = await commands.render("<TEMPLATE_NAME>", { a: 1 });
 ```
+
+For templates included in [extensions](/extensions/index.md), [`init`](https://github.com/fastrepl/hyprnote/blob/main/extensions/types.ts) function is perfect place to register them.
+
+```ts
+const extension: Extension = {
+  init: async (app) => {
+    await app.registerTemplate("<TEMPLATE_NAME>", "<TEMPLATE_CONTENT>");
+  }
+};
+```
+
+Templates included in [plugins](/plugins/index.md) are automatically registered on app initialization though `register_template` provided by `TemplatePluginExt`.
 
 ## Commands
 
