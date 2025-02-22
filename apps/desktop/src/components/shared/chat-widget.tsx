@@ -27,7 +27,7 @@ interface ModalProps {
   onQuickAction: (action: string) => void;
 }
 
-export default function Modal({
+export default function ChatWidget({
   showHistory,
   messages,
   inputValue,

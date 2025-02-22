@@ -7,7 +7,7 @@ import type { Message } from "@/types";
 import { useSession } from "@/contexts";
 import { client } from "@/client";
 
-import Modal from "./shared/modal";
+import ChatWidget from "./shared/chat-widget";
 
 import LiveSummaryExtension from "@hypr/extension-live-summary";
 
@@ -121,7 +121,7 @@ export default function NoteAIButton() {
             }}
           />
         ) : (
-          <Modal
+          <ChatWidget
             showHistory={showHistory}
             messages={messages}
             inputValue={inputValue}

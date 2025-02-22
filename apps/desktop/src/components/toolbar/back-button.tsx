@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useRouter, useLocation } from "@tanstack/react-router";
-import { Button } from "@hypr/ui/components/hypr-ui/button";
+import { Button } from "@hypr/ui/components/ui/button";
 
 export function BackButton() {
   const { history } = useRouter();

@@ -4,7 +4,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@hypr/ui/components/ui/popover";
-import { Avatar, AvatarFallback } from "@hypr/ui/components/hypr-ui/avatar";
+import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
 import { mockParticipants } from "@/mocks/participants";
 
 export default function ParticipantsChip() {

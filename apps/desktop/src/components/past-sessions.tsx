@@ -11,16 +11,19 @@ import {
   differenceInCalendarDays,
   startOfToday,
 } from "date-fns";
-import { Avatar, AvatarFallback } from "@hypr/ui/components/hypr-ui/avatar";
-import { type Human } from "@/types";
-import { commands as dbCommands, type Session } from "@hypr/plugin-db";
+import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
+import {
+  commands as dbCommands,
+  type Human,
+  type Session,
+} from "@hypr/plugin-db";
 import {
   Card,
   CardContent,
   CardTitle,
   CardDescription,
   CardHeader,
-} from "@hypr/ui/components/hypr-ui/card";
+} from "@hypr/ui/components/ui/card";
 import { Laptop, Users2 } from "lucide-react";
 
 export default function PastSessions() {

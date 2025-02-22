@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
 import { Trans } from "@lingui/react/macro";
-import { XIcon } from "lucide-react";
+import { XIcon, CheckIcon } from "lucide-react";
 import { RiAppleFill as AppleIcon } from "@remixicon/react";
+import { Button } from "@hypr/ui/components/ui/button";
 
 import {
   Accordion,
@@ -175,24 +175,46 @@ function OauthCalendarIntegrationDetails({
   });
 
   const integration = integrations.data?.find((i) => i === type);
+  const Icon = type === "google-calendar" ? GoogleIcon : OutlookIcon;
 
   return (
-    <div>
-      <p>
-        {integration ? (
-          <Trans>
-            Calendar connected. Hyprnote will periodically sync your calendar
-            events.
-          </Trans>
-        ) : (
-          <Trans>
-            To connect your Calendar, you need to{" "}
-            <a href={getIntegrationURL(type)} className="underline">
-              authorize Hypr to access your calendar.
+    <div className="space-y-4">
+      <div className="flex items-center justify-between rounded-lg border p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex size-6 items-center justify-center">
+            <Icon />
+          </div>
+          <div>
+            <div className="text-sm font-medium">
+              <Trans>
+                {type === "google-calendar"
+                  ? "Google Calendar"
+                  : "Outlook Calendar"}
+              </Trans>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {integration ? (
+                <Trans>Calendar connected</Trans>
+              ) : (
+                <Trans>Connect to sync your meetings</Trans>
+              )}
+            </div>
+          </div>
+        </div>
+        <div>
+          {integration ? (
+            <Button variant="outline" size="sm" disabled={true}>
+              <CheckIcon className="size-4 text-green-600" />
+            </Button>
+          ) : (
+            <a href={getIntegrationURL(type)}>
+              <Button variant="outline" size="sm">
+                <Trans>Connect</Trans>
+              </Button>
             </a>
-          </Trans>
-        )}
-      </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -217,32 +239,75 @@ function AppleCalendarIntegrationDetails() {
   }, []);
 
   return (
-    <Trans>
-      <p>
-        {calendarAccess.data ? (
-          <span>Calendar access granted.</span>
-        ) : (
-          <span>
-            Calendar access not granted.{" "}
-            <button onClick={handleRequestCalendarAccess}>
-              This is required.
-            </button>
-          </span>
-        )}
-      </p>
-      <p>
-        {contactsAccess.data ? (
-          <span>Contacts access granted.</span>
-        ) : (
-          <span>
-            Contacts access not granted.{" "}
-            <button onClick={handleRequestContactsAccess}>
-              This is optional.
-            </button>
-          </span>
-        )}
-      </p>
-    </Trans>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between rounded-lg border p-4">
+        <div className="flex items-center gap-3">
+          <img
+            src="/icons/calendar.png"
+            alt="Apple Calendar"
+            className="size-6"
+          />
+          <div>
+            <div className="text-sm font-medium">
+              <Trans>Calendar Access</Trans>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {calendarAccess.data ? (
+                <Trans>Access granted</Trans>
+              ) : (
+                <Trans>Required for syncing calendar events</Trans>
+              )}
+            </div>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRequestCalendarAccess}
+          disabled={!!calendarAccess.data}
+        >
+          {calendarAccess.data ? (
+            <CheckIcon className="size-4 text-green-600" />
+          ) : (
+            <Trans>Grant Access</Trans>
+          )}
+        </Button>
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border p-4">
+        <div className="flex items-center gap-3">
+          <img
+            src="/icons/contacts.png"
+            alt="Apple Contacts"
+            className="size-6"
+          />
+          <div>
+            <div className="text-sm font-medium">
+              <Trans>Contacts Access</Trans>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {contactsAccess.data ? (
+                <Trans>Access granted</Trans>
+              ) : (
+                <Trans>Optional for participant suggestions</Trans>
+              )}
+            </div>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRequestContactsAccess}
+          disabled={!!contactsAccess.data}
+        >
+          {contactsAccess.data ? (
+            <CheckIcon className="size-4 text-green-600" />
+          ) : (
+            <Trans>Grant Access</Trans>
+          )}
+        </Button>
+      </div>
+    </div>
   );
 }
 

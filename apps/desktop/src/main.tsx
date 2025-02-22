@@ -18,7 +18,7 @@ import { I18nProvider } from "@lingui/react";
 import { messages as enMessages } from "./locales/en/messages";
 import { messages as koMessages } from "./locales/ko/messages";
 
-import { Toaster } from "@hypr/ui/components/hypr-ui/sonner";
+import { Toaster } from "@hypr/ui/components/ui/sonner";
 
 i18n.load({
   en: enMessages,

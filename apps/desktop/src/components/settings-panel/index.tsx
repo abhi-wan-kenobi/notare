@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SettingsIcon } from "lucide-react";
-import { Button } from "@hypr/ui/components/hypr-ui/button";
-import { Modal, ModalBody } from "@hypr/ui/components/hypr-ui/modal";
+import { Button } from "@hypr/ui/components/ui/button";
+import { Modal, ModalBody } from "@hypr/ui/components/ui/modal";
 import { DialogView } from "./views";
 import GeneralComponent from "./views/general";
 import CalendarComponent from "./views/calendar";
@@ -14,8 +14,7 @@ import TeamComponent from "./views/team";
 import ProfileComponent from "./views/profile";
 import { SettingsSidebar } from "./sidebar";
 import type { NavNames } from "./types";
-import { type Template } from "@/types";
-import { commands as dbCommands } from "@hypr/plugin-db";
+import { commands as dbCommands, type Template } from "@hypr/plugin-db";
 
 export default function SettingsPanel() {
   const [open, setOpen] = useState(false);

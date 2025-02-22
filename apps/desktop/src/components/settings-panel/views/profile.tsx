@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
 import {
   Form,
   FormControl,
@@ -15,9 +14,11 @@ import {
 } from "@hypr/ui/components/ui/form";
 import { Input } from "@hypr/ui/components/ui/input";
 import { Textarea } from "@hypr/ui/components/ui/textarea";
-
-import { type Human } from "@/types";
-import { commands as dbCommands, type Organization } from "@hypr/plugin-db";
+import {
+  commands as dbCommands,
+  type Organization,
+  type Human,
+} from "@hypr/plugin-db";
 
 const schema = z.object({
   fullName: z.string().min(2).max(50).optional(),

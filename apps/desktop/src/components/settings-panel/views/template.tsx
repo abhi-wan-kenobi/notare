@@ -5,9 +5,6 @@ import {
   EditIcon,
   MoreHorizontalIcon,
 } from "lucide-react";
-
-import type { Template } from "@/types";
-
 import { Button } from "@hypr/ui/components/ui/button";
 import { Input } from "@hypr/ui/components/ui/input";
 import { Textarea } from "@hypr/ui/components/ui/textarea";
@@ -18,6 +15,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@hypr/ui/components/ui/dropdown-menu";
+import { type Template } from "@hypr/plugin-db";
 
 interface TemplateEditorProps {
   disabled: boolean;

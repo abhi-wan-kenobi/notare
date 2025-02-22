@@ -1,4 +1,4 @@
-import { type Human } from "@/types";
+import { type Human } from "@hypr/plugin-db";
 
 export const mockParticipants: Human[] = [
   {

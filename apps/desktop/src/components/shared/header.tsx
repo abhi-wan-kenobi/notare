@@ -1,4 +1,4 @@
-import { Button } from "@hypr/ui/components/hypr-ui/button";
+import { Button } from "@hypr/ui/components/ui/button";
 import { ChevronLeft, HistoryIcon, PlusCircleIcon, XIcon } from "lucide-react";
 
 interface HeaderProps {
@@ -22,12 +22,8 @@ export default function Header({
     return (
       <div className="flex items-center justify-between px-2 py-2">
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            className="rounded-lg p-1"
-            onClick={onBackClick}
-          >
-            <ChevronLeft size={20} />
+          <Button variant="ghost" size="icon" onClick={onBackClick}>
+            <ChevronLeft size={16} />
           </Button>
           <div className="text-sm font-medium">All chats</div>
         </div>
@@ -43,12 +39,13 @@ export default function Header({
     <div className="flex items-center justify-between px-4 py-2 pr-2">
       <div className="text-sm font-medium">{title}</div>
       <div className="flex items-center gap-2">
-        <Button variant="ghost" className="rounded-lg p-1" onClick={onNewChat}>
+        <Button variant="ghost" size="icon" onClick={onNewChat}>
           <PlusCircleIcon className="size-4" />
         </Button>
 
         <Button
           variant="ghost"
+          size="icon"
           className="rounded-lg p-1"
           onClick={onHistoryClick}
         >
@@ -57,6 +54,7 @@ export default function Header({
 
         <Button
           variant="ghost"
+          size="icon"
           className="rounded-lg p-1"
           onClick={onCloseClick}
         >

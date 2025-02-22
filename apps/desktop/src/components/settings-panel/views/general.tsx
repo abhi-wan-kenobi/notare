@@ -25,9 +25,7 @@ import {
 } from "@hypr/ui/components/ui/select";
 import { Switch } from "@hypr/ui/components/ui/switch";
 import { Badge } from "@hypr/ui/components/ui/badge";
-
-import { type ConfigGeneral } from "@/types";
-import { commands as dbCommands } from "@hypr/plugin-db";
+import { type ConfigGeneral, commands as dbCommands } from "@hypr/plugin-db";
 
 type ISO_639_1_CODE = keyof typeof LANGUAGES_ISO_639_1;
 const SUPPORTED_LANGUAGES: ISO_639_1_CODE[] = ["en", "ko"];

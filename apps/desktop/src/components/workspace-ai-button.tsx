@@ -8,7 +8,7 @@ import TriggerButton from "@/components/shared/trigger-button";
 import { useAITrigger } from "@/hooks/use-ai-trigger";
 import { type Message } from "@/types";
 
-import Modal from "./shared/modal";
+import ChatWidget from "./shared/chat-widget";
 
 export default function WorkspaceAIButton() {
   const { userId } = useHypr();
@@ -118,7 +118,7 @@ export default function WorkspaceAIButton() {
         {!isOpen ? (
           <TriggerButton isDynamic={isDynamic} onClick={handleOpen} />
         ) : (
-          <Modal
+          <ChatWidget
             showHistory={showHistory}
             messages={messages}
             inputValue={inputValue}

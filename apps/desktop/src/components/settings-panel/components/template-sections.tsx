@@ -1,11 +1,10 @@
 import { useCallback, useState } from "react";
 import { GripVertical as HandleIcon, PlusIcon } from "lucide-react";
 import { Reorder, useDragControls } from "motion/react";
-
-import type { Template } from "@/types";
 import { Input } from "@hypr/ui/components/ui/input";
 import { Textarea } from "@hypr/ui/components/ui/textarea";
 import { Button } from "@hypr/ui/components/ui/button";
+import { type Template } from "@hypr/plugin-db";
 
 type ReorderItem = Template["sections"][number];
 

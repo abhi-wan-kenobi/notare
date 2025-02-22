@@ -6,7 +6,7 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@hypr/ui/components/ui/breadcrumb";
-import type { Template } from "@/types";
+import { type Template } from "@hypr/plugin-db";
 
 interface DialogViewProps {
   title: string;

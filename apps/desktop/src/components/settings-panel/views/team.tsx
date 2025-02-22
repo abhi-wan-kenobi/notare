@@ -10,12 +10,12 @@ import {
   SelectValue,
 } from "@hypr/ui/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@hypr/ui/components/ui/dialog";
+  Modal,
+  ModalBody,
+  ModalDescription,
+  ModalHeader,
+  ModalTitle,
+} from "@hypr/ui/components/ui/modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -83,7 +83,7 @@ export default function TeamComponent() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Button variant="secondary" onClick={() => setShowInviteModal(true)}>
+        <Button variant="outline" onClick={() => setShowInviteModal(true)}>
           <Plus className="h-4 w-4" />
           <Trans>Add members</Trans>
         </Button>
@@ -169,19 +169,23 @@ export default function TeamComponent() {
         </div>
       </div>
 
-      <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
-        <DialogContent className="max-w-md sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>
+      <Modal
+        open={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        size="sm"
+      >
+        <ModalBody>
+          <ModalHeader>
+            <ModalTitle>
               <Trans>Invite members</Trans>
-            </DialogTitle>
-            <DialogDescription>
+            </ModalTitle>
+            <ModalDescription>
               <Trans>
                 Type or paste in emails below, separated by commas. Your
                 workspace will be billed by members.
               </Trans>
-            </DialogDescription>
-          </DialogHeader>
+            </ModalDescription>
+          </ModalHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
@@ -228,8 +232,8 @@ export default function TeamComponent() {
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </ModalBody>
+      </Modal>
     </div>
   );
 }

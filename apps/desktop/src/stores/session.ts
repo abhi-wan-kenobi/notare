@@ -2,9 +2,9 @@ import { createStore } from "zustand";
 import { create as mutate } from "mutative";
 import { Channel } from "@tauri-apps/api/core";
 
-import { type TimelineView } from "@/types";
 import {
   commands as listenerCommands,
+  type TimelineView,
   type SessionEvent,
 } from "@hypr/plugin-listener";
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
@@ -61,17 +61,17 @@ export const createSessionStore = (session: Session) => {
     start: () => {
       console.log("start: create channel");
       const channel = new Channel<SessionEvent>();
-      channel.onmessage = (event) => {
+      channel.onmessage = (event: SessionEvent) => {
         set((state) =>
           mutate(state, (draft) => {
-            if (event === "Stopped") {
+            if (event.type === "stopped") {
               draft.listening = false;
-            } else if ("TimelineView" in event) {
-              draft.timeline = event.TimelineView;
-            } else if ("Audio" in event) {
+            } else if (event.type === "timelineView") {
+              draft.timeline = event.timeline;
+            } else if (event.type === "audioAmplitude") {
               draft.amplitude = {
-                mic: event.Audio[0],
-                speaker: event.Audio[1],
+                mic: event.mic,
+                speaker: event.speaker,
               };
             }
           }),
@@ -80,7 +80,7 @@ export const createSessionStore = (session: Session) => {
 
       console.log("start: listenerCommands");
       try {
-        listenerCommands.startSession(channel).then((r) => {
+        listenerCommands.startSession().then((r) => {
           console.log("start: listenerCommands", r);
         });
       } catch (error) {

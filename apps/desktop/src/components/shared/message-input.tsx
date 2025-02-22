@@ -1,3 +1,4 @@
+import { Button } from "@hypr/ui/components/ui/button";
 import { cn } from "@hypr/ui/lib/utils";
 import { ArrowUpCircleIcon } from "lucide-react";
 
@@ -40,7 +41,7 @@ export default function MessageInput({
                 key={action}
                 type="button"
                 onClick={() => onQuickAction(action)}
-                className="rounded-lg bg-neutral-100 px-3 py-1.5 text-xs text-neutral-900 hover:bg-neutral-200"
+                className="rounded-lg bg-neutral-100 px-2 py-1.5 text-xs text-neutral-900 hover:bg-neutral-200"
               >
                 {action}
               </button>
@@ -55,17 +56,16 @@ export default function MessageInput({
             onChange={onInputChange}
             onKeyDown={onKeyDown}
             placeholder="Ask anything or select..."
-            className="min-h-[44px] w-full resize-none rounded-lg bg-transparent px-3 py-[10px] pr-12 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="min-h-[44px] w-full resize-none rounded-lg bg-transparent px-3 py-[10px] pr-12 outline-none focus:ring-2 focus:ring-neutral-400 disabled:opacity-50"
             rows={1}
             disabled={isLoading}
           />
-          <button
+          <Button
             type="submit"
+            variant="ghost"
+            size="icon"
             className={cn(
-              "absolute bottom-1.5 right-1.5 rounded-md p-1.5 transition-colors",
-              inputValue.trim()
-                ? "bg-blue-500 text-white hover:bg-blue-600"
-                : "hover:bg-gray-100",
+              "absolute bottom-1.5 right-1.5",
               isLoading && "cursor-not-allowed opacity-50",
             )}
             disabled={!inputValue.trim() || isLoading}
@@ -75,7 +75,7 @@ export default function MessageInput({
             ) : (
               <ArrowUpCircleIcon className="size-5" />
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </form>

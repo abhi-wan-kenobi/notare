@@ -5,7 +5,7 @@ import {
   PopoverTrigger,
 } from "@hypr/ui/components/ui/popover";
 import AudioIndicator from "./audio-indicator";
-import { Button } from "@hypr/ui/components/hypr-ui/button";
+import { Button } from "@hypr/ui/components/ui/button";
 
 interface ListenButtonProps {
   isListening: boolean;

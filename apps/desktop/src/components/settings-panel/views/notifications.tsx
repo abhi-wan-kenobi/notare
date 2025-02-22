@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
 import {
   Form,
   FormControl,
@@ -13,9 +12,10 @@ import {
   FormLabel,
 } from "@hypr/ui/components/ui/form";
 import { Switch } from "@hypr/ui/components/ui/switch";
-
-import { type ConfigNotification } from "@/types";
-import { commands as dbCommands } from "@hypr/plugin-db";
+import {
+  type ConfigNotification,
+  commands as dbCommands,
+} from "@hypr/plugin-db";
 
 const schema = z.object({
   before: z.boolean().optional(),

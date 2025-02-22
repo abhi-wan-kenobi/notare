@@ -1,5 +1,5 @@
 import { SearchIcon } from "lucide-react";
-import { Button } from "@hypr/ui/components/hypr-ui/button";
+import { Button } from "@hypr/ui/components/ui/button";
 import { useSearchStore } from "../../stores/use-search-store";
 
 export function SearchIconButton() {

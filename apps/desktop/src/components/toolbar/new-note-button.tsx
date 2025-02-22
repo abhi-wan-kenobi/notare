@@ -2,7 +2,7 @@ import { useCallback, useEffect } from "react";
 import { Trans } from "@lingui/react/macro";
 import { useLocation, useRouter } from "@tanstack/react-router";
 import clsx from "clsx";
-import { Button } from "@hypr/ui/components/hypr-ui/button";
+import { Button } from "@hypr/ui/components/ui/button";
 import { PenIcon } from "lucide-react";
 
 export function NewNoteButton() {
@@ -31,6 +31,7 @@ export function NewNoteButton() {
         size="sm"
         className={clsx(
           "hidden sm:block",
+          "text-xs",
           pathname === "/" ? "opacity-100" : "opacity-0",
         )}
         onClick={handleClickNewNote}

@@ -1,22 +1,21 @@
 import { useState, useMemo } from "react";
 import { Search, Plus, MoreVertical, Check, Trash2 } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
-
 import { Input } from "@hypr/ui/components/ui/input";
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@hypr/ui/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@hypr/ui/components/ui/dropdown-menu";
+import {
+  Modal,
+  ModalBody,
+  ModalDescription,
+  ModalHeader,
+  ModalTitle,
+} from "@hypr/ui/components/ui/modal";
 
 type Tag = {
   id: string;
@@ -88,7 +87,7 @@ export default function TagsComponent() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Button variant="secondary" onClick={() => setShowAddModal(true)}>
+        <Button variant="outline" onClick={() => setShowAddModal(true)}>
           <Plus className="h-4 w-4" />
           <Trans>Add tag</Trans>
         </Button>
@@ -186,18 +185,22 @@ export default function TagsComponent() {
         </div>
       </div>
 
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="max-w-md sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>
+      <Modal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        size="sm"
+      >
+        <ModalBody>
+          <ModalHeader>
+            <ModalTitle>
               <Trans>Add new tag</Trans>
-            </DialogTitle>
-            <DialogDescription>
+            </ModalTitle>
+            <ModalDescription>
               <Trans>
                 Create a new tag to help organize and categorize your notes.
               </Trans>
-            </DialogDescription>
-          </DialogHeader>
+            </ModalDescription>
+          </ModalHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
@@ -233,8 +236,8 @@ export default function TagsComponent() {
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </ModalBody>
+      </Modal>
     </div>
   );
 }

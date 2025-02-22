@@ -14,22 +14,29 @@ import { ExternalLinkIcon } from "lucide-react";
 
 const pricingPlans = [
   {
-    name: "Basic",
-    description: "For interns and freelancers starting light",
-    monthlyPrice: 9,
-    annualPrice: 7,
-    features: ["Multiple languages", "Recording playback", "Note enhancing"],
+    name: "Free",
+    description: "For those who are serious about their privacy",
+    monthlyPrice: 0,
+    annualPrice: 0,
+    features: [
+      "Works both in-person and remotely",
+      "Format notes using templates",
+      "Ask questions about past meetings",
+      "Live summary of the meeting",
+      "Works offline",
+    ],
   },
   {
     name: "Pro",
-    description: "For professionals like sales reps and journalists",
+    description: "For those who are serious about their performance",
     monthlyPrice: 19,
     annualPrice: 15,
     features: [
-      "Chat with note",
-      "Live summary",
-      "Offline mode",
-      "Emotional analysis",
+      "Integration with other apps like Notion and Google Calendar",
+      "Long-term memory for past meetings and attendees",
+      "Much better AI performance",
+      "Meeting note sharing via links",
+      "Synchronization across multiple devices",
     ],
   },
   {
@@ -38,9 +45,9 @@ const pricingPlans = [
     monthlyPrice: 25,
     annualPrice: 20,
     features: [
-      "Manage notes with teams",
-      "Chat within workspace",
-      "Integrate with other tools",
+      "Search & ask across all notes in workspace",
+      "Collaborate with others in meetings",
+      "Single sign-on for all users",
     ],
     isPerSeat: true,
     comingSoon: true,

@@ -1,24 +1,21 @@
 import { Trans } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@hypr/ui/components/hypr-ui/carousel";
+} from "@hypr/ui/components/ui/carousel";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-} from "@hypr/ui/components/hypr-ui/card";
+} from "@hypr/ui/components/ui/card";
 import { Badge } from "@hypr/ui/components/ui/badge";
-
-import { type Event } from "@/types";
-import { commands as dbCommands } from "@hypr/plugin-db";
+import { commands as dbCommands, type Event } from "@hypr/plugin-db";
 
 export default function UpcomingEvents() {
   const data = useQuery({

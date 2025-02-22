@@ -4,15 +4,15 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from "@hypr/ui/components/hypr-ui/popover";
-import { Input } from "@hypr/ui/components/hypr-ui/input";
-import { Avatar, AvatarFallback } from "@hypr/ui/components/hypr-ui/avatar";
-import { Button } from "@hypr/ui/components/hypr-ui/button";
+} from "@hypr/ui/components/ui/popover";
+import { Input } from "@hypr/ui/components/ui/input";
+import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
+import { Button } from "@hypr/ui/components/ui/button";
 import { mockParticipants } from "@/mocks/participants";
 import { type Tag, mockTags } from "@/mocks/tags";
-import { type Human } from "@/types";
 import { RiLinkedinBoxFill } from "@remixicon/react";
 import { toast } from "sonner";
+import { type Human } from "@hypr/plugin-db";
 
 export default function Chips() {
   return (
