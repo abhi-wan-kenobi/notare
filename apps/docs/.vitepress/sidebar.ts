@@ -8,6 +8,7 @@ const extensions: DefaultTheme.SidebarItem = {
       text: "List of extensions",
       items: [
         { text: "Google Calendar", link: "/extensions/google-calendar" },
+        { text: "Outlook Calendar", link: "/extensions/outlook-calendar" },
         { text: "Live summary", link: "/extensions/live-summary" },
         { text: "Live transcript", link: "/extensions/live-transcript" },
         { text: "Linear", link: "/extensions/linear" },

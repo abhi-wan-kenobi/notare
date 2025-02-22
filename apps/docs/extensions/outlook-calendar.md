@@ -1,7 +1,7 @@
 ---
-title: Google Calendar
-description: Google Calendar integration
-source: https://github.com/fastrepl/hypr/tree/main/extensions/google-calendar
+title: Outlook Calendar
+description: Outlook calendar integration
+source: https://github.com/fastrepl/hypr/tree/main/extensions/outlook-calendar
 type: [widget]
 implemented: false
 default: false
@@ -18,7 +18,7 @@ tags: [calendar]
 
 ## Notes
 
-- It might be enough to just include `Google Calendar` to `Apple Calendar`.
+- It might be enough to just include `Outlook Calendar` to `Apple Calendar`.
 
 ## Resources
 
