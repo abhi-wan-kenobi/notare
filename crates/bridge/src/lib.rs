@@ -12,7 +12,6 @@ pub use codes_iso_639::part_1::LanguageCode;
 pub struct Client {
     api_base: url::Url,
     api_key: String,
-    reqwest_client: reqwest::Client,
 }
 
 impl Client {
@@ -45,25 +44,10 @@ impl ClientBuilder {
     }
 
     pub fn build(self) -> anyhow::Result<Client> {
-        let mut headers = reqwest::header::HeaderMap::new();
-        headers.insert(reqwest::header::USER_AGENT, "hyprnote-desktop".parse()?);
-        headers.insert(
-            reqwest::header::AUTHORIZATION,
-            "Bearer ".to_string().parse()?,
-        );
-
-        let reqwest_client = reqwest::Client::builder()
-            .default_headers(headers)
-            .build()?;
-
         let api_base = self.api_base.unwrap().parse::<url::Url>()?;
         let api_key = self.api_key.unwrap();
 
-        Ok(Client {
-            api_base,
-            api_key,
-            reqwest_client,
-        })
+        Ok(Client { api_base, api_key })
     }
 }
 
