@@ -14,6 +14,7 @@ pub trait ListenerPluginExt<R: tauri::Runtime> {
         &self,
         channel: tauri::ipc::Channel<SessionEvent>,
     ) -> impl Future<Output = Result<(), String>>;
+    fn broadcast(&self, event: SessionEvent) -> impl Future<Output = Result<(), String>>;
     fn get_timeline(&self) -> impl Future<Output = Result<hypr_bridge::TimelineView, String>>;
     fn start_session(&self) -> impl Future<Output = Result<String, String>>;
     fn stop_session(&self) -> impl Future<Output = Result<(), String>>;
@@ -26,6 +27,22 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
         let s = state.lock().await;
 
         s.channels.lock().await.push(channel);
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn broadcast(&self, event: SessionEvent) -> Result<(), String> {
+        let state = self.state::<crate::SharedState>();
+        let channels = {
+            let s = state.lock().await;
+            s.channels.clone()
+        };
+        let channels = channels.lock().await;
+
+        for channel in channels.iter() {
+            let _ = channel.send(event.clone());
+        }
+
         Ok(())
     }
 

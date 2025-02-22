@@ -3,6 +3,8 @@
 pub enum SessionEvent {
     #[serde(rename = "stopped")]
     Stopped,
+    #[serde(rename = "silence")]
+    Silence,
     #[serde(rename = "timelineView")]
     TimelineView(SessionEventTimelineView),
     #[serde(rename = "audioAmplitude")]

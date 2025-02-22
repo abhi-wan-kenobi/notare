@@ -1,14 +1,12 @@
-use tauri::{Manager, Wry};
+use tauri::Manager;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 mod commands;
-mod error;
 mod events;
 mod ext;
 
-pub use error::{Error, Result};
 pub use events::*;
 pub use ext::ListenerPluginExt;
 
@@ -76,6 +74,22 @@ mod test {
 
     #[tokio::test]
     async fn test_session() {
-        let _app = create_app(tauri::test::mock_builder());
+        let app = create_app(tauri::test::mock_builder());
+
+        app.start_session().await.unwrap();
+
+        let channel_1 = tauri::ipc::Channel::<SessionEvent>::new(|event| {
+            println!("event: {:?}", event);
+            Ok(())
+        });
+        let channel_2 = tauri::ipc::Channel::<SessionEvent>::new(|event| {
+            println!("event: {:?}", event);
+            Ok(())
+        });
+
+        app.subscribe(channel_1.clone()).await.unwrap();
+        app.subscribe(channel_2.clone()).await.unwrap();
+
+        app.broadcast(SessionEvent::Stopped).await.unwrap();
     }
 }
