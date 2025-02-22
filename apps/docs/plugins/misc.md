@@ -10,6 +10,10 @@ id: misc
 
 ## Commands
 
+```ts-vue
+import { commands } from "{{ typedoc.name }}";
+```
+
 <PluginCommands :typedoc="typedoc" />
 
 ## Resources

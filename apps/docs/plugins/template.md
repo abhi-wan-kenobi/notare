@@ -14,13 +14,16 @@ Powered by [minijinja](https://docs.rs/minijinja/latest/minijinja/), with [prese
 
 Note that template should be registered before rendering. Usually, it is extension's responsibility to do so.
 
-```typescript
-import { commands as templateCommands } from "@hypr/plugin-template";
-await templateCommands.registerTemplate("<TEMPLATE_NAME>", "<TEMPLATE_CONTENT>");
-const rendered = await templateCommands.render("<TEMPLATE_NAME>", {});
+```ts
+await commands.registerTemplate("<TEMPLATE_NAME>", "<TEMPLATE_CONTENT>");
+const rendered = await commands.render("<TEMPLATE_NAME>", { a: 1 });
 ```
 
 ## Commands
+
+```ts-vue
+import { commands } from "{{ typedoc.name }}";
+```
 
 <PluginCommands :typedoc="typedoc" />
 

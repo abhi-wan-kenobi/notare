@@ -5,13 +5,17 @@ const props = defineProps<{
   typedoc: ProjectReflection;
 }>();
 
+const BASE = "https://github.com/fastrepl/hyprnote";
+
+const name = props.typedoc.name;
+const id = name.split("/plugin-")[1];
 const children: any[] = props.typedoc.children ?? [];
 
 const commands = children
   .find((child) => child.name === "commands")
-  .type.declaration.children.map((child: any) => ({
-    name: child.name,
-    source: child.sources[0],
+  .type.declaration.children.map(({ name, sources: [s] }: any) => ({
+    name,
+    source: `${BASE}/blob/main/plugins/${id}/js/${s.fileName}#L${s.line}`,
   }));
 </script>
 
