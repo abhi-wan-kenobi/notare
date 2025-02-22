@@ -18,6 +18,12 @@ async requestCalendarAccess() : Promise<void> {
 },
 async requestContactsAccess() : Promise<void> {
     await TAURI_INVOKE("plugin:apple-calendar|request_contacts_access");
+},
+async startWorker(userId: string) : Promise<void> {
+    await TAURI_INVOKE("plugin:apple-calendar|start_worker", { userId });
+},
+async stopWorker() : Promise<void> {
+    await TAURI_INVOKE("plugin:apple-calendar|stop_worker");
 }
 }
 

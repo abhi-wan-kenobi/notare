@@ -335,6 +335,26 @@
           "const": "deny-request-contacts-access"
         },
         {
+          "description": "Enables the start_worker command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-start-worker"
+        },
+        {
+          "description": "Denies the start_worker command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-start-worker"
+        },
+        {
+          "description": "Enables the stop_worker command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-stop-worker"
+        },
+        {
+          "description": "Denies the stop_worker command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-stop-worker"
+        },
+        {
           "description": "Default permissions for the plugin",
           "type": "string",
           "const": "default"

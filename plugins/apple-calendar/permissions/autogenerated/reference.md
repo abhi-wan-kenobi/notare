@@ -2,6 +2,8 @@
 
 Default permissions for the plugin
 
+- `allow-start-worker`
+- `allow-stop-worker`
 - `allow-calendar-access-status`
 - `allow-contacts-access-status`
 - `allow-request-calendar-access`
@@ -116,6 +118,58 @@ Enables the request_contacts_access command without any pre-configured scope.
 <td>
 
 Denies the request_contacts_access command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`apple-calendar:allow-start-worker`
+
+</td>
+<td>
+
+Enables the start_worker command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`apple-calendar:deny-start-worker`
+
+</td>
+<td>
+
+Denies the start_worker command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`apple-calendar:allow-stop-worker`
+
+</td>
+<td>
+
+Enables the stop_worker command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`apple-calendar:deny-stop-worker`
+
+</td>
+<td>
+
+Denies the stop_worker command without any pre-configured scope.
 
 </td>
 </tr>

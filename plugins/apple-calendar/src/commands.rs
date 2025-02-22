@@ -1,31 +1,37 @@
+use crate::AppleCalendarPluginExt;
+
 #[tauri::command]
 #[specta::specta]
-#[tracing::instrument]
-pub fn calendar_access_status() -> bool {
-    let handle = hypr_calendar::apple::Handle::new();
-    handle.calendar_access_status()
+pub fn calendar_access_status<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> bool {
+    app.calendar_access_status()
 }
 
 #[tauri::command]
 #[specta::specta]
-#[tracing::instrument]
-pub fn contacts_access_status() -> bool {
-    let handle = hypr_calendar::apple::Handle::new();
-    handle.contacts_access_status()
+pub fn contacts_access_status<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> bool {
+    app.contacts_access_status()
 }
 
 #[tauri::command]
 #[specta::specta]
-#[tracing::instrument]
-pub fn request_calendar_access() {
-    let mut handle = hypr_calendar::apple::Handle::new();
-    handle.request_calendar_access();
+pub fn request_calendar_access<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
+    app.request_calendar_access();
 }
 
 #[tauri::command]
 #[specta::specta]
-#[tracing::instrument]
-pub fn request_contacts_access() {
-    let mut handle = hypr_calendar::apple::Handle::new();
-    handle.request_contacts_access();
+pub fn request_contacts_access<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
+    app.request_contacts_access();
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn start_worker<R: tauri::Runtime>(app: tauri::AppHandle<R>, user_id: String) {
+    app.start_worker(user_id).unwrap();
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn stop_worker<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
+    app.stop_worker();
 }

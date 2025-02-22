@@ -22,10 +22,12 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
-            commands::calendar_access_status,
-            commands::contacts_access_status,
-            commands::request_calendar_access,
-            commands::request_contacts_access,
+            commands::calendar_access_status::<tauri::Wry>,
+            commands::contacts_access_status::<tauri::Wry>,
+            commands::request_calendar_access::<tauri::Wry>,
+            commands::request_contacts_access::<tauri::Wry>,
+            commands::start_worker::<tauri::Wry>,
+            commands::stop_worker::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

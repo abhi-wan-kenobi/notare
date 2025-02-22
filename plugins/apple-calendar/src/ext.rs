@@ -1,8 +1,38 @@
 pub trait AppleCalendarPluginExt<R: tauri::Runtime> {
+    fn calendar_access_status(&self) -> bool;
+    fn contacts_access_status(&self) -> bool;
+    fn request_calendar_access(&self);
+    fn request_contacts_access(&self);
     fn start_worker(&self, user_id: impl Into<String>) -> Result<(), String>;
+    fn stop_worker(&self);
 }
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> crate::AppleCalendarPluginExt<R> for T {
+    #[tracing::instrument(skip_all)]
+    fn calendar_access_status(&self) -> bool {
+        let handle = hypr_calendar::apple::Handle::new();
+        handle.calendar_access_status()
+    }
+
+    #[tracing::instrument(skip_all)]
+    fn contacts_access_status(&self) -> bool {
+        let handle = hypr_calendar::apple::Handle::new();
+        handle.contacts_access_status()
+    }
+
+    #[tracing::instrument(skip_all)]
+    fn request_calendar_access(&self) {
+        let mut handle = hypr_calendar::apple::Handle::new();
+        handle.request_calendar_access();
+    }
+
+    #[tracing::instrument(skip_all)]
+    fn request_contacts_access(&self) {
+        let mut handle = hypr_calendar::apple::Handle::new();
+        handle.request_contacts_access();
+    }
+
+    #[tracing::instrument(skip_all)]
     fn start_worker(&self, user_id: impl Into<String>) -> Result<(), String> {
         let db = self.state::<hypr_db::user::UserDatabase>().inner().clone();
         let user_id = user_id.into();
@@ -15,5 +45,15 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> crate::AppleCalendarPluginExt<R> f
         }));
 
         Ok(())
+    }
+
+    #[tracing::instrument(skip_all)]
+    fn stop_worker(&self) {
+        let state = self.state::<crate::ManagedState>();
+        let mut s = state.lock().unwrap();
+
+        if let Some(handle) = s.worker_handle.take() {
+            handle.abort();
+        }
     }
 }

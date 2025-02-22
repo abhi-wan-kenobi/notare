@@ -1,6 +1,8 @@
 [default]
 description = "Default permissions for the plugin"
 permissions = [
+    "allow-start-worker",
+    "allow-stop-worker",
     "allow-calendar-access-status",
     "allow-contacts-access-status",
     "allow-request-calendar-access",
