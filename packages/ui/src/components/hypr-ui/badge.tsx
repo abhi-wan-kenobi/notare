@@ -15,7 +15,7 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
-        success: 
+        success:
           "border-transparent bg-green-500 text-white hover:bg-green-600",
       },
       size: {
@@ -26,14 +26,14 @@ const badgeVariants = cva(
       disabled: {
         true: "opacity-50 cursor-not-allowed pointer-events-none",
         false: "",
-      }
+      },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
       disabled: false,
     },
-  }
+  },
 );
 
 export interface BadgeProps
@@ -42,18 +42,18 @@ export interface BadgeProps
   label?: string;
 }
 
-function Badge({ 
-  className, 
-  variant, 
+function Badge({
+  className,
+  variant,
   size,
   disabled,
   label,
   children,
-  ...props 
+  ...props
 }: BadgeProps) {
   return (
-    <div 
-      className={cn(badgeVariants({ variant, size, disabled }), className)} 
+    <div
+      className={cn(badgeVariants({ variant, size, disabled }), className)}
       aria-label={label}
       role="status"
       {...props}
