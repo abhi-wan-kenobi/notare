@@ -52,7 +52,6 @@ function Component() {
           <PastSessions />
         </div>
       </div>
-      <WorkspaceAIButton />
 
       {/* <div className="absolute bottom-4 right-4 flex items-center">
         <div className="flex flex-col items-center gap-2">

@@ -4,9 +4,10 @@ import clsx from "clsx";
 interface TitleInputProps {
   value: string;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onNavigateToEditor?: () => void;
 }
 
-export default function TitleInput({ value, onChange }: TitleInputProps) {
+export default function TitleInput({ value, onChange, onNavigateToEditor }: TitleInputProps) {
   return (
     <input
       type="text"
@@ -15,8 +16,14 @@ export default function TitleInput({ value, onChange }: TitleInputProps) {
       placeholder="Untitled meeting"
       className={clsx([
         "w-full border-none bg-transparent text-2xl font-bold",
-        "caret-gray-300 focus:outline-none",
+        "focus:outline-none",
       ])}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === "ArrowDown") {
+          e.preventDefault();
+          onNavigateToEditor?.();
+        }
+      }}
     />
   );
 }

@@ -4,7 +4,11 @@ import ListenButton from "./listen-button";
 import Chips from "./chips";
 import { useSession } from "@/contexts";
 
-export function NoteHeader() {
+interface NoteHeaderProps {
+  onNavigateToEditor?: () => void;
+}
+
+export function NoteHeader({ onNavigateToEditor }: NoteHeaderProps) {
   const store = useSession((s) => ({
     session: s.session,
     listening: s.listening,
@@ -22,7 +26,11 @@ export function NoteHeader() {
   return (
     <>
       <div className="flex flex-row items-center justify-between pl-8 pr-4 pt-6">
-        <TitleInput value={store.session.title} onChange={handleTitleChange} />
+        <TitleInput 
+          value={store.session.title} 
+          onChange={handleTitleChange} 
+          onNavigateToEditor={onNavigateToEditor}
+        />
         <ListenButton
           isListening={store.listening}
           onClick={store.start}

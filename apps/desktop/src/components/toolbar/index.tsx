@@ -5,6 +5,7 @@ import { BackButton } from "@/components/toolbar/back-button";
 import { type OsType, type as getOsType } from "@tauri-apps/plugin-os";
 import { useEffect, useState } from "react";
 import { SearchBar, SearchIconButton, OmniSearch } from "../search";
+import { RightSidePanelButton } from "./right-side-panel-button";
 
 export default function Toolbar() {
   const [osType, setOsType] = useState<OsType>("macos");
@@ -32,18 +33,19 @@ export default function Toolbar() {
         data-tauri-drag-region
       >
         {/* TODO: This is a poor way for implementing just for macOS */}
-        <div className="w-32" data-tauri-drag-region>
+        <div className="w-40" data-tauri-drag-region>
           {osType === "macos" && <BackButton />}
         </div>
 
         <SearchBar />
 
         <div
-          className="flex w-32 items-center justify-end gap-2"
+          className="flex w-40 items-center justify-end gap-2"
           data-tauri-drag-region
         >
           <SearchIconButton />
           <NewNoteButton />
+          <RightSidePanelButton />
           <SettingsPanel />
         </div>
       </header>

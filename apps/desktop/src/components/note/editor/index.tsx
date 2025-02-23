@@ -72,7 +72,13 @@ export default function EditorArea() {
 
   return (
     <main className="relative flex h-full flex-col overflow-hidden">
-      <NoteHeader />
+      <NoteHeader onNavigateToEditor={() => {
+        if (showRaw) {
+          editorRef.current?.editor?.commands?.focus();
+        } else {
+          rendererRef.current?.editor?.commands?.focus();
+        }
+      }} />
 
       <div
         className={clsx([

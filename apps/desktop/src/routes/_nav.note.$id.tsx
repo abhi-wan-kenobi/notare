@@ -3,16 +3,29 @@ import { commands as dbCommands, type Config } from "@hypr/plugin-db";
 
 import { SessionProvider } from "@/contexts";
 import EditorArea from "@/components/note/editor";
-import NoteAIButton from "@/components/note-ai-button";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@hypr/ui/components/ui/resizable";
+import RightPanel from "@/components/note/right-panel";
+
 function Component() {
   const { session } = Route.useLoaderData();
 
   return (
     <SessionProvider session={session}>
-      <div className="relative flex h-full flex-col overflow-hidden">
-        <EditorArea />
-        <NoteAIButton />
-      </div>
+      <ResizablePanelGroup direction="horizontal">
+        <ResizablePanel>
+          <div className="relative flex h-full flex-col overflow-hidden">
+            <EditorArea />
+          </div>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel defaultSize={30} minSize={30} maxSize={60}>
+          <RightPanel />
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </SessionProvider>
   );
 }
