@@ -15,7 +15,7 @@ pub trait ListenerPluginExt<R: tauri::Runtime> {
         channel: tauri::ipc::Channel<SessionEvent>,
     ) -> impl Future<Output = Result<(), String>>;
     fn broadcast(&self, event: SessionEvent) -> impl Future<Output = Result<(), String>>;
-    fn get_timeline(&self) -> impl Future<Output = Result<hypr_bridge::TimelineView, String>>;
+    fn get_timeline(&self) -> impl Future<Output = Result<crate::TimelineView, String>>;
     fn start_session(&self) -> impl Future<Output = Result<String, String>>;
     fn stop_session(&self) -> impl Future<Output = Result<(), String>>;
 }
@@ -47,7 +47,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn get_timeline(&self) -> Result<hypr_bridge::TimelineView, String> {
+    async fn get_timeline(&self) -> Result<crate::TimelineView, String> {
         let state = self.state::<crate::SharedState>();
         let s = state.lock().await;
 
@@ -57,7 +57,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
             .unwrap()
             .lock()
             .await
-            .view(hypr_bridge::TimelineFilter::default());
+            .view(crate::TimelineFilter::default());
 
         Ok(timeline_view)
     }
@@ -162,7 +162,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
             wav.finalize().unwrap();
         });
 
-        let timeline = Arc::new(Mutex::new(hypr_bridge::Timeline::default()));
+        let timeline = Arc::new(Mutex::new(crate::Timeline::default()));
         s.timeline = Some(timeline.clone());
 
         // TODO
@@ -192,7 +192,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
 
                     // channel
                     //     .send(SessionEvent::TimelineView(
-                    //         timeline.view(hypr_bridge::TimelineFilter::default()),
+                    //         timeline.view(crate::TimelineFilter::default()),
                     //     ))
                     //     .unwrap();
                 }

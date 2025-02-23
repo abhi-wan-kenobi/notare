@@ -1658,8 +1658,6 @@ dependencies = [
  "futures-channel",
  "futures-util",
  "hound",
- "insta",
- "intervaltree",
  "reqwest 0.12.12",
  "schemars",
  "serde",
@@ -11464,10 +11462,14 @@ version = "0.1.0"
 dependencies = [
  "audio 0.1.0",
  "bridge",
+ "data",
  "db",
  "futures-util",
  "hound",
+ "insta",
+ "intervaltree",
  "serde",
+ "serde_json",
  "specta",
  "specta-typescript",
  "strum 0.26.3",
@@ -14150,6 +14152,13 @@ dependencies = [
  "windows-core 0.58.0",
  "windows-version",
  "x11-dl",
+]
+
+[[package]]
+name = "ws"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.11",
 ]
 
 [[package]]

@@ -1,6 +1,7 @@
 use intervaltree::IntervalTree;
 
-use crate::{common_derives, DiarizeOutputChunk, TranscribeOutputChunk};
+type DiarizeOutputChunk = hypr_db::user::DiarizationChunk;
+type TranscribeOutputChunk = hypr_db::user::TranscriptChunk;
 
 pub trait Interval {
     fn start(&self) -> u64;
@@ -44,35 +45,28 @@ impl Interval for std::ops::Range<u64> {
     }
 }
 
-common_derives! {
-    #[derive(Default)]
-    pub struct Timeline {
-        transcripts: Vec<TranscribeOutputChunk>,
-        diarizations: Vec<DiarizeOutputChunk>,
-    }
+#[derive(Default)]
+pub struct Timeline {
+    transcripts: Vec<TranscribeOutputChunk>,
+    diarizations: Vec<DiarizeOutputChunk>,
 }
 
-common_derives! {
-    #[derive(Default)]
-    pub struct TimelineView {
-        pub items: Vec<TimelineViewItem>,
-    }
+#[derive(Debug, Clone, Default, serde::Serialize, specta::Type)]
+pub struct TimelineView {
+    pub items: Vec<TimelineViewItem>,
 }
 
-common_derives! {
-    pub struct TimelineViewItem {
-        pub start: u64,
-        pub end: u64,
-        pub speaker: String,
-        pub text: String,
-    }
+#[derive(Debug, Clone, Default, serde::Serialize, specta::Type)]
+pub struct TimelineViewItem {
+    pub start: u64,
+    pub end: u64,
+    pub speaker: String,
+    pub text: String,
 }
 
-common_derives! {
-    #[derive(Default)]
-    pub struct TimelineFilter {
-        pub last_n_seconds: Option<u64>,
-    }
+#[derive(Default)]
+pub struct TimelineFilter {
+    pub last_n_seconds: Option<u64>,
 }
 
 impl std::fmt::Display for TimelineView {

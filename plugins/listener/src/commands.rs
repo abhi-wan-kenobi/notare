@@ -4,7 +4,7 @@ use crate::{ListenerPluginExt, SessionEvent};
 #[specta::specta]
 pub async fn get_timeline<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
-) -> Result<hypr_bridge::TimelineView, String> {
+) -> Result<crate::TimelineView, String> {
     app.get_timeline().await
 }
 

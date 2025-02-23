@@ -1,5 +1,3 @@
-use crate::TimelineView;
-
 #[macro_export]
 macro_rules! common_derives {
     ($item:item) => {
@@ -41,62 +39,6 @@ pub type DiarizeInputChunk = ListenInputChunk;
 pub type TranscribeInputChunk = ListenInputChunk;
 pub type DiarizeOutputChunk = hypr_db::user::DiarizationChunk;
 pub type TranscribeOutputChunk = hypr_db::user::TranscriptChunk;
-
-common_derives! {
-    pub struct EnhanceRequest {
-        pub pre_meeting_editor: String,
-        pub in_meeting_editor: String,
-        pub template: hypr_db::user::Template,
-        pub config: hypr_db::user::Config,
-        pub event: Option<hypr_db::user::Event>,
-        pub participants: Vec<hypr_db::user::Human>,
-        pub timeline_view: TimelineView,
-    }
-}
-
-common_derives! {
-    pub struct CreateTitleRequest {
-        pub config: hypr_db::user::Config,
-        pub timeline_view: TimelineView,
-    }
-}
-
-common_derives! {
-    pub struct CreateTitleResponse {
-        pub title: String,
-    }
-}
-
-common_derives! {
-    pub struct PostprocessEnhanceRequest {
-        pub editor: String,
-    }
-}
-
-common_derives! {
-    pub struct PostprocessEnhanceResponse {
-        pub editor: String,
-    }
-}
-
-common_derives! {
-    pub struct LiveSummaryRequest {
-        pub config: hypr_db::user::Config,
-        pub timeline_view: TimelineView,
-    }
-}
-
-common_derives! {
-    pub struct LiveSummaryResponse {
-        pub blocks: Vec<SummarizeTranscriptChunk>,
-    }
-}
-
-common_derives! {
-    pub struct SummarizeTranscriptChunk {
-        pub points: Vec<String>,
-    }
-}
 
 common_derives! {
     pub struct ListenParams {

@@ -3,7 +3,7 @@ name = "tauri-plugin-listener"
 version = "0.1.0"
 authors = ["You"]
 edition = "2021"
-exclude = ["/dist-js", "/guest-js", "/node_modules"]
+exclude = ["/js"]
 links = "tauri-plugin-listener"
 rust-version = "1.77.2"
 description = ""
@@ -12,6 +12,10 @@ description = ""
 tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
+hypr-data = { path = "../../crates/data", package = "data" }
+
+insta = "1.42.1"
+serde_json = { workspace = true }
 specta-typescript = { workspace = true }
 
 [dependencies]
@@ -32,3 +36,4 @@ futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 hound = { workspace = true }
+intervaltree = "0.2.7"

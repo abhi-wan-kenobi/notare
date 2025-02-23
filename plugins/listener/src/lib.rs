@@ -6,9 +6,11 @@ use tokio::sync::Mutex;
 mod commands;
 mod events;
 mod ext;
+mod timeline;
 
 pub use events::*;
 pub use ext::ListenerPluginExt;
+pub use timeline::*;
 
 const PLUGIN_NAME: &str = "listener";
 
@@ -16,7 +18,7 @@ type SharedState = Mutex<State>;
 
 #[derive(Default)]
 pub struct State {
-    timeline: Option<Arc<Mutex<hypr_bridge::Timeline>>>,
+    timeline: Option<Arc<Mutex<crate::Timeline>>>,
     mic_stream_handle: Option<tokio::task::JoinHandle<()>>,
     speaker_stream_handle: Option<tokio::task::JoinHandle<()>>,
     listen_stream_handle: Option<tokio::task::JoinHandle<()>>,

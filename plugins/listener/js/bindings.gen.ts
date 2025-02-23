@@ -31,7 +31,7 @@ async stopSession() : Promise<null> {
 
 /** user-defined types **/
 
-export type SessionEvent = { type: "stopped" } | ({ type: "timelineView" } & SessionEventTimelineView) | ({ type: "audioAmplitude" } & SessionEventAudioAmplitude)
+export type SessionEvent = { type: "stopped" } | { type: "silence" } | ({ type: "timelineView" } & SessionEventTimelineView) | ({ type: "audioAmplitude" } & SessionEventAudioAmplitude)
 export type SessionEventAudioAmplitude = { mic: number; speaker: number }
 export type SessionEventTimelineView = { timeline: TimelineView }
 export type TAURI_CHANNEL<TSend> = null

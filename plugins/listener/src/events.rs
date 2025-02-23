@@ -13,7 +13,7 @@ pub enum SessionEvent {
 
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
 pub struct SessionEventTimelineView {
-    pub timeline: hypr_bridge::TimelineView,
+    pub timeline: crate::TimelineView,
 }
 
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
