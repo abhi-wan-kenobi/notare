@@ -11,11 +11,16 @@ import {
   type Extension,
 } from "@hypr/extension-utils";
 
-import { liveSummaryResponseSchema } from "./types";
 import {
   TEMPLATE_LIVE_SUMMARY_SYSTEM,
   TEMPLATE_LIVE_SUMMARY_USER,
 } from "./init";
+import {
+  liveSummaryResponseSchema,
+  type LiveSummaryResponse,
+  type LiveSummarySystemInput,
+  type LiveSummaryUserInput,
+} from "./types";
 
 const DEFAULT_INTERVAL = 10 * 1000;
 
@@ -39,16 +44,20 @@ const modal: Extension["modal"] = ({ onClose }) => {
         return null;
       }
 
-      const _timeline_view = await listenerCommands.getTimeline();
+      const timeline_view = await listenerCommands.getTimeline();
 
       const systemMessageContent = await templateCommands.render(
         TEMPLATE_LIVE_SUMMARY_SYSTEM,
-        {},
+        {
+          config: config.data,
+        } satisfies LiveSummarySystemInput,
       );
 
       const userMessageContent = await templateCommands.render(
         TEMPLATE_LIVE_SUMMARY_USER,
-        {},
+        {
+          timeline: timeline_view,
+        } satisfies LiveSummaryUserInput,
       );
 
       const { object } = await generateObject({
@@ -60,7 +69,6 @@ const modal: Extension["modal"] = ({ onClose }) => {
         ],
         abortSignal: signal,
       });
-      console.log("object", object);
 
       return object;
     },
@@ -179,14 +187,18 @@ const ProgressCircle = ({ progress }: { progress: number }) => {
   );
 };
 
-const Summary = ({ summary }: { summary: any | null | undefined }) => {
+const Summary = ({
+  summary,
+}: {
+  summary: LiveSummaryResponse | null | undefined;
+}) => {
   if (!summary) {
     return null;
   }
 
   return (
     <div className="space-y-4 text-sm text-neutral-700">
-      {summary.points.map((point: any, index: number) => (
+      {summary.points.map((point, index) => (
         <div key={index} className="space-y-2">
           <div className="flex items-start gap-2">
             <div className="mt-1.5 size-1.5 shrink-0 rounded-full bg-neutral-300" />
