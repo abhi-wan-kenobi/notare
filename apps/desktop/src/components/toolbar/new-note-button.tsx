@@ -1,9 +1,10 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { Trans } from "@lingui/react/macro";
 import { useLocation, useRouter } from "@tanstack/react-router";
 import clsx from "clsx";
 import { Button } from "@hypr/ui/components/ui/button";
 import { PenIcon } from "lucide-react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 export function NewNoteButton() {
   const { navigate } = useRouter();
@@ -11,18 +12,16 @@ export function NewNoteButton() {
 
   const handleClickNewNote = useCallback(() => {
     navigate({ to: "/note/new" });
-  }, [navigate]);
+  }, []);
 
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "n") {
-        e.preventDefault();
-        handleClickNewNote();
-      }
-    };
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
-  }, [handleClickNewNote]);
+  useHotkeys(
+    "mod+n",
+    (event) => {
+      event.preventDefault();
+      handleClickNewNote();
+    },
+    { enableOnFormTags: true }
+  );
 
   return (
     <>

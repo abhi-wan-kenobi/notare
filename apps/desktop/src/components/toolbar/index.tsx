@@ -4,7 +4,7 @@ import { NewNoteButton } from "@/components/toolbar/new-note-button";
 import { BackButton } from "@/components/toolbar/back-button";
 import { type OsType, type as getOsType } from "@tauri-apps/plugin-os";
 import { useEffect, useState } from "react";
-import { SearchBar, SearchIconButton, OmniSearch } from "../search";
+import { SearchBar, SearchIconButton, SearchPalette } from "../search";
 import { RightSidePanelButton } from "./right-side-panel-button";
 
 export default function Toolbar() {
@@ -50,7 +50,7 @@ export default function Toolbar() {
         </div>
       </header>
 
-      <OmniSearch />
+      <SearchPalette />
     </>
   );
 }

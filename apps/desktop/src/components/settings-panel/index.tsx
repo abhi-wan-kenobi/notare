@@ -15,6 +15,7 @@ import ProfileComponent from "./views/profile";
 import { SettingsSidebar } from "./sidebar";
 import type { NavNames } from "./types";
 import { commands as dbCommands, type Template } from "@hypr/plugin-db";
+import { useHotkeys } from "react-hotkeys-hook";
 
 export default function SettingsPanel() {
   const [open, setOpen] = useState(false);
@@ -47,16 +48,14 @@ export default function SettingsPanel() {
     setSelectedTemplate(template);
   };
 
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === ",") {
-        e.preventDefault();
-        setOpen((prev) => !prev);
-      }
-    };
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
-  }, []);
+  useHotkeys(
+    "mod+,",
+    (event) => {
+      event.preventDefault();
+      setOpen((prev) => !prev);
+    },
+    { enableOnFormTags: true }
+  );
 
   useEffect(() => {
     if (!open) {

@@ -71,14 +71,16 @@ export default function EditorArea() {
   const rendererRef = useRef<{ editor: any }>(null);
 
   return (
-    <main className="relative flex h-full flex-col overflow-hidden">
-      <NoteHeader onNavigateToEditor={() => {
-        if (showRaw) {
-          editorRef.current?.editor?.commands?.focus();
-        } else {
-          rendererRef.current?.editor?.commands?.focus();
-        }
-      }} />
+    <div className="relative flex h-full flex-col overflow-hidden">
+      <NoteHeader
+        onNavigateToEditor={() => {
+          if (showRaw) {
+            editorRef.current?.editor?.commands?.focus();
+          } else {
+            rendererRef.current?.editor?.commands?.focus();
+          }
+        }}
+      />
 
       <div
         className={clsx([
@@ -127,6 +129,6 @@ export default function EditorArea() {
           </motion.div>
         )}
       </AnimatePresence>
-    </main>
+    </div>
   );
 }

@@ -4,6 +4,7 @@ import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
 import { Search } from "lucide-react";
 import { cn } from "@hypr/ui/lib/utils";
+import { useHotkeys } from "react-hotkeys-hook";
 
 interface CommandDialogProps
   extends React.ComponentPropsWithoutRef<typeof CommandPrimitive> {
@@ -34,16 +35,17 @@ const CommandDialog = ({
   className,
   ...props
 }: CommandDialogProps) => {
-  React.useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && open) {
-        e.preventDefault();
-        onOpenChange?.(false);
-      }
-    };
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
-  }, [open, onOpenChange]);
+  useHotkeys(
+    "esc",
+    (event) => {
+      event.preventDefault();
+      onOpenChange?.(false);
+    },
+    { 
+      enabled: open,
+      enableOnFormTags: true 
+    }
+  );
 
   if (!open) return null;
 

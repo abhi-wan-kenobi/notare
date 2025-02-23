@@ -45,7 +45,7 @@ function Component() {
   // }, []);
 
   return (
-    <main className="relative flex h-full flex-col overflow-hidden bg-white">
+    <main className="flex h-full flex-col overflow-hidden bg-white">
       <div className="overflow-y-auto px-8">
         <div className="mx-auto max-w-3xl">
           <UpcomingEvents />

@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useState, useCallback } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 import {
   CommandDialog,
   CommandEmpty,
@@ -10,23 +11,26 @@ import {
 } from "@hypr/ui/components/ui/command";
 import { useSearchStore } from "@/stores/use-search-store";
 
-export function OmniSearch() {
-  const { isOpen, toggle } = useSearchStore();
+export function SearchPalette() {
+  const { isOpen: isOpenStore, toggle: toggleStore } = useSearchStore();
+  const [open, setOpen] = useState(isOpenStore);
 
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        toggle();
-      }
-    };
+  const toggle = useCallback(() => {
+    setOpen((prev) => !prev);
+    toggleStore();
+  }, [toggleStore]);
 
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
-  }, [toggle]);
+  useHotkeys(
+    "mod+k",
+    (event) => {
+      event.preventDefault();
+      toggle();
+    },
+    { enableOnFormTags: true },
+  );
 
   return (
-    <CommandDialog open={isOpen} onOpenChange={toggle}>
+    <CommandDialog open={open} onOpenChange={toggle}>
       <CommandInput autoFocus placeholder="Type a command or search..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>

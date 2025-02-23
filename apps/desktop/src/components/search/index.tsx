@@ -1,3 +1,3 @@
 export { SearchBar } from "./search-bar";
 export { SearchIconButton } from "./search-icon-button";
-export { OmniSearch } from "./omni-search";
+export { SearchPalette } from "./search-palette";

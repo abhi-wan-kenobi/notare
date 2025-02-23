@@ -10,13 +10,13 @@ function Component() {
 
   return (
     <SessionProvider session={session}>
-      <div className="flex h-full w-full">
-        <div className="relative flex h-full flex-1 flex-col overflow-hidden">
+      <main className="flex h-full overflow-hidden bg-white">
+        <div className="h-full flex-1">
           <EditorArea />
         </div>
 
         <RightPanel />
-      </div>
+      </main>
     </SessionProvider>
   );
 }
