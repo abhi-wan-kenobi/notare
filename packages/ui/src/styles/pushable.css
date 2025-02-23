@@ -35,3 +35,13 @@
 .pushable:active .front {
   transform: translateY(-2px);
 }
+
+.pushable:disabled {
+  background: rgb(75 85 99); /* neutral-600 */
+  cursor: not-allowed;
+}
+
+.pushable:disabled .front {
+  background: rgb(156 163 175); /* neutral-400 */
+  transform: translateY(-2px);
+}

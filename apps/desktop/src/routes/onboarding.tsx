@@ -1,6 +1,4 @@
-import { z } from "zod";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
 import { useQuery } from "@tanstack/react-query";
 import { MicIcon, Volume2Icon } from "lucide-react";
 import { type OsType, type as getOsType } from "@tauri-apps/plugin-os";
@@ -12,36 +10,12 @@ import PushableButton from "@hypr/ui/components/ui/pushable-button";
 import { Trans } from "@lingui/react/macro";
 import ShimmerButton from "@hypr/ui/components/ui/shimmer-button";
 
-const STEPS = ["permissions"] as const;
-
-const schema = z.object({
-  step: z.enum(STEPS).default(STEPS[0]),
-});
-
 export const Route = createFileRoute("/onboarding")({
   component: Component,
-  validateSearch: zodValidator(schema),
 });
 
 function Component() {
-  const { step } = Route.useSearch();
   const navigate = useNavigate();
-  const handleNext = () => {
-    if (step === "permissions") {
-      navigate({ to: "/" });
-    } else {
-      navigate({ to: "/onboarding", search: { step: "permissions" } });
-    }
-  };
-
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center">
-      {step === "permissions" && <Permissions handleNext={handleNext} />}
-    </div>
-  );
-}
-
-function Permissions({ handleNext }: { handleNext: () => void }) {
   const [osType, setOsType] = useState<OsType>("macos");
 
   useEffect(() => {
@@ -77,98 +51,106 @@ function Permissions({ handleNext }: { handleNext: () => void }) {
   };
 
   return (
-    <main className="relative flex h-screen w-full flex-col items-center justify-center overflow-auto p-4">
-      <header
-        className={clsx([
-          "absolute left-0 right-0 top-0 z-10",
-          "flex w-full items-center justify-between",
-          "bg-transparent",
-          "min-h-11",
-        ])}
-        data-tauri-drag-region
-      />
+    <div className="flex min-h-screen flex-col items-center justify-center">
+      <main className="relative flex h-screen w-full flex-col items-center justify-center overflow-auto p-4">
+        <header
+          className={clsx([
+            "absolute left-0 right-0 top-0 z-10",
+            "flex w-full items-center justify-between",
+            "bg-transparent",
+            "min-h-11",
+          ])}
+          data-tauri-drag-region
+        />
 
-      <div className="z-10 flex w-full flex-col items-center justify-center">
-        <div className="mt-12 flex flex-col gap-12">
-          <p className="text-center text-lg font-medium text-neutral-600 md:text-xl lg:text-2xl">
-            AI Meeting Notepad that keeps you in flow
-          </p>
-
-          <div className="space-y-2">
-            <p className="text-center text-lg font-medium md:text-start">
-              Required Permissions
+        <div className="z-10 flex w-full flex-col items-center justify-center">
+          <div className="mt-12 flex flex-col gap-12">
+            <p className="text-center text-lg font-medium text-neutral-600 md:text-xl lg:text-2xl">
+              AI Meeting Notepad that keeps you in flow
             </p>
 
-            <PermissionItem
-              label="Transcribe my voice"
-              done={micPermission.data}
-              handleClick={handleClickMic}
-              buttonTitle="Enable Microphone"
-              suffixIcon={<MicIcon size={16} />}
-              required
-            />
-            <PermissionItem
-              label="Transcribe other people's voice"
-              done={capturePermission.data}
-              handleClick={handleClickMic}
-              buttonTitle="Enable System Audio"
-              suffixIcon={<Volume2Icon size={16} />}
-              required
-            />
-          </div>
-
-          {osType === "macos" && (
             <div className="space-y-2">
               <p className="text-center text-lg font-medium md:text-start">
-                Optional Permissions
+                Required Permissions
               </p>
 
               <PermissionItem
-                label="Want to keep track of events?"
-                done={capturePermission.data}
+                label="Transcribe my voice"
+                done={micPermission.data}
                 handleClick={handleClickMic}
-                buttonTitle={"Connect to Calendar"}
-                suffixIcon={
-                  <img
-                    src="/icons/calendar.png"
-                    alt="Apple Calendar"
-                    className="size-4"
-                  />
-                }
+                buttonTitle="Enable Microphone"
+                suffixIcon={<MicIcon size={16} />}
+                required
               />
-
               <PermissionItem
-                label="How about your contacts?"
+                label="Transcribe other people's voice"
                 done={capturePermission.data}
                 handleClick={handleClickMic}
-                buttonTitle="Connect to Contacts"
-                suffixIcon={
-                  <img
-                    src="/icons/contacts.png"
-                    alt="Apple Contacts"
-                    className="size-4"
-                  />
-                }
+                buttonTitle="Enable System Audio"
+                suffixIcon={<Volume2Icon size={16} />}
+                required
               />
             </div>
-          )}
 
-          {micPermission.data && capturePermission.data && (
-            <PushableButton onClick={handleNext} className="mb-4" disabled>
-              <Trans>Continue</Trans>
-            </PushableButton>
-          )}
+            {osType === "macos" && (
+              <div className="space-y-2">
+                <p className="text-center text-lg font-medium md:text-start">
+                  Optional Permissions
+                </p>
+
+                <PermissionItem
+                  label="Want to keep track of events?"
+                  done={capturePermission.data}
+                  handleClick={handleClickMic}
+                  buttonTitle={"Connect to Calendar"}
+                  suffixIcon={
+                    <img
+                      src="/icons/calendar.png"
+                      alt="Apple Calendar"
+                      className="size-4"
+                    />
+                  }
+                />
+
+                <PermissionItem
+                  label="How about your contacts?"
+                  done={capturePermission.data}
+                  handleClick={handleClickMic}
+                  buttonTitle="Connect to Contacts"
+                  suffixIcon={
+                    <img
+                      src="/icons/contacts.png"
+                      alt="Apple Contacts"
+                      className="size-4"
+                    />
+                  }
+                />
+              </div>
+            )}
+
+            {micPermission.data && capturePermission.data && (
+              <PushableButton
+                onClick={() => {
+                  navigate({ to: "/" });
+                }}
+                className="mb-4"
+                disabled={!micPermission.data || !capturePermission.data}
+              >
+                <Trans>Continue</Trans>
+              </PushableButton>
+            )}
+          </div>
         </div>
-      </div>
 
-      <Particles
-        className="absolute inset-0 z-0"
-        quantity={100}
-        ease={80}
-        color={"#000000"}
-        refresh
-      />
-    </main>
+        <Particles
+          className="absolute inset-0 z-0"
+          quantity={100}
+          ease={80}
+          color={"#000000"}
+          refresh
+        />
+      </main>
+    </div>
   );
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { open } from "@tauri-apps/plugin-shell";
 import { Trans } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ import { Particles } from "@hypr/ui/components/ui/particles";
 import { TextAnimate } from "@hypr/ui/components/ui/text-animate";
 import clsx from "clsx";
 import { PlayPauseButton } from "@/components/PlayPauseButton";
+import { Button } from "@hypr/ui/components/ui/button";
 
 export const Route = createFileRoute("/login")({
   component: Component,
@@ -25,6 +26,7 @@ export const Route = createFileRoute("/login")({
 });
 
 function Component() {
+  const navigate = useNavigate();
   const { code } = Route.useLoaderData();
   const [port, setPort] = useState<number | null>(null);
 
@@ -93,7 +95,7 @@ function Component() {
             once
             className="mb-12 text-center text-lg font-medium text-neutral-600 md:text-xl lg:text-2xl"
           >
-            AI Meeting Notepad that keeps you in flow
+            AI notepad for meetings
           </TextAnimate>
 
           <PushableButton onClick={handleSignIn} className="mb-4 w-full">
@@ -101,7 +103,7 @@ function Component() {
           </PushableButton>
 
           <p className="text-xs text-neutral-400">
-            By signing in, I agree to the{" "}
+            By proceeding, I agree to the{" "}
             <a
               href="https://hyprnote.com/docs/terms"
               target="_blank"
@@ -120,6 +122,16 @@ function Component() {
               Privacy Policy
             </a>
           </p>
+
+          <Button
+            variant="ghost"
+            className="mt-8"
+            onClick={() => {
+              navigate({ to: "/onboarding" });
+            }}
+          >
+            <Trans>Skip to use locally</Trans>
+          </Button>
         </div>
       </div>
 
