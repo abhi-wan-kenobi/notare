@@ -15,12 +15,7 @@ const sizeClasses = {
 
 export function WidgetContainer({ size, children }: WidgetContainerProps) {
   return (
-    <div
-      className={clsx(
-        "rounded-lg border bg-white p-4",
-        sizeClasses[size]
-      )}
-    >
+    <div className={clsx("rounded-lg border bg-white p-4", sizeClasses[size])}>
       {children}
     </div>
   );

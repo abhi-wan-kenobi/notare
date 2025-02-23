@@ -34,7 +34,7 @@ export const commands = {
 
       closed = true;
       unlisten && unlisten();
-      
+
       writer.ready.then(() => {
         writer.close().catch((e) => console.error(e));
       });

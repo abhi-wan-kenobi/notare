@@ -7,7 +7,11 @@ interface TitleInputProps {
   onNavigateToEditor?: () => void;
 }
 
-export default function TitleInput({ value, onChange, onNavigateToEditor }: TitleInputProps) {
+export default function TitleInput({
+  value,
+  onChange,
+  onNavigateToEditor,
+}: TitleInputProps) {
   return (
     <input
       type="text"

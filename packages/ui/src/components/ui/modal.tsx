@@ -36,7 +36,7 @@ export function Modal({
         onClose();
       }
     },
-    { enabled: open }
+    { enabled: open },
   );
 
   if (!open) return null;

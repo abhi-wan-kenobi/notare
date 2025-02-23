@@ -26,9 +26,9 @@ export function NoteHeader({ onNavigateToEditor }: NoteHeaderProps) {
   return (
     <>
       <div className="flex flex-row items-center justify-between pl-8 pr-4 pt-6">
-        <TitleInput 
-          value={store.session.title} 
-          onChange={handleTitleChange} 
+        <TitleInput
+          value={store.session.title}
+          onChange={handleTitleChange}
           onNavigateToEditor={onNavigateToEditor}
         />
         <ListenButton

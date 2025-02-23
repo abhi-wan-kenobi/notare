@@ -41,10 +41,10 @@ const CommandDialog = ({
       event.preventDefault();
       onOpenChange?.(false);
     },
-    { 
+    {
       enabled: open,
-      enableOnFormTags: true 
-    }
+      enableOnFormTags: true,
+    },
   );
 
   if (!open) return null;

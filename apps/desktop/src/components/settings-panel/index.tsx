@@ -54,7 +54,7 @@ export default function SettingsPanel() {
       event.preventDefault();
       setOpen((prev) => !prev);
     },
-    { enableOnFormTags: true }
+    { enableOnFormTags: true },
   );
 
   useEffect(() => {

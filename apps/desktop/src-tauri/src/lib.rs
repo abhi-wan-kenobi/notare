@@ -11,7 +11,6 @@ use tauri::Manager;
 
 pub struct App {
     handle: tauri::AppHandle,
-    bridge: hypr_bridge::Client,
     user_id: String,
     vault: vault::Vault,
 }
@@ -125,20 +124,11 @@ pub async fn main() {
                 .get(vault::Key::RemoteServer)
                 .unwrap_or("123".to_string());
 
-            {
-                let bridge = hypr_bridge::Client::builder()
-                    .api_base(server_api_base)
-                    .api_key(server_api_key)
-                    .build()
-                    .unwrap();
-
-                app.manage(App {
-                    user_id: user_id.clone(),
-                    handle: app.clone(),
-                    bridge: bridge.clone(),
-                    vault,
-                });
-            }
+            app.manage(App {
+                user_id: user_id.clone(),
+                handle: app.clone(),
+                vault,
+            });
 
             {
                 use tauri_plugin_autostart::ManagerExt;

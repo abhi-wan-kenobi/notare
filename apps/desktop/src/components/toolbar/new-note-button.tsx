@@ -20,7 +20,7 @@ export function NewNoteButton() {
       event.preventDefault();
       handleClickNewNote();
     },
-    { enableOnFormTags: true }
+    { enableOnFormTags: true },
   );
 
   return (
