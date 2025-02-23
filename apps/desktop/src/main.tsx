@@ -10,7 +10,6 @@ import { routeTree } from "./routeTree.gen";
 
 import { ThemeProvider } from "@hypr/ui/contexts/theme";
 import { TooltipProvider } from "@hypr/ui/components/ui/tooltip";
-import { WindowProvider } from "./contexts";
 import { HyprProvider } from "./contexts/hypr";
 
 import { i18n } from "@lingui/core";
@@ -90,16 +89,14 @@ if (!rootElement.innerHTML) {
     <CatchBoundary getResetKey={() => "error"} errorComponent={ErrorComponent}>
       <TooltipProvider delayDuration={700} skipDelayDuration={300}>
         <ThemeProvider defaultTheme="light">
-          <WindowProvider>
-            <QueryClientProvider client={queryClient}>
-              <I18nProvider i18n={i18n}>
-                <HyprProvider>
-                  <App />
-                  <Toaster position="top-center" />
-                </HyprProvider>
-              </I18nProvider>
-            </QueryClientProvider>
-          </WindowProvider>
+          <QueryClientProvider client={queryClient}>
+            <I18nProvider i18n={i18n}>
+              <HyprProvider>
+                <App />
+                <Toaster position="top-center" />
+              </HyprProvider>
+            </I18nProvider>
+          </QueryClientProvider>
         </ThemeProvider>
       </TooltipProvider>
     </CatchBoundary>,

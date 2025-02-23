@@ -3,11 +3,6 @@ import { commands as dbCommands, type Config } from "@hypr/plugin-db";
 
 import { SessionProvider } from "@/contexts";
 import EditorArea from "@/components/note/editor";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@hypr/ui/components/ui/resizable";
 import RightPanel from "@/components/note/right-panel";
 
 function Component() {
@@ -15,17 +10,13 @@ function Component() {
 
   return (
     <SessionProvider session={session}>
-      <ResizablePanelGroup direction="horizontal">
-        <ResizablePanel>
-          <div className="relative flex h-full flex-col overflow-hidden">
-            <EditorArea />
-          </div>
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={30} minSize={30} maxSize={60}>
-          <RightPanel />
-        </ResizablePanel>
-      </ResizablePanelGroup>
+      <div className="flex h-full w-full">
+        <div className="relative flex h-full flex-1 flex-col overflow-hidden">
+          <EditorArea />
+        </div>
+
+        <RightPanel />
+      </div>
     </SessionProvider>
   );
 }
