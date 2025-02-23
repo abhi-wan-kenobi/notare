@@ -1,7 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { commands as dbCommands } from "@hypr/plugin-db";
+import { commands as dbCommands, type Config } from "@hypr/plugin-db";
 
-import { type Config } from "@/types";
 import { SessionProvider } from "@/contexts";
 import EditorArea from "@/components/note/editor";
 import NoteAIButton from "@/components/note-ai-button";
