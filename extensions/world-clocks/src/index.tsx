@@ -1,7 +1,11 @@
-export default function View() {
-  return <div>WorldClocks</div>;
-}
+import { type Extension } from "@hypr/extension-utils";
 
-export function Small() {}
+const extension: Extension = {
+  init: async () => {
+    console.log("WorldClocks init");
+  },
+  panelSmall: () => <div>WorldClocks</div>,
+  panelLarge: () => <div>WorldClocks</div>,
+};
 
-export function Large() {}
+export default extension;

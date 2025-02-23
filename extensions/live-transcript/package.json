@@ -14,7 +14,7 @@
     "preview": "storybook dev -p 6006"
   },
   "dependencies": {
-    "@hypr/client": "workspace:*",
+    "@hypr/extension-utils": "workspace:^",
     "@hypr/plugin-listener": "workspace:*",
     "@hypr/plugin-template": "workspace:*",
     "@tanstack/react-query": "^5.66.0",

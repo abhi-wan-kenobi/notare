@@ -1,4 +1,4 @@
-import { Extension } from "../../types";
+import { type Extension } from "@hypr/extension-utils";
 
 import init from "./init";
 

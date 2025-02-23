@@ -18,3 +18,10 @@ export const modelProvider = customProvider({
     any: openai("gpt-4", { structuredOutputs: true }),
   },
 });
+
+export interface Extension {
+  init: () => Promise<void>;
+  modal?: (props: { onClose: () => void }) => React.ReactNode;
+  panelSmall?: (props: {}) => React.ReactNode;
+  panelLarge?: (props: {}) => React.ReactNode;
+}

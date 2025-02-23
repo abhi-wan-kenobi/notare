@@ -423,9 +423,6 @@ importers:
 
   extensions/live-summary:
     dependencies:
-      '@hypr/client':
-        specifier: workspace:*
-        version: link:../../packages/client
       '@hypr/extension-utils':
         specifier: workspace:^
         version: link:../utils
@@ -490,9 +487,9 @@ importers:
 
   extensions/live-transcript:
     dependencies:
-      '@hypr/client':
-        specifier: workspace:*
-        version: link:../../packages/client
+      '@hypr/extension-utils':
+        specifier: workspace:^
+        version: link:../utils
       '@hypr/plugin-listener':
         specifier: workspace:*
         version: link:../../plugins/listener
@@ -548,6 +545,9 @@ importers:
 
   extensions/obsidian:
     dependencies:
+      '@hypr/extension-utils':
+        specifier: workspace:^
+        version: link:../utils
       '@hypr/obsidian':
         specifier: workspace:*
         version: link:../../packages/obsidian
@@ -561,6 +561,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^1.1.13
         version: 1.1.13(zod@3.24.2)
+      '@hypr/client':
+        specifier: workspace:^
+        version: link:../../packages/client
       '@tauri-apps/plugin-http':
         specifier: ^2.3.0
         version: 2.3.0
@@ -570,6 +573,9 @@ importers:
 
   extensions/world-clocks:
     dependencies:
+      '@hypr/extension-utils':
+        specifier: workspace:^
+        version: link:../utils
       react:
         specifier: ^18.3.1
         version: 18.3.1

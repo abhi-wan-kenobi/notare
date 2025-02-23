@@ -2,13 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 
-import { Extension } from "../../types";
-
-import type { Client } from "@hypr/client";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as templateCommands } from "@hypr/plugin-template";
 import { commands as listenerCommands } from "@hypr/plugin-listener";
-import { modelProvider, generateObject } from "@hypr/extension-utils";
+import {
+  modelProvider,
+  generateObject,
+  type Extension,
+} from "@hypr/extension-utils";
 
 import { liveSummaryResponseSchema } from "./types";
 import {
@@ -18,12 +19,7 @@ import {
 
 const DEFAULT_INTERVAL = 10 * 1000;
 
-interface Props {
-  onClose: () => void;
-  client: Client;
-}
-
-const modal: Extension["modal"] = ({ onClose, client }: Props) => {
+const modal: Extension["modal"] = ({ onClose }) => {
   const [progress, setProgress] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 

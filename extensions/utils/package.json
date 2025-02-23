@@ -7,6 +7,7 @@
   "main": "./src/index.ts",
   "dependencies": {
     "@ai-sdk/openai": "^1.1.13",
+    "@hypr/client": "workspace:^",
     "@tauri-apps/plugin-http": "^2.3.0",
     "ai": "^4.1.45"
   }
