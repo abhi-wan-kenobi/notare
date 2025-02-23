@@ -423,12 +423,12 @@ importers:
 
   extensions/live-summary:
     dependencies:
-      '@ai-sdk/openai':
-        specifier: ^1.1.13
-        version: 1.1.13(zod@3.24.2)
       '@hypr/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@hypr/extension-utils':
+        specifier: workspace:^
+        version: link:../utils
       '@hypr/plugin-db':
         specifier: workspace:*
         version: link:../../plugins/db
@@ -444,12 +444,6 @@ importers:
       '@tauri-apps/api':
         specifier: ^2.2.0
         version: 2.2.0
-      '@tauri-apps/plugin-http':
-        specifier: ^2.3.0
-        version: 2.3.0
-      ai:
-        specifier: ^4.1.45
-        version: 4.1.45(react@18.3.1)(zod@3.24.2)
       motion:
         specifier: ^12.4.2
         version: 12.4.2(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -561,6 +555,18 @@ importers:
       typescript:
         specifier: ^5.7.3
         version: 5.7.3
+
+  extensions/utils:
+    dependencies:
+      '@ai-sdk/openai':
+        specifier: ^1.1.13
+        version: 1.1.13(zod@3.24.2)
+      '@tauri-apps/plugin-http':
+        specifier: ^2.3.0
+        version: 2.3.0
+      ai:
+        specifier: ^4.1.45
+        version: 4.1.45(react@18.3.1)(zod@3.24.2)
 
   extensions/world-clocks:
     dependencies:

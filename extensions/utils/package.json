@@ -1,0 +1,13 @@
+{
+  "name": "@hypr/extension-utils",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "dependencies": {
+    "@ai-sdk/openai": "^1.1.13",
+    "@tauri-apps/plugin-http": "^2.3.0",
+    "ai": "^4.1.45"
+  }
+}

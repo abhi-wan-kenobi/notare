@@ -5,34 +5,16 @@ import { motion } from "motion/react";
 import { Extension } from "../../types";
 
 import type { Client } from "@hypr/client";
-
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as templateCommands } from "@hypr/plugin-template";
 import { commands as listenerCommands } from "@hypr/plugin-listener";
+import { modelProvider, generateObject } from "@hypr/extension-utils";
 
 import { liveSummaryResponseSchema } from "./types";
 import {
   TEMPLATE_LIVE_SUMMARY_SYSTEM,
   TEMPLATE_LIVE_SUMMARY_USER,
 } from "./init";
-
-import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-
-import { createOpenAI } from "@ai-sdk/openai";
-import { customProvider, generateObject } from "ai";
-
-const openai = createOpenAI({
-  baseURL: "http://172.29.67.220:9999/v1",
-  apiKey: "NOT_NEEDED",
-  // @ts-ignore
-  fetch: window.STORYBOOK ? globalThis.fetch : tauriFetch,
-});
-
-const myOpenAI = customProvider({
-  languageModels: {
-    any: openai("gpt-4", { structuredOutputs: true }),
-  },
-});
 
 const DEFAULT_INTERVAL = 10 * 1000;
 
@@ -74,7 +56,7 @@ const modal: Extension["modal"] = ({ onClose, client }: Props) => {
       );
 
       const { object } = await generateObject({
-        model: myOpenAI.languageModel("any"),
+        model: modelProvider.languageModel("any"),
         schema: liveSummaryResponseSchema,
         messages: [
           { role: "system", content: systemMessageContent },

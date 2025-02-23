@@ -2,19 +2,25 @@
 
 ## Quickstart
 
+```bash
+todo
+```
+
+## Utils
+
+[@hypr/extension-utils](https://github.com/fastrepl/hyprnote/tree/main/extensions/utils) contains essential utilities for extension development.
+
 ## Interface
 
-All extension should **default-export** [Extension](https://github.com/fastrepl/hyprnote/blob/main/extensions/types.ts) interface.
+All extension must **default-export** [Extension](https://github.com/fastrepl/hyprnote/blob/main/extensions/types.ts) interface.
 
-## Preview
-
-### Storybook
+## Storybook
 
 ```bash
 pnpm -F @hypr/<EXTENSION_NAME> preview
 ```
 
-### Mocking
+## Mocking
 
 We use `MSW` for network calls, and `@tauri-apps/api/mocks` for Tauri commands.
 

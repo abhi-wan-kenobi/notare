@@ -4,9 +4,6 @@ import "../src/globals.css";
 
 initialize();
 
-// @ts-ignore
-window.STORYBOOK = true;
-
 const preview: Preview = {
   loaders: [mswLoader],
 };
