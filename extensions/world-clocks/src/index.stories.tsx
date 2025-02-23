@@ -4,8 +4,8 @@ import component from "./index";
 
 const meta = {
   title: "Extensions/World Clocks",
-  component: component.panelSmall,
-} satisfies Meta<typeof component.panelSmall>;
+  component: component.panelTwoByTwo,
+} satisfies Meta<typeof component.panelTwoByTwo>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

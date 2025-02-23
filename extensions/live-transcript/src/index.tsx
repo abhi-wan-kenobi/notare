@@ -4,10 +4,10 @@ import init from "./init";
 
 const extension: Extension = {
   init,
-  panelSmall: () => {
+  panelTwoByTwo: () => {
     return (
       <div>
-        <h1>Live</h1>
+        <h1>qwdqwdqwdqw</h1>
       </div>
     );
   },

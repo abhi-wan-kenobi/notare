@@ -8,7 +8,7 @@ export * from "ai";
 export const fetch = window.__TAURI__ ? tauriFetch : globalThis.fetch;
 
 const openai = createOpenAI({
-  baseURL: "http://localhost:9999/v1",
+  baseURL: "http://localhost:1234/v1",
   apiKey: "NOT_NEEDED",
   fetch,
 });
@@ -22,6 +22,6 @@ export const modelProvider = customProvider({
 export interface Extension {
   init: () => Promise<void>;
   modal?: (props: { onClose: () => void }) => React.ReactNode;
-  panelSmall?: (props: {}) => React.ReactNode;
-  panelLarge?: (props: {}) => React.ReactNode;
+  panelTwoByTwo?: (props: {}) => React.ReactNode;
+  panelFull?: (props: {}) => React.ReactNode;
 }

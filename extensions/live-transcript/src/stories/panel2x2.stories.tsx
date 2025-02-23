@@ -8,14 +8,14 @@ import extension from "../index";
 const queryClient = new QueryClient();
 
 const meta = {
-  title: "Extensions/Live Transcript/Panel Small",
-  component: extension.panelSmall,
-} satisfies Meta<typeof extension.panelSmall>;
+  title: "Extensions/Live Transcript/Panel 2x2",
+  component: extension.panelTwoByTwo,
+} satisfies Meta<typeof extension.panelTwoByTwo>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Main: Story = {
+export const Main2: Story = {
   parameters: {
     msw: {
       handlers: [] satisfies HttpHandler[],
