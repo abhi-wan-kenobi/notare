@@ -13,10 +13,17 @@ pub fn model_builder(
 pub fn make_progress_handler(
     on_progress: tauri::ipc::Channel<u8>,
 ) -> impl FnMut(kalosm_model_types::ModelLoadingProgress) {
+    let mut last_v: Option<u8> = None;
+
     move |progress| {
         if let kalosm_model_types::ModelLoadingProgress::Downloading { progress, .. } = progress {
-            let percentage = ((progress.progress as f32 / progress.size as f32) * 100.0) as u8;
-            let _ = on_progress.send(percentage);
+            let v = ((progress.progress as f32 / progress.size as f32) * 100.0) as u8;
+
+            if last_v != Some(v) {
+                if on_progress.send(v).is_ok() {
+                    last_v = Some(v);
+                }
+            }
         }
     }
 }

@@ -8,10 +8,17 @@ pub fn model_builder(data_dir: std::path::PathBuf) -> rwhisper::WhisperBuilder {
 pub fn make_progress_handler(
     on_progress: tauri::ipc::Channel<u8>,
 ) -> impl FnMut(rwhisper::ModelLoadingProgress) {
+    let mut last_v: Option<u8> = None;
+
     move |progress| {
         if let rwhisper::ModelLoadingProgress::Downloading { progress, .. } = progress {
-            let percentage = ((progress.progress as f32 / progress.size as f32) * 100.0) as u8;
-            let _ = on_progress.send(percentage);
+            let v = ((progress.progress as f32 / progress.size as f32) * 100.0) as u8;
+
+            if last_v != Some(v) {
+                if on_progress.send(v).is_ok() {
+                    last_v = Some(v);
+                }
+            }
         }
     }
 }
