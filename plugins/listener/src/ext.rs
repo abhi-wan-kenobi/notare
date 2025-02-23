@@ -74,11 +74,11 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
             return Err("Session already started".to_string());
         }
 
-        let bridge = hypr_bridge::Client::builder()
+        let listen_client = crate::client::ListenClient::builder()
             .api_base("http://localhost:1234".to_string())
             .api_key("123".to_string())
-            .build()
-            .unwrap();
+            .language(codes_iso_639::part_1::LanguageCode::En)
+            .build();
 
         let mic_sample_stream = {
             let mut input = hypr_audio::AudioInput::from_mic();
@@ -166,9 +166,8 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
         s.timeline = Some(timeline.clone());
 
         // TODO
-        let language = hypr_bridge::LanguageCode::En;
+        let language = codes_iso_639::part_1::LanguageCode::En;
 
-        let listen_client = bridge.listen().language(language).build();
         let audio_stream = hypr_audio::ReceiverStreamSource::new(mixed_rx, SAMPLE_RATE);
         let listen_stream = listen_client.from_audio(audio_stream).await.unwrap();
 
@@ -182,10 +181,10 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
                     let mut timeline = timeline.lock().await;
 
                     match result {
-                        hypr_bridge::ListenOutputChunk::Transcribe(chunk) => {
+                        crate::ListenOutputChunk::Transcribe(chunk) => {
                             timeline.add_transcription(chunk);
                         }
-                        hypr_bridge::ListenOutputChunk::Diarize(chunk) => {
+                        crate::ListenOutputChunk::Diarize(chunk) => {
                             timeline.add_diarization(chunk);
                         }
                     }

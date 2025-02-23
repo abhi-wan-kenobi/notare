@@ -9,7 +9,7 @@ use crate::state::STTState;
 use hypr_stt::recorded::{RecordedSpeech, RecordedSpeechToText};
 
 pub async fn handler(
-    Query(params): Query<hypr_bridge::ListenParams>,
+    Query(params): Query<tauri_plugin_listener::ListenParams>,
     State(state): State<STTState>,
 ) -> impl IntoResponse {
     let stt = state.recorded_stt.for_language(params.language).await;

@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hypr-audio = { path = "../../crates/audio", package = "audio" }
 hypr-db = { path = "../../crates/db", package = "db", default-features = false, features = ["user"] }
+hypr-ws = { path = "../../crates/ws", package = "ws", features = ["server"] }
 
 anyhow = { workspace = true }
 thiserror = { workspace = true }
@@ -22,11 +22,9 @@ serde_json = { workspace = true }
 schemars = { workspace = true }
 specta = { workspace = true, features = ["derive"] }
 
-async-stream = { workspace = true }
 futures-util = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
-tokio-tungstenite = { workspace = true, features = ["native-tls-vendored"] }
 
 [dev-dependencies]
 hypr-audio = { path = "../../crates/audio", package = "audio" }

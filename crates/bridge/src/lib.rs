@@ -16,12 +16,6 @@ impl Client {
     pub fn builder() -> ClientBuilder {
         ClientBuilder::default()
     }
-
-    pub fn listen(&self) -> listen::ListenClientBuilder {
-        listen::ListenClient::builder()
-            .api_base(self.api_base.clone())
-            .api_key(self.api_key.clone())
-    }
 }
 
 #[derive(Default)]

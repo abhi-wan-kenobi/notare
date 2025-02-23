@@ -1,11 +1,10 @@
 use bytes::BufMut;
-use futures_util::Stream;
-use futures_util::StreamExt;
-use tokio_tungstenite::tungstenite::ClientRequestBuilder;
+use futures_util::{Stream, StreamExt};
 
-use super::{WebSocketClient, WebSocketIO};
-use crate::{ListenInputChunk, ListenOutputChunk};
 use hypr_audio::AsyncSource;
+use hypr_ws::client::{ClientRequestBuilder, WebSocketClient, WebSocketIO};
+
+use crate::{ListenInputChunk, ListenOutputChunk};
 
 #[derive(Default)]
 pub struct ListenClientBuilder {
@@ -56,10 +55,11 @@ impl ListenClientBuilder {
             url.to_string().parse().unwrap()
         };
 
-        let request = ClientRequestBuilder::new(uri).with_header(
-            reqwest::header::AUTHORIZATION.to_string(),
-            format!("Bearer {}", self.api_key.unwrap()),
-        );
+        let request = match self.api_key {
+            Some(key) => ClientRequestBuilder::new(uri)
+                .with_header("Authorization", format!("Bearer {}", key)),
+            None => ClientRequestBuilder::new(uri),
+        };
 
         ListenClient { request }
     }
@@ -89,7 +89,7 @@ impl ListenClient {
     pub async fn from_audio(
         &self,
         audio_stream: impl AsyncSource + Send + Unpin + 'static,
-    ) -> Result<impl Stream<Item = ListenOutputChunk>, crate::Error> {
+    ) -> Result<impl Stream<Item = ListenOutputChunk>, hypr_ws::Error> {
         let processed_stream = audio_stream.resample(16 * 1000).chunks(1024).map(|chunk| {
             let mut buf = bytes::BytesMut::with_capacity(chunk.len() * 4);
             for sample in chunk {

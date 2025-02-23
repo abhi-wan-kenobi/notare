@@ -1,8 +1,7 @@
-use futures_util::Stream;
-use futures_util::StreamExt;
-use tokio_tungstenite::tungstenite::ClientRequestBuilder;
+use futures_util::{Stream, StreamExt};
 
-use super::{WebSocketClient, WebSocketIO};
+use hypr_ws::client::{ClientRequestBuilder, WebSocketClient, WebSocketIO};
+
 use crate::{DiarizeInputChunk, DiarizeOutputChunk};
 
 #[derive(Default)]
@@ -77,7 +76,7 @@ impl DiarizeClient {
     pub async fn from_audio<S, E>(
         &self,
         stream: S,
-    ) -> Result<impl Stream<Item = DiarizeOutputChunk>, crate::Error>
+    ) -> Result<impl Stream<Item = DiarizeOutputChunk>, hypr_ws::Error>
     where
         S: Stream<Item = Result<bytes::Bytes, E>> + Send + Unpin + 'static,
         E: std::error::Error + Send + Sync + 'static,

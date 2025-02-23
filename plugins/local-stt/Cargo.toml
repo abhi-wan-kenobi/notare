@@ -13,18 +13,18 @@ tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
 hypr-data = { path = "../../crates/data", package = "data" }
-rodio = { workspace = true, features = ["wav"] }
-
-futures-core = { workspace = true }
 
 bytes = { workspace = true }
 codes-iso-639 = { workspace = true }
 dirs = { workspace = true }
+futures-core = { workspace = true }
 reqwest = { workspace = true }
+rodio = { workspace = true, features = ["wav"] }
 specta-typescript = { workspace = true }
 
 [dependencies]
 hypr-bridge = { path = "../../crates/bridge", package = "bridge" }
+tauri-plugin-listener = { path = "../listener" }
 
 tauri = { workspace = true, features = ["test"] }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }

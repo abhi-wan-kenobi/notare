@@ -9,14 +9,6 @@ macro_rules! common_derives {
     };
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error("unknown error")]
-    Unknown,
-    #[error("reqwest error")]
-    Reqwest(#[from] reqwest::Error),
-}
-
 common_derives! {
     pub enum ListenOutputChunk {
         Transcribe(hypr_db::user::TranscriptChunk),
@@ -30,11 +22,6 @@ common_derives! {
         pub audio: Vec<u8>,
     }
 }
-
-pub type DiarizeInputChunk = ListenInputChunk;
-pub type TranscribeInputChunk = ListenInputChunk;
-pub type DiarizeOutputChunk = hypr_db::user::DiarizationChunk;
-pub type TranscribeOutputChunk = hypr_db::user::TranscriptChunk;
 
 common_derives! {
     pub struct ListenParams {

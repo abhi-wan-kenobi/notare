@@ -19,6 +19,7 @@ hypr-s3 = { path = "../../../crates/s3", package = "s3" }
 hypr-slack = { path = "../../../crates/slack", package = "slack" }
 hypr-stt = { path = "../../../crates/stt", package = "stt", features = ["realtime", "recorded"] }
 hypr-turso = { path = "../../../crates/turso", package = "turso" }
+tauri-plugin-listener = { path = "../../../plugins/listener" }
 
 async-stream = { workspace = true }
 futures-core = { workspace = true }

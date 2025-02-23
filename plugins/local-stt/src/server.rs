@@ -54,7 +54,7 @@ async fn health() -> impl IntoResponse {
 }
 
 async fn listen(
-    Query(params): Query<hypr_bridge::ListenParams>,
+    Query(params): Query<tauri_plugin_listener::ListenParams>,
     ws: WebSocketUpgrade,
     AxumState(state): AxumState<crate::SharedState>,
 ) -> impl IntoResponse {
@@ -64,7 +64,7 @@ async fn listen(
 async fn websocket(
     socket: WebSocket,
     state: crate::SharedState,
-    _params: hypr_bridge::ListenParams,
+    _params: tauri_plugin_listener::ListenParams,
 ) {
     tracing::info!("websocket_connected");
 
@@ -156,14 +156,9 @@ mod tests {
 
         let server = run_server(state).await.unwrap();
 
-        let client = hypr_bridge::ClientBuilder::default()
+        let listen_cient = tauri_plugin_listener::ListenClientBuilder::default()
             .api_base(format!("http://{}", server.addr))
             .api_key("NONE")
-            .build()
-            .unwrap();
-
-        let listen_cient = client
-            .listen()
             .language(codes_iso_639::part_1::LanguageCode::En)
             .build();
 

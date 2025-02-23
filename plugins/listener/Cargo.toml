@@ -20,17 +20,22 @@ specta-typescript = { workspace = true }
 
 [dependencies]
 hypr-audio = { path = "../../crates/audio", package = "audio" }
-hypr-bridge = { path = "../../crates/bridge", package = "bridge" }
 hypr-db = { path = "../../crates/db", package = "db", default-features = false, features = ["user"] }
+hypr-ws = { path = "../../crates/ws", package = "ws" }
 
 tauri = { workspace = true, features = ["specta", "test"] }
 tracing = { workspace = true }
 
+bytes = { workspace = true }
+codes-iso-639 = { workspace = true }
+schemars = { workspace = true }
 serde = { workspace = true }
+serde_bytes = { workspace = true }
 specta = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 thiserror = { workspace = true }
+url = { workspace = true }
 
 futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

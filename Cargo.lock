@@ -321,6 +321,7 @@ dependencies = [
  "specta-typescript",
  "strum 0.26.3",
  "stt",
+ "tauri-plugin-listener",
  "time",
  "tokio",
  "tower 0.5.2",
@@ -1666,9 +1667,9 @@ dependencies = [
  "specta",
  "thiserror 2.0.11",
  "tokio",
- "tokio-tungstenite 0.26.2",
  "tracing",
  "url",
+ "ws",
 ]
 
 [[package]]
@@ -11461,14 +11462,17 @@ name = "tauri-plugin-listener"
 version = "0.1.0"
 dependencies = [
  "audio 0.1.0",
- "bridge",
+ "bytes",
+ "codes-iso-639",
  "data",
  "db",
  "futures-util",
  "hound",
  "insta",
  "intervaltree",
+ "schemars",
  "serde",
+ "serde_bytes",
  "serde_json",
  "specta",
  "specta-typescript",
@@ -11479,6 +11483,8 @@ dependencies = [
  "thiserror 2.0.11",
  "tokio",
  "tracing",
+ "url",
+ "ws",
 ]
 
 [[package]]
@@ -11533,6 +11539,7 @@ dependencies = [
  "specta-typescript",
  "tauri",
  "tauri-plugin",
+ "tauri-plugin-listener",
  "tauri-specta",
  "thiserror 2.0.11",
  "tokio",
@@ -14158,7 +14165,15 @@ dependencies = [
 name = "ws"
 version = "0.1.0"
 dependencies = [
+ "async-stream",
+ "bytes",
+ "futures-util",
+ "serde",
+ "serde_json",
  "thiserror 2.0.11",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+ "tracing",
 ]
 
 [[package]]
