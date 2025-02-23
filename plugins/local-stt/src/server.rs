@@ -76,7 +76,7 @@ async fn websocket(
     }
 
     let model = state.model.as_ref().unwrap();
-    let audio_source = WsAudioSource::new(ws_receiver, 16 * 1000);
+    let audio_source = WebSocketAudioSource::new(ws_receiver, 16 * 1000);
     let mut stream = audio_source.transcribe(model.clone());
 
     while let Some(chunk) = stream.next().await {
@@ -84,12 +84,12 @@ async fn websocket(
     }
 }
 
-pub struct WsAudioSource {
+pub struct WebSocketAudioSource {
     receiver: Option<SplitStream<WebSocket>>,
     sample_rate: u32,
 }
 
-impl WsAudioSource {
+impl WebSocketAudioSource {
     pub fn new(receiver: SplitStream<WebSocket>, sample_rate: u32) -> Self {
         Self {
             receiver: Some(receiver),
@@ -98,7 +98,7 @@ impl WsAudioSource {
     }
 }
 
-impl kalosm_sound::AsyncSource for WsAudioSource {
+impl kalosm_sound::AsyncSource for WebSocketAudioSource {
     fn as_stream(&mut self) -> impl futures_core::Stream<Item = f32> + '_ {
         let receiver = self.receiver.as_mut().unwrap();
 
