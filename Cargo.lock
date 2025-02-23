@@ -11525,6 +11525,7 @@ dependencies = [
  "bytes",
  "codes-iso-639",
  "data",
+ "db",
  "dirs 6.0.0",
  "futures-core",
  "futures-util",

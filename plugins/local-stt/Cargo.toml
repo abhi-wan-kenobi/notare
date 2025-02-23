@@ -24,6 +24,7 @@ specta-typescript = { workspace = true }
 
 [dependencies]
 hypr-bridge = { path = "../../crates/bridge", package = "bridge" }
+hypr-db = { path = "../../crates/db", package = "db", default-features = false, features = ["user"] }
 tauri-plugin-listener = { path = "../listener" }
 
 tauri = { workspace = true, features = ["test"] }
@@ -38,10 +39,10 @@ specta = { workspace = true }
 tracing = { workspace = true }
 
 axum = { workspace = true, features = ["ws"] }
-futures-core = { workspace = true }
 futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 kalosm-common = { workspace = true }
 kalosm-sound = { workspace = true }
+rodio = { workspace = true, features = ["wav"] }
 rwhisper = { workspace = true, features = ["metal"] }

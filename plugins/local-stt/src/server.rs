@@ -9,8 +9,8 @@ use axum::{
 };
 use std::net::{Ipv4Addr, SocketAddr};
 
-use futures_util::{stream::SplitStream, StreamExt};
-use kalosm_sound::AsyncSourceTranscribeExt;
+use futures_util::{stream::SplitStream, SinkExt, Stream, StreamExt};
+use tauri_plugin_listener::{ListenInputChunk, ListenOutputChunk};
 
 #[derive(Clone)]
 pub struct ServerHandle {
@@ -68,7 +68,7 @@ async fn websocket(
 ) {
     tracing::info!("websocket_connected");
 
-    let (mut _ws_sender, ws_receiver) = socket.split();
+    let (mut ws_sender, ws_receiver) = socket.split();
 
     let state = state.lock().await;
     if state.model.is_none() {
@@ -77,11 +77,28 @@ async fn websocket(
 
     let model = state.model.as_ref().unwrap();
     let audio_source = WebSocketAudioSource::new(ws_receiver, 16 * 1000);
-    let mut stream = audio_source.transcribe(model.clone());
+
+    let chunked =
+        crate::chunker::FixedChunkStream::new(audio_source, std::time::Duration::from_secs(10));
+    let mut stream = rwhisper::TranscribeChunkedAudioStreamExt::transcribe(chunked, model.clone());
 
     while let Some(chunk) = stream.next().await {
-        println!("chunk: {:?}", chunk);
+        let text = chunk.text().to_string();
+        let start = chunk.start() as u64;
+        let duration = chunk.duration() as u64;
+
+        let data = ListenOutputChunk::Transcribe(hypr_db::user::TranscriptChunk {
+            text,
+            start,
+            end: start + duration,
+        });
+
+        let msg = Message::Text(serde_json::to_string(&data).unwrap().into());
+        ws_sender.send(msg).await.unwrap();
     }
+
+    ws_sender.close().await.unwrap();
+    tracing::info!("websocket_disconnected");
 }
 
 pub struct WebSocketAudioSource {
@@ -99,7 +116,7 @@ impl WebSocketAudioSource {
 }
 
 impl kalosm_sound::AsyncSource for WebSocketAudioSource {
-    fn as_stream(&mut self) -> impl futures_core::Stream<Item = f32> + '_ {
+    fn as_stream(&mut self) -> impl Stream<Item = f32> + '_ {
         let receiver = self.receiver.as_mut().unwrap();
 
         futures_util::stream::unfold(receiver, |receiver| async move {
@@ -107,7 +124,7 @@ impl kalosm_sound::AsyncSource for WebSocketAudioSource {
 
             match item {
                 Some(Ok(Message::Text(data))) => {
-                    let input: hypr_bridge::ListenInputChunk = serde_json::from_str(&data).unwrap();
+                    let input: ListenInputChunk = serde_json::from_str(&data).unwrap();
 
                     let samples: Vec<f32> = input
                         .audio
@@ -135,6 +152,7 @@ mod tests {
     use super::*;
 
     use futures_util::StreamExt;
+    use tauri_plugin_listener::ListenClientBuilder;
 
     #[tokio::test]
     async fn test_listen() {
@@ -147,7 +165,7 @@ mod tests {
                         .unwrap()
                         .join("Library/Application Support/com.hyprnote.dev/"),
                 )
-                .with_source(rwhisper::WhisperSource::QuantizedTiny)
+                .with_source(rwhisper::WhisperSource::QuantizedDistilLargeV3)
                 .build()
                 .await
                 .unwrap(),
@@ -156,7 +174,7 @@ mod tests {
 
         let server = run_server(state).await.unwrap();
 
-        let listen_cient = tauri_plugin_listener::ListenClientBuilder::default()
+        let listen_client = ListenClientBuilder::default()
             .api_base(format!("http://{}", server.addr))
             .api_key("NONE")
             .language(codes_iso_639::part_1::LanguageCode::En)
@@ -167,7 +185,7 @@ mod tests {
         ))
         .unwrap();
 
-        let listen_stream = listen_cient.from_audio(audio_source).await.unwrap();
+        let listen_stream = listen_client.from_audio(audio_source).await.unwrap();
         let mut listen_stream = Box::pin(listen_stream);
 
         while let Some(chunk) = listen_stream.next().await {
