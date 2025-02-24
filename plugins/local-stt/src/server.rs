@@ -15,7 +15,7 @@ use hypr_listener_types::{ListenInputChunk, ListenOutputChunk, ListenParams};
 #[derive(Clone)]
 pub struct ServerHandle {
     pub addr: SocketAddr,
-    shutdown: tokio::sync::watch::Sender<()>,
+    pub shutdown: tokio::sync::watch::Sender<()>,
 }
 
 pub async fn run_server(state: crate::SharedState) -> anyhow::Result<ServerHandle> {

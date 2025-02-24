@@ -50,7 +50,10 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
     async fn stop_server(&self) -> Result<(), String> {
         let state = self.state::<crate::SharedState>();
         let mut s = state.lock().await;
-        s.server.take();
+
+        if let Some(server) = s.server.take() {
+            let _ = server.shutdown.send(());
+        }
         Ok(())
     }
 }

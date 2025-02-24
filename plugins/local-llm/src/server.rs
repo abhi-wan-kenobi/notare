@@ -21,7 +21,7 @@ use async_openai::types::{
 #[derive(Clone)]
 pub struct ServerHandle {
     pub addr: SocketAddr,
-    shutdown: tokio::sync::watch::Sender<()>,
+    pub shutdown: tokio::sync::watch::Sender<()>,
 }
 
 impl ServerHandle {
