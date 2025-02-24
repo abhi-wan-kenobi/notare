@@ -126,6 +126,9 @@ importers:
       '@hypr/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@hypr/utils':
+        specifier: workspace:^
+        version: link:../../packages/utils
       '@lingui/core':
         specifier: ^5.2.0
         version: 5.2.0(@lingui/babel-plugin-lingui-macro@5.2.0(babel-plugin-macros@3.1.0)(typescript@5.7.3))(babel-plugin-macros@3.1.0)
@@ -201,6 +204,9 @@ importers:
       '@tauri-apps/plugin-updater':
         specifier: ^2.5.0
         version: 2.5.0
+      ai:
+        specifier: ^4.1.45
+        version: 4.1.45(react@18.3.1)(zod@3.24.2)
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -830,6 +836,27 @@ importers:
       typescript:
         specifier: ~5.6.2
         version: 5.6.3
+
+  packages/utils:
+    dependencies:
+      '@ai-sdk/openai':
+        specifier: ^1.1.13
+        version: 1.1.13(zod@3.24.2)
+      '@hypr/client':
+        specifier: workspace:^
+        version: link:../client
+      '@hypr/plugin-connector':
+        specifier: workspace:^
+        version: link:../../plugins/connector
+      '@hypr/plugin-sse':
+        specifier: workspace:^
+        version: link:../../plugins/sse
+      '@tauri-apps/plugin-http':
+        specifier: ^2.3.0
+        version: 2.3.0
+      ai:
+        specifier: ^4.1.45
+        version: 4.1.45(react@18.3.1)(zod@3.24.2)
 
   plugins/apple-calendar:
     dependencies:

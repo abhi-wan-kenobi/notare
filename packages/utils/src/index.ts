@@ -50,16 +50,3 @@ export const modelProvider = async () => {
     languageModels: { any },
   });
 };
-
-/**
- * Extensions are modular plugins that enhance Hyprnote's functionality.
- * Before creating an extension, we recommend reviewing the documentation.
- * Extensions integrate as widgets of varying sizes, with the default size set to twoByTwo.
- */
-export interface Extension {
-  init: () => Promise<void>;
-  oneByOne?: (props: { onMaximize?: () => void }) => React.ReactNode;
-  twoByOne?: (props: { onMaximize?: () => void }) => React.ReactNode;
-  twoByTwo: (props: { onMaximize?: () => void }) => React.ReactNode;
-  full?: (props: { onMinimize: () => void }) => React.ReactNode;
-}
