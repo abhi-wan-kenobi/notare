@@ -12,6 +12,7 @@ hypr-bridge = { path = "../../../crates/bridge", package = "bridge" }
 hypr-buffer = { path = "../../../crates/buffer", package = "buffer" }
 hypr-calendar = { path = "../../../crates/calendar", package = "calendar", features = ["google", "outlook"] }
 hypr-db = { path = "../../../crates/db", package = "db", features = ["admin", "user"] }
+hypr-listener-types = { path = "../../../crates/listener-types", package = "listener-types" }
 hypr-nango = { path = "../../../crates/nango", package = "nango" }
 hypr-notion = { path = "../../../crates/notion", package = "notion" }
 hypr-openai = { path = "../../../crates/openai", package = "openai" }
@@ -19,7 +20,6 @@ hypr-s3 = { path = "../../../crates/s3", package = "s3" }
 hypr-slack = { path = "../../../crates/slack", package = "slack" }
 hypr-stt = { path = "../../../crates/stt", package = "stt", features = ["realtime", "recorded"] }
 hypr-turso = { path = "../../../crates/turso", package = "turso" }
-tauri-plugin-listener = { path = "../../../plugins/listener" }
 
 async-stream = { workspace = true }
 futures-core = { workspace = true }

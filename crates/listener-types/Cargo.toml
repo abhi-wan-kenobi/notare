@@ -1,0 +1,15 @@
+[package]
+name = "listener-types"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hypr-db = { path = "../db", package = "db", default-features = false, features = ["user"] }
+
+serde = { workspace = true, features = ["derive"] }
+serde_bytes = { workspace = true }
+serde_json = { workspace = true }
+
+codes-iso-639 = { workspace = true }
+schemars = { workspace = true }
+specta = { workspace = true, features = ["derive"] }

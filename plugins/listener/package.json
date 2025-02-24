@@ -1,7 +1,7 @@
 {
   "name": "@hypr/plugin-listener",
   "private": true,
-  "main": "./js/bindings.gen.ts",
+  "main": "./js/index.ts",
   "scripts": {
     "codegen": "cargo test -p tauri-plugin-listener"
   },

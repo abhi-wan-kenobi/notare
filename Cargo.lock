@@ -308,6 +308,7 @@ dependencies = [
  "dotenv",
  "futures-core",
  "futures-util",
+ "listener-types",
  "nango",
  "notion",
  "openai",
@@ -321,7 +322,6 @@ dependencies = [
  "specta-typescript",
  "strum 0.26.3",
  "stt",
- "tauri-plugin-listener",
  "time",
  "tokio",
  "tower 0.5.2",
@@ -3129,6 +3129,7 @@ dependencies = [
  "tauri-plugin-apple-calendar",
  "tauri-plugin-autostart",
  "tauri-plugin-clipboard-manager",
+ "tauri-plugin-connector",
  "tauri-plugin-db",
  "tauri-plugin-decorum",
  "tauri-plugin-deep-link",
@@ -6068,6 +6069,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "lazy-regex"
+version = "3.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60c7310b93682b36b98fa7ea4de998d3463ccbebd94d935d6b48ba5b6ffa7126"
+dependencies = [
+ "lazy-regex-proc_macros",
+ "once_cell",
+ "regex",
+]
+
+[[package]]
+name = "lazy-regex-proc_macros"
+version = "3.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ba01db5ef81e17eb10a5e0f2109d1b3a3e29bac3070fdbd7d156bf7dbd206a1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "regex",
+ "syn 2.0.98",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6332,6 +6356,19 @@ name = "linux-raw-sys"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d26c52dbd32dccf2d10cac7725f8eae5296885fb5703b261f7d0a0739ec807ab"
+
+[[package]]
+name = "listener-types"
+version = "0.1.0"
+dependencies = [
+ "codes-iso-639",
+ "db",
+ "schemars",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "specta",
+]
 
 [[package]]
 name = "litemap"
@@ -8253,6 +8290,16 @@ name = "pin-utils"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
+
+[[package]]
+name = "pinger"
+version = "2.0.0"
+source = "git+https://github.com/orf/gping#688932a2374f104320960d4b1fcdb29084f9a486"
+dependencies = [
+ "lazy-regex",
+ "thiserror 2.0.11",
+ "winping",
+]
 
 [[package]]
 name = "piper"
@@ -11325,6 +11372,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-connector"
+version = "0.1.0"
+dependencies = [
+ "pinger",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-plugin",
+ "tauri-plugin-local-llm",
+ "tauri-plugin-local-stt",
+ "tauri-specta",
+ "tracing",
+]
+
+[[package]]
 name = "tauri-plugin-db"
 version = "0.1.0"
 dependencies = [
@@ -11470,15 +11534,15 @@ dependencies = [
  "hound",
  "insta",
  "intervaltree",
- "schemars",
+ "listener-types",
  "serde",
- "serde_bytes",
  "serde_json",
  "specta",
  "specta-typescript",
  "strum 0.26.3",
  "tauri",
  "tauri-plugin",
+ "tauri-plugin-connector",
  "tauri-specta",
  "thiserror 2.0.11",
  "tokio",
@@ -11531,6 +11595,7 @@ dependencies = [
  "futures-util",
  "kalosm-common",
  "kalosm-sound",
+ "listener-types",
  "reqwest 0.12.12",
  "rodio 0.20.1",
  "rwhisper",
@@ -13554,6 +13619,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
+name = "winapi_forked_icmpapi"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42aecb895d6340af9ccc8dab9aeabfeab6d5d7266c5fd172c8be7e07db71c1e3"
+dependencies = [
+ "winapi-i686-pc-windows-gnu",
+ "winapi-x86_64-pc-windows-gnu",
+]
+
+[[package]]
 name = "window-vibrancy"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -14085,6 +14160,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e7f4ea97f6f78012141bcdb6a216b2609f0979ada50b20ca5b52dde2eac2bb1"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "winping"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79ed0e3a789beb896b3de9fb7e93c76340f6f4adfab7770d6222b4b8625ef0aa"
+dependencies = [
+ "lazy_static",
+ "static_assertions",
+ "winapi_forked_icmpapi",
 ]
 
 [[package]]

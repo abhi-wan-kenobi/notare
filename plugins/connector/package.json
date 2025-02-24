@@ -1,9 +1,9 @@
 {
-  "name": "@hypr/plugin-apple-calendar",
+  "name": "@hypr/plugin-connector",
   "private": true,
   "main": "./js/index.ts",
   "scripts": {
-    "codegen": "cargo test -p tauri-plugin-apple-calendar"
+    "codegen": "cargo test -p tauri-plugin-connector"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.2.0"

@@ -6,10 +6,11 @@ use axum::{
 
 use crate::state::STTState;
 
+use hypr_listener_types::ListenParams;
 use hypr_stt::recorded::{RecordedSpeech, RecordedSpeechToText};
 
 pub async fn handler(
-    Query(params): Query<tauri_plugin_listener::ListenParams>,
+    Query(params): Query<ListenParams>,
     State(state): State<STTState>,
 ) -> impl IntoResponse {
     let stt = state.recorded_stt.for_language(params.language).await;

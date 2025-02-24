@@ -41,7 +41,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
             .map_err(|e| e.to_string())?;
 
         let mut s = state.lock().await;
-        s.api_base = format!("http://{}", &server.addr);
+        s.api_base = Some(format!("http://{}", &server.addr));
         s.server = Some(server);
         Ok(())
     }

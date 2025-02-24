@@ -13,6 +13,7 @@ tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
 hypr-data = { path = "../../crates/data", package = "data" }
+tauri-plugin-listener = { path = "../listener" }
 
 bytes = { workspace = true }
 codes-iso-639 = { workspace = true }
@@ -25,7 +26,7 @@ specta-typescript = { workspace = true }
 [dependencies]
 hypr-bridge = { path = "../../crates/bridge", package = "bridge" }
 hypr-db = { path = "../../crates/db", package = "db", default-features = false, features = ["user"] }
-tauri-plugin-listener = { path = "../listener" }
+hypr-listener-types = { path = "../../crates/listener-types", package = "listener-types" }
 
 tauri = { workspace = true, features = ["test"] }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }

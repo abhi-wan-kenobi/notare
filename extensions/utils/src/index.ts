@@ -1,7 +1,9 @@
-import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import { commands } from "@hypr/plugin-sse";
 import { createOpenAI } from "@ai-sdk/openai";
 import { customProvider } from "ai";
+
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+import { commands as sseCommands } from "@hypr/plugin-sse";
+import { commands as connectorCommands } from "@hypr/plugin-connector";
 
 export * from "ai";
 
@@ -25,21 +27,29 @@ export const fetch = (
       value.toLowerCase() === "text/event-stream",
   );
 
-  const f = isSSE ? commands.fetch : tauriFetch;
+  const f = isSSE ? sseCommands.fetch : tauriFetch;
   return f(input, init);
 };
 
-const openai = createOpenAI({
-  baseURL: "http://localhost:1234/v1",
-  apiKey: "NOT_NEEDED",
-  fetch,
-});
+const getModel = async (model: string) => {
+  const apiBase = await connectorCommands.getApiBase("LocalLlm");
 
-export const modelProvider = customProvider({
-  languageModels: {
-    any: openai("gpt-4", { structuredOutputs: true }),
-  },
-});
+  const openai = createOpenAI({
+    baseURL: apiBase ?? "http://localhost:1234/v1",
+    apiKey: "NOT_NEEDED",
+    fetch,
+  });
+
+  return openai(model, { structuredOutputs: true });
+};
+
+export const modelProvider = async () => {
+  const any = await getModel("gpt-4");
+
+  return customProvider({
+    languageModels: { any },
+  });
+};
 
 export interface Extension {
   init: () => Promise<void>;

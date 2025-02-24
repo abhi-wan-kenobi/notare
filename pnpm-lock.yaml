@@ -576,6 +576,9 @@ importers:
       '@hypr/client':
         specifier: workspace:^
         version: link:../../packages/client
+      '@hypr/plugin-connector':
+        specifier: workspace:^
+        version: link:../../plugins/connector
       '@hypr/plugin-sse':
         specifier: workspace:^
         version: link:../../plugins/sse
@@ -820,6 +823,12 @@ importers:
         version: 5.6.3
 
   plugins/apple-calendar:
+    dependencies:
+      '@tauri-apps/api':
+        specifier: ^2.2.0
+        version: 2.2.0
+
+  plugins/connector:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.2.0

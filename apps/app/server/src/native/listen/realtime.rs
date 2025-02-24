@@ -16,24 +16,20 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::sync::broadcast;
 
 use hypr_db::user::TranscriptChunk;
+use hypr_listener_types::{ListenInputChunk, ListenOutputChunk, ListenParams};
 use hypr_stt::realtime::RealtimeSpeechToText;
-use tauri_plugin_listener::{ListenInputChunk, ListenOutputChunk};
 
 use crate::state::STTState;
 
 pub async fn handler(
-    Query(params): Query<tauri_plugin_listener::ListenParams>,
+    Query(params): Query<ListenParams>,
     ws: WebSocketUpgrade,
     State(state): State<STTState>,
 ) -> impl IntoResponse {
     ws.on_upgrade(|socket| websocket(socket, state, params))
 }
 
-async fn websocket(
-    socket: WebSocket,
-    state: STTState,
-    params: tauri_plugin_listener::ListenParams,
-) {
+async fn websocket(socket: WebSocket, state: STTState, params: ListenParams) {
     tracing::info!("websocket_connected");
 
     let (mut ws_sender, mut ws_receiver) = socket.split();

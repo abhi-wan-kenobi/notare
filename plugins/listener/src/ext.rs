@@ -74,8 +74,16 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
             return Err("Session already started".to_string());
         }
 
+        let api_base = {
+            let app = self.app_handle();
+            use tauri_plugin_connector::ConnectorPluginExt;
+            app.get_api_base(tauri_plugin_connector::ConnectionType::LocalStt)
+                .await
+                .unwrap()
+        };
+
         let listen_client = crate::client::ListenClient::builder()
-            .api_base("http://localhost:1234".to_string())
+            .api_base(api_base)
             .api_key("123".to_string())
             .language(codes_iso_639::part_1::LanguageCode::En)
             .build();

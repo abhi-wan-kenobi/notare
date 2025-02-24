@@ -10,7 +10,7 @@ use axum::{
 use std::net::{Ipv4Addr, SocketAddr};
 
 use futures_util::{stream::SplitStream, SinkExt, Stream, StreamExt};
-use tauri_plugin_listener::{ListenInputChunk, ListenOutputChunk};
+use hypr_listener_types::{ListenInputChunk, ListenOutputChunk, ListenParams};
 
 #[derive(Clone)]
 pub struct ServerHandle {
@@ -54,18 +54,14 @@ async fn health() -> impl IntoResponse {
 }
 
 async fn listen(
-    Query(params): Query<tauri_plugin_listener::ListenParams>,
+    Query(params): Query<ListenParams>,
     ws: WebSocketUpgrade,
     AxumState(state): AxumState<crate::SharedState>,
 ) -> impl IntoResponse {
     ws.on_upgrade(|socket| websocket(socket, state, params))
 }
 
-async fn websocket(
-    socket: WebSocket,
-    state: crate::SharedState,
-    _params: tauri_plugin_listener::ListenParams,
-) {
+async fn websocket(socket: WebSocket, state: crate::SharedState, _params: ListenParams) {
     tracing::info!("websocket_connected");
 
     let (mut ws_sender, ws_receiver) = socket.split();

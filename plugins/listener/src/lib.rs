@@ -8,13 +8,13 @@ mod commands;
 mod events;
 mod ext;
 mod timeline;
-mod types;
 
 pub use client::*;
 pub use events::*;
 pub use ext::ListenerPluginExt;
 pub use timeline::*;
-pub use types::*;
+
+pub use hypr_listener_types::*;
 
 const PLUGIN_NAME: &str = "listener";
 

@@ -1,47 +1,23 @@
-use tauri::{Manager, Wry};
-
-mod chunker;
 mod commands;
-mod error;
 mod ext;
-mod model;
-mod server;
 
-pub use error::{Error, Result};
-pub use ext::LocalSttPluginExt;
+pub use ext::*;
 
-pub type SharedState = std::sync::Arc<tokio::sync::Mutex<State>>;
-
-#[derive(Default)]
-pub struct State {
-    pub api_base: Option<String>,
-    pub model: Option<rwhisper::Whisper>,
-    pub server: Option<crate::server::ServerHandle>,
-}
-
-const PLUGIN_NAME: &str = "local-stt";
+const PLUGIN_NAME: &str = "connector";
 
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
-            commands::load_model::<Wry>,
-            commands::unload_model::<Wry>,
-            commands::start_server::<Wry>,
-            commands::stop_server::<Wry>,
+            commands::get_api_base::<tauri::Wry>
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
-
 pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
     let specta_builder = make_specta_builder();
 
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
-        .setup(|app, _api| {
-            app.manage(SharedState::default());
-            Ok(())
-        })
         .build()
 }
 
@@ -69,8 +45,8 @@ mod test {
             .unwrap()
     }
 
-    #[tokio::test]
-    async fn test_local_stt() {
+    #[test]
+    fn test_apple_calendar() {
         let _app = create_app(tauri::test::mock_builder());
     }
 }

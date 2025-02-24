@@ -11,11 +11,11 @@ pub use ext::LocalLlmPluginExt;
 
 const PLUGIN_NAME: &str = "local-llm";
 
-type SharedState = std::sync::Arc<tokio::sync::Mutex<State>>;
+pub type SharedState = std::sync::Arc<tokio::sync::Mutex<State>>;
 
 #[derive(Default)]
 pub struct State {
-    pub api_base: String,
+    pub api_base: Option<String>,
     pub model: Option<kalosm_llama::Llama>,
     pub server: Option<crate::server::ServerHandle>,
 }
@@ -81,7 +81,7 @@ mod test {
         let api_base = {
             let state = app.state::<crate::SharedState>();
             let state = state.lock().await;
-            state.api_base.clone()
+            state.api_base.clone().unwrap()
         };
 
         let client = reqwest::Client::new();

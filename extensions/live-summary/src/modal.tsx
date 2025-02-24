@@ -60,8 +60,10 @@ const modal: Extension["modal"] = ({ onClose }) => {
         } satisfies LiveSummaryUserInput,
       );
 
+      const provider = await modelProvider();
+
       const { object } = await generateObject({
-        model: modelProvider.languageModel("any"),
+        model: provider.languageModel("any"),
         schema: liveSummaryResponseSchema,
         messages: [
           { role: "system", content: systemMessageContent },

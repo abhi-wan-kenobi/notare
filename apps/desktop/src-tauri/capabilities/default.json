@@ -39,6 +39,7 @@
     "apple-calendar:default",
     "misc:default",
     "sse:default",
+    "connector:default",
     {
       "identifier": "http:default",
       "allow": [
