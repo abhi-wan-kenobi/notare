@@ -43,6 +43,7 @@ tracing = { workspace = true }
 axum = { workspace = true, features = ["ws"] }
 futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tower-http = { workspace = true, features = ["cors", "trace"] }
 
 kalosm-common = { workspace = true }
 kalosm-sound = { workspace = true }

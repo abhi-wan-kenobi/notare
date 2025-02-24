@@ -7,6 +7,7 @@ use axum::{
 };
 use futures_util::StreamExt;
 use std::net::{Ipv4Addr, SocketAddr};
+use tower_http::cors::{self, CorsLayer};
 
 use kalosm_llama::prelude::*;
 use kalosm_streams::text_stream::TextStream;
@@ -34,10 +35,16 @@ pub async fn run_server(state: crate::SharedState) -> anyhow::Result<ServerHandl
     let app = Router::new()
         .route("/health", get(health))
         .route("/chat/completions", post(chat_completions))
-        .with_state(state);
+        .with_state(state)
+        .layer(
+            CorsLayer::new()
+                .allow_origin(cors::Any)
+                .allow_methods(cors::Any)
+                .allow_headers(cors::Any),
+        );
 
     let listener =
-        tokio::net::TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0))).await?;
+        tokio::net::TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, 0))).await?;
 
     let server_addr = listener.local_addr()?;
 

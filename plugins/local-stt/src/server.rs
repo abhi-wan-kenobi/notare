@@ -8,6 +8,7 @@ use axum::{
     Router,
 };
 use std::net::{Ipv4Addr, SocketAddr};
+use tower_http::cors::{self, CorsLayer};
 
 use futures_util::{stream::SplitStream, SinkExt, Stream, StreamExt};
 use hypr_listener_types::{ListenInputChunk, ListenOutputChunk, ListenParams};
@@ -23,10 +24,16 @@ pub async fn run_server(state: crate::SharedState) -> anyhow::Result<ServerHandl
         .route("/health", get(health))
         // should match our app server
         .route("/api/native/listen/realtime", get(listen))
-        .with_state(state);
+        .with_state(state)
+        .layer(
+            CorsLayer::new()
+                .allow_origin(cors::Any)
+                .allow_methods(cors::Any)
+                .allow_headers(cors::Any),
+        );
 
     let listener =
-        tokio::net::TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0))).await?;
+        tokio::net::TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, 0))).await?;
 
     let server_addr = listener.local_addr()?;
 
