@@ -2,7 +2,7 @@ use std::future::Future;
 use tauri::{ipc::Channel, Manager, Runtime};
 
 pub trait LocalLlmPluginExt<R: Runtime> {
-    fn load_model(&self, on_progress: Channel<u8>) -> impl Future<Output = Result<(), String>>;
+    fn load_model(&self, on_progress: Channel<u8>) -> impl Future<Output = Result<u8, String>>;
     fn unload_model(&self) -> impl Future<Output = Result<(), String>>;
     fn start_server(&self) -> impl Future<Output = Result<(), String>>;
     fn stop_server(&self) -> impl Future<Output = Result<(), String>>;
@@ -10,14 +10,15 @@ pub trait LocalLlmPluginExt<R: Runtime> {
 
 impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
     #[tracing::instrument(skip_all)]
-    async fn load_model(&self, on_progress: Channel<u8>) -> Result<(), String> {
+    async fn load_model(&self, on_progress: Channel<u8>) -> Result<u8, String> {
         let data_dir = self.path().app_data_dir().unwrap();
         let state = self.state::<crate::SharedState>();
 
         {
             let s = state.lock().await;
             if s.model.is_some() {
-                return Ok(());
+                tracing::info!("llm_model_already_loaded");
+                return Ok(100);
             }
         }
 
@@ -31,7 +32,7 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
             let mut s = state.lock().await;
             s.model = Some(model);
         }
-        Ok(())
+        Ok(0)
     }
 
     #[tracing::instrument(skip_all)]

@@ -5,7 +5,7 @@ use crate::LocalLlmPluginExt;
 pub async fn load_model<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     on_progress: tauri::ipc::Channel<u8>,
-) -> Result<(), String> {
+) -> Result<u8, String> {
     app.load_model(on_progress).await
 }
 

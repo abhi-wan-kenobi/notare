@@ -7,7 +7,7 @@
 
 
 export const commands = {
-async loadModel(onProgress: TAURI_CHANNEL<number>) : Promise<null> {
+async loadModel(onProgress: TAURI_CHANNEL<number>) : Promise<number> {
     return await TAURI_INVOKE("plugin:local-stt|load_model", { onProgress });
 },
 async unloadModel() : Promise<null> {

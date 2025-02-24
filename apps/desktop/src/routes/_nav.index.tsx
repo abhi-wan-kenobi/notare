@@ -4,7 +4,7 @@ import { Channel } from "@tauri-apps/api/core";
 
 import PastSessions from "@/components/past-sessions";
 import UpcomingEvents from "@/components/upcoming-events";
-import WorkspaceAIButton from "@/components/workspace-ai-button";
+// import WorkspaceAIButton from "@/components/workspace-ai-button";
 
 import { commands } from "@/types";
 import { commands as localSttCommands } from "@hypr/plugin-local-stt";
@@ -37,34 +37,38 @@ function Component() {
     sttChannel.onmessage = (progress) => setSttProgress(progress);
 
     Promise.all([
-      // localLlmCommands.startServer(),
+      localLlmCommands.startServer(),
       localSttCommands.startServer(),
-      // localLlmCommands.loadModel(llmChannel),
+      localLlmCommands.loadModel(llmChannel),
       localSttCommands.loadModel(sttChannel),
-    ]).then(() => {
-      console.log("Models loaded");
-    });
+    ])
+      .then(([_a, _b, llmProgress, sttProgress]) => {
+        setLlmProgress(llmProgress);
+        setSttProgress(sttProgress);
+      })
+      .catch((err) => {
+        console.error(err);
+        setLlmProgress(100);
+        setSttProgress(100);
+      });
   }, []);
 
   return (
-    <main className="flex h-full flex-col overflow-hidden bg-white relative">
+    <main className="flex h-full flex-col overflow-hidden bg-white">
       <div className="overflow-y-auto px-8">
         <div className="mx-auto max-w-3xl">
           <UpcomingEvents />
           <PastSessions />
-        </div>
-      </div>
-
-      <div className="absolute bottom-4 right-4 flex items-center">
-        <div className="flex flex-col items-center gap-2">
-          <div
-            className="h-[100px] rounded-full bg-blue-500"
-            style={{ width: `${llmProgress}%` }}
-          />
-          <div
-            className="h-[100px] rounded-full bg-blue-500"
-            style={{ width: `${sttProgress}%` }}
-          />
+          <div className="mb-4 flex flex-col items-center gap-2">
+            <div
+              className="h-4 w-[100px] rounded-full bg-blue-500"
+              style={{ width: `${llmProgress}%` }}
+            />
+            <div
+              className="h-4 w-[100px] rounded-full bg-blue-500"
+              style={{ width: `${sttProgress}%` }}
+            />
+          </div>
         </div>
       </div>
     </main>

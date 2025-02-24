@@ -2,7 +2,7 @@ use std::future::Future;
 use tauri::{ipc::Channel, Manager, Runtime};
 
 pub trait LocalSttPluginExt<R: Runtime> {
-    fn load_model(&self, on_progress: Channel<u8>) -> impl Future<Output = Result<(), String>>;
+    fn load_model(&self, on_progress: Channel<u8>) -> impl Future<Output = Result<u8, String>>;
     fn unload_model(&self) -> impl Future<Output = Result<(), String>>;
     fn start_server(&self) -> impl Future<Output = Result<(), String>>;
     fn stop_server(&self) -> impl Future<Output = Result<(), String>>;
@@ -10,15 +10,15 @@ pub trait LocalSttPluginExt<R: Runtime> {
 
 impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
     #[tracing::instrument(skip_all)]
-    async fn load_model(&self, on_progress: tauri::ipc::Channel<u8>) -> Result<(), String> {
+    async fn load_model(&self, on_progress: tauri::ipc::Channel<u8>) -> Result<u8, String> {
         let data_dir = self.path().app_data_dir().unwrap();
         let state = self.state::<crate::SharedState>();
 
         {
             let s = state.lock().await;
             if s.model.is_some() {
-                tracing::info!("model_already_loaded");
-                return Ok(());
+                tracing::info!("stt_model_already_loaded");
+                return Ok(100);
             }
         }
 
@@ -33,7 +33,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
             s.model = Some(model);
             tracing::info!("model_now_loaded");
         }
-        Ok(())
+        Ok(0)
     }
 
     #[tracing::instrument(skip_all)]
