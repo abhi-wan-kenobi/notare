@@ -66,17 +66,24 @@ async fn websocket(socket: WebSocket, state: crate::SharedState, _params: Listen
 
     let (mut ws_sender, ws_receiver) = socket.split();
 
-    let state = state.lock().await;
-    if state.model.is_none() {
-        return;
-    }
+    let mut stream = {
+        let state = state.lock().await;
 
-    let model = state.model.as_ref().unwrap();
-    let audio_source = WebSocketAudioSource::new(ws_receiver, 16 * 1000);
+        if let Some(model) = state.model.as_ref() {
+            let audio_source = WebSocketAudioSource::new(ws_receiver, 16 * 1000);
+            let chunked = crate::chunker::FixedChunkStream::new(
+                audio_source,
+                std::time::Duration::from_secs(10),
+            );
 
-    let chunked =
-        crate::chunker::FixedChunkStream::new(audio_source, std::time::Duration::from_secs(10));
-    let mut stream = rwhisper::TranscribeChunkedAudioStreamExt::transcribe(chunked, model.clone());
+            rwhisper::TranscribeChunkedAudioStreamExt::transcribe(chunked, model.clone())
+        } else {
+            tracing::error!("model_not_loaded");
+            return;
+        }
+    };
+
+    tracing::info!("stream_started");
 
     while let Some(chunk) = stream.next().await {
         let text = chunk.text().to_string();
@@ -130,6 +137,7 @@ impl kalosm_sound::AsyncSource for WebSocketAudioSource {
                             sample as f32 / 32767.0
                         })
                         .collect();
+
                     Some((samples, receiver))
                 }
                 _ => None,

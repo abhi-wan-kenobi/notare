@@ -13,7 +13,13 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
     async fn load_model(&self, on_progress: Channel<u8>) -> Result<(), String> {
         let data_dir = self.path().app_data_dir().unwrap();
         let state = self.state::<crate::SharedState>();
-        let mut s = state.lock().await;
+
+        {
+            let s = state.lock().await;
+            if s.model.is_some() {
+                return Ok(());
+            }
+        }
 
         let model =
             crate::model::model_builder(data_dir, kalosm_llama::LlamaSource::llama_3_2_3b_chat())
@@ -21,15 +27,21 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
                 .await
                 .map_err(|e| e.to_string())?;
 
-        s.model = Some(model);
+        {
+            let mut s = state.lock().await;
+            s.model = Some(model);
+        }
         Ok(())
     }
 
     #[tracing::instrument(skip_all)]
     async fn unload_model(&self) -> Result<(), String> {
         let state = self.state::<crate::SharedState>();
-        let mut s = state.lock().await;
-        s.model.take();
+
+        {
+            let mut s = state.lock().await;
+            s.model.take();
+        }
         Ok(())
     }
 

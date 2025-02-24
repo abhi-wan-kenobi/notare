@@ -12,6 +12,15 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
     #[tracing::instrument(skip_all)]
     async fn load_model(&self, on_progress: tauri::ipc::Channel<u8>) -> Result<(), String> {
         let data_dir = self.path().app_data_dir().unwrap();
+        let state = self.state::<crate::SharedState>();
+
+        {
+            let s = state.lock().await;
+            if s.model.is_some() {
+                tracing::info!("model_already_loaded");
+                return Ok(());
+            }
+        }
 
         let model = crate::model::model_builder(data_dir)
             .with_source(rwhisper::WhisperSource::QuantizedLargeV3Turbo)
@@ -19,17 +28,22 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
             .await
             .map_err(|e| e.to_string())?;
 
-        let state = self.state::<crate::SharedState>();
-        let mut s = state.lock().await;
-        s.model = Some(model);
+        {
+            let mut s = state.lock().await;
+            s.model = Some(model);
+            tracing::info!("model_now_loaded");
+        }
         Ok(())
     }
 
     #[tracing::instrument(skip_all)]
     async fn unload_model(&self) -> Result<(), String> {
         let state = self.state::<crate::SharedState>();
-        let mut s = state.lock().await;
-        s.model.take();
+
+        {
+            let mut s = state.lock().await;
+            s.model.take();
+        }
         Ok(())
     }
 

@@ -22,6 +22,7 @@ futures-core = { workspace = true }
 reqwest = { workspace = true }
 rodio = { workspace = true, features = ["wav"] }
 specta-typescript = { workspace = true }
+tracing = { workspace = true }
 
 [dependencies]
 hypr-bridge = { path = "../../crates/bridge", package = "bridge" }
