@@ -59,7 +59,6 @@ export const createSessionStore = (session: Session) => {
       );
     },
     start: () => {
-      console.log("start: create channel");
       const channel = new Channel<SessionEvent>();
       channel.onmessage = (event: SessionEvent) => {
         set((state) =>
@@ -78,10 +77,9 @@ export const createSessionStore = (session: Session) => {
         );
       };
 
-      console.log("start: listenerCommands");
       try {
-        listenerCommands.startSession().then((r) => {
-          console.log("start: listenerCommands", r);
+        listenerCommands.startSession().then((_) => {
+          listenerCommands.subscribe(channel);
         });
       } catch (error) {
         console.error("failed to start session", error);

@@ -130,6 +130,8 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
             }
         }));
 
+        let app = self.app_handle().clone();
+
         tokio::spawn(async move {
             let dir = app_dir.join(session_id);
             std::fs::create_dir_all(&dir).unwrap();
@@ -149,11 +151,11 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
             while let (Some(mic_chunk), Some(speaker_chunk)) =
                 (mic_rx.recv().await, speaker_rx.recv().await)
             {
-                let _ = crate::SessionEventAudioAmplitude::from((&mic_chunk, &speaker_chunk));
+                let event = crate::SessionEventAudioAmplitude::from((&mic_chunk, &speaker_chunk));
 
-                // channel_for_amplitude
-                //     .send(SessionEvent::Audio(mic_amplitude, speaker_amplitude))
-                //     .unwrap();
+                app.broadcast(SessionEvent::AudioAmplitude(event))
+                    .await
+                    .unwrap();
 
                 let mixed: Vec<f32> = mic_chunk
                     .into_iter()
@@ -177,13 +179,14 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
         let listen_stream = listen_client.from_audio(audio_stream).await.unwrap();
 
         s.listen_stream_handle = Some(tokio::spawn({
-            let timeline = timeline.clone();
             let app = self.app_handle().clone();
+            let timeline = timeline.clone();
 
             async move {
                 futures_util::pin_mut!(listen_stream);
 
                 while let Some(result) = listen_stream.next().await {
+                    println!("result: {:?}", result);
                     let mut timeline = timeline.lock().await;
 
                     match result {
