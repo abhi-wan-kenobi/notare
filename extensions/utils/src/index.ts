@@ -5,6 +5,13 @@ import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { commands as sseCommands } from "@hypr/plugin-sse";
 import { commands as connectorCommands } from "@hypr/plugin-connector";
 
+import {
+  WidgetOneByOne,
+  WidgetTwoByOne,
+  WidgetTwoByTwo,
+  WidgetFullSizeModal,
+} from "@hypr/ui/components/ui/widgets";
+
 export * from "ai";
 
 export const fetch = (
@@ -13,6 +20,7 @@ export const fetch = (
 ) => {
   // @ts-ignore
   const isTauri = !!window.__TAURI__;
+  console.log("isTauri:", isTauri);
 
   if (!isTauri) {
     return globalThis.fetch(input, init);
@@ -20,6 +28,7 @@ export const fetch = (
 
   const headers =
     init?.headers instanceof Headers ? Array.from(init.headers.entries()) : [];
+  console.log("headers:", isTauri);
 
   const isSSE = headers.some(
     ([key, value]) =>
@@ -45,6 +54,7 @@ const getModel = async (model: string) => {
 
 export const modelProvider = async () => {
   const any = await getModel("gpt-4");
+  console.log("any:", any);
 
   return customProvider({
     languageModels: { any },
@@ -58,8 +68,8 @@ export const modelProvider = async () => {
  */
 export interface Extension {
   init: () => Promise<void>;
-  oneByOne?: (props: { onMaximize?: () => void }) => React.ReactNode;
-  twoByOne?: (props: { onMaximize?: () => void }) => React.ReactNode;
-  twoByTwo: (props: { onMaximize?: () => void }) => React.ReactNode;
-  full?: (props: { onMinimize: () => void }) => React.ReactNode;
+  oneByOne?: typeof WidgetOneByOne;
+  twoByOne?: typeof WidgetTwoByOne;
+  twoByTwo: typeof WidgetTwoByTwo;
+  full?: typeof WidgetFullSizeModal;
 }

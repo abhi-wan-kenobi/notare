@@ -7,6 +7,7 @@
   "main": "./src/index.ts",
   "dependencies": {
     "@ai-sdk/openai": "^1.1.13",
+    "@hypr/ui": "workspace:*",
     "@hypr/client": "workspace:^",
     "@hypr/plugin-connector": "workspace:^",
     "@hypr/plugin-sse": "workspace:^",

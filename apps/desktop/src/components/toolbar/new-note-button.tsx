@@ -3,7 +3,7 @@ import { Trans } from "@lingui/react/macro";
 import { useLocation, useRouter } from "@tanstack/react-router";
 import clsx from "clsx";
 import { Button } from "@hypr/ui/components/ui/button";
-import { Icon, PenIcon } from "lucide-react";
+import { PenIcon } from "lucide-react";
 import { useHotkeys } from "react-hotkeys-hook";
 import {
   Tooltip,

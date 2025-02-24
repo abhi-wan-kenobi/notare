@@ -25,9 +25,12 @@ export const Main: Story = {
       handlers: [
         http.post("http://localhost:1234/v1/chat/completions", async () => {
           const data = {
-            points: ["first point", "second point", "third point"],
+            points: [
+              "Hyprnote is a macOS notepad for meetings that uses AI to listen to the environment and transform raw notes into comprehensive summaries.",
+              "It works seamlessly for both in-person and virtual meetings, ensuring you capture key insights effortlessly.",
+              "Download it at hyprnote.com to enhance your meeting productivity.",
+            ],
           } satisfies LiveSummaryResponse;
-
           const res: ChatCompletion = {
             id: "123",
             object: "chat.completion",
@@ -64,6 +67,11 @@ export const Main: Story = {
             return "generate a random json object. Each contains a one fun sentence.";
           }
         }
+
+        if (cmd == "plugin:connector|get_api_base") {
+          return "http://localhost:1234/v1";
+        }
+
         return {};
       });
 
@@ -76,5 +84,10 @@ export const Main: Story = {
   ],
   args: {
     onMaximize: () => {},
+    children: (
+      <>
+        <div>Example Widget Content</div>
+      </>
+    ),
   },
 };
