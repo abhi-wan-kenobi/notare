@@ -4,13 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./globals.css": "./src/styles/globals.css",
+    "./globals.css": "./dist/globals.css",
     "./postcss.config": "./postcss.config.mjs",
     "./tailwind.config": "./tailwind.config.ts",
     "./lib/*": "./src/lib/*.ts",
     "./components/*": "./src/components/*.tsx",
     "./hooks/*": "./src/hooks/*.tsx",
     "./contexts/*": "./src/contexts/*.tsx"
+  },
+  "scripts": {
+    "build": "tailwindcss -i ./src/styles/globals.css -o ./dist/globals.css --minify"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

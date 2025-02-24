@@ -9,9 +9,7 @@ import ExtensionLiveTranscript from "@hypr/extension-live-transcript/tailwind.co
 import ExtensionWorldClocks from "@hypr/extension-world-clocks/tailwind.config";
 
 const config = {
-  ...UI,
   content: [
-    ...UI.content,
     ...Tiptap.content,
     ...ExtensionLiveSummary.content,
     ...ExtensionLiveTranscript.content,
@@ -21,7 +19,6 @@ const config = {
   ],
   theme: {
     extend: {
-      ...UI.theme?.extend,
       fontFamily: {
         "racing-sans": ['"Racing Sans One"', "cursive"],
       },
