@@ -1,14 +1,14 @@
-// import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-// import { Channel } from "@tauri-apps/api/core";
+import { Channel } from "@tauri-apps/api/core";
 
 import PastSessions from "@/components/past-sessions";
 import UpcomingEvents from "@/components/upcoming-events";
 import WorkspaceAIButton from "@/components/workspace-ai-button";
 
 import { commands } from "@/types";
-// import { commands as localSttCommands } from "@hypr/plugin-local-stt";
-// import { commands as localLlmCommands } from "@hypr/plugin-local-llm";
+import { commands as localSttCommands } from "@hypr/plugin-local-stt";
+import { commands as localLlmCommands } from "@hypr/plugin-local-llm";
 
 export const Route = createFileRoute("/_nav/")({
   component: Component,
@@ -26,23 +26,25 @@ export const Route = createFileRoute("/_nav/")({
 });
 
 function Component() {
-  // const [llmProgress, setLlmProgress] = useState<number>(0);
-  // const [sttProgress, setSttProgress] = useState<number>(0);
+  const [llmProgress, setLlmProgress] = useState<number>(0);
+  const [sttProgress, setSttProgress] = useState<number>(0);
 
-  // useEffect(() => {
-  //   const llmChannel = new Channel<number>();
-  //   const sttChannel = new Channel<number>();
+  useEffect(() => {
+    const llmChannel = new Channel<number>();
+    const sttChannel = new Channel<number>();
 
-  //   llmChannel.onmessage = (progress) => setLlmProgress(progress);
-  //   sttChannel.onmessage = (progress) => setSttProgress(progress);
+    llmChannel.onmessage = (progress) => setLlmProgress(progress);
+    sttChannel.onmessage = (progress) => setSttProgress(progress);
 
-  //   Promise.all([
-  //     localLlmCommands.loadModel(llmChannel),
-  //     localSttCommands.loadModel(sttChannel),
-  //   ]).then(() => {
-  //     console.log("Models loaded");
-  //   });
-  // }, []);
+    Promise.all([
+      // localLlmCommands.startServer(),
+      localSttCommands.startServer(),
+      // localLlmCommands.loadModel(llmChannel),
+      localSttCommands.loadModel(sttChannel),
+    ]).then(() => {
+      console.log("Models loaded");
+    });
+  }, []);
 
   return (
     <main className="flex h-full flex-col overflow-hidden bg-white">
@@ -53,7 +55,7 @@ function Component() {
         </div>
       </div>
 
-      {/* <div className="absolute bottom-4 right-4 flex items-center">
+      <div className="absolute bottom-4 right-4 flex items-center">
         <div className="flex flex-col items-center gap-2">
           <div
             className="h-[100px] rounded-full bg-blue-500"
@@ -64,7 +66,7 @@ function Component() {
             style={{ width: `${sttProgress}%` }}
           />
         </div>
-      </div> */}
+      </div>
     </main>
   );
 }

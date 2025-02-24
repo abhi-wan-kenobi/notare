@@ -18,7 +18,7 @@ pub use hypr_listener_types::*;
 
 const PLUGIN_NAME: &str = "listener";
 
-type SharedState = Mutex<State>;
+pub type SharedState = Mutex<State>;
 
 #[derive(Default)]
 pub struct State {
@@ -74,22 +74,26 @@ mod test {
     fn create_app<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::App<R> {
         builder
             .plugin(init())
+            .plugin(tauri_plugin_local_stt::init())
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .unwrap()
     }
 
     #[tokio::test]
-    async fn test_session() {
+    async fn test_subscribe_and_broadcast() {
         let app = create_app(tauri::test::mock_builder());
 
-        app.start_session().await.unwrap();
+        let (tx1, rx1) = std::sync::mpsc::sync_channel::<SessionEvent>(1);
+        let (tx2, rx2) = std::sync::mpsc::sync_channel::<SessionEvent>(1);
 
-        let channel_1 = tauri::ipc::Channel::<SessionEvent>::new(|event| {
-            println!("event: {:?}", event);
+        let channel_1 = tauri::ipc::Channel::<SessionEvent>::new(move |e| {
+            let event = e.deserialize().unwrap();
+            let _ = tx1.send(event);
             Ok(())
         });
-        let channel_2 = tauri::ipc::Channel::<SessionEvent>::new(|event| {
-            println!("event: {:?}", event);
+        let channel_2 = tauri::ipc::Channel::<SessionEvent>::new(move |e| {
+            let event = e.deserialize().unwrap();
+            let _ = tx2.send(event);
             Ok(())
         });
 
@@ -97,5 +101,45 @@ mod test {
         app.subscribe(channel_2.clone()).await.unwrap();
 
         app.broadcast(SessionEvent::Stopped).await.unwrap();
+
+        assert_eq!(rx1.recv().unwrap(), SessionEvent::Stopped);
+        assert_eq!(rx2.recv().unwrap(), SessionEvent::Stopped);
+    }
+
+    #[tokio::test]
+    async fn test_session() {
+        let app = create_app(tauri::test::mock_builder());
+
+        {
+            use tauri_plugin_local_stt::LocalSttPluginExt;
+            let c = tauri::ipc::Channel::<u8>::new(|_e| Ok(()));
+            app.load_model(c).await.unwrap();
+            app.start_server().await.unwrap();
+        }
+
+        app.start_session().await.unwrap();
+
+        {
+            let chan = tauri::ipc::Channel::<SessionEvent>::new(|e| {
+                let event: SessionEvent = e.deserialize().unwrap();
+                println!("event: {:?}", event);
+                Ok(())
+            });
+
+            app.subscribe(chan).await.unwrap();
+        }
+
+        {
+            let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
+            let sink = rodio::Sink::try_new(&stream_handle).unwrap();
+            let source = rodio::Decoder::new_wav(std::io::BufReader::new(
+                std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
+            ))
+            .unwrap();
+            sink.append(source);
+            sink.sleep_until_end();
+        }
+
+        app.stop_session().await.unwrap();
     }
 }

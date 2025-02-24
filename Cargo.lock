@@ -5864,8 +5864,7 @@ dependencies = [
 [[package]]
 name = "kalosm-common"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de2ac5de83e059366d74ab199a7b25a181c05109e4752186569ba1cf1ea8e68d"
+source = "git+https://github.com/floneum/floneum?rev=9247099b9e4a9b542e8b036729678039cc43a704#9247099b9e4a9b542e8b036729678039cc43a704"
 dependencies = [
  "candle-core",
  "candle-nn",
@@ -5883,8 +5882,7 @@ dependencies = [
 [[package]]
 name = "kalosm-language-model"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5bba0d2b436350af68041fb23a79f85079a22724fa475912d503961250edc92"
+source = "git+https://github.com/floneum/floneum?rev=9247099b9e4a9b542e8b036729678039cc43a704#9247099b9e4a9b542e8b036729678039cc43a704"
 dependencies = [
  "anyhow",
  "async-lock",
@@ -5903,8 +5901,7 @@ dependencies = [
 [[package]]
 name = "kalosm-llama"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "111e59a49693f0f2bdadc12b88b572df7d2707cd7b61a6f4b4d9f6e4601be4f4"
+source = "git+https://github.com/floneum/floneum?rev=9247099b9e4a9b542e8b036729678039cc43a704#9247099b9e4a9b542e8b036729678039cc43a704"
 dependencies = [
  "candle-core",
  "candle-nn",
@@ -5929,8 +5926,7 @@ dependencies = [
 [[package]]
 name = "kalosm-model-types"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b6ea4f7cc50877612c89f3c0f7b5286d08724562234ce2329f6c53415436e74"
+source = "git+https://github.com/floneum/floneum?rev=9247099b9e4a9b542e8b036729678039cc43a704#9247099b9e4a9b542e8b036729678039cc43a704"
 dependencies = [
  "indicatif",
 ]
@@ -5938,8 +5934,7 @@ dependencies = [
 [[package]]
 name = "kalosm-parse-macro"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e682884c2244005ace2724483e9c72fb28bf776c4bb959ab2f79353cbc57e6aa"
+source = "git+https://github.com/floneum/floneum?rev=9247099b9e4a9b542e8b036729678039cc43a704#9247099b9e4a9b542e8b036729678039cc43a704"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5949,8 +5944,7 @@ dependencies = [
 [[package]]
 name = "kalosm-sample"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25a19027883cf3da3a2f304e89ccabd7e1c2304d3260dd07281bbdc6ad5279f5"
+source = "git+https://github.com/floneum/floneum?rev=9247099b9e4a9b542e8b036729678039cc43a704#9247099b9e4a9b542e8b036729678039cc43a704"
 dependencies = [
  "kalosm-parse-macro",
  "regex-automata 0.4.9",
@@ -5959,8 +5953,7 @@ dependencies = [
 [[package]]
 name = "kalosm-sound"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "092ff07207d3efc1575e7e46d806e78394bb61f98edb0c237b410c6beb4ef7da"
+source = "git+https://github.com/floneum/floneum?rev=9247099b9e4a9b542e8b036729678039cc43a704#9247099b9e4a9b542e8b036729678039cc43a704"
 dependencies = [
  "byteorder",
  "candle-core",
@@ -5987,8 +5980,7 @@ dependencies = [
 [[package]]
 name = "kalosm-streams"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7ff10dbf8960f211ee1ae532196edca9479b21ef1490c5bbd1b300e15398a64"
+source = "git+https://github.com/floneum/floneum?rev=9247099b9e4a9b542e8b036729678039cc43a704#9247099b9e4a9b542e8b036729678039cc43a704"
 dependencies = [
  "futures-channel",
  "futures-util",
@@ -9669,8 +9661,7 @@ dependencies = [
 [[package]]
 name = "rwhisper"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b43523d249243d720cf210344293098c7fcf2f8fb69a15a515eea6017fbe528b"
+source = "git+https://github.com/floneum/floneum?rev=9247099b9e4a9b542e8b036729678039cc43a704#9247099b9e4a9b542e8b036729678039cc43a704"
 dependencies = [
  "byteorder",
  "candle-core",
@@ -11535,6 +11526,7 @@ dependencies = [
  "insta",
  "intervaltree",
  "listener-types",
+ "rodio 0.20.1",
  "serde",
  "serde_json",
  "specta",
@@ -11543,6 +11535,7 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "tauri-plugin-connector",
+ "tauri-plugin-local-stt",
  "tauri-specta",
  "thiserror 2.0.11",
  "tokio",

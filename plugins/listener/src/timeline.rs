@@ -51,12 +51,12 @@ pub struct Timeline {
     diarizations: Vec<DiarizeOutputChunk>,
 }
 
-#[derive(Debug, Clone, Default, serde::Serialize, specta::Type)]
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize, specta::Type)]
 pub struct TimelineView {
     pub items: Vec<TimelineViewItem>,
 }
 
-#[derive(Debug, Clone, Default, serde::Serialize, specta::Type)]
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize, specta::Type)]
 pub struct TimelineViewItem {
     pub start: u64,
     pub end: u64,

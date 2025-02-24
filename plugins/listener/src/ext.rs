@@ -5,7 +5,7 @@ use futures_util::StreamExt;
 use hypr_audio::AsyncSource;
 use tokio::sync::{mpsc, Mutex};
 
-use crate::SessionEvent;
+use crate::{SessionEvent, SessionEventTimelineView};
 
 const SAMPLE_RATE: u32 = 16000;
 
@@ -173,14 +173,12 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
         let timeline = Arc::new(Mutex::new(crate::Timeline::default()));
         s.timeline = Some(timeline.clone());
 
-        // TODO
-        let language = codes_iso_639::part_1::LanguageCode::En;
-
         let audio_stream = hypr_audio::ReceiverStreamSource::new(mixed_rx, SAMPLE_RATE);
         let listen_stream = listen_client.from_audio(audio_stream).await.unwrap();
 
         s.listen_stream_handle = Some(tokio::spawn({
             let timeline = timeline.clone();
+            let app = self.app_handle().clone();
 
             async move {
                 futures_util::pin_mut!(listen_stream);
@@ -197,14 +195,14 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
                         }
                     }
 
-                    // channel
-                    //     .send(SessionEvent::TimelineView(
-                    //         timeline.view(crate::TimelineFilter::default()),
-                    //     ))
-                    //     .unwrap();
+                    app.broadcast(SessionEvent::TimelineView(SessionEventTimelineView {
+                        timeline: timeline.view(crate::TimelineFilter::default()),
+                    }))
+                    .await
+                    .unwrap();
                 }
 
-                // channel.send(SessionEvent::Stopped).unwrap();
+                app.broadcast(SessionEvent::Stopped).await.unwrap();
             }
         }));
 

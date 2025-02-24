@@ -13,6 +13,8 @@ tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
 hypr-data = { path = "../../crates/data", package = "data" }
+rodio = { workspace = true, features = ["wav"] }
+tauri-plugin-local-stt = { path = "../local-stt" }
 
 insta = "1.42.1"
 serde_json = { workspace = true }
