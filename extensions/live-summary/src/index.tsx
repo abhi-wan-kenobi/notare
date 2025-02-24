@@ -1,11 +1,11 @@
 import type { Extension } from "@hypr/extension-utils";
 
-import modal from "./modal";
+import widget from "./widget";
 import init from "./init";
 
 const extension: Extension = {
   init,
-  modal,
+  twoByTwo: widget,
 };
 
 export default extension;

@@ -12,9 +12,9 @@ import extension from "../index";
 const queryClient = new QueryClient();
 
 const meta = {
-  title: "Extensions/Live Summary/Modal",
-  component: extension.modal,
-} satisfies Meta<typeof extension.modal>;
+  title: "Extensions/Live Summary/2x2",
+  component: extension.twoByTwo,
+} satisfies Meta<typeof extension.twoByTwo>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -75,6 +75,6 @@ export const Main: Story = {
     },
   ],
   args: {
-    onClose: () => {},
+    onMaximize: () => {},
   },
 };

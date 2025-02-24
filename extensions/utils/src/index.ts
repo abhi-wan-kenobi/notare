@@ -9,7 +9,7 @@ export * from "ai";
 
 export const fetch = (
   input: Parameters<typeof globalThis.fetch>[0],
-  init?: Parameters<typeof globalThis.fetch>[1],
+  init?: Parameters<typeof globalThis.fetch>[1]
 ) => {
   // @ts-ignore
   const isTauri = !!window.__TAURI__;
@@ -24,7 +24,7 @@ export const fetch = (
   const isSSE = headers.some(
     ([key, value]) =>
       key.toLowerCase() === "accept" &&
-      value.toLowerCase() === "text/event-stream",
+      value.toLowerCase() === "text/event-stream"
   );
 
   const f = isSSE ? sseCommands.fetch : tauriFetch;
@@ -51,9 +51,16 @@ export const modelProvider = async () => {
   });
 };
 
+/* 
+NOTE: 
+Extensions are modular plugins that enhance Hyprnote’s functionality.
+Before creating an extension, we recommend reviewing the documentation.
+Extensions integrate as widgets of varying sizes, with the default size set to twoByTwo.
+*/
 export interface Extension {
   init: () => Promise<void>;
-  modal?: (props: { onClose: () => void }) => React.ReactNode;
-  panelTwoByTwo?: (props: {}) => React.ReactNode;
-  panelFull?: (props: {}) => React.ReactNode;
+  oneByOne?: (props: { onMaximize?: () => void }) => React.ReactNode;
+  twoByOne?: (props: { onMaximize?: () => void }) => React.ReactNode;
+  twoByTwo: (props: { onMaximize?: () => void }) => React.ReactNode;
+  full?: (props: { onMinimize: () => void }) => React.ReactNode;
 }

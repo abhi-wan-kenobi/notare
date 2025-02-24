@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as templateCommands } from "@hypr/plugin-template";
 import { commands as listenerCommands } from "@hypr/plugin-listener";
+import { Button } from "@hypr/ui/components/ui/button";
 import {
   modelProvider,
   generateObject,
@@ -21,12 +22,14 @@ import {
   type LiveSummarySystemInput,
   type LiveSummaryUserInput,
 } from "./types";
+import { Maximize2Icon } from "lucide-react";
 
 const DEFAULT_INTERVAL = 10 * 1000;
 
-const modal: Extension["modal"] = ({ onClose }) => {
+const widget: Extension["twoByTwo"] = ({ onMaximize }) => {
   const [progress, setProgress] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const config = useQuery({
     queryKey: ["config"],
@@ -50,14 +53,14 @@ const modal: Extension["modal"] = ({ onClose }) => {
         TEMPLATE_LIVE_SUMMARY_SYSTEM,
         {
           config: config.data,
-        } satisfies LiveSummarySystemInput,
+        } satisfies LiveSummarySystemInput
       );
 
       const userMessageContent = await templateCommands.render(
         TEMPLATE_LIVE_SUMMARY_USER,
         {
           timeline: timeline_view,
-        } satisfies LiveSummaryUserInput,
+        } satisfies LiveSummaryUserInput
       );
 
       const provider = await modelProvider();
@@ -111,19 +114,35 @@ const modal: Extension["modal"] = ({ onClose }) => {
     }
   }, [summary.status]);
 
+  useEffect(() => {
+    const animationInterval = setInterval(() => {
+      setIsAnimating(true);
+      const timeout = setTimeout(() => {
+        setIsAnimating(false);
+      }, 1625);
+      return () => clearTimeout(timeout);
+    }, 6625); // 5000ms static + 1625ms dynamic
+
+    return () => clearInterval(animationInterval);
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2 }}
-      className="relative flex w-[420px] flex-col overflow-hidden rounded-xl border bg-white shadow-2xl"
+      className="relative flex w-[400px] flex-col overflow-hidden rounded-xl border bg-white shadow-2xl"
     >
       <div className="flex flex-1 flex-col p-4">
         <div className="mb-2 flex items-center gap-2">
           <div className="w-fit overflow-clip rounded-full border bg-yellow-100 p-1">
             <img
-              src="/live-summary-icon-dynamic.gif"
+              src={
+                isAnimating
+                  ? "/hyprnote-ai-dynamic.gif"
+                  : "/hyprnote-ai-static.png"
+              }
               alt="AI Assistant"
               className="size-6"
             />
@@ -132,29 +151,13 @@ const modal: Extension["modal"] = ({ onClose }) => {
             Live Summary
           </div>
           <div className="relative ml-auto size-4">
-            <button onClick={refetchSummary}>
+            <Button variant="ghost" size="icon" onClick={refetchSummary}>
               <ProgressCircle progress={progress} />
-            </button>
+            </Button>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1 hover:bg-neutral-100"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-neutral-500"
-            >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </button>
+          <Button variant="ghost" size="icon" onClick={onMaximize}>
+            <Maximize2Icon className="h-4 w-4" />
+          </Button>
         </div>
         <Summary summary={summary.data} />
       </div>
@@ -212,4 +215,4 @@ const Summary = ({
   );
 };
 
-export default modal;
+export default widget;
