@@ -32,7 +32,7 @@ export function EventChip() {
       <PopoverTrigger>
         <div className="flex flex-row items-center gap-2 rounded-md px-2 py-1.5 hover:bg-neutral-100">
           <CalendarIcon size={14} />
-          <span className="text-xs">Jan 23</span>
+          <p className="text-xs">Jan 23</p>
         </div>
       </PopoverTrigger>
       <PopoverContent align="start" className="shadow-lg">

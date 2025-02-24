@@ -16,6 +16,11 @@ import { SettingsSidebar } from "./sidebar";
 import type { NavNames } from "./types";
 import { commands as dbCommands, type Template } from "@hypr/plugin-db";
 import { useHotkeys } from "react-hotkeys-hook";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@hypr/ui/components/ui/tooltip";
 
 export default function SettingsPanel() {
   const [open, setOpen] = useState(false);
@@ -65,15 +70,22 @@ export default function SettingsPanel() {
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="hover:bg-neutral-200"
-        onClick={() => setOpen(true)}
-        aria-label="Settings"
-      >
-        <SettingsIcon className="h-4 w-4" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hover:bg-neutral-200"
+            onClick={() => setOpen(true)}
+            aria-label="Settings"
+          >
+            <SettingsIcon className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Open settings panel (⌘,)</p>
+        </TooltipContent>
+      </Tooltip>
 
       <Modal open={open} onClose={() => setOpen(false)} size="full">
         <ModalBody className="p-0">

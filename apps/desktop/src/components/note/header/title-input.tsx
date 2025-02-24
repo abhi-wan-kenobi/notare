@@ -23,7 +23,7 @@ export default function TitleInput({
         "focus:outline-none",
       ])}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === "ArrowDown") {
+        if (e.key === "Enter" || e.key === "ArrowDown" || e.key === "Tab") {
           e.preventDefault();
           onNavigateToEditor?.();
         }

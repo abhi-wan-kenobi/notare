@@ -1,7 +1,6 @@
 import { motion } from "motion/react";
 import { useRightPanel } from "@/contexts/right-panel";
 import { WidgetContainer } from "./widgets/widget-container";
-import { cn } from "@/utils";
 import { useState, useCallback } from "react";
 import type { Widget } from "./widgets/types";
 import GridLayout, { Layout } from "react-grid-layout";
