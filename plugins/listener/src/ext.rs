@@ -186,7 +186,6 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
                 futures_util::pin_mut!(listen_stream);
 
                 while let Some(result) = listen_stream.next().await {
-                    println!("result: {:?}", result);
                     let mut timeline = timeline.lock().await;
 
                     match result {

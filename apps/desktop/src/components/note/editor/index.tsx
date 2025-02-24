@@ -1,8 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { useMutation } from "@tanstack/react-query";
 import clsx from "clsx";
+import { streamText, smoothStream } from "ai";
+
+import { modelProvider } from "@hypr/utils";
 import NoteEditor from "@hypr/tiptap/editor";
 import NoteRenderer from "@hypr/tiptap/renderer";
+import { commands as miscCommands } from "@hypr/plugin-misc";
+
 import { useEnhance } from "@/utils/enhance";
 import { useSession } from "@/contexts";
 import { EnhanceControls } from "./enhanced-controls";
@@ -12,6 +18,30 @@ import { NoteHeader } from "../header";
 
 export default function EditorArea() {
   const { templates, config } = Route.useLoaderData();
+
+  const _enhanceMutation = useMutation({
+    mutationFn: async () => {
+      const provider = await modelProvider();
+      const { text, textStream } = streamText({
+        model: provider.languageModel("any"),
+        prompt: "Hello, world!",
+        experimental_transform: [
+          smoothStream({
+            delayInMs: 100,
+            chunking: "line",
+          }),
+        ],
+      });
+
+      for await (const chunk of textStream) {
+        const html = await miscCommands.opinionatedMdToHtml(chunk);
+        console.log(html);
+      }
+
+      const html = await text.then(miscCommands.opinionatedMdToHtml);
+      return html;
+    },
+  });
 
   const store = useSession((s) => ({
     session: s.session,
