@@ -11,6 +11,8 @@
   "editor.wordBasedSuggestions": "off",
   "editor.quickSuggestionsDelay": 200,
   "editor.inlayHints.enabled": "offUnlessPressed",
+  "editor.defaultFormatter": "dprint.dprint",
+  "editor.formatOnSave": true,
   "rust-analyzer.check.command": "check",
   "rust-analyzer.check.workspace": false,
   "rust-analyzer.checkOnSave": true,

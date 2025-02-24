@@ -53,14 +53,14 @@ const widget: Extension["twoByTwo"] = ({ onMaximize }) => {
         TEMPLATE_LIVE_SUMMARY_SYSTEM,
         {
           config: config.data,
-        } satisfies LiveSummarySystemInput
+        } satisfies LiveSummarySystemInput,
       );
 
       const userMessageContent = await templateCommands.render(
         TEMPLATE_LIVE_SUMMARY_USER,
         {
           timeline: timeline_view,
-        } satisfies LiveSummaryUserInput
+        } satisfies LiveSummaryUserInput,
       );
 
       const provider = await modelProvider();

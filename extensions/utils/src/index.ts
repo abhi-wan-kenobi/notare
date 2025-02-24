@@ -9,7 +9,7 @@ export * from "ai";
 
 export const fetch = (
   input: Parameters<typeof globalThis.fetch>[0],
-  init?: Parameters<typeof globalThis.fetch>[1]
+  init?: Parameters<typeof globalThis.fetch>[1],
 ) => {
   // @ts-ignore
   const isTauri = !!window.__TAURI__;
@@ -24,7 +24,7 @@ export const fetch = (
   const isSSE = headers.some(
     ([key, value]) =>
       key.toLowerCase() === "accept" &&
-      value.toLowerCase() === "text/event-stream"
+      value.toLowerCase() === "text/event-stream",
   );
 
   const f = isSSE ? sseCommands.fetch : tauriFetch;
