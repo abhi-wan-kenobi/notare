@@ -6,7 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.tsx",
-    "./globals.css": "./src/styles/globals.css",
+    "./globals.css": "./src/globals.css",
     "./tailwind.config": "./tailwind.config.ts"
   },
   "scripts": {
