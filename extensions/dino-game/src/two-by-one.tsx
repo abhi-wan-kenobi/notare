@@ -1,14 +1,13 @@
 import { type Extension } from "@hypr/extension-utils";
 import { WidgetTwoByOne } from "@hypr/ui/components/ui/widgets";
+import DinoGame from "./dino-game";
 
-const widget: Extension["twoByTwo"] = () => (
+const widget: Extension["twoByOne"] = () => (
   <WidgetTwoByOne>
-    <DinoGame />
+    <div className="w-full h-full">
+      <DinoGame />
+    </div>
   </WidgetTwoByOne>
 );
-
-const DinoGame = () => {
-  return <div></div>;
-};
 
 export default widget;

@@ -5,7 +5,7 @@ import init from "./init";
 
 const extension: Extension = {
   init,
-  twoByTwo: TwoByOne,
+  twoByOne: TwoByOne,
 };
 
 export default extension;
