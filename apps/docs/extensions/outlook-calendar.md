@@ -2,13 +2,13 @@
 title: Outlook Calendar
 description: Outlook calendar integration
 source: https://github.com/fastrepl/hypr/tree/main/extensions/outlook-calendar
+type: [2x2]
 implemented: false
 default: false
 cloudOnly: true
 plugins: [db]
 tags: [calendar]
 ---
-
 <TitleWithContributors :title="$frontmatter.title" />
 
 **{{ $frontmatter.description }}**

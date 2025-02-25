@@ -1,13 +1,13 @@
 ---
-title: Live Summary
-description: Summarizes the recent meeting content in just three lines.
-source: https://github.com/fastrepl/hypr/tree/main/extensions/live-summary
-type: [2x2, full]
-implemented: true
-default: true
+title: Weather
+description: Displays the weather of the configured location.
+source: https://github.com/fastrepl/hypr/tree/main/extensions/weather
+type: [1x1, 2x1, 2x2]
+implemented: false
+default: false
 cloudOnly: false
-plugins: [listener, db]
-tags: [local, realtime, STT, speech-to-text, LLM, AI]
+plugins: []
+tags: [utility]
 ---
 <TitleWithContributors :title="$frontmatter.title" />
 

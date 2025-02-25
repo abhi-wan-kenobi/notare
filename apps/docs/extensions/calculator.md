@@ -2,12 +2,12 @@
 title: Calculator
 description: Conduct simple calculations on the spot.
 source: https://github.com/fastrepl/hypr/tree/main/extensions/linear
-type: [widget]
+type: [2x2]
 implemented: false
 default: false
-cloudOnly: true
-plugins: [listener, db]
-tags: [ticketing]
+cloudOnly: false
+plugins: []
+tags: [utility]
 ---
 <TitleWithContributors :title="$frontmatter.title" />
 

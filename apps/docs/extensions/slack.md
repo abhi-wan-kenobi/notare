@@ -2,13 +2,13 @@
 title: Slack
 description: Share the meeting notes with your team
 source: https://github.com/fastrepl/hypr/tree/main/extensions/slack
+type: [2x2]
 implemented: false
 default: false
 cloudOnly: true
 plugins: [listener, db]
 tags: [messaging]
 ---
-
 <TitleWithContributors :title="$frontmatter.title" />
 
 **{{ $frontmatter.description }}**

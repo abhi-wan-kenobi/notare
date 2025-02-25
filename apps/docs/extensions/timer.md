@@ -1,13 +1,13 @@
 ---
-title: Live Summary
-description: Summarizes the recent meeting content in just three lines.
-source: https://github.com/fastrepl/hypr/tree/main/extensions/live-summary
-type: [2x2, full]
-implemented: true
-default: true
+title: Timer
+description: Displays the remaining time for meetings with time constraints
+source: https://github.com/fastrepl/hypr/tree/main/extensions/timer
+type: [2x2]
+implemented: false
+default: false
 cloudOnly: false
-plugins: [listener, db]
-tags: [local, realtime, STT, speech-to-text, LLM, AI]
+plugins: []
+tags: [utility]
 ---
 <TitleWithContributors :title="$frontmatter.title" />
 

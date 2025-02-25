@@ -2,14 +2,13 @@
 title: Notion
 description: Create a notion page from the meeting
 source: https://github.com/fastrepl/hypr/tree/main/extensions/notion
-type: [widget]
+type: [2x2]
 implemented: false
 default: false
 cloudOnly: true
 plugins: [listener, db]
 tags: [knowledge]
 ---
-
 <TitleWithContributors :title="$frontmatter.title" />
 
 **{{ $frontmatter.description }}**

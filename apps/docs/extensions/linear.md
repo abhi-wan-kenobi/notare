@@ -2,13 +2,13 @@
 title: Linear
 description: Create a linear issue from the meeting
 source: https://github.com/fastrepl/hypr/tree/main/extensions/linear
+type: [2x2]
 implemented: false
 default: false
 cloudOnly: true
 plugins: [listener, db]
 tags: [ticketing]
 ---
-
 <TitleWithContributors :title="$frontmatter.title" />
 
 **{{ $frontmatter.description }}**
