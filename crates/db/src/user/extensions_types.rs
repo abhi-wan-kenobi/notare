@@ -17,6 +17,7 @@ user_common_derives! {
         pub extension_id: String,
         pub enabled: bool,
         pub config: serde_json::Value,
+        pub widget_layout_mapping: serde_json::Value,
     }
 }
 
@@ -30,8 +31,11 @@ mod tests {
         let schema = generator.into_root_schema_for::<ExtensionDefinition>();
 
         let current_dir = env!("CARGO_MANIFEST_DIR");
-        let config_schema_path =
-            std::path::PathBuf::from(current_dir).join("../../extensions/config.schema.json");
+        let name = "definition.schema.json";
+        let config_schema_path = std::path::PathBuf::from(current_dir)
+            .join("../../extensions/")
+            .join(name);
+
         let config_schema_content = serde_json::to_string_pretty(&schema).unwrap();
         std::fs::write(config_schema_path, config_schema_content).unwrap();
     }
