@@ -4,20 +4,13 @@ import { data } from "../data/extensions.data.mts";
 
 # Extensions
 
-`Extension` is pluggable module that can be used to extend the functionality of `Hyprnote`.
+**Extensions** are add-ons that let you add new features to **Hyprnote**—kind of like how extensions work in VS Code.
 
-Currently, there are **2 types of extensions**:
+In **Hyprnote**, these extensions are called **Widgets**. By default, they are **square (340px by 340px)**, but they can also be **smaller (1x1), wider (2x1), or even full-screen modals.**
 
-- `Copilot`
-  - Provide proactive help during the meeting.
-- `Widget`
-  - Display information or actions that can be used before, during, or after the meeting.
 
-<Image
-  alt="Extensions"
-  src="/extensions-abstract-light.png"
-  darkSrc="/extensions-abstract-dark.png"
-/>
+
+`<Image alt="Extensions" src="/extensions-abstract-light.png" />`
 
 <ExtensionsTable :data="data" />
 

@@ -1,12 +1,12 @@
 ---
-title: Live Summary
-description: Summarizes the recent meeting content in just three lines.
-source: https://github.com/fastrepl/hypr/tree/main/extensions/live-summary
+title: Live Transcript
+description: Show a live transcript during the meeting
+source: https://github.com/fastrepl/hypr/tree/main/extensions/live-transcript
 implemented: true
 default: true
 cloudOnly: false
 plugins: [listener, db]
-tags: [local, realtime, STT, speech-to-text, LLM, AI]
+tags: [ticketing]
 ---
 <TitleWithContributors :title="$frontmatter.title" />
 

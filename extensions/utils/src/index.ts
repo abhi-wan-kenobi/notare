@@ -67,7 +67,7 @@ export interface Extension {
   init: () => Promise<void>;
   oneByOne?: typeof WidgetOneByOne;
   twoByOne?: typeof WidgetTwoByOne;
-  twoByTwo: typeof WidgetTwoByTwo;
+  twoByTwo?: typeof WidgetTwoByTwo;
   full?: typeof WidgetFullSizeModal;
 }
 

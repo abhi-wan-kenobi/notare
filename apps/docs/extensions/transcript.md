@@ -1,12 +1,13 @@
 ---
-title: Live Summary
-description: Summarizes the recent meeting content in just three lines.
-source: https://github.com/fastrepl/hypr/tree/main/extensions/live-summary
+title:Transcript
+description: Converts your meeting content to text in real time and even identifies who’s speaking. If needed, you can manually edit the text and correct speaker names.
+source: https://github.com/fastrepl/hypr/tree/main/extensions/live-transcript
+type: [widget]
 implemented: true
 default: true
 cloudOnly: false
 plugins: [listener, db]
-tags: [local, realtime, STT, speech-to-text, LLM, AI]
+tags: [local, realtime, STT, speech-to-text, AI]
 ---
 <TitleWithContributors :title="$frontmatter.title" />
 
