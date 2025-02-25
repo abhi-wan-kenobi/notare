@@ -98,7 +98,7 @@ impl Diarizer {
         }
 
         for segment in &mut accumulated_segments {
-            let frame_count = ((segment.end - segment.start) / ratio).round() as f32;
+            let frame_count = ((segment.end - segment.start) / ratio).round();
             segment.confidence /= frame_count;
         }
 

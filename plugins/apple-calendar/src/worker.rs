@@ -1,6 +1,5 @@
 use apalis::prelude::{Data, Error, WorkerBuilder, WorkerFactoryFn};
 use chrono::{DateTime, Utc};
-use std::str::FromStr;
 
 use hypr_calendar::CalendarSource;
 
@@ -20,7 +19,11 @@ impl From<DateTime<Utc>> for Job {
     }
 }
 
+const WORKER_NAME: &str = "apple_calendar_worker";
+
 pub async fn perform(_job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
+    tracing::info!("{}_perform_started", WORKER_NAME);
+
     let calendar_access = tauri::async_runtime::spawn_blocking(|| {
         let handle = hypr_calendar::apple::Handle::new();
         handle.calendar_access_status()
@@ -29,7 +32,7 @@ pub async fn perform(_job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
     .unwrap_or(false);
 
     if !calendar_access {
-        return Err(err_from("calendar_access_denied"));
+        return Err(crate::Error::CalendarAccessDenied.as_worker_error());
     }
 
     let user_id = ctx.user_id.clone();
@@ -71,10 +74,11 @@ pub async fn perform(_job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
                 .db
                 .upsert_event(event)
                 .await
-                .map_err(|e| err_from(e.to_string()))?;
+                .map_err(|e| crate::Error::DatabaseError(e).as_worker_error())?;
         }
     }
 
+    tracing::info!("{}_perform_finished", WORKER_NAME);
     Ok(())
 }
 
@@ -118,19 +122,15 @@ async fn list_events(
     Ok(events)
 }
 
-fn err_from(e: impl Into<String>) -> Error {
-    Error::Failed(std::sync::Arc::new(Box::new(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        e.into(),
-    ))))
-}
-
 pub async fn monitor(state: WorkerState) -> Result<(), std::io::Error> {
-    let schedule = apalis_cron::Schedule::from_str("*/10 * * * * *").unwrap();
+    let schedule = {
+        use std::str::FromStr;
+        apalis_cron::Schedule::from_str("*/10 * * * * *").unwrap()
+    };
 
     apalis::prelude::Monitor::new()
         .register({
-            WorkerBuilder::new("calendar")
+            WorkerBuilder::new(WORKER_NAME)
                 .data(state)
                 .backend(apalis_cron::CronStream::new(schedule))
                 .build_fn(perform)

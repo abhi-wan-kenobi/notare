@@ -109,8 +109,7 @@ pub async fn main() {
                     app.db_set_user_id(user_id.clone()).unwrap();
                     user_id
                 } else {
-                    let user_id = app.db_create_new_user().unwrap();
-                    user_id
+                    app.db_create_new_user().unwrap()
                 }
             };
 

@@ -85,19 +85,13 @@ impl Handle {
 
     pub fn calendar_access_status(&self) -> bool {
         let status = unsafe { EKEventStore::authorizationStatusForEntityType(EKEntityType::Event) };
-        match status {
-            EKAuthorizationStatus::FullAccess => true,
-            _ => false,
-        }
+        matches!(status, EKAuthorizationStatus::FullAccess)
     }
 
     pub fn contacts_access_status(&self) -> bool {
         let status =
             unsafe { CNContactStore::authorizationStatusForEntityType(CNEntityType::Contacts) };
-        match status {
-            CNAuthorizationStatus::Authorized => true,
-            _ => false,
-        }
+        matches!(status, CNAuthorizationStatus::Authorized)
     }
 
     fn events_predicate(&self, filter: &EventFilter) -> Retained<NSPredicate> {

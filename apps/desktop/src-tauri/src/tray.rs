@@ -68,7 +68,7 @@ pub fn create_tray(app: &AppHandle) -> Result<()> {
         })
         .on_tray_icon_event({
             let app_handle = app.clone();
-            move |tray, event| {}
+            move |_tray, _event| {}
         })
         .build(&app)
         .unwrap();

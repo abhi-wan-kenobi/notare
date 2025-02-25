@@ -9,10 +9,7 @@ use axum::{
 };
 use clerk_rs::validators::authorizer::ClerkJwt;
 
-use crate::{
-    get_env,
-    state::{AnalyticsState, AuthState},
-};
+use crate::state::{AnalyticsState, AuthState};
 
 #[tracing::instrument(skip_all)]
 pub async fn verify_api_key(
@@ -123,6 +120,10 @@ pub async fn send_analytics(
     Ok(next.run(req).await)
 }
 
+#[allow(unused)]
+type MiddlewareHandler = Pin<Box<dyn Future<Output = Result<Response, StatusCode>> + Send>>;
+
+#[tracing::instrument(skip_all)]
 pub fn check_membership(
     _membership: String,
 ) -> impl Fn(
@@ -130,7 +131,7 @@ pub fn check_membership(
     Extension<hypr_db::admin::User>,
     Request,
     middleware::Next,
-) -> Pin<Box<dyn Future<Output = Result<Response, StatusCode>> + Send>>
+) -> MiddlewareHandler
        + Clone {
     move |State(_state): State<AuthState>,
           Extension(_user): Extension<hypr_db::admin::User>,

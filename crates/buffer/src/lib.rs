@@ -59,7 +59,7 @@ fn md_to_md(text: impl AsRef<str>) -> Result<String, Error> {
 
 fn md_to_html(text: &str) -> Result<String, Error> {
     let html = markdown::to_html_with_options(
-        &text,
+        text,
         &markdown::Options {
             parse: markdown::ParseOptions::default(),
             compile: markdown::CompileOptions {

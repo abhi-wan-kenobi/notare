@@ -19,10 +19,8 @@ pub fn make_progress_handler(
         if let kalosm_model_types::ModelLoadingProgress::Downloading { progress, .. } = progress {
             let v = ((progress.progress as f32 / progress.size as f32) * 100.0) as u8;
 
-            if last_v != Some(v) {
-                if on_progress.send(v).is_ok() {
-                    last_v = Some(v);
-                }
+            if last_v != Some(v) && on_progress.send(v).is_ok() {
+                last_v = Some(v);
             }
         }
     }

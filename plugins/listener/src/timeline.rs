@@ -173,26 +173,26 @@ impl Timeline {
 
             if let Some(last_item) = items.last_mut() {
                 if transcript.text.trim().is_empty() {
-                    last_item.merge(&transcript);
+                    last_item.merge(transcript);
                     continue;
                 }
 
                 if last_item.speaker == speaker {
-                    if last_item.num_words() < 5 && last_item.time_diff(&transcript) < 5000 {
-                        last_item.merge(&transcript);
+                    if last_item.num_words() < 5 && last_item.time_diff(transcript) < 5000 {
+                        last_item.merge(transcript);
                         continue;
                     }
 
-                    if !last_item.eos() && last_item.time_diff(&transcript) < 2000 {
-                        last_item.merge(&transcript);
+                    if !last_item.eos() && last_item.time_diff(transcript) < 2000 {
+                        last_item.merge(transcript);
                         continue;
                     }
 
                     if last_item.eos()
-                        && last_item.time_diff(&transcript) < 500
+                        && last_item.time_diff(transcript) < 500
                         && last_item.num_words() <= 20
                     {
-                        last_item.merge(&transcript);
+                        last_item.merge(transcript);
                         continue;
                     }
                 }

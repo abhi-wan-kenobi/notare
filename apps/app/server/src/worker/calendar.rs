@@ -6,6 +6,7 @@ use crate::state::WorkerState;
 use hypr_calendar::CalendarSource;
 use hypr_nango::{NangoCredentials, NangoGetConnectionResponse, NangoIntegration};
 
+#[allow(unused)]
 #[derive(Default, Debug, Clone)]
 pub struct Job(DateTime<Utc>);
 

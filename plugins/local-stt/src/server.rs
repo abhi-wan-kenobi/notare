@@ -150,7 +150,7 @@ impl kalosm_sound::AsyncSource for WebSocketAudioSource {
                 _ => None,
             }
         })
-        .flat_map(|samples| futures_util::stream::iter(samples))
+        .flat_map(futures_util::stream::iter)
     }
 
     fn sample_rate(&self) -> u32 {

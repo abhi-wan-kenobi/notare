@@ -1,5 +1,4 @@
 mod calendar;
-mod credit;
 
 use apalis::prelude::{Error, WorkerBuilder, WorkerBuilderExt, WorkerFactoryFn};
 use std::str::FromStr;
@@ -15,10 +14,8 @@ fn err_from(e: impl Into<String>) -> Error {
 
 pub async fn monitor(state: WorkerState) -> Result<(), std::io::Error> {
     let calendar_schedule = apalis_cron::Schedule::from_str("0 0 * * * *").unwrap();
-    let credit_schedule = apalis_cron::Schedule::from_str("0 0 * * * *").unwrap();
 
     let calendar_ctx = state.clone();
-    let credit_ctx = state;
 
     apalis::prelude::Monitor::new()
         .register(
@@ -27,13 +24,6 @@ pub async fn monitor(state: WorkerState) -> Result<(), std::io::Error> {
                 .data(calendar_ctx)
                 .backend(apalis_cron::CronStream::new(calendar_schedule))
                 .build_fn(calendar::perform),
-        )
-        .register(
-            WorkerBuilder::new("credit")
-                .concurrency(1)
-                .data(credit_ctx)
-                .backend(apalis_cron::CronStream::new(credit_schedule))
-                .build_fn(credit::perform),
         )
         .run()
         .await

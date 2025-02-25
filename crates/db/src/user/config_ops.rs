@@ -33,8 +33,8 @@ impl UserDatabase {
                     ai
                 ) VALUES (?, ?, ?, ?, ?)",
                 vec![
-                    config.id.clone().into(),
-                    config.user_id.clone().into(),
+                    config.id.clone(),
+                    config.user_id.clone(),
                     serde_json::to_string(&config.general)?,
                     serde_json::to_string(&config.notification)?,
                     serde_json::to_string(&config.ai)?,
@@ -47,7 +47,9 @@ impl UserDatabase {
 
 #[cfg(test)]
 mod tests {
-    use crate::user::{tests::setup_db, Config, ConfigGeneral, ConfigNotification, Human};
+    use crate::user::{
+        tests::setup_db, Config, ConfigAI, ConfigGeneral, ConfigNotification, Human,
+    };
 
     #[tokio::test]
     async fn test_config() {

@@ -26,7 +26,7 @@ impl AnalyticsClient {
             let _ = e.insert_prop(key, value);
         }
 
-        let _ = self.client.capture(e).await?;
+        self.client.capture(e).await?;
         Ok(())
     }
 }
