@@ -9,3 +9,4 @@ Secrets*.toml
 **/__pycache__/
 
 *storybook.log
+.cache/
