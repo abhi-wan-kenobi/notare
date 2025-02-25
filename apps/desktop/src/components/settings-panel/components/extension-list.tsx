@@ -67,8 +67,7 @@ export function ExtensionList({
                   className={cn(
                     "flex w-full flex-col gap-1 rounded-lg p-2 text-left",
                     "hover:bg-neutral-100",
-                    selectedExtension?.id === extension.id &&
-                      "bg-neutral-100"
+                    selectedExtension?.id === extension.id && "bg-neutral-100",
                   )}
                 >
                   <div className="flex items-center justify-between">
@@ -105,8 +104,7 @@ export function ExtensionList({
                   className={cn(
                     "flex w-full flex-col gap-1 rounded-lg p-2 text-left",
                     "hover:bg-neutral-100",
-                    selectedExtension?.id === extension.id &&
-                      "bg-neutral-100"
+                    selectedExtension?.id === extension.id && "bg-neutral-100",
                   )}
                 >
                   <div className="flex items-center justify-between">
