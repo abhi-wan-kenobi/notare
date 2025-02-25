@@ -80,7 +80,7 @@ rodio = "0.20.1"
 kalosm-common = { git = "https://github.com/floneum/floneum", rev = "22838c9ba7f7802d986c505ab8e3498fe94b28e4" }
 kalosm-llama = { git = "https://github.com/floneum/floneum", rev = "22838c9ba7f7802d986c505ab8e3498fe94b28e4" }
 kalosm-model-types = { git = "https://github.com/floneum/floneum", rev = "22838c9ba7f7802d986c505ab8e3498fe94b28e4" }
-kalosm-sound = { git = "https://github.com/floneum/floneum", rev = "22838c9ba7f7802d986c505ab8e3498fe94b28e4" }
+kalosm-sound = { git = "https://github.com/floneum/floneum", rev = "22838c9ba7f7802d986c505ab8e3498fe94b28e4", default-features = false }
 kalosm-streams = { git = "https://github.com/floneum/floneum", rev = "22838c9ba7f7802d986c505ab8e3498fe94b28e4" }
 rwhisper = { git = "https://github.com/floneum/floneum", rev = "22838c9ba7f7802d986c505ab8e3498fe94b28e4" }
 

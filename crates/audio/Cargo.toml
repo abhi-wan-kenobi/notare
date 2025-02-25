@@ -16,10 +16,10 @@ futures-core = { workspace = true }
 futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt", "macros"] }
 
-rodio = { workspace = true, features = ["wav", "hound", "vorbis"] }
+rodio = { workspace = true, features = ["wav", "hound"] }
 tokio-stream = { workspace = true }
 
-kalosm-sound = { workspace = true }
+kalosm-sound = { workspace = true, default-features = false }
 
 [target.'cfg(target_os = "macos")'.dependencies.cidre]
 git = "https://github.com/yury/cidre"

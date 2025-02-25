@@ -46,6 +46,6 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tower-http = { workspace = true, features = ["cors", "trace"] }
 
 kalosm-common = { workspace = true }
-kalosm-sound = { workspace = true }
+kalosm-sound = { workspace = true, default-features = false, features = ["metal"] }
 rodio = { workspace = true, features = ["wav"] }
 rwhisper = { workspace = true, features = ["metal"] }

@@ -1,9 +1,10 @@
+mod embedding;
 mod math;
 
 use anyhow::Result;
 use hypr_onnx::{
     ndarray,
-    ort::{Session, Value},
+    ort::{session::Session, value::Value},
 };
 
 pub struct Diarizer {

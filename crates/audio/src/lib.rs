@@ -6,10 +6,7 @@ pub use mic::*;
 pub use speaker::*;
 pub use stream::*;
 
-pub use kalosm_sound::{
-    AsyncSource, AsyncSourceTranscribeExt, DenoisedExt, ResampledAsyncSource,
-    TranscribeChunkedAudioStreamExt, VoiceActivityDetectorExt, VoiceActivityStreamExt,
-};
+pub use kalosm_sound::AsyncSource;
 
 pub struct AudioOutput {}
 

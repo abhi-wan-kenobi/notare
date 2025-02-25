@@ -68,7 +68,7 @@ impl VoiceActivityDetectorBuilder {
 pub struct VoiceActivityDetector {
     chunk_size: usize,
     sample_rate: i64,
-    session: hypr_onnx::ort::Session,
+    session: hypr_onnx::ort::session::Session,
     h: ndarray::Array3<f32>,
     c: ndarray::Array3<f32>,
 }
