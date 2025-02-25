@@ -30,19 +30,6 @@ const columns = [
         [[tooltip, info.row.original.frontmatter.description]],
       ),
   }),
-  columnHelper.accessor("frontmatter.type", {
-    header: "Type",
-    cell: (info) =>
-      info
-        .getValue()
-        .map((type) =>
-          h(
-            VPBadge,
-            { variant: "tip" },
-            type.charAt(0).toUpperCase() + type.slice(1),
-          ),
-        ),
-  }),
   columnHelper.accessor("frontmatter.implemented", {
     header: "Implemented",
     cell: (info) =>

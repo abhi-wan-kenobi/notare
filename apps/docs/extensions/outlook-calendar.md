@@ -2,7 +2,6 @@
 title: Outlook Calendar
 description: Outlook calendar integration
 source: https://github.com/fastrepl/hypr/tree/main/extensions/outlook-calendar
-type: [widget]
 implemented: false
 default: false
 cloudOnly: true
