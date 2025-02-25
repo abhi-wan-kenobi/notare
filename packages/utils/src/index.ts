@@ -1,6 +1,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { customProvider } from "ai";
 
+import { isTauri } from "@tauri-apps/api/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { commands as sseCommands } from "@hypr/plugin-sse";
 import { commands as connectorCommands } from "@hypr/plugin-connector";
@@ -11,10 +12,7 @@ export const fetch = (
   input: Parameters<typeof globalThis.fetch>[0],
   init?: Parameters<typeof globalThis.fetch>[1],
 ) => {
-  // @ts-ignore
-  const isTauri = !!window.__TAURI__;
-
-  if (!isTauri) {
+  if (!isTauri()) {
     return globalThis.fetch(input, init);
   }
 

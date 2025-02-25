@@ -436,7 +436,7 @@ importers:
   extensions/live-summary:
     dependencies:
       '@hypr/extension-utils':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../utils
       '@hypr/plugin-db':
         specifier: workspace:*
@@ -860,6 +860,9 @@ importers:
       '@hypr/plugin-sse':
         specifier: workspace:^
         version: link:../../plugins/sse
+      '@tauri-apps/api':
+        specifier: ^2.2.0
+        version: 2.2.0
       '@tauri-apps/plugin-http':
         specifier: ^2.3.0
         version: 2.3.0

@@ -1,3 +1,4 @@
+import { isTauri } from "@tauri-apps/api/core";
 import {
   commands as generatedCommands,
   events as generatedEvents,
@@ -8,8 +9,7 @@ export const commands = {
     input: Parameters<typeof globalThis.fetch>[0],
     init?: Parameters<typeof globalThis.fetch>[1],
   ): Promise<Response> {
-    // @ts-ignore
-    if (window.__TAURI__) {
+    if (isTauri()) {
       return window.fetch(input, init);
     }
 

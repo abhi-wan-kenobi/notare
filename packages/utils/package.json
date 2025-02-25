@@ -6,6 +6,7 @@
     "@hypr/client": "workspace:^",
     "@hypr/plugin-connector": "workspace:^",
     "@hypr/plugin-sse": "workspace:^",
+    "@tauri-apps/api": "^2.2.0",
     "@tauri-apps/plugin-http": "^2.3.0",
     "ai": "^4.1.45"
   }
