@@ -92,9 +92,7 @@ const WidgetFullSizeModal = ({
   ...props
 }: Omit<WidgetProps, "width" | "height" | "onMaximize"> & {
   onMinimize: () => void;
-}) => (
-  <Widget width="100%" height="100%" style={{ margin: "-8px" }} {...props} />
-);
+}) => <Widget width="360px" height="100%" {...props} />;
 
 export {
   Widget,

@@ -5,7 +5,7 @@ import UI from "@hypr/ui/tailwind.config";
 import Tiptap from "@hypr/tiptap/editor/tailwind.config";
 
 import ExtensionLiveSummary from "@hypr/extension-live-summary/tailwind.config";
-import ExtensionLiveTranscript from "@hypr/extension-live-transcript/tailwind.config";
+import ExtensionLiveTranscript from "@hypr/extension-transcript/tailwind.config";
 import ExtensionWorldClocks from "@hypr/extension-world-clocks/tailwind.config";
 
 const config = {

@@ -6,13 +6,12 @@
   "type": "module",
   "exports": {
     ".": "./src/index.tsx",
-    "./globals.css": "./dist/globals.css",
+    "./globals.css": "./src/styles/globals.css",
     "./tailwind.config": "./tailwind.config.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "preview": "storybook dev -p 6006",
-    "build": "tailwindcss -i ./src/styles/globals.css -o ./dist/globals.css --minify"
+    "preview": "storybook dev -p 6006"
   },
   "dependencies": {
     "@hypr/extension-utils": "workspace:^",

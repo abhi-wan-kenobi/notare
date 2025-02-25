@@ -90,12 +90,12 @@ importers:
       '@hypr/extension-live-summary':
         specifier: workspace:*
         version: link:../../extensions/live-summary
-      '@hypr/extension-live-transcript':
-        specifier: workspace:*
-        version: link:../../extensions/live-transcript
       '@hypr/extension-obsidian':
         specifier: workspace:*
         version: link:../../extensions/obsidian
+      '@hypr/extension-transcript':
+        specifier: workspace:*
+        version: link:../../extensions/transcript
       '@hypr/extension-world-clocks':
         specifier: workspace:*
         version: link:../../extensions/world-clocks
@@ -506,7 +506,20 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.6)(@types/node@22.13.5)(typescript@5.7.3))
 
-  extensions/live-transcript:
+  extensions/obsidian:
+    dependencies:
+      '@hypr/extension-utils':
+        specifier: workspace:^
+        version: link:../utils
+      '@hypr/obsidian':
+        specifier: workspace:*
+        version: link:../../packages/obsidian
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.7.3
+
+  extensions/transcript:
     dependencies:
       '@hypr/extension-utils':
         specifier: workspace:^
@@ -517,21 +530,30 @@ importers:
       '@hypr/plugin-template':
         specifier: workspace:*
         version: link:../../plugins/template
+      '@hypr/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.66.0
-        version: 5.66.0(react@18.3.1)
+        version: 5.66.8(react@18.3.1)
       '@tauri-apps/api':
         specifier: ^2.2.0
         version: 2.2.0
       '@tauri-apps/plugin-http':
         specifier: ^2.3.0
         version: 2.3.0
+      lucide-react:
+        specifier: ^0.474.0
+        version: 0.474.0(react@18.3.1)
       motion:
         specifier: ^12.4.2
-        version: 12.4.2(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 12.4.7(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
+      zod:
+        specifier: ^3.24.2
+        version: 3.24.2
     devDependencies:
       '@storybook/addon-essentials':
         specifier: ^8.5.6
@@ -545,6 +567,9 @@ importers:
       '@storybook/react-vite':
         specifier: ^8.5.6
         version: 8.5.6(@storybook/test@8.5.6(storybook@8.5.6(prettier@3.5.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.34.8)(storybook@8.5.6(prettier@3.5.1))(typescript@5.7.3)(vite@6.1.1(@types/node@22.13.5)(jiti@2.4.2)(tsx@4.19.3)(yaml@2.7.0))
+      '@types/node':
+        specifier: ^22.13.5
+        version: 22.13.5
       '@types/react':
         specifier: ^18.3.18
         version: 18.3.18
@@ -563,19 +588,6 @@ importers:
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.6)(@types/node@22.13.5)(typescript@5.7.3))
-
-  extensions/obsidian:
-    dependencies:
-      '@hypr/extension-utils':
-        specifier: workspace:^
-        version: link:../utils
-      '@hypr/obsidian':
-        specifier: workspace:*
-        version: link:../../packages/obsidian
-    devDependencies:
-      typescript:
-        specifier: ^5.7.3
-        version: 5.7.3
 
   extensions/utils:
     dependencies:
@@ -7822,7 +7834,7 @@ snapshots:
       '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 22.13.4
+      '@types/node': 22.13.5
       '@types/yargs': 17.0.33
       chalk: 4.1.2
 

@@ -17,7 +17,7 @@
     "@huggingface/languages": "^1.0.0",
     "@hypr/client": "workspace:*",
     "@hypr/extension-live-summary": "workspace:*",
-    "@hypr/extension-live-transcript": "workspace:*",
+    "@hypr/extension-transcript": "workspace:*",
     "@hypr/extension-obsidian": "workspace:*",
     "@hypr/extension-world-clocks": "workspace:*",
     "@hypr/plugin-apple-calendar": "workspace:^",

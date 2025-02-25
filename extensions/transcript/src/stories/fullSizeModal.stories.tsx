@@ -1,24 +1,31 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import type { HttpHandler } from "msw";
+import { http, HttpResponse, type HttpHandler } from "msw";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { mockIPC } from "@tauri-apps/api/mocks";
+import { mockTimeline } from "./mockData";
 
 import extension from "../index";
 
 const queryClient = new QueryClient();
 
 const meta = {
-  title: "Extensions/Live Transcript/Panel 2x2",
-  component: extension.panelTwoByTwo,
-} satisfies Meta<typeof extension.panelTwoByTwo>;
+  title: "Extensions/Transcript/Full Size Modal",
+  component: extension.full,
+} satisfies Meta<typeof extension.full>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Main2: Story = {
+export const Main: Story = {
   parameters: {
     msw: {
-      handlers: [] satisfies HttpHandler[],
+      handlers: [
+        http.get("http://localhost:1234/api/timeline", () => {
+          return HttpResponse.json({
+            timeline: mockTimeline,
+          });
+        }),
+      ] satisfies HttpHandler[],
     },
   },
   decorators: [
@@ -34,5 +41,12 @@ export const Main2: Story = {
       );
     },
   ],
-  args: {},
+  args: {
+    onMinimize: () => {},
+    children: (
+      <>
+        <div>Example Widget Content</div>
+      </>
+    ),
+  },
 };

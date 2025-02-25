@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 
@@ -61,7 +61,6 @@ const widget: Extension["twoByTwo"] = () => {
       );
 
       const provider = await modelProvider();
-      console.log("provider:", provider);
 
       const { object } = await generateObject({
         model: provider.languageModel("any"),
