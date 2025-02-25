@@ -6,6 +6,7 @@ import {
   UsersIcon,
   BellIcon,
   TagsIcon,
+  BlocksIcon,
 } from "lucide-react";
 
 export const data = {
@@ -14,6 +15,7 @@ export const data = {
     { name: "Calendar", icon: CalendarIcon },
     { name: "Notifications", icon: BellIcon },
     { name: "Templates", icon: FileTextIcon },
+    { name: "Extensions", icon: BlocksIcon },
     { name: "Tags", icon: TagsIcon },
     { name: "Team", icon: UsersIcon },
     { name: "Billing", icon: CreditCardIcon },

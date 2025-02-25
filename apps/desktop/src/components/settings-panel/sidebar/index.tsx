@@ -1,6 +1,7 @@
 import { type NavNames } from "../types";
 import { TemplateView } from "./template-view";
 import { SettingsView } from "./settings-view";
+import { ExtensionsView } from "./extensions-view";
 import { cn } from "@hypr/ui/lib/utils";
 import { type Template } from "@hypr/plugin-db";
 
@@ -52,6 +53,12 @@ export function SettingsSidebar({
             onCreateTemplate={onCreateTemplate}
             setActive={setActive}
             selectedTemplate={null}
+          />
+        ) : active === "Extensions" ? (
+          <ExtensionsView
+            searchQuery={searchQuery}
+            onSearchChange={onSearchChange}
+            setActive={setActive}
           />
         ) : (
           <SettingsView active={active} setActive={setActive} />

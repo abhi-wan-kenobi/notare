@@ -40,7 +40,7 @@ export default function Toolbar() {
         <SearchBar />
 
         <div
-          className="flex w-40 items-center justify-end gap-2"
+          className="flex w-40 items-center justify-end gap-1"
           data-tauri-drag-region
         >
           <SearchIconButton />

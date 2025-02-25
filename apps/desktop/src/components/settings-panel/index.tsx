@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SettingsIcon } from "lucide-react";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Modal, ModalBody } from "@hypr/ui/components/ui/modal";
-import { DialogView } from "./views";
+import { SettingsPanelBody } from "./views";
 import GeneralComponent from "./views/general";
 import CalendarComponent from "./views/calendar";
 import TagsComponent from "./views/tags";
@@ -21,6 +21,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@hypr/ui/components/ui/tooltip";
+import ExtensionsComponent from "./views/extensions";
 
 export default function SettingsPanel() {
   const [open, setOpen] = useState(false);
@@ -101,7 +102,10 @@ export default function SettingsPanel() {
               onCreateTemplate={handleCreateTemplate}
             />
 
-            <DialogView title={active} selectedTemplate={selectedTemplate}>
+            <SettingsPanelBody
+              title={active}
+              selectedTemplate={selectedTemplate}
+            >
               {active === "General" && <GeneralComponent />}
               {active === "Calendar" && <CalendarComponent />}
               {active === "Notifications" && <NotificationsComponent />}
@@ -116,11 +120,14 @@ export default function SettingsPanel() {
                   }
                 />
               )}
+              {active === "Extensions" && !selectedTemplate && (
+                <ExtensionsComponent />
+              )}
               {active === "Tags" && <TagsComponent />}
               {active === "Team" && <TeamComponent />}
               {active === "Billing" && <BillingComponent />}
               {active === "Profile" && <ProfileComponent />}
-            </DialogView>
+            </SettingsPanelBody>
           </div>
         </ModalBody>
       </Modal>

@@ -8,17 +8,17 @@ import {
 } from "@hypr/ui/components/ui/breadcrumb";
 import { type Template } from "@hypr/plugin-db";
 
-interface DialogViewProps {
+interface SettingsPanelBodyProps {
   title: string;
   selectedTemplate: Template | null;
   children: ReactNode;
 }
 
-export function DialogView({
+export function SettingsPanelBody({
   title,
   selectedTemplate,
   children,
-}: DialogViewProps) {
+}: SettingsPanelBodyProps) {
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
       <div className="mt-2.5 flex items-center gap-2 px-4 py-1">
