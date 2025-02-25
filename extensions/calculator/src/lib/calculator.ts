@@ -25,26 +25,32 @@ export const calculate = (a: number, b: number, op: Operator): number => {
 
 export const handleNumber = (
   state: CalculatorState,
-  num: string
+  num: string,
 ): Partial<CalculatorState> => {
   if (state.newNumber) {
     return {
       display: num,
-      operation: state.prevValue !== null ? `${state.prevValue}${state.operator}${num}` : num,
+      operation:
+        state.prevValue !== null
+          ? `${state.prevValue}${state.operator}${num}`
+          : num,
       newNumber: false,
     };
   } else {
     const newDisplay = state.display === "0" ? num : state.display + num;
     return {
       display: newDisplay,
-      operation: state.prevValue !== null ? `${state.prevValue}${state.operator}${newDisplay}` : newDisplay,
+      operation:
+        state.prevValue !== null
+          ? `${state.prevValue}${state.operator}${newDisplay}`
+          : newDisplay,
     };
   }
 };
 
 export const handleOperator = (
   state: CalculatorState,
-  op: Operator
+  op: Operator,
 ): Partial<CalculatorState> => {
   const current = parseFloat(state.display);
   if (state.prevValue === null) {
@@ -70,7 +76,9 @@ export const handleOperator = (
   };
 };
 
-export const handleEquals = (state: CalculatorState): Partial<CalculatorState> => {
+export const handleEquals = (
+  state: CalculatorState,
+): Partial<CalculatorState> => {
   if (state.operator && state.prevValue !== null) {
     const current = parseFloat(state.display);
     const result = calculate(state.prevValue, current, state.operator);
@@ -93,32 +101,46 @@ export const handleClear = (): CalculatorState => ({
   newNumber: true,
 });
 
-export const handleDelete = (state: CalculatorState): Partial<CalculatorState> => {
+export const handleDelete = (
+  state: CalculatorState,
+): Partial<CalculatorState> => {
   if (state.display.length > 1) {
     const newDisplay = state.display.slice(0, -1);
     return {
       display: newDisplay,
-      operation: state.prevValue !== null ? `${state.prevValue}${state.operator}${newDisplay}` : newDisplay,
+      operation:
+        state.prevValue !== null
+          ? `${state.prevValue}${state.operator}${newDisplay}`
+          : newDisplay,
     };
   } else {
     return {
       display: "0",
-      operation: state.prevValue !== null ? `${state.prevValue}${state.operator}0` : "0",
+      operation:
+        state.prevValue !== null ? `${state.prevValue}${state.operator}0` : "0",
     };
   }
 };
 
-export const handleDecimal = (state: CalculatorState): Partial<CalculatorState> => {
+export const handleDecimal = (
+  state: CalculatorState,
+): Partial<CalculatorState> => {
   if (state.newNumber) {
     return {
       display: "0.",
-      operation: state.prevValue !== null ? `${state.prevValue}${state.operator}0.` : "0.",
+      operation:
+        state.prevValue !== null
+          ? `${state.prevValue}${state.operator}0.`
+          : "0.",
       newNumber: false,
     };
   } else if (!state.display.includes(".")) {
     return {
       display: state.display + ".",
-      operation: state.prevValue !== null ? `${state.prevValue}${state.operator}${state.display}.` : `${state.display}.`,
+      operation:
+        state.prevValue !== null
+          ? `${state.prevValue}${state.operator}${state.display}.`
+          : `${state.display}.`,
     };
   }
   return {};

@@ -53,11 +53,11 @@ const DinoGame: React.FC = () => {
     w: 89,
     h: 94,
     normalH: 94, // Normal height
-    duckH: 60,   // Height while ducking
+    duckH: 60, // Height while ducking
     yv: 0,
     score: 0,
     hscore: 0,
-    jump: 15
+    jump: 15,
   };
 
   const pbox = {
@@ -77,26 +77,42 @@ const DinoGame: React.FC = () => {
     gameStateRef.current.picB = 652 + Math.floor(Math.random() * 2) * 150;
   };
 
-  const drawScores = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, currentScore: number, highScore: number) => {
+  const drawScores = (
+    ctx: CanvasRenderingContext2D,
+    canvas: HTMLCanvasElement,
+    currentScore: number,
+    highScore: number,
+  ) => {
     // Save current context state
     ctx.save();
-    
+
     // Set text properties
     ctx.font = '20px "Press Start 2P", monospace';
     ctx.fillStyle = "#535353";
     ctx.textAlign = "right";
 
     // Draw current score
-    ctx.fillText(currentScore.toString().padStart(5, "0"), canvas.width - 25, 30);
+    ctx.fillText(
+      currentScore.toString().padStart(5, "0"),
+      canvas.width - 25,
+      30,
+    );
 
     // Draw HI score
-    ctx.fillText("HI " + highScore.toString().padStart(5, "0"), canvas.width - 160, 30);
+    ctx.fillText(
+      "HI " + highScore.toString().padStart(5, "0"),
+      canvas.width - 160,
+      30,
+    );
 
     // Restore context state
     ctx.restore();
   };
 
-  const drawGameOverScreen = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
+  const drawGameOverScreen = (
+    ctx: CanvasRenderingContext2D,
+    canvas: HTMLCanvasElement,
+  ) => {
     // Draw scores using the final score
     drawScores(ctx, canvas, player.score, player.hscore);
 
@@ -134,7 +150,7 @@ const DinoGame: React.FC = () => {
 
   const gameover = () => {
     const state = gameStateRef.current;
-    
+
     // Update high score if needed
     if (player.score > player.hscore) {
       player.hscore = player.score;
@@ -171,8 +187,9 @@ const DinoGame: React.FC = () => {
 
   const handleKeyDown = (evt: KeyboardEvent) => {
     const state = gameStateRef.current;
-    
-    if (evt.key === 'ArrowUp' || evt.key === ' ') { // Up arrow or Space
+
+    if (evt.key === "ArrowUp" || evt.key === " ") {
+      // Up arrow or Space
       if (state.onG && !state.isJumping) {
         state.isJumping = true;
         player.yv = -player.jump;
@@ -181,7 +198,8 @@ const DinoGame: React.FC = () => {
         state.gamespeed = 7;
       }
     }
-    if (evt.key === 'ArrowDown') { // Down arrow
+    if (evt.key === "ArrowDown") {
+      // Down arrow
       evt.preventDefault();
       if (!state.isDucking) {
         state.isDucking = true;
@@ -194,8 +212,9 @@ const DinoGame: React.FC = () => {
 
   const handleKeyUp = (evt: KeyboardEvent) => {
     const state = gameStateRef.current;
-    
-    if (evt.key === 'ArrowDown') { // Down arrow
+
+    if (evt.key === "ArrowDown") {
+      // Down arrow
       evt.preventDefault();
       state.isDucking = false;
       player.h = player.normalH;
@@ -213,12 +232,13 @@ const DinoGame: React.FC = () => {
     // Check if mouse is over restart button
     const buttonX = canvas.width / 2 - 36;
     const buttonY = canvas.height / 2 - 32;
-    const isHovered = x >= buttonX && x <= buttonX + 72 && y >= buttonY && y <= buttonY + 64;
+    const isHovered =
+      x >= buttonX && x <= buttonX + 72 && y >= buttonY && y <= buttonY + 64;
 
     if (isHovered !== gameStateRef.current.isButtonHovered) {
       gameStateRef.current.isButtonHovered = isHovered;
       // Force a redraw to update button appearance
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (ctx) drawGameOverScreen(ctx, canvas);
     }
   };
@@ -234,13 +254,18 @@ const DinoGame: React.FC = () => {
     // Check if click is on restart button
     const buttonX = canvas.width / 2 - 36;
     const buttonY = canvas.height / 2 - 32;
-    if (x >= buttonX && x <= buttonX + 72 && y >= buttonY && y <= buttonY + 64) {
+    if (
+      x >= buttonX &&
+      x <= buttonX + 72 &&
+      y >= buttonY &&
+      y <= buttonY + 64
+    ) {
       // Reset game state
       gameStateRef.current.gamespeed = 7;
       player.score = 0;
       player.y = 500; // Reset player position
       player.yv = 0; // Reset velocity
-      
+
       // Reset obstacle positions
       obsB.scroll = -200;
       obsS.scroll = -100;
@@ -252,8 +277,8 @@ const DinoGame: React.FC = () => {
   const update = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
+
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const state = gameStateRef.current;
@@ -267,7 +292,7 @@ const DinoGame: React.FC = () => {
     if (!state.onG) {
       player.yv += state.grav;
     } else {
-      state.isJumping = false;  // 땅에 닿으면 점프 상태 해제
+      state.isJumping = false; // 땅에 닿으면 점프 상태 해제
     }
 
     player.y += player.yv;
@@ -281,7 +306,7 @@ const DinoGame: React.FC = () => {
 
     if (state.gamespeed < 17 && state.gamespeed !== 0) {
       // 속도 증가량을 2배로 증가 (score/100 -> score/50)
-      state.gamespeed = 7 + (player.score / 50);
+      state.gamespeed = 7 + player.score / 50;
     }
 
     state.onG = false;
