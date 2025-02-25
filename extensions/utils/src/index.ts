@@ -20,7 +20,6 @@ export const fetch = (
 ) => {
   // @ts-ignore
   const isTauri = !!window.__TAURI__;
-  console.log("isTauri:", isTauri);
 
   if (!isTauri) {
     return globalThis.fetch(input, init);
@@ -28,7 +27,6 @@ export const fetch = (
 
   const headers =
     init?.headers instanceof Headers ? Array.from(init.headers.entries()) : [];
-  console.log("headers:", isTauri);
 
   const isSSE = headers.some(
     ([key, value]) =>
@@ -54,7 +52,6 @@ const getModel = async (model: string) => {
 
 export const modelProvider = async () => {
   const any = await getModel("gpt-4");
-  console.log("any:", any);
 
   return customProvider({
     languageModels: { any },

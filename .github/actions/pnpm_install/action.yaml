@@ -1,9 +1,3 @@
-inputs:
-  blacksmith:
-    required: false
-    type: boolean
-    default: false
-
 runs:
   using: "composite"
   steps:
@@ -12,14 +6,7 @@ runs:
         version: "9.15.0"
         run_install: false
 
-    - uses: useblacksmith/setup-node@v5
-      if: ${{ inputs.blacksmith && runner.os == 'Linux' }}
-      with:
-        node-version: "20"
-        cache: "pnpm"
-
     - uses: actions/setup-node@v4
-      if: ${{ !inputs.blacksmith || runner.os != 'Linux' }}
       with:
         node-version: "20"
         cache: "pnpm"
