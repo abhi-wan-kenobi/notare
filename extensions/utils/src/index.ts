@@ -73,3 +73,5 @@ export interface Extension {
   twoByTwo: typeof WidgetTwoByTwo;
   full?: typeof WidgetFullSizeModal;
 }
+
+export { formatTime } from "./time";

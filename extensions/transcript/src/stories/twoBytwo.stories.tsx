@@ -1,8 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { http, HttpResponse, type HttpHandler } from "msw";
-import { mockIPC } from "@tauri-apps/api/mocks";
-import { mockTimeline } from "./mockData";
+import { mockTranscriptIPC } from "./mocks";
 
 import extension from "../index";
 
@@ -19,30 +17,12 @@ type Story = StoryObj<typeof meta>;
 export const Main: Story = {
   parameters: {
     msw: {
-      handlers: [
-        http.get("http://localhost:1234/api/timeline", () => {
-          return HttpResponse.json({
-            timeline: mockTimeline,
-          });
-        }),
-      ] satisfies HttpHandler[],
+      handlers: [],
     },
   },
   decorators: [
     (Story: any) => {
-      mockIPC((cmd) => {
-        if (cmd === "plugin:connector|get_api_base") {
-          return "http://localhost:1234/v1";
-        }
-
-        if (cmd === "plugin:sse|fetch" || cmd === "plugin:http|fetch") {
-          return {
-            timeline: mockTimeline,
-          };
-        }
-
-        return {};
-      });
+      mockTranscriptIPC();
 
       return (
         <QueryClientProvider client={queryClient}>
