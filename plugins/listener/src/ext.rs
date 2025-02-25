@@ -216,9 +216,8 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
         let state = self.state::<crate::SharedState>();
         let mut s = state.lock().await;
 
-        if let Some(tx) = s.silence_stream_tx.take() {
-            let _ = tx.send(());
-        }
+        s.timeline = None;
+
         if let Some(handle) = s.mic_stream_handle.take() {
             handle.abort();
             let _ = handle.await;
@@ -226,6 +225,9 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
         if let Some(handle) = s.speaker_stream_handle.take() {
             handle.abort();
             let _ = handle.await;
+        }
+        if let Some(tx) = s.silence_stream_tx.take() {
+            let _ = tx.send(());
         }
         if let Some(handle) = s.listen_stream_handle.take() {
             handle.abort();

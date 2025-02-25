@@ -20,16 +20,18 @@ pub async fn main() {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
 
     {
-        tracing_subscriber::fmt()
+        let builder = tracing_subscriber::fmt()
             .with_file(true)
             .with_line_number(true)
-            .with_timer(tracing_subscriber::fmt::time::ChronoLocal::rfc_3339())
             .with_env_filter(
-                tracing_subscriber::EnvFilter::builder()
-                    .with_default_directive(tracing::Level::DEBUG.into())
-                    .from_env_lossy(),
-            )
-            .init();
+                tracing_subscriber::EnvFilter::from_default_env()
+                    .add_directive(tracing::Level::DEBUG.into())
+                    .add_directive("ort=error".parse().unwrap())
+                    .add_directive("rwhisper=trace".parse().unwrap())
+                    .add_directive("kalosm_sound=trace".parse().unwrap()),
+            );
+
+        builder.init();
     }
 
     let client = tauri_plugin_sentry::sentry::init((
