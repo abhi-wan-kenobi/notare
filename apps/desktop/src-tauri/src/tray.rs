@@ -1,13 +1,9 @@
-// https://github.com/CapSoftware/Cap/blob/8671050aaff780f658507579e7d1d75e7ee25d59/apps/desktop/src-tauri/src/tray.rs
-
-// use crate::events::{RecordingStarted, RecordingStopped};
 use tauri::{
     image::Image,
     menu::{Menu, MenuId, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
     AppHandle, Manager, Result,
 };
-// use tauri_specta::Event;
 
 pub enum TrayItem {
     Open,
@@ -67,21 +63,11 @@ pub fn create_tray(app: &AppHandle) -> Result<()> {
             }
         })
         .on_tray_icon_event({
-            let app_handle = app.clone();
+            let _app_handle = app.clone();
             move |_tray, _event| {}
         })
         .build(&app)
         .unwrap();
-
-    // RecordingStarted::listen_any(&app, {
-    //     let app = app.clone();
-    //     move |_| {}
-    // });
-
-    // RecordingStopped::listen_any(&app, {
-    //     let app = app.clone();
-    //     move |_| {}
-    // });
 
     Ok(())
 }

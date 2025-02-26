@@ -1,4 +1,3 @@
-mod audio;
 mod auth;
 mod commands;
 mod permissions;
@@ -56,6 +55,7 @@ pub async fn main() {
         .plugin(tauri_plugin_connector::init())
         .plugin(tauri_plugin_sentry::init(&client))
         .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_sfx::init())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_deep_link::init())

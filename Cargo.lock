@@ -3129,6 +3129,7 @@ dependencies = [
  "tauri-plugin-positioner",
  "tauri-plugin-process",
  "tauri-plugin-sentry",
+ "tauri-plugin-sfx",
  "tauri-plugin-shell",
  "tauri-plugin-single-instance",
  "tauri-plugin-sse",
@@ -11719,6 +11720,21 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.11",
+]
+
+[[package]]
+name = "tauri-plugin-sfx"
+version = "0.1.0"
+dependencies = [
+ "audio 0.1.0",
+ "serde",
+ "specta",
+ "specta-typescript",
+ "strum 0.26.3",
+ "tauri",
+ "tauri-plugin",
+ "tauri-specta",
+ "tracing",
 ]
 
 [[package]]

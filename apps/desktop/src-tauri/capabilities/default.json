@@ -40,6 +40,7 @@
     "misc:default",
     "sse:default",
     "connector:default",
+    "sfx:default",
     {
       "identifier": "http:default",
       "allow": [
