@@ -2,7 +2,6 @@
 title: Live Summary
 description: Summarizes the recent meeting content in just three lines.
 source: https://github.com/fastrepl/hypr/tree/main/extensions/live-summary
-widgets: [2x2, full]
 implemented: true
 default: true
 cloudOnly: false

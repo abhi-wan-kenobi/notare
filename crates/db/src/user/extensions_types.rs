@@ -7,6 +7,7 @@ user_common_derives! {
         pub name: String,
         pub description: String,
         pub config_schema: String,
+        pub cloud_only: bool,
     }
 }
 

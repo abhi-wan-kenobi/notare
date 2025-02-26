@@ -3,6 +3,7 @@
   "title": "ExtensionDefinition",
   "type": "object",
   "required": [
+    "cloud_only",
     "config_schema",
     "default_enabled",
     "description",
@@ -10,6 +11,9 @@
     "name"
   ],
   "properties": {
+    "cloud_only": {
+      "type": "boolean"
+    },
     "config_schema": {
       "type": "string"
     },

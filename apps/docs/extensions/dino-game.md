@@ -2,7 +2,6 @@
 title: Dino Game
 description: A fun game where you control a dinosaur and avoid obstacles.
 source: https://github.com/fastrepl/hypr/tree/main/extensions/dino-game
-widgets: [2x1]
 implemented: false
 default: false
 cloudOnly: false

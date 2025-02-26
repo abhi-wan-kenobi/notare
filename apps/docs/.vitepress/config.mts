@@ -46,8 +46,8 @@ const vitepressConfig: Parameters<typeof defineConfig>[0] = {
       },
     ],
     socialLinks: [
-      { icon: "github", link: "https://github.com/fastrepl/hypr" },
-      { icon: "discord", link: "https://discord.gg/fastrepl" },
+      { icon: "github", link: "https://hyprnote.com/github" },
+      { icon: "discord", link: "https://hyprnote.com/discord" },
     ],
     sidebar,
   },

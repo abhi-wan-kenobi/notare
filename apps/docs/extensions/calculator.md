@@ -2,7 +2,6 @@
 title: Calculator
 description: Conduct simple calculations on the spot.
 source: https://github.com/fastrepl/hypr/tree/main/extensions/calculator
-widgets: [2x2]
 implemented: false
 default: false
 cloudOnly: false

@@ -1,8 +1,7 @@
 ---
 title: Outlook Calendar
-description: Outlook calendar integration
+description: View or create Outlook calendar events related to the meeting content.
 source: https://github.com/fastrepl/hypr/tree/main/extensions/outlook-calendar
-widgets: [2x2]
 implemented: false
 default: false
 cloudOnly: true

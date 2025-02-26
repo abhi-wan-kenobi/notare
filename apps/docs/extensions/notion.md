@@ -1,8 +1,7 @@
 ---
 title: Notion
-description: Create a notion page from the meeting
+description: View or create Notion pages related to the meeting content.
 source: https://github.com/fastrepl/hypr/tree/main/extensions/notion
-widgets: [2x2]
 implemented: false
 default: false
 cloudOnly: true

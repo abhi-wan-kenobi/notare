@@ -1,8 +1,7 @@
 ---
 title: Google Calendar
-description: Google Calendar integration
+description: View or create Google calendar events related to the meeting content.
 source: https://github.com/fastrepl/hypr/tree/main/extensions/google-calendar
-widgets: [2x2]
 implemented: false
 default: false
 cloudOnly: true

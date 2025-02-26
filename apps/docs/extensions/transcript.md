@@ -2,7 +2,6 @@
 title: Transcript
 description: Converts your meeting content to text in real time and even identifies who’s speaking. If needed, you can manually edit the text and correct speaker names.
 source: https://github.com/fastrepl/hypr/tree/main/extensions/transcript
-widgets: [2x2]
 implemented: true
 default: true
 cloudOnly: false
