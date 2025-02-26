@@ -1,4 +1,9 @@
-const COMMANDS: &[&str] = &["start_oauth_server", "cancel_oauth_server"];
+const COMMANDS: &[&str] = &[
+    "start_oauth_server",
+    "cancel_oauth_server",
+    "get_from_vault",
+    "reset_vault",
+];
 
 fn main() {
     tauri_plugin::Builder::new(COMMANDS).build();

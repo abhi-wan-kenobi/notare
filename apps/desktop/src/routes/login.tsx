@@ -4,7 +4,10 @@ import { open } from "@tauri-apps/plugin-shell";
 import { Trans } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { message } from "@tauri-apps/plugin-dialog";
-import { commands as authCommands, type RequestParams } from "@hypr/plugin-auth";
+import {
+  commands as authCommands,
+  type RequestParams,
+} from "@hypr/plugin-auth";
 import clsx from "clsx";
 
 import { baseUrl } from "@/client";

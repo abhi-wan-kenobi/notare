@@ -4,6 +4,8 @@ Default permissions for the plugin
 
 - `allow-start-oauth-server`
 - `allow-cancel-oauth-server`
+- `allow-get-from-vault`
+- `allow-reset-vault`
 
 ## Permission Table
 
@@ -36,6 +38,58 @@ Enables the cancel_oauth_server command without any pre-configured scope.
 <td>
 
 Denies the cancel_oauth_server command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`auth:allow-get-from-vault`
+
+</td>
+<td>
+
+Enables the get_from_vault command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`auth:deny-get-from-vault`
+
+</td>
+<td>
+
+Denies the get_from_vault command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`auth:allow-reset-vault`
+
+</td>
+<td>
+
+Enables the reset_vault command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`auth:deny-reset-vault`
+
+</td>
+<td>
+
+Denies the reset_vault command without any pre-configured scope.
 
 </td>
 </tr>
