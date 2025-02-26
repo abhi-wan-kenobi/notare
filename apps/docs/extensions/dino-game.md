@@ -1,13 +1,13 @@
 ---
-title: Live Summary
-description: Summarizes the recent meeting content in just three lines.
-source: https://github.com/fastrepl/hypr/tree/main/extensions/live-summary
-widgets: [2x2, full]
-implemented: true
-default: true
+title: Dino Game
+description: A fun game where you control a dinosaur and avoid obstacles.
+source: https://github.com/fastrepl/hypr/tree/main/extensions/dino-game
+widgets: [2x1]
+implemented: false
+default: false
 cloudOnly: false
-plugins: [listener, db]
-tags: [local, realtime, STT, speech-to-text, LLM, AI]
+plugins: []
+tags: [game]
 ---
 <TitleWithContributors :title="$frontmatter.title" />
 

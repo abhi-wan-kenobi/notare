@@ -2,7 +2,7 @@
 title: Google Calendar
 description: Google Calendar integration
 source: https://github.com/fastrepl/hypr/tree/main/extensions/google-calendar
-type: [2x2]
+widgets: [2x2]
 implemented: false
 default: false
 cloudOnly: true

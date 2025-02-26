@@ -10,7 +10,7 @@ In **Hyprnote**, these extensions are called **Widgets**. By default, they are *
 
 
 
-`<Image alt="Extensions" src="/extensions-abstract-light.png" />`
+<Image alt="Extensions" src="/extensions-abstract-light.png" />
 
 <ExtensionsTable :data="data" />
 

@@ -1,8 +1,8 @@
 ---
 title: Emotion Analyzer
 description: Analyzes the underlying emotions in expressions, enhancing the quality of hypercharged meeting notes.
-source: https://github.com/fastrepl/hypr/tree/main/extensions/linear
-type: [1x1, 2x2, full]
+source: https://github.com/fastrepl/hypr/tree/main/extensions/emotion-analyzer
+widgets: [1x1, 2x2, full]
 implemented: false
 default: false
 cloudOnly: false

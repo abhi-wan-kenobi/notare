@@ -2,7 +2,7 @@
 title: Timer
 description: Displays the remaining time for meetings with time constraints
 source: https://github.com/fastrepl/hypr/tree/main/extensions/timer
-type: [2x2]
+widgets: [2x2]
 implemented: false
 default: false
 cloudOnly: false

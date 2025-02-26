@@ -2,7 +2,7 @@
 title: Weather
 description: Displays the weather of the configured location.
 source: https://github.com/fastrepl/hypr/tree/main/extensions/weather
-type: [1x1, 2x1, 2x2]
+widgets: [1x1, 2x1, 2x2]
 implemented: false
 default: false
 cloudOnly: false
