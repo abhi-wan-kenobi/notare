@@ -4,7 +4,7 @@ description: View or create Google calendar events related to the meeting conten
 source: https://github.com/fastrepl/hypr/tree/main/extensions/google-calendar
 implemented: false
 default: false
-cloudOnly: true
+cloud_only: true
 plugins: [db]
 tags: [calendar]
 ---

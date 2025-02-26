@@ -41,7 +41,7 @@ export const extensionFrontmatterSchema = z
     source: z.string(),
     implemented: z.boolean(),
     default: z.boolean(),
-    cloudOnly: z.boolean(),
+    cloud_only: z.boolean(),
     plugins: z.array(z.string()).default([]),
     tags: z.array(z.string()).default([]),
   })

@@ -1,9 +1,11 @@
 {
   "$schema": "../definition.schema.json",
-  "default_enabled": true,
   "id": "live-summary",
-  "name": "Live Summary",
-  "description": "A live summary of the current session",
-  "tags": [],
-  "config_schema": ""
+  "title": "Live Summary",
+  "description": "Summarizes the recent meeting content in just three lines.",
+  "implemented": true,
+  "default": true,
+  "cloud_only": false,
+  "plugins": ["listener", "db"],
+  "tags": ["local", "realtime", "STT", "speech-to-text", "LLM", "AI"]
 }

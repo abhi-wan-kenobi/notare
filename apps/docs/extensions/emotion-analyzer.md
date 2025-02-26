@@ -4,7 +4,7 @@ description: Analyzes the underlying emotions in expressions, enhancing the qual
 source: https://github.com/fastrepl/hypr/tree/main/extensions/emotion-analyzer
 implemented: false
 default: false
-cloudOnly: false
+cloud_only: false
 plugins: []
 tags: [utility]
 ---

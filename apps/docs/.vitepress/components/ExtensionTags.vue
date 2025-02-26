@@ -10,7 +10,7 @@ const props = defineProps<{
   <div class="flex gap-2">
     <Badge v-if="props.frontmatter.default" type="tip" text="Default" />
     <Badge
-      v-if="props.frontmatter.cloudOnly"
+      v-if="props.frontmatter.cloud_only"
       type="warning"
       text="Cloud only"
     />

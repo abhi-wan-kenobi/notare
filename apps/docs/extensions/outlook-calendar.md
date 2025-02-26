@@ -4,7 +4,7 @@ description: View or create Outlook calendar events related to the meeting conte
 source: https://github.com/fastrepl/hypr/tree/main/extensions/outlook-calendar
 implemented: false
 default: false
-cloudOnly: true
+cloud_only: true
 plugins: [db]
 tags: [calendar]
 ---

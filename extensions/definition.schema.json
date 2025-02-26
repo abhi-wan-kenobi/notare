@@ -4,20 +4,19 @@
   "type": "object",
   "required": [
     "cloud_only",
-    "config_schema",
-    "default_enabled",
+    "default",
     "description",
     "id",
-    "name"
+    "implemented",
+    "plugins",
+    "tags",
+    "title"
   ],
   "properties": {
     "cloud_only": {
       "type": "boolean"
     },
-    "config_schema": {
-      "type": "string"
-    },
-    "default_enabled": {
+    "default": {
       "type": "boolean"
     },
     "description": {
@@ -26,7 +25,22 @@
     "id": {
       "type": "string"
     },
-    "name": {
+    "implemented": {
+      "type": "boolean"
+    },
+    "plugins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "title": {
       "type": "string"
     }
   }

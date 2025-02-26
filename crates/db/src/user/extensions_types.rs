@@ -3,11 +3,13 @@ use crate::user_common_derives;
 user_common_derives! {
     pub struct ExtensionDefinition {
         pub id: String,
-        pub default_enabled: bool,
-        pub name: String,
+        pub title: String,
         pub description: String,
-        pub config_schema: String,
+        pub implemented: bool,
+        pub default: bool,
         pub cloud_only: bool,
+        pub plugins: Vec<String>,
+        pub tags: Vec<String>,
     }
 }
 

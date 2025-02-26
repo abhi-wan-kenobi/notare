@@ -4,7 +4,7 @@ description: View or create Notion pages related to the meeting content.
 source: https://github.com/fastrepl/hypr/tree/main/extensions/notion
 implemented: false
 default: false
-cloudOnly: true
+cloud_only: true
 plugins: [listener, db]
 tags: [knowledge]
 ---

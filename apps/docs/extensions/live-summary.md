@@ -4,7 +4,7 @@ description: Summarizes the recent meeting content in just three lines.
 source: https://github.com/fastrepl/hypr/tree/main/extensions/live-summary
 implemented: true
 default: true
-cloudOnly: false
+cloud_only: false
 plugins: [listener, db]
 tags: [local, realtime, STT, speech-to-text, LLM, AI]
 ---

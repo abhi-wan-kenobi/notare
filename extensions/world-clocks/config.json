@@ -1,7 +1,11 @@
 {
   "$schema": "../definition.schema.json",
-  "default_enabled": false,
-  "name": "World Clocks",
-  "description": "A list of clocks from around the world",
-  "tags": []
+  "id": "world-clocks",
+  "title": "World Clocks",
+  "description": "Displays the time of various cities around the world.",
+  "implemented": true,
+  "default": true,
+  "cloud_only": false,
+  "plugins": [],
+  "tags": ["utility"]
 }

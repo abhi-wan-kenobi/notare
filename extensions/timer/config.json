@@ -1,9 +1,13 @@
 {
   "$schema": "../definition.schema.json",
-  "default_enabled": false,
-  "id": "live-transcript",
-  "name": "Live Transcript",
-  "description": "A live transcript of the current session",
-  "tags": [],
-  "config_schema": ""
+  "id": "timer",
+  "title": "Timer",
+  "description": "Displays the remaining time for meetings with time constraints",
+  "implemented": true,
+  "default": false,
+  "cloud_only": false,
+  "plugins": [],
+  "tags": [
+    "utility"
+  ]
 }

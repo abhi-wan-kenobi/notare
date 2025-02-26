@@ -40,7 +40,7 @@ const columns = [
     cell: (info) =>
       info.getValue() ? h("div", { class: "i-heroicons-check" }) : null,
   }),
-  columnHelper.accessor("frontmatter.cloudOnly", {
+  columnHelper.accessor("frontmatter.cloud_only", {
     header: "Cloud Only",
     cell: (info) =>
       info.getValue() ? h("div", { class: "i-heroicons-check" }) : null,

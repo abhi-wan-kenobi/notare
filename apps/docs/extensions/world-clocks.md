@@ -1,12 +1,13 @@
 ---
-title: Timer
-description: Displays the remaining time for meetings with time constraints
-source: https://github.com/fastrepl/hypr/tree/main/extensions/timer
+title: World Clocks
+description: Displays the time of various cities around the world.
+source: https://github.com/fastrepl/hypr/tree/main/extensions/world-clocks
 implemented: true
 default: false
 cloud_only: false
 plugins: []
 tags: [utility]
+---
 ---
 <TitleWithContributors :title="$frontmatter.title" />
 

@@ -4,7 +4,7 @@ description: Send Slack messages related to the meeting content to your team.
 source: https://github.com/fastrepl/hypr/tree/main/extensions/slack
 implemented: false
 default: false
-cloudOnly: true
+cloud_only: true
 plugins: [listener, db]
 tags: [messaging]
 ---

@@ -4,7 +4,7 @@ description: Converts your meeting content to text in real time and even identif
 source: https://github.com/fastrepl/hypr/tree/main/extensions/transcript
 implemented: true
 default: true
-cloudOnly: false
+cloud_only: false
 plugins: [listener, db]
 tags: [local, realtime, STT, speech-to-text, AI]
 ---

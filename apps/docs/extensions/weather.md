@@ -4,7 +4,7 @@ description: Displays the weather of the configured location.
 source: https://github.com/fastrepl/hypr/tree/main/extensions/weather
 implemented: false
 default: false
-cloudOnly: false
+cloud_only: false
 plugins: []
 tags: [utility]
 ---
