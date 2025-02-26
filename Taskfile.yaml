@@ -1,18 +1,6 @@
 version: "3"
 dotenv: [".env.local"]
 tasks:
-  fmt:js: pnpm -r format
-  fmt:dprint: dprint fmt
-  fmt:
-    silent: true
-    deps: ["fmt:js", "fmt:dprint"]
-
-  app:dev:
-    cmds:
-      - docker-compose up -d minio createbuckets
-      - cmd: bacon app
-        ignore_error: true
-      - docker-compose down
   app:env:
     cmds:
       - |
