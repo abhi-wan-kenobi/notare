@@ -123,6 +123,9 @@ importers:
       '@hypr/plugin-misc':
         specifier: workspace:^
         version: link:../../plugins/misc
+      '@hypr/plugin-sfx':
+        specifier: workspace:^
+        version: link:../../plugins/sfx
       '@hypr/plugin-template':
         specifier: workspace:^
         version: link:../../plugins/template

@@ -305,6 +305,16 @@
           "const": "deny-play"
         },
         {
+          "description": "Enables the stop command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-stop"
+        },
+        {
+          "description": "Denies the stop command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-stop"
+        },
+        {
           "description": "Default permissions for the plugin",
           "type": "string",
           "const": "default"

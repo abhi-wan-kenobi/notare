@@ -1,4 +1,4 @@
-const COMMANDS: &[&str] = &["play"];
+const COMMANDS: &[&str] = &["play", "stop"];
 
 fn main() {
     tauri_plugin::Builder::new(COMMANDS).build();

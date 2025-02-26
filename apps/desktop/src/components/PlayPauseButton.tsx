@@ -1,8 +1,18 @@
+import { useEffect, useState } from "react";
 import { Play, Pause } from "lucide-react";
-import { useState } from "react";
+
+import { commands as sfxCommands } from "@hypr/plugin-sfx";
 
 export function PlayPauseButton() {
   const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    if (isPlaying) {
+      sfxCommands.play("BGM");
+    } else {
+      sfxCommands.stop("BGM");
+    }
+  }, [isPlaying]);
 
   return (
     <button

@@ -11755,6 +11755,7 @@ name = "tauri-plugin-sfx"
 version = "0.1.0"
 dependencies = [
  "audio 0.1.0",
+ "once_cell",
  "serde",
  "specta",
  "specta-typescript",

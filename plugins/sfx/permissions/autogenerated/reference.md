@@ -3,6 +3,7 @@
 Default permissions for the plugin
 
 - `allow-play`
+- `allow-stop`
 
 ## Permission Table
 
@@ -35,6 +36,32 @@ Enables the play command without any pre-configured scope.
 <td>
 
 Denies the play command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`sfx:allow-stop`
+
+</td>
+<td>
+
+Enables the stop command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`sfx:deny-stop`
+
+</td>
+<td>
+
+Denies the stop command without any pre-configured scope.
 
 </td>
 </tr>

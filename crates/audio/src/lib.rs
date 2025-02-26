@@ -11,19 +11,24 @@ pub use kalosm_sound::AsyncSource;
 pub struct AudioOutput {}
 
 impl AudioOutput {
-    pub fn to_speaker(bytes: &'static [u8]) {
+    pub fn to_speaker(bytes: &'static [u8]) -> std::sync::mpsc::Sender<()> {
         use rodio::{Decoder, OutputStream, Sink};
+        let (tx, rx) = std::sync::mpsc::channel();
 
         std::thread::spawn(move || {
             if let Ok((_, stream)) = OutputStream::try_default() {
                 let file = std::io::Cursor::new(bytes);
-                let source = Decoder::new(file).unwrap();
+                if let Ok(source) = Decoder::new(file) {
+                    let sink = Sink::try_new(&stream).unwrap();
+                    sink.append(source);
 
-                let sink = Sink::try_new(&stream).unwrap();
-                sink.append(source);
-                sink.sleep_until_end();
+                    let _ = rx.recv_timeout(std::time::Duration::from_secs(3600));
+                    sink.stop();
+                }
             }
         });
+
+        tx
     }
 
     pub fn silence() -> std::sync::mpsc::Sender<()> {

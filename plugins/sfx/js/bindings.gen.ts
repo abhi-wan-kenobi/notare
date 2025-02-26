@@ -9,6 +9,9 @@
 export const commands = {
 async play(sfx: AppSounds) : Promise<void> {
     await TAURI_INVOKE("plugin:sfx|play", { sfx });
+},
+async stop(sfx: AppSounds) : Promise<void> {
+    await TAURI_INVOKE("plugin:sfx|stop", { sfx });
 }
 }
 
