@@ -1,5 +1,5 @@
 {
-  "$schema": "../config.schema.json",
+  "$schema": "../definition.schema.json",
   "default_enabled": false,
   "id": "live-transcript",
   "name": "Live Transcript",

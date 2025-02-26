@@ -87,6 +87,9 @@ importers:
       '@hypr/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@hypr/extension-dino-game':
+        specifier: workspace:^
+        version: link:../../extensions/dino-game
       '@hypr/extension-live-summary':
         specifier: workspace:*
         version: link:../../extensions/live-summary

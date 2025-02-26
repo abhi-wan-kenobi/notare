@@ -1,5 +1,5 @@
 {
-  "$schema": "../config.schema.json",
+  "$schema": "../definition.schema.json",
   "default_enabled": true,
   "id": "live-summary",
   "name": "Live Summary",

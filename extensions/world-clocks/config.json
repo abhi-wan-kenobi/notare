@@ -1,5 +1,5 @@
 {
-  "$schema": "../config.schema.json",
+  "$schema": "../definition.schema.json",
   "default_enabled": false,
   "name": "World Clocks",
   "description": "A list of clocks from around the world",

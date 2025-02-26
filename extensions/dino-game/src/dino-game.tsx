@@ -1,11 +1,10 @@
-import "./dino.css";
+import "./dino-game.css";
 
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
-// Import sprite image
 import spriteImage from "../assets/dino-game-sprite.png";
 
-const DinoGame: React.FC = () => {
+export default function DinoGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameStateRef = useRef({
     scoreInterval: 0,
@@ -292,7 +291,7 @@ const DinoGame: React.FC = () => {
     if (!state.onG) {
       player.yv += state.grav;
     } else {
-      state.isJumping = false; // 땅에 닿으면 점프 상태 해제
+      state.isJumping = false;
     }
 
     player.y += player.yv;
@@ -305,7 +304,6 @@ const DinoGame: React.FC = () => {
     }
 
     if (state.gamespeed < 17 && state.gamespeed !== 0) {
-      // 속도 증가량을 2배로 증가 (score/100 -> score/50)
       state.gamespeed = 7 + player.score / 50;
     }
 
@@ -524,6 +522,4 @@ const DinoGame: React.FC = () => {
       />
     </div>
   );
-};
-
-export default DinoGame;
+}
