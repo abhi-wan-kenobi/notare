@@ -152,7 +152,7 @@ export const Timer: React.FC<TimerProps> = ({ initialTime = 60 }) => {
         width: "100%",
         height: "100%",
         position: "relative",
-        backgroundColor: isTimeUp ? "rgba(255, 0, 0, 0.1)" : "transparent",
+        backgroundColor: isTimeUp ? "rgba(128, 128, 128, 0.1)" : "transparent",
         transition: "background-color 0.5s ease",
       }}
     >
@@ -179,7 +179,7 @@ export const Timer: React.FC<TimerProps> = ({ initialTime = 60 }) => {
       {/* Timer Display and Input */}
       <div className="absolute inset-0 flex items-center justify-center z-10">
         {isTimeUp ? (
-          <div className="text-2xl font-bold text-red-600">Time's up!</div>
+          <div className="text-2xl font-bold text-gray-600">Time's up!</div>
         ) : isEditing ? (
           <div className="flex flex-col items-center">
             <input
@@ -230,29 +230,29 @@ export const Timer: React.FC<TimerProps> = ({ initialTime = 60 }) => {
           cx="50"
           cy="50"
           r="45"
-          fill={isTimeUp ? "#ffeeee" : "white"}
-          stroke={isTimeUp ? "#ff6666" : "#e0e0e0"}
-          strokeWidth={isTimeUp ? "3" : "2"}
+          fill={isTimeUp ? "#f5f5f5" : "white"}
+          stroke="black"
+          strokeWidth="2"
         />
 
         {!isTimeUp && (
-          /* Red progress circle - only show when timer is not complete */
+          /* Progress circle - using neutral color instead of red */
           <path
             d={`
               M 50 50
-              L 50 5
-              A 45 45 0 ${progress > 180 ? 1 : 0} 1 ${
-                50 + 45 * Math.sin((progress * Math.PI) / 180)
-              } ${50 - 45 * Math.cos((progress * Math.PI) / 180)}
+              L 50 6
+              A 44 44 0 ${progress > 180 ? 1 : 0} 1 ${
+                50 + 44 * Math.sin((progress * Math.PI) / 180)
+              } ${50 - 44 * Math.cos((progress * Math.PI) / 180)}
               Z
             `}
-            fill="#ff0000"
+            fill="#e4e4e4"
           />
         )}
 
         {isTimeUp && (
-          /* Full red circle for time's up state */
-          <circle cx="50" cy="50" r="45" fill="#ff6666" opacity="0.7" />
+          /* Full circle for time's up state - neutral color */
+          <circle cx="50" cy="50" r="45" fill="#888888" opacity="0.7" />
         )}
 
         {/* Center white circle */}
@@ -261,7 +261,7 @@ export const Timer: React.FC<TimerProps> = ({ initialTime = 60 }) => {
           cy="50"
           r="12"
           fill="white"
-          stroke={isTimeUp ? "#ff6666" : "#e0e0e0"}
+          stroke="#c2c2c2"
           strokeWidth="1"
         />
 
