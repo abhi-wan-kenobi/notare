@@ -20,6 +20,7 @@ pub trait ListenerPluginExt<R: tauri::Runtime> {
     fn stop_session(&self) -> impl Future<Output = Result<(), String>>;
 }
 
+// TODO: listener should be well tested + save incoming chunks to db
 impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
     #[tracing::instrument(skip_all)]
     async fn subscribe(&self, channel: tauri::ipc::Channel<SessionEvent>) -> Result<(), String> {
@@ -77,7 +78,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
         let api_base = {
             let app = self.app_handle();
             use tauri_plugin_connector::ConnectorPluginExt;
-            app.get_api_base(tauri_plugin_connector::ConnectionType::LocalStt)
+            app.get_api_base(tauri_plugin_connector::ConnectionType::RemoteStt)
                 .await
                 .unwrap()
         };
@@ -186,6 +187,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
                 futures_util::pin_mut!(listen_stream);
 
                 while let Some(result) = listen_stream.next().await {
+                    println!("listen_stream: {:?}", result);
                     let mut timeline = timeline.lock().await;
 
                     match result {

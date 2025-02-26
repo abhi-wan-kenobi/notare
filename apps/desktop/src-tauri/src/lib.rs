@@ -4,9 +4,9 @@ mod permissions;
 mod store;
 mod tray;
 mod vault;
-mod windows;
 
 use tauri::Manager;
+use tauri_plugin_windows::{ShowHyprWindow, WindowsPluginExt};
 
 pub struct App {
     handle: tauri::AppHandle,
@@ -66,6 +66,7 @@ pub async fn main() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_decorum::init())
+        .plugin(tauri_plugin_windows::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
@@ -73,7 +74,7 @@ pub async fn main() {
             Some(vec![]),
         ))
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            windows::ShowHyprWindow::MainWithoutDemo.show(app).unwrap();
+            app.show_window(ShowHyprWindow::MainWithoutDemo).unwrap();
         }));
 
     #[cfg(target_os = "macos")]
@@ -139,7 +140,7 @@ pub async fn main() {
             }
 
             tray::create_tray(&app).unwrap();
-            windows::ShowHyprWindow::MainWithoutDemo.show(&app).unwrap();
+            app.show_window(ShowHyprWindow::MainWithoutDemo).unwrap();
 
             Ok(())
         })
@@ -156,7 +157,6 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             auth::commands::start_oauth_server,
             auth::commands::cancel_oauth_server,
             auth::commands::is_authenticated,
-            windows::commands::show_window,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

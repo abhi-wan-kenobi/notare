@@ -4,6 +4,8 @@ use std::future::Future;
 pub enum ConnectionType {
     LocalLlm,
     LocalStt,
+    RemoteLlm,
+    RemoteStt,
 }
 
 pub trait ConnectorPluginExt<R: tauri::Runtime> {
@@ -40,6 +42,20 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ConnectorPluginExt<R> for T {
                 let local_stt_state = self.state::<tauri_plugin_local_stt::SharedState>();
                 let local_stt_state = local_stt_state.lock().await;
                 local_stt_state.api_base.clone()
+            }
+            ConnectionType::RemoteLlm => {
+                if cfg!(debug_assertions) {
+                    Some("http://localhost:1234".to_string())
+                } else {
+                    Some("https://app.hyprnote.com".to_string())
+                }
+            }
+            ConnectionType::RemoteStt => {
+                if cfg!(debug_assertions) {
+                    Some("http://localhost:1234".to_string())
+                } else {
+                    Some("https://app.hyprnote.com".to_string())
+                }
             }
         }
     }

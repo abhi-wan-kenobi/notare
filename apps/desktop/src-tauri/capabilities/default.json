@@ -41,6 +41,7 @@
     "sse:default",
     "connector:default",
     "sfx:default",
+    "windows:default",
     {
       "identifier": "http:default",
       "allow": [

@@ -118,12 +118,12 @@ impl ShowHyprWindow {
     }
 }
 
-pub mod commands {
-    use crate::windows::ShowHyprWindow;
+pub trait WindowsPluginExt<R: tauri::Runtime> {
+    fn show_window(&self, window: ShowHyprWindow) -> tauri::Result<WebviewWindow>;
+}
 
-    #[tauri::command]
-    #[specta::specta]
-    pub fn show_window(app: tauri::AppHandle, window: ShowHyprWindow) {
-        window.show(&app).unwrap();
+impl WindowsPluginExt<tauri::Wry> for tauri::AppHandle<tauri::Wry> {
+    fn show_window(&self, window: ShowHyprWindow) -> tauri::Result<WebviewWindow> {
+        window.show(self)
     }
 }

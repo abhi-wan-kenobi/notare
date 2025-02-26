@@ -1,7 +1,7 @@
 ---
-title: Sound Effects
-description: Play sound effects
-id: sfx
+title: Windows
+description: Manage windows
+id: windows
 ---
 
 # {{ $frontmatter.title }}

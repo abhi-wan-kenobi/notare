@@ -15,11 +15,11 @@
     "build": "storybook build -o ../../apps/storybook/storybook-static/live-summary"
   },
   "dependencies": {
-    "@hypr/extension-utils": "workspace:*",
-    "@hypr/plugin-db": "workspace:*",
-    "@hypr/plugin-listener": "workspace:*",
-    "@hypr/plugin-template": "workspace:*",
-    "@hypr/ui": "workspace:*",
+    "@hypr/extension-utils": "workspace:^",
+    "@hypr/plugin-db": "workspace:^",
+    "@hypr/plugin-listener": "workspace:^",
+    "@hypr/plugin-template": "workspace:^",
+    "@hypr/ui": "workspace:^",
     "@tanstack/react-query": "^5.66.0",
     "@tauri-apps/api": "^2.2.0",
     "lucide-react": "^0.474.0",

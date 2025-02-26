@@ -21,6 +21,7 @@ export const commands = {
     } = init || {};
 
     let unlisten: Function | undefined;
+    // @ts-ignore
     let setRequestId: Function | undefined;
     const requestIdPromise = new Promise((resolve) => (setRequestId = resolve));
     const ts = new TransformStream();

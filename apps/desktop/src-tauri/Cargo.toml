@@ -41,6 +41,7 @@ tauri-plugin-misc = { path = "../../../plugins/misc" }
 tauri-plugin-sfx = { path = "../../../plugins/sfx" }
 tauri-plugin-sse = { path = "../../../plugins/sse" }
 tauri-plugin-template = { path = "../../../plugins/template" }
+tauri-plugin-windows = { path = "../../../plugins/windows" }
 
 tauri = { workspace = true, features = ["specta", "tray-icon", "image-png", "macos-private-api"] }
 tauri-plugin-autostart = "2"

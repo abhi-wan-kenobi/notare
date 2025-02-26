@@ -3136,6 +3136,7 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-plugin-template",
  "tauri-plugin-updater",
+ "tauri-plugin-windows",
  "tauri-specta",
  "thiserror 2.0.11",
  "time",
@@ -11855,6 +11856,20 @@ dependencies = [
  "url",
  "windows-sys 0.59.0",
  "zip 2.2.2",
+]
+
+[[package]]
+name = "tauri-plugin-windows"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "specta",
+ "specta-typescript",
+ "strum 0.26.3",
+ "tauri",
+ "tauri-plugin",
+ "tauri-specta",
+ "tracing",
 ]
 
 [[package]]

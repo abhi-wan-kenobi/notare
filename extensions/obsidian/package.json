@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@hypr/extension-utils": "workspace:^",
-    "@hypr/obsidian": "workspace:*"
+    "@hypr/obsidian": "workspace:^"
   },
   "devDependencies": {
     "typescript": "^5.7.3"

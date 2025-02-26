@@ -11,12 +11,18 @@ const name = props.typedoc.name;
 const id = name.split("/plugin-")[1];
 const children: any[] = props.typedoc.children ?? [];
 
-const commands = children
-  .find((child) => child.name === "commands")
-  .type.declaration.children.map(({ name, sources: [s] }: any) => ({
-    name,
-    source: `${BASE}/blob/main/plugins/${id}/js/${s.fileName}#L${s.line}`,
-  }));
+let commands: any[] = [];
+
+try {
+  commands = children
+    .find((child) => child.name === "commands")
+    .type.declaration.children.map(({ name, sources: [s] }: any) => ({
+      name,
+      source: `${BASE}/blob/main/plugins/${id}/js/${s.fileName}#L${s.line}`,
+    }));
+} catch (e) {
+  console.error(e);
+}
 </script>
 
 <template>

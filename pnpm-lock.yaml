@@ -12,10 +12,10 @@ importers:
         specifier: ^5.23.0
         version: 5.23.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@hypr/tiptap':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/tiptap
       '@hypr/ui':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/ui
       '@nangohq/frontend':
         specifier: ^0.53.2
@@ -46,7 +46,7 @@ importers:
         version: 5.0.3(@types/react@18.3.18)(react@18.3.1)(use-sync-external-store@1.4.0(react@18.3.1))
     devDependencies:
       '@hypr/client':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/client
       '@tanstack/router-plugin':
         specifier: ^1.106.0
@@ -85,49 +85,52 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0
       '@hypr/client':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/client
       '@hypr/extension-dino-game':
         specifier: workspace:^
         version: link:../../extensions/dino-game
       '@hypr/extension-live-summary':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../extensions/live-summary
       '@hypr/extension-obsidian':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../extensions/obsidian
       '@hypr/extension-transcript':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../extensions/transcript
       '@hypr/extension-world-clocks':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../extensions/world-clocks
       '@hypr/plugin-apple-calendar':
         specifier: workspace:^
         version: link:../../plugins/apple-calendar
       '@hypr/plugin-db':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/db
       '@hypr/plugin-listener':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/listener
       '@hypr/plugin-local-llm':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/local-llm
       '@hypr/plugin-local-stt':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/local-stt
       '@hypr/plugin-misc':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/misc
       '@hypr/plugin-template':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/template
+      '@hypr/plugin-windows':
+        specifier: workspace:^
+        version: link:../../plugins/windows
       '@hypr/tiptap':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/tiptap
       '@hypr/ui':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/ui
       '@hypr/utils':
         specifier: workspace:^
@@ -393,13 +396,13 @@ importers:
         specifier: workspace:^
         version: link:../utils
       '@hypr/plugin-listener':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/listener
       '@hypr/plugin-template':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/template
       '@hypr/ui':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.66.0
@@ -463,13 +466,13 @@ importers:
         specifier: workspace:^
         version: link:../utils
       '@hypr/plugin-listener':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/listener
       '@hypr/plugin-template':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/template
       '@hypr/ui':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.66.0
@@ -530,19 +533,19 @@ importers:
   extensions/live-summary:
     dependencies:
       '@hypr/extension-utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@hypr/plugin-db':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/db
       '@hypr/plugin-listener':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/listener
       '@hypr/plugin-template':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/template
       '@hypr/ui':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.66.0
@@ -606,7 +609,7 @@ importers:
         specifier: workspace:^
         version: link:../utils
       '@hypr/obsidian':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/obsidian
     devDependencies:
       typescript:
@@ -619,13 +622,13 @@ importers:
         specifier: workspace:^
         version: link:../utils
       '@hypr/plugin-listener':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/listener
       '@hypr/plugin-template':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../plugins/template
       '@hypr/ui':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.66.0
@@ -698,7 +701,7 @@ importers:
         specifier: workspace:^
         version: link:../../plugins/sse
       '@hypr/ui':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/ui
       '@tauri-apps/plugin-http':
         specifier: ^2.3.0
@@ -1013,6 +1016,12 @@ importers:
         version: 2.2.0
 
   plugins/template:
+    dependencies:
+      '@tauri-apps/api':
+        specifier: ^2.2.0
+        version: 2.2.0
+
+  plugins/windows:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.2.0

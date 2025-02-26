@@ -11,7 +11,7 @@
     "start": "vite"
   },
   "devDependencies": {
-    "@hypr/client": "workspace:*",
+    "@hypr/client": "workspace:^",
     "@tanstack/router-plugin": "^1.106.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
@@ -24,8 +24,8 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.23.0",
-    "@hypr/tiptap": "workspace:*",
-    "@hypr/ui": "workspace:*",
+    "@hypr/tiptap": "workspace:^",
+    "@hypr/ui": "workspace:^",
     "@nangohq/frontend": "^0.53.2",
     "@sentry/react": "^8.55.0",
     "@tanstack/react-query": "^5.66.7",
