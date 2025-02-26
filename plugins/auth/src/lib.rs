@@ -12,13 +12,6 @@ const SERVICE_NAME: &str = "hyprnote";
 pub const CALLBACK_TEMPLATE_KEY: &str = "callback";
 const CALLBACK_TEMPLATE_VALUE: &str = include_str!("../templates/callback.jinja");
 
-pub type SharedState = std::sync::Mutex<State>;
-
-#[derive(Default)]
-pub struct State {
-    oauth_server_port: Option<u16>,
-}
-
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
@@ -45,7 +38,6 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
             app.manage(vault);
             app.manage(env);
-            app.manage(SharedState::default());
 
             Ok(())
         })

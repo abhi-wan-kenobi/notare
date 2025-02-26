@@ -1,6 +1,6 @@
 use crate::{
     vault::{Key, Vault},
-    SharedState, CALLBACK_TEMPLATE_KEY,
+    CALLBACK_TEMPLATE_KEY,
 };
 
 #[derive(Debug, serde::Deserialize)]
@@ -12,14 +12,14 @@ pub struct CallbackParams {
 }
 
 pub trait AuthPluginExt<R: tauri::Runtime> {
-    fn start_oauth_server(&self) -> Result<(), String>;
-    fn stop_oauth_server(&self) -> Result<(), String>;
+    fn start_oauth_server(&self) -> Result<u16, String>;
+    fn stop_oauth_server(&self, port: u16) -> Result<(), String>;
     fn reset_vault(&self) -> Result<(), String>;
     fn get_from_vault(&self, key: Key) -> Result<String, String>;
 }
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> AuthPluginExt<R> for T {
-    fn start_oauth_server(&self) -> Result<(), String> {
+    fn start_oauth_server(&self) -> Result<u16, String> {
         let env = self.state::<minijinja::Environment>().inner().clone();
         let vault = self.state::<Vault>().inner().clone();
 
@@ -46,27 +46,11 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AuthPluginExt<R> for T {
         )
         .map_err(|err| err.to_string())?;
 
-        {
-            let state = self.state::<SharedState>();
-            let mut s = state.lock().unwrap();
-            s.oauth_server_port = Some(port);
-        }
-
-        Ok(())
+        Ok(port)
     }
 
-    fn stop_oauth_server(&self) -> Result<(), String> {
-        let port = {
-            let state = self.state::<SharedState>();
-            let mut s = state.lock().unwrap();
-            s.oauth_server_port.take()
-        };
-
-        if let Some(port) = port {
-            tauri_plugin_oauth::cancel(port).map_err(|err| err.to_string())?;
-        }
-
-        Ok(())
+    fn stop_oauth_server(&self, port: u16) -> Result<(), String> {
+        tauri_plugin_oauth::cancel(port).map_err(|err| err.to_string())
     }
 
     fn reset_vault(&self) -> Result<(), String> {

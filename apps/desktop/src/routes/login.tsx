@@ -4,12 +4,13 @@ import { open } from "@tauri-apps/plugin-shell";
 import { Trans } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { message } from "@tauri-apps/plugin-dialog";
-import { commands } from "@/types";
+import { commands as authCommands } from "@hypr/plugin-auth";
+import clsx from "clsx";
+
 import { baseUrl } from "@/client";
 import PushableButton from "@hypr/ui/components/ui/pushable-button";
 import { Particles } from "@hypr/ui/components/ui/particles";
 import { TextAnimate } from "@hypr/ui/components/ui/text-animate";
-import clsx from "clsx";
 import { PlayPauseButton } from "@/components/PlayPauseButton";
 import { Button } from "@hypr/ui/components/ui/button";
 
@@ -33,10 +34,10 @@ function Component() {
   useEffect(() => {
     let cleanup: (() => void) | undefined;
 
-    commands.startOauthServer().then((port) => {
+    authCommands.startOauthServer().then((port) => {
       setPort(port);
       cleanup = () => {
-        commands.cancelOauthServer(port);
+        authCommands.stopOauthServer(port);
       };
     });
 

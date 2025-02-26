@@ -2,14 +2,17 @@ use crate::{vault::Key, AuthPluginExt};
 
 #[tauri::command]
 #[specta::specta]
-pub fn start_oauth_server<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
+pub fn start_oauth_server<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<u16, String> {
     app.start_oauth_server()
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn stop_oauth_server<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
-    app.stop_oauth_server()
+pub fn stop_oauth_server<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    port: u16,
+) -> Result<(), String> {
+    app.stop_oauth_server(port)
 }
 
 #[tauri::command]

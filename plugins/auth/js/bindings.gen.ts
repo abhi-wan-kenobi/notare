@@ -7,11 +7,11 @@
 
 
 export const commands = {
-async startOauthServer() : Promise<null> {
+async startOauthServer() : Promise<number> {
     return await TAURI_INVOKE("plugin:auth|start_oauth_server");
 },
-async stopOauthServer() : Promise<null> {
-    return await TAURI_INVOKE("plugin:auth|stop_oauth_server");
+async stopOauthServer(port: number) : Promise<null> {
+    return await TAURI_INVOKE("plugin:auth|stop_oauth_server", { port });
 },
 async resetVault() : Promise<null> {
     return await TAURI_INVOKE("plugin:auth|reset_vault");
