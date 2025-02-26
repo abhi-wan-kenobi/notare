@@ -1,6 +1,6 @@
 import { type Extension } from "@hypr/extension-utils";
 import { WidgetTwoByTwo } from "@hypr/ui/components/ui/widgets";
-import { Timer } from "./Timer";
+import { Timer } from "./timer";
 
 const widget: Extension["twoByTwo"] = () => (
   <WidgetTwoByTwo>
