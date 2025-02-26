@@ -1,6 +1,5 @@
 mod commands;
 mod permissions;
-mod store;
 mod tray;
 
 use tauri::Manager;
@@ -58,7 +57,6 @@ pub async fn main() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_auth::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_positioner::init())
@@ -90,7 +88,6 @@ pub async fn main() {
             let app = app.handle().clone();
 
             specta_builder.mount_events(&app);
-            store::UserStore::load(&app).unwrap();
 
             {
                 use tauri_plugin_template::TemplatePluginExt;
@@ -101,22 +98,15 @@ pub async fn main() {
             }
 
             let user_id = {
+                use tauri_plugin_auth::{AuthPluginExt, Key};
                 use tauri_plugin_db::DatabasePluginExt;
 
-                if let Some(user_id) = store::UserStore::get(&app).unwrap().user_id {
+                if let Ok(user_id) = app.get_from_vault(Key::UserId) {
                     app.db_set_user_id(user_id.clone()).unwrap();
                     user_id
                 } else {
                     app.db_create_new_user().unwrap()
                 }
-            };
-
-            let identifier = app.config().identifier.clone();
-
-            let server_api_base = if cfg!(debug_assertions) {
-                "http://localhost:1234".to_string()
-            } else {
-                "https://app.hyprnote.com".to_string()
             };
 
             app.manage(App {

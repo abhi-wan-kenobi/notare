@@ -25,7 +25,6 @@
     "process:allow-restart",
     "positioner:default",
     "fs:default",
-    "store:default",
     "shell:allow-open",
     "sentry:default",
     "decorum:allow-show-snap-overlay",

@@ -5,6 +5,7 @@ mod ext;
 mod vault;
 
 pub use ext::*;
+pub use vault::*;
 
 const PLUGIN_NAME: &str = "auth";
 const SERVICE_NAME: &str = "hyprnote";
