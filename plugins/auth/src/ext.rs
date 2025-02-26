@@ -3,8 +3,18 @@ use crate::{
     CALLBACK_TEMPLATE_KEY,
 };
 
-#[derive(Debug, serde::Deserialize)]
-pub struct CallbackParams {
+#[derive(Debug, serde::Serialize, serde::Deserialize, specta::Type)]
+pub struct RequestParams {
+    #[serde(rename = "c")]
+    pub code: String,
+    #[serde(rename = "f")]
+    pub fingerprint: String,
+    #[serde(rename = "p")]
+    pub port: u16,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize, specta::Type)]
+pub struct ResponseParams {
     #[serde(rename = "k")]
     pub token: String,
     #[serde(rename = "u")]
@@ -33,7 +43,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AuthPluginExt<R> for T {
                 ports: None,
                 response: Some(response),
             },
-            move |url| match serde_qs::from_str::<CallbackParams>(&url) {
+            move |url| match serde_qs::from_str::<ResponseParams>(&url) {
                 Ok(params) => {
                     tracing::info!(params = ?params, "auth_callback");
                     vault.set(Key::RemoteServer, params.token).unwrap();

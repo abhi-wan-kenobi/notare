@@ -4,7 +4,7 @@ import { open } from "@tauri-apps/plugin-shell";
 import { Trans } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { message } from "@tauri-apps/plugin-dialog";
-import { commands as authCommands } from "@hypr/plugin-auth";
+import { commands as authCommands, type RequestParams } from "@hypr/plugin-auth";
 import clsx from "clsx";
 
 import { baseUrl } from "@/client";
@@ -50,9 +50,14 @@ function Component() {
     queryFn: () => {
       const u = new URL(baseUrl);
       u.pathname = "/auth/connect";
-      u.searchParams.set("c", code);
-      u.searchParams.set("f", "fingerprint");
-      u.searchParams.set("p", port!.toString());
+      const params: RequestParams = {
+        c: code,
+        f: "fingerprint",
+        p: port!,
+      };
+      u.searchParams.set("c", params.c);
+      u.searchParams.set("f", params.f);
+      u.searchParams.set("p", params.p.toString());
       return u.toString();
     },
   });

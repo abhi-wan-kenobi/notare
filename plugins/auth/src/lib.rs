@@ -9,7 +9,7 @@ pub use ext::*;
 const PLUGIN_NAME: &str = "auth";
 const SERVICE_NAME: &str = "hyprnote";
 
-pub const CALLBACK_TEMPLATE_KEY: &str = "callback";
+const CALLBACK_TEMPLATE_KEY: &str = "callback";
 const CALLBACK_TEMPLATE_VALUE: &str = include_str!("../templates/callback.jinja");
 
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
@@ -21,6 +21,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::reset_vault::<tauri::Wry>,
             commands::get_from_vault::<tauri::Wry>,
         ])
+        .typ::<RequestParams>()
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
 
