@@ -1,8 +1,8 @@
 mod commands;
 mod permissions;
-mod tray;
 
 use tauri::Manager;
+use tauri_plugin_tray::TrayPluginExt;
 use tauri_plugin_windows::{ShowHyprWindow, WindowsPluginExt};
 
 pub struct App {
@@ -52,14 +52,13 @@ pub async fn main() {
         .plugin(tauri_plugin_sentry::init(&client))
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_sfx::init())
-        .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_auth::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_positioner::init())
+        .plugin(tauri_plugin_tray::init())
         .plugin(tauri_plugin_decorum::init())
         .plugin(tauri_plugin_windows::init())
         .plugin(tauri_plugin_process::init())
@@ -120,7 +119,7 @@ pub async fn main() {
                 autostart_manager.enable().unwrap();
             }
 
-            tray::create_tray(&app).unwrap();
+            app.create_tray().unwrap();
             app.show_window(ShowHyprWindow::MainWithoutDemo).unwrap();
 
             Ok(())

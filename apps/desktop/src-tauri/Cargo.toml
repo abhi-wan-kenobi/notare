@@ -42,9 +42,10 @@ tauri-plugin-misc = { path = "../../../plugins/misc" }
 tauri-plugin-sfx = { path = "../../../plugins/sfx" }
 tauri-plugin-sse = { path = "../../../plugins/sse" }
 tauri-plugin-template = { path = "../../../plugins/template" }
+tauri-plugin-tray = { path = "../../../plugins/tray" }
 tauri-plugin-windows = { path = "../../../plugins/windows" }
 
-tauri = { workspace = true, features = ["specta", "tray-icon", "image-png", "macos-private-api"] }
+tauri = { workspace = true, features = ["specta", "macos-private-api"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-decorum = "1.1.1"
@@ -54,7 +55,6 @@ tauri-plugin-fs = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-http = "2"
 tauri-plugin-os = "2"
-tauri-plugin-positioner = { version = "2", features = ["tray-icon"] }
 tauri-plugin-process = "2"
 tauri-plugin-sentry = "0.4.1"
 tauri-plugin-shell = "2"

@@ -3124,7 +3124,6 @@ dependencies = [
  "tauri-plugin-local-stt",
  "tauri-plugin-misc",
  "tauri-plugin-os",
- "tauri-plugin-positioner",
  "tauri-plugin-process",
  "tauri-plugin-sentry",
  "tauri-plugin-sfx",
@@ -3132,6 +3131,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-sse",
  "tauri-plugin-template",
+ "tauri-plugin-tray",
  "tauri-plugin-updater",
  "tauri-plugin-windows",
  "tauri-specta",
@@ -11709,21 +11709,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tauri-plugin-positioner"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c95b371d489bee3d1be5e5bd1538080ad408317fcc2d8546d24b290249f7bb5"
-dependencies = [
- "log",
- "serde",
- "serde_json",
- "serde_repr",
- "tauri",
- "tauri-plugin",
- "thiserror 2.0.11",
-]
-
-[[package]]
 name = "tauri-plugin-process"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11836,6 +11821,14 @@ dependencies = [
  "tauri-specta",
  "thiserror 2.0.11",
  "tracing",
+]
+
+[[package]]
+name = "tauri-plugin-tray"
+version = "0.1.0"
+dependencies = [
+ "tauri",
+ "tauri-plugin",
 ]
 
 [[package]]

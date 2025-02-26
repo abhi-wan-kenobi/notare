@@ -23,7 +23,6 @@
     "updater:default",
     "process:default",
     "process:allow-restart",
-    "positioner:default",
     "fs:default",
     "shell:allow-open",
     "sentry:default",
@@ -40,6 +39,7 @@
     "sfx:default",
     "windows:default",
     "auth:default",
+    "tray:default",
     {
       "identifier": "http:default",
       "allow": [
