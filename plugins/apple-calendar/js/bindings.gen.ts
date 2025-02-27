@@ -7,6 +7,12 @@
 
 
 export const commands = {
+async openCalendarAccessSettings() : Promise<null> {
+    return await TAURI_INVOKE("plugin:apple-calendar|open_calendar_access_settings");
+},
+async openContactsAccessSettings() : Promise<null> {
+    return await TAURI_INVOKE("plugin:apple-calendar|open_contacts_access_settings");
+},
 async calendarAccessStatus() : Promise<boolean> {
     return await TAURI_INVOKE("plugin:apple-calendar|calendar_access_status");
 },

@@ -2,12 +2,14 @@
 
 Default permissions for the plugin
 
-- `allow-start-worker`
-- `allow-stop-worker`
+- `allow-open-calendar-access-settings`
+- `allow-open-contacts-access-settings`
 - `allow-calendar-access-status`
 - `allow-contacts-access-status`
 - `allow-request-calendar-access`
 - `allow-request-contacts-access`
+- `allow-start-worker`
+- `allow-stop-worker`
 
 ## Permission Table
 
@@ -66,6 +68,58 @@ Enables the contacts_access_status command without any pre-configured scope.
 <td>
 
 Denies the contacts_access_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`apple-calendar:allow-open-calendar-access-settings`
+
+</td>
+<td>
+
+Enables the open_calendar_access_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`apple-calendar:deny-open-calendar-access-settings`
+
+</td>
+<td>
+
+Denies the open_calendar_access_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`apple-calendar:allow-open-contacts-access-settings`
+
+</td>
+<td>
+
+Enables the open_contacts_access_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`apple-calendar:deny-open-contacts-access-settings`
+
+</td>
+<td>
+
+Denies the open_contacts_access_settings command without any pre-configured scope.
 
 </td>
 </tr>

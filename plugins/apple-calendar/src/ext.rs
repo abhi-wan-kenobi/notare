@@ -1,4 +1,6 @@
 pub trait AppleCalendarPluginExt<R: tauri::Runtime> {
+    fn open_calendar_access_settings(&self) -> Result<(), String>;
+    fn open_contacts_access_settings(&self) -> Result<(), String>;
     fn calendar_access_status(&self) -> bool;
     fn contacts_access_status(&self) -> bool;
     fn request_calendar_access(&self);
@@ -8,6 +10,30 @@ pub trait AppleCalendarPluginExt<R: tauri::Runtime> {
 }
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> crate::AppleCalendarPluginExt<R> for T {
+    #[tracing::instrument(skip_all)]
+    fn open_calendar_access_settings(&self) -> Result<(), String> {
+        std::process::Command::new("open")
+            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars")
+            .spawn()
+            .map_err(|e| e.to_string())?
+            .wait()
+            .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all)]
+    fn open_contacts_access_settings(&self) -> Result<(), String> {
+        std::process::Command::new("open")
+            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Contacts")
+            .spawn()
+            .map_err(|e| e.to_string())?
+            .wait()
+            .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
     #[tracing::instrument(skip_all)]
     fn calendar_access_status(&self) -> bool {
         let handle = hypr_calendar::apple::Handle::new();

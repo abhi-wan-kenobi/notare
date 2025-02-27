@@ -22,6 +22,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
+            commands::open_calendar_access_settings::<tauri::Wry>,
+            commands::open_contacts_access_settings::<tauri::Wry>,
             commands::calendar_access_status::<tauri::Wry>,
             commands::contacts_access_status::<tauri::Wry>,
             commands::request_calendar_access::<tauri::Wry>,
