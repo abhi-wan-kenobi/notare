@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { MicIcon, Volume2Icon } from "lucide-react";
@@ -7,10 +7,11 @@ import clsx from "clsx";
 
 import { type OsType, type as getOsType } from "@tauri-apps/plugin-os";
 
-import { commands } from "@/types";
 import { Particles } from "@hypr/ui/components/ui/particles";
 import PushableButton from "@hypr/ui/components/ui/pushable-button";
 import ShimmerButton from "@hypr/ui/components/ui/shimmer-button";
+
+import { commands as listenerCommands } from "@hypr/plugin-listener";
 
 export const Route = createFileRoute("/onboarding")({
   component: Component,
@@ -48,9 +49,13 @@ function Component() {
     refetchInterval: 1000,
   });
 
-  const handleClickMic = () => {
-    commands.openPermissionSettings("microphone");
-  };
+  const handleClickMic = useCallback(() => {
+    listenerCommands.openMicrophoneAccessSettings();
+  }, []);
+
+  const handleClickSystemAudio = useCallback(() => {
+    listenerCommands.openSystemAudioAccessSettings();
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
@@ -87,7 +92,7 @@ function Component() {
               <PermissionItem
                 label="Transcribe other people's voice"
                 done={capturePermission.data}
-                handleClick={handleClickMic}
+                handleClick={handleClickSystemAudio}
                 buttonTitle="Enable System Audio"
                 suffixIcon={<Volume2Icon size={16} />}
                 required

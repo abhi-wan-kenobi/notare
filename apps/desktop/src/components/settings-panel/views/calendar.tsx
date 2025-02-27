@@ -19,8 +19,11 @@ import {
   SelectValue,
 } from "@hypr/ui/components/ui/select";
 
-import { commands, type CalendarIntegration } from "@/types";
 import { commands as dbCommands, type Calendar } from "@hypr/plugin-db";
+import { type as getOsType } from "@tauri-apps/plugin-os";
+import { commands as appleCalendarCommands } from "@hypr/plugin-apple-calendar";
+
+import { commands, type CalendarIntegration } from "@/types";
 import {
   client,
   getApiNativeUserIntegrationsOptions,
@@ -231,11 +234,15 @@ function AppleCalendarIntegrationDetails() {
   });
 
   const handleRequestCalendarAccess = useCallback(() => {
-    commands.openPermissionSettings("calendar");
+    if (getOsType() === "macos") {
+      appleCalendarCommands.requestCalendarAccess();
+    }
   }, []);
 
   const handleRequestContactsAccess = useCallback(() => {
-    commands.openPermissionSettings("contacts");
+    if (getOsType() === "macos") {
+      appleCalendarCommands.requestContactsAccess();
+    }
   }, []);
 
   return (
