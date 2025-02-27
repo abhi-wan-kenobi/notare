@@ -1,13 +1,4 @@
-mod permissions;
-
-use tauri::Manager;
-use tauri_plugin_tray::TrayPluginExt;
 use tauri_plugin_windows::{ShowHyprWindow, WindowsPluginExt};
-
-pub struct App {
-    handle: tauri::AppHandle,
-    user_id: String,
-}
 
 #[tokio::main]
 pub async fn main() {
@@ -95,7 +86,9 @@ pub async fn main() {
                 }
             }
 
-            let user_id = {
+            // TODO:
+            // we should list all situation we need to support, and then finialize db plugin interface
+            let _user_id = {
                 use tauri_plugin_auth::{AuthPluginExt, Key};
                 use tauri_plugin_db::DatabasePluginExt;
 
@@ -107,18 +100,17 @@ pub async fn main() {
                 }
             };
 
-            app.manage(App {
-                user_id: user_id.clone(),
-                handle: app.clone(),
-            });
-
             {
                 use tauri_plugin_autostart::ManagerExt;
                 let autostart_manager = app.autolaunch();
                 autostart_manager.enable().unwrap();
             }
 
-            app.create_tray().unwrap();
+            {
+                use tauri_plugin_tray::TrayPluginExt;
+                app.create_tray().unwrap();
+            }
+
             app.show_window(ShowHyprWindow::MainWithoutDemo).unwrap();
 
             Ok(())
@@ -129,10 +121,7 @@ pub async fn main() {
 
 fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
     tauri_specta::Builder::<tauri::Wry>::new()
-        .commands(tauri_specta::collect_commands![
-            permissions::open_permission_settings,
-            permissions::check_permission_status,
-        ])
+        .commands(tauri_specta::collect_commands![])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
 

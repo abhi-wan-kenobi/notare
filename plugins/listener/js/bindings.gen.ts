@@ -7,6 +7,12 @@
 
 
 export const commands = {
+async openMicrophoneAccessSettings() : Promise<null> {
+    return await TAURI_INVOKE("plugin:listener|open_microphone_access_settings");
+},
+async openSystemAudioAccessSettings() : Promise<null> {
+    return await TAURI_INVOKE("plugin:listener|open_system_audio_access_settings");
+},
 async getTimeline() : Promise<TimelineView> {
     return await TAURI_INVOKE("plugin:listener|get_timeline");
 },

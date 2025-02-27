@@ -10,6 +10,8 @@ use crate::{SessionEvent, SessionEventTimelineView};
 const SAMPLE_RATE: u32 = 16000;
 
 pub trait ListenerPluginExt<R: tauri::Runtime> {
+    fn open_microphone_access_settings(&self) -> impl Future<Output = Result<(), String>>;
+    fn open_system_audio_access_settings(&self) -> impl Future<Output = Result<(), String>>;
     fn subscribe(
         &self,
         channel: tauri::ipc::Channel<SessionEvent>,
@@ -22,6 +24,28 @@ pub trait ListenerPluginExt<R: tauri::Runtime> {
 
 // TODO: listener should be well tested + save incoming chunks to db
 impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
+    #[tracing::instrument(skip_all)]
+    async fn open_microphone_access_settings(&self) -> Result<(), String> {
+        std::process::Command::new("open")
+            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")
+            .spawn()
+            .map_err(|e| e.to_string())?
+            .wait()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn open_system_audio_access_settings(&self) -> Result<(), String> {
+        std::process::Command::new("open")
+            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture")
+            .spawn()
+            .map_err(|e| e.to_string())?
+            .wait()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
     #[tracing::instrument(skip_all)]
     async fn subscribe(&self, channel: tauri::ipc::Channel<SessionEvent>) -> Result<(), String> {
         let state = self.state::<crate::SharedState>();
@@ -63,6 +87,8 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
         Ok(timeline_view)
     }
 
+    // TODO:
+    // this need to reworked, especially "123" session id.
     #[tracing::instrument(skip_all)]
     async fn start_session(&self) -> Result<String, String> {
         let state = self.state::<crate::SharedState>();
@@ -78,7 +104,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
         let api_base = {
             let app = self.app_handle();
             use tauri_plugin_connector::ConnectorPluginExt;
-            app.get_api_base(tauri_plugin_connector::ConnectionType::RemoteStt)
+            app.get_api_base(tauri_plugin_connector::ConnectionType::AutoSTT)
                 .await
                 .unwrap()
         };

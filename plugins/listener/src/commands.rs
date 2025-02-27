@@ -2,6 +2,23 @@ use crate::{ListenerPluginExt, SessionEvent};
 
 #[tauri::command]
 #[specta::specta]
+pub async fn open_microphone_access_settings<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<(), String> {
+    app.open_microphone_access_settings().await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn open_system_audio_access_settings<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<(), String> {
+    app.open_system_audio_access_settings().await
+}
+
+#[tauri::command]
+#[specta::specta]
+// TODO: need filter
 pub async fn get_timeline<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<crate::TimelineView, String> {

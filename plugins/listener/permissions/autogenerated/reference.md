@@ -2,6 +2,8 @@
 
 Default permissions for the plugin
 
+- `allow-open-microphone-access-settings`
+- `allow-open-system-audio-access-settings`
 - `allow-start-session`
 - `allow-subscribe`
 - `allow-stop-session`
@@ -38,6 +40,58 @@ Enables the get_timeline command without any pre-configured scope.
 <td>
 
 Denies the get_timeline command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:allow-open-microphone-access-settings`
+
+</td>
+<td>
+
+Enables the open_microphone_access_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:deny-open-microphone-access-settings`
+
+</td>
+<td>
+
+Denies the open_microphone_access_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:allow-open-system-audio-access-settings`
+
+</td>
+<td>
+
+Enables the open_system_audio_access_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:deny-open-system-audio-access-settings`
+
+</td>
+<td>
+
+Denies the open_system_audio_access_settings command without any pre-configured scope.
 
 </td>
 </tr>
