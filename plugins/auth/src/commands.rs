@@ -1,4 +1,4 @@
-use crate::{vault::Key, AuthEvent, AuthPluginExt};
+use crate::{store::StoreKey, vault::VaultKey, AuthEvent, AuthPluginExt};
 
 #[tauri::command]
 #[specta::specta]
@@ -28,7 +28,16 @@ pub fn reset_vault<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), St
 #[specta::specta]
 pub fn get_from_vault<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
-    key: Key,
+    key: VaultKey,
 ) -> Result<Option<String>, String> {
     app.get_from_vault(key)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_from_store<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    key: StoreKey,
+) -> Result<Option<String>, String> {
+    app.get_from_store(key)
 }

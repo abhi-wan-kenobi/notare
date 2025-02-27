@@ -14,7 +14,7 @@ export function HyprProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const userId = useQuery({
     queryKey: ["userId"],
-    queryFn: () => authCommands.getFromVault("user-id"),
+    queryFn: () => authCommands.getFromStore("user-id"),
   });
 
   if (userId.status === "pending") {
@@ -22,6 +22,7 @@ export function HyprProvider({ children }: { children: React.ReactNode }) {
   }
 
   if (userId.status === "error") {
+    console.error(userId.error);
     return <div>Failed to fetch user id</div>;
   }
 

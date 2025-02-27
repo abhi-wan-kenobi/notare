@@ -40,6 +40,7 @@ pub async fn main() {
         .plugin(tauri_plugin_sse::init())
         .plugin(tauri_plugin_misc::init())
         .plugin(tauri_plugin_db::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_template::init())
         .plugin(tauri_plugin_local_llm::init())
         .plugin(tauri_plugin_local_stt::init())
@@ -84,6 +85,11 @@ pub async fn main() {
             specta_builder.mount_events(&app);
 
             {
+                use tauri_plugin_store::StoreExt;
+                let _ = app.store("store.json")?;
+            }
+
+            {
                 use tauri_plugin_template::TemplatePluginExt;
                 for (name, template) in tauri_plugin_misc::TEMPLATES {
                     app.register_template(name.to_string(), template.to_string())
@@ -91,19 +97,18 @@ pub async fn main() {
                 }
             }
 
-            {
+            let user_id = {
                 let user_id = {
-                    use tauri_plugin_auth::{AuthPluginExt, Key};
-
-                    if let Ok(Some(user_id)) = app.get_from_vault(Key::UserId) {
-                        Some(user_id)
-                    } else {
-                        None
-                    }
+                    use tauri_plugin_auth::{AuthPluginExt, StoreKey};
+                    app.get_from_store(StoreKey::UserId).unwrap_or(None)
                 };
 
-                app.manage(State { user_id });
-            }
+                app.manage(State {
+                    user_id: user_id.clone(),
+                });
+
+                user_id
+            };
 
             {
                 use tauri_plugin_db::DatabasePluginExt;
@@ -118,6 +123,10 @@ pub async fn main() {
                             .unwrap()
                     })
                 });
+
+                if let Some(user_id) = user_id {
+                    app.db_set_user_id(user_id).unwrap();
+                }
 
                 app.attach_libsql_db(db).unwrap();
             }

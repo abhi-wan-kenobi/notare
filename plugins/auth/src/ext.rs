@@ -1,7 +1,9 @@
 use tauri::ipc::Channel;
 
 use crate::{
-    vault::{Key, Vault},
+    store,
+    store::StoreKey,
+    vault::{Vault, VaultKey},
     CALLBACK_TEMPLATE_KEY,
 };
 
@@ -37,11 +39,14 @@ pub trait AuthPluginExt<R: tauri::Runtime> {
     fn start_oauth_server(&self, channel: Channel<AuthEvent>) -> Result<u16, String>;
     fn stop_oauth_server(&self, port: u16) -> Result<(), String>;
     fn reset_vault(&self) -> Result<(), String>;
-    fn get_from_vault(&self, key: Key) -> Result<Option<String>, String>;
+    fn get_from_vault(&self, key: VaultKey) -> Result<Option<String>, String>;
+    fn get_from_store(&self, key: StoreKey) -> Result<Option<String>, String>;
 }
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> AuthPluginExt<R> for T {
     fn start_oauth_server(&self, channel: Channel<AuthEvent>) -> Result<u16, String> {
+        let store = store::get_store(self);
+
         let env = self.state::<minijinja::Environment>().inner().clone();
         let vault = self.state::<Vault>().inner().clone();
 
@@ -70,10 +75,15 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AuthPluginExt<R> for T {
                         tracing::info!(params = ?params, "auth_callback");
 
                         for (key, value) in [
-                            (Key::UserId, params.user_id),
-                            (Key::AccountId, params.account_id),
-                            (Key::RemoteServer, params.server_token),
-                            (Key::RemoteDatabase, params.database_token),
+                            (StoreKey::UserId, params.user_id),
+                            (StoreKey::AccountId, params.account_id),
+                        ] {
+                            store.set(key.to_string(), value);
+                        }
+
+                        for (key, value) in [
+                            (VaultKey::RemoteServer, params.server_token),
+                            (VaultKey::RemoteDatabase, params.database_token),
                         ] {
                             vault.set(key, value).unwrap();
                         }
@@ -101,9 +111,15 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AuthPluginExt<R> for T {
         vault.clear().map_err(|err| err.to_string())
     }
 
-    fn get_from_vault(&self, key: Key) -> Result<Option<String>, String> {
+    fn get_from_vault(&self, key: VaultKey) -> Result<Option<String>, String> {
         let vault = self.state::<Vault>();
         vault.get(key).map_err(|err| err.to_string())
+    }
+
+    fn get_from_store(&self, key: StoreKey) -> Result<Option<String>, String> {
+        let store = store::get_store(self);
+        let v = store.get(key.to_string()).map(|v| v.to_string());
+        Ok(v)
     }
 }
 

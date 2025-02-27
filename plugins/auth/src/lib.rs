@@ -2,9 +2,11 @@ use tauri::Manager;
 
 mod commands;
 mod ext;
+mod store;
 mod vault;
 
 pub use ext::*;
+pub use store::*;
 pub use vault::*;
 
 const PLUGIN_NAME: &str = "auth";
@@ -21,6 +23,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::stop_oauth_server::<tauri::Wry>,
             commands::reset_vault::<tauri::Wry>,
             commands::get_from_vault::<tauri::Wry>,
+            commands::get_from_store::<tauri::Wry>,
         ])
         .typ::<RequestParams>()
         .typ::<ResponseParams>()

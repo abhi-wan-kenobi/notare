@@ -4,15 +4,7 @@ pub struct Vault {
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, strum::AsRefStr, specta::Type)]
-pub enum Key {
-    #[strum(serialize = "user-id")]
-    #[serde(rename = "user-id")]
-    #[specta(rename = "user-id")]
-    UserId,
-    #[strum(serialize = "account-id")]
-    #[serde(rename = "account-id")]
-    #[specta(rename = "account-id")]
-    AccountId,
+pub enum VaultKey {
     #[strum(serialize = "remote-database")]
     #[serde(rename = "remote-database")]
     #[specta(rename = "remote-database")]
@@ -30,7 +22,7 @@ impl Vault {
         }
     }
 
-    pub fn get(&self, key: Key) -> Result<Option<String>, keyring::Error> {
+    pub fn get(&self, key: VaultKey) -> Result<Option<String>, keyring::Error> {
         let entry = keyring::Entry::new(&self.service, key.as_ref()).unwrap();
         match entry.get_password() {
             Ok(v) => Ok(Some(v)),
@@ -39,20 +31,13 @@ impl Vault {
         }
     }
 
-    pub fn set(&self, key: Key, value: impl AsRef<str>) -> Result<(), keyring::Error> {
+    pub fn set(&self, key: VaultKey, value: impl AsRef<str>) -> Result<(), keyring::Error> {
         let entry = keyring::Entry::new(&self.service, key.as_ref()).unwrap();
         entry.set_password(value.as_ref())
     }
 
     pub fn clear(&self) -> Result<(), keyring::Error> {
-        let keys = [
-            Key::UserId,
-            Key::AccountId,
-            Key::RemoteDatabase,
-            Key::RemoteServer,
-        ];
-
-        for key in keys {
+        for key in [VaultKey::RemoteDatabase, VaultKey::RemoteServer] {
             let entry = keyring::Entry::new(&self.service, key.as_ref()).unwrap();
 
             match entry.delete_credential() {

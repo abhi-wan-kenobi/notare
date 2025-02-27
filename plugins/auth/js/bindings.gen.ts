@@ -16,8 +16,11 @@ async stopOauthServer(port: number) : Promise<null> {
 async resetVault() : Promise<null> {
     return await TAURI_INVOKE("plugin:auth|reset_vault");
 },
-async getFromVault(key: Key) : Promise<string | null> {
+async getFromVault(key: VaultKey) : Promise<string | null> {
     return await TAURI_INVOKE("plugin:auth|get_from_vault", { key });
+},
+async getFromStore(key: StoreKey) : Promise<string | null> {
+    return await TAURI_INVOKE("plugin:auth|get_from_store", { key });
 }
 }
 
@@ -32,10 +35,11 @@ async getFromVault(key: Key) : Promise<string | null> {
 /** user-defined types **/
 
 export type AuthEvent = "Success" | "Error"
-export type Key = "user-id" | "account-id" | "remote-database" | "remote-server"
 export type RequestParams = { c: string; f: string; p: number }
 export type ResponseParams = { ui: string; ai: string; st: string; dt: string }
+export type StoreKey = "user-id" | "account-id"
 export type TAURI_CHANNEL<TSend> = null
+export type VaultKey = "remote-database" | "remote-server"
 
 /** tauri-specta globals **/
 

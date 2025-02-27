@@ -10,7 +10,6 @@ export const Route = createFileRoute("/app")({
 });
 
 function Component() {
-  console.log("app");
   return (
     <HyprProvider>
       <RightPanelProvider>
