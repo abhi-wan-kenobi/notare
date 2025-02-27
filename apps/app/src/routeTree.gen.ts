@@ -14,7 +14,7 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as IntegrationImport } from './routes/integration'
 import { Route as IndexImport } from './routes/index'
 import { Route as SIdImport } from './routes/s.$id'
-import { Route as AuthSignUpImport } from './routes/auth.sign-up'
+import { Route as AuthSsoCallbackImport } from './routes/auth.sso-callback'
 import { Route as AuthSignOutImport } from './routes/auth.sign-out'
 import { Route as AuthSignInImport } from './routes/auth.sign-in'
 import { Route as AuthConnectImport } from './routes/auth.connect'
@@ -39,9 +39,9 @@ const SIdRoute = SIdImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const AuthSignUpRoute = AuthSignUpImport.update({
-  id: '/auth/sign-up',
-  path: '/auth/sign-up',
+const AuthSsoCallbackRoute = AuthSsoCallbackImport.update({
+  id: '/auth/sso-callback',
+  path: '/auth/sso-callback',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -102,11 +102,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignOutImport
       parentRoute: typeof rootRoute
     }
-    '/auth/sign-up': {
-      id: '/auth/sign-up'
-      path: '/auth/sign-up'
-      fullPath: '/auth/sign-up'
-      preLoaderRoute: typeof AuthSignUpImport
+    '/auth/sso-callback': {
+      id: '/auth/sso-callback'
+      path: '/auth/sso-callback'
+      fullPath: '/auth/sso-callback'
+      preLoaderRoute: typeof AuthSsoCallbackImport
       parentRoute: typeof rootRoute
     }
     '/s/$id': {
@@ -127,7 +127,7 @@ export interface FileRoutesByFullPath {
   '/auth/connect': typeof AuthConnectRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-out': typeof AuthSignOutRoute
-  '/auth/sign-up': typeof AuthSignUpRoute
+  '/auth/sso-callback': typeof AuthSsoCallbackRoute
   '/s/$id': typeof SIdRoute
 }
 
@@ -137,7 +137,7 @@ export interface FileRoutesByTo {
   '/auth/connect': typeof AuthConnectRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-out': typeof AuthSignOutRoute
-  '/auth/sign-up': typeof AuthSignUpRoute
+  '/auth/sso-callback': typeof AuthSsoCallbackRoute
   '/s/$id': typeof SIdRoute
 }
 
@@ -148,7 +148,7 @@ export interface FileRoutesById {
   '/auth/connect': typeof AuthConnectRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-out': typeof AuthSignOutRoute
-  '/auth/sign-up': typeof AuthSignUpRoute
+  '/auth/sso-callback': typeof AuthSsoCallbackRoute
   '/s/$id': typeof SIdRoute
 }
 
@@ -160,7 +160,7 @@ export interface FileRouteTypes {
     | '/auth/connect'
     | '/auth/sign-in'
     | '/auth/sign-out'
-    | '/auth/sign-up'
+    | '/auth/sso-callback'
     | '/s/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -169,7 +169,7 @@ export interface FileRouteTypes {
     | '/auth/connect'
     | '/auth/sign-in'
     | '/auth/sign-out'
-    | '/auth/sign-up'
+    | '/auth/sso-callback'
     | '/s/$id'
   id:
     | '__root__'
@@ -178,7 +178,7 @@ export interface FileRouteTypes {
     | '/auth/connect'
     | '/auth/sign-in'
     | '/auth/sign-out'
-    | '/auth/sign-up'
+    | '/auth/sso-callback'
     | '/s/$id'
   fileRoutesById: FileRoutesById
 }
@@ -189,7 +189,7 @@ export interface RootRouteChildren {
   AuthConnectRoute: typeof AuthConnectRoute
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignOutRoute: typeof AuthSignOutRoute
-  AuthSignUpRoute: typeof AuthSignUpRoute
+  AuthSsoCallbackRoute: typeof AuthSsoCallbackRoute
   SIdRoute: typeof SIdRoute
 }
 
@@ -199,7 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthConnectRoute: AuthConnectRoute,
   AuthSignInRoute: AuthSignInRoute,
   AuthSignOutRoute: AuthSignOutRoute,
-  AuthSignUpRoute: AuthSignUpRoute,
+  AuthSsoCallbackRoute: AuthSsoCallbackRoute,
   SIdRoute: SIdRoute,
 }
 
@@ -218,7 +218,7 @@ export const routeTree = rootRoute
         "/auth/connect",
         "/auth/sign-in",
         "/auth/sign-out",
-        "/auth/sign-up",
+        "/auth/sso-callback",
         "/s/$id"
       ]
     },
@@ -237,8 +237,8 @@ export const routeTree = rootRoute
     "/auth/sign-out": {
       "filePath": "auth.sign-out.tsx"
     },
-    "/auth/sign-up": {
-      "filePath": "auth.sign-up.tsx"
+    "/auth/sso-callback": {
+      "filePath": "auth.sso-callback.tsx"
     },
     "/s/$id": {
       "filePath": "s.$id.tsx"
