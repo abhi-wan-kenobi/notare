@@ -33,7 +33,7 @@ pub async fn handler(
             let db = state.admin_db.clone();
             db.upsert_account(hypr_db::admin::Account {
                 id: uuid::Uuid::new_v4().to_string(),
-                turso_db_name: uuid::Uuid::new_v4().to_string(),
+                turso_db_name: hypr_turso::format_db_name(uuid::Uuid::new_v4().to_string()),
                 clerk_org_id,
             })
             .await
@@ -64,7 +64,7 @@ pub async fn handler(
     }
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let _ = {
+    let r = {
         if existing_account.is_none() {
             let create_db_req = hypr_turso::CreateDatabaseRequestBuilder::default()
                 .with_name(&account.turso_db_name)
@@ -102,17 +102,16 @@ pub async fn handler(
         }
     };
 
-    // TODO: this cause db with that name not found
-    // let database_token = state
-    //     .turso
-    //     .generate_db_token(&account.turso_db_name)
-    //     .await
-    //     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let database_token = state
+        .turso
+        .generate_db_token(&account.turso_db_name)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(ResponseParams {
         user_id: user.human_id,
         account_id: account.id,
         server_token: device.api_key.clone(),
-        database_token: "TODO".to_string(),
+        database_token,
     }))
 }

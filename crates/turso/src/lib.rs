@@ -35,10 +35,7 @@ impl CreateDatabaseRequestBuilder {
     pub fn build(self) -> CreateDatabaseRequest {
         // `_` is invalid
         CreateDatabaseRequest {
-            #[cfg(debug_assertions)]
-            name: format!("dev-{}", self.name.unwrap()),
-            #[cfg(not(debug_assertions))]
-            name: format!("prod-{}", self.name.unwrap()),
+            name: self.name.unwrap(),
             group: "hyprnote".to_string(),
             is_schema: self.is_schema,
             schema: self.schema,
@@ -238,6 +235,14 @@ impl TursoClient {
 
         let res = self.client.delete(url).send().await?.json().await?;
         Ok(res)
+    }
+}
+
+pub fn format_db_name(name: impl Into<String>) -> String {
+    if cfg!(debug_assertions) {
+        format!("dev-{}", name.into())
+    } else {
+        format!("prod-{}", name.into())
     }
 }
 
