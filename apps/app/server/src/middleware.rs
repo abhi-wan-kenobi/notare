@@ -57,13 +57,13 @@ pub async fn attach_user_from_clerk(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
-    let orgs = state
+    let accounts = state
         .admin_db
-        .list_organizations_by_user_id(user.id.clone())
+        .list_accounts_by_user_id(user.id.clone())
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let org = orgs
+    let org = accounts
         .into_iter()
         .find(|org| org.clerk_org_id == clerk_org_id)
         .ok_or(StatusCode::UNPROCESSABLE_ENTITY)?;
@@ -76,25 +76,27 @@ pub async fn attach_user_from_clerk(
 
 #[tracing::instrument(skip_all)]
 pub async fn attach_user_db(
-    #[allow(unused)] Extension(org): Extension<hypr_db::admin::Organization>,
+    #[allow(unused)] Extension(org): Extension<hypr_db::admin::Account>,
     mut req: Request,
     next: middleware::Next,
 ) -> Result<Response, StatusCode> {
     let conn = {
         #[cfg(debug_assertions)]
         {
-            hypr_db::ConnectionBuilder::default().local(":memory:")
+            hypr_db::DatabaseBaseBuilder::default().local(":memory:")
         }
 
         #[cfg(not(debug_assertions))]
         {
             let token = get_env("TURSO_API_KEY");
             let url = format!("{}-yujonglee.turso.io", org.turso_db_name);
-            hypr_db::ConnectionBuilder::default().remote(url, token)
+            hypr_db::DatabaseBaseBuilder::default().remote(url, token)
         }
     }
-    .connect()
+    .build()
     .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    .connect()
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let db = hypr_db::user::UserDatabase::from(conn);

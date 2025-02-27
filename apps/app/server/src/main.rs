@@ -128,10 +128,12 @@ fn main() {
                 let conn = {
                     #[cfg(debug_assertions)]
                     {
-                        hypr_db::ConnectionBuilder::default()
+                        hypr_db::DatabaseBaseBuilder::default()
                             .local(":memory:")
-                            .connect()
+                            .build()
                             .await
+                            .unwrap()
+                            .connect()
                             .unwrap()
                     }
 
@@ -141,10 +143,12 @@ fn main() {
                         let url = turso.db_url(&name);
                         let token = turso.generate_db_token(&name).await.unwrap();
 
-                        hypr_db::ConnectionBuilder::default()
+                        hypr_db::DatabaseBaseBuilder::default()
                             .remote(url, token)
-                            .connect()
+                            .build()
                             .await
+                            .unwrap()
+                            .connect()
                             .unwrap()
                     }
                 };
