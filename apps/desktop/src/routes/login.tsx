@@ -139,10 +139,10 @@ function Component() {
           </PushableButton>
 
           <TOS />
-
-          <SkipToUseLocally />
         </div>
       </div>
+
+      <SkipToUseLocally />
 
       <Particles
         className="absolute inset-0 z-0"
@@ -186,7 +186,7 @@ function SkipToUseLocally() {
   return (
     <Button
       variant="ghost"
-      className="mt-8"
+      className="mt-8 absolute bottom-2 z-10"
       onClick={() => {
         navigate({ to: "/onboarding" });
       }}
