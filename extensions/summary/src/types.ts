@@ -1,5 +1,4 @@
 import { z } from "zod";
-
 import type { Config } from "@hypr/plugin-db";
 import type { TimelineView } from "@hypr/plugin-listener";
 

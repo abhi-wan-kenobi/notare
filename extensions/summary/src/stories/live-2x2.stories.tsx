@@ -1,20 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react";
-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse, type HttpHandler } from "msw";
 import { mockIPC } from "@tauri-apps/api/mocks";
-
 import { ChatCompletion } from "openai/resources/chat/completions";
 import type { LiveSummaryResponse } from "../types";
-
-import extension from "../index";
+import LiveSummary2x2 from "../widgets/live/2x2";
 
 const queryClient = new QueryClient();
 
 const meta = {
   title: "Extensions/Live Summary/2x2",
-  component: extension.twoByTwo,
-} satisfies Meta<typeof extension.twoByTwo>;
+  component: LiveSummary2x2,
+} satisfies Meta<typeof LiveSummary2x2>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -84,10 +81,6 @@ export const Main: Story = {
   ],
   args: {
     onMaximize: () => {},
-    children: (
-      <>
-        <div>Example Widget Content</div>
-      </>
-    ),
+    children: <></>,
   },
 };

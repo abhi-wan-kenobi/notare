@@ -1,8 +1,8 @@
 {
   "$schema": "../definition.schema.json",
-  "id": "live-summary",
-  "title": "Live Summary",
-  "description": "Summarizes the recent meeting content in just three lines.",
+  "id": "summary",
+  "title": "Summary",
+  "description": "Summarizes the meeting content",
   "implemented": true,
   "default": true,
   "cloud_only": false,

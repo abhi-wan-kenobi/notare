@@ -1,31 +1,26 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as templateCommands } from "@hypr/plugin-template";
 import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { Button } from "@hypr/ui/components/ui/button";
+import { modelProvider, generateObject } from "@hypr/extension-utils";
+import { WidgetHeader, WidgetTwoByTwo } from "@hypr/ui/components/ui/widgets";
 import {
-  modelProvider,
-  generateObject,
-  type Extension,
-} from "@hypr/extension-utils";
+  type LiveSummarySystemInput,
+  type LiveSummaryUserInput,
+  liveSummaryResponseSchema,
+  type LiveSummaryResponse,
+} from "../../types";
 import {
   TEMPLATE_LIVE_SUMMARY_SYSTEM,
   TEMPLATE_LIVE_SUMMARY_USER,
 } from "./init";
-import {
-  liveSummaryResponseSchema,
-  type LiveSummaryResponse,
-  type LiveSummarySystemInput,
-  type LiveSummaryUserInput,
-} from "./types";
-import { WidgetHeader, WidgetTwoByTwo } from "@hypr/ui/components/ui/widgets";
 
 const DEFAULT_INTERVAL = 10 * 1000;
 
-const widget: Extension["twoByTwo"] = () => {
+const LiveSummary2x2: typeof WidgetTwoByTwo = () => {
   const [progress, setProgress] = useState(0);
 
   const config = useQuery({
@@ -193,4 +188,4 @@ const Summary = ({
   );
 };
 
-export default widget;
+export default LiveSummary2x2;
