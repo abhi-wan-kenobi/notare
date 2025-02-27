@@ -1,5 +1,13 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("reqwest error: {0}")]
+    ReqwestError(#[from] reqwest::Error),
+    #[error("other error: {0}")]
+    Other(String),
+}
+
 #[derive(Clone)]
 pub struct TursoClient {
     client: reqwest::Client,
@@ -97,6 +105,13 @@ pub struct DeleteDatabaseResponse {
     pub database: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum GenerateTokenResponse {
+    Error { error: String },
+    Token { jwt: String },
+}
+
 #[derive(Default)]
 pub struct TursoClientBuilder {
     api_key: Option<String>,
@@ -149,10 +164,7 @@ impl TursoClient {
     }
 
     // https://docs.turso.tech/api-reference/databases/create-token
-    pub async fn generate_db_token(
-        &self,
-        db_name: impl Into<String>,
-    ) -> Result<String, reqwest::Error> {
+    pub async fn generate_db_token(&self, db_name: impl Into<String>) -> Result<String, Error> {
         let mut url = self.api_base.clone();
         url.set_path(&format!(
             "/v1/organizations/{}/databases/{}/auth/tokens",
@@ -168,11 +180,13 @@ impl TursoClient {
             .post(url)
             .send()
             .await?
-            .json::<serde_json::Value>()
+            .json::<GenerateTokenResponse>()
             .await?;
 
-        let jwt = res.get("jwt").unwrap().as_str().unwrap();
-        Ok(jwt.to_string())
+        match res {
+            GenerateTokenResponse::Error { error } => Err(Error::Other(error)),
+            GenerateTokenResponse::Token { jwt } => Ok(jwt),
+        }
     }
 
     // https://docs.turso.tech/api-reference/databases/create

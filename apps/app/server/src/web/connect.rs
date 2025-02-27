@@ -102,16 +102,17 @@ pub async fn handler(
         }
     };
 
-    let database_token = state
-        .turso
-        .generate_db_token(&account.turso_db_name)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    // TODO: this cause db with that name not found
+    // let database_token = state
+    //     .turso
+    //     .generate_db_token(&account.turso_db_name)
+    //     .await
+    //     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(ResponseParams {
         user_id: user.human_id,
         account_id: account.id,
         server_token: device.api_key.clone(),
-        database_token,
+        database_token: "TODO".to_string(),
     }))
 }

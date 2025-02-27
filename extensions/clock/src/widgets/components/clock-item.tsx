@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { getTimeForTimezone } from "../../lib";
 
-export const ClockItem = ({ timezone, city }: { timezone: string; city: string }) => {
+export const ClockItem = ({
+  timezone,
+  city,
+}: {
+  timezone: string;
+  city: string;
+}) => {
   const [time, setTime] = useState(getTimeForTimezone(timezone));
 
   useEffect(() => {

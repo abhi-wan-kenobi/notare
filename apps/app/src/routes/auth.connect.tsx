@@ -29,7 +29,7 @@ export const Route = createFileRoute("/auth/connect")({
 function Component() {
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const { isLoaded, userId, orgId } = useAuth();
+  const { isLoaded, userId } = useAuth();
 
   const { c: code, f: fingerprint, p: port } = search;
 

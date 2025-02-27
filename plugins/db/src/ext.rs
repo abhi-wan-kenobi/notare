@@ -29,9 +29,21 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> crate::DatabasePluginExt<R> for T 
     fn attach_libsql_db(&self, db: hypr_db::Database) -> Result<(), String> {
         let state = self.state::<crate::ManagedState>();
         let mut s = state.lock().unwrap();
-        let conn = db.connect().unwrap();
-        s.libsql_db = Some(db);
-        s.db = Some(hypr_db::user::UserDatabase::from(conn));
+
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async move {
+                let conn = db.connect().unwrap();
+                hypr_db::user::migrate(&conn).await.unwrap();
+
+                let user_db = hypr_db::user::UserDatabase::from(conn);
+                if cfg!(debug_assertions) {
+                    hypr_db::user::seed(&user_db).await.unwrap();
+                }
+
+                s.libsql_db = Some(db);
+                s.db = Some(user_db);
+            })
+        });
 
         Ok(())
     }
