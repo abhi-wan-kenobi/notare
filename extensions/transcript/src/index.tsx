@@ -1,13 +1,22 @@
 import type { Extension } from "@hypr/extension-utils";
 
-import TwoByTwo from "./two-by-two";
-import FullSizeModal from "./full-size-modal";
-import init from "./init";
+import TwoByTwo from "./widgets/live/2x2";
+import FullSizeModal from "./widgets/live/full";
+import init from "./widgets/live/init";
 
 const extension: Extension = {
-  init,
-  twoByTwo: TwoByTwo,
-  full: FullSizeModal,
+  liveTranscript: [
+    {
+      id: "transcript-live-2x2",
+      init: init,
+      component: TwoByTwo,
+    },
+    {
+      id: "transcript-live-full",
+      init: init,
+      component: FullSizeModal,
+    },
+  ],
 };
 
 export default extension;

@@ -1,10 +1,6 @@
-import { type Extension, formatTime } from "@hypr/extension-utils";
+import { formatTime } from "@hypr/extension-utils";
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  WidgetFullSizeModal,
-  WidgetHeader,
-} from "@hypr/ui/components/ui/widgets";
-import { Minimize2Icon } from "lucide-react";
+import { WidgetHeader, WidgetTwoByTwo } from "@hypr/ui/components/ui/widgets";
 import { Badge } from "@hypr/ui/components/ui/badge";
 import { useEffect, useState, useRef } from "react";
 import { Channel } from "@tauri-apps/api/core";
@@ -13,8 +9,11 @@ import {
   type TimelineView,
   type SessionEvent,
 } from "@hypr/plugin-listener";
+import { useQuery } from "@tanstack/react-query";
+import { fetch } from "@hypr/extension-utils";
+import { Maximize2Icon } from "lucide-react";
 
-const widget: Extension["full"] = ({ onMinimize }) => {
+const LiveTranscript2x2: typeof WidgetTwoByTwo = ({ onMaximize }) => {
   const [timeline, setTimeline] = useState<TimelineView | null>(null);
   const [isLive, setIsLive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -47,8 +46,19 @@ const widget: Extension["full"] = ({ onMinimize }) => {
     }
   }, [timeline?.items.length, isLive]);
 
+  const transcript = useQuery({
+    queryKey: ["transcript"],
+    queryFn: async () => {
+      const response = await fetch("/api/timeline");
+      if (!response.ok) {
+        throw new Error("Failed to fetch transcript");
+      }
+      return response.json();
+    },
+  });
+
   return (
-    <WidgetFullSizeModal onMinimize={onMinimize}>
+    <WidgetTwoByTwo>
       <div className="p-4 pb-0">
         <WidgetHeader
           title={
@@ -59,21 +69,22 @@ const widget: Extension["full"] = ({ onMinimize }) => {
           }
           actions={[
             <Button
-              key="minimize"
+              key="maximize"
               variant="ghost"
               size="icon"
-              onClick={onMinimize}
+              onClick={onMaximize}
+              className="p-0"
             >
-              <Minimize2Icon className="h-4 w-4" />
+              <Maximize2Icon size={16} />
             </Button>,
           ]}
         />
       </div>
 
-      <div ref={scrollRef} className="overflow-auto flex-1 p-4 pt-0">
-        <Transcript transcript={timeline} />
+      <div ref={scrollRef} className="overflow-y-auto flex-1 p-4 pt-0">
+        <Transcript transcript={timeline || transcript.data} />
       </div>
-    </WidgetFullSizeModal>
+    </WidgetTwoByTwo>
   );
 };
 
@@ -102,4 +113,4 @@ const Transcript = ({ transcript }: { transcript: TimelineView | null }) => {
   );
 };
 
-export default widget;
+export default LiveTranscript2x2;

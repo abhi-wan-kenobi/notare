@@ -1,15 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { mockTranscriptIPC } from "./mocks";
-
-import extension from "../index";
+import LiveTranscriptFull from "../widgets/live/full";
 
 const queryClient = new QueryClient();
 
 const meta = {
-  title: "Extensions/Transcript/Full Size Modal",
-  component: extension.full,
-} satisfies Meta<typeof extension.full>;
+  title: "Transcript/Live/Full",
+  component: LiveTranscriptFull,
+} satisfies Meta<typeof LiveTranscriptFull>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -33,10 +32,6 @@ export const Main: Story = {
   ],
   args: {
     onMinimize: () => {},
-    children: (
-      <>
-        <div>Example Widget Content</div>
-      </>
-    ),
+    children: <></>,
   },
 };

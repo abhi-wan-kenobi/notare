@@ -6,7 +6,7 @@ import { cn } from "@hypr/ui/lib/utils";
 
 const INIT_MINUTES = 60;
 
-const DigitalDigitsTimer2x1 = () => {
+const DigitsTimer2x1 = () => {
   const [timeLeft, setTimeLeft] = useState(INIT_MINUTES * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [inputTime, setInputTime] = useState(INIT_MINUTES.toString());
@@ -162,4 +162,4 @@ const DigitalDigitsTimer2x1 = () => {
   );
 };
 
-export default DigitalDigitsTimer2x1;
+export default DigitsTimer2x1;

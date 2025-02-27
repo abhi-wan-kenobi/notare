@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 
 const INIT_MINUTES = 60;
 
-const AnalogDiscTimer2x2 = () => {
+const DiscTimer2x2 = () => {
   const [timeLeft, setTimeLeft] = useState(INIT_MINUTES * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [inputTime, setInputTime] = useState(INIT_MINUTES.toString());
@@ -261,4 +261,4 @@ const AnalogDiscTimer2x2 = () => {
   );
 };
 
-export default AnalogDiscTimer2x2;
+export default DiscTimer2x2;
