@@ -1,6 +1,6 @@
 import type { Extension } from "@hypr/extension-utils";
 import ChromeDino2x1 from "./widgets/chrome/2x1";
-import { init } from "./init";
+import { init } from "./widgets/chrome/init";
 
 const extension: Extension = {
   chromeDino: [

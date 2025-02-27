@@ -145,3 +145,22 @@ export const handleDecimal = (
   }
   return {};
 };
+
+export const formatDisplayValue = (value: string): string => {
+  // Keep the original value for calculations but format for display
+  const numValue = parseFloat(value);
+  
+  // If the number is too large or has too many decimal places
+  if (Math.abs(numValue) >= 1e12 || value.length > 12) {
+    // Convert to scientific notation for very large numbers
+    return numValue.toExponential(6);
+  }
+  
+  // For numbers with many decimal places, round to fit display
+  if (value.includes('.') && value.length > 12) {
+    const decimalPlaces = Math.max(0, 11 - value.indexOf('.'));
+    return numValue.toFixed(decimalPlaces);
+  }
+  
+  return value;
+};

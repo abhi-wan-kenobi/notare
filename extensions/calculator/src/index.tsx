@@ -1,11 +1,16 @@
 import type { Extension } from "@hypr/extension-utils";
 
-import TwoByTwo from "./two-by-two";
-import init from "./init";
+import BasicCalculator2x2 from "./widgets/basic/2x2";
+import { init } from "./widgets/basic/init";
 
 const extension: Extension = {
-  init,
-  twoByTwo: TwoByTwo,
+  basic: [
+    {
+      id: "calculator-basic-2x2",
+      init,
+      component: BasicCalculator2x2,
+    },
+  ],
 };
 
 export default extension;

@@ -1,11 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
-
-import extension from "../index";
+import BasicCalculator2x2 from "../widgets/basic/2x2";
 
 const meta = {
   title: "Extensions/Calculator/2x2",
-  component: extension.twoByTwo,
-} satisfies Meta<typeof extension.twoByTwo>;
+  component: BasicCalculator2x2,
+} satisfies Meta<typeof BasicCalculator2x2>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -18,10 +17,6 @@ export const Main: Story = {
   },
   args: {
     onMaximize: () => {},
-    children: (
-      <>
-        <div>Example Widget Content</div>
-      </>
-    ),
+    children: <></>,
   },
 };
