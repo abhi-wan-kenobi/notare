@@ -51,8 +51,8 @@ export default function DinoGame() {
     y: 500,
     w: 89,
     h: 94,
-    normalH: 94, // Normal height
-    duckH: 60, // Height while ducking
+    normalH: 94,
+    duckH: 60,
     yv: 0,
     score: 0,
     hscore: 0,
@@ -82,29 +82,24 @@ export default function DinoGame() {
     currentScore: number,
     highScore: number,
   ) => {
-    // Save current context state
     ctx.save();
 
-    // Set text properties
     ctx.font = '20px "Press Start 2P", monospace';
     ctx.fillStyle = "#535353";
     ctx.textAlign = "right";
 
-    // Draw current score
     ctx.fillText(
       currentScore.toString().padStart(5, "0"),
       canvas.width - 25,
       30,
     );
 
-    // Draw HI score
     ctx.fillText(
       "HI " + highScore.toString().padStart(5, "0"),
       canvas.width - 160,
       30,
     );
 
-    // Restore context state
     ctx.restore();
   };
 
@@ -112,10 +107,8 @@ export default function DinoGame() {
     ctx: CanvasRenderingContext2D,
     canvas: HTMLCanvasElement,
   ) => {
-    // Draw scores using the final score
     drawScores(ctx, canvas, player.score, player.hscore);
 
-    // Draw "GAME OVER" text
     ctx.save();
     ctx.font = '20px "Press Start 2P", monospace';
     ctx.fillStyle = "#535353";
@@ -123,13 +116,10 @@ export default function DinoGame() {
     ctx.fillText("G A M E   O V E R", canvas.width / 2, canvas.height / 3);
     ctx.restore();
 
-    // Draw restart button
     const buttonX = canvas.width / 2 - 36;
     const buttonY = canvas.height / 2 - 32;
 
-    // Draw button with hover effect
     if (gameStateRef.current.isButtonHovered) {
-      // Draw hover effect (slightly darker background)
       ctx.fillStyle = "rgba(83, 83, 83, 0.1)";
       ctx.fillRect(buttonX, buttonY, 72, 64);
     }
@@ -150,20 +140,16 @@ export default function DinoGame() {
   const gameover = () => {
     const state = gameStateRef.current;
 
-    // Update high score if needed
     if (player.score > player.hscore) {
       player.hscore = player.score;
     }
 
-    // Reset game speed and score
     state.gamespeed = 0;
     player.score = 0;
 
-    // Reset player position and velocity
     player.y = 500;
     player.yv = 0;
 
-    // Reset obstacles
     obsB.scroll = -200;
     obsS.scroll = -100;
     state.multiS = -1;
@@ -171,7 +157,6 @@ export default function DinoGame() {
     obsB.on = false;
     obsS.on = false;
 
-    // Reset ground scrolling
     state.scoreInterval = 0;
     state.frameInterval = 0;
     state.groundscroll = 0;
@@ -179,8 +164,7 @@ export default function DinoGame() {
     state.tempstart = 0;
     state.groundbool = false;
 
-    // Reset animation state
-    state.frame = 1338; // Standing frame
+    state.frame = 1338;
     state.bool = false;
   };
 
@@ -188,7 +172,6 @@ export default function DinoGame() {
     const state = gameStateRef.current;
 
     if (evt.key === "ArrowUp" || evt.key === " ") {
-      // Up arrow or Space
       if (state.onG && !state.isJumping) {
         state.isJumping = true;
         player.yv = -player.jump;
@@ -198,7 +181,6 @@ export default function DinoGame() {
       }
     }
     if (evt.key === "ArrowDown") {
-      // Down arrow
       evt.preventDefault();
       if (!state.isDucking) {
         state.isDucking = true;
@@ -213,7 +195,6 @@ export default function DinoGame() {
     const state = gameStateRef.current;
 
     if (evt.key === "ArrowDown") {
-      // Down arrow
       evt.preventDefault();
       state.isDucking = false;
       player.h = player.normalH;
@@ -228,7 +209,6 @@ export default function DinoGame() {
     const x = evt.clientX - rect.left;
     const y = evt.clientY - rect.top;
 
-    // Check if mouse is over restart button
     const buttonX = canvas.width / 2 - 36;
     const buttonY = canvas.height / 2 - 32;
     const isHovered =
@@ -236,7 +216,7 @@ export default function DinoGame() {
 
     if (isHovered !== gameStateRef.current.isButtonHovered) {
       gameStateRef.current.isButtonHovered = isHovered;
-      // Force a redraw to update button appearance
+
       const ctx = canvas.getContext("2d");
       if (ctx) drawGameOverScreen(ctx, canvas);
     }
@@ -250,7 +230,6 @@ export default function DinoGame() {
     const x = evt.clientX - rect.left;
     const y = evt.clientY - rect.top;
 
-    // Check if click is on restart button
     const buttonX = canvas.width / 2 - 36;
     const buttonY = canvas.height / 2 - 32;
     if (
@@ -259,13 +238,11 @@ export default function DinoGame() {
       y >= buttonY &&
       y <= buttonY + 64
     ) {
-      // Reset game state
       gameStateRef.current.gamespeed = 7;
       player.score = 0;
-      player.y = 500; // Reset player position
-      player.yv = 0; // Reset velocity
+      player.y = 500;
+      player.yv = 0;
 
-      // Reset obstacle positions
       obsB.scroll = -200;
       obsS.scroll = -100;
       gameStateRef.current.multiS = -1;
@@ -313,7 +290,6 @@ export default function DinoGame() {
       state.onG = true;
     }
 
-    // Collision detection
     if (
       pbox.x > canvas.width - obsB.scroll - player.w &&
       pbox.x < canvas.width - obsB.scroll + obsB.w * state.multiB &&
@@ -330,30 +306,26 @@ export default function DinoGame() {
       gameover();
     }
 
-    // Animation frame update
     state.frameInterval++;
     if (state.frameInterval > 5) {
       state.bool = !state.bool;
       state.frameInterval = 0;
     }
 
-    // Update frame based on state
     if (state.isDucking) {
-      state.frame = state.bool ? 1866 : 1954; // Ducking animation frames
+      state.frame = state.bool ? 1866 : 1954;
       player.h = player.duckH;
     } else if (state.onG) {
-      state.frame = state.bool ? 1514 : 1602; // Running animation frames
+      state.frame = state.bool ? 1514 : 1602;
       player.h = player.normalH;
     } else {
-      state.frame = 1338; // Jumping frame
+      state.frame = 1338;
       player.h = player.normalH;
     }
 
-    // Clear canvas
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Ground scrolling
     state.groundscroll += state.gamespeed;
     ctx.drawImage(
       state.sprImg,
@@ -398,7 +370,6 @@ export default function DinoGame() {
       }
     }
 
-    // Draw character
     if (state.gamespeed !== 0) {
       ctx.drawImage(
         state.sprImg,
@@ -425,7 +396,6 @@ export default function DinoGame() {
       );
     }
 
-    // Draw obstacles
     if (!obsB.on) {
       obsS.on = true;
       if (state.multiS === -1) {
@@ -477,10 +447,8 @@ export default function DinoGame() {
       }
     }
 
-    // Draw scores
     drawScores(ctx, canvas, player.score, player.hscore);
 
-    // If game is over, draw game over screen
     if (state.gamespeed === 0) {
       drawGameOverScreen(ctx, canvas);
     }
@@ -492,13 +460,11 @@ export default function DinoGame() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Load sprite image
     gameStateRef.current.sprImg.src = spriteImage;
     gameStateRef.current.sprImg.onload = () => {
       update();
     };
 
-    // Add event listeners
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("keyup", handleKeyUp);
     canvas.addEventListener("click", handleClick);

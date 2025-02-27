@@ -63,8 +63,9 @@ export interface Extension {
 }
 
 export interface Widget {
+  id: string;
   init: () => Promise<void>;
-  widget:
+  component:
     | typeof WidgetOneByOne
     | typeof WidgetTwoByOne
     | typeof WidgetTwoByTwo
