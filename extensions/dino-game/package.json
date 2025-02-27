@@ -11,7 +11,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "preview": "storybook dev -p 6006"
+    "preview": "storybook dev -p 6006",
+    "build": "storybook build -o ../../apps/storybook/storybook-static/dino-game"
   },
   "dependencies": {
     "@hypr/extension-utils": "workspace:^",

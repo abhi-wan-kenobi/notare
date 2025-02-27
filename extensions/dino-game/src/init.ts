@@ -1,7 +1,5 @@
-import { type Extension } from "@hypr/extension-utils";
+import { Widget } from "@hypr/extension-utils";
 
-const init: Extension["init"] = async () => {
+export const init: Widget["init"] = async () => {
   console.log("Dino Game extension initialized");
 };
-
-export default init;

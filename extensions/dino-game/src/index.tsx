@@ -1,11 +1,15 @@
 import type { Extension } from "@hypr/extension-utils";
-import TwoByOne from "./two-by-one";
-
-import init from "./init";
+import ChromeDino2x1 from "./widgets/chrome/2x1";
+import { init } from "./init";
 
 const extension: Extension = {
-  init,
-  twoByOne: TwoByOne,
+  chromeDino: [
+    {
+      id: "dino-game-chrome-2x1",
+      init,
+      component: ChromeDino2x1,
+    },
+  ],
 };
 
 export default extension;

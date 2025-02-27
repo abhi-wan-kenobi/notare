@@ -1,11 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
-
-import extension from "../index";
+import ChromeDino2x1 from "../widgets/chrome/2x1";
 
 const meta = {
   title: "Extensions/Dino Game/2x1",
-  component: extension.twoByOne,
-} satisfies Meta<typeof extension.twoByOne>;
+  component: ChromeDino2x1,
+} satisfies Meta<typeof ChromeDino2x1>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -18,10 +17,6 @@ export const Main: Story = {
   },
   args: {
     onMaximize: () => {},
-    children: (
-      <>
-        <div>Example Widget Content</div>
-      </>
-    ),
+    children: <></>,
   },
 };

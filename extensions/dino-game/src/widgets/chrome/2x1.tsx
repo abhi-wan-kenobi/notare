@@ -1,10 +1,11 @@
-import "./dino-game.css";
+import "./dino.css";
 
-import { useEffect, useRef } from "react";
+import { useRef, useEffect } from "react";
+import { WidgetTwoByOne } from "@hypr/ui/components/ui/widgets";
 
-import spriteImage from "../assets/dino-game-sprite.png";
+import spriteImage from "../../../assets/dino-game-sprite.png";
 
-export default function DinoGame() {
+const ChromeDino2x1: typeof WidgetTwoByOne = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameStateRef = useRef({
     scoreInterval: 0,
@@ -24,8 +25,10 @@ export default function DinoGame() {
     onG: false,
     sprImg: new Image(),
     isButtonHovered: false,
-    isDucking: false,
     isJumping: false,
+    isJumpButtonHeld: false,
+    jumpHoldTime: 0,
+    gameOverCooldown: 0,
   });
 
   const obsS = {
@@ -52,17 +55,19 @@ export default function DinoGame() {
     w: 89,
     h: 94,
     normalH: 94,
-    duckH: 60,
     yv: 0,
     score: 0,
     hscore: 0,
     jump: 15,
+    minJump: 10,
+    maxJumpHoldTime: 13,
+    jumpHoldForce: 0.6,
   };
 
   const pbox = {
-    x: player.x,
+    x: player.x + 20,
     y: 0,
-    w: 80,
+    w: 40,
     h: 75,
   };
 
@@ -168,25 +173,50 @@ export default function DinoGame() {
     state.bool = false;
   };
 
+  const reset = () => {
+    const state = gameStateRef.current;
+
+    state.gamespeed = 7;
+    player.score = 0;
+    player.y = 500;
+    player.yv = 0;
+
+    obsB.scroll = -200;
+    obsS.scroll = -100;
+    state.multiS = -1;
+    state.multiB = -1;
+
+    state.gameOverCooldown = 30;
+
+    state.scoreInterval = 0;
+    state.frameInterval = 0;
+    state.groundscroll = 0;
+    state.groundscroll2 = 0;
+    state.tempstart = 0;
+    state.groundbool = false;
+    state.isJumping = false;
+    state.isJumpButtonHeld = false;
+    state.jumpHoldTime = 0;
+
+    obsB.on = false;
+    obsS.on = false;
+  };
+
   const handleKeyDown = (evt: KeyboardEvent) => {
     const state = gameStateRef.current;
 
     if (evt.key === "ArrowUp" || evt.key === " ") {
       if (state.onG && !state.isJumping) {
         state.isJumping = true;
-        player.yv = -player.jump;
+        state.isJumpButtonHeld = true;
+        state.jumpHoldTime = 0;
+        player.yv = -player.minJump;
+      } else if (state.isJumping) {
+        state.isJumpButtonHeld = true;
       }
+
       if (state.gamespeed === 0) {
         state.gamespeed = 7;
-      }
-    }
-    if (evt.key === "ArrowDown") {
-      evt.preventDefault();
-      if (!state.isDucking) {
-        state.isDucking = true;
-        if (state.onG) {
-          player.h = player.duckH;
-        }
       }
     }
   };
@@ -194,10 +224,8 @@ export default function DinoGame() {
   const handleKeyUp = (evt: KeyboardEvent) => {
     const state = gameStateRef.current;
 
-    if (evt.key === "ArrowDown") {
-      evt.preventDefault();
-      state.isDucking = false;
-      player.h = player.normalH;
+    if (evt.key === "ArrowUp" || evt.key === " ") {
+      state.isJumpButtonHeld = false;
     }
   };
 
@@ -224,7 +252,12 @@ export default function DinoGame() {
 
   const handleClick = (evt: MouseEvent) => {
     const canvas = canvasRef.current;
-    if (!canvas || gameStateRef.current.gamespeed !== 0) return;
+    if (
+      !canvas ||
+      gameStateRef.current.gamespeed !== 0 ||
+      gameStateRef.current.gameOverCooldown > 0
+    )
+      return;
 
     const rect = canvas.getBoundingClientRect();
     const x = evt.clientX - rect.left;
@@ -238,15 +271,7 @@ export default function DinoGame() {
       y >= buttonY &&
       y <= buttonY + 64
     ) {
-      gameStateRef.current.gamespeed = 7;
-      player.score = 0;
-      player.y = 500;
-      player.yv = 0;
-
-      obsB.scroll = -200;
-      obsS.scroll = -100;
-      gameStateRef.current.multiS = -1;
-      gameStateRef.current.multiB = -1;
+      reset();
     }
   };
 
@@ -265,14 +290,31 @@ export default function DinoGame() {
       h: 5,
     };
 
-    if (!state.onG) {
+    if (state.gameOverCooldown > 0) {
+      state.gameOverCooldown--;
+    }
+
+    if (state.isJumping) {
+      if (
+        state.isJumpButtonHeld &&
+        state.jumpHoldTime < player.maxJumpHoldTime
+      ) {
+        player.yv -= player.jumpHoldForce;
+        state.jumpHoldTime++;
+      }
+
+      player.yv += state.grav;
+    } else if (!state.onG) {
       player.yv += state.grav;
     } else {
       state.isJumping = false;
+      state.jumpHoldTime = 0;
     }
 
     player.y += player.yv;
-    pbox.y = player.y;
+
+    pbox.y = player.y + 15;
+
     state.scoreInterval++;
 
     if (state.scoreInterval > 6 && state.gamespeed !== 0) {
@@ -280,29 +322,40 @@ export default function DinoGame() {
       state.scoreInterval = 0;
     }
 
-    if (state.gamespeed < 17 && state.gamespeed !== 0) {
-      state.gamespeed = 7 + player.score / 50;
+    if (state.gamespeed < 15 && state.gamespeed !== 0) {
+      state.gamespeed = 7 + Math.min(8, player.score / 100);
     }
 
     state.onG = false;
     if (player.y + player.h > plat.y) {
       player.y = plat.y - player.h;
       state.onG = true;
+
+      if (state.isJumping) {
+        state.isJumping = false;
+        state.jumpHoldTime = 0;
+      }
     }
 
-    if (
-      pbox.x > canvas.width - obsB.scroll - player.w &&
-      pbox.x < canvas.width - obsB.scroll + obsB.w * state.multiB &&
-      pbox.y > obsB.y - pbox.h
-    ) {
+    const checkCollision = (obs: typeof obsB, multiVal: number) => {
+      const obsLeft = canvas.width - obs.scroll;
+      const obsRight = obsLeft + obs.w * multiVal;
+      const obsTop = obs.y;
+
+      const playerRight = pbox.x + pbox.w;
+      const playerLeft = pbox.x;
+      const playerBottom = pbox.y + pbox.h;
+
+      return (
+        playerRight > obsLeft && playerLeft < obsRight && playerBottom > obsTop
+      );
+    };
+
+    if (obsB.on && state.multiB > 0 && checkCollision(obsB, state.multiB)) {
       gameover();
     }
 
-    if (
-      pbox.x > canvas.width - obsS.scroll - player.w &&
-      pbox.x < canvas.width - obsS.scroll + obsS.w * state.multiS &&
-      pbox.y > obsS.y - pbox.h
-    ) {
+    if (obsS.on && state.multiS > 0 && checkCollision(obsS, state.multiS)) {
       gameover();
     }
 
@@ -312,10 +365,7 @@ export default function DinoGame() {
       state.frameInterval = 0;
     }
 
-    if (state.isDucking) {
-      state.frame = state.bool ? 1866 : 1954;
-      player.h = player.duckH;
-    } else if (state.onG) {
+    if (state.onG) {
       state.frame = state.bool ? 1514 : 1602;
       player.h = player.normalH;
     } else {
@@ -400,6 +450,8 @@ export default function DinoGame() {
       obsS.on = true;
       if (state.multiS === -1) {
         rngS();
+
+        obsS.scroll = -100 - Math.floor(Math.random() * 50);
       }
 
       ctx.drawImage(
@@ -414,7 +466,10 @@ export default function DinoGame() {
         obsS.h,
       );
       obsS.scroll += state.gamespeed;
-      if (obsS.scroll > canvas.width + obsS.w * 3) {
+
+      const resetDistance =
+        canvas.width + obsS.w * 3 + Math.floor(Math.random() * 100);
+      if (obsS.scroll > resetDistance) {
         obsS.scroll = -100;
         state.multiS = -1;
         obsS.on = false;
@@ -425,6 +480,8 @@ export default function DinoGame() {
       obsB.on = true;
       if (state.multiB === -1) {
         rngB();
+
+        obsB.scroll = -200 - Math.floor(Math.random() * 50);
       }
 
       ctx.drawImage(
@@ -440,7 +497,10 @@ export default function DinoGame() {
       );
 
       obsB.scroll += state.gamespeed;
-      if (obsB.scroll > canvas.width + obsB.w * 3) {
+
+      const resetDistance =
+        canvas.width + obsB.w * 3 + Math.floor(Math.random() * 100);
+      if (obsB.scroll > resetDistance) {
         obsB.scroll = -200;
         state.multiB = -1;
         obsB.on = false;
@@ -479,13 +539,19 @@ export default function DinoGame() {
   }, []);
 
   return (
-    <div className="dino-game">
-      <canvas
-        ref={canvasRef}
-        width={1000}
-        height={400}
-        className="dino-canvas"
-      />
-    </div>
+    <WidgetTwoByOne>
+      <div className="w-full h-full">
+        <div className="dino-game">
+          <canvas
+            ref={canvasRef}
+            width={1000}
+            height={400}
+            className="dino-canvas"
+          />
+        </div>
+      </div>
+    </WidgetTwoByOne>
   );
-}
+};
+
+export default ChromeDino2x1;

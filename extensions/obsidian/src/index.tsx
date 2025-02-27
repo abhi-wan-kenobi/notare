@@ -1,7 +1,5 @@
 import { type Extension } from "@hypr/extension-utils";
 
-const extension: Extension = {
-  init: async () => {},
-};
+const extension: Extension = {};
 
 export default extension;
