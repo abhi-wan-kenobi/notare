@@ -1,4 +1,3 @@
-mod commands;
 mod permissions;
 
 use tauri::Manager;
@@ -100,7 +99,7 @@ pub async fn main() {
                 use tauri_plugin_auth::{AuthPluginExt, Key};
                 use tauri_plugin_db::DatabasePluginExt;
 
-                if let Ok(user_id) = app.get_from_vault(Key::UserId) {
+                if let Ok(Some(user_id)) = app.get_from_vault(Key::UserId) {
                     app.db_set_user_id(user_id.clone()).unwrap();
                     user_id
                 } else {
@@ -131,7 +130,6 @@ pub async fn main() {
 fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
     tauri_specta::Builder::<tauri::Wry>::new()
         .commands(tauri_specta::collect_commands![
-            commands::get_user_id,
             permissions::open_permission_settings,
             permissions::check_permission_status,
         ])

@@ -15,7 +15,10 @@ export const baseUrl = import.meta.env.DEV
 export const client = createClient(
   createConfig({
     fetch,
-    auth: async () => "123",
+    auth: async () => {
+      // const _token = await authCommands.getFromVault("remoteServer");
+      return "123";
+    },
     baseUrl,
   }),
 );

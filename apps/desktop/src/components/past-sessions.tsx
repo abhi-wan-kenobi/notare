@@ -24,7 +24,7 @@ import {
   CardDescription,
   CardHeader,
 } from "@hypr/ui/components/ui/card";
-import { Laptop, Users2 } from "lucide-react";
+import { Users2 } from "lucide-react";
 
 export default function PastSessions() {
   const data = useQuery({
@@ -49,7 +49,7 @@ function SessionList({ data }: { data: Session[] }) {
   const handleClickSession = useCallback(
     (session: Session) => {
       navigate({
-        to: "/note/$id",
+        to: "/app/note/$id",
         params: {
           id: session.id,
         },
