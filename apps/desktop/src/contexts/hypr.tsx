@@ -14,7 +14,7 @@ export function HyprProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const userId = useQuery({
     queryKey: ["userId"],
-    queryFn: () => authCommands.getFromVault("userId"),
+    queryFn: () => authCommands.getFromVault("user-id"),
   });
 
   if (userId.status === "pending") {

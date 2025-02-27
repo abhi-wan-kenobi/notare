@@ -13,6 +13,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
+
 pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
     let specta_builder = make_specta_builder();
 

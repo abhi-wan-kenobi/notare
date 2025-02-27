@@ -32,7 +32,7 @@ async getFromVault(key: Key) : Promise<string | null> {
 /** user-defined types **/
 
 export type AuthEvent = "Success" | "Error"
-export type Key = "userId" | "accountId" | "remoteDatabase" | "remoteServer"
+export type Key = "user-id" | "account-id" | "remote-database" | "remote-server"
 export type RequestParams = { c: string; f: string; p: number }
 export type TAURI_CHANNEL<TSend> = null
 

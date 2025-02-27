@@ -39,7 +39,7 @@ export const fetch = (
 };
 
 const getModel = async (model: string) => {
-  const apiBase = await connectorCommands.getApiBase("LocalLlm");
+  const apiBase = await connectorCommands.getApiBase("auto-llm");
 
   const openai = createOpenAI({
     baseURL: apiBase ?? "http://localhost:1234/v1",

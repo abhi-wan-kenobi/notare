@@ -2,6 +2,7 @@
 
 Default permissions for the plugin
 
+- `allow-get-fingerprint`
 - `allow-opinionated-md-to-html`
 - `allow-list-template-names`
 
@@ -13,6 +14,32 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`misc:allow-get-fingerprint`
+
+</td>
+<td>
+
+Enables the get_fingerprint command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`misc:deny-get-fingerprint`
+
+</td>
+<td>
+
+Denies the get_fingerprint command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>

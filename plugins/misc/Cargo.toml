@@ -16,6 +16,7 @@ specta-typescript = { workspace = true }
 
 [dependencies]
 hypr-buffer = { path = "../../crates/buffer", package = "buffer" }
+hypr-host = { path = "../../crates/host", package = "host" }
 
 tracing = { workspace = true }
 

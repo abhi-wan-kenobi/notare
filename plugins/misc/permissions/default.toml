@@ -1,3 +1,7 @@
 [default]
 description = "Default permissions for the plugin"
-permissions = ["allow-opinionated-md-to-html", "allow-list-template-names"]
+permissions = [
+    "allow-get-fingerprint",
+    "allow-opinionated-md-to-html",
+    "allow-list-template-names",
+]

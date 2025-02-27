@@ -14,7 +14,7 @@ export const Route = createFileRoute("/note/new")({
     let session: Session | null = null;
 
     // TODO: HyprContext already have this
-    const userId = (await authCommands.getFromVault("userId")) ?? "";
+    const userId = (await authCommands.getFromVault("user-id")) ?? "";
 
     const emptySession: Session = {
       id: crypto.randomUUID() as string,

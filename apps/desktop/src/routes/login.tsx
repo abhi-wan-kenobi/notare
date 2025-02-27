@@ -16,6 +16,7 @@ import {
   type RequestParams,
 } from "@hypr/plugin-auth";
 import { commands as sfxCommands } from "@hypr/plugin-sfx";
+import { commands as miscCommands } from "@hypr/plugin-misc";
 
 import { baseUrl } from "@/client";
 import PushableButton from "@hypr/ui/components/ui/pushable-button";
@@ -26,15 +27,16 @@ import { Button } from "@hypr/ui/components/ui/button";
 export const Route = createFileRoute("/login")({
   component: Component,
   loader: async () => {
+    const fingerprint = await miscCommands.getFingerprint();
     return {
       code: window.crypto.randomUUID(),
-      fingerprint: "",
+      fingerprint,
     };
   },
 });
 
 function Component() {
-  const { code } = Route.useLoaderData();
+  const { code, fingerprint } = Route.useLoaderData();
   const navigate = useNavigate();
 
   const [port, setPort] = useState<number | null>(null);
@@ -73,15 +75,18 @@ function Component() {
     enabled: !!port,
     queryFn: () => {
       const u = new URL(baseUrl);
+
       u.pathname = "/auth/connect";
+
       const params: RequestParams = {
         c: code,
-        f: "fingerprint",
+        f: fingerprint,
         p: port!,
       };
       u.searchParams.set("c", params.c);
       u.searchParams.set("f", params.f);
       u.searchParams.set("p", params.p.toString());
+
       return u.toString();
     },
   });

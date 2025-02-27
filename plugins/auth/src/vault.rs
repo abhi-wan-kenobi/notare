@@ -5,21 +5,21 @@ pub struct Vault {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, strum::AsRefStr, specta::Type)]
 pub enum Key {
-    #[strum(serialize = "userId")]
-    #[serde(rename = "userId")]
-    #[specta(rename = "userId")]
+    #[strum(serialize = "user-id")]
+    #[serde(rename = "user-id")]
+    #[specta(rename = "user-id")]
     UserId,
-    #[strum(serialize = "accountId")]
-    #[serde(rename = "accountId")]
-    #[specta(rename = "accountId")]
+    #[strum(serialize = "account-id")]
+    #[serde(rename = "account-id")]
+    #[specta(rename = "account-id")]
     AccountId,
-    #[strum(serialize = "remoteDatabase")]
-    #[serde(rename = "remoteDatabase")]
-    #[specta(rename = "remoteDatabase")]
+    #[strum(serialize = "remote-database")]
+    #[serde(rename = "remote-database")]
+    #[specta(rename = "remote-database")]
     RemoteDatabase,
-    #[strum(serialize = "remoteServer")]
-    #[serde(rename = "remoteServer")]
-    #[specta(rename = "remoteServer")]
+    #[strum(serialize = "remote-server")]
+    #[serde(rename = "remote-server")]
+    #[specta(rename = "remote-server")]
     RemoteServer,
 }
 

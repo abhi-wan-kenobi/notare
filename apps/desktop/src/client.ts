@@ -4,7 +4,7 @@ export * from "@hypr/client/gen/types";
 export * from "@hypr/client/gen/tanstack";
 
 import { fetch } from "@hypr/utils";
-import { Channel } from "@tauri-apps/api/core";
+import { commands as authCommands } from "@hypr/plugin-auth";
 
 import { NangoIntegration } from "@/types";
 
@@ -16,8 +16,8 @@ export const client = createClient(
   createConfig({
     fetch,
     auth: async () => {
-      // const _token = await authCommands.getFromVault("remoteServer");
-      return "123";
+      const token = await authCommands.getFromVault("remote-server");
+      return token ?? undefined;
     },
     baseUrl,
   }),
@@ -27,26 +27,5 @@ export function getIntegrationURL(type: NangoIntegration) {
   return new URL(`/integrations?provider=${type}`, baseUrl).toString();
 }
 
-// TODO: replace with ai sdk
-
 // We can't use SSE with generated client: https://github.com/hey-api/openapi-ts/issues/772
-export function enhance(req: any) {
-  const channel = new Channel<string>();
-  const encoder = new TextEncoder();
-
-  return new ReadableStream({
-    start(controller) {
-      channel.onmessage = (message) => {
-        try {
-          controller.enqueue(encoder.encode(message));
-        } catch (_ignored) {}
-      };
-
-      // TODO
-      // commands.runEnhance(req, channel).finally(() => {
-      //   channel.onmessage = () => {};
-      //   controller.close();
-      // });
-    },
-  });
-}
+export async function enhance(req: any) {}

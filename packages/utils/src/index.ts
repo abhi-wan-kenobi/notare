@@ -3,10 +3,10 @@ import { customProvider } from "ai";
 
 import { isTauri } from "@tauri-apps/api/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import { commands as sseCommands } from "@hypr/plugin-sse";
-import { commands as connectorCommands } from "@hypr/plugin-connector";
 
-export * from "ai";
+import { commands as sseCommands } from "@hypr/plugin-sse";
+import { commands as authCommands } from "@hypr/plugin-auth";
+import { commands as connectorCommands } from "@hypr/plugin-connector";
 
 export const fetch = (
   input: Parameters<typeof globalThis.fetch>[0],
@@ -30,11 +30,16 @@ export const fetch = (
 };
 
 const getModel = async (model: string) => {
-  const apiBase = await connectorCommands.getApiBase("LocalLlm");
+  const apiBase = await connectorCommands.getApiBase("auto-llm");
+  const apiKey = await authCommands.getFromVault("remote-server");
+
+  if (!apiBase) {
+    throw new Error("no_api_base");
+  }
 
   const openai = createOpenAI({
-    baseURL: apiBase ?? "http://localhost:1234/v1",
-    apiKey: "NOT_NEEDED",
+    baseURL: apiBase,
+    apiKey: apiKey ?? undefined,
     fetch,
   });
 

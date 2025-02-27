@@ -1024,6 +1024,9 @@ importers:
       '@hypr/client':
         specifier: workspace:^
         version: link:../client
+      '@hypr/plugin-auth':
+        specifier: workspace:^
+        version: link:../../plugins/auth
       '@hypr/plugin-connector':
         specifier: workspace:^
         version: link:../../plugins/connector

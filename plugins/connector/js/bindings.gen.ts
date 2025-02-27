@@ -22,7 +22,7 @@ async getApiBase(t: ConnectionType) : Promise<string | null> {
 
 /** user-defined types **/
 
-export type ConnectionType = "LocalLlm" | "LocalStt"
+export type ConnectionType = "auto-llm" | "auto-stt"
 
 /** tauri-specta globals **/
 

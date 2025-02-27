@@ -7,6 +7,9 @@
 
 
 export const commands = {
+async getFingerprint() : Promise<string> {
+    return await TAURI_INVOKE("plugin:utils|get_fingerprint");
+},
 async opinionatedMdToHtml(text: string) : Promise<string> {
     return await TAURI_INVOKE("plugin:utils|opinionated_md_to_html", { text });
 },

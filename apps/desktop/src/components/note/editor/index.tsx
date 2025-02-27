@@ -9,17 +9,13 @@ import NoteEditor from "@hypr/tiptap/editor";
 import NoteRenderer from "@hypr/tiptap/renderer";
 import { commands as miscCommands } from "@hypr/plugin-misc";
 
-import { useEnhance } from "@/utils/enhance";
 import { useSession } from "@/contexts";
 import { EnhanceControls } from "./enhanced-controls";
 import { EnhanceOnlyButton } from "./enhanced-only-button";
-import { Route } from "@/routes/app.note.$id";
 import { NoteHeader } from "../header";
 
 export default function EditorArea() {
-  const { templates, config } = Route.useLoaderData();
-
-  useMutation({
+  const enhance = useMutation({
     mutationFn: async () => {
       const provider = await modelProvider();
       const { text, textStream } = streamText({
@@ -69,19 +65,9 @@ export default function EditorArea() {
     [showRaw, store],
   );
 
-  const enhance = useEnhance({
-    config,
-    template: templates[0],
-    pre_meeting_editor: store.session.raw_memo_html,
-    in_meeting_editor: store.session.raw_memo_html,
-    timeline_view: { items: [] },
-    event: null,
-    participants: [],
-  });
-
   useEffect(() => {
     if (!showRaw && !store.session.enhanced_memo_html) {
-      enhance.submit();
+      enhance.mutate();
     }
   }, [showRaw, store.session.enhanced_memo_html, enhance]);
 
@@ -92,7 +78,7 @@ export default function EditorArea() {
   }, [enhance.data]);
 
   useEffect(() => {
-    if (enhance.status === "success" || enhance.status === "loading") {
+    if (enhance.status === "success" || enhance.status === "pending") {
       store.persistSession();
     }
   }, [enhance.status]);
@@ -115,7 +101,7 @@ export default function EditorArea() {
       <div
         className={clsx([
           "h-full overflow-y-auto",
-          enhance.status === "loading" ? "tiptap-animate" : "",
+          enhance.status === "pending" ? "tiptap-animate" : "",
         ])}
         onClick={() => {
           if (showRaw) {
