@@ -124,7 +124,7 @@ const ProgressCircle = ({ progress }: { progress: number }) => {
         setIsAnimating(false);
       }, 1625);
       return () => clearTimeout(timeout);
-    }, 6625); // 5000ms static + 1625ms dynamic
+    }, 6625);
 
     return () => clearInterval(animationInterval);
   }, []);

@@ -3,7 +3,8 @@ import tailwind from "tailwindcss";
 import autoprefixer from "autoprefixer";
 
 const config: StorybookConfig = {
-  stories: ["../src/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  stories: ["../src/stories/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  staticDirs: ["../public"],
   addons: ["@storybook/addon-essentials", "@storybook/addon-interactions"],
   framework: {
     name: "@storybook/react-vite",
@@ -20,5 +21,4 @@ const config: StorybookConfig = {
     };
   },
 };
-
 export default config;

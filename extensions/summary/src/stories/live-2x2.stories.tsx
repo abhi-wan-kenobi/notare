@@ -9,7 +9,7 @@ import LiveSummary2x2 from "../widgets/live/2x2";
 const queryClient = new QueryClient();
 
 const meta = {
-  title: "Extensions/Live Summary/2x2",
+  title: "Summary/Live/2x2",
   component: LiveSummary2x2,
 } satisfies Meta<typeof LiveSummary2x2>;
 

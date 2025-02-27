@@ -3,18 +3,22 @@ import typography from "@tailwindcss/typography";
 
 import Tiptap from "@hypr/tiptap/editor/tailwind.config";
 
-import ExtensionLiveSummary from "@hypr/extension-live-summary/tailwind.config";
+import ExtensionSummary from "@hypr/extension-summary/tailwind.config";
 import ExtensionTranscript from "@hypr/extension-transcript/tailwind.config";
-import ExtensionWorldClocks from "@hypr/extension-world-clocks/tailwind.config";
+import ExtensionClock from "../../extensions/clock/tailwind.config";
 import ExtensionDinoGame from "@hypr/extension-dino-game/tailwind.config";
+import ExtensionCalculator from "@hypr/extension-calculator/tailwind.config";
+import ExtensionTimer from "@hypr/extension-timer/tailwind.config";
 
 const config = {
   content: [
     ...Tiptap.content,
-    ...ExtensionLiveSummary.content,
+    ...ExtensionCalculator.content,
+    ...ExtensionSummary.content,
     ...ExtensionTranscript.content,
-    ...ExtensionWorldClocks.content,
+    ...ExtensionClock.content,
     ...ExtensionDinoGame.content,
+    ...ExtensionTimer.content,
     "src/**/*.{js,ts,jsx,tsx}",
     "index.html",
   ],

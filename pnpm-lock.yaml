@@ -90,21 +90,27 @@ importers:
       '@hypr/client':
         specifier: workspace:^
         version: link:../../packages/client
+      '@hypr/extension-calculator':
+        specifier: workspace:^
+        version: link:../../extensions/calculator
+      '@hypr/extension-clock':
+        specifier: workspace:^
+        version: link:../../extensions/clock
       '@hypr/extension-dino-game':
         specifier: workspace:^
         version: link:../../extensions/dino-game
-      '@hypr/extension-live-summary':
-        specifier: workspace:^
-        version: link:../../extensions/live-summary
       '@hypr/extension-obsidian':
         specifier: workspace:^
         version: link:../../extensions/obsidian
+      '@hypr/extension-summary':
+        specifier: workspace:^
+        version: link:../../extensions/summary
+      '@hypr/extension-timer':
+        specifier: workspace:^
+        version: link:../../extensions/timer
       '@hypr/extension-transcript':
         specifier: workspace:^
         version: link:../../extensions/transcript
-      '@hypr/extension-world-clocks':
-        specifier: workspace:^
-        version: link:../../extensions/world-clocks
       '@hypr/plugin-apple-calendar':
         specifier: workspace:^
         version: link:../../plugins/apple-calendar
@@ -404,36 +410,12 @@ importers:
       '@hypr/extension-utils':
         specifier: workspace:^
         version: link:../utils
-      '@hypr/plugin-listener':
-        specifier: workspace:^
-        version: link:../../plugins/listener
-      '@hypr/plugin-template':
-        specifier: workspace:^
-        version: link:../../plugins/template
       '@hypr/ui':
         specifier: workspace:^
         version: link:../../packages/ui
-      '@tanstack/react-query':
-        specifier: ^5.66.0
-        version: 5.66.8(react@18.3.1)
-      '@tauri-apps/api':
-        specifier: ^2.2.0
-        version: 2.2.0
-      '@tauri-apps/plugin-http':
-        specifier: ^2.3.0
-        version: 2.3.0
-      lucide-react:
-        specifier: ^0.474.0
-        version: 0.474.0(react@18.3.1)
-      motion:
-        specifier: ^12.4.2
-        version: 12.4.7(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
-      zod:
-        specifier: ^3.24.2
-        version: 3.24.2
     devDependencies:
       '@storybook/addon-essentials':
         specifier: ^8.5.6
@@ -465,6 +447,52 @@ importers:
       storybook:
         specifier: ^8.5.6
         version: 8.5.6(prettier@3.5.1)
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.6)(@types/node@22.13.5)(typescript@5.7.3))
+
+  extensions/clock:
+    dependencies:
+      '@hypr/extension-utils':
+        specifier: workspace:^
+        version: link:../utils
+      '@hypr/ui':
+        specifier: workspace:^
+        version: link:../../packages/ui
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-clock:
+        specifier: ^5.1.0
+        version: 5.1.0(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+    devDependencies:
+      '@storybook/addon-essentials':
+        specifier: ^8.5.8
+        version: 8.6.0(@types/react@18.3.18)(storybook@8.6.0(prettier@3.5.1))
+      '@storybook/addon-interactions':
+        specifier: ^8.5.8
+        version: 8.6.0(storybook@8.6.0(prettier@3.5.1))
+      '@storybook/react':
+        specifier: ^8.5.8
+        version: 8.6.0(@storybook/test@8.6.0(storybook@8.6.0(prettier@3.5.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.6.0(prettier@3.5.1))(typescript@5.7.3)
+      '@storybook/react-vite':
+        specifier: ^8.5.8
+        version: 8.6.0(@storybook/test@8.6.0(storybook@8.6.0(prettier@3.5.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.34.8)(storybook@8.6.0(prettier@3.5.1))(typescript@5.7.3)(vite@6.1.1(@types/node@22.13.5)(jiti@2.4.2)(tsx@4.19.3)(yaml@2.7.0))
+      '@types/react':
+        specifier: ^18.3.18
+        version: 18.3.18
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.3)
+      msw:
+        specifier: ^2.7.0
+        version: 2.7.0(@types/node@22.13.5)(typescript@5.7.3)
+      msw-storybook-addon:
+        specifier: ^2.0.4
+        version: 2.0.4(msw@2.7.0(@types/node@22.13.5)(typescript@5.7.3))
+      storybook:
+        specifier: ^8.5.8
+        version: 8.6.0(prettier@3.5.1)
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.6)(@types/node@22.13.5)(typescript@5.7.3))
@@ -474,36 +502,12 @@ importers:
       '@hypr/extension-utils':
         specifier: workspace:^
         version: link:../utils
-      '@hypr/plugin-listener':
-        specifier: workspace:^
-        version: link:../../plugins/listener
-      '@hypr/plugin-template':
-        specifier: workspace:^
-        version: link:../../plugins/template
       '@hypr/ui':
         specifier: workspace:^
         version: link:../../packages/ui
-      '@tanstack/react-query':
-        specifier: ^5.66.0
-        version: 5.66.8(react@18.3.1)
-      '@tauri-apps/api':
-        specifier: ^2.2.0
-        version: 2.2.0
-      '@tauri-apps/plugin-http':
-        specifier: ^2.3.0
-        version: 2.3.0
-      lucide-react:
-        specifier: ^0.474.0
-        version: 0.474.0(react@18.3.1)
-      motion:
-        specifier: ^12.4.2
-        version: 12.4.7(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
-      zod:
-        specifier: ^3.24.2
-        version: 3.24.2
     devDependencies:
       '@storybook/addon-essentials':
         specifier: ^8.5.6
@@ -539,7 +543,20 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.6)(@types/node@22.13.5)(typescript@5.7.3))
 
-  extensions/live-summary:
+  extensions/obsidian:
+    dependencies:
+      '@hypr/extension-utils':
+        specifier: workspace:^
+        version: link:../utils
+      '@hypr/obsidian':
+        specifier: workspace:^
+        version: link:../../packages/obsidian
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.7.3
+
+  extensions/summary:
     dependencies:
       '@hypr/extension-utils':
         specifier: workspace:^
@@ -558,16 +575,13 @@ importers:
         version: link:../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.66.0
-        version: 5.66.0(react@18.3.1)
+        version: 5.66.8(react@18.3.1)
       '@tauri-apps/api':
         specifier: ^2.2.0
         version: 2.2.0
-      lucide-react:
-        specifier: ^0.474.0
-        version: 0.474.0(react@18.3.1)
       motion:
         specifier: ^12.4.2
-        version: 12.4.2(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 12.4.7(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -612,54 +626,23 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.6)(@types/node@22.13.5)(typescript@5.7.3))
 
-  extensions/obsidian:
-    dependencies:
-      '@hypr/extension-utils':
-        specifier: workspace:^
-        version: link:../utils
-      '@hypr/obsidian':
-        specifier: workspace:^
-        version: link:../../packages/obsidian
-    devDependencies:
-      typescript:
-        specifier: ^5.7.3
-        version: 5.7.3
-
   extensions/timer:
     dependencies:
       '@hypr/extension-utils':
         specifier: workspace:^
         version: link:../utils
-      '@hypr/plugin-listener':
-        specifier: workspace:*
-        version: link:../../plugins/listener
-      '@hypr/plugin-template':
-        specifier: workspace:*
-        version: link:../../plugins/template
       '@hypr/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.66.0
         version: 5.66.8(react@18.3.1)
-      '@tauri-apps/api':
-        specifier: ^2.2.0
-        version: 2.2.0
-      '@tauri-apps/plugin-http':
-        specifier: ^2.3.0
-        version: 2.3.0
       lucide-react:
         specifier: ^0.474.0
         version: 0.474.0(react@18.3.1)
-      motion:
-        specifier: ^12.4.2
-        version: 12.4.7(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
-      zod:
-        specifier: ^3.24.2
-        version: 3.24.2
     devDependencies:
       '@storybook/addon-essentials':
         specifier: ^8.5.6
@@ -788,43 +771,6 @@ importers:
       ai:
         specifier: ^4.1.45
         version: 4.1.45(react@18.3.1)(zod@3.24.2)
-
-  extensions/world-clocks:
-    dependencies:
-      '@hypr/extension-utils':
-        specifier: workspace:^
-        version: link:../utils
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-clock:
-        specifier: ^5.1.0
-        version: 5.1.0(@types/react@18.3.18)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-    devDependencies:
-      '@storybook/addon-essentials':
-        specifier: ^8.5.8
-        version: 8.6.0(@types/react@18.3.18)(storybook@8.6.0(prettier@3.5.1))
-      '@storybook/addon-interactions':
-        specifier: ^8.5.8
-        version: 8.6.0(storybook@8.6.0(prettier@3.5.1))
-      '@storybook/react':
-        specifier: ^8.5.8
-        version: 8.6.0(@storybook/test@8.6.0(storybook@8.6.0(prettier@3.5.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.6.0(prettier@3.5.1))(typescript@5.7.3)
-      '@storybook/react-vite':
-        specifier: ^8.5.8
-        version: 8.6.0(@storybook/test@8.6.0(storybook@8.6.0(prettier@3.5.1)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.34.8)(storybook@8.6.0(prettier@3.5.1))(typescript@5.7.3)(vite@6.1.1(@types/node@22.13.5)(jiti@2.4.2)(tsx@4.19.3)(yaml@2.7.0))
-      '@types/react':
-        specifier: ^18.3.18
-        version: 18.3.18
-      autoprefixer:
-        specifier: ^10.4.20
-        version: 10.4.20(postcss@8.5.3)
-      storybook:
-        specifier: ^8.5.8
-        version: 8.6.0(prettier@3.5.1)
-      tailwindcss:
-        specifier: ^3.4.17
-        version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.6)(@types/node@22.13.5)(typescript@5.7.3))
 
   packages/client:
     dependencies:
@@ -5143,20 +5089,6 @@ packages:
       react-dom:
         optional: true
 
-  framer-motion@12.4.2:
-    resolution: {integrity: sha512-pW307cQKjDqEuO1flEoIFf6TkuJRfKr+c7qsHAJhDo4368N/5U8/7WU8J+xhd9+gjmOgJfgp+46evxRRFM39dA==}
-    peerDependencies:
-      '@emotion/is-prop-valid': '*'
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
-    peerDependenciesMeta:
-      '@emotion/is-prop-valid':
-        optional: true
-      react:
-        optional: true
-      react-dom:
-        optional: true
-
   framer-motion@12.4.7:
     resolution: {integrity: sha512-VhrcbtcAMXfxlrjeHPpWVu2+mkcoR31e02aNSR7OUS/hZAciKa8q6o3YN2mA1h+jjscRsSyKvX6E1CiY/7OLMw==}
     peerDependencies:
@@ -5839,9 +5771,6 @@ packages:
   motion-dom@11.18.1:
     resolution: {integrity: sha512-g76KvA001z+atjfxczdRtw/RXOM3OMSdd1f4DL77qCTF/+avrRJiawSG4yDibEQ215sr9kpinSlX2pCTJ9zbhw==}
 
-  motion-dom@12.0.0:
-    resolution: {integrity: sha512-CvYd15OeIR6kHgMdonCc1ihsaUG4MYh/wrkz8gZ3hBX/uamyZCXN9S9qJoYF03GqfTt7thTV/dxnHYX4+55vDg==}
-
   motion-dom@12.4.5:
     resolution: {integrity: sha512-Q2xmhuyYug1CGTo0jdsL05EQ4RhIYXlggFS/yPhQQRNzbrhjKQ1tbjThx5Plv68aX31LsUQRq4uIkuDxdO5vRQ==}
 
@@ -5853,20 +5782,6 @@ packages:
 
   motion@11.18.2:
     resolution: {integrity: sha512-JLjvFDuFr42NFtcVoMAyC2sEjnpA8xpy6qWPyzQvCloznAyQ8FIXioxWfHiLtgYhoVpfUqSWpn1h9++skj9+Wg==}
-    peerDependencies:
-      '@emotion/is-prop-valid': '*'
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
-    peerDependenciesMeta:
-      '@emotion/is-prop-valid':
-        optional: true
-      react:
-        optional: true
-      react-dom:
-        optional: true
-
-  motion@12.4.2:
-    resolution: {integrity: sha512-NGocC1zic2hGDEasxS76W5/7JIJ5loKIxawkFoEqk7yTu8yXI+6l6IlEj9u8aPp6tM04DwvuiQcobpw9i0hhiw==}
     peerDependencies:
       '@emotion/is-prop-valid': '*'
       react: ^18.0.0 || ^19.0.0
@@ -11888,16 +11803,6 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  framer-motion@12.4.2(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      motion-dom: 12.0.0
-      motion-utils: 12.0.0
-      tslib: 2.8.1
-    optionalDependencies:
-      '@emotion/is-prop-valid': 0.8.8
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-
   framer-motion@12.4.7(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       motion-dom: 12.4.5
@@ -12590,10 +12495,6 @@ snapshots:
     dependencies:
       motion-utils: 11.18.1
 
-  motion-dom@12.0.0:
-    dependencies:
-      motion-utils: 12.0.0
-
   motion-dom@12.4.5:
     dependencies:
       motion-utils: 12.0.0
@@ -12605,15 +12506,6 @@ snapshots:
   motion@11.18.2(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       framer-motion: 11.18.2(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      tslib: 2.8.1
-    optionalDependencies:
-      '@emotion/is-prop-valid': 0.8.8
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-
-  motion@12.4.2(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      framer-motion: 12.4.2(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       tslib: 2.8.1
     optionalDependencies:
       '@emotion/is-prop-valid': 0.8.8

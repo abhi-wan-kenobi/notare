@@ -1,7 +1,7 @@
 {
   "$schema": "../definition.schema.json",
-  "id": "world-clocks",
-  "title": "World Clocks",
+  "id": "clock",
+  "title": "Clock",
   "description": "Displays the time of various cities around the world.",
   "implemented": true,
   "default": true,
