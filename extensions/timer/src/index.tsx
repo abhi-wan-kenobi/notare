@@ -1,11 +1,15 @@
 import type { Extension } from "@hypr/extension-utils";
 
-import TwoByTwo from "./two-by-two";
-import init from "./init";
+import Disc2x2 from "./widgets/disc/2x2";
+import init from "./widgets/disc/init";
 
 const extension: Extension = {
-  init,
-  twoByTwo: TwoByTwo,
+  disc: [
+    {
+      init,
+      widget: Disc2x2,
+    },
+  ],
 };
 
 export default extension;

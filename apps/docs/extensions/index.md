@@ -6,13 +6,13 @@ import { data } from "../data/extensions.data.mts";
 
 **Extensions** are add-ons that let you add new features to **Hyprnote**—kind of like how extensions work in VS Code. Extensions are shown in the right side panel of the note.
 
-<Image alt="Extensions" src="/extensions-abstract-light.png" />
+<Image alt="Extensions" src="/extensions-light.png" darkSrc="/extensions-dark.png" />
 
 ## Widgets
 
 **Widgets** are the actual components that you can add to your Hyprnote. They provide specific functionalities or display information, enhancing your note-taking experience. You can think of Widgets as a subset of Extensions.
 
-<Image alt="Widgets" src="/extensions-widgets.png" />
+<Image alt="Widgets" src="/widgets-light.png" darkSrc="/widgets-dark.png" />
 
 ### Types of Widgets
 

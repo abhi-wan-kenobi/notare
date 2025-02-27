@@ -58,17 +58,17 @@ export const modelProvider = async () => {
   });
 };
 
-/**
- * Extensions are modular plugins that enhance Hyprnote's functionality.
- * Before creating an extension, we recommend reviewing the documentation.
- * Extensions integrate as widgets of varying sizes, with the default size set to twoByTwo.
- */
 export interface Extension {
+  [key: string]: Widget[];
+}
+
+export interface Widget {
   init: () => Promise<void>;
-  oneByOne?: typeof WidgetOneByOne;
-  twoByOne?: typeof WidgetTwoByOne;
-  twoByTwo?: typeof WidgetTwoByTwo;
-  full?: typeof WidgetFullSizeModal;
+  widget:
+    | typeof WidgetOneByOne
+    | typeof WidgetTwoByOne
+    | typeof WidgetTwoByTwo
+    | typeof WidgetFullSizeModal;
 }
 
 export { formatTime } from "./time";
