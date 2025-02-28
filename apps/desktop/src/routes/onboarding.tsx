@@ -147,17 +147,15 @@ function Component() {
               </div>
             )}
 
-            {micPermission.data && capturePermission.data && (
-              <PushableButton
-                onClick={() => {
-                  navigate({ to: "/app" });
-                }}
-                className="mb-4"
-                disabled={!micPermission.data || !capturePermission.data}
-              >
-                <Trans>Continue</Trans>
-              </PushableButton>
-            )}
+            <PushableButton
+              onClick={() => {
+                navigate({ to: "/app" });
+              }}
+              className="mb-4"
+              disabled={!micPermission.data || !capturePermission.data}
+            >
+              <Trans>Continue</Trans>
+            </PushableButton>
           </div>
         </div>
 
