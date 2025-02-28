@@ -37,7 +37,7 @@ async getFromStore(key: StoreKey) : Promise<string | null> {
 export type AuthEvent = "Success" | "Error"
 export type RequestParams = { c: string; f: string; p: number }
 export type ResponseParams = { ui: string; ai: string; st: string; dt: string }
-export type StoreKey = "user-id" | "account-id"
+export type StoreKey = "auth-user-id" | "auth-account-id"
 export type TAURI_CHANNEL<TSend> = null
 export type VaultKey = "remote-database" | "remote-server"
 
