@@ -74,11 +74,13 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AuthPluginExt<R> for T {
                     Ok(params) => {
                         tracing::info!(params = ?params, "auth_callback");
 
+                        vault.init(&params.account_id).unwrap();
+
                         for (key, value) in [
                             (StoreKey::UserId, params.user_id),
                             (StoreKey::AccountId, params.account_id),
                         ] {
-                            store.set(key.to_string(), value);
+                            store.set(key.as_ref(), value);
                         }
 
                         for (key, value) in [
@@ -119,7 +121,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AuthPluginExt<R> for T {
     fn get_from_store(&self, key: StoreKey) -> Result<Option<String>, String> {
         let store = store::get_store(self);
 
-        let v = store.get(key.to_string()).and_then(|v| {
+        let v = store.get(key).and_then(|v| {
             if let Some(s) = v.as_str() {
                 Some(s.to_string())
             } else {
