@@ -238,6 +238,10 @@ impl TursoClient {
     }
 }
 
+pub fn format_db_url(name: impl Into<String>) -> String {
+    format!("libsql://{}-yujonglee.turso.io", name.into())
+}
+
 pub fn format_db_name(name: impl Into<String>) -> String {
     if cfg!(debug_assertions) {
         format!("dev-{}", name.into())

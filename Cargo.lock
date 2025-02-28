@@ -3141,6 +3141,7 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "tracing-subscriber",
+ "turso",
  "url",
  "uuid",
  "vad",

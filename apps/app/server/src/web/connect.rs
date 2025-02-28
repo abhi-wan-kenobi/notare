@@ -31,9 +31,15 @@ pub async fn handler(
             Ok(existing_account.clone().unwrap())
         } else {
             let db = state.admin_db.clone();
+
+            let account_id = uuid::Uuid::new_v4().to_string();
+
+            // make sure we use same format in tauri side
+            let turso_db_name = hypr_turso::format_db_name(account_id.clone());
+
             db.upsert_account(hypr_db::admin::Account {
-                id: uuid::Uuid::new_v4().to_string(),
-                turso_db_name: hypr_turso::format_db_name(uuid::Uuid::new_v4().to_string()),
+                id: account_id,
+                turso_db_name,
                 clerk_org_id,
             })
             .await

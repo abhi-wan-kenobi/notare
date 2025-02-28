@@ -1,9 +1,4 @@
-use tauri::Manager;
 use tauri_plugin_windows::{ShowHyprWindow, WindowsPluginExt};
-
-struct State {
-    pub user_id: Option<String>,
-}
 
 #[tokio::main]
 pub async fn main() {
@@ -89,38 +84,39 @@ pub async fn main() {
                 let _ = app.store("store.json")?;
             }
 
-            {
-                use tauri_plugin_template::TemplatePluginExt;
-                for (name, template) in tauri_plugin_misc::TEMPLATES {
-                    app.register_template(name.to_string(), template.to_string())
-                        .unwrap();
-                }
-            }
+            let (user_id, _account_id, _server_token, _database_token) = {
+                use tauri_plugin_auth::{AuthPluginExt, StoreKey, VaultKey};
 
-            let user_id = {
-                let user_id = {
-                    use tauri_plugin_auth::{AuthPluginExt, StoreKey};
-                    app.get_from_store(StoreKey::UserId).unwrap_or(None)
-                };
+                let user_id = app.get_from_store(StoreKey::UserId).unwrap_or(None);
+                let account_id = app.get_from_store(StoreKey::AccountId).unwrap_or(None);
 
-                app.manage(State {
-                    user_id: user_id.clone(),
-                });
+                let remote_server = account_id
+                    .as_ref()
+                    .and_then(|_| app.get_from_vault(VaultKey::RemoteServer).unwrap_or(None));
+                let remote_database = account_id
+                    .as_ref()
+                    .and_then(|_| app.get_from_vault(VaultKey::RemoteDatabase).unwrap_or(None));
 
-                user_id
+                (user_id, account_id, remote_server, remote_database)
             };
 
             {
+                // use hypr_turso::{format_db_name, format_db_url};
                 use tauri_plugin_db::DatabasePluginExt;
 
                 let local_db_path = app.local_db_path();
                 let db = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async move {
-                        hypr_db::DatabaseBaseBuilder::default()
-                            .local(local_db_path)
-                            .build()
-                            .await
-                            .unwrap()
+                        let base = hypr_db::DatabaseBaseBuilder::default().local(local_db_path);
+
+                        // TODO: waiting for Turso side for support
+                        // if let Some(account_id) = account_id {
+                        //     let db_name = format_db_name(&account_id);
+                        //     let db_url = format_db_url(&db_name);
+                        //     base = base.remote(db_url, database_token.unwrap());
+                        // }
+
+                        base.build().await.unwrap()
                     })
                 });
 
@@ -129,6 +125,14 @@ pub async fn main() {
                 }
 
                 app.attach_libsql_db(db).unwrap();
+            }
+
+            {
+                use tauri_plugin_template::TemplatePluginExt;
+                for (name, template) in tauri_plugin_misc::TEMPLATES {
+                    app.register_template(name.to_string(), template.to_string())
+                        .unwrap();
+                }
             }
 
             {

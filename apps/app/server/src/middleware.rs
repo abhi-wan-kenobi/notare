@@ -81,15 +81,11 @@ pub async fn attach_user_db(
     next: middleware::Next,
 ) -> Result<Response, StatusCode> {
     let conn = {
-        #[cfg(debug_assertions)]
-        {
+        if cfg!(debug_assertions) {
             hypr_db::DatabaseBaseBuilder::default().local(":memory:")
-        }
-
-        #[cfg(not(debug_assertions))]
-        {
-            let token = get_env("TURSO_API_KEY");
-            let url = format!("{}-yujonglee.turso.io", org.turso_db_name);
+        } else {
+            let token = crate::get_env("TURSO_API_KEY");
+            let url = hypr_turso::format_db_url(org.turso_db_name);
             hypr_db::DatabaseBaseBuilder::default().remote(url, token)
         }
     }
