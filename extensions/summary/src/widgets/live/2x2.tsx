@@ -1,12 +1,20 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
+import { generateObject } from "ai";
+
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as templateCommands } from "@hypr/plugin-template";
 import { commands as listenerCommands } from "@hypr/plugin-listener";
+
+import { modelProvider } from "@hypr/utils";
 import { Button } from "@hypr/ui/components/ui/button";
-import { modelProvider, generateObject } from "@hypr/extension-utils";
-import { WidgetHeader, WidgetTwoByTwo } from "@hypr/ui/components/ui/widgets";
+import {
+  WidgetHeader,
+  type WidgetTwoByTwo,
+  WidgetTwoByTwoWrapper,
+} from "@hypr/ui/components/ui/widgets";
+
 import {
   type LiveSummarySystemInput,
   type LiveSummaryUserInput,
@@ -20,7 +28,7 @@ import {
 
 const DEFAULT_INTERVAL = 10 * 1000;
 
-const LiveSummary2x2: typeof WidgetTwoByTwo = () => {
+const LiveSummary2x2: WidgetTwoByTwo = () => {
   const [progress, setProgress] = useState(0);
 
   const config = useQuery({
@@ -90,7 +98,7 @@ const LiveSummary2x2: typeof WidgetTwoByTwo = () => {
   }, [summary.dataUpdatedAt]);
 
   return (
-    <WidgetTwoByTwo>
+    <WidgetTwoByTwoWrapper>
       <div className="p-4 pb-0">
         <WidgetHeader
           title="Live Summary"
@@ -110,7 +118,7 @@ const LiveSummary2x2: typeof WidgetTwoByTwo = () => {
       <div className="overflow-auto flex-1 p-4">
         <Summary summary={summary.data} />
       </div>
-    </WidgetTwoByTwo>
+    </WidgetTwoByTwoWrapper>
   );
 };
 
