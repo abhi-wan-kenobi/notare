@@ -53,7 +53,7 @@ impl ShowHyprWindow {
                 let url = match self {
                     Self::Demo => "/demo",
                     Self::MainWithDemo => "/demo",
-                    Self::MainWithoutDemo => "/app",
+                    Self::MainWithoutDemo => "/onboarding",
                 };
                 self.window_builder(app, url).build()?
             }

@@ -10,6 +10,8 @@ use crate::{SessionEvent, SessionEventTimelineView};
 const SAMPLE_RATE: u32 = 16000;
 
 pub trait ListenerPluginExt<R: tauri::Runtime> {
+    fn request_microphone_access(&self) -> impl Future<Output = Result<bool, String>>;
+    fn request_system_audio_access(&self) -> impl Future<Output = Result<bool, String>>;
     fn open_microphone_access_settings(&self) -> impl Future<Output = Result<(), String>>;
     fn open_system_audio_access_settings(&self) -> impl Future<Output = Result<(), String>>;
     fn subscribe(
@@ -22,8 +24,27 @@ pub trait ListenerPluginExt<R: tauri::Runtime> {
     fn stop_session(&self) -> impl Future<Output = Result<(), String>>;
 }
 
-// TODO: listener should be well tested + save incoming chunks to db
 impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
+    #[tracing::instrument(skip_all)]
+    async fn request_microphone_access(&self) -> Result<bool, String> {
+        let mut mic_sample_stream = hypr_audio::AudioInput::from_mic().stream();
+        let sample = mic_sample_stream.next().await;
+        println!("mic sample: {:?}", sample);
+        Ok(sample.is_some())
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn request_system_audio_access(&self) -> Result<bool, String> {
+        let stop = hypr_audio::AudioOutput::silence();
+
+        let mut speaker_sample_stream = hypr_audio::AudioInput::from_speaker(None).stream();
+        let sample = speaker_sample_stream.next().await;
+        println!("speaker sample: {:?}", sample);
+
+        let _ = stop.send(());
+        Ok(sample.is_some())
+    }
+
     #[tracing::instrument(skip_all)]
     async fn open_microphone_access_settings(&self) -> Result<(), String> {
         std::process::Command::new("open")

@@ -2,6 +2,22 @@ use crate::{ListenerPluginExt, SessionEvent};
 
 #[tauri::command]
 #[specta::specta]
+pub async fn request_microphone_access<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<bool, String> {
+    app.request_microphone_access().await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn request_system_audio_access<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<bool, String> {
+    app.request_system_audio_access().await
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn open_microphone_access_settings<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<(), String> {

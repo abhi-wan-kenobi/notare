@@ -1,6 +1,8 @@
 [default]
 description = "Default permissions for the plugin"
 permissions = [
+    "allow-request-microphone-access",
+    "allow-request-system-audio-access",
     "allow-open-microphone-access-settings",
     "allow-open-system-audio-access-settings",
     "allow-start-session",

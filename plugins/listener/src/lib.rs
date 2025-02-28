@@ -34,6 +34,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
+            commands::request_microphone_access::<tauri::Wry>,
+            commands::request_system_audio_access::<tauri::Wry>,
             commands::open_microphone_access_settings::<tauri::Wry>,
             commands::open_system_audio_access_settings::<tauri::Wry>,
             commands::get_timeline::<tauri::Wry>,

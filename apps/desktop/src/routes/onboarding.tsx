@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { MicIcon, Volume2Icon } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
 import clsx from "clsx";
@@ -12,6 +11,7 @@ import PushableButton from "@hypr/ui/components/ui/pushable-button";
 import ShimmerButton from "@hypr/ui/components/ui/shimmer-button";
 
 import { commands as listenerCommands } from "@hypr/plugin-listener";
+import { commands as appleCalendarCommands } from "@hypr/plugin-apple-calendar";
 
 export const Route = createFileRoute("/onboarding")({
   component: Component,
@@ -19,43 +19,43 @@ export const Route = createFileRoute("/onboarding")({
 
 function Component() {
   const navigate = useNavigate();
-  const [osType, setOsType] = useState<OsType>("macos");
 
-  useEffect(() => {
-    async function fetchOsType() {
-      try {
-        const os = getOsType(); // Returns "Linux", "Windows_NT", "Darwin"
-        setOsType(os);
-      } catch (error) {
-        console.error("Failed to get OS type:", error);
-      }
-    }
-    fetchOsType();
-  }, []);
-
-  const micPermission = useQuery({
-    queryKey: ["permissions", "mic"],
-    queryFn: async (): Promise<boolean> => {
-      return true;
+  const osType = useQuery({
+    queryKey: ["osType"],
+    queryFn: async (): Promise<OsType> => {
+      return getOsType();
     },
-    refetchInterval: 1000,
   });
 
-  const capturePermission = useQuery({
-    queryKey: ["permissions", "capture"],
-    queryFn: async (): Promise<boolean> => {
-      return true;
+  const micPermission = useMutation({
+    mutationFn: async (): Promise<boolean> => {
+      const a = await listenerCommands.requestMicrophoneAccess();
+      console.log("micPermission", a);
+      return a;
     },
-    refetchInterval: 1000,
   });
 
-  const handleClickMic = useCallback(() => {
-    listenerCommands.openMicrophoneAccessSettings();
-  }, []);
+  const capturePermission = useMutation({
+    mutationFn: async (): Promise<boolean> => {
+      const a = await listenerCommands.requestSystemAudioAccess();
+      console.log("capturePermission", a);
+      return a;
+    },
+  });
 
-  const handleClickSystemAudio = useCallback(() => {
-    listenerCommands.openSystemAudioAccessSettings();
-  }, []);
+  const calendarPermission = useMutation({
+    mutationFn: async (): Promise<boolean> => {
+      await appleCalendarCommands.requestCalendarAccess();
+      return appleCalendarCommands.calendarAccessStatus();
+    },
+  });
+
+  const contactsPermission = useMutation({
+    mutationFn: async (): Promise<boolean> => {
+      await appleCalendarCommands.requestContactsAccess();
+      return appleCalendarCommands.contactsAccessStatus();
+    },
+  });
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
@@ -84,7 +84,9 @@ function Component() {
               <PermissionItem
                 label="Transcribe my voice"
                 done={micPermission.data}
-                handleClick={handleClickMic}
+                handleClick={() => {
+                  micPermission.mutate();
+                }}
                 buttonTitle="Enable Microphone"
                 suffixIcon={<MicIcon size={16} />}
                 required
@@ -92,14 +94,16 @@ function Component() {
               <PermissionItem
                 label="Transcribe other people's voice"
                 done={capturePermission.data}
-                handleClick={handleClickSystemAudio}
+                handleClick={() => {
+                  capturePermission.mutate();
+                }}
                 buttonTitle="Enable System Audio"
                 suffixIcon={<Volume2Icon size={16} />}
                 required
               />
             </div>
 
-            {osType === "macos" && (
+            {osType.data === "macos" && (
               <div className="space-y-2">
                 <p className="text-center text-lg font-medium md:text-start">
                   Optional Permissions
@@ -107,8 +111,8 @@ function Component() {
 
                 <PermissionItem
                   label="Want to keep track of events?"
-                  done={capturePermission.data}
-                  handleClick={handleClickMic}
+                  done={calendarPermission.data}
+                  handleClick={() => calendarPermission.mutate()}
                   buttonTitle={"Connect to Calendar"}
                   suffixIcon={
                     <img
@@ -121,8 +125,8 @@ function Component() {
 
                 <PermissionItem
                   label="How about your contacts?"
-                  done={capturePermission.data}
-                  handleClick={handleClickMic}
+                  done={contactsPermission.data}
+                  handleClick={() => contactsPermission.mutate()}
                   buttonTitle="Connect to Contacts"
                   suffixIcon={
                     <img

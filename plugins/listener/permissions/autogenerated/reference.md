@@ -2,6 +2,8 @@
 
 Default permissions for the plugin
 
+- `allow-request-microphone-access`
+- `allow-request-system-audio-access`
 - `allow-open-microphone-access-settings`
 - `allow-open-system-audio-access-settings`
 - `allow-start-session`
@@ -92,6 +94,58 @@ Enables the open_system_audio_access_settings command without any pre-configured
 <td>
 
 Denies the open_system_audio_access_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:allow-request-microphone-access`
+
+</td>
+<td>
+
+Enables the request_microphone_access command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:deny-request-microphone-access`
+
+</td>
+<td>
+
+Denies the request_microphone_access command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:allow-request-system-audio-access`
+
+</td>
+<td>
+
+Enables the request_system_audio_access command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:deny-request-system-audio-access`
+
+</td>
+<td>
+
+Denies the request_system_audio_access command without any pre-configured scope.
 
 </td>
 </tr>

@@ -325,6 +325,26 @@
           "const": "deny-open-system-audio-access-settings"
         },
         {
+          "description": "Enables the request_microphone_access command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-request-microphone-access"
+        },
+        {
+          "description": "Denies the request_microphone_access command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-request-microphone-access"
+        },
+        {
+          "description": "Enables the request_system_audio_access command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-request-system-audio-access"
+        },
+        {
+          "description": "Denies the request_system_audio_access command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-request-system-audio-access"
+        },
+        {
           "description": "Enables the start_session command without any pre-configured scope.",
           "type": "string",
           "const": "allow-start-session"
