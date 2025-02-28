@@ -1,5 +1,5 @@
 {
-  "name": "@hypr/extension-past-notes",
+  "name": "@hypr/extension-linear",
   "version": "1.0.0",
   "private": true,
   "license": "MIT",
@@ -12,7 +12,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "preview": "storybook dev -p 6006",
-    "build": "storybook build -o ../../apps/storybook/storybook-static/past-notes"
+    "build": "storybook build -o ../../apps/storybook/storybook-static/linear"
   },
   "dependencies": {
     "@hypr/ui": "workspace:^",

@@ -1,14 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { mockTranscriptIPC } from "./mocks";
-import LiveTranscriptFull from "../widgets/default/full";
+import NewTicketsSuggestionFull from "../widgets/new-tickets-suggestion/full";
 
 const queryClient = new QueryClient();
 
 const meta = {
-  title: "Transcript/Live/Full",
-  component: LiveTranscriptFull,
-} satisfies Meta<typeof LiveTranscriptFull>;
+  title: "Linear/New Tickets Suggestion/Full",
+  component: NewTicketsSuggestionFull,
+} satisfies Meta<typeof NewTicketsSuggestionFull>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -21,8 +20,6 @@ export const Main: Story = {
   },
   decorators: [
     (Story: any) => {
-      mockTranscriptIPC();
-
       return (
         <QueryClientProvider client={queryClient}>
           <div style={{ height: "80vh" }}>{Story()}</div>
@@ -32,6 +29,5 @@ export const Main: Story = {
   ],
   args: {
     onMinimize: () => {},
-    children: <></>,
   },
 };
