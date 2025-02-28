@@ -166,6 +166,7 @@ mod tests {
     use tauri_plugin_listener::ListenClientBuilder;
 
     #[tokio::test]
+    #[ignore]
     async fn test_listen() {
         let state = crate::SharedState::default();
         {

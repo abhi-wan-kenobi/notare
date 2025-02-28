@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { useState } from "react";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
@@ -28,9 +29,11 @@ export const Route = createFileRoute("/auth/connect")({
 });
 
 function Component() {
-  const navigate = useNavigate();
   const search = Route.useSearch();
+  const navigate = useNavigate();
+
   const { isLoaded, userId } = useAuth();
+  const [redirectURL, setRedirectURL] = useState<string>("");
 
   const { c: code, f: fingerprint, p: port } = search;
 
@@ -45,7 +48,14 @@ function Component() {
       url.searchParams.set("st", params.st);
       url.searchParams.set("dt", params.dt);
 
-      window.open(url.toString());
+      const u = url.toString();
+      try {
+        window.open(u);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setRedirectURL(u);
+      }
     },
   });
 
@@ -118,9 +128,20 @@ function Component() {
             <p className="text-lg font-medium text-gray-800 mb-2">
               Connected Successfully
             </p>
-            <p className="text-gray-600">
-              Your application window should open automatically.
+            <p className="text-gray-600 mb-3">
+              You should be redirected automatically.
             </p>
+            <p className="text-gray-600 mb-4">
+              If not, please click the link below:
+            </p>
+            <a
+              href={redirectURL}
+              className="inline-block px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open Hyprnote
+            </a>
           </div>
         ) : mutation.status === "error" ? (
           <div className="text-center py-4">

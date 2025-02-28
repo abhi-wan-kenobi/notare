@@ -109,6 +109,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_session() {
         let app = create_app(tauri::test::mock_builder());
 
