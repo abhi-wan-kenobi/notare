@@ -18,7 +18,6 @@ import { Badge } from "@hypr/ui/components/ui/badge";
 import { commands as dbCommands, type Event } from "@hypr/plugin-db";
 
 export default function UpcomingEvents() {
-  console.log("upcoming events");
   const data = useQuery({
     queryKey: ["events"],
     queryFn: () => dbCommands.listEvents(),

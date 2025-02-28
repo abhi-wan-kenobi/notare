@@ -295,16 +295,6 @@
       "type": "string",
       "oneOf": [
         {
-          "description": "Enables the cancel_oauth_server command without any pre-configured scope.",
-          "type": "string",
-          "const": "allow-cancel-oauth-server"
-        },
-        {
-          "description": "Denies the cancel_oauth_server command without any pre-configured scope.",
-          "type": "string",
-          "const": "deny-cancel-oauth-server"
-        },
-        {
           "description": "Enables the get_from_store command without any pre-configured scope.",
           "type": "string",
           "const": "allow-get-from-store"
@@ -343,6 +333,16 @@
           "description": "Denies the start_oauth_server command without any pre-configured scope.",
           "type": "string",
           "const": "deny-start-oauth-server"
+        },
+        {
+          "description": "Enables the stop_oauth_server command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-stop-oauth-server"
+        },
+        {
+          "description": "Denies the stop_oauth_server command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-stop-oauth-server"
         },
         {
           "description": "Default permissions for the plugin",

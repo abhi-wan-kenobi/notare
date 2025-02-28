@@ -29,7 +29,6 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
     async fn request_microphone_access(&self) -> Result<bool, String> {
         let mut mic_sample_stream = hypr_audio::AudioInput::from_mic().stream();
         let sample = mic_sample_stream.next().await;
-        println!("mic sample: {:?}", sample);
         Ok(sample.is_some())
     }
 
@@ -39,7 +38,6 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
 
         let mut speaker_sample_stream = hypr_audio::AudioInput::from_speaker(None).stream();
         let sample = speaker_sample_stream.next().await;
-        println!("speaker sample: {:?}", sample);
 
         let _ = stop.send(());
         Ok(sample.is_some())

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { MicIcon, Volume2Icon } from "lucide-react";
@@ -12,6 +13,7 @@ import ShimmerButton from "@hypr/ui/components/ui/shimmer-button";
 
 import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { commands as appleCalendarCommands } from "@hypr/plugin-apple-calendar";
+import { commands as sfxCommands } from "@hypr/plugin-sfx";
 
 export const Route = createFileRoute("/onboarding")({
   component: Component,
@@ -19,6 +21,12 @@ export const Route = createFileRoute("/onboarding")({
 
 function Component() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    return () => {
+      sfxCommands.stop("BGM");
+    };
+  }, []);
 
   const osType = useQuery({
     queryKey: ["osType"],
@@ -29,18 +37,16 @@ function Component() {
 
   const micPermission = useMutation({
     mutationFn: async (): Promise<boolean> => {
-      const a = await listenerCommands.requestMicrophoneAccess();
-      console.log("micPermission", a);
-      return a;
+      return listenerCommands.requestMicrophoneAccess();
     },
+    onError: console.error,
   });
 
   const capturePermission = useMutation({
     mutationFn: async (): Promise<boolean> => {
-      const a = await listenerCommands.requestSystemAudioAccess();
-      console.log("capturePermission", a);
-      return a;
+      return listenerCommands.requestSystemAudioAccess();
     },
+    onError: console.error,
   });
 
   const calendarPermission = useMutation({
@@ -48,6 +54,7 @@ function Component() {
       await appleCalendarCommands.requestCalendarAccess();
       return appleCalendarCommands.calendarAccessStatus();
     },
+    onError: console.error,
   });
 
   const contactsPermission = useMutation({
@@ -55,6 +62,7 @@ function Component() {
       await appleCalendarCommands.requestContactsAccess();
       return appleCalendarCommands.contactsAccessStatus();
     },
+    onError: console.error,
   });
 
   return (
@@ -85,7 +93,7 @@ function Component() {
                 label="Transcribe my voice"
                 done={micPermission.data}
                 handleClick={() => {
-                  micPermission.mutate();
+                  micPermission.mutate({});
                 }}
                 buttonTitle="Enable Microphone"
                 suffixIcon={<MicIcon size={16} />}
@@ -95,7 +103,7 @@ function Component() {
                 label="Transcribe other people's voice"
                 done={capturePermission.data}
                 handleClick={() => {
-                  capturePermission.mutate();
+                  capturePermission.mutate({});
                 }}
                 buttonTitle="Enable System Audio"
                 suffixIcon={<Volume2Icon size={16} />}
@@ -112,7 +120,7 @@ function Component() {
                 <PermissionItem
                   label="Want to keep track of events?"
                   done={calendarPermission.data}
-                  handleClick={() => calendarPermission.mutate()}
+                  handleClick={() => calendarPermission.mutate({})}
                   buttonTitle={"Connect to Calendar"}
                   suffixIcon={
                     <img
@@ -126,7 +134,7 @@ function Component() {
                 <PermissionItem
                   label="How about your contacts?"
                   done={contactsPermission.data}
-                  handleClick={() => contactsPermission.mutate()}
+                  handleClick={() => contactsPermission.mutate({})}
                   buttonTitle="Connect to Contacts"
                   suffixIcon={
                     <img

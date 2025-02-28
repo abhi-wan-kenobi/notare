@@ -3,7 +3,7 @@
 Default permissions for the plugin
 
 - `allow-start-oauth-server`
-- `allow-cancel-oauth-server`
+- `allow-stop-oauth-server`
 - `allow-get-from-store`
 - `allow-get-from-vault`
 - `allow-reset-vault`
@@ -16,32 +16,6 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
-
-<tr>
-<td>
-
-`auth:allow-cancel-oauth-server`
-
-</td>
-<td>
-
-Enables the cancel_oauth_server command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`auth:deny-cancel-oauth-server`
-
-</td>
-<td>
-
-Denies the cancel_oauth_server command without any pre-configured scope.
-
-</td>
-</tr>
 
 <tr>
 <td>
@@ -143,6 +117,32 @@ Enables the start_oauth_server command without any pre-configured scope.
 <td>
 
 Denies the start_oauth_server command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`auth:allow-stop-oauth-server`
+
+</td>
+<td>
+
+Enables the stop_oauth_server command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`auth:deny-stop-oauth-server`
+
+</td>
+<td>
+
+Denies the stop_oauth_server command without any pre-configured scope.
 
 </td>
 </tr>
