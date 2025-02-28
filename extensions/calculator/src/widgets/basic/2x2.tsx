@@ -5,7 +5,6 @@ import {
 import { useState } from "react";
 import { cn } from "@hypr/ui/lib/utils";
 import {
-  type CalculatorState,
   handleNumber,
   handleOperator,
   handleEquals,
@@ -13,7 +12,8 @@ import {
   handleDelete,
   handleDecimal,
   formatDisplayValue,
-} from "../../lib/calculator";
+} from "../../utils";
+import type { CalculatorState } from "../../types";
 
 const BasicCalculator2x2: WidgetTwoByTwo = () => {
   const [state, setState] = useState<CalculatorState>({

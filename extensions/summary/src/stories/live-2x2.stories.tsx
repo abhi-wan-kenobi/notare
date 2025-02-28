@@ -4,14 +4,14 @@ import { http, HttpResponse, type HttpHandler } from "msw";
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { ChatCompletion } from "openai/resources/chat/completions";
 import type { LiveSummaryResponse } from "../types";
-import LiveSummary2x2 from "../widgets/live/2x2";
+import LiveShortSummary2x2 from "../widgets/live-short/2x2";
 
 const queryClient = new QueryClient();
 
 const meta = {
   title: "Summary/Live/2x2",
-  component: LiveSummary2x2,
-} satisfies Meta<typeof LiveSummary2x2>;
+  component: LiveShortSummary2x2,
+} satisfies Meta<typeof LiveShortSummary2x2>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

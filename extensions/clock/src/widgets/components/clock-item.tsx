@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getTimeForTimezone } from "../../lib";
+import { getTimeForTimezone } from "../../utils";
 
 export const ClockItem = ({
   timezone,

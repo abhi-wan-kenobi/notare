@@ -28,7 +28,7 @@ import {
 
 const DEFAULT_INTERVAL = 10 * 1000;
 
-const LiveSummary2x2: WidgetTwoByTwo = () => {
+const LiveShortSummary2x2: WidgetTwoByTwo = () => {
   const [progress, setProgress] = useState(0);
 
   const config = useQuery({
@@ -163,11 +163,7 @@ const ProgressCircle = ({ progress }: { progress: number }) => {
       </svg>
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-5 h-5">
         <img
-          src={
-            isAnimating
-              ? "/live-summary-dynamic.gif"
-              : "/live-summary-static.png"
-          }
+          src={isAnimating ? "/summary-dynamic.gif" : "/summary-static.png"}
           alt="AI Assistant"
           style={{ width: "100%", height: "100%" }}
         />
@@ -196,4 +192,4 @@ const Summary = ({
   );
 };
 
-export default LiveSummary2x2;
+export default LiveShortSummary2x2;

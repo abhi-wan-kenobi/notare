@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from "react";
 import { Channel } from "@tauri-apps/api/core";
 import { Maximize2Icon } from "lucide-react";
 
-import { formatTime } from "@hypr/extension-utils";
 import {
   commands as listenerCommands,
   type TimelineView,
@@ -16,6 +15,7 @@ import {
   WidgetTwoByTwoWrapper,
 } from "@hypr/ui/components/ui/widgets";
 import { Badge } from "@hypr/ui/components/ui/badge";
+import Transcript from "../components/transcript";
 
 const LiveTranscript2x2: WidgetTwoByTwo = ({ onMaximize }) => {
   const [timeline, setTimeline] = useState<TimelineView | null>(null);
@@ -77,31 +77,6 @@ const LiveTranscript2x2: WidgetTwoByTwo = ({ onMaximize }) => {
         <Transcript transcript={timeline} />
       </div>
     </WidgetTwoByTwoWrapper>
-  );
-};
-
-const Transcript = ({ transcript }: { transcript: TimelineView | null }) => {
-  if (!transcript) {
-    return null;
-  }
-
-  return (
-    <div className="flex flex-col space-y-4">
-      {transcript.items.map((item, index) => (
-        <div
-          key={index}
-          className="flex flex-col bg-white rounded-lg p-3 shadow-sm border border-neutral-100"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{item.speaker}</span>
-            <span className="text-xs text-neutral-500">
-              {formatTime(item.start)}~{formatTime(item.end)}
-            </span>
-          </div>
-          <p className="text-sm mt-1">{item.text}</p>
-        </div>
-      ))}
-    </div>
   );
 };
 

@@ -1,5 +1,3 @@
-import "./dino.css";
-
 import { useRef, useEffect } from "react";
 import {
   type WidgetTwoByOne,

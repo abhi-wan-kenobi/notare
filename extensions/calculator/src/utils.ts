@@ -1,12 +1,4 @@
-export type Operator = "+" | "-" | "×" | "÷";
-
-export interface CalculatorState {
-  display: string;
-  prevValue: number | null;
-  operator: Operator | null;
-  operation: string;
-  newNumber: boolean;
-}
+import type { Operator, CalculatorState } from "./types";
 
 export const calculate = (a: number, b: number, op: Operator): number => {
   switch (op) {

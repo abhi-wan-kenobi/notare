@@ -1,23 +1,20 @@
-import { useEffect, useState, useRef } from "react";
-import { Channel } from "@tauri-apps/api/core";
-import { Minimize2Icon } from "lucide-react";
-
 import { Button } from "@hypr/ui/components/ui/button";
 import {
-  WidgetFullSize,
-  WidgetFullSizeWrapper,
+  WidgetFullSizeModal,
   WidgetHeader,
 } from "@hypr/ui/components/ui/widgets";
+import { Minimize2Icon } from "lucide-react";
 import { Badge } from "@hypr/ui/components/ui/badge";
-
+import { useEffect, useState, useRef } from "react";
+import { Channel } from "@tauri-apps/api/core";
 import {
   commands as listenerCommands,
   type TimelineView,
   type SessionEvent,
 } from "@hypr/plugin-listener";
-import Transcript from "../components/transcript";
+import Translation from "../components/translation";
 
-const LiveTranscriptFull: WidgetFullSize = ({ onMinimize }) => {
+const LiveTranslationFull: typeof WidgetFullSizeModal = ({ onMinimize }) => {
   const [timeline, setTimeline] = useState<TimelineView | null>(null);
   const [isLive, setIsLive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -51,12 +48,12 @@ const LiveTranscriptFull: WidgetFullSize = ({ onMinimize }) => {
   }, [timeline?.items.length, isLive]);
 
   return (
-    <WidgetFullSizeWrapper onMinimize={onMinimize}>
+    <WidgetFullSizeModal onMinimize={onMinimize}>
       <div className="p-4 pb-0">
         <WidgetHeader
           title={
             <div className="flex items-center gap-2">
-              Transcript
+              Translation
               {isLive && <Badge variant="destructive">LIVE</Badge>}
             </div>
           }
@@ -74,10 +71,10 @@ const LiveTranscriptFull: WidgetFullSize = ({ onMinimize }) => {
       </div>
 
       <div ref={scrollRef} className="overflow-auto flex-1 p-4 pt-0">
-        <Transcript transcript={timeline} />
+        <Translation translation={timeline} />
       </div>
-    </WidgetFullSizeWrapper>
+    </WidgetFullSizeModal>
   );
 };
 
-export default LiveTranscriptFull;
+export default LiveTranslationFull;

@@ -6,6 +6,64 @@
 todo
 ```
 
+## File Structure (recommended)
+
+```
+extension-name/
+├── .storybook/                     # Storybook configuration
+├── assets/                         # Raw assets (images, videos)
+├── public/                         # Static files served as-is
+├── src/
+│   ├── stories/                    # Storybook stories for components
+│   │   ├── <widget-name-1>-1x1-1.stories.tsx
+│   │   ├── <widget-name-1>-1x1-2.stories.tsx
+│   │   ├── <widget-name-2>-2x2.stories.tsx
+│   │   └── <widget-name-2>-full.stories.tsx
+│   ├── widgets/                    # Widget implementations
+│   │   ├── components/             # Shared components
+│   │   │   └── <shared-component>.tsx
+│   │   └── <widget-name-1>/        # Example widget 1 implementation
+│   │   │   ├── 1x1-1.tsx           # First 1x1 layout widget
+│   │   │   ├── 1x1-2.tsx           # Second 1x1 layout widget
+│   │   │   └── init.ts             # Widget initialization
+│   │   └── <widget-name-2>/        
+│   │       ├── 2x2.tsx             
+│   │       ├── full.tsx            
+│   │       └── init.ts             
+│   ├── globals.css                 # Global styles
+│   ├── index.tsx                   # Extension entry point
+│   ├── types.ts                    # Type definitions
+│   └── utils.ts                    # Utility functions
+├── config.json                     # Extension configuration
+├── package.json                    # Dependencies and scripts
+├── tailwind.config.ts              # Tailwind CSS configuration
+└── tsconfig.json                   # TypeScript configuration
+```
+
+### Key Directories and Files
+
+- **src/stories/**: Contains Storybook stories for testing widgets in isolation
+- **src/widgets/**: Main widget implementations
+  - **components/**: Reusable components shared across widgets
+  - **\<widget-name\>/**: Specific widget implementation (e.g., live, replay)
+- **src/types.ts**: TypeScript type definitions and interfaces
+- **src/utils.ts**: Shared utility functions
+- **config.json**: Extension metadata and configuration
+
+### Example Widget Structure
+
+For a [translation widget](/extensions/translation) that supports both 2x2 and full-screen layouts:
+
+```
+src/widgets/
+├── components/
+│   └── translation.tsx             # Core translation component
+└── live/
+    ├── 2x2.tsx                     # 2x2 grid layout
+    ├── full.tsx                    # Full-screen layout
+    └── init.ts                     # Widget initialization logic
+```
+
 ## Utils
 
 [@hypr/extension-utils](https://github.com/fastrepl/hyprnote/tree/main/extensions/utils) contains essential utilities for extension development.
@@ -40,10 +98,10 @@ It's really simple.
 <EXTENSION_NAME>-<ASSET_NAME>
 ```
 
-For example, the `live-summary` extension has two assets:
+For example, the `summary` extension has two assets:
 
-- `live-summary-dynamic.gif`
-- `live-summary-static.png`
+- `summary-dynamic.gif`
+- `summary-static.png`
 
 ### How to use
 
@@ -56,7 +114,7 @@ To use them, simply use the file name.
 For example:
 
 ```html
-<img src="/live-summary-dynamic.gif" />
+<img src="/summary-dynamic.gif" />
 ```
 
 ## Troubleshooting
