@@ -1,4 +1,5 @@
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -22,7 +23,7 @@ jobs:
       - run: pnpm -F ui build
       - run: pnpm -F app build
       - run: rustup toolchain install stable --profile minimal --no-self-update
-      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config libglib2.0-dev
       - uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
