@@ -1,7 +1,8 @@
+import { useEffect } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { commands as dbCommands } from "@hypr/plugin-db";
 
-import { SessionProvider } from "@/contexts";
+import { SessionProvider, useRightPanel } from "@/contexts";
 import EditorArea from "@/components/note/editor";
 import RightPanel from "@/components/note/right-panel";
 
@@ -24,6 +25,14 @@ export const Route = createFileRoute("/app/note/$id")({
 
 function Component() {
   const { session } = Route.useLoaderData();
+  
+  const { hidePanel } = useRightPanel();
+
+  useEffect(() => {
+    return () => {
+      hidePanel();
+    };
+  }, [hidePanel]);
 
   return (
     <SessionProvider session={session}>

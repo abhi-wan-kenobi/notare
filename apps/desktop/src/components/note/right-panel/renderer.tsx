@@ -7,7 +7,7 @@ import GridLayout, { Layout } from "react-grid-layout";
 import { WidgetGroup } from "@hypr/extension-utils";
 
 import DinoExtension from "@hypr/extension-dino-game";
-import ClockExtension from "@hypr/extension-clock";
+import TranscriptExtension from "@hypr/extension-transcript";
 import SummaryExtension from "@hypr/extension-summary";
 
 const getTwoByOne = (group: WidgetGroup) => {
@@ -26,9 +26,9 @@ const getTwoByTwo = (group: WidgetGroup) => {
   return item.component;
 };
 
-const CC = getTwoByOne(DinoExtension["chromeDino"])!;
-const CC2 = getTwoByTwo(SummaryExtension["live"])!;
-const CC3 = getTwoByTwo(ClockExtension["world"])!;
+const CC1 = getTwoByOne(DinoExtension["chromeDino"])!;
+const CC2 = getTwoByTwo(SummaryExtension["live-short"])!;
+const CC3 = getTwoByTwo(TranscriptExtension["live"])!;
 
 export default function WidgetRenderer() {
   const [layout, setLayout] = useState<Layout[]>([
@@ -73,7 +73,7 @@ export default function WidgetRenderer() {
       compactType="vertical"
     >
       <div key="1">
-        <CC />
+        <CC1 />
       </div>
       <div key="2">
         <CC2 />

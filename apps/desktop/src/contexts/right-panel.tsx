@@ -4,6 +4,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 interface RightPanelContextType {
   isExpanded: boolean;
   togglePanel: () => void;
+  hidePanel: () => void;
 }
 
 const RightPanelContext = createContext<RightPanelContextType | null>(null);
@@ -14,6 +15,10 @@ export function RightPanelProvider({
   children: React.ReactNode;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const hidePanel = useCallback(() => {
+    setIsExpanded(false);
+  }, []);
 
   const togglePanel = useCallback(() => {
     setIsExpanded((prev) => !prev);
@@ -32,7 +37,7 @@ export function RightPanelProvider({
   );
 
   return (
-    <RightPanelContext.Provider value={{ isExpanded, togglePanel }}>
+    <RightPanelContext.Provider value={{ isExpanded, togglePanel, hidePanel }}>
       {children}
     </RightPanelContext.Provider>
   );
