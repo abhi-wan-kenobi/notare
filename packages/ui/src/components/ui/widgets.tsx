@@ -27,7 +27,12 @@ const WidgetHeader = ({
         </div>
       )}
       {actions && (
-        <div style={{ display: "flex", alignItems: "center" }}>{actions}</div>
+        <div
+          style={{ display: "flex", alignItems: "center" }}
+          className="not-draggable"
+        >
+          {actions}
+        </div>
       )}
     </header>
   );

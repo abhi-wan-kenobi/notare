@@ -26,9 +26,19 @@ const getTwoByTwo = (group: WidgetGroup) => {
   return item.component;
 };
 
+const getFull = (group: WidgetGroup) => {
+  const item = group.items.find((item) => item.type === "full");
+  if (!item) {
+    return null;
+  }
+  return item.component;
+};
+
 const CC1 = getTwoByOne(DinoExtension["chromeDino"])!;
 const CC2 = getTwoByTwo(SummaryExtension["live-short"])!;
-const CC3 = getTwoByTwo(TranscriptExtension["live"])!;
+
+const TranscriptLive2x2 = getTwoByTwo(TranscriptExtension["live"])!;
+const TranscriptLiveFull = getFull(TranscriptExtension["live"])!;
 
 export default function WidgetRenderer() {
   const [layout, setLayout] = useState<Layout[]>([
@@ -59,28 +69,40 @@ export default function WidgetRenderer() {
     setLayout(newLayout);
   }, []);
 
+  const [showFull, setShowFull] = useState(false);
+
   return (
-    <GridLayout
-      className="layout"
-      layout={layout}
-      cols={2}
-      rowHeight={160}
-      width={380}
-      margin={[20, 20]}
-      onLayoutChange={handleLayoutChange}
-      isDraggable
-      isResizable={false}
-      compactType="vertical"
-    >
-      <div key="1">
-        <CC1 />
-      </div>
-      <div key="2">
-        <CC2 />
-      </div>
-      <div key="3">
-        <CC3 />
-      </div>
-    </GridLayout>
+    <>
+      {showFull ? (
+        <TranscriptLiveFull onMinimize={() => setShowFull(false)} />
+      ) : (
+        <GridLayout
+          layout={layout}
+          cols={2}
+          rowHeight={160}
+          width={380}
+          margin={[20, 20]}
+          onLayoutChange={handleLayoutChange}
+          isDraggable={true}
+          isResizable={false}
+          compactType="vertical"
+          draggableCancel=".not-draggable"
+        >
+          <div key="1">
+            <CC1 />
+          </div>
+          <div key="3">
+            <TranscriptLive2x2
+              onMaximize={() => {
+                setShowFull(true);
+              }}
+            />
+          </div>
+          <div key="2">
+            <CC2 />
+          </div>
+        </GridLayout>
+      )}
+    </>
   );
 }
