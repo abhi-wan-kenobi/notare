@@ -1,15 +1,18 @@
 use tauri::Manager;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 mod client;
 mod commands;
+mod error;
 mod events;
 mod ext;
 mod timeline;
 
 pub use client::*;
+pub use error::*;
 pub use events::*;
 pub use ext::ListenerPluginExt;
 pub use timeline::*;
@@ -27,7 +30,7 @@ pub struct State {
     speaker_stream_handle: Option<tokio::task::JoinHandle<()>>,
     listen_stream_handle: Option<tokio::task::JoinHandle<()>>,
     silence_stream_tx: Option<std::sync::mpsc::Sender<()>>,
-    channels: Arc<Mutex<Vec<tauri::ipc::Channel<SessionEvent>>>>,
+    channels: Arc<Mutex<HashMap<u32, tauri::ipc::Channel<SessionEvent>>>>,
 }
 
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
@@ -40,6 +43,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::open_system_audio_access_settings::<tauri::Wry>,
             commands::get_timeline::<tauri::Wry>,
             commands::subscribe::<tauri::Wry>,
+            commands::unsubscribe::<tauri::Wry>,
             commands::start_session::<tauri::Wry>,
             commands::stop_session::<tauri::Wry>,
         ])
@@ -101,8 +105,8 @@ mod test {
             Ok(())
         });
 
-        app.subscribe(channel_1.clone()).await.unwrap();
-        app.subscribe(channel_2.clone()).await.unwrap();
+        app.subscribe(channel_1.clone()).await;
+        app.subscribe(channel_2.clone()).await;
 
         app.broadcast(SessionEvent::Stopped).await.unwrap();
 
@@ -131,7 +135,7 @@ mod test {
                 Ok(())
             });
 
-            app.subscribe(chan).await.unwrap();
+            app.subscribe(chan).await;
         }
 
         {

@@ -5,9 +5,16 @@ import { streamText, smoothStream } from "ai";
 import clsx from "clsx";
 
 import { modelProvider } from "@hypr/utils";
-import NoteEditor from "@hypr/tiptap/editor";
-import NoteRenderer from "@hypr/tiptap/renderer";
+import Editor, { TiptapEditor } from "@hypr/tiptap/editor";
+import Renderer from "@hypr/tiptap/renderer";
+
+import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as miscCommands } from "@hypr/plugin-misc";
+import { commands as templateCommands } from "@hypr/plugin-template";
+import {
+  ENHANCE_SYSTEM_TEMPLATE_KEY,
+  ENHANCE_USER_TEMPLATE_KEY,
+} from "@/templates";
 
 import { useSession } from "@/contexts";
 import { useOngoingSession } from "@/contexts/ongoing-session";
@@ -17,30 +24,6 @@ import { EnhanceOnlyButton } from "./enhanced-only-button";
 import { NoteHeader } from "../header";
 
 export default function EditorArea() {
-  const enhance = useMutation({
-    mutationFn: async () => {
-      const provider = await modelProvider();
-      const { text, textStream } = streamText({
-        model: provider.languageModel("any"),
-        prompt: "Hello, world!",
-        experimental_transform: [
-          smoothStream({
-            delayInMs: 100,
-            chunking: "line",
-          }),
-        ],
-      });
-
-      for await (const chunk of textStream) {
-        const html = await miscCommands.opinionatedMdToHtml(chunk);
-        console.log(html);
-      }
-
-      const html = await text.then(miscCommands.opinionatedMdToHtml);
-      return html;
-    },
-  });
-
   const sessionStore = useSession((s) => ({
     session: s.session,
     updateRawNote: s.updateRawNote,
@@ -52,40 +35,87 @@ export default function EditorArea() {
     listening: s.listening,
   }));
 
+  const enhance = useMutation({
+    mutationFn: async () => {
+      const config = await dbCommands.getConfig();
+      const provider = await modelProvider();
+
+      console.log(1);
+
+      const systemMessage = await templateCommands.render(
+        ENHANCE_SYSTEM_TEMPLATE_KEY,
+        {
+          config,
+        },
+      );
+
+      const userMessage = await templateCommands.render(
+        ENHANCE_USER_TEMPLATE_KEY,
+        {
+          memo: sessionStore.session.raw_memo_html,
+        },
+      );
+
+      const { text, textStream } = streamText({
+        model: provider.languageModel("any"),
+        messages: [
+          { role: "system", content: systemMessage },
+          { role: "user", content: userMessage },
+        ],
+        experimental_transform: [
+          smoothStream({ delayInMs: 100, chunking: "line" }),
+        ],
+      });
+
+      let acc = "";
+      for await (const chunk of textStream) {
+        acc += chunk;
+        const html = await miscCommands.opinionatedMdToHtml(chunk);
+        sessionStore.updateEnhancedNote(html);
+        console.log(html);
+      }
+
+      return text.then(miscCommands.opinionatedMdToHtml);
+    },
+  });
+
   const [showRaw, setShowRaw] = useState(true);
 
-  const handleChangeNote = useCallback(
+  const handleChangeRawNote = useCallback(
     (content: string) => {
-      if (showRaw) {
-        sessionStore.updateRawNote(content);
-        sessionStore.persistSession();
-      } else {
-        sessionStore.updateEnhancedNote(content);
-      }
+      sessionStore.updateRawNote(content);
     },
-    [showRaw, sessionStore],
+    [sessionStore],
   );
 
-  useEffect(() => {
-    if (!showRaw && !sessionStore.session.enhanced_memo_html) {
-      enhance.mutate();
-    }
-  }, [showRaw, sessionStore.session.enhanced_memo_html, enhance]);
+  const handleChangeEnhancedNote = useCallback(
+    (content: string) => {
+      sessionStore.updateEnhancedNote(content);
+    },
+    [sessionStore],
+  );
+
+  const handleClickEnhance = useCallback(() => {
+    enhance.mutate();
+    setShowRaw(false);
+  }, [enhance, setShowRaw]);
 
   useEffect(() => {
-    if (enhance.data) {
-      sessionStore.updateEnhancedNote(enhance.data);
-    }
-  }, [enhance.data]);
-
-  useEffect(() => {
-    if (enhance.status === "success" || enhance.status === "pending") {
+    if (enhance.status === "success") {
       sessionStore.persistSession();
     }
+
+    if (enhance.status === "error") {
+      console.error(enhance.error);
+    }
+
+    return () => {
+      sessionStore.persistSession();
+    };
   }, [enhance.status]);
 
-  const editorRef = useRef<{ editor: any }>(null);
-  const rendererRef = useRef<{ editor: any }>(null);
+  const editorRef = useRef<{ editor: TiptapEditor }>(null);
+  const rendererRef = useRef<{ editor: TiptapEditor }>(null);
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
@@ -113,17 +143,21 @@ export default function EditorArea() {
         }}
       >
         {showRaw ? (
-          <NoteEditor
-            ref={editorRef}
-            handleChange={handleChangeNote}
-            content={sessionStore.session.raw_memo_html}
-          />
+          <div>
+            <Editor
+              ref={editorRef}
+              handleChange={handleChangeRawNote}
+              content={sessionStore.session.raw_memo_html}
+            />
+          </div>
         ) : (
-          <NoteRenderer
-            ref={rendererRef}
-            handleChange={handleChangeNote}
-            content={sessionStore.session.enhanced_memo_html ?? ""}
-          />
+          <div>
+            <Renderer
+              ref={rendererRef}
+              handleChange={handleChangeEnhancedNote}
+              content={sessionStore.session.enhanced_memo_html ?? ""}
+            />
+          </div>
         )}
       </div>
 
@@ -137,11 +171,10 @@ export default function EditorArea() {
             transition={{ duration: 0.2 }}
           >
             {ongoingSessionStore.listening ||
-            !sessionStore.session.conversations.length ? null : sessionStore
-                .session.enhanced_memo_html ? (
+            sessionStore.session.enhanced_memo_html ? (
               <EnhanceControls showRaw={showRaw} setShowRaw={setShowRaw} />
             ) : (
-              <EnhanceOnlyButton handleClick={() => setShowRaw(false)} />
+              <EnhanceOnlyButton handleClick={handleClickEnhance} />
             )}
           </motion.div>
         )}

@@ -19,11 +19,14 @@ async openMicrophoneAccessSettings() : Promise<null> {
 async openSystemAudioAccessSettings() : Promise<null> {
     return await TAURI_INVOKE("plugin:listener|open_system_audio_access_settings");
 },
-async getTimeline() : Promise<TimelineView> {
-    return await TAURI_INVOKE("plugin:listener|get_timeline");
+async getTimeline(filter: TimelineFilter) : Promise<TimelineView> {
+    return await TAURI_INVOKE("plugin:listener|get_timeline", { filter });
 },
 async subscribe(channel: TAURI_CHANNEL<SessionEvent>) : Promise<null> {
     return await TAURI_INVOKE("plugin:listener|subscribe", { channel });
+},
+async unsubscribe(channel: TAURI_CHANNEL<SessionEvent>) : Promise<null> {
+    return await TAURI_INVOKE("plugin:listener|unsubscribe", { channel });
 },
 async startSession() : Promise<string> {
     return await TAURI_INVOKE("plugin:listener|start_session");
@@ -47,6 +50,7 @@ export type SessionEvent = { type: "stopped" } | { type: "silence" } | ({ type: 
 export type SessionEventAudioAmplitude = { mic: number; speaker: number }
 export type SessionEventTimelineView = { timeline: TimelineView }
 export type TAURI_CHANNEL<TSend> = null
+export type TimelineFilter = { last_n_seconds: number | null }
 export type TimelineView = { items: TimelineViewItem[] }
 export type TimelineViewItem = { start: number; end: number; speaker: string; text: string }
 
