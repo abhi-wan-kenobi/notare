@@ -15,14 +15,15 @@
     "build": "storybook build -o ../../apps/storybook/storybook-static/past-notes"
   },
   "dependencies": {
-    "@hypr/ui": "workspace:^",
     "@hypr/extension-utils": "workspace:^",
     "@hypr/plugin-db": "workspace:^",
+    "@hypr/plugin-listener": "workspace:^",
+    "@hypr/ui": "workspace:^",
     "@tanstack/react-query": "^5.66.0",
-    "@tauri-apps/api": "^2.2.0",
+    "@tauri-apps/api": "^2.3.0",
     "@tauri-apps/plugin-http": "^2.3.0",
-    "motion": "^12.4.2",
     "lucide-react": "^0.474.0",
+    "motion": "^12.4.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -35,11 +36,11 @@
     "autoprefixer": "^10.4.20",
     "msw": "^2.7.0",
     "msw-storybook-addon": "^2.0.4",
+    "react": "^19",
+    "react-dom": "^19",
     "storybook": "^8.5.8",
-    "tailwindcss": "^3.4.17"
-  },
-  "peerDependencies": {
-    "react": "^18.3.1"
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.2"
   },
   "msw": {
     "workerDirectory": [

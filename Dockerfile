@@ -11,6 +11,7 @@ ARG VITE_SENTRY_DSN
 COPY . /app
 WORKDIR /app
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm -F ui build
 RUN VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY VITE_SENTRY_DSN=$VITE_SENTRY_DSN pnpm --filter @hypr/app build
 
 FROM rust:1.83.0 AS rust-builder

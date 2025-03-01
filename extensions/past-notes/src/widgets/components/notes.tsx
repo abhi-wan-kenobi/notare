@@ -1,4 +1,3 @@
-import { formatTime } from "../../utils";
 import { type Session } from "@hypr/plugin-db";
 
 export default function Notes({ notes }: { notes: Session[] }) {

@@ -37,6 +37,7 @@ jobs:
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - uses: Swatinem/rust-cache@v2
       - uses: ./.github/actions/pnpm_install
+      - run: pnpm -F ui build
       - run: pnpm -r typecheck
       - if: matrix.platform == 'ubuntu-22.04'
         run: |

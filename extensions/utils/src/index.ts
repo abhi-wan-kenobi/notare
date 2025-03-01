@@ -1,5 +1,3 @@
-export { formatTime } from "./time";
-
 import type {
   WidgetOneByOne,
   WidgetTwoByOne,
@@ -7,12 +5,32 @@ import type {
   WidgetFullSize,
 } from "@hypr/ui/components/ui/widgets";
 
-export interface Extension {
-  [key: string]: Widget[];
-}
+export type Extension = {
+  [key: string]: WidgetGroup;
+};
 
-export interface Widget {
+export type WidgetGroup = {
   id: string;
+  items: WidgetItem[];
+};
+
+export type WidgetItem = {
   init: () => Promise<void>;
-  component: WidgetTwoByTwo | WidgetOneByOne | WidgetTwoByOne | WidgetFullSize;
-}
+} & (
+  | {
+      type: "oneByOne";
+      component: WidgetOneByOne;
+    }
+  | {
+      type: "twoByOne";
+      component: WidgetTwoByOne;
+    }
+  | {
+      type: "twoByTwo";
+      component: WidgetTwoByTwo;
+    }
+  | {
+      type: "full";
+      component: WidgetFullSize;
+    }
+);

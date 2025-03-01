@@ -11,7 +11,7 @@ import type { Ticket } from "../../type";
 import TicketCard from "../components/ticket-card";
 
 const NewTicketsSuggestionFull: WidgetFullSize = ({ onMinimize }) => {
-  const [newTickets, setNewTickets] = useState<Ticket[]>(mockNewTickets);
+  const [newTickets, _setNewTickets] = useState<Ticket[]>(mockNewTickets);
 
   return (
     <WidgetFullSizeWrapper onMinimize={onMinimize}>

@@ -43,6 +43,7 @@ jobs:
       - run: echo "FINAL_ARGS=${{ matrix.args }} --config ${{ env.TAURI_CONF_PATH }}" >> $GITHUB_ENV
       - uses: Swatinem/rust-cache@v2
       - uses: ./.github/actions/pnpm_install
+      - run: pnpm -F ui build
       - uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}

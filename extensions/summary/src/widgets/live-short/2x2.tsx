@@ -18,13 +18,11 @@ import {
 import {
   type LiveSummarySystemInput,
   type LiveSummaryUserInput,
-  liveSummaryResponseSchema,
   type LiveSummaryResponse,
+  liveSummaryResponseSchema,
 } from "../../types";
-import {
-  TEMPLATE_LIVE_SUMMARY_SYSTEM,
-  TEMPLATE_LIVE_SUMMARY_USER,
-} from "./init";
+
+import { TEMPLATE_LIVE_SUMMARY_SYSTEM, TEMPLATE_LIVE_SUMMARY_USER } from ".";
 
 const DEFAULT_INTERVAL = 10 * 1000;
 
@@ -104,6 +102,7 @@ const LiveShortSummary2x2: WidgetTwoByTwo = () => {
           title="Live Summary"
           actions={[
             <Button
+              key="refresh"
               variant="ghost"
               size="icon"
               onClick={refetchSummary}

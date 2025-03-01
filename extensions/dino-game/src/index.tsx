@@ -1,15 +1,8 @@
 import type { Extension } from "@hypr/extension-utils";
-import ChromeDino2x1 from "./widgets/chrome/2x1";
-import { init } from "./widgets/chrome/init";
+import ChromeDino from "./widgets/chrome";
 
 const extension: Extension = {
-  chromeDino: [
-    {
-      id: "dino-game-chrome-2x1",
-      init,
-      component: ChromeDino2x1,
-    },
-  ],
+  chromeDino: ChromeDino,
 };
 
 export default extension;

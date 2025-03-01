@@ -1,9 +1,10 @@
+import { useState, useRef, useEffect } from "react";
+import { Pause, Play, RotateCcw } from "lucide-react";
+
 import {
   type WidgetTwoByTwo,
   WidgetTwoByTwoWrapper,
 } from "@hypr/ui/components/ui/widgets";
-import { Pause, Play, RotateCcw } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
 
 const INIT_MINUTES = 60;
 

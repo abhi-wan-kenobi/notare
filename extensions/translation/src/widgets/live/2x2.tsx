@@ -1,19 +1,24 @@
-import { Button } from "@hypr/ui/components/ui/button";
-import { WidgetHeader, WidgetTwoByTwo } from "@hypr/ui/components/ui/widgets";
-import { Badge } from "@hypr/ui/components/ui/badge";
 import { useEffect, useState, useRef } from "react";
+import { Maximize2Icon } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Channel } from "@tauri-apps/api/core";
+
+import { Button } from "@hypr/ui/components/ui/button";
+import {
+  WidgetHeader,
+  type WidgetTwoByTwo,
+  WidgetTwoByTwoWrapper,
+} from "@hypr/ui/components/ui/widgets";
+import { Badge } from "@hypr/ui/components/ui/badge";
 import {
   commands as listenerCommands,
   type TimelineView,
   type SessionEvent,
 } from "@hypr/plugin-listener";
-import { useQuery } from "@tanstack/react-query";
-import { fetch } from "@hypr/extension-utils";
-import { Maximize2Icon } from "lucide-react";
+
 import Translation from "../components/translation";
 
-const LiveTranslation2x2: typeof WidgetTwoByTwo = ({ onMaximize }) => {
+const LiveTranslation2x2: WidgetTwoByTwo = ({ onMaximize }) => {
   const [timeline, setTimeline] = useState<TimelineView | null>(null);
   const [isLive, setIsLive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -58,7 +63,7 @@ const LiveTranslation2x2: typeof WidgetTwoByTwo = ({ onMaximize }) => {
   });
 
   return (
-    <WidgetTwoByTwo>
+    <WidgetTwoByTwoWrapper>
       <div className="p-4 pb-0">
         <WidgetHeader
           title={
@@ -84,7 +89,7 @@ const LiveTranslation2x2: typeof WidgetTwoByTwo = ({ onMaximize }) => {
       <div ref={scrollRef} className="overflow-y-auto flex-1 p-4 pt-0">
         <Translation translation={timeline || translation.data} />
       </div>
-    </WidgetTwoByTwo>
+    </WidgetTwoByTwoWrapper>
   );
 };
 

@@ -11,7 +11,7 @@ import TicketCard from "../components/ticket-card";
 import { useState } from "react";
 
 const RelatedTickets2x2: WidgetTwoByTwo = ({ onMaximize }) => {
-  const [relatedTickets, setRelatedTickets] =
+  const [relatedTickets, _setRelatedTickets] =
     useState<Ticket[]>(mockRelatedTickets);
 
   return (

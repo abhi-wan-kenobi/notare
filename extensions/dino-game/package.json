@@ -10,7 +10,7 @@
     "./tailwind.config": "./tailwind.config.ts"
   },
   "scripts": {
-    "typecheck": "npx tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "preview": "storybook dev -p 6006",
     "build": "storybook build -o ../../apps/storybook/storybook-static/dino-game"
   },
@@ -28,10 +28,11 @@
     "autoprefixer": "^10.4.20",
     "msw": "^2.7.3",
     "msw-storybook-addon": "^2.0.4",
+    "react": "^19",
+    "react-dom": "^19",
     "storybook": "^8.6.2",
     "tailwindcss": "^3.4.17",
-    "react": "^19",
-    "react-dom": "^19"
+    "typescript": "^5.8.2"
   },
   "msw": {
     "workerDirectory": [

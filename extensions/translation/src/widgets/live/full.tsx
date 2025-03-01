@@ -1,12 +1,14 @@
-import { Button } from "@hypr/ui/components/ui/button";
-import {
-  WidgetFullSizeModal,
-  WidgetHeader,
-} from "@hypr/ui/components/ui/widgets";
-import { Minimize2Icon } from "lucide-react";
-import { Badge } from "@hypr/ui/components/ui/badge";
 import { useEffect, useState, useRef } from "react";
 import { Channel } from "@tauri-apps/api/core";
+import { Minimize2Icon } from "lucide-react";
+
+import { Button } from "@hypr/ui/components/ui/button";
+import {
+  type WidgetFullSize,
+  WidgetFullSizeWrapper,
+  WidgetHeader,
+} from "@hypr/ui/components/ui/widgets";
+import { Badge } from "@hypr/ui/components/ui/badge";
 import {
   commands as listenerCommands,
   type TimelineView,
@@ -14,7 +16,7 @@ import {
 } from "@hypr/plugin-listener";
 import Translation from "../components/translation";
 
-const LiveTranslationFull: typeof WidgetFullSizeModal = ({ onMinimize }) => {
+const LiveTranslationFull: WidgetFullSize = ({ onMinimize }) => {
   const [timeline, setTimeline] = useState<TimelineView | null>(null);
   const [isLive, setIsLive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -48,7 +50,7 @@ const LiveTranslationFull: typeof WidgetFullSizeModal = ({ onMinimize }) => {
   }, [timeline?.items.length, isLive]);
 
   return (
-    <WidgetFullSizeModal onMinimize={onMinimize}>
+    <WidgetFullSizeWrapper onMinimize={onMinimize}>
       <div className="p-4 pb-0">
         <WidgetHeader
           title={
@@ -73,7 +75,7 @@ const LiveTranslationFull: typeof WidgetFullSizeModal = ({ onMinimize }) => {
       <div ref={scrollRef} className="overflow-auto flex-1 p-4 pt-0">
         <Translation translation={timeline} />
       </div>
-    </WidgetFullSizeModal>
+    </WidgetFullSizeWrapper>
   );
 };
 

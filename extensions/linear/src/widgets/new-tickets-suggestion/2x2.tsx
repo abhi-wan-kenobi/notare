@@ -11,7 +11,7 @@ import { Ticket } from "../../type";
 import { mockNewTickets } from "../../mock";
 
 const NewTicketsSuggestion2x2: WidgetTwoByTwo = ({ onMaximize }) => {
-  const [newTickets, setNewTickets] = useState<Ticket[]>(mockNewTickets);
+  const [newTickets, _setNewTickets] = useState<Ticket[]>(mockNewTickets);
 
   return (
     <WidgetTwoByTwoWrapper>

@@ -13,7 +13,7 @@ const WidgetHeader = ({
   leading,
   title,
   actions = [
-    <Button variant="ghost" size="icon">
+    <Button variant="ghost" size="icon" key="maximize">
       <Maximize2Icon style={{ width: "16px", height: "16px" }} />
     </Button>,
   ],
