@@ -12,18 +12,17 @@ pub trait DatabasePluginExt<R: tauri::Runtime> {
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> crate::DatabasePluginExt<R> for T {
     fn local_db_path(&self) -> String {
-        if cfg!(debug_assertions) {
-            ":memory:".to_string()
-        } else {
-            let app = self.app_handle();
-            app.path()
-                .app_data_dir()
-                .unwrap()
-                .join("db.sqlite")
-                .to_str()
-                .unwrap()
-                .into()
-        }
+        let v = match std::env::var("INMEMORY_DB").unwrap_or_default().as_str() {
+            "1" | "true" => ":memory:".to_string(),
+            _ => {
+                let app = self.app_handle();
+                let dir = app.path().app_data_dir().unwrap();
+                dir.join("db.sqlite").to_str().unwrap().to_string()
+            }
+        };
+
+        tracing::info!(path = %v, "local_db");
+        v
     }
 
     fn attach_libsql_db(&self, db: hypr_db::Database) -> Result<(), String> {

@@ -130,9 +130,14 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
                 .unwrap()
         };
 
+        // TODO: fetch from valut, if not using local model
+        let api_key = "123".to_string();
+
+        tracing::info!(api_base = ?api_base, api_key = ?api_key, "listen_client");
+
         let listen_client = crate::client::ListenClient::builder()
             .api_base(api_base)
-            .api_key("123".to_string())
+            .api_key(api_key)
             .language(codes_iso_639::part_1::LanguageCode::En)
             .build();
 
