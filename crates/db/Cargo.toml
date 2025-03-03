@@ -5,14 +5,18 @@ edition = "2021"
 
 [features]
 default = ["admin", "user"]
-admin = ["hypr_nango", "async-stripe"]
+admin = ["hypr-nango", "async-stripe"]
 user = []
 
 [dependencies]
-hypr_calendar = { path = "../calendar", package = "calendar", default-features = false }
-hypr_nango = { path = "../nango", package = "nango", optional = true }
+hypr-db-core = { path = "../db-core", package = "db-core" }
+
+hypr-calendar = { path = "../calendar", package = "calendar", default-features = false }
+hypr-nango = { path = "../nango", package = "nango", optional = true }
 
 async-stripe = { workspace = true, default-features = false, features = ["runtime-tokio-hyper"], optional = true }
+libsql = { workspace = true }
+tokio = { workspace = true, features = ["rt", "macros"] }
 
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -25,6 +29,3 @@ chrono = { workspace = true }
 codes-iso-639 = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"] }
-
-libsql = { version = "0.6.0", features = [] }
-tokio = { workspace = true, features = ["rt", "macros"] }

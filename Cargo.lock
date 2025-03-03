@@ -2877,6 +2877,7 @@ dependencies = [
  "calendar",
  "chrono",
  "codes-iso-639",
+ "db-core",
  "libsql",
  "nango",
  "schemars",
@@ -2887,6 +2888,16 @@ dependencies = [
  "thiserror 2.0.12",
  "tokio",
  "uuid",
+]
+
+[[package]]
+name = "db-core"
+version = "0.1.0"
+dependencies = [
+ "libsql",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
