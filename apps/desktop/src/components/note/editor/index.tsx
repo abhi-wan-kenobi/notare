@@ -8,6 +8,7 @@ import { modelProvider } from "@hypr/utils";
 import Editor, { TiptapEditor } from "@hypr/tiptap/editor";
 import Renderer from "@hypr/tiptap/renderer";
 
+import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as miscCommands } from "@hypr/plugin-misc";
 import { commands as templateCommands } from "@hypr/plugin-template";
@@ -40,7 +41,9 @@ export default function EditorArea() {
       const config = await dbCommands.getConfig();
       const provider = await modelProvider();
 
-      console.log(1);
+      const timeline = await listenerCommands.getTimeline({
+        last_n_seconds: null,
+      });
 
       const systemMessage = await templateCommands.render(
         ENHANCE_SYSTEM_TEMPLATE_KEY,
@@ -52,7 +55,8 @@ export default function EditorArea() {
       const userMessage = await templateCommands.render(
         ENHANCE_USER_TEMPLATE_KEY,
         {
-          memo: sessionStore.session.raw_memo_html,
+          editor: sessionStore.session.raw_memo_html,
+          timeline: timeline,
         },
       );
 
@@ -72,7 +76,6 @@ export default function EditorArea() {
         acc += chunk;
         const html = await miscCommands.opinionatedMdToHtml(chunk);
         sessionStore.updateEnhancedNote(html);
-        console.log(html);
       }
 
       return text.then(miscCommands.opinionatedMdToHtml);
@@ -164,7 +167,7 @@ export default function EditorArea() {
       <AnimatePresence>
         {!ongoingSessionStore.listening && (
           <motion.div
-            className="absolute bottom-16 left-1/2 flex -translate-x-1/2 justify-center"
+            className="absolute bottom-12 left-1/2 flex -translate-x-1/2 justify-center"
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 50, opacity: 0 }}
