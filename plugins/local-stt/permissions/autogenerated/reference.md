@@ -2,6 +2,7 @@
 
 Default permissions for the plugin
 
+- `allow-get-status`
 - `allow-load-model`
 - `allow-unload-model`
 - `allow-start-server`
@@ -15,6 +16,32 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`local-stt:allow-get-status`
+
+</td>
+<td>
+
+Enables the get_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-stt:deny-get-status`
+
+</td>
+<td>
+
+Denies the get_status command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>

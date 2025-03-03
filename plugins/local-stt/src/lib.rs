@@ -7,8 +7,8 @@ mod ext;
 mod model;
 mod server;
 
-pub use error::{Error, Result};
-pub use ext::LocalSttPluginExt;
+pub use error::*;
+pub use ext::*;
 
 pub type SharedState = std::sync::Arc<tokio::sync::Mutex<State>>;
 
@@ -25,6 +25,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
+            commands::get_status::<Wry>,
             commands::load_model::<Wry>,
             commands::unload_model::<Wry>,
             commands::start_server::<Wry>,

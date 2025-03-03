@@ -1,4 +1,10 @@
-use crate::LocalSttPluginExt;
+use crate::{LocalSttPluginExt, Status};
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_status<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<Status, String> {
+    Ok(app.get_status().await)
+}
 
 #[tauri::command]
 #[specta::specta]
