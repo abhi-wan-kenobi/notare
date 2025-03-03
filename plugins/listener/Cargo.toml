@@ -21,11 +21,11 @@ serde_json = { workspace = true }
 specta-typescript = { workspace = true }
 
 [dependencies]
+hypr-listener-interface = { path = "../listener-interface", package = "listener-interface" }
 tauri-plugin-connector = { path = "../connector" }
 
 hypr-audio = { path = "../../crates/audio", package = "audio" }
 hypr-db = { path = "../../crates/db", package = "db", default-features = false, features = ["user"] }
-hypr-listener-types = { path = "../../crates/listener-types", package = "listener-types" }
 hypr-ws = { path = "../../crates/ws", package = "ws" }
 
 tauri = { workspace = true, features = ["specta", "test"] }

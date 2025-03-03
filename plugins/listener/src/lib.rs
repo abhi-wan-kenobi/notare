@@ -17,7 +17,7 @@ pub use events::*;
 pub use ext::ListenerPluginExt;
 pub use timeline::*;
 
-pub use hypr_listener_types::*;
+pub use hypr_listener_interface::*;
 
 const PLUGIN_NAME: &str = "listener";
 

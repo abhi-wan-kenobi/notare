@@ -1,10 +1,10 @@
 [package]
-name = "listener-types"
+name = "listener-interface"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hypr-db = { path = "../db", package = "db", default-features = false, features = ["user"] }
+hypr-db = { path = "../../crates/db", package = "db", default-features = false, features = ["user"] }
 
 serde = { workspace = true, features = ["derive"] }
 serde_bytes = { workspace = true }

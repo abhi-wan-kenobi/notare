@@ -315,7 +315,7 @@ dependencies = [
  "dotenv",
  "futures-core",
  "futures-util",
- "listener-types",
+ "listener-interface",
  "nango",
  "notion",
  "openai",
@@ -6293,7 +6293,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d26c52dbd32dccf2d10cac7725f8eae5296885fb5703b261f7d0a0739ec807ab"
 
 [[package]]
-name = "listener-types"
+name = "listener-interface"
 version = "0.1.0"
 dependencies = [
  "codes-iso-639",
@@ -11545,7 +11545,7 @@ dependencies = [
  "hound",
  "insta",
  "intervaltree",
- "listener-types",
+ "listener-interface",
  "rodio 0.20.1",
  "serde",
  "serde_json",
@@ -11609,7 +11609,7 @@ dependencies = [
  "futures-util",
  "kalosm-common",
  "kalosm-sound",
- "listener-types",
+ "listener-interface",
  "reqwest 0.12.12",
  "rodio 0.20.1",
  "rwhisper",

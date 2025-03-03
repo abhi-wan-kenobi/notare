@@ -11,7 +11,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 use tower_http::cors::{self, CorsLayer};
 
 use futures_util::{stream::SplitStream, SinkExt, Stream, StreamExt};
-use hypr_listener_types::{ListenInputChunk, ListenOutputChunk, ListenParams};
+use hypr_listener_interface::{ListenInputChunk, ListenOutputChunk, ListenParams};
 
 #[derive(Clone)]
 pub struct ServerHandle {

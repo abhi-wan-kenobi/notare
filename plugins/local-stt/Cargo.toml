@@ -25,9 +25,10 @@ specta-typescript = { workspace = true }
 tracing = { workspace = true }
 
 [dependencies]
+hypr-listener-interface = { path = "../listener-interface", package = "listener-interface" }
+
 hypr-bridge = { path = "../../crates/bridge", package = "bridge" }
 hypr-db = { path = "../../crates/db", package = "db", default-features = false, features = ["user"] }
-hypr-listener-types = { path = "../../crates/listener-types", package = "listener-types" }
 
 tauri = { workspace = true, features = ["test"] }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }

@@ -6,7 +6,7 @@ use axum::{
 
 use crate::state::STTState;
 
-use hypr_listener_types::ListenParams;
+use hypr_listener_interface::ListenParams;
 use hypr_stt::recorded::{RecordedSpeech, RecordedSpeechToText};
 
 pub async fn handler(

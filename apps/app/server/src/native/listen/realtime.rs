@@ -16,7 +16,7 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::sync::broadcast;
 
 use hypr_db::user::TranscriptChunk;
-use hypr_listener_types::{ListenInputChunk, ListenOutputChunk, ListenParams};
+use hypr_listener_interface::{ListenInputChunk, ListenOutputChunk, ListenParams};
 use hypr_stt::realtime::RealtimeSpeechToText;
 
 use crate::state::STTState;
