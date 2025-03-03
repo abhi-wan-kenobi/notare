@@ -11,6 +11,8 @@ pub use ext::*;
 pub use store::*;
 pub use vault::*;
 
+pub use hypr_auth_interface::{RequestParams, ResponseParams};
+
 const PLUGIN_NAME: &str = "auth";
 
 const CALLBACK_TEMPLATE_KEY: &str = "callback";

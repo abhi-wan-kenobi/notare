@@ -6,7 +6,8 @@ use axum::{
 
 use crate::state::AppState;
 use clerk_rs::validators::authorizer::ClerkJwt;
-use tauri_plugin_auth::{RequestParams, ResponseParams};
+
+use hypr_auth_interface::{RequestParams, ResponseParams};
 
 pub async fn handler(
     State(state): State<AppState>,

@@ -302,6 +302,7 @@ dependencies = [
  "apalis-cron",
  "async-stream",
  "async-stripe",
+ "auth-interface",
  "axum 0.8.1",
  "bridge",
  "buffer",
@@ -328,7 +329,6 @@ dependencies = [
  "specta-typescript",
  "strum 0.26.3",
  "stt",
- "tauri-plugin-auth",
  "tokio",
  "tower 0.5.2",
  "tower-http 0.6.2",
@@ -763,6 +763,15 @@ name = "audio-core"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db446410e749ce0157f460ef73d97f002251808aa6b6ca69f476578f36e958e0"
+
+[[package]]
+name = "auth-interface"
+version = "0.1.0"
+dependencies = [
+ "schemars",
+ "serde",
+ "specta",
+]
 
 [[package]]
 name = "auto-launch"
@@ -11324,6 +11333,7 @@ dependencies = [
 name = "tauri-plugin-auth"
 version = "0.1.0"
 dependencies = [
+ "auth-interface",
  "keyring",
  "minijinja",
  "schemars",
