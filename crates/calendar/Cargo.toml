@@ -10,6 +10,8 @@ google = []
 outlook = []
 
 [dependencies]
+hypr-calendar-interface = { path = "../calendar-interface", package = "calendar-interface" }
+
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 
@@ -29,5 +31,4 @@ objc2-contacts = { version = "0.2.2", features = ["CNContactStore", "CNLabeledVa
 objc2-foundation = { version = "0.2.2", features = ["NSEnumerator"] }
 
 [dev-dependencies]
-chrono = "0.4.39"
 tokio = { workspace = true, features = ["rt", "macros"] }

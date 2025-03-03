@@ -21,11 +21,11 @@ user_common_derives! {
     }
 }
 
-impl From<hypr_calendar::Platform> for Platform {
-    fn from(platform: hypr_calendar::Platform) -> Self {
+impl From<hypr_calendar_interface::Platform> for Platform {
+    fn from(platform: hypr_calendar_interface::Platform) -> Self {
         match platform {
-            hypr_calendar::Platform::Apple => Platform::Apple,
-            hypr_calendar::Platform::Google => Platform::Google,
+            hypr_calendar_interface::Platform::Apple => Platform::Apple,
+            hypr_calendar_interface::Platform::Google => Platform::Google,
         }
     }
 }

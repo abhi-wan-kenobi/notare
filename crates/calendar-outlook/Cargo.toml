@@ -1,0 +1,10 @@
+[package]
+name = "calendar-outlook"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hypr-calendar-interface = { path = "../calendar-interface", package = "calendar-interface" }
+
+anyhow = { workspace = true }
+graph-rs-sdk = { workspace = true }

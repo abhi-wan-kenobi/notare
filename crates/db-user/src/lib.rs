@@ -123,10 +123,8 @@ pub async fn migrate(conn: &libsql::Connection) -> libsql::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::UserDatabase;
-    use crate::{
-        user::{migrate, seed},
-        DatabaseBaseBuilder,
-    };
+    use crate::{migrate, seed};
+    use hypr_db_core::DatabaseBaseBuilder;
 
     pub async fn setup_db() -> UserDatabase {
         let conn = DatabaseBaseBuilder::default()

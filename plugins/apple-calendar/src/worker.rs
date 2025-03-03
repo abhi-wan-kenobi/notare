@@ -1,7 +1,7 @@
 use apalis::prelude::{Data, Error, WorkerBuilder, WorkerFactoryFn};
 use chrono::{DateTime, Utc};
 
-use hypr_calendar::CalendarSource;
+use hypr_calendar_interface::{Calendar, CalendarSource, Event, EventFilter};
 
 #[allow(unused)]
 #[derive(Default, Debug, Clone)]
@@ -25,7 +25,7 @@ pub async fn perform(_job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
     tracing::info!("{}_perform_started", WORKER_NAME);
 
     let calendar_access = tauri::async_runtime::spawn_blocking(|| {
-        let handle = hypr_calendar::apple::Handle::new();
+        let handle = hypr_calendar_apple::Handle::new();
         handle.calendar_access_status()
     })
     .await
@@ -82,11 +82,11 @@ pub async fn perform(_job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
     Ok(())
 }
 
-async fn list_calendars() -> Result<Vec<hypr_calendar::Calendar>, String> {
-    let mut calendars: Vec<hypr_calendar::Calendar> = Vec::new();
+async fn list_calendars() -> Result<Vec<Calendar>, String> {
+    let mut calendars: Vec<Calendar> = Vec::new();
 
     let apple_calendars = tauri::async_runtime::spawn_blocking(|| {
-        let handle = hypr_calendar::apple::Handle::new();
+        let handle = hypr_calendar_apple::Handle::new();
         tauri::async_runtime::block_on(handle.list_calendars()).unwrap_or_default()
     })
     .await
@@ -97,21 +97,19 @@ async fn list_calendars() -> Result<Vec<hypr_calendar::Calendar>, String> {
     Ok(calendars)
 }
 
-async fn list_events(
-    calendar: hypr_calendar::Calendar,
-) -> Result<Vec<hypr_calendar::Event>, String> {
+async fn list_events(calendar: Calendar) -> Result<Vec<Event>, String> {
     let now = Utc::now();
 
-    let mut events: Vec<hypr_calendar::Event> = Vec::new();
+    let mut events: Vec<Event> = Vec::new();
 
-    let filter = hypr_calendar::EventFilter {
+    let filter = EventFilter {
         calendars: vec![calendar],
         from: (now - chrono::Duration::days(30)),
         to: (now + chrono::Duration::days(30)),
     };
 
     let apple_events = tauri::async_runtime::spawn_blocking(move || {
-        let handle = hypr_calendar::apple::Handle::new();
+        let handle = hypr_calendar_apple::Handle::new();
         tauri::async_runtime::block_on(handle.list_events(filter)).unwrap_or_default()
     })
     .await

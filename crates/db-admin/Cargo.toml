@@ -5,8 +5,6 @@ edition = "2021"
 
 [dependencies]
 hypr-db-core = { path = "../db-core", package = "db-core" }
-
-hypr-calendar = { path = "../calendar", package = "calendar", default-features = false }
 hypr-nango = { path = "../nango", package = "nango" }
 
 async-stripe = { workspace = true, default-features = false, features = ["runtime-tokio-hyper"] }

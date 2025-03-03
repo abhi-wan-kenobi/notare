@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 
 use super::err_from;
 use crate::state::WorkerState;
-use hypr_calendar::CalendarSource;
+use hypr_calendar_interface::CalendarSource;
 use hypr_nango::{NangoCredentials, NangoGetConnectionResponse, NangoIntegration};
 
 #[allow(unused)]
@@ -42,11 +42,11 @@ pub async fn perform(job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
             {
                 let NangoCredentials::OAuth2(c) = connection.credentials;
 
-                let gcal = hypr_calendar::google::Handle::new(c.access_token).await;
+                let gcal = hypr_calendar_google::Handle::new(c.access_token).await;
 
                 let now = DateTime::<Utc>::from_timestamp(job.0.timestamp(), 0).unwrap();
 
-                let filter = hypr_calendar::EventFilter {
+                let filter = hypr_calendar_interface::EventFilter {
                     calendars: vec![],
                     from: now - chrono::Duration::days(1),
                     to: now + chrono::Duration::days(1),

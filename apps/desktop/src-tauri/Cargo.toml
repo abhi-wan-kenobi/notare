@@ -26,7 +26,6 @@ tauri-plugin-apple-calendar = { path = "../../../plugins/apple-calendar" }
 
 [dependencies]
 hypr-audio = { path = "../../../crates/audio", package = "audio" }
-hypr-calendar = { path = "../../../crates/calendar", package = "calendar", features = ["apple"] }
 hypr-data = { path = "../../../crates/data", package = "data", optional = true }
 hypr-db-core = { path = "../../../crates/db-core", package = "db-core" }
 hypr-db-user = { path = "../../../crates/db-user", package = "db-user" }

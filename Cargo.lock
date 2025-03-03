@@ -307,7 +307,9 @@ dependencies = [
  "bridge",
  "buffer",
  "bytes",
- "calendar",
+ "calendar-google",
+ "calendar-interface",
+ "calendar-outlook",
  "chrono",
  "clerk-rs",
  "codes-iso-639",
@@ -1797,6 +1799,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "block2 0.5.1",
+ "calendar-interface",
  "chrono",
  "google-calendar",
  "graph-rs-sdk",
@@ -1809,6 +1812,52 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.12",
  "tokio",
+]
+
+[[package]]
+name = "calendar-apple"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "block2 0.5.1",
+ "calendar-interface",
+ "chrono",
+ "itertools 0.14.0",
+ "objc2 0.5.2",
+ "objc2-contacts",
+ "objc2-event-kit",
+ "objc2-foundation 0.2.2",
+ "thiserror 2.0.12",
+ "tokio",
+]
+
+[[package]]
+name = "calendar-google"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "calendar-interface",
+ "chrono",
+ "google-calendar",
+]
+
+[[package]]
+name = "calendar-interface"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "calendar-outlook"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "calendar-interface",
+ "graph-rs-sdk",
 ]
 
 [[package]]
@@ -2875,7 +2924,6 @@ name = "db-admin"
 version = "0.1.0"
 dependencies = [
  "async-stripe",
- "calendar",
  "chrono",
  "codes-iso-639",
  "db-core",
@@ -2905,7 +2953,7 @@ dependencies = [
 name = "db-user"
 version = "0.1.0"
 dependencies = [
- "calendar",
+ "calendar-interface",
  "chrono",
  "codes-iso-639",
  "db-core",
@@ -3080,7 +3128,6 @@ dependencies = [
  "anyhow",
  "audio 0.1.0",
  "bytes",
- "calendar",
  "chrono",
  "codes-iso-639",
  "data",
@@ -11344,7 +11391,8 @@ version = "0.1.0"
 dependencies = [
  "apalis",
  "apalis-cron",
- "calendar",
+ "calendar-apple",
+ "calendar-interface",
  "chrono",
  "db-user",
  "serde",

@@ -26,8 +26,8 @@ impl Default for Human {
     }
 }
 
-impl From<hypr_calendar::Participant> for Human {
-    fn from(participant: hypr_calendar::Participant) -> Self {
+impl From<hypr_calendar_interface::Participant> for Human {
+    fn from(participant: hypr_calendar_interface::Participant) -> Self {
         Human {
             id: uuid::Uuid::new_v4().to_string(),
             organization_id: None,

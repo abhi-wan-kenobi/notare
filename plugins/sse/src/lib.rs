@@ -40,11 +40,6 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
 #[cfg(test)]
 mod test {
-    use std::sync::{Arc, Mutex};
-    use std::time::Duration;
-    use tauri_specta::Event;
-    use tokio::time::timeout;
-
     use super::*;
 
     #[test]

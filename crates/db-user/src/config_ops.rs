@@ -47,9 +47,7 @@ impl UserDatabase {
 
 #[cfg(test)]
 mod tests {
-    use crate::user::{
-        tests::setup_db, Config, ConfigAI, ConfigGeneral, ConfigNotification, Human,
-    };
+    use crate::{tests::setup_db, Config, ConfigAI, ConfigGeneral, ConfigNotification, Human};
 
     #[tokio::test]
     async fn test_config() {
