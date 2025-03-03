@@ -104,7 +104,7 @@ pub async fn seed(db: &UserDatabase) -> Result<(), crate::Error> {
             user_id: yujong.clone().id,
             title: "Session 1".to_string(),
             timestamp: now,
-            calendar_event_id: Some(events[0].id.clone()),
+            calendar_event_id: None,
             audio_local_path: None,
             audio_remote_path: None,
             raw_memo_html: "".to_string(),
@@ -116,7 +116,7 @@ pub async fn seed(db: &UserDatabase) -> Result<(), crate::Error> {
             user_id: yujong.clone().id,
             title: "Session 2".to_string(),
             timestamp: now + chrono::Duration::days(1),
-            calendar_event_id: Some(events[1].id.clone()),
+            calendar_event_id: None,
             audio_local_path: None,
             audio_remote_path: None,
             raw_memo_html: "".to_string(),
@@ -126,11 +126,11 @@ pub async fn seed(db: &UserDatabase) -> Result<(), crate::Error> {
     ];
 
     for participant in participants.clone() {
-        let _ = db.upsert_human(participant).await?;
+        db.upsert_human(participant).await?;
     }
 
     for calendar in calendars {
-        let _ = db.upsert_calendar(calendar).await?;
+        db.upsert_calendar(calendar).await?;
     }
 
     for event in events {
