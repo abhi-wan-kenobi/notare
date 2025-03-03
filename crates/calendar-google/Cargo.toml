@@ -6,6 +6,5 @@ edition = "2021"
 [dependencies]
 hypr-calendar-interface = { path = "../calendar-interface", package = "calendar-interface" }
 
-anyhow = { workspace = true }
 chrono = { workspace = true }
 google-calendar = "0.7.0"

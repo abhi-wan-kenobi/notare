@@ -1818,7 +1818,6 @@ dependencies = [
 name = "calendar-apple"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "block2 0.5.1",
  "calendar-interface",
  "chrono",
@@ -1827,7 +1826,6 @@ dependencies = [
  "objc2-contacts",
  "objc2-event-kit",
  "objc2-foundation 0.2.2",
- "thiserror 2.0.12",
  "tokio",
 ]
 
@@ -1835,7 +1833,6 @@ dependencies = [
 name = "calendar-google"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "calendar-interface",
  "chrono",
  "google-calendar",
@@ -1855,7 +1852,6 @@ dependencies = [
 name = "calendar-outlook"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "calendar-interface",
  "graph-rs-sdk",
 ]
@@ -2932,7 +2928,6 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "specta",
  "strum 0.26.3",
  "thiserror 2.0.12",
  "tokio",

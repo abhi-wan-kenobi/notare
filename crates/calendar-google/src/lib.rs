@@ -1,10 +1,8 @@
 // https://developers.google.com/calendar/api/v3/reference/calendars
 // https://developers.google.com/calendar/api/v3/reference/events
 
-use anyhow::Result;
-
 use hypr_calendar_interface::{
-    Calendar, CalendarSource, Event, EventFilter, Participant, Platform,
+    Calendar, CalendarSource, Error, Event, EventFilter, Participant, Platform,
 };
 
 pub struct Handle {
@@ -18,8 +16,8 @@ impl Handle {
     }
 }
 
-impl hypr_calendar_interface::CalendarSource for Handle {
-    async fn list_calendars(&self) -> Result<Vec<Calendar>> {
+impl CalendarSource for Handle {
+    async fn list_calendars(&self) -> Result<Vec<Calendar>, Error> {
         let list = self
             .client
             .calendar_list()
@@ -37,7 +35,7 @@ impl hypr_calendar_interface::CalendarSource for Handle {
         Ok(list)
     }
 
-    async fn list_events(&self, filter: EventFilter) -> anyhow::Result<Vec<Event>> {
+    async fn list_events(&self, filter: EventFilter) -> Result<Vec<Event>, Error> {
         let mut all_events = Vec::new();
 
         for calendar in filter.calendars {

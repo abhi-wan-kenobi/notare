@@ -1,4 +1,3 @@
-use anyhow::Result;
 use itertools::Itertools;
 
 use block2::RcBlock;
@@ -12,7 +11,7 @@ use objc2_event_kit::{EKAuthorizationStatus, EKCalendar, EKEntityType, EKEventSt
 use objc2_foundation::{NSArray, NSDate, NSError, NSPredicate, NSString};
 
 use hypr_calendar_interface::{
-    Calendar, CalendarSource, Event, EventFilter, Participant, Platform,
+    Calendar, CalendarSource, Error, Event, EventFilter, Participant, Platform,
 };
 
 pub struct Handle {
@@ -124,8 +123,8 @@ impl Handle {
     }
 }
 
-impl hypr_calendar_interface::CalendarSource for Handle {
-    async fn list_calendars(&self) -> Result<Vec<Calendar>> {
+impl CalendarSource for Handle {
+    async fn list_calendars(&self) -> Result<Vec<Calendar>, Error> {
         let calendars = unsafe { self.event_store.calendars() };
 
         let list = calendars
@@ -150,7 +149,7 @@ impl hypr_calendar_interface::CalendarSource for Handle {
         Ok(list)
     }
 
-    async fn list_events(&self, filter: EventFilter) -> Result<Vec<Event>> {
+    async fn list_events(&self, filter: EventFilter) -> Result<Vec<Event>, Error> {
         let predicate = self.events_predicate(&filter);
         let events = unsafe { self.event_store.eventsMatchingPredicate(&predicate) };
 

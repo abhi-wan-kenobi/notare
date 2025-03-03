@@ -17,7 +17,7 @@ strum = { workspace = true, features = ["derive"] }
 schemars = { workspace = true, features = ["chrono"] }
 specta = { workspace = true, features = ["derive", "chrono", "serde_json"] }
 
-chrono = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
 codes-iso-639 = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"] }
