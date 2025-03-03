@@ -41,10 +41,6 @@ user_common_derives! {
         #[specta(type = String)]
         #[schemars(with = "String", regex(pattern = "^[a-zA-Z]{2}$"))]
         #[serde(serialize_with = "serialize_language_code", deserialize_with = "deserialize_language_code")]
-        pub speech_language: LanguageCode,
-        #[specta(type = String)]
-        #[schemars(with = "String", regex(pattern = "^[a-zA-Z]{2}$"))]
-        #[serde(serialize_with = "serialize_language_code", deserialize_with = "deserialize_language_code")]
         pub display_language: LanguageCode,
         pub jargons: Vec<String>,
         pub tags: Vec<String>,
@@ -55,7 +51,6 @@ impl Default for ConfigGeneral {
     fn default() -> Self {
         Self {
             autostart: true,
-            speech_language: LanguageCode::Ko,
             display_language: LanguageCode::Ko,
             jargons: vec![],
             tags: vec![],

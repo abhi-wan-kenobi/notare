@@ -34,7 +34,6 @@ const SUPPORTED_LANGUAGES: ISO_639_1_CODE[] = ["en", "ko"];
 const schema = z.object({
   autostart: z.boolean().optional(),
   displayLanguage: z.enum(SUPPORTED_LANGUAGES as [string, ...string[]]),
-  speechLanguage: z.enum(SUPPORTED_LANGUAGES as [string, ...string[]]),
   jargons: z.string(),
   tags: z.array(z.string()),
 });
@@ -57,7 +56,6 @@ export default function General() {
     values: {
       autostart: config.data?.general.autostart ?? false,
       displayLanguage: config.data?.general.display_language ?? "en",
-      speechLanguage: config.data?.general.speech_language ?? "en",
       jargons: (config.data?.general.jargons ?? []).join(", "),
       tags: config.data?.general.tags ?? [],
     },
@@ -72,7 +70,6 @@ export default function General() {
 
       const nextGeneral: ConfigGeneral = {
         autostart: v.autostart ?? true,
-        speech_language: v.speechLanguage,
         display_language: v.displayLanguage,
         jargons: v.jargons.split(",").map((jargon) => jargon.trim()),
         tags: v.tags,
