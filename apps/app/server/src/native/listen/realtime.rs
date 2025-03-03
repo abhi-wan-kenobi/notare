@@ -178,13 +178,5 @@ mod tests {
             .unwrap();
         let addr = listener.local_addr().unwrap();
         tokio::spawn(axum::serve(listener, app()).into_future());
-
-        let client = hypr_bridge::Client::builder()
-            .api_base(format!("http://localhost:{}", addr.port()))
-            .api_key("")
-            .build()
-            .unwrap();
-
-        // let _ = client.transcribe().await.unwrap();
     }
 }
