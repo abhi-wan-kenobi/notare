@@ -1,7 +1,14 @@
 use std::future::Future;
 use tauri::{ipc::Channel, Manager, Runtime};
 
+#[derive(serde::Serialize, specta::Type)]
+pub struct Status {
+    pub model_loaded: bool,
+    pub server_running: bool,
+}
+
 pub trait LocalLlmPluginExt<R: Runtime> {
+    fn get_status(&self) -> impl Future<Output = Status>;
     fn load_model(&self, on_progress: Channel<u8>) -> impl Future<Output = Result<u8, String>>;
     fn unload_model(&self) -> impl Future<Output = Result<(), String>>;
     fn start_server(&self) -> impl Future<Output = Result<(), String>>;
@@ -9,6 +16,17 @@ pub trait LocalLlmPluginExt<R: Runtime> {
 }
 
 impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
+    #[tracing::instrument(skip_all)]
+    async fn get_status(&self) -> Status {
+        let state = self.state::<crate::SharedState>();
+        let s = state.lock().await;
+
+        Status {
+            model_loaded: s.model.is_some(),
+            server_running: s.server.is_some(),
+        }
+    }
+
     #[tracing::instrument(skip_all)]
     async fn load_model(&self, on_progress: Channel<u8>) -> Result<u8, String> {
         let data_dir = self.path().app_data_dir().unwrap();

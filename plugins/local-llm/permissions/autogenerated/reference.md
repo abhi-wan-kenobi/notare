@@ -6,6 +6,7 @@ Default permissions for the plugin
 - `allow-unload-model`
 - `allow-start-server`
 - `allow-stop-server`
+- `allow-get-status`
 
 ## Permission Table
 
@@ -15,6 +16,32 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`local-llm:allow-get-status`
+
+</td>
+<td>
+
+Enables the get_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-llm:deny-get-status`
+
+</td>
+<td>
+
+Denies the get_status command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>
