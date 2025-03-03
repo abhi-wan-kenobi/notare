@@ -167,6 +167,7 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
+    // cargo test test_listen -p tauri-plugin-local-stt -- --ignored --nocapture
     async fn test_listen() {
         let state = crate::SharedState::default();
         {
