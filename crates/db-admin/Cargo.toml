@@ -1,20 +1,15 @@
 [package]
-name = "db"
+name = "db-admin"
 version = "0.1.0"
 edition = "2021"
-
-[features]
-default = ["admin", "user"]
-admin = ["hypr-nango", "async-stripe"]
-user = []
 
 [dependencies]
 hypr-db-core = { path = "../db-core", package = "db-core" }
 
 hypr-calendar = { path = "../calendar", package = "calendar", default-features = false }
-hypr-nango = { path = "../nango", package = "nango", optional = true }
+hypr-nango = { path = "../nango", package = "nango" }
 
-async-stripe = { workspace = true, default-features = false, features = ["runtime-tokio-hyper"], optional = true }
+async-stripe = { workspace = true, default-features = false, features = ["runtime-tokio-hyper"] }
 libsql = { workspace = true }
 tokio = { workspace = true, features = ["rt", "macros"] }
 

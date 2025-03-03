@@ -71,6 +71,8 @@ mod seed;
 #[cfg(debug_assertions)]
 pub use seed::*;
 
+pub use hypr_db_core::Error;
+
 #[macro_export]
 macro_rules! user_common_derives {
     ($item:item) => {
@@ -115,7 +117,7 @@ const MIGRATIONS: [&str; 12] = [
 ];
 
 pub async fn migrate(conn: &libsql::Connection) -> libsql::Result<()> {
-    crate::migrate(conn, MIGRATIONS.to_vec()).await
+    hypr_db_core::migrate(conn, MIGRATIONS.to_vec()).await
 }
 
 #[cfg(test)]

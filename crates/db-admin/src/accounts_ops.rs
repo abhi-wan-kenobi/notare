@@ -125,7 +125,7 @@ impl AdminDatabase {
 
 #[cfg(test)]
 mod tests {
-    use crate::admin::{tests::setup_db, Account};
+    use crate::{tests::setup_db, Account};
 
     #[tokio::test]
     async fn test_accounts() {

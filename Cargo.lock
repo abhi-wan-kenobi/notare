@@ -311,7 +311,9 @@ dependencies = [
  "chrono",
  "clerk-rs",
  "codes-iso-639",
- "db",
+ "db-admin",
+ "db-core",
+ "db-user",
  "dotenv",
  "futures-core",
  "futures-util",
@@ -1649,7 +1651,7 @@ dependencies = [
  "bytes",
  "codes-iso-639",
  "data",
- "db",
+ "db-user",
  "futures-channel",
  "futures-util",
  "hound",
@@ -2148,7 +2150,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "db",
  "serde",
  "serde_json",
  "tokio",
@@ -2870,7 +2871,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c297a1c74b71ae29df00c3e22dd9534821d60eb9af5a0192823fa2acea70c2a"
 
 [[package]]
-name = "db"
+name = "db-admin"
 version = "0.1.0"
 dependencies = [
  "async-stripe",
@@ -2898,6 +2899,25 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.12",
+]
+
+[[package]]
+name = "db-user"
+version = "0.1.0"
+dependencies = [
+ "calendar",
+ "chrono",
+ "codes-iso-639",
+ "db-core",
+ "libsql",
+ "schemars",
+ "serde",
+ "serde_json",
+ "specta",
+ "strum 0.26.3",
+ "thiserror 2.0.12",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -3064,7 +3084,8 @@ dependencies = [
  "chrono",
  "codes-iso-639",
  "data",
- "db",
+ "db-core",
+ "db-user",
  "dotenvy_macro",
  "futures-core",
  "futures-util",
@@ -6308,7 +6329,7 @@ name = "listener-interface"
 version = "0.1.0"
 dependencies = [
  "codes-iso-639",
- "db",
+ "db-user",
  "schemars",
  "serde",
  "serde_bytes",
@@ -6947,7 +6968,7 @@ name = "notion"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "db",
+ "db-user",
  "notion-client",
  "strum 0.26.3",
 ]
@@ -10481,7 +10502,7 @@ name = "slack"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "db",
+ "db-user",
  "slack-morphism",
  "url",
 ]
@@ -10853,7 +10874,7 @@ dependencies = [
  "clova",
  "codes-iso-639",
  "data",
- "db",
+ "db-user",
  "deepgram",
  "futures-core",
  "futures-util",
@@ -11325,7 +11346,7 @@ dependencies = [
  "apalis-cron",
  "calendar",
  "chrono",
- "db",
+ "db-user",
  "serde",
  "serde_json",
  "specta",
@@ -11414,7 +11435,8 @@ dependencies = [
 name = "tauri-plugin-db"
 version = "0.1.0"
 dependencies = [
- "db",
+ "db-core",
+ "db-user",
  "serde",
  "specta",
  "specta-typescript",
@@ -11551,7 +11573,7 @@ dependencies = [
  "bytes",
  "codes-iso-639",
  "data",
- "db",
+ "db-user",
  "futures-util",
  "hound",
  "insta",
@@ -11614,7 +11636,7 @@ dependencies = [
  "bytes",
  "codes-iso-639",
  "data",
- "db",
+ "db-user",
  "dirs 6.0.0",
  "futures-core",
  "futures-util",

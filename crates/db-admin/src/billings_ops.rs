@@ -93,7 +93,7 @@ impl AdminDatabase {
 
 #[cfg(test)]
 mod tests {
-    use crate::admin::tests::setup_db;
+    use crate::tests::setup_db;
 
     #[tokio::test]
     async fn test_update_stripe_customer() {
