@@ -39,11 +39,11 @@ jobs:
       - uses: ./.github/actions/pnpm_install
       - run: pnpm -F ui build
       - run: pnpm -r typecheck
+      - if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev pkg-config
       - run: cargo check --all-targets
-      # - if: matrix.platform == 'ubuntu-22.04'
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev pkg-config
       # - uses: tauri-apps/tauri-action@v0
       #   env:
       #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
