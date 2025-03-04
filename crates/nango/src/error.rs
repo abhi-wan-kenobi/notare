@@ -2,6 +2,8 @@ use serde::{ser::Serializer, Serialize};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("nango error: {0}")]
+    NangoError(String),
     #[error(transparent)]
     ReqwestError(#[from] reqwest::Error),
     #[error("unknown integration")]

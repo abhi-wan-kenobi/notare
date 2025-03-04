@@ -10,10 +10,11 @@ pub async fn handler(
     State(state): State<AppState>,
     Json(input): Json<hypr_nango::NangoConnectWebhook>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let connection = match state.nango.get_connection(input.connection_id).await {
-        Ok(hypr_nango::NangoGetConnectionResponse::Ok(connection)) => Ok(connection),
-        _ => Err(StatusCode::NOT_FOUND),
-    }?;
+    let connection = state
+        .nango
+        .get_connection(input.connection_id)
+        .await
+        .map_err(|_| StatusCode::NOT_FOUND)?;
 
     let clerk_user_id = input.end_user.end_user_id;
     let user = state

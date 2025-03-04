@@ -7,6 +7,7 @@ macro_rules! common_derives {
     ($item:item) => {
         #[derive(
             Debug,
+            Eq,
             PartialEq,
             Clone,
             serde::Serialize,
@@ -20,7 +21,7 @@ macro_rules! common_derives {
 
 // https://docs.nango.dev/understand/concepts/integrations
 common_derives! {
-    #[derive(strum::AsRefStr)]
+    #[derive(strum::AsRefStr, std::hash::Hash)]
     pub enum NangoIntegration {
         #[serde(rename = "google-calendar")]
         #[strum(serialize = "google-calendar")]
@@ -184,13 +185,15 @@ impl NangoClient {
     pub async fn get_connection(
         &self,
         connection_id: impl std::fmt::Display,
-    ) -> Result<NangoGetConnectionResponse, crate::Error> {
+    ) -> Result<NangoGetConnectionResponseData, crate::Error> {
         let mut url = self.api_base.clone();
         url.set_path(&format!("/connection/{}", connection_id));
 
-        let res = self.client.get(url).send().await?.json().await?;
-
-        Ok(res)
+        let res: NangoGetConnectionResponse = self.client.get(url).send().await?.json().await?;
+        match res {
+            NangoGetConnectionResponse::Ok(data) => Ok(data),
+            NangoGetConnectionResponse::Error { message } => Err(crate::Error::NangoError(message)),
+        }
     }
 
     // https://docs.nango.dev/reference/api/connect/sessions/create

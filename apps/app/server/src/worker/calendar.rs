@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use apalis::prelude::{Data, Error};
 use chrono::{DateTime, Utc};
 
 use crate::state::WorkerState;
 use hypr_calendar_interface::CalendarSource;
-use hypr_nango::{NangoCredentials, NangoGetConnectionResponse, NangoIntegration};
+use hypr_nango::{NangoCredentials, NangoIntegration};
 
 #[allow(unused)]
 #[derive(Default, Debug, Clone)]
@@ -23,25 +25,60 @@ pub async fn perform(job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
         .map_err(|e| Into::<crate::Error>::into(e).as_worker_error())?;
 
     for user in users {
-        let gcal_integrations = ctx
+        let _user_db = {
+            let account = ctx
+                .admin_db
+                .get_account_by_id(&user.account_id)
+                .await
+                .map_err(|e| Into::<crate::Error>::into(e).as_worker_error())?
+                .unwrap();
+
+            let url = ctx.turso.db_url(&account.turso_db_name);
+            let token = ctx
+                .turso
+                .generate_db_token(&account.turso_db_name)
+                .await
+                .map_err(|e| Into::<crate::Error>::into(e).as_worker_error())?;
+
+            let conn = hypr_db_core::DatabaseBaseBuilder::default()
+                .remote(url, token)
+                .build()
+                .await
+                .map_err(|e| Into::<crate::Error>::into(e).as_worker_error())?
+                .connect()
+                .map_err(|e| {
+                    let db_err: hypr_db_core::Error = e.into();
+                    let err: crate::Error = db_err.into();
+                    err.as_worker_error()
+                })?;
+
+            hypr_db_user::UserDatabase::from(conn)
+        };
+
+        let integrations = ctx
             .admin_db
             .list_integrations(user.id)
             .await
-            .map_err(|e| Into::<crate::Error>::into(e).as_worker_error())?
-            .into_iter()
-            .filter(|i| i.nango_integration_id == NangoIntegration::GoogleCalendar)
-            .collect::<Vec<_>>();
+            .map_err(|e| Into::<crate::Error>::into(e).as_worker_error())?;
 
-        for integration in gcal_integrations {
-            if let NangoGetConnectionResponse::Ok(connection) = ctx
-                .nango
-                .get_connection(integration.nango_connection_id)
-                .await
-                .map_err(|e| Into::<crate::Error>::into(e).as_worker_error())?
-            {
-                let NangoCredentials::OAuth2(c) = connection.credentials;
+        let integration_groups: HashMap<NangoIntegration, Vec<hypr_db_admin::Integration>> =
+            integrations
+                .into_iter()
+                .fold(HashMap::new(), |mut acc, integration| {
+                    let integration_id = integration.nango_integration_id.clone();
+                    acc.entry(integration_id)
+                        .or_insert_with(Vec::new)
+                        .push(integration);
+                    acc
+                });
 
-                let gcal = hypr_calendar_google::Handle::new(c.access_token).await;
+        for (_kind, integrations) in integration_groups {
+            for integration in integrations {
+                let token = get_oauth_access_token(&ctx.nango, &integration)
+                    .await
+                    .map_err(|e| e.as_worker_error())?;
+
+                let gcal = hypr_calendar_google::Handle::new(token).await;
 
                 let now = DateTime::<Utc>::from_timestamp(job.0.timestamp(), 0).unwrap();
 
@@ -54,36 +91,6 @@ pub async fn perform(job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
                     .list_events(filter)
                     .await
                     .map_err(|e| Into::<crate::Error>::into(e).as_worker_error())?;
-
-                let _user_db = {
-                    let account = ctx
-                        .admin_db
-                        .get_account_by_id(&user.account_id)
-                        .await
-                        .map_err(|e| Into::<crate::Error>::into(e).as_worker_error())?
-                        .unwrap();
-
-                    let url = ctx.turso.db_url(&account.turso_db_name);
-                    let token = ctx
-                        .turso
-                        .generate_db_token(&account.turso_db_name)
-                        .await
-                        .map_err(|e| Into::<crate::Error>::into(e).as_worker_error())?;
-
-                    let conn = hypr_db_core::DatabaseBaseBuilder::default()
-                        .remote(url, token)
-                        .build()
-                        .await
-                        .map_err(|e| Into::<crate::Error>::into(e).as_worker_error())?
-                        .connect()
-                        .map_err(|e| {
-                            let db_err: hypr_db_core::Error = e.into();
-                            let err: crate::Error = db_err.into();
-                            err.as_worker_error()
-                        })?;
-
-                    hypr_db_user::UserDatabase::from(conn)
-                };
 
                 for _e in events {
                     // TODO
@@ -106,4 +113,16 @@ pub async fn perform(job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+async fn get_oauth_access_token(
+    nango: &hypr_nango::NangoClient,
+    integration: &hypr_db_admin::Integration,
+) -> Result<String, crate::Error> {
+    let connection = nango
+        .get_connection(integration.nango_connection_id.clone())
+        .await?;
+
+    let NangoCredentials::OAuth2(c) = connection.credentials;
+    Ok(c.access_token)
 }
