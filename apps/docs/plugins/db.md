@@ -20,7 +20,7 @@ import { commands } from "{{ typedoc.name }}";
 
 <ul>
   <PluginSourceList :id="$frontmatter.id" />
-  <li><a :href="`https://github.com/fastrepl/hypr/tree/main/crates/db/src/user`">Rust data types</a></li>
+  <li><a :href="`https://github.com/fastrepl/hypr/tree/main/crates/db-user/src`">Rust data types</a></li>
 </ul>
 
 <script setup lang="ts">
