@@ -1257,6 +1257,15 @@
           "end_user": {
             "$ref": "#/components/schemas/NangoConnectSessionRequestUser"
           },
+          "integrations_config_defaults": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/NangoConnectSessionRequestIntegrationConfig"
+            }
+          },
           "organization": {
             "anyOf": [
               {
@@ -1266,6 +1275,38 @@
                 "type": "null"
               }
             ]
+          }
+        }
+      },
+      "NangoConnectSessionRequestIntegrationConfig": {
+        "type": "object",
+        "properties": {
+          "connection_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NangoConnectSessionRequestIntegrationConnectionConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "user_scopes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "NangoConnectSessionRequestIntegrationConnectionConfig": {
+        "type": "object",
+        "required": [
+          "oauth_scopes_override"
+        ],
+        "properties": {
+          "oauth_scopes_override": {
+            "type": "string"
           }
         }
       },

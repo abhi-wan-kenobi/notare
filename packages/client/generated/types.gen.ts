@@ -465,7 +465,19 @@ export type Membership = 'Trial' | 'Basic' | 'Pro';
 export type NangoConnectSessionRequest = {
     allowed_integrations: Array<string>;
     end_user: NangoConnectSessionRequestUser;
+    integrations_config_defaults?: {
+        [key: string]: NangoConnectSessionRequestIntegrationConfig;
+    } | null;
     organization?: NangoConnectSessionRequestOrganization | null;
+};
+
+export type NangoConnectSessionRequestIntegrationConfig = {
+    connection_config?: NangoConnectSessionRequestIntegrationConnectionConfig | null;
+    user_scopes?: string | null;
+};
+
+export type NangoConnectSessionRequestIntegrationConnectionConfig = {
+    oauth_scopes_override: string;
 };
 
 export type NangoConnectSessionRequestOrganization = {

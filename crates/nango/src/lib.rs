@@ -3,6 +3,8 @@
 mod error;
 pub use error::*;
 
+use std::collections::HashMap;
+
 macro_rules! common_derives {
     ($item:item) => {
         #[derive(
@@ -65,6 +67,7 @@ pub struct NangoClient {
     api_base: url::Url,
 }
 
+// https://docs.nango.dev/reference/api/connect/sessions/create
 common_derives! {
     pub struct NangoConnectSessionRequest {
         pub end_user: NangoConnectSessionRequestUser,
@@ -72,7 +75,7 @@ common_derives! {
         pub organization: Option<NangoConnectSessionRequestOrganization>,
         pub allowed_integrations: Vec<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub integrations_config_defaults: Option<String>,
+        pub integrations_config_defaults: Option<HashMap<String, NangoConnectSessionRequestIntegrationConfig>>,
     }
 }
 
