@@ -9,6 +9,7 @@ schemars = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 specta = { workspace = true, features = ["derive"] }
 strum = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
 url = { workspace = true }
 
 [dev-dependencies]

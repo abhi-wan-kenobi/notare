@@ -1,5 +1,8 @@
 // https://docs.nango.dev/host/cloud#cloud-vs-self-hosting
 
+mod error;
+pub use error::*;
+
 macro_rules! common_derives {
     ($item:item) => {
         #[derive(
@@ -29,13 +32,13 @@ common_derives! {
 }
 
 impl TryFrom<String> for NangoIntegration {
-    type Error = String;
+    type Error = crate::Error;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.as_str() {
             "google-calendar" => Ok(NangoIntegration::GoogleCalendar),
             "outlook-calendar" => Ok(NangoIntegration::OutlookCalendar),
-            _ => Err(format!("Unknown integration: {}", value)),
+            _ => Err(Error::UnknownIntegration),
         }
     }
 }
@@ -160,7 +163,7 @@ impl NangoClient {
     pub async fn get_connection(
         &self,
         connection_id: impl std::fmt::Display,
-    ) -> Result<NangoGetConnectionResponse, reqwest::Error> {
+    ) -> Result<NangoGetConnectionResponse, crate::Error> {
         let mut url = self.api_base.clone();
         url.set_path(&format!("/connection/{}", connection_id));
 
@@ -173,7 +176,7 @@ impl NangoClient {
     pub async fn create_connect_session(
         &self,
         req: NangoConnectSessionRequest,
-    ) -> Result<NangoConnectSessionResponse, reqwest::Error> {
+    ) -> Result<NangoConnectSessionResponse, crate::Error> {
         let mut url = self.api_base.clone();
         url.set_path("/connect/sessions");
 

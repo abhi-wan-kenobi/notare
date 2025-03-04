@@ -10,11 +10,9 @@ mod types;
 mod web;
 mod worker;
 
-use std::{
-    io::{Error, ErrorKind},
-    time::Duration,
-};
+use std::time::Duration;
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _, Registry};
+use types::Error;
 
 use aide::{
     axum::{
@@ -314,7 +312,7 @@ fn main() {
             let http = async {
                 axum::serve(listener, service)
                     .await
-                    .map_err(|e| Error::new(ErrorKind::Interrupted, e))
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Interrupted, e))
             };
 
             let worker_state = WorkerState::from_ref(&state);

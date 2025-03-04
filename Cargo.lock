@@ -333,6 +333,7 @@ dependencies = [
  "specta-typescript",
  "strum 0.26.3",
  "stt",
+ "thiserror 2.0.12",
  "tokio",
  "tower 0.5.2",
  "tower-http 0.6.2",
@@ -6821,6 +6822,7 @@ dependencies = [
  "serde",
  "specta",
  "strum 0.26.3",
+ "thiserror 2.0.12",
  "tokio",
  "url",
 ]

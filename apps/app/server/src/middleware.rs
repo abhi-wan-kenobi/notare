@@ -45,7 +45,7 @@ pub async fn attach_user_from_clerk(
     Extension(jwt): Extension<ClerkJwt>,
     mut req: Request,
     next: middleware::Next,
-) -> Result<Response, StatusCode> {
+) -> Result<Response, (StatusCode, String)> {
     // https://clerk.com/docs/backend-requests/resources/session-tokens
     let clerk_user_id = jwt.sub;
     let clerk_org_id = jwt.org.map(|o| o.id);
@@ -54,23 +54,22 @@ pub async fn attach_user_from_clerk(
         .admin_db
         .get_user_by_clerk_user_id(clerk_user_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::UNAUTHORIZED)?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .ok_or((StatusCode::UNAUTHORIZED, "user_not_found".into()))?;
 
     let accounts = state
         .admin_db
         .list_accounts_by_user_id(user.id.clone())
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let org = accounts
+    let account = accounts
         .into_iter()
         .find(|org| org.clerk_org_id == clerk_org_id)
-        .ok_or(StatusCode::UNPROCESSABLE_ENTITY)?;
+        .ok_or((StatusCode::UNPROCESSABLE_ENTITY, "account_not_found".into()))?;
 
-    req.extensions_mut().insert(org);
     req.extensions_mut().insert(user);
-
+    req.extensions_mut().insert(account);
     Ok(next.run(req).await)
 }
 
@@ -79,7 +78,7 @@ pub async fn attach_user_db(
     #[allow(unused)] Extension(org): Extension<hypr_db_admin::Account>,
     mut req: Request,
     next: middleware::Next,
-) -> Result<Response, StatusCode> {
+) -> Result<Response, (StatusCode, String)> {
     let conn = {
         if cfg!(debug_assertions) {
             hypr_db_core::DatabaseBaseBuilder::default().local(":memory:")
@@ -91,9 +90,9 @@ pub async fn attach_user_db(
     }
     .build()
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
     .connect()
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let db = hypr_db_user::UserDatabase::from(conn);
 
