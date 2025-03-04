@@ -2,10 +2,13 @@ import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Outlet } from "@tanstack/react-router";
 
+import { registerTemplates } from "@/templates";
 import { RightPanelProvider } from "@/contexts/right-panel";
 import { HyprProvider } from "@/contexts/hypr";
 import { OngoingSessionProvider } from "@/contexts/ongoing-session";
-import { registerTemplates } from "@/templates";
+import { LeftSidebarProvider } from "@/contexts/left-sidebar";
+import RightPanel from "@/components/note/right-panel";
+import LeftSidebar from "@/components/left-sidebar";
 
 import Toolbar from "@/components/toolbar";
 
@@ -22,12 +25,20 @@ function Component() {
   return (
     <HyprProvider>
       <OngoingSessionProvider>
-        <RightPanelProvider>
-          <div className="flex h-screen w-screen flex-col overflow-x-hidden">
-            <Toolbar />
-            <Outlet />
-          </div>
-        </RightPanelProvider>
+        <LeftSidebarProvider>
+          <RightPanelProvider>
+            <div className="flex h-screen w-screen flex-col overflow-hidden">
+              <Toolbar />
+              <div className="flex h-full overflow-hidden bg-white">
+                <LeftSidebar />
+                <div className="flex-1">
+                  <Outlet />
+                </div>
+                <RightPanel />
+              </div>
+            </div>
+          </RightPanelProvider>
+        </LeftSidebarProvider>
       </OngoingSessionProvider>
     </HyprProvider>
   );
