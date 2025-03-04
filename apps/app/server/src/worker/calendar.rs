@@ -17,7 +17,10 @@ impl From<DateTime<Utc>> for Job {
     }
 }
 
+#[tracing::instrument(skip(ctx))]
 pub async fn perform(job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
+    let now = DateTime::<Utc>::from_timestamp(job.0.timestamp(), 0).unwrap();
+
     let users = ctx
         .admin_db
         .list_users()
@@ -25,7 +28,8 @@ pub async fn perform(job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
         .map_err(|e| Into::<crate::Error>::into(e).as_worker_error())?;
 
     for user in users {
-        let _user_db = {
+        let user_id = user.id.clone();
+        let user_db = {
             let account = ctx
                 .admin_db
                 .get_account_by_id(&user.account_id)
@@ -72,15 +76,14 @@ pub async fn perform(job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
                     acc
                 });
 
-        for (_kind, integrations) in integration_groups {
+        for (kind, integrations) in integration_groups {
             for integration in integrations {
                 let token = get_oauth_access_token(&ctx.nango, &integration)
                     .await
                     .map_err(|e| e.as_worker_error())?;
 
+                assert!(kind == NangoIntegration::GoogleCalendar);
                 let gcal = hypr_calendar_google::Handle::new(token).await;
-
-                let now = DateTime::<Utc>::from_timestamp(job.0.timestamp(), 0).unwrap();
 
                 let filter = hypr_calendar_interface::EventFilter {
                     calendars: vec![],
@@ -92,21 +95,20 @@ pub async fn perform(job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
                     .await
                     .map_err(|e| Into::<crate::Error>::into(e).as_worker_error())?;
 
-                for _e in events {
-                    // TODO
+                for e in events {
+                    let event = hypr_db_user::Event {
+                        id: uuid::Uuid::new_v4().to_string(),
+                        tracking_id: e.id.clone(),
+                        user_id: user_id.clone(),
+                        calendar_id: "TODO".to_string(),
+                        name: e.name.clone(),
+                        note: e.note.clone(),
+                        start_date: e.start_date,
+                        end_date: e.end_date,
+                        google_event_url: None,
+                    };
 
-                    // let event = hypr_db_user::Event {
-                    //     id: uuid::Uuid::new_v4().to_string(),
-                    //     tracking_id: e.id.clone(),
-                    //     user_id: user_id.clone(),
-                    //     calendar_id: calendar.id.clone(),
-                    //     name: e.name.clone(),
-                    //     note: e.note.clone(),
-                    //     start_date: e.start_date,
-                    //     end_date: e.end_date,
-                    //     google_event_url: None,
-                    // };
-                    // let _ = user_db.upsert_event(event).await;
+                    let _ = user_db.upsert_event(event).await;
                 }
             }
         }

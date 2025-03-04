@@ -1,12 +1,7 @@
-use serde::{Deserialize, Serialize};
+mod error;
+pub use error::*;
 
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("reqwest error: {0}")]
-    ReqwestError(#[from] reqwest::Error),
-    #[error("failed to generate token: {0}")]
-    GenerateTokenError(String),
-}
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone)]
 pub struct TursoClient {
@@ -190,11 +185,11 @@ impl TursoClient {
     pub async fn create_database(
         &self,
         req: CreateDatabaseRequest,
-    ) -> Result<DatabaseResponse<CreateDatabaseResponse>, reqwest::Error> {
+    ) -> Result<CreateDatabaseResponse, crate::Error> {
         let mut url = self.api_base.clone();
         url.set_path(&format!("/v1/organizations/{}/databases", self.org_slug));
 
-        let res = self
+        let res: DatabaseResponse<CreateDatabaseResponse> = self
             .client
             .post(url)
             .json(&req)
@@ -203,38 +198,50 @@ impl TursoClient {
             .json()
             .await?;
 
-        Ok(res)
+        match res {
+            DatabaseResponse::Error { error } => Err(crate::Error::CreateDatabaseError(error)),
+            DatabaseResponse::Ok { database } => Ok(database),
+        }
     }
 
     // https://docs.turso.tech/api-reference/databases/retrieve
     pub async fn retrieve_database(
         &self,
         db: impl std::fmt::Display,
-    ) -> Result<DatabaseResponse<RetrieveDatabaseResponse>, reqwest::Error> {
+    ) -> Result<RetrieveDatabaseResponse, crate::Error> {
         let mut url = self.api_base.clone();
         url.set_path(&format!(
             "/v1/organizations/{}/databases/{}",
             self.org_slug, db
         ));
 
-        let res = self.client.get(url).send().await?.json().await?;
+        let res: DatabaseResponse<RetrieveDatabaseResponse> =
+            self.client.get(url).send().await?.json().await?;
 
-        Ok(res)
+        match res {
+            DatabaseResponse::Error { error } => Err(crate::Error::RetrieveDatabaseError(error)),
+            DatabaseResponse::Ok { database } => Ok(database),
+        }
     }
 
     // https://docs.turso.tech/api-reference/databases/delete
     pub async fn delete_database(
         &self,
         db: impl std::fmt::Display,
-    ) -> Result<DatabaseResponse<DeleteDatabaseResponse>, reqwest::Error> {
+    ) -> Result<DeleteDatabaseResponse, crate::Error> {
         let mut url = self.api_base.clone();
         url.set_path(&format!(
             "/v1/organizations/{}/databases/{}",
             self.org_slug, db
         ));
 
-        let res = self.client.delete(url).send().await?.json().await?;
-        Ok(res)
+        let res: DatabaseResponse<DeleteDatabaseResponse> =
+            self.client.delete(url).send().await?.json().await?;
+
+        match res {
+            DatabaseResponse::Error { error } => Err(crate::Error::DeleteDatabaseError(error)),
+            DatabaseResponse::Ok { database } => Ok(database),
+        }
     }
 }
 
@@ -281,18 +288,7 @@ mod tests {
             .with_name("test")
             .build();
         let res = client.create_database(req).await;
-
-        match res {
-            Ok(DatabaseResponse::Ok { database: _ }) => {
-                assert!(true)
-            }
-            Ok(DatabaseResponse::Error { error }) => {
-                assert!(false, "Error: {:?}", error);
-            }
-            Err(e) => {
-                assert!(false, "Error: {:?}", e);
-            }
-        }
+        assert!(res.is_ok());
     }
 
     // cargo test test_retrieve_database -p turso --  --ignored --nocapture
@@ -302,17 +298,6 @@ mod tests {
         let client = get_client();
 
         let res = client.retrieve_database("test").await;
-
-        match res {
-            Ok(DatabaseResponse::Ok { database: _ }) => {
-                assert!(true)
-            }
-            Ok(DatabaseResponse::Error { error }) => {
-                assert!(false, "Error: {:?}", error);
-            }
-            Err(e) => {
-                assert!(false, "Error: {:?}", e);
-            }
-        }
+        assert!(res.is_ok());
     }
 }

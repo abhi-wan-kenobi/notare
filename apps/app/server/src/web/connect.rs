@@ -71,18 +71,15 @@ pub async fn handler(
     }
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let r = {
+    let _ = {
         if existing_account.is_none() {
             let create_db_req = hypr_turso::CreateDatabaseRequestBuilder::default()
                 .with_name(&account.turso_db_name)
                 .build();
 
             match state.turso.create_database(create_db_req).await {
-                Ok(hypr_turso::DatabaseResponse::Error { error }) => {
-                    Err((StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))
-                }
-                Err(error) => Err((StatusCode::INTERNAL_SERVER_ERROR, error.to_string())),
-                Ok(hypr_turso::DatabaseResponse::Ok { database }) => Ok(database.name),
+                Ok(db) => Ok(db.name),
+                Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
             }
         } else {
             Ok(existing_account.unwrap().turso_db_name)
