@@ -75,7 +75,7 @@ pub async fn attach_user_from_clerk(
 
 #[tracing::instrument(skip_all)]
 pub async fn attach_user_db(
-    #[allow(unused)] Extension(org): Extension<hypr_db_admin::Account>,
+    #[allow(unused)] Extension(account): Extension<hypr_db_admin::Account>,
     mut req: Request,
     next: middleware::Next,
 ) -> Result<Response, (StatusCode, String)> {
@@ -84,7 +84,7 @@ pub async fn attach_user_db(
             hypr_db_core::DatabaseBaseBuilder::default().local(":memory:")
         } else {
             let token = crate::get_env("TURSO_API_KEY");
-            let url = hypr_turso::format_db_url(org.turso_db_name);
+            let url = hypr_turso::format_db_url(account.turso_db_name);
             hypr_db_core::DatabaseBaseBuilder::default().remote(url, token)
         }
     }
@@ -103,16 +103,20 @@ pub async fn attach_user_db(
 #[tracing::instrument(skip_all)]
 pub async fn send_analytics(
     Extension(user): Extension<hypr_db_admin::User>,
+    Extension(account): Extension<hypr_db_admin::Account>,
     State(state): State<AnalyticsState>,
     req: Request,
     next: middleware::Next,
 ) -> Result<Response, StatusCode> {
     let payload = hypr_analytics::AnalyticsPayload::for_user(user.id.to_string())
-        .event("test_event")
+        .event("request")
         .with("url", req.uri().path().to_string())
+        .with("account_id", account.id.to_string())
         .build();
 
-    let _ = state.analytics.event(payload).await;
+    if cfg!(debug_assertions) {
+        let _ = state.analytics.event(payload).await;
+    }
 
     Ok(next.run(req).await)
 }
