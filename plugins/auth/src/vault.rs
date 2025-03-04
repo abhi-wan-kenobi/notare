@@ -81,7 +81,7 @@ impl Vault {
         v.set(key, value);
 
         entry
-            .set_password(&serde_json::to_string(&v).unwrap_or_default())
+            .set_password(&serde_json::to_string(&v).unwrap())
             .map_err(Into::into)
     }
 

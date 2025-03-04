@@ -84,11 +84,15 @@ pub async fn main() {
                 let _ = app.store("store.json")?;
             }
 
-            let (user_id, account_id, _server_token, _database_token) = {
+            let (user_id, _account_id, _server_token, _database_token) = {
                 use tauri_plugin_auth::{AuthPluginExt, StoreKey, VaultKey};
 
                 let user_id = app.get_from_store(StoreKey::UserId).unwrap_or(None);
                 let account_id = app.get_from_store(StoreKey::AccountId).unwrap_or(None);
+
+                if let Some(account_id) = account_id.as_ref() {
+                    app.init_vault(account_id).unwrap();
+                }
 
                 let remote_server = account_id
                     .as_ref()
@@ -101,14 +105,6 @@ pub async fn main() {
             };
 
             {
-                use tauri_plugin_auth::AuthPluginExt;
-
-                if let Some(account_id) = account_id {
-                    app.init_vault(account_id).unwrap();
-                }
-            }
-
-            {
                 // use hypr_turso::{format_db_name, format_db_url};
                 use tauri_plugin_db::DatabasePluginExt;
 
@@ -119,8 +115,8 @@ pub async fn main() {
                             hypr_db_core::DatabaseBaseBuilder::default().local(local_db_path);
 
                         // TODO: waiting for Turso side for support
-                        // if let Some(account_id) = account_id {
-                        //     let db_name = format_db_name(&account_id);
+                        // if let Some(account_id) = account_id.as_ref() {
+                        //     let db_name = format_db_name(account_id);
                         //     let db_url = format_db_url(&db_name);
                         //     base = base.remote(db_url, database_token.unwrap());
                         // }
