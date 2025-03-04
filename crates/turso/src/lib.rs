@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 pub enum Error {
     #[error("reqwest error: {0}")]
     ReqwestError(#[from] reqwest::Error),
-    #[error("other error: {0}")]
-    Other(String),
+    #[error("failed to generate token: {0}")]
+    GenerateTokenError(String),
 }
 
 #[derive(Clone)]
@@ -181,7 +181,7 @@ impl TursoClient {
             .await?;
 
         match res {
-            GenerateTokenResponse::Error { error } => Err(Error::Other(error)),
+            GenerateTokenResponse::Error { error } => Err(Error::GenerateTokenError(error)),
             GenerateTokenResponse::Token { jwt } => Ok(jwt),
         }
     }

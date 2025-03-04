@@ -127,12 +127,16 @@ common_derives! {
     }
 }
 
+// https://docs.nango.dev/reference/api/connection/get
 common_derives! {
     pub struct NangoGetConnectionResponseData {
         pub id: String,
         pub connection_id: String,
         pub provider_config_key: String,
         pub provider: String,
+        pub errors: Vec<serde_json::Value>,
+        pub metadata: serde_json::Value,
+        pub connection_config: serde_json::Value,
         pub created_at: String,
         pub updated_at: String,
         pub last_fetched_at: String,
