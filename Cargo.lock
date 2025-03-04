@@ -742,7 +742,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "kalosm-sound",
- "rodio 0.20.1",
+ "rodio",
  "serde",
  "serde_json",
  "serial_test",
@@ -2988,10 +2988,8 @@ dependencies = [
  "futures",
  "http 0.2.12",
  "pin-project",
- "pkg-config",
  "proc-macro2",
  "reqwest 0.11.27",
- "rodio 0.17.3",
  "serde",
  "serde_json",
  "serde_urlencoded",
@@ -5945,7 +5943,7 @@ dependencies = [
  "futures-util",
  "hound",
  "rand 0.8.5",
- "rodio 0.20.1",
+ "rodio",
  "rwhisper",
  "serde_json",
  "tokio",
@@ -9398,19 +9396,6 @@ dependencies = [
 
 [[package]]
 name = "rodio"
-version = "0.17.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b1bb7b48ee48471f55da122c0044fcc7600cfcc85db88240b89cb832935e611"
-dependencies = [
- "claxon",
- "cpal",
- "hound",
- "lewton",
- "symphonia",
-]
-
-[[package]]
-name = "rodio"
 version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7ceb6607dd738c99bc8cb28eff249b7cd5c8ec88b9db96c0608c1480d140fb1"
@@ -9721,7 +9706,7 @@ dependencies = [
  "kalosm-model-types",
  "rand 0.8.5",
  "rayon",
- "rodio 0.20.1",
+ "rodio",
  "serde_json",
  "thiserror 2.0.12",
  "tokenizers",
@@ -11601,7 +11586,7 @@ dependencies = [
  "insta",
  "intervaltree",
  "listener-interface",
- "rodio 0.20.1",
+ "rodio",
  "serde",
  "serde_json",
  "specta",
@@ -11666,7 +11651,7 @@ dependencies = [
  "kalosm-sound",
  "listener-interface",
  "reqwest 0.12.12",
- "rodio 0.20.1",
+ "rodio",
  "rwhisper",
  "serde",
  "serde_json",
