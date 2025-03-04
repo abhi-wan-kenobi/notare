@@ -70,6 +70,8 @@ common_derives! {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub organization: Option<NangoConnectSessionRequestOrganization>,
         pub allowed_integrations: Vec<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub integrations_config_defaults: Option<String>,
     }
 }
 
@@ -88,6 +90,21 @@ common_derives! {
         pub id: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub display_name: Option<String>,
+    }
+}
+
+common_derives! {
+    pub struct NangoConnectSessionRequestIntegrationConfig {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub user_scopes: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub connection_config: Option<NangoConnectSessionRequestIntegrationConnectionConfig>,
+    }
+}
+
+common_derives! {
+    pub struct NangoConnectSessionRequestIntegrationConnectionConfig {
+        pub oauth_scopes_override: String
     }
 }
 
@@ -325,6 +342,7 @@ mod tests {
                 },
                 organization: None,
                 allowed_integrations: vec![],
+                integrations_config_defaults: None,
             })
             .await
             .unwrap();
