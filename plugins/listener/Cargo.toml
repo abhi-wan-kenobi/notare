@@ -13,15 +13,16 @@ tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
 hypr-data = { path = "../../crates/data", package = "data" }
-rodio = { workspace = true, features = ["wav"] }
 tauri-plugin-local-stt = { path = "../local-stt" }
 
 insta = "1.42.1"
+rodio = { workspace = true, features = ["wav"] }
 serde_json = { workspace = true }
 specta-typescript = { workspace = true }
 
 [dependencies]
 hypr-listener-interface = { path = "../listener-interface", package = "listener-interface" }
+tauri-plugin-auth = { path = "../auth" }
 tauri-plugin-connector = { path = "../connector" }
 
 hypr-audio = { path = "../../crates/audio", package = "audio" }

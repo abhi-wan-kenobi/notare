@@ -130,8 +130,13 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
                 .unwrap()
         };
 
-        // TODO: fetch from valut, if not using local model
-        let api_key = "123".to_string();
+        let api_key = {
+            let app = self.app_handle();
+            use tauri_plugin_auth::AuthPluginExt;
+            app.get_from_vault(tauri_plugin_auth::VaultKey::RemoteServer)
+                .unwrap_or_default()
+                .unwrap_or_default()
+        };
 
         tracing::info!(api_base = ?api_base, api_key = ?api_key, "listen_client");
 
