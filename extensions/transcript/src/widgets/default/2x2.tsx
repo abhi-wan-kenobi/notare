@@ -2,20 +2,20 @@ import { useEffect, useState, useRef } from "react";
 import { Channel } from "@tauri-apps/api/core";
 import { Maximize2Icon } from "lucide-react";
 
-import { Button } from "@hypr/ui/components/ui/button";
-import {
-  WidgetHeader,
-  type WidgetTwoByTwo,
-  WidgetTwoByTwoWrapper,
-} from "@hypr/ui/components/ui/widgets";
-import { Badge } from "@hypr/ui/components/ui/badge";
 import {
   commands as listenerCommands,
   type TimelineView,
   type SessionEvent,
 } from "@hypr/plugin-listener";
 
-import Notes from "../components/notes";
+import { Button } from "@hypr/ui/components/ui/button";
+import {
+  WidgetHeader,
+  WidgetTwoByTwo,
+  WidgetTwoByTwoWrapper,
+} from "@hypr/ui/components/ui/widgets";
+import { Badge } from "@hypr/ui/components/ui/badge";
+import Transcript from "../components/transcript";
 
 const LiveTranscript2x2: WidgetTwoByTwo = ({ onMaximize }) => {
   const [timeline, setTimeline] = useState<TimelineView | null>(null);
@@ -47,23 +47,11 @@ const LiveTranscript2x2: WidgetTwoByTwo = ({ onMaximize }) => {
     };
   }, []);
 
-  // Auto-scroll when new items are added
   useEffect(() => {
     if (scrollRef.current && isLive) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [timeline?.items.length, isLive]);
-
-  // const transcript = useQuery({
-  //   queryKey: ["transcript"],
-  //   queryFn: async () => {
-  //     const response = await fetch("/api/timeline");
-  //     if (!response.ok) {
-  //       throw new Error("Failed to fetch transcript");
-  //     }
-  //     return response.json();
-  //   },
-  // });
 
   return (
     <WidgetTwoByTwoWrapper>
@@ -89,8 +77,11 @@ const LiveTranscript2x2: WidgetTwoByTwo = ({ onMaximize }) => {
         />
       </div>
 
-      <div ref={scrollRef} className="overflow-y-auto flex-1 p-4 pt-0">
-        <Notes notes={[]} />
+      <div
+        ref={scrollRef}
+        className="overflow-y-auto flex-1 p-4 pt-0 scrollbar-none"
+      >
+        <Transcript transcript={timeline} />
       </div>
     </WidgetTwoByTwoWrapper>
   );

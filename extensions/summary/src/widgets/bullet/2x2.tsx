@@ -26,7 +26,7 @@ import { TEMPLATE_LIVE_SUMMARY_SYSTEM, TEMPLATE_LIVE_SUMMARY_USER } from ".";
 
 const DEFAULT_INTERVAL = 10 * 1000;
 
-const LiveShortSummary2x2: WidgetTwoByTwo = () => {
+const BulletStyledSummary2x2: WidgetTwoByTwo = () => {
   const [progress, setProgress] = useState(0);
 
   const config = useQuery({
@@ -116,7 +116,7 @@ const LiveShortSummary2x2: WidgetTwoByTwo = () => {
         />
       </div>
 
-      <div className="overflow-auto flex-1 p-4">
+      <div className="overflow-auto flex-1 p-4 scrollbar-none">
         <Summary summary={summary.data} />
       </div>
     </WidgetTwoByTwoWrapper>
@@ -193,4 +193,4 @@ const Summary = ({
   );
 };
 
-export default LiveShortSummary2x2;
+export default BulletStyledSummary2x2;

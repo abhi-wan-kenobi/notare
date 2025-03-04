@@ -1,10 +1,10 @@
-import type { WidgetGroup } from "@hypr/extension-utils";
+import { WidgetGroup } from "@hypr/extension-utils";
 
 import Widget2x2 from "./2x2";
 import WidgetFull from "./full";
 
 const widgetGroup: WidgetGroup = {
-  id: "transcript-live",
+  id: "past-notes-related",
   items: [
     {
       init: async () => {},

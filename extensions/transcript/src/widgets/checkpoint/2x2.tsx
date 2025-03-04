@@ -1,27 +1,29 @@
 import { useEffect, useState, useRef } from "react";
-import { Maximize2Icon } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 import { Channel } from "@tauri-apps/api/core";
+import { Maximize2Icon } from "lucide-react";
 
-import { Button } from "@hypr/ui/components/ui/button";
-import {
-  WidgetHeader,
-  type WidgetTwoByTwo,
-  WidgetTwoByTwoWrapper,
-} from "@hypr/ui/components/ui/widgets";
-import { Badge } from "@hypr/ui/components/ui/badge";
 import {
   commands as listenerCommands,
   type TimelineView,
   type SessionEvent,
 } from "@hypr/plugin-listener";
 
-import Translation from "../components/translation";
+import { Button } from "@hypr/ui/components/ui/button";
+import {
+  WidgetHeader,
+  WidgetTwoByTwo,
+  WidgetTwoByTwoWrapper,
+} from "@hypr/ui/components/ui/widgets";
+import { Badge } from "@hypr/ui/components/ui/badge";
+import TranscriptWithCheckpoints from "../components/transcript-with-checkpoints";
+import AddCheckpointButton from "../components/add-checkpoint-button";
+import { formatTime } from "../../utils";
 
-const LiveTranslation2x2: WidgetTwoByTwo = ({ onMaximize }) => {
+const LiveTranscriptWithCheckpoint2x2: WidgetTwoByTwo = ({ onMaximize }) => {
   const [timeline, setTimeline] = useState<TimelineView | null>(null);
   const [isLive, setIsLive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [checkpoints, setCheckpoints] = useState<string[]>([]);
 
   useEffect(() => {
     const channel = new Channel<SessionEvent>();
@@ -48,23 +50,25 @@ const LiveTranslation2x2: WidgetTwoByTwo = ({ onMaximize }) => {
     };
   }, []);
 
-  // Auto-scroll when new items are added
   useEffect(() => {
     if (scrollRef.current && isLive) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [timeline?.items.length, isLive]);
 
-  const translation = useQuery({
-    queryKey: ["translation"],
-    queryFn: async () => {
-      const response = await fetch("/api/timeline");
-      if (!response.ok) {
-        throw new Error("Failed to fetch translation");
-      }
-      return response.json();
-    },
-  });
+  const handleAddCheckpoint = () => {
+    if (!timeline || timeline.items.length === 0) return;
+
+    const latestItem = [...timeline.items].sort((a, b) => b.end - a.end)[0];
+    const timestamp = formatTime(latestItem.end);
+
+    setCheckpoints((prev) => {
+      if (prev.includes(timestamp)) return prev;
+      return [...prev, timestamp];
+    });
+  };
+
+  const hasTranscriptItems = timeline && timeline.items.length > 0;
 
   return (
     <WidgetTwoByTwoWrapper>
@@ -72,7 +76,7 @@ const LiveTranslation2x2: WidgetTwoByTwo = ({ onMaximize }) => {
         <WidgetHeader
           title={
             <div className="flex items-center gap-2">
-              Translation
+              Transcript
               {isLive && <Badge variant="destructive">LIVE</Badge>}
             </div>
           }
@@ -90,14 +94,24 @@ const LiveTranslation2x2: WidgetTwoByTwo = ({ onMaximize }) => {
         />
       </div>
 
-      <div
-        ref={scrollRef}
-        className="overflow-y-auto flex-1 p-4 pt-0 scrollbar-none"
-      >
-        <Translation translation={timeline || translation.data} />
+      <div className="flex-1 p-4 pt-0 flex flex-col overflow-hidden">
+        <div
+          ref={scrollRef}
+          className="overflow-y-auto flex-1 scrollbar-none pb-4"
+        >
+          <TranscriptWithCheckpoints
+            transcript={timeline}
+            checkpoints={checkpoints}
+          />
+        </div>
+
+        <AddCheckpointButton
+          onClick={handleAddCheckpoint}
+          disabled={!hasTranscriptItems || !isLive}
+        />
       </div>
     </WidgetTwoByTwoWrapper>
   );
 };
 
-export default LiveTranslation2x2;
+export default LiveTranscriptWithCheckpoint2x2;
