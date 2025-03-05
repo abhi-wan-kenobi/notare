@@ -12,6 +12,7 @@ Default permissions for the plugin
 - `allow-list-events`
 - `allow-list-sessions`
 - `allow-get-session`
+- `allow-delete-session`
 - `allow-set-session-event`
 - `allow-get-config`
 - `allow-set-config`
@@ -55,6 +56,32 @@ Enables the create_chat_group command without any pre-configured scope.
 <td>
 
 Denies the create_chat_group command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-delete-session`
+
+</td>
+<td>
+
+Enables the delete_session command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-delete-session`
+
+</td>
+<td>
+
+Denies the delete_session command without any pre-configured scope.
 
 </td>
 </tr>

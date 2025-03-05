@@ -34,6 +34,9 @@ async listEvents() : Promise<Event[]> {
 async listSessions(search: string | null) : Promise<Session[]> {
     return await TAURI_INVOKE("plugin:db|list_sessions", { search });
 },
+async deleteSession(id: string) : Promise<null> {
+    return await TAURI_INVOKE("plugin:db|delete_session", { id });
+},
 async getSession(option: SessionFilter) : Promise<Session | null> {
     return await TAURI_INVOKE("plugin:db|get_session", { option });
 },
@@ -46,7 +49,7 @@ async getConfig() : Promise<Config> {
 async setConfig(config: Config) : Promise<null> {
     return await TAURI_INVOKE("plugin:db|set_config", { config });
 },
-async getSelfHuman() : Promise<Human> {
+async getSelfHuman() : Promise<Human | null> {
     return await TAURI_INVOKE("plugin:db|get_self_human");
 },
 async upsertHuman(human: Human) : Promise<Human> {

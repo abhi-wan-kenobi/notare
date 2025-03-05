@@ -37,6 +37,14 @@ impl UserDatabase {
         }
     }
 
+    pub async fn delete_session(&self, id: String) -> Result<(), crate::Error> {
+        let conn = self.conn()?;
+
+        conn.execute("DELETE FROM sessions WHERE id = ?", vec![id])
+            .await?;
+        Ok(())
+    }
+
     pub async fn list_sessions(&self, search: Option<&str>) -> Result<Vec<Session>, crate::Error> {
         let conn = self.conn()?;
 
@@ -163,5 +171,12 @@ mod tests {
         session.raw_memo_html = "raw_memo_html_2".to_string();
         let session = db.upsert_session(session).await.unwrap();
         assert_eq!(session.raw_memo_html, "raw_memo_html_2");
+
+        let sessions = db.list_sessions(None).await.unwrap();
+        assert_eq!(sessions.len(), 1);
+
+        db.delete_session(session.id).await.unwrap();
+        let sessions = db.list_sessions(Some("test")).await.unwrap();
+        assert_eq!(sessions.len(), 0);
     }
 }

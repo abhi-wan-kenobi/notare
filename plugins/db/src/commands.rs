@@ -167,6 +167,7 @@ pub async fn list_sessions(
 
     db.list_sessions(search).await.map_err(|e| e.to_string())
 }
+
 #[tauri::command]
 #[specta::specta]
 #[tracing::instrument(skip(state))]
@@ -183,6 +184,24 @@ pub async fn get_session(
         .map_err(|e| e.to_string())?;
 
     db.get_session(option).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+#[tracing::instrument(skip(state))]
+pub async fn delete_session(
+    state: tauri::State<'_, crate::ManagedState>,
+    id: String,
+) -> Result<(), String> {
+    let guard = state.lock().await;
+
+    let db = guard
+        .db
+        .as_ref()
+        .ok_or(crate::Error::NoneDatabase)
+        .map_err(|e| e.to_string())?;
+
+    db.delete_session(id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

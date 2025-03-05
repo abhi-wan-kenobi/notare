@@ -8,6 +8,7 @@ const COMMANDS: &[&str] = &[
     "delete_template",
     "list_events",
     "list_sessions",
+    "delete_session",
     "get_session",
     "set_session_event",
     "get_config",
