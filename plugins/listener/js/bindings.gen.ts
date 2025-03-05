@@ -28,8 +28,8 @@ async subscribe(channel: TAURI_CHANNEL<SessionEvent>) : Promise<null> {
 async unsubscribe(channel: TAURI_CHANNEL<SessionEvent>) : Promise<null> {
     return await TAURI_INVOKE("plugin:listener|unsubscribe", { channel });
 },
-async startSession() : Promise<string> {
-    return await TAURI_INVOKE("plugin:listener|start_session");
+async startSession(sessionId: string) : Promise<null> {
+    return await TAURI_INVOKE("plugin:listener|start_session", { sessionId });
 },
 async stopSession() : Promise<null> {
     return await TAURI_INVOKE("plugin:listener|stop_session");
@@ -46,8 +46,9 @@ async stopSession() : Promise<null> {
 
 /** user-defined types **/
 
-export type SessionEvent = { type: "stopped" } | { type: "silence" } | ({ type: "timelineView" } & SessionEventTimelineView) | ({ type: "audioAmplitude" } & SessionEventAudioAmplitude)
+export type SessionEvent = ({ type: "started" } & SessionEventStarted) | { type: "stopped" } | { type: "silence" } | ({ type: "timelineView" } & SessionEventTimelineView) | ({ type: "audioAmplitude" } & SessionEventAudioAmplitude)
 export type SessionEventAudioAmplitude = { mic: number; speaker: number }
+export type SessionEventStarted = { seconds: number }
 export type SessionEventTimelineView = { timeline: TimelineView }
 export type TAURI_CHANNEL<TSend> = null
 export type TimelineFilter = { last_n_seconds: number | null }

@@ -126,7 +126,8 @@ mod test {
             app.start_server().await.unwrap();
         }
 
-        app.start_session().await.unwrap();
+        let session_id = uuid::Uuid::new_v4().to_string();
+        app.start_session(session_id.clone()).await.unwrap();
 
         {
             let chan = tauri::ipc::Channel::<SessionEvent>::new(|e| {

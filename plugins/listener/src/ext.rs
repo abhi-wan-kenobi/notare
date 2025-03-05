@@ -6,7 +6,9 @@ use hypr_audio::AsyncSource;
 use tauri::ipc::Channel;
 use tokio::sync::{mpsc, Mutex};
 
-use crate::{SessionEvent, SessionEventTimelineView, TimelineFilter, TimelineView};
+use crate::{
+    SessionEvent, SessionEventStarted, SessionEventTimelineView, TimelineFilter, TimelineView,
+};
 
 const SAMPLE_RATE: u32 = 16000;
 
@@ -15,12 +17,17 @@ pub trait ListenerPluginExt<R: tauri::Runtime> {
     fn request_system_audio_access(&self) -> impl Future<Output = Result<bool, crate::Error>>;
     fn open_microphone_access_settings(&self) -> impl Future<Output = Result<(), crate::Error>>;
     fn open_system_audio_access_settings(&self) -> impl Future<Output = Result<(), crate::Error>>;
+
     fn subscribe(&self, channel: Channel<SessionEvent>) -> impl Future<Output = ()>;
     fn unsubscribe(&self, channel: Channel<SessionEvent>) -> impl Future<Output = ()>;
     fn broadcast(&self, event: SessionEvent) -> impl Future<Output = Result<(), crate::Error>>;
+
     fn get_timeline(&self, filter: TimelineFilter) -> impl Future<Output = TimelineView>;
-    fn start_session(&self) -> impl Future<Output = Result<String, crate::Error>>;
     fn stop_session(&self) -> impl Future<Output = Result<(), crate::Error>>;
+    fn start_session(
+        &self,
+        id: impl Into<String>,
+    ) -> impl Future<Output = Result<(), crate::Error>>;
 }
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
@@ -109,7 +116,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn start_session(&self) -> Result<String, crate::Error> {
+    async fn start_session(&self, session_id: impl Into<String>) -> Result<(), crate::Error> {
         let state = self.state::<crate::SharedState>();
 
         {
@@ -119,7 +126,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
             }
         }
 
-        let session_id = "123";
+        let session_id = session_id.into();
         let app_dir = self.path().app_data_dir().unwrap();
 
         let api_base = {
@@ -195,16 +202,23 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
             std::fs::create_dir_all(&dir).unwrap();
             let path = dir.join("audio.wav");
 
-            let mut wav = hound::WavWriter::create(
-                path,
-                hound::WavSpec {
-                    channels: 1,
-                    sample_rate: SAMPLE_RATE,
-                    bits_per_sample: 32,
-                    sample_format: hound::SampleFormat::Float,
-                },
-            )
-            .unwrap();
+            let wav_spec = hound::WavSpec {
+                channels: 1,
+                sample_rate: SAMPLE_RATE,
+                bits_per_sample: 32,
+                sample_format: hound::SampleFormat::Float,
+            };
+
+            let mut wav = if path.exists() {
+                hound::WavWriter::append(path).unwrap()
+            } else {
+                hound::WavWriter::create(path, wav_spec).unwrap()
+            };
+
+            let start_event = SessionEvent::Started(SessionEventStarted {
+                seconds: wav.duration() as f32 / SAMPLE_RATE as f32,
+            });
+            app.broadcast(start_event).await.unwrap();
 
             while let (Some(mic_chunk), Some(speaker_chunk)) =
                 (mic_rx.recv().await, speaker_rx.recv().await)
@@ -278,7 +292,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
             s.listen_stream_handle = Some(listen_stream_handle);
         }
 
-        Ok(session_id.to_string())
+        Ok(())
     }
 
     #[tracing::instrument(skip_all)]

@@ -11585,6 +11585,7 @@ dependencies = [
  "bytes",
  "codes-iso-639",
  "data",
+ "db-core",
  "db-user",
  "futures-util",
  "hound",
@@ -11607,6 +11608,7 @@ dependencies = [
  "tokio",
  "tracing",
  "url",
+ "uuid",
  "ws",
 ]
 

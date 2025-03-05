@@ -72,8 +72,13 @@ pub async fn unsubscribe<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn start_session<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<String, String> {
-    app.start_session().await.map_err(|e| e.to_string())
+pub async fn start_session<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    session_id: String,
+) -> Result<(), String> {
+    app.start_session(session_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

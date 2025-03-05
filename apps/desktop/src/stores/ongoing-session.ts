@@ -6,8 +6,10 @@ import {
   commands as listenerCommands,
   type SessionEvent,
 } from "@hypr/plugin-listener";
+import { type Session } from "@hypr/plugin-db";
 
 type State = {
+  session: Session | null;
   channel: Channel<SessionEvent> | null;
   listening: boolean;
   amplitude: { mic: number; speaker: number };
@@ -25,6 +27,12 @@ export const createOngoingSessionStore = () => {
     channel: null,
     amplitude: { mic: 0, speaker: 0 },
     start: () => {
+      const { session } = get();
+      if (!session?.id) {
+        console.error("session_not_found");
+        return;
+      }
+
       const channel: State["channel"] = new Channel();
 
       channel.onmessage = (event) => {
@@ -43,7 +51,7 @@ export const createOngoingSessionStore = () => {
       };
 
       try {
-        listenerCommands.startSession().then((_) => {
+        listenerCommands.startSession(session.id).then(() => {
           listenerCommands.subscribe(channel);
         });
       } catch (error) {

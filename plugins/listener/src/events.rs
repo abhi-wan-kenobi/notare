@@ -1,6 +1,8 @@
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(tag = "type")]
 pub enum SessionEvent {
+    #[serde(rename = "started")]
+    Started(SessionEventStarted),
     #[serde(rename = "stopped")]
     Stopped,
     #[serde(rename = "silence")]
@@ -9,6 +11,11 @@ pub enum SessionEvent {
     TimelineView(SessionEventTimelineView),
     #[serde(rename = "audioAmplitude")]
     AudioAmplitude(SessionEventAudioAmplitude),
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, specta::Type)]
+pub struct SessionEventStarted {
+    pub seconds: f32,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, specta::Type)]
