@@ -37,7 +37,13 @@ futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tower-http = { workspace = true, features = ["cors", "trace"] }
 
-kalosm-common = { workspace = true }
-kalosm-llama = { workspace = true, features = ["metal"] }
 kalosm-model-types = { workspace = true }
 kalosm-streams = { workspace = true }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+kalosm-common = { workspace = true }
+kalosm-llama = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+kalosm-common = { workspace = true, features = ["metal"] }
+kalosm-llama = { workspace = true, features = ["metal"] }

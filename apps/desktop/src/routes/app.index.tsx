@@ -3,6 +3,8 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import PastSessions from "@/components/past-sessions";
 import UpcomingEvents from "@/components/upcoming-events";
 
+import { commands as authCommands } from "@hypr/plugin-auth";
+
 export const Route = createFileRoute("/app/")({
   component: Component,
   beforeLoad: async () => {
@@ -10,8 +12,8 @@ export const Route = createFileRoute("/app/")({
       return;
     }
 
-    // TODO
-    if (false) {
+    const id = await authCommands.getFromStore("auth-user-id");
+    if (!id) {
       throw redirect({ to: "/login" });
     }
   },

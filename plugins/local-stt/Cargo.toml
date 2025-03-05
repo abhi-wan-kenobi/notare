@@ -46,7 +46,14 @@ futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tower-http = { workspace = true, features = ["cors", "trace"] }
 
-kalosm-common = { workspace = true }
-kalosm-sound = { workspace = true, default-features = false, features = ["metal"] }
 rodio = { workspace = true, features = ["wav"] }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+kalosm-common = { workspace = true }
+kalosm-sound = { workspace = true, default-features = false }
+rwhisper = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+kalosm-common = { workspace = true, features = ["metal"] }
+kalosm-sound = { workspace = true, default-features = false, features = ["metal"] }
 rwhisper = { workspace = true, features = ["metal"] }
