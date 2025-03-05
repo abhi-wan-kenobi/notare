@@ -1,6 +1,6 @@
 use futures_util::{Stream, StreamExt};
 
-use hypr_ws::client::{ClientRequestBuilder, WebSocketClient, WebSocketIO};
+use hypr_ws::client::{ClientRequestBuilder, Message, WebSocketClient, WebSocketIO};
 
 use crate::{DiarizeInputChunk, DiarizeOutputChunk};
 
@@ -61,9 +61,20 @@ impl WebSocketIO for DiarizeClient {
     type Input = DiarizeInputChunk;
     type Output = DiarizeOutputChunk;
 
-    fn create_input(data: bytes::Bytes) -> Self::Input {
+    fn to_input(data: bytes::Bytes) -> Self::Input {
         DiarizeInputChunk {
             audio: data.to_vec(),
+        }
+    }
+
+    fn to_message(input: Self::Input) -> Message {
+        Message::Text(serde_json::to_string(&input).unwrap().into())
+    }
+
+    fn from_message(msg: Message) -> Option<Self::Output> {
+        match msg {
+            Message::Text(text) => serde_json::from_str::<Self::Output>(&text).ok(),
+            _ => None,
         }
     }
 }

@@ -74,9 +74,20 @@ impl WebSocketIO for ListenClient {
     type Input = ListenInputChunk;
     type Output = ListenOutputChunk;
 
-    fn create_input(data: bytes::Bytes) -> Self::Input {
+    fn to_input(data: bytes::Bytes) -> Self::Input {
         ListenInputChunk {
             audio: data.to_vec(),
+        }
+    }
+
+    fn to_message(input: Self::Input) -> Message {
+        Message::Text(serde_json::to_string(&input).unwrap().into())
+    }
+
+    fn from_message(msg: Message) -> Option<Self::Output> {
+        match msg {
+            Message::Text(text) => serde_json::from_str::<Self::Output>(&text).ok(),
+            _ => None,
         }
     }
 }

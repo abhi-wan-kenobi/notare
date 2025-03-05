@@ -1,18 +1,17 @@
-use serde::{de::DeserializeOwned, Serialize};
+use serde::de::DeserializeOwned;
 
 use futures_util::{SinkExt, Stream, StreamExt};
-use tokio_tungstenite::{
-    connect_async,
-    tungstenite::{client::IntoClientRequest, protocol::Message},
-};
+use tokio_tungstenite::{connect_async, tungstenite::client::IntoClientRequest};
 
-pub use tokio_tungstenite::tungstenite::ClientRequestBuilder;
+pub use tokio_tungstenite::tungstenite::{protocol::Message, ClientRequestBuilder};
 
 pub trait WebSocketIO: Send + 'static {
-    type Input: Serialize + Send;
+    type Input: Send;
     type Output: DeserializeOwned;
 
-    fn create_input(data: bytes::Bytes) -> Self::Input;
+    fn to_input(data: bytes::Bytes) -> Self::Input;
+    fn to_message(input: Self::Input) -> Message;
+    fn from_message(msg: Message) -> Option<Self::Output>;
 }
 
 pub struct WebSocketClient {
@@ -43,8 +42,8 @@ impl WebSocketClient {
 
         let _send_task = tokio::spawn(async move {
             while let Some(data) = audio_stream.next().await {
-                let input = T::create_input(data);
-                let msg = Message::Text(serde_json::to_string(&input).unwrap().into());
+                let input = T::to_input(data);
+                let msg = T::to_message(input);
 
                 if let Err(e) = ws_sender.send(msg).await {
                     tracing::error!("ws_send_failed: {:?}", e);
@@ -83,8 +82,12 @@ impl WebSocketClient {
                                 let _ = activity_tx.send(());
 
                                 match msg {
-                                    Message::Text(data) => yield serde_json::from_str::<T::Output>(&data).unwrap(),
-                                    Message::Binary(_) | Message::Ping(_) | Message::Pong(_) | Message::Frame(_) => continue,
+                                    Message::Text(_) | Message::Binary(_) => {
+                                        if let Some(output) = T::from_message(msg) {
+                                            yield output;
+                                        }
+                                    },
+                                    Message::Ping(_) | Message::Pong(_) | Message::Frame(_) => continue,
                                     Message::Close(_) => break,
                                 }
                             },
