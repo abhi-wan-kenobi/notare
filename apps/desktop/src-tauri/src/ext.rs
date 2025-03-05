@@ -46,7 +46,6 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
                 };
 
                 app.db_attach(db).await.unwrap();
-                let _ = app.db_sync().await;
 
                 if let Some(user_id) = user_id {
                     app.db_ensure_user(&user_id).await.unwrap();
