@@ -4,7 +4,7 @@ use crate::{
     store,
     store::StoreKey,
     vault::{Vault, VaultKey},
-    RequestParams, ResponseParams, CALLBACK_TEMPLATE_KEY,
+    ResponseParams, CALLBACK_TEMPLATE_KEY,
 };
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
@@ -56,18 +56,19 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AuthPluginExt<R> for T {
                         vault.init(&params.account_id).unwrap();
 
                         for (key, value) in [
-                            (StoreKey::UserId, params.user_id),
-                            (StoreKey::AccountId, params.account_id),
-                        ] {
-                            store.set(key.as_ref(), value);
-                        }
-
-                        for (key, value) in [
                             (VaultKey::RemoteServer, params.server_token),
                             (VaultKey::RemoteDatabase, params.database_token),
                         ] {
                             vault.set(key, value).unwrap();
                         }
+
+                        for (key, value) in [
+                            (StoreKey::UserId, params.user_id),
+                            (StoreKey::AccountId, params.account_id),
+                        ] {
+                            store.set(key.as_ref(), value);
+                        }
+                        store.save().unwrap();
 
                         channel.send(AuthEvent::Success).unwrap();
                     }
@@ -120,6 +121,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AuthPluginExt<R> for T {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RequestParams;
 
     #[test]
     fn test_qs() {
