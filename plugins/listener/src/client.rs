@@ -2,7 +2,7 @@ use bytes::BufMut;
 use futures_util::{Stream, StreamExt};
 
 use hypr_audio::AsyncSource;
-use hypr_ws::client::{ClientRequestBuilder, WebSocketClient, WebSocketIO};
+use hypr_ws::client::{ClientRequestBuilder, Message, WebSocketClient, WebSocketIO};
 
 use crate::{ListenInputChunk, ListenOutputChunk};
 
