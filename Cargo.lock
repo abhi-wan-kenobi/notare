@@ -738,9 +738,9 @@ name = "audio"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes",
  "cidre",
  "futures-channel",
- "futures-core",
  "futures-util",
  "kalosm-sound",
  "rodio",
@@ -768,6 +768,15 @@ name = "audio-core"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db446410e749ce0157f460ef73d97f002251808aa6b6ca69f476578f36e958e0"
+
+[[package]]
+name = "audio-utils"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "futures-util",
+ "kalosm-sound",
+]
 
 [[package]]
 name = "auth-interface"
@@ -10880,6 +10889,7 @@ dependencies = [
  "anyhow",
  "async-stream",
  "audio 0.1.0",
+ "audio-utils",
  "bytes",
  "clova",
  "codes-iso-639",
@@ -10896,6 +10906,7 @@ dependencies = [
  "specta",
  "thiserror 2.0.12",
  "tokio",
+ "whisper",
 ]
 
 [[package]]
@@ -11582,6 +11593,7 @@ name = "tauri-plugin-listener"
 version = "0.1.0"
 dependencies = [
  "audio 0.1.0",
+ "audio-utils",
  "bytes",
  "codes-iso-639",
  "data",
@@ -13612,6 +13624,22 @@ dependencies = [
  "home",
  "once_cell",
  "rustix",
+]
+
+[[package]]
+name = "whisper"
+version = "0.1.0"
+dependencies = [
+ "audio-utils",
+ "bytes",
+ "codes-iso-639",
+ "futures-util",
+ "kalosm-sound",
+ "rwhisper",
+ "serde",
+ "serde_json",
+ "url",
+ "ws",
 ]
 
 [[package]]

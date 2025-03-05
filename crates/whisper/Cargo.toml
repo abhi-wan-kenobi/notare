@@ -1,0 +1,27 @@
+[package]
+name = "whisper"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["local", "cloud"]
+local = ["dep:rwhisper"]
+cloud = []
+
+[dependencies]
+hypr-audio-utils = { path = "../audio-utils", package = "audio-utils" }
+hypr-ws = { path = "../ws", package = "ws" }
+
+bytes = { workspace = true }
+codes-iso-639 = { workspace = true }
+futures-util = { workspace = true }
+kalosm-sound = { workspace = true, default-features = false }
+serde = { workspace = true }
+serde_json = { workspace = true }
+url = { workspace = true }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+rwhisper = { workspace = true, optional = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+rwhisper = { workspace = true, features = ["metal"], optional = true }
