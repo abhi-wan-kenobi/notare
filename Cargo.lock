@@ -304,7 +304,6 @@ dependencies = [
  "async-stripe",
  "auth-interface",
  "axum 0.8.1",
- "bridge",
  "buffer",
  "bytes",
  "calendar-google",
@@ -316,6 +315,7 @@ dependencies = [
  "db-admin",
  "db-core",
  "db-user",
+ "diart",
  "dotenv",
  "futures-core",
  "futures-util",
@@ -1651,33 +1651,6 @@ dependencies = [
  "serde",
  "serde_repr",
  "serde_with 3.12.0",
-]
-
-[[package]]
-name = "bridge"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-stream",
- "audio 0.1.0",
- "bytes",
- "codes-iso-639",
- "data",
- "db-user",
- "futures-channel",
- "futures-util",
- "hound",
- "reqwest 0.12.12",
- "schemars",
- "serde",
- "serde_bytes",
- "serde_json",
- "specta",
- "thiserror 2.0.12",
- "tokio",
- "tracing",
- "url",
- "ws",
 ]
 
 [[package]]
@@ -3174,6 +3147,31 @@ name = "deunicode"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "339544cc9e2c4dc3fc7149fd630c5f22263a4fdf18a98afd0075784968b5cf00"
+
+[[package]]
+name = "diart"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream",
+ "audio 0.1.0",
+ "bytes",
+ "codes-iso-639",
+ "data",
+ "db-user",
+ "futures-channel",
+ "futures-util",
+ "hound",
+ "reqwest 0.12.12",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "url",
+ "ws",
+]
 
 [[package]]
 name = "digest"
@@ -11659,7 +11657,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum 0.8.1",
- "bridge",
  "bytes",
  "codes-iso-639",
  "data",

@@ -14,7 +14,7 @@ pub struct AppState {
     pub clerk: Clerk,
     pub realtime_stt: hypr_stt::realtime::Client,
     pub recorded_stt: hypr_stt::recorded::Client,
-    pub diarize: hypr_bridge::diarize::DiarizeClient,
+    pub diarize: hypr_diart::DiarizeClient,
     pub admin_db: AdminDatabase,
     pub analytics: AnalyticsClient,
     pub turso: TursoClient,
@@ -35,7 +35,7 @@ pub struct WorkerState {
 pub struct STTState {
     pub realtime_stt: hypr_stt::realtime::Client,
     pub recorded_stt: hypr_stt::recorded::Client,
-    pub diarize: hypr_bridge::diarize::DiarizeClient,
+    pub diarize: hypr_diart::DiarizeClient,
 }
 
 #[derive(Clone)]

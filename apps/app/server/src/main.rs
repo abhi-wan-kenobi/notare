@@ -116,7 +116,7 @@ fn main() {
                 .clova_api_key(get_env("CLOVA_API_KEY"))
                 .build();
 
-            let diarize = hypr_bridge::diarize::DiarizeClient::builder()
+            let diarize = hypr_diart::DiarizeClient::builder()
                 .api_base(get_env("DIARIZE_API_BASE"))
                 .api_key(get_env("DIARIZE_API_KEY"))
                 .sample_rate(16000)

@@ -11,7 +11,6 @@ hypr-auth-interface = { path = "../../../plugins/auth-interface", package = "aut
 hypr-listener-interface = { path = "../../../plugins/listener-interface", package = "listener-interface" }
 
 hypr-analytics = { path = "../../../crates/analytics", package = "analytics" }
-hypr-bridge = { path = "../../../crates/bridge", package = "bridge" }
 hypr-buffer = { path = "../../../crates/buffer", package = "buffer" }
 hypr-calendar-google = { path = "../../../crates/calendar-google", package = "calendar-google" }
 hypr-calendar-interface = { path = "../../../crates/calendar-interface", package = "calendar-interface" }
@@ -19,6 +18,7 @@ hypr-calendar-outlook = { path = "../../../crates/calendar-outlook", package = "
 hypr-db-admin = { path = "../../../crates/db-admin", package = "db-admin" }
 hypr-db-core = { path = "../../../crates/db-core", package = "db-core" }
 hypr-db-user = { path = "../../../crates/db-user", package = "db-user" }
+hypr-diart = { path = "../../../crates/diart", package = "diart" }
 hypr-nango = { path = "../../../crates/nango", package = "nango" }
 hypr-notion = { path = "../../../crates/notion", package = "notion" }
 hypr-openai = { path = "../../../crates/openai", package = "openai" }

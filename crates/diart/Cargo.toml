@@ -1,11 +1,11 @@
 [package]
-name = "bridge"
+name = "diart"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hypr-db-user = { path = "../../crates/db-user", package = "db-user" }
-hypr-ws = { path = "../../crates/ws", package = "ws", features = ["server"] }
+hypr-db-user = { path = "../db-user", package = "db-user" }
+hypr-ws = { path = "../ws", package = "ws" }
 
 anyhow = { workspace = true }
 thiserror = { workspace = true }
@@ -18,9 +18,6 @@ url = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_bytes = { workspace = true }
 serde_json = { workspace = true }
-
-schemars = { workspace = true }
-specta = { workspace = true, features = ["derive"] }
 
 futures-util = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }

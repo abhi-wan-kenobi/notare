@@ -162,7 +162,7 @@ mod tests {
                     .deepgram_api_key("".to_string())
                     .clova_api_key("".to_string())
                     .build(),
-                diarize: hypr_bridge::diarize::DiarizeClient::builder()
+                diarize: hypr_diart::DiarizeClient::builder()
                     .sample_rate(16000)
                     .api_base("http://localhost:3000".to_string())
                     .api_key("".to_string())

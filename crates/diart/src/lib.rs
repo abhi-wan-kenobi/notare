@@ -2,8 +2,6 @@ use futures_util::{Stream, StreamExt};
 
 use hypr_ws::client::{ClientRequestBuilder, Message, WebSocketClient, WebSocketIO};
 
-use crate::{DiarizeInputChunk, DiarizeOutputChunk};
-
 #[derive(Default)]
 pub struct DiarizeClientBuilder {
     api_base: Option<String>,
@@ -78,6 +76,14 @@ impl WebSocketIO for DiarizeClient {
         }
     }
 }
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct DiarizeInputChunk {
+    #[serde(serialize_with = "serde_bytes::serialize")]
+    pub audio: Vec<u8>,
+}
+
+pub type DiarizeOutputChunk = hypr_db_user::DiarizationChunk;
 
 impl DiarizeClient {
     pub fn builder() -> DiarizeClientBuilder {
