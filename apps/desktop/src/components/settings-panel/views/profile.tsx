@@ -47,11 +47,11 @@ export default function ProfileComponent() {
   const form = useForm<Schema>({
     resolver: zodResolver(schema),
     defaultValues: {
-      fullName: config.data?.human.full_name ?? undefined,
-      jobTitle: config.data?.human.job_title ?? undefined,
+      fullName: config.data?.human?.full_name ?? undefined,
+      jobTitle: config.data?.human?.job_title ?? undefined,
       companyName: config.data?.organization.name ?? undefined,
       companyDescription: config.data?.organization.description ?? undefined,
-      linkedinUserName: config.data?.human.linkedin_username ?? undefined,
+      linkedinUserName: config.data?.human?.linkedin_username ?? undefined,
     },
   });
 
@@ -63,7 +63,7 @@ export default function ProfileComponent() {
       }
 
       const newHuman: Human = {
-        ...config.data.human,
+        ...config.data.human!,
         full_name: v.fullName ?? null,
         job_title: v.jobTitle ?? null,
         linkedin_username: v.linkedinUserName ?? null,

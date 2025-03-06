@@ -69,8 +69,6 @@ user_common_derives! {
     pub struct ConversationChunk {
         pub start: DateTime<Utc>,
         pub end: DateTime<Utc>,
-        pub local_audio_path: String,
-        pub remote_audio_path: String,
         pub transcripts: Vec<TranscriptChunk>,
         pub diarizations: Vec<DiarizationChunk>,
     }
