@@ -1,4 +1,4 @@
-use super::{GetSessionFilter, Human, ListSessionFilter, Session, UserDatabase};
+use super::{Event, GetSessionFilter, Human, ListSessionFilter, Session, UserDatabase};
 
 impl UserDatabase {
     pub async fn get_session(
@@ -197,6 +197,30 @@ impl UserDatabase {
         }
         Ok(items)
     }
+
+    pub async fn session_get_event(
+        &self,
+        session_id: impl Into<String>,
+    ) -> Result<Option<Event>, crate::Error> {
+        let conn = self.conn()?;
+
+        let mut rows = conn
+            .query(
+                "SELECT e.* FROM events e
+                JOIN sessions s ON e.id = s.calendar_event_id
+                WHERE s.id = ?",
+                vec![session_id.into()],
+            )
+            .await?;
+
+        match rows.next().await? {
+            None => Ok(None),
+            Some(row) => {
+                let event: Event = libsql::de::from_row(&row)?;
+                Ok(Some(event))
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -254,5 +278,7 @@ mod tests {
 
         let participants = db.session_list_participants(&session.id).await.unwrap();
         assert_eq!(participants.len(), 0);
+
+        assert_eq!(db.session_get_event(&session.id).await.unwrap(), None);
     }
 }

@@ -37,6 +37,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::sessions::session_add_participant,
             commands::sessions::session_remove_participant,
             commands::sessions::session_list_participants,
+            commands::sessions::session_get_event,
             commands::configs::get_config,
             commands::configs::set_config,
             commands::users::get_self_human,

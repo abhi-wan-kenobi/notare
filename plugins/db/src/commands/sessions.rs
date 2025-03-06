@@ -170,3 +170,23 @@ pub async fn session_list_participants(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+#[specta::specta]
+#[tracing::instrument(skip(state))]
+pub async fn session_get_event(
+    state: tauri::State<'_, crate::ManagedState>,
+    session_id: String,
+) -> Result<Option<hypr_db_user::Event>, String> {
+    let guard = state.lock().await;
+
+    let db = guard
+        .db
+        .as_ref()
+        .ok_or(crate::Error::NoneDatabase)
+        .map_err(|e| e.to_string())?;
+
+    db.session_get_event(session_id)
+        .await
+        .map_err(|e| e.to_string())
+}

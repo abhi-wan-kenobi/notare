@@ -12,6 +12,7 @@ const COMMANDS: &[&str] = &[
     "session_add_participant",
     "session_remove_participant",
     "session_list_participants",
+    "session_get_event",
     // template
     "list_templates",
     "upsert_template",

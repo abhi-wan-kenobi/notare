@@ -11,6 +11,7 @@ permissions = [
   "allow-session-add-participant",
   "allow-session-remove-participant",
   "allow-session-list-participants",
+  "allow-session-get-event",
   # calendar
   "allow-upsert-calendar",
   "allow-list-calendars",

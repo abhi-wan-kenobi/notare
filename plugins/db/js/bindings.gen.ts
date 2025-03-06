@@ -52,6 +52,9 @@ async sessionRemoveParticipant(sessionId: string, humanId: string) : Promise<nul
 async sessionListParticipants(sessionId: string) : Promise<Human[]> {
     return await TAURI_INVOKE("plugin:db|session_list_participants", { sessionId });
 },
+async sessionGetEvent(sessionId: string) : Promise<Event | null> {
+    return await TAURI_INVOKE("plugin:db|session_get_event", { sessionId });
+},
 async getConfig() : Promise<Config> {
     return await TAURI_INVOKE("plugin:db|get_config");
 },

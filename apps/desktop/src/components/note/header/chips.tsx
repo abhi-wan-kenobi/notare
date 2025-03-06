@@ -31,22 +31,28 @@ export default function Chips() {
 }
 
 export function EventChip() {
-  // const _ = useSession((s) => s.session);
+  const session = useSession((s) => s.session);
+
+  const event = useQuery({
+    enabled: !!session?.id,
+    queryKey: ["event", session.id],
+    queryFn: () => dbCommands.sessionGetEvent(session.id),
+  });
 
   return (
     <Popover>
       <PopoverTrigger>
         <div className="flex flex-row items-center gap-2 rounded-md px-2 py-1.5 hover:bg-neutral-100">
           <CalendarIcon size={14} />
-          <p className="text-xs">Jan 23</p>
+          <p className="text-xs">
+            {event.data?.start_date} - {event.data?.end_date}
+          </p>
         </div>
       </PopoverTrigger>
       <PopoverContent align="start" className="shadow-lg">
         <div className="flex flex-col gap-2">
-          <div className="font-semibold">예은 X 지헌</div>
-          <div className="text-sm text-neutral-600">
-            Thu, Jan 23 8:00 PM - 9:00 PM
-          </div>
+          <div className="font-semibold">{event.data?.name}</div>
+          <div className="text-sm text-neutral-600">{event.data?.note}</div>
           <Button variant="outline">View in calendar</Button>
         </div>
       </PopoverContent>

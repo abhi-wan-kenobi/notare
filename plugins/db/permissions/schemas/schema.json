@@ -465,6 +465,16 @@
           "const": "deny-session-add-participant"
         },
         {
+          "description": "Enables the session_get_event command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-session-get-event"
+        },
+        {
+          "description": "Denies the session_get_event command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-session-get-event"
+        },
+        {
           "description": "Enables the session_list_participants command without any pre-configured scope.",
           "type": "string",
           "const": "allow-session-list-participants"

@@ -11,6 +11,7 @@ Default permissions for the plugin
 - `allow-session-add-participant`
 - `allow-session-remove-participant`
 - `allow-session-list-participants`
+- `allow-session-get-event`
 - `allow-upsert-calendar`
 - `allow-list-calendars`
 - `allow-list-templates`
@@ -479,6 +480,32 @@ Enables the session_add_participant command without any pre-configured scope.
 <td>
 
 Denies the session_add_participant command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-session-get-event`
+
+</td>
+<td>
+
+Enables the session_get_event command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-session-get-event`
+
+</td>
+<td>
+
+Denies the session_get_event command without any pre-configured scope.
 
 </td>
 </tr>
