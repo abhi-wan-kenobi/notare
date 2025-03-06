@@ -2,22 +2,22 @@
 
 Default permissions for the plugin
 
-- `allow-list-calendars`
-- `allow-list-participants`
-- `allow-upsert-calendar`
 - `allow-upsert-session`
-- `allow-list-templates`
-- `allow-upsert-template`
-- `allow-delete-template`
-- `allow-list-events`
 - `allow-list-sessions`
 - `allow-get-session`
 - `allow-visit-session`
 - `allow-delete-session`
 - `allow-set-session-event`
+- `allow-upsert-calendar`
+- `allow-list-calendars`
+- `allow-list-templates`
+- `allow-upsert-template`
+- `allow-delete-template`
+- `allow-list-events`
 - `allow-get-config`
 - `allow-set-config`
 - `allow-get-self-human`
+- `allow-list-participants`
 - `allow-upsert-human`
 - `allow-get-self-organization`
 - `allow-upsert-organization`
@@ -25,6 +25,10 @@ Default permissions for the plugin
 - `allow-list-chat-messages`
 - `allow-create-chat-group`
 - `allow-upsert-chat-message`
+- `allow-list-all-tags`
+- `allow-list-session-tags`
+- `allow-assign-tag-to-session`
+- `allow-unassign-tag-from-session`
 
 ## Permission Table
 

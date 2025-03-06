@@ -7,6 +7,9 @@
 
 
 export const commands = {
+async listEvents() : Promise<Event[]> {
+    return await TAURI_INVOKE("plugin:db|list_events");
+},
 async listCalendars() : Promise<Calendar[]> {
     return await TAURI_INVOKE("plugin:db|list_calendars");
 },
@@ -30,9 +33,6 @@ async upsertTemplate(template: Template) : Promise<Template> {
 },
 async deleteTemplate(id: string) : Promise<null> {
     return await TAURI_INVOKE("plugin:db|delete_template", { id });
-},
-async listEvents() : Promise<Event[]> {
-    return await TAURI_INVOKE("plugin:db|list_events");
 },
 async listSessions(filter: ListSessionFilter | null) : Promise<Session[]> {
     return await TAURI_INVOKE("plugin:db|list_sessions", { filter });
