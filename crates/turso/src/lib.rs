@@ -155,7 +155,7 @@ impl TursoClient {
         format_db_url(name, &self.org_slug)
     }
 
-    pub fn format_db_name(name: impl Into<String>) -> String {
+    pub fn format_db_name(&self, name: impl Into<String>) -> String {
         format_db_name(name)
     }
 

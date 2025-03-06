@@ -124,31 +124,21 @@ fn main() {
 
             let admin_db = {
                 let base_db = {
-                    if cfg!(debug_assertions) {
-                        hypr_db_core::DatabaseBuilder::default()
-                            .memory()
-                            .build()
-                            .await
-                            .unwrap()
-                    } else {
-                        let name = get_env("TURSO_ADMIN_DB_NAME");
-                        let url = turso.format_db_url(&name);
-                        let token = turso.generate_db_token(&name).await.unwrap();
+                    let name = get_env("TURSO_ADMIN_DB_NAME");
 
-                        hypr_db_core::DatabaseBuilder::default()
-                            .remote(url, token)
-                            .build()
-                            .await
-                            .unwrap()
-                    }
+                    let db_name = turso.format_db_name(&name);
+                    let db_url = turso.format_db_url(&db_name);
+                    let db_token = turso.generate_db_token(&db_name).await.unwrap();
+
+                    hypr_db_core::DatabaseBuilder::default()
+                        .remote(db_url, db_token)
+                        .build()
+                        .await
+                        .unwrap()
                 };
 
                 let admin_db = hypr_db_admin::AdminDatabase::from(base_db);
                 hypr_db_admin::migrate(&admin_db).await.unwrap();
-
-                if cfg!(debug_assertions) {
-                    hypr_db_admin::seed(&admin_db).await.unwrap();
-                }
 
                 admin_db
             };

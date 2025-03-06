@@ -35,7 +35,15 @@ pub async fn verify_api_key(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
+    let account = state
+        .admin_db
+        .get_account_by_id(&user.account_id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+
     req.extensions_mut().insert(user);
+    req.extensions_mut().insert(account);
     Ok(next.run(req).await)
 }
 
