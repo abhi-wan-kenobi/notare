@@ -112,11 +112,11 @@ impl std::ops::Deref for UserDatabase {
 const MIGRATIONS: [&str; 13] = [
     include_str!("./calendars_migration.sql"),
     include_str!("./configs_migration.sql"),
-    include_str!("./event_participants_migration.sql"),
     include_str!("./events_migration.sql"),
     include_str!("./humans_migration.sql"),
     include_str!("./organizations_migration.sql"),
     include_str!("./sessions_migration.sql"),
+    include_str!("./session_participants_migration.sql"),
     include_str!("./templates_migration.sql"),
     include_str!("./chat_groups_migration.sql"),
     include_str!("./chat_messages_migration.sql"),

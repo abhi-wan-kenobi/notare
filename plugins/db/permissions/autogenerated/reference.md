@@ -8,6 +8,9 @@ Default permissions for the plugin
 - `allow-visit-session`
 - `allow-delete-session`
 - `allow-set-session-event`
+- `allow-session-add-participant`
+- `allow-session-remove-participant`
+- `allow-session-list-participants`
 - `allow-upsert-calendar`
 - `allow-list-calendars`
 - `allow-list-templates`
@@ -17,7 +20,6 @@ Default permissions for the plugin
 - `allow-get-config`
 - `allow-set-config`
 - `allow-get-self-human`
-- `allow-list-participants`
 - `allow-upsert-human`
 - `allow-get-self-organization`
 - `allow-upsert-organization`
@@ -380,32 +382,6 @@ Denies the list_events command without any pre-configured scope.
 <tr>
 <td>
 
-`db:allow-list-participants`
-
-</td>
-<td>
-
-Enables the list_participants command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`db:deny-list-participants`
-
-</td>
-<td>
-
-Denies the list_participants command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
 `db:allow-list-session-tags`
 
 </td>
@@ -477,6 +453,84 @@ Enables the list_templates command without any pre-configured scope.
 <td>
 
 Denies the list_templates command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-session-add-participant`
+
+</td>
+<td>
+
+Enables the session_add_participant command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-session-add-participant`
+
+</td>
+<td>
+
+Denies the session_add_participant command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-session-list-participants`
+
+</td>
+<td>
+
+Enables the session_list_participants command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-session-list-participants`
+
+</td>
+<td>
+
+Denies the session_list_participants command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-session-remove-participant`
+
+</td>
+<td>
+
+Enables the session_remove_participant command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-session-remove-participant`
+
+</td>
+<td>
+
+Denies the session_remove_participant command without any pre-configured scope.
 
 </td>
 </tr>

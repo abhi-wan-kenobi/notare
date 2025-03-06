@@ -1,4 +1,4 @@
-use super::{GetSessionFilter, ListSessionFilter, Session, UserDatabase};
+use super::{GetSessionFilter, Human, ListSessionFilter, Session, UserDatabase};
 
 impl UserDatabase {
     pub async fn get_session(
@@ -48,10 +48,10 @@ impl UserDatabase {
         Ok(())
     }
 
-    pub async fn delete_session(&self, id: String) -> Result<(), crate::Error> {
+    pub async fn delete_session(&self, id: impl Into<String>) -> Result<(), crate::Error> {
         let conn = self.conn()?;
 
-        conn.execute("DELETE FROM sessions WHERE id = ?", vec![id])
+        conn.execute("DELETE FROM sessions WHERE id = ?", vec![id.into()])
             .await?;
         Ok(())
     }
@@ -144,6 +144,59 @@ impl UserDatabase {
         .await?;
         Ok(())
     }
+
+    pub async fn session_add_participant(
+        &self,
+        session_id: impl Into<String>,
+        human_id: impl Into<String>,
+    ) -> Result<(), crate::Error> {
+        let conn = self.conn()?;
+
+        conn.execute(
+            "INSERT OR REPLACE INTO session_participants (session_id, human_id) VALUES (?, ?)",
+            vec![session_id.into(), human_id.into()],
+        )
+        .await?;
+        Ok(())
+    }
+
+    pub async fn session_remove_participant(
+        &self,
+        session_id: impl Into<String>,
+        human_id: impl Into<String>,
+    ) -> Result<(), crate::Error> {
+        let conn = self.conn()?;
+
+        conn.execute(
+            "DELETE FROM session_participants WHERE session_id = ? AND human_id = ?",
+            vec![session_id.into(), human_id.into()],
+        )
+        .await?;
+        Ok(())
+    }
+
+    pub async fn session_list_participants(
+        &self,
+        session_id: impl Into<String>,
+    ) -> Result<Vec<Human>, crate::Error> {
+        let conn = self.conn()?;
+
+        let mut rows = conn
+            .query(
+                "SELECT h.* FROM humans h
+                JOIN session_participants sp ON h.id = sp.human_id
+                WHERE sp.session_id = ?",
+                vec![session_id.into()],
+            )
+            .await?;
+
+        let mut items = Vec::new();
+        while let Some(row) = rows.next().await.unwrap() {
+            let item: Human = libsql::de::from_row(&row)?;
+            items.push(item);
+        }
+        Ok(items)
+    }
 }
 
 #[cfg(test)]
@@ -195,8 +248,11 @@ mod tests {
         let sessions = db.list_sessions(None).await.unwrap();
         assert_eq!(sessions.len(), 1);
 
-        db.delete_session(session.id).await.unwrap();
+        db.delete_session(&session.id).await.unwrap();
         let sessions = db.list_sessions(None).await.unwrap();
         assert_eq!(sessions.len(), 0);
+
+        let participants = db.session_list_participants(&session.id).await.unwrap();
+        assert_eq!(participants.len(), 0);
     }
 }

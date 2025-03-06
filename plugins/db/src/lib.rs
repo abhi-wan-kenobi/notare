@@ -24,7 +24,6 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
         .commands(tauri_specta::collect_commands![
             commands::events::list_events,
             commands::calendars::list_calendars,
-            commands::calendars::list_participants,
             commands::calendars::upsert_calendar,
             commands::sessions::upsert_session,
             commands::sessions::visit_session,
@@ -35,6 +34,9 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::sessions::delete_session,
             commands::sessions::get_session,
             commands::sessions::set_session_event,
+            commands::sessions::session_add_participant,
+            commands::sessions::session_remove_participant,
+            commands::sessions::session_list_participants,
             commands::configs::get_config,
             commands::configs::set_config,
             commands::users::get_self_human,

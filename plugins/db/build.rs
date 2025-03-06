@@ -9,6 +9,9 @@ const COMMANDS: &[&str] = &[
     "delete_session",
     "get_session",
     "set_session_event",
+    "session_add_participant",
+    "session_remove_participant",
+    "session_list_participants",
     // template
     "list_templates",
     "upsert_template",
@@ -19,7 +22,6 @@ const COMMANDS: &[&str] = &[
     "get_config",
     "set_config",
     // user
-    "list_participants",
     "get_self_human",
     "upsert_human",
     "get_self_organization",

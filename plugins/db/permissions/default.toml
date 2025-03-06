@@ -8,6 +8,9 @@ permissions = [
   "allow-visit-session",
   "allow-delete-session",
   "allow-set-session-event",
+  "allow-session-add-participant",
+  "allow-session-remove-participant",
+  "allow-session-list-participants",
   # calendar
   "allow-upsert-calendar",
   "allow-list-calendars",
@@ -22,7 +25,6 @@ permissions = [
   "allow-set-config",
   # user
   "allow-get-self-human",
-  "allow-list-participants",
   "allow-upsert-human",
   "allow-get-self-organization",
   "allow-upsert-organization",

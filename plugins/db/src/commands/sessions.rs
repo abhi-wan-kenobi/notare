@@ -108,3 +108,65 @@ pub async fn set_session_event(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+#[specta::specta]
+#[tracing::instrument(skip(state))]
+pub async fn session_add_participant(
+    state: tauri::State<'_, crate::ManagedState>,
+    session_id: String,
+    human_id: String,
+) -> Result<(), String> {
+    let guard = state.lock().await;
+
+    let db = guard
+        .db
+        .as_ref()
+        .ok_or(crate::Error::NoneDatabase)
+        .map_err(|e| e.to_string())?;
+
+    db.session_add_participant(session_id, human_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+#[tracing::instrument(skip(state))]
+pub async fn session_remove_participant(
+    state: tauri::State<'_, crate::ManagedState>,
+    session_id: String,
+    human_id: String,
+) -> Result<(), String> {
+    let guard = state.lock().await;
+
+    let db = guard
+        .db
+        .as_ref()
+        .ok_or(crate::Error::NoneDatabase)
+        .map_err(|e| e.to_string())?;
+
+    db.session_remove_participant(session_id, human_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+#[tracing::instrument(skip(state))]
+pub async fn session_list_participants(
+    state: tauri::State<'_, crate::ManagedState>,
+    session_id: String,
+) -> Result<Vec<hypr_db_user::Human>, String> {
+    let guard = state.lock().await;
+
+    let db = guard
+        .db
+        .as_ref()
+        .ok_or(crate::Error::NoneDatabase)
+        .map_err(|e| e.to_string())?;
+
+    db.session_list_participants(session_id)
+        .await
+        .map_err(|e| e.to_string())
+}

@@ -13,9 +13,6 @@ async listEvents() : Promise<Event[]> {
 async listCalendars() : Promise<Calendar[]> {
     return await TAURI_INVOKE("plugin:db|list_calendars");
 },
-async listParticipants(eventId: string) : Promise<Human[]> {
-    return await TAURI_INVOKE("plugin:db|list_participants", { eventId });
-},
 async upsertCalendar(calendar: Calendar) : Promise<Calendar> {
     return await TAURI_INVOKE("plugin:db|upsert_calendar", { calendar });
 },
@@ -45,6 +42,15 @@ async getSession(option: GetSessionFilter) : Promise<Session | null> {
 },
 async setSessionEvent(sessionId: string, eventId: string) : Promise<null> {
     return await TAURI_INVOKE("plugin:db|set_session_event", { sessionId, eventId });
+},
+async sessionAddParticipant(sessionId: string, humanId: string) : Promise<null> {
+    return await TAURI_INVOKE("plugin:db|session_add_participant", { sessionId, humanId });
+},
+async sessionRemoveParticipant(sessionId: string, humanId: string) : Promise<null> {
+    return await TAURI_INVOKE("plugin:db|session_remove_participant", { sessionId, humanId });
+},
+async sessionListParticipants(sessionId: string) : Promise<Human[]> {
+    return await TAURI_INVOKE("plugin:db|session_list_participants", { sessionId });
 },
 async getConfig() : Promise<Config> {
     return await TAURI_INVOKE("plugin:db|get_config");

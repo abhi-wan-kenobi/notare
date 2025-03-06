@@ -1,4 +1,4 @@
-use super::{Event, Human, UserDatabase};
+use super::{Event, UserDatabase};
 
 impl UserDatabase {
     pub async fn get_event(&self, id: impl Into<String>) -> Result<Option<Event>, crate::Error> {
@@ -80,68 +80,12 @@ impl UserDatabase {
         }
         Ok(items)
     }
-
-    pub async fn list_participants(
-        &self,
-        event_id: impl Into<String>,
-    ) -> Result<Vec<Human>, crate::Error> {
-        let conn = self.conn()?;
-
-        let mut rows = conn
-            .query(
-                "SELECT h.* 
-                FROM humans h 
-                JOIN event_participants ep ON h.id = ep.human_id
-                WHERE ep.event_id = ?",
-                vec![event_id.into()],
-            )
-            .await?;
-
-        let mut items = Vec::new();
-        while let Some(row) = rows.next().await.unwrap() {
-            let item: Human = libsql::de::from_row(&row)?;
-            items.push(item);
-        }
-        Ok(items)
-    }
-
-    pub async fn add_participant(
-        &self,
-        event_id: impl Into<String>,
-        human_id: impl Into<String>,
-    ) -> Result<(), crate::Error> {
-        let conn = self.conn()?;
-
-        conn.query(
-            "INSERT OR IGNORE INTO event_participants (event_id, human_id) VALUES (?, ?)",
-            (event_id.into(), human_id.into()),
-        )
-        .await?;
-
-        Ok(())
-    }
-
-    pub async fn remove_participant(
-        &self,
-        event_id: impl Into<String>,
-        human_id: impl Into<String>,
-    ) -> Result<(), crate::Error> {
-        let conn = self.conn()?;
-
-        conn.query(
-            "DELETE FROM event_participants WHERE event_id = ? AND human_id = ?",
-            (event_id.into(), human_id.into()),
-        )
-        .await?;
-
-        Ok(())
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{tests::setup_db, Calendar, Platform};
+    use crate::{tests::setup_db, Calendar, Human, Platform};
 
     #[tokio::test]
     async fn test_events() {
