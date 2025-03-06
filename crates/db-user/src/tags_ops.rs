@@ -8,12 +8,10 @@ impl UserDatabase {
             .query(
                 "INSERT OR REPLACE INTO tags (
                     id,
-                    user_id,
-                    session_id,
                     name
-                ) VALUES (?, ?, ?, ?)
+                ) VALUES (?, ?)
                 RETURNING *",
-                (tag.id, tag.user_id, tag.session_id, tag.name),
+                (tag.id, tag.name),
             )
             .await?;
 
@@ -30,14 +28,60 @@ impl UserDatabase {
         Ok(())
     }
 
-    pub async fn list_tags_by_user(
+    pub async fn assign_tag_to_session(
         &self,
-        user_id: impl Into<String>,
+        tag_id: impl Into<String>,
+        session_id: impl Into<String>,
+    ) -> Result<(), crate::Error> {
+        let conn = self.conn()?;
+
+        conn.execute(
+            "INSERT INTO tags_sessions (tag_id, session_id) VALUES (?, ?)",
+            vec![tag_id.into(), session_id.into()],
+        )
+        .await?;
+        Ok(())
+    }
+
+    pub async fn unassign_tag_from_session(
+        &self,
+        tag_id: impl Into<String>,
+        session_id: impl Into<String>,
+    ) -> Result<(), crate::Error> {
+        let conn = self.conn()?;
+
+        conn.execute(
+            "DELETE FROM tags_sessions WHERE tag_id = ? AND session_id = ?",
+            vec![tag_id.into(), session_id.into()],
+        )
+        .await?;
+        Ok(())
+    }
+
+    pub async fn list_all_tags(&self) -> Result<Vec<Tag>, crate::Error> {
+        let conn = self.conn()?;
+
+        let mut rows = conn.query("SELECT * FROM tags", ()).await?;
+
+        let mut items = Vec::new();
+        while let Some(row) = rows.next().await.unwrap() {
+            let item: Tag = libsql::de::from_row(&row).unwrap();
+            items.push(item);
+        }
+        Ok(items)
+    }
+
+    pub async fn list_session_tags(
+        &self,
+        session_id: impl Into<String>,
     ) -> Result<Vec<Tag>, crate::Error> {
         let conn = self.conn()?;
 
         let mut rows = conn
-            .query("SELECT * FROM tags WHERE user_id = ?", vec![user_id.into()])
+            .query(
+                "SELECT * FROM tags WHERE session_id = ?",
+                vec![session_id.into()],
+            )
             .await?;
 
         let mut items = Vec::new();
@@ -65,7 +109,7 @@ mod tests {
             .await
             .unwrap();
 
-        let session = db
+        let _ = db
             .upsert_session(Session {
                 id: uuid::Uuid::new_v4().to_string(),
                 user_id: user.id.clone(),
@@ -82,18 +126,16 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(db.list_tags_by_user(&user.id).await.unwrap().len(), 0);
+        assert_eq!(db.list_all_tags().await.unwrap().len(), 0);
 
-        let tag = db
+        let _ = db
             .upsert_tag(Tag {
                 id: uuid::Uuid::new_v4().to_string(),
-                user_id: user.id.clone(),
-                session_id: session.id.clone(),
                 name: "Test Tag".to_string(),
             })
             .await
             .unwrap();
 
-        assert_eq!(db.list_tags_by_user(user.id).await.unwrap().len(), 1);
+        assert_eq!(db.list_all_tags().await.unwrap().len(), 1);
     }
 }

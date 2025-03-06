@@ -75,6 +75,18 @@ async createChatGroup(group: ChatGroup) : Promise<ChatGroup> {
 },
 async upsertChatMessage(message: ChatMessage) : Promise<ChatMessage> {
     return await TAURI_INVOKE("plugin:db|upsert_chat_message", { message });
+},
+async listAllTags() : Promise<Tag[]> {
+    return await TAURI_INVOKE("plugin:db|list_all_tags");
+},
+async listSessionTags(sessionId: string) : Promise<Tag[]> {
+    return await TAURI_INVOKE("plugin:db|list_session_tags", { sessionId });
+},
+async assignTagToSession(tagId: string, sessionId: string) : Promise<null> {
+    return await TAURI_INVOKE("plugin:db|assign_tag_to_session", { tagId, sessionId });
+},
+async unassignTagFromSession(tagId: string, sessionId: string) : Promise<null> {
+    return await TAURI_INVOKE("plugin:db|unassign_tag_from_session", { tagId, sessionId });
 }
 }
 
@@ -105,6 +117,7 @@ export type ListSessionFilter = { search: [number, string] } | { recentlyVisited
 export type Organization = { id: string; name: string; description: string | null }
 export type Platform = "Apple" | "Google"
 export type Session = { id: string; created_at: string; visited_at: string; user_id: string; calendar_event_id: string | null; title: string; audio_local_path: string | null; audio_remote_path: string | null; raw_memo_html: string; enhanced_memo_html: string | null; conversations: ConversationChunk[] }
+export type Tag = { id: string; name: string }
 export type Template = { id: string; user_id: string; title: string; description: string; sections: TemplateSection[]; tags: string[] }
 export type TemplateSection = { title: string; description: string }
 export type TranscriptChunk = { start: number; end: number; text: string }

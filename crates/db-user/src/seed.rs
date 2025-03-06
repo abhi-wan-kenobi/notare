@@ -1,5 +1,5 @@
 use super::{
-    Calendar, ChatGroup, ChatMessage, ChatMessageRole, Event, Human, Platform, Session,
+    Calendar, ChatGroup, ChatMessage, ChatMessageRole, Event, Human, Platform, Session, Tag,
     UserDatabase,
 };
 
@@ -98,6 +98,17 @@ pub async fn seed(db: &UserDatabase) -> Result<(), crate::Error> {
         },
     ];
 
+    let tags = vec![
+        Tag {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: "Customer".to_string(),
+        },
+        Tag {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: "Product".to_string(),
+        },
+    ];
+
     let sessions = vec![
         Session {
             id: uuid::Uuid::new_v4().to_string(),
@@ -146,6 +157,10 @@ pub async fn seed(db: &UserDatabase) -> Result<(), crate::Error> {
 
     for session in sessions {
         let _ = db.upsert_session(session).await?;
+    }
+
+    for tag in tags {
+        let _ = db.upsert_tag(tag).await?;
     }
 
     {

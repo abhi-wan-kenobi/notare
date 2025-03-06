@@ -44,7 +44,11 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::list_chat_groups,
             commands::list_chat_messages,
             commands::create_chat_group,
-            commands::upsert_chat_message
+            commands::upsert_chat_message,
+            commands::list_all_tags,
+            commands::list_session_tags,
+            commands::assign_tag_to_session,
+            commands::unassign_tag_from_session,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

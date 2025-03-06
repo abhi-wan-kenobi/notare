@@ -38,6 +38,32 @@ Default permissions for the plugin
 <tr>
 <td>
 
+`db:allow-assign-tag-to-session`
+
+</td>
+<td>
+
+Enables the assign_tag_to_session command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-assign-tag-to-session`
+
+</td>
+<td>
+
+Denies the assign_tag_to_session command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `db:allow-create-chat-group`
 
 </td>
@@ -220,6 +246,32 @@ Denies the get_session command without any pre-configured scope.
 <tr>
 <td>
 
+`db:allow-list-all-tags`
+
+</td>
+<td>
+
+Enables the list_all_tags command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-list-all-tags`
+
+</td>
+<td>
+
+Denies the list_all_tags command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `db:allow-list-calendars`
 
 </td>
@@ -350,6 +402,32 @@ Denies the list_participants command without any pre-configured scope.
 <tr>
 <td>
 
+`db:allow-list-session-tags`
+
+</td>
+<td>
+
+Enables the list_session_tags command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-list-session-tags`
+
+</td>
+<td>
+
+Denies the list_session_tags command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `db:allow-list-sessions`
 
 </td>
@@ -447,6 +525,32 @@ Enables the set_session_event command without any pre-configured scope.
 <td>
 
 Denies the set_session_event command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-unassign-tag-from-session`
+
+</td>
+<td>
+
+Enables the unassign_tag_from_session command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-unassign-tag-from-session`
+
+</td>
+<td>
+
+Denies the unassign_tag_from_session command without any pre-configured scope.
 
 </td>
 </tr>
