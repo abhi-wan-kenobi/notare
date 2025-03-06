@@ -1,7 +1,9 @@
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("unknown error")]
-    Connect(#[from] tonic::transport::Error),
-    #[error("unknown error")]
-    Unknown,
+    #[error(transparent)]
+    TonicTransportError(#[from] tonic::transport::Error),
+    #[error(transparent)]
+    TonicErrorStatus(#[from] tonic::Status),
+    #[error(transparent)]
+    SerdeJsonError(#[from] serde_json::Error),
 }

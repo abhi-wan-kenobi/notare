@@ -83,7 +83,7 @@ impl Client {
     pub async fn from_audio<S, E>(
         &mut self,
         audio: S,
-    ) -> Result<impl Stream<Item = Result<interface::StreamResponse>>>
+    ) -> Result<impl Stream<Item = Result<interface::StreamResponse, crate::Error>>, crate::Error>
     where
         S: Stream<Item = Result<Bytes, E>> + Send + Unpin + 'static,
         E: std::error::Error + Send + Sync + 'static,

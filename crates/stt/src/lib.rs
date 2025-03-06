@@ -1,5 +1,7 @@
 mod deepgram;
-mod types;
+mod errors;
+
+pub use errors::*;
 
 #[cfg(feature = "realtime")]
 pub mod realtime;

@@ -1,4 +1,3 @@
-use anyhow::Result;
 use bytes::Bytes;
 use futures_core::{Future, Stream};
 use serde::{Deserialize, Serialize};
@@ -15,7 +14,12 @@ pub trait RealtimeSpeechToText<S, E> {
     fn transcribe(
         &mut self,
         stream: S,
-    ) -> impl Future<Output = Result<Box<dyn Stream<Item = Result<StreamResponse>> + Send + Unpin>>>
+    ) -> impl Future<
+        Output = Result<
+            Box<dyn Stream<Item = Result<StreamResponse, crate::Error>> + Send + Unpin>,
+            crate::Error,
+        >,
+    >
     where
         S: Stream<Item = Result<Bytes, E>> + Send + Unpin + 'static,
         E: Error + Send + Sync + 'static;
@@ -108,7 +112,10 @@ where
     async fn transcribe(
         &mut self,
         stream: S,
-    ) -> Result<Box<dyn Stream<Item = Result<StreamResponse>> + Send + Unpin>> {
+    ) -> Result<
+        Box<dyn Stream<Item = Result<StreamResponse, crate::Error>> + Send + Unpin>,
+        crate::Error,
+    > {
         match self {
             MultiClient::Deepgram(client) => Ok(Box::new(client.transcribe(stream).await?)),
             MultiClient::Clova(client) => Ok(Box::new(client.transcribe(stream).await?)),

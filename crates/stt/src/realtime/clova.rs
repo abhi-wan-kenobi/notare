@@ -1,4 +1,3 @@
-use anyhow::Result;
 use bytes::Bytes;
 use futures_core::Stream;
 use futures_util::{future, StreamExt};
@@ -12,7 +11,10 @@ impl<S, E> RealtimeSpeechToText<S, E> for hypr_clova::realtime::Client {
     async fn transcribe(
         &mut self,
         input_stream: S,
-    ) -> Result<Box<dyn Stream<Item = Result<StreamResponse>> + Send + Unpin>>
+    ) -> Result<
+        Box<dyn Stream<Item = Result<StreamResponse, crate::Error>> + Send + Unpin>,
+        crate::Error,
+    >
     where
         S: Stream<Item = Result<Bytes, E>> + Send + Unpin + 'static,
         E: Error + Send + Sync + 'static,
@@ -21,11 +23,11 @@ impl<S, E> RealtimeSpeechToText<S, E> for hypr_clova::realtime::Client {
 
         let stream = output_stream.filter_map(|item| {
             let item = match item {
-                Err(e) => Some(Err(e)),
+                Err(e) => Some(Err(crate::Error::ClovaError(e.to_string()))),
                 Ok(response) => match response {
-                    clova::StreamResponse::TranscribeFailure(_) => {
-                        Some(Err(anyhow::anyhow!("Clova transcription failed")))
-                    }
+                    clova::StreamResponse::TranscribeFailure(a) => Some(Err(
+                        crate::Error::ClovaError(serde_json::to_string(&a).unwrap()),
+                    )),
                     clova::StreamResponse::TranscribeSuccess(r) => Some(Ok(StreamResponse {
                         words: vec![StreamResponseWord {
                             text: r.transcription.text,

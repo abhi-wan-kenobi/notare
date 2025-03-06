@@ -1,4 +1,3 @@
-use anyhow::Result;
 use bytes::Bytes;
 use std::error::Error;
 
@@ -15,7 +14,10 @@ impl<S, E> RealtimeSpeechToText<S, E> for crate::deepgram::DeepgramClient {
     async fn transcribe(
         &mut self,
         stream: S,
-    ) -> Result<Box<dyn Stream<Item = Result<StreamResponse>> + Send + Unpin>>
+    ) -> Result<
+        Box<dyn Stream<Item = Result<StreamResponse, crate::Error>> + Send + Unpin>,
+        crate::Error,
+    >
     where
         S: Stream<Item = Result<Bytes, E>> + Send + Unpin + 'static,
         E: Error + Send + Sync + 'static,
