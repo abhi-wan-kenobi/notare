@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import MyTasks from "@/components/home/my-tasks";
 import RecentNotes from "@/components/home/recent-notes";
-import WorkspaceCalendar from "@/components/home/workspace-calendar";
+import WorkspaceCalendar from "@/components/home/calendar";
 
 export const Route = createFileRoute("/app/home")({
   component: RouteComponent,
@@ -10,12 +10,14 @@ export const Route = createFileRoute("/app/home")({
 
 function RouteComponent() {
   return (
-    <div className="overflow-y-auto h-full">
-      <div className="max-w-3xl w-full mx-auto px-8 pt-6 pb-12">
-        <RecentNotes />
-        <WorkspaceCalendar />
-        <MyTasks />
+    <main className="flex h-full flex-col overflow-hidden bg-white">
+      <div className="overflow-y-auto px-8 py-12">
+        <div className="mx-auto max-w-3xl">
+          <RecentNotes />
+          <WorkspaceCalendar />
+          <MyTasks />
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

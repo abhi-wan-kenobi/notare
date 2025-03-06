@@ -24,14 +24,22 @@ export const Route = createFileRoute("/app/note/$id")({
 
 function Component() {
   const { session } = Route.useLoaderData();
-
   const { hidePanel } = useRightPanel();
 
   useEffect(() => {
     return () => {
       hidePanel();
+
+      const isNoteEmpty =
+        (!session.raw_memo_html || session.raw_memo_html === "") &&
+        !session.audio_local_path &&
+        !session.audio_remote_path;
+
+      if (isNoteEmpty) {
+        dbCommands.deleteSession(session.id);
+      }
     };
-  }, [hidePanel]);
+  }, [hidePanel, session]);
 
   return (
     <SessionProvider session={session}>
