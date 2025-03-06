@@ -85,17 +85,6 @@ pub async fn seed(db: &UserDatabase) -> Result<(), crate::Error> {
             end_date: now + chrono::Duration::days(1) + chrono::Duration::hours(2),
             google_event_url: None,
         },
-        Event {
-            id: uuid::Uuid::new_v4().to_string(),
-            user_id: yujong.clone().id,
-            tracking_id: "event_3".to_string(),
-            calendar_id: calendars[0].id.clone(),
-            name: "Event 3".to_string(),
-            note: "Description 3".to_string(),
-            start_date: now + chrono::Duration::days(1) + chrono::Duration::hours(1),
-            end_date: now + chrono::Duration::days(1) + chrono::Duration::hours(2),
-            google_event_url: None,
-        },
     ];
 
     let tags = vec![
@@ -146,17 +135,16 @@ pub async fn seed(db: &UserDatabase) -> Result<(), crate::Error> {
         db.upsert_calendar(calendar).await?;
     }
 
-    // FOREIGN KEY constraint failed
-    // for event in events {
-    //     let _ = db.upsert_event(event.clone()).await?;
-    //     for participant in participants.iter() {
-    //         db.add_participant(event.id.clone(), participant.id.clone())
-    //             .await?;
-    //     }
-    // }
+    for event in events {
+        let _ = db.upsert_event(event.clone()).await?;
+    }
 
-    for session in sessions {
-        let _ = db.upsert_session(session).await?;
+    for (i, session) in sessions.iter().enumerate() {
+        let s = db.upsert_session(session.clone()).await?;
+
+        if i == 0 {
+            db.session_add_participant(s.id, &alex.id).await?;
+        }
     }
 
     for tag in tags {
