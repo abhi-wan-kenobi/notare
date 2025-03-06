@@ -1,5 +1,9 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { RiLinkedinBoxFill } from "@remixicon/react";
 import { Check, TagIcon, Users2Icon, CalendarIcon, Mail } from "lucide-react";
+import { toast } from "sonner";
+
 import {
   Popover,
   PopoverTrigger,
@@ -8,11 +12,11 @@ import {
 import { Input } from "@hypr/ui/components/ui/input";
 import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
 import { Button } from "@hypr/ui/components/ui/button";
+
 import { mockParticipants } from "@/mocks/participants";
-import { type Tag, mockTags } from "@/mocks/tags";
-import { RiLinkedinBoxFill } from "@remixicon/react";
-import { toast } from "sonner";
-import { type Human } from "@hypr/plugin-db";
+import { useSession } from "@/contexts";
+
+import { commands as dbCommands, type Human, type Tag } from "@hypr/plugin-db";
 
 export default function Chips() {
   return (
@@ -27,6 +31,8 @@ export default function Chips() {
 }
 
 export function EventChip() {
+  // const _ = useSession((s) => s.session);
+
   return (
     <Popover>
       <PopoverTrigger>
@@ -180,6 +186,17 @@ export function TagChips() {
   const [selected, setSelected] = useState<Tag[]>([]);
   const [newTagName, setNewTagName] = useState("");
 
+  const sessionStore = useSession((s) => s.session);
+
+  const tags = useQuery({
+    queryKey: ["tags"],
+    enabled: !!sessionStore?.id,
+    queryFn: () => {
+      const id = sessionStore.id;
+      return dbCommands.listSessionTags(id);
+    },
+  });
+
   const toggleTag = (tag: Tag) => {
     const isSelected = selected.some((t) => t.id === tag.id);
     if (isSelected) {
@@ -237,7 +254,7 @@ export function TagChips() {
         align="start"
       >
         <div className="space-y-1">
-          {mockTags.map((tag) => {
+          {tags.data?.map((tag) => {
             const isSelected = selected.some((t) => t.id === tag.id);
             return (
               <button
@@ -251,7 +268,9 @@ export function TagChips() {
             );
           })}
 
-          <div className="my-2 border-t border-gray-200" />
+          {tags.data?.length && (
+            <div className="my-2 border-t border-gray-200" />
+          )}
 
           <div className="relative pl-1">
             <Input
