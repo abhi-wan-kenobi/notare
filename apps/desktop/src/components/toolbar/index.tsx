@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "@tanstack/react-router";
 import { type as getOsType } from "@tauri-apps/plugin-os";
 
 import { cn } from "@/utils";
@@ -22,10 +23,12 @@ export default function Toolbar() {
     },
   });
 
-  const { listening: isListening } = useOngoingSession((s) => ({
+  const { listening, session } = useOngoingSession((s) => ({
     listening: s.listening,
     session: s.session,
   }));
+
+  const { pathname } = useLocation();
 
   return (
     <>
@@ -37,7 +40,7 @@ export default function Toolbar() {
         ])}
         data-tauri-drag-region
       >
-        {/* TODO */}
+        {/* TODO: change for windows */}
         <div
           className={cn("w-40", osType.data === "macos" && "pl-[70px]")}
           data-tauri-drag-region
@@ -47,8 +50,11 @@ export default function Toolbar() {
           <BackButton />
         </div>
 
-        {/* TODO: 듣는중인데 현재 route가 노트 페이지이고 그게 현재 세션(session?.id)과 일치한다면 보여줄 필요가 없음 */}
-        {!isListening ? <SearchBar /> : <SessionIndicator />}
+        {listening && pathname !== `/app/note/${session?.id}` ? (
+          <SessionIndicator />
+        ) : (
+          <SearchBar />
+        )}
 
         <div
           className="flex w-40 items-center justify-end gap-1"
