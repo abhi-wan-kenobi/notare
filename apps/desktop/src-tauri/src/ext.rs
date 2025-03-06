@@ -36,14 +36,20 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
             let local_db_path = app.db_local_path();
             if let Some(account_id) = account_id.as_ref() {
                 let db = {
-                    let mut base = hypr_db_core::DatabaseBuilder::default().local(local_db_path);
+                    if cfg!(debug_assertions) {
+                        hypr_db_core::DatabaseBuilder::default().memory()
+                    } else {
+                        let db_name = format_db_name(account_id);
+                        let db_url = format_db_url(&db_name, DEFAULT_ORG_SLUG);
 
-                    let db_name = format_db_name(account_id);
-                    let db_url = format_db_url(&db_name, DEFAULT_ORG_SLUG);
-                    base = base.remote(db_url, database_token.unwrap());
-
-                    base.build().await.unwrap()
-                };
+                        hypr_db_core::DatabaseBuilder::default()
+                            .local(local_db_path)
+                            .remote(db_url, database_token.unwrap())
+                    }
+                }
+                .build()
+                .await
+                .unwrap();
 
                 app.db_attach(db).await.unwrap();
 

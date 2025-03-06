@@ -1,7 +1,8 @@
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  visited_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   user_id TEXT NOT NULL,
-  timestamp TEXT NOT NULL,
   calendar_event_id TEXT DEFAULT NULL,
   title TEXT NOT NULL,
   audio_local_path TEXT DEFAULT NULL,

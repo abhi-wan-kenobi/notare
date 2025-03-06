@@ -19,6 +19,9 @@ async upsertCalendar(calendar: Calendar) : Promise<Calendar> {
 async upsertSession(session: Session) : Promise<Session> {
     return await TAURI_INVOKE("plugin:db|upsert_session", { session });
 },
+async visitSession(id: string) : Promise<null> {
+    return await TAURI_INVOKE("plugin:db|visit_session", { id });
+},
 async listTemplates() : Promise<Template[]> {
     return await TAURI_INVOKE("plugin:db|list_templates");
 },
@@ -31,13 +34,13 @@ async deleteTemplate(id: string) : Promise<null> {
 async listEvents() : Promise<Event[]> {
     return await TAURI_INVOKE("plugin:db|list_events");
 },
-async listSessions(search: string | null) : Promise<Session[]> {
-    return await TAURI_INVOKE("plugin:db|list_sessions", { search });
+async listSessions(filter: ListSessionFilter | null) : Promise<Session[]> {
+    return await TAURI_INVOKE("plugin:db|list_sessions", { filter });
 },
 async deleteSession(id: string) : Promise<null> {
     return await TAURI_INVOKE("plugin:db|delete_session", { id });
 },
-async getSession(option: SessionFilter) : Promise<Session | null> {
+async getSession(option: GetSessionFilter) : Promise<Session | null> {
     return await TAURI_INVOKE("plugin:db|get_session", { option });
 },
 async setSessionEvent(sessionId: string, eventId: string) : Promise<null> {
@@ -96,11 +99,12 @@ export type ConfigNotification = { before: boolean; auto: boolean }
 export type ConversationChunk = { start: string; end: string; local_audio_path: string; remote_audio_path: string; transcripts: TranscriptChunk[]; diarizations: DiarizationChunk[] }
 export type DiarizationChunk = { start: number; end: number; speaker: string }
 export type Event = { id: string; user_id: string; tracking_id: string; calendar_id: string; name: string; note: string; start_date: string; end_date: string; google_event_url: string | null }
+export type GetSessionFilter = { id: string } | { calendarEventId: string } | { tagId: string }
 export type Human = { id: string; organization_id: string | null; is_user: boolean; full_name: string | null; email: string | null; job_title: string | null; linkedin_username: string | null }
+export type ListSessionFilter = { search: [number, string] } | { recentlyVisited: [number] }
 export type Organization = { id: string; name: string; description: string | null }
 export type Platform = "Apple" | "Google"
-export type Session = { id: string; user_id: string; timestamp: string; calendar_event_id: string | null; title: string; audio_local_path: string | null; audio_remote_path: string | null; raw_memo_html: string; enhanced_memo_html: string | null; conversations: ConversationChunk[] }
-export type SessionFilter = { id: string } | { calendarEventId: string } | { tagId: string }
+export type Session = { id: string; created_at: string; visited_at: string; user_id: string; calendar_event_id: string | null; title: string; audio_local_path: string | null; audio_remote_path: string | null; raw_memo_html: string; enhanced_memo_html: string | null; conversations: ConversationChunk[] }
 export type Template = { id: string; user_id: string; title: string; description: string; sections: TemplateSection[]; tags: string[] }
 export type TemplateSection = { title: string; description: string }
 export type TranscriptChunk = { start: number; end: number; text: string }

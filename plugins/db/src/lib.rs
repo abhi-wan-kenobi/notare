@@ -26,6 +26,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::list_participants,
             commands::upsert_calendar,
             commands::upsert_session,
+            commands::visit_session,
             commands::list_templates,
             commands::upsert_template,
             commands::delete_template,

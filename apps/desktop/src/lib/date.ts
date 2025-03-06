@@ -61,7 +61,7 @@ export function formatRemainingTime(date: Date): string {
 
 export function groupSessionsByDate(sessions: Session[]): GroupedSessions {
   return sessions.reduce<GroupedSessions>((groups, session) => {
-    const timestamp = parseFloat(session.timestamp);
+    const timestamp = parseFloat(session.created_at);
     const date = new Date(timestamp);
     const dateKey = format(date, "yyyy-MM-dd");
 

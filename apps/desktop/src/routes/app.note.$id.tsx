@@ -16,6 +16,7 @@ export const Route = createFileRoute("/app/note/$id")({
           throw redirect({ to: "/app" });
         }
 
+        await dbCommands.visitSession(session.id);
         return { session };
       },
     });

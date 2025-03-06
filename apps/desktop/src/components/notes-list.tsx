@@ -113,7 +113,7 @@ function SessionList({ data }: { data: Session[] }) {
 
             <div className="divide-y divide-neutral-200">
               {sessions.map((session: Session) => {
-                const timestamp = parseFloat(session.timestamp);
+                const timestamp = parseFloat(session.created_at);
                 const sessionDate = new Date(timestamp);
 
                 return (

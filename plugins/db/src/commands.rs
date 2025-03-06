@@ -155,7 +155,7 @@ pub async fn list_events(
 #[tracing::instrument(skip(state))]
 pub async fn list_sessions(
     state: tauri::State<'_, crate::ManagedState>,
-    search: Option<&str>,
+    filter: Option<hypr_db_user::ListSessionFilter>,
 ) -> Result<Vec<hypr_db_user::Session>, String> {
     let guard = state.lock().await;
 
@@ -165,7 +165,7 @@ pub async fn list_sessions(
         .ok_or(crate::Error::NoneDatabase)
         .map_err(|e| e.to_string())?;
 
-    db.list_sessions(search).await.map_err(|e| e.to_string())
+    db.list_sessions(filter).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -173,7 +173,7 @@ pub async fn list_sessions(
 #[tracing::instrument(skip(state))]
 pub async fn get_session(
     state: tauri::State<'_, crate::ManagedState>,
-    option: hypr_db_user::SessionFilter,
+    option: hypr_db_user::GetSessionFilter,
 ) -> Result<Option<hypr_db_user::Session>, String> {
     let guard = state.lock().await;
 
@@ -184,6 +184,24 @@ pub async fn get_session(
         .map_err(|e| e.to_string())?;
 
     db.get_session(option).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+#[tracing::instrument(skip(state))]
+pub async fn visit_session(
+    state: tauri::State<'_, crate::ManagedState>,
+    id: String,
+) -> Result<(), String> {
+    let guard = state.lock().await;
+
+    let db = guard
+        .db
+        .as_ref()
+        .ok_or(crate::Error::NoneDatabase)
+        .map_err(|e| e.to_string())?;
+
+    db.visit_session(id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

@@ -5,7 +5,7 @@ pub async fn handler(
     Path(id): Path<String>,
 ) -> Result<Json<hypr_db_user::Session>, StatusCode> {
     let session = db
-        .get_session(hypr_db_user::SessionFilter::Id(id))
+        .get_session(hypr_db_user::GetSessionFilter::Id(id))
         .await
         .map_err(|e| {
             tracing::error!("Error getting session: {:?}", e);

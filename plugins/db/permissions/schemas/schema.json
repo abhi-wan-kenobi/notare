@@ -515,6 +515,16 @@
           "const": "deny-upsert-template"
         },
         {
+          "description": "Enables the visit_session command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-visit-session"
+        },
+        {
+          "description": "Denies the visit_session command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-visit-session"
+        },
+        {
           "description": "Default permissions for the plugin",
           "type": "string",
           "const": "default"

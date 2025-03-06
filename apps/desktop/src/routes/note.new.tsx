@@ -19,7 +19,8 @@ export const Route = createFileRoute("/note/new")({
     const emptySession: Session = {
       id: crypto.randomUUID() as string,
       user_id: userId,
-      timestamp: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      visited_at: new Date().toISOString(),
       calendar_event_id: null,
       title: "Untitled",
       audio_local_path: null,

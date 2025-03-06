@@ -12,6 +12,7 @@ Default permissions for the plugin
 - `allow-list-events`
 - `allow-list-sessions`
 - `allow-get-session`
+- `allow-visit-session`
 - `allow-delete-session`
 - `allow-set-session-event`
 - `allow-get-config`
@@ -602,6 +603,32 @@ Enables the upsert_template command without any pre-configured scope.
 <td>
 
 Denies the upsert_template command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-visit-session`
+
+</td>
+<td>
+
+Enables the visit_session command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-visit-session`
+
+</td>
+<td>
+
+Denies the visit_session command without any pre-configured scope.
 
 </td>
 </tr>

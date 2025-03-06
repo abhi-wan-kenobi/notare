@@ -1,25 +1,25 @@
-use super::{Session, SessionFilter, UserDatabase};
+use super::{GetSessionFilter, ListSessionFilter, Session, UserDatabase};
 
 impl UserDatabase {
     pub async fn get_session(
         &self,
-        option: SessionFilter,
+        option: GetSessionFilter,
     ) -> Result<Option<Session>, crate::Error> {
         let conn = self.conn()?;
 
         let mut rows = match option {
-            SessionFilter::Id(id) => conn
+            GetSessionFilter::Id(id) => conn
                 .query("SELECT * FROM sessions WHERE id = ?", vec![id])
                 .await
                 .unwrap(),
-            SessionFilter::CalendarEventId(id) => conn
+            GetSessionFilter::CalendarEventId(id) => conn
                 .query(
                     "SELECT * FROM sessions WHERE calendar_event_id = ?",
                     vec![id],
                 )
                 .await
                 .unwrap(),
-            SessionFilter::TagId(id) => conn
+            GetSessionFilter::TagId(id) => conn
                 .query(
                     "SELECT * FROM sessions WHERE id IN (SELECT session_id FROM tags WHERE id = ?)",
                     vec![id],
@@ -37,6 +37,17 @@ impl UserDatabase {
         }
     }
 
+    pub async fn visit_session(&self, id: impl Into<String>) -> Result<(), crate::Error> {
+        let conn = self.conn()?;
+
+        conn.execute(
+            "UPDATE sessions SET visited_at = ? WHERE id = ?",
+            (chrono::Utc::now().to_rfc3339(), id.into()),
+        )
+        .await?;
+        Ok(())
+    }
+
     pub async fn delete_session(&self, id: String) -> Result<(), crate::Error> {
         let conn = self.conn()?;
 
@@ -45,24 +56,34 @@ impl UserDatabase {
         Ok(())
     }
 
-    pub async fn list_sessions(&self, search: Option<&str>) -> Result<Vec<Session>, crate::Error> {
+    pub async fn list_sessions(
+        &self,
+        filter: Option<ListSessionFilter>,
+    ) -> Result<Vec<Session>, crate::Error> {
         let conn = self.conn()?;
 
-        let mut rows = match search {
-            Some(q) => conn
-                .query(
-                    "SELECT * FROM sessions WHERE title LIKE ? ORDER BY timestamp DESC LIMIT 100",
-                    vec![format!("%{}%", q)],
+        let mut rows = match filter {
+            Some(ListSessionFilter::Search((limit, q))) => {
+                conn.query(
+                    "SELECT * FROM sessions WHERE title LIKE ? ORDER BY created_at DESC LIMIT ?",
+                    vec![format!("%{}%", q), limit.to_string()],
                 )
-                .await
-                .unwrap(),
-            None => conn
-                .query(
-                    "SELECT * FROM sessions ORDER BY timestamp DESC LIMIT 100",
+                .await?
+            }
+            Some(ListSessionFilter::RecentlyVisited((limit,))) => {
+                conn.query(
+                    "SELECT * FROM sessions ORDER BY visited_at DESC LIMIT ?",
+                    vec![limit.to_string()],
+                )
+                .await?
+            }
+            None => {
+                conn.query(
+                    "SELECT * FROM sessions ORDER BY created_at DESC LIMIT 100",
                     (),
                 )
-                .await
-                .unwrap(),
+                .await?
+            }
         };
 
         let mut items = Vec::new();
@@ -81,18 +102,16 @@ impl UserDatabase {
                 "INSERT OR REPLACE INTO sessions (
                     id,
                     user_id,
-                    timestamp,
                     calendar_event_id,
                     title,
                     raw_memo_html,
                     enhanced_memo_html,
                     conversations
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 RETURNING *",
                 vec![
                     libsql::Value::Text(session.id),
                     libsql::Value::Text(session.user_id),
-                    libsql::Value::Text(session.timestamp.to_rfc3339()),
                     session
                         .calendar_event_id
                         .map_or(libsql::Value::Null, libsql::Value::Text),
@@ -149,7 +168,8 @@ mod tests {
         let session = Session {
             id: uuid::Uuid::new_v4().to_string(),
             user_id: user.id.clone(),
-            timestamp: chrono::Utc::now(),
+            created_at: chrono::Utc::now(),
+            visited_at: chrono::Utc::now(),
             calendar_event_id: None,
             title: "test".to_string(),
             raw_memo_html: "raw_memo_html_1".to_string(),
@@ -165,7 +185,7 @@ mod tests {
         assert_eq!(session.title, "test");
         assert_eq!(session.conversations, vec![]);
 
-        let sessions = db.list_sessions(Some("test")).await.unwrap();
+        let sessions = db.list_sessions(None).await.unwrap();
         assert_eq!(sessions.len(), 1);
 
         session.raw_memo_html = "raw_memo_html_2".to_string();
@@ -176,7 +196,7 @@ mod tests {
         assert_eq!(sessions.len(), 1);
 
         db.delete_session(session.id).await.unwrap();
-        let sessions = db.list_sessions(Some("test")).await.unwrap();
+        let sessions = db.list_sessions(None).await.unwrap();
         assert_eq!(sessions.len(), 0);
     }
 }

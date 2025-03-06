@@ -69,7 +69,8 @@ mod tests {
             .upsert_session(Session {
                 id: uuid::Uuid::new_v4().to_string(),
                 user_id: user.id.clone(),
-                timestamp: chrono::Utc::now(),
+                created_at: chrono::Utc::now(),
+                visited_at: chrono::Utc::now(),
                 calendar_event_id: None,
                 title: "Test Session".to_string(),
                 audio_local_path: None,

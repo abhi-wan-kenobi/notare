@@ -2,6 +2,7 @@ const COMMANDS: &[&str] = &[
     "list_calendars",
     "list_participants",
     "upsert_calendar",
+    "visit_session",
     "upsert_session",
     "list_templates",
     "upsert_template",
