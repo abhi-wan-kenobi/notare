@@ -4,10 +4,6 @@ import { commands as authCommands } from "@hypr/plugin-auth";
 
 export const Route = createFileRoute("/app/")({
   loader: async ({ context: { queryClient } }) => {
-    if (!import.meta.env.PROD) {
-      return;
-    }
-
     const id = await authCommands.getFromStore("auth-user-id");
 
     if (!id) {
@@ -28,15 +24,10 @@ export const Route = createFileRoute("/app/")({
       conversations: [],
     };
 
-    try {
-      const session = await dbCommands.upsertSession(emptySession);
-      throw redirect({
-        to: "/app/note/$id",
-        params: { id: session.id },
-      });
-    } catch (error) {
-      console.error(error);
-      throw redirect({ to: "/login" });
-    }
+    const session = await dbCommands.upsertSession(emptySession);
+    throw redirect({
+      to: "/app/note/$id",
+      params: { id: session.id },
+    });
   },
 });
