@@ -6,6 +6,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     #[error(transparent)]
     IoError(#[from] std::io::Error),
+    #[error(transparent)]
+    ListenClientError(#[from] hypr_ws::Error),
     #[error("session already started")]
     SessionAlreadyStarted,
 }

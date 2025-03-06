@@ -255,7 +255,14 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
             s.speaker_stream_handle = Some(speaker_stream_handle);
         }
 
-        let listen_stream = listen_client.from_audio(audio_stream).await.unwrap();
+        let listen_stream = match listen_client.from_audio(audio_stream).await {
+            Ok(stream) => stream,
+            Err(e) => {
+                tracing::error!(e = ?e, "listen_stream");
+                let _ = self.stop_session().await;
+                return Err(crate::Error::ListenClientError(e));
+            }
+        };
 
         let listen_stream_handle = tokio::spawn({
             let app = self.app_handle().clone();

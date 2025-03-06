@@ -1,4 +1,4 @@
-import { type ChangeEvent } from "react";
+import { useCallback, type ChangeEvent } from "react";
 
 import { useSession } from "@/contexts";
 import { useOngoingSession } from "@/contexts/ongoing-session";
@@ -29,6 +29,10 @@ export function NoteHeader({ onNavigateToEditor }: NoteHeaderProps) {
     sessionStore.persistSession();
   };
 
+  const handleClickListen = useCallback(() => {
+    ongoingSessionStore.start(sessionStore.session);
+  }, [sessionStore.session, ongoingSessionStore.start]);
+
   return (
     <>
       <div className="flex flex-row items-center justify-between pl-8 pr-4 pt-6">
@@ -39,7 +43,7 @@ export function NoteHeader({ onNavigateToEditor }: NoteHeaderProps) {
         />
         <ListenButton
           isListening={ongoingSessionStore.listening}
-          onClick={ongoingSessionStore.start}
+          onClick={handleClickListen}
           onStop={ongoingSessionStore.pause}
         />
       </div>

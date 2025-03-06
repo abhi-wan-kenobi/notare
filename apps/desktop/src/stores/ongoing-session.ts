@@ -16,7 +16,7 @@ type State = {
 };
 
 type Actions = {
-  start: () => void;
+  start: (session: Session) => void;
   pause: () => void;
 };
 
@@ -26,12 +26,12 @@ export const createOngoingSessionStore = () => {
     listening: false,
     channel: null,
     amplitude: { mic: 0, speaker: 0 },
-    start: () => {
-      const { session } = get();
-      if (!session?.id) {
-        console.error("session_not_found");
-        return;
-      }
+    start: (session: Session) => {
+      set((state) =>
+        mutate(state, (draft) => {
+          draft.session = session;
+        }),
+      );
 
       const channel: State["channel"] = new Channel();
 
@@ -53,11 +53,12 @@ export const createOngoingSessionStore = () => {
       try {
         listenerCommands.startSession(session.id).then(() => {
           listenerCommands.subscribe(channel);
+          set({ channel, listening: true });
         });
       } catch (error) {
         console.error("failed to start session", error);
+        set({ channel, listening: false });
       }
-      set({ channel, listening: true });
     },
     pause: () => {
       const { channel } = get();
