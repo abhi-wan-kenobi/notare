@@ -62,7 +62,7 @@ function Component() {
   useEffect(() => {
     if (status === "Success") {
       commands.setupDb().then(() => {
-        navigate({ to: "/onboarding" });
+        navigate({ to: "/onboarding", replace: true });
       });
       return;
     }
