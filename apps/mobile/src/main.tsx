@@ -13,7 +13,6 @@ if (!rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <div>
-        <div>123</div>
         <Stack />
       </div>
     </StrictMode>,

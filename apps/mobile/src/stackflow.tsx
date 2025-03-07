@@ -5,13 +5,13 @@ import { basicUIPlugin } from "@stackflow/plugin-basic-ui";
 import { config } from "./stackflow.config";
 
 import { HomeActivity } from "./activities/home";
-import { NoteActivity } from "./activities/note";
+import { SessionActivity } from "./activities/session";
 
 export const { Stack } = stackflow({
   config,
   components: {
-    HomeActivity: HomeActivity,
-    NoteActivity: NoteActivity,
+    HomeActivity,
+    SessionActivity,
   },
   plugins: [basicRendererPlugin(), basicUIPlugin({ theme: "cupertino" })],
 });

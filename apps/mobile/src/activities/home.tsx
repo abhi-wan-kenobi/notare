@@ -4,37 +4,46 @@ import {
   useLoaderData,
 } from "@stackflow/react/future";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
+import type { ActivityLoaderArgs } from "@stackflow/config";
 
-import { homeActivityLoader } from "./home.loader";
-
-declare module "@stackflow/config" {
-  interface Register {
-    HomeActivity: {
-      todo: string;
-    };
-  }
+export function homeActivityLoader({}: ActivityLoaderArgs<"HomeActivity">) {
+  return {
+    sessions: [
+      {
+        id: "TODO",
+        name: "TODO",
+      },
+    ],
+  };
 }
 
 export const HomeActivity: ActivityComponentType<"HomeActivity"> = () => {
+  const { sessions } = useLoaderData<typeof homeActivityLoader>();
   const { push } = useFlow();
-  const loaderData = useLoaderData<typeof homeActivityLoader>();
 
-  const handleClick = () => {
-    push("NoteActivity", { todo: "Hello" });
+  const handleClick = (id: string) => {
+    push("SessionActivity", { id });
   };
 
   return (
     <AppScreen appBar={{ title: "Hyprnote" }}>
       <div>
-        <h1>HomeActivity</h1>
-        <p>{loaderData.todo}</p>
-        <button
-          className="bg-black text-white p-2 rounded-md"
-          onClick={handleClick}
-        >
-          Go to Note
-        </button>
+        {sessions.map((session) => (
+          <div
+            className="p-4 border border-gray-200 rounded-md hover:bg-gray-300 cursor-pointer"
+            key={session.id}
+            onClick={() => handleClick(session.id)}
+          >
+            <h1>{session.name}</h1>
+          </div>
+        ))}
       </div>
     </AppScreen>
   );
 };
+
+declare module "@stackflow/config" {
+  interface Register {
+    HomeActivity: {};
+  }
+}
