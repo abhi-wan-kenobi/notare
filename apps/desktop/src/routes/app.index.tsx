@@ -17,7 +17,7 @@ export const Route = createFileRoute("/app/")({
         created_at: new Date().toISOString(),
         visited_at: new Date().toISOString(),
         calendar_event_id: null,
-        title: "Untitled",
+        title: "",
         audio_local_path: null,
         audio_remote_path: null,
         raw_memo_html: "",

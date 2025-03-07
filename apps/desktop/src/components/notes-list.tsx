@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { format } from "date-fns";
 import { CalendarIcon, Folder } from "lucide-react";
+import { format, isFuture } from "date-fns";
+
 import {
   commands as dbCommands,
   type Event,
@@ -13,11 +14,21 @@ import {
   getSortedDates,
   formatRemainingTime,
 } from "@/lib/date";
+import { useHypr } from "@/contexts";
 
 export default function NotesList() {
+  const { userId } = useHypr();
+
   const events = useQuery({
     queryKey: ["events"],
-    queryFn: () => dbCommands.listEvents(),
+    queryFn: async () => {
+      const events = await dbCommands.listEvents(userId);
+      const upcomingEvents = events.filter((event) => {
+        return isFuture(new Date(event.start_date));
+      });
+
+      return upcomingEvents;
+    },
   });
 
   return (

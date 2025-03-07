@@ -63,6 +63,7 @@ pub async fn seed(db: &UserDatabase) -> Result<(), crate::Error> {
     }];
 
     let events = vec![
+        // previous
         Event {
             id: uuid::Uuid::new_v4().to_string(),
             user_id: yujong.clone().id,
@@ -74,15 +75,28 @@ pub async fn seed(db: &UserDatabase) -> Result<(), crate::Error> {
             end_date: now - chrono::Duration::days(1),
             google_event_url: None,
         },
+        // ongoing
         Event {
             id: uuid::Uuid::new_v4().to_string(),
             user_id: yujong.clone().id,
             tracking_id: "event_2".to_string(),
             calendar_id: calendars[0].id.clone(),
-            name: "Seed round pitch - Krew Capital".to_string(),
+            name: "Seed round pitch".to_string(),
             note: "Description 2".to_string(),
             start_date: now + chrono::Duration::days(1) + chrono::Duration::hours(1),
             end_date: now + chrono::Duration::days(1) + chrono::Duration::hours(2),
+            google_event_url: None,
+        },
+        // upcoming
+        Event {
+            id: uuid::Uuid::new_v4().to_string(),
+            user_id: yujong.clone().id,
+            tracking_id: "event_3".to_string(),
+            calendar_id: calendars[0].id.clone(),
+            name: "POC with Fastrepl".to_string(),
+            note: "Description 3".to_string(),
+            start_date: now + chrono::Duration::days(2) + chrono::Duration::hours(1),
+            end_date: now + chrono::Duration::days(2) + chrono::Duration::hours(2),
             google_event_url: None,
         },
     ];

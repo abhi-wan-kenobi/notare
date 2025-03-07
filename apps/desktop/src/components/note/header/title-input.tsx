@@ -17,7 +17,7 @@ export default function TitleInput({
       type="text"
       onChange={onChange}
       value={value}
-      placeholder="Untitled meeting"
+      placeholder="Untitled"
       className={clsx([
         "w-full border-none bg-transparent text-2xl font-bold",
         "focus:outline-none",

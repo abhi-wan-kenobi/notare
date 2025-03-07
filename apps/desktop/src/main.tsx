@@ -16,6 +16,7 @@ import { I18nProvider } from "@lingui/react";
 import { messages as enMessages } from "./locales/en/messages";
 import { messages as koMessages } from "./locales/ko/messages";
 
+import type { Context } from "@/types";
 import { Toaster } from "@hypr/ui/components/ui/sonner";
 
 i18n.load({
@@ -27,9 +28,6 @@ i18n.activate("en");
 import "@hypr/ui/globals.css";
 import "./styles/globals.css";
 
-export type Context = {
-  queryClient: QueryClient;
-};
 
 const queryClient = new QueryClient({
   defaultOptions: {

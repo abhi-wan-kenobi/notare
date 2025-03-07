@@ -68,10 +68,19 @@ impl UserDatabase {
         Ok(event)
     }
 
-    pub async fn list_events(&self) -> Result<Vec<Event>, crate::Error> {
+    pub async fn list_events(
+        &self,
+        user_id: impl Into<String>,
+    ) -> Result<Vec<Event>, crate::Error> {
         let conn = self.conn()?;
 
-        let mut rows = conn.query("SELECT * FROM events", ()).await.unwrap();
+        let mut rows = conn
+            .query(
+                "SELECT * FROM events WHERE user_id = ? ORDER BY start_date DESC LIMIT 100",
+                vec![user_id.into()],
+            )
+            .await
+            .unwrap();
 
         let mut items = Vec::new();
         while let Some(row) = rows.next().await.unwrap() {
@@ -91,9 +100,6 @@ mod tests {
     async fn test_events() {
         let db = setup_db().await;
 
-        let events = db.list_events().await.unwrap();
-        assert_eq!(events.len(), 0);
-
         let human = db
             .upsert_human(Human {
                 full_name: Some("yujonglee".to_string()),
@@ -101,6 +107,9 @@ mod tests {
             })
             .await
             .unwrap();
+
+        let events = db.list_events(&human.id).await.unwrap();
+        assert_eq!(events.len(), 0);
 
         let calendar = Calendar {
             id: uuid::Uuid::new_v4().to_string(),
@@ -124,7 +133,7 @@ mod tests {
 
         let event = Event {
             id: uuid::Uuid::new_v4().to_string(),
-            user_id: human.id,
+            user_id: human.id.clone(),
             tracking_id: "event_test".to_string(),
             calendar_id: calendar.id,
             name: "test".to_string(),
@@ -138,7 +147,7 @@ mod tests {
         assert_eq!(event.tracking_id, "event_test");
         assert_eq!(event.google_event_url, None);
 
-        let events = db.list_events().await.unwrap();
+        let events = db.list_events(&human.id).await.unwrap();
         assert_eq!(events.len(), 1);
     }
 }

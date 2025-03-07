@@ -7,8 +7,8 @@
 
 
 export const commands = {
-async listEvents() : Promise<Event[]> {
-    return await TAURI_INVOKE("plugin:db|list_events");
+async listEvents(userId: string) : Promise<Event[]> {
+    return await TAURI_INVOKE("plugin:db|list_events", { userId });
 },
 async listCalendars() : Promise<Calendar[]> {
     return await TAURI_INVOKE("plugin:db|list_calendars");
@@ -117,7 +117,7 @@ export type Config = { id: string; user_id: string; general: ConfigGeneral; noti
 export type ConfigAI = { api_base: string | null; api_key: string | null }
 export type ConfigGeneral = { autostart: boolean; display_language: string; jargons: string[]; tags: string[] }
 export type ConfigNotification = { before: boolean; auto: boolean }
-export type ConversationChunk = { start: string; end: string; local_audio_path: string; remote_audio_path: string; transcripts: TranscriptChunk[]; diarizations: DiarizationChunk[] }
+export type ConversationChunk = { start: string; end: string; transcripts: TranscriptChunk[]; diarizations: DiarizationChunk[] }
 export type DiarizationChunk = { start: number; end: number; speaker: string }
 export type Event = { id: string; user_id: string; tracking_id: string; calendar_id: string; name: string; note: string; start_date: string; end_date: string; google_event_url: string | null }
 export type GetSessionFilter = { id: string } | { calendarEventId: string } | { tagId: string }

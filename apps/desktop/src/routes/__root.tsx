@@ -7,7 +7,7 @@ import {
 
 import { CatchNotFoundFallback, NotFoundComponent } from "@/components/control";
 import { checkForAppUpdates } from "@/utils/updater";
-import type { Context } from "../main";
+import type { Context } from "@/types";
 
 export const Route = createRootRouteWithContext<Context>()({
   component: Component,
