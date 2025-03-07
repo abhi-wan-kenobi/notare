@@ -791,8 +791,6 @@
         "required": [
           "diarizations",
           "end",
-          "local_audio_path",
-          "remote_audio_path",
           "start",
           "transcripts"
         ],
@@ -806,12 +804,6 @@
           "end": {
             "type": "string",
             "format": "date-time"
-          },
-          "local_audio_path": {
-            "type": "string"
-          },
-          "remote_audio_path": {
-            "type": "string"
           },
           "start": {
             "type": "string",
@@ -1590,11 +1582,12 @@
         "type": "object",
         "required": [
           "conversations",
+          "created_at",
           "id",
           "raw_memo_html",
-          "timestamp",
           "title",
-          "user_id"
+          "user_id",
+          "visited_at"
         ],
         "properties": {
           "audio_local_path": {
@@ -1621,6 +1614,10 @@
               "$ref": "#/components/schemas/ConversationChunk"
             }
           },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
           "enhanced_memo_html": {
             "type": [
               "string",
@@ -1633,15 +1630,15 @@
           "raw_memo_html": {
             "type": "string"
           },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time"
-          },
           "title": {
             "type": "string"
           },
           "user_id": {
             "type": "string"
+          },
+          "visited_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

@@ -231,8 +231,6 @@ export type ChatCompletionToolType = 'function';
 export type ConversationChunk = {
     diarizations: Array<DiarizationChunk>;
     end: string;
-    local_audio_path: string;
-    remote_audio_path: string;
     start: string;
     transcripts: Array<TranscriptChunk>;
 };
@@ -567,12 +565,13 @@ export type Session = {
     audio_remote_path?: string | null;
     calendar_event_id?: string | null;
     conversations: Array<ConversationChunk>;
+    created_at: string;
     enhanced_memo_html?: string | null;
     id: string;
     raw_memo_html: string;
-    timestamp: string;
     title: string;
     user_id: string;
+    visited_at: string;
 };
 
 export type Stop = string | Array<string>;
