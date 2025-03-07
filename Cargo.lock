@@ -5359,16 +5359,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyprnote-mobile"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
-]
-
-[[package]]
 name = "iana-time-zone"
 version = "0.1.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6790,6 +6780,22 @@ dependencies = [
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "mobile"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "strum 0.26.3",
+ "tauri",
+ "tauri-build",
+ "tauri-specta",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

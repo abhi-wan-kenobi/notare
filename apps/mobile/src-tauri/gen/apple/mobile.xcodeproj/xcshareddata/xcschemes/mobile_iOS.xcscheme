@@ -15,10 +15,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "96272851D1B42911128BBC57"
-               BuildableName = "hyprnote-mobile_iOS.app"
-               BlueprintName = "hyprnote-mobile_iOS"
-               ReferencedContainer = "container:hyprnote-mobile.xcodeproj">
+               BlueprintIdentifier = "9DFE3F2B3FB7F55440B4266E"
+               BuildableName = "mobile_iOS.app"
+               BlueprintName = "mobile_iOS"
+               ReferencedContainer = "container:mobile.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,10 +32,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "96272851D1B42911128BBC57"
-            BuildableName = "hyprnote-mobile_iOS.app"
-            BlueprintName = "hyprnote-mobile_iOS"
-            ReferencedContainer = "container:hyprnote-mobile.xcodeproj">
+            BlueprintIdentifier = "9DFE3F2B3FB7F55440B4266E"
+            BuildableName = "mobile_iOS.app"
+            BlueprintName = "mobile_iOS"
+            ReferencedContainer = "container:mobile.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -69,10 +69,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "96272851D1B42911128BBC57"
-            BuildableName = "hyprnote-mobile_iOS.app"
-            BlueprintName = "hyprnote-mobile_iOS"
-            ReferencedContainer = "container:hyprnote-mobile.xcodeproj">
+            BlueprintIdentifier = "9DFE3F2B3FB7F55440B4266E"
+            BuildableName = "mobile_iOS.app"
+            BlueprintName = "mobile_iOS"
+            ReferencedContainer = "container:mobile.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <CommandLineArguments>
@@ -100,10 +100,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "96272851D1B42911128BBC57"
-            BuildableName = "hyprnote-mobile_iOS.app"
-            BlueprintName = "hyprnote-mobile_iOS"
-            ReferencedContainer = "container:hyprnote-mobile.xcodeproj">
+            BlueprintIdentifier = "9DFE3F2B3FB7F55440B4266E"
+            BuildableName = "mobile_iOS.app"
+            BlueprintName = "mobile_iOS"
+            ReferencedContainer = "container:mobile.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <CommandLineArguments>

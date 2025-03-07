@@ -1,13 +1,13 @@
 # Uncomment the next line to define a global platform for your project
 
-target 'hyprnote-mobile_iOS' do
+target 'mobile_iOS' do
 platform :ios, '13.0'
-  # Pods for hyprnote-mobile_iOS
+  # Pods for mobile_iOS
 end
 
-target 'hyprnote-mobile_macOS' do
+target 'mobile_macOS' do
 platform :osx, '11.0'
-  # Pods for hyprnote-mobile_macOS
+  # Pods for mobile_macOS
 end
 
 # Delete the deployment target for iOS and macOS, causing it to be inherited from the Podfile
