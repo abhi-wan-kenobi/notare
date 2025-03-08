@@ -180,27 +180,27 @@ fn main() {
 
             let web_router = ApiRouter::new()
                 .api_route("/connect", api_post(web::connect::handler))
-                .api_route(
-                    "/session/{id}",
-                    api_get(web::session::handler).layer(axum::middleware::from_fn_with_state(
-                        AuthState::from_ref(&state),
-                        middleware::attach_user_db,
-                    )),
-                )
+                .api_route("/session/{id}", api_get(web::session::handler))
                 .api_route(
                     "/integration/connection",
-                    api_post(web::integration::create_connection).layer(
-                        axum::middleware::from_fn_with_state(
+                    api_post(web::integration::create_connection),
+                )
+                .layer(
+                    tower::builder::ServiceBuilder::new()
+                        .layer(ClerkLayer::new(
+                            MemoryCacheJwksProvider::new(clerk),
+                            None,
+                            true,
+                        ))
+                        .layer(axum::middleware::from_fn_with_state(
                             AuthState::from_ref(&state),
                             middleware::attach_user_from_clerk,
-                        ),
-                    ),
-                )
-                .layer(ClerkLayer::new(
-                    MemoryCacheJwksProvider::new(clerk),
-                    None,
-                    true,
-                ));
+                        ))
+                        .layer(axum::middleware::from_fn_with_state(
+                            AuthState::from_ref(&state),
+                            middleware::attach_user_db,
+                        )),
+                );
 
             let native_router = ApiRouter::new()
                 .api_route(

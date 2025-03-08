@@ -71,6 +71,8 @@ pub async fn attach_user_from_clerk(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
+    assert!(clerk_org_id.is_none() || clerk_org_id.is_some());
+
     let account = accounts
         .into_iter()
         .find(|org| org.clerk_org_id == clerk_org_id)
