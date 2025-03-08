@@ -3,7 +3,7 @@ import { commands as dbCommands, type Session } from "@hypr/plugin-db";
 import { commands as authCommands } from "@hypr/plugin-auth";
 
 export const Route = createFileRoute("/app/")({
-  beforeLoad: async () => {
+  beforeLoad: async ({ context: { queryClient } }) => {
     const id = await authCommands.getFromStore("auth-user-id");
 
     if (!id) {
@@ -26,6 +26,7 @@ export const Route = createFileRoute("/app/")({
       };
 
       const session = await dbCommands.upsertSession(emptySession);
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
 
       return redirect({
         to: "/app/note/$id",

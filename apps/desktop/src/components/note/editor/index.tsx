@@ -80,6 +80,12 @@ export default function EditorArea() {
 
       return text.then(miscCommands.opinionatedMdToHtml);
     },
+    onSuccess: () => {
+      sessionStore.persistSession();
+    },
+    onError: (error) => {
+      console.error(error);
+    },
   });
 
   const [showRaw, setShowRaw] = useState(true);
@@ -104,18 +110,10 @@ export default function EditorArea() {
   }, [enhance, setShowRaw]);
 
   useEffect(() => {
-    if (enhance.status === "success") {
-      sessionStore.persistSession();
-    }
-
-    if (enhance.status === "error") {
-      console.error(enhance.error);
-    }
-
     return () => {
       sessionStore.persistSession();
     };
-  }, [enhance.status]);
+  }, []);
 
   const editorRef = useRef<{ editor: TiptapEditor }>(null);
   const rendererRef = useRef<{ editor: TiptapEditor }>(null);

@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
 
 import { SessionProvider, useRightPanel } from "@/contexts";
 import EditorArea from "@/components/note/editor";
-
 export const Route = createFileRoute("/app/note/$id")({
   component: Component,
   loader: ({ context: { queryClient }, params: { id } }) => {
@@ -36,17 +37,28 @@ function Component() {
   const { session } = Route.useLoaderData();
   const { hidePanel } = useRightPanel();
 
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: () => dbCommands.deleteSession(session.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+    },
+    onError: (error) => {
+      console.error(error);
+    },
+  });
+
   useEffect(() => {
     return () => {
       hidePanel();
 
       const isNoteEmpty =
-        (!session.raw_memo_html || session.raw_memo_html === "") &&
-        !session.audio_local_path &&
-        !session.audio_remote_path;
+        !session.title &&
+        (!session.raw_memo_html || !session.enhanced_memo_html);
 
       if (isNoteEmpty) {
-        dbCommands.deleteSession(session.id);
+        mutation.mutate();
       }
     };
   }, [hidePanel, session]);

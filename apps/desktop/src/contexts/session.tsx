@@ -17,15 +17,10 @@ export const SessionProvider = ({
   session: Session;
   children: React.ReactNode;
 }) => {
-  const storeRef = useRef<ReturnType<typeof createSessionStore> | null>(null);
-  if (!storeRef.current) {
-    storeRef.current = createSessionStore(session);
-  }
+  const store = createSessionStore(session);
 
   return (
-    <SessionContext.Provider value={storeRef.current}>
-      {children}
-    </SessionContext.Provider>
+    <SessionContext.Provider value={store}>{children}</SessionContext.Provider>
   );
 };
 
