@@ -26,6 +26,11 @@ function Component() {
       </CatchNotFound>
       <Suspense>
         <TanStackRouterDevtools position="bottom-left" />
+        <TanStackQueryDevtools
+          buttonPosition="bottom-left"
+          position="bottom"
+          initialIsOpen={false}
+        />
       </Suspense>
     </>
   );
@@ -39,5 +44,16 @@ const TanStackRouterDevtools =
           default: (
             props: React.ComponentProps<typeof res.TanStackRouterDevtools>,
           ) => <res.TanStackRouterDevtools {...props} />,
+        })),
+      );
+
+const TanStackQueryDevtools =
+  process.env.NODE_ENV === "production"
+    ? () => null
+    : lazy(() =>
+        import("@tanstack/react-query-devtools").then((res) => ({
+          default: (
+            props: React.ComponentProps<typeof res.ReactQueryDevtools>,
+          ) => <res.ReactQueryDevtools {...props} />,
         })),
       );
