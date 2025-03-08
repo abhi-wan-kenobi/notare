@@ -1,14 +1,15 @@
 import clsx from "clsx";
 import { useLocation } from "@tanstack/react-router";
 import SettingsPanel from "@/components/settings-panel";
-import { NewNoteButton } from "@/components/toolbar/new-note-button";
+import { NewNoteButton } from "@/components/toolbar/buttons/new-note-button";
 import { useOngoingSession } from "@/contexts/ongoing-session";
 
 import { SearchBar, SearchIconButton, SearchPalette } from "../search";
-import { RightPanelButton } from "./right-panel-button";
-import { HomeButton } from "./home-button";
-import { LeftSidebarButton } from "./left-sidebar-button";
+import { RightPanelButton } from "./buttons/right-panel-button";
+import { HomeButton } from "./buttons/home-button";
+import { LeftSidebarButton } from "./buttons/left-sidebar-button";
 import { SessionIndicator } from "./session-indicator";
+import { ShareButton } from "./buttons/share-button";
 
 export default function Toolbar() {
   const { listening, session } = useOngoingSession((s) => ({
@@ -25,7 +26,7 @@ export default function Toolbar() {
       <header
         className={clsx([
           "flex w-full items-center justify-between",
-          "border-b border-border bg-neutral-50",
+          "border-b border-border bg-neutral-50 dark:bg-neutral-600 dark:border-neutral-600",
           "min-h-11 p-1 px-2",
         ])}
         data-tauri-drag-region
@@ -47,6 +48,7 @@ export default function Toolbar() {
           data-tauri-drag-region
         >
           <SearchIconButton isShown={inMeetingAndNotInNote} />
+          {pathname.includes("/app/note/") && <ShareButton />}
           <RightPanelButton />
           <SettingsPanel />
         </div>

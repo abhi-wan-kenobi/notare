@@ -1,31 +1,15 @@
-import { useCallback } from "react";
-import { useRouter } from "@tanstack/react-router";
 import { SquarePenIcon } from "lucide-react";
-import { useHotkeys } from "react-hotkeys-hook";
-
 import { Button } from "@hypr/ui/components/ui/button";
 import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
 } from "@hypr/ui/components/ui/tooltip";
-import Shortcut from "../shortcut";
+import { useNewNote } from "@/contexts/new-note";
+import Shortcut from "../../shortcut";
 
 export function NewNoteButton() {
-  const { navigate } = useRouter();
-
-  const handleClickNewNote = useCallback(() => {
-    navigate({ to: "/app" });
-  }, []);
-
-  useHotkeys(
-    "mod+n",
-    (event) => {
-      event.preventDefault();
-      handleClickNewNote();
-    },
-    { enableOnFormTags: true },
-  );
+  const { createNewNote } = useNewNote();
 
   return (
     <Tooltip>
@@ -33,8 +17,8 @@ export function NewNoteButton() {
         <Button
           variant="ghost"
           size="icon"
-          className="hover:bg-neutral-200"
-          onClick={handleClickNewNote}
+          className="hover:bg-neutral-200 dark:hover:bg-neutral-800 dark:text-neutral-300 dark:hover:text-neutral-100"
+          onClick={createNewNote}
           aria-label="New Note"
         >
           <SquarePenIcon className="size-4" />

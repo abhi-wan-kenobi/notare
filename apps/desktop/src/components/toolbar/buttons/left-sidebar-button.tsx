@@ -8,7 +8,7 @@ import {
 } from "@hypr/ui/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { type as getOsType } from "@tauri-apps/plugin-os";
-import Shortcut from "../shortcut";
+import Shortcut from "../../shortcut";
 
 export function LeftSidebarButton({ type }: { type: "toolbar" | "sidebar" }) {
   const osType = useQuery({
@@ -34,7 +34,7 @@ export function LeftSidebarButton({ type }: { type: "toolbar" | "sidebar" }) {
             variant="ghost"
             size="icon"
             onClick={togglePanel}
-            className="hover:bg-neutral-200"
+            className="hover:bg-neutral-200 dark:hover:bg-neutral-800 dark:text-neutral-300 dark:hover:text-neutral-100"
           >
             <Icon className="size-4" />
           </Button>

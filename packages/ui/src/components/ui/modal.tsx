@@ -1,6 +1,5 @@
 import * as React from "react";
 import { cn } from "@hypr/ui/lib/utils";
-import { useHotkeys } from "react-hotkeys-hook";
 
 interface ModalProps {
   open: boolean;
@@ -29,15 +28,22 @@ export function Modal({
   showOverlay = true,
   preventClose = false,
 }: ModalProps) {
-  useHotkeys(
-    "esc",
-    () => {
-      if (open && !preventClose) {
+  React.useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && open && !preventClose) {
+        event.preventDefault();
         onClose();
       }
-    },
-    { enabled: open },
-  );
+    };
+
+    if (open) {
+      document.addEventListener("keydown", handleEscapeKey, true);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscapeKey, true);
+    };
+  }, [open, preventClose, onClose]);
 
   if (!open) return null;
 

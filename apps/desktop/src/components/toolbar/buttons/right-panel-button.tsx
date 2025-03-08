@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@hypr/ui/components/ui/tooltip";
-import Shortcut from "../shortcut";
+import Shortcut from "../../shortcut";
 
 export function RightPanelButton() {
   const { isExpanded, togglePanel } = useRightPanel();
@@ -20,7 +20,7 @@ export function RightPanelButton() {
           variant="ghost"
           size="icon"
           onClick={togglePanel}
-          className="hover:bg-neutral-200"
+          className="hover:bg-neutral-200 dark:hover:bg-neutral-800 dark:text-neutral-300 dark:hover:text-neutral-100"
         >
           <Icon className="size-4" />
         </Button>
