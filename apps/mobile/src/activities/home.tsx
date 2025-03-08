@@ -6,14 +6,21 @@ import {
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import type { ActivityLoaderArgs } from "@stackflow/config";
 
+import { SquarePen } from "lucide-react";
+import { clsx } from "clsx";
+
+import { useQuery } from "@tanstack/react-query";
+import { commands as dbCommands } from "@hypr/plugin-db";
+
 export function homeActivityLoader({}: ActivityLoaderArgs<"HomeActivity">) {
+  const sessions = [
+    {
+      id: "1",
+      name: "Session 1",
+    },
+  ];
   return {
-    sessions: [
-      {
-        id: "TODO",
-        name: "TODO",
-      },
-    ],
+    sessions,
   };
 }
 
@@ -21,18 +28,41 @@ export const HomeActivity: ActivityComponentType<"HomeActivity"> = () => {
   const { sessions } = useLoaderData<typeof homeActivityLoader>();
   const { push } = useFlow();
 
-  const handleClick = (id: string) => {
+  useQuery({
+    queryKey: ["sessions"],
+    queryFn: () => dbCommands.listSessions(null),
+  });
+
+  const handleClickNote = (id: string) => {
     push("SessionActivity", { id });
   };
 
+  const handleClickNew = () => {
+    push("SessionActivity", { id: "new" });
+  };
+
+  const RightButton = () => (
+    <button onClick={handleClickNew}>
+      <SquarePen size={24} />
+    </button>
+  );
+
   return (
-    <AppScreen appBar={{ title: "Hyprnote" }}>
+    <AppScreen
+      appBar={{
+        title: "All Notes",
+        renderRight: () => <RightButton />,
+      }}
+    >
       <div>
         {sessions.map((session) => (
           <div
-            className="p-4 border border-gray-200 rounded-md hover:bg-gray-300 cursor-pointer"
             key={session.id}
-            onClick={() => handleClick(session.id)}
+            onClick={() => handleClickNote(session.id)}
+            className={clsx([
+              "p-4 border  rounded-md",
+              "border-gray-200 hover:bg-gray-300",
+            ])}
           >
             <h1>{session.name}</h1>
           </div>

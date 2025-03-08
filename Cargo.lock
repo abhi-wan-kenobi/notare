@@ -5001,7 +5001,7 @@ dependencies = [
 name = "host"
 version = "0.1.0"
 dependencies = [
- "mac_address",
+ "mac_address2",
  "sysinfo",
 ]
 
@@ -6450,13 +6450,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 
 [[package]]
-name = "mac_address"
-version = "1.1.8"
+name = "mac_address2"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0aeb26bf5e836cc1c341c8106051b573f1766dfa05aa87f0b98be5e51b02303"
+checksum = "dc5e04aa39a4dc96076bca67bf60b63201ff06f9568e62f7904293d39de8cb0b"
 dependencies = [
- "nix 0.29.0",
- "winapi",
+ "nix 0.28.0",
+ "thiserror 1.0.69",
+ "widestring",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -6793,6 +6795,14 @@ dependencies = [
  "strum 0.26.3",
  "tauri",
  "tauri-build",
+ "tauri-plugin-auth",
+ "tauri-plugin-db",
+ "tauri-plugin-deep-link",
+ "tauri-plugin-dialog",
+ "tauri-plugin-http",
+ "tauri-plugin-misc",
+ "tauri-plugin-store",
+ "tauri-plugin-template",
  "tauri-specta",
  "tokio",
  "tracing",
@@ -6993,6 +7003,7 @@ dependencies = [
  "cfg-if",
  "cfg_aliases 0.1.1",
  "libc",
+ "memoffset",
 ]
 
 [[package]]
@@ -9586,9 +9597,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17f8dcd64f141950290e45c99f7710ede1b600297c91818bb30b3667c0f45dc0"
+checksum = "dade4812df5c384711475be5fcd8c162555352945401aed22a35bffeab61f657"
 dependencies = [
  "bitflags 2.9.0",
  "errno",
@@ -11206,9 +11217,9 @@ dependencies = [
 
 [[package]]
 name = "tao"
-version = "0.32.7"
+version = "0.32.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e7f38988a68dfb559899ea307b97577f008d3254f6cfdd219a67e27ce34c95b"
+checksum = "63c8b1020610b9138dd7b1e06cf259ae91aa05c30f3bd0d6b42a03997b92dec1"
 dependencies = [
  "bitflags 2.9.0",
  "core-foundation 0.10.0",
@@ -12111,7 +12122,7 @@ dependencies = [
  "fastrand 2.3.0",
  "getrandom 0.3.1",
  "once_cell",
- "rustix 1.0.0",
+ "rustix 1.0.1",
  "windows-sys 0.59.0",
 ]
 
@@ -12360,9 +12371,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.43.0"
+version = "1.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d61fa4ffa3de412bfea335c6ecff681de2b609ba3c77ef3e00e521813a9ed9e"
+checksum = "9975ea0f48b5aa3972bf2d888c238182458437cc2a19374b81b25cdf1023fb3a"
 dependencies = [
  "backtrace",
  "bytes",
@@ -13695,6 +13706,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "widestring"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7219d36b6eac893fa81e84ebe06485e7dcbb616177469b142df14f1f4deb1311"
+
+[[package]]
 name = "winapi"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -14489,7 +14506,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d65cbf2f12c15564212d48f4e3dfb87923d25d611f2aed18f4cb23f0413d89e"
 dependencies = [
  "libc",
- "rustix 1.0.0",
+ "rustix 1.0.1",
 ]
 
 [[package]]

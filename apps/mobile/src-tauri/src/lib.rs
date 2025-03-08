@@ -5,10 +5,26 @@ mod ext;
 pub fn run() {
     let specta_builder = make_specta_builder();
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_auth::init())
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_misc::init())
+        .plugin(tauri_plugin_db::init())
+        .plugin(tauri_plugin_template::init())
+        .plugin(tauri_plugin_store::Builder::default().build());
+
+    builder
         .invoke_handler({
             let handler = specta_builder.invoke_handler();
             move |invoke| handler(invoke)
+        })
+        .setup(move |app| {
+            let app = app.handle().clone();
+
+            specta_builder.mount_events(&app);
+
+            Ok(())
         })
         .run(tauri::generate_context!())
         .unwrap();

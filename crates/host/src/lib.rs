@@ -1,4 +1,4 @@
-use mac_address::get_mac_address;
+use mac_address2::get_mac_address;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use sysinfo::System;
 

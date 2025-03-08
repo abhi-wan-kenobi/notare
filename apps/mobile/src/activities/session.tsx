@@ -16,7 +16,11 @@ export const SessionActivity: ActivityComponentType<"SessionActivity"> = () => {
   const { session } = useLoaderData<typeof sessionActivityLoader>();
 
   return (
-    <AppScreen appBar={{ title: "Hyprnote - Note" }}>
+    <AppScreen
+      appBar={{
+        title: "Note - " + session.id,
+      }}
+    >
       <div>
         <h1>NoteActivity</h1>
         <p>{JSON.stringify(session)}</p>

@@ -13,6 +13,7 @@
   "devDependencies": {
     "@clerk/types": "^4.47.0",
     "@hypr/client": "workspace:^",
+    "@mswjs/source": "^0.3.2",
     "@tanstack/router-plugin": "^1.112.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",

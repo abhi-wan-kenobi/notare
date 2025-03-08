@@ -33,34 +33,34 @@ hypr-host = { path = "../../../crates/host", package = "host" }
 hypr-turso = { path = "../../../crates/turso", package = "turso" }
 hypr-vad = { path = "../../../crates/vad", package = "vad" }
 
-tauri-plugin-auth = { path = "../../../plugins/auth" }
-tauri-plugin-connector = { path = "../../../plugins/connector" }
-tauri-plugin-db = { path = "../../../plugins/db" }
-tauri-plugin-listener = { path = "../../../plugins/listener" }
-tauri-plugin-local-llm = { path = "../../../plugins/local-llm" }
-tauri-plugin-local-stt = { path = "../../../plugins/local-stt" }
-tauri-plugin-misc = { path = "../../../plugins/misc" }
-tauri-plugin-sfx = { path = "../../../plugins/sfx" }
-tauri-plugin-sse = { path = "../../../plugins/sse" }
-tauri-plugin-template = { path = "../../../plugins/template" }
-tauri-plugin-tray = { path = "../../../plugins/tray" }
-tauri-plugin-windows = { path = "../../../plugins/windows" }
+tauri-plugin-auth = { workspace = true }
+tauri-plugin-connector = { workspace = true }
+tauri-plugin-db = { workspace = true }
+tauri-plugin-listener = { workspace = true }
+tauri-plugin-local-llm = { workspace = true }
+tauri-plugin-local-stt = { workspace = true }
+tauri-plugin-misc = { workspace = true }
+tauri-plugin-sfx = { workspace = true }
+tauri-plugin-sse = { workspace = true }
+tauri-plugin-template = { workspace = true }
+tauri-plugin-tray = { workspace = true }
+tauri-plugin-windows = { workspace = true }
 
 tauri = { workspace = true, features = ["specta", "macos-private-api"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-decorum = "1.1.1"
-tauri-plugin-deep-link = "2"
-tauri-plugin-dialog = "2"
+tauri-plugin-deep-link = { workspace = true }
+tauri-plugin-dialog = { workspace = true }
 tauri-plugin-fs = "2"
 tauri-plugin-global-shortcut = "2"
-tauri-plugin-http = "2"
+tauri-plugin-http = { workspace = true }
 tauri-plugin-os = "2"
 tauri-plugin-process = "2"
 tauri-plugin-sentry = "0.4.1"
 tauri-plugin-shell = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
-tauri-plugin-store = "2"
+tauri-plugin-store = { workspace = true }
 tauri-plugin-updater = "2"
 
 tracing = { workspace = true }
