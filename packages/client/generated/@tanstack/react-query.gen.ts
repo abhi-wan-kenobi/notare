@@ -118,9 +118,9 @@ export const postApiWebConnectMutation = (options?: Partial<Options<PostApiWebCo
     return mutationOptions;
 };
 
-export const getApiWebSessionByIdQueryKey = (options?: Options<GetApiWebSessionByIdData>) => createQueryKey('getApiWebSessionById', options);
+export const getApiWebSessionByIdQueryKey = (options: Options<GetApiWebSessionByIdData>) => createQueryKey('getApiWebSessionById', options);
 
-export const getApiWebSessionByIdOptions = (options?: Options<GetApiWebSessionByIdData>) => {
+export const getApiWebSessionByIdOptions = (options: Options<GetApiWebSessionByIdData>) => {
     return queryOptions({
         queryFn: async ({ queryKey, signal }) => {
             const { data } = await getApiWebSessionById({

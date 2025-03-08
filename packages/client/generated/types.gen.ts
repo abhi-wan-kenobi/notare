@@ -502,6 +502,10 @@ export type NangoConnectSessionResponse = {
 
 export type NangoIntegration = 'google-calendar' | 'outlook-calendar';
 
+export type Params = {
+    id: string;
+};
+
 /**
  * The type of the predicted content you want to provide. This type is currently always `content`.
  */
@@ -634,7 +638,9 @@ export type PostApiWebConnectResponse = PostApiWebConnectResponses[keyof PostApi
 
 export type GetApiWebSessionByIdData = {
     body?: never;
-    path?: never;
+    path: {
+        id: string;
+    };
     query?: never;
     url: '/api/web/session/{id}';
 };

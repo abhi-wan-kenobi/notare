@@ -50,8 +50,8 @@ export const postApiWebConnect = <ThrowOnError extends boolean = false>(options:
     });
 };
 
-export const getApiWebSessionById = <ThrowOnError extends boolean = false>(options?: Options<GetApiWebSessionByIdData, ThrowOnError>) => {
-    return (options?.client ?? _heyApiClient).get<GetApiWebSessionByIdResponse, unknown, ThrowOnError>({
+export const getApiWebSessionById = <ThrowOnError extends boolean = false>(options: Options<GetApiWebSessionByIdData, ThrowOnError>) => {
+    return (options.client ?? _heyApiClient).get<GetApiWebSessionByIdResponse, unknown, ThrowOnError>({
         url: '/api/web/session/{id}',
         ...options
     });

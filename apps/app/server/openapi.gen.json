@@ -71,6 +71,17 @@
     },
     "/api/web/session/{id}": {
       "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "style": "simple"
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -1396,6 +1407,17 @@
           "google-calendar",
           "outlook-calendar"
         ]
+      },
+      "Params": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        }
       },
       "PredictionContent": {
         "description": "Static predicted output content, such as the content of a text file that is being regenerated.",
