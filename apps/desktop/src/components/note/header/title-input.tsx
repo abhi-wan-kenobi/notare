@@ -1,4 +1,4 @@
-import { type ChangeEvent } from "react";
+import { type KeyboardEvent, type ChangeEvent } from "react";
 import clsx from "clsx";
 
 interface TitleInputProps {
@@ -12,6 +12,13 @@ export default function TitleInput({
   onChange,
   onNavigateToEditor,
 }: TitleInputProps) {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === "ArrowDown" || e.key === "Tab") {
+      e.preventDefault();
+      onNavigateToEditor?.();
+    }
+  };
+
   return (
     <input
       type="text"
@@ -22,12 +29,7 @@ export default function TitleInput({
         "w-full border-none bg-transparent text-2xl font-bold",
         "focus:outline-none",
       ])}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === "ArrowDown" || e.key === "Tab") {
-          e.preventDefault();
-          onNavigateToEditor?.();
-        }
-      }}
+      onKeyDown={handleKeyDown}
     />
   );
 }

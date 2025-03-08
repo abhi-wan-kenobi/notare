@@ -1,7 +1,8 @@
+import { Link } from "@tanstack/react-router";
 import clsx from "clsx";
 import { ArrowLeft } from "lucide-react";
+
 import AudioIndicator from "../note/header/audio-indicator";
-import { Link } from "@tanstack/react-router";
 
 export function SessionIndicator({ sessionId }: { sessionId: string }) {
   return (

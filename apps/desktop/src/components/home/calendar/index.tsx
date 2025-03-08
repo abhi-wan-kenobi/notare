@@ -101,7 +101,7 @@ export default function WorkspaceCalendar() {
 
   return (
     <div className="mb-8">
-      <h2 className="text-2xl font-medium mb-4">
+      <h2 className="text-lg font-medium mb-6 border-b pb-1">
         {viewMode === "month" ? "Upcoming Events" : "Upcoming Events"}
       </h2>
 

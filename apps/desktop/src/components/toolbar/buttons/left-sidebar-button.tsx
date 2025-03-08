@@ -13,9 +13,8 @@ import Shortcut from "../../shortcut";
 export function LeftSidebarButton({ type }: { type: "toolbar" | "sidebar" }) {
   const osType = useQuery({
     queryKey: ["osType"],
-    queryFn: async () => {
-      return getOsType();
-    },
+    queryFn: () => getOsType(),
+    staleTime: Infinity,
   });
 
   const { isExpanded, togglePanel } = useLeftSidebar();

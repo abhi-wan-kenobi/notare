@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef } from "react";
+import { createContext, useContext } from "react";
 
 import { useStore } from "zustand";
 import { useShallow } from "zustand/shallow";

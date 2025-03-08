@@ -6,30 +6,29 @@ import {
   commands as listenerCommands,
   type SessionEvent,
 } from "@hypr/plugin-listener";
-import { type Session } from "@hypr/plugin-db";
 
 type State = {
-  session: Session | null;
+  sessionId: string | null;
   channel: Channel<SessionEvent> | null;
   listening: boolean;
   amplitude: { mic: number; speaker: number };
 };
 
 type Actions = {
-  start: (session: Session) => void;
+  start: (sessionId: string) => void;
   pause: () => void;
 };
 
 export const createOngoingSessionStore = () => {
   return createStore<State & Actions>((set, get) => ({
-    session: null,
+    sessionId: null,
     listening: false,
     channel: null,
     amplitude: { mic: 0, speaker: 0 },
-    start: (session: Session) => {
+    start: (sessionId: string) => {
       set((state) =>
         mutate(state, (draft) => {
-          draft.session = session;
+          draft.sessionId = sessionId;
         }),
       );
 
@@ -51,7 +50,7 @@ export const createOngoingSessionStore = () => {
       };
 
       try {
-        listenerCommands.startSession(session.id).then(() => {
+        listenerCommands.startSession(sessionId).then(() => {
           listenerCommands.subscribe(channel);
           set({ channel, listening: true });
         });

@@ -30,9 +30,8 @@ function Component() {
 
   const osType = useQuery({
     queryKey: ["osType"],
-    queryFn: async () => {
-      return getOsType();
-    },
+    queryFn: () => getOsType(),
+    staleTime: Infinity,
   });
 
   const micPermission = useMutation({

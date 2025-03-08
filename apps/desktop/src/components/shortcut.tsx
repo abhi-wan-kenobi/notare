@@ -11,9 +11,8 @@ export default function Shortcut({
 }) {
   const osType = useQuery({
     queryKey: ["osType"],
-    queryFn: async () => {
-      return getOsType();
-    },
+    queryFn: () => getOsType(),
+    staleTime: Infinity,
   });
 
   if (osType.data === "macos") {

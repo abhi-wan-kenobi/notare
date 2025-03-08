@@ -1,8 +1,10 @@
-import clsx from "clsx";
 import { useLocation } from "@tanstack/react-router";
+import clsx from "clsx";
+
 import SettingsPanel from "@/components/settings-panel";
 import { NewNoteButton } from "@/components/toolbar/buttons/new-note-button";
 import { useOngoingSession } from "@/contexts/ongoing-session";
+import { RoutePath } from "@/types";
 
 import { SearchBar, SearchIconButton, SearchPalette } from "../search";
 import { RightPanelButton } from "./buttons/right-panel-button";
@@ -12,14 +14,19 @@ import { SessionIndicator } from "./session-indicator";
 import { ShareButton } from "./buttons/share-button";
 
 export default function Toolbar() {
-  const { listening, session } = useOngoingSession((s) => ({
+  const { listening, sessionId } = useOngoingSession((s) => ({
     listening: s.listening,
-    session: s.session,
+    sessionId: s.sessionId,
   }));
+
+  const getNoteURL = (id: string) => {
+    const pattern: RoutePath = "/app/note/$id";
+    return pattern.replace("$id", id);
+  };
 
   const { pathname } = useLocation();
   const inMeetingAndNotInNote =
-    listening && session !== null && pathname !== `/app/note/${session.id}`;
+    listening && sessionId !== null && pathname !== getNoteURL(sessionId);
 
   return (
     <>
@@ -38,7 +45,7 @@ export default function Toolbar() {
         </div>
 
         {inMeetingAndNotInNote ? (
-          <SessionIndicator sessionId={session.id} />
+          <SessionIndicator sessionId={sessionId} />
         ) : (
           <SearchBar />
         )}

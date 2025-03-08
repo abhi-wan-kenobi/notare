@@ -18,8 +18,8 @@ export default function RecentNotes() {
   };
 
   return (
-    <div className="mb-8 space-y-6 w-full">
-      <h2 className="text-2xl font-medium">Recently Opened</h2>
+    <div className="mb-8 space-y-4 w-full">
+      <h2 className="text-lg font-medium border-b pb-1">Recently Opened</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         {sessions.data?.map((session: any, i) => {

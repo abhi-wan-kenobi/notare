@@ -1,11 +1,5 @@
 # Extension Development
 
-## Quickstart
-
-```bash
-todo
-```
-
 ## File Structure (recommended)
 
 ```

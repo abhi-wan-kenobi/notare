@@ -30,7 +30,7 @@ export function NoteHeader({ onNavigateToEditor }: NoteHeaderProps) {
   };
 
   const handleClickListen = useCallback(() => {
-    ongoingSessionStore.start(sessionStore.session);
+    ongoingSessionStore.start(sessionStore.session.id);
   }, [sessionStore.session, ongoingSessionStore.start]);
 
   return (
