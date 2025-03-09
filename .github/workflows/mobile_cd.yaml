@@ -6,8 +6,15 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  deploy:
+  # https://v2.tauri.app/distribute/app-store
+  ios:
+    if: startsWith(github.event.release.tag_name, 'mobile_')
+    runs-on: macos-latest
+    steps:
+      - run: pnpm -F mobile tauri ios build --export-method app-store-connect
+  # https://v2.tauri.app/distribute/google-play
+  android:
     if: startsWith(github.event.release.tag_name, 'mobile_')
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Deploying mobile app"
+      - run: pnpm -F mobile tauri android build --aab

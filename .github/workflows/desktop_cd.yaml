@@ -68,6 +68,7 @@ jobs:
       - run: |
           mkdir -p target/release/
           cp -r target/${{ matrix.args }}/release/* target/release/
+        working-directory: ./apps/desktop/src-tauri
       - uses: ./.github/actions/cn_release
         with:
           cmd: upload
