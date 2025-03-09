@@ -11,5 +11,12 @@ description = ""
 [build-dependencies]
 tauri-plugin = { workspace = true, features = ["build"] }
 
+[dev-dependencies]
+specta-typescript = { workspace = true }
+
 [dependencies]
 tauri = { workspace = true, features = ["tray-icon", "image-png"] }
+tauri-plugin-windows = { workspace = true }
+
+specta = { workspace = true }
+tauri-specta = { workspace = true, features = ["derive", "typescript"] }

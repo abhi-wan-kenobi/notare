@@ -11935,8 +11935,12 @@ dependencies = [
 name = "tauri-plugin-tray"
 version = "0.1.0"
 dependencies = [
+ "specta",
+ "specta-typescript",
  "tauri",
  "tauri-plugin",
+ "tauri-plugin-windows",
+ "tauri-specta",
 ]
 
 [[package]]
