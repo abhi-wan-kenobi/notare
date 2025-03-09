@@ -34,7 +34,7 @@ jobs:
       matrix:
         include:
           - platform: "macos-latest"
-            args: "--target universal-apple-darwin"
+            args: "universal-apple-darwin"
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -53,8 +53,7 @@ jobs:
           apple-certificate-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
       - run: |
-          pnpm -F desktop tauri build --target universal-apple-darwin --config ${{ env.TAURI_CONF_PATH }}
-        working-directory: ./apps/desktop
+          pnpm -F desktop tauri build --target ${{ matrix.args }} --config ${{ env.TAURI_CONF_PATH }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -66,6 +65,9 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ env.CERT_ID }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - run: |
+          mkdir -p target/release/
+          cp -r target/${{ matrix.args }}/release/* target/release/
       - uses: ./.github/actions/cn_release
         with:
           cmd: upload
