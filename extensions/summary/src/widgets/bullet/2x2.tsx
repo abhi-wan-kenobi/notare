@@ -2,10 +2,14 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { generateObject } from "ai";
+import { Channel } from "@tauri-apps/api/core";
 
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as templateCommands } from "@hypr/plugin-template";
-import { commands as listenerCommands } from "@hypr/plugin-listener";
+import {
+  commands as listenerCommands,
+  type SessionEvent,
+} from "@hypr/plugin-listener";
 
 import { modelProvider } from "@hypr/utils";
 import { Button } from "@hypr/ui/components/ui/button";
@@ -26,8 +30,27 @@ import { TEMPLATE_LIVE_SUMMARY_SYSTEM, TEMPLATE_LIVE_SUMMARY_USER } from ".";
 
 const DEFAULT_INTERVAL = 10 * 1000;
 
-const BulletStyledSummary2x2: WidgetTwoByTwo = () => {
+const Widget: WidgetTwoByTwo = () => {
+  const [isLive, setIsLive] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const channel = new Channel<SessionEvent>();
+    listenerCommands.subscribe(channel);
+
+    channel.onmessage = (e) => {
+      if (e.type === "started") {
+        setIsLive(true);
+      }
+      if (e.type === "stopped") {
+        setIsLive(false);
+      }
+    };
+
+    return () => {
+      listenerCommands.unsubscribe(channel);
+    };
+  }, []);
 
   const config = useQuery({
     queryKey: ["config"],
@@ -36,7 +59,7 @@ const BulletStyledSummary2x2: WidgetTwoByTwo = () => {
 
   const summary = useQuery({
     queryKey: ["live-summary", "run"],
-    enabled: !!config.data,
+    enabled: !!config.data && isLive,
     refetchInterval: DEFAULT_INTERVAL,
     staleTime: 0,
     gcTime: 0,
@@ -193,4 +216,4 @@ const Summary = ({
   );
 };
 
-export default BulletStyledSummary2x2;
+export default Widget;

@@ -27,6 +27,13 @@ const LiveTranscript2x2: WidgetTwoByTwo = ({ onMaximize }) => {
     listenerCommands.subscribe(channel);
 
     channel.onmessage = (e) => {
+      if (e.type === "started") {
+        setIsLive(true);
+      }
+      if (e.type === "stopped") {
+        setIsLive(false);
+      }
+
       if (e.type === "timelineView") {
         setIsLive(true);
         setTimeline((prev) => {
@@ -35,10 +42,6 @@ const LiveTranscript2x2: WidgetTwoByTwo = ({ onMaximize }) => {
             items: [...prev.items, ...e.timeline.items],
           };
         });
-      }
-
-      if (e.type === "stopped") {
-        setIsLive(false);
       }
     };
 
