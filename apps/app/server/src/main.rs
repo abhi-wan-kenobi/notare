@@ -178,8 +178,10 @@ fn main() {
                 stripe: stripe_client,
             };
 
-            let web_router = ApiRouter::new()
-                .api_route("/connect", api_post(web::connect::handler))
+            let web_connect_router =
+                ApiRouter::new().api_route("/connect", api_post(web::connect::handler));
+
+            let web_other_router = ApiRouter::new()
                 .api_route("/session/{id}", api_get(web::session::handler))
                 .api_route(
                     "/integration/connection",
@@ -187,11 +189,6 @@ fn main() {
                 )
                 .layer(
                     tower::builder::ServiceBuilder::new()
-                        .layer(ClerkLayer::new(
-                            MemoryCacheJwksProvider::new(clerk),
-                            None,
-                            true,
-                        ))
                         .layer(axum::middleware::from_fn_with_state(
                             AuthState::from_ref(&state),
                             middleware::attach_user_from_clerk,
@@ -201,6 +198,14 @@ fn main() {
                             middleware::attach_user_db,
                         )),
                 );
+
+            let web_router = web_connect_router
+                .merge(web_other_router)
+                .layer(ClerkLayer::new(
+                    MemoryCacheJwksProvider::new(clerk),
+                    None,
+                    true,
+                ));
 
             let native_router = ApiRouter::new()
                 .api_route(
