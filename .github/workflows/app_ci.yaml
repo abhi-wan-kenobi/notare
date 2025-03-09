@@ -4,14 +4,12 @@ on:
     branches:
       - main
     paths:
-      - apps/server/**
       - apps/app/**
       - crates/**
   pull_request:
     branches:
       - main
     paths:
-      - apps/server/**
       - apps/app/**
       - crates/**
 jobs:

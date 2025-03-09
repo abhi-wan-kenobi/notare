@@ -8,6 +8,8 @@ inputs:
     required: true
   channel:
     required: false
+  working-directory:
+    required: true
 
 runs:
   using: "composite"
@@ -18,3 +20,4 @@ runs:
           release ${{ inputs.cmd }} ${{ inputs.app }}
           --framework tauri${{ inputs.channel != '' && format(' --channel {0}', inputs.channel) || '' }}
         api-key: ${{ inputs.key }}
+        working-directory: ${{ inputs.working-directory }}

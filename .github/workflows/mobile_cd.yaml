@@ -1,0 +1,13 @@
+on:
+  release:
+    types:
+      - published
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  deploy:
+    if: startsWith(github.event.release.tag_name, 'mobile_')
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Deploying mobile app"
