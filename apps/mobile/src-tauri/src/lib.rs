@@ -1,5 +1,9 @@
 mod commands;
+mod errors;
 mod ext;
+
+use errors::*;
+use ext::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,6 +27,11 @@ pub fn run() {
             let app = app.handle().clone();
 
             specta_builder.mount_events(&app);
+
+            tauri::async_runtime::block_on(async move {
+                app.setup_db().await.unwrap();
+                app.setup_worker().await.unwrap();
+            });
 
             Ok(())
         })
