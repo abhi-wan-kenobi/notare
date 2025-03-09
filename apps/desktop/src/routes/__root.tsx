@@ -14,6 +14,8 @@ export const Route = createRootRouteWithContext<Context>()({
   notFoundComponent: NotFoundComponent,
 });
 
+const POSITION = "bottom-right";
+
 function Component() {
   useEffect(() => {
     checkForAppUpdates();
@@ -25,9 +27,9 @@ function Component() {
         <Outlet />
       </CatchNotFound>
       <Suspense>
-        <TanStackRouterDevtools position="bottom-left" />
+        <TanStackRouterDevtools position={POSITION} initialIsOpen={false} />
         <TanStackQueryDevtools
-          buttonPosition="bottom-left"
+          buttonPosition={POSITION}
           position="bottom"
           initialIsOpen={false}
         />
