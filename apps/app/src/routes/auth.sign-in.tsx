@@ -1,8 +1,10 @@
 import { zodValidator } from "@tanstack/zod-adapter";
 import { createFileRoute, LinkProps } from "@tanstack/react-router";
-
 import { SignedOut, useSignIn } from "@clerk/clerk-react";
 import type { OAuthStrategy } from "@clerk/types";
+import { clsx } from "clsx";
+import { Particles } from "@hypr/ui/components/ui/particles";
+import { Button } from "@hypr/ui/components/ui/button";
 
 import { schema as connectSchema } from "./auth.connect";
 import { createURL } from "../utils";
@@ -42,17 +44,66 @@ function Component() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <SignedOut>
-        <div>
-          <button
-            className="border rounded-md px-4 py-2 hover:bg-gray-100"
-            onClick={() => signInWith("oauth_google")}
-          >
-            Sign in with <strong>Google</strong>
-          </button>
+    <main className="relative flex h-screen flex-col items-center justify-center overflow-auto p-4">
+      <div className="z-10 flex w-full flex-col items-center justify-center">
+        <div className="flex flex-col items-center">
+          <h1 className="mb-4 text-5xl font-bold md:text-6xl lg:text-7xl">
+            Welcome Back
+          </h1>
+
+          <p className="mb-12 text-center text-base font-medium text-neutral-600 md:text-lg lg:text-xl">
+            Sign in to continue to Hyprnote
+          </p>
+
+          <SignedOut>
+            <div className="mb-4 w-full">
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full min-h-11 text-lg"
+                onClick={() => signInWith("oauth_google")}
+              >
+                <img src="/google_icon.svg" alt="Google" className="size-5" />
+                Sign in with Google
+              </Button>
+            </div>
+            <TOS />
+          </SignedOut>
         </div>
-      </SignedOut>
-    </div>
+      </div>
+
+      <Particles
+        className="absolute inset-0 z-0"
+        quantity={100}
+        ease={80}
+        color={"#000000"}
+        refresh
+      />
+    </main>
+  );
+}
+
+function TOS() {
+  return (
+    <p className="text-xs text-neutral-400">
+      By proceeding, I agree to the{" "}
+      <a
+        href="https://hyprnote.com/docs/terms"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="decoration-dotted hover:underline"
+      >
+        Terms of Service
+      </a>{" "}
+      and{" "}
+      <a
+        href="https://hyprnote.com/docs/privacy"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="decoration-dotted hover:underline"
+      >
+        Privacy Policy
+      </a>
+    </p>
   );
 }

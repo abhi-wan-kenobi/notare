@@ -1,14 +1,12 @@
 import { useLocation } from "@tanstack/react-router";
 import clsx from "clsx";
 
-import SettingsPanel from "@/components/settings-panel";
 import { NewNoteButton } from "@/components/toolbar/buttons/new-note-button";
 import { useOngoingSession } from "@/contexts/ongoing-session";
 import { RoutePath } from "@/types";
 
 import { SearchBar, SearchIconButton, SearchPalette } from "../search";
 import { RightPanelButton } from "./buttons/right-panel-button";
-import { HomeButton } from "./buttons/home-button";
 import { LeftSidebarButton } from "./buttons/left-sidebar-button";
 import { SessionIndicator } from "./session-indicator";
 import { ShareButton } from "./buttons/share-button";
@@ -40,7 +38,7 @@ export default function Toolbar() {
       >
         <div className="w-40 flex items-center" data-tauri-drag-region>
           <LeftSidebarButton type="toolbar" />
-          <HomeButton />
+          {/* <HomeButton /> */}
           <NewNoteButton />
         </div>
 
@@ -57,7 +55,6 @@ export default function Toolbar() {
           <SearchIconButton isShown={inMeetingAndNotInNote} />
           {pathname.includes("/app/note/") && <ShareButton />}
           <RightPanelButton />
-          <SettingsPanel />
         </div>
       </header>
 
