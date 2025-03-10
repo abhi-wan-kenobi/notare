@@ -41,6 +41,7 @@
     "auth:default",
     "tray:default",
     "store:default",
+    "log:default",
     {
       "identifier": "http:default",
       "allow": [

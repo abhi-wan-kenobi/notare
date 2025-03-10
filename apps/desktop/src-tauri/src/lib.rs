@@ -9,7 +9,7 @@ pub async fn main() {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
 
     {
-        let builder = tracing_subscriber::fmt()
+        tracing_subscriber::fmt()
             .with_file(true)
             .with_line_number(true)
             .with_env_filter(
@@ -18,9 +18,8 @@ pub async fn main() {
                     .add_directive("ort=error".parse().unwrap())
                     .add_directive("hyper=error".parse().unwrap())
                     .add_directive("rustls=error".parse().unwrap()),
-            );
-
-        builder.init();
+            )
+            .init();
     }
 
     let client = tauri_plugin_sentry::sentry::init((
@@ -57,6 +56,7 @@ pub async fn main() {
         .plugin(tauri_plugin_decorum::init())
         .plugin(tauri_plugin_windows::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_log::Builder::new().skip_logger().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,

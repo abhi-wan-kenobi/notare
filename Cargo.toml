@@ -9,6 +9,7 @@ tauri-plugin = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-http = "2"
+tauri-plugin-log = { git = "https://github.com/tauri-apps/plugins-workspace", rev = "e54cfcb" }
 tauri-plugin-store = "2"
 
 tauri-plugin-auth = { path = "plugins/auth" }
@@ -81,6 +82,7 @@ minijinja = "2.7.0"
 minijinja-contrib = "2.7.0"
 
 tracing = "0.1.41"
+tracing-log = "0.2.0"
 tracing-subscriber = "0.3.19"
 
 apalis = "0.6.4"

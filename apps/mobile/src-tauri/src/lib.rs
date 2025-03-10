@@ -7,6 +7,12 @@ use ext::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    {
+        tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::INFO)
+            .init();
+    }
+
     let specta_builder = make_specta_builder();
 
     let builder = tauri::Builder::default()
@@ -16,6 +22,7 @@ pub fn run() {
         .plugin(tauri_plugin_misc::init())
         .plugin(tauri_plugin_db::init())
         .plugin(tauri_plugin_template::init())
+        .plugin(tauri_plugin_log::Builder::new().skip_logger().build())
         .plugin(tauri_plugin_store::Builder::default().build());
 
     builder
@@ -28,10 +35,10 @@ pub fn run() {
 
             specta_builder.mount_events(&app);
 
-            tauri::async_runtime::block_on(async move {
-                app.setup_db().await.unwrap();
-                app.setup_worker().await.unwrap();
-            });
+            // tauri::async_runtime::block_on(async move {
+            //     app.setup_db().await.unwrap();
+            //     app.setup_worker().await.unwrap();
+            // });
 
             Ok(())
         })

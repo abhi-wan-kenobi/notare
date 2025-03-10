@@ -18,16 +18,17 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { workspace = true }
 
 [dependencies]
-tauri-plugin-auth = { workspace = true }
-tauri-plugin-db = { workspace = true }
-tauri-plugin-misc = { workspace = true }
-tauri-plugin-template = { workspace = true }
-
 tauri = { workspace = true, features = ["specta"] }
 tauri-plugin-deep-link = { workspace = true }
 tauri-plugin-dialog = { workspace = true }
 tauri-plugin-http = { workspace = true }
+tauri-plugin-log = { workspace = true }
 tauri-plugin-store = { workspace = true }
+
+tauri-plugin-auth = { workspace = true }
+tauri-plugin-db = { workspace = true }
+tauri-plugin-misc = { workspace = true }
+tauri-plugin-template = { workspace = true }
 
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -41,6 +42,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 tracing = { workspace = true }
+tracing-log = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 apalis = { workspace = true }
