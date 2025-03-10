@@ -15,7 +15,6 @@ import ProfileComponent from "./views/profile";
 import { SettingsSidebar } from "./sidebar";
 import type { NavNames } from "./types";
 import { commands as dbCommands, type Template } from "@hypr/plugin-db";
-import Shortcut from "../shortcut";
 import ExtensionsComponent from "./views/extensions";
 import { useSettingsPanel } from "@/contexts/settings-panel";
 
