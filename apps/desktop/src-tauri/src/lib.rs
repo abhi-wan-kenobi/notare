@@ -56,7 +56,6 @@ pub async fn main() {
         .plugin(tauri_plugin_decorum::init())
         .plugin(tauri_plugin_windows::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_log::Builder::new().skip_logger().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,

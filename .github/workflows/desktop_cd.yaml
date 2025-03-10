@@ -38,10 +38,12 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          rustup toolchain install stable --profile minimal --no-self-update
-          rustup target add aarch64-apple-darwin x86_64-apple-darwin
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/rust_install
+        with:
+          target: "macos"
+      - uses: ./.github/actions/install_desktop_deps
+        with:
+          target: "macos"
       - uses: ./.github/actions/pnpm_install
       - run: pnpm -F ui build
       - uses: arduino/setup-protoc@v3

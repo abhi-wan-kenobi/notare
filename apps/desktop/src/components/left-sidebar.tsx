@@ -41,9 +41,9 @@ function UpdateButton() {
     refetchInterval: 1000 * 60,
   });
 
-  // if (!checkForUpdate.data?.available) {
-  //   return null;
-  // }
+  if (!checkForUpdate.data?.available) {
+    return null;
+  }
 
   const handleClick = async () => {
     const update = checkForUpdate.data;

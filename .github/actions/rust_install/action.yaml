@@ -1,0 +1,19 @@
+inputs:
+  target:
+    required: false
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - run: rustup toolchain install stable --profile minimal --no-self-update
+      shell: bash
+    - if: inputs.target == 'macos'
+      run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      shell: bash
+    - if: inputs.target == 'ios'
+      run: rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
+      shell: bash
+    - if: inputs.target == 'android'
+      run: rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+      shell: bash

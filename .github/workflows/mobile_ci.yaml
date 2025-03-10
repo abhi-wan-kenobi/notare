@@ -17,8 +17,22 @@ jobs:
   ios:
     runs-on: macos-latest
     steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/install_mobile_deps
+        with:
+          target: "ios"
+      - uses: ./.github/actions/rust_install
+        with:
+          target: "ios"
       - run: cargo check -p mobile
   android:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/install_mobile_deps
+        with:
+          target: "android"
+      - uses: ./.github/actions/rust_install
+        with:
+          target: "android"
       - run: cargo check -p mobile

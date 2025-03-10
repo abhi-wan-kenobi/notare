@@ -11,5 +11,5 @@ runs:
         node-version: "20"
         cache: "pnpm"
 
-    - shell: bash
-      run: pnpm install
+    - run: pnpm install
+      shell: bash

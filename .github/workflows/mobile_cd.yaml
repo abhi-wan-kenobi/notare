@@ -11,10 +11,15 @@ jobs:
     if: startsWith(github.event.release.tag_name, 'mobile_')
     runs-on: macos-latest
     steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/pnpm_install
       - run: pnpm -F mobile tauri ios build --export-method app-store-connect
   # https://v2.tauri.app/distribute/google-play
+  # TODO: https://github.com/nttld/setup-ndk
   android:
     if: startsWith(github.event.release.tag_name, 'mobile_')
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/pnpm_install
       - run: pnpm -F mobile tauri android build --aab

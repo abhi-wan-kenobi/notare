@@ -1,11 +1,23 @@
+inputs:
+  target:
+    required: false
+    type: string
+
 runs:
   using: "composite"
   steps:
     - if: ${{ runner.os == 'Linux' }}
       shell: bash
-      # https://github.com/tauri-apps/tauri-action/blob/0a5763a1d1dd75ebe0a3a3bd8aaecf8ae1fe3d80/README.md?plain=1#L63
+      # https://tauri.app/start/prerequisites/#linux
       run: |
         sudo apt update
         sudo apt-get install -y \
-          libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf \
-          libasound2-dev pkg-config
+          libwebkit2gtk-4.1-dev \
+          build-essential \
+          curl \
+          wget \
+          file \
+          libxdo-dev \
+          libssl-dev \
+          libayatana-appindicator3-dev \
+          librsvg2-dev
