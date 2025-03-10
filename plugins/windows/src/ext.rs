@@ -91,6 +91,7 @@ impl ShowHyprWindow {
             }
         };
 
+        window.set_theme(Some(tauri::Theme::Light))?;
         window.set_focus()?;
         Ok(window)
     }
