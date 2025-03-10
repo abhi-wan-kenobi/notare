@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LANGUAGES_ISO_639_1 } from "@huggingface/languages";
 import { Trans } from "@lingui/react/macro";
-
 import {
   Form,
   FormControl,
@@ -135,11 +134,11 @@ export default function General() {
                 </div>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger className="max-w-[100px] focus:outline-none focus:ring-0 focus:ring-offset-0  ">
+                    <SelectTrigger className="max-w-[100px] focus:outline-none focus:ring-0 focus:ring-offset-0">
                       <SelectValue placeholder="Select language" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent align="end" className=" ">
+                  <SelectContent align="end" className="">
                     {SUPPORTED_LANGUAGES.map((code) => (
                       <SelectItem key={code} value={code}>
                         {LANGUAGES_ISO_639_1[code].nativeName}
@@ -171,7 +170,7 @@ export default function General() {
                     placeholder="Type jargons (e.g., Blitz Meeting, PaC Squad)"
                     {...field}
                     value={field.value ?? ""}
-                    className="focus-visible:ring-0 focus-visible:ring-offset-0  "
+                    className="focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
                 </FormControl>
                 <FormMessage />

@@ -33,15 +33,15 @@ export function TagChip() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger>
-        <div className="flex flex-row items-center gap-2 rounded-md px-2 py-1.5 hover:bg-neutral-100   flex-shrink-0 text-xs">
-          <TagIcon size={14} className="flex-shrink-0 " />
-          <span className="truncate ">
+        <div className="flex flex-row items-center gap-2 rounded-md px-2 py-1.5 hover:bg-neutral-100 flex-shrink-0 text-xs">
+          <TagIcon size={14} className="flex-shrink-0" />
+          <span className="truncate">
             {tagCount} tag{tagCount > 1 ? "s" : ""}
           </span>
         </div>
       </PopoverTrigger>
       <PopoverContent
-        className="overflow-clip p-0 py-2 shadow-lg  "
+        className="overflow-clip p-0 py-2 shadow-lg"
         align="start"
       >
         <div className="space-y-1">
@@ -50,7 +50,7 @@ export function TagChip() {
               key={tag.id}
               className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5"
             >
-              <div className="rounded px-2 py-0.5 text-sm ">{tag.name}</div>
+              <div className="rounded px-2 py-0.5 text-sm">{tag.name}</div>
             </div>
           ))}
         </div>

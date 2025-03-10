@@ -20,7 +20,7 @@ export function RightPanelButton() {
           variant="ghost"
           size="icon"
           onClick={togglePanel}
-          className="hover:bg-neutral-200   "
+          className="hover:bg-neutral-200"
         >
           <Icon className="size-4" />
         </Button>

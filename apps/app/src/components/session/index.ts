@@ -1,2 +1,2 @@
-export { Header } from './Header';
-export { Content } from './Content';
+export { Header } from "./header";
+export { Content } from "./content";

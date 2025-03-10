@@ -2,7 +2,7 @@ import { ChevronLeftIcon, FilePlusIcon } from "lucide-react";
 import { TemplateList } from "../components/template-list";
 import { type NavNames } from "../types";
 import { data } from "../constants";
-import { cn } from "@hypr/ui/lib/utils";
+
 import { useHypr } from "@/contexts/hypr";
 import { type Template } from "@hypr/plugin-db";
 
@@ -35,11 +35,7 @@ export function TemplateView({
         <header className="border-b p-2">
           <button
             onClick={() => setActive(data.nav[0].name)}
-            className={cn(
-              "flex w-full items-center gap-2 rounded-lg p-2 text-sm",
-              "text-neutral-600 ",
-              "hover:bg-neutral-100 ",
-            )}
+            className="flex w-full items-center gap-2 rounded-lg p-2 text-sm text-neutral-600 hover:bg-neutral-100"
           >
             <ChevronLeftIcon className="h-4 w-4" />
             <span>Back to Settings</span>
@@ -58,11 +54,7 @@ export function TemplateView({
 
       <footer className="mt-auto border-t p-2">
         <button
-          className={cn(
-            "flex w-full items-center gap-2 rounded-lg p-2 text-sm",
-            "text-neutral-600 ",
-            "hover:bg-neutral-100 ",
-          )}
+          className="flex w-full items-center gap-2 rounded-lg p-2 text-sm text-neutral-600 hover:bg-neutral-100"
           onClick={() => {
             const newTemplate: Template = {
               id: crypto.randomUUID(),

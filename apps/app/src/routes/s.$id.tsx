@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { client, getApiWebSessionById, type Session } from "../client";
 import { Header, Content } from "../components/session";
 
-// Define the loader data type
 interface RouteLoaderData {
   session: Session;
 }
@@ -32,15 +31,9 @@ function RouteComponent() {
 
   return (
     <div className="relative flex flex-col h-screen w-screen overflow-hidden bg-white text-neutral-700">
-      {/* Main content area */}
-      <div className="flex-1 relative overflow-hidden">
-        {/* Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header session={session} />
         <Content session={session} />
-        
-        {/* Header - positioned above content but in DOM after for proper z-index */}
-        <div className="absolute top-0 left-0 right-0 z-10 bg-white border-b border-neutral-200">
-          <Header session={session} />
-        </div>
       </div>
     </div>
   );

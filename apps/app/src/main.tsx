@@ -1,11 +1,10 @@
+import "@hypr/ui/globals.css";
+import "./styles/globals.css";
+
 import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { routeTree } from "./routeTree.gen";
-
-import "@hypr/ui/globals.css";
-import "./styles/globals.css";
-
 import * as Sentry from "@sentry/react";
 import { ThemeProvider } from "@hypr/ui/contexts/theme";
 import { ClerkProvider } from "@clerk/clerk-react";

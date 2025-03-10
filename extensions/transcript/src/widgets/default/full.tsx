@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Channel } from "@tauri-apps/api/core";
 import { Minimize2Icon } from "lucide-react";
-
 import { Button } from "@hypr/ui/components/ui/button";
 import {
   WidgetFullSize,
@@ -9,7 +8,6 @@ import {
   WidgetHeader,
 } from "@hypr/ui/components/ui/widgets";
 import { Badge } from "@hypr/ui/components/ui/badge";
-
 import {
   commands as listenerCommands,
   type TimelineView,
@@ -70,7 +68,7 @@ const LiveTranscriptFull: WidgetFullSize = ({ onMinimize }) => {
               size="icon"
               onClick={onMinimize}
             >
-              <Minimize2Icon className="h-4 w-4 text-black " />
+              <Minimize2Icon className="h-4 w-4 text-black" />
             </Button>,
           ]}
         />

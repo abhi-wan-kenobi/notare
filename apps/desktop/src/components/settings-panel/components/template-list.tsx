@@ -31,12 +31,12 @@ export function TemplateList({
 
   return (
     <>
-      <div className="sticky top-0 bg-background  p-2">
+      <div className="sticky top-0 bg-background p-2">
         <div className="relative">
-          <SearchIcon className="absolute left-2 top-2.5 h-4 w-4 text-neutral-400 " />
+          <SearchIcon className="absolute left-2 top-2.5 h-4 w-4 text-neutral-400" />
           <input
             placeholder="Search templates..."
-            className="w-full bg-transparent px-8 py-2 text-sm text-foreground   focus:outline-none"
+            className="w-full bg-transparent px-8 py-2 text-sm text-foreground focus:outline-none"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
           />
@@ -45,11 +45,11 @@ export function TemplateList({
 
       {customTemplates && customTemplates.length > 0 && (
         <section className="p-2">
-          <h3 className="flex items-center gap-2 p-2 text-sm font-semibold text-neutral-700 ">
+          <h3 className="flex items-center gap-2 p-2 text-sm font-semibold text-neutral-700">
             <HeartIcon className="h-4 w-4" />
             My Templates
           </h3>
-          <nav className="mt-2 rounded-md bg-neutral-50  p-2">
+          <nav className="mt-2 rounded-md bg-neutral-50 p-2">
             <ul>
               {customTemplates
                 .filter((template) => filterTemplate(template, searchQuery))
@@ -58,12 +58,9 @@ export function TemplateList({
                     <button
                       onClick={() => onTemplateSelect(template)}
                       className={cn(
-                        "flex w-full flex-col gap-1 rounded-lg p-2 text-sm",
-                        "text-neutral-600 ",
-                        "hover:bg-neutral-100 ",
-                        selectedTemplate?.id === template.id
-                          ? "bg-neutral-200 font-bold text-neutral-700"
-                          : "",
+                        "flex w-full flex-col gap-1 rounded-lg p-2 text-sm text-neutral-600 hover:bg-neutral-100",
+                        selectedTemplate?.id === template.id &&
+                          "bg-neutral-200 font-bold text-neutral-700",
                       )}
                     >
                       <span>{template.title || "Untitled Template"}</span>
@@ -82,11 +79,11 @@ export function TemplateList({
       )}
 
       <section className="p-2">
-        <h3 className="flex items-center gap-2 p-2 text-sm font-semibold text-neutral-700 ">
+        <h3 className="flex items-center gap-2 p-2 text-sm font-semibold text-neutral-700">
           <ZapIcon className="h-4 w-4" />
           Official Templates
         </h3>
-        <nav className="mt-2 rounded-md bg-neutral-50  p-2">
+        <nav className="mt-2 rounded-md bg-neutral-50 p-2">
           <ul>
             {builtinTemplates
               .filter((template) => filterTemplate(template, searchQuery))
@@ -95,12 +92,9 @@ export function TemplateList({
                   <button
                     onClick={() => onTemplateSelect(template)}
                     className={cn(
-                      "flex w-full flex-col gap-1 rounded-lg p-2 text-sm",
-                      "text-neutral-600 ",
-                      "hover:bg-neutral-100 ",
-                      selectedTemplate?.id === template.id
-                        ? "bg-neutral-200 font-bold text-neutral-700"
-                        : "",
+                      "flex w-full flex-col gap-1 rounded-lg p-2 text-sm text-neutral-600 hover:bg-neutral-100",
+                      selectedTemplate?.id === template.id &&
+                        "bg-neutral-200 font-bold text-neutral-700",
                     )}
                   >
                     <span>{template.title || "Untitled Template"}</span>

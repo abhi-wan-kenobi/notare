@@ -114,7 +114,7 @@ export default function ProfileComponent() {
                   <Input
                     placeholder="Your Name"
                     {...field}
-                    className="focus-visible:ring-0 focus-visible:ring-offset-0  "
+                    className="focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
                 </FormControl>
                 <FormMessage />
@@ -131,7 +131,7 @@ export default function ProfileComponent() {
                 <FormControl>
                   <Input
                     {...field}
-                    className="focus-visible:ring-0 focus-visible:ring-offset-0  "
+                    className="focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
                 </FormControl>
                 <FormMessage />
@@ -153,7 +153,7 @@ export default function ProfileComponent() {
                 <FormControl>
                   <Input
                     {...field}
-                    className="focus-visible:ring-0 focus-visible:ring-offset-0  "
+                    className="focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
                 </FormControl>
                 <FormMessage />
@@ -176,7 +176,7 @@ export default function ProfileComponent() {
                   <Textarea
                     placeholder="Add a few words about your company."
                     {...field}
-                    className="focus-visible:ring-0 focus-visible:ring-offset-0  "
+                    className="focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
                 </FormControl>
                 <FormMessage />
@@ -197,11 +197,11 @@ export default function ProfileComponent() {
                 </div>
                 <FormControl>
                   <div className="flex">
-                    <span className="inline-flex items-center rounded-l-md border border-r-0 border-input bg-muted px-3 text-sm text-muted-foreground  ">
+                    <span className="inline-flex items-center rounded-l-md border border-r-0 border-input bg-muted px-3 text-sm text-muted-foreground">
                       linkedin.com/in/
                     </span>
                     <Input
-                      className="rounded-l-none focus-visible:ring-0 focus-visible:ring-offset-0  "
+                      className="rounded-l-none focus-visible:ring-0 focus-visible:ring-offset-0"
                       placeholder="username"
                       {...field}
                     />

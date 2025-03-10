@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from "react";
 import { Maximize2Icon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Channel } from "@tauri-apps/api/core";
-
 import { Button } from "@hypr/ui/components/ui/button";
 import {
   WidgetHeader,
@@ -15,7 +14,6 @@ import {
   type TimelineView,
   type SessionEvent,
 } from "@hypr/plugin-listener";
-
 import Translation from "../components/translation";
 
 const LiveTranslation2x2: WidgetTwoByTwo = ({ onMaximize, queryClient }) => {
@@ -87,7 +85,7 @@ const LiveTranslation2x2: WidgetTwoByTwo = ({ onMaximize, queryClient }) => {
               onClick={onMaximize}
               className="p-0"
             >
-              <Maximize2Icon size={16} className="text-black " />
+              <Maximize2Icon size={16} className="text-black" />
             </Button>,
           ]}
         />

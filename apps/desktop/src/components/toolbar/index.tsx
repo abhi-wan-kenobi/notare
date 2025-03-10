@@ -1,10 +1,7 @@
 import { useLocation } from "@tanstack/react-router";
-import clsx from "clsx";
-
 import { NewNoteButton } from "@/components/toolbar/buttons/new-note-button";
 import { useOngoingSession } from "@/contexts/ongoing-session";
 import { RoutePath } from "@/types";
-
 import { SearchBar, SearchIconButton, SearchPalette } from "../search";
 import { RightPanelButton } from "./buttons/right-panel-button";
 import { LeftSidebarButton } from "./buttons/left-sidebar-button";
@@ -29,16 +26,11 @@ export default function Toolbar() {
   return (
     <>
       <header
-        className={clsx([
-          "flex w-full items-center justify-between",
-          "border-b border-border bg-neutral-50  ",
-          "min-h-11 p-1 px-2",
-        ])}
+        className="flex w-full items-center justify-between border-b border-border bg-neutral-50 min-h-11 p-1 px-2"
         data-tauri-drag-region
       >
         <div className="w-40 flex items-center" data-tauri-drag-region>
           <LeftSidebarButton type="toolbar" />
-          {/* <HomeButton /> */}
           <NewNoteButton />
         </div>
 

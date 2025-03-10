@@ -1,13 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 import { Channel } from "@tauri-apps/api/core";
 import { Maximize2Icon } from "lucide-react";
-
 import {
   commands as listenerCommands,
   type TimelineView,
   type SessionEvent,
 } from "@hypr/plugin-listener";
-
 import { Button } from "@hypr/ui/components/ui/button";
 import {
   WidgetHeader,
@@ -74,7 +72,7 @@ const LiveTranscript2x2: WidgetTwoByTwo = ({ onMaximize }) => {
               onClick={onMaximize}
               className="p-0"
             >
-              <Maximize2Icon size={16} className="text-black " />
+              <Maximize2Icon size={16} className="text-black" />
             </Button>,
           ]}
         />
