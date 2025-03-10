@@ -4,8 +4,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
 
-import { SessionProvider, useRightPanel } from "@/contexts";
 import EditorArea from "@/components/note/editor";
+import { SessionProvider, useRightPanel } from "@/contexts";
+
 export const Route = createFileRoute("/app/note/$id")({
   component: Component,
   loader: ({ context: { queryClient }, params: { id } }) => {
