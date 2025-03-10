@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
-import clsx from "clsx";
 
 export default function UpdateButton() {
   const checkForUpdate = useQuery({
