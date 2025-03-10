@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { CalendarIcon, Folder } from "lucide-react";
 import { format, isFuture } from "date-fns";
+import { clsx } from "clsx";
 
 import {
   commands as dbCommands,
@@ -88,6 +89,12 @@ function EventItem({ event }: { event: Event }) {
 function SessionList() {
   const navigate = useNavigate();
 
+  const currentSessionId = useParams({
+    from: "/app/note/$id",
+    shouldThrow: false,
+    select: (params) => params.id,
+  });
+
   const sessions = useQuery({
     queryKey: ["sessions"],
     queryFn: () => dbCommands.listSessions(null),
@@ -122,7 +129,14 @@ function SessionList() {
                   <button
                     key={session.id}
                     onClick={() => handleClickSession(session.id)}
-                    className="w-full text-left group flex items-start gap-3 py-2 transition-all hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-2"
+                    disabled={currentSessionId === session.id}
+                    className={clsx([
+                      "hover:bg-neutral-200 dark:hover:bg-neutral-800",
+                      "group flex items-start gap-3 py-2",
+                      "w-full text-left transition-all rounded px-2",
+                      currentSessionId === session.id &&
+                        "bg-neutral-200 dark:bg-neutral-800",
+                    ])}
                   >
                     <div className="flex flex-col items-start gap-1">
                       <div className="font-medium text-sm dark:text-neutral-300">
