@@ -35,10 +35,9 @@ pub fn run() {
 
             specta_builder.mount_events(&app);
 
-            // tauri::async_runtime::block_on(async move {
-            //     app.setup_db().await.unwrap();
-            //     app.setup_worker().await.unwrap();
-            // });
+            tauri::async_runtime::block_on(async move {
+                app.setup_db().await.unwrap();
+            });
 
             Ok(())
         })

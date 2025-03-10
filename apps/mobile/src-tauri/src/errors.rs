@@ -1,10 +1,7 @@
 use serde::{ser::Serializer, Serialize};
 
 #[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error(transparent)]
-    Sqlx(#[from] apalis_sql::sqlx::Error),
-}
+pub enum Error {}
 
 impl Serialize for Error {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
