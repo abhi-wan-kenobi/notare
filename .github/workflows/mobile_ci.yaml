@@ -1,0 +1,24 @@
+# https://github.com/tauri-apps/tauri-action/blob/3013cac/examples/test-build-only.yml
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - apps/mobile/**
+      - plugins/**
+  pull_request:
+    branches:
+      - main
+    paths:
+      - apps/mobile/**
+      - plugins/**
+jobs:
+  ios:
+    runs-on: macos-latest
+    steps:
+      - run: cargo check -p mobile
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - run: cargo check -p mobile
