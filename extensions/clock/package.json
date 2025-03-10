@@ -24,7 +24,7 @@
     "@storybook/react": "^8.6.4",
     "@storybook/react-vite": "^8.6.4",
     "@types/react": "^18.3.18",
-    "autoprefixer": "^10.4.20",
+    "autoprefixer": "^10.4.21",
     "msw": "^2.7.3",
     "msw-storybook-addon": "^2.0.4",
     "react": "^19.0.0",

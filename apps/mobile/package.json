@@ -23,7 +23,7 @@
     "@stackflow/plugin-basic-ui": "^1.12.0",
     "@stackflow/plugin-renderer-basic": "^1.1.13",
     "@stackflow/react": "^1.5.1",
-    "@tanstack/react-query": "^5.67.1",
+    "@tanstack/react-query": "^5.67.2",
     "@tauri-apps/api": "^2.3.0",
     "@tauri-apps/plugin-dialog": "^2.2.0",
     "clsx": "^2.1.1",
