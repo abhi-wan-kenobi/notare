@@ -1,10 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  SignedIn,
-  SignedOut,
-  UserButton,
-  SignInButton,
-} from "@clerk/clerk-react";
+import { SignedIn, UserButton } from "@clerk/clerk-react";
 import { clsx } from "clsx";
 import { Particles } from "@hypr/ui/components/ui/particles";
 import { Button } from "@hypr/ui/components/ui/button";
