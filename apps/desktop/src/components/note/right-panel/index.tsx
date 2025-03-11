@@ -23,7 +23,7 @@ export default function RightPanel() {
       <div className="relative h-full">
         {isExpanded && (
           <div
-            className="absolute inset-0 bg-black/30 z-50"
+            className="absolute inset-0 bg-black/30 z-40"
             onClick={hidePanel}
           />
         )}
@@ -34,7 +34,7 @@ export default function RightPanel() {
             x: isExpanded ? 0 : "100%",
           }}
           transition={{ duration: 0.3 }}
-          className="absolute right-0 top-0 z-50 h-full w-[380px] overflow-y-auto border-l bg-neutral-50 scrollbar-none shadow-lg"
+          className="absolute right-0 top-0 z-40 h-full w-[380px] overflow-y-auto border-l bg-neutral-50 scrollbar-none shadow-lg"
         >
           <WidgetRenderer />
         </motion.div>
