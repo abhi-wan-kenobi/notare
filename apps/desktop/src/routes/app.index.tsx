@@ -34,7 +34,7 @@ export const Route = createFileRoute("/app/")({
       });
     } catch (error) {
       console.error(error);
-      return redirect({ to: "/app/home" });
+      return redirect({ to: "/app" });
     }
   },
 });

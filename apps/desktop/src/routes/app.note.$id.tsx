@@ -25,7 +25,7 @@ export const Route = createFileRoute("/app/note/$id")({
         } catch {}
 
         if (!session) {
-          throw redirect({ to: "/app/home" });
+          throw redirect({ to: "/app" });
         }
 
         return { session };
@@ -40,6 +40,7 @@ function Component() {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
+    mutationKey: ["delete-session", session.id],
     mutationFn: () => dbCommands.deleteSession(session.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
@@ -51,9 +52,6 @@ function Component() {
 
   useEffect(() => {
     return () => {
-      // Don't call hidePanel during unmount to prevent max depth errors
-      // hidePanel();
-
       const isNoteEmpty =
         !session.title?.trim() &&
         (!session.raw_memo_html?.trim() ||
@@ -65,11 +63,11 @@ function Component() {
         mutation.mutate();
       }
     };
-  }, [session, mutation]);
+  }, [session.id]);
 
   return (
     <SessionProvider session={session}>
-      <main className="flex h-full overflow-hidden bg-white ">
+      <main className="flex h-full overflow-hidden bg-white">
         <div className="h-full flex-1">
           <EditorArea />
         </div>
