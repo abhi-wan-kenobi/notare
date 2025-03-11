@@ -36,7 +36,7 @@ type ConfigData = {
   organization: Organization;
 };
 
-export function profileActivityLoader({ }: ActivityLoaderArgs<"ProfileActivity">) {
+export function profileActivityLoader({}: ActivityLoaderArgs<"ProfileActivity">) {
   return {};
 }
 

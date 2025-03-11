@@ -5,8 +5,8 @@ import { config } from "./stackflow.config";
 import { HomeActivity } from "./views/home";
 import { LoginActivity } from "./views/login";
 import { NoteActivity } from "./views/note";
-import { SettingsActivity } from "./views/settings";
 import { ProfileActivity } from "./views/profile";
+import { SettingsActivity } from "./views/settings";
 
 export const { Stack } = stackflow({
   config,
@@ -15,7 +15,7 @@ export const { Stack } = stackflow({
     NoteActivity,
     LoginActivity,
     SettingsActivity,
-    ProfileActivity
+    ProfileActivity,
   },
   plugins: [basicRendererPlugin(), basicUIPlugin({ theme: "cupertino" })],
 });

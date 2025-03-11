@@ -11,7 +11,7 @@ import { commands as dbCommands, type Event, type Session } from "@hypr/plugin-d
 import { Avatar, AvatarFallback, AvatarImage } from "@hypr/ui/components/ui/avatar";
 import { Button } from "@hypr/ui/components/ui/button";
 
-export function homeActivityLoader({ }: ActivityLoaderArgs<"HomeActivity">) {
+export function homeActivityLoader({}: ActivityLoaderArgs<"HomeActivity">) {
   return {};
 }
 
