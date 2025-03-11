@@ -1,7 +1,4 @@
-import {
-  WidgetTwoByTwo,
-  WidgetTwoByTwoWrapper,
-} from "@hypr/ui/components/ui/widgets";
+import { WidgetTwoByTwo, WidgetTwoByTwoWrapper } from "@hypr/ui/components/ui/widgets";
 import { ClockItem } from "../components/clock-item";
 
 const WorldClock2x2: WidgetTwoByTwo = () => {
@@ -15,9 +12,7 @@ const WorldClock2x2: WidgetTwoByTwo = () => {
   return (
     <WidgetTwoByTwoWrapper>
       <div className="grid grid-cols-2 grid-rows-2 h-full w-full">
-        {timezones.map((tz, index) => (
-          <ClockItem key={index} timezone={tz.timezone} city={tz.city} />
-        ))}
+        {timezones.map((tz, index) => <ClockItem key={index} timezone={tz.timezone} city={tz.city} />)}
       </div>
     </WidgetTwoByTwoWrapper>
   );

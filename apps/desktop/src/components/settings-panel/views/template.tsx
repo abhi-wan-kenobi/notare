@@ -8,12 +8,7 @@ import {
 } from "@hypr/ui/components/ui/dropdown-menu";
 import { Input } from "@hypr/ui/components/ui/input";
 import { Textarea } from "@hypr/ui/components/ui/textarea";
-import {
-  CopyIcon,
-  EditIcon,
-  MoreHorizontalIcon,
-  TrashIcon,
-} from "lucide-react";
+import { CopyIcon, EditIcon, MoreHorizontalIcon, TrashIcon } from "lucide-react";
 import { useCallback } from "react";
 import { SectionsList } from "../components/template-sections";
 
@@ -71,32 +66,34 @@ export default function TemplateEditor({
             placeholder="Untitled Template"
           />
 
-          {isCreator ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <MoreHorizontalIcon className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={handleDuplicate}>
-                  <CopyIcon className="mr-2 h-4 w-4" />
-                  Duplicate
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleDelete}>
-                  <TrashIcon className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <button
-              onClick={handleDuplicate}
-              className="rounded-md p-2 hover:bg-neutral-100"
-            >
-              <EditIcon className="h-4 w-4" />
-            </button>
-          )}
+          {isCreator
+            ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <MoreHorizontalIcon className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={handleDuplicate}>
+                    <CopyIcon className="mr-2 h-4 w-4" />
+                    Duplicate
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDelete}>
+                    <TrashIcon className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+            : (
+              <button
+                onClick={handleDuplicate}
+                className="rounded-md p-2 hover:bg-neutral-100"
+              >
+                <EditIcon className="h-4 w-4" />
+              </button>
+            )}
         </div>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div>Creator: John Doe</div>

@@ -1,7 +1,7 @@
-import { createContext, useContext } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { commands as authCommands } from "@hypr/plugin-auth";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { createContext, useContext } from "react";
 
 export interface HyprContext {
   userId: string;

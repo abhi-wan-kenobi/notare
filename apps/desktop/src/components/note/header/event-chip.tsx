@@ -1,11 +1,7 @@
 import { useSession } from "@/contexts";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@hypr/ui/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarIcon } from "lucide-react";
 

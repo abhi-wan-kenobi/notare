@@ -31,26 +31,28 @@ export function SettingsSidebar({
       data-collapsed={active !== "Templates"}
     >
       <div className="h-full w-full transition-all duration-300 lg:group-data-[collapsed=true]:w-[52px]">
-        {active === "Templates" ? (
-          <TemplateView
-            searchQuery={searchQuery}
-            onSearchChange={onSearchChange}
-            customTemplates={customTemplates}
-            builtinTemplates={builtinTemplates}
-            onTemplateSelect={onTemplateSelect}
-            onCreateTemplate={onCreateTemplate}
-            setActive={setActive}
-            selectedTemplate={null}
-          />
-        ) : active === "Extensions" ? (
-          <ExtensionsView
-            searchQuery={searchQuery}
-            onSearchChange={onSearchChange}
-            setActive={setActive}
-          />
-        ) : (
-          <SettingsView active={active} setActive={setActive} />
-        )}
+        {active === "Templates"
+          ? (
+            <TemplateView
+              searchQuery={searchQuery}
+              onSearchChange={onSearchChange}
+              customTemplates={customTemplates}
+              builtinTemplates={builtinTemplates}
+              onTemplateSelect={onTemplateSelect}
+              onCreateTemplate={onCreateTemplate}
+              setActive={setActive}
+              selectedTemplate={null}
+            />
+          )
+          : active === "Extensions"
+          ? (
+            <ExtensionsView
+              searchQuery={searchQuery}
+              onSearchChange={onSearchChange}
+              setActive={setActive}
+            />
+          )
+          : <SettingsView active={active} setActive={setActive} />}
       </div>
     </aside>
   );

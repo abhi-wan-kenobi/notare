@@ -1,7 +1,7 @@
 import { defineConfig } from "unocss";
 
-import presetWind from "@unocss/preset-wind3";
 import presetIcons from "@unocss/preset-icons";
+import presetWind from "@unocss/preset-wind3";
 
 export default defineConfig({
   presets: [
@@ -9,8 +9,7 @@ export default defineConfig({
     // https://icones.js.org
     presetIcons({
       collections: {
-        heroicons: () =>
-          import("@iconify-json/heroicons/icons.json").then((i) => i.default),
+        heroicons: () => import("@iconify-json/heroicons/icons.json").then((i) => i.default),
       },
     }),
   ],

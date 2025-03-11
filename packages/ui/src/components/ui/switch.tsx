@@ -1,8 +1,8 @@
 "use client";
 
-import * as React from "react";
 import * as SwitchPrimitives from "@radix-ui/react-switch";
-import { type VariantProps, cva } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
 
 import { cn } from "@hypr/ui/lib/utils";
 
@@ -28,8 +28,7 @@ const thumbVariants = cva(
     variants: {
       size: {
         sm: "h-3 w-3 data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0",
-        default:
-          "h-5 w-5 data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0",
+        default: "h-5 w-5 data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0",
         lg: "h-6 w-6 data-[state=checked]:translate-x-7 data-[state=unchecked]:translate-x-0",
       },
     },
@@ -40,8 +39,8 @@ const thumbVariants = cva(
 );
 
 interface SwitchProps
-  extends React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>,
-    VariantProps<typeof switchVariants> {}
+  extends React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>, VariantProps<typeof switchVariants>
+{}
 
 const Switch = React.forwardRef<
   React.ElementRef<typeof SwitchPrimitives.Root>,

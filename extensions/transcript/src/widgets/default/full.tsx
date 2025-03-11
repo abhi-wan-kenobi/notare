@@ -1,18 +1,10 @@
-import { useEffect, useState, useRef } from "react";
+import { commands as listenerCommands, type SessionEvent, type TimelineView } from "@hypr/plugin-listener";
+import { Badge } from "@hypr/ui/components/ui/badge";
+import { Button } from "@hypr/ui/components/ui/button";
+import { WidgetFullSize, WidgetFullSizeWrapper, WidgetHeader } from "@hypr/ui/components/ui/widgets";
 import { Channel } from "@tauri-apps/api/core";
 import { Minimize2Icon } from "lucide-react";
-import { Button } from "@hypr/ui/components/ui/button";
-import {
-  WidgetFullSize,
-  WidgetFullSizeWrapper,
-  WidgetHeader,
-} from "@hypr/ui/components/ui/widgets";
-import { Badge } from "@hypr/ui/components/ui/badge";
-import {
-  commands as listenerCommands,
-  type TimelineView,
-  type SessionEvent,
-} from "@hypr/plugin-listener";
+import { useEffect, useRef, useState } from "react";
 import Transcript from "../components/transcript";
 
 const LiveTranscriptFull: WidgetFullSize = ({ onMinimize }) => {

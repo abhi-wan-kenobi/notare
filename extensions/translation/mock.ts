@@ -1,10 +1,6 @@
-import { mockIPC } from "@tauri-apps/api/mocks";
+import type { SessionEvent, TimelineView, TimelineViewItem } from "@hypr/plugin-listener";
 import { Channel } from "@tauri-apps/api/core";
-import type {
-  TimelineView,
-  SessionEvent,
-  TimelineViewItem,
-} from "@hypr/plugin-listener";
+import { mockIPC } from "@tauri-apps/api/mocks";
 
 interface AugmentedTimelineViewItem extends TimelineViewItem {
   originalText?: string;
@@ -59,7 +55,8 @@ export const mockTranscriptIPC = () =>
                 start: currentTime,
                 end: currentTime + 5,
                 speaker: "Sarah",
-                text: "사용자 피드백을 기반으로 일부 모의 업을 진행했습니다. 주요 요구 사항은 실시간 업데이트와 명확한 발언자 식별입니다.",
+                text:
+                  "사용자 피드백을 기반으로 일부 모의 업을 진행했습니다. 주요 요구 사항은 실시간 업데이트와 명확한 발언자 식별입니다.",
                 originalText:
                   "I've been working on some mockups based on user feedback. The main request is for real-time updates and clear speaker identification.",
               },
@@ -116,8 +113,7 @@ export const mockTranscriptIPC = () =>
                 end: currentTime + 4,
                 speaker: "Sarah",
                 text: "UI 작업은 약 2주 정도 걸릴 것 같습니다. 대부분의 컴포넌트는 이미 준비되어 있습니다.",
-                originalText:
-                  "The UI work should take about two weeks. We already have most of the components ready.",
+                originalText: "The UI work should take about two weeks. We already have most of the components ready.",
               },
             ],
           },
@@ -154,8 +150,7 @@ export const mockTranscriptIPC = () =>
                 end: currentTime + 2,
                 speaker: "John",
                 text: "완벽합니다. 다음 주에 진행 상황을 확인하기 위해 다시 모이겠습니다. 모두 감사합니다!",
-                originalText:
-                  "Perfect, let's reconvene next week for a progress check. Thanks everyone!",
+                originalText: "Perfect, let's reconvene next week for a progress check. Thanks everyone!",
               },
             ],
           },

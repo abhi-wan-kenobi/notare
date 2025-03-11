@@ -5,9 +5,11 @@ import { useShallow } from "zustand/shallow";
 
 import { createSessionStore } from "@/stores/session";
 
-const SessionContext = createContext<ReturnType<
-  typeof createSessionStore
-> | null>(null);
+const SessionContext = createContext<
+  ReturnType<
+    typeof createSessionStore
+  > | null
+>(null);
 
 export const SessionProvider = ({
   children,

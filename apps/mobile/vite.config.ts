@@ -1,5 +1,5 @@
-import { defineConfig, type UserConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { defineConfig, type UserConfig } from "vite";
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -18,10 +18,10 @@ const tauri: UserConfig = {
     host: host || false,
     hmr: host
       ? {
-          protocol: "ws",
-          host,
-          port: 1431,
-        }
+        protocol: "ws",
+        host,
+        port: 1431,
+      }
       : undefined,
     watch: {
       ignored: ["**/src-tauri/**"],

@@ -1,10 +1,6 @@
 import { useNewNote } from "@/contexts/new-note";
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@hypr/ui/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 
 import { useSession } from "@/contexts/session";
 
@@ -15,9 +11,9 @@ export function NewNoteButton() {
   const { createNewNote } = useNewNote();
   const disabled = useSession(
     (s) =>
-      !s.session?.title &&
-      !s.session?.raw_memo_html &&
-      !s.session?.enhanced_memo_html,
+      !s.session?.title
+      && !s.session?.raw_memo_html
+      && !s.session?.enhanced_memo_html,
   );
 
   return (

@@ -1,21 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { CalendarIcon } from "lucide-react";
-import { format, isFuture } from "date-fns";
 import { clsx } from "clsx";
+import { format, isFuture } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 
 import { useHypr, useSession } from "@/contexts";
-import {
-  commands as dbCommands,
-  type Event,
-  type Session,
-} from "@hypr/plugin-db";
-import {
-  formatDateHeader,
-  groupSessionsByDate,
-  getSortedDates,
-  formatRemainingTime,
-} from "@/lib/date";
+import { formatDateHeader, formatRemainingTime, getSortedDates, groupSessionsByDate } from "@/lib/date";
+import { commands as dbCommands, type Event, type Session } from "@hypr/plugin-db";
 
 export default function NotesList() {
   const { userId } = useHypr();
@@ -42,9 +33,7 @@ export default function NotesList() {
           </h2>
 
           <div>
-            {events.data.map((event) => (
-              <EventItem key={event.id} event={event} />
-            ))}
+            {events.data.map((event) => <EventItem key={event.id} event={event} />)}
           </div>
         </section>
       )}

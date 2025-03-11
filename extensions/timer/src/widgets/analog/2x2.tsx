@@ -1,7 +1,4 @@
-import {
-  type WidgetTwoByTwo,
-  WidgetTwoByTwoWrapper,
-} from "@hypr/ui/components/ui/widgets";
+import { type WidgetTwoByTwo, WidgetTwoByTwoWrapper } from "@hypr/ui/components/ui/widgets";
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -102,8 +99,7 @@ const DiscTimer2x2: WidgetTwoByTwo = () => {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const totalSeconds =
-    Math.max(Math.min(parseInt(inputTime || "1"), 60), 1) * 60;
+  const totalSeconds = Math.max(Math.min(parseInt(inputTime || "1"), 60), 1) * 60;
   const progress = (timeLeft / totalSeconds) * 360;
 
   const generateTickMarks = () => {
@@ -169,35 +165,37 @@ const DiscTimer2x2: WidgetTwoByTwo = () => {
 
         {/* Timer Display and Input */}
         <div className="absolute inset-0 flex items-center justify-center z-10">
-          {isTimeUp ? (
-            <div className="text-2xl font-bold text-gray-600">Time's up!</div>
-          ) : isEditing ? (
-            <div className="flex flex-col items-center">
-              <input
-                ref={inputRef}
-                type="number"
-                min="1"
-                max="60"
-                value={inputTime}
-                onChange={handleTimeInput}
-                onBlur={stopEditing}
-                onKeyDown={(e) => e.key === "Enter" && stopEditing()}
-                className="w-16 text-center text-2xl font-bold bg-transparent border-none focus:outline-none"
-                disabled={isRunning}
-                style={{
-                  appearance: "textfield",
-                  MozAppearance: "textfield",
-                }}
-              />
-            </div>
-          ) : (
-            <div
-              className="flex justify-center items-center"
-              onClick={startEditing}
-            >
-              <div className="text-2xl font-bold">{formatTime(timeLeft)}</div>
-            </div>
-          )}
+          {isTimeUp
+            ? <div className="text-2xl font-bold text-gray-600">Time's up!</div>
+            : isEditing
+            ? (
+              <div className="flex flex-col items-center">
+                <input
+                  ref={inputRef}
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={inputTime}
+                  onChange={handleTimeInput}
+                  onBlur={stopEditing}
+                  onKeyDown={(e) => e.key === "Enter" && stopEditing()}
+                  className="w-16 text-center text-2xl font-bold bg-transparent border-none focus:outline-none"
+                  disabled={isRunning}
+                  style={{
+                    appearance: "textfield",
+                    MozAppearance: "textfield",
+                  }}
+                />
+              </div>
+            )
+            : (
+              <div
+                className="flex justify-center items-center"
+                onClick={startEditing}
+              >
+                <div className="text-2xl font-bold">{formatTime(timeLeft)}</div>
+              </div>
+            )}
         </div>
 
         {/* Explanatory text */}
@@ -232,9 +230,9 @@ const DiscTimer2x2: WidgetTwoByTwo = () => {
               d={`
               M 50 50
               L 50 6
-              A 44 44 0 ${progress > 180 ? 1 : 0} 1 ${
-                50 + 44 * Math.sin((progress * Math.PI) / 180)
-              } ${50 - 44 * Math.cos((progress * Math.PI) / 180)}
+              A 44 44 0 ${progress > 180 ? 1 : 0} 1 ${50 + 44 * Math.sin((progress * Math.PI) / 180)} ${
+                50 - 44 * Math.cos((progress * Math.PI) / 180)
+              }
               Z
             `}
               fill="#e4e4e4"

@@ -1,9 +1,6 @@
 import spriteImage from "../../../assets/dino-game-sprite.png";
 
-import {
-  type WidgetTwoByOne,
-  WidgetTwoByOneWrapper,
-} from "@hypr/ui/components/ui/widgets";
+import { type WidgetTwoByOne, WidgetTwoByOneWrapper } from "@hypr/ui/components/ui/widgets";
 import { useEffect, useRef } from "react";
 
 const ChromeDino2x1: WidgetTwoByOne = () => {
@@ -90,7 +87,7 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
   ) => {
     ctx.save();
 
-    ctx.font = '20px "Press Start 2P", monospace';
+    ctx.font = "20px \"Press Start 2P\", monospace";
     ctx.fillStyle = "#535353";
     ctx.textAlign = "right";
 
@@ -116,7 +113,7 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
     drawScores(ctx, canvas, player.score, player.hscore);
 
     ctx.save();
-    ctx.font = '20px "Press Start 2P", monospace';
+    ctx.font = "20px \"Press Start 2P\", monospace";
     ctx.fillStyle = "#535353";
     ctx.textAlign = "center";
     ctx.fillText("G A M E   O V E R", canvas.width / 2, canvas.height / 3);
@@ -240,8 +237,7 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
 
     const buttonX = canvas.width / 2 - 36;
     const buttonY = canvas.height / 2 - 32;
-    const isHovered =
-      x >= buttonX && x <= buttonX + 72 && y >= buttonY && y <= buttonY + 64;
+    const isHovered = x >= buttonX && x <= buttonX + 72 && y >= buttonY && y <= buttonY + 64;
 
     if (isHovered !== gameStateRef.current.isButtonHovered) {
       gameStateRef.current.isButtonHovered = isHovered;
@@ -254,11 +250,12 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
   const handleClick = (evt: MouseEvent) => {
     const canvas = canvasRef.current;
     if (
-      !canvas ||
-      gameStateRef.current.gamespeed !== 0 ||
-      gameStateRef.current.gameOverCooldown > 0
-    )
+      !canvas
+      || gameStateRef.current.gamespeed !== 0
+      || gameStateRef.current.gameOverCooldown > 0
+    ) {
       return;
+    }
 
     const rect = canvas.getBoundingClientRect();
     const x = evt.clientX - rect.left;
@@ -267,10 +264,10 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
     const buttonX = canvas.width / 2 - 36;
     const buttonY = canvas.height / 2 - 32;
     if (
-      x >= buttonX &&
-      x <= buttonX + 72 &&
-      y >= buttonY &&
-      y <= buttonY + 64
+      x >= buttonX
+      && x <= buttonX + 72
+      && y >= buttonY
+      && y <= buttonY + 64
     ) {
       reset();
     }
@@ -297,8 +294,8 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
 
     if (state.isJumping) {
       if (
-        state.isJumpButtonHeld &&
-        state.jumpHoldTime < player.maxJumpHoldTime
+        state.isJumpButtonHeld
+        && state.jumpHoldTime < player.maxJumpHoldTime
       ) {
         player.yv -= player.jumpHoldForce;
         state.jumpHoldTime++;
@@ -391,8 +388,8 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
     );
 
     if (
-      state.groundscroll - state.tempstart > 2404 - canvas.width ||
-      state.groundbool
+      state.groundscroll - state.tempstart > 2404 - canvas.width
+      || state.groundbool
     ) {
       state.groundbool = true;
       state.groundscroll2 += state.gamespeed;
@@ -409,8 +406,8 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
       );
 
       if (
-        state.groundscroll2 > canvas.width &&
-        state.groundscroll - state.tempstart > 1000
+        state.groundscroll2 > canvas.width
+        && state.groundscroll - state.tempstart > 1000
       ) {
         state.tempstart = canvas.width;
         state.groundscroll = 20;
@@ -468,8 +465,7 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
       );
       obsS.scroll += state.gamespeed;
 
-      const resetDistance =
-        canvas.width + obsS.w * 3 + Math.floor(Math.random() * 100);
+      const resetDistance = canvas.width + obsS.w * 3 + Math.floor(Math.random() * 100);
       if (obsS.scroll > resetDistance) {
         obsS.scroll = -100;
         state.multiS = -1;
@@ -499,8 +495,7 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
 
       obsB.scroll += state.gamespeed;
 
-      const resetDistance =
-        canvas.width + obsB.w * 3 + Math.floor(Math.random() * 100);
+      const resetDistance = canvas.width + obsB.w * 3 + Math.floor(Math.random() * 100);
       if (obsB.scroll > resetDistance) {
         obsB.scroll = -200;
         state.multiB = -1;

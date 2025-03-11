@@ -1,19 +1,14 @@
-import { z } from "zod";
-import { useState } from "react";
-import { zodValidator } from "@tanstack/zod-adapter";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
-import { clsx } from "clsx";
-import { Particles } from "@hypr/ui/components/ui/particles";
 import { Button } from "@hypr/ui/components/ui/button";
+import { Particles } from "@hypr/ui/components/ui/particles";
+import { useMutation } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { clsx } from "clsx";
+import { useState } from "react";
+import { z } from "zod";
 
-import {
-  client,
-  postApiWebConnectMutation,
-  type RequestParams,
-  type ResponseParams,
-} from "../client";
+import { client, postApiWebConnectMutation, type RequestParams, type ResponseParams } from "../client";
 
 import { assert, type TypeEqualityGuard } from "../utils";
 
@@ -115,119 +110,124 @@ function Component() {
           </h1>
 
           <p className="mb-12 text-center text-base font-medium text-neutral-600 md:text-lg lg:text-xl">
-            Keep your data securely stored in Hyprnote Cloud across multiple
-            devices
+            Keep your data securely stored in Hyprnote Cloud across multiple devices
           </p>
 
           <div className="w-full max-w-md">
-            {!isLoaded ? (
-              <div className="flex flex-col items-center py-8">
-                <div className="animate-spin h-8 w-8 border-4 border-neutral-600 border-t-transparent rounded-full mb-4"></div>
-                <p className="text-neutral-600">Loading your account...</p>
-              </div>
-            ) : (
-              <>
-                {mutation.status === "idle" && (
-                  <Button
-                    size="lg"
-                    className="w-full min-h-11 text-lg"
-                    disabled={mutation.status !== "idle"}
-                    onClick={() => mutation.mutate({ body: payload })}
-                  >
-                    Start sync
-                  </Button>
-                )}
-
-                {mutation.status === "pending" && (
-                  <div className="text-center py-4">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-800 mb-4">
-                      <div className="animate-spin h-6 w-6 border-3 border-neutral-100 border-t-transparent rounded-full"></div>
-                    </div>
-                    <p className="text-lg font-medium text-neutral-100">
-                      Connecting...
-                    </p>
+            {!isLoaded
+              ? (
+                <div className="flex flex-col items-center py-8">
+                  <div className="animate-spin h-8 w-8 border-4 border-neutral-600 border-t-transparent rounded-full mb-4">
                   </div>
-                )}
-
-                {mutation.status === "success" && (
-                  <div className="text-center py-4">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-800 mb-4">
-                      <svg
-                        className="w-6 h-6 text-neutral-100"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M5 13l4 4L19 7"
-                        ></path>
-                      </svg>
-                    </div>
-                    <p className="text-lg font-medium text-neutral-100 mb-2">
-                      Connected Successfully
-                    </p>
-                    <p className="text-neutral-400 mb-3">
-                      You should be redirected automatically.
-                    </p>
-                    <p className="text-neutral-400 mb-4">
-                      If not, please click the button below:
-                    </p>
+                  <p className="text-neutral-600">Loading your account...</p>
+                </div>
+              )
+              : (
+                <>
+                  {mutation.status === "idle" && (
                     <Button
                       size="lg"
-                      className="min-h-11 text-lg"
-                      onClick={() => {
-                        window.open(
-                          redirectURL,
-                          "_blank",
-                          "noopener,noreferrer",
-                        );
-                      }}
+                      className="w-full min-h-11 text-lg"
+                      disabled={mutation.status !== "idle"}
+                      onClick={() => mutation.mutate({ body: payload })}
                     >
-                      Open Hyprnote
+                      Start sync
                     </Button>
-                  </div>
-                )}
+                  )}
 
-                {mutation.status === "error" && (
-                  <div className="text-center py-4">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-800 mb-4">
-                      <svg
-                        className="w-6 h-6 text-neutral-100"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M6 18L18 6M6 6l12 12"
-                        ></path>
-                      </svg>
+                  {mutation.status === "pending" && (
+                    <div className="text-center py-4">
+                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-800 mb-4">
+                        <div className="animate-spin h-6 w-6 border-3 border-neutral-100 border-t-transparent rounded-full">
+                        </div>
+                      </div>
+                      <p className="text-lg font-medium text-neutral-100">
+                        Connecting...
+                      </p>
                     </div>
-                    <p className="text-lg font-medium text-neutral-100 mb-2">
-                      Connection Failed
-                    </p>
-                    <p className="text-neutral-400 mb-2">
-                      There was an error connecting to Hyprnote.
-                    </p>
-                    <details className="text-left mt-4">
-                      <summary className="text-sm text-neutral-400 cursor-pointer">
-                        View error details
-                      </summary>
-                      <pre className="mt-2 p-2 bg-neutral-800 rounded text-xs overflow-auto max-h-36 text-neutral-300">
+                  )}
+
+                  {mutation.status === "success" && (
+                    <div className="text-center py-4">
+                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-800 mb-4">
+                        <svg
+                          className="w-6 h-6 text-neutral-100"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M5 13l4 4L19 7"
+                          >
+                          </path>
+                        </svg>
+                      </div>
+                      <p className="text-lg font-medium text-neutral-100 mb-2">
+                        Connected Successfully
+                      </p>
+                      <p className="text-neutral-400 mb-3">
+                        You should be redirected automatically.
+                      </p>
+                      <p className="text-neutral-400 mb-4">
+                        If not, please click the button below:
+                      </p>
+                      <Button
+                        size="lg"
+                        className="min-h-11 text-lg"
+                        onClick={() => {
+                          window.open(
+                            redirectURL,
+                            "_blank",
+                            "noopener,noreferrer",
+                          );
+                        }}
+                      >
+                        Open Hyprnote
+                      </Button>
+                    </div>
+                  )}
+
+                  {mutation.status === "error" && (
+                    <div className="text-center py-4">
+                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-800 mb-4">
+                        <svg
+                          className="w-6 h-6 text-neutral-100"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          >
+                          </path>
+                        </svg>
+                      </div>
+                      <p className="text-lg font-medium text-neutral-100 mb-2">
+                        Connection Failed
+                      </p>
+                      <p className="text-neutral-400 mb-2">
+                        There was an error connecting to Hyprnote.
+                      </p>
+                      <details className="text-left mt-4">
+                        <summary className="text-sm text-neutral-400 cursor-pointer">
+                          View error details
+                        </summary>
+                        <pre className="mt-2 p-2 bg-neutral-800 rounded text-xs overflow-auto max-h-36 text-neutral-300">
                         {JSON.stringify(mutation.error, null, 2)}
-                      </pre>
-                    </details>
-                  </div>
-                )}
-              </>
-            )}
+                        </pre>
+                      </details>
+                    </div>
+                  )}
+                </>
+              )}
           </div>
         </div>
       </div>

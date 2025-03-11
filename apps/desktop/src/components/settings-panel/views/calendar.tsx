@@ -1,17 +1,6 @@
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@hypr/ui/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@hypr/ui/components/ui/accordion";
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@hypr/ui/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hypr/ui/components/ui/select";
 import { Trans } from "@lingui/react/macro";
 import { RiAppleFill as AppleIcon } from "@remixicon/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,14 +8,10 @@ import { CheckIcon, XIcon } from "lucide-react";
 import { useCallback } from "react";
 
 import { commands as appleCalendarCommands } from "@hypr/plugin-apple-calendar";
-import { commands as dbCommands, type Calendar } from "@hypr/plugin-db";
+import { type Calendar, commands as dbCommands } from "@hypr/plugin-db";
 import { type as getOsType } from "@tauri-apps/plugin-os";
 
-import {
-  client,
-  getApiNativeUserIntegrationsOptions,
-  getIntegrationURL,
-} from "@/client";
+import { client, getApiNativeUserIntegrationsOptions, getIntegrationURL } from "@/client";
 import { type CalendarIntegration } from "@/types";
 
 const supportedIntegrations: CalendarIntegration[] = [
@@ -78,9 +63,7 @@ export default function Calendar() {
         <div className="flex flex-row items-center gap-4">
           <Select
             value="new"
-            onValueChange={(id) =>
-              mutation.mutate({ calendar_id: id, selected: true })
-            }
+            onValueChange={(id) => mutation.mutate({ calendar_id: id, selected: true })}
           >
             <SelectTrigger className="max-w-[100px] focus:outline-none focus:ring-0 focus:ring-offset-0">
               <SelectValue />
@@ -118,8 +101,7 @@ export default function Calendar() {
                       mutation.mutate({
                         calendar_id: calendar.id,
                         selected: false,
-                      })
-                    }
+                      })}
                   />
                 </button>
               </li>
@@ -156,11 +138,9 @@ function Integration({ type }: { type: CalendarIntegration }) {
           <CalendarIconWithText type={type} />
         </AccordionTrigger>
         <AccordionContent className="px-2">
-          {type === "apple-calendar" ? (
-            <AppleCalendarIntegrationDetails />
-          ) : (
-            <OauthCalendarIntegrationDetails type={type} />
-          )}
+          {type === "apple-calendar"
+            ? <AppleCalendarIntegrationDetails />
+            : <OauthCalendarIntegrationDetails type={type} />}
         </AccordionContent>
       </AccordionItem>
     </Accordion>
@@ -195,26 +175,24 @@ function OauthCalendarIntegrationDetails({
               </Trans>
             </div>
             <div className="text-xs text-muted-foreground">
-              {integration ? (
-                <Trans>Calendar connected</Trans>
-              ) : (
-                <Trans>Connect to sync your meetings</Trans>
-              )}
+              {integration ? <Trans>Calendar connected</Trans> : <Trans>Connect to sync your meetings</Trans>}
             </div>
           </div>
         </div>
         <div>
-          {integration ? (
-            <Button variant="outline" size="sm" disabled={true}>
-              <CheckIcon className="size-4 text-green-600" />
-            </Button>
-          ) : (
-            <a href={getIntegrationURL(type)}>
-              <Button variant="outline" size="sm">
-                <Trans>Connect</Trans>
+          {integration
+            ? (
+              <Button variant="outline" size="sm" disabled={true}>
+                <CheckIcon className="size-4 text-green-600" />
               </Button>
-            </a>
-          )}
+            )
+            : (
+              <a href={getIntegrationURL(type)}>
+                <Button variant="outline" size="sm">
+                  <Trans>Connect</Trans>
+                </Button>
+              </a>
+            )}
         </div>
       </div>
     </div>
@@ -258,11 +236,9 @@ function AppleCalendarIntegrationDetails() {
               <Trans>Calendar Access</Trans>
             </div>
             <div className="text-xs text-muted-foreground">
-              {calendarAccess.data ? (
-                <Trans>Access granted</Trans>
-              ) : (
-                <Trans>Required for syncing calendar events</Trans>
-              )}
+              {calendarAccess.data
+                ? <Trans>Access granted</Trans>
+                : <Trans>Required for syncing calendar events</Trans>}
             </div>
           </div>
         </div>
@@ -272,11 +248,7 @@ function AppleCalendarIntegrationDetails() {
           onClick={handleRequestCalendarAccess}
           disabled={!!calendarAccess.data}
         >
-          {calendarAccess.data ? (
-            <CheckIcon className="size-4 text-green-600" />
-          ) : (
-            <Trans>Grant Access</Trans>
-          )}
+          {calendarAccess.data ? <CheckIcon className="size-4 text-green-600" /> : <Trans>Grant Access</Trans>}
         </Button>
       </div>
 
@@ -292,11 +264,9 @@ function AppleCalendarIntegrationDetails() {
               <Trans>Contacts Access</Trans>
             </div>
             <div className="text-xs text-muted-foreground">
-              {contactsAccess.data ? (
-                <Trans>Access granted</Trans>
-              ) : (
-                <Trans>Optional for participant suggestions</Trans>
-              )}
+              {contactsAccess.data
+                ? <Trans>Access granted</Trans>
+                : <Trans>Optional for participant suggestions</Trans>}
             </div>
           </div>
         </div>
@@ -306,11 +276,7 @@ function AppleCalendarIntegrationDetails() {
           onClick={handleRequestContactsAccess}
           disabled={!!contactsAccess.data}
         >
-          {contactsAccess.data ? (
-            <CheckIcon className="size-4 text-green-600" />
-          ) : (
-            <Trans>Grant Access</Trans>
-          )}
+          {contactsAccess.data ? <CheckIcon className="size-4 text-green-600" /> : <Trans>Grant Access</Trans>}
         </Button>
       </div>
     </div>
@@ -320,21 +286,19 @@ function AppleCalendarIntegrationDetails() {
 function CalendarIconWithText({ type }: { type: CalendarIntegration }) {
   return (
     <div className="flex flex-row items-center gap-2">
-      {type === "apple-calendar" ? (
-        <AppleIcon size={16} className="" />
-      ) : type === "google-calendar" ? (
-        <GoogleIcon />
-      ) : (
-        <OutlookIcon />
-      )}
+      {type === "apple-calendar"
+        ? <AppleIcon size={16} className="" />
+        : type === "google-calendar"
+        ? <GoogleIcon />
+        : <OutlookIcon />}
       <span className="text-sm">
         {type === "apple-calendar"
           ? "Apple"
           : type === "google-calendar"
-            ? "Google"
-            : type === "outlook-calendar"
-              ? "Outlook"
-              : null}
+          ? "Google"
+          : type === "outlook-calendar"
+          ? "Outlook"
+          : null}
       </span>
     </div>
   );

@@ -2,7 +2,7 @@ import { MentionOptions } from "@tiptap/extension-mention";
 import { PluginKey } from "@tiptap/pm/state";
 import { ReactRenderer } from "@tiptap/react";
 import tippy from "tippy.js";
-import { MentionList, type MentionArgs, type MentionListRef } from "./mention";
+import { type MentionArgs, MentionList, type MentionListRef } from "./mention";
 
 export const tagSuggestion = (
   args: MentionArgs,

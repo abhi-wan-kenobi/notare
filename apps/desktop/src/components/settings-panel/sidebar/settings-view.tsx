@@ -1,7 +1,7 @@
-import { UserIcon } from "lucide-react";
-import { type NavNames } from "../types";
-import { data } from "../constants";
 import { clsx } from "clsx";
+import { UserIcon } from "lucide-react";
+import { data } from "../constants";
+import { type NavNames } from "../types";
 
 export interface SettingsViewProps {
   active: NavNames | "Profile";

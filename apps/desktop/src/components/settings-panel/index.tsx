@@ -98,9 +98,7 @@ export default function SettingsPanel() {
                   }
                 />
               )}
-              {active === "Extensions" && !selectedTemplate && (
-                <ExtensionsComponent />
-              )}
+              {active === "Extensions" && !selectedTemplate && <ExtensionsComponent />}
               {active === "Team" && <TeamComponent />}
               {active === "Billing" && <BillingComponent />}
               {active === "Profile" && <ProfileComponent />}

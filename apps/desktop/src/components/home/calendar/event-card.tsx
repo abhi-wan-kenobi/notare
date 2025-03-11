@@ -1,10 +1,6 @@
 import { commands as dbCommands, type Event } from "@hypr/plugin-db";
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@hypr/ui/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -43,8 +39,8 @@ export function EventCard({ event }: { event: Event }) {
         <p className="text-sm mb-2">
           {format(new Date(event.start_date), "MMM d, h:mm a")}
           {" - "}
-          {format(new Date(event.start_date), "yyyy-MM-dd") !==
-          format(new Date(event.end_date), "yyyy-MM-dd")
+          {format(new Date(event.start_date), "yyyy-MM-dd")
+              !== format(new Date(event.end_date), "yyyy-MM-dd")
             ? format(new Date(event.end_date), "MMM d, h:mm a")
             : format(new Date(event.end_date), "h:mm a")}
         </p>

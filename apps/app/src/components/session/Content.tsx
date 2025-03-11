@@ -1,7 +1,7 @@
-import { useRef } from "react";
-import type { Session } from "../../client";
 import { TiptapEditor } from "@hypr/tiptap/editor";
 import Renderer from "@hypr/tiptap/renderer";
+import { useRef } from "react";
+import type { Session } from "../../client";
 
 interface ContentProps {
   session: Session;

@@ -31,9 +31,9 @@ export function ExtensionList({
   const filterExtension = (extension: Extension, query: string) => {
     const searchLower = query.toLowerCase();
     return (
-      extension.name.toLowerCase().includes(searchLower) ||
-      extension.description.toLowerCase().includes(searchLower) ||
-      extension.author.toLowerCase().includes(searchLower)
+      extension.name.toLowerCase().includes(searchLower)
+      || extension.description.toLowerCase().includes(searchLower)
+      || extension.author.toLowerCase().includes(searchLower)
     );
   };
 

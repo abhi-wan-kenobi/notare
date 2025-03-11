@@ -1,13 +1,12 @@
 "use client";
 
-import * as React from "react";
+import { cn } from "@hypr/ui/lib/utils";
 import { Command as CommandPrimitive } from "cmdk";
 import { Search } from "lucide-react";
-import { cn } from "@hypr/ui/lib/utils";
+import * as React from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
-interface CommandDialogProps
-  extends React.ComponentPropsWithoutRef<typeof CommandPrimitive> {
+interface CommandDialogProps extends React.ComponentPropsWithoutRef<typeof CommandPrimitive> {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   children?: React.ReactNode;
@@ -191,11 +190,11 @@ CommandShortcut.displayName = "CommandShortcut";
 export {
   Command,
   CommandDialog,
-  CommandInput,
-  CommandList,
   CommandEmpty,
   CommandGroup,
+  CommandInput,
   CommandItem,
-  CommandShortcut,
+  CommandList,
   CommandSeparator,
+  CommandShortcut,
 };

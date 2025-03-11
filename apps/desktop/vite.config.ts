@@ -1,9 +1,9 @@
 import path from "path";
 
-import { defineConfig, type UserConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import { lingui } from "@lingui/vite-plugin";
+import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig, type UserConfig } from "vite";
 import { DynamicPublicDirectory } from "vite-multiple-assets";
 
 const host = process.env.TAURI_DEV_HOST;
@@ -50,10 +50,10 @@ const tauri: UserConfig = {
     host: host || false,
     hmr: host
       ? {
-          protocol: "ws",
-          host,
-          port: 1421,
-        }
+        protocol: "ws",
+        host,
+        port: 1421,
+      }
       : undefined,
     watch: {
       ignored: ["**/src-tauri/**"],
@@ -63,8 +63,7 @@ const tauri: UserConfig = {
   build: {
     outDir: "./dist",
     chunkSizeWarningLimit: 500 * 10,
-    target:
-      process.env.TAURI_ENV_PLATFORM == "windows" ? "chrome105" : "safari13",
+    target: process.env.TAURI_ENV_PLATFORM == "windows" ? "chrome105" : "safari13",
     // minify: !process.env.TAURI_ENV_DEBUG ? "esbuild" : false,
     minify: false,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,

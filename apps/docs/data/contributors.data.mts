@@ -63,9 +63,8 @@ export default defineLoader({
         html_url: undefined,
       };
 
-      contributors[author.name] =
-        githubUsers.find((user) => user.name === author.name) ??
-        defaultContributor;
+      contributors[author.name] = githubUsers.find((user) => user.name === author.name)
+        ?? defaultContributor;
     }
 
     return Object.values(contributors);

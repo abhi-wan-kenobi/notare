@@ -4,9 +4,9 @@ import { customProvider } from "ai";
 import { isTauri } from "@tauri-apps/api/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 
-import { commands as sseCommands } from "@hypr/plugin-sse";
 import { commands as authCommands } from "@hypr/plugin-auth";
 import { commands as connectorCommands } from "@hypr/plugin-connector";
+import { commands as sseCommands } from "@hypr/plugin-sse";
 
 export const fetch = (
   input: Parameters<typeof globalThis.fetch>[0],
@@ -16,13 +16,12 @@ export const fetch = (
     return globalThis.fetch(input, init);
   }
 
-  const headers =
-    init?.headers instanceof Headers ? Array.from(init.headers.entries()) : [];
+  const headers = init?.headers instanceof Headers ? Array.from(init.headers.entries()) : [];
 
   const isSSE = headers.some(
     ([key, value]) =>
-      key.toLowerCase() === "accept" &&
-      value.toLowerCase() === "text/event-stream",
+      key.toLowerCase() === "accept"
+      && value.toLowerCase() === "text/event-stream",
   );
 
   const f = isSSE ? sseCommands.fetch : tauriFetch;

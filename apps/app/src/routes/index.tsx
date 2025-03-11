@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { SignedIn, UserButton } from "@clerk/clerk-react";
-import { Particles } from "@hypr/ui/components/ui/particles";
 import { Button } from "@hypr/ui/components/ui/button";
+import { Particles } from "@hypr/ui/components/ui/particles";
+import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
   component: Component,

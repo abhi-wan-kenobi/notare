@@ -1,13 +1,11 @@
 "use client";
 
-import * as React from "react";
-import useEmblaCarousel, {
-  type UseEmblaCarouselType,
-} from "embla-carousel-react";
+import useEmblaCarousel, { type UseEmblaCarouselType } from "embla-carousel-react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import * as React from "react";
 
-import { cn } from "@hypr/ui/lib/utils";
 import { Button } from "@hypr/ui/components/ui/button";
+import { cn } from "@hypr/ui/lib/utils";
 
 type CarouselApi = UseEmblaCarouselType[1];
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>;
@@ -127,8 +125,7 @@ const Carousel = React.forwardRef<
           carouselRef,
           api: api,
           opts,
-          orientation:
-            orientation || (opts?.axis === "y" ? "vertical" : "horizontal"),
+          orientation: orientation || (opts?.axis === "y" ? "vertical" : "horizontal"),
           scrollPrev,
           scrollNext,
           canScrollPrev,
@@ -257,11 +254,4 @@ const CarouselNext = React.forwardRef<
 });
 CarouselNext.displayName = "CarouselNext";
 
-export {
-  type CarouselApi,
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
-};
+export { Carousel, type CarouselApi, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious };

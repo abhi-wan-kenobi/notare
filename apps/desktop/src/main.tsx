@@ -5,12 +5,7 @@ import { ThemeProvider } from "@hypr/ui/contexts/theme";
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  CatchBoundary,
-  ErrorComponent,
-  RouterProvider,
-  createRouter,
-} from "@tanstack/react-router";
+import { CatchBoundary, createRouter, ErrorComponent, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 import { messages as enMessages } from "./locales/en/messages";
 import { messages as koMessages } from "./locales/ko/messages";

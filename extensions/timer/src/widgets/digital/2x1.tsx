@@ -1,8 +1,5 @@
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  type WidgetTwoByOne,
-  WidgetTwoByOneWrapper,
-} from "@hypr/ui/components/ui/widgets";
+import { type WidgetTwoByOne, WidgetTwoByOneWrapper } from "@hypr/ui/components/ui/widgets";
 import { cn } from "@hypr/ui/lib/utils";
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -112,34 +109,36 @@ const DigitsTimer2x1: WidgetTwoByOne = () => {
   return (
     <WidgetTwoByOneWrapper>
       <div className="flex flex-col items-center justify-center w-full h-full gap-4 p-4">
-        {isEditing && !isRunning && !isTimeUp ? (
-          <input
-            ref={inputRef}
-            type="number"
-            min="1"
-            max="60"
-            value={inputTime}
-            onChange={handleTimeInput}
-            onBlur={() => setIsEditing(false)}
-            onKeyDown={(e) => e.key === "Enter" && setIsEditing(false)}
-            className="w-24 text-center text-2xl font-mono bg-transparent border rounded focus:outline-none"
-            style={{
-              appearance: "textfield",
-              MozAppearance: "textfield",
-            }}
-          />
-        ) : (
-          <div
-            onClick={() => !isRunning && !isTimeUp && setIsEditing(true)}
-            className={cn(
-              "text-4xl font-mono cursor-pointer select-none transition-colors duration-300",
-              isTimeUp && "font-bold",
-              isTimeUp && isBlinking && "text-red-500",
-            )}
-          >
-            {formatTime(timeLeft)}
-          </div>
-        )}
+        {isEditing && !isRunning && !isTimeUp
+          ? (
+            <input
+              ref={inputRef}
+              type="number"
+              min="1"
+              max="60"
+              value={inputTime}
+              onChange={handleTimeInput}
+              onBlur={() => setIsEditing(false)}
+              onKeyDown={(e) => e.key === "Enter" && setIsEditing(false)}
+              className="w-24 text-center text-2xl font-mono bg-transparent border rounded focus:outline-none"
+              style={{
+                appearance: "textfield",
+                MozAppearance: "textfield",
+              }}
+            />
+          )
+          : (
+            <div
+              onClick={() => !isRunning && !isTimeUp && setIsEditing(true)}
+              className={cn(
+                "text-4xl font-mono cursor-pointer select-none transition-colors duration-300",
+                isTimeUp && "font-bold",
+                isTimeUp && isBlinking && "text-red-500",
+              )}
+            >
+              {formatTime(timeLeft)}
+            </div>
+          )}
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -153,9 +152,7 @@ const DigitsTimer2x1: WidgetTwoByOne = () => {
             variant="outline"
             size="icon"
             onClick={resetTimer}
-            className={
-              isTimeUp ? "border-red-500 text-red-500 hover:bg-red-100" : ""
-            }
+            className={isTimeUp ? "border-red-500 text-red-500 hover:bg-red-100" : ""}
           >
             <RotateCcw size={20} />
           </Button>

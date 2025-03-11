@@ -1,13 +1,13 @@
 import "@hypr/ui/globals.css";
 import "./styles/globals.css";
 
-import ReactDOM from "react-dom/client";
-import { RouterProvider, createRouter } from "@tanstack/react-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { routeTree } from "./routeTree.gen";
-import * as Sentry from "@sentry/react";
-import { ThemeProvider } from "@hypr/ui/contexts/theme";
 import { ClerkProvider } from "@clerk/clerk-react";
+import { ThemeProvider } from "@hypr/ui/contexts/theme";
+import * as Sentry from "@sentry/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createRouter, RouterProvider } from "@tanstack/react-router";
+import ReactDOM from "react-dom/client";
+import { routeTree } from "./routeTree.gen";
 
 const router = createRouter({
   routeTree,

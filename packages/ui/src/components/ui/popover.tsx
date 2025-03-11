@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
+import * as React from "react";
 
 import { cn } from "@hypr/ui/lib/utils";
 
@@ -11,8 +11,7 @@ const PopoverTrigger = PopoverPrimitive.Trigger;
 
 const PopoverArrow = PopoverPrimitive.Arrow;
 
-interface PopoverContentProps
-  extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
+interface PopoverContentProps extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
   showArrow?: boolean;
   animationDuration?: number;
   closeOnClickOutside?: boolean;
@@ -49,11 +48,9 @@ const PopoverContent = React.forwardRef<
             e.preventDefault();
           }
         }}
-        style={
-          {
-            "--animation-duration": `${animationDuration}ms`,
-          } as React.CSSProperties
-        }
+        style={{
+          "--animation-duration": `${animationDuration}ms`,
+        } as React.CSSProperties}
         className={cn(
           "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
@@ -70,13 +67,11 @@ const PopoverContent = React.forwardRef<
         {...props}
       >
         {props.children}
-        {showArrow && (
-          <PopoverArrow className="fill-popover" width={11} height={5} />
-        )}
+        {showArrow && <PopoverArrow className="fill-popover" width={11} height={5} />}
       </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   ),
 );
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
-export { Popover, PopoverTrigger, PopoverContent };
+export { Popover, PopoverContent, PopoverTrigger };

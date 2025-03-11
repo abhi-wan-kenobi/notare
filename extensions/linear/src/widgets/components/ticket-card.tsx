@@ -1,8 +1,4 @@
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@hypr/ui/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@hypr/ui/components/ui/avatar";
 import { Badge } from "@hypr/ui/components/ui/badge";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Card } from "@hypr/ui/components/ui/card";

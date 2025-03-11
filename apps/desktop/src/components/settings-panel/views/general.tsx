@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LANGUAGES_ISO_639_1 } from "@huggingface/languages";
-import { type ConfigGeneral, commands as dbCommands } from "@hypr/plugin-db";
+import { commands as dbCommands, type ConfigGeneral } from "@hypr/plugin-db";
 import {
   Form,
   FormControl,
@@ -11,13 +11,7 @@ import {
   FormMessage,
 } from "@hypr/ui/components/ui/form";
 import { Input } from "@hypr/ui/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@hypr/ui/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hypr/ui/components/ui/select";
 import { Switch } from "@hypr/ui/components/ui/switch";
 import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -87,9 +81,7 @@ export default function General() {
   });
 
   useEffect(() => {
-    const subscription = form.watch(() =>
-      form.handleSubmit((v) => mutation.mutate(v))(),
-    );
+    const subscription = form.watch(() => form.handleSubmit((v) => mutation.mutate(v))());
     return () => subscription.unsubscribe();
   }, [mutation]);
 
@@ -105,8 +97,7 @@ export default function General() {
                 <div>
                   <FormLabel className="">Open Hyprnote on startup</FormLabel>
                   <FormDescription className="">
-                    Hyprnote will be opened automatically when you start your
-                    computer.
+                    Hyprnote will be opened automatically when you start your computer.
                   </FormDescription>
                 </div>
 
@@ -161,8 +152,7 @@ export default function General() {
                     <Trans>Jargons</Trans>
                   </FormLabel>
                   <FormDescription className="">
-                    You can make Hyprnote takes these words into account when
-                    transcribing.
+                    You can make Hyprnote takes these words into account when transcribing.
                   </FormDescription>
                 </div>
                 <FormControl>

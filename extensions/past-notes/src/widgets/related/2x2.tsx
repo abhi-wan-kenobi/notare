@@ -1,9 +1,5 @@
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  WidgetHeader,
-  type WidgetTwoByTwo,
-  WidgetTwoByTwoWrapper,
-} from "@hypr/ui/components/ui/widgets";
+import { WidgetHeader, type WidgetTwoByTwo, WidgetTwoByTwoWrapper } from "@hypr/ui/components/ui/widgets";
 import { Maximize2Icon } from "lucide-react";
 import { mockPastNotes } from "../../mock";
 import Notes from "../components/notes";

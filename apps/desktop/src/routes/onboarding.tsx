@@ -182,27 +182,27 @@ function PermissionItem({
     <div className="flex flex-row items-center justify-between gap-4">
       <div>{label}</div>
 
-      {done ? (
-        <p className="h-[30px]">✅</p>
-      ) : required ? (
-        <ShimmerButton
-          onClick={handleClick}
-          className="inline-flex items-center gap-1 rounded-sm px-1.5 py-1 text-sm hover:scale-95"
-          shimmerColor="#ffffff"
-          background="black"
-        >
-          {buttonTitle}
-          {suffixIcon && <div className="size-4">{suffixIcon}</div>}
-        </ShimmerButton>
-      ) : (
-        <button
-          className="inline-flex items-center gap-1 rounded-sm bg-neutral-100 px-1.5 py-1 text-sm text-neutral-600 transition-all hover:scale-95 hover:bg-neutral-200"
-          onClick={handleClick}
-        >
-          {buttonTitle}
-          {suffixIcon && <div className="size-4">{suffixIcon}</div>}
-        </button>
-      )}
+      {done ? <p className="h-[30px]">✅</p> : required
+        ? (
+          <ShimmerButton
+            onClick={handleClick}
+            className="inline-flex items-center gap-1 rounded-sm px-1.5 py-1 text-sm hover:scale-95"
+            shimmerColor="#ffffff"
+            background="black"
+          >
+            {buttonTitle}
+            {suffixIcon && <div className="size-4">{suffixIcon}</div>}
+          </ShimmerButton>
+        )
+        : (
+          <button
+            className="inline-flex items-center gap-1 rounded-sm bg-neutral-100 px-1.5 py-1 text-sm text-neutral-600 transition-all hover:scale-95 hover:bg-neutral-200"
+            onClick={handleClick}
+          >
+            {buttonTitle}
+            {suffixIcon && <div className="size-4">{suffixIcon}</div>}
+          </button>
+        )}
     </div>
   );
 }

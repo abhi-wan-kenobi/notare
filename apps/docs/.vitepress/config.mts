@@ -1,6 +1,6 @@
-import { defineConfig } from "vitepress";
-import { vitePostHog } from "vite-plugin-posthog";
 import unocss from "unocss/vite";
+import { vitePostHog } from "vite-plugin-posthog";
+import { defineConfig } from "vitepress";
 
 import sidebar from "./sidebar";
 import { extensionFrontmatterSchema, pluginFrontmatterSchema } from "./types";

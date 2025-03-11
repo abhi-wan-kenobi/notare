@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { client, getApiWebSessionById, type Session } from "../client";
-import { Header, Content } from "../components/session";
+import { Content, Header } from "../components/session";
 
 interface RouteLoaderData {
   session: Session;

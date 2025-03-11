@@ -1,5 +1,5 @@
-import { forwardRef } from "react";
 import { cn } from "@hypr/ui/lib/utils";
+import { forwardRef } from "react";
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "outline" | "ghost";
@@ -58,8 +58,7 @@ export const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
 );
 CardTitle.displayName = "CardTitle";
 
-interface CardDescriptionProps
-  extends React.HTMLAttributes<HTMLParagraphElement> {}
+interface CardDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement> {}
 
 export const CardDescription = forwardRef<
   HTMLParagraphElement,

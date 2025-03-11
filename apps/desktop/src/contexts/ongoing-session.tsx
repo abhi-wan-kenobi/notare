@@ -3,9 +3,11 @@ import { createContext, useContext, useRef } from "react";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/shallow";
 
-const OngoingSessionContext = createContext<ReturnType<
-  typeof createOngoingSessionStore
-> | null>(null);
+const OngoingSessionContext = createContext<
+  ReturnType<
+    typeof createOngoingSessionStore
+  > | null
+>(null);
 
 export const OngoingSessionProvider = ({
   children,

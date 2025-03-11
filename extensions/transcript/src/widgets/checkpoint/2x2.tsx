@@ -1,19 +1,11 @@
-import {
-  commands as listenerCommands,
-  type SessionEvent,
-  type TimelineView,
-} from "@hypr/plugin-listener";
+import { commands as listenerCommands, type SessionEvent, type TimelineView } from "@hypr/plugin-listener";
 import { Channel } from "@tauri-apps/api/core";
 import { Maximize2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@hypr/ui/components/ui/badge";
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  WidgetHeader,
-  WidgetTwoByTwo,
-  WidgetTwoByTwoWrapper,
-} from "@hypr/ui/components/ui/widgets";
+import { WidgetHeader, WidgetTwoByTwo, WidgetTwoByTwoWrapper } from "@hypr/ui/components/ui/widgets";
 import { formatTime } from "../../utils";
 import AddCheckpointButton from "../components/add-checkpoint-button";
 import TranscriptWithCheckpoints from "../components/transcript-with-checkpoints";

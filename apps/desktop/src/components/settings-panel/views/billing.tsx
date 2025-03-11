@@ -1,12 +1,5 @@
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@hypr/ui/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@hypr/ui/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@hypr/ui/components/ui/tabs";
 import { Trans } from "@lingui/react/macro";
 import { ExternalLinkIcon } from "lucide-react";
@@ -102,9 +95,7 @@ export default function Billing({ currentPlan, trialDaysLeft }: BillingProps) {
 
         <Tabs
           value={billingCycle}
-          onValueChange={(value) =>
-            setBillingCycle(value as "monthly" | "annual")
-          }
+          onValueChange={(value) => setBillingCycle(value as "monthly" | "annual")}
         >
           <TabsList className="grid w-fit grid-cols-2">
             <TabsTrigger

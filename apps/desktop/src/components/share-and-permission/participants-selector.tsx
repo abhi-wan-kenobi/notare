@@ -32,11 +32,9 @@ export const ParticipantsSelector = ({
         </div>
       </div>
       <Button variant="ghost" size="icon" className="hover:bg-transparent">
-        {expanded ? (
-          <ChevronDown className="size-4 text-neutral-600" />
-        ) : (
-          <ChevronRight className="size-4 text-neutral-600" />
-        )}
+        {expanded
+          ? <ChevronDown className="size-4 text-neutral-600" />
+          : <ChevronRight className="size-4 text-neutral-600" />}
       </Button>
     </div>
     {expanded && (

@@ -1,9 +1,9 @@
-import { z } from "zod";
-import { useEffect, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@clerk/clerk-react";
 import Nango from "@nangohq/frontend";
 import { useMutation } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { z } from "zod";
 
 import { client, postApiWebIntegrationConnectionMutation } from "../client";
 import type { NangoIntegration } from "../types";
@@ -52,8 +52,8 @@ function Component() {
 
   useEffect(() => {
     if (
-      connectMutation.status === "error" ||
-      (connectMutation.data && "error" in connectMutation.data)
+      connectMutation.status === "error"
+      || (connectMutation.data && "error" in connectMutation.data)
     ) {
       setStep("error");
       return;

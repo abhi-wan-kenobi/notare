@@ -1,9 +1,5 @@
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  type WidgetFullSize,
-  WidgetFullSizeWrapper,
-  WidgetHeader,
-} from "@hypr/ui/components/ui/widgets";
+import { type WidgetFullSize, WidgetFullSizeWrapper, WidgetHeader } from "@hypr/ui/components/ui/widgets";
 import { Minimize2Icon } from "lucide-react";
 import { useState } from "react";
 import { mockRelatedTickets } from "../../mock";
@@ -11,8 +7,7 @@ import { Ticket } from "../../type";
 import TicketCard from "../components/ticket-card";
 
 const RelatedTicketsFull: WidgetFullSize = ({ onMinimize }) => {
-  const [relatedTickets, _setRelatedTickets] =
-    useState<Ticket[]>(mockRelatedTickets);
+  const [relatedTickets, _setRelatedTickets] = useState<Ticket[]>(mockRelatedTickets);
 
   return (
     <WidgetFullSizeWrapper onMinimize={onMinimize}>
@@ -40,9 +35,7 @@ const RelatedTicketsFull: WidgetFullSize = ({ onMinimize }) => {
         />
       </div>
       <div className="overflow-y-auto flex-1 p-4 pt-0 space-y-3">
-        {relatedTickets.map((ticket) => (
-          <TicketCard key={ticket.id} ticket={ticket} />
-        ))}
+        {relatedTickets.map((ticket) => <TicketCard key={ticket.id} ticket={ticket} />)}
       </div>
     </WidgetFullSizeWrapper>
   );

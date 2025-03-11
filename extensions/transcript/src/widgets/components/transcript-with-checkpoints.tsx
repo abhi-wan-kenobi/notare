@@ -57,9 +57,9 @@ export default function TranscriptWithCheckpoints({
     sortedCheckpoints
       .filter(
         (cp) =>
-          betweenBlockCheckpoints.has(cp) &&
-          cp > lastBlockEnd &&
-          cp < blockStart,
+          betweenBlockCheckpoints.has(cp)
+          && cp > lastBlockEnd
+          && cp < blockStart,
       )
       .forEach((cp) => {
         items.push({ type: "checkpoint", timestamp: cp });
@@ -94,10 +94,9 @@ export default function TranscriptWithCheckpoints({
           );
         }
 
-        const blockCheckpoints =
-          checkpointMap.get(
-            sortedItems.findIndex((block) => block === item.item),
-          ) || [];
+        const blockCheckpoints = checkpointMap.get(
+          sortedItems.findIndex((block) => block === item.item),
+        ) || [];
 
         return (
           <div

@@ -1,6 +1,6 @@
-import { createContext, useContext, useCallback } from "react";
-import { useHotkeys } from "react-hotkeys-hook";
 import { useRouter } from "@tanstack/react-router";
+import { createContext, useCallback, useContext } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 interface NewNoteContextType {
   createNewNote: () => void;

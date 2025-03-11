@@ -1,10 +1,6 @@
 import { useSession } from "@/contexts";
 import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@hypr/ui/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { RiLinkedinBoxFill } from "@remixicon/react";
 import { useQuery } from "@tanstack/react-query";
 import { Mail, Users2Icon } from "lucide-react";

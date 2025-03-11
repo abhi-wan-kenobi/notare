@@ -1,16 +1,12 @@
-import {
-  ActivityComponentType,
-  useFlow,
-  useLoaderData,
-} from "@stackflow/react/future";
-import { AppScreen } from "@stackflow/plugin-basic-ui";
 import type { ActivityLoaderArgs } from "@stackflow/config";
+import { AppScreen } from "@stackflow/plugin-basic-ui";
+import { ActivityComponentType, useFlow, useLoaderData } from "@stackflow/react/future";
 
-import { SquarePen } from "lucide-react";
 import { clsx } from "clsx";
+import { SquarePen } from "lucide-react";
 
-import { useQuery } from "@tanstack/react-query";
 import { commands as dbCommands } from "@hypr/plugin-db";
+import { useQuery } from "@tanstack/react-query";
 
 export function homeActivityLoader({}: ActivityLoaderArgs<"HomeActivity">) {
   const sessions = [

@@ -1,6 +1,6 @@
-import { ActivityComponentType, useLoaderData } from "@stackflow/react/future";
-import { AppScreen } from "@stackflow/plugin-basic-ui";
 import type { ActivityLoaderArgs } from "@stackflow/config";
+import { AppScreen } from "@stackflow/plugin-basic-ui";
+import { ActivityComponentType, useLoaderData } from "@stackflow/react/future";
 
 export function sessionActivityLoader({
   params,

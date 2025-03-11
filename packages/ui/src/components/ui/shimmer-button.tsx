@@ -4,8 +4,7 @@ import React, { CSSProperties } from "react";
 
 import { cn } from "@hypr/ui/lib/utils";
 
-export interface ShimmerButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ShimmerButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   shimmerColor?: string;
   shimmerSize?: string;
   borderRadius?: string;
@@ -30,15 +29,13 @@ const ShimmerButton = React.forwardRef<HTMLButtonElement, ShimmerButtonProps>(
   ) => {
     return (
       <button
-        style={
-          {
-            "--spread": "90deg",
-            "--shimmer-color": shimmerColor,
-            "--speed": shimmerDuration,
-            "--cut": shimmerSize,
-            "--bg": background,
-          } as CSSProperties
-        }
+        style={{
+          "--spread": "90deg",
+          "--shimmer-color": shimmerColor,
+          "--speed": shimmerDuration,
+          "--cut": shimmerSize,
+          "--bg": background,
+        } as CSSProperties}
         className={cn(
           "group relative z-0 flex cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap border border-white/10 px-6 py-3 text-white [background:var(--bg)] [border-radius:var(--radius)]",
           "transform-gpu transition-transform duration-300 ease-in-out active:translate-y-px",

@@ -74,40 +74,42 @@ export default function WidgetRenderer() {
 
   return (
     <>
-      {showFull ? (
-        <TranscriptLiveFull
-          queryClient={queryClient}
-          onMinimize={() => setShowFull(false)}
-        />
-      ) : (
-        <GridLayout
-          layout={layout}
-          cols={2}
-          rowHeight={160}
-          width={380}
-          margin={[20, 20]}
-          onLayoutChange={handleLayoutChange}
-          isDraggable={true}
-          isResizable={false}
-          compactType="vertical"
-          draggableCancel=".not-draggable"
-        >
-          <div key="1">
-            <CC1 queryClient={queryClient} />
-          </div>
-          <div key="3">
-            <TranscriptLive2x2
-              queryClient={queryClient}
-              onMaximize={() => {
-                setShowFull(true);
-              }}
-            />
-          </div>
-          <div key="2">
-            <CC2 queryClient={queryClient} />
-          </div>
-        </GridLayout>
-      )}
+      {showFull
+        ? (
+          <TranscriptLiveFull
+            queryClient={queryClient}
+            onMinimize={() => setShowFull(false)}
+          />
+        )
+        : (
+          <GridLayout
+            layout={layout}
+            cols={2}
+            rowHeight={160}
+            width={380}
+            margin={[20, 20]}
+            onLayoutChange={handleLayoutChange}
+            isDraggable={true}
+            isResizable={false}
+            compactType="vertical"
+            draggableCancel=".not-draggable"
+          >
+            <div key="1">
+              <CC1 queryClient={queryClient} />
+            </div>
+            <div key="3">
+              <TranscriptLive2x2
+                queryClient={queryClient}
+                onMaximize={() => {
+                  setShowFull(true);
+                }}
+              />
+            </div>
+            <div key="2">
+              <CC2 queryClient={queryClient} />
+            </div>
+          </GridLayout>
+        )}
     </>
   );
 }

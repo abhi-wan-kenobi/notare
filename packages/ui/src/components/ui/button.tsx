@@ -1,5 +1,5 @@
-import * as React from "react";
 import { cn } from "@hypr/ui/lib/utils";
+import * as React from "react";
 
 type ButtonVariant = "default" | "destructive" | "outline" | "ghost";
 type ButtonSize = "sm" | "md" | "lg" | "icon";
@@ -11,7 +11,8 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const styles = {
-  base: "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
+  base:
+    "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
 
   variants: {
     default:

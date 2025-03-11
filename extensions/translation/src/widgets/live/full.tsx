@@ -1,19 +1,11 @@
-import { useEffect, useState, useRef } from "react";
 import { Channel } from "@tauri-apps/api/core";
 import { Minimize2Icon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
-import { Button } from "@hypr/ui/components/ui/button";
-import {
-  type WidgetFullSize,
-  WidgetFullSizeWrapper,
-  WidgetHeader,
-} from "@hypr/ui/components/ui/widgets";
+import { commands as listenerCommands, type SessionEvent, type TimelineView } from "@hypr/plugin-listener";
 import { Badge } from "@hypr/ui/components/ui/badge";
-import {
-  commands as listenerCommands,
-  type TimelineView,
-  type SessionEvent,
-} from "@hypr/plugin-listener";
+import { Button } from "@hypr/ui/components/ui/button";
+import { type WidgetFullSize, WidgetFullSizeWrapper, WidgetHeader } from "@hypr/ui/components/ui/widgets";
 import Translation from "../components/translation";
 
 const LiveTranslationFull: WidgetFullSize = ({ onMinimize }) => {

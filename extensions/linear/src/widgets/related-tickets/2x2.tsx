@@ -1,9 +1,5 @@
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  WidgetHeader,
-  WidgetTwoByTwoWrapper,
-  type WidgetTwoByTwo,
-} from "@hypr/ui/components/ui/widgets";
+import { WidgetHeader, type WidgetTwoByTwo, WidgetTwoByTwoWrapper } from "@hypr/ui/components/ui/widgets";
 import { Maximize2Icon } from "lucide-react";
 import { useState } from "react";
 import { mockRelatedTickets } from "../../mock";
@@ -11,8 +7,7 @@ import { Ticket } from "../../type";
 import TicketCard from "../components/ticket-card";
 
 const RelatedTickets2x2: WidgetTwoByTwo = ({ onMaximize }) => {
-  const [relatedTickets, _setRelatedTickets] =
-    useState<Ticket[]>(mockRelatedTickets);
+  const [relatedTickets, _setRelatedTickets] = useState<Ticket[]>(mockRelatedTickets);
 
   return (
     <WidgetTwoByTwoWrapper>
@@ -41,9 +36,7 @@ const RelatedTickets2x2: WidgetTwoByTwo = ({ onMaximize }) => {
         />
       </div>
       <div className="overflow-y-auto flex-1 p-4 pt-0 space-y-3">
-        {relatedTickets.map((ticket) => (
-          <TicketCard key={ticket.id} ticket={ticket} />
-        ))}
+        {relatedTickets.map((ticket) => <TicketCard key={ticket.id} ticket={ticket} />)}
       </div>
     </WidgetTwoByTwoWrapper>
   );

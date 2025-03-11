@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type ChangeEvent } from "react";
+import { type ChangeEvent, type KeyboardEvent } from "react";
 
 interface TitleInputProps {
   value: string;

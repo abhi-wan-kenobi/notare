@@ -10,7 +10,9 @@ const props = defineProps<{
 const STATIC_AVATAR = "https://www.gravatar.com/avatar/?d=mp";
 
 const fallback = (name: string) => {
-  return `https://avatar.iran.liara.run/username?username=${name.replace(" ", "+")}`;
+  return `https://avatar.iran.liara.run/username?username=${
+    name.replace(" ", "+")
+  }`;
 };
 
 const loadedImages = ref<Set<string>>(new Set());

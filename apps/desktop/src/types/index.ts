@@ -1,8 +1,8 @@
 export * from "./server.gen";
 export * from "./tauri.gen";
 
-import type { RegisteredRouter, RouteIds } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
+import type { RegisteredRouter, RouteIds } from "@tanstack/react-router";
 import type { NangoIntegration } from "./server.gen";
 
 export type Context = {

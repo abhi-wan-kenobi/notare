@@ -1,10 +1,6 @@
 import { type Event } from "@hypr/plugin-db";
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@hypr/ui/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { format } from "date-fns";
 import { Pen } from "lucide-react";
 import { EventCard } from "./event-card";
@@ -20,18 +16,14 @@ export function DayEvents({ date, events }: DayEventsProps) {
   if (events.length <= 4) {
     return (
       <div className="space-y-1 mt-1">
-        {events.map((event) => (
-          <EventCard key={event.id} event={event} />
-        ))}
+        {events.map((event) => <EventCard key={event.id} event={event} />)}
       </div>
     );
   }
 
   return (
     <div className="space-y-1 mt-1">
-      {events.slice(0, 3).map((event) => (
-        <EventCard key={event.id} event={event} />
-      ))}
+      {events.slice(0, 3).map((event) => <EventCard key={event.id} event={event} />)}
       <Popover>
         <PopoverTrigger asChild>
           <div className="text-xs p-1 bg-neutral-100 rounded cursor-pointer text-center hover:bg-neutral-200">
@@ -55,8 +47,8 @@ export function DayEvents({ date, events }: DayEventsProps) {
                 <p className="text-sm mb-2">
                   {format(new Date(event.start_date), "MMM d, h:mm a")}
                   {" - "}
-                  {format(new Date(event.start_date), "yyyy-MM-dd") !==
-                  format(new Date(event.end_date), "yyyy-MM-dd")
+                  {format(new Date(event.start_date), "yyyy-MM-dd")
+                      !== format(new Date(event.end_date), "yyyy-MM-dd")
                     ? format(new Date(event.end_date), "MMM d, h:mm a")
                     : format(new Date(event.end_date), "h:mm a")}
                 </p>

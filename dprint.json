@@ -11,7 +11,7 @@
       "!**/*.jinja"
     ]
   },
-  "prettier": {
+  "typescript": {
     "associations": [
       "**/*.{js,ts,jsx,tsx,mjs,mts}"
     ]
@@ -49,7 +49,7 @@
     "https://plugins.dprint.dev/json-0.19.4.wasm",
     "https://plugins.dprint.dev/markdown-0.17.8.wasm",
     "https://plugins.dprint.dev/g-plane/markup_fmt-v0.18.0.wasm",
-    "https://plugins.dprint.dev/prettier-0.53.0.json@0d99b2a3836d0e3434826e678167524394b5e4a44b20af7278ba49c4508bd3d7",
-    "https://plugins.dprint.dev/g-plane/malva-v0.11.1.wasm"
+    "https://plugins.dprint.dev/g-plane/malva-v0.11.1.wasm",
+    "https://plugins.dprint.dev/typescript-0.94.0.wasm"
   ]
 }

@@ -1,9 +1,9 @@
-import { zodValidator } from "@tanstack/zod-adapter";
-import { createFileRoute, type LinkProps } from "@tanstack/react-router";
 import { AuthenticateWithRedirectCallback } from "@clerk/clerk-react";
+import { createFileRoute, type LinkProps } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
 
-import { schema as connectSchema } from "./auth.connect";
 import { createURL } from "../utils";
+import { schema as connectSchema } from "./auth.connect";
 
 export const Route = createFileRoute("/auth/sso-callback")({
   validateSearch: zodValidator(connectSchema.optional().catch(undefined)),

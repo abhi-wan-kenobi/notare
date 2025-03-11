@@ -1,5 +1,5 @@
-import * as React from "react";
 import { cn } from "@hypr/ui/lib/utils";
+import * as React from "react";
 
 interface ModalProps {
   open: boolean;
@@ -134,7 +134,5 @@ export function ModalDescription({
   children,
   className,
 }: ModalDescriptionProps) {
-  return (
-    <p className={cn("text-sm text-muted-foreground", className)}>{children}</p>
-  );
+  return <p className={cn("text-sm text-muted-foreground", className)}>{children}</p>;
 }

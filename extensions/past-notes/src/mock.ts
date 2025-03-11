@@ -9,10 +9,8 @@ export const mockPastNotes: Session[] = [
     calendar_event_id: "event1",
     title: "Weekly Team Sync",
     audio_local_path: "/recordings/team-sync-mar4.mp3",
-    audio_remote_path:
-      "https://storage.example.com/recordings/team-sync-mar4.mp3",
-    raw_memo_html:
-      "<p>Discussed project timeline and upcoming deliverables</p><p>Team velocity is good</p>",
+    audio_remote_path: "https://storage.example.com/recordings/team-sync-mar4.mp3",
+    raw_memo_html: "<p>Discussed project timeline and upcoming deliverables</p><p>Team velocity is good</p>",
     enhanced_memo_html:
       "<h3>Weekly Team Sync Summary</h3><p>• Discussed project timeline and upcoming deliverables</p><p>• Team velocity is trending positively</p><p>• Next steps defined for Q2</p>",
     conversations: [],
@@ -38,10 +36,8 @@ export const mockPastNotes: Session[] = [
     calendar_event_id: "event3",
     title: "Client Meeting - ABC Corp",
     audio_local_path: "/recordings/client-abc-mar2.mp3",
-    audio_remote_path:
-      "https://storage.example.com/recordings/client-abc-mar2.mp3",
-    raw_memo_html:
-      "<p>Requirements gathering for phase 2</p><p>Budget approved</p>",
+    audio_remote_path: "https://storage.example.com/recordings/client-abc-mar2.mp3",
+    raw_memo_html: "<p>Requirements gathering for phase 2</p><p>Budget approved</p>",
     enhanced_memo_html:
       "<h3>Client Meeting Notes</h3><p>• Phase 2 requirements discussed in detail</p><p>• Budget approval received for Q2</p><p>• Technical specifications to be finalized by next week</p>",
     conversations: [],

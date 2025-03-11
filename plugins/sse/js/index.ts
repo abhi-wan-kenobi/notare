@@ -1,8 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core";
-import {
-  commands as generatedCommands,
-  events as generatedEvents,
-} from "./bindings.gen";
+import { commands as generatedCommands, events as generatedEvents } from "./bindings.gen";
 
 export const commands = {
   async fetch(
@@ -66,10 +63,9 @@ export const commands = {
         method,
         url: input.toString(),
         headers: Object.fromEntries(Object.entries(_headers)),
-        body:
-          typeof body === "string"
-            ? Array.from(new TextEncoder().encode(body))
-            : [],
+        body: typeof body === "string"
+          ? Array.from(new TextEncoder().encode(body))
+          : [],
       })
       .then((res) => {
         return new Response(ts.readable, {

@@ -1,12 +1,12 @@
-import path from "path";
-import os from "os";
 import fs from "fs";
+import os from "os";
+import path from "path";
 
-import { defineLoader } from "vitepress";
 import { Application, ProjectReflection } from "typedoc";
+import { defineLoader } from "vitepress";
 
-import plugins from "./plugins.data.mts";
 import type { PluginFrontmatter } from "../.vitepress/types";
+import plugins from "./plugins.data.mts";
 
 export default defineLoader({
   async load(): Promise<Record<string, ProjectReflection>> {

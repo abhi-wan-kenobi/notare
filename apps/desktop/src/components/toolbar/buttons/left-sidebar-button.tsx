@@ -1,10 +1,6 @@
 import { useLeftSidebar } from "@/contexts/left-sidebar";
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@hypr/ui/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { type as getOsType } from "@tauri-apps/plugin-os";
 import { ChevronsLeftIcon, MenuIcon } from "lucide-react";
@@ -40,8 +36,7 @@ export function LeftSidebarButton({ type }: { type: "toolbar" | "sidebar" }) {
         </TooltipTrigger>
         <TooltipContent>
           <p>
-            Toggle left sidebar{" "}
-            <Shortcut macDisplay="⌘L" windowsDisplay="Ctrl+L" />
+            Toggle left sidebar <Shortcut macDisplay="⌘L" windowsDisplay="Ctrl+L" />
           </p>
         </TooltipContent>
       </Tooltip>

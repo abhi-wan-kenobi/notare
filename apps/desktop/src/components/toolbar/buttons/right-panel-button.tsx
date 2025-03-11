@@ -1,10 +1,6 @@
 import { useRightPanel } from "@/contexts/right-panel";
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@hypr/ui/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import { PanelRightCloseIcon, PanelRightOpenIcon } from "lucide-react";
 import Shortcut from "../../shortcut";
 
@@ -27,8 +23,7 @@ export function RightPanelButton() {
       </TooltipTrigger>
       <TooltipContent>
         <p>
-          Toggle right panel{" "}
-          <Shortcut macDisplay="⌘R" windowsDisplay="Ctrl+R" />
+          Toggle right panel <Shortcut macDisplay="⌘R" windowsDisplay="Ctrl+R" />
         </p>
       </TooltipContent>
     </Tooltip>

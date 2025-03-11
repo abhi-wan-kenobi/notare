@@ -1,12 +1,4 @@
-import {
-  differenceInCalendarDays,
-  format,
-  isThisWeek,
-  isThisYear,
-  isToday,
-  isYesterday,
-  startOfToday,
-} from "date-fns";
+import { differenceInCalendarDays, format, isThisWeek, isThisYear, isToday, isYesterday, startOfToday } from "date-fns";
 
 export const formatTime = (seconds: number) => {
   const hours = Math.floor(seconds / 3600);

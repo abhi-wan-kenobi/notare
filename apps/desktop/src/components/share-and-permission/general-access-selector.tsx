@@ -1,13 +1,6 @@
 import { Button } from "@hypr/ui/components/ui/button";
 import { clsx } from "clsx";
-import {
-  BuildingIcon,
-  ChevronDown,
-  ChevronRight,
-  FolderIcon,
-  GlobeIcon,
-  LockIcon,
-} from "lucide-react";
+import { BuildingIcon, ChevronDown, ChevronRight, FolderIcon, GlobeIcon, LockIcon } from "lucide-react";
 import { useState } from "react";
 
 export interface GeneralAccessSelectorProps {
@@ -48,8 +41,7 @@ export const GeneralAccessSelector = ({
   expanded,
   onToggle,
 }: GeneralAccessSelectorProps) => {
-  const [selectedAccess, setSelectedAccess] =
-    useState<keyof typeof accessTypes>("invited");
+  const [selectedAccess, setSelectedAccess] = useState<keyof typeof accessTypes>("invited");
 
   return (
     <>
@@ -69,11 +61,9 @@ export const GeneralAccessSelector = ({
           </div>
         </div>
         <Button variant="ghost" size="icon" className="hover:bg-transparent">
-          {expanded ? (
-            <ChevronDown className="size-4 text-neutral-600" />
-          ) : (
-            <ChevronRight className="size-4 text-neutral-600" />
-          )}
+          {expanded
+            ? <ChevronDown className="size-4 text-neutral-600" />
+            : <ChevronRight className="size-4 text-neutral-600" />}
         </Button>
       </div>
       {expanded && (

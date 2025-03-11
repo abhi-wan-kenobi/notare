@@ -1,10 +1,6 @@
 import { baseUrl } from "@/client";
 import { commands } from "@/types";
-import {
-  commands as authCommands,
-  type AuthEvent,
-  type RequestParams,
-} from "@hypr/plugin-auth";
+import { type AuthEvent, commands as authCommands, type RequestParams } from "@hypr/plugin-auth";
 import { commands as miscCommands } from "@hypr/plugin-misc";
 import { commands as sfxCommands } from "@hypr/plugin-sfx";
 import { Button } from "@hypr/ui/components/ui/button";
@@ -178,11 +174,7 @@ function PlayPauseButton() {
       className="rounded-full p-2 transition-colors hover:bg-neutral-100"
       onClick={() => setIsPlaying(!isPlaying)}
     >
-      {isPlaying ? (
-        <Pause className="h-4 w-4 text-neutral-600" />
-      ) : (
-        <Play className="h-4 w-4 text-neutral-600" />
-      )}
+      {isPlaying ? <Pause className="h-4 w-4 text-neutral-600" /> : <Play className="h-4 w-4 text-neutral-600" />}
     </button>
   );
 }

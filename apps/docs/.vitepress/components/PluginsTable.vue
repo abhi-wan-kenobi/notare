@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { h, withDirectives } from "vue";
-import { vTooltip as tooltip } from "floating-vue";
 import { createColumnHelper } from "@tanstack/vue-table";
+import { vTooltip as tooltip } from "floating-vue";
+import { h, withDirectives } from "vue";
 
 import type { PluginFrontmatter } from "../types";
 import BaseTable from "./BaseTable.vue";

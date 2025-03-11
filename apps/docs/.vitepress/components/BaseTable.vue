@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import {
+  type ColumnDef,
   FlexRender,
   getCoreRowModel,
   useVueTable,
-  type ColumnDef,
 } from "@tanstack/vue-table";
 
 const props = defineProps<{

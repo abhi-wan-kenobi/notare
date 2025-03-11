@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { mockIPC } from "@tauri-apps/api/mocks";
-import { http, HttpResponse, type HttpHandler } from "msw";
+import { http, type HttpHandler, HttpResponse } from "msw";
 
 import type { ChatCompletion } from "openai/resources/chat/completions";
 import type { LiveSummaryResponse } from "../types";

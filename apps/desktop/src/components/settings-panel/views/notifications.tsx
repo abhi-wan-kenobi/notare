@@ -1,16 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  type ConfigNotification,
-  commands as dbCommands,
-} from "@hypr/plugin-db";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@hypr/ui/components/ui/form";
+import { commands as dbCommands, type ConfigNotification } from "@hypr/plugin-db";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@hypr/ui/components/ui/form";
 import { Switch } from "@hypr/ui/components/ui/switch";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -70,9 +60,7 @@ export default function NotificationsComponent() {
   });
 
   useEffect(() => {
-    const subscription = form.watch(() =>
-      form.handleSubmit((v) => mutation.mutate(v))(),
-    );
+    const subscription = form.watch(() => form.handleSubmit((v) => mutation.mutate(v))());
     return () => subscription.unsubscribe();
   }, [mutation]);
 
@@ -88,8 +76,7 @@ export default function NotificationsComponent() {
                 <div>
                   <FormLabel className="">Meeting notifications</FormLabel>
                   <FormDescription className="">
-                    Show notifications 1 minute before meetings start based on
-                    your Calendar
+                    Show notifications 1 minute before meetings start based on your Calendar
                   </FormDescription>
                 </div>
 

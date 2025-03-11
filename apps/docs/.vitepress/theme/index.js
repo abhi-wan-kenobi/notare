@@ -1,20 +1,20 @@
-import DefaultTheme from "vitepress/theme";
 import FloatingVue from "floating-vue";
+import DefaultTheme from "vitepress/theme";
 
 import "virtual:uno.css";
 import "floating-vue/dist/style.css";
 import "./global.css";
 
-import ExtensionsTable from "../components/ExtensionsTable.vue";
-import PluginsTable from "../components/PluginsTable.vue";
-import ExtensionTags from "../components/ExtensionTags.vue";
-import PluginLink from "../components/PluginLink.vue";
-import PluginSourceList from "../components/PluginSourceList.vue";
-import Contributors from "../components/Contributors.vue";
-import TitleWithContributors from "../components/TitleWithContributors.vue";
 import Card from "../components/Card.vue";
+import Contributors from "../components/Contributors.vue";
+import ExtensionsTable from "../components/ExtensionsTable.vue";
+import ExtensionTags from "../components/ExtensionTags.vue";
 import Image from "../components/Image.vue";
 import PluginCommands from "../components/PluginCommands.vue";
+import PluginLink from "../components/PluginLink.vue";
+import PluginSourceList from "../components/PluginSourceList.vue";
+import PluginsTable from "../components/PluginsTable.vue";
+import TitleWithContributors from "../components/TitleWithContributors.vue";
 
 /** @type {import('vitepress').Theme} */
 export default {

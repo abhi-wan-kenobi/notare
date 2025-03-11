@@ -6,20 +6,8 @@ import {
   DropdownMenuTrigger,
 } from "@hypr/ui/components/ui/dropdown-menu";
 import { Input } from "@hypr/ui/components/ui/input";
-import {
-  Modal,
-  ModalBody,
-  ModalDescription,
-  ModalHeader,
-  ModalTitle,
-} from "@hypr/ui/components/ui/modal";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@hypr/ui/components/ui/select";
+import { Modal, ModalBody, ModalDescription, ModalHeader, ModalTitle } from "@hypr/ui/components/ui/modal";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hypr/ui/components/ui/select";
 import { Trans } from "@lingui/react/macro";
 import { MoreVertical, Plus, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -61,8 +49,8 @@ export default function TeamComponent() {
     const query = searchQuery.toLowerCase();
     return members.filter(
       (member) =>
-        member.name.toLowerCase().includes(query) ||
-        member.email.toLowerCase().includes(query),
+        member.name.toLowerCase().includes(query)
+        || member.email.toLowerCase().includes(query),
     );
   }, [searchQuery]);
 
@@ -110,13 +98,13 @@ export default function TeamComponent() {
               className="grid grid-cols-2 gap-4 border-t px-6 py-4 first:border-t-0"
             >
               <div className="flex items-center gap-3">
-                {member.id === "1" ? (
-                  <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700" />
-                ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full border bg-secondary text-sm font-medium">
-                    {member.avatar}
-                  </div>
-                )}
+                {member.id === "1"
+                  ? <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700" />
+                  : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full border bg-secondary text-sm font-medium">
+                      {member.avatar}
+                    </div>
+                  )}
                 <div>
                   <div className="text-sm font-medium">{member.name}</div>
                   <div className="text-xs text-muted-foreground">
@@ -188,8 +176,7 @@ export default function TeamComponent() {
             </ModalTitle>
             <ModalDescription className="">
               <Trans>
-                Type or paste in emails below, separated by commas. Your
-                workspace will be billed by members.
+                Type or paste in emails below, separated by commas. Your workspace will be billed by members.
               </Trans>
             </ModalDescription>
           </ModalHeader>

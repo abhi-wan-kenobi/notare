@@ -1,6 +1,6 @@
 import { useSession } from "@/contexts";
 import { useOngoingSession } from "@/contexts/ongoing-session";
-import { useCallback, type ChangeEvent } from "react";
+import { type ChangeEvent, useCallback } from "react";
 import Chips from "./chips";
 import ListenButton from "./listen-button";
 import TitleInput from "./title-input";
@@ -41,10 +41,8 @@ export function NoteHeader({ onNavigateToEditor }: NoteHeaderProps) {
           onNavigateToEditor={onNavigateToEditor}
         />
         <ListenButton
-          isCurrent={
-            sessionStore.sessionInView?.id ===
-            ongoingSessionStore.onGoingSessionId
-          }
+          isCurrent={sessionStore.sessionInView?.id
+            === ongoingSessionStore.onGoingSessionId}
           isListening={ongoingSessionStore.listening}
           onClick={handleClickListen}
           onStop={ongoingSessionStore.pause}

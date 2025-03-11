@@ -1,9 +1,5 @@
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  type WidgetFullSize,
-  WidgetFullSizeWrapper,
-  WidgetHeader,
-} from "@hypr/ui/components/ui/widgets";
+import { type WidgetFullSize, WidgetFullSizeWrapper, WidgetHeader } from "@hypr/ui/components/ui/widgets";
 import { Minimize2Icon } from "lucide-react";
 import { useState } from "react";
 import { mockNewTickets } from "../../mock";
@@ -39,9 +35,7 @@ const NewTicketsSuggestionFull: WidgetFullSize = ({ onMinimize }) => {
         />
       </div>
       <div className="overflow-y-auto flex-1 p-4 pt-0 space-y-3">
-        {newTickets.map((ticket) => (
-          <TicketCard key={ticket.id} ticket={ticket} />
-        ))}
+        {newTickets.map((ticket) => <TicketCard key={ticket.id} ticket={ticket} />)}
       </div>
     </WidgetFullSizeWrapper>
   );

@@ -1,9 +1,5 @@
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  WidgetHeader,
-  WidgetTwoByTwoWrapper,
-  type WidgetTwoByTwo,
-} from "@hypr/ui/components/ui/widgets";
+import { WidgetHeader, type WidgetTwoByTwo, WidgetTwoByTwoWrapper } from "@hypr/ui/components/ui/widgets";
 import { Maximize2Icon } from "lucide-react";
 import { useState } from "react";
 import { mockNewTickets } from "../../mock";
@@ -41,9 +37,7 @@ const NewTicketsSuggestion2x2: WidgetTwoByTwo = ({ onMaximize }) => {
       </div>
 
       <div className="overflow-y-auto flex-1 p-4 pt-0 space-y-3">
-        {newTickets.map((ticket) => (
-          <TicketCard key={ticket.id} ticket={ticket} />
-        ))}
+        {newTickets.map((ticket) => <TicketCard key={ticket.id} ticket={ticket} />)}
       </div>
     </WidgetTwoByTwoWrapper>
   );

@@ -1,19 +1,14 @@
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
+import { CalendarIcon, Users2Icon } from "lucide-react";
 import type { Session } from "../../client";
-import { Users2Icon, CalendarIcon } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@hypr/ui/components/ui/popover";
 
 interface SessionInfoProps {
   session: Session;
 }
 
 export function SessionInfo({ session }: SessionInfoProps) {
-  const hasParticipants =
-    session.conversations.length > 0 &&
-    session.conversations.some((conv) => conv.diarizations.length > 0);
+  const hasParticipants = session.conversations.length > 0
+    && session.conversations.some((conv) => conv.diarizations.length > 0);
 
   const participantsCount = hasParticipants
     ? session.conversations.flatMap((conv) => conv.diarizations).length
@@ -27,12 +22,10 @@ export function SessionInfo({ session }: SessionInfoProps) {
 
   const uniqueParticipants = hasParticipants
     ? Array.from(
-        new Set(
-          session.conversations.flatMap((conv) =>
-            conv.diarizations.map((d) => d.speaker),
-          ),
-        ),
-      )
+      new Set(
+        session.conversations.flatMap((conv) => conv.diarizations.map((d) => d.speaker)),
+      ),
+    )
     : [];
 
   return (

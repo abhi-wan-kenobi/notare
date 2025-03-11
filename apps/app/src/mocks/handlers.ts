@@ -1,9 +1,6 @@
 import { http, HttpResponse } from "msw";
 
-import type {
-  GetApiWebSessionByIdData,
-  GetApiWebSessionByIdResponse,
-} from "../client";
+import type { GetApiWebSessionByIdData, GetApiWebSessionByIdResponse } from "../client";
 
 const getSessionURL: GetApiWebSessionByIdData["url"] = "/api/web/session/{id}";
 

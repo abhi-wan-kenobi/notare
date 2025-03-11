@@ -1,6 +1,6 @@
-import { mockIPC } from "@tauri-apps/api/mocks";
-import { Channel } from "@tauri-apps/api/core";
 import { type SessionEvent } from "@hypr/plugin-listener";
+import { Channel } from "@tauri-apps/api/core";
+import { mockIPC } from "@tauri-apps/api/mocks";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -41,7 +41,8 @@ export const mockTranscriptIPC = () =>
                 start: currentTime,
                 end: currentTime + 5,
                 speaker: "Sarah",
-                text: "I've been working on some mockups based on user feedback. The main request is for real-time updates and clear speaker identification.",
+                text:
+                  "I've been working on some mockups based on user feedback. The main request is for real-time updates and clear speaker identification.",
               },
             ],
           },
@@ -58,7 +59,8 @@ export const mockTranscriptIPC = () =>
                 start: currentTime,
                 end: currentTime + 4,
                 speaker: "Mike",
-                text: "That aligns with our backend capabilities. We can stream the transcription with about 500ms latency.",
+                text:
+                  "That aligns with our backend capabilities. We can stream the transcription with about 500ms latency.",
               },
             ],
           },

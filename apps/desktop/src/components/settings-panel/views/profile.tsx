@@ -1,9 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  commands as dbCommands,
-  type Human,
-  type Organization,
-} from "@hypr/plugin-db";
+import { commands as dbCommands, type Human, type Organization } from "@hypr/plugin-db";
 import {
   Form,
   FormControl,
@@ -94,9 +90,7 @@ export default function ProfileComponent() {
   });
 
   useEffect(() => {
-    const subscription = form.watch(() =>
-      form.handleSubmit((v) => mutation.mutate(v))(),
-    );
+    const subscription = form.watch(() => form.handleSubmit((v) => mutation.mutate(v))());
     return () => subscription.unsubscribe();
   }, [mutation]);
 

@@ -1,12 +1,7 @@
 "use client";
 
 import { cn } from "@hypr/ui/lib/utils";
-import React, {
-  ComponentPropsWithoutRef,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { ComponentPropsWithoutRef, useEffect, useRef, useState } from "react";
 
 interface MousePosition {
   x: number;
@@ -245,8 +240,7 @@ export const Particles: React.FC<ParticlesProps> = ({
     start2: number,
     end2: number,
   ): number => {
-    const remapped =
-      ((value - start1) * (end2 - start2)) / (end1 - start1) + start2;
+    const remapped = ((value - start1) * (end2 - start2)) / (end1 - start1) + start2;
     return remapped > 0 ? remapped : 0;
   };
 
@@ -274,21 +268,19 @@ export const Particles: React.FC<ParticlesProps> = ({
       }
       circle.x += circle.dx + vx;
       circle.y += circle.dy + vy;
-      circle.translateX +=
-        (mouse.current.x / (staticity / circle.magnetism) - circle.translateX) /
-        ease;
-      circle.translateY +=
-        (mouse.current.y / (staticity / circle.magnetism) - circle.translateY) /
-        ease;
+      circle.translateX += (mouse.current.x / (staticity / circle.magnetism) - circle.translateX)
+        / ease;
+      circle.translateY += (mouse.current.y / (staticity / circle.magnetism) - circle.translateY)
+        / ease;
 
       drawCircle(circle, true);
 
       // circle gets out of the canvas
       if (
-        circle.x < -circle.size ||
-        circle.x > canvasSize.current.w + circle.size ||
-        circle.y < -circle.size ||
-        circle.y > canvasSize.current.h + circle.size
+        circle.x < -circle.size
+        || circle.x > canvasSize.current.w + circle.size
+        || circle.y < -circle.size
+        || circle.y > canvasSize.current.h + circle.size
       ) {
         // remove the circle from the array
         circles.current.splice(i, 1);

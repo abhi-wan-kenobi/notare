@@ -34,9 +34,7 @@ export default function ShareAndPermissionPanel({
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
 
   const toggleGroup = (group: string) => {
-    setExpandedGroups((prev) =>
-      prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group],
-    );
+    setExpandedGroups((prev) => prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group]);
   };
 
   return (

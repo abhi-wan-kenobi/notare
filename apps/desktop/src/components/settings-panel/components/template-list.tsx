@@ -23,9 +23,9 @@ export function TemplateList({
   const filterTemplate = (template: Template, query: string) => {
     const searchLower = query.toLowerCase();
     return (
-      template.title?.toLowerCase().includes(searchLower) ||
-      template.description?.toLowerCase().includes(searchLower) ||
-      template.tags?.some((tag) => tag.toLowerCase().includes(searchLower))
+      template.title?.toLowerCase().includes(searchLower)
+      || template.description?.toLowerCase().includes(searchLower)
+      || template.tags?.some((tag) => tag.toLowerCase().includes(searchLower))
     );
   };
 
@@ -59,8 +59,8 @@ export function TemplateList({
                       onClick={() => onTemplateSelect(template)}
                       className={clsx(
                         "flex w-full flex-col gap-1 rounded-lg p-2 text-sm text-neutral-600 hover:bg-neutral-100",
-                        selectedTemplate?.id === template.id &&
-                          "bg-neutral-200 font-bold text-neutral-700",
+                        selectedTemplate?.id === template.id
+                          && "bg-neutral-200 font-bold text-neutral-700",
                       )}
                     >
                       <span>{template.title || "Untitled Template"}</span>
@@ -93,8 +93,8 @@ export function TemplateList({
                     onClick={() => onTemplateSelect(template)}
                     className={clsx(
                       "flex w-full flex-col gap-1 rounded-lg p-2 text-sm text-neutral-600 hover:bg-neutral-100",
-                      selectedTemplate?.id === template.id &&
-                        "bg-neutral-200 font-bold text-neutral-700",
+                      selectedTemplate?.id === template.id
+                        && "bg-neutral-200 font-bold text-neutral-700",
                     )}
                   >
                     <span>{template.title || "Untitled Template"}</span>

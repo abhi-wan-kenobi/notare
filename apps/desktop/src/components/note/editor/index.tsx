@@ -1,18 +1,15 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { AnimatePresence, motion } from "motion/react";
 import { useMutation } from "@tanstack/react-query";
-import clsx from "clsx";
 import { smoothStream, streamText } from "ai";
+import clsx from "clsx";
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { modelProvider } from "@hypr/utils";
 import Editor, { TiptapEditor } from "@hypr/tiptap/editor";
+import { modelProvider } from "@hypr/utils";
 
 import { useSession } from "@/contexts";
 import { useOngoingSession } from "@/contexts/ongoing-session";
-import {
-  ENHANCE_SYSTEM_TEMPLATE_KEY,
-  ENHANCE_USER_TEMPLATE_KEY,
-} from "@/templates";
+import { ENHANCE_SYSTEM_TEMPLATE_KEY, ENHANCE_USER_TEMPLATE_KEY } from "@/templates";
 
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as listenerCommands } from "@hypr/plugin-listener";
@@ -149,25 +146,23 @@ export default function EditorArea() {
       </div>
 
       <AnimatePresence>
-        {!ongoingSessionStore.listening &&
-          ongoingSessionStore.timeline?.items.length && (
-            <motion.div
-              className="absolute bottom-6 w-full flex justify-center items-center pointer-events-none z-10"
-              initial={{ y: 50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 50, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="pointer-events-auto">
-                {ongoingSessionStore.listening ||
-                sessionStore.session?.enhanced_memo_html ? (
-                  <EnhanceControls showRaw={showRaw} setShowRaw={setShowRaw} />
-                ) : (
-                  <EnhanceOnlyButton handleClick={handleClickEnhance} />
-                )}
-              </div>
-            </motion.div>
-          )}
+        {!ongoingSessionStore.listening
+          && ongoingSessionStore.timeline?.items.length && (
+          <motion.div
+            className="absolute bottom-6 w-full flex justify-center items-center pointer-events-none z-10"
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="pointer-events-auto">
+              {ongoingSessionStore.listening
+                  || sessionStore.session?.enhanced_memo_html
+                ? <EnhanceControls showRaw={showRaw} setShowRaw={setShowRaw} />
+                : <EnhanceOnlyButton handleClick={handleClickEnhance} />}
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

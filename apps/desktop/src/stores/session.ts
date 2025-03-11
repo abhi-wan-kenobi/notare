@@ -1,4 +1,4 @@
-import { type Session, commands as dbCommands } from "@hypr/plugin-db";
+import { commands as dbCommands, type Session } from "@hypr/plugin-db";
 import { create as mutate } from "mutative";
 import { createStore } from "zustand";
 
@@ -36,7 +36,7 @@ export const createSessionStore = () => {
           }
 
           draft.session.title = title;
-        }),
+        })
       );
     },
     updateRawNote: (note: string) => {
@@ -47,7 +47,7 @@ export const createSessionStore = () => {
           }
 
           draft.session.raw_memo_html = note;
-        }),
+        })
       );
     },
     updateEnhancedNote: (note: string) => {
@@ -58,7 +58,7 @@ export const createSessionStore = () => {
           }
 
           draft.session.enhanced_memo_html = note;
-        }),
+        })
       );
     },
   }));

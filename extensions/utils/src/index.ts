@@ -1,9 +1,4 @@
-import type {
-  WidgetOneByOne,
-  WidgetTwoByOne,
-  WidgetTwoByTwo,
-  WidgetFullSize,
-} from "@hypr/ui/components/ui/widgets";
+import type { WidgetFullSize, WidgetOneByOne, WidgetTwoByOne, WidgetTwoByTwo } from "@hypr/ui/components/ui/widgets";
 
 export type Extension = {
   [key: string]: WidgetGroup;
@@ -14,23 +9,25 @@ export type WidgetGroup = {
   items: WidgetItem[];
 };
 
-export type WidgetItem = {
-  init: () => Promise<void>;
-} & (
-  | {
+export type WidgetItem =
+  & {
+    init: () => Promise<void>;
+  }
+  & (
+    | {
       type: "oneByOne";
       component: WidgetOneByOne;
     }
-  | {
+    | {
       type: "twoByOne";
       component: WidgetTwoByOne;
     }
-  | {
+    | {
       type: "twoByTwo";
       component: WidgetTwoByTwo;
     }
-  | {
+    | {
       type: "full";
       component: WidgetFullSize;
     }
-);
+  );

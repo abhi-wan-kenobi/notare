@@ -1,4 +1,4 @@
-import type { Operator, CalculatorState } from "./types";
+import type { CalculatorState, Operator } from "./types";
 
 export const calculate = (a: number, b: number, op: Operator): number => {
   switch (op) {
@@ -22,20 +22,18 @@ export const handleNumber = (
   if (state.newNumber) {
     return {
       display: num,
-      operation:
-        state.prevValue !== null
-          ? `${state.prevValue}${state.operator}${num}`
-          : num,
+      operation: state.prevValue !== null
+        ? `${state.prevValue}${state.operator}${num}`
+        : num,
       newNumber: false,
     };
   } else {
     const newDisplay = state.display === "0" ? num : state.display + num;
     return {
       display: newDisplay,
-      operation:
-        state.prevValue !== null
-          ? `${state.prevValue}${state.operator}${newDisplay}`
-          : newDisplay,
+      operation: state.prevValue !== null
+        ? `${state.prevValue}${state.operator}${newDisplay}`
+        : newDisplay,
     };
   }
 };
@@ -100,16 +98,14 @@ export const handleDelete = (
     const newDisplay = state.display.slice(0, -1);
     return {
       display: newDisplay,
-      operation:
-        state.prevValue !== null
-          ? `${state.prevValue}${state.operator}${newDisplay}`
-          : newDisplay,
+      operation: state.prevValue !== null
+        ? `${state.prevValue}${state.operator}${newDisplay}`
+        : newDisplay,
     };
   } else {
     return {
       display: "0",
-      operation:
-        state.prevValue !== null ? `${state.prevValue}${state.operator}0` : "0",
+      operation: state.prevValue !== null ? `${state.prevValue}${state.operator}0` : "0",
     };
   }
 };
@@ -120,19 +116,17 @@ export const handleDecimal = (
   if (state.newNumber) {
     return {
       display: "0.",
-      operation:
-        state.prevValue !== null
-          ? `${state.prevValue}${state.operator}0.`
-          : "0.",
+      operation: state.prevValue !== null
+        ? `${state.prevValue}${state.operator}0.`
+        : "0.",
       newNumber: false,
     };
   } else if (!state.display.includes(".")) {
     return {
       display: state.display + ".",
-      operation:
-        state.prevValue !== null
-          ? `${state.prevValue}${state.operator}${state.display}.`
-          : `${state.display}.`,
+      operation: state.prevValue !== null
+        ? `${state.prevValue}${state.operator}${state.display}.`
+        : `${state.display}.`,
     };
   }
   return {};

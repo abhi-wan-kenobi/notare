@@ -1,6 +1,6 @@
+import { Maximize2Icon } from "lucide-react";
 import React, { type ReactNode } from "react";
 import { Button } from "./button";
-import { Maximize2Icon } from "lucide-react";
 
 import type { QueryClient } from "@tanstack/react-query";
 
@@ -126,14 +126,14 @@ type WidgetFullSize = (
 ) => ReturnType<typeof WidgetFullSizeWrapper>;
 
 export {
-  WidgetWrapper,
-  WidgetHeader,
-  WidgetTwoByTwoWrapper,
-  WidgetOneByOneWrapper,
-  WidgetTwoByOneWrapper,
-  WidgetFullSizeWrapper,
-  type WidgetTwoByTwo,
-  type WidgetOneByOne,
-  type WidgetTwoByOne,
   type WidgetFullSize,
+  WidgetFullSizeWrapper,
+  WidgetHeader,
+  type WidgetOneByOne,
+  WidgetOneByOneWrapper,
+  type WidgetTwoByOne,
+  WidgetTwoByOneWrapper,
+  type WidgetTwoByTwo,
+  WidgetTwoByTwoWrapper,
+  WidgetWrapper,
 };

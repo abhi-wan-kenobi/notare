@@ -1,7 +1,4 @@
-import {
-  type WidgetTwoByTwo,
-  WidgetTwoByTwoWrapper,
-} from "@hypr/ui/components/ui/widgets";
+import { type WidgetTwoByTwo, WidgetTwoByTwoWrapper } from "@hypr/ui/components/ui/widgets";
 import { cn } from "@hypr/ui/lib/utils";
 import { useState } from "react";
 import type { CalculatorState } from "../../types";

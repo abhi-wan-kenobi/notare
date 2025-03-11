@@ -1,6 +1,6 @@
-import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Outlet } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import { HyprProvider } from "@/contexts/hypr";
 import { LeftSidebarProvider } from "@/contexts/left-sidebar";
@@ -10,10 +10,10 @@ import { RightPanelProvider } from "@/contexts/right-panel";
 import { SearchProvider } from "@/contexts/search-palette";
 import { SettingsPanelProvider } from "@/contexts/settings-panel";
 
-import { registerTemplates } from "@/templates";
-import RightPanel from "@/components/note/right-panel";
 import LeftSidebar from "@/components/left-sidebar";
+import RightPanel from "@/components/note/right-panel";
 import Toolbar from "@/components/toolbar";
+import { registerTemplates } from "@/templates";
 
 export const Route = createFileRoute("/app")({
   component: Component,
@@ -57,10 +57,10 @@ function Component() {
   );
 }
 
+import { SessionProvider } from "@/contexts";
 import DinoGameExtension from "@hypr/extension-dino-game";
 import SummaryExtension from "@hypr/extension-summary";
 import TranscriptExtension from "@hypr/extension-transcript";
-import { SessionProvider } from "@/contexts";
 
 function initExtensions() {
   [

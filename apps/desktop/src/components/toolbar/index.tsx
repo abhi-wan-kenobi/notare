@@ -20,8 +20,7 @@ export default function Toolbar() {
   };
 
   const { pathname } = useLocation();
-  const inMeetingAndNotInNote =
-    listening && sessionId !== null && pathname !== getNoteURL(sessionId);
+  const inMeetingAndNotInNote = listening && sessionId !== null && pathname !== getNoteURL(sessionId);
 
   return (
     <>
@@ -34,11 +33,7 @@ export default function Toolbar() {
           <NewNoteButton />
         </div>
 
-        {inMeetingAndNotInNote ? (
-          <SessionIndicator sessionId={sessionId} />
-        ) : (
-          <SearchBar />
-        )}
+        {inMeetingAndNotInNote ? <SessionIndicator sessionId={sessionId} /> : <SearchBar />}
 
         <div
           className="flex w-40 items-center justify-end"

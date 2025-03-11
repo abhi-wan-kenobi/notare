@@ -1,19 +1,11 @@
-import { useEffect, useState, useRef } from "react";
-import { Maximize2Icon } from "lucide-react";
+import { commands as listenerCommands, type SessionEvent, type TimelineView } from "@hypr/plugin-listener";
+import { Badge } from "@hypr/ui/components/ui/badge";
+import { Button } from "@hypr/ui/components/ui/button";
+import { WidgetHeader, type WidgetTwoByTwo, WidgetTwoByTwoWrapper } from "@hypr/ui/components/ui/widgets";
 import { useQuery } from "@tanstack/react-query";
 import { Channel } from "@tauri-apps/api/core";
-import { Button } from "@hypr/ui/components/ui/button";
-import {
-  WidgetHeader,
-  type WidgetTwoByTwo,
-  WidgetTwoByTwoWrapper,
-} from "@hypr/ui/components/ui/widgets";
-import { Badge } from "@hypr/ui/components/ui/badge";
-import {
-  commands as listenerCommands,
-  type TimelineView,
-  type SessionEvent,
-} from "@hypr/plugin-listener";
+import { Maximize2Icon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import Translation from "../components/translation";
 
 const LiveTranslation2x2: WidgetTwoByTwo = ({ onMaximize, queryClient }) => {

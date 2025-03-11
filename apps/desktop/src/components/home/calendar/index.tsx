@@ -1,12 +1,5 @@
 import { type Event } from "@hypr/plugin-db";
-import {
-  addDays,
-  eachDayOfInterval,
-  format,
-  getDay,
-  isToday,
-  isWeekend,
-} from "date-fns";
+import { addDays, eachDayOfInterval, format, getDay, isToday, isWeekend } from "date-fns";
 import { useEffect, useState } from "react";
 import { DayEvents } from "./day-events";
 import { mockEvents } from "./mock";
@@ -38,8 +31,8 @@ export default function WorkspaceCalendar() {
     }
     return events.filter(
       (event) =>
-        format(new Date(event.start_date), "yyyy-MM-dd") ===
-        format(date, "yyyy-MM-dd"),
+        format(new Date(event.start_date), "yyyy-MM-dd")
+          === format(date, "yyyy-MM-dd"),
     );
   };
 
@@ -104,9 +97,7 @@ export default function WorkspaceCalendar() {
         ))}
         {Array(getEmptyCellsCount())
           .fill(null)
-          .map((_, i) => (
-            <div key={`empty-${i}`} className="min-h-[120px]" />
-          ))}
+          .map((_, i) => <div key={`empty-${i}`} className="min-h-[120px]" />)}
         {visibleDays.map((day, i) => {
           const dayEvents = getEventsForDay(day);
 
@@ -115,9 +106,7 @@ export default function WorkspaceCalendar() {
               key={i}
               className={`min-h-[120px] border rounded-lg p-1 relative ${
                 isWeekend(day) ? "bg-neutral-50" : "bg-white"
-              } ${
-                isToday(day) ? "border-blue-500 border-2" : "border-neutral-700"
-              }`}
+              } ${isToday(day) ? "border-blue-500 border-2" : "border-neutral-700"}`}
             >
               <div className="text-sm text-right mb-1 pr-1">
                 {format(day, "d")}
