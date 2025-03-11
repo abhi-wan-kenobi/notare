@@ -22,7 +22,7 @@ export const Route = createFileRoute("/app/note/$id")({
           ]);
 
           session = s;
-        } catch {}
+        } catch { }
 
         if (!session) {
           throw redirect({ to: "/app" });
@@ -58,10 +58,10 @@ function Component() {
   useEffect(() => {
     return () => {
       const isNoteEmpty =
-        !session.title?.trim() &&
-        (!session.raw_memo_html?.trim() ||
-          session.raw_memo_html === "<p></p>") &&
-        (!session.enhanced_memo_html?.trim() ||
+        !session.title &&
+        session.raw_memo_html === "<p></p>" && session.conversations.length === 0 &&
+        (!session.enhanced_memo_html ||
+          session.enhanced_memo_html === null ||
           session.enhanced_memo_html === "<p></p>");
 
       if (isNoteEmpty) {
