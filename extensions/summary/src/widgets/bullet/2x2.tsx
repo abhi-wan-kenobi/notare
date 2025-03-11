@@ -1,32 +1,28 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
-import { generateObject } from "ai";
-import { Channel } from "@tauri-apps/api/core";
-
 import { commands as dbCommands } from "@hypr/plugin-db";
-import { commands as templateCommands } from "@hypr/plugin-template";
 import {
   commands as listenerCommands,
   type SessionEvent,
 } from "@hypr/plugin-listener";
-
-import { modelProvider } from "@hypr/utils";
+import { commands as templateCommands } from "@hypr/plugin-template";
 import { Button } from "@hypr/ui/components/ui/button";
 import {
   WidgetHeader,
   type WidgetTwoByTwo,
   WidgetTwoByTwoWrapper,
 } from "@hypr/ui/components/ui/widgets";
-
+import { modelProvider } from "@hypr/utils";
+import { useQuery } from "@tanstack/react-query";
+import { Channel } from "@tauri-apps/api/core";
+import { generateObject } from "ai";
+import { motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { TEMPLATE_LIVE_SUMMARY_SYSTEM, TEMPLATE_LIVE_SUMMARY_USER } from ".";
 import {
-  type LiveSummarySystemInput,
-  type LiveSummaryUserInput,
   type LiveSummaryResponse,
   liveSummaryResponseSchema,
+  type LiveSummarySystemInput,
+  type LiveSummaryUserInput,
 } from "../../types";
-
-import { TEMPLATE_LIVE_SUMMARY_SYSTEM, TEMPLATE_LIVE_SUMMARY_USER } from ".";
 
 const DEFAULT_INTERVAL = 10 * 1000;
 

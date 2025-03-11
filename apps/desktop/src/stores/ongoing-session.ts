@@ -1,12 +1,11 @@
-import { createStore } from "zustand";
-import { create as mutate } from "mutative";
-import { Channel } from "@tauri-apps/api/core";
-
 import {
   commands as listenerCommands,
-  type TimelineView,
   type SessionEvent,
+  type TimelineView,
 } from "@hypr/plugin-listener";
+import { Channel } from "@tauri-apps/api/core";
+import { create as mutate } from "mutative";
+import { createStore } from "zustand";
 
 type State = {
   sessionId: string | null;

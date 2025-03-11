@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { motion } from "motion/react";
 import { useRightPanel } from "@/contexts/right-panel";
+import { motion } from "motion/react";
+import { useEffect, useState } from "react";
 import WidgetRenderer from "./renderer";
 
 export default function RightPanel() {

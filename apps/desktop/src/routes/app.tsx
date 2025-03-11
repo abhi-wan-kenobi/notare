@@ -2,19 +2,17 @@ import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Outlet } from "@tanstack/react-router";
 
-import { RightPanelProvider } from "@/contexts/right-panel";
 import { HyprProvider } from "@/contexts/hypr";
 import { LeftSidebarProvider } from "@/contexts/left-sidebar";
-import { SearchProvider } from "@/contexts/search-palette";
-import { SettingsPanelProvider } from "@/contexts/settings-panel";
 import { NewNoteProvider } from "@/contexts/new-note";
 import { OngoingSessionProvider } from "@/contexts/ongoing-session";
-import { SessionProvider } from "@/contexts/session";
+import { RightPanelProvider } from "@/contexts/right-panel";
+import { SearchProvider } from "@/contexts/search-palette";
+import { SettingsPanelProvider } from "@/contexts/settings-panel";
 
 import { registerTemplates } from "@/templates";
 import RightPanel from "@/components/note/right-panel";
 import LeftSidebar from "@/components/left-sidebar";
-
 import Toolbar from "@/components/toolbar";
 
 export const Route = createFileRoute("/app")({
@@ -59,9 +57,10 @@ function Component() {
   );
 }
 
+import DinoGameExtension from "@hypr/extension-dino-game";
 import SummaryExtension from "@hypr/extension-summary";
 import TranscriptExtension from "@hypr/extension-transcript";
-import DinoGameExtension from "@hypr/extension-dino-game";
+import { SessionProvider } from "@/contexts";
 
 function initExtensions() {
   [

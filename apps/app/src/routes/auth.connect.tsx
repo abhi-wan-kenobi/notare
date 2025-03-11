@@ -74,16 +74,6 @@ function Component() {
   if (!code) {
     return (
       <main className="relative flex h-screen flex-col items-center justify-center overflow-auto p-4">
-        <header
-          className={clsx([
-            "absolute left-0 right-0 top-0 z-10 min-h-11 px-2",
-            "flex w-full items-center justify-between",
-            "bg-transparent",
-          ])}
-        >
-          <div /> {/* Empty div for spacing */}
-        </header>
-
         <div className="z-10 flex w-full flex-col items-center justify-center">
           <div className="flex flex-col items-center">
             <h1 className="mb-4 text-5xl font-bold md:text-6xl lg:text-7xl">

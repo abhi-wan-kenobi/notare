@@ -1,5 +1,5 @@
+import { RiPauseFill, RiPlayFill } from "@remixicon/react";
 import { useState } from "react";
-import { RiPlayFill, RiPauseFill } from "@remixicon/react";
 
 export const AudioControls = () => {
   const [isPlaying, setIsPlaying] = useState(true);

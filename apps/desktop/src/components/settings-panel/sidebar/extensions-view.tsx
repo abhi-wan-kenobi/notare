@@ -1,7 +1,7 @@
 import { ChevronLeftIcon } from "lucide-react";
 import { ExtensionList } from "../components/extension-list";
-import { type NavNames } from "../types";
 import { data } from "../constants";
+import { type NavNames } from "../types";
 
 interface Extension {
   id: string;

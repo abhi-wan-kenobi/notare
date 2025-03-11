@@ -36,7 +36,7 @@ export function SessionInfo({ session }: SessionInfoProps) {
     : [];
 
   return (
-    <div className="mx-auto max-w-2xl w-full flex flex-col px-4 py-8 overflow-x-auto scrollbar-none">
+    <div className="mx-auto max-w-2xl w-full flex flex-col p-4 overflow-x-auto scrollbar-none">
       <h2 className="text-xl font-medium text-neutral-800 mb-2">
         {session.title || "Untitled"}
       </h2>
@@ -51,7 +51,7 @@ export function SessionInfo({ session }: SessionInfoProps) {
           <div className="flex items-center">
             <div className="border-l border-neutral-200 h-4 mx-2"></div>
             <Popover>
-              <PopoverTrigger className="flex flex-row items-center gap-2 rounded-md px-2 py-1.5 hover:bg-neutral-100 text-xs cursor-pointer">
+              <PopoverTrigger className="flex flex-row items-center gap-2 rounded-md border px-2 py-1.5 hover:bg-neutral-100 text-xs cursor-pointer">
                 <Users2Icon size={14} />
                 <span>
                   {participantsCount} Participant

@@ -1,4 +1,3 @@
-import { PanelRightCloseIcon, PanelRightOpenIcon } from "lucide-react";
 import { useRightPanel } from "@/contexts/right-panel";
 import { Button } from "@hypr/ui/components/ui/button";
 import {
@@ -6,6 +5,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@hypr/ui/components/ui/tooltip";
+import { PanelRightCloseIcon, PanelRightOpenIcon } from "lucide-react";
 import Shortcut from "../../shortcut";
 
 export function RightPanelButton() {

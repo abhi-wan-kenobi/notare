@@ -1,5 +1,4 @@
 import { type KeyboardEvent, type ChangeEvent } from "react";
-import clsx from "clsx";
 
 interface TitleInputProps {
   value: string;
@@ -25,10 +24,7 @@ export default function TitleInput({
       onChange={onChange}
       value={value}
       placeholder="Untitled"
-      className={clsx([
-        "w-full border-none bg-transparent text-2xl font-bold",
-        "focus:outline-none",
-      ])}
+      className="w-full border-none bg-transparent text-2xl font-bold focus:outline-none"
       onKeyDown={handleKeyDown}
     />
   );

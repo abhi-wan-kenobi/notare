@@ -1,9 +1,7 @@
-import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import clsx from "clsx";
-
 import { type Editor } from "@tiptap/core";
 import TiptapMention from "@tiptap/extension-mention";
-
+import clsx from "clsx";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { tagSuggestion } from "./tags";
 
 // https://tiptap.dev/docs/examples/advanced/mentions
@@ -27,7 +25,7 @@ export const Mention = (args: MentionArgs) => {
         "span",
         {
           "data-hypr-exclude": true,
-          class: clsx("before:content-['#'] underline text-yellow-600"),
+          class: "before:content-['#'] underline text-yellow-600",
         },
         node.attrs.id,
       ];

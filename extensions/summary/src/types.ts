@@ -1,6 +1,6 @@
-import { z } from "zod";
 import type { Config } from "@hypr/plugin-db";
 import type { TimelineView } from "@hypr/plugin-listener";
+import { z } from "zod";
 
 export const liveSummaryResponseSchema = z.object({
   points: z.array(z.string()).min(1).max(3),

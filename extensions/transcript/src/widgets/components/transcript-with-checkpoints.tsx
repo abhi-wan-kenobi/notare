@@ -1,6 +1,6 @@
 import { TimelineView } from "@hypr/plugin-listener";
-import { formatTime } from "../../utils";
 import { FlagIcon } from "lucide-react";
+import { formatTime } from "../../utils";
 
 interface TranscriptItem {
   type: "transcript";

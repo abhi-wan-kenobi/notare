@@ -1,16 +1,16 @@
-import { Trans } from "@lingui/react/macro";
 import { Button } from "@hypr/ui/components/ui/button";
 import {
   Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
 } from "@hypr/ui/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@hypr/ui/components/ui/tabs";
-import { useState } from "react";
+import { Trans } from "@lingui/react/macro";
 import { ExternalLinkIcon } from "lucide-react";
+import { useState } from "react";
 
 const pricingPlans = [
   {

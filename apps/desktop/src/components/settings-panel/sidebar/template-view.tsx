@@ -1,10 +1,9 @@
-import { ChevronLeftIcon, FilePlusIcon } from "lucide-react";
-import { TemplateList } from "../components/template-list";
-import { type NavNames } from "../types";
-import { data } from "../constants";
-
 import { useHypr } from "@/contexts/hypr";
 import { type Template } from "@hypr/plugin-db";
+import { ChevronLeftIcon, FilePlusIcon } from "lucide-react";
+import { TemplateList } from "../components/template-list";
+import { data } from "../constants";
+import { type NavNames } from "../types";
 
 export interface TemplateViewProps {
   searchQuery: string;

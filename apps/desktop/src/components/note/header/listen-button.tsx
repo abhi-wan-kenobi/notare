@@ -1,16 +1,16 @@
-import { useState } from "react";
-import { Ear, EarOff } from "lucide-react";
+import { Button } from "@hypr/ui/components/ui/button";
 import {
   Popover,
-  PopoverTrigger,
   PopoverContent,
+  PopoverTrigger,
 } from "@hypr/ui/components/ui/popover";
 import {
   Tooltip,
-  TooltipTrigger,
   TooltipContent,
+  TooltipTrigger,
 } from "@hypr/ui/components/ui/tooltip";
-import { Button } from "@hypr/ui/components/ui/button";
+import { Ear, EarOff } from "lucide-react";
+import { useState } from "react";
 import AudioIndicator from "./audio-indicator";
 
 interface ListenButtonProps {

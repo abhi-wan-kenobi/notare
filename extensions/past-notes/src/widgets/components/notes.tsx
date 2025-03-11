@@ -1,5 +1,5 @@
 import { type Session } from "@hypr/plugin-db";
-import { parseFirstLine, formatRelativeDate } from "../../utils";
+import { formatRelativeDate, parseFirstLine } from "../../utils";
 
 export default function Notes({ notes }: { notes: Session[] }) {
   if (!notes) {

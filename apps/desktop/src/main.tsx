@@ -1,23 +1,20 @@
-import ReactDOM from "react-dom/client";
+import type { Context } from "@/types";
+import { Toaster } from "@hypr/ui/components/ui/sonner";
+import { TooltipProvider } from "@hypr/ui/components/ui/tooltip";
+import { ThemeProvider } from "@hypr/ui/contexts/theme";
+import { i18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   CatchBoundary,
   ErrorComponent,
   RouterProvider,
   createRouter,
 } from "@tanstack/react-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { routeTree } from "./routeTree.gen";
-
-import { ThemeProvider } from "@hypr/ui/contexts/theme";
-import { TooltipProvider } from "@hypr/ui/components/ui/tooltip";
-
-import { i18n } from "@lingui/core";
-import { I18nProvider } from "@lingui/react";
+import ReactDOM from "react-dom/client";
 import { messages as enMessages } from "./locales/en/messages";
 import { messages as koMessages } from "./locales/ko/messages";
-
-import type { Context } from "@/types";
-import { Toaster } from "@hypr/ui/components/ui/sonner";
+import { routeTree } from "./routeTree.gen";
 
 i18n.load({
   en: enMessages,

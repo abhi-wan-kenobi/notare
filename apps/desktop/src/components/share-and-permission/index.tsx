@@ -1,14 +1,14 @@
-import { useState } from "react";
-import { InviteList } from "./invite-list";
-import { ParticipantsSelector } from "./participants-selector";
-import { GeneralAccessSelector } from "./general-access-selector";
 import { Button } from "@hypr/ui/components/ui/button";
 import { LinkIcon } from "lucide-react";
+import { useState } from "react";
+import { GeneralAccessSelector } from "./general-access-selector";
+import { InviteList } from "./invite-list";
+import { ParticipantsSelector } from "./participants-selector";
 
-export * from "./invited-user";
-export * from "./invite-list";
-export * from "./participants-selector";
 export * from "./general-access-selector";
+export * from "./invite-list";
+export * from "./invited-user";
+export * from "./participants-selector";
 
 interface ShareAndPermissionPanelProps {
   email: string;

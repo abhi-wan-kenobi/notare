@@ -1,14 +1,14 @@
+import { tz } from "@date-fns/tz";
+import { type Session } from "@hypr/plugin-db";
 import {
+  differenceInCalendarDays,
   format,
+  isThisWeek,
   isThisYear,
   isToday,
   isYesterday,
-  isThisWeek,
-  differenceInCalendarDays,
   startOfToday,
 } from "date-fns";
-import { type Session } from "@hypr/plugin-db";
-import { tz } from "@date-fns/tz";
 
 export type GroupedSessions = Record<
   string,

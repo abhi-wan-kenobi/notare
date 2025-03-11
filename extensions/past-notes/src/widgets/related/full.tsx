@@ -1,13 +1,12 @@
-import { Minimize2Icon } from "lucide-react";
 import { Button } from "@hypr/ui/components/ui/button";
 import {
   type WidgetFullSize,
-  WidgetHeader,
   WidgetFullSizeWrapper,
+  WidgetHeader,
 } from "@hypr/ui/components/ui/widgets";
-
-import Notes from "../components/notes";
+import { Minimize2Icon } from "lucide-react";
 import { mockPastNotes } from "../../mock";
+import Notes from "../components/notes";
 
 const RelatedPastNotesFull: WidgetFullSize = ({ onMinimize }) => {
   return (

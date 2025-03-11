@@ -1,23 +1,22 @@
-import { useEffect, useState, useRef } from "react";
-import { Channel } from "@tauri-apps/api/core";
-import { Maximize2Icon } from "lucide-react";
-
 import {
   commands as listenerCommands,
-  type TimelineView,
   type SessionEvent,
+  type TimelineView,
 } from "@hypr/plugin-listener";
+import { Channel } from "@tauri-apps/api/core";
+import { Maximize2Icon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
+import { Badge } from "@hypr/ui/components/ui/badge";
 import { Button } from "@hypr/ui/components/ui/button";
 import {
   WidgetHeader,
   WidgetTwoByTwo,
   WidgetTwoByTwoWrapper,
 } from "@hypr/ui/components/ui/widgets";
-import { Badge } from "@hypr/ui/components/ui/badge";
-import TranscriptWithCheckpoints from "../components/transcript-with-checkpoints";
-import AddCheckpointButton from "../components/add-checkpoint-button";
 import { formatTime } from "../../utils";
+import AddCheckpointButton from "../components/add-checkpoint-button";
+import TranscriptWithCheckpoints from "../components/transcript-with-checkpoints";
 
 const LiveTranscriptWithCheckpoint2x2: WidgetTwoByTwo = ({ onMaximize }) => {
   const [timeline, setTimeline] = useState<TimelineView | null>(null);

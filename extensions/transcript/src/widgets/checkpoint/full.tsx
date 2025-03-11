@@ -1,23 +1,21 @@
-import { useEffect, useState, useRef } from "react";
-import { Channel } from "@tauri-apps/api/core";
-import { Minimize2Icon } from "lucide-react";
-
+import {
+  commands as listenerCommands,
+  type SessionEvent,
+  type TimelineView,
+} from "@hypr/plugin-listener";
+import { Badge } from "@hypr/ui/components/ui/badge";
 import { Button } from "@hypr/ui/components/ui/button";
 import {
   WidgetFullSize,
   WidgetFullSizeWrapper,
   WidgetHeader,
 } from "@hypr/ui/components/ui/widgets";
-import { Badge } from "@hypr/ui/components/ui/badge";
-
-import {
-  commands as listenerCommands,
-  type TimelineView,
-  type SessionEvent,
-} from "@hypr/plugin-listener";
-import TranscriptWithCheckpoints from "../components/transcript-with-checkpoints";
-import AddCheckpointButton from "../components/add-checkpoint-button";
+import { Channel } from "@tauri-apps/api/core";
+import { Minimize2Icon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { formatTime } from "../../utils";
+import AddCheckpointButton from "../components/add-checkpoint-button";
+import TranscriptWithCheckpoints from "../components/transcript-with-checkpoints";
 
 const LiveTranscriptWithCheckpointFull: WidgetFullSize = ({ onMinimize }) => {
   const [timeline, setTimeline] = useState<TimelineView | null>(null);
