@@ -16,7 +16,11 @@ specta-typescript = { workspace = true }
 
 [dependencies]
 tauri = { workspace = true, features = ["tray-icon", "image-png"] }
+tauri-plugin-store2 = { workspace = true }
 tauri-plugin-windows = { workspace = true }
 
 specta = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
+
+webbrowser = "1.0.4"
