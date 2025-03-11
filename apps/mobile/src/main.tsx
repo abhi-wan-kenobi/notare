@@ -1,12 +1,11 @@
+import "@hypr/ui/globals.css";
+import "@stackflow/plugin-basic-ui/index.css";
+import "./styles/globals.css";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
-
 import { Stack } from "./stackflow";
-
-import "@stackflow/plugin-basic-ui/index.css";
-import "@hypr/ui/globals.css";
-import "./styles/globals.css";
 
 const queryClient = new QueryClient();
 

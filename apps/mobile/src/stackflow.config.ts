@@ -1,7 +1,8 @@
 import { defineConfig } from "@stackflow/config";
-
-import { homeActivityLoader } from "./activities/home";
-import { sessionActivityLoader } from "./activities/session";
+import { homeActivityLoader } from "./views/home";
+import { loginActivityLoader } from "./views/login";
+import { onboardingActivityLoader } from "./views/onboarding";
+import { noteActivityLoader } from "./views/note";
 
 export const config = defineConfig({
   transitionDuration: 250,
@@ -11,9 +12,17 @@ export const config = defineConfig({
       loader: homeActivityLoader,
     },
     {
-      name: "SessionActivity",
-      loader: sessionActivityLoader,
+      name: "NoteActivity",
+      loader: noteActivityLoader,
+    },
+    {
+      name: "LoginActivity",
+      loader: loginActivityLoader,
+    },
+    {
+      name: "OnboardingActivity",
+      loader: onboardingActivityLoader,
     },
   ],
-  initialActivity: () => "HomeActivity",
+  initialActivity: () => "LoginActivity",
 });

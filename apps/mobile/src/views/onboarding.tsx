@@ -1,14 +1,13 @@
 import type { ActivityLoaderArgs } from "@stackflow/config";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import { ActivityComponentType, useFlow, useLoaderData } from "@stackflow/react/future";
-
+import { useQuery } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import { SquarePen } from "lucide-react";
 
 import { commands as dbCommands } from "@hypr/plugin-db";
-import { useQuery } from "@tanstack/react-query";
 
-export function homeActivityLoader({}: ActivityLoaderArgs<"HomeActivity">) {
+export function onboardingActivityLoader({}: ActivityLoaderArgs<"OnboardingActivity">) {
   const sessions = [
     {
       id: "1",
@@ -20,8 +19,8 @@ export function homeActivityLoader({}: ActivityLoaderArgs<"HomeActivity">) {
   };
 }
 
-export const HomeActivity: ActivityComponentType<"HomeActivity"> = () => {
-  const { sessions } = useLoaderData<typeof homeActivityLoader>();
+export const OnboardingActivity: ActivityComponentType<"OnboardingActivity"> = () => {
+  const { sessions } = useLoaderData<typeof onboardingActivityLoader>();
   const { push } = useFlow();
 
   useQuery({
@@ -70,6 +69,6 @@ export const HomeActivity: ActivityComponentType<"HomeActivity"> = () => {
 
 declare module "@stackflow/config" {
   interface Register {
-    HomeActivity: {};
+    OnboardingActivity: {};
   }
 }

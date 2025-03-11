@@ -1,12 +1,5 @@
 import { baseUrl } from "@/client";
 import { commands } from "@/types";
-import { type AuthEvent, commands as authCommands, type RequestParams } from "@hypr/plugin-auth";
-import { commands as miscCommands } from "@hypr/plugin-misc";
-import { commands as sfxCommands } from "@hypr/plugin-sfx";
-import { Button } from "@hypr/ui/components/ui/button";
-import { Particles } from "@hypr/ui/components/ui/particles";
-import PushableButton from "@hypr/ui/components/ui/pushable-button";
-import { TextAnimate } from "@hypr/ui/components/ui/text-animate";
 import { Trans } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -15,6 +8,14 @@ import { message } from "@tauri-apps/plugin-dialog";
 import { open } from "@tauri-apps/plugin-shell";
 import { Pause, Play } from "lucide-react";
 import { useEffect, useState } from "react";
+
+import { type AuthEvent, commands as authCommands, type RequestParams } from "@hypr/plugin-auth";
+import { commands as miscCommands } from "@hypr/plugin-misc";
+import { commands as sfxCommands } from "@hypr/plugin-sfx";
+import { Button } from "@hypr/ui/components/ui/button";
+import { Particles } from "@hypr/ui/components/ui/particles";
+import PushableButton from "@hypr/ui/components/ui/pushable-button";
+import { TextAnimate } from "@hypr/ui/components/ui/text-animate";
 
 export const Route = createFileRoute("/login")({
   component: Component,
