@@ -1,5 +1,5 @@
-import { Zap } from "lucide-react";
 import { Button } from "@hypr/ui/components/ui/button";
+import { Zap } from "lucide-react";
 
 interface EnhanceOnlyButtonProps {
   handleClick: () => void;

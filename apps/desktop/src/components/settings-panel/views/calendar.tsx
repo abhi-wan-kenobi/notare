@@ -1,16 +1,10 @@
-import { useCallback } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trans } from "@lingui/react/macro";
-import { XIcon, CheckIcon } from "lucide-react";
-import { RiAppleFill as AppleIcon } from "@remixicon/react";
-import { Button } from "@hypr/ui/components/ui/button";
-
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@hypr/ui/components/ui/accordion";
+import { Button } from "@hypr/ui/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -18,17 +12,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@hypr/ui/components/ui/select";
+import { Trans } from "@lingui/react/macro";
+import { RiAppleFill as AppleIcon } from "@remixicon/react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckIcon, XIcon } from "lucide-react";
+import { useCallback } from "react";
 
+import { commands as appleCalendarCommands } from "@hypr/plugin-apple-calendar";
 import { commands as dbCommands, type Calendar } from "@hypr/plugin-db";
 import { type as getOsType } from "@tauri-apps/plugin-os";
-import { commands as appleCalendarCommands } from "@hypr/plugin-apple-calendar";
 
-import { type CalendarIntegration } from "@/types";
 import {
   client,
   getApiNativeUserIntegrationsOptions,
   getIntegrationURL,
 } from "@/client";
+import { type CalendarIntegration } from "@/types";
 
 const supportedIntegrations: CalendarIntegration[] = [
   "apple-calendar",

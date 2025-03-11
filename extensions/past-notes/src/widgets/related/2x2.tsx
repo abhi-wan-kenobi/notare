@@ -5,8 +5,8 @@ import {
   WidgetTwoByTwoWrapper,
 } from "@hypr/ui/components/ui/widgets";
 import { Maximize2Icon } from "lucide-react";
-import Notes from "../components/notes";
 import { mockPastNotes } from "../../mock";
+import Notes from "../components/notes";
 
 const RelatedPastNotes2x2: WidgetTwoByTwo = ({ onMaximize }) => {
   return (

@@ -1,6 +1,5 @@
 import { createContext, useContext } from "react";
 import { useQuery } from "@tanstack/react-query";
-
 import { commands as authCommands } from "@hypr/plugin-auth";
 import { useNavigate } from "@tanstack/react-router";
 

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 interface SettingsPanelContextType {

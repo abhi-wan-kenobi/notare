@@ -1,10 +1,8 @@
 import type { WidgetGroup } from "@hypr/extension-utils";
 import { commands as templateCommands } from "@hypr/plugin-template";
-
-import Widget2x2 from "./2x2";
-
 import systemTemplate from "../../system.jinja?raw";
 import userTemplate from "../../user.jinja?raw";
+import Widget2x2 from "./2x2";
 
 export const TEMPLATE_LIVE_SUMMARY_SYSTEM = "live-summary-system";
 export const TEMPLATE_LIVE_SUMMARY_USER = "live-summary-user";

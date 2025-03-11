@@ -5,10 +5,10 @@ import {
   type WidgetTwoByTwo,
 } from "@hypr/ui/components/ui/widgets";
 import { Maximize2Icon } from "lucide-react";
-import TicketCard from "../components/ticket-card";
 import { useState } from "react";
-import { Ticket } from "../../type";
 import { mockNewTickets } from "../../mock";
+import { Ticket } from "../../type";
+import TicketCard from "../components/ticket-card";
 
 const NewTicketsSuggestion2x2: WidgetTwoByTwo = ({ onMaximize }) => {
   const [newTickets, _setNewTickets] = useState<Ticket[]>(mockNewTickets);

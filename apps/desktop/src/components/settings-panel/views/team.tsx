@@ -1,14 +1,11 @@
-import { useState, useMemo } from "react";
-import { Search, Plus, MoreVertical, Trash2 } from "lucide-react";
-import { Input } from "@hypr/ui/components/ui/input";
 import { Button } from "@hypr/ui/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@hypr/ui/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@hypr/ui/components/ui/dropdown-menu";
+import { Input } from "@hypr/ui/components/ui/input";
 import {
   Modal,
   ModalBody,
@@ -17,12 +14,15 @@ import {
   ModalTitle,
 } from "@hypr/ui/components/ui/modal";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@hypr/ui/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@hypr/ui/components/ui/select";
 import { Trans } from "@lingui/react/macro";
+import { MoreVertical, Plus, Search, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 
 type Member = {
   id: string;

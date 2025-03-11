@@ -1,15 +1,13 @@
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
+import DinoExtension from "@hypr/extension-dino-game";
+import SummaryExtension from "@hypr/extension-summary";
+import TranscriptExtension from "@hypr/extension-transcript";
+import { WidgetGroup } from "@hypr/extension-utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import GridLayout, { Layout } from "react-grid-layout";
-import { useQueryClient } from "@tanstack/react-query";
-
-import { WidgetGroup } from "@hypr/extension-utils";
-
-import DinoExtension from "@hypr/extension-dino-game";
-import TranscriptExtension from "@hypr/extension-transcript";
-import SummaryExtension from "@hypr/extension-summary";
 
 const getTwoByOne = (group: WidgetGroup) => {
   const item = group.items.find((item) => item.type === "twoByOne");

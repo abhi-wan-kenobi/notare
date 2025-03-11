@@ -1,8 +1,8 @@
-import { motion } from "motion/react";
 import { useLeftSidebar } from "@/contexts/left-sidebar";
+import { motion } from "motion/react";
 import NotesList from "../notes-list";
-import { LeftSidebarButton } from "../toolbar/buttons/left-sidebar-button";
 import SettingsButton from "../settings-panel";
+import { LeftSidebarButton } from "../toolbar/buttons/left-sidebar-button";
 import UpdateButton from "./update-button";
 
 export default function LeftSidebar() {

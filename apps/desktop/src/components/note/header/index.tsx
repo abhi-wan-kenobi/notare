@@ -1,11 +1,9 @@
-import { useCallback, type ChangeEvent } from "react";
-
 import { useSession } from "@/contexts";
 import { useOngoingSession } from "@/contexts/ongoing-session";
-
-import TitleInput from "./title-input";
-import ListenButton from "./listen-button";
+import { useCallback, type ChangeEvent } from "react";
 import Chips from "./chips";
+import ListenButton from "./listen-button";
+import TitleInput from "./title-input";
 
 interface NoteHeaderProps {
   onNavigateToEditor?: () => void;

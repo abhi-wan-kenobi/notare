@@ -1,10 +1,10 @@
-import { useRef, useEffect } from "react";
+import spriteImage from "../../../assets/dino-game-sprite.png";
+
 import {
   type WidgetTwoByOne,
   WidgetTwoByOneWrapper,
 } from "@hypr/ui/components/ui/widgets";
-
-import spriteImage from "../../../assets/dino-game-sprite.png";
+import { useEffect, useRef } from "react";
 
 const ChromeDino2x1: WidgetTwoByOne = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);

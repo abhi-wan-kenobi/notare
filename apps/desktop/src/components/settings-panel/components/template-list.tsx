@@ -1,7 +1,7 @@
-import { type ReactNode } from "react";
-import { SearchIcon, ZapIcon, TagIcon, HeartIcon } from "lucide-react";
-import { cn } from "@hypr/ui/lib/utils";
 import { type Template } from "@hypr/plugin-db";
+import clsx from "clsx";
+import { HeartIcon, SearchIcon, TagIcon, ZapIcon } from "lucide-react";
+import { type ReactNode } from "react";
 
 interface TemplateListProps {
   searchQuery: string;
@@ -57,7 +57,7 @@ export function TemplateList({
                   <li key={template.id}>
                     <button
                       onClick={() => onTemplateSelect(template)}
-                      className={cn(
+                      className={clsx(
                         "flex w-full flex-col gap-1 rounded-lg p-2 text-sm text-neutral-600 hover:bg-neutral-100",
                         selectedTemplate?.id === template.id &&
                           "bg-neutral-200 font-bold text-neutral-700",
@@ -91,7 +91,7 @@ export function TemplateList({
                 <li key={template.id}>
                   <button
                     onClick={() => onTemplateSelect(template)}
-                    className={cn(
+                    className={clsx(
                       "flex w-full flex-col gap-1 rounded-lg p-2 text-sm text-neutral-600 hover:bg-neutral-100",
                       selectedTemplate?.id === template.id &&
                         "bg-neutral-200 font-bold text-neutral-700",

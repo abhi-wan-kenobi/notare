@@ -1,9 +1,9 @@
 import { Button } from "@hypr/ui/components/ui/button";
 import {
   Link,
-  type NotFoundRouteComponent,
   type ErrorRouteComponent,
   type NotFoundError,
+  type NotFoundRouteComponent,
 } from "@tanstack/react-router";
 
 const NotFound = () => {

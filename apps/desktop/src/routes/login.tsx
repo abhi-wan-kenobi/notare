@@ -1,29 +1,24 @@
-import { useEffect, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-
-import { open } from "@tauri-apps/plugin-shell";
-import { message } from "@tauri-apps/plugin-dialog";
-import { Channel } from "@tauri-apps/api/core";
-
-import clsx from "clsx";
-import { Trans } from "@lingui/react/macro";
-import { Play, Pause } from "lucide-react";
-
+import { baseUrl } from "@/client";
+import { commands } from "@/types";
 import {
   commands as authCommands,
   type AuthEvent,
   type RequestParams,
 } from "@hypr/plugin-auth";
-import { commands as sfxCommands } from "@hypr/plugin-sfx";
 import { commands as miscCommands } from "@hypr/plugin-misc";
-
-import { commands } from "@/types";
-import { baseUrl } from "@/client";
-import PushableButton from "@hypr/ui/components/ui/pushable-button";
-import { Particles } from "@hypr/ui/components/ui/particles";
-import { TextAnimate } from "@hypr/ui/components/ui/text-animate";
+import { commands as sfxCommands } from "@hypr/plugin-sfx";
 import { Button } from "@hypr/ui/components/ui/button";
+import { Particles } from "@hypr/ui/components/ui/particles";
+import PushableButton from "@hypr/ui/components/ui/pushable-button";
+import { TextAnimate } from "@hypr/ui/components/ui/text-animate";
+import { Trans } from "@lingui/react/macro";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Channel } from "@tauri-apps/api/core";
+import { message } from "@tauri-apps/plugin-dialog";
+import { open } from "@tauri-apps/plugin-shell";
+import { Pause, Play } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/login")({
   component: Component,
@@ -105,11 +100,7 @@ function Component() {
   return (
     <main className="relative flex h-screen flex-col items-center justify-center overflow-auto p-4">
       <header
-        className={clsx([
-          "absolute left-0 right-0 top-0 z-10 min-h-11 px-2",
-          "flex w-full items-center justify-between",
-          "bg-transparent",
-        ])}
+        className="absolute left-0 right-0 top-0 z-10 min-h-11 px-2 flex w-full items-center justify-between bg-transparent"
         data-tauri-drag-region
       >
         <div /> {/* Empty div for spacing */}

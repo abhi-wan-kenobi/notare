@@ -3,7 +3,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
-
 import EditorArea from "@/components/note/editor";
 import { useSession } from "@/contexts/session";
 

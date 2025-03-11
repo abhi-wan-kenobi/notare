@@ -1,12 +1,12 @@
-import { useLocation } from "@tanstack/react-router";
 import { NewNoteButton } from "@/components/toolbar/buttons/new-note-button";
 import { useOngoingSession } from "@/contexts/ongoing-session";
 import { RoutePath } from "@/types";
+import { useLocation } from "@tanstack/react-router";
 import { SearchBar, SearchIconButton, SearchPalette } from "../search";
-import { RightPanelButton } from "./buttons/right-panel-button";
 import { LeftSidebarButton } from "./buttons/left-sidebar-button";
-import { SessionIndicator } from "./session-indicator";
+import { RightPanelButton } from "./buttons/right-panel-button";
 import { ShareButton } from "./buttons/share-button";
+import { SessionIndicator } from "./session-indicator";
 
 export default function Toolbar() {
   const { listening, sessionId } = useOngoingSession((s) => ({

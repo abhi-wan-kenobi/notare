@@ -1,16 +1,15 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { RiLinkedinBoxFill } from "@remixicon/react";
-import { Users2Icon, Mail } from "lucide-react";
-import { toast } from "sonner";
-
+import { useSession } from "@/contexts";
+import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
 import {
   Popover,
-  PopoverTrigger,
   PopoverContent,
+  PopoverTrigger,
 } from "@hypr/ui/components/ui/popover";
-import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
-import { useSession } from "@/contexts";
+import { RiLinkedinBoxFill } from "@remixicon/react";
+import { useQuery } from "@tanstack/react-query";
+import { Mail, Users2Icon } from "lucide-react";
+import { useMemo } from "react";
+import { toast } from "sonner";
 
 import { commands as dbCommands, type Human } from "@hypr/plugin-db";
 

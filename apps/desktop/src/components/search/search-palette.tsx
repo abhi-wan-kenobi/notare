@@ -1,3 +1,5 @@
+import { useSearchPalette } from "@/contexts/search-palette";
+import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
 import {
   CommandDialog,
   CommandEmpty,
@@ -8,8 +10,6 @@ import {
   CommandSeparator,
 } from "@hypr/ui/components/ui/command";
 import { Building, Laptop, Users2 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
-import { useSearchPalette } from "@/contexts/search-palette";
 
 export function SearchPalette() {
   const { isOpen, toggle } = useSearchPalette();

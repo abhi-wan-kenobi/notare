@@ -1,6 +1,6 @@
-import { check } from "@tauri-apps/plugin-updater";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { check } from "@tauri-apps/plugin-updater";
 
 export async function checkForAppUpdates() {
   if (process.env.NODE_ENV === "development") {

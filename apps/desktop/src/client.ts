@@ -1,12 +1,11 @@
+import type { NangoIntegration } from "@/types";
 import { createClient, createConfig } from "@hypr/client";
-export * from "@hypr/client/gen/sdk";
-export * from "@hypr/client/gen/types";
-export * from "@hypr/client/gen/tanstack";
-
-import { fetch } from "@hypr/utils";
 import { commands as authCommands } from "@hypr/plugin-auth";
+import { fetch } from "@hypr/utils";
 
-import { NangoIntegration } from "@/types";
+export * from "@hypr/client/gen/sdk";
+export * from "@hypr/client/gen/tanstack";
+export * from "@hypr/client/gen/types";
 
 export const baseUrl = import.meta.env.DEV
   ? "http://localhost:1234"

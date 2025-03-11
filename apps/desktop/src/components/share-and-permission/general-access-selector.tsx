@@ -1,5 +1,5 @@
 import { Button } from "@hypr/ui/components/ui/button";
-import { useState } from "react";
+import { clsx } from "clsx";
 import {
   BuildingIcon,
   ChevronDown,
@@ -8,7 +8,7 @@ import {
   GlobeIcon,
   LockIcon,
 } from "lucide-react";
-import { cn } from "@hypr/ui/lib/utils";
+import { useState } from "react";
 
 export interface GeneralAccessSelectorProps {
   expanded: boolean;
@@ -82,14 +82,13 @@ export const GeneralAccessSelector = ({
             ([key, { icon, title, description }]) => (
               <div
                 key={key}
-                className={cn(
+                className={clsx(
                   "flex items-center gap-3 hover:bg-neutral-200 rounded-lg -mx-2 px-2 py-1 cursor-pointer",
                   selectedAccess === key && "bg-neutral-100",
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedAccess(key as keyof typeof accessTypes);
-                  // Collapse the list after selection
                   if (expanded) {
                     onToggle();
                   }

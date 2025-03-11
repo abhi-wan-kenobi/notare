@@ -1,19 +1,15 @@
-import { useEffect } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { MicIcon, Volume2Icon } from "lucide-react";
-import { Trans } from "@lingui/react/macro";
-import clsx from "clsx";
-
-import { type as getOsType } from "@tauri-apps/plugin-os";
-
+import { commands as appleCalendarCommands } from "@hypr/plugin-apple-calendar";
+import { commands as listenerCommands } from "@hypr/plugin-listener";
+import { commands as sfxCommands } from "@hypr/plugin-sfx";
 import { Particles } from "@hypr/ui/components/ui/particles";
 import PushableButton from "@hypr/ui/components/ui/pushable-button";
 import ShimmerButton from "@hypr/ui/components/ui/shimmer-button";
-
-import { commands as listenerCommands } from "@hypr/plugin-listener";
-import { commands as appleCalendarCommands } from "@hypr/plugin-apple-calendar";
-import { commands as sfxCommands } from "@hypr/plugin-sfx";
+import { Trans } from "@lingui/react/macro";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { type as getOsType } from "@tauri-apps/plugin-os";
+import { MicIcon, Volume2Icon } from "lucide-react";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/onboarding")({
   component: Component,
@@ -68,12 +64,7 @@ function Component() {
     <div className="flex min-h-screen flex-col items-center justify-center">
       <main className="relative flex h-screen w-full flex-col items-center justify-center overflow-auto p-4">
         <header
-          className={clsx([
-            "absolute left-0 right-0 top-0 z-10",
-            "flex w-full items-center justify-between",
-            "bg-transparent",
-            "min-h-11",
-          ])}
+          className="absolute left-0 right-0 top-0 z-10 flex w-full items-center justify-between bg-transparent min-h-11"
           data-tauri-drag-region
         />
 

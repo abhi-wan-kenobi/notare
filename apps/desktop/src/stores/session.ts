@@ -1,7 +1,6 @@
-import { createStore } from "zustand";
-import { create as mutate } from "mutative";
-
 import { type Session, commands as dbCommands } from "@hypr/plugin-db";
+import { create as mutate } from "mutative";
+import { createStore } from "zustand";
 
 type State = {
   session: Session | null;

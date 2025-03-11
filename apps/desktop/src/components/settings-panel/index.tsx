@@ -1,22 +1,21 @@
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { SettingsIcon } from "lucide-react";
+import { useSettingsPanel } from "@/contexts/settings-panel";
+import { commands as dbCommands, type Template } from "@hypr/plugin-db";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Modal, ModalBody } from "@hypr/ui/components/ui/modal";
-import { SettingsPanelBody } from "./views";
-import GeneralComponent from "./views/general";
-import CalendarComponent from "./views/calendar";
-import TagsComponent from "./views/tags";
-import TemplateEditor from "./views/template";
-import BillingComponent from "./views/billing";
-import NotificationsComponent from "./views/notifications";
-import TeamComponent from "./views/team";
-import ProfileComponent from "./views/profile";
+import { useQuery } from "@tanstack/react-query";
+import { SettingsIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import { SettingsSidebar } from "./sidebar";
 import type { NavNames } from "./types";
-import { commands as dbCommands, type Template } from "@hypr/plugin-db";
+import { SettingsPanelBody } from "./views";
+import BillingComponent from "./views/billing";
+import CalendarComponent from "./views/calendar";
 import ExtensionsComponent from "./views/extensions";
-import { useSettingsPanel } from "@/contexts/settings-panel";
+import GeneralComponent from "./views/general";
+import NotificationsComponent from "./views/notifications";
+import ProfileComponent from "./views/profile";
+import TeamComponent from "./views/team";
+import TemplateEditor from "./views/template";
 
 export default function SettingsPanel() {
   const { isOpen, open, close } = useSettingsPanel();
@@ -102,7 +101,6 @@ export default function SettingsPanel() {
               {active === "Extensions" && !selectedTemplate && (
                 <ExtensionsComponent />
               )}
-              {active === "Tags" && <TagsComponent />}
               {active === "Team" && <TeamComponent />}
               {active === "Billing" && <BillingComponent />}
               {active === "Profile" && <ProfileComponent />}

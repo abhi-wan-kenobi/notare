@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SignedIn, UserButton } from "@clerk/clerk-react";
-import { clsx } from "clsx";
 import { Particles } from "@hypr/ui/components/ui/particles";
 import { Button } from "@hypr/ui/components/ui/button";
 
@@ -11,14 +10,8 @@ export const Route = createFileRoute("/")({
 function Component() {
   return (
     <main className="relative flex h-screen flex-col items-center justify-center overflow-auto p-4">
-      <header
-        className={clsx([
-          "absolute left-0 right-0 top-0 z-10 min-h-11 px-2",
-          "flex w-full items-center justify-between",
-          "bg-transparent",
-        ])}
-      >
-        <div /> {/* Empty div for spacing */}
+      <header className="absolute left-0 right-0 top-0 z-10 min-h-11 px-2 flex w-full items-center justify-between bg-transparent">
+        <div />
         <SignedIn>
           <div className="flex items-center gap-4">
             <UserButton />

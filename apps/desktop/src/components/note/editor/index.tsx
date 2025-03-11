@@ -1,27 +1,27 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMutation } from "@tanstack/react-query";
-import { streamText, smoothStream } from "ai";
 import clsx from "clsx";
+import { smoothStream, streamText } from "ai";
 
 import { modelProvider } from "@hypr/utils";
 import Editor, { TiptapEditor } from "@hypr/tiptap/editor";
 
-import { commands as listenerCommands } from "@hypr/plugin-listener";
-import { commands as dbCommands } from "@hypr/plugin-db";
-import { commands as miscCommands } from "@hypr/plugin-misc";
-import { commands as templateCommands } from "@hypr/plugin-template";
+import { useSession } from "@/contexts";
+import { useOngoingSession } from "@/contexts/ongoing-session";
 import {
   ENHANCE_SYSTEM_TEMPLATE_KEY,
   ENHANCE_USER_TEMPLATE_KEY,
 } from "@/templates";
 
-import { useSession } from "@/contexts";
-import { useOngoingSession } from "@/contexts/ongoing-session";
+import { commands as dbCommands } from "@hypr/plugin-db";
+import { commands as listenerCommands } from "@hypr/plugin-listener";
+import { commands as miscCommands } from "@hypr/plugin-misc";
+import { commands as templateCommands } from "@hypr/plugin-template";
 
+import { NoteHeader } from "../header";
 import { EnhanceControls } from "./enhanced-controls";
 import { EnhanceOnlyButton } from "./enhanced-only-button";
-import { NoteHeader } from "../header";
 
 export default function EditorArea() {
   const [showRaw, setShowRaw] = useState(true);
@@ -133,7 +133,7 @@ export default function EditorArea() {
       <div
         className={clsx([
           "h-full overflow-y-auto",
-          enhance.status === "pending" ? "tiptap-animate" : "",
+          enhance.status === "pending" && "tiptap-animate",
         ])}
         onClick={() => {
           editorRef.current?.editor?.commands?.focus();

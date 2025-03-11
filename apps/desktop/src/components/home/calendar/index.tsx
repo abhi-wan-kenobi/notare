@@ -1,15 +1,13 @@
-import { useEffect, useState } from "react";
+import { type Event } from "@hypr/plugin-db";
 import {
-  format,
+  addDays,
   eachDayOfInterval,
+  format,
+  getDay,
   isToday,
   isWeekend,
-  addDays,
-  getDay,
 } from "date-fns";
-
-import { type Event } from "@hypr/plugin-db";
-
+import { useEffect, useState } from "react";
 import { DayEvents } from "./day-events";
 import { mockEvents } from "./mock";
 

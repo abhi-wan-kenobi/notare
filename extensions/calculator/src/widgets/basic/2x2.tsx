@@ -2,18 +2,18 @@ import {
   type WidgetTwoByTwo,
   WidgetTwoByTwoWrapper,
 } from "@hypr/ui/components/ui/widgets";
-import { useState } from "react";
 import { cn } from "@hypr/ui/lib/utils";
+import { useState } from "react";
+import type { CalculatorState } from "../../types";
 import {
+  formatDisplayValue,
+  handleClear,
+  handleDecimal,
+  handleDelete,
+  handleEquals,
   handleNumber,
   handleOperator,
-  handleEquals,
-  handleClear,
-  handleDelete,
-  handleDecimal,
-  formatDisplayValue,
 } from "../../utils";
-import type { CalculatorState } from "../../types";
 
 const BasicCalculator2x2: WidgetTwoByTwo = () => {
   const [state, setState] = useState<CalculatorState>({
