@@ -42,6 +42,7 @@ tauri-plugin-local-stt = { workspace = true }
 tauri-plugin-misc = { workspace = true }
 tauri-plugin-sfx = { workspace = true }
 tauri-plugin-sse = { workspace = true }
+tauri-plugin-store2 = { workspace = true }
 tauri-plugin-template = { workspace = true }
 tauri-plugin-tray = { workspace = true }
 tauri-plugin-windows = { workspace = true }
