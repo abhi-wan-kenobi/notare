@@ -1,6 +1,5 @@
 import "../styles/tiptap.css";
 
-import { useEffect, forwardRef } from "react";
 import {
   EditorContent,
   useEditor,
@@ -8,6 +7,7 @@ import {
   type Editor as TiptapEditor,
 } from "@tiptap/react";
 import clsx from "clsx";
+import { forwardRef, useEffect } from "react";
 import * as shared from "../shared";
 import { editorStyle } from "../shared/editorStyle";
 

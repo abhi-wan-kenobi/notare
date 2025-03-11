@@ -13,24 +13,15 @@ import { editorStyle } from "../shared/editorStyle";
 
 export const extensions = [...shared.extensions];
 
-interface EditorProps {
-  handleChange: (content: HTMLContent) => void;
+interface RendererProps {
   initialContent: HTMLContent;
 }
 
-const Editor = forwardRef<{ editor: TiptapEditor | null }, EditorProps>(
-  ({ handleChange, initialContent }, ref) => {
-    const onUpdate = ({ editor }: { editor: TiptapEditor }) => {
-      if (!editor.isInitialized) {
-        return;
-      }
-
-      handleChange(editor.getHTML());
-    };
-
+const Renderer = forwardRef<{ editor: TiptapEditor | null }, RendererProps>(
+  ({ initialContent }, ref) => {
     const editor = useEditor({
       extensions,
-      onUpdate,
+      editable: false,
       editorProps: {
         attributes: {
           class: clsx(editorStyle),
@@ -51,13 +42,13 @@ const Editor = forwardRef<{ editor: TiptapEditor | null }, EditorProps>(
     }, [editor, initialContent]);
 
     return (
-      <div role="textbox" className={clsx(["relative h-full w-full"])}>
-        <EditorContent className="h-full w-full" editor={editor} />
+      <div role="textbox">
+        <EditorContent editor={editor} />
       </div>
     );
   },
 );
 
-Editor.displayName = "Editor";
+Renderer.displayName = "Renderer";
 
-export default Editor;
+export default Renderer;

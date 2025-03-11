@@ -16,7 +16,6 @@ export function Content({ session }: ContentProps) {
         <Renderer
           ref={rendererRef}
           initialContent={session.enhanced_memo_html || session.raw_memo_html}
-          handleChange={() => {}}
         />
       </div>
     </div>
