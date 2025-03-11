@@ -1,22 +1,9 @@
-import type { ActivityLoaderArgs } from "@stackflow/config";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
-import { ActivityComponentType } from "@stackflow/react/future";
+import { type ActivityComponentType } from "@stackflow/react/future";
 
 import { Particles } from "@hypr/ui/components/ui/particles";
 import PushableButton from "@hypr/ui/components/ui/pushable-button";
 import { TextAnimate } from "@hypr/ui/components/ui/text-animate";
-
-export function loginActivityLoader({ }: ActivityLoaderArgs<"LoginActivity">) {
-  const sessions = [
-    {
-      id: "1",
-      name: "Session 1",
-    },
-  ];
-  return {
-    sessions,
-  };
-}
 
 export const LoginActivity: ActivityComponentType<"LoginActivity"> = () => {
   const handleSignIn = () => {
@@ -26,7 +13,7 @@ export const LoginActivity: ActivityComponentType<"LoginActivity"> = () => {
   return (
     <AppScreen>
       <div className="relative p-6 flex h-full flex-col pt-12">
-        <div className="z-10 flex w-full flex-col items-center justify-between flex-1">
+        <main className="z-10 flex w-full flex-col items-center justify-between flex-1">
           <div className="flex flex-col items-center justify-center h-full">
             <TextAnimate
               animation="blurIn"
@@ -47,11 +34,10 @@ export const LoginActivity: ActivityComponentType<"LoginActivity"> = () => {
             </TextAnimate>
           </div>
 
-
           <PushableButton onClick={handleSignIn} className="mb-4 w-full">
             Get Started
           </PushableButton>
-        </div>
+        </main>
 
         <Particles
           className="absolute inset-0 z-0"
