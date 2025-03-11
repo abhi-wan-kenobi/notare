@@ -3,6 +3,7 @@ import "react-resizable/css/styles.css";
 
 import { useCallback, useState } from "react";
 import GridLayout, { Layout } from "react-grid-layout";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { WidgetGroup } from "@hypr/extension-utils";
 
@@ -41,6 +42,8 @@ const TranscriptLive2x2 = getTwoByTwo(TranscriptExtension.default)!;
 const TranscriptLiveFull = getFull(TranscriptExtension.default)!;
 
 export default function WidgetRenderer() {
+  const queryClient = useQueryClient();
+
   const [layout, setLayout] = useState<Layout[]>([
     {
       i: "1",
@@ -74,7 +77,10 @@ export default function WidgetRenderer() {
   return (
     <>
       {showFull ? (
-        <TranscriptLiveFull onMinimize={() => setShowFull(false)} />
+        <TranscriptLiveFull
+          queryClient={queryClient}
+          onMinimize={() => setShowFull(false)}
+        />
       ) : (
         <GridLayout
           layout={layout}
@@ -89,17 +95,18 @@ export default function WidgetRenderer() {
           draggableCancel=".not-draggable"
         >
           <div key="1">
-            <CC1 />
+            <CC1 queryClient={queryClient} />
           </div>
           <div key="3">
             <TranscriptLive2x2
+              queryClient={queryClient}
               onMaximize={() => {
                 setShowFull(true);
               }}
             />
           </div>
           <div key="2">
-            <CC2 />
+            <CC2 queryClient={queryClient} />
           </div>
         </GridLayout>
       )}

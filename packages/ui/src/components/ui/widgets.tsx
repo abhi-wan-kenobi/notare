@@ -2,6 +2,8 @@ import React, { type ReactNode } from "react";
 import { Button } from "./button";
 import { Maximize2Icon } from "lucide-react";
 
+import type { QueryClient } from "@tanstack/react-query";
+
 interface WidgetHeaderProps {
   leading?: ReactNode;
   title?: ReactNode;
@@ -85,21 +87,28 @@ const WidgetWrapper = ({
 };
 
 const WidgetTwoByTwoWrapper = (
-  props: Omit<WidgetWrapperPropsNonFullSize, "width" | "height">,
+  props: Omit<WidgetWrapperPropsNonFullSize, "width" | "height"> & {
+    queryClient?: QueryClient;
+  },
 ) => <WidgetWrapper width="340px" height="340px" {...props} />;
 
 const WidgetOneByOneWrapper = (
-  props: Omit<WidgetWrapperPropsNonFullSize, "width" | "height">,
+  props: Omit<WidgetWrapperPropsNonFullSize, "width" | "height"> & {
+    queryClient?: QueryClient;
+  },
 ) => <WidgetWrapper width="160px" height="160px" {...props} />;
 
 const WidgetTwoByOneWrapper = (
-  props: Omit<WidgetWrapperPropsNonFullSize, "width" | "height">,
+  props: Omit<WidgetWrapperPropsNonFullSize, "width" | "height"> & {
+    queryClient?: QueryClient;
+  },
 ) => <WidgetWrapper width="340px" height="160px" {...props} />;
 
 const WidgetFullSizeWrapper = ({
   onMinimize,
   ...props
 }: Omit<WidgetWrapperPropsFullSize, "width" | "height" | "onMaximize"> & {
+  queryClient?: QueryClient;
   onMinimize: () => void;
 }) => <WidgetWrapper width="360px" height="100%" {...props} />;
 

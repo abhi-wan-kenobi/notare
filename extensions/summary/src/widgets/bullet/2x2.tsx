@@ -30,7 +30,7 @@ import { TEMPLATE_LIVE_SUMMARY_SYSTEM, TEMPLATE_LIVE_SUMMARY_USER } from ".";
 
 const DEFAULT_INTERVAL = 10 * 1000;
 
-const Widget: WidgetTwoByTwo = () => {
+const Widget: WidgetTwoByTwo = ({ queryClient }) => {
   const [isLive, setIsLive] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -52,55 +52,61 @@ const Widget: WidgetTwoByTwo = () => {
     };
   }, []);
 
-  const config = useQuery({
-    queryKey: ["config"],
-    queryFn: () => dbCommands.getConfig(),
-  });
-
-  const summary = useQuery({
-    queryKey: ["live-summary", "run"],
-    enabled: !!config.data && isLive,
-    refetchInterval: DEFAULT_INTERVAL,
-    staleTime: 0,
-    gcTime: 0,
-    queryFn: async ({ signal }) => {
-      if (!config.data) {
-        return null;
-      }
-
-      const timeline_view = await listenerCommands.getTimeline({
-        last_n_seconds: 100,
-      });
-
-      const systemMessageContent = await templateCommands.render(
-        TEMPLATE_LIVE_SUMMARY_SYSTEM,
-        {
-          config: config.data,
-        } satisfies LiveSummarySystemInput,
-      );
-
-      const userMessageContent = await templateCommands.render(
-        TEMPLATE_LIVE_SUMMARY_USER,
-        {
-          timeline: timeline_view,
-        } satisfies LiveSummaryUserInput,
-      );
-
-      const provider = await modelProvider();
-
-      const { object } = await generateObject({
-        model: provider.languageModel("any"),
-        schema: liveSummaryResponseSchema,
-        messages: [
-          { role: "system", content: systemMessageContent },
-          { role: "user", content: userMessageContent },
-        ],
-        abortSignal: signal,
-      });
-
-      return object;
+  const config = useQuery(
+    {
+      queryKey: ["config"],
+      queryFn: () => dbCommands.getConfig(),
     },
-  });
+    queryClient,
+  );
+
+  const summary = useQuery(
+    {
+      queryKey: ["live-summary", "run"],
+      enabled: !!config.data && isLive,
+      refetchInterval: DEFAULT_INTERVAL,
+      staleTime: 0,
+      gcTime: 0,
+      queryFn: async ({ signal }) => {
+        if (!config.data) {
+          return null;
+        }
+
+        const timeline_view = await listenerCommands.getTimeline({
+          last_n_seconds: 100,
+        });
+
+        const systemMessageContent = await templateCommands.render(
+          TEMPLATE_LIVE_SUMMARY_SYSTEM,
+          {
+            config: config.data,
+          } satisfies LiveSummarySystemInput,
+        );
+
+        const userMessageContent = await templateCommands.render(
+          TEMPLATE_LIVE_SUMMARY_USER,
+          {
+            timeline: timeline_view,
+          } satisfies LiveSummaryUserInput,
+        );
+
+        const provider = await modelProvider();
+
+        const { object } = await generateObject({
+          model: provider.languageModel("any"),
+          schema: liveSummaryResponseSchema,
+          messages: [
+            { role: "system", content: systemMessageContent },
+            { role: "user", content: userMessageContent },
+          ],
+          abortSignal: signal,
+        });
+
+        return object;
+      },
+    },
+    queryClient,
+  );
 
   const refetchSummary = async () => {
     await summary.refetch();

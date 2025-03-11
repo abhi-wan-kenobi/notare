@@ -18,7 +18,7 @@ import {
 
 import Translation from "../components/translation";
 
-const LiveTranslation2x2: WidgetTwoByTwo = ({ onMaximize }) => {
+const LiveTranslation2x2: WidgetTwoByTwo = ({ onMaximize, queryClient }) => {
   const [timeline, setTimeline] = useState<TimelineView | null>(null);
   const [isLive, setIsLive] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -55,16 +55,19 @@ const LiveTranslation2x2: WidgetTwoByTwo = ({ onMaximize }) => {
     }
   }, [timeline?.items.length, isLive]);
 
-  const translation = useQuery({
-    queryKey: ["translation"],
-    queryFn: async () => {
-      const response = await fetch("/api/timeline");
-      if (!response.ok) {
-        throw new Error("Failed to fetch translation");
-      }
-      return response.json();
+  const translation = useQuery(
+    {
+      queryKey: ["translation"],
+      queryFn: async () => {
+        const response = await fetch("/api/timeline");
+        if (!response.ok) {
+          throw new Error("Failed to fetch translation");
+        }
+        return response.json();
+      },
     },
-  });
+    queryClient,
+  );
 
   return (
     <WidgetTwoByTwoWrapper>
