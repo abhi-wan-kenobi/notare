@@ -57,6 +57,7 @@ tauri-plugin-fs = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-http = { workspace = true }
 tauri-plugin-os = "2"
+tauri-plugin-prevent-default = { version = "1.2", features = ["unstable-windows"] }
 tauri-plugin-process = "2"
 tauri-plugin-sentry = "0.4.1"
 tauri-plugin-shell = "2"

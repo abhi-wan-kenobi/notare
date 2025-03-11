@@ -34,6 +34,7 @@ pub async fn main() {
     let _guard = tauri_plugin_sentry::minidump::init(&client);
 
     let mut builder = tauri::Builder::default()
+        .plugin(prevent_default())
         .plugin(tauri_plugin_listener::init())
         .plugin(tauri_plugin_sse::init())
         .plugin(tauri_plugin_misc::init())
@@ -126,6 +127,20 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::setup_db::<tauri::Wry>
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
+}
+
+#[cfg(debug_assertions)]
+fn prevent_default() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    use tauri_plugin_prevent_default::Flags;
+
+    tauri_plugin_prevent_default::Builder::new()
+        .with_flags(Flags::all().difference(Flags::DEV_TOOLS | Flags::RELOAD))
+        .build()
+}
+
+#[cfg(not(debug_assertions))]
+fn prevent_default() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    tauri_plugin_prevent_default::init()
 }
 
 #[cfg(test)]

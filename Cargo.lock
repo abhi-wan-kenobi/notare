@@ -3139,6 +3139,7 @@ dependencies = [
  "tauri-plugin-local-stt",
  "tauri-plugin-misc",
  "tauri-plugin-os",
+ "tauri-plugin-prevent-default",
  "tauri-plugin-process",
  "tauri-plugin-sentry",
  "tauri-plugin-sfx",
@@ -10924,6 +10925,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "strum"
+version = "0.27.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f64def088c51c9510a8579e3c5d67c65349dcf755e5479ad3d010aa6454e2c32"
+dependencies = [
+ "strum_macros 0.27.1",
+]
+
+[[package]]
 name = "strum_macros"
 version = "0.25.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10941,6 +10951,19 @@ name = "strum_macros"
 version = "0.26.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4c6bee85a5a24955dc440386795aa378cd9cf82acd5f764469152d2270e581be"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 2.0.99",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.27.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c77a8c5abcaf0f9ce05d62342b7d298c346515365c36b673df4ebe3ced01fde8"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -11801,6 +11824,23 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.12",
+]
+
+[[package]]
+name = "tauri-plugin-prevent-default"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68c872b8d017f6f10ff5d44ce315e28c8848a302a2eff0ed6768aa80214ea5d6"
+dependencies = [
+ "bitflags 2.9.0",
+ "itertools 0.14.0",
+ "serde",
+ "strum 0.27.1",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.12",
+ "webview2-com",
+ "windows 0.60.0",
 ]
 
 [[package]]
