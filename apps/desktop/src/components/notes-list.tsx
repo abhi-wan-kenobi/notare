@@ -36,7 +36,7 @@ export default function NotesList() {
     <nav className="h-full overflow-y-auto space-y-6 px-3 pb-4">
       {events.data && events.data.length > 0 && (
         <section>
-          <h2 className="font-medium text-neutral-600  mb-2 flex items-center gap-2">
+          <h2 className="font-medium text-neutral-600 mb-2 flex items-center gap-2">
             <CalendarIcon className="size-4" />
             <strong>Upcoming</strong>
           </h2>
@@ -78,7 +78,7 @@ function EventItem({ event }: { event: Event }) {
     >
       <div className="flex flex-col items-start gap-1">
         <div className="font-medium text-sm line-clamp-1">{event.name}</div>
-        <div className="flex items-center gap-2 text-xs text-neutral-500  line-clamp-1">
+        <div className="flex items-center gap-2 text-xs text-neutral-500 line-clamp-1">
           <span>{formatRemainingTime(new Date(event.start_date))}</span>
         </div>
       </div>
@@ -113,7 +113,7 @@ function SessionList() {
 
         return (
           <section key={dateKey}>
-            <h2 className="font-bold text-neutral-600  mb-2">
+            <h2 className="font-bold text-neutral-600 mb-2">
               {formatDateHeader(date)}
             </h2>
 
@@ -127,7 +127,7 @@ function SessionList() {
                     onClick={() => handleClickSession(session.id)}
                     disabled={session.id === currentSession?.id}
                     className={clsx([
-                      "hover:bg-neutral-200 ",
+                      "hover:bg-neutral-200",
                       "group flex items-start gap-3 py-2",
                       "w-full text-left transition-all rounded px-2",
                       session.id === currentSession?.id && "bg-neutral-200 ",
@@ -139,7 +139,7 @@ function SessionList() {
                           ? currentSession.title || "Untitled"
                           : session.title || "Untitled"}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-neutral-500 ">
+                      <div className="flex items-center gap-2 text-xs text-neutral-500">
                         <span>{format(sessionDate, "M/d/yy")}</span>
                       </div>
                     </div>

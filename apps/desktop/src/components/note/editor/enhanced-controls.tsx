@@ -20,8 +20,8 @@ export function EnhanceControls({ showRaw, setShowRaw }: EnhanceControlsProps) {
         className={clsx([
           "rounded-l-xl border border-r-0 border-border px-4 py-2.5",
           "transition-all ease-in-out",
-          showRaw ? "bg-primary   " : "bg-background   ",
-          showRaw ? "text-primary-foreground" : "text-neutral-200 ",
+          showRaw ? "bg-primary" : "bg-background",
+          showRaw ? "text-primary-foreground" : "text-neutral-200",
         ])}
       >
         <AlignLeft size={20} />
@@ -34,7 +34,7 @@ export function EnhanceControls({ showRaw, setShowRaw }: EnhanceControlsProps) {
               className={clsx([
                 "flex px-4 py-2.5 flex-row items-center rounded-r-xl border border-l-0 border-border",
                 "duration-400 transition-all ease-in-out",
-                "bg-primary text-primary-foreground cursor-pointer   ",
+                "bg-primary text-primary-foreground cursor-pointer",
               ])}
             >
               <Zap size={20} />
@@ -50,7 +50,7 @@ export function EnhanceControls({ showRaw, setShowRaw }: EnhanceControlsProps) {
           className={clsx([
             "flex py-2.5 flex-row items-center rounded-r-xl border border-l-0 border-border",
             "duration-400 transition-all ease-in-out px-4",
-            "bg-background text-neutral-200   ",
+            "bg-background text-neutral-200",
           ])}
         >
           <button onClick={() => setShowRaw(false)}>

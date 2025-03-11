@@ -61,14 +61,14 @@ export default function SettingsPanel() {
         onClick={open}
         aria-label="Settings"
         variant="ghost"
-        className="w-full justify-start md:flex hover:bg-neutral-200   "
+        className="hidden w-full justify-start md:flex hover:bg-neutral-200"
       >
         <SettingsIcon className="mr-2 h-4 w-4" />
         Settings
       </Button>
 
       <Modal open={isOpen} onClose={close} size="full">
-        <ModalBody className="p-0 ">
+        <ModalBody className="p-0">
           <div className="flex h-full w-full gap-0 overflow-clip">
             <SettingsSidebar
               active={active}

@@ -154,9 +154,9 @@ const DigitsTimer2x1: WidgetTwoByOne = () => {
             variant="outline"
             size="icon"
             onClick={resetTimer}
-            className={cn(
-              isTimeUp && "border-red-500 text-red-500 hover:bg-red-100",
-            )}
+            className={
+              isTimeUp ? "border-red-500 text-red-500 hover:bg-red-100" : ""
+            }
           >
             <RotateCcw size={20} />
           </Button>

@@ -11,7 +11,7 @@ export function EnhanceOnlyButton({ handleClick }: EnhanceOnlyButtonProps) {
       variant="default"
       size="lg"
       onClick={handleClick}
-      className="   hover:scale-95 transition-all"
+      className="hover:scale-95 transition-all"
     >
       <Zap size={20} />
       Hypercharge

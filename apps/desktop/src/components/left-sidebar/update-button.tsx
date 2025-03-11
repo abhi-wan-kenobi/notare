@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
-import clsx from "clsx";
 
 export default function UpdateButton() {
   const checkForUpdate = useQuery({
@@ -45,12 +44,7 @@ export default function UpdateButton() {
     <div className="flex items-center p-2">
       <button
         onClick={handleClick}
-        className={clsx([
-          "w-full px-2 py-1.5 rounded-md",
-          "bg-neutral-200 ",
-          "hover:bg-neutral-300 ",
-          "text-neutral-900  ",
-        ])}
+        className="w-full px-2 py-1.5 rounded-md bg-neutral-200 hover:bg-neutral-300 text-neutral-900"
       >
         Update
       </button>

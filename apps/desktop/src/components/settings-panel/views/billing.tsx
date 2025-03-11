@@ -11,7 +11,6 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@hypr/ui/components/ui/tabs";
 import { useState } from "react";
 import { ExternalLinkIcon } from "lucide-react";
-import { cn } from "@/utils";
 
 const pricingPlans = [
   {
@@ -97,7 +96,7 @@ export default function Billing({ currentPlan, trialDaysLeft }: BillingProps) {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm font-medium ">
+        <p className="text-sm font-medium">
           <Trans>There&apos;s a plan for everyone</Trans>
         </p>
 
@@ -107,28 +106,16 @@ export default function Billing({ currentPlan, trialDaysLeft }: BillingProps) {
             setBillingCycle(value as "monthly" | "annual")
           }
         >
-          <TabsList className="grid w-fit grid-cols-2 ">
+          <TabsList className="grid w-fit grid-cols-2">
             <TabsTrigger
               value="monthly"
-              className={cn(
-                "",
-                "data-[state=active]:bg-neutral-200 ",
-                "data-[state=active]:text-neutral-950 ",
-                "hover:bg-neutral-100 focus:outline-none focus:ring-0",
-                " ",
-              )}
+              className="data-[state=active]:bg-neutral-200 data-[state=active]:text-neutral-950 hover:bg-neutral-100 focus:outline-none focus:ring-0"
             >
               Monthly
             </TabsTrigger>
             <TabsTrigger
               value="annual"
-              className={cn(
-                "",
-                "data-[state=active]:bg-neutral-200 ",
-                "data-[state=active]:text-neutral-950 ",
-                "hover:bg-neutral-100 focus:outline-none focus:ring-0",
-                " ",
-              )}
+              className="data-[state=active]:bg-neutral-200 data-[state=active]:text-neutral-950 hover:bg-neutral-100 focus:outline-none focus:ring-0"
             >
               Annual
             </TabsTrigger>
@@ -139,19 +126,19 @@ export default function Billing({ currentPlan, trialDaysLeft }: BillingProps) {
       <div className="w-full space-y-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {pricingPlans.map((plan) => (
-            <Card key={plan.name} className="flex flex-col ">
+            <Card key={plan.name} className="flex flex-col">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="">{plan.name}</CardTitle>
                   {plan.name === "Pro" && (
-                    <span className="rounded-full bg-primary  px-2 py-0.5 text-xs font-medium text-primary-foreground ">
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
                       Best
                     </span>
                   )}
                 </div>
                 <CardDescription>{plan.description}</CardDescription>
               </CardHeader>
-              <CardContent className="flex-grow ">
+              <CardContent className="flex-grow">
                 <div className="mb-4 text-3xl font-bold">
                   $
                   {billingCycle === "monthly"
@@ -183,12 +170,12 @@ export default function Billing({ currentPlan, trialDaysLeft }: BillingProps) {
                   ))}
                 </div>
               </CardContent>
-              <CardFooter className="flex flex-col items-center gap-2 ">
-                <Button className="w-full  " {...getButtonProps(plan.name)}>
+              <CardFooter className="flex flex-col items-center gap-2">
+                <Button className="w-full" {...getButtonProps(plan.name)}>
                   {getButtonText(plan.name)}
                 </Button>
                 {trialDaysLeft && plan.name.toLowerCase() === "pro" && (
-                  <p className="text-xs text-muted-foreground ">
+                  <p className="text-xs text-muted-foreground">
                     {trialDaysLeft} days left in trial
                   </p>
                 )}
@@ -198,7 +185,7 @@ export default function Billing({ currentPlan, trialDaysLeft }: BillingProps) {
         </div>
 
         {billingCycle === "annual" && (
-          <p className="mt-4 text-center text-sm text-muted-foreground ">
+          <p className="mt-4 text-center text-sm text-muted-foreground">
             Save up to 20% with annual billing
           </p>
         )}
@@ -208,7 +195,7 @@ export default function Billing({ currentPlan, trialDaysLeft }: BillingProps) {
             href="https://hyprnote.com/pricing"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center text-sm text-muted-foreground decoration-dotted hover:text-foreground hover:underline "
+            className="inline-flex items-center text-sm text-muted-foreground decoration-dotted hover:text-foreground hover:underline"
           >
             <Trans>Learn more about our pricing plans</Trans>
             <ExternalLinkIcon className="ml-1 h-4 w-4" />

@@ -1,5 +1,5 @@
 export const editorStyle = [
-  "prose  prose-md",
+  "prose prose-md",
   "prose-headings:text-gray-700 prose-p:text-black",
   "prose-p:my-1",
   "prose-headings:font-medium",

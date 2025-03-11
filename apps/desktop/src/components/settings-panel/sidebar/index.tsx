@@ -2,7 +2,6 @@ import { type NavNames } from "../types";
 import { TemplateView } from "./template-view";
 import { SettingsView } from "./settings-view";
 import { ExtensionsView } from "./extensions-view";
-import { cn } from "@hypr/ui/lib/utils";
 import { type Template } from "@hypr/plugin-db";
 
 interface SettingsSidebarProps {
@@ -28,21 +27,10 @@ export function SettingsSidebar({
 }: SettingsSidebarProps) {
   return (
     <aside
-      className={cn(
-        "flex flex-col",
-        "border-r bg-background  ",
-        "w-[52px] min-w-[52px]",
-        "h-full md:w-[240px] md:min-w-[240px]",
-      )}
+      className="flex flex-col border-r bg-background w-[52px] min-w-[52px] h-full md:w-[240px] md:min-w-[240px]"
       data-collapsed={active !== "Templates"}
     >
-      <div
-        className={cn(
-          "h-full w-full",
-          "transition-all duration-300",
-          "lg:group-data-[collapsed=true]:w-[52px]",
-        )}
-      >
+      <div className="h-full w-full transition-all duration-300 lg:group-data-[collapsed=true]:w-[52px]">
         {active === "Templates" ? (
           <TemplateView
             searchQuery={searchQuery}

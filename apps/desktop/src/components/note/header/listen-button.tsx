@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Ear, EarOff } from "lucide-react";
-
 import {
   Popover,
   PopoverTrigger,
@@ -13,7 +12,6 @@ import {
 } from "@hypr/ui/components/ui/tooltip";
 import { Button } from "@hypr/ui/components/ui/button";
 import AudioIndicator from "./audio-indicator";
-import { cn } from "@/utils";
 
 interface ListenButtonProps {
   isListening: boolean;
@@ -40,7 +38,7 @@ export default function ListenButton({
     <Button
       variant={isListening && isCurrent ? "default" : "outline"}
       onClick={handleClick}
-      className={cn("p-2", !(isListening && isCurrent) ? "   " : "   ")}
+      className="p-2"
     >
       {isListening && isCurrent ? <Ear size={20} /> : <EarOff size={20} />}
       {isListening && isCurrent && <AudioIndicator />}
@@ -68,7 +66,7 @@ export default function ListenButton({
           <p>Stop recording</p>
         </TooltipContent>
       </Tooltip>
-      <PopoverContent className="w-60 p-4  " align="end">
+      <PopoverContent className="w-60 p-4" align="end">
         <div className="flex flex-col items-center gap-3 w-full">
           <div className="text-sm font-medium">
             Stop listening to the meeting?

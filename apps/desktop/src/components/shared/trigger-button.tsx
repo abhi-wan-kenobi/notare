@@ -1,4 +1,3 @@
-import { cn } from "@hypr/ui/lib/utils";
 import { motion } from "motion/react";
 
 interface TriggerButtonProps {
@@ -18,9 +17,7 @@ export default function TriggerButton({
       exit={{ scale: 0, opacity: 0 }}
       transition={{ duration: 0.2 }}
       whileHover={{ scale: 1.05 }}
-      className={cn(
-        "flex items-center justify-center overflow-clip rounded-full border bg-neutral-50 p-1 shadow-2xl hover:bg-neutral-100",
-      )}
+      className="flex items-center justify-center overflow-clip rounded-full border bg-neutral-50 p-1 shadow-2xl hover:bg-neutral-100"
     >
       <img
         src={isDynamic ? "/assets/dynamic.gif" : "/assets/static.png"}

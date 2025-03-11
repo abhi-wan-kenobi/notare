@@ -175,14 +175,14 @@
 			path = debug;
 			sourceTree = "<group>";
 		};
-		"TEMP_13720BAB-98AF-4D5B-9D79-BD8CFF3BE124" /* arm64 */ = {
+		"TEMP_3246970E-4959-488E-8BA2-D91C3E474E96" /* arm64 */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			path = arm64;
 			sourceTree = "<group>";
 		};
-		"TEMP_FCAA81CE-9474-4D8E-B8C3-4815B53E7344" /* x86_64 */ = {
+		"TEMP_5E1AA65E-71DC-48D8-851F-4B82A3CDED47" /* x86_64 */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -320,6 +320,7 @@
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = "arm64  arm64-sim";
+				DEVELOPMENT_TEAM = "6SLY7V277V";
 			};
 			name = debug;
 		};
@@ -473,6 +474,7 @@
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = "arm64  arm64-sim";
+				DEVELOPMENT_TEAM = "6SLY7V277V";
 			};
 			name = release;
 		};

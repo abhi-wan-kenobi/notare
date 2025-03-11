@@ -17,11 +17,11 @@ export default function Shortcut({
 
   if (osType.data === "macos") {
     return (
-      <CommandShortcut className="font-mono ">{macDisplay}</CommandShortcut>
+      <CommandShortcut className="font-mono">{macDisplay}</CommandShortcut>
     );
   }
 
   return (
-    <CommandShortcut className="font-mono ">{windowsDisplay}</CommandShortcut>
+    <CommandShortcut className="font-mono">{windowsDisplay}</CommandShortcut>
   );
 }
