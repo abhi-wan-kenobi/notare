@@ -56,7 +56,7 @@ export default function EditorArea() {
       const userMessage = await templateCommands.render(
         ENHANCE_USER_TEMPLATE_KEY,
         {
-          editor: sessionStore.session.raw_memo_html,
+          editor: sessionStore.session?.raw_memo_html ?? "",
           timeline: timeline,
         },
       );
@@ -149,7 +149,7 @@ export default function EditorArea() {
             <Editor
               ref={editorRef}
               handleChange={handleChangeRawNote}
-              content={sessionStore.session.raw_memo_html}
+              content={sessionStore.session?.raw_memo_html ?? ""}
             />
           </div>
         ) : (
@@ -157,7 +157,7 @@ export default function EditorArea() {
             <Renderer
               ref={rendererRef}
               handleChange={handleChangeEnhancedNote}
-              content={sessionStore.session.enhanced_memo_html ?? ""}
+              content={sessionStore.session?.enhanced_memo_html ?? ""}
             />
           </div>
         )}
@@ -175,7 +175,7 @@ export default function EditorArea() {
             >
               <div className="pointer-events-auto">
                 {ongoingSessionStore.listening ||
-                sessionStore.session.enhanced_memo_html ? (
+                sessionStore.session?.enhanced_memo_html ? (
                   <EnhanceControls showRaw={showRaw} setShowRaw={setShowRaw} />
                 ) : (
                   <EnhanceOnlyButton handleClick={handleClickEnhance} />

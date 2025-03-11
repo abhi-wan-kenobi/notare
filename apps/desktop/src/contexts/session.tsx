@@ -1,26 +1,28 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useRef } from "react";
 
 import { useStore } from "zustand";
 import { useShallow } from "zustand/shallow";
 
 import { createSessionStore } from "@/stores/session";
-import { type Session } from "@hypr/plugin-db";
 
 const SessionContext = createContext<ReturnType<
   typeof createSessionStore
 > | null>(null);
 
 export const SessionProvider = ({
-  session,
   children,
 }: {
-  session: Session;
   children: React.ReactNode;
 }) => {
-  const store = createSessionStore(session);
+  const storeRef = useRef<ReturnType<typeof createSessionStore> | null>(null);
+  if (!storeRef.current) {
+    storeRef.current = createSessionStore();
+  }
 
   return (
-    <SessionContext.Provider value={store}>{children}</SessionContext.Provider>
+    <SessionContext.Provider value={storeRef.current}>
+      {children}
+    </SessionContext.Provider>
   );
 };
 

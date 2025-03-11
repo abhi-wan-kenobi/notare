@@ -5,19 +5,29 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@hypr/ui/components/ui/tooltip";
+
 import { useNewNote } from "@/contexts/new-note";
+import { useSession } from "@/contexts/session";
+
 import Shortcut from "../../shortcut";
 
 export function NewNoteButton() {
   const { createNewNote } = useNewNote();
+  const disabled = useSession(
+    (s) =>
+      !s.session?.title &&
+      !s.session?.raw_memo_html &&
+      !s.session?.enhanced_memo_html,
+  );
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
+          disabled={disabled}
           variant="ghost"
           size="icon"
-          className="hover:bg-neutral-200   "
+          className="hover:bg-neutral-200"
           onClick={createNewNote}
           aria-label="New Note"
         >

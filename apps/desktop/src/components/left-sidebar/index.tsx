@@ -11,8 +11,9 @@ export default function LeftSidebar() {
   return (
     <motion.div
       layout
-      initial={{ width: isExpanded ? 240 : 0 }}
-      animate={{ width: isExpanded ? 240 : 0 }}
+      initial={{ width: isExpanded ? 240 : 0, opacity: isExpanded ? 1 : 0 }}
+      animate={{ width: isExpanded ? 240 : 0, opacity: isExpanded ? 1 : 0 }}
+      transition={{ duration: 0.2 }}
       className="h-full flex flex-col overflow-hidden border-r bg-neutral-100"
     >
       <div

@@ -4,8 +4,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
 
-import { SessionProvider } from "@/contexts";
 import EditorArea from "@/components/note/editor";
+import { useSession } from "@/contexts/session";
 
 export const Route = createFileRoute("/app/note/$id")({
   component: Component,
@@ -36,6 +36,11 @@ export const Route = createFileRoute("/app/note/$id")({
 
 function Component() {
   const { session } = Route.useLoaderData();
+  const setSession = useSession((s) => s.setSession);
+
+  useEffect(() => {
+    setSession(session);
+  }, [setSession, session]);
 
   const queryClient = useQueryClient();
 
@@ -66,12 +71,10 @@ function Component() {
   }, [session.id]);
 
   return (
-    <SessionProvider session={session}>
-      <main className="flex h-full overflow-hidden bg-white">
-        <div className="h-full flex-1">
-          <EditorArea />
-        </div>
-      </main>
-    </SessionProvider>
+    <main className="flex h-full overflow-hidden bg-white">
+      <div className="h-full flex-1">
+        <EditorArea />
+      </div>
+    </main>
   );
 }

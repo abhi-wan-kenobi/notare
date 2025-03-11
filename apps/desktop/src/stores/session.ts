@@ -4,26 +4,38 @@ import { create as mutate } from "mutative";
 import { type Session, commands as dbCommands } from "@hypr/plugin-db";
 
 type State = {
-  session: Session;
+  session: Session | null;
 };
 
 type Actions = {
+  setSession: (session: Session) => void;
   persistSession: () => Promise<void>;
   updateTitle: (title: string) => void;
   updateRawNote: (note: string) => void;
   updateEnhancedNote: (note: string) => void;
 };
 
-export const createSessionStore = (session: Session) => {
+export const createSessionStore = () => {
   return createStore<State & Actions>((set, get) => ({
-    session,
+    session: null,
+    setSession: (session: Session) => {
+      set({ session });
+    },
     persistSession: async () => {
       const { session } = get();
+      if (!session) {
+        return;
+      }
+
       await dbCommands.upsertSession(session);
     },
     updateTitle: (title: string) => {
       set((state) =>
         mutate(state, (draft) => {
+          if (!draft.session) {
+            return;
+          }
+
           draft.session.title = title;
         }),
       );
@@ -31,6 +43,10 @@ export const createSessionStore = (session: Session) => {
     updateRawNote: (note: string) => {
       set((state) =>
         mutate(state, (draft) => {
+          if (!draft.session) {
+            return;
+          }
+
           draft.session.raw_memo_html = note;
         }),
       );
@@ -38,6 +54,10 @@ export const createSessionStore = (session: Session) => {
     updateEnhancedNote: (note: string) => {
       set((state) =>
         mutate(state, (draft) => {
+          if (!draft.session) {
+            return;
+          }
+
           draft.session.enhanced_memo_html = note;
         }),
       );

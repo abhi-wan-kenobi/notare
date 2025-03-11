@@ -12,12 +12,12 @@ import { useSession } from "@/contexts";
 import { commands as dbCommands } from "@hypr/plugin-db";
 
 export function EventChip() {
-  const session = useSession((s) => s.session);
+  const sessionId = useSession((s) => s.session?.id);
 
   const event = useQuery({
-    enabled: !!session?.id,
-    queryKey: ["event", session.id],
-    queryFn: () => dbCommands.sessionGetEvent(session.id),
+    enabled: !!sessionId,
+    queryKey: ["event", sessionId!],
+    queryFn: () => dbCommands.sessionGetEvent(sessionId!),
   });
 
   return (

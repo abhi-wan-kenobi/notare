@@ -31,20 +31,20 @@ export function NoteHeader({ onNavigateToEditor }: NoteHeaderProps) {
   };
 
   const handleClickListen = useCallback(() => {
-    ongoingSessionStore.start(sessionStore.sessionInView.id);
+    ongoingSessionStore.start(sessionStore.sessionInView?.id ?? "");
   }, [sessionStore.sessionInView, ongoingSessionStore.start]);
 
   return (
     <>
       <div className="flex flex-row items-center justify-between sm:pl-8 px-4 pt-6">
         <TitleInput
-          value={sessionStore.sessionInView.title}
+          value={sessionStore.sessionInView?.title ?? ""}
           onChange={handleTitleChange}
           onNavigateToEditor={onNavigateToEditor}
         />
         <ListenButton
           isCurrent={
-            sessionStore.sessionInView.id ===
+            sessionStore.sessionInView?.id ===
             ongoingSessionStore.onGoingSessionId
           }
           isListening={ongoingSessionStore.listening}

@@ -13,23 +13,18 @@ import { commands as dbCommands } from "@hypr/plugin-db";
 
 export function TagChip() {
   const [open, setOpen] = useState(false);
-  const sessionStore = useSession((s) => s.session);
+  const sessionId = useSession((s) => s.session?.id);
 
   const tags = useQuery({
     queryKey: ["tags"],
-    enabled: !!sessionStore?.id,
+    enabled: !!sessionId,
     queryFn: () => {
-      const id = sessionStore.id;
+      const id = sessionId!;
       return dbCommands.listSessionTags(id);
     },
   });
 
-  if (
-    !sessionStore?.id ||
-    tags.isLoading ||
-    tags.isError ||
-    !tags.data?.length
-  ) {
+  if (!sessionId || tags.isLoading || tags.isError || !tags.data?.length) {
     return null;
   }
 

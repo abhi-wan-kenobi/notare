@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { CalendarIcon } from "lucide-react";
 import { format, isFuture } from "date-fns";
 import { clsx } from "clsx";
 
+import { useHypr, useSession } from "@/contexts";
 import {
   commands as dbCommands,
   type Event,
@@ -15,7 +16,6 @@ import {
   getSortedDates,
   formatRemainingTime,
 } from "@/lib/date";
-import { useHypr } from "@/contexts";
 
 export default function NotesList() {
   const { userId } = useHypr();
@@ -89,11 +89,7 @@ function EventItem({ event }: { event: Event }) {
 function SessionList() {
   const navigate = useNavigate();
 
-  const currentSessionId = useParams({
-    from: "/app/note/$id",
-    shouldThrow: false,
-    select: (params) => params.id,
-  });
+  const currentSession = useSession((s) => s.session);
 
   const sessions = useQuery({
     queryKey: ["sessions"],
@@ -129,25 +125,23 @@ function SessionList() {
                   <button
                     key={session.id}
                     onClick={() => handleClickSession(session.id)}
-                    disabled={currentSessionId === session.id}
+                    disabled={session.id === currentSession?.id}
                     className={clsx([
                       "hover:bg-neutral-200 ",
                       "group flex items-start gap-3 py-2",
                       "w-full text-left transition-all rounded px-2",
-                      currentSessionId === session.id && "bg-neutral-200 ",
+                      session.id === currentSession?.id && "bg-neutral-200 ",
                     ])}
                   >
                     <div className="flex flex-col items-start gap-1">
-                      <div className="font-medium text-sm ">
-                        {session.title || "Untitled"}
+                      <div className="font-medium text-sm max-w-[180px] truncate">
+                        {currentSession?.id === session.id
+                          ? currentSession.title || "Untitled"
+                          : session.title || "Untitled"}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-neutral-500 ">
                         <span>{format(sessionDate, "M/d/yy")}</span>
                       </div>
-                      {/* <div className="flex items-center gap-1 text-xs text-neutral-500 ">
-                        <Folder className="size-3" />
-                        <span>Notes</span>
-                      </div> */}
                     </div>
                   </button>
                 );

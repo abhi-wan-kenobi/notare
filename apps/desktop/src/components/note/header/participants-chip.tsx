@@ -15,11 +15,11 @@ import { useSession } from "@/contexts";
 import { commands as dbCommands, type Human } from "@hypr/plugin-db";
 
 export function ParticipantsChip() {
-  const session = useSession((s) => s.session);
+  const sessionId = useSession((s) => s.session?.id);
   const participants = useQuery({
-    enabled: !!session?.id,
-    queryKey: ["participants", session.id],
-    queryFn: () => dbCommands.sessionListParticipants(session.id),
+    enabled: !!sessionId,
+    queryKey: ["participants", sessionId!],
+    queryFn: () => dbCommands.sessionListParticipants(sessionId!),
   });
 
   return (
