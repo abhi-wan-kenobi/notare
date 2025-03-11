@@ -38,17 +38,18 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/rust_install
-        with:
-          target: "macos"
-      - uses: ./.github/actions/install_desktop_deps
-        with:
-          target: "macos"
-      - uses: ./.github/actions/pnpm_install
-      - run: pnpm -F ui build
       - uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: ./.github/actions/install_desktop_deps
+        with:
+          target: "macos"
+      - uses: ./.github/actions/rust_install
+        with:
+          target: "macos"
+      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/pnpm_install
+      - run: pnpm -F ui build
       - uses: ./.github/actions/apple_cert
         with:
           apple-certificate: ${{ secrets.APPLE_CERTIFICATE }}

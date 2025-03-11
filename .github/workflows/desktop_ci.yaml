@@ -32,15 +32,16 @@ jobs:
       - uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: ./.github/actions/rust_install
-        with:
-          target: "linux"
-      - uses: ./.github/actions/install_desktop_deps
-        with:
-          target: "linux"
       - uses: ./.github/actions/pnpm_install
       - run: pnpm -F ui build
       - run: pnpm -r typecheck
+      - uses: ./.github/actions/install_desktop_deps
+        with:
+          target: "linux"
+      - uses: ./.github/actions/rust_install
+        with:
+          target: "linux"
+      - uses: Swatinem/rust-cache@v2
       - run: cargo check --all-targets
       # - uses: tauri-apps/tauri-action@v0
       #   env:
