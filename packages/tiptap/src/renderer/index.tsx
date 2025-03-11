@@ -15,11 +15,11 @@ export const extensions = [...shared.extensions];
 
 interface EditorProps {
   handleChange: (content: HTMLContent) => void;
-  content: HTMLContent;
+  initialContent: HTMLContent;
 }
 
 const Editor = forwardRef<{ editor: TiptapEditor | null }, EditorProps>(
-  ({ handleChange, content }, ref) => {
+  ({ handleChange, initialContent }, ref) => {
     const onUpdate = ({ editor }: { editor: TiptapEditor }) => {
       if (!editor.isInitialized) {
         return;
@@ -39,16 +39,16 @@ const Editor = forwardRef<{ editor: TiptapEditor | null }, EditorProps>(
     });
 
     useEffect(() => {
-      if (editor) {
-        editor.commands.setContent(content);
-      }
-    }, [editor, content]);
-
-    useEffect(() => {
       if (ref && typeof ref === "object") {
         ref.current = { editor };
       }
     }, [editor]);
+
+    useEffect(() => {
+      if (editor) {
+        editor.commands.setContent(initialContent);
+      }
+    }, [editor, initialContent]);
 
     return (
       <div role="textbox" className={clsx(["relative h-full w-full"])}>

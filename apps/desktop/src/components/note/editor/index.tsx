@@ -6,7 +6,6 @@ import clsx from "clsx";
 
 import { modelProvider } from "@hypr/utils";
 import Editor, { TiptapEditor } from "@hypr/tiptap/editor";
-import Renderer from "@hypr/tiptap/renderer";
 
 import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { commands as dbCommands } from "@hypr/plugin-db";
@@ -25,12 +24,24 @@ import { EnhanceOnlyButton } from "./enhanced-only-button";
 import { NoteHeader } from "../header";
 
 export default function EditorArea() {
+  const [showRaw, setShowRaw] = useState(true);
+
   const sessionStore = useSession((s) => ({
     session: s.session,
     updateRawNote: s.updateRawNote,
     updateEnhancedNote: s.updateEnhancedNote,
     persistSession: s.persistSession,
   }));
+
+  const [initialEditorContent, setInitialEditorContent] = useState("");
+
+  useEffect(() => {
+    const content = showRaw
+      ? sessionStore.session?.raw_memo_html
+      : sessionStore.session?.enhanced_memo_html;
+
+    setInitialEditorContent(content ?? "");
+  }, [sessionStore.session?.id, showRaw]);
 
   const ongoingSessionStore = useOngoingSession((s) => ({
     listening: s.listening,
@@ -76,6 +87,8 @@ export default function EditorArea() {
       for await (const chunk of textStream) {
         acc += chunk;
         const html = await miscCommands.opinionatedMdToHtml(chunk);
+
+        setInitialEditorContent(html);
         sessionStore.updateEnhancedNote(html);
       }
 
@@ -89,20 +102,17 @@ export default function EditorArea() {
     },
   });
 
-  const [showRaw, setShowRaw] = useState(true);
-
-  const handleChangeRawNote = useCallback(
+  const handleChangeNote = useCallback(
     (content: string) => {
-      sessionStore.updateRawNote(content);
-    },
-    [sessionStore],
-  );
+      if (showRaw) {
+        sessionStore.updateRawNote(content);
+      } else {
+        sessionStore.updateEnhancedNote(content);
+      }
 
-  const handleChangeEnhancedNote = useCallback(
-    (content: string) => {
-      sessionStore.updateEnhancedNote(content);
+      sessionStore.persistSession(); // TODO
     },
-    [sessionStore],
+    [showRaw, sessionStore],
   );
 
   const handleClickEnhance = useCallback(() => {
@@ -110,24 +120,13 @@ export default function EditorArea() {
     setShowRaw(false);
   }, [enhance, setShowRaw]);
 
-  useEffect(() => {
-    return () => {
-      sessionStore.persistSession();
-    };
-  }, []);
-
   const editorRef = useRef<{ editor: TiptapEditor }>(null);
-  const rendererRef = useRef<{ editor: TiptapEditor }>(null);
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
       <NoteHeader
         onNavigateToEditor={() => {
-          if (showRaw) {
-            editorRef.current?.editor?.commands?.focus();
-          } else {
-            rendererRef.current?.editor?.commands?.focus();
-          }
+          editorRef.current?.editor?.commands?.focus();
         }}
       />
 
@@ -137,30 +136,16 @@ export default function EditorArea() {
           enhance.status === "pending" ? "tiptap-animate" : "",
         ])}
         onClick={() => {
-          if (showRaw) {
-            editorRef.current?.editor?.commands?.focus();
-          } else {
-            rendererRef.current?.editor?.commands?.focus();
-          }
+          editorRef.current?.editor?.commands?.focus();
         }}
       >
-        {showRaw ? (
-          <div>
-            <Editor
-              ref={editorRef}
-              handleChange={handleChangeRawNote}
-              content={sessionStore.session?.raw_memo_html ?? ""}
-            />
-          </div>
-        ) : (
-          <div>
-            <Renderer
-              ref={rendererRef}
-              handleChange={handleChangeEnhancedNote}
-              content={sessionStore.session?.enhanced_memo_html ?? ""}
-            />
-          </div>
-        )}
+        <div>
+          <Editor
+            ref={editorRef}
+            handleChange={handleChangeNote}
+            initialContent={initialEditorContent}
+          />
+        </div>
       </div>
 
       <AnimatePresence>
