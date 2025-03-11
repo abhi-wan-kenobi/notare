@@ -1,6 +1,7 @@
+import { X } from "lucide-react";
+
 import { Avatar, AvatarImage } from "@hypr/ui/components/ui/avatar";
 import { Button } from "@hypr/ui/components/ui/button";
-import { X } from "lucide-react";
 
 export interface InvitedUserProps {
   name: string;

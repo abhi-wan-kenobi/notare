@@ -1,9 +1,10 @@
-import { type Event } from "@hypr/plugin-db";
-import { Button } from "@hypr/ui/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { format } from "date-fns";
 import { Pen } from "lucide-react";
 import { EventCard } from "./event-card";
+
+import { type Event } from "@hypr/plugin-db";
+import { Button } from "@hypr/ui/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 
 interface DayEventsProps {
   date: Date;

@@ -1,6 +1,7 @@
 import { tz } from "@date-fns/tz";
-import { type Session } from "@hypr/plugin-db";
 import { differenceInCalendarDays, format, isThisWeek, isThisYear, isToday, isYesterday, startOfToday } from "date-fns";
+
+import { type Session } from "@hypr/plugin-db";
 
 export type GroupedSessions = Record<
   string,

@@ -1,7 +1,8 @@
-import { Button } from "@hypr/ui/components/ui/button";
-import { clsx } from "clsx";
 import { BuildingIcon, ChevronDown, ChevronRight, FolderIcon, GlobeIcon, LockIcon } from "lucide-react";
 import { useState } from "react";
+
+import { Button } from "@hypr/ui/components/ui/button";
+import { cn } from "@hypr/ui/lib/utils";
 
 export interface GeneralAccessSelectorProps {
   expanded: boolean;
@@ -72,7 +73,7 @@ export const GeneralAccessSelector = ({
             ([key, { icon, title, description }]) => (
               <div
                 key={key}
-                className={clsx(
+                className={cn(
                   "flex items-center gap-3 hover:bg-neutral-200 rounded-lg -mx-2 px-2 py-1 cursor-pointer",
                   selectedAccess === key && "bg-neutral-100",
                 )}

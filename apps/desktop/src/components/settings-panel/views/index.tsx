@@ -1,3 +1,5 @@
+import { type ReactNode } from "react";
+
 import { type Template } from "@hypr/plugin-db";
 import {
   Breadcrumb,
@@ -6,7 +8,6 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@hypr/ui/components/ui/breadcrumb";
-import { type ReactNode } from "react";
 
 interface SettingsPanelBodyProps {
   title: string;

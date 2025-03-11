@@ -1,3 +1,7 @@
+import { CopyIcon, EditIcon, MoreHorizontalIcon, TrashIcon } from "lucide-react";
+import { useCallback } from "react";
+import { SectionsList } from "../components/template-sections";
+
 import { type Template } from "@hypr/plugin-db";
 import { Button } from "@hypr/ui/components/ui/button";
 import {
@@ -8,9 +12,6 @@ import {
 } from "@hypr/ui/components/ui/dropdown-menu";
 import { Input } from "@hypr/ui/components/ui/input";
 import { Textarea } from "@hypr/ui/components/ui/textarea";
-import { CopyIcon, EditIcon, MoreHorizontalIcon, TrashIcon } from "lucide-react";
-import { useCallback } from "react";
-import { SectionsList } from "../components/template-sections";
 
 interface TemplateEditorProps {
   disabled: boolean;

@@ -1,15 +1,16 @@
+import { useHypr, useSession } from "@/contexts";
+import { formatDateHeader, formatRemainingTime, getSortedDates, groupSessionsByDate } from "@/lib/date";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { clsx } from "clsx";
 import { format, isFuture } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 
-import { useHypr, useSession } from "@/contexts";
-import { formatDateHeader, formatRemainingTime, getSortedDates, groupSessionsByDate } from "@/lib/date";
 import { commands as dbCommands, type Event, type Session } from "@hypr/plugin-db";
+import { cn } from "@hypr/ui/lib/utils";
 
 export default function NotesList() {
   const { userId } = useHypr();
+  const currentSession = useSession((s) => s.session);
 
   const events = useQuery({
     queryKey: ["events"],
@@ -22,6 +23,14 @@ export default function NotesList() {
       return upcomingEvents;
     },
   });
+
+  const sessions = useQuery({
+    queryKey: ["sessions"],
+    queryFn: () => dbCommands.listSessions(null),
+  });
+
+  const groupedSessions = groupSessionsByDate(sessions.data ?? []);
+  const sortedDates = getSortedDates(groupedSessions);
 
   return (
     <nav className="h-full overflow-y-auto space-y-6 px-3 pb-4">
@@ -38,7 +47,27 @@ export default function NotesList() {
         </section>
       )}
 
-      <SessionList />
+      {sortedDates.map((dateKey) => {
+        const { date, sessions } = groupedSessions[dateKey];
+
+        return (
+          <section key={dateKey}>
+            <h2 className="font-bold text-neutral-600 mb-2">
+              {formatDateHeader(date)}
+            </h2>
+
+            <div>
+              {sessions.map((session: Session) => (
+                <SessionItem
+                  key={session.id}
+                  session={session}
+                  isActive={session.id === currentSession?.id}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </nav>
   );
 }
@@ -75,70 +104,43 @@ function EventItem({ event }: { event: Event }) {
   );
 }
 
-function SessionList() {
+function SessionItem({
+  session,
+  isActive,
+}: {
+  session: Session;
+  isActive: boolean;
+}) {
   const navigate = useNavigate();
-
   const currentSession = useSession((s) => s.session);
+  const sessionDate = new Date(session.created_at);
 
-  const sessions = useQuery({
-    queryKey: ["sessions"],
-    queryFn: () => dbCommands.listSessions(null),
-  });
-
-  const handleClickSession = (id: string) => {
+  const handleClickSession = () => {
     navigate({
       to: "/app/note/$id",
-      params: { id },
+      params: { id: session.id },
     });
   };
 
-  const groupedSessions = groupSessionsByDate(sessions.data ?? []);
-  const sortedDates = getSortedDates(groupedSessions);
-
   return (
-    <>
-      {sortedDates.map((dateKey) => {
-        const { date, sessions } = groupedSessions[dateKey];
-
-        return (
-          <section key={dateKey}>
-            <h2 className="font-bold text-neutral-600 mb-2">
-              {formatDateHeader(date)}
-            </h2>
-
-            <div>
-              {sessions.map((session: Session) => {
-                const sessionDate = new Date(session.created_at);
-
-                return (
-                  <button
-                    key={session.id}
-                    onClick={() => handleClickSession(session.id)}
-                    disabled={session.id === currentSession?.id}
-                    className={clsx([
-                      "hover:bg-neutral-200",
-                      "group flex items-start gap-3 py-2",
-                      "w-full text-left transition-all rounded px-2",
-                      session.id === currentSession?.id && "bg-neutral-200 ",
-                    ])}
-                  >
-                    <div className="flex flex-col items-start gap-1">
-                      <div className="font-medium text-sm max-w-[180px] truncate">
-                        {currentSession?.id === session.id
-                          ? currentSession.title || "Untitled"
-                          : session.title || "Untitled"}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-neutral-500">
-                        <span>{format(sessionDate, "M/d/yy")}</span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
-    </>
+    <button
+      onClick={handleClickSession}
+      disabled={isActive}
+      className={cn(
+        "hover:bg-neutral-200 group flex items-start gap-3 py-2 w-full text-left transition-all rounded px-2",
+        isActive && "bg-neutral-200",
+      )}
+    >
+      <div className="flex flex-col items-start gap-1">
+        <div className="font-medium text-sm max-w-[180px] truncate">
+          {isActive
+            ? currentSession?.title || "Untitled"
+            : session.title || "Untitled"}
+        </div>
+        <div className="flex items-center gap-2 text-xs text-neutral-500">
+          <span>{format(sessionDate, "M/d/yy")}</span>
+        </div>
+      </div>
+    </button>
   );
 }

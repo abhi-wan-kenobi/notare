@@ -1,10 +1,11 @@
 import { useLeftSidebar } from "@/contexts/left-sidebar";
-import { Button } from "@hypr/ui/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { type as getOsType } from "@tauri-apps/plugin-os";
 import { ChevronsLeftIcon, MenuIcon } from "lucide-react";
 import Shortcut from "../../shortcut";
+
+import { Button } from "@hypr/ui/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 
 export function LeftSidebarButton({ type }: { type: "toolbar" | "sidebar" }) {
   const osType = useQuery({

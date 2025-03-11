@@ -1,6 +1,7 @@
-import clsx from "clsx";
 import { PackageIcon, SearchIcon } from "lucide-react";
 import { type ReactNode } from "react";
+
+import { cn } from "@hypr/ui/lib/utils";
 
 interface Extension {
   id: string;
@@ -64,7 +65,7 @@ export function ExtensionList({
                 <button
                   key={extension.id}
                   onClick={() => onExtensionSelect(extension)}
-                  className={clsx(
+                  className={cn(
                     "flex w-full flex-col gap-1 rounded-lg p-2 text-left hover:bg-neutral-100",
                     selectedExtension?.id === extension.id && "bg-neutral-100",
                   )}
@@ -100,7 +101,7 @@ export function ExtensionList({
                 <button
                   key={extension.id}
                   onClick={() => onExtensionSelect(extension)}
-                  className={clsx(
+                  className={cn(
                     "flex w-full flex-col gap-1 rounded-lg p-2 text-left hover:bg-neutral-100",
                     selectedExtension?.id === extension.id && "bg-neutral-100",
                   )}

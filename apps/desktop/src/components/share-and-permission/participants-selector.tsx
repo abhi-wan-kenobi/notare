@@ -1,6 +1,7 @@
-import { Button } from "@hypr/ui/components/ui/button";
 import { ChevronDown, ChevronRight, Users2Icon } from "lucide-react";
 import { InvitedUser } from "./invited-user";
+
+import { Button } from "@hypr/ui/components/ui/button";
 
 export interface ParticipantsSelectorProps {
   expanded: boolean;

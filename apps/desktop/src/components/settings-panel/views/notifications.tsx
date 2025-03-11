@@ -1,11 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { commands as dbCommands, type ConfigNotification } from "@hypr/plugin-db";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@hypr/ui/components/ui/form";
-import { Switch } from "@hypr/ui/components/ui/switch";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+
+import { commands as dbCommands, type ConfigNotification } from "@hypr/plugin-db";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@hypr/ui/components/ui/form";
+import { Switch } from "@hypr/ui/components/ui/switch";
 
 const schema = z.object({
   before: z.boolean().optional(),

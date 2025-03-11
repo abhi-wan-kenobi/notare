@@ -1,7 +1,8 @@
 import { SignedIn, SignOutButton } from "@clerk/clerk-react";
+import { createFileRoute } from "@tanstack/react-router";
+
 import { Button } from "@hypr/ui/components/ui/button";
 import { Particles } from "@hypr/ui/components/ui/particles";
-import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/auth/sign-out")({
   component: Component,

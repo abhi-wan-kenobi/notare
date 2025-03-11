@@ -1,8 +1,9 @@
 import { extractTextFromHtml } from "@/utils";
-import { commands as dbCommands } from "@hypr/plugin-db";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { FileText } from "lucide-react";
+
+import { commands as dbCommands } from "@hypr/plugin-db";
 
 export default function RecentNotes() {
   const navigate = useNavigate();

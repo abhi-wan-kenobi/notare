@@ -1,9 +1,10 @@
 import { useSession } from "@/contexts";
-import { commands as dbCommands } from "@hypr/plugin-db";
-import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { useQuery } from "@tanstack/react-query";
 import { TagIcon } from "lucide-react";
 import { useState } from "react";
+
+import { commands as dbCommands } from "@hypr/plugin-db";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 
 export function TagChip() {
   const [open, setOpen] = useState(false);

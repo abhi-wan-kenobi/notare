@@ -1,9 +1,10 @@
-import { Button } from "@hypr/ui/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@hypr/ui/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@hypr/ui/components/ui/tabs";
 import { Trans } from "@lingui/react/macro";
 import { ExternalLinkIcon } from "lucide-react";
 import { useState } from "react";
+
+import { Button } from "@hypr/ui/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@hypr/ui/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@hypr/ui/components/ui/tabs";
 
 const pricingPlans = [
   {

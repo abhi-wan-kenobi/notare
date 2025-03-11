@@ -1,6 +1,7 @@
-import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { CalendarIcon, Users2Icon } from "lucide-react";
 import type { Session } from "../../client";
+
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 
 interface SessionInfoProps {
   session: Session;

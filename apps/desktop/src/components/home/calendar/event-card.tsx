@@ -1,10 +1,11 @@
-import { commands as dbCommands, type Event } from "@hypr/plugin-db";
-import { Button } from "@hypr/ui/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { Pen } from "lucide-react";
+
+import { commands as dbCommands, type Event } from "@hypr/plugin-db";
+import { Button } from "@hypr/ui/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 
 export function EventCard({ event }: { event: Event }) {
   const navigate = useNavigate();

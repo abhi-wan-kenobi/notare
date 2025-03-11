@@ -28,7 +28,7 @@ const handleClick = () => {
   <div
     @click="handleClick"
     :class="
-      clsx(
+      cn(
         'cursor-pointer px-8 rounded-xl',
         'bg-[--vp-c-bg-elv] hover:bg-[--vp-c-bg-alt]',
       )
@@ -36,7 +36,7 @@ const handleClick = () => {
   >
     <h3
       :class="
-        clsx(
+        cn(
           'font-semibold text-[--vp-c-text-1]',
           'text-sm sm:text-base md:text-lg',
         )
@@ -44,7 +44,7 @@ const handleClick = () => {
     >
       {{ title }}
     </h3>
-    <p :class="clsx('text-[--vp-c-text-2]', 'text-xs sm:text-sm md:text-base')">
+    <p :class="cn('text-[--vp-c-text-2]', 'text-xs sm:text-sm md:text-base')">
       {{ body }}
     </p>
   </div>

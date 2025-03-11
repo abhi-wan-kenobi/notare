@@ -1,11 +1,10 @@
 import { useNewNote } from "@/contexts/new-note";
-import { Button } from "@hypr/ui/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
-
 import { useSession } from "@/contexts/session";
-
 import { SquarePenIcon } from "lucide-react";
 import Shortcut from "../../shortcut";
+
+import { Button } from "@hypr/ui/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 
 export function NewNoteButton() {
   const { createNewNote } = useNewNote();

@@ -1,7 +1,8 @@
-import { clsx } from "clsx";
 import { UserIcon } from "lucide-react";
 import { data } from "../constants";
 import { type NavNames } from "../types";
+
+import { cn } from "@hypr/ui/lib/utils";
 
 export interface SettingsViewProps {
   active: NavNames | "Profile";
@@ -18,7 +19,7 @@ export function SettingsView({ active, setActive }: SettingsViewProps) {
               <li key={item.name}>
                 <button
                   onClick={() => setActive(item.name)}
-                  className={clsx(
+                  className={cn(
                     "flex w-full items-center gap-2 rounded-lg p-2 text-sm text-neutral-600 focus:outline-none",
                     item.name === active
                       ? "bg-primary text-primary-foreground"
@@ -37,7 +38,7 @@ export function SettingsView({ active, setActive }: SettingsViewProps) {
       <footer className="mt-auto border-t p-2">
         <button
           onClick={() => setActive("Profile")}
-          className={clsx(
+          className={cn(
             "flex w-full items-center gap-2 rounded-lg p-2 text-sm text-neutral-600 focus:outline-none",
             active === "Profile"
               ? "bg-primary text-primary-foreground"

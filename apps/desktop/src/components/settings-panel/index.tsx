@@ -1,7 +1,4 @@
 import { useSettingsPanel } from "@/contexts/settings-panel";
-import { commands as dbCommands, type Template } from "@hypr/plugin-db";
-import { Button } from "@hypr/ui/components/ui/button";
-import { Modal, ModalBody } from "@hypr/ui/components/ui/modal";
 import { useQuery } from "@tanstack/react-query";
 import { SettingsIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -16,6 +13,10 @@ import NotificationsComponent from "./views/notifications";
 import ProfileComponent from "./views/profile";
 import TeamComponent from "./views/team";
 import TemplateEditor from "./views/template";
+
+import { commands as dbCommands, type Template } from "@hypr/plugin-db";
+import { Button } from "@hypr/ui/components/ui/button";
+import { Modal, ModalBody } from "@hypr/ui/components/ui/modal";
 
 export default function SettingsPanel() {
   const { isOpen, open, close } = useSettingsPanel();

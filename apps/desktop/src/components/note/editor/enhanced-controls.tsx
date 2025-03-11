@@ -1,6 +1,7 @@
-import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
-import clsx from "clsx";
 import { AlignLeft, Zap } from "lucide-react";
+
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
+import { cn } from "@hypr/ui/lib/utils";
 
 interface EnhanceControlsProps {
   showRaw: boolean;
@@ -12,7 +13,7 @@ export function EnhanceControls({ showRaw, setShowRaw }: EnhanceControlsProps) {
     <div className="flex w-fit flex-row items-center">
       <button
         onClick={() => setShowRaw(true)}
-        className={clsx(
+        className={cn(
           "rounded-l-xl border border-r-0 border-border px-4 py-2.5 transition-all ease-in-out",
           showRaw
             ? "bg-primary text-primary-foreground"
