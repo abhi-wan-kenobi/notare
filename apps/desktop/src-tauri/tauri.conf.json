@@ -25,11 +25,11 @@
       "entitlements": "./Entitlements.plist"
     },
     "icon": [
-      "icons/32.png",
-      "icons/128.png",
-      "icons/256.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
+      "icons/stable/32x32.png",
+      "icons/stable/128x128.png",
+      "icons/stable/128x128@2x.png",
+      "icons/stable/icon.icns",
+      "icons/stable/icon.ico"
     ]
   },
   "plugins": {
