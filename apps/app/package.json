@@ -11,9 +11,10 @@
     "start": "vite"
   },
   "devDependencies": {
-    "@clerk/types": "^4.47.0",
+    "@clerk/types": "^4.48.0",
     "@hypr/client": "workspace:^",
-    "@tanstack/router-plugin": "^1.114.7",
+    "@tailwindcss/typography": "^0.5.16",
+    "@tanstack/router-plugin": "^1.114.15",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
@@ -21,18 +22,17 @@
     "msw": "^2.7.3",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
-    "vite": "^6.2.1",
-    "@tailwindcss/typography": "^0.5.16"
+    "vite": "^6.2.1"
   },
   "dependencies": {
-    "@clerk/clerk-react": "^5.24.1",
+    "@clerk/clerk-react": "^5.24.2",
     "@hypr/tiptap": "workspace:^",
     "@hypr/ui": "workspace:^",
     "@nangohq/frontend": "^0.53.2",
     "@sentry/react": "^8.55.0",
-    "@tanstack/react-query": "^5.67.2",
-    "@tanstack/react-router": "^1.114.7",
-    "@tanstack/zod-adapter": "^1.114.7",
+    "@tanstack/react-query": "^5.67.3",
+    "@tanstack/react-router": "^1.114.15",
+    "@tanstack/zod-adapter": "^1.114.15",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
     "react": "^18.3.1",
