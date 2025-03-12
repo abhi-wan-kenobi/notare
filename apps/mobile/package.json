@@ -13,12 +13,12 @@
   "dependencies": {
     "@date-fns/tz": "^1.2.0",
     "@hookform/resolvers": "^3.10.0",
-    "@huggingface/languages": "^1.0.0",
     "@hypr/plugin-auth": "workspace:^",
     "@hypr/plugin-db": "workspace:^",
     "@hypr/plugin-listener": "workspace:^",
     "@hypr/plugin-misc": "workspace:^",
     "@hypr/plugin-template": "workspace:^",
+    "@hypr/tiptap": "workspace:^",
     "@hypr/ui": "workspace:^",
     "@stackflow/config": "^1.2.1",
     "@stackflow/core": "^1.2.0",
@@ -39,6 +39,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.16",
     "@tauri-apps/cli": "^2.3.1",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",

@@ -29,7 +29,6 @@ export function ExtensionsView({
   const selectedExtension: Extension | null = null;
   const handleExtensionSelect = (extension: Extension) => {
     // TODO: Implement extension selection
-    console.log("Selected extension:", extension);
   };
 
   return (

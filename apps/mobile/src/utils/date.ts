@@ -1,6 +1,8 @@
 import { tz } from "@date-fns/tz";
 import { differenceInCalendarDays, format, isThisWeek, isThisYear, isToday, isYesterday, startOfToday } from "date-fns";
 
+import { type LocalRecording } from "../mock/recordings";
+
 import { type Session } from "@hypr/plugin-db";
 
 export type GroupedSessions = Record<
@@ -26,8 +28,6 @@ export function formatDateHeader(date: Date): string {
 
   const todayStart = startOfToday();
   const daysDiff = differenceInCalendarDays(todayStart, date, tzOptions);
-
-  console.log(todayStart, date, daysDiff);
 
   if (daysDiff > 1 && daysDiff <= 7) {
     if (isThisWeek(date, tzOptions)) {
@@ -63,7 +63,7 @@ export function formatRemainingTime(date: Date): string {
   }
 }
 
-export function groupSessionsByDate(sessions: Session[]): GroupedSessions {
+export function groupNotesByDate(sessions: Session[]): GroupedSessions {
   return sessions.reduce<GroupedSessions>((groups, session) => {
     const date = new Date(session.created_at);
     const dateKey = format(date, "yyyy-MM-dd");
@@ -80,6 +80,34 @@ export function groupSessionsByDate(sessions: Session[]): GroupedSessions {
   }, {});
 }
 
-export function getSortedDates(groupedSessions: GroupedSessions): string[] {
+export function getSortedDatesForNotes(groupedSessions: GroupedSessions): string[] {
   return Object.keys(groupedSessions).sort((a, b) => b.localeCompare(a));
 }
+
+export const groupRecordingsByDate = (recordings: LocalRecording[]) => {
+  const groups: Record<string, { date: Date; recordings: LocalRecording[] }> = {};
+
+  recordings.forEach(recording => {
+    const date = new Date(recording.created_at);
+    const dateKey = date.toISOString().split("T")[0];
+
+    if (!groups[dateKey]) {
+      groups[dateKey] = {
+        date,
+        recordings: [],
+      };
+    }
+
+    groups[dateKey].recordings.push(recording);
+  });
+
+  return groups;
+};
+
+export const getSortedDatesForRecordings = (
+  groupedRecordings: Record<string, { date: Date; recordings: LocalRecording[] }>,
+) => {
+  return Object.keys(groupedRecordings).sort((a, b) => {
+    return new Date(b).getTime() - new Date(a).getTime();
+  });
+};

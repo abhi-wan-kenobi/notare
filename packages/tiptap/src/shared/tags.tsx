@@ -12,7 +12,7 @@ export const tagSuggestion = (
   return {
     char: trigger,
     pluginKey: new PluginKey(`mention-${trigger}`),
-    items: ({ query }) => {
+    items: ({}) => {
       return ["TODO1", "TODO2", "TODO3"];
     },
     render: () => {

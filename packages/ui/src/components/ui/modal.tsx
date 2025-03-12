@@ -104,7 +104,7 @@ export function ModalFooter({ children, className }: ModalFooterProps) {
   return (
     <div
       className={cn(
-        "flex items-center justify-end gap-2 border-t px-6 py-4",
+        "flex items-center justify-end gap-2 px-6 py-4",
         className,
       )}
     >

@@ -20,6 +20,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"],
+  "include": ["src", "../../packages/ui/src/components/ui/bottom-sheet.tsx"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
