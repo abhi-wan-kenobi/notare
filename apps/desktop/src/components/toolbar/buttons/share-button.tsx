@@ -1,5 +1,5 @@
 import ShareAndPermissionPanel from "@/components/share-and-permission";
-import { Share2Icon, } from "lucide-react";
+import { Share2Icon } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@hypr/ui/components/ui/button";
