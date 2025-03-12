@@ -1,13 +1,12 @@
 import { SignedOut, useSignIn } from "@clerk/clerk-react";
 import type { OAuthStrategy } from "@clerk/types";
-import { Button } from "@hypr/ui/components/ui/button";
-import { Particles } from "@hypr/ui/components/ui/particles";
 import { createFileRoute, LinkProps } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
-import { clsx } from "clsx";
-
 import { createURL } from "../utils";
 import { schema as connectSchema } from "./auth.connect";
+
+import { Button } from "@hypr/ui/components/ui/button";
+import { Particles } from "@hypr/ui/components/ui/particles";
 
 export const Route = createFileRoute("/auth/sign-in")({
   validateSearch: zodValidator(connectSchema.optional().catch(undefined)),

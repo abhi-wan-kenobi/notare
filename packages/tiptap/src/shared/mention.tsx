@@ -97,9 +97,8 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>(
         {props.items.map((item, index) => (
           <button
             className={clsx(
-              "flex items-center gap-1 w-full text-left bg-transparent",
-              index === selectedIndex ? "bg-neutral-400" : "",
-              "hover:bg-neutral-300",
+              "flex items-center gap-1 w-full text-left hover:bg-neutral-300",
+              index === selectedIndex && "bg-neutral-400",
             )}
             key={index}
             type="button"

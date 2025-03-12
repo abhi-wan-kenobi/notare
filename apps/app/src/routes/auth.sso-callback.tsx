@@ -1,7 +1,6 @@
 import { AuthenticateWithRedirectCallback } from "@clerk/clerk-react";
 import { createFileRoute, type LinkProps } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
-
 import { createURL } from "../utils";
 import { schema as connectSchema } from "./auth.connect";
 

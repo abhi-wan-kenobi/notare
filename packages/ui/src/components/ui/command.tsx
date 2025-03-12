@@ -1,10 +1,11 @@
 "use client";
 
-import { cn } from "@hypr/ui/lib/utils";
 import { Command as CommandPrimitive } from "cmdk";
 import { Search } from "lucide-react";
 import * as React from "react";
 import { useHotkeys } from "react-hotkeys-hook";
+
+import { cn } from "@hypr/ui/lib/utils";
 
 interface CommandDialogProps extends React.ComponentPropsWithoutRef<typeof CommandPrimitive> {
   open?: boolean;

@@ -1,6 +1,4 @@
 import { useSession } from "@/contexts";
-import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
-import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { RiLinkedinBoxFill } from "@remixicon/react";
 import { useQuery } from "@tanstack/react-query";
 import { Mail, Users2Icon } from "lucide-react";
@@ -8,6 +6,8 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 
 import { commands as dbCommands, type Human } from "@hypr/plugin-db";
+import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 
 export function ParticipantsChip() {
   const sessionId = useSession((s) => s.session?.id);

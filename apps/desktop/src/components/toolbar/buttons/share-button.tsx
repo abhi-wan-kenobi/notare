@@ -1,8 +1,9 @@
 import ShareAndPermissionPanel from "@/components/share-and-permission";
-import { Button } from "@hypr/ui/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { ShareIcon } from "lucide-react";
 import { useState } from "react";
+
+import { Button } from "@hypr/ui/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 
 export function ShareButton() {
   const [email, setEmail] = useState("");

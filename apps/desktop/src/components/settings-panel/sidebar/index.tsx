@@ -1,8 +1,9 @@
-import { type Template } from "@hypr/plugin-db";
 import { type NavNames } from "../types";
 import { ExtensionsView } from "./extensions-view";
 import { SettingsView } from "./settings-view";
 import { TemplateView } from "./template-view";
+
+import { type Template } from "@hypr/plugin-db";
 
 interface SettingsSidebarProps {
   active: NavNames | "Profile";

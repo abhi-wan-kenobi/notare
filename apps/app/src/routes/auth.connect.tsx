@@ -1,12 +1,12 @@
 import { useAuth } from "@clerk/clerk-react";
-import { Button } from "@hypr/ui/components/ui/button";
-import { Particles } from "@hypr/ui/components/ui/particles";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
-import { clsx } from "clsx";
 import { useState } from "react";
 import { z } from "zod";
+
+import { Button } from "@hypr/ui/components/ui/button";
+import { Particles } from "@hypr/ui/components/ui/particles";
 
 import { client, postApiWebConnectMutation, type RequestParams, type ResponseParams } from "../client";
 
@@ -141,7 +141,7 @@ function Component() {
                         <div className="animate-spin h-6 w-6 border-3 border-neutral-100 border-t-transparent rounded-full">
                         </div>
                       </div>
-                      <p className="text-lg font-medium text-neutral-100">
+                      <p className="text-lg font-medium text-neutral-600">
                         Connecting...
                       </p>
                     </div>
@@ -151,7 +151,7 @@ function Component() {
                     <div className="text-center py-4">
                       <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-800 mb-4">
                         <svg
-                          className="w-6 h-6 text-neutral-100"
+                          className="w-6 h-6 text-neutral-400"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -166,7 +166,7 @@ function Component() {
                           </path>
                         </svg>
                       </div>
-                      <p className="text-lg font-medium text-neutral-100 mb-2">
+                      <p className="text-lg font-medium text-neutral-600 mb-2">
                         Connected Successfully
                       </p>
                       <p className="text-neutral-400 mb-3">
@@ -210,7 +210,7 @@ function Component() {
                           </path>
                         </svg>
                       </div>
-                      <p className="text-lg font-medium text-neutral-100 mb-2">
+                      <p className="text-lg font-medium text-red-600 mb-2">
                         Connection Failed
                       </p>
                       <p className="text-neutral-400 mb-2">
@@ -221,7 +221,7 @@ function Component() {
                           View error details
                         </summary>
                         <pre className="mt-2 p-2 bg-neutral-800 rounded text-xs overflow-auto max-h-36 text-neutral-300">
-                        {JSON.stringify(mutation.error, null, 2)}
+                          {JSON.stringify(mutation.error, null, 2)}
                         </pre>
                       </details>
                     </div>

@@ -1,15 +1,16 @@
-import { commands as appleCalendarCommands } from "@hypr/plugin-apple-calendar";
-import { commands as listenerCommands } from "@hypr/plugin-listener";
-import { commands as sfxCommands } from "@hypr/plugin-sfx";
-import { Particles } from "@hypr/ui/components/ui/particles";
-import PushableButton from "@hypr/ui/components/ui/pushable-button";
-import ShimmerButton from "@hypr/ui/components/ui/shimmer-button";
 import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type as getOsType } from "@tauri-apps/plugin-os";
 import { MicIcon, Volume2Icon } from "lucide-react";
 import { useEffect } from "react";
+
+import { commands as appleCalendarCommands } from "@hypr/plugin-apple-calendar";
+import { commands as listenerCommands } from "@hypr/plugin-listener";
+import { commands as sfxCommands } from "@hypr/plugin-sfx";
+import { Particles } from "@hypr/ui/components/ui/particles";
+import PushableButton from "@hypr/ui/components/ui/pushable-button";
+import ShimmerButton from "@hypr/ui/components/ui/shimmer-button";
 
 export const Route = createFileRoute("/onboarding")({
   component: Component,

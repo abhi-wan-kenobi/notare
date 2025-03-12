@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import { createContext, useContext } from "react";
 
 import { commands as authCommands } from "@hypr/plugin-auth";
@@ -11,7 +10,6 @@ export interface HyprContext {
 const HyprContext = createContext<HyprContext | null>(null);
 
 export function HyprProvider({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate();
   const userId = useQuery({
     queryKey: ["userId"],
     queryFn: () => authCommands.getFromStore("auth-user-id"),
@@ -26,9 +24,11 @@ export function HyprProvider({ children }: { children: React.ReactNode }) {
     return <div>Failed to fetch user id</div>;
   }
 
+  // For mobile, we might want to handle the missing userId differently
+  // Instead of automatic navigation, we can conditionally render
   if (!userId.data) {
-    navigate({ to: "/login" });
-    return null;
+    // You might want to redirect to a login activity/screen instead
+    return <div>Please log in to continue</div>;
   }
 
   return (
@@ -41,7 +41,7 @@ export function HyprProvider({ children }: { children: React.ReactNode }) {
 export function useHypr() {
   const context = useContext(HyprContext);
   if (!context) {
-    throw new Error("useHypr must be used within an AuthProvider");
+    throw new Error("useHypr must be used within a HyprProvider");
   }
   return context;
 }

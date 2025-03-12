@@ -2,9 +2,9 @@ import type { ActivityLoaderArgs } from "@stackflow/config";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import { ActivityComponentType, useLoaderData } from "@stackflow/react/future";
 
-export function sessionActivityLoader({
+export function noteActivityLoader({
   params,
-}: ActivityLoaderArgs<"SessionActivity">) {
+}: ActivityLoaderArgs<"NoteActivity">) {
   const { id } = params;
 
   const session = { id };
@@ -12,8 +12,8 @@ export function sessionActivityLoader({
   return { session };
 }
 
-export const SessionActivity: ActivityComponentType<"SessionActivity"> = () => {
-  const { session } = useLoaderData<typeof sessionActivityLoader>();
+export const NoteActivity: ActivityComponentType<"NoteActivity"> = () => {
+  const { session } = useLoaderData<typeof noteActivityLoader>();
 
   return (
     <AppScreen
@@ -31,7 +31,7 @@ export const SessionActivity: ActivityComponentType<"SessionActivity"> = () => {
 
 declare module "@stackflow/config" {
   interface Register {
-    SessionActivity: {
+    NoteActivity: {
       id: string;
     };
   }

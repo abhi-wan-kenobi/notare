@@ -1,8 +1,9 @@
-import { type Event } from "@hypr/plugin-db";
 import { addDays, eachDayOfInterval, format, getDay, isToday, isWeekend } from "date-fns";
 import { useEffect, useState } from "react";
 import { DayEvents } from "./day-events";
 import { mockEvents } from "./mock";
+
+import { type Event } from "@hypr/plugin-db";
 
 const useWindowSize = () => {
   const [width, setWidth] = useState(window.innerWidth);

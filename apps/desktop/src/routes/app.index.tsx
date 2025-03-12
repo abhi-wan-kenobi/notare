@@ -1,6 +1,7 @@
+import { createFileRoute, redirect } from "@tanstack/react-router";
+
 import { commands as authCommands } from "@hypr/plugin-auth";
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
-import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/app/")({
   beforeLoad: async ({ context: { queryClient } }) => {

@@ -1,6 +1,7 @@
+import { InvitedUser } from "./invited-user";
+
 import { Button } from "@hypr/ui/components/ui/button";
 import { Input } from "@hypr/ui/components/ui/input";
-import { InvitedUser } from "./invited-user";
 
 export interface InviteListProps {
   email: string;

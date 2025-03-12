@@ -1,9 +1,10 @@
-import { Button } from "@hypr/ui/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import { Ear, EarOff } from "lucide-react";
 import { useState } from "react";
 import AudioIndicator from "./audio-indicator";
+
+import { Button } from "@hypr/ui/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 
 interface ListenButtonProps {
   isListening: boolean;
