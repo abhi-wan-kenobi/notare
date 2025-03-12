@@ -22,7 +22,7 @@ jobs:
       - uses: ./.github/actions/rust_install
         with:
           target: "ios"
-      - run: pnpm -F mobile tauri ios build --export-method app-store-connect
+      - run: pnpm -F mobile tauri ios build --export-method release-testing
   # https://v2.tauri.app/distribute/google-play
   android:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'mobile_'))
@@ -49,6 +49,9 @@ jobs:
           ndk-version: r27c
           link-to-sdk: true
           local-cache: true
+      - run: cargo install cargo-ndk
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
       - run: pnpm -F mobile tauri android build --aab
         env:
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
