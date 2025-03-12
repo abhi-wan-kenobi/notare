@@ -101,15 +101,15 @@ export default function Billing({ currentPlan, trialDaysLeft }: BillingProps) {
           <TabsList className="grid w-fit grid-cols-2">
             <TabsTrigger
               value="monthly"
-              className="data-[state=active]:bg-neutral-200 data-[state=active]:text-neutral-950 hover:bg-neutral-100 focus:outline-none focus:ring-0"
+              className="data-[state=active]:bg-neutral-200 data-[state=active]:text-neutral-950 focus:outline-none focus:ring-0"
             >
-              Monthly
+              <Trans>Monthly</Trans>
             </TabsTrigger>
             <TabsTrigger
               value="annual"
-              className="data-[state=active]:bg-neutral-200 data-[state=active]:text-neutral-950 hover:bg-neutral-100 focus:outline-none focus:ring-0"
+              className="data-[state=active]:bg-neutral-200 data-[state=active]:text-neutral-950 focus:outline-none focus:ring-0"
             >
-              Annual
+              <Trans>Annual</Trans>
             </TabsTrigger>
           </TabsList>
         </Tabs>

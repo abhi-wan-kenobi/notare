@@ -1,5 +1,5 @@
 import ShareAndPermissionPanel from "@/components/share-and-permission";
-import { ShareIcon } from "lucide-react";
+import { Share2Icon, } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@hypr/ui/components/ui/button";
@@ -33,7 +33,7 @@ export function ShareButton() {
           className="hover:bg-neutral-200"
           aria-label="Share"
         >
-          <ShareIcon className="size-4" />
+          <Share2Icon className="size-4" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
