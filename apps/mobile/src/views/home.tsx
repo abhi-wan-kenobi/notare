@@ -5,8 +5,7 @@ import { AudioLinesIcon, CalendarIcon, MicIcon, Settings, SquarePenIcon } from "
 import * as React from "react";
 
 import { BottomSheet, BottomSheetContent } from "@hypr/ui/components/ui/bottom-sheet";
-import { EventItem } from "../components/event-item";
-import { NoteItem } from "../components/note-item";
+import { EventItem, NoteItem } from "../components/home";
 import { mockEvents, mockSessions } from "../mock";
 import { formatDateHeader, getSortedDates, groupNotesByDate } from "../utils/date";
 
@@ -33,7 +32,11 @@ export const HomeActivity: ActivityComponentType<"HomeActivity"> = () => {
     push("NoteActivity", { id });
   };
 
-  const handleClickNew = () => {
+  const handleClickUpload = () => {
+    push("NoteActivity", { id: "new" });
+  };
+
+  const handleClickRecord = () => {
     push("NoteActivity", { id: "new" });
   };
 
@@ -100,7 +103,7 @@ export const HomeActivity: ActivityComponentType<"HomeActivity"> = () => {
           {notes && notes.length === 0 && (
             <div className="flex flex-col justify-center items-center h-64">
               <p className="text-neutral-500 mb-4">No notes yet</p>
-              <Button onClick={handleClickNew}>Create your first note</Button>
+              <Button onClick={() => setSheetOpen(true)}>Create your first note</Button>
             </div>
           )}
         </div>
@@ -109,23 +112,27 @@ export const HomeActivity: ActivityComponentType<"HomeActivity"> = () => {
           className="absolute z-10 bottom-0 left-0 right-0 flex justify-center px-4 pb-4"
           onClick={(e) => e.stopPropagation()}
         >
-          <Button 
+          <Button
             className="w-full py-3 text-lg font-semibold"
             onClick={() => setSheetOpen(true)}
           >
             <SquarePenIcon size={20} className="mr-2" />Create new note
           </Button>
-          
-          <BottomSheet 
-            open={sheetOpen} 
+
+          <BottomSheet
+            open={sheetOpen}
             onClose={() => setSheetOpen(false)}
           >
             <BottomSheetContent className="flex gap-2 bg-white">
-              <Button className="aspect-square w-full flex-col gap-2 text-red-500" variant="outline">
+              <Button
+                className="aspect-square w-full flex-col gap-2 text-red-500"
+                variant="outline"
+                onClick={handleClickUpload}
+              >
                 <AudioLinesIcon size={32} />
                 Upload recording
               </Button>
-              <Button className="aspect-square w-full flex-col gap-2 bg-red-500">
+              <Button className="aspect-square w-full flex-col gap-2 bg-red-500" onClick={handleClickRecord}>
                 <MicIcon size={32} />
                 Start recording
               </Button>

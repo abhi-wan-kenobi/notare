@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { formatRemainingTime } from "../utils/date";
+import { formatRemainingTime } from "../../utils/date";
 
 import { commands as dbCommands, type Event } from "@hypr/plugin-db";
 

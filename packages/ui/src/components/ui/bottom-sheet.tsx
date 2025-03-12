@@ -1,8 +1,8 @@
 "use client";
 
-import * as React from "react";
-import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@hypr/ui/lib/utils";
+import { AnimatePresence, motion } from "motion/react";
+import * as React from "react";
 
 interface BottomSheetProps {
   open: boolean;
@@ -55,15 +55,15 @@ export function BottomSheet({
             className={cn(
               "fixed bottom-0 left-0 right-0 z-50",
               "rounded-t-lg shadow-lg border-t overflow-clip",
-              className
+              className,
             )}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={{ 
-              type: "spring", 
-              damping: 25, 
-              stiffness: 300 
+            transition={{
+              type: "spring",
+              damping: 25,
+              stiffness: 300,
             }}
           >
             {children}
@@ -79,9 +79,9 @@ interface BottomSheetContentProps {
   className?: string;
 }
 
-export function BottomSheetContent({ 
-  children, 
-  className 
+export function BottomSheetContent({
+  children,
+  className,
 }: BottomSheetContentProps) {
   return (
     <div className={cn("p-4", className)}>
@@ -96,13 +96,13 @@ interface BottomSheetTriggerProps {
   className?: string;
 }
 
-export function BottomSheetTrigger({ 
-  children, 
+export function BottomSheetTrigger({
+  children,
   onClick,
-  className 
+  className,
 }: BottomSheetTriggerProps) {
   return (
-    <div 
+    <div
       onClick={onClick}
       className={cn("cursor-pointer", className)}
     >
