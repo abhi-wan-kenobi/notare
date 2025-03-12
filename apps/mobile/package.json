@@ -13,7 +13,6 @@
   "dependencies": {
     "@date-fns/tz": "^1.2.0",
     "@hookform/resolvers": "^3.10.0",
-    "@huggingface/languages": "^1.0.0",
     "@hypr/plugin-auth": "workspace:^",
     "@hypr/plugin-db": "workspace:^",
     "@hypr/plugin-listener": "workspace:^",
