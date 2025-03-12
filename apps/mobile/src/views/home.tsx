@@ -2,7 +2,9 @@ import type { ActivityLoaderArgs } from "@stackflow/config";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import { ActivityComponentType, useFlow, useLoaderData } from "@stackflow/react/future";
 import { AudioLinesIcon, CalendarIcon, MicIcon, Settings, SquarePenIcon } from "lucide-react";
+import * as React from "react";
 
+import { BottomSheet, BottomSheetContent } from "@hypr/ui/components/ui/bottom-sheet";
 import { EventItem } from "../components/event-item";
 import { NoteItem } from "../components/note-item";
 import { mockEvents, mockSessions } from "../mock";
@@ -20,6 +22,7 @@ export function homeActivityLoader({}: ActivityLoaderArgs<"HomeActivity">) {
 
 export const HomeActivity: ActivityComponentType<"HomeActivity"> = () => {
   const { upcomingEvents, notes } = useLoaderData<typeof homeActivityLoader>();
+  const [sheetOpen, setSheetOpen] = React.useState(false);
 
   const { push } = useFlow();
 
@@ -106,21 +109,28 @@ export const HomeActivity: ActivityComponentType<"HomeActivity"> = () => {
           className="absolute z-10 bottom-0 left-0 right-0 flex justify-center px-4 pb-4"
           onClick={(e) => e.stopPropagation()}
         >
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button className="w-full py-3 text-lg font-semibold">
-                <SquarePenIcon size={20} />Create new note
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="flex gap-2 max-h-60">
-              <Button className="aspect-square w-full flex-col gap-1" variant="outline">
+          <Button 
+            className="w-full py-3 text-lg font-semibold"
+            onClick={() => setSheetOpen(true)}
+          >
+            <SquarePenIcon size={20} className="mr-2" />Create new note
+          </Button>
+          
+          <BottomSheet 
+            open={sheetOpen} 
+            onClose={() => setSheetOpen(false)}
+          >
+            <BottomSheetContent className="flex gap-2 bg-white">
+              <Button className="aspect-square w-full flex-col gap-2 text-red-500" variant="outline">
                 <AudioLinesIcon size={32} />
+                Upload recording
               </Button>
-              <Button className="aspect-square w-full flex-col gap-1">
+              <Button className="aspect-square w-full flex-col gap-2 bg-red-500">
                 <MicIcon size={32} />
+                Start recording
               </Button>
-            </SheetContent>
-          </Sheet>
+            </BottomSheetContent>
+          </BottomSheet>
         </div>
       </div>
     </AppScreen>
