@@ -16,6 +16,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/pnpm_install
       - run: pnpm -F ui build
+      - uses: ./.github/actions/install_mobile_deps
+        with:
+          target: "ios"
       - uses: ./.github/actions/rust_install
         with:
           target: "ios"
@@ -29,6 +32,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/pnpm_install
       - run: pnpm -F ui build
+      - uses: ./.github/actions/install_mobile_deps
+        with:
+          target: "android"
       - uses: ./.github/actions/rust_install
         with:
           target: "android"
@@ -40,7 +46,7 @@ jobs:
       - uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
-          ndk-version: r26d
+          ndk-version: r27c
           link-to-sdk: true
           local-cache: true
       - run: pnpm -F mobile tauri android build --aab

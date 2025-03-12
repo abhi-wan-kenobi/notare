@@ -21,3 +21,7 @@ runs:
           libssl-dev \
           libayatana-appindicator3-dev \
           librsvg2-dev
+    - if: ${{ runner.os == 'Linux' && inputs.target == 'android' }}
+      shell: bash
+      run: |
+        sudo apt-get install -y libssl-dev
