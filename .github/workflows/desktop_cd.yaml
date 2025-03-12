@@ -47,7 +47,6 @@ jobs:
       - uses: ./.github/actions/rust_install
         with:
           target: "macos"
-      - uses: Swatinem/rust-cache@v2
       - uses: ./.github/actions/pnpm_install
       - run: pnpm -F ui build
       - uses: ./.github/actions/apple_cert

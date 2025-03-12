@@ -1,4 +1,5 @@
 on:
+  workflow_dispatch:
   release:
     types:
       - published
@@ -8,26 +9,40 @@ concurrency:
 jobs:
   # https://v2.tauri.app/distribute/app-store
   ios:
-    if: startsWith(github.event.release.tag_name, 'mobile_')
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'mobile_'))
     runs-on: macos-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/pnpm_install
+      - run: pnpm -F ui build
       - uses: ./.github/actions/rust_install
         with:
           target: "ios"
-      - uses: Swatinem/rust-cache@v2
       - run: pnpm -F mobile tauri ios build --export-method app-store-connect
   # https://v2.tauri.app/distribute/google-play
-  # TODO: https://github.com/nttld/setup-ndk
   android:
-    if: startsWith(github.event.release.tag_name, 'mobile_')
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'mobile_'))
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/pnpm_install
+      - run: pnpm -F ui build
       - uses: ./.github/actions/rust_install
         with:
           target: "android"
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+      - uses: android-actions/setup-android@v3
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26d
+          link-to-sdk: true
+          local-cache: true
       - run: pnpm -F mobile tauri android build --aab
+        env:
+          NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
