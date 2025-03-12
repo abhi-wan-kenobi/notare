@@ -12,7 +12,7 @@ export const extensions = [...shared.extensions];
 interface EditorProps {
   handleChange: (content: HTMLContent) => void;
   initialContent: HTMLContent;
-  autoFocus?: boolean
+  autoFocus?: boolean;
 }
 
 const Editor = forwardRef<{ editor: TiptapEditor | null }, EditorProps>(
