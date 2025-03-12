@@ -42,3 +42,5 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+openssl-sys = { version = "0.9", features = ["vendored"] }
