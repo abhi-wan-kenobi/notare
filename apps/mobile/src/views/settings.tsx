@@ -1,114 +1,47 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LANGUAGES_ISO_639_1 } from "@huggingface/languages";
 import type { ActivityLoaderArgs } from "@stackflow/config";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
-import { ActivityComponentType } from "@stackflow/react/future";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect } from "react";
+import { ActivityComponentType, useLoaderData } from "@stackflow/react/future";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { commands as dbCommands, type ConfigGeneral } from "@hypr/plugin-db";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@hypr/ui/components/ui/form";
-import { Input } from "@hypr/ui/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hypr/ui/components/ui/select";
+import { mockUserSettings } from "../mock";
 
-type ISO_639_1_CODE = keyof typeof LANGUAGES_ISO_639_1;
-const SUPPORTED_LANGUAGES: ISO_639_1_CODE[] = ["en", "ko"];
+import { Button } from "@hypr/ui/components/ui/button";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@hypr/ui/components/ui/form";
+import { Modal, ModalBody, ModalFooter, ModalHeader, ModalTitle } from "@hypr/ui/components/ui/modal";
+import { Switch } from "@hypr/ui/components/ui/switch";
 
 const schema = z.object({
-  autostart: z.boolean().optional(),
-  displayLanguage: z.enum(SUPPORTED_LANGUAGES as [string, ...string[]]),
-  jargons: z.string(),
-  tags: z.array(z.string()),
+  alertEnhancingDone: z.boolean().optional(),
+  remindUpcomingEvents: z.boolean().optional(),
 });
 
 type Schema = z.infer<typeof schema>;
 
 export function settingsActivityLoader({}: ActivityLoaderArgs<"SettingsActivity">) {
-  return {};
+  return { settings: mockUserSettings };
 }
 
 export const SettingsActivity: ActivityComponentType<"SettingsActivity"> = () => {
-  const queryClient = useQueryClient();
-
-  const config = useQuery({
-    queryKey: ["config", "general"],
-    queryFn: async () => {
-      const result = await dbCommands.getConfig();
-      return result;
-    },
-    staleTime: Infinity,
-    gcTime: Infinity,
-  });
+  const { settings } = useLoaderData<typeof settingsActivityLoader>();
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
 
   const form = useForm<Schema>({
     resolver: zodResolver(schema),
     values: {
-      autostart: config.data?.general.autostart ?? false,
-      displayLanguage: config.data?.general.display_language ?? "en",
-      jargons: (config.data?.general.jargons ?? []).join(", "),
-      tags: config.data?.general.tags ?? [],
+      alertEnhancingDone: settings.alertEnhancingDone ?? false,
+      remindUpcomingEvents: settings.remindUpcomingEvents ?? false,
     },
   });
 
-  const mutation = useMutation({
-    mutationFn: async (v: Schema) => {
-      if (!config.data) {
-        console.error("cannot mutate config because it is not loaded");
-        return;
-      }
-
-      const nextGeneral: ConfigGeneral = {
-        autostart: v.autostart ?? true,
-        display_language: v.displayLanguage,
-        jargons: v.jargons.split(",").map((jargon) => jargon.trim()),
-        tags: v.tags,
-      };
-
-      try {
-        await dbCommands.setConfig({
-          ...config.data,
-          general: nextGeneral,
-        });
-      } catch (e) {
-        console.error(e);
-      }
-    },
-    onSuccess: () => {
-      queryClient.setQueryData(["config", "general"], (oldData: any) => {
-        if (!oldData) return oldData;
-
-        return {
-          ...oldData,
-          general: {
-            ...oldData.general,
-            autostart: form.getValues("autostart"),
-            display_language: form.getValues("displayLanguage"),
-            jargons: form.getValues("jargons").split(",").map((jargon: string) => jargon.trim()),
-            tags: form.getValues("tags"),
-          },
-        };
-      });
-    },
-  });
-
-  const onFormChange = useCallback(() => {
-    form.handleSubmit((v) => mutation.mutate(v))();
-  }, [form, mutation]);
-
-  useEffect(() => {
-    const subscription = form.watch(onFormChange);
-    return () => subscription.unsubscribe();
-  }, [form, onFormChange]);
+  const handleSignOut = () => {
+    // Replace with actual sign out logic
+    console.log("Signing out...");
+    // Close the modal
+    setShowSignOutModal(false);
+  };
 
   return (
     <AppScreen
@@ -117,69 +50,90 @@ export const SettingsActivity: ActivityComponentType<"SettingsActivity"> = () =>
       }}
     >
       <div className="h-full overflow-y-auto w-full flex flex-col py-6 px-4">
-        {config.isLoading ? <div className="w-full text-center">Loading settings...</div> : (
+        <div className="flex-1">
           <Form {...form}>
-            <form className="space-y-6">
-              <FormField
-                control={form.control}
-                name="displayLanguage"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between">
-                    <div>
-                      <FormLabel>Display language</FormLabel>
-                      <FormDescription className="text-xs">
-                        This is the language you read.
-                      </FormDescription>
-                    </div>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="max-w-[100px] focus:outline-none focus:ring-0 focus:ring-offset-0">
-                          <SelectValue placeholder="Select language" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent align="end">
-                        {SUPPORTED_LANGUAGES.map((code) => (
-                          <SelectItem key={code} value={code}>
-                            {LANGUAGES_ISO_639_1[code].nativeName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="alertEnhancingDone"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between mb-4">
+                  <div>
+                    <FormLabel>Note Enhancement Alerts</FormLabel>
+                    <FormDescription>
+                      Alert when note is done enhancing.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="jargons"
-                render={({ field }) => (
-                  <FormItem>
-                    <div>
-                      <FormLabel>
-                        Jargons
-                      </FormLabel>
-                      <FormDescription className="text-xs">
-                        You can make Hyprnote takes these words into account when transcribing.
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Input
-                        placeholder="Type jargons (e.g., Blitz Meeting, PaC Squad)"
-                        {...field}
-                        value={field.value ?? ""}
-                        className="focus-visible:ring-0 focus-visible:ring-offset-0"
-                        autoCorrect="false"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </form>
+            <FormField
+              control={form.control}
+              name="remindUpcomingEvents"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between">
+                  <div>
+                    <FormLabel>Remind upcoming events</FormLabel>
+                    <FormDescription>
+                      Hyprnote will notify you about upcoming events based on your linked calendar.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
           </Form>
-        )}
+        </div>
+
+        <div
+          onClick={() => setShowSignOutModal(true)}
+          className="text-center text-sm text-red-600 w-fit mx-auto"
+        >
+          Sign out
+        </div>
       </div>
+
+      <Modal
+        open={showSignOutModal}
+        onClose={() => setShowSignOutModal(false)}
+        className="w-fit"
+      >
+        <ModalHeader className="p-6 pb-0">
+          <ModalTitle>Confirm Sign Out</ModalTitle>
+        </ModalHeader>
+        <ModalBody className="py-3">
+          <p>
+            Are you sure you want to sign out?
+          </p>
+        </ModalBody>
+        <ModalFooter className="flex items-end justify-end gap-2">
+          <Button
+            variant="destructive"
+            onClick={handleSignOut}
+            className="flex-1"
+          >
+            Sign Out
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowSignOutModal(false)}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
     </AppScreen>
   );
 };

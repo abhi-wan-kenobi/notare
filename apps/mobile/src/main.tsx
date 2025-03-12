@@ -5,7 +5,6 @@ import "./styles/globals.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, Suspense } from "react";
 import ReactDOM from "react-dom/client";
-import { HyprProvider } from "./contexts/hypr";
 import { Stack } from "./stackflow";
 
 const queryClient = new QueryClient();
@@ -17,9 +16,7 @@ if (!rootElement.innerHTML) {
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <Suspense>
-          <HyprProvider>
-            <Stack />
-          </HyprProvider>
+          <Stack />
         </Suspense>
       </QueryClientProvider>
     </StrictMode>,
