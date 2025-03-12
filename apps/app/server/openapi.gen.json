@@ -8,7 +8,7 @@
     "/health": {
       "get": {}
     },
-    "/api/native/user/integrations": {
+    "/api/desktop/user/integrations": {
       "get": {
         "responses": {
           "200": {
@@ -27,7 +27,7 @@
         }
       }
     },
-    "/api/native/subscription": {
+    "/api/desktop/subscription": {
       "get": {
         "responses": {
           "200": {

@@ -597,31 +597,31 @@ export type GetHealthData = {
     url: '/health';
 };
 
-export type GetApiNativeUserIntegrationsData = {
+export type GetApiDesktopUserIntegrationsData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/api/native/user/integrations';
+    url: '/api/desktop/user/integrations';
 };
 
-export type GetApiNativeUserIntegrationsResponses = {
+export type GetApiDesktopUserIntegrationsResponses = {
     200: Array<NangoIntegration>;
 };
 
-export type GetApiNativeUserIntegrationsResponse = GetApiNativeUserIntegrationsResponses[keyof GetApiNativeUserIntegrationsResponses];
+export type GetApiDesktopUserIntegrationsResponse = GetApiDesktopUserIntegrationsResponses[keyof GetApiDesktopUserIntegrationsResponses];
 
-export type GetApiNativeSubscriptionData = {
+export type GetApiDesktopSubscriptionData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/api/native/subscription';
+    url: '/api/desktop/subscription';
 };
 
-export type GetApiNativeSubscriptionResponses = {
+export type GetApiDesktopSubscriptionResponses = {
     200: Subscription;
 };
 
-export type GetApiNativeSubscriptionResponse = GetApiNativeSubscriptionResponses[keyof GetApiNativeSubscriptionResponses];
+export type GetApiDesktopSubscriptionResponse = GetApiDesktopSubscriptionResponses[keyof GetApiDesktopSubscriptionResponses];
 
 export type PostApiWebConnectData = {
     body: RequestParams;

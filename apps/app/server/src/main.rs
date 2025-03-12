@@ -207,14 +207,34 @@ fn main() {
                     true,
                 ));
 
-            let native_router = ApiRouter::new()
+            let desktop_router = ApiRouter::new()
                 .api_route(
                     "/user/integrations",
                     api_get(native::user::list_integrations),
                 )
                 .api_route("/subscription", api_get(native::subscription::handler))
                 .route("/listen/realtime", get(native::listen::realtime::handler))
-                .route("/listen/recorded", post(native::listen::recorded::handler))
+                .layer(
+                    tower::builder::ServiceBuilder::new()
+                        .layer(axum::middleware::from_fn_with_state(
+                            AuthState::from_ref(&state),
+                            middleware::verify_api_key,
+                        ))
+                        .layer(axum::middleware::from_fn_with_state(
+                            AuthState::from_ref(&state),
+                            middleware::attach_user_db,
+                        ))
+                        .layer(axum::middleware::from_fn_with_state(
+                            AnalyticsState::from_ref(&state),
+                            middleware::send_analytics,
+                        )),
+                );
+
+            let mobile_router = ApiRouter::new()
+                .api_route(
+                    "/listen/recorded",
+                    api_post(native::listen::recorded::handler),
+                )
                 .layer(
                     tower::builder::ServiceBuilder::new()
                         .layer(axum::middleware::from_fn_with_state(
@@ -242,7 +262,8 @@ fn main() {
                 .route("/openapi.json", get(openapi::handler))
                 .route("/scalar", Scalar::new("/openapi.json").axum_route())
                 .api_route("/health", api_get(|| async { (StatusCode::OK, "OK") }))
-                .nest("/api/native", native_router)
+                .nest("/api/desktop", desktop_router)
+                .nest("/api/mobile", mobile_router)
                 .nest("/api/web", web_router)
                 .api_route(
                     "/chat/completions",
