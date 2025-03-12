@@ -1,4 +1,4 @@
-import { client, getApiNativeUserIntegrationsOptions, getIntegrationURL } from "@/client";
+import { client, getApiDesktopUserIntegrationsOptions, getIntegrationURL } from "@/client";
 import { type CalendarIntegration } from "@/types";
 import { Trans } from "@lingui/react/macro";
 import { RiAppleFill as AppleIcon } from "@remixicon/react";
@@ -152,7 +152,7 @@ function OauthCalendarIntegrationDetails({
   type: Exclude<CalendarIntegration, "apple-calendar">;
 }) {
   const integrations = useQuery({
-    ...getApiNativeUserIntegrationsOptions({ client }),
+    ...getApiDesktopUserIntegrationsOptions({ client }),
   });
 
   const integration = integrations.data?.find((i) => i === type);
