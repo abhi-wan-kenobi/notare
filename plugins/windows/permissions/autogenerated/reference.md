@@ -2,7 +2,8 @@
 
 Default permissions for the plugin
 
-- `allow-show-window`
+- `allow-window-show`
+- `allow-window-set-floating`
 
 ## Permission Table
 
@@ -16,12 +17,12 @@ Default permissions for the plugin
 <tr>
 <td>
 
-`windows:allow-show-window`
+`windows:allow-window-set-floating`
 
 </td>
 <td>
 
-Enables the show_window command without any pre-configured scope.
+Enables the window_set_floating command without any pre-configured scope.
 
 </td>
 </tr>
@@ -29,12 +30,38 @@ Enables the show_window command without any pre-configured scope.
 <tr>
 <td>
 
-`windows:deny-show-window`
+`windows:deny-window-set-floating`
 
 </td>
 <td>
 
-Denies the show_window command without any pre-configured scope.
+Denies the window_set_floating command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:allow-window-show`
+
+</td>
+<td>
+
+Enables the window_show command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:deny-window-show`
+
+</td>
+<td>
+
+Denies the window_show command without any pre-configured scope.
 
 </td>
 </tr>

@@ -22,4 +22,5 @@ strum = { workspace = true, features = ["derive"] }
 tauri = { workspace = true, features = ["test"] }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 
+thiserror = { workspace = true }
 tracing = { workspace = true }

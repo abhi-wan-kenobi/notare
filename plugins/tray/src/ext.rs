@@ -103,8 +103,8 @@ impl<T: tauri::Manager<tauri::Wry>> TrayPluginExt<tauri::Wry> for T {
                         let next_always_on_top = !always_on_top_state(&store);
 
                         let toggled = {
-                            use tauri_plugin_windows::HyprWindowId;
-                            if let Some(window) = HyprWindowId::Main.get(app) {
+                            use tauri_plugin_windows::HyprWindow;
+                            if let Some(window) = HyprWindow::Main.get(app) {
                                 window.set_always_on_top(next_always_on_top).is_ok()
                             } else {
                                 false

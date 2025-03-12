@@ -1,11 +1,23 @@
-use crate::{ShowHyprWindow, WindowsPluginExt};
+use crate::{HyprWindow, WindowsPluginExt};
 
 #[tauri::command]
 #[specta::specta]
-pub async fn show_window(
+pub async fn window_show(
     app: tauri::AppHandle<tauri::Wry>,
-    window: ShowHyprWindow,
+    window: HyprWindow,
 ) -> Result<(), String> {
-    app.show_window(window).map_err(|e| e.to_string())?;
+    app.window_show(window).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn window_set_floating(
+    app: tauri::AppHandle<tauri::Wry>,
+    window: HyprWindow,
+    v: bool,
+) -> Result<(), String> {
+    app.window_set_floating(window, v)
+        .map_err(|e| e.to_string())?;
     Ok(())
 }

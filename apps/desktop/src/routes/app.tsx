@@ -1,3 +1,7 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { Outlet } from "@tanstack/react-router";
+import { useEffect } from "react";
+
 import LeftSidebar from "@/components/left-sidebar";
 import RightPanel from "@/components/note/right-panel";
 import Toolbar from "@/components/toolbar";
@@ -9,9 +13,6 @@ import { RightPanelProvider } from "@/contexts/right-panel";
 import { SearchProvider } from "@/contexts/search-palette";
 import { SettingsPanelProvider } from "@/contexts/settings-panel";
 import { registerTemplates } from "@/templates";
-import { createFileRoute } from "@tanstack/react-router";
-import { Outlet } from "@tanstack/react-router";
-import { useEffect } from "react";
 
 export const Route = createFileRoute("/app")({
   component: Component,

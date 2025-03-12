@@ -2,7 +2,7 @@ mod commands;
 mod ext;
 
 use ext::*;
-use tauri_plugin_windows::{ShowHyprWindow, WindowsPluginExt};
+use tauri_plugin_windows::{HyprWindow, WindowsPluginExt};
 
 #[tokio::main]
 pub async fn main() {
@@ -34,7 +34,6 @@ pub async fn main() {
     let _guard = tauri_plugin_sentry::minidump::init(&client);
 
     let mut builder = tauri::Builder::default()
-        .plugin(prevent_default())
         .plugin(tauri_plugin_listener::init())
         .plugin(tauri_plugin_sse::init())
         .plugin(tauri_plugin_misc::init())
@@ -63,12 +62,18 @@ pub async fn main() {
             Some(vec![]),
         ))
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            app.show_window(ShowHyprWindow::MainWithoutDemo).unwrap();
+            app.window_show(HyprWindow::Main).unwrap();
         }));
 
     #[cfg(target_os = "macos")]
     {
         builder = builder.plugin(tauri_plugin_apple_calendar::init());
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        let plugin = tauri_plugin_prevent_default::init();
+        builder = builder.plugin(plugin);
     }
 
     let specta_builder = make_specta_builder();
@@ -107,7 +112,7 @@ pub async fn main() {
                 app.create_tray().unwrap();
             }
 
-            app.show_window(ShowHyprWindow::MainWithoutDemo).unwrap();
+            app.window_show(HyprWindow::Main).unwrap();
 
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async move {
@@ -127,20 +132,6 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::setup_db::<tauri::Wry>
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
-}
-
-#[cfg(debug_assertions)]
-fn prevent_default() -> tauri::plugin::TauriPlugin<tauri::Wry> {
-    use tauri_plugin_prevent_default::Flags;
-
-    tauri_plugin_prevent_default::Builder::new()
-        .with_flags(Flags::all().difference(Flags::DEV_TOOLS | Flags::RELOAD))
-        .build()
-}
-
-#[cfg(not(debug_assertions))]
-fn prevent_default() -> tauri::plugin::TauriPlugin<tauri::Wry> {
-    tauri_plugin_prevent_default::init()
 }
 
 #[cfg(test)]

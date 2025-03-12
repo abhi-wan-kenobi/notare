@@ -1,9 +1,12 @@
-import { useHypr, useSession } from "@/contexts";
-import { formatDateHeader, formatRemainingTime, getSortedDates, groupSessionsByDate } from "@/lib/date";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { format, isFuture } from "date-fns";
 import { CalendarIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { useHypr, useSession } from "@/contexts";
+import { formatDateHeader, formatRemainingTime, getSortedDates, groupSessionsByDate } from "@/lib/date";
+import { commands as windowsCommands } from "@hypr/plugin-windows";
 
 import { commands as dbCommands, type Event, type Session } from "@hypr/plugin-db";
 import { cn } from "@hypr/ui/lib/utils";
@@ -71,7 +74,6 @@ export default function NotesList() {
     </nav>
   );
 }
-
 function EventItem({ event }: { event: Event }) {
   const navigate = useNavigate();
 
@@ -115,16 +117,40 @@ function SessionItem({
   const currentSession = useSession((s) => s.session);
   const sessionDate = new Date(session.created_at);
 
-  const handleClickSession = () => {
+  const [clicks, setClicks] = useState(0);
+
+  useEffect(() => {
+    let singleClickTimer: ReturnType<typeof setTimeout>;
+    if (clicks === 1) {
+      singleClickTimer = setTimeout(() => {
+        handleSingleClick();
+        setClicks(0);
+      }, 150);
+    } else if (clicks === 2) {
+      handleDoubleClick();
+      setClicks(0);
+    }
+    return () => clearTimeout(singleClickTimer);
+  }, [clicks]);
+
+  const handleClick = () => {
+    setClicks((c) => c + 1);
+  };
+
+  const handleSingleClick = () => {
     navigate({
       to: "/app/note/$id",
       params: { id: session.id },
     });
   };
 
+  const handleDoubleClick = () => {
+    windowsCommands.windowShow({ note: session.id });
+  };
+
   return (
     <button
-      onClick={handleClickSession}
+      onClick={handleClick}
       disabled={isActive}
       className={cn(
         "hover:bg-neutral-200 group flex items-start gap-3 py-2 w-full text-left transition-all rounded px-2",

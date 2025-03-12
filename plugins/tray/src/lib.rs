@@ -58,7 +58,7 @@ mod test {
     }
 
     #[test]
-    fn test_template() {
+    fn test_tray() {
         let _app = create_app(tauri::test::mock_builder());
     }
 }

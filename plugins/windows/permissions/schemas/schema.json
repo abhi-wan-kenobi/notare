@@ -295,14 +295,24 @@
       "type": "string",
       "oneOf": [
         {
-          "description": "Enables the show_window command without any pre-configured scope.",
+          "description": "Enables the window_set_floating command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-show-window"
+          "const": "allow-window-set-floating"
         },
         {
-          "description": "Denies the show_window command without any pre-configured scope.",
+          "description": "Denies the window_set_floating command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-show-window"
+          "const": "deny-window-set-floating"
+        },
+        {
+          "description": "Enables the window_show command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-window-show"
+        },
+        {
+          "description": "Denies the window_show command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-window-show"
         },
         {
           "description": "Default permissions for the plugin",

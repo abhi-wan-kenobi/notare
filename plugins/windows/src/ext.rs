@@ -1,93 +1,58 @@
-use serde::{Deserialize, Serialize};
-use tauri::{
-    AppHandle, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindow,
-    WebviewWindowBuilder, Wry,
-};
+use tauri::{AppHandle, LogicalSize, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
-#[derive(Clone, strum::EnumString, strum::Display)]
-pub enum HyprWindowId {
-    #[strum(serialize = "demo")]
-    Demo,
-    #[strum(serialize = "main")]
+#[derive(serde::Deserialize, specta::Type)]
+pub enum HyprWindow {
+    #[serde(rename = "main")]
     Main,
+    #[serde(rename = "note")]
+    Note(String),
 }
 
-impl HyprWindowId {
+impl HyprWindow {
     pub fn label(&self) -> String {
-        self.to_string()
+        match self {
+            Self::Main => "main".into(),
+            Self::Note(id) => format!("note-{}", id),
+        }
     }
 
     pub fn title(&self) -> String {
         match self {
-            Self::Demo => "Hyprnote Demo".to_string(),
-            Self::Main => "Hyprnote Main".to_string(),
+            Self::Main => "Hyprnote".into(),
+            Self::Note(_) => "Note".into(),
         }
     }
 
-    pub fn get(&self, app: &AppHandle<Wry>) -> Option<WebviewWindow> {
+    pub fn get(&self, app: &AppHandle<tauri::Wry>) -> Option<WebviewWindow> {
         let label = self.label();
         app.get_webview_window(&label)
     }
-}
 
-#[derive(Clone, Serialize, Deserialize, specta::Type)]
-pub enum ShowHyprWindow {
-    Demo,
-    MainWithoutDemo,
-    MainWithDemo,
-}
-
-impl ShowHyprWindow {
-    pub fn id(&self) -> HyprWindowId {
-        match self {
-            ShowHyprWindow::Demo { .. } => HyprWindowId::Demo,
-            ShowHyprWindow::MainWithoutDemo => HyprWindowId::Main,
-            ShowHyprWindow::MainWithDemo => HyprWindowId::Main,
-        }
-    }
-
-    pub fn show(&self, app: &AppHandle<Wry>) -> tauri::Result<WebviewWindow> {
-        let window = match self.id().get(app) {
+    pub fn show(&self, app: &AppHandle<tauri::Wry>) -> tauri::Result<WebviewWindow> {
+        let window = match self.get(app) {
             Some(window) => window,
             None => {
                 let url = match self {
-                    Self::Demo => "/demo",
-                    Self::MainWithDemo => "/demo",
-                    Self::MainWithoutDemo => "/app",
+                    Self::Main => "/app",
+                    Self::Note(id) => &format!("/app/note/{}", id),
                 };
                 self.window_builder(app, url).build()?
             }
         };
 
-        let monitor = app.primary_monitor()?.unwrap();
-        let display_width = (monitor.size().width as f64) / monitor.scale_factor();
-        let display_height = (monitor.size().height as f64) / monitor.scale_factor();
-
         match self {
-            Self::Demo => {
-                let width = display_width * 0.7;
-                window.set_maximizable(false)?;
-                window.set_minimizable(false)?;
-                window.set_size(LogicalSize::new(width, display_height * 0.95))?;
-                window.set_position(LogicalPosition::new(20.0, display_height * 0.03))?;
-            }
-            Self::MainWithDemo => {
-                let width = display_width * 0.27;
-                window.set_maximizable(false)?;
-                window.set_minimizable(false)?;
-                window.set_size(LogicalSize::new(width, display_height * 0.95))?;
-                window.set_position(LogicalPosition::new(
-                    display_width - width - 15.0,
-                    display_height * 0.03,
-                ))?;
-            }
-
-            Self::MainWithoutDemo => {
+            Self::Main => {
                 window.set_maximizable(true)?;
                 window.set_minimizable(true)?;
                 window.set_size(LogicalSize::new(800.0, 600.0))?;
                 window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
                 window.center()?;
+            }
+            Self::Note(_) => {
+                window.set_maximizable(false)?;
+                window.set_minimizable(false)?;
+                window.set_size(LogicalSize::new(800.0, 600.0))?;
+                window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
             }
         };
 
@@ -98,13 +63,11 @@ impl ShowHyprWindow {
 
     fn window_builder<'a>(
         &'a self,
-        app: &'a AppHandle<Wry>,
+        app: &'a AppHandle<tauri::Wry>,
         url: impl Into<std::path::PathBuf>,
-    ) -> WebviewWindowBuilder<'a, Wry, AppHandle<Wry>> {
-        let id = self.id();
-
-        let mut builder = WebviewWindow::builder(app, id.label(), WebviewUrl::App(url.into()))
-            .title(id.title())
+    ) -> WebviewWindowBuilder<'a, tauri::Wry, AppHandle<tauri::Wry>> {
+        let mut builder = WebviewWindow::builder(app, self.label(), WebviewUrl::App(url.into()))
+            .title(self.title())
             .decorations(true)
             .disable_drag_drop_handler();
 
@@ -120,11 +83,18 @@ impl ShowHyprWindow {
 }
 
 pub trait WindowsPluginExt<R: tauri::Runtime> {
-    fn show_window(&self, window: ShowHyprWindow) -> tauri::Result<WebviewWindow>;
+    fn window_show(&self, window: HyprWindow) -> Result<WebviewWindow, crate::Error>;
+    fn window_set_floating(&self, window: HyprWindow, v: bool) -> Result<(), crate::Error>;
 }
 
-impl WindowsPluginExt<tauri::Wry> for tauri::AppHandle<tauri::Wry> {
-    fn show_window(&self, window: ShowHyprWindow) -> tauri::Result<WebviewWindow> {
-        window.show(self)
+impl WindowsPluginExt<tauri::Wry> for AppHandle<tauri::Wry> {
+    fn window_show(&self, window: HyprWindow) -> Result<WebviewWindow, crate::Error> {
+        window.show(self).map_err(crate::Error::TauriError)
+    }
+
+    fn window_set_floating(&self, window: HyprWindow, v: bool) -> Result<(), crate::Error> {
+        let window = window.get(self).ok_or(crate::Error::WindowNotFound)?;
+        window.set_always_on_top(v)?;
+        Ok(())
     }
 }

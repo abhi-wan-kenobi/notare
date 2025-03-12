@@ -1,8 +1,8 @@
+import { CatchNotFound, createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
+
 import { CatchNotFoundFallback, NotFoundComponent } from "@/components/control";
 import type { Context } from "@/types";
-import { checkForAppUpdates } from "@/utils/updater";
-import { CatchNotFound, createRootRouteWithContext, Outlet } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect } from "react";
 
 export const Route = createRootRouteWithContext<Context>()({
   component: Component,
@@ -12,10 +12,6 @@ export const Route = createRootRouteWithContext<Context>()({
 const POSITION = "bottom-right";
 
 function Component() {
-  useEffect(() => {
-    checkForAppUpdates();
-  }, []);
-
   return (
     <>
       <CatchNotFound fallback={(e) => <CatchNotFoundFallback error={e} />}>

@@ -7,8 +7,11 @@
 
 
 export const commands = {
-async showWindow(window: ShowHyprWindow) : Promise<null> {
-    return await TAURI_INVOKE("plugin:windows|show_window", { window });
+async windowShow(window: HyprWindow) : Promise<null> {
+    return await TAURI_INVOKE("plugin:windows|window_show", { window });
+},
+async windowSetFloating(window: HyprWindow, v: boolean) : Promise<null> {
+    return await TAURI_INVOKE("plugin:windows|window_set_floating", { window, v });
 }
 }
 
@@ -22,7 +25,7 @@ async showWindow(window: ShowHyprWindow) : Promise<null> {
 
 /** user-defined types **/
 
-export type ShowHyprWindow = "Demo" | "MainWithoutDemo" | "MainWithDemo"
+export type HyprWindow = "main" | { note: string }
 
 /** tauri-specta globals **/
 

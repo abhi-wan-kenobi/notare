@@ -1,6 +1,8 @@
 mod commands;
+mod errors;
 mod ext;
 
+pub use errors::*;
 pub use ext::*;
 
 const PLUGIN_NAME: &str = "windows";
@@ -8,7 +10,10 @@ const PLUGIN_NAME: &str = "windows";
 fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
     tauri_specta::Builder::<tauri::Wry>::new()
         .plugin_name(PLUGIN_NAME)
-        .commands(tauri_specta::collect_commands![commands::show_window])
+        .commands(tauri_specta::collect_commands![
+            commands::window_show,
+            commands::window_set_floating
+        ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
 
