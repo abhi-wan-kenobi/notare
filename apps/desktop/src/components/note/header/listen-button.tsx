@@ -1,6 +1,7 @@
 import { Ear, EarOff } from "lucide-react";
 import { useState } from "react";
-import AudioIndicator from "./audio-indicator";
+
+import SoundIndicator from "@/components/sound-indicator";
 
 import { Button } from "@hypr/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
@@ -34,7 +35,7 @@ export default function ListenButton({
       className="p-2"
     >
       {isListening && isCurrent ? <Ear size={20} /> : <EarOff size={20} />}
-      {isListening && isCurrent && <AudioIndicator />}
+      {isListening && isCurrent && <SoundIndicator />}
     </Button>
   );
 

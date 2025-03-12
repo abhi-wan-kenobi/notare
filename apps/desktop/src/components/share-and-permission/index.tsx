@@ -1,10 +1,4 @@
-import { LinkIcon } from "lucide-react";
-import { useState } from "react";
-import { GeneralAccessSelector } from "./general-access-selector";
-import { InviteList } from "./invite-list";
-import { ParticipantsSelector } from "./participants-selector";
-
-import { Button } from "@hypr/ui/components/ui/button";
+import { Publish } from "./publish";
 
 export * from "./general-access-selector";
 export * from "./invite-list";
@@ -32,39 +26,10 @@ export default function ShareAndPermissionPanel({
   currentUser,
   participants,
 }: ShareAndPermissionPanelProps) {
-  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
-
-  const toggleGroup = (group: string) => {
-    setExpandedGroups((prev) => prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group]);
-  };
-
   return (
     <div className="w-full">
       <div className="p-4">
-        <div className="flex flex-col gap-2">
-          <InviteList
-            email={email}
-            setEmail={setEmail}
-            currentUser={currentUser}
-          />
-
-          <ParticipantsSelector
-            expanded={expandedGroups.includes("participants")}
-            onToggle={() => toggleGroup("participants")}
-            participants={participants}
-          />
-
-          <div className="h-px bg-neutral-200"></div>
-
-          <GeneralAccessSelector
-            expanded={expandedGroups.includes("general")}
-            onToggle={() => toggleGroup("general")}
-          />
-
-          <Button className="w-full">
-            <LinkIcon className="size-4" /> Copy link
-          </Button>
-        </div>
+        <Publish />
       </div>
     </div>
   );

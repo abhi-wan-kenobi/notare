@@ -1,8 +1,8 @@
 import { useLeftSidebar } from "@/contexts/left-sidebar";
 import { motion } from "motion/react";
-import NotesList from "../notes-list";
 import SettingsButton from "../settings-panel";
 import { LeftSidebarButton } from "../toolbar/buttons/left-sidebar-button";
+import NotesList from "./notes-list";
 import UpdateButton from "./update-button";
 
 export default function LeftSidebar() {
@@ -14,7 +14,7 @@ export default function LeftSidebar() {
       initial={{ width: isExpanded ? 240 : 0, opacity: isExpanded ? 1 : 0 }}
       animate={{ width: isExpanded ? 240 : 0, opacity: isExpanded ? 1 : 0 }}
       transition={{ duration: 0.2 }}
-      className="h-full flex flex-col overflow-hidden border-r bg-neutral-100"
+      className="h-full flex flex-col overflow-hidden border-r bg-neutral-50"
     >
       <div
         className="flex items-center justify-end min-h-11 px-2"
@@ -29,7 +29,7 @@ export default function LeftSidebar() {
 
       <UpdateButton />
 
-      <div className="flex items-center p-2">
+      <div className="flex items-center p-2 border-t">
         <SettingsButton />
       </div>
     </motion.div>
