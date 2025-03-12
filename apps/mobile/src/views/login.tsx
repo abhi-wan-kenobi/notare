@@ -5,7 +5,7 @@ import { Particles } from "@hypr/ui/components/ui/particles";
 import PushableButton from "@hypr/ui/components/ui/pushable-button";
 import { TextAnimate } from "@hypr/ui/components/ui/text-animate";
 
-export const LoginActivity: ActivityComponentType<"LoginActivity"> = () => {
+export const LoginView: ActivityComponentType<"LoginView"> = () => {
   const handleSignIn = () => {
     // TODO: Need to redirect to https://app.hyprnote.com/auth/connect and wait for a callback
   };
@@ -53,6 +53,6 @@ export const LoginActivity: ActivityComponentType<"LoginActivity"> = () => {
 
 declare module "@stackflow/config" {
   interface Register {
-    LoginActivity: {};
+    LoginView: {};
   }
 }

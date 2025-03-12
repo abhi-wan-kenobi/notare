@@ -1,12 +1,13 @@
 import type { ActivityLoaderArgs } from "@stackflow/config";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import { ActivityComponentType, useLoaderData } from "@stackflow/react/future";
+import { Share2Icon } from "lucide-react";
 import { NoteContent, NoteInfo } from "../components/note";
 import { mockSessions } from "../mock/home";
 
-export function noteActivityLoader({
+export function noteLoader({
   params,
-}: ActivityLoaderArgs<"NoteActivity">) {
+}: ActivityLoaderArgs<"NoteView">) {
   const { id } = params;
 
   // Find the session in the mock data or return a default session
@@ -27,13 +28,23 @@ export function noteActivityLoader({
   return { session };
 }
 
-export const NoteActivity: ActivityComponentType<"NoteActivity"> = () => {
-  const { session } = useLoaderData<typeof noteActivityLoader>();
+export const NoteView: ActivityComponentType<"NoteView"> = () => {
+  const { session } = useLoaderData<typeof noteLoader>();
+
+  const handleShareNote = () => {
+    // TODO: Implementation for sharing the note would go here
+  };
+
+  const ShareButton = () => (
+    <button onClick={handleShareNote}>
+      <Share2Icon size={20} />
+    </button>
+  );
 
   return (
     <AppScreen
       appBar={{
-        title: "Note - " + session.id,
+        renderRight: ShareButton,
       }}
     >
       <div className="relative flex h-full flex-col">
@@ -48,7 +59,7 @@ export const NoteActivity: ActivityComponentType<"NoteActivity"> = () => {
 
 declare module "@stackflow/config" {
   interface Register {
-    NoteActivity: {
+    NoteView: {
       id: string;
     };
   }

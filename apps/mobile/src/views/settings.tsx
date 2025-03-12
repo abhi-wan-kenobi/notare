@@ -20,12 +20,12 @@ const schema = z.object({
 
 type Schema = z.infer<typeof schema>;
 
-export function settingsActivityLoader({}: ActivityLoaderArgs<"SettingsActivity">) {
+export function settingsLoader({}: ActivityLoaderArgs<"SettingsView">) {
   return { settings: mockUserSettings };
 }
 
-export const SettingsActivity: ActivityComponentType<"SettingsActivity"> = () => {
-  const { settings } = useLoaderData<typeof settingsActivityLoader>();
+export const SettingsView: ActivityComponentType<"SettingsView"> = () => {
+  const { settings } = useLoaderData<typeof settingsLoader>();
   const [showSignOutModal, setShowSignOutModal] = useState(false);
 
   const form = useForm<Schema>({
@@ -37,9 +37,8 @@ export const SettingsActivity: ActivityComponentType<"SettingsActivity"> = () =>
   });
 
   const handleSignOut = () => {
-    // Replace with actual sign out logic
-    console.log("Signing out...");
-    // Close the modal
+    // TODO: Replace with actual sign out logic
+
     setShowSignOutModal(false);
   };
 
@@ -140,6 +139,6 @@ export const SettingsActivity: ActivityComponentType<"SettingsActivity"> = () =>
 
 declare module "@stackflow/config" {
   interface Register {
-    SettingsActivity: {};
+    SettingsView: {};
   }
 }

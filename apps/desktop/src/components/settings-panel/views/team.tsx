@@ -57,7 +57,6 @@ export default function TeamComponent() {
 
   const handleDelete = (member: Member) => {
     // TODO: Implement delete functionality
-    console.log("Delete member:", member);
   };
 
   return (

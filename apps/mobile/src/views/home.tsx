@@ -1,47 +1,59 @@
 import type { ActivityLoaderArgs } from "@stackflow/config";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import { ActivityComponentType, useFlow, useLoaderData } from "@stackflow/react/future";
-import { AudioLinesIcon, CalendarIcon, MicIcon, Settings, SquarePenIcon } from "lucide-react";
+import {
+  AudioLinesIcon,
+  CalendarIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  MicIcon,
+  Settings,
+  SquarePenIcon,
+} from "lucide-react";
 import * as React from "react";
 
 import { BottomSheet, BottomSheetContent } from "@hypr/ui/components/ui/bottom-sheet";
 import { EventItem, NoteItem } from "../components/home";
 import { mockEvents, mockSessions } from "../mock";
-import { formatDateHeader, getSortedDates, groupNotesByDate } from "../utils/date";
+import { formatDateHeader, getSortedDatesForNotes, groupNotesByDate } from "../utils/date";
 
 import { type Session } from "@hypr/plugin-db";
 import { Button } from "@hypr/ui/components/ui/button";
 
-export function homeActivityLoader({}: ActivityLoaderArgs<"HomeActivity">) {
+export function homeLoader({}: ActivityLoaderArgs<"HomeView">) {
+  // TODO: For the upcoming events in mobile, let's just fetch < 1 week
   return {
     upcomingEvents: mockEvents,
     notes: mockSessions,
   };
 }
 
-export const HomeActivity: ActivityComponentType<"HomeActivity"> = () => {
-  const { upcomingEvents, notes } = useLoaderData<typeof homeActivityLoader>();
+export const HomeView: ActivityComponentType<"HomeView"> = () => {
+  const { upcomingEvents, notes } = useLoaderData<typeof homeLoader>();
   const [sheetOpen, setSheetOpen] = React.useState(false);
+  const [upcomingExpanded, setUpcomingExpanded] = React.useState(true);
 
   const { push } = useFlow();
 
   const groupedSessions = groupNotesByDate(notes ?? []);
-  const sortedDates = getSortedDates(groupedSessions);
+  const sortedDates = getSortedDatesForNotes(groupedSessions);
 
   const handleClickNote = (id: string) => {
-    push("NoteActivity", { id });
+    push("NoteView", { id });
   };
 
-  const handleClickUpload = () => {
-    push("NoteActivity", { id: "new" });
+  const handleUploadFile = () => {
+    push("RecordingsView", {});
+    setSheetOpen(false);
   };
 
-  const handleClickRecord = () => {
-    push("NoteActivity", { id: "new" });
+  const handleStartRecord = () => {
+    push("NoteView", { id: "new" });
+    setSheetOpen(false);
   };
 
   const handleClickSettings = () => {
-    push("SettingsActivity", {});
+    push("SettingsView", {});
   };
 
   const RightButton = () => (
@@ -61,20 +73,28 @@ export const HomeActivity: ActivityComponentType<"HomeActivity"> = () => {
         <div className="flex-1 overflow-y-auto px-4 pb-20">
           {upcomingEvents && upcomingEvents.length > 0 && (
             <section className="mt-4 mb-6">
-              <h2 className="font-medium text-neutral-600 mb-3 flex items-center gap-2">
+              <h2
+                className="font-medium text-neutral-600 mb-3 flex items-center gap-2 cursor-pointer"
+                onClick={() => setUpcomingExpanded(!upcomingExpanded)}
+              >
                 <CalendarIcon className="size-4" />
                 <strong>Upcoming</strong>
+                {upcomingExpanded
+                  ? <ChevronDownIcon className="size-4 text-neutral-600" />
+                  : <ChevronRightIcon className="size-4 text-neutral-600" />}
               </h2>
 
-              <div className="space-y-2">
-                {upcomingEvents.map((event) => (
-                  <EventItem
-                    key={event.id}
-                    event={event}
-                    onSelect={(sessionId) => handleClickNote(sessionId)}
-                  />
-                ))}
-              </div>
+              {upcomingExpanded && (
+                <div className="space-y-2">
+                  {upcomingEvents.map((event) => (
+                    <EventItem
+                      key={event.id}
+                      event={event}
+                      onSelect={(sessionId) => handleClickNote(sessionId)}
+                    />
+                  ))}
+                </div>
+              )}
             </section>
           )}
 
@@ -127,12 +147,12 @@ export const HomeActivity: ActivityComponentType<"HomeActivity"> = () => {
               <Button
                 className="aspect-square w-full flex-col gap-2 text-red-500"
                 variant="outline"
-                onClick={handleClickUpload}
+                onClick={handleUploadFile}
               >
                 <AudioLinesIcon size={32} />
                 Upload recording
               </Button>
-              <Button className="aspect-square w-full flex-col gap-2 bg-red-500" onClick={handleClickRecord}>
+              <Button className="aspect-square w-full flex-col gap-2 bg-red-500" onClick={handleStartRecord}>
                 <MicIcon size={32} />
                 Start recording
               </Button>
@@ -146,6 +166,6 @@ export const HomeActivity: ActivityComponentType<"HomeActivity"> = () => {
 
 declare module "@stackflow/config" {
   interface Register {
-    HomeActivity: {};
+    HomeView: {};
   }
 }

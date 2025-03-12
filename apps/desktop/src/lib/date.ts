@@ -27,8 +27,6 @@ export function formatDateHeader(date: Date): string {
   const todayStart = startOfToday();
   const daysDiff = differenceInCalendarDays(todayStart, date, tzOptions);
 
-  console.log(todayStart, date, daysDiff);
-
   if (daysDiff > 1 && daysDiff <= 7) {
     if (isThisWeek(date, tzOptions)) {
       return format(date, "EEEE", tzOptions);

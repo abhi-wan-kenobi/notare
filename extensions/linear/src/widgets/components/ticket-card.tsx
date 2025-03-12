@@ -62,12 +62,7 @@ export default function TicketCard({ ticket }: { ticket: Ticket }) {
     // Prevent the card click event from firing
     e.stopPropagation();
 
-    // Here you would implement the logic to create a new ticket
-    // For example, open a modal or navigate to a create ticket page
-    console.log("Create new ticket");
-
-    // You might want to call an API or trigger an action in your application
-    // For example: dispatch(createTicket(ticket));
+    // TODO: Implement the logic to create a new ticket
   };
 
   return (
