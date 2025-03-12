@@ -6,8 +6,8 @@ import { useHypr, useSession } from "@/contexts";
 import { formatDateHeader, getSortedDates, groupSessionsByDate } from "@/lib/date";
 
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
-import { NoteItem } from "./note-item";
 import { EventItem } from "./event-item";
+import { NoteItem } from "./note-item";
 
 export default function NotesList() {
   const { userId } = useHypr();
