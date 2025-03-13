@@ -203,7 +203,25 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
   const handleKeyDown = (evt: KeyboardEvent) => {
     const state = gameStateRef.current;
 
+    const canvas = canvasRef.current;
+    if (!canvas || !document.activeElement) return;
+
+    const target = evt.target as HTMLElement;
+
+    // Skip handling if the event is in the editor area or in an input-like element
+    if (
+      target.closest("#editor-content-area")
+      || target.tagName === "INPUT"
+      || target.tagName === "TEXTAREA"
+      || target.getAttribute("contenteditable") === "true"
+    ) {
+      return;
+    }
+
     if (evt.key === "ArrowUp" || evt.key === " ") {
+      evt.preventDefault();
+      evt.stopPropagation();
+
       if (state.onG && !state.isJumping) {
         state.isJumping = true;
         state.isJumpButtonHeld = true;
@@ -222,7 +240,21 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
   const handleKeyUp = (evt: KeyboardEvent) => {
     const state = gameStateRef.current;
 
+    const target = evt.target as HTMLElement;
+
+    // Skip handling if the event is in the editor area or in an input-like element
+    if (
+      target.closest("#editor-content-area")
+      || target.tagName === "INPUT"
+      || target.tagName === "TEXTAREA"
+      || target.getAttribute("contenteditable") === "true"
+    ) {
+      return;
+    }
+
     if (evt.key === "ArrowUp" || evt.key === " ") {
+      evt.preventDefault();
+      evt.stopPropagation();
       state.isJumpButtonHeld = false;
     }
   };
