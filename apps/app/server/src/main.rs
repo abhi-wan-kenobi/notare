@@ -231,10 +231,7 @@ fn main() {
                 );
 
             let mobile_router = ApiRouter::new()
-                .api_route(
-                    "/listen/recorded",
-                    api_post(native::listen::recorded::handler),
-                )
+                .route("/listen/recorded", post(native::listen::recorded::handler))
                 .layer(
                     tower::builder::ServiceBuilder::new()
                         .layer(axum::middleware::from_fn_with_state(
