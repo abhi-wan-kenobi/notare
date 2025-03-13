@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hypr-db-user = { path = "../db-user", package = "db-user" }
+hypr-db-user = { workspace = true }
 
 anyhow = { workspace = true }
 notion-client = "1.0.5"

@@ -15,9 +15,9 @@ hypr-buffer = { path = "../../../crates/buffer", package = "buffer" }
 hypr-calendar-google = { path = "../../../crates/calendar-google", package = "calendar-google" }
 hypr-calendar-interface = { path = "../../../crates/calendar-interface", package = "calendar-interface" }
 hypr-calendar-outlook = { path = "../../../crates/calendar-outlook", package = "calendar-outlook" }
-hypr-db-admin = { path = "../../../crates/db-admin", package = "db-admin" }
-hypr-db-core = { path = "../../../crates/db-core", package = "db-core" }
-hypr-db-user = { path = "../../../crates/db-user", package = "db-user" }
+hypr-db-admin = { workspace = true }
+hypr-db-core = { workspace = true }
+hypr-db-user = { workspace = true }
 hypr-diart = { path = "../../../crates/diart", package = "diart" }
 hypr-nango = { path = "../../../crates/nango", package = "nango" }
 hypr-notion = { path = "../../../crates/notion", package = "notion" }

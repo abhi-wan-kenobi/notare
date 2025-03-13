@@ -12,12 +12,32 @@ pub enum AppSounds {
     BGM,
 }
 
+pub fn to_speaker(bytes: &'static [u8]) -> std::sync::mpsc::Sender<()> {
+    use rodio::{Decoder, OutputStream, Sink};
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    std::thread::spawn(move || {
+        if let Ok((_, stream)) = OutputStream::try_default() {
+            let file = std::io::Cursor::new(bytes);
+            if let Ok(source) = Decoder::new(file) {
+                let sink = Sink::try_new(&stream).unwrap();
+                sink.append(source);
+
+                let _ = rx.recv_timeout(std::time::Duration::from_secs(3600));
+                sink.stop();
+            }
+        }
+    });
+
+    tx
+}
+
 impl AppSounds {
     pub fn play(&self) {
         self.stop();
 
         let bytes = self.get_sound_bytes();
-        let stop_sender = hypr_audio::AudioOutput::to_speaker(bytes);
+        let stop_sender = to_speaker(bytes);
 
         {
             let mut sounds = PLAYING_SOUNDS.lock().unwrap();

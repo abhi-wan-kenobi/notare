@@ -3102,7 +3102,6 @@ name = "desktop"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "audio 0.1.0",
  "bytes",
  "chrono",
  "codes-iso-639",
@@ -3112,7 +3111,6 @@ dependencies = [
  "dotenvy_macro",
  "futures-core",
  "futures-util",
- "host",
  "hound",
  "reqwest 0.12.12",
  "serde",
@@ -3161,7 +3159,6 @@ dependencies = [
  "turso",
  "url",
  "uuid",
- "vad",
 ]
 
 [[package]]
@@ -6824,6 +6821,8 @@ dependencies = [
 name = "mobile"
 version = "0.1.0"
 dependencies = [
+ "db-core",
+ "db-user",
  "openssl-sys",
  "serde",
  "serde_json",
@@ -6835,7 +6834,6 @@ dependencies = [
  "tauri-plugin-auth",
  "tauri-plugin-db",
  "tauri-plugin-deep-link",
- "tauri-plugin-dialog",
  "tauri-plugin-fs",
  "tauri-plugin-http",
  "tauri-plugin-misc",
@@ -6847,6 +6845,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "turso",
 ]
 
 [[package]]
@@ -11972,8 +11971,8 @@ dependencies = [
 name = "tauri-plugin-sfx"
 version = "0.1.0"
 dependencies = [
- "audio 0.1.0",
  "once_cell",
+ "rodio",
  "serde",
  "specta",
  "specta-typescript",

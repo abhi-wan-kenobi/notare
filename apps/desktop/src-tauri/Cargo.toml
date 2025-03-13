@@ -25,13 +25,10 @@ tauri-build = { workspace = true }
 tauri-plugin-apple-calendar = { path = "../../../plugins/apple-calendar" }
 
 [dependencies]
-hypr-audio = { path = "../../../crates/audio", package = "audio" }
-hypr-data = { path = "../../../crates/data", package = "data", optional = true }
-hypr-db-core = { path = "../../../crates/db-core", package = "db-core" }
-hypr-db-user = { path = "../../../crates/db-user", package = "db-user" }
-hypr-host = { path = "../../../crates/host", package = "host" }
-hypr-turso = { path = "../../../crates/turso", package = "turso" }
-hypr-vad = { path = "../../../crates/vad", package = "vad" }
+hypr-data = { workspace = true, optional = true }
+hypr-db-core = { workspace = true }
+hypr-db-user = { workspace = true }
+hypr-turso = { workspace = true }
 
 tauri-plugin-auth = { workspace = true }
 tauri-plugin-connector = { workspace = true }

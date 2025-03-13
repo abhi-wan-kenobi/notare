@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hypr-db-core = { path = "../db-core", package = "db-core" }
+hypr-db-core = { workspace = true }
 hypr-nango = { path = "../nango", package = "nango" }
 
 async-stripe = { workspace = true, default-features = false, features = ["runtime-tokio-hyper"] }

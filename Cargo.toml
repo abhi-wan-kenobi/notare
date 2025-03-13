@@ -3,6 +3,12 @@ resolver = "2"
 members = ["apps/app/server", "apps/desktop/src-tauri", "apps/mobile/src-tauri", "crates/*", "plugins/*"]
 
 [workspace.dependencies]
+hypr-data = { path = "crates/data", package = "data" }
+hypr-db-admin = { path = "crates/db-admin", package = "db-admin" }
+hypr-db-core = { path = "crates/db-core", package = "db-core" }
+hypr-db-user = { path = "crates/db-user", package = "db-user" }
+hypr-turso = { path = "crates/turso", package = "turso" }
+
 tauri = "2"
 tauri-build = "2"
 tauri-plugin = "2"
