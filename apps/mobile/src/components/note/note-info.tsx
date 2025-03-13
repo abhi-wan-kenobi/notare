@@ -1,33 +1,27 @@
-import { CalendarIcon, TagsIcon, Users2Icon } from "lucide-react";
-
-import { useNote } from "../hooks/use-note";
-import { CalendarEventSheet, ParticipantsSheet, TagsSheet } from "./bottom-sheets";
-
 import { type Session } from "@hypr/plugin-db";
+import { CalendarIcon, TagsIcon, Users2Icon } from "lucide-react";
+import { useNote } from "../hooks/use-note";
 
 interface SessionInfoProps {
   session: Session;
+  setParticipantsSheetOpen: (open: boolean) => void;
+  setCalendarSheetOpen: (open: boolean) => void;
+  setTagsSheetOpen: (open: boolean) => void;
 }
 
-export function NoteInfo({ session }: SessionInfoProps) {
+export function NoteInfo({
+  session,
+  setParticipantsSheetOpen,
+  setCalendarSheetOpen,
+  setTagsSheetOpen,
+}: SessionInfoProps) {
   const {
-    participantsSheetOpen,
-    setParticipantsSheetOpen,
-    calendarSheetOpen,
-    setCalendarSheetOpen,
-    tagsSheetOpen,
-    setTagsSheetOpen,
     title,
     currentDate,
     mockParticipants,
-    mockEvent,
     mockTags,
-    groupedParticipants,
     handleTitleChange,
     handleTitleBlur,
-    handleViewInCalendar,
-    formatEventTime,
-    getInitials,
   } = useNote({ session });
 
   return (
@@ -81,27 +75,6 @@ export function NoteInfo({ session }: SessionInfoProps) {
           )}
         </button>
       </div>
-
-      <ParticipantsSheet
-        open={participantsSheetOpen}
-        onClose={() => setParticipantsSheetOpen(false)}
-        groupedParticipants={groupedParticipants}
-        getInitials={getInitials}
-      />
-
-      <CalendarEventSheet
-        open={calendarSheetOpen}
-        onClose={() => setCalendarSheetOpen(false)}
-        event={mockEvent}
-        onViewInCalendar={handleViewInCalendar}
-        formatEventTime={formatEventTime}
-      />
-
-      <TagsSheet
-        open={tagsSheetOpen}
-        onClose={() => setTagsSheetOpen(false)}
-        tags={mockTags}
-      />
     </div>
   );
 }

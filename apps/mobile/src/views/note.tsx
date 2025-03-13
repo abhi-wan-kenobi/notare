@@ -4,7 +4,7 @@ import { ActivityComponentType, useLoaderData } from "@stackflow/react/future";
 import { Share2Icon } from "lucide-react";
 import { useNote } from "../components/hooks/use-note";
 import { NoteContent, NoteInfo } from "../components/note";
-import { ShareSheet } from "../components/note/bottom-sheets";
+import { CalendarEventSheet, ParticipantsSheet, ShareSheet, TagsSheet } from "../components/note/bottom-sheets";
 import { mockSessions } from "../mock/home";
 
 export function noteLoader({
@@ -34,7 +34,19 @@ export const NoteView: ActivityComponentType<"NoteView"> = () => {
   const {
     shareSheetOpen,
     setShareSheetOpen,
+    participantsSheetOpen,
+    setParticipantsSheetOpen,
+    calendarSheetOpen,
+    setCalendarSheetOpen,
+    tagsSheetOpen,
+    setTagsSheetOpen,
+    mockEvent,
+    mockTags,
+    groupedParticipants,
     handlePublishNote,
+    handleViewInCalendar,
+    formatEventTime,
+    getInitials,
   } = useNote({ session });
 
   const ShareButton = () => (
@@ -50,8 +62,14 @@ export const NoteView: ActivityComponentType<"NoteView"> = () => {
       }}
     >
       <div className="relative flex h-full flex-col">
-        <div className="flex-1 overflow-y-auto py-6">
-          <NoteInfo session={session} />
+        <div className="flex-1 flex flex-col overflow-hidden pt-6">
+          <NoteInfo
+            session={session}
+            setParticipantsSheetOpen={setParticipantsSheetOpen}
+            setCalendarSheetOpen={setCalendarSheetOpen}
+            setTagsSheetOpen={setTagsSheetOpen}
+          />
+
           <NoteContent session={session} />
         </div>
 
@@ -59,6 +77,27 @@ export const NoteView: ActivityComponentType<"NoteView"> = () => {
           open={shareSheetOpen}
           onClose={() => setShareSheetOpen(false)}
           onPublish={handlePublishNote}
+        />
+
+        <ParticipantsSheet
+          open={participantsSheetOpen}
+          onClose={() => setParticipantsSheetOpen(false)}
+          groupedParticipants={groupedParticipants}
+          getInitials={getInitials}
+        />
+
+        <CalendarEventSheet
+          open={calendarSheetOpen}
+          onClose={() => setCalendarSheetOpen(false)}
+          event={mockEvent}
+          onViewInCalendar={handleViewInCalendar}
+          formatEventTime={formatEventTime}
+        />
+
+        <TagsSheet
+          open={tagsSheetOpen}
+          onClose={() => setTagsSheetOpen(false)}
+          tags={mockTags}
         />
       </div>
     </AppScreen>
