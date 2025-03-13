@@ -16,10 +16,10 @@ export function NoteItem({
       className="hover:bg-neutral-100 group flex items-start gap-3 py-3 w-full text-left transition-all rounded-lg px-3 border border-neutral-200"
     >
       <div className="flex flex-col items-start gap-1">
-        <div className="font-medium text-sm line-clamp-1 truncate select-none">
+        <div className="font-medium text-sm line-clamp-1 truncate">
           {session.title || "Untitled"}
         </div>
-        <div className="text-xs text-neutral-500 select-none">
+        <div className="text-xs text-neutral-500">
           {format(sessionDate, "M/d/yy")}
         </div>
       </div>

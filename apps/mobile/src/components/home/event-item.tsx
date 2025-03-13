@@ -21,8 +21,8 @@ export function EventItem({ event, onSelect }: { event: Event; onSelect: (sessio
       className="w-full text-left group flex items-start gap-3 py-3 hover:bg-neutral-100 rounded-lg px-3 border border-neutral-200"
     >
       <div className="flex flex-col items-start gap-1">
-        <div className="font-medium text-sm line-clamp-1 truncate select-none">{event.name}</div>
-        <div className="text-xs text-neutral-500 select-none">
+        <div className="font-medium text-sm line-clamp-1 truncate">{event.name}</div>
+        <div className="text-xs text-neutral-500">
           {formatRemainingTime(new Date(event.start_date))}
         </div>
       </div>

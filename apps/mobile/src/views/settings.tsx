@@ -57,8 +57,8 @@ export const SettingsView: ActivityComponentType<"SettingsView"> = () => {
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between mb-4">
                   <div>
-                    <FormLabel className="select-none">Note Enhancement Alerts</FormLabel>
-                    <FormDescription className="select-none">
+                    <FormLabel>Note Enhancement Alerts</FormLabel>
+                    <FormDescription>
                       Alert when note is done enhancing.
                     </FormDescription>
                   </div>
@@ -66,7 +66,6 @@ export const SettingsView: ActivityComponentType<"SettingsView"> = () => {
                     <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
-                      className="select-none"
                     />
                   </FormControl>
                 </FormItem>
@@ -79,8 +78,8 @@ export const SettingsView: ActivityComponentType<"SettingsView"> = () => {
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between">
                   <div>
-                    <FormLabel className="select-none">Remind upcoming events</FormLabel>
-                    <FormDescription className="select-none">
+                    <FormLabel>Remind upcoming events</FormLabel>
+                    <FormDescription>
                       Hyprnote will notify you about upcoming events based on your linked calendar.
                     </FormDescription>
                   </div>
@@ -88,7 +87,6 @@ export const SettingsView: ActivityComponentType<"SettingsView"> = () => {
                     <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
-                      className="select-none"
                     />
                   </FormControl>
                 </FormItem>
@@ -99,7 +97,7 @@ export const SettingsView: ActivityComponentType<"SettingsView"> = () => {
 
         <div
           onClick={() => setShowSignOutModal(true)}
-          className="text-center text-sm text-red-600 w-fit mx-auto select-none"
+          className="text-center text-sm text-red-600 w-fit mx-auto"
         >
           Sign out
         </div>

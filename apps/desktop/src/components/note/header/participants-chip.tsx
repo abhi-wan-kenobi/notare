@@ -21,9 +21,9 @@ export function ParticipantsChip() {
     <Popover>
       <PopoverTrigger>
         <div className="flex flex-row items-center gap-2 rounded-md px-2 py-1.5 hover:bg-neutral-100 text-xs">
-          <Users2Icon size={14} className="" />
+          <Users2Icon size={14} />
           {participants.data?.length && participants.data.length > 2 && (
-            <div className="">
+            <div>
               {participants.data[0].full_name} +{participants.data.length - 1}
             </div>
           )}

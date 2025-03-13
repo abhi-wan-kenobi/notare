@@ -104,7 +104,7 @@ export default function ProfileComponent() {
             name="fullName"
             render={({ field }) => (
               <FormItem className="max-w-sm">
-                <FormLabel className="">Username</FormLabel>
+                <FormLabel>Username</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Your Name"
@@ -122,7 +122,7 @@ export default function ProfileComponent() {
             name="jobTitle"
             render={({ field }) => (
               <FormItem className="max-w-sm">
-                <FormLabel className="">Job Title</FormLabel>
+                <FormLabel>Job Title</FormLabel>
                 <FormControl>
                   <Input
                     {...field}
@@ -140,8 +140,8 @@ export default function ProfileComponent() {
             render={({ field }) => (
               <FormItem className="max-w-sm">
                 <div>
-                  <FormLabel className="">Company Name</FormLabel>
-                  <FormDescription className="">
+                  <FormLabel>Company Name</FormLabel>
+                  <FormDescription>
                     This is the name of the company you work for.
                   </FormDescription>
                 </div>
@@ -162,8 +162,8 @@ export default function ProfileComponent() {
             render={({ field }) => (
               <FormItem className="max-w-lg">
                 <div>
-                  <FormLabel className="">Company Description</FormLabel>
-                  <FormDescription className="">
+                  <FormLabel>Company Description</FormLabel>
+                  <FormDescription>
                     This is a short description of your company.
                   </FormDescription>
                 </div>
@@ -185,8 +185,8 @@ export default function ProfileComponent() {
             render={({ field }) => (
               <FormItem className="max-w-sm">
                 <div>
-                  <FormLabel className="">LinkedIn Username</FormLabel>
-                  <FormDescription className="">
+                  <FormLabel>LinkedIn Username</FormLabel>
+                  <FormDescription>
                     Your LinkedIn username (the part after linkedin.com/in/)
                   </FormDescription>
                 </div>

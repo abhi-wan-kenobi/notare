@@ -31,3 +31,14 @@ body {
     display: none;
   }
 }
+
+@layer base {
+  * {
+    @apply select-none;
+  }
+
+  /* Allow selection for input elements and contenteditable */
+  input, textarea, [contenteditable="true"] {
+    @apply select-text;
+  }
+}
