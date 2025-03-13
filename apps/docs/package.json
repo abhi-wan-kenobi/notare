@@ -23,7 +23,7 @@
     "@tanstack/vue-table": "^8.21.2",
     "clsx": "^2.1.1",
     "floating-vue": "^5.2.2",
-    "posthog-js": "^1.230.2",
+    "posthog-js": "^1.229.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   }

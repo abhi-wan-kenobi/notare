@@ -21,10 +21,10 @@
     "@hypr/plugin-template": "workspace:^",
     "@hypr/ui": "workspace:^",
     "@hypr/utils": "workspace:^",
-    "@tanstack/react-query": "^5.67.3",
+    "@tanstack/react-query": "^5.67.2",
     "@tauri-apps/api": "^2.3.0",
-    "ai": "^4.1.55",
-    "motion": "^12.5.0",
+    "ai": "^4.1.54",
+    "motion": "^12.4.10",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -37,7 +37,7 @@
     "autoprefixer": "^10.4.21",
     "msw": "^2.7.3",
     "msw-storybook-addon": "^2.0.4",
-    "openai": "^4.87.3",
+    "openai": "^4.86.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "storybook": "^8.6.4",
