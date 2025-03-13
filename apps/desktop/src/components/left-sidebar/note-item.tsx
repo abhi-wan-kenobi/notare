@@ -1,24 +1,19 @@
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { AppWindowMacIcon, ArrowUpRight, TrashIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useSession } from "@/contexts";
-
-import { type Session } from "@hypr/plugin-db";
+import { commands as dbCommands, type Session } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import {
   ContextMenu,
-  ContextMenuCheckboxItem,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@hypr/ui/components/ui/context-menu";
 import { cn } from "@hypr/ui/lib/utils";
-import { AppWindowMacIcon, FolderIcon, Share2Icon, TrashIcon } from "lucide-react";
 
 export function NoteItem({
   session,
@@ -59,13 +54,15 @@ export function NoteItem({
   };
 
   const handleDoubleClick = () => {
+    handleOpenWindow();
+  };
+
+  const handleOpenWindow = () => {
     windowsCommands.windowShow({ note: session.id });
   };
 
-  const handleShareNote = () => {
-  };
-
   const handleDeleteNote = () => {
+    dbCommands.deleteSession(session.id);
   };
 
   return (
@@ -93,11 +90,14 @@ export function NoteItem({
       </ContextMenuTrigger>
 
       <ContextMenuContent>
-        <ContextMenuItem className="cursor-pointer">
-          <AppWindowMacIcon size={16} className="mr-2" />Open in new window
+        <ContextMenuItem className="cursor-pointer" onClick={handleOpenWindow}>
+          <AppWindowMacIcon size={16} className="mr-2" />
+          New window
+          <ArrowUpRight size={16} className="ml-2" />
         </ContextMenuItem>
 
-        <ContextMenuSub>
+        {
+          /* <ContextMenuSub>
           <ContextMenuSubTrigger className="cursor-pointer">
             <FolderIcon size={16} className="mr-2" />Move to
           </ContextMenuSubTrigger>
@@ -110,11 +110,14 @@ export function NoteItem({
             <ContextMenuCheckboxItem className="cursor-pointer">Sales</ContextMenuCheckboxItem>
             <ContextMenuCheckboxItem className="cursor-pointer">Fund raising</ContextMenuCheckboxItem>
           </ContextMenuSubContent>
-        </ContextMenuSub>
+        </ContextMenuSub> */
+        }
 
-        <ContextMenuItem onClick={handleShareNote} className="cursor-pointer">
+        {
+          /* <ContextMenuItem onClick={handleShareNote} className="cursor-pointer">
           <Share2Icon size={16} className="mr-2" />Share
-        </ContextMenuItem>
+        </ContextMenuItem> */
+        }
 
         <ContextMenuSeparator />
 

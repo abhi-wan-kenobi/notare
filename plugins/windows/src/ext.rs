@@ -58,6 +58,7 @@ impl HyprWindow {
 
         window.set_theme(Some(tauri::Theme::Light))?;
         window.set_focus()?;
+        window.show()?;
         Ok(window)
     }
 
