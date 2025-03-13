@@ -58,7 +58,7 @@ export const RecordingsView: ActivityComponentType<"RecordingsView"> = () => {
       }}
     >
       <div className="relative flex h-full flex-col">
-        <div className="flex-1 overflow-y-auto px-4 pb-20">
+        <div className="flex-1 overflow-y-auto px-4">
           {localRecordingsList.length === 0
             ? (
               <div className="flex flex-col justify-center items-center h-64">

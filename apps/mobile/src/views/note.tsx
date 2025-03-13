@@ -1,16 +1,20 @@
 import type { ActivityLoaderArgs } from "@stackflow/config";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import { ActivityComponentType, useLoaderData } from "@stackflow/react/future";
-import { Share2Icon } from "lucide-react";
+import { GlobeIcon, Share2Icon } from "lucide-react";
+import * as React from "react";
+
 import { NoteContent, NoteInfo } from "../components/note";
 import { mockSessions } from "../mock/home";
+
+import { BottomSheet, BottomSheetContent } from "@hypr/ui/components/ui/bottom-sheet";
+import { Button } from "@hypr/ui/components/ui/button";
 
 export function noteLoader({
   params,
 }: ActivityLoaderArgs<"NoteView">) {
   const { id } = params;
 
-  // Find the session in the mock data or return a default session
   const session = mockSessions.find(s => s.id === id) || {
     id,
     title: "Untitled Note",
@@ -30,9 +34,10 @@ export function noteLoader({
 
 export const NoteView: ActivityComponentType<"NoteView"> = () => {
   const { session } = useLoaderData<typeof noteLoader>();
+  const [shareSheetOpen, setShareSheetOpen] = React.useState(false);
 
   const handleShareNote = () => {
-    // TODO: Implementation for sharing the note would go here
+    setShareSheetOpen(true);
   };
 
   const ShareButton = () => (
@@ -52,6 +57,26 @@ export const NoteView: ActivityComponentType<"NoteView"> = () => {
           <NoteInfo session={session} />
           <NoteContent session={session} />
         </div>
+
+        <BottomSheet
+          open={shareSheetOpen}
+          onClose={() => setShareSheetOpen(false)}
+        >
+          <BottomSheetContent className="bg-white">
+            <div className="flex flex-col gap-4 p-4">
+              <div className="text-center">
+                <h3 className="text-lg font-medium mb-1">Publish your note</h3>
+                <p className="text-sm text-neutral-600">
+                  Anyone with the link can view this page
+                </p>
+              </div>
+
+              <Button size="lg">
+                <GlobeIcon className="size-4 mr-2" /> Make it public
+              </Button>
+            </div>
+          </BottomSheetContent>
+        </BottomSheet>
       </div>
     </AppScreen>
   );

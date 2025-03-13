@@ -74,11 +74,11 @@ export const HomeView: ActivityComponentType<"HomeView"> = () => {
           {upcomingEvents && upcomingEvents.length > 0 && (
             <section className="mt-4 mb-6">
               <h2
-                className="font-medium text-neutral-600 mb-3 flex items-center gap-2 cursor-pointer"
+                className="font-medium text-neutral-600 mb-3 flex items-center gap-2 cursor-pointer w-fit"
                 onClick={() => setUpcomingExpanded(!upcomingExpanded)}
               >
                 <CalendarIcon className="size-4" />
-                <strong>Upcoming</strong>
+                <strong className="select-none">Upcoming</strong>
                 {upcomingExpanded
                   ? <ChevronDownIcon className="size-4 text-neutral-600" />
                   : <ChevronRightIcon className="size-4 text-neutral-600" />}
@@ -103,7 +103,7 @@ export const HomeView: ActivityComponentType<"HomeView"> = () => {
 
             return (
               <section key={dateKey} className="mb-6">
-                <h2 className="font-bold text-neutral-600 mb-3">
+                <h2 className="font-bold text-neutral-600 mb-3 select-none">
                   {formatDateHeader(date)}
                 </h2>
 
@@ -122,8 +122,8 @@ export const HomeView: ActivityComponentType<"HomeView"> = () => {
 
           {notes && notes.length === 0 && (
             <div className="flex flex-col justify-center items-center h-64">
-              <p className="text-neutral-500 mb-4">No notes yet</p>
-              <Button onClick={() => setSheetOpen(true)}>Create your first note</Button>
+              <p className="text-neutral-500 mb-4 select-none">No notes yet</p>
+              <Button onClick={() => setSheetOpen(true)} className="select-none">Create your first note</Button>
             </div>
           )}
         </div>
@@ -133,7 +133,7 @@ export const HomeView: ActivityComponentType<"HomeView"> = () => {
           onClick={(e) => e.stopPropagation()}
         >
           <Button
-            className="w-full py-3 text-lg font-semibold"
+            className="w-full py-3 text-lg font-semibold select-none"
             onClick={() => setSheetOpen(true)}
           >
             <SquarePenIcon size={20} className="mr-2" />Create new note
@@ -145,14 +145,17 @@ export const HomeView: ActivityComponentType<"HomeView"> = () => {
           >
             <BottomSheetContent className="flex gap-2 bg-white">
               <Button
-                className="aspect-square w-full flex-col gap-2 text-red-500"
+                className="aspect-square w-full flex-col gap-2 text-red-500 select-none hover:bg-red-100 hover:text-red-600"
                 variant="outline"
                 onClick={handleUploadFile}
               >
                 <AudioLinesIcon size={32} />
                 Upload recording
               </Button>
-              <Button className="aspect-square w-full flex-col gap-2 bg-red-500" onClick={handleStartRecord}>
+              <Button
+                className="aspect-square w-full flex-col gap-2 bg-red-500 select-none hover:bg-red-600 hover:text-red-50"
+                onClick={handleStartRecord}
+              >
                 <MicIcon size={32} />
                 Start recording
               </Button>
