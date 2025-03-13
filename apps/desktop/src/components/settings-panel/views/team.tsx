@@ -74,7 +74,6 @@ export default function TeamComponent() {
         <Button
           variant="outline"
           onClick={() => setShowInviteModal(true)}
-          className=""
         >
           <Plus className="h-4 w-4" />
           <Trans>Add members</Trans>
@@ -117,7 +116,7 @@ export default function TeamComponent() {
                   <SelectTrigger className="w-[140px]">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="">
+                  <SelectContent>
                     <SelectItem
                       value="workspace_owner"
                       className=" cursor-pointer"
@@ -142,7 +141,7 @@ export default function TeamComponent() {
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="">
+                  <DropdownMenuContent align="end">
                     <DropdownMenuItem
                       className="text-destructive cursor-pointer"
                       onClick={() => handleDelete(member)}
@@ -169,12 +168,12 @@ export default function TeamComponent() {
         onClose={() => setShowInviteModal(false)}
         size="sm"
       >
-        <ModalBody className="">
+        <ModalBody>
           <ModalHeader>
-            <ModalTitle className="">
+            <ModalTitle>
               <Trans>Invite members</Trans>
             </ModalTitle>
-            <ModalDescription className="">
+            <ModalDescription>
               <Trans>
                 Type or paste in emails below, separated by commas. Your workspace will be billed by members.
               </Trans>
@@ -222,7 +221,7 @@ export default function TeamComponent() {
             </div>
 
             <div className="flex justify-end">
-              <Button className="" onClick={() => setShowInviteModal(false)}>
+              <Button onClick={() => setShowInviteModal(false)}>
                 <Trans>Send invite</Trans>
               </Button>
             </div>

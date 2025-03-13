@@ -96,8 +96,8 @@ export default function General() {
             render={({ field }) => (
               <FormItem className="flex flex-row items-center justify-between">
                 <div>
-                  <FormLabel className="">Open Hyprnote on startup</FormLabel>
-                  <FormDescription className="">
+                  <FormLabel>Open Hyprnote on startup</FormLabel>
+                  <FormDescription>
                     Hyprnote will be opened automatically when you start your computer.
                   </FormDescription>
                 </div>
@@ -119,8 +119,8 @@ export default function General() {
             render={({ field }) => (
               <FormItem className="flex flex-row items-center justify-between">
                 <div>
-                  <FormLabel className="">Display language</FormLabel>
-                  <FormDescription className="">
+                  <FormLabel>Display language</FormLabel>
+                  <FormDescription>
                     This is the language you read.
                   </FormDescription>
                 </div>
@@ -130,7 +130,7 @@ export default function General() {
                       <SelectValue placeholder="Select language" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent align="end" className="">
+                  <SelectContent align="end">
                     {SUPPORTED_LANGUAGES.map((code) => (
                       <SelectItem key={code} value={code}>
                         {LANGUAGES_ISO_639_1[code].nativeName}
@@ -149,10 +149,10 @@ export default function General() {
             render={({ field }) => (
               <FormItem>
                 <div>
-                  <FormLabel className="">
+                  <FormLabel>
                     <Trans>Jargons</Trans>
                   </FormLabel>
-                  <FormDescription className="">
+                  <FormDescription>
                     You can make Hyprnote takes these words into account when transcribing.
                   </FormDescription>
                 </div>

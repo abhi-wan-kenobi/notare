@@ -19,7 +19,7 @@ export function EventChip() {
     <Popover>
       <PopoverTrigger disabled={!event.data}>
         <div className="flex flex-row items-center gap-2 rounded-md px-2 py-1.5 hover:bg-neutral-100">
-          <CalendarIcon size={14} className="" />
+          <CalendarIcon size={14} />
           <p className="text-xs">
             {event.data?.start_date} - {event.data?.end_date}
           </p>
@@ -29,7 +29,7 @@ export function EventChip() {
         <div className="flex flex-col gap-2">
           <div className="font-semibold">{event.data?.name}</div>
           <div className="text-sm text-neutral-600">{event.data?.note}</div>
-          <Button variant="outline" className="">
+          <Button variant="outline">
             View in calendar
           </Button>
         </div>

@@ -2,7 +2,9 @@ import type { ActivityLoaderArgs } from "@stackflow/config";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import { ActivityComponentType, useLoaderData } from "@stackflow/react/future";
 import { Share2Icon } from "lucide-react";
+import { useNote } from "../components/hooks/use-note";
 import { NoteContent, NoteInfo } from "../components/note";
+import { CalendarEventSheet, ParticipantsSheet, ShareSheet, TagsSheet } from "../components/note/bottom-sheets";
 import { mockSessions } from "../mock/home";
 
 export function noteLoader({
@@ -10,7 +12,6 @@ export function noteLoader({
 }: ActivityLoaderArgs<"NoteView">) {
   const { id } = params;
 
-  // Find the session in the mock data or return a default session
   const session = mockSessions.find(s => s.id === id) || {
     id,
     title: "Untitled Note",
@@ -30,13 +31,26 @@ export function noteLoader({
 
 export const NoteView: ActivityComponentType<"NoteView"> = () => {
   const { session } = useLoaderData<typeof noteLoader>();
-
-  const handleShareNote = () => {
-    // TODO: Implementation for sharing the note would go here
-  };
+  const {
+    shareSheetOpen,
+    setShareSheetOpen,
+    participantsSheetOpen,
+    setParticipantsSheetOpen,
+    calendarSheetOpen,
+    setCalendarSheetOpen,
+    tagsSheetOpen,
+    setTagsSheetOpen,
+    mockEvent,
+    mockTags,
+    groupedParticipants,
+    handlePublishNote,
+    handleViewInCalendar,
+    formatEventTime,
+    getInitials,
+  } = useNote({ session });
 
   const ShareButton = () => (
-    <button onClick={handleShareNote}>
+    <button onClick={() => setShareSheetOpen(true)}>
       <Share2Icon size={20} />
     </button>
   );
@@ -48,10 +62,43 @@ export const NoteView: ActivityComponentType<"NoteView"> = () => {
       }}
     >
       <div className="relative flex h-full flex-col">
-        <div className="flex-1 overflow-y-auto py-6">
-          <NoteInfo session={session} />
+        <div className="flex-1 flex flex-col overflow-hidden pt-6">
+          <NoteInfo
+            session={session}
+            setParticipantsSheetOpen={setParticipantsSheetOpen}
+            setCalendarSheetOpen={setCalendarSheetOpen}
+            setTagsSheetOpen={setTagsSheetOpen}
+          />
+
           <NoteContent session={session} />
         </div>
+
+        <ShareSheet
+          open={shareSheetOpen}
+          onClose={() => setShareSheetOpen(false)}
+          onPublish={handlePublishNote}
+        />
+
+        <ParticipantsSheet
+          open={participantsSheetOpen}
+          onClose={() => setParticipantsSheetOpen(false)}
+          groupedParticipants={groupedParticipants}
+          getInitials={getInitials}
+        />
+
+        <CalendarEventSheet
+          open={calendarSheetOpen}
+          onClose={() => setCalendarSheetOpen(false)}
+          event={mockEvent}
+          onViewInCalendar={handleViewInCalendar}
+          formatEventTime={formatEventTime}
+        />
+
+        <TagsSheet
+          open={tagsSheetOpen}
+          onClose={() => setTagsSheetOpen(false)}
+          tags={mockTags}
+        />
       </div>
     </AppScreen>
   );

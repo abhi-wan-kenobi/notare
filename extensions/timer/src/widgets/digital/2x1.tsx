@@ -131,7 +131,7 @@ const DigitsTimer2x1: WidgetTwoByOne = () => {
             <div
               onClick={() => !isRunning && !isTimeUp && setIsEditing(true)}
               className={cn(
-                "text-4xl font-mono cursor-pointer select-none transition-colors duration-300",
+                "text-4xl font-mono cursor-pointer  transition-colors duration-300",
                 isTimeUp && "font-bold",
                 isTimeUp && isBlinking && "text-red-500",
               )}

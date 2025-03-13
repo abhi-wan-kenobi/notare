@@ -121,7 +121,7 @@ export default function Billing({ currentPlan, trialDaysLeft }: BillingProps) {
             <Card key={plan.name} className="flex flex-col">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="">{plan.name}</CardTitle>
+                  <CardTitle>{plan.name}</CardTitle>
                   {plan.name === "Pro" && (
                     <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
                       Best

@@ -96,29 +96,6 @@ export function NoteItem({
           <ArrowUpRight size={16} className="ml-2" />
         </ContextMenuItem>
 
-        {
-          /* <ContextMenuSub>
-          <ContextMenuSubTrigger className="cursor-pointer">
-            <FolderIcon size={16} className="mr-2" />Move to
-          </ContextMenuSubTrigger>
-
-          <ContextMenuSubContent className="w-48">
-            <ContextMenuCheckboxItem className="cursor-pointer" checked>
-              Notes
-            </ContextMenuCheckboxItem>
-            <ContextMenuCheckboxItem className="cursor-pointer">Product</ContextMenuCheckboxItem>
-            <ContextMenuCheckboxItem className="cursor-pointer">Sales</ContextMenuCheckboxItem>
-            <ContextMenuCheckboxItem className="cursor-pointer">Fund raising</ContextMenuCheckboxItem>
-          </ContextMenuSubContent>
-        </ContextMenuSub> */
-        }
-
-        {
-          /* <ContextMenuItem onClick={handleShareNote} className="cursor-pointer">
-          <Share2Icon size={16} className="mr-2" />Share
-        </ContextMenuItem> */
-        }
-
         <ContextMenuSeparator />
 
         <ContextMenuItem

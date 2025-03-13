@@ -21,3 +21,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
   color: var(--seed-scale-color-gray-900);
 }
+
+@layer utilities {
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  * {
+    @apply select-none;
+  }
+
+  /* Allow selection for input elements and contenteditable */
+  input, textarea, [contenteditable="true"] {
+    @apply select-text;
+  }
+}

@@ -23,7 +23,7 @@ export const InviteList = ({
         className="text-sm focus:outline-none focus:ring-0 focus:ring-offset-0"
         autoFocus={false}
       />
-      <Button variant="outline" className="">
+      <Button variant="outline">
         Invite
       </Button>
     </div>

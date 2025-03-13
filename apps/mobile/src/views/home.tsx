@@ -1,56 +1,38 @@
+import { Button } from "@hypr/ui/components/ui/button";
 import type { ActivityLoaderArgs } from "@stackflow/config";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import { ActivityComponentType, useFlow, useLoaderData } from "@stackflow/react/future";
-import {
-  AudioLinesIcon,
-  CalendarIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  MicIcon,
-  Settings,
-  SquarePenIcon,
-} from "lucide-react";
-import * as React from "react";
-
-import { BottomSheet, BottomSheetContent } from "@hypr/ui/components/ui/bottom-sheet";
-import { EventItem, NoteItem } from "../components/home";
-import { mockEvents, mockSessions } from "../mock";
-import { formatDateHeader, getSortedDatesForNotes, groupNotesByDate } from "../utils/date";
-
-import { type Session } from "@hypr/plugin-db";
-import { Button } from "@hypr/ui/components/ui/button";
+import { Settings, SquarePenIcon } from "lucide-react";
+import { NewNoteSelectionSheet } from "../components/home/bottom-sheets";
+import { NotesSection } from "../components/home/notes-section";
+import { UpcomingSection } from "../components/home/upcoming-section";
+import { useHome } from "../components/hooks/use-home";
+import { mockEvents } from "../mock";
 
 export function homeLoader({}: ActivityLoaderArgs<"HomeView">) {
   // TODO: For the upcoming events in mobile, let's just fetch < 1 week
   return {
     upcomingEvents: mockEvents,
-    notes: mockSessions,
   };
 }
 
 export const HomeView: ActivityComponentType<"HomeView"> = () => {
-  const { upcomingEvents, notes } = useLoaderData<typeof homeLoader>();
-  const [sheetOpen, setSheetOpen] = React.useState(false);
-  const [upcomingExpanded, setUpcomingExpanded] = React.useState(true);
-
+  const { upcomingEvents } = useLoaderData<typeof homeLoader>();
   const { push } = useFlow();
 
-  const groupedSessions = groupNotesByDate(notes ?? []);
-  const sortedDates = getSortedDatesForNotes(groupedSessions);
-
-  const handleClickNote = (id: string) => {
-    push("NoteView", { id });
-  };
-
-  const handleUploadFile = () => {
-    push("RecordingsView", {});
-    setSheetOpen(false);
-  };
-
-  const handleStartRecord = () => {
-    push("NoteView", { id: "new" });
-    setSheetOpen(false);
-  };
+  const {
+    sheetOpen,
+    setSheetOpen,
+    upcomingExpanded,
+    setUpcomingExpanded,
+    notes,
+    groupedNotes,
+    sortedDates,
+    handleUploadFile,
+    handleStartRecord,
+    handleNoteClick,
+    formatDateHeader,
+  } = useHome();
 
   const handleClickSettings = () => {
     push("SettingsView", {});
@@ -70,53 +52,29 @@ export const HomeView: ActivityComponentType<"HomeView"> = () => {
       }}
     >
       <div className="relative flex h-full flex-col">
-        <div className="flex-1 overflow-y-auto px-4 pb-20">
+        <div className="flex-1 overflow-y-auto px-4 pt-6 pb-20 space-y-6">
           {upcomingEvents && upcomingEvents.length > 0 && (
-            <section className="mt-4 mb-6">
-              <h2
-                className="font-medium text-neutral-600 mb-3 flex items-center gap-2 cursor-pointer"
-                onClick={() => setUpcomingExpanded(!upcomingExpanded)}
-              >
-                <CalendarIcon className="size-4" />
-                <strong>Upcoming</strong>
-                {upcomingExpanded
-                  ? <ChevronDownIcon className="size-4 text-neutral-600" />
-                  : <ChevronRightIcon className="size-4 text-neutral-600" />}
-              </h2>
-
-              {upcomingExpanded && (
-                <div className="space-y-2">
-                  {upcomingEvents.map((event) => (
-                    <EventItem
-                      key={event.id}
-                      event={event}
-                      onSelect={(sessionId) => handleClickNote(sessionId)}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
+            <UpcomingSection
+              upcomingEvents={upcomingEvents}
+              upcomingExpanded={upcomingExpanded}
+              setUpcomingExpanded={setUpcomingExpanded}
+              onSelectEvent={(sessionId) => handleNoteClick(sessionId)}
+            />
           )}
 
           {sortedDates.map((dateKey) => {
-            const { date, sessions } = groupedSessions[dateKey];
+            const sessions = groupedNotes[dateKey];
+            const date = new Date(dateKey);
 
             return (
-              <section key={dateKey} className="mb-6">
-                <h2 className="font-bold text-neutral-600 mb-3">
-                  {formatDateHeader(date)}
-                </h2>
-
-                <div className="space-y-2">
-                  {sessions.map((session: Session) => (
-                    <NoteItem
-                      key={session.id}
-                      session={session}
-                      onSelect={() => handleClickNote(session.id)}
-                    />
-                  ))}
-                </div>
-              </section>
+              <NotesSection
+                key={dateKey}
+                dateKey={dateKey}
+                date={date}
+                sessions={sessions}
+                formatDateHeader={formatDateHeader}
+                onSelectNote={handleNoteClick}
+              />
             );
           })}
 
@@ -138,27 +96,14 @@ export const HomeView: ActivityComponentType<"HomeView"> = () => {
           >
             <SquarePenIcon size={20} className="mr-2" />Create new note
           </Button>
-
-          <BottomSheet
-            open={sheetOpen}
-            onClose={() => setSheetOpen(false)}
-          >
-            <BottomSheetContent className="flex gap-2 bg-white">
-              <Button
-                className="aspect-square w-full flex-col gap-2 text-red-500"
-                variant="outline"
-                onClick={handleUploadFile}
-              >
-                <AudioLinesIcon size={32} />
-                Upload recording
-              </Button>
-              <Button className="aspect-square w-full flex-col gap-2 bg-red-500" onClick={handleStartRecord}>
-                <MicIcon size={32} />
-                Start recording
-              </Button>
-            </BottomSheetContent>
-          </BottomSheet>
         </div>
+
+        <NewNoteSelectionSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          onUploadFile={handleUploadFile}
+          onStartRecord={handleStartRecord}
+        />
       </div>
     </AppScreen>
   );

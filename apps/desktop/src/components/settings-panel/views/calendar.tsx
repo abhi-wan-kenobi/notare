@@ -286,7 +286,7 @@ function CalendarIconWithText({ type }: { type: CalendarIntegration }) {
   return (
     <div className="flex flex-row items-center gap-2">
       {type === "apple-calendar"
-        ? <AppleIcon size={16} className="" />
+        ? <AppleIcon size={16} />
         : type === "google-calendar"
         ? <GoogleIcon />
         : <OutlookIcon />}

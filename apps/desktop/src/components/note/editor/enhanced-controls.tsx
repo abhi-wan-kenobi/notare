@@ -32,8 +32,8 @@ export function EnhanceControls({ showRaw, setShowRaw }: EnhanceControlsProps) {
                 <span className="text-sm pl-2">Stand up</span>
               </div>
             </PopoverTrigger>
-            <PopoverContent className="">
-              <div className="">Template Selector</div>
+            <PopoverContent>
+              <div>Template Selector</div>
             </PopoverContent>
           </Popover>
         )
