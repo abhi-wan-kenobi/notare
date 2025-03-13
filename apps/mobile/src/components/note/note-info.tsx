@@ -1,6 +1,6 @@
 import { CalendarIcon, TagsIcon, Users2Icon } from "lucide-react";
 
-import { useNoteInfo } from "../hooks/use-note-info";
+import { useNote } from "../hooks/use-note";
 import { CalendarEventSheet, ParticipantsSheet, TagsSheet } from "./bottom-sheets";
 
 import { type Session } from "@hypr/plugin-db";
@@ -28,7 +28,7 @@ export function NoteInfo({ session }: SessionInfoProps) {
     handleViewInCalendar,
     formatEventTime,
     getInitials,
-  } = useNoteInfo({ session });
+  } = useNote({ session });
 
   return (
     <div className="px-4 w-full flex flex-col pb-6">

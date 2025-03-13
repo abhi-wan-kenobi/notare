@@ -1,14 +1,11 @@
 import type { ActivityLoaderArgs } from "@stackflow/config";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import { ActivityComponentType, useLoaderData } from "@stackflow/react/future";
-import { GlobeIcon, Share2Icon } from "lucide-react";
-import * as React from "react";
-
+import { Share2Icon } from "lucide-react";
+import { useNote } from "../components/hooks/use-note";
 import { NoteContent, NoteInfo } from "../components/note";
+import { ShareSheet } from "../components/note/bottom-sheets";
 import { mockSessions } from "../mock/home";
-
-import { BottomSheet, BottomSheetContent } from "@hypr/ui/components/ui/bottom-sheet";
-import { Button } from "@hypr/ui/components/ui/button";
 
 export function noteLoader({
   params,
@@ -34,14 +31,14 @@ export function noteLoader({
 
 export const NoteView: ActivityComponentType<"NoteView"> = () => {
   const { session } = useLoaderData<typeof noteLoader>();
-  const [shareSheetOpen, setShareSheetOpen] = React.useState(false);
-
-  const handleShareNote = () => {
-    setShareSheetOpen(true);
-  };
+  const {
+    shareSheetOpen,
+    setShareSheetOpen,
+    handlePublishNote,
+  } = useNote({ session });
 
   const ShareButton = () => (
-    <button onClick={handleShareNote}>
+    <button onClick={() => setShareSheetOpen(true)}>
       <Share2Icon size={20} />
     </button>
   );
@@ -58,25 +55,11 @@ export const NoteView: ActivityComponentType<"NoteView"> = () => {
           <NoteContent session={session} />
         </div>
 
-        <BottomSheet
+        <ShareSheet
           open={shareSheetOpen}
           onClose={() => setShareSheetOpen(false)}
-        >
-          <BottomSheetContent className="bg-white">
-            <div className="flex flex-col gap-4 p-4">
-              <div className="text-center">
-                <h3 className="text-lg font-medium mb-1">Publish your note</h3>
-                <p className="text-sm text-neutral-600">
-                  Anyone with the link can view this page
-                </p>
-              </div>
-
-              <Button size="lg">
-                <GlobeIcon className="size-4 mr-2" /> Make it public
-              </Button>
-            </div>
-          </BottomSheetContent>
-        </BottomSheet>
+          onPublish={handlePublishNote}
+        />
       </div>
     </AppScreen>
   );
