@@ -2,6 +2,7 @@ mod commands;
 mod ext;
 
 use ext::*;
+
 use tauri_plugin_windows::{HyprWindow, WindowsPluginExt};
 
 #[tokio::main]
@@ -78,15 +79,20 @@ pub async fn main() {
 
     let specta_builder = make_specta_builder();
 
-    builder
+    let app = builder
         .invoke_handler({
             let handler = specta_builder.invoke_handler();
             move |invoke| handler(invoke)
         })
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {
-                if let Ok(_) = window.hide() {
-                    api.prevent_close();
+                match window.label().parse::<HyprWindow>() {
+                    Ok(HyprWindow::Main) => {
+                        if let Ok(_) = window.hide() {
+                            api.prevent_close();
+                        }
+                    }
+                    _ => {}
                 }
             }
             _ => {}
@@ -125,8 +131,15 @@ pub async fn main() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .unwrap();
+
+    app.run(|app, event| match event {
+        tauri::RunEvent::Reopen { .. } => {
+            HyprWindow::Main.show(app).unwrap();
+        }
+        _ => {}
+    });
 }
 
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {

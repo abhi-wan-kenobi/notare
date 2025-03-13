@@ -1,10 +1,12 @@
 use tauri::{AppHandle, LogicalSize, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
-#[derive(serde::Deserialize, specta::Type)]
+#[derive(Debug, serde::Deserialize, specta::Type, strum::EnumString)]
 pub enum HyprWindow {
     #[serde(rename = "main")]
+    #[strum(serialize = "main")]
     Main,
     #[serde(rename = "note")]
+    #[strum(serialize = "note")]
     Note(String),
 }
 
