@@ -39,7 +39,7 @@ export function NoteItem({
       singleClickTimer = setTimeout(() => {
         handleSingleClick();
         setClicks(0);
-      }, 150);
+      }, 240);
     } else if (clicks === 2) {
       handleDoubleClick();
       setClicks(0);

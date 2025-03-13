@@ -51,7 +51,7 @@ impl HyprWindow {
             Self::Note(_) => {
                 window.set_maximizable(false)?;
                 window.set_minimizable(false)?;
-                window.set_size(LogicalSize::new(800.0, 600.0))?;
+                window.set_size(LogicalSize::new(600.0, 800.0))?;
                 window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
             }
         };

@@ -83,15 +83,18 @@ pub async fn main() {
             let handler = specta_builder.invoke_handler();
             move |invoke| handler(invoke)
         })
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { api, .. } => {
+                if let Ok(_) = window.hide() {
+                    api.prevent_close();
+                }
+            }
+            _ => {}
+        })
         .setup(move |app| {
             let app = app.handle().clone();
 
             specta_builder.mount_events(&app);
-
-            {
-                use tauri_plugin_store::StoreExt;
-                let _ = app.store("store.json")?;
-            }
 
             {
                 use tauri_plugin_template::TemplatePluginExt;
