@@ -1,15 +1,5 @@
-use std::sync::Mutex;
-use tauri::Manager;
-
 mod ext;
 pub use ext::*;
-
-pub type SharedState = Mutex<State>;
-
-#[derive(Default)]
-pub struct State {
-    pub always_on_top: Option<bool>,
-}
 
 const PLUGIN_NAME: &str = "tray";
 
@@ -25,11 +15,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
-        .setup(|app, _api| {
-            let state = SharedState::default();
-            assert!(app.manage(state));
-            Ok(())
-        })
+        .setup(|app, _api| Ok(()))
         .build()
 }
 

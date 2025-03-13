@@ -12100,7 +12100,6 @@ dependencies = [
  "strum 0.26.3",
  "tauri",
  "tauri-plugin",
- "tauri-plugin-store2",
  "tauri-plugin-windows",
  "tauri-specta",
  "webbrowser",

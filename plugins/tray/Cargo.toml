@@ -16,7 +16,6 @@ specta-typescript = { workspace = true }
 
 [dependencies]
 tauri = { workspace = true, features = ["tray-icon", "image-png"] }
-tauri-plugin-store2 = { workspace = true }
 tauri-plugin-windows = { workspace = true }
 
 specta = { workspace = true }
