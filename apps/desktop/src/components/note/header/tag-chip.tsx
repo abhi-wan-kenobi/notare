@@ -1,6 +1,6 @@
 import { useSession } from "@/contexts";
 import { useQuery } from "@tanstack/react-query";
-import { TagIcon } from "lucide-react";
+import { TagsIcon } from "lucide-react";
 import { useState } from "react";
 
 import { commands as dbCommands } from "@hypr/plugin-db";
@@ -25,13 +25,19 @@ export function TagChip() {
 
   const tagCount = tags.data.length;
 
+  if (tagCount === 0) {
+    return null;
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger>
         <div className="flex flex-row items-center gap-2 rounded-md px-2 py-1.5 hover:bg-neutral-100 flex-shrink-0 text-xs">
-          <TagIcon size={14} className="flex-shrink-0" />
+          <TagsIcon size={14} className="flex-shrink-0" />
           <span className="truncate">
-            {tagCount} tag{tagCount > 1 ? "s" : ""}
+            {tagCount > 1
+              ? `${tags.data[0].name} +${tagCount - 1}`
+              : tags.data[0].name}
           </span>
         </div>
       </PopoverTrigger>

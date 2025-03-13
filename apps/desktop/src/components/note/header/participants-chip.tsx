@@ -24,7 +24,7 @@ export function ParticipantsChip() {
           <Users2Icon size={14} className="" />
           {participants.data?.length && participants.data.length > 2 && (
             <div className="">
-              {participants.data[0].full_name} + {participants.data.length - 1}
+              {participants.data[0].full_name} +{participants.data.length - 1}
             </div>
           )}
         </div>
