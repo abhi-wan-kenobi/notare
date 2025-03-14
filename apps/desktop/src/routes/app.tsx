@@ -1,18 +1,34 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useEffect } from "react";
 
 import { HyprProvider } from "@/contexts";
 import { registerTemplates } from "@/templates";
+import { events as windowsEvents } from "@hypr/plugin-windows";
 
 export const Route = createFileRoute("/app")({
   component: Component,
 });
 
 function Component() {
+  const navigate = useNavigate();
+
   useEffect(() => {
     registerTemplates();
     initExtensions();
-  }, []);
+
+    let unlisten: (() => void) | undefined;
+
+    windowsEvents.navigateMain(getCurrentWebviewWindow()).listen(({ payload }) => {
+      navigate({ to: payload.path });
+    }).then((fn) => {
+      unlisten = fn;
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, [navigate]);
 
   return (
     <HyprProvider>

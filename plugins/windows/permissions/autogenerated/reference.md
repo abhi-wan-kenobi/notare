@@ -5,6 +5,7 @@ Default permissions for the plugin
 - `allow-window-show`
 - `allow-window-set-floating`
 - `allow-window-navigate`
+- `allow-window-emit-navigate`
 
 ## Permission Table
 
@@ -14,6 +15,32 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`windows:allow-window-emit-navigate`
+
+</td>
+<td>
+
+Enables the window_emit_navigate command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:deny-window-emit-navigate`
+
+</td>
+<td>
+
+Denies the window_emit_navigate command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>

@@ -1,4 +1,9 @@
-use tauri::{AppHandle, LogicalSize, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{
+    AppHandle, EventTarget, LogicalSize, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+};
+use tauri_specta::Event;
+
+use crate::events;
 
 #[derive(Debug, serde::Deserialize, specta::Type, strum::EnumString)]
 pub enum HyprWindow {
@@ -22,12 +27,31 @@ impl HyprWindow {
         }
     }
 
+    pub fn emit_navigate(
+        &self,
+        app: &AppHandle<tauri::Wry>,
+        path: impl AsRef<str>,
+    ) -> Result<(), crate::Error> {
+        let main_window = Self::Main.get(app)?;
+
+        if let Ok(window) = self.get(app) {
+            let mut url = window.url().unwrap();
+            url.set_path(path.as_ref());
+
+            let event = events::NavigateMain {
+                path: path.as_ref().into(),
+            };
+            events::NavigateMain::emit_to(&event, app, main_window.label())?;
+        }
+        Ok(())
+    }
+
     pub fn navigate(
         &self,
         app: &AppHandle<tauri::Wry>,
         path: impl AsRef<str>,
     ) -> Result<(), crate::Error> {
-        if let Some(window) = self.get(app) {
+        if let Ok(window) = self.get(app) {
             let mut url = window.url().unwrap();
             url.set_path(path.as_ref());
             window.navigate(url)?;
@@ -43,15 +67,16 @@ impl HyprWindow {
         }
     }
 
-    pub fn get(&self, app: &AppHandle<tauri::Wry>) -> Option<WebviewWindow> {
+    pub fn get(&self, app: &AppHandle<tauri::Wry>) -> Result<WebviewWindow, crate::Error> {
         let label = self.label();
         app.get_webview_window(&label)
+            .ok_or(crate::Error::WindowNotFound(label))
     }
 
     pub fn show(&self, app: &AppHandle<tauri::Wry>) -> Result<WebviewWindow, crate::Error> {
         let (window, created) = match self.get(app) {
-            Some(window) => (window, false),
-            None => {
+            Ok(window) => (window, false),
+            Err(_) => {
                 let url = match self {
                     Self::Main => "/app",
                     Self::Note(id) => &format!("/app/note/{}/sub", id),
@@ -132,17 +157,38 @@ impl HyprWindow {
 
 pub trait WindowsPluginExt<R: tauri::Runtime> {
     fn window_show(&self, window: HyprWindow) -> Result<WebviewWindow, crate::Error>;
+
+    fn window_set_floating(&self, window: HyprWindow, v: bool) -> Result<(), crate::Error>;
+
+    fn window_emit_navigate(
+        &self,
+        window: HyprWindow,
+        path: impl AsRef<str>,
+    ) -> Result<(), crate::Error>;
+
     fn window_navigate(
         &self,
         window: HyprWindow,
         path: impl AsRef<str>,
     ) -> Result<(), crate::Error>;
-    fn window_set_floating(&self, window: HyprWindow, v: bool) -> Result<(), crate::Error>;
 }
 
 impl WindowsPluginExt<tauri::Wry> for AppHandle<tauri::Wry> {
     fn window_show(&self, window: HyprWindow) -> Result<WebviewWindow, crate::Error> {
         window.show(self)
+    }
+
+    fn window_set_floating(&self, window: HyprWindow, v: bool) -> Result<(), crate::Error> {
+        window.get(self)?.set_always_on_top(v)?;
+        Ok(())
+    }
+
+    fn window_emit_navigate(
+        &self,
+        window: HyprWindow,
+        path: impl AsRef<str>,
+    ) -> Result<(), crate::Error> {
+        window.emit_navigate(self, path)
     }
 
     fn window_navigate(
@@ -152,11 +198,5 @@ impl WindowsPluginExt<tauri::Wry> for AppHandle<tauri::Wry> {
     ) -> Result<(), crate::Error> {
         let app = self.app_handle();
         window.navigate(&app, path)
-    }
-
-    fn window_set_floating(&self, window: HyprWindow, v: bool) -> Result<(), crate::Error> {
-        let window = window.get(self).ok_or(crate::Error::WindowNotFound)?;
-        window.set_always_on_top(v)?;
-        Ok(())
     }
 }

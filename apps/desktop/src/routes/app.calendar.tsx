@@ -20,8 +20,8 @@ function RouteComponent() {
   const { sessions } = Route.useLoaderData();
 
   const handleClick = (id: string) => {
-    const path: RoutePath = "/app/note/$id/main";
-    windowsCommands.windowNavigate("main", path.replace("$id", id));
+    const path = "/app/note/$id/main" satisfies RoutePath;
+    windowsCommands.windowEmitNavigate("main", path.replace("$id", id));
   };
 
   return (

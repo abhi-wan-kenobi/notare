@@ -1,3 +1,8 @@
 [default]
 description = "Default permissions for the plugin"
-permissions = ["allow-window-show", "allow-window-set-floating", "allow-window-navigate"]
+permissions = [
+    "allow-window-show",
+    "allow-window-set-floating",
+    "allow-window-navigate",
+    "allow-window-emit-navigate",
+]

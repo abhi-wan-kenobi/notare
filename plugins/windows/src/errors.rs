@@ -4,8 +4,8 @@ use serde::{ser::Serializer, Serialize};
 pub enum Error {
     #[error(transparent)]
     TauriError(#[from] tauri::Error),
-    #[error("window not found")]
-    WindowNotFound,
+    #[error("window not found: {0}")]
+    WindowNotFound(String),
 }
 
 impl Serialize for Error {

@@ -10,17 +10,25 @@ export const commands = {
 async windowShow(window: HyprWindow) : Promise<null> {
     return await TAURI_INVOKE("plugin:windows|window_show", { window });
 },
+async windowSetFloating(window: HyprWindow, v: boolean) : Promise<null> {
+    return await TAURI_INVOKE("plugin:windows|window_set_floating", { window, v });
+},
 async windowNavigate(window: HyprWindow, path: string) : Promise<null> {
     return await TAURI_INVOKE("plugin:windows|window_navigate", { window, path });
 },
-async windowSetFloating(window: HyprWindow, v: boolean) : Promise<null> {
-    return await TAURI_INVOKE("plugin:windows|window_set_floating", { window, v });
+async windowEmitNavigate(window: HyprWindow, path: string) : Promise<null> {
+    return await TAURI_INVOKE("plugin:windows|window_emit_navigate", { window, path });
 }
 }
 
 /** user-defined events **/
 
 
+export const events = __makeEvents__<{
+navigateMain: NavigateMain
+}>({
+navigateMain: "plugin:windows:navigate-main"
+})
 
 /** user-defined constants **/
 
@@ -29,6 +37,7 @@ async windowSetFloating(window: HyprWindow, v: boolean) : Promise<null> {
 /** user-defined types **/
 
 export type HyprWindow = "main" | { note: string } | "calendar"
+export type NavigateMain = { path: string }
 
 /** tauri-specta globals **/
 
