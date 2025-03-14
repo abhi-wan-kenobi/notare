@@ -1,5 +1,4 @@
-import { Outlet, redirect } from "@tanstack/react-router";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import LeftSidebar from "@/components/left-sidebar";
 import RightPanel from "@/components/note/right-panel";
