@@ -22,6 +22,19 @@ impl HyprWindow {
         }
     }
 
+    pub fn navigate(
+        &self,
+        app: &AppHandle<tauri::Wry>,
+        path: impl AsRef<str>,
+    ) -> Result<(), crate::Error> {
+        if let Some(window) = self.get(app) {
+            let mut url = window.url().unwrap();
+            url.set_path(path.as_ref());
+            window.navigate(url)?;
+        }
+        Ok(())
+    }
+
     pub fn title(&self) -> String {
         match self {
             Self::Main => "Hyprnote".into(),
@@ -35,7 +48,7 @@ impl HyprWindow {
         app.get_webview_window(&label)
     }
 
-    pub fn show(&self, app: &AppHandle<tauri::Wry>) -> tauri::Result<WebviewWindow> {
+    pub fn show(&self, app: &AppHandle<tauri::Wry>) -> Result<WebviewWindow, crate::Error> {
         let (window, created) = match self.get(app) {
             Some(window) => (window, false),
             None => {
@@ -59,11 +72,11 @@ impl HyprWindow {
                 }
                 Self::Note(_) => {
                     window.hide()?;
-                    std::thread::sleep(std::time::Duration::from_millis(80));
+                    std::thread::sleep(std::time::Duration::from_millis(100));
 
                     window.set_maximizable(false)?;
                     window.set_minimizable(false)?;
-                    window.set_size(LogicalSize::new(600.0, 800.0))?;
+                    window.set_size(LogicalSize::new(480.0, 500.0))?;
                     window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
 
                     {
@@ -119,12 +132,26 @@ impl HyprWindow {
 
 pub trait WindowsPluginExt<R: tauri::Runtime> {
     fn window_show(&self, window: HyprWindow) -> Result<WebviewWindow, crate::Error>;
+    fn window_navigate(
+        &self,
+        window: HyprWindow,
+        path: impl AsRef<str>,
+    ) -> Result<(), crate::Error>;
     fn window_set_floating(&self, window: HyprWindow, v: bool) -> Result<(), crate::Error>;
 }
 
 impl WindowsPluginExt<tauri::Wry> for AppHandle<tauri::Wry> {
     fn window_show(&self, window: HyprWindow) -> Result<WebviewWindow, crate::Error> {
-        window.show(self).map_err(crate::Error::TauriError)
+        window.show(self)
+    }
+
+    fn window_navigate(
+        &self,
+        window: HyprWindow,
+        path: impl AsRef<str>,
+    ) -> Result<(), crate::Error> {
+        let app = self.app_handle();
+        window.navigate(&app, path)
     }
 
     fn window_set_floating(&self, window: HyprWindow, v: bool) -> Result<(), crate::Error> {

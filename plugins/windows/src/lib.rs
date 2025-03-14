@@ -12,7 +12,8 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
             commands::window_show,
-            commands::window_set_floating
+            commands::window_navigate,
+            commands::window_set_floating,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

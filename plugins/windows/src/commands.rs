@@ -21,3 +21,15 @@ pub async fn window_set_floating(
         .map_err(|e| e.to_string())?;
     Ok(())
 }
+
+#[tauri::command]
+#[specta::specta]
+pub async fn window_navigate(
+    app: tauri::AppHandle<tauri::Wry>,
+    window: HyprWindow,
+    path: String,
+) -> Result<(), String> {
+    app.window_navigate(window, path)
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
