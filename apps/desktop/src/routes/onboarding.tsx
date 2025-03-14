@@ -140,7 +140,7 @@ function Component() {
 
             <PushableButton
               onClick={() => {
-                navigate({ to: "/app", replace: true });
+                navigate({ to: "/app/new", replace: true });
               }}
               className="mb-4"
               disabled={!micPermission.data || !capturePermission.data}
