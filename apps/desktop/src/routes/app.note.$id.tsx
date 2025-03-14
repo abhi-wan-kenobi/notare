@@ -1,15 +1,17 @@
-import EditorArea from "@/components/note/editor-area";
-import { useSession } from "@/contexts/session";
+import { Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+
+import LeftSidebar from "@/components/left-sidebar";
+import RightPanel from "@/components/note/right-panel";
+import Toolbar from "@/components/toolbar";
+import { SessionProvider } from "@/contexts";
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useEffect } from "react";
 
 export const Route = createFileRoute("/app/note/$id")({
   component: Component,
   loader: ({ context: { queryClient }, params: { id } }) => {
     return queryClient.fetchQuery({
-      queryKey: ["note", id],
+      queryKey: ["session", id],
       queryFn: async () => {
         let session: Session | null = null;
 
@@ -18,7 +20,6 @@ export const Route = createFileRoute("/app/note/$id")({
             dbCommands.getSession({ id }),
             dbCommands.visitSession(id),
           ]);
-
           session = s;
         } catch {}
 
@@ -34,45 +35,21 @@ export const Route = createFileRoute("/app/note/$id")({
 
 function Component() {
   const { session } = Route.useLoaderData();
-  const setSession = useSession((s) => s.setSession);
-
-  useEffect(() => {
-    setSession(session);
-  }, [setSession, session]);
-
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
-    mutationKey: ["delete-session", session.id],
-    mutationFn: () => dbCommands.deleteSession(session.id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sessions"] });
-    },
-    onError: (error) => {
-      console.error(error);
-    },
-  });
-
-  useEffect(() => {
-    return () => {
-      const isNoteEmpty = !session.title
-        && session.raw_memo_html === "<p></p>"
-        && session.conversations.length === 0
-        && (!session.enhanced_memo_html
-          || session.enhanced_memo_html === null
-          || session.enhanced_memo_html === "<p></p>");
-
-      if (isNoteEmpty) {
-        mutation.mutate();
-      }
-    };
-  }, [session.id]);
 
   return (
-    <main className="flex h-full overflow-hidden bg-white">
-      <div className="h-full flex-1">
-        <EditorArea />
+    <SessionProvider session={session}>
+      <div className="flex h-screen w-screen overflow-hidden">
+        <LeftSidebar />
+        <div className="flex-1 flex h-screen w-screen flex-col overflow-hidden">
+          <Toolbar />
+          <div className="flex h-full overflow-hidden">
+            <div className="flex-1">
+              <Outlet />
+            </div>
+            <RightPanel />
+          </div>
+        </div>
       </div>
-    </main>
+    </SessionProvider>
   );
 }

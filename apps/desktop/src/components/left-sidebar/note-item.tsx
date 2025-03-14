@@ -1,10 +1,10 @@
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { AppWindowMacIcon, ArrowUpRight, TrashIcon } from "lucide-react";
-import { useEffect, useState } from "react";
 
-import { useSession } from "@/contexts";
-import { commands as dbCommands, type Session } from "@hypr/plugin-db";
+import { useSession, useSessions } from "@/contexts";
+import { useStore2 } from "@/utils";
+import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import {
   ContextMenu,
@@ -16,58 +16,40 @@ import {
 import { cn } from "@hypr/ui/lib/utils";
 
 export function NoteItem({
-  session,
-  isActive,
+  sessionId,
 }: {
-  session: Session;
-  isActive: boolean;
+  sessionId: string;
 }) {
   const navigate = useNavigate();
-  const currentSession = useSession((s) => s.session);
-  const sessionDate = new Date(session.created_at);
 
-  const [clicks, setClicks] = useState(0);
+  const activeSession = useSession((s) => s.session);
+  const currentSession = useStore2(useSessions((s) => s.sessions[sessionId]), (s) => s.session);
 
-  useEffect(() => {
-    let singleClickTimer: ReturnType<typeof setTimeout>;
-    if (clicks === 1) {
-      singleClickTimer = setTimeout(() => {
-        handleSingleClick();
-        setClicks(0);
-      }, 500);
-    } else if (clicks === 2) {
-      handleDoubleClick();
-      setClicks(0);
-    }
-    return () => clearTimeout(singleClickTimer);
-  }, [clicks]);
+  const isActive = activeSession.id === currentSession.id;
+  const sessionDate = new Date(currentSession.created_at);
 
   const handleClick = () => {
-    setClicks((c) => c + 1);
-  };
-
-  const handleSingleClick = () => {
     navigate({
-      to: "/app/note/$id",
-      params: { id: session.id },
+      to: "/app/note/$id/main",
+      params: { id: currentSession.id },
     });
   };
 
-  const handleDoubleClick = () => {
-    handleOpenWindow();
-  };
-
   const handleOpenWindow = () => {
-    windowsCommands.windowShow({ note: session.id });
+    windowsCommands.windowShow({ note: currentSession.id });
   };
 
   const handleDeleteNote = () => {
-    dbCommands.deleteSession(session.id);
+    dbCommands.deleteSession(currentSession.id);
+  };
+
+  const html2text = (html: string) => {
+    return html.replace(/<[^>]*>?/g, "");
   };
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger>
+      <ContextMenuTrigger disabled={isActive}>
         <button
           onClick={handleClick}
           disabled={isActive}
@@ -76,14 +58,13 @@ export function NoteItem({
             isActive ? "bg-neutral-200" : "hover:bg-neutral-100",
           )}
         >
-          <div className="flex flex-col items-start gap-1">
-            <div className="font-medium text-sm max-w-[180px] truncate">
-              {isActive
-                ? currentSession?.title || "Untitled"
-                : session.title || "Untitled"}
+          <div className="flex flex-col items-start gap-1 max-w-[180px] truncate">
+            <div className="font-medium text-sm">
+              {currentSession.title || "Untitled"}
             </div>
-            <div className="flex items-center gap-2 text-xs text-neutral-500">
-              <span>{format(sessionDate, "M/d/yy")}</span>
+            <div className="flex items-center gap-3 text-xs text-neutral-500">
+              <span className="font-medium">{format(sessionDate, "M/d/yy")}</span>
+              <span className="text-xs">{html2text(currentSession.raw_memo_html)}</span>
             </div>
           </div>
         </button>
