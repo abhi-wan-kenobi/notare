@@ -1,17 +1,7 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import {
-  HyprProvider,
-  LeftSidebarProvider,
-  NewNoteProvider,
-  OngoingSessionProvider,
-  RightPanelProvider,
-  SearchProvider,
-  SessionsProvider,
-  SettingsPanelProvider,
-} from "@/contexts";
-
+import { HyprProvider } from "@/contexts";
 import { registerTemplates } from "@/templates";
 
 export const Route = createFileRoute("/app")({
@@ -26,21 +16,7 @@ function Component() {
 
   return (
     <HyprProvider>
-      <SessionsProvider>
-        <OngoingSessionProvider>
-          <LeftSidebarProvider>
-            <RightPanelProvider>
-              <SearchProvider>
-                <SettingsPanelProvider>
-                  <NewNoteProvider>
-                    <Outlet />
-                  </NewNoteProvider>
-                </SettingsPanelProvider>
-              </SearchProvider>
-            </RightPanelProvider>
-          </LeftSidebarProvider>
-        </OngoingSessionProvider>
-      </SessionsProvider>
+      <Outlet />
     </HyprProvider>
   );
 }

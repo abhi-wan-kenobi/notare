@@ -8,6 +8,9 @@ pub enum HyprWindow {
     #[serde(rename = "note")]
     #[strum(serialize = "note")]
     Note(String),
+    #[serde(rename = "calendar")]
+    #[strum(serialize = "calendar")]
+    Calendar,
 }
 
 impl HyprWindow {
@@ -15,6 +18,7 @@ impl HyprWindow {
         match self {
             Self::Main => "main".into(),
             Self::Note(id) => format!("note-{}", id),
+            Self::Calendar => "calendar".into(),
         }
     }
 
@@ -22,6 +26,7 @@ impl HyprWindow {
         match self {
             Self::Main => "Hyprnote".into(),
             Self::Note(_) => "Note".into(),
+            Self::Calendar => "Calendar".into(),
         }
     }
 
@@ -37,6 +42,7 @@ impl HyprWindow {
                 let url = match self {
                     Self::Main => "/app",
                     Self::Note(id) => &format!("/app/note/{}/sub", id),
+                    Self::Calendar => "/app/calendar",
                 };
                 (self.window_builder(app, url).build()?, true)
             }
@@ -66,6 +72,20 @@ impl HyprWindow {
                         cursor.y -= 30.0;
                         window.set_position(cursor)?;
                     }
+                }
+                Self::Calendar => {
+                    window.set_maximizable(false)?;
+                    window.set_minimizable(false)?;
+
+                    {
+                        let mut cursor = app.cursor_position().unwrap();
+                        cursor.x -= 640.0;
+                        cursor.y -= 30.0;
+                        window.set_position(cursor)?;
+                    }
+
+                    window.set_size(LogicalSize::new(640.0, 500.0))?;
+                    window.set_min_size(Some(LogicalSize::new(640.0, 500.0)))?;
                 }
             };
         }

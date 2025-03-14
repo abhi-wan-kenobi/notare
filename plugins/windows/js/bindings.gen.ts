@@ -25,7 +25,7 @@ async windowSetFloating(window: HyprWindow, v: boolean) : Promise<null> {
 
 /** user-defined types **/
 
-export type HyprWindow = "main" | { note: string }
+export type HyprWindow = "main" | { note: string } | "calendar"
 
 /** tauri-specta globals **/
 

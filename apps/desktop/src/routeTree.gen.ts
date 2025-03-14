@@ -15,6 +15,8 @@ import { Route as OnboardingImport } from './routes/onboarding'
 import { Route as LoginImport } from './routes/login'
 import { Route as AppImport } from './routes/app'
 import { Route as AppIndexImport } from './routes/app.index'
+import { Route as AppNoteImport } from './routes/app.note'
+import { Route as AppCalendarImport } from './routes/app.calendar'
 import { Route as AppNoteIdImport } from './routes/app.note.$id'
 import { Route as AppNoteIdSubImport } from './routes/app.note.$id.sub'
 import { Route as AppNoteIdMainImport } from './routes/app.note.$id.main'
@@ -45,10 +47,22 @@ const AppIndexRoute = AppIndexImport.update({
   getParentRoute: () => AppRoute,
 } as any)
 
-const AppNoteIdRoute = AppNoteIdImport.update({
-  id: '/note/$id',
-  path: '/note/$id',
+const AppNoteRoute = AppNoteImport.update({
+  id: '/note',
+  path: '/note',
   getParentRoute: () => AppRoute,
+} as any)
+
+const AppCalendarRoute = AppCalendarImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => AppRoute,
+} as any)
+
+const AppNoteIdRoute = AppNoteIdImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppNoteRoute,
 } as any)
 
 const AppNoteIdSubRoute = AppNoteIdSubImport.update({
@@ -88,6 +102,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingImport
       parentRoute: typeof rootRoute
     }
+    '/app/calendar': {
+      id: '/app/calendar'
+      path: '/calendar'
+      fullPath: '/app/calendar'
+      preLoaderRoute: typeof AppCalendarImport
+      parentRoute: typeof AppImport
+    }
+    '/app/note': {
+      id: '/app/note'
+      path: '/note'
+      fullPath: '/app/note'
+      preLoaderRoute: typeof AppNoteImport
+      parentRoute: typeof AppImport
+    }
     '/app/': {
       id: '/app/'
       path: '/'
@@ -97,10 +125,10 @@ declare module '@tanstack/react-router' {
     }
     '/app/note/$id': {
       id: '/app/note/$id'
-      path: '/note/$id'
+      path: '/$id'
       fullPath: '/app/note/$id'
       preLoaderRoute: typeof AppNoteIdImport
-      parentRoute: typeof AppImport
+      parentRoute: typeof AppNoteImport
     }
     '/app/note/$id/main': {
       id: '/app/note/$id/main'
@@ -135,14 +163,27 @@ const AppNoteIdRouteWithChildren = AppNoteIdRoute._addFileChildren(
   AppNoteIdRouteChildren,
 )
 
-interface AppRouteChildren {
-  AppIndexRoute: typeof AppIndexRoute
+interface AppNoteRouteChildren {
   AppNoteIdRoute: typeof AppNoteIdRouteWithChildren
 }
 
-const AppRouteChildren: AppRouteChildren = {
-  AppIndexRoute: AppIndexRoute,
+const AppNoteRouteChildren: AppNoteRouteChildren = {
   AppNoteIdRoute: AppNoteIdRouteWithChildren,
+}
+
+const AppNoteRouteWithChildren =
+  AppNoteRoute._addFileChildren(AppNoteRouteChildren)
+
+interface AppRouteChildren {
+  AppCalendarRoute: typeof AppCalendarRoute
+  AppNoteRoute: typeof AppNoteRouteWithChildren
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppCalendarRoute: AppCalendarRoute,
+  AppNoteRoute: AppNoteRouteWithChildren,
+  AppIndexRoute: AppIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -151,6 +192,8 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/app/calendar': typeof AppCalendarRoute
+  '/app/note': typeof AppNoteRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/app/note/$id': typeof AppNoteIdRouteWithChildren
   '/app/note/$id/main': typeof AppNoteIdMainRoute
@@ -160,6 +203,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/app/calendar': typeof AppCalendarRoute
+  '/app/note': typeof AppNoteRouteWithChildren
   '/app': typeof AppIndexRoute
   '/app/note/$id': typeof AppNoteIdRouteWithChildren
   '/app/note/$id/main': typeof AppNoteIdMainRoute
@@ -171,6 +216,8 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/app/calendar': typeof AppCalendarRoute
+  '/app/note': typeof AppNoteRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/app/note/$id': typeof AppNoteIdRouteWithChildren
   '/app/note/$id/main': typeof AppNoteIdMainRoute
@@ -183,6 +230,8 @@ export interface FileRouteTypes {
     | '/app'
     | '/login'
     | '/onboarding'
+    | '/app/calendar'
+    | '/app/note'
     | '/app/'
     | '/app/note/$id'
     | '/app/note/$id/main'
@@ -191,6 +240,8 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/onboarding'
+    | '/app/calendar'
+    | '/app/note'
     | '/app'
     | '/app/note/$id'
     | '/app/note/$id/main'
@@ -200,6 +251,8 @@ export interface FileRouteTypes {
     | '/app'
     | '/login'
     | '/onboarding'
+    | '/app/calendar'
+    | '/app/note'
     | '/app/'
     | '/app/note/$id'
     | '/app/note/$id/main'
@@ -237,8 +290,9 @@ export const routeTree = rootRoute
     "/app": {
       "filePath": "app.tsx",
       "children": [
-        "/app/",
-        "/app/note/$id"
+        "/app/calendar",
+        "/app/note",
+        "/app/"
       ]
     },
     "/login": {
@@ -247,13 +301,24 @@ export const routeTree = rootRoute
     "/onboarding": {
       "filePath": "onboarding.tsx"
     },
+    "/app/calendar": {
+      "filePath": "app.calendar.tsx",
+      "parent": "/app"
+    },
+    "/app/note": {
+      "filePath": "app.note.tsx",
+      "parent": "/app",
+      "children": [
+        "/app/note/$id"
+      ]
+    },
     "/app/": {
       "filePath": "app.index.tsx",
       "parent": "/app"
     },
     "/app/note/$id": {
       "filePath": "app.note.$id.tsx",
-      "parent": "/app",
+      "parent": "/app/note",
       "children": [
         "/app/note/$id/main",
         "/app/note/$id/sub"

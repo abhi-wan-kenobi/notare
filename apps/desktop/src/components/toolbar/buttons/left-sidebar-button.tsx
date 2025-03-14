@@ -3,6 +3,7 @@ import { type as getOsType } from "@tauri-apps/plugin-os";
 import { ChevronsLeftIcon, MenuIcon } from "lucide-react";
 
 import { useLeftSidebar } from "@/contexts";
+import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 
@@ -23,8 +24,18 @@ export function LeftSidebarButton({ type }: { type: "toolbar" | "sidebar" }) {
     return null;
   }
 
+  const handleClickCalendar = () => {
+    windowsCommands.windowShow("calendar");
+  };
+
   return (
     <div className={osType.data === "macos" ? "pl-[70px]" : ""}>
+      <button
+        className="rounded-md px-1 bg-neutral-300 hover:bg-neutral-400"
+        onClick={handleClickCalendar}
+      >
+        cal
+      </button>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
