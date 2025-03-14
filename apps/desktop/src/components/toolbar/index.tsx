@@ -45,7 +45,7 @@ export default function Toolbar() {
           </div>
         )}
 
-        {inMeetingAndNotInNote ? <SessionIndicator sessionId={sessionId} /> : <SearchBar />}
+        {isInNoteMain ?? (inMeetingAndNotInNote ? <SessionIndicator sessionId={sessionId} /> : <SearchBar />)}
 
         {!isInNoteSub && (
           <div
