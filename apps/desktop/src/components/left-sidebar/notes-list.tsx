@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { isFuture } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { useEffect } from "react";
 
 import { useHypr, useSessions } from "@/contexts";
 import { formatDateHeader, getSortedDates, groupSessionsByDate } from "@/lib/date";
@@ -12,13 +11,6 @@ import { NoteItem } from "./note-item";
 
 export default function NotesList() {
   const { userId } = useHypr();
-
-  const sessionsInit = useSessions((s) => s.init);
-
-  // TODO: not very ideal
-  useEffect(() => {
-    sessionsInit();
-  }, [sessionsInit]);
 
   const events = useQuery({
     queryKey: ["events"],
@@ -32,13 +24,22 @@ export default function NotesList() {
     },
   });
 
+  const sessionsInit = useSessions((s) => s.init);
+
   const sessions = useQuery({
     queryKey: ["sessions"],
-    queryFn: () => dbCommands.listSessions(null),
+    queryFn: async () => {
+      const sessions = await dbCommands.listSessions(null);
+      sessionsInit();
+
+      return sessions;
+    },
   });
 
   const groupedSessions = groupSessionsByDate(sessions.data ?? []);
   const sortedDates = getSortedDates(groupedSessions);
+
+  const sessionsStore = useSessions((s) => s.sessions);
 
   return (
     <nav className="h-full overflow-y-auto space-y-6 px-3 pb-4">
@@ -65,12 +66,15 @@ export default function NotesList() {
             </h2>
 
             <div>
-              {sessions.map((session: Session) => (
-                <NoteItem
-                  key={session.id}
-                  sessionId={session.id}
-                />
-              ))}
+              {sessions
+                // TODO: not ideal. fresh note is not visible
+                .filter((session) => sessionsStore[session.id])
+                .map((session: Session) => (
+                  <NoteItem
+                    key={session.id}
+                    sessionId={session.id}
+                  />
+                ))}
             </div>
           </section>
         );

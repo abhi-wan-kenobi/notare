@@ -1,6 +1,8 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { AppWindowMacIcon, ArrowUpRight, TrashIcon } from "lucide-react";
+import { useState } from "react";
 
 import { useSession, useSessions } from "@/contexts";
 import { useStore2 } from "@/utils";
@@ -25,8 +27,18 @@ export function NoteItem({
   const activeSession = useSession((s) => s.session);
   const currentSession = useStore2(useSessions((s) => s.sessions[sessionId]), (s) => s.session);
 
+  const [isOpen, setIsOpen] = useState(false);
   const isActive = activeSession.id === currentSession.id;
   const sessionDate = new Date(currentSession.created_at);
+
+  const queryClient = useQueryClient();
+
+  const deleteSession = useMutation({
+    mutationFn: () => dbCommands.deleteSession(currentSession.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+    },
+  });
 
   const handleClick = () => {
     navigate({
@@ -39,16 +51,16 @@ export function NoteItem({
     windowsCommands.windowShow({ note: currentSession.id });
   };
 
-  const handleDeleteNote = () => {
-    dbCommands.deleteSession(currentSession.id);
-  };
-
   const html2text = (html: string) => {
     return html.replace(/<[^>]*>?/g, "");
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+  };
+
   return (
-    <ContextMenu>
+    <ContextMenu onOpenChange={handleOpenChange}>
       <ContextMenuTrigger disabled={isActive}>
         <button
           onClick={handleClick}
@@ -56,6 +68,7 @@ export function NoteItem({
           className={cn(
             "group flex items-start gap-3 py-2 w-full text-left transition-all rounded px-2",
             isActive ? "bg-neutral-200" : "hover:bg-neutral-100",
+            isOpen && "bg-neutral-100",
           )}
         >
           <div className="flex flex-col items-start gap-1 max-w-[180px] truncate">
@@ -71,7 +84,10 @@ export function NoteItem({
       </ContextMenuTrigger>
 
       <ContextMenuContent>
-        <ContextMenuItem className="cursor-pointer" onClick={handleOpenWindow}>
+        <ContextMenuItem
+          className="cursor-pointer"
+          onClick={handleOpenWindow}
+        >
           <AppWindowMacIcon size={16} className="mr-2" />
           New window
           <ArrowUpRight size={16} className="ml-2" />
@@ -81,7 +97,7 @@ export function NoteItem({
 
         <ContextMenuItem
           className="text-red-500 hover:bg-red-100 hover:text-red-600 cursor-pointer"
-          onClick={handleDeleteNote}
+          onClick={() => deleteSession.mutate()}
         >
           <TrashIcon size={16} className="mr-2" />Delete
         </ContextMenuItem>
