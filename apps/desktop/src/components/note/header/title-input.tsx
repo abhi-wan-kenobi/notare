@@ -4,12 +4,14 @@ interface TitleInputProps {
   value: string;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onNavigateToEditor?: () => void;
+  editable?: boolean;
 }
 
 export default function TitleInput({
   value,
   onChange,
   onNavigateToEditor,
+  editable,
 }: TitleInputProps) {
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" || e.key === "Tab") {
@@ -46,6 +48,7 @@ export default function TitleInput({
 
   return (
     <input
+      disabled={!editable}
       id="note-title-input"
       type="text"
       onChange={onChange}

@@ -8,9 +8,10 @@ import TitleInput from "./title-input";
 
 interface NoteHeaderProps {
   onNavigateToEditor?: () => void;
+  editable?: boolean;
 }
 
-export function NoteHeader({ onNavigateToEditor }: NoteHeaderProps) {
+export function NoteHeader({ onNavigateToEditor, editable }: NoteHeaderProps) {
   const ongoingSessionStore = useOngoingSession((s) => ({
     onGoingSessionId: s.sessionId,
     listening: s.listening,
@@ -40,6 +41,7 @@ export function NoteHeader({ onNavigateToEditor }: NoteHeaderProps) {
     <>
       <div className="flex flex-row items-center justify-between sm:pl-8 px-4">
         <TitleInput
+          editable={editable}
           value={sessionStore.sessionInView?.title ?? ""}
           onChange={handleTitleChange}
           onNavigateToEditor={onNavigateToEditor}

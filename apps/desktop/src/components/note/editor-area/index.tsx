@@ -120,6 +120,7 @@ export default function EditorArea({ editable }: { editable: boolean }) {
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
       <NoteHeader
+        editable={editable}
         onNavigateToEditor={() => {
           editorRef.current?.editor?.commands?.focus();
         }}
