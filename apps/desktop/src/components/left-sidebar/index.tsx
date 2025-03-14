@@ -22,8 +22,8 @@ export default function LeftSidebar() {
       className="h-full flex flex-col overflow-hidden border-r bg-neutral-50"
     >
       <div
-        className="flex items-center justify-end min-h-11 px-2"
         data-tauri-drag-region
+        className="flex items-center justify-end min-h-11 px-2"
       >
         <LeftSidebarButton type="sidebar" />
       </div>

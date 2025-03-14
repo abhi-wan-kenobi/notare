@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { type as getOsType } from "@tauri-apps/plugin-os";
-import { ChevronsLeftIcon, MenuIcon } from "lucide-react";
+import { CalendarDaysIcon, ChevronsLeftIcon, MenuIcon } from "lucide-react";
 
 import { useLeftSidebar } from "@/contexts";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
@@ -18,7 +18,7 @@ export function LeftSidebarButton({ type }: { type: "toolbar" | "sidebar" }) {
 
   const { isExpanded, togglePanel } = useLeftSidebar();
 
-  const Icon = isExpanded ? ChevronsLeftIcon : MenuIcon;
+  const ToggleIcon = isExpanded ? ChevronsLeftIcon : MenuIcon;
 
   if (type === "toolbar" && isExpanded) {
     return null;
@@ -30,12 +30,17 @@ export function LeftSidebarButton({ type }: { type: "toolbar" | "sidebar" }) {
 
   return (
     <div className={osType.data === "macos" ? "pl-[70px]" : ""}>
-      <button
-        className="rounded-md px-1 bg-neutral-300 hover:bg-neutral-400"
-        onClick={handleClickCalendar}
-      >
-        cal
-      </button>
+      {isExpanded && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleClickCalendar}
+          className="hover:bg-neutral-200"
+        >
+          <CalendarDaysIcon className="size-4" />
+        </Button>
+      )}
+
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -44,7 +49,7 @@ export function LeftSidebarButton({ type }: { type: "toolbar" | "sidebar" }) {
             onClick={togglePanel}
             className="hover:bg-neutral-200"
           >
-            <Icon className="size-4" />
+            <ToggleIcon className="size-4" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>
