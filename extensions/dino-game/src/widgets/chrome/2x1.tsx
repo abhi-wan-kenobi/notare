@@ -208,7 +208,7 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
 
     const target = evt.target as HTMLElement;
 
-    // Skip handling if the event is in the editor area or in an input-like element
+    // TODO: This is a workaround and must not be handled here.
     if (
       target.closest("#editor-content-area")
       || target.tagName === "INPUT"
@@ -242,7 +242,7 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
 
     const target = evt.target as HTMLElement;
 
-    // Skip handling if the event is in the editor area or in an input-like element
+    // TODO: This is a workaround and must not be handled here.
     if (
       target.closest("#editor-content-area")
       || target.tagName === "INPUT"
@@ -288,6 +288,9 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
     ) {
       return;
     }
+
+    // Let the canvas receive focus naturally, which will blur the editor
+    // Don't prevent default or stop propagation here
 
     const rect = canvas.getBoundingClientRect();
     const x = evt.clientX - rect.left;

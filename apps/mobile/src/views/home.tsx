@@ -1,9 +1,9 @@
-import { Button } from "@hypr/ui/components/ui/button";
 import type { ActivityLoaderArgs } from "@stackflow/config";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import { ActivityComponentType, useFlow, useLoaderData } from "@stackflow/react/future";
-import { Settings, SquarePenIcon } from "lucide-react";
+import { Settings } from "lucide-react";
 import { NewNoteSelectionSheet } from "../components/home/bottom-sheets";
+import { CreateNoteButton, ReturnToNoteButton } from "../components/home/buttons";
 import { NotesSection } from "../components/home/notes-section";
 import { UpcomingSection } from "../components/home/upcoming-section";
 import { useHome } from "../components/hooks/use-home";
@@ -47,64 +47,57 @@ export const HomeView: ActivityComponentType<"HomeView"> = () => {
   return (
     <AppScreen
       appBar={{
-        title: "All Notes",
+        title: "All Meeting Notes",
         renderRight: RightButton,
       }}
     >
-      <div className="relative flex h-full flex-col">
-        <div className="flex-1 overflow-y-auto px-4 pt-6 pb-20 space-y-6">
-          {upcomingEvents && upcomingEvents.length > 0 && (
-            <UpcomingSection
-              upcomingEvents={upcomingEvents}
-              upcomingExpanded={upcomingExpanded}
-              setUpcomingExpanded={setUpcomingExpanded}
-              onSelectEvent={(sessionId) => handleNoteClick(sessionId)}
+      <div className="h-full overflow-y-auto px-4 pt-6 pb-20 space-y-6">
+        {upcomingEvents && upcomingEvents.length > 0 && (
+          <UpcomingSection
+            upcomingEvents={upcomingEvents}
+            upcomingExpanded={upcomingExpanded}
+            setUpcomingExpanded={setUpcomingExpanded}
+            onSelectEvent={(sessionId) => handleNoteClick(sessionId)}
+          />
+        )}
+
+        {sortedDates.map((dateKey) => {
+          const sessions = groupedNotes[dateKey];
+          const date = new Date(dateKey);
+
+          return (
+            <NotesSection
+              key={dateKey}
+              dateKey={dateKey}
+              date={date}
+              sessions={sessions}
+              formatDateHeader={formatDateHeader}
+              onSelectNote={handleNoteClick}
             />
-          )}
+          );
+        })}
 
-          {sortedDates.map((dateKey) => {
-            const sessions = groupedNotes[dateKey];
-            const date = new Date(dateKey);
-
-            return (
-              <NotesSection
-                key={dateKey}
-                dateKey={dateKey}
-                date={date}
-                sessions={sessions}
-                formatDateHeader={formatDateHeader}
-                onSelectNote={handleNoteClick}
-              />
-            );
-          })}
-
-          {notes && notes.length === 0 && (
-            <div className="flex flex-col justify-center items-center h-64">
-              <p className="text-neutral-500 mb-4">No notes yet</p>
-              <Button onClick={() => setSheetOpen(true)}>Create your first note</Button>
-            </div>
-          )}
-        </div>
-
-        <div
-          className="absolute z-10 bottom-0 left-0 right-0 flex justify-center px-4 pb-4"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Button
-            className="w-full py-3 text-lg font-semibold"
-            onClick={() => setSheetOpen(true)}
-          >
-            <SquarePenIcon size={20} className="mr-2" />Create new note
-          </Button>
-        </div>
-
-        <NewNoteSelectionSheet
-          open={sheetOpen}
-          onClose={() => setSheetOpen(false)}
-          onUploadFile={handleUploadFile}
-          onStartRecord={handleStartRecord}
-        />
+        {notes && notes.length === 0 && (
+          <div className="flex flex-col justify-center items-center h-64">
+            <p className="text-neutral-500 mb-4">No notes yet</p>
+            <CreateNoteButton onClick={() => setSheetOpen(true)} />
+          </div>
+        )}
       </div>
+
+      <div
+        className="fixed z-10 bottom-0 left-0 right-0 flex justify-center px-4 pb-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <ReturnToNoteButton />
+      </div>
+
+      <NewNoteSelectionSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        onUploadFile={handleUploadFile}
+        onStartRecord={handleStartRecord}
+      />
     </AppScreen>
   );
 };
