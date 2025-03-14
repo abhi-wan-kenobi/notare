@@ -120,6 +120,7 @@ export type ConfigNotification = { before: boolean; auto: boolean }
 export type ConversationChunk = { start: string; end: string; transcripts: TranscriptChunk[]; diarizations: DiarizationChunk[] }
 export type DiarizationChunk = { start: number; end: number; speaker: string }
 export type Event = { id: string; user_id: string; tracking_id: string; calendar_id: string; name: string; note: string; start_date: string; end_date: string; google_event_url: string | null }
+export type ExtensionDefinition = { id: string; title: string; description: string; implemented: boolean; default: boolean; cloud_only: boolean; plugins: string[]; tags: string[] }
 export type GetSessionFilter = { id: string } | { calendarEventId: string } | { tagId: string }
 export type Human = { id: string; organization_id: string | null; is_user: boolean; full_name: string | null; email: string | null; job_title: string | null; linkedin_username: string | null }
 export type ListSessionFilter = { search: [number, string] } | { recentlyVisited: [number] }

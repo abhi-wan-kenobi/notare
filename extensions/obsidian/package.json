@@ -4,7 +4,12 @@
   "license": "MIT",
   "keywords": [],
   "description": "Obsidian",
-  "main": "src/index.tsx",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./globals.css": "./src/globals.css",
+    "./tailwind.config": "./tailwind.config.ts",
+    "./config.json": "./config.json"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },

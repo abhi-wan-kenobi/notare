@@ -53,6 +53,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::tags::assign_tag_to_session,
             commands::tags::unassign_tag_from_session,
         ])
+        .typ::<hypr_db_user::ExtensionDefinition>()
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
 
