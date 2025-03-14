@@ -11,12 +11,17 @@ import {
 } from "@/contexts";
 
 export const Route = createFileRoute("/app/note")({
-  component: RouteComponent,
+  component: Component,
+  loader: async ({ context: { sessionsStore } }) => {
+    return sessionsStore;
+  },
 });
 
-function RouteComponent() {
+function Component() {
+  const store = Route.useLoaderData();
+
   return (
-    <SessionsProvider>
+    <SessionsProvider store={store}>
       <OngoingSessionProvider>
         <LeftSidebarProvider>
           <RightPanelProvider>

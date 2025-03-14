@@ -2,7 +2,7 @@ import { createContext, useContext, useRef } from "react";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/shallow";
 
-import { createSessionsStore } from "@/stores/sessions";
+import { createSessionsStore, SessionsStore } from "@/stores";
 
 const SessionsContext = createContext<
   ReturnType<
@@ -12,14 +12,16 @@ const SessionsContext = createContext<
 
 export const SessionsProvider = ({
   children,
+  store,
 }: {
   children: React.ReactNode;
+  store?: SessionsStore;
 }) => {
   const storeRef = useRef<ReturnType<typeof createSessionsStore> | null>(
     null,
   );
   if (!storeRef.current) {
-    storeRef.current = createSessionsStore();
+    storeRef.current = store || createSessionsStore();
   }
 
   return (

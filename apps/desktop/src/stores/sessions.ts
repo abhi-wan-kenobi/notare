@@ -12,6 +12,8 @@ type Actions = {
   enter: (session: Session) => SessionStore;
 };
 
+export type SessionsStore = ReturnType<typeof createSessionsStore>;
+
 export const createSessionsStore = () => {
   return createStore<State & Actions>((set, get) => ({
     sessions: {},

@@ -1,15 +1,22 @@
-import type { Context } from "@/types";
-import { Toaster } from "@hypr/ui/components/ui/sonner";
-import { TooltipProvider } from "@hypr/ui/components/ui/tooltip";
-import { ThemeProvider } from "@hypr/ui/contexts/theme";
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CatchBoundary, createRouter, ErrorComponent, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
+
+import type { Context } from "@/types";
+import { Toaster } from "@hypr/ui/components/ui/sonner";
+import { TooltipProvider } from "@hypr/ui/components/ui/tooltip";
+import { ThemeProvider } from "@hypr/ui/contexts/theme";
+
 import { messages as enMessages } from "./locales/en/messages";
 import { messages as koMessages } from "./locales/ko/messages";
+
 import { routeTree } from "./routeTree.gen";
+import { createSessionsStore } from "./stores";
+
+import * as Sentry from "@sentry/react";
+import { defaultOptions } from "tauri-plugin-sentry-api";
 
 i18n.load({
   en: enMessages,
@@ -29,11 +36,14 @@ const queryClient = new QueryClient({
   },
 });
 
+const context: Context = {
+  queryClient,
+  sessionsStore: createSessionsStore(),
+};
+
 const router = createRouter({
   routeTree,
-  context: {
-    queryClient,
-  },
+  context,
   defaultPreload: "intent",
   defaultViewTransition: false,
   // Since we're using React Query, we don't want loader calls to ever be stale
@@ -47,9 +57,6 @@ declare module "@tanstack/react-router" {
   }
 }
 
-import * as Sentry from "@sentry/react";
-import { defaultOptions } from "tauri-plugin-sentry-api";
-
 // https://docs.sentry.io/platforms/javascript/guides/react/features/tanstack-router/
 Sentry.init({
   ...defaultOptions,
@@ -59,10 +66,6 @@ Sentry.init({
 });
 
 function App() {
-  const context: Required<Context> = {
-    queryClient,
-  };
-
   return <RouterProvider router={router} context={context} />;
 }
 
