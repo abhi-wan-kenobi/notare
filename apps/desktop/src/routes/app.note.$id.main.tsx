@@ -26,13 +26,12 @@ function Component() {
   });
 
   useEffect(() => {
+    const isEmpty = (s: string | null) => s === "<p></p>" || !s;
     return () => {
       const isNoteEmpty = !session.title
-        && session.raw_memo_html === "<p></p>"
-        && session.conversations.length === 0
-        && (!session.enhanced_memo_html
-          || session.enhanced_memo_html === null
-          || session.enhanced_memo_html === "<p></p>");
+        && isEmpty(session.raw_memo_html)
+        && isEmpty(session.enhanced_memo_html)
+        && session.conversations.length === 0;
 
       if (isNoteEmpty) {
         mutation.mutate();
