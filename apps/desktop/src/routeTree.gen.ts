@@ -16,6 +16,7 @@ import { Route as LoginImport } from './routes/login'
 import { Route as AppImport } from './routes/app'
 import { Route as AppIndexImport } from './routes/app.index'
 import { Route as AppNoteImport } from './routes/app.note'
+import { Route as AppNewImport } from './routes/app.new'
 import { Route as AppCalendarImport } from './routes/app.calendar'
 import { Route as AppNoteIdImport } from './routes/app.note.$id'
 import { Route as AppNoteIdSubImport } from './routes/app.note.$id.sub'
@@ -50,6 +51,12 @@ const AppIndexRoute = AppIndexImport.update({
 const AppNoteRoute = AppNoteImport.update({
   id: '/note',
   path: '/note',
+  getParentRoute: () => AppRoute,
+} as any)
+
+const AppNewRoute = AppNewImport.update({
+  id: '/new',
+  path: '/new',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -107,6 +114,13 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/app/calendar'
       preLoaderRoute: typeof AppCalendarImport
+      parentRoute: typeof AppImport
+    }
+    '/app/new': {
+      id: '/app/new'
+      path: '/new'
+      fullPath: '/app/new'
+      preLoaderRoute: typeof AppNewImport
       parentRoute: typeof AppImport
     }
     '/app/note': {
@@ -176,12 +190,14 @@ const AppNoteRouteWithChildren =
 
 interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
+  AppNewRoute: typeof AppNewRoute
   AppNoteRoute: typeof AppNoteRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
+  AppNewRoute: AppNewRoute,
   AppNoteRoute: AppNoteRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
 }
@@ -193,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/app/calendar': typeof AppCalendarRoute
+  '/app/new': typeof AppNewRoute
   '/app/note': typeof AppNoteRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/app/note/$id': typeof AppNoteIdRouteWithChildren
@@ -204,6 +221,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/app/calendar': typeof AppCalendarRoute
+  '/app/new': typeof AppNewRoute
   '/app/note': typeof AppNoteRouteWithChildren
   '/app': typeof AppIndexRoute
   '/app/note/$id': typeof AppNoteIdRouteWithChildren
@@ -217,6 +235,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/app/calendar': typeof AppCalendarRoute
+  '/app/new': typeof AppNewRoute
   '/app/note': typeof AppNoteRouteWithChildren
   '/app/': typeof AppIndexRoute
   '/app/note/$id': typeof AppNoteIdRouteWithChildren
@@ -231,6 +250,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/app/calendar'
+    | '/app/new'
     | '/app/note'
     | '/app/'
     | '/app/note/$id'
@@ -241,6 +261,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/app/calendar'
+    | '/app/new'
     | '/app/note'
     | '/app'
     | '/app/note/$id'
@@ -252,6 +273,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/app/calendar'
+    | '/app/new'
     | '/app/note'
     | '/app/'
     | '/app/note/$id'
@@ -291,6 +313,7 @@ export const routeTree = rootRoute
       "filePath": "app.tsx",
       "children": [
         "/app/calendar",
+        "/app/new",
         "/app/note",
         "/app/"
       ]
@@ -303,6 +326,10 @@ export const routeTree = rootRoute
     },
     "/app/calendar": {
       "filePath": "app.calendar.tsx",
+      "parent": "/app"
+    },
+    "/app/new": {
+      "filePath": "app.new.tsx",
       "parent": "/app"
     },
     "/app/note": {

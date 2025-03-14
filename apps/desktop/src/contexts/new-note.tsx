@@ -12,7 +12,7 @@ export function NewNoteProvider({ children }: { children: React.ReactNode }) {
   const { navigate } = useRouter();
 
   const createNewNote = useCallback(() => {
-    navigate({ to: "/app" });
+    navigate({ to: "/app/new" });
   }, [navigate]);
 
   useHotkeys(

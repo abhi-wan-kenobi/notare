@@ -78,7 +78,7 @@ impl HyprWindow {
             Ok(window) => (window, false),
             Err(_) => {
                 let url = match self {
-                    Self::Main => "/app",
+                    Self::Main => "/app/new",
                     Self::Note(id) => &format!("/app/note/{}/sub", id),
                     Self::Calendar => "/app/calendar",
                 };
@@ -112,8 +112,13 @@ impl HyprWindow {
                     }
                 }
                 Self::Calendar => {
+                    window.hide()?;
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+
                     window.set_maximizable(false)?;
                     window.set_minimizable(false)?;
+                    window.set_size(LogicalSize::new(640.0, 500.0))?;
+                    window.set_min_size(Some(LogicalSize::new(640.0, 500.0)))?;
 
                     {
                         let mut cursor = app.cursor_position().unwrap();
@@ -121,9 +126,6 @@ impl HyprWindow {
                         cursor.y -= 30.0;
                         window.set_position(cursor)?;
                     }
-
-                    window.set_size(LogicalSize::new(640.0, 500.0))?;
-                    window.set_min_size(Some(LogicalSize::new(640.0, 500.0)))?;
                 }
             };
         }
