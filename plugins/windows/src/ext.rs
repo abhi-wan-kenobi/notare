@@ -31,41 +31,44 @@ impl HyprWindow {
     }
 
     pub fn show(&self, app: &AppHandle<tauri::Wry>) -> tauri::Result<WebviewWindow> {
-        let window = match self.get(app) {
-            Some(window) => window,
+        let (window, created) = match self.get(app) {
+            Some(window) => (window, false),
             None => {
                 let url = match self {
                     Self::Main => "/app",
                     Self::Note(id) => &format!("/app/note/{}/sub", id),
                 };
-                self.window_builder(app, url).build()?
+                (self.window_builder(app, url).build()?, true)
             }
         };
 
-        match self {
-            Self::Main => {
-                window.set_maximizable(true)?;
-                window.set_minimizable(true)?;
-                window.set_size(LogicalSize::new(800.0, 600.0))?;
-                window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
-            }
-            Self::Note(_) => {
-                window.hide()?;
-                std::thread::sleep(std::time::Duration::from_millis(80));
+        if created {
+            match self {
+                Self::Main => {
+                    window.set_maximizable(true)?;
+                    window.set_minimizable(true)?;
 
-                window.set_maximizable(false)?;
-                window.set_minimizable(false)?;
-                window.set_size(LogicalSize::new(600.0, 800.0))?;
-                window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
-
-                {
-                    let mut cursor = app.cursor_position().unwrap();
-                    cursor.x -= 160.0;
-                    cursor.y -= 30.0;
-                    window.set_position(cursor)?;
+                    window.set_size(LogicalSize::new(800.0, 600.0))?;
+                    window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
                 }
-            }
-        };
+                Self::Note(_) => {
+                    window.hide()?;
+                    std::thread::sleep(std::time::Duration::from_millis(80));
+
+                    window.set_maximizable(false)?;
+                    window.set_minimizable(false)?;
+                    window.set_size(LogicalSize::new(600.0, 800.0))?;
+                    window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
+
+                    {
+                        let mut cursor = app.cursor_position().unwrap();
+                        cursor.x -= 160.0;
+                        cursor.y -= 30.0;
+                        window.set_position(cursor)?;
+                    }
+                }
+            };
+        }
 
         window.set_focus()?;
         window.show()?;
