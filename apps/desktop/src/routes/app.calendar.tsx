@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { addMonths, format, subMonths } from "date-fns";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { useState } from "react";
 
-import type { RoutePath } from "@/types";
+import WorkspaceCalendar from "@/components/workspace-calendar";
 import { commands as dbCommands } from "@hypr/plugin-db";
-import { commands as windowsCommands } from "@hypr/plugin-windows";
+import { Button } from "@hypr/ui/components/ui/button";
 
 export const Route = createFileRoute("/app/calendar")({
   component: RouteComponent,
@@ -19,25 +22,75 @@ export const Route = createFileRoute("/app/calendar")({
 function RouteComponent() {
   const { sessions } = Route.useLoaderData();
 
-  const handleClick = (id: string) => {
-    const path = "/app/note/$id/main" satisfies RoutePath;
-    windowsCommands.windowEmitNavigate("main", path.replace("$id", id));
+  const today = new Date();
+  const [currentDate, setCurrentDate] = useState(today);
+
+  const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  const handlePreviousMonth = () => {
+    setCurrentDate(prevDate => subMonths(prevDate, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(prevDate => addMonths(prevDate, 1));
+  };
+
+  const handleToday = () => {
+    setCurrentDate(today);
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <ul className="flex flex-col gap-2">
-        {sessions.map((session) => (
-          <li key={session.id}>
-            <button
-              className="p-1 rounded-md bg-neutral-300 hover:bg-neutral-400"
-              onClick={() => handleClick(session.id)}
+    <div className="flex h-screen w-screen overflow-hidden flex-col bg-white text-neutral-700">
+      <header className="flex w-full flex-col">
+        <div data-tauri-drag-region className="relative min-h-11 w-full flex items-center justify-center">
+          <h1 className="text-xl font-medium">
+            <strong data-tauri-drag-region>{format(currentDate, "MMMM")}</strong> {format(currentDate, "yyyy")}
+          </h1>
+
+          <div className="absolute right-2 flex h-fit rounded-md overflow-clip border border-neutral-200">
+            <Button
+              variant="outline"
+              className="p-0.5 rounded-none border-none"
+              onClick={handlePreviousMonth}
             >
-              {`Move to ${session.id}`}
-            </button>
-          </li>
-        ))}
-      </ul>
+              <ChevronLeftIcon size={16} />
+            </Button>
+
+            <Button
+              variant="outline"
+              className="text-sm px-1 py-0.5 rounded-none border-none"
+              onClick={handleToday}
+            >
+              Today
+            </Button>
+
+            <Button
+              variant="outline"
+              className="p-0.5 rounded-none border-none"
+              onClick={handleNextMonth}
+            >
+              <ChevronRightIcon size={16} />
+            </Button>
+          </div>
+        </div>
+
+        <div className="border-b border-neutral-200 grid grid-cols-7">
+          {weekDays.map((day, index) => (
+            <div
+              key={day}
+              className={`text-center font-light text-sm pb-2 pt-1 ${
+                index === weekDays.length - 1 ? "border-r-0" : ""
+              }`}
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+      </header>
+
+      <div className="flex-1 h-full">
+        <WorkspaceCalendar currentDate={currentDate} sessions={sessions} />
+      </div>
     </div>
   );
 }
