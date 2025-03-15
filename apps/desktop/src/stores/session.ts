@@ -8,10 +8,11 @@ type State = {
 };
 
 type Actions = {
-  persistSession: () => Promise<void>;
   updateTitle: (title: string) => void;
   updateRawNote: (note: string) => void;
   updateEnhancedNote: (note: string) => void;
+  getSession: () => Session;
+  persistSession: () => Promise<void>;
 };
 
 export type SessionStore = ReturnType<typeof createSessionStore>;
@@ -19,14 +20,6 @@ export type SessionStore = ReturnType<typeof createSessionStore>;
 export const createSessionStore = (session: Session) => {
   return createStore<State & Actions>((set, get) => ({
     session,
-    persistSession: async () => {
-      const { session } = get();
-      if (!session) {
-        return;
-      }
-
-      await dbCommands.upsertSession(session);
-    },
     updateTitle: (title: string) => {
       set((state) =>
         mutate(state, (draft) => {
@@ -58,6 +51,18 @@ export const createSessionStore = (session: Session) => {
           draft.session.enhanced_memo_html = note;
         })
       );
+    },
+    getSession: () => {
+      return get().session;
+    },
+    persistSession: async () => {
+      const { session } = get();
+      if (!session) {
+        return;
+      }
+
+      console.log("persisting session", session);
+      await dbCommands.upsertSession(session);
     },
   }));
 };

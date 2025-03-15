@@ -24,13 +24,13 @@ export default function NotesList() {
     },
   });
 
-  const sessionsInit = useSessions((s) => s.init);
+  const insertSession = useSessions((s) => s.insert);
 
   const sessions = useQuery({
     queryKey: ["sessions"],
     queryFn: async () => {
       const sessions = await dbCommands.listSessions(null);
-      sessionsInit();
+      sessions.forEach(insertSession);
 
       const grouped = sessions.reduce<Record<string, Session[]>>((acc, session) => {
         const key = format(session.created_at, "yyyy-MM-dd");
@@ -71,7 +71,6 @@ export default function NotesList() {
 
               <div>
                 {items
-                  // TODO: not ideal. fresh note is not visible
                   .filter((session) => sessionsStore[session.id])
                   .map((session: Session) => (
                     <NoteItem

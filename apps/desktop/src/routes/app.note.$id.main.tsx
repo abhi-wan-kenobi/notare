@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useLoaderData } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import EditorArea from "@/components/note/editor-area";
+import { useSession } from "@/contexts";
 import { commands as dbCommands } from "@hypr/plugin-db";
 
 export const Route = createFileRoute("/app/note/$id/main")({
@@ -10,13 +11,16 @@ export const Route = createFileRoute("/app/note/$id/main")({
 });
 
 function Component() {
-  const { session } = useLoaderData({ from: "/app/note/$id" });
+  const { sessionId, getSession } = useSession((s) => ({
+    sessionId: s.session.id,
+    getSession: s.getSession,
+  }));
 
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationKey: ["delete-session", session.id],
-    mutationFn: () => dbCommands.deleteSession(session.id),
+    mutationKey: ["delete-session", sessionId],
+    mutationFn: () => dbCommands.deleteSession(sessionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
     },
@@ -27,7 +31,10 @@ function Component() {
 
   useEffect(() => {
     const isEmpty = (s: string | null) => s === "<p></p>" || !s;
+
     return () => {
+      const session = getSession();
+
       const isNoteEmpty = !session.title
         && isEmpty(session.raw_memo_html)
         && isEmpty(session.enhanced_memo_html)
@@ -37,7 +44,7 @@ function Component() {
         mutation.mutate();
       }
     };
-  }, [session.id]);
+  }, [getSession]);
 
   return (
     <main className="flex h-full overflow-hidden bg-white">

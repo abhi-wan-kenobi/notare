@@ -1,6 +1,7 @@
+import { create as mutate } from "mutative";
 import { createStore } from "zustand";
 
-import { commands as dbCommands, type Session } from "@hypr/plugin-db";
+import { type Session } from "@hypr/plugin-db";
 import { createSessionStore, SessionStore } from "./session";
 
 type State = {
@@ -8,8 +9,8 @@ type State = {
 };
 
 type Actions = {
-  init: () => Promise<void>;
-  enter: (session: Session) => SessionStore;
+  insert: (session: Session) => SessionStore;
+  remove: (sessionId: string) => void;
 };
 
 export type SessionsStore = ReturnType<typeof createSessionsStore>;
@@ -17,26 +18,26 @@ export type SessionsStore = ReturnType<typeof createSessionsStore>;
 export const createSessionsStore = () => {
   return createStore<State & Actions>((set, get) => ({
     sessions: {},
-    init: async () => {
-      const sessions = get().sessions;
-      const list = await dbCommands.listSessions(null);
-      for (const session of list) {
-        if (!sessions[session.id]) {
-          sessions[session.id] = createSessionStore(session);
-        }
-      }
-      set({ sessions });
-    },
-    enter: (session: Session) => {
+    insert: (session: Session) => {
       const sessions = get().sessions;
       if (sessions[session.id]) {
         return sessions[session.id];
       }
 
       const store = createSessionStore(session);
-      sessions[session.id] = store;
-      set({ sessions });
+
+      set((state) =>
+        mutate(state, (draft) => {
+          draft.sessions[session.id] = store;
+        })
+      );
+
       return store;
+    },
+    remove: (sessionId: string) => {
+      const sessions = get().sessions;
+      delete sessions[sessionId];
+      set({ sessions });
     },
   }));
 };

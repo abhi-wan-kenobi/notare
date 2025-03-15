@@ -21,12 +21,12 @@ export const SessionProvider = ({
 }) => {
   const [store, setStore] = useState<ReturnType<typeof createSessionStore> | null>(null);
 
-  const enter = useSessions((s) => s.enter);
+  const insertSession = useSessions((s) => s.insert);
 
   useEffect(() => {
-    const s = enter(session);
+    const s = insertSession(session);
     setStore(s);
-  }, [enter, session]);
+  }, [insertSession, session]);
 
   if (!store) {
     return null;

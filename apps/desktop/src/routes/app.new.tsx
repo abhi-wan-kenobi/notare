@@ -3,10 +3,8 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { commands as authCommands } from "@hypr/plugin-auth";
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
 
-// TODO: i was about to create empty view here, and use `useSessions` to fillup the store.
-// But maybe, can we share the same sessionsStore, and pass this as context?
 export const Route = createFileRoute("/app/new")({
-  beforeLoad: async ({ context: { queryClient } }) => {
+  beforeLoad: async ({ context: { queryClient, sessionsStore } }) => {
     const id = await authCommands.getFromStore("auth-user-id");
 
     if (!id) {
