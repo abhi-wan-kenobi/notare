@@ -1,8 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
+import { Users2Icon } from "lucide-react";
+
 import { useSession } from "@/contexts";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
-import { useQuery } from "@tanstack/react-query";
-import { Users2Icon } from "lucide-react";
 import { ParticipantsList } from "./participants-list";
 
 export function ParticipantsChip() {
@@ -25,6 +26,7 @@ export function ParticipantsChip() {
           )}
         </div>
       </PopoverTrigger>
+
       <PopoverContent
         className="shadow-lg"
         align="start"

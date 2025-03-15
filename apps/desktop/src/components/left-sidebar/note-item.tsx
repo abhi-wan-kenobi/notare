@@ -1,3 +1,8 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { AppWindowMacIcon, ArrowUpRight, TrashIcon } from "lucide-react";
+import { useState } from "react";
+
 import { useSession, useSessions } from "@/contexts";
 import { useStore2 } from "@/utils";
 import { commands as dbCommands } from "@hypr/plugin-db";
@@ -11,10 +16,6 @@ import {
 } from "@hypr/ui/components/ui/context-menu";
 import { cn } from "@hypr/ui/lib/utils";
 import { format } from "@hypr/utils/datetime";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { AppWindowMacIcon, ArrowUpRight, TrashIcon } from "lucide-react";
-import { useState } from "react";
 
 export function NoteItem({
   sessionId,
@@ -25,10 +26,14 @@ export function NoteItem({
 
   const activeSession = useSession((s) => s.session);
   const currentSession = useStore2(useSessions((s) => s.sessions[sessionId]), (s) => s.session);
+  const currentSessionEvent = useQuery({
+    queryKey: ["event", currentSession.id],
+    queryFn: () => dbCommands.sessionGetEvent(currentSession.id),
+  });
 
   const [isOpen, setIsOpen] = useState(false);
   const isActive = activeSession.id === currentSession.id;
-  const sessionDate = new Date(currentSession.created_at);
+  const sessionDate = currentSessionEvent.data?.start_date ?? currentSession.created_at;
 
   const queryClient = useQueryClient();
 

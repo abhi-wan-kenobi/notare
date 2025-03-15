@@ -1,10 +1,11 @@
-import { type Human } from "@hypr/plugin-db";
-import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
-import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { RiCornerDownLeftLine, RiLinkedinBoxFill } from "@remixicon/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Mail, PenIcon } from "lucide-react";
 import { KeyboardEvent, useMemo, useState } from "react";
+
+import { type Human } from "@hypr/plugin-db";
+import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { EditParticipantForm } from "./edit-participant-form";
 
 interface ParticipantsListProps {

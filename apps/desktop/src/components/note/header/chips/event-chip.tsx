@@ -19,13 +19,15 @@ export function EventChip() {
     queryFn: () => dbCommands.sessionGetEvent(sessionId),
   });
 
+  const date = event.data?.start_date ?? sessionCreatedAt;
+
   return (
     <Popover>
       <PopoverTrigger disabled={!event.data}>
         <div className="flex flex-row items-center gap-2 rounded-md px-2 py-1.5 hover:bg-neutral-100">
           <CalendarIcon size={14} />
           <p className="text-xs">
-            {event.data?.start_date ?? format(sessionCreatedAt, "MM/dd")}
+            {format(date, "MM/dd")}
           </p>
         </div>
       </PopoverTrigger>

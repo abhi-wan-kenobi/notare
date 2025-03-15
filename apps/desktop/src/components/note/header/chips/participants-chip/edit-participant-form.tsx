@@ -1,4 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
 import { type Human } from "@hypr/plugin-db";
 import {
   Form,
@@ -10,9 +14,6 @@ import {
   FormMessage,
 } from "@hypr/ui/components/ui/form";
 import { Input } from "@hypr/ui/components/ui/input";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 const schema = z.object({
   email: z.string().email().optional().or(z.literal("")),

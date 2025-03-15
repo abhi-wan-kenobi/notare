@@ -119,7 +119,7 @@ pub async fn seed(db: &UserDatabase) -> Result<(), crate::Error> {
             title: "Session 1".to_string(),
             created_at: now,
             visited_at: now,
-            calendar_event_id: None,
+            calendar_event_id: Some(events[0].id.clone()),
             audio_local_path: None,
             audio_remote_path: None,
             raw_memo_html: "".to_string(),
