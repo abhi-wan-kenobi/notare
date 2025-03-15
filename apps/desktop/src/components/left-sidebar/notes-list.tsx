@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { isFuture } from "date-fns";
 import { CalendarIcon } from "lucide-react";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 
 import { useHypr, useSessions } from "@/contexts";
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
@@ -61,28 +62,40 @@ export default function NotesList() {
         </section>
       )}
 
-      {Object.entries(sessions.data ?? {}).sort(([keyA, _a], [keyB, _b]) => keyA.localeCompare(keyB)).map(
-        ([key, items]) => {
-          return (
-            <section key={key}>
-              <h2 className="font-bold text-neutral-600 mb-2">
-                {formatRelative(key)}
-              </h2>
+      <LayoutGroup>
+        <AnimatePresence initial={false}>
+          {Object.entries(sessions.data ?? {}).sort(([keyA, _a], [keyB, _b]) => keyA.localeCompare(keyB)).map(
+            ([key, items]) => {
+              return (
+                <section key={key}>
+                  <h2 className="font-bold text-neutral-600 mb-2">
+                    {formatRelative(key)}
+                  </h2>
 
-              <div>
-                {items
-                  .filter((session) => sessionsStore[session.id])
-                  .map((session: Session) => (
-                    <NoteItem
-                      key={session.id}
-                      sessionId={session.id}
-                    />
-                  ))}
-              </div>
-            </section>
-          );
-        },
-      )}
+                  <motion.div layout>
+                    {items
+                      .filter((session) => sessionsStore[session.id])
+                      .map((session: Session) => (
+                        <motion.div
+                          key={session.id}
+                          layout
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <NoteItem
+                            sessionId={session.id}
+                          />
+                        </motion.div>
+                      ))}
+                  </motion.div>
+                </section>
+              );
+            },
+          )}
+        </AnimatePresence>
+      </LayoutGroup>
     </nav>
   );
 }
