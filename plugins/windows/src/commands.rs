@@ -12,6 +12,15 @@ pub async fn window_show(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn window_get_floating(
+    app: tauri::AppHandle<tauri::Wry>,
+    window: HyprWindow,
+) -> Result<bool, String> {
+    Ok(app.window_get_floating(window).map_err(|e| e.to_string())?)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn window_set_floating(
     app: tauri::AppHandle<tauri::Wry>,
     window: HyprWindow,

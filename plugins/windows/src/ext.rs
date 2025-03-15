@@ -1,11 +1,9 @@
-use tauri::{
-    AppHandle, EventTarget, LogicalSize, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
-};
+use tauri::{AppHandle, LogicalSize, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use tauri_specta::Event;
 
-use crate::events;
+use crate::{events, WindowState};
 
-#[derive(Debug, serde::Deserialize, specta::Type, strum::EnumString)]
+#[derive(Debug, serde::Deserialize, specta::Type, strum::EnumString, PartialEq, Eq, Hash)]
 pub enum HyprWindow {
     #[serde(rename = "main")]
     #[strum(serialize = "main")]
@@ -159,7 +157,7 @@ impl HyprWindow {
 
 pub trait WindowsPluginExt<R: tauri::Runtime> {
     fn window_show(&self, window: HyprWindow) -> Result<WebviewWindow, crate::Error>;
-
+    fn window_get_floating(&self, window: HyprWindow) -> Result<bool, crate::Error>;
     fn window_set_floating(&self, window: HyprWindow, v: bool) -> Result<(), crate::Error>;
 
     fn window_emit_navigate(
@@ -180,8 +178,36 @@ impl WindowsPluginExt<tauri::Wry> for AppHandle<tauri::Wry> {
         window.show(self)
     }
 
+    fn window_get_floating(&self, window: HyprWindow) -> Result<bool, crate::Error> {
+        let app = self.app_handle();
+        let state = app.state::<crate::ManagedState>();
+
+        let v = {
+            let guard = state.lock().unwrap();
+            guard
+                .windows
+                .get(&window)
+                .map(|w| w.floating)
+                .unwrap_or(false)
+        };
+
+        Ok(v)
+    }
+
     fn window_set_floating(&self, window: HyprWindow, v: bool) -> Result<(), crate::Error> {
+        let app = self.app_handle();
+        let state = app.state::<crate::ManagedState>();
+
         window.get(self)?.set_always_on_top(v)?;
+        {
+            let mut guard = state.lock().unwrap();
+            guard
+                .windows
+                .entry(window)
+                .or_insert(WindowState::default())
+                .floating = v;
+        }
+
         Ok(())
     }
 

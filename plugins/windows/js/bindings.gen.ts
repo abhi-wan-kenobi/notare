@@ -10,6 +10,9 @@ export const commands = {
 async windowShow(window: HyprWindow) : Promise<null> {
     return await TAURI_INVOKE("plugin:windows|window_show", { window });
 },
+async windowGetFloating(window: HyprWindow) : Promise<boolean> {
+    return await TAURI_INVOKE("plugin:windows|window_get_floating", { window });
+},
 async windowSetFloating(window: HyprWindow, v: boolean) : Promise<null> {
     return await TAURI_INVOKE("plugin:windows|window_set_floating", { window, v });
 },

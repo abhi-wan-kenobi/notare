@@ -84,19 +84,7 @@ pub async fn main() {
             let handler = specta_builder.invoke_handler();
             move |invoke| handler(invoke)
         })
-        .on_window_event(|window, event| match event {
-            tauri::WindowEvent::CloseRequested { api, .. } => {
-                match window.label().parse::<HyprWindow>() {
-                    Ok(HyprWindow::Main) => {
-                        if let Ok(_) = window.hide() {
-                            api.prevent_close();
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        })
+        .on_window_event(tauri_plugin_windows::on_window_event)
         .setup(move |app| {
             let app = app.handle().clone();
 
