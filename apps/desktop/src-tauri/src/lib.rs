@@ -68,7 +68,9 @@ pub async fn main() {
 
     #[cfg(target_os = "macos")]
     {
-        builder = builder.plugin(tauri_plugin_apple_calendar::init());
+        builder = builder
+            .plugin(tauri_plugin_apple_calendar::init())
+            .plugin(tauri_nspanel::init());
     }
 
     #[cfg(not(debug_assertions))]
