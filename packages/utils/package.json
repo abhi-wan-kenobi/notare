@@ -1,14 +1,25 @@
 {
   "name": "@hypr/utils",
-  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./datetime": "./src/datetime.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
   "dependencies": {
     "@ai-sdk/openai": "^1.2.1",
+    "@date-fns/tz": "^1.2.0",
     "@hypr/client": "workspace:^",
     "@hypr/plugin-auth": "workspace:^",
     "@hypr/plugin-connector": "workspace:^",
     "@hypr/plugin-sse": "workspace:^",
     "@tauri-apps/api": "^2.3.0",
     "@tauri-apps/plugin-http": "^2.3.0",
-    "ai": "^4.1.54"
+    "ai": "^4.1.54",
+    "date-fns": "^4.1.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.8"
   }
 }
