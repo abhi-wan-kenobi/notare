@@ -3,6 +3,7 @@
 Default permissions for the plugin
 
 - `allow-window-show`
+- `allow-window-focus`
 - `allow-window-get-floating`
 - `allow-window-set-floating`
 - `allow-window-navigate`
@@ -39,6 +40,32 @@ Enables the window_emit_navigate command without any pre-configured scope.
 <td>
 
 Denies the window_emit_navigate command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:allow-window-focus`
+
+</td>
+<td>
+
+Enables the window_focus command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:deny-window-focus`
+
+</td>
+<td>
+
+Denies the window_focus command without any pre-configured scope.
 
 </td>
 </tr>

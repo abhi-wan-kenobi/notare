@@ -32,6 +32,7 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::window_get_floating,
             commands::window_set_floating,
             commands::window_navigate,
+            commands::window_focus,
             commands::window_emit_navigate,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
