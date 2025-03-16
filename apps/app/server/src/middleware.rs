@@ -16,7 +16,7 @@ pub async fn verify_api_key(
     State(state): State<AuthState>,
     mut req: Request,
     next: middleware::Next,
-) -> Result<Response, StatusCode> {
+) -> Result<Response, (StatusCode, String)> {
     let auth_header = req
         .headers()
         .get(header::AUTHORIZATION)
@@ -25,22 +25,22 @@ pub async fn verify_api_key(
     let api_key = if let Some(v) = auth_header {
         v.strip_prefix("Bearer ").unwrap_or(v)
     } else {
-        return Err(StatusCode::UNAUTHORIZED);
+        return Err((StatusCode::UNAUTHORIZED, "no_bearer_token".into()));
     };
 
     let user = state
         .admin_db
         .get_user_by_device_api_key(api_key)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::UNAUTHORIZED)?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .ok_or((StatusCode::UNAUTHORIZED, "user_not_found".into()))?;
 
     let account = state
         .admin_db
         .get_account_by_id(&user.account_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::UNAUTHORIZED)?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .ok_or((StatusCode::UNAUTHORIZED, "account_not_found".into()))?;
 
     req.extensions_mut().insert(user);
     req.extensions_mut().insert(account);
