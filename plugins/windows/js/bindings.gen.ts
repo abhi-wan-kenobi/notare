@@ -19,9 +19,6 @@ async windowSetFloating(window: HyprWindow, v: boolean) : Promise<null> {
 async windowNavigate(window: HyprWindow, path: string) : Promise<null> {
     return await TAURI_INVOKE("plugin:windows|window_navigate", { window, path });
 },
-async windowFocus(window: HyprWindow) : Promise<null> {
-    return await TAURI_INVOKE("plugin:windows|window_focus", { window });
-},
 async windowEmitNavigate(window: HyprWindow, path: string) : Promise<null> {
     return await TAURI_INVOKE("plugin:windows|window_emit_navigate", { window, path });
 }

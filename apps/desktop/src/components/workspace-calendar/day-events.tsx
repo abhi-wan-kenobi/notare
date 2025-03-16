@@ -1,11 +1,12 @@
+import { format } from "date-fns";
+import { Pen } from "lucide-react";
+import { useState } from "react";
+
 import type { RoutePath } from "@/types";
 import { type Session } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
-import { format } from "date-fns";
-import { Pen } from "lucide-react";
-import { useState } from "react";
 
 interface DayEventsProps {
   sessions: Session[];
@@ -28,8 +29,9 @@ export function EventCard({ session, showTime = false }: { session: Session; sho
     setOpen(false);
 
     const path = "/app/note/$id/main" satisfies RoutePath;
-    windowsCommands.windowEmitNavigate("main", path.replace("$id", id));
-    windowsCommands.windowFocus("main");
+    windowsCommands.windowEmitNavigate("main", path.replace("$id", id)).then(() => {
+      windowsCommands.windowShow("main");
+    });
   };
 
   const getStartDate = () => {

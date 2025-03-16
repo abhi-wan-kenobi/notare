@@ -12,16 +12,6 @@ pub async fn window_show(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn window_focus(
-    app: tauri::AppHandle<tauri::Wry>,
-    window: HyprWindow,
-) -> Result<(), String> {
-    app.window_focus(window).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-#[tauri::command]
-#[specta::specta]
 pub async fn window_get_floating(
     app: tauri::AppHandle<tauri::Wry>,
     window: HyprWindow,

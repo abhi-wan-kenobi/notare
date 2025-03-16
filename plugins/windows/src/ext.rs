@@ -157,7 +157,6 @@ impl HyprWindow {
 
 pub trait WindowsPluginExt<R: tauri::Runtime> {
     fn window_show(&self, window: HyprWindow) -> Result<WebviewWindow, crate::Error>;
-    fn window_focus(&self, window: HyprWindow) -> Result<(), crate::Error>;
     fn window_get_floating(&self, window: HyprWindow) -> Result<bool, crate::Error>;
     fn window_set_floating(&self, window: HyprWindow, v: bool) -> Result<(), crate::Error>;
 
@@ -177,11 +176,6 @@ pub trait WindowsPluginExt<R: tauri::Runtime> {
 impl WindowsPluginExt<tauri::Wry> for AppHandle<tauri::Wry> {
     fn window_show(&self, window: HyprWindow) -> Result<WebviewWindow, crate::Error> {
         window.show(self)
-    }
-
-    fn window_focus(&self, window: HyprWindow) -> Result<(), crate::Error> {
-        window.get(self)?.set_focus()?;
-        Ok(())
     }
 
     fn window_get_floating(&self, window: HyprWindow) -> Result<bool, crate::Error> {
