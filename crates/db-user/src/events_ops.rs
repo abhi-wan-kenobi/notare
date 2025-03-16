@@ -1,4 +1,4 @@
-use super::{Event, UserDatabase};
+use super::{Event, ListEventFilter, UserDatabase};
 
 impl UserDatabase {
     pub async fn get_event(&self, id: impl Into<String>) -> Result<Option<Event>, crate::Error> {
@@ -68,19 +68,18 @@ impl UserDatabase {
         Ok(event)
     }
 
-    pub async fn list_events(
-        &self,
-        user_id: impl Into<String>,
-    ) -> Result<Vec<Event>, crate::Error> {
+    pub async fn list_events(&self, filter: ListEventFilter) -> Result<Vec<Event>, crate::Error> {
         let conn = self.conn()?;
 
-        let mut rows = conn
-            .query(
-                "SELECT * FROM events WHERE user_id = ? ORDER BY start_date DESC LIMIT 100",
-                vec![user_id.into()],
-            )
-            .await
-            .unwrap();
+        let mut rows = match filter {
+            ListEventFilter::UserId(user_id) => {
+                conn.query(
+                    "SELECT * FROM events WHERE user_id = ? ORDER BY start_date DESC LIMIT 100",
+                    vec![user_id],
+                )
+                .await?
+            }
+        };
 
         let mut items = Vec::new();
         while let Some(row) = rows.next().await.unwrap() {
@@ -94,7 +93,7 @@ impl UserDatabase {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{tests::setup_db, Calendar, Human, Platform};
+    use crate::{tests::setup_db, Calendar, Human, ListEventFilter, Platform};
 
     #[tokio::test]
     async fn test_events() {
@@ -108,7 +107,10 @@ mod tests {
             .await
             .unwrap();
 
-        let events = db.list_events(&human.id).await.unwrap();
+        let events = db
+            .list_events(ListEventFilter::UserId(human.id.clone()))
+            .await
+            .unwrap();
         assert_eq!(events.len(), 0);
 
         let calendar = Calendar {
@@ -147,7 +149,10 @@ mod tests {
         assert_eq!(event.tracking_id, "event_test");
         assert_eq!(event.google_event_url, None);
 
-        let events = db.list_events(&human.id).await.unwrap();
+        let events = db
+            .list_events(ListEventFilter::UserId(human.id.clone()))
+            .await
+            .unwrap();
         assert_eq!(events.len(), 1);
     }
 }

@@ -7,8 +7,8 @@
 
 
 export const commands = {
-async listEvents(userId: string) : Promise<Event[]> {
-    return await TAURI_INVOKE("plugin:db|list_events", { userId });
+async listEvents(filter: ListEventFilter) : Promise<Event[]> {
+    return await TAURI_INVOKE("plugin:db|list_events", { filter });
 },
 async listCalendars() : Promise<Calendar[]> {
     return await TAURI_INVOKE("plugin:db|list_calendars");
@@ -123,6 +123,7 @@ export type Event = { id: string; user_id: string; tracking_id: string; calendar
 export type ExtensionDefinition = { id: string; title: string; description: string; implemented: boolean; default: boolean; cloud_only: boolean; plugins: string[]; tags: string[] }
 export type GetSessionFilter = { id: string } | { calendarEventId: string } | { tagId: string }
 export type Human = { id: string; organization_id: string | null; is_user: boolean; full_name: string | null; email: string | null; job_title: string | null; linkedin_username: string | null }
+export type ListEventFilter = { userId: string }
 export type ListSessionFilter = { search: [number, string] } | { recentlyVisited: [number] }
 export type Organization = { id: string; name: string; description: string | null }
 export type Platform = "Apple" | "Google"

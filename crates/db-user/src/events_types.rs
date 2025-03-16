@@ -15,3 +15,10 @@ user_common_derives! {
         pub google_event_url: Option<String>,
     }
 }
+
+user_common_derives! {
+    pub enum ListEventFilter {
+        #[serde(rename = "userId")]
+        UserId(String),
+    }
+}
