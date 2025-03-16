@@ -28,14 +28,15 @@ export default function EditorArea({ editable }: { editable: boolean }) {
     persistSession: s.persistSession,
   }));
 
-  const [initialEditorContent, setInitialEditorContent] = useState("");
+  const [initialContent, setInitialContent] = useState("");
 
   useEffect(() => {
     const content = showRaw
       ? sessionStore.session?.raw_memo_html
       : sessionStore.session?.enhanced_memo_html;
 
-    setInitialEditorContent(content ?? "");
+    editorRef.current?.editor?.commands?.setContent("");
+    setInitialContent(content ?? "");
   }, [sessionStore.session?.id, showRaw]);
 
   const ongoingSessionStore = useOngoingSession((s) => ({
@@ -83,7 +84,7 @@ export default function EditorArea({ editable }: { editable: boolean }) {
         acc += chunk;
         const html = await miscCommands.opinionatedMdToHtml(chunk);
 
-        setInitialEditorContent(html);
+        setInitialContent(html);
         sessionStore.updateEnhancedNote(html);
       }
 
@@ -143,13 +144,13 @@ export default function EditorArea({ editable }: { editable: boolean }) {
               <Editor
                 ref={editorRef}
                 handleChange={handleChangeNote}
-                initialContent={initialEditorContent}
+                initialContent={initialContent}
               />
             )
             : (
               <Renderer
                 ref={editorRef}
-                initialContent={initialEditorContent}
+                initialContent={initialContent}
               />
             )}
         </div>
