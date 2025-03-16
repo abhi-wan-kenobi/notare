@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "lingui": "lingui",
     "lingui:extract": "lingui extract",
     "lingui:compile": "lingui compile --typescript",
     "typecheck": "tsc --noEmit"

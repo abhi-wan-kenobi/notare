@@ -51,10 +51,12 @@ const plugins: DefaultTheme.SidebarItem = {
 
 const development: DefaultTheme.SidebarItem = {
   text: "Development",
+  collapsed: true,
   items: [
     { text: "Contributing", link: "/development/contributing" },
     { text: "Extension", link: "/development/extension" },
     { text: "Plugin", link: "/development/plugin" },
+    { text: "Internalization", link: "/development/i18n" },
     { text: "Miscellaneous", link: "/development/miscellaneous" },
   ],
 };

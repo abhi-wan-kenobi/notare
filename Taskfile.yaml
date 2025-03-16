@@ -12,3 +12,18 @@ tasks:
 
   stripe: stripe listen --skip-verify --forward-to http://localhost:5000/webhook/stripe
   bacon: bacon {{.CLI_ARGS}}
+
+  i18n:
+    cmds:
+      - |
+          pnpm -F desktop lingui extract |
+          awk -F '│' '($2 ~ /[^ ]/ && $3 ~ /[0-9-]/) {
+            gsub(/^ *| *$/, "", $2);
+            gsub(/[^0-9-]/, "", $3);
+            gsub(/^ *| *$/, "", $4);
+            printf "{\"language\":\"%s\",\"total\":%d,\"missing\":%d}\n",
+              $2,
+              ($3 == "-" ? 0: $3),
+              ($4 == "-" ? 0: $4)
+          }' |
+          jq -s . > ./apps/docs/data/i18n.json
