@@ -31,8 +31,8 @@ export function TemplateView({
   const { userId } = useHypr();
 
   return (
-    <div className="flex h-full flex-col justify-between">
-      <div className="flex-1 overflow-auto">
+    <div className="flex h-full flex-col">
+      <div className="flex-1 overflow-hidden">
         <header className="border-b p-2">
           <button
             onClick={() => setActive(data.nav[0].name)}
@@ -53,7 +53,7 @@ export function TemplateView({
         />
       </div>
 
-      <footer className="mt-auto border-t p-2">
+      <footer className="mt-auto border-t p-2 hidden md:block">
         <button
           className="flex w-full items-center gap-2 rounded-lg p-2 text-sm text-neutral-600 hover:bg-neutral-100"
           onClick={() => {
@@ -71,7 +71,7 @@ export function TemplateView({
           }}
         >
           <FilePlusIcon className="h-4 w-4" />
-          <span className="hidden md:inline-block">Create Template</span>
+          Create Template
         </button>
       </footer>
     </div>

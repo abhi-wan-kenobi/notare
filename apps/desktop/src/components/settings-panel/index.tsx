@@ -70,7 +70,7 @@ export default function SettingsPanel() {
         onClick={open}
         aria-label="Settings"
         variant="ghost"
-        className="hidden w-full justify-start md:flex hover:bg-neutral-200"
+        className="w-full justify-start flex hover:bg-neutral-200"
       >
         <SettingsIcon className="mr-2 h-4 w-4" />
         Settings
@@ -95,6 +95,8 @@ export default function SettingsPanel() {
             <SettingsPanelBody
               title={active}
               selectedTemplate={selectedTemplate}
+              selectedExtension={selectedExtension}
+              setActive={setActive}
             >
               {active === "General" && <GeneralComponent />}
               {active === "Calendar" && <CalendarComponent />}
