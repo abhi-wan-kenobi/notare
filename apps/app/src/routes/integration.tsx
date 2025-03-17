@@ -72,7 +72,8 @@ function Component() {
       .then((_) => {
         setStep("success");
       })
-      .catch((_) => {
+      .catch((e) => {
+        console.error(e);
         setStep("error");
       });
   }, [connectMutation.status]);

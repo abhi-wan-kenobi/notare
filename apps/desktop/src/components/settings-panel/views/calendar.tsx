@@ -2,6 +2,7 @@ import { Trans } from "@lingui/react/macro";
 import { RiAppleFill as AppleIcon } from "@remixicon/react";
 import { useQuery } from "@tanstack/react-query";
 import { type as getOsType } from "@tauri-apps/plugin-os";
+import { open } from "@tauri-apps/plugin-shell";
 import { CheckIcon } from "lucide-react";
 import { useCallback } from "react";
 
@@ -81,6 +82,11 @@ function OauthCalendarIntegrationDetails({
   const integration = integrations.data?.find((i) => i === type);
   const Icon = type === "google-calendar" ? GoogleIcon : OutlookIcon;
 
+  const handleClickConnect = () => {
+    const url = getIntegrationURL(type);
+    open(url);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between rounded-lg border p-4">
@@ -109,11 +115,9 @@ function OauthCalendarIntegrationDetails({
               </Button>
             )
             : (
-              <a href={getIntegrationURL(type)}>
-                <Button variant="outline" size="sm">
-                  <Trans>Connect</Trans>
-                </Button>
-              </a>
+              <Button variant="outline" size="sm" onClick={handleClickConnect}>
+                <Trans>Connect</Trans>
+              </Button>
             )}
         </div>
       </div>

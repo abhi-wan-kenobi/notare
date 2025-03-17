@@ -4,6 +4,8 @@ import { customProvider } from "ai";
 import { commands as authCommands } from "@hypr/plugin-auth";
 import { commands as connectorCommands } from "@hypr/plugin-connector";
 
+import { fetch as customFetch } from "@hypr/utils";
+
 const getModel = async (model: string) => {
   const apiBase = await connectorCommands.getApiBase("auto-llm");
   const apiKey = await authCommands.getFromVault("remote-server");
@@ -15,7 +17,7 @@ const getModel = async (model: string) => {
   const openai = createOpenAI({
     baseURL: apiBase,
     apiKey: apiKey ?? undefined,
-    fetch,
+    fetch: customFetch,
   });
 
   return openai(model, { structuredOutputs: true });

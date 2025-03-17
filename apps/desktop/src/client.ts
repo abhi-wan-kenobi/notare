@@ -23,8 +23,5 @@ export const client = createClient(
 );
 
 export function getIntegrationURL(type: NangoIntegration) {
-  return new URL(`/integrations?provider=${type}`, baseUrl).toString();
+  return new URL(`/integration?provider=${type}`, baseUrl).toString();
 }
-
-// We can't use SSE with generated client: https://github.com/hey-api/openapi-ts/issues/772
-export async function enhance(req: any) {}
