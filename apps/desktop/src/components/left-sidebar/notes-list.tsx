@@ -20,6 +20,7 @@ export function EventsList() {
         .filter((event) => {
           return isFuture(new Date(event.start_date));
         })
+        .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
         .slice(0, 3);
 
       return upcomingEvents;
@@ -116,7 +117,6 @@ export function NotesList() {
 export function AllList() {
   return (
     <nav className="h-full overflow-y-auto space-y-4 px-3 pb-4">
-      <hr />
       <EventsList />
       <hr />
       <LayoutGroup>

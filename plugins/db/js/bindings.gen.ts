@@ -37,8 +37,8 @@ async listSessions(filter: ListSessionFilter | null) : Promise<Session[]> {
 async deleteSession(id: string) : Promise<null> {
     return await TAURI_INVOKE("plugin:db|delete_session", { id });
 },
-async getSession(option: GetSessionFilter) : Promise<Session | null> {
-    return await TAURI_INVOKE("plugin:db|get_session", { option });
+async getSession(filter: GetSessionFilter) : Promise<Session | null> {
+    return await TAURI_INVOKE("plugin:db|get_session", { filter });
 },
 async setSessionEvent(sessionId: string, eventId: string) : Promise<null> {
     return await TAURI_INVOKE("plugin:db|set_session_event", { sessionId, eventId });
