@@ -9658,12 +9658,12 @@ dependencies = [
  "db-admin",
  "db-core",
  "db-user",
+ "loops",
  "nango",
  "restate-sdk",
  "serde",
  "tokio",
  "tracing-subscriber",
- "turso",
 ]
 
 [[package]]
