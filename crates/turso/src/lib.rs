@@ -1,7 +1,9 @@
 mod error;
 pub use error::*;
 
+use cached::{Cached, SizedCache};
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct TursoClient {
@@ -9,6 +11,7 @@ pub struct TursoClient {
     pub api_base: url::Url,
     pub api_key: String,
     pub org_slug: String,
+    token_cache: Option<Arc<Mutex<SizedCache<String, String>>>>,
 }
 
 #[derive(Default)]
@@ -16,6 +19,7 @@ pub struct CreateDatabaseRequestBuilder {
     pub name: Option<String>,
     pub is_schema: Option<bool>,
     pub schema: Option<String>,
+    token_cache: Option<Arc<Mutex<SizedCache<String, String>>>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -45,6 +49,12 @@ impl CreateDatabaseRequestBuilder {
     pub fn with_schema(mut self, schema: impl Into<String>) -> Self {
         self.is_schema = Some(true);
         self.schema = Some(schema.into());
+        self
+    }
+
+    pub fn with_token_cache(mut self) -> Self {
+        let default_cache = Arc::new(Mutex::new(SizedCache::with_size(128)));
+        self.token_cache = Some(default_cache);
         self
     }
 }
@@ -108,6 +118,7 @@ pub enum GenerateTokenResponse {
 pub struct TursoClientBuilder {
     api_key: Option<String>,
     org_slug: Option<String>,
+    token_cache: Option<Arc<Mutex<SizedCache<String, String>>>>,
 }
 
 impl TursoClientBuilder {
@@ -118,6 +129,11 @@ impl TursoClientBuilder {
 
     pub fn org_slug(mut self, org_slug: impl Into<String>) -> Self {
         self.org_slug = Some(org_slug.into());
+        self
+    }
+
+    pub fn with_token_cache(mut self, size: usize) -> Self {
+        self.token_cache = Some(Arc::new(Mutex::new(SizedCache::with_size(size))));
         self
     }
 
@@ -141,6 +157,7 @@ impl TursoClientBuilder {
             api_base: "https://api.turso.tech".parse().unwrap(),
             api_key,
             org_slug: self.org_slug.unwrap(),
+            token_cache: self.token_cache,
         }
     }
 }
@@ -161,11 +178,19 @@ impl TursoClient {
 
     // https://docs.turso.tech/api-reference/databases/create-token
     pub async fn generate_db_token(&self, db_name: impl Into<String>) -> Result<String, Error> {
+        let db_name = db_name.into();
+
+        if let Some(cache) = &self.token_cache {
+            let mut guard = cache.lock().unwrap();
+            if let Some(token) = guard.cache_get(&db_name) {
+                return Ok(token.to_owned());
+            }
+        }
+
         let mut url = self.api_base.clone();
         url.set_path(&format!(
             "/v1/organizations/{}/databases/{}/auth/tokens",
-            self.org_slug,
-            db_name.into()
+            self.org_slug, db_name
         ));
         url.query_pairs_mut()
             .append_pair("expiration", "never")
@@ -181,7 +206,13 @@ impl TursoClient {
 
         match res {
             GenerateTokenResponse::Error { error } => Err(Error::GenerateTokenError(error)),
-            GenerateTokenResponse::Token { jwt } => Ok(jwt),
+            GenerateTokenResponse::Token { jwt } => {
+                if let Some(cache) = &self.token_cache {
+                    let mut guard = cache.lock().unwrap();
+                    guard.cache_set(db_name, jwt.clone());
+                }
+                Ok(jwt)
+            }
         }
     }
 
@@ -271,6 +302,7 @@ mod tests {
         TursoClient::builder()
             .api_key(std::env::var("TURSO_API_KEY").unwrap())
             .org_slug("yujonglee")
+            .with_token_cache(128)
             .build()
     }
 

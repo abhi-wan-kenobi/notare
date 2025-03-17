@@ -98,6 +98,7 @@ fn main() {
                 .init();
 
             let turso = hypr_turso::TursoClient::builder()
+                .with_token_cache(128)
                 .api_key(get_env("TURSO_API_KEY"))
                 .org_slug(get_env("TURSO_ORG_SLUG"))
                 .build();
