@@ -6486,6 +6486,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "loops"
+version = "0.1.0"
+dependencies = [
+ "reqwest 0.12.12",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "lru"
 version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
