@@ -15,3 +15,5 @@ hypr-turso = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing-subscriber = { workspace = true }
+
+async-stripe = { workspace = true, default-features = false, features = ["runtime-tokio-hyper", "webhook-events", "checkout", "connect"] }

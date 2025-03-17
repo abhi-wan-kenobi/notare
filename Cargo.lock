@@ -9621,6 +9621,7 @@ dependencies = [
 name = "restate"
 version = "0.1.0"
 dependencies = [
+ "async-stripe",
  "db-admin",
  "db-core",
  "db-user",

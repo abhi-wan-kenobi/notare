@@ -12,6 +12,7 @@ pub(crate) struct CheckoutRequest {
 #[restate_sdk::service]
 pub(crate) trait CheckoutService {
     async fn handle(request: Json<CheckoutRequest>) -> Result<bool, HandlerError>;
+    async fn on_stripe_webhook() -> Result<bool, HandlerError>;
 }
 
 pub struct CheckoutServiceImpl;
@@ -25,6 +26,11 @@ impl CheckoutService for CheckoutServiceImpl {
             tickets: _,
         }): Json<CheckoutRequest>,
     ) -> Result<bool, HandlerError> {
+        Ok(true)
+    }
+
+    // // https://docs.restate.dev/guides/durable-webhooks/
+    async fn on_stripe_webhook(&self, _ctx: Context<'_>) -> Result<bool, HandlerError> {
         Ok(true)
     }
 }
