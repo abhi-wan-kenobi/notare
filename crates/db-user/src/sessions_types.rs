@@ -91,5 +91,7 @@ user_common_derives! {
         Search((u8, String)),
         #[serde(rename = "recentlyVisited")]
         RecentlyVisited((u8,)),
+        #[serde(rename = "dateRange")]
+        DateRange((DateTime<Utc>, DateTime<Utc>)),
     }
 }

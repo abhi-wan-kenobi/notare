@@ -1,30 +1,39 @@
-import type { Session } from "@hypr/plugin-db";
-import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
-import { cn } from "@hypr/ui/lib/utils";
 import { addDays, eachDayOfInterval, format, getDay, isSameMonth, startOfMonth, subDays } from "date-fns";
 import { useEffect, useRef, useState } from "react";
+
+import type { Event, Session } from "@hypr/plugin-db";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
+import { cn } from "@hypr/ui/lib/utils";
 import { DayEvents, EventCard } from "./day-events";
 
 interface WorkspaceCalendarProps {
+  events: Event[];
   sessions: Session[];
-  currentDate?: Date;
+  month: Date;
 }
 
 const HEADER_HEIGHT = 32;
 const EVENT_HEIGHT = 20;
 
-export default function WorkspaceCalendar({ sessions, currentDate }: WorkspaceCalendarProps) {
+// TODO:
+// 'sessions' and 'events' are passed as-is based on date range.
+// For future: if event OR session exist, we should render it.
+// For past: event does not matter. if session exists, render it.
+// future/past decision can be made with `const today = new Date();`.
+export default function WorkspaceCalendar({ sessions, month }: WorkspaceCalendarProps) {
   const today = new Date();
-  const [currentMonth, setCurrentMonth] = useState(currentDate || today);
+
   const calendarRef = useRef<HTMLDivElement>(null);
+
+  const [currentMonth, setCurrentMonth] = useState(month);
   const [cellHeight, setCellHeight] = useState<number>(75);
   const [visibleEvents, setVisibleEvents] = useState<number>(2);
 
   useEffect(() => {
-    if (currentDate) {
-      setCurrentMonth(currentDate);
+    if (month) {
+      setCurrentMonth(month);
     }
-  }, [currentDate]);
+  }, [month]);
 
   useEffect(() => {
     const updateCellHeight = (containerHeight: number) => {
@@ -65,7 +74,6 @@ export default function WorkspaceCalendar({ sessions, currentDate }: WorkspaceCa
     const observer = new ResizeObserver((entries) => {
       entries.forEach(entry => {
         const height = entry.contentRect.height;
-        console.log("Height:", height);
         if (height > 75 * 6) updateCellHeight(height);
       });
     });
@@ -96,8 +104,6 @@ export default function WorkspaceCalendar({ sessions, currentDate }: WorkspaceCa
   };
 
   const calendarDays = getCalendarDays();
-
-  console.log("Cell height:", cellHeight);
 
   return (
     <div

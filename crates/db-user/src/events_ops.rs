@@ -72,6 +72,13 @@ impl UserDatabase {
         let conn = self.conn()?;
 
         let mut rows = match filter {
+            ListEventFilter::DateRange { user_id, range } => {
+                conn.query(
+                    "SELECT * FROM events WHERE user_id = ? AND start_date BETWEEN ? AND ? ORDER BY start_date DESC LIMIT 100",
+                    vec![user_id, range.0.to_rfc3339(), range.1.to_rfc3339()],
+                )
+                .await?
+            }
             ListEventFilter::UserId(user_id) => {
                 conn.query(
                     "SELECT * FROM events WHERE user_id = ? ORDER BY start_date DESC LIMIT 100",

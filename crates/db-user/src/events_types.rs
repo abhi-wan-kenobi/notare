@@ -20,5 +20,11 @@ user_common_derives! {
     pub enum ListEventFilter {
         #[serde(rename = "userId")]
         UserId(String),
+        #[serde(rename = "dateRange")]
+        DateRange {
+            #[serde(rename = "userId")]
+            user_id: String,
+            range: (DateTime<Utc>, DateTime<Utc>),
+        },
     }
 }

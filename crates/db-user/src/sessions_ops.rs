@@ -77,6 +77,27 @@ impl UserDatabase {
                 )
                 .await?
             }
+            Some(ListSessionFilter::DateRange((start, end))) => {
+                conn.query(
+                    "
+                    SELECT s.* FROM sessions s 
+                    LEFT JOIN events e ON s.calendar_event_id = e.id 
+                    WHERE 
+                        (s.calendar_event_id IS NULL AND s.created_at BETWEEN :start_time AND :end_time) 
+                        OR 
+                        (s.calendar_event_id IS NOT NULL AND e.start_date BETWEEN :start_time AND :end_time) 
+                    ORDER BY 
+                        CASE
+                            WHEN s.calendar_event_id IS NULL THEN s.created_at 
+                            ELSE e.start_date 
+                        END DESC",
+                    libsql::named_params! {
+                        ":start_time": start.to_rfc3339(),
+                        ":end_time": end.to_rfc3339()
+                    },
+                )
+                .await?
+            }
             None => {
                 conn.query(
                     "SELECT * FROM sessions ORDER BY created_at DESC LIMIT 100",

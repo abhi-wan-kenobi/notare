@@ -1,42 +1,85 @@
+import { Trans } from "@lingui/react/macro";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { addMonths, endOfMonth, format, startOfMonth, subMonths } from "date-fns";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { z } from "zod";
+
 import WorkspaceCalendar from "@/components/workspace-calendar";
+import { commands as authCommands } from "@hypr/plugin-auth";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { Button } from "@hypr/ui/components/ui/button";
-import { Trans } from "@lingui/react/macro";
-import { createFileRoute } from "@tanstack/react-router";
-import { addMonths, format, subMonths } from "date-fns";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { useState } from "react";
+
+const schema = z.object({
+  date: z.string().optional(),
+});
 
 export const Route = createFileRoute("/app/calendar")({
-  component: RouteComponent,
-  loader: async ({ context: { queryClient } }) => {
-    const sessions = await queryClient.fetchQuery({
-      queryKey: ["sessions"],
-      queryFn: () => dbCommands.listSessions(null),
+  component: Component,
+  validateSearch: zodValidator(schema),
+  loaderDeps: ({ search: { date } }) => {
+    return { date: date ? new Date(date) : new Date() };
+  },
+  loader: async ({ context: { queryClient }, deps: { date } }) => {
+    const [start, end] = [startOfMonth(date), endOfMonth(date)].map(d => d.toISOString());
+
+    // TODO: move to the context
+    const userId = await queryClient.fetchQuery({
+      queryKey: ["userId"],
+      queryFn: () => authCommands.getFromStore("auth-user-id"),
+    }) as string;
+
+    const sessionsPromise = await queryClient.fetchQuery({
+      queryKey: ["sessions", start, end],
+      queryFn: () => dbCommands.listSessions({ dateRange: [start, end] }),
     });
 
-    return { sessions };
+    const eventsPromise = await queryClient.fetchQuery({
+      queryKey: ["events", start, end],
+      queryFn: () =>
+        dbCommands.listEvents({
+          dateRange: {
+            userId,
+            range: [start, end],
+          },
+        }),
+    });
+
+    const [sessions, events] = await Promise.all([sessionsPromise, eventsPromise]);
+    return { sessions, events, date };
   },
 });
 
-function RouteComponent() {
-  const { sessions } = Route.useLoaderData();
+function Component() {
+  const { sessions, date } = Route.useLoaderData();
+  const navigate = useNavigate();
 
   const today = new Date();
-  const [currentDate, setCurrentDate] = useState(today);
 
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   const handlePreviousMonth = () => {
-    setCurrentDate(prevDate => subMonths(prevDate, 1));
+    navigate({
+      to: "/app/calendar",
+      search: { date: subMonths(date, 1).toISOString() },
+      replace: true,
+    });
   };
 
   const handleNextMonth = () => {
-    setCurrentDate(prevDate => addMonths(prevDate, 1));
+    navigate({
+      to: "/app/calendar",
+      search: { date: addMonths(date, 1).toISOString() },
+      replace: true,
+    });
   };
 
   const handleToday = () => {
-    setCurrentDate(today);
+    navigate({
+      to: "/app/calendar",
+      search: { date: today.toISOString() },
+      replace: true,
+    });
   };
 
   return (
@@ -44,7 +87,7 @@ function RouteComponent() {
       <header className="flex w-full flex-col">
         <div data-tauri-drag-region className="relative h-11 w-full flex items-center justify-center">
           <h1 className="text-xl font-medium">
-            <strong data-tauri-drag-region>{format(currentDate, "MMMM")}</strong> {format(currentDate, "yyyy")}
+            <strong data-tauri-drag-region>{format(date, "MMMM")}</strong> {format(date, "yyyy")}
           </h1>
 
           <div className="absolute right-2 flex h-fit rounded-md overflow-clip border border-neutral-200">
@@ -89,7 +132,7 @@ function RouteComponent() {
       </header>
 
       <div className="flex-1 h-full">
-        <WorkspaceCalendar currentDate={currentDate} sessions={sessions} />
+        <WorkspaceCalendar month={date} sessions={sessions} events={[]} />
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import { format } from "date-fns";
 import { Pen } from "lucide-react";
 import { useState } from "react";
@@ -7,7 +8,6 @@ import { type Session } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
-import { Trans } from "@lingui/react/macro";
 
 interface DayEventsProps {
   sessions: Session[];
