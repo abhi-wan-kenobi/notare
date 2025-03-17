@@ -2,7 +2,6 @@ import type { ExtensionDefinition } from "@hypr/plugin-db";
 import { ChevronLeftIcon } from "lucide-react";
 import { memo, useCallback } from "react";
 import { ExtensionList } from "../components/extension-list";
-import { data } from "../constants";
 import type { NavNames } from "../types";
 
 import calculatorConfig from "@hypr/extension-calculator/config.json";
@@ -11,6 +10,7 @@ import dinoGameConfig from "@hypr/extension-dino-game/config.json";
 import summaryConfig from "@hypr/extension-summary/config.json";
 import timerConfig from "@hypr/extension-timer/config.json";
 import transcriptConfig from "@hypr/extension-transcript/config.json";
+import { Trans } from "@lingui/react/macro";
 
 export const EXTENSION_CONFIGS: ExtensionDefinition[] = [
   transcriptConfig,
@@ -44,7 +44,7 @@ export const ExtensionsView = memo(function ExtensionsView({
 
   // Memoize the back button handler
   const handleBackClick = useCallback(() => {
-    setActive(data.nav[0].name);
+    setActive("General");
   }, [setActive]);
 
   return (
@@ -55,7 +55,9 @@ export const ExtensionsView = memo(function ExtensionsView({
           className="flex w-full items-center gap-2 rounded-lg p-2 text-sm text-neutral-600 hover:bg-neutral-100"
         >
           <ChevronLeftIcon className="h-4 w-4" />
-          <span>Back to Settings</span>
+          <span>
+            <Trans>Back to Settings</Trans>
+          </span>
         </button>
       </header>
 

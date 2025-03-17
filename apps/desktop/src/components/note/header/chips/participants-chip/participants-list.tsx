@@ -1,11 +1,11 @@
+import { type Human } from "@hypr/plugin-db";
+import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
+import { useLingui } from "@lingui/react/macro";
 import { RiCornerDownLeftLine, RiLinkedinBoxFill } from "@remixicon/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Mail, PenIcon } from "lucide-react";
 import { KeyboardEvent, useMemo, useState } from "react";
-
-import { type Human } from "@hypr/plugin-db";
-import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
-import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { EditParticipantForm } from "./edit-participant-form";
 
 interface ParticipantsListProps {
@@ -16,6 +16,7 @@ interface ParticipantsListProps {
 export function ParticipantsList({ participants, sessionId }: ParticipantsListProps) {
   const [newParticipantInput, setNewParticipantInput] = useState("");
   const queryClient = useQueryClient();
+  const { t } = useLingui();
 
   const [localParticipants, setLocalParticipants] = useState<Human[]>(participants);
   const [locallyAddedIds, setLocallyAddedIds] = useState<Set<string>>(new Set());
@@ -95,7 +96,6 @@ export function ParticipantsList({ participants, sessionId }: ParticipantsListPr
       return newSet;
     });
 
-    // Get the updated participant from the React Query cache
     const updatedParticipants = queryClient.getQueryData<Human[]>(["participants", sessionId!]);
     const updatedParticipant = updatedParticipants?.find(p => p.id === participantId);
 
@@ -151,7 +151,6 @@ export function ParticipantsList({ participants, sessionId }: ParticipantsListPr
                     </a>
                   )}
 
-                  {/* Edit icon for locally added participants that haven't been edited yet */}
                   {locallyAddedIds.has(member.id) && !editedParticipantIds.has(member.id) && (
                     <Popover
                       open={openPopoverId === member.id}
@@ -189,14 +188,13 @@ export function ParticipantsList({ participants, sessionId }: ParticipantsListPr
         ))}
       </div>
 
-      {/* Input for adding participants */}
       <div className="flex items-center gap-2 border-t border-border pt-2 mt-1">
         <input
           type="text"
           value={newParticipantInput}
           onChange={(e) => setNewParticipantInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Add participant"
+          placeholder={t`Add participant`}
           className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-neutral-500"
         />
         <button

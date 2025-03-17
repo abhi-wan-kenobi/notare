@@ -1,7 +1,3 @@
-import { CopyIcon, EditIcon, MoreHorizontalIcon, TrashIcon } from "lucide-react";
-import { useCallback } from "react";
-import { SectionsList } from "../components/template-sections";
-
 import { type Template } from "@hypr/plugin-db";
 import { Button } from "@hypr/ui/components/ui/button";
 import {
@@ -12,6 +8,10 @@ import {
 } from "@hypr/ui/components/ui/dropdown-menu";
 import { Input } from "@hypr/ui/components/ui/input";
 import { Textarea } from "@hypr/ui/components/ui/textarea";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { CopyIcon, EditIcon, MoreHorizontalIcon, TrashIcon } from "lucide-react";
+import { useCallback } from "react";
+import { SectionsList } from "../components/template-sections";
 
 interface TemplateEditorProps {
   disabled: boolean;
@@ -24,8 +24,9 @@ export default function TemplateEditor({
   disabled,
   template,
   onTemplateUpdate,
-  isCreator = true, // Temporary default until we add creator info to Template type
+  isCreator = true,
 }: TemplateEditorProps) {
+  const { t } = useLingui();
   const handleChangeTitle = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       onTemplateUpdate({ ...template, title: e.target.value });
@@ -64,7 +65,7 @@ export default function TemplateEditor({
             value={template.title}
             onChange={handleChangeTitle}
             className="rounded-none border-0 p-0 !text-2xl font-semibold focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-            placeholder="Untitled Template"
+            placeholder={t`Untitled Template`}
           />
 
           {isCreator
@@ -78,11 +79,11 @@ export default function TemplateEditor({
                 <DropdownMenuContent>
                   <DropdownMenuItem onClick={handleDuplicate}>
                     <CopyIcon className="mr-2 h-4 w-4" />
-                    Duplicate
+                    <Trans>Duplicate</Trans>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleDelete}>
                     <TrashIcon className="mr-2 h-4 w-4" />
-                    Delete
+                    <Trans>Delete</Trans>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -97,24 +98,28 @@ export default function TemplateEditor({
             )}
         </div>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div>Creator: John Doe</div>
+          <div>Creator: TODO</div>
           <div>•</div>
-          <div>Permissions: Public</div>
+          <div>Permissions: TODO</div>
         </div>
       </div>
 
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold">Description</h2>
+        <h2 className="text-lg font-semibold">
+          <Trans>Description</Trans>
+        </h2>
         <Textarea
           disabled={disabled}
           value={template.description}
           onChange={handleChangeDescription}
-          placeholder="Add a description..."
+          placeholder={t`Add a description...`}
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold">Sections</h2>
+        <h2 className="text-lg font-semibold">
+          <Trans>Sections</Trans>
+        </h2>
         <SectionsList
           disabled={disabled}
           items={template.sections}

@@ -16,6 +16,7 @@ import {
 } from "@hypr/ui/components/ui/form";
 import { Input } from "@hypr/ui/components/ui/input";
 import { Textarea } from "@hypr/ui/components/ui/textarea";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 const schema = z.object({
   fullName: z.string().min(2).max(50).optional(),
@@ -33,6 +34,7 @@ type ConfigData = {
 };
 
 export default function ProfileComponent() {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
 
   const config = useQuery<ConfigData>({
@@ -104,10 +106,12 @@ export default function ProfileComponent() {
             name="fullName"
             render={({ field }) => (
               <FormItem className="max-w-sm">
-                <FormLabel>Username</FormLabel>
+                <FormLabel>
+                  <Trans>Username</Trans>
+                </FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Your Name"
+                    placeholder={t`Your Name`}
                     {...field}
                     className="focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
@@ -122,9 +126,12 @@ export default function ProfileComponent() {
             name="jobTitle"
             render={({ field }) => (
               <FormItem className="max-w-sm">
-                <FormLabel>Job Title</FormLabel>
+                <FormLabel>
+                  <Trans>Job Title</Trans>
+                </FormLabel>
                 <FormControl>
                   <Input
+                    placeholder={t`CEO`}
                     {...field}
                     className="focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
@@ -140,13 +147,16 @@ export default function ProfileComponent() {
             render={({ field }) => (
               <FormItem className="max-w-sm">
                 <div>
-                  <FormLabel>Company Name</FormLabel>
+                  <FormLabel>
+                    <Trans>Company Name</Trans>
+                  </FormLabel>
                   <FormDescription>
-                    This is the name of the company you work for.
+                    <Trans>This is the name of the company you work for.</Trans>
                   </FormDescription>
                 </div>
                 <FormControl>
                   <Input
+                    placeholder={t`Apple`}
                     {...field}
                     className="focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
@@ -162,14 +172,16 @@ export default function ProfileComponent() {
             render={({ field }) => (
               <FormItem className="max-w-lg">
                 <div>
-                  <FormLabel>Company Description</FormLabel>
+                  <FormLabel>
+                    <Trans>Company Description</Trans>
+                  </FormLabel>
                   <FormDescription>
-                    This is a short description of your company.
+                    <Trans>This is a short description of your company.</Trans>
                   </FormDescription>
                 </div>
                 <FormControl>
                   <Textarea
-                    placeholder="Add a few words about your company."
+                    placeholder={t`We think different.`}
                     {...field}
                     className="focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
@@ -185,9 +197,11 @@ export default function ProfileComponent() {
             render={({ field }) => (
               <FormItem className="max-w-sm">
                 <div>
-                  <FormLabel>LinkedIn Username</FormLabel>
+                  <FormLabel>
+                    <Trans>LinkedIn Username</Trans>
+                  </FormLabel>
                   <FormDescription>
-                    Your LinkedIn username (the part after linkedin.com/in/)
+                    <Trans>Your LinkedIn username (the part after linkedin.com/in/)</Trans>
                   </FormDescription>
                 </div>
                 <FormControl>
@@ -197,7 +211,7 @@ export default function ProfileComponent() {
                     </span>
                     <Input
                       className="rounded-l-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                      placeholder="username"
+                      placeholder={t`username`}
                       {...field}
                     />
                   </div>

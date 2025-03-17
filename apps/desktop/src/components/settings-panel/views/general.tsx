@@ -1,11 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LANGUAGES_ISO_639_1 } from "@huggingface/languages";
-import { Trans } from "@lingui/react/macro";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-
 import { commands as dbCommands, type ConfigGeneral } from "@hypr/plugin-db";
 import {
   Form,
@@ -19,6 +13,12 @@ import {
 import { Input } from "@hypr/ui/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hypr/ui/components/ui/select";
 import { Switch } from "@hypr/ui/components/ui/switch";
+import { i18n } from "@lingui/core";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 type ISO_639_1_CODE = keyof typeof LANGUAGES_ISO_639_1;
 const SUPPORTED_LANGUAGES: ISO_639_1_CODE[] = ["en", "ko"];
@@ -33,6 +33,7 @@ const schema = z.object({
 type Schema = z.infer<typeof schema>;
 
 export default function General() {
+  const { t } = useLingui();
   const queryClient = useQueryClient();
 
   const config = useQuery({
@@ -86,6 +87,13 @@ export default function General() {
     return () => subscription.unsubscribe();
   }, [mutation]);
 
+  // Handle language change specifically
+  const handleLanguageChange = (value: string) => {
+    form.setValue("displayLanguage", value as ISO_639_1_CODE);
+    // Activate the new language in i18n
+    i18n.activate(value);
+  };
+
   return (
     <div>
       <Form {...form}>
@@ -96,9 +104,11 @@ export default function General() {
             render={({ field }) => (
               <FormItem className="flex flex-row items-center justify-between">
                 <div>
-                  <FormLabel>Open Hyprnote on startup</FormLabel>
+                  <FormLabel>
+                    <Trans>Open Hyprnote on startup</Trans>
+                  </FormLabel>
                   <FormDescription>
-                    Hyprnote will be opened automatically when you start your computer.
+                    <Trans>Hyprnote will be opened automatically when you start your computer.</Trans>
                   </FormDescription>
                 </div>
 
@@ -119,15 +129,23 @@ export default function General() {
             render={({ field }) => (
               <FormItem className="flex flex-row items-center justify-between">
                 <div>
-                  <FormLabel>Display language</FormLabel>
+                  <FormLabel>
+                    <Trans>Display language</Trans>
+                  </FormLabel>
                   <FormDescription>
-                    This is the language you read.
+                    <Trans>This is the language you read.</Trans>
                   </FormDescription>
                 </div>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select
+                  onValueChange={(value) => {
+                    handleLanguageChange(value);
+                    field.onChange(value);
+                  }}
+                  value={field.value}
+                >
                   <FormControl>
                     <SelectTrigger className="max-w-[100px] focus:outline-none focus:ring-0 focus:ring-offset-0">
-                      <SelectValue placeholder="Select language" />
+                      <SelectValue placeholder={t`Select language`} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent align="end">
@@ -153,12 +171,12 @@ export default function General() {
                     <Trans>Jargons</Trans>
                   </FormLabel>
                   <FormDescription>
-                    You can make Hyprnote takes these words into account when transcribing.
+                    <Trans>You can make Hyprnote takes these words into account when transcribing.</Trans>
                   </FormDescription>
                 </div>
                 <FormControl>
                   <Input
-                    placeholder="Type jargons (e.g., Blitz Meeting, PaC Squad)"
+                    placeholder={t`Type jargons (e.g., Blitz Meeting, PaC Squad)`}
                     {...field}
                     value={field.value ?? ""}
                     className="focus-visible:ring-0 focus-visible:ring-offset-0"

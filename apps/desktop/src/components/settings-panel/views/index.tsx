@@ -8,11 +8,11 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@hypr/ui/components/ui/breadcrumb";
-import { data } from "../constants";
+import { Trans } from "@lingui/react/macro";
 import { type NavNames } from "../types";
 
 interface SettingsPanelBodyProps {
-  title: string;
+  title: NavNames | "Profile";
   selectedTemplate: Template | null;
   selectedExtension: ExtensionDefinition | null;
   children: ReactNode;
@@ -34,6 +34,30 @@ export function SettingsPanelBody({
     }
   }, [title, selectedTemplate?.id, selectedExtension?.id]);
 
+  // Function to render the translated title
+  const renderTranslatedTitle = () => {
+    switch (title) {
+      case "General":
+        return <Trans>General</Trans>;
+      case "Calendar":
+        return <Trans>Calendar</Trans>;
+      case "Notifications":
+        return <Trans>Notifications</Trans>;
+      case "Templates":
+        return <Trans>Templates</Trans>;
+      case "Extensions":
+        return <Trans>Extensions</Trans>;
+      case "Team":
+        return <Trans>Team</Trans>;
+      case "Billing":
+        return <Trans>Billing</Trans>;
+      case "Profile":
+        return <Trans>Profile</Trans>;
+      default:
+        return title;
+    }
+  };
+
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
       <div className="mt-2.5 flex items-center gap-2 px-4 py-1">
@@ -41,16 +65,16 @@ export function SettingsPanelBody({
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink
-                onClick={() => setActive(data.nav[0].name)}
+                onClick={() => setActive("General")}
                 className="hover:text-black hover:underline decoration-dotted cursor-pointer"
               >
-                Settings
+                <Trans>Settings</Trans>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
               <BreadcrumbLink>
-                {title}
+                {renderTranslatedTitle()}
               </BreadcrumbLink>
             </BreadcrumbItem>
             {title === "Templates" && selectedTemplate && (
