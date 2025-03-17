@@ -21,9 +21,6 @@ const supportedIntegrations: CalendarIntegration[] = [
 export default function Calendar() {
   return (
     <div>
-      <h3 className="text-sm font-medium">
-        <Trans>Calendars</Trans>
-      </h3>
       <ul className="flex flex-col px-1">
         {supportedIntegrations.map((type) => (
           <li key={type}>
@@ -39,7 +36,7 @@ function GoogleIcon() {
   return (
     <img
       className="h-4 w-4"
-      src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg"
+      src="/icons/gcal.svg"
     />
   );
 }
@@ -48,7 +45,7 @@ function OutlookIcon() {
   return (
     <img
       className="h-4 w-4"
-      src="https://upload.wikimedia.org/wikipedia/commons/d/df/Microsoft_Office_Outlook_%282018%E2%80%93present%29.svg"
+      src="/icons/outlook.svg"
     />
   );
 }
@@ -63,14 +60,14 @@ function Integration({ type }: { type: CalendarIntegration }) {
         <AccordionContent className="px-2">
           {type === "apple-calendar"
             ? <AppleCalendarIntegrationDetails />
-            : <OauthCalendarIntegrationDetails type={type} />}
+            : <CloudCalendarIntegrationDetails type={type} />}
         </AccordionContent>
       </AccordionItem>
     </Accordion>
   );
 }
 
-function OauthCalendarIntegrationDetails({
+function CloudCalendarIntegrationDetails({
   type,
 }: {
   type: Exclude<CalendarIntegration, "apple-calendar">;
