@@ -104,7 +104,7 @@ impl AdminDatabase {
         }
     }
 
-    pub async fn list_accounts_by_user_id(
+    pub async fn list_accounts_by_clerk_user_id(
         &self,
         user_id: impl Into<String>,
     ) -> Result<Vec<Account>, crate::Error> {
@@ -131,7 +131,7 @@ impl AdminDatabase {
 
 #[cfg(test)]
 mod tests {
-    use crate::{tests::setup_db, Account};
+    use crate::{tests::setup_db, Account, User};
 
     #[tokio::test]
     async fn test_accounts() {
@@ -145,5 +145,58 @@ mod tests {
 
         let org = db.upsert_account(org).await.unwrap();
         assert_eq!(org.clerk_org_id, Some("org_1".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_list_accounts_by_clerk_user_id() {
+        let db = setup_db().await;
+
+        let accounts = [
+            Account {
+                id: uuid::Uuid::new_v4().to_string(),
+                turso_db_name: "account1".to_string(),
+                clerk_org_id: Some("org_1".to_string()),
+            },
+            Account {
+                id: uuid::Uuid::new_v4().to_string(),
+                turso_db_name: "account2".to_string(),
+                clerk_org_id: Some("org_2".to_string()),
+            },
+        ];
+        for account in accounts.clone() {
+            db.upsert_account(account).await.unwrap();
+        }
+
+        let users = [
+            User {
+                id: uuid::Uuid::new_v4().to_string(),
+                account_id: accounts[0].id.clone(),
+                human_id: uuid::Uuid::new_v4().to_string(),
+                timestamp: chrono::Utc::now(),
+                clerk_user_id: "clerk_user_123".to_string(),
+            },
+            User {
+                id: uuid::Uuid::new_v4().to_string(),
+                account_id: accounts[1].id.clone(),
+                human_id: uuid::Uuid::new_v4().to_string(),
+                timestamp: chrono::Utc::now(),
+                clerk_user_id: "clerk_user_456".to_string(),
+            },
+        ];
+        for user in users {
+            db.upsert_user(user).await.unwrap();
+        }
+
+        let accounts = db
+            .list_accounts_by_clerk_user_id("clerk_user_123")
+            .await
+            .unwrap();
+        assert_eq!(accounts.len(), 1);
+
+        let accounts = db
+            .list_accounts_by_clerk_user_id("clerk_user_456")
+            .await
+            .unwrap();
+        assert_eq!(accounts.len(), 1);
     }
 }

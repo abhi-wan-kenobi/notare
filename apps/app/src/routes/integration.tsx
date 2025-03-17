@@ -1,19 +1,20 @@
 import { useAuth } from "@clerk/clerk-react";
-import Nango from "@nangohq/frontend";
+import Nango, { ConnectUI } from "@nangohq/frontend";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
+
 import { client, postApiWebIntegrationConnectionMutation } from "../client";
 import type { NangoIntegration } from "../types";
 
-const integrations: NangoIntegration[] = [
+const integrations: [NangoIntegration, NangoIntegration] = [
   "google-calendar",
   "outlook-calendar",
 ] as const;
 
 const schema = z.object({
-  provider: z.enum(integrations as unknown as [string, ...string[]]),
+  provider: z.enum(integrations),
 });
 
 export const Route = createFileRoute("/integration")({
@@ -26,6 +27,8 @@ function Component() {
   const navigate = useNavigate();
   const { isLoaded, userId } = useAuth();
   const [step, setStep] = useState<"idle" | "success" | "error">("idle");
+  const [modalOpened, setModalOpened] = useState(false);
+  const [connect, setConnect] = useState<ConnectUI | null>(null);
 
   if (isLoaded && !userId) {
     throw navigate({ to: "/auth/sign-in", search: undefined });
@@ -43,11 +46,29 @@ function Component() {
     connectMutation.mutate({
       client,
       body: {
-        allowed_integrations: integrations,
+        allowed_integrations: [provider],
         end_user: { id: userId },
       },
     });
   }, [userId]);
+
+  useEffect(() => {
+    // https://docs.nango.dev/guides/api-authorization/authorize-in-your-app-default-ui
+    const nango = new Nango();
+    setModalOpened(true);
+    const connect = nango.openConnectUI({
+      onEvent: (event) => {
+        if (event.type === "close") {
+          setModalOpened(false);
+        } else if (event.type === "connect") {
+          setStep("success");
+          connect.close();
+        }
+      },
+    });
+
+    setConnect(connect);
+  }, []);
 
   useEffect(() => {
     if (
@@ -66,22 +87,25 @@ function Component() {
       data: { token: connectSessionToken },
     } = connectMutation.data;
 
-    // https://docs.nango.dev/guides/authorize-an-api-from-your-app-with-custom-ui
-    new Nango({ connectSessionToken })
-      .auth(provider)
-      .then((_) => {
-        setStep("success");
-      })
-      .catch((e) => {
-        console.error(e);
-        setStep("error");
-      });
+    if (connectSessionToken && connect) {
+      connect.setSessionToken(connectSessionToken);
+    }
   }, [connectMutation.status]);
 
   return (
     <div className="flex flex-col items-center justify-center h-screen">
       {step === "success" && <div>Success</div>}
       {step === "error" && <div>Error</div>}
+      {!modalOpened && (
+        <button
+          onClick={() => {
+            connect?.open();
+            setModalOpened(true);
+          }}
+        >
+          Modal
+        </button>
+      )}
     </div>
   );
 }

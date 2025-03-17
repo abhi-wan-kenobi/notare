@@ -60,14 +60,14 @@ pub async fn attach_user_from_clerk(
 
     let user = state
         .admin_db
-        .get_user_by_clerk_user_id(clerk_user_id)
+        .get_user_by_clerk_user_id(&clerk_user_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or((StatusCode::UNAUTHORIZED, "user_not_found".into()))?;
 
     let accounts = state
         .admin_db
-        .list_accounts_by_user_id(user.id.clone())
+        .list_accounts_by_clerk_user_id(&clerk_user_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 

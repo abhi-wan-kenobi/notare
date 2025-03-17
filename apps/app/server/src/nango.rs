@@ -6,6 +6,7 @@ use axum::{
 
 use crate::state::AppState;
 
+// https://docs.nango.dev/guides/webhooks/webhooks-from-nango#auth-webhooks
 pub async fn handler(
     State(state): State<AppState>,
     Json(input): Json<hypr_nango::NangoConnectWebhook>,
