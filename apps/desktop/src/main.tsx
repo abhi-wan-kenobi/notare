@@ -8,6 +8,7 @@ import type { Context } from "@/types";
 import { Toaster } from "@hypr/ui/components/ui/sonner";
 import { TooltipProvider } from "@hypr/ui/components/ui/tooltip";
 import { ThemeProvider } from "@hypr/ui/contexts/theme";
+import UpdateToastNotification from "./components/update-toast";
 
 import { messages as enMessages } from "./locales/en/messages";
 import { messages as koMessages } from "./locales/ko/messages";
@@ -22,7 +23,9 @@ i18n.load({
   en: enMessages,
   ko: koMessages,
 });
-i18n.activate("en");
+
+// TODO: load language from user settings
+i18n.activate("ko");
 
 import "@hypr/ui/globals.css";
 import "./styles/globals.css";
@@ -66,7 +69,12 @@ Sentry.init({
 });
 
 function App() {
-  return <RouterProvider router={router} context={context} />;
+  return (
+    <>
+      <RouterProvider router={router} context={context} />
+      <UpdateToastNotification />
+    </>
+  );
 }
 
 const rootElement = document.getElementById("root")!;
@@ -80,7 +88,7 @@ if (!rootElement.innerHTML) {
           <QueryClientProvider client={queryClient}>
             <I18nProvider i18n={i18n}>
               <App />
-              <Toaster position="top-center" />
+              <Toaster position="bottom-left" />
             </I18nProvider>
           </QueryClientProvider>
         </ThemeProvider>

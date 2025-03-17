@@ -5,7 +5,6 @@ import {
   NewNoteProvider,
   OngoingSessionProvider,
   RightPanelProvider,
-  SearchProvider,
   SessionsProvider,
   SettingsPanelProvider,
 } from "@/contexts";
@@ -25,13 +24,11 @@ function Component() {
       <OngoingSessionProvider>
         <LeftSidebarProvider>
           <RightPanelProvider>
-            <SearchProvider>
-              <SettingsPanelProvider>
-                <NewNoteProvider>
-                  <Outlet />
-                </NewNoteProvider>
-              </SettingsPanelProvider>
-            </SearchProvider>
+            <SettingsPanelProvider>
+              <NewNoteProvider>
+                <Outlet />
+              </NewNoteProvider>
+            </SettingsPanelProvider>
           </RightPanelProvider>
         </LeftSidebarProvider>
       </OngoingSessionProvider>

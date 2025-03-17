@@ -1,18 +1,12 @@
+import { Button } from "@hypr/ui/components/ui/button";
 import { SearchIcon } from "lucide-react";
 
-import { useSearchPalette } from "@/contexts";
-import { Button } from "@hypr/ui/components/ui/button";
-import { cn } from "@hypr/ui/lib/utils";
-
-export function SearchIconButton({ isShown }: { isShown: boolean }) {
-  const { open } = useSearchPalette();
-
+export function SearchIconButton() {
   return (
     <Button
       variant="ghost"
       size="icon"
-      className={cn("hover:bg-neutral-200", isShown ? "block" : "md:hidden")}
-      onClick={open}
+      className="hover:bg-neutral-200 md:hidden block"
       aria-label="Search"
     >
       <SearchIcon className="size-4" />
