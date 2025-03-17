@@ -1,3 +1,5 @@
+import { cn } from "@hypr/ui/lib/utils";
+import { Trans } from "@lingui/react/macro";
 import {
   BellIcon,
   BlocksIcon,
@@ -9,9 +11,6 @@ import {
   UsersIcon,
 } from "lucide-react";
 import { type NavNames } from "../types";
-
-import { cn } from "@hypr/ui/lib/utils";
-import { Trans } from "@lingui/react/macro";
 
 export interface SettingsViewProps {
   active: NavNames | "Profile";
@@ -29,7 +28,7 @@ export function SettingsView({ active, setActive }: SettingsViewProps) {
                 onClick={() => setActive("General")}
                 className={cn(
                   "h-9 flex w-full items-center justify-center md:justify-start gap-2 rounded-lg p-2 text-sm text-neutral-600 focus:outline-none",
-                  active === "General" ? "bg-primary text-primary-foreground" : "hover:bg-neutral-100",
+                  active === "General" ? "bg-neutral-200" : "hover:bg-neutral-100",
                 )}
               >
                 <SettingsIcon className="h-4 w-4" />
@@ -44,7 +43,7 @@ export function SettingsView({ active, setActive }: SettingsViewProps) {
                 onClick={() => setActive("Calendar")}
                 className={cn(
                   "h-9 flex w-full items-center justify-center md:justify-start gap-2 rounded-lg p-2 text-sm text-neutral-600 focus:outline-none",
-                  active === "Calendar" ? "bg-primary text-primary-foreground" : "hover:bg-neutral-100",
+                  active === "Calendar" ? "bg-neutral-200" : "hover:bg-neutral-100",
                 )}
               >
                 <CalendarIcon className="h-4 w-4" />
@@ -59,7 +58,7 @@ export function SettingsView({ active, setActive }: SettingsViewProps) {
                 onClick={() => setActive("Notifications")}
                 className={cn(
                   "h-9 flex w-full items-center justify-center md:justify-start gap-2 rounded-lg p-2 text-sm text-neutral-600 focus:outline-none",
-                  active === "Notifications" ? "bg-primary text-primary-foreground" : "hover:bg-neutral-100",
+                  active === "Notifications" ? "bg-neutral-200" : "hover:bg-neutral-100",
                 )}
               >
                 <BellIcon className="h-4 w-4" />
@@ -74,7 +73,7 @@ export function SettingsView({ active, setActive }: SettingsViewProps) {
                 onClick={() => setActive("Templates")}
                 className={cn(
                   "h-9 flex w-full items-center justify-center md:justify-start gap-2 rounded-lg p-2 text-sm text-neutral-600 focus:outline-none",
-                  active === "Templates" ? "bg-primary text-primary-foreground" : "hover:bg-neutral-100",
+                  active === "Templates" ? "bg-neutral-200" : "hover:bg-neutral-100",
                 )}
               >
                 <FileTextIcon className="h-4 w-4" />
@@ -89,7 +88,7 @@ export function SettingsView({ active, setActive }: SettingsViewProps) {
                 onClick={() => setActive("Extensions")}
                 className={cn(
                   "h-9 flex w-full items-center justify-center md:justify-start gap-2 rounded-lg p-2 text-sm text-neutral-600 focus:outline-none",
-                  active === "Extensions" ? "bg-primary text-primary-foreground" : "hover:bg-neutral-100",
+                  active === "Extensions" ? "bg-neutral-200" : "hover:bg-neutral-100",
                 )}
               >
                 <BlocksIcon className="h-4 w-4" />
@@ -104,13 +103,17 @@ export function SettingsView({ active, setActive }: SettingsViewProps) {
                 onClick={() => setActive("Team")}
                 className={cn(
                   "h-9 flex w-full items-center justify-center md:justify-start gap-2 rounded-lg p-2 text-sm text-neutral-600 focus:outline-none",
-                  active === "Team" ? "bg-primary text-primary-foreground" : "hover:bg-neutral-100",
+                  active === "Team" ? "bg-neutral-200" : "hover:bg-neutral-100",
                 )}
               >
                 <UsersIcon className="h-4 w-4" />
                 <span className="hidden md:inline-block">
                   <Trans>Team</Trans>
                 </span>
+
+                <div className="ml-auto text-xs hidden md:inline-block">
+                  <Trans>Coming Soon</Trans>
+                </div>
               </button>
             </li>
 
@@ -119,7 +122,7 @@ export function SettingsView({ active, setActive }: SettingsViewProps) {
                 onClick={() => setActive("Billing")}
                 className={cn(
                   "h-9 flex w-full items-center justify-center md:justify-start gap-2 rounded-lg p-2 text-sm text-neutral-600 focus:outline-none",
-                  active === "Billing" ? "bg-primary text-primary-foreground" : "hover:bg-neutral-100",
+                  active === "Billing" ? "bg-neutral-200" : "hover:bg-neutral-100",
                 )}
               >
                 <CreditCardIcon className="h-4 w-4" />
@@ -138,7 +141,7 @@ export function SettingsView({ active, setActive }: SettingsViewProps) {
           className={cn(
             "h-9 flex w-full items-center justify-center md:justify-start gap-2 rounded-lg p-2 text-sm text-neutral-600 focus:outline-none",
             active === "Profile"
-              ? "bg-primary text-primary-foreground"
+              ? "bg-neutral-200"
               : "hover:bg-neutral-100",
           )}
         >

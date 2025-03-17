@@ -1,36 +1,27 @@
-import { Trans } from "@lingui/react/macro";
-import { format } from "date-fns";
-import { Pen } from "lucide-react";
-import { useState } from "react";
-
-import type { RoutePath } from "@/types";
 import { type Session } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
+import { Trans } from "@lingui/react/macro";
+import type { LinkProps } from "@tanstack/react-router";
+import { format } from "date-fns";
+import { Pen } from "lucide-react";
+import { useState } from "react";
 
-interface DayEventsProps {
-  sessions: Session[];
-}
-
-export function DayEvents({ sessions }: DayEventsProps) {
-  if (sessions.length === 0) return null;
-
-  return (
-    <div className="px-1">
-      {sessions.map((session) => <EventCard key={session.id} session={session} />)}
-    </div>
-  );
-}
-
-export function EventCard({ session, showTime = false }: { session: Session; showTime?: boolean }) {
+export function NoteCard({ session, showTime = false }: { session: Session; showTime?: boolean }) {
   const [open, setOpen] = useState(false);
 
   const handleClick = (id: string) => {
     setOpen(false);
 
-    const path = "/app/note/$id/main" satisfies RoutePath;
-    windowsCommands.windowEmitNavigate("main", path.replace("$id", id)).then(() => {
+    const props = {
+      to: "/app/note/$id",
+      params: { id },
+    } as const satisfies LinkProps;
+
+    const url = props.to.replace("$id", props.params.id);
+
+    windowsCommands.windowEmitNavigate("main", url).then(() => {
       windowsCommands.windowShow("main");
     });
   };
@@ -54,7 +45,7 @@ export function EventCard({ session, showTime = false }: { session: Session; sho
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div className="flex items-start space-x-1 px-0.5 py-0.5 cursor-pointer rounded hover:bg-neutral-200 transition-colors">
+        <div className="flex items-start space-x-1 px-0.5 py-0.5 cursor-pointer rounded hover:bg-neutral-200 transition-colors h-5">
           <div className="w-1 h-3 mt-0.5 rounded-full flex-shrink-0 bg-neutral-600"></div>
 
           <div className="flex-1 text-xs text-neutral-800 truncate">
