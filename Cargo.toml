@@ -1,12 +1,23 @@
 [workspace]
 resolver = "2"
-members = ["apps/app/server", "apps/desktop/src-tauri", "apps/mobile/src-tauri", "crates/*", "plugins/*"]
+members = [
+  "apps/app/server",
+  "apps/desktop/src-tauri",
+  "apps/mobile/src-tauri",
+  "apps/restate",
+  "crates/*",
+  "plugins/*",
+]
+
+[workspace.package]
+rust-version = "1.83.0"
 
 [workspace.dependencies]
 hypr-data = { path = "crates/data", package = "data" }
 hypr-db-admin = { path = "crates/db-admin", package = "db-admin" }
 hypr-db-core = { path = "crates/db-core", package = "db-core" }
 hypr-db-user = { path = "crates/db-user", package = "db-user" }
+hypr-nango = { path = "crates/nango", package = "nango" }
 hypr-turso = { path = "crates/turso", package = "turso" }
 
 tauri = "2"
