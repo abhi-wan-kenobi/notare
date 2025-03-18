@@ -24,7 +24,7 @@ export function EventCard({ event, showTime = false }: { event: Event; showTime?
 
     if (session.data) {
       const props = {
-        to: "/app/note/$id",
+        to: "/app/note/$id/main",
         params: { id: session.data.id },
       } as const satisfies LinkProps;
 

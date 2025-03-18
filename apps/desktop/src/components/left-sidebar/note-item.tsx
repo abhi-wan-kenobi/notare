@@ -1,7 +1,8 @@
+import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { AppWindowMacIcon, ArrowUpRight, TrashIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useSession, useSessions } from "@/contexts";
 import { useStore2 } from "@/utils";
@@ -16,7 +17,6 @@ import {
 } from "@hypr/ui/components/ui/context-menu";
 import { cn } from "@hypr/ui/lib/utils";
 import { format } from "@hypr/utils/datetime";
-import { Trans } from "@lingui/react/macro";
 import SoundIndicator from "../sound-indicator";
 
 export function NoteItem({
@@ -67,10 +67,22 @@ export function NoteItem({
     setIsOpen(open);
   };
 
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isActive && buttonRef.current) {
+      buttonRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [isActive]);
+
   return (
     <ContextMenu onOpenChange={handleOpenChange}>
       <ContextMenuTrigger disabled={isActive}>
         <button
+          ref={buttonRef}
           onClick={handleClick}
           disabled={isActive}
           className={cn(
