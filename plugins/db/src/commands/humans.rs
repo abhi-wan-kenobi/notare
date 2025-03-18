@@ -1,8 +1,9 @@
 #[tauri::command]
 #[specta::specta]
 #[tracing::instrument(skip(state))]
-pub async fn get_self_human(
+pub async fn get_human(
     state: tauri::State<'_, crate::ManagedState>,
+    id: String,
 ) -> Result<Option<hypr_db_user::Human>, String> {
     let guard = state.lock().await;
 
@@ -12,14 +13,7 @@ pub async fn get_self_human(
         .ok_or(crate::Error::NoneDatabase)
         .map_err(|e| e.to_string())?;
 
-    let user_id = guard
-        .user_id
-        .as_ref()
-        .ok_or(crate::Error::NoneUser)
-        .map_err(|e| e.to_string())?;
-
-    let human = db.get_human(user_id).await.map_err(|e| e.to_string())?;
-    Ok(human)
+    db.get_human(id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

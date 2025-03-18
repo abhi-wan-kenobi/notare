@@ -23,10 +23,11 @@ const COMMANDS: &[&str] = &[
     "get_config",
     "set_config",
     // user
-    "get_self_human",
+    "get_human",
     "upsert_human",
-    "get_self_organization",
     "upsert_organization",
+    "get_organization",
+    "get_organization_by_user_id",
     // chat
     "list_chat_groups",
     "list_chat_messages",

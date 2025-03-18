@@ -61,14 +61,17 @@ async getConfig() : Promise<Config> {
 async setConfig(config: Config) : Promise<null> {
     return await TAURI_INVOKE("plugin:db|set_config", { config });
 },
-async getSelfHuman() : Promise<Human | null> {
-    return await TAURI_INVOKE("plugin:db|get_self_human");
+async getHuman(id: string) : Promise<Human | null> {
+    return await TAURI_INVOKE("plugin:db|get_human", { id });
 },
 async upsertHuman(human: Human) : Promise<Human> {
     return await TAURI_INVOKE("plugin:db|upsert_human", { human });
 },
-async getSelfOrganization() : Promise<Organization> {
-    return await TAURI_INVOKE("plugin:db|get_self_organization");
+async getOrganization(id: string) : Promise<Organization | null> {
+    return await TAURI_INVOKE("plugin:db|get_organization", { id });
+},
+async getOrganizationByUserId(userId: string) : Promise<Organization | null> {
+    return await TAURI_INVOKE("plugin:db|get_organization_by_user_id", { userId });
 },
 async upsertOrganization(organization: Organization) : Promise<Organization> {
     return await TAURI_INVOKE("plugin:db|upsert_organization", { organization });
@@ -116,7 +119,7 @@ export type ChatMessageRole = "User" | "Assistant"
 export type Config = { id: string; user_id: string; general: ConfigGeneral; notification: ConfigNotification; ai: ConfigAI }
 export type ConfigAI = { api_base: string | null; api_key: string | null }
 export type ConfigGeneral = { autostart: boolean; display_language: string; jargons: string[]; tags: string[] }
-export type ConfigNotification = { before: boolean; auto: boolean; ignoredPlatforms?: string[] }
+export type ConfigNotification = { before: boolean; auto: boolean; ignoredPlatforms: string[] | null }
 export type ConversationChunk = { start: string; end: string; transcripts: TranscriptChunk[]; diarizations: DiarizationChunk[] }
 export type DiarizationChunk = { start: number; end: number; speaker: string }
 export type Event = { id: string; user_id: string; tracking_id: string; calendar_id: string; name: string; note: string; start_date: string; end_date: string; google_event_url: string | null }

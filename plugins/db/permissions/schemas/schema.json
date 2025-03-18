@@ -345,24 +345,34 @@
           "const": "deny-get-config"
         },
         {
-          "description": "Enables the get_self_human command without any pre-configured scope.",
+          "description": "Enables the get_human command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-self-human"
+          "const": "allow-get-human"
         },
         {
-          "description": "Denies the get_self_human command without any pre-configured scope.",
+          "description": "Denies the get_human command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-self-human"
+          "const": "deny-get-human"
         },
         {
-          "description": "Enables the get_self_organization command without any pre-configured scope.",
+          "description": "Enables the get_organization command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-self-organization"
+          "const": "allow-get-organization"
         },
         {
-          "description": "Denies the get_self_organization command without any pre-configured scope.",
+          "description": "Denies the get_organization command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-self-organization"
+          "const": "deny-get-organization"
+        },
+        {
+          "description": "Enables the get_organization_by_user_id command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-organization-by-user-id"
+        },
+        {
+          "description": "Denies the get_organization_by_user_id command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-organization-by-user-id"
         },
         {
           "description": "Enables the get_session command without any pre-configured scope.",

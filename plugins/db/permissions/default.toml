@@ -1,42 +1,43 @@
 [default]
 description = "Default permissions for the plugin"
 permissions = [
-  # session
-  "allow-upsert-session",
-  "allow-list-sessions",
-  "allow-get-session",
-  "allow-visit-session",
-  "allow-delete-session",
-  "allow-set-session-event",
-  "allow-session-add-participant",
-  "allow-session-remove-participant",
-  "allow-session-list-participants",
-  "allow-session-get-event",
-  # calendar
-  "allow-upsert-calendar",
-  "allow-list-calendars",
-  # template
-  "allow-list-templates",
-  "allow-upsert-template",
-  "allow-delete-template",
-  # event
-  "allow-list-events",
-  # config
-  "allow-get-config",
-  "allow-set-config",
-  # user
-  "allow-get-self-human",
-  "allow-upsert-human",
-  "allow-get-self-organization",
-  "allow-upsert-organization",
-  # chat
-  "allow-list-chat-groups",
-  "allow-list-chat-messages",
-  "allow-create-chat-group",
-  "allow-upsert-chat-message",
-  # tag
-  "allow-list-all-tags",
-  "allow-list-session-tags",
-  "allow-assign-tag-to-session",
-  "allow-unassign-tag-from-session",
+    # session
+    "allow-upsert-session",
+    "allow-list-sessions",
+    "allow-get-session",
+    "allow-visit-session",
+    "allow-delete-session",
+    "allow-set-session-event",
+    "allow-session-add-participant",
+    "allow-session-remove-participant",
+    "allow-session-list-participants",
+    "allow-session-get-event",
+    # calendar
+    "allow-upsert-calendar",
+    "allow-list-calendars",
+    # template
+    "allow-list-templates",
+    "allow-upsert-template",
+    "allow-delete-template",
+    # event
+    "allow-list-events",
+    # config
+    "allow-get-config",
+    "allow-set-config",
+    # user
+    "allow-get-human",
+    "allow-upsert-human",
+    "allow-get-organization",
+    "allow-get-organization-by-user-id",
+    "allow-upsert-organization",
+    # chat
+    "allow-list-chat-groups",
+    "allow-list-chat-messages",
+    "allow-create-chat-group",
+    "allow-upsert-chat-message",
+    # tag
+    "allow-list-all-tags",
+    "allow-list-session-tags",
+    "allow-assign-tag-to-session",
+    "allow-unassign-tag-from-session",
 ]

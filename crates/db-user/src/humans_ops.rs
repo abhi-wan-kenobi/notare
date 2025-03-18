@@ -6,9 +6,8 @@ impl UserDatabase {
     pub async fn get_human(&self, id: impl Into<String>) -> Result<Option<Human>, crate::Error> {
         let conn = self.conn()?;
 
-        let mut rows = conn
-            .query("SELECT * FROM humans WHERE id = ?", vec![id.into()])
-            .await?;
+        let sql = format!("SELECT * FROM {} WHERE id = ?", Human::sql_table());
+        let mut rows = conn.query(&sql, vec![id.into()]).await?;
 
         let row = rows.next().await?;
         Ok(row.map(|row| libsql::de::from_row(&row)).transpose()?)
@@ -19,7 +18,7 @@ impl UserDatabase {
 
         let sql = format!(
             "INSERT OR REPLACE INTO {} (
-                id, 
+                id,
                 organization_id,
                 is_user,
                 full_name,

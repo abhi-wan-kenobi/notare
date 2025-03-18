@@ -1,9 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { useHypr } from "@/contexts";
 import { commands as dbCommands, type Human, type Organization } from "@hypr/plugin-db";
 import {
   Form,
@@ -16,7 +18,6 @@ import {
 } from "@hypr/ui/components/ui/form";
 import { Input } from "@hypr/ui/components/ui/input";
 import { Textarea } from "@hypr/ui/components/ui/textarea";
-import { Trans, useLingui } from "@lingui/react/macro";
 
 const schema = z.object({
   fullName: z.string().min(2).max(50).optional(),
@@ -35,16 +36,19 @@ type ConfigData = {
 
 export default function ProfileComponent() {
   const { t } = useLingui();
+  const { userId } = useHypr();
   const queryClient = useQueryClient();
 
   const config = useQuery<ConfigData>({
     queryKey: ["config", "profile"],
     queryFn: async () => {
       const [human, organization] = await Promise.all([
-        dbCommands.getSelfHuman(),
-        dbCommands.getSelfOrganization(),
+        dbCommands.getHuman(userId),
+        dbCommands.getOrganizationByUserId(userId),
       ]);
-      return { human, organization };
+
+      // TODO
+      return { human: human!, organization: organization! };
     },
   });
 

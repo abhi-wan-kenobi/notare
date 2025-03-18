@@ -32,6 +32,25 @@ impl UserDatabase {
         Ok(items)
     }
 
+    pub async fn get_organization(
+        &self,
+        id: impl Into<String>,
+    ) -> Result<Option<Organization>, crate::Error> {
+        let conn = self.conn()?;
+
+        let mut rows = conn
+            .query("SELECT * FROM organizations WHERE id = ?", vec![id.into()])
+            .await?;
+
+        match rows.next().await? {
+            None => Ok(None),
+            Some(row) => {
+                let item: Organization = libsql::de::from_row(&row)?;
+                Ok(Some(item))
+            }
+        }
+    }
+
     pub async fn get_organization_by_user_id(
         &self,
         id: impl Into<String>,
@@ -41,8 +60,8 @@ impl UserDatabase {
 
         let mut rows = conn
             .query(
-                "SELECT o.* FROM organizations o 
-                INNER JOIN users u ON u.organization_id = o.id 
+                "SELECT o.* FROM organizations o
+                INNER JOIN users u ON u.organization_id = o.id
                 WHERE u.id = ?",
                 vec![id],
             )

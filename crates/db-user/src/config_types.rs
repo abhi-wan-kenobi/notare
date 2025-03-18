@@ -61,7 +61,9 @@ impl Default for ConfigGeneral {
 user_common_derives! {
     pub struct ConfigNotification {
         pub before: bool,
-        pub auto: bool
+        pub auto: bool,
+        #[serde(rename = "ignoredPlatforms")]
+        pub ignored_platforms: Option<Vec<String>>,
     }
 }
 
@@ -70,6 +72,7 @@ impl Default for ConfigNotification {
         Self {
             before: true,
             auto: true,
+            ignored_platforms: None,
         }
     }
 }

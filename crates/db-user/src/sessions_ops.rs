@@ -31,8 +31,8 @@ impl UserDatabase {
         match rows.next().await? {
             None => Ok(None),
             Some(row) => {
-                let session = Session::from_row(&row)?;
-                Ok(Some(session))
+                let item = Session::from_row(&row)?;
+                Ok(Some(item))
             }
         }
     }
@@ -87,16 +87,16 @@ impl UserDatabase {
             Some(ListSessionFilter::DateRange((start, end))) => {
                 conn.query(
                     "
-                    SELECT s.* FROM sessions s 
-                    LEFT JOIN events e ON s.calendar_event_id = e.id 
-                    WHERE 
-                        (s.calendar_event_id IS NULL AND s.created_at BETWEEN :start_time AND :end_time) 
-                        OR 
-                        (s.calendar_event_id IS NOT NULL AND e.start_date BETWEEN :start_time AND :end_time) 
-                    ORDER BY 
+                    SELECT s.* FROM sessions s
+                    LEFT JOIN events e ON s.calendar_event_id = e.id
+                    WHERE
+                        (s.calendar_event_id IS NULL AND s.created_at BETWEEN :start_time AND :end_time)
+                        OR
+                        (s.calendar_event_id IS NOT NULL AND e.start_date BETWEEN :start_time AND :end_time)
+                    ORDER BY
                         CASE
-                            WHEN s.calendar_event_id IS NULL THEN s.created_at 
-                            ELSE e.start_date 
+                            WHEN s.calendar_event_id IS NULL THEN s.created_at
+                            ELSE e.start_date
                         END DESC",
                     libsql::named_params! {
                         ":start_time": start.to_rfc3339(),

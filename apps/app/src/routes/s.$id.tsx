@@ -23,10 +23,10 @@ export const Route = createFileRoute("/s/$id")({
       session: response.data,
     };
   },
-  component: RouteComponent,
+  component: Component,
 });
 
-function RouteComponent() {
+function Component() {
   const { session } = Route.useLoaderData();
 
   return (

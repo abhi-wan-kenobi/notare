@@ -20,9 +20,10 @@ Default permissions for the plugin
 - `allow-list-events`
 - `allow-get-config`
 - `allow-set-config`
-- `allow-get-self-human`
+- `allow-get-human`
 - `allow-upsert-human`
-- `allow-get-self-organization`
+- `allow-get-organization`
+- `allow-get-organization-by-user-id`
 - `allow-upsert-organization`
 - `allow-list-chat-groups`
 - `allow-list-chat-messages`
@@ -175,25 +176,12 @@ Denies the get_config command without any pre-configured scope.
 <tr>
 <td>
 
-`db:allow-get-self-human`
+`db:allow-get-human`
 
 </td>
 <td>
 
-Enables the get_self_human command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`db:deny-get-self-human`
-
-</td>
-<td>
-
-Denies the get_self_human command without any pre-configured scope.
+Enables the get_human command without any pre-configured scope.
 
 </td>
 </tr>
@@ -201,12 +189,12 @@ Denies the get_self_human command without any pre-configured scope.
 <tr>
 <td>
 
-`db:allow-get-self-organization`
+`db:deny-get-human`
 
 </td>
 <td>
 
-Enables the get_self_organization command without any pre-configured scope.
+Denies the get_human command without any pre-configured scope.
 
 </td>
 </tr>
@@ -214,12 +202,51 @@ Enables the get_self_organization command without any pre-configured scope.
 <tr>
 <td>
 
-`db:deny-get-self-organization`
+`db:allow-get-organization`
 
 </td>
 <td>
 
-Denies the get_self_organization command without any pre-configured scope.
+Enables the get_organization command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-get-organization`
+
+</td>
+<td>
+
+Denies the get_organization command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-get-organization-by-user-id`
+
+</td>
+<td>
+
+Enables the get_organization_by_user_id command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-get-organization-by-user-id`
+
+</td>
+<td>
+
+Denies the get_organization_by_user_id command without any pre-configured scope.
 
 </td>
 </tr>
