@@ -12,29 +12,43 @@ import { Button } from "@hypr/ui/components/ui/button";
 
 const schema = z.object({
   date: z.string().optional(),
+  sessionId: z.string().optional(),
 });
 
 export const Route = createFileRoute("/app/calendar")({
   component: Component,
   validateSearch: zodValidator(schema),
-  loaderDeps: ({ search: { date } }) => {
-    return { date: date ? new Date(date) : new Date() };
-  },
-  loader: async ({ context: { queryClient }, deps: { date } }) => {
-    const [start, end] = [startOfMonth(date), endOfMonth(date)].map(d => d.toISOString());
-
+  loaderDeps: ({ search }) => ({ search }),
+  loader: async ({ context: { queryClient }, deps: { search } }) => {
     // TODO: move to the context
-    const userId = await queryClient.fetchQuery({
+    const userIdPromise = queryClient.fetchQuery({
       queryKey: ["userId"],
       queryFn: () => authCommands.getFromStore("auth-user-id"),
-    }) as string;
+    }) as Promise<string>;
 
-    const sessionsPromise = await queryClient.fetchQuery({
+    const eventPromise = search.sessionId
+      ? queryClient.fetchQuery({
+        queryKey: ["event-session", search.sessionId],
+        queryFn: () => dbCommands.sessionGetEvent(search.sessionId!),
+      })
+      : Promise.resolve(null);
+
+    const [userId, event] = await Promise.all([userIdPromise, eventPromise]);
+
+    const date = event?.start_date
+      ? new Date(event.start_date)
+      : search.date
+      ? new Date(search.date)
+      : new Date();
+
+    const [start, end] = [startOfMonth(date), endOfMonth(date)].map((v) => v.toISOString());
+
+    const sessionsPromise = queryClient.fetchQuery({
       queryKey: ["sessions", start, end],
       queryFn: () => dbCommands.listSessions({ dateRange: [start, end] }),
     });
 
-    const eventsPromise = await queryClient.fetchQuery({
+    const eventsPromise = queryClient.fetchQuery({
       queryKey: ["events", start, end],
       queryFn: () =>
         dbCommands.listEvents({

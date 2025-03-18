@@ -1,7 +1,7 @@
 import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { AppWindowMacIcon, ArrowUpRight, TrashIcon } from "lucide-react";
+import { type LinkProps, useNavigate } from "@tanstack/react-router";
+import { AppWindowMacIcon, ArrowUpRight, CalendarDaysIcon, TrashIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useSession, useSessions } from "@/contexts";
@@ -59,6 +59,18 @@ export function NoteItem({
     windowsCommands.windowShow({ note: currentSession.id });
   };
 
+  const handleOpenCalendar = () => {
+    const props = {
+      to: "/app/calendar",
+      search: { sessionId: currentSession.id },
+    } as const satisfies LinkProps;
+
+    const url = props.to.concat(`?sessionId=${props.search.sessionId}`);
+
+    windowsCommands.windowEmitNavigate("calendar", url).then(() => {
+      windowsCommands.windowShow("calendar");
+    });
+  };
   const html2text = (html: string) => {
     return html.replace(/<[^>]*>?/g, "");
   };
@@ -70,11 +82,18 @@ export function NoteItem({
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (isActive && buttonRef.current) {
-      buttonRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
+    if (!isActive || !buttonRef.current) {
+      return;
+    }
+
+    const height = window.innerHeight || document.documentElement.clientHeight;
+    const width = window.innerWidth || document.documentElement.clientWidth;
+
+    const { top, left, bottom, right } = buttonRef.current.getBoundingClientRect();
+    const isInView = top >= 0 && left >= 0 && bottom <= height && right <= width;
+
+    if (!isInView) {
+      buttonRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [isActive]);
 
@@ -116,6 +135,15 @@ export function NoteItem({
         >
           <AppWindowMacIcon size={16} className="mr-2" />
           <Trans>New window</Trans>
+          <ArrowUpRight size={16} className="ml-2" />
+        </ContextMenuItem>
+
+        <ContextMenuItem
+          className="cursor-pointer"
+          onClick={handleOpenCalendar}
+        >
+          <CalendarDaysIcon size={16} className="mr-2" />
+          <Trans>In calendar view</Trans>
           <ArrowUpRight size={16} className="ml-2" />
         </ContextMenuItem>
 
