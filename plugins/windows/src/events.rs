@@ -30,6 +30,6 @@ pub fn on_window_event<R: tauri::Runtime>(window: &tauri::Window<R>, event: &tau
 }
 
 #[derive(serde::Serialize, Clone, specta::Type, tauri_specta::Event)]
-pub struct NavigateMain {
+pub struct Navigate {
     pub path: String,
 }

@@ -30,16 +30,14 @@ impl HyprWindow {
         app: &AppHandle<tauri::Wry>,
         path: impl AsRef<str>,
     ) -> Result<(), crate::Error> {
-        let main_window = Self::Main.get(app)?;
-
         if let Ok(window) = self.get(app) {
             let mut url = window.url().unwrap();
             url.set_path(path.as_ref());
 
-            let event = events::NavigateMain {
+            let event = events::Navigate {
                 path: path.as_ref().into(),
             };
-            events::NavigateMain::emit_to(&event, app, main_window.label())?;
+            events::Navigate::emit_to(&event, app, self.label())?;
         }
         Ok(())
     }

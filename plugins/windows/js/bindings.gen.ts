@@ -28,9 +28,9 @@ async windowEmitNavigate(window: HyprWindow, path: string) : Promise<null> {
 
 
 export const events = __makeEvents__<{
-navigateMain: NavigateMain
+navigate: Navigate
 }>({
-navigateMain: "plugin:windows:navigate-main"
+navigate: "plugin:windows:navigate"
 })
 
 /** user-defined constants **/
@@ -40,7 +40,7 @@ navigateMain: "plugin:windows:navigate-main"
 /** user-defined types **/
 
 export type HyprWindow = "main" | { note: string } | "calendar"
-export type NavigateMain = { path: string }
+export type Navigate = { path: string }
 
 /** tauri-specta globals **/
 

@@ -19,7 +19,7 @@ function Component() {
 
     let unlisten: (() => void) | undefined;
 
-    windowsEvents.navigateMain(getCurrentWebviewWindow()).listen(({ payload }) => {
+    windowsEvents.navigate(getCurrentWebviewWindow()).listen(({ payload }) => {
       navigate({ to: payload.path });
     }).then((fn) => {
       unlisten = fn;
