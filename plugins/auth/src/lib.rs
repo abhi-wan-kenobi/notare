@@ -72,4 +72,19 @@ mod test {
             )
             .unwrap()
     }
+
+    fn create_app<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::App<R> {
+        builder
+            .plugin(init())
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap()
+    }
+
+    #[test]
+    fn test_html() {
+        let app = create_app(tauri::test::mock_builder());
+        let env = app.state::<minijinja::Environment>().inner().clone();
+        let _html = generate_html(&env).unwrap();
+        // std::fs::write("./index.html", html).unwrap();
+    }
 }

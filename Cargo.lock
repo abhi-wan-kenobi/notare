@@ -11863,6 +11863,7 @@ name = "tauri-plugin-auth"
 version = "0.1.0"
 dependencies = [
  "auth-interface",
+ "base64 0.22.1",
  "keyring",
  "minijinja",
  "schemars",
