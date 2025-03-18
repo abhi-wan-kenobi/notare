@@ -1,3 +1,5 @@
+use hypr_db_core::SqlTable;
+
 use super::{AdminDatabase, Integration};
 
 impl AdminDatabase {
@@ -7,12 +9,12 @@ impl AdminDatabase {
     ) -> Result<Vec<Integration>, crate::Error> {
         let conn = self.conn()?;
 
-        let mut rows = conn
-            .query(
-                "SELECT * FROM integrations WHERE user_id = ?",
-                vec![user_id.as_ref()],
-            )
-            .await?;
+        let sql = format!(
+            "SELECT * FROM {} WHERE user_id = ?",
+            Integration::sql_table()
+        );
+
+        let mut rows = conn.query(&sql, vec![user_id.as_ref()]).await?;
 
         let mut items = Vec::new();
         while let Some(row) = rows.next().await.unwrap() {
@@ -28,26 +30,27 @@ impl AdminDatabase {
     ) -> Result<Integration, crate::Error> {
         let conn = self.conn()?;
 
-        let mut rows = conn
-            .query(
-                "INSERT INTO integrations (
-                    id,
-                    user_id,
-                    nango_integration_id,
-                    nango_connection_id
-                ) VALUES (?, ?, ?, ?)
-                ON CONFLICT (user_id, nango_integration_id) DO UPDATE SET
-                    nango_connection_id = excluded.nango_connection_id
-                RETURNING *",
-                vec![
-                    integration.id,
-                    integration.user_id,
-                    integration.nango_integration_id.into(),
-                    integration.nango_connection_id,
-                ],
-            )
-            .await?;
+        let sql = format!(
+            "INSERT INTO {} (
+                id,
+                user_id,
+                nango_integration_id,
+                nango_connection_id
+            ) VALUES (?, ?, ?, ?)
+            ON CONFLICT (user_id, nango_integration_id) DO UPDATE SET
+                nango_connection_id = excluded.nango_connection_id
+            RETURNING *",
+            Integration::sql_table()
+        );
 
+        let params = vec![
+            integration.id,
+            integration.user_id,
+            integration.nango_integration_id.into(),
+            integration.nango_connection_id,
+        ];
+
+        let mut rows = conn.query(&sql, params).await?;
         let row = rows.next().await.unwrap().unwrap();
         let integration: Integration = libsql::de::from_row(&row).unwrap();
         Ok(integration)

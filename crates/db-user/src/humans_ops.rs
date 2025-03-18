@@ -1,3 +1,5 @@
+use hypr_db_core::SqlTable;
+
 use super::{Human, UserDatabase};
 
 impl UserDatabase {
@@ -15,29 +17,30 @@ impl UserDatabase {
     pub async fn upsert_human(&self, human: Human) -> Result<Human, crate::Error> {
         let conn = self.conn()?;
 
-        let mut rows = conn
-            .query(
-                "INSERT OR REPLACE INTO humans (
-                    id, 
-                    organization_id,
-                    is_user,
-                    full_name,
-                    email,
-                    job_title,
-                    linkedin_username
-                ) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *",
-                (
-                    human.id,
-                    human.organization_id,
-                    human.is_user,
-                    human.full_name,
-                    human.email,
-                    human.job_title,
-                    human.linkedin_username,
-                ),
-            )
-            .await?;
+        let sql = format!(
+            "INSERT OR REPLACE INTO {} (
+                id, 
+                organization_id,
+                is_user,
+                full_name,
+                email,
+                job_title,
+                linkedin_username
+            ) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *",
+            Human::sql_table()
+        );
 
+        let params = (
+            human.id,
+            human.organization_id,
+            human.is_user,
+            human.full_name,
+            human.email,
+            human.job_title,
+            human.linkedin_username,
+        );
+
+        let mut rows = conn.query(&sql, params).await?;
         let row = rows.next().await?.unwrap();
         let human: Human = libsql::de::from_row(&row)?;
         Ok(human)

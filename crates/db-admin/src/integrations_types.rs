@@ -1,6 +1,7 @@
 use crate::admin_common_derives;
 
 admin_common_derives! {
+    #[sql_table("integrations")]
     pub struct Integration {
         pub id: String,
         pub user_id: String,

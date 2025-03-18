@@ -39,6 +39,21 @@ pub use hypr_db_core::Error;
 
 #[macro_export]
 macro_rules! admin_common_derives {
+    (#[sql_table($table:expr)] $(#[$meta:meta])* $vis:vis $kind:ident $name:ident {
+        $($body:tt)*
+    }) => {
+        #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+        $(#[$meta])* $vis $kind $name {
+            $($body)*
+        }
+
+        impl hypr_db_core::SqlTable for $name {
+            fn sql_table() -> &'static str {
+                $table
+            }
+        }
+    };
+
     ($item:item) => {
         #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
         $item
