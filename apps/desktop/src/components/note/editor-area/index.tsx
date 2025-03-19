@@ -18,10 +18,15 @@ import { NoteHeader } from "../header";
 import { EnhanceControls } from "./enhanced-controls";
 import { EnhanceOnlyButton } from "./enhanced-only-button";
 
-export default function EditorArea({ editable }: { editable: boolean }) {
+interface EditorAreaProps {
+  editable: boolean;
+  sessionId: string;
+}
+
+export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
   const [showRaw, setShowRaw] = useState(true);
 
-  const sessionStore = useSession((s) => ({
+  const sessionStore = useSession(sessionId, (s) => ({
     session: s.session,
     updateRawNote: s.updateRawNote,
     updateEnhancedNote: s.updateEnhancedNote,
@@ -121,6 +126,7 @@ export default function EditorArea({ editable }: { editable: boolean }) {
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
       <NoteHeader
+        sessionId={sessionId}
         editable={editable}
         onNavigateToEditor={() => {
           editorRef.current?.editor?.commands?.focus();

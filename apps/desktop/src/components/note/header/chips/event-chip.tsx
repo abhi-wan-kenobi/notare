@@ -9,9 +9,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/
 import { format } from "@hypr/utils/datetime";
 import { Trans } from "@lingui/react/macro";
 
-export function EventChip() {
-  const { sessionId, sessionCreatedAt } = useSession((s) => ({
-    sessionId: s.session.id,
+interface EventChipProps {
+  sessionId: string;
+}
+
+export function EventChip({ sessionId }: EventChipProps) {
+  const { sessionCreatedAt } = useSession(sessionId, (s) => ({
     sessionCreatedAt: s.session.created_at,
   }));
 

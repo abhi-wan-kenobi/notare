@@ -11,7 +11,10 @@ const schema = z.object({
 
 export const Route = createFileRoute("/app/new")({
   validateSearch: zodValidator(schema),
-  beforeLoad: async ({ context: { queryClient, sessionsStore }, search }) => {
+  beforeLoad: async ({
+    context: { queryClient, sessionsStore },
+    search,
+  }) => {
     const id = await authCommands.getFromStore("auth-user-id");
 
     if (!id) {
@@ -34,15 +37,16 @@ export const Route = createFileRoute("/app/new")({
       };
 
       const session = await dbCommands.upsertSession(emptySession);
-      queryClient.invalidateQueries({
+
+      const { insert } = sessionsStore.getState();
+      insert(session);
+
+      await queryClient.invalidateQueries({
         queryKey: ["sessions"],
-        predicate(query) {
-          return query.queryKey[0] === "event-session";
-        },
       });
 
       return redirect({
-        to: "/app/note/$id/main",
+        to: "/app/note/$id",
         params: { id: session.id },
       });
     } catch (error) {

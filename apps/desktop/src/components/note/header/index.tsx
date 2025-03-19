@@ -8,9 +8,10 @@ import TitleInput from "./title-input";
 interface NoteHeaderProps {
   onNavigateToEditor?: () => void;
   editable?: boolean;
+  sessionId: string;
 }
 
-export function NoteHeader({ onNavigateToEditor, editable }: NoteHeaderProps) {
+export function NoteHeader({ onNavigateToEditor, editable, sessionId }: NoteHeaderProps) {
   const ongoingSessionStore = useOngoingSession((s) => ({
     onGoingSessionId: s.sessionId,
     listening: s.listening,
@@ -18,7 +19,7 @@ export function NoteHeader({ onNavigateToEditor, editable }: NoteHeaderProps) {
     pause: s.pause,
   }));
 
-  const sessionStore = useSession((s) => ({
+  const sessionStore = useSession(sessionId, (s) => ({
     sessionInView: s.session,
     updateTitle: s.updateTitle,
     persistSession: s.persistSession,
@@ -33,8 +34,8 @@ export function NoteHeader({ onNavigateToEditor, editable }: NoteHeaderProps) {
     ongoingSessionStore.start(sessionStore.sessionInView?.id ?? "");
   }, [sessionStore.sessionInView, ongoingSessionStore.start]);
 
-  const match = useMatch({ from: "/app/note/$id/main", shouldThrow: false });
-  const isInNoteMain = match !== undefined;
+  const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
+  const isInNoteMain = noteMatch?.search.window === "main";
 
   return (
     <>

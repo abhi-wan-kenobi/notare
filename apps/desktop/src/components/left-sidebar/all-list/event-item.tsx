@@ -1,9 +1,10 @@
-import { commands as dbCommands, type Event } from "@hypr/plugin-db";
-import { formatRemainingTime } from "@hypr/utils/datetime";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-export function EventItem({ event }: { event: Event }) {
+import { commands as dbCommands, type Event } from "@hypr/plugin-db";
+import { formatRemainingTime } from "@hypr/utils/datetime";
+
+export default function EventItem({ event }: { event: Event }) {
   const navigate = useNavigate();
 
   const session = useQuery({
@@ -14,7 +15,7 @@ export function EventItem({ event }: { event: Event }) {
   const handleClick = () => {
     if (session.data) {
       navigate({
-        to: "/app/note/$id/main",
+        to: "/app/note/$id",
         params: { id: session.data.id },
       });
     } else {

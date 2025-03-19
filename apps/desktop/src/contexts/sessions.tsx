@@ -2,7 +2,7 @@ import { createContext, useContext, useRef } from "react";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/shallow";
 
-import { createSessionsStore, SessionsStore } from "@/stores";
+import { createSessionsStore, createSessionStore, SessionsStore } from "@/stores";
 
 const SessionsContext = createContext<
   ReturnType<
@@ -45,4 +45,24 @@ export const useSessions = <T,>(
   }
 
   return useStore(store, useShallow(selector));
+};
+
+export const useSession = <T,>(
+  id: string,
+  selector: Parameters<
+    typeof useStore<ReturnType<typeof createSessionStore>, T>
+  >[1],
+) => {
+  const sessionsStore = useContext(SessionsContext);
+
+  if (!sessionsStore) {
+    throw new Error("'useSession' must be used within a 'SessionsProvider'");
+  }
+
+  const sessionStore = sessionsStore.getState().sessions[id];
+  if (!sessionStore) {
+    throw new Error(`session(id=${id}) not exists in sessions store`);
+  }
+
+  return useStore(sessionStore, useShallow(selector));
 };
