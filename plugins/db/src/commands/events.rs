@@ -3,7 +3,7 @@
 #[tracing::instrument(skip(state))]
 pub async fn list_events(
     state: tauri::State<'_, crate::ManagedState>,
-    filter: hypr_db_user::ListEventFilter,
+    filter: Option<hypr_db_user::ListEventFilter>,
 ) -> Result<Vec<hypr_db_user::Event>, String> {
     let guard = state.lock().await;
 

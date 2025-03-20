@@ -60,10 +60,11 @@ export const Route = createFileRoute("/app/calendar")({
       queryKey: ["events", start, end],
       queryFn: () =>
         dbCommands.listEvents({
-          dateRange: {
-            userId,
-            range: [start, end],
-          },
+          type: "dateRange",
+          user_id: userId,
+          start,
+          end,
+          limit: 100,
         }),
     });
 

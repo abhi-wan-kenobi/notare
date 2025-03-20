@@ -17,14 +17,29 @@ user_common_derives! {
 }
 
 user_common_derives! {
-    pub enum ListEventFilter {
-        #[serde(rename = "userId")]
-        UserId(String),
+    pub struct ListEventFilter {
+        #[serde(flatten)]
+        pub common: ListEventFilterCommon,
+        #[serde(flatten)]
+        pub specific: ListEventFilterSpecific,
+    }
+}
+
+user_common_derives! {
+    pub struct ListEventFilterCommon {
+        pub user_id: String,
+        pub limit: Option<u32>,
+    }
+}
+
+user_common_derives! {
+    #[serde(tag = "type")]
+    pub enum ListEventFilterSpecific {
+        #[serde(rename = "simple")]
+        Simple {},
+        #[serde(rename = "search")]
+        Search { query: String },
         #[serde(rename = "dateRange")]
-        DateRange {
-            #[serde(rename = "userId")]
-            user_id: String,
-            range: (DateTime<Utc>, DateTime<Utc>),
-        },
+        DateRange { start: DateTime<Utc>, end: DateTime<Utc> },
     }
 }

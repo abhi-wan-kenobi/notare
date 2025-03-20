@@ -1,4 +1,4 @@
-use super::{Event, ListEventFilter, UserDatabase};
+use super::{Event, ListEventFilter, ListEventFilterCommon, ListEventFilterSpecific, UserDatabase};
 
 impl UserDatabase {
     pub async fn get_event(&self, id: impl Into<String>) -> Result<Option<Event>, crate::Error> {
@@ -68,21 +68,47 @@ impl UserDatabase {
         Ok(event)
     }
 
-    pub async fn list_events(&self, filter: ListEventFilter) -> Result<Vec<Event>, crate::Error> {
+    pub async fn list_events(
+        &self,
+        filter: Option<ListEventFilter>,
+    ) -> Result<Vec<Event>, crate::Error> {
         let conn = self.conn()?;
 
         let mut rows = match filter {
-            ListEventFilter::DateRange { user_id, range } => {
+            Some(ListEventFilter {
+                common: ListEventFilterCommon { user_id, limit },
+                specific: ListEventFilterSpecific::Simple {},
+            }) => {
                 conn.query(
-                    "SELECT * FROM events WHERE user_id = ? AND start_date BETWEEN ? AND ? ORDER BY start_date DESC LIMIT 100",
-                    vec![user_id, range.0.to_rfc3339(), range.1.to_rfc3339()],
+                    "SELECT * FROM events WHERE user_id = ? ORDER BY start_date DESC LIMIT ?",
+                    vec![user_id, limit.unwrap_or(100).to_string()],
                 )
                 .await?
             }
-            ListEventFilter::UserId(user_id) => {
+            Some(ListEventFilter {
+                common: ListEventFilterCommon { user_id, limit },
+                specific: ListEventFilterSpecific::Search { query },
+            }) => {
                 conn.query(
-                    "SELECT * FROM events WHERE user_id = ? ORDER BY start_date DESC LIMIT 100",
-                    vec![user_id],
+                    "SELECT * FROM events WHERE user_id = ? AND name LIKE ? ORDER BY start_date DESC LIMIT ?",
+                    vec![user_id, format!("%{}%", query), limit.unwrap_or(100).to_string()],
+                )
+                .await?
+            }
+            Some(ListEventFilter {
+                common: ListEventFilterCommon { user_id, limit },
+                specific: ListEventFilterSpecific::DateRange { start, end },
+            }) => {
+                conn.query(
+                    "SELECT * FROM events WHERE user_id = ? AND start_date BETWEEN ? AND ? ORDER BY start_date DESC LIMIT ?",
+                    vec![user_id, start.to_rfc3339(), end.to_rfc3339(), limit.unwrap_or(100).to_string()],
+                )
+                .await?
+            }
+            None => {
+                conn.query(
+                    "SELECT * FROM events ORDER BY start_date DESC LIMIT 100",
+                    (),
                 )
                 .await?
             }
@@ -100,7 +126,7 @@ impl UserDatabase {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{tests::setup_db, Calendar, Human, ListEventFilter, Platform};
+    use crate::{tests::setup_db, Calendar, Human, Platform};
 
     #[tokio::test]
     async fn test_events() {
@@ -114,10 +140,7 @@ mod tests {
             .await
             .unwrap();
 
-        let events = db
-            .list_events(ListEventFilter::UserId(human.id.clone()))
-            .await
-            .unwrap();
+        let events = db.list_events(None).await.unwrap();
         assert_eq!(events.len(), 0);
 
         let calendar = Calendar {
@@ -156,10 +179,7 @@ mod tests {
         assert_eq!(event.tracking_id, "event_test");
         assert_eq!(event.google_event_url, None);
 
-        let events = db
-            .list_events(ListEventFilter::UserId(human.id.clone()))
-            .await
-            .unwrap();
+        let events = db.list_events(None).await.unwrap();
         assert_eq!(events.len(), 1);
     }
 }

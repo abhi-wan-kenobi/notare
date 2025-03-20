@@ -11,7 +11,11 @@ export default function EventsList() {
   const events = useQuery({
     queryKey: ["events"],
     queryFn: async () => {
-      const events = await dbCommands.listEvents({ userId });
+      const events = await dbCommands.listEvents({
+        type: "simple",
+        user_id: userId,
+        limit: 50,
+      });
       const upcomingEvents = events
         .filter((event) => {
           return isFuture(new Date(event.start_date));
