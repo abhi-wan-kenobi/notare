@@ -46,7 +46,14 @@ export const Route = createFileRoute("/app/calendar")({
 
     const sessionsPromise = queryClient.fetchQuery({
       queryKey: ["sessions", start, end],
-      queryFn: () => dbCommands.listSessions({ dateRange: [start, end] }),
+      queryFn: () =>
+        dbCommands.listSessions({
+          type: "dateRange",
+          user_id: userId,
+          start,
+          end,
+          limit: 100,
+        }),
     });
 
     const eventsPromise = queryClient.fetchQuery({

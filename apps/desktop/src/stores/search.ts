@@ -37,7 +37,7 @@ export const createSearchStore = (userId: string) => {
     searchInputRef: null,
     setQuery: async (query: string) => {
       const [sessions, humans, organizations] = await Promise.all([
-        dbCommands.listSessions({ pagination: { limit: 3, offset: 0 } }),
+        dbCommands.listSessions({ type: "search", query, limit: 5, user_id: userId }),
         dbCommands.listHumans({ search: [3, query] }),
         dbCommands.listOrganizations({ search: [3, query] }),
       ]);

@@ -1,4 +1,7 @@
-use super::{Event, GetSessionFilter, Human, ListSessionFilter, Session, UserDatabase};
+use super::{
+    Event, GetSessionFilter, Human, ListSessionFilter, ListSessionFilterCommon,
+    ListSessionFilterSpecific, Session, UserDatabase,
+};
 
 impl UserDatabase {
     pub async fn get_session(
@@ -63,44 +66,52 @@ impl UserDatabase {
         let conn = self.conn()?;
 
         let mut rows = match filter {
-            Some(ListSessionFilter::Pagination { limit, offset }) => {
+            Some(ListSessionFilter {
+                common: ListSessionFilterCommon { user_id, limit },
+                specific: ListSessionFilterSpecific::Search { query },
+            }) => {
                 conn.query(
-                    "SELECT * FROM sessions ORDER BY created_at DESC LIMIT ? OFFSET ?",
-                    vec![limit.to_string(), offset.to_string()],
+                    "SELECT * FROM sessions WHERE user_id = ? AND title LIKE ? ORDER BY created_at DESC LIMIT ?",
+                    vec![user_id, format!("%{}%", query), limit.unwrap_or(100).to_string()],
                 )
                 .await?
             }
-            Some(ListSessionFilter::Search((limit, q))) => {
+            Some(ListSessionFilter {
+                common: ListSessionFilterCommon { user_id, limit },
+                specific: ListSessionFilterSpecific::RecentlyVisited {},
+            }) => {
                 conn.query(
-                    "SELECT * FROM sessions WHERE title LIKE ? ORDER BY created_at DESC LIMIT ?",
-                    vec![format!("%{}%", q), limit.to_string()],
+                    "SELECT * FROM sessions WHERE user_id = ? ORDER BY visited_at DESC LIMIT ?",
+                    vec![user_id, limit.unwrap_or(100).to_string()],
                 )
                 .await?
             }
-            Some(ListSessionFilter::RecentlyVisited((limit,))) => {
-                conn.query(
-                    "SELECT * FROM sessions ORDER BY visited_at DESC LIMIT ?",
-                    vec![limit.to_string()],
-                )
-                .await?
-            }
-            Some(ListSessionFilter::DateRange((start, end))) => {
+            Some(ListSessionFilter {
+                common: ListSessionFilterCommon { user_id, limit },
+                specific: ListSessionFilterSpecific::DateRange { start, end },
+            }) => {
                 conn.query(
                     "
                     SELECT s.* FROM sessions s
                     LEFT JOIN events e ON s.calendar_event_id = e.id
                     WHERE
-                        (s.calendar_event_id IS NULL AND s.created_at BETWEEN :start_time AND :end_time)
-                        OR
-                        (s.calendar_event_id IS NOT NULL AND e.start_date BETWEEN :start_time AND :end_time)
+                        s.user_id = :user_id AND
+                        (
+                            (s.calendar_event_id IS NULL AND s.created_at BETWEEN :start_time AND :end_time)
+                            OR
+                            (s.calendar_event_id IS NOT NULL AND e.start_date BETWEEN :start_time AND :end_time)
+                        )
                     ORDER BY
                         CASE
                             WHEN s.calendar_event_id IS NULL THEN s.created_at
                             ELSE e.start_date
-                        END DESC",
+                        END DESC
+                    LIMIT :limit",
                     libsql::named_params! {
+                        ":user_id": user_id,
                         ":start_time": start.to_rfc3339(),
-                        ":end_time": end.to_rfc3339()
+                        ":end_time": end.to_rfc3339(),
+                        ":limit": limit.unwrap_or(100).to_string(),
                     },
                 )
                 .await?

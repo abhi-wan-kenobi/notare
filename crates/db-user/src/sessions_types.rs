@@ -86,17 +86,29 @@ user_common_derives! {
 }
 
 user_common_derives! {
-    pub enum ListSessionFilter {
-        #[serde(rename = "pagination")]
-        Pagination {
-            limit: u8,
-            offset: u8,
-        },
+    pub struct ListSessionFilter {
+        #[serde(flatten)]
+        pub common: ListSessionFilterCommon,
+        #[serde(flatten)]
+        pub specific: ListSessionFilterSpecific,
+    }
+}
+
+user_common_derives! {
+    pub struct ListSessionFilterCommon {
+        pub user_id: String,
+        pub limit: Option<u8>,
+    }
+}
+
+user_common_derives! {
+    #[serde(tag = "type")]
+    pub enum ListSessionFilterSpecific {
         #[serde(rename = "search")]
-        Search((u8, String)),
+        Search { query: String },
         #[serde(rename = "recentlyVisited")]
-        RecentlyVisited((u8,)),
+        RecentlyVisited {},
         #[serde(rename = "dateRange")]
-        DateRange((DateTime<Utc>, DateTime<Utc>)),
+        DateRange { start: DateTime<Utc>, end: DateTime<Utc> },
     }
 }

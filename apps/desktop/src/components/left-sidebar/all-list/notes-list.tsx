@@ -4,16 +4,18 @@ import { endOfMonth, startOfMonth, subMonths } from "date-fns";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef } from "react";
 
-import { useSessions } from "@/contexts";
+import { useHypr, useSessions } from "@/contexts";
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
 import { formatRelative } from "@hypr/utils/datetime";
 import { NoteItem } from "./note-item";
 
 export default function NotesList() {
-  const insertSession = useSessions((s) => s.insert);
-  const sessionsStore = useSessions((s) => s.sessions);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastItemRef = useRef<HTMLElement | null>(null);
+
+  const { userId } = useHypr();
+  const insertSession = useSessions((s) => s.insert);
+  const sessionsStore = useSessions((s) => s.sessions);
 
   const sessions = useInfiniteQuery({
     queryKey: ["sessions"],
@@ -23,7 +25,13 @@ export default function NotesList() {
         .map((d) => subMonths(d, monthOffset))
         .map((d) => d.toISOString());
 
-      const sessions = await dbCommands.listSessions({ dateRange: [from, to] });
+      const sessions = await dbCommands.listSessions({
+        type: "dateRange",
+        user_id: userId,
+        start: from,
+        end: to,
+        limit: 100,
+      });
       sessions.forEach(insertSession);
 
       return {
