@@ -81,7 +81,7 @@ msgstr "Annual"
 msgid "Anyone with the link can view this page"
 msgstr "Anyone with the link can view this page"
 
-#: src/components/settings-panel/views/profile.tsx:159
+#: src/components/settings-panel/views/profile.tsx:163
 msgid "Apple"
 msgstr "Apple"
 
@@ -124,7 +124,7 @@ msgstr "Calendar connected"
 #~ msgid "Cancel"
 #~ msgstr "Cancel"
 
-#: src/components/settings-panel/views/profile.tsx:134
+#: src/components/settings-panel/views/profile.tsx:138
 msgid "CEO"
 msgstr "CEO"
 
@@ -133,11 +133,11 @@ msgstr "CEO"
 msgid "Coming Soon"
 msgstr "Coming Soon"
 
-#: src/components/settings-panel/views/profile.tsx:176
+#: src/components/settings-panel/views/profile.tsx:180
 msgid "Company Description"
 msgstr "Company Description"
 
-#: src/components/settings-panel/views/profile.tsx:151
+#: src/components/settings-panel/views/profile.tsx:155
 msgid "Company Name"
 msgstr "Company Name"
 
@@ -178,7 +178,7 @@ msgstr "Continue"
 #~ msgid "Create a new tag to help organize and categorize your notes."
 #~ msgstr "Create a new tag to help organize and categorize your notes."
 
-#: src/components/toolbar/buttons/new-note-button.tsx:33
+#: src/components/toolbar/buttons/new-note-button.tsx:45
 msgid "Create new note"
 msgstr "Create new note"
 
@@ -192,7 +192,7 @@ msgstr "Create Template"
 
 #: src/components/settings-panel/views/template.tsx:86
 #: src/components/settings-panel/views/team.tsx:162
-#: src/components/left-sidebar/note-item.tsx:157
+#: src/components/left-sidebar/all-list/note-item.tsx:156
 msgid "Delete"
 msgstr "Delete"
 
@@ -204,7 +204,7 @@ msgstr "Describe the content and purpose of this section"
 msgid "Description"
 msgstr "Description"
 
-#: src/components/settings-panel/views/notifications.tsx:153
+#: src/components/settings-panel/views/notifications.tsx:151
 msgid "Detect meetings automatically"
 msgstr "Detect meetings automatically"
 
@@ -244,7 +244,7 @@ msgstr "Enable System Audio"
 msgid "Enter a section title"
 msgstr "Enter a section title"
 
-#: src/components/settings-panel/views/notifications.tsx:179
+#: src/components/settings-panel/views/notifications.tsx:176
 msgid "Exclude these apps from auto detection"
 msgstr "Exclude these apps from auto detection"
 
@@ -283,7 +283,7 @@ msgstr "HYPRNOTE"
 msgid "Hyprnote will be opened automatically when you start your computer."
 msgstr "Hyprnote will be opened automatically when you start your computer."
 
-#: src/components/left-sidebar/note-item.tsx:146
+#: src/components/left-sidebar/all-list/note-item.tsx:145
 msgid "In calendar view"
 msgstr "In calendar view"
 
@@ -307,7 +307,7 @@ msgstr "Jargons"
 msgid "Job title"
 msgstr "Job title"
 
-#: src/components/settings-panel/views/profile.tsx:130
+#: src/components/settings-panel/views/profile.tsx:134
 #: src/components/note/header/chips/participants-chip/edit-participant-form.tsx:117
 msgid "Job Title"
 msgstr "Job Title"
@@ -316,7 +316,7 @@ msgstr "Job Title"
 msgid "Learn more about our pricing plans"
 msgstr "Learn more about our pricing plans"
 
-#: src/components/settings-panel/views/profile.tsx:201
+#: src/components/settings-panel/views/profile.tsx:205
 #: src/components/note/header/chips/participants-chip/edit-participant-form.tsx:138
 msgid "LinkedIn Username"
 msgstr "LinkedIn Username"
@@ -363,7 +363,7 @@ msgstr "New note"
 #~ msgid "New Note"
 #~ msgstr "New Note<<<<<<< HEAD"
 
-#: src/components/left-sidebar/note-item.tsx:137
+#: src/components/left-sidebar/all-list/note-item.tsx:136
 msgid "New window"
 msgstr "New window"
 
@@ -393,7 +393,7 @@ msgstr "no tags"
 msgid "Notifications"
 msgstr "Notifications"
 
-#: src/components/settings-panel/views/notifications.tsx:128
+#: src/components/settings-panel/views/notifications.tsx:126
 msgid "Notify upcoming events"
 msgstr "Notify upcoming events"
 
@@ -405,7 +405,7 @@ msgstr "Official Templates"
 msgid "Open Hyprnote on startup"
 msgstr "Open Hyprnote on startup"
 
-#: src/components/workspace-calendar/note-card.tsx:79
+#: src/components/workspace-calendar/note-card.tsx:80
 #: src/components/workspace-calendar/event-card.tsx:102
 msgid "Open Note"
 msgstr "Open Note"
@@ -466,8 +466,8 @@ msgid "Saving..."
 msgstr "Saving..."
 
 #: src/components/search/search-bar.tsx:10
-msgid "Search"
-msgstr "Search"
+#~ msgid "Search"
+#~ msgstr "Search"
 
 #: src/components/settings-panel/components/extension-list.tsx:52
 msgid "Search extensions..."
@@ -485,7 +485,7 @@ msgstr "Search templates..."
 msgid "Sections"
 msgstr "Sections"
 
-#: src/components/settings-panel/views/notifications.tsx:182
+#: src/components/settings-panel/views/notifications.tsx:179
 msgid "Select apps that should not trigger meeting notifications"
 msgstr "Select apps that should not trigger meeting notifications"
 
@@ -502,11 +502,11 @@ msgstr "Send invite"
 msgid "Settings"
 msgstr "Settings"
 
-#: src/components/settings-panel/views/notifications.tsx:131
+#: src/components/settings-panel/views/notifications.tsx:129
 msgid "Show notifications 1 minute before events start based on your calendars"
 msgstr "Show notifications 1 minute before events start based on your calendars"
 
-#: src/components/settings-panel/views/notifications.tsx:156
+#: src/components/settings-panel/views/notifications.tsx:154
 msgid "Show notifications whenever a microphone is being used"
 msgstr "Show notifications whenever a microphone is being used"
 
@@ -564,7 +564,7 @@ msgstr "Templates"
 msgid "There's a plan for everyone"
 msgstr "There's a plan for everyone"
 
-#: src/components/settings-panel/views/profile.tsx:179
+#: src/components/settings-panel/views/profile.tsx:183
 msgid "This is a short description of your company."
 msgstr "This is a short description of your company."
 
@@ -572,19 +572,19 @@ msgstr "This is a short description of your company."
 msgid "This is the language you mostly use."
 msgstr "This is the language you mostly use."
 
-#: src/components/settings-panel/views/profile.tsx:154
+#: src/components/settings-panel/views/profile.tsx:158
 msgid "This is the name of the company you work for."
 msgstr "This is the name of the company you work for."
 
-#: src/routes/app.calendar.tsx:122
+#: src/routes/app.calendar.tsx:131
 msgid "Today"
 msgstr "Today"
 
-#: src/components/toolbar/buttons/left-sidebar-button.tsx:60
+#: src/components/toolbar/buttons/left-sidebar-button.tsx:61
 msgid "Toggle left sidebar"
 msgstr "Toggle left sidebar"
 
-#: src/components/toolbar/buttons/right-panel-button.tsx:27
+#: src/components/toolbar/buttons/right-panel-button.tsx:28
 msgid "Toggle right panel"
 msgstr "Toggle right panel"
 
@@ -620,16 +620,16 @@ msgstr "Untitled Template"
 msgid "User"
 msgstr "User"
 
-#: src/components/settings-panel/views/profile.tsx:214
+#: src/components/settings-panel/views/profile.tsx:218
 #: src/components/note/header/chips/participants-chip/edit-participant-form.tsx:151
 msgid "username"
 msgstr "username"
 
-#: src/components/settings-panel/views/profile.tsx:110
+#: src/components/settings-panel/views/profile.tsx:114
 msgid "Username"
 msgstr "Username"
 
-#: src/components/note/header/chips/event-chip.tsx:40
+#: src/components/note/header/chips/event-chip.tsx:43
 msgid "View in calendar"
 msgstr "View in calendar"
 
@@ -637,7 +637,7 @@ msgstr "View in calendar"
 msgid "Want to keep track of events?"
 msgstr "Want to keep track of events?"
 
-#: src/components/settings-panel/views/profile.tsx:184
+#: src/components/settings-panel/views/profile.tsx:188
 msgid "We think different."
 msgstr "We think different."
 
@@ -649,11 +649,11 @@ msgstr "We think different."
 msgid "You can make Hyprnote takes these words into account when transcribing."
 msgstr "You can make Hyprnote takes these words into account when transcribing."
 
-#: src/components/settings-panel/views/profile.tsx:204
+#: src/components/settings-panel/views/profile.tsx:208
 #: src/components/note/header/chips/participants-chip/edit-participant-form.tsx:141
 msgid "Your LinkedIn username (the part after linkedin.com/in/)"
 msgstr "Your LinkedIn username (the part after linkedin.com/in/)"
 
-#: src/components/settings-panel/views/profile.tsx:114
+#: src/components/settings-panel/views/profile.tsx:118
 msgid "Your Name"
 msgstr "Your Name"

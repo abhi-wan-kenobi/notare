@@ -44,20 +44,6 @@ extension-name/
 - **src/utils.ts**: Shared utility functions
 - **config.json**: Extension metadata and configuration
 
-### Example Widget Structure
-
-For a [translation widget](/extensions/translation) that supports both 2x2 and full-screen layouts:
-
-```
-src/widgets/
-├── components/
-│   └── translation.tsx             # Core translation component
-└── live/
-    ├── 2x2.tsx                     # 2x2 grid layout
-    ├── full.tsx                    # Full-screen layout
-    └── init.ts                     # Widget initialization logic
-```
-
 ## Utils
 
 [@hypr/extension-utils](https://github.com/fastrepl/hyprnote/tree/main/extensions/utils) contains essential utilities for extension development.

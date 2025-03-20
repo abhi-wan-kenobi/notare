@@ -81,7 +81,7 @@ msgstr "연간"
 msgid "Anyone with the link can view this page"
 msgstr "링크가 있는 모든 사람이 이 페이지를 볼 수 있습니다"
 
-#: src/components/settings-panel/views/profile.tsx:159
+#: src/components/settings-panel/views/profile.tsx:163
 msgid "Apple"
 msgstr "애플"
 
@@ -124,7 +124,7 @@ msgstr "캘린더 연결됨"
 #~ msgid "Cancel"
 #~ msgstr "취소"
 
-#: src/components/settings-panel/views/profile.tsx:134
+#: src/components/settings-panel/views/profile.tsx:138
 msgid "CEO"
 msgstr "대표"
 
@@ -133,11 +133,11 @@ msgstr "대표"
 msgid "Coming Soon"
 msgstr "출시 예정"
 
-#: src/components/settings-panel/views/profile.tsx:176
+#: src/components/settings-panel/views/profile.tsx:180
 msgid "Company Description"
 msgstr "회사 설명"
 
-#: src/components/settings-panel/views/profile.tsx:151
+#: src/components/settings-panel/views/profile.tsx:155
 msgid "Company Name"
 msgstr "회사명"
 
@@ -178,7 +178,7 @@ msgstr "계속"
 #~ msgid "Create a new tag to help organize and categorize your notes."
 #~ msgstr "메모를 정리하고 분류하는 데 도움이 되는 새 태그를 만듭니다."
 
-#: src/components/toolbar/buttons/new-note-button.tsx:33
+#: src/components/toolbar/buttons/new-note-button.tsx:45
 msgid "Create new note"
 msgstr "노트 생성"
 
@@ -192,7 +192,7 @@ msgstr "템플릿 생성"
 
 #: src/components/settings-panel/views/template.tsx:86
 #: src/components/settings-panel/views/team.tsx:162
-#: src/components/left-sidebar/note-item.tsx:157
+#: src/components/left-sidebar/all-list/note-item.tsx:156
 msgid "Delete"
 msgstr "삭제"
 
@@ -204,7 +204,7 @@ msgstr "이 섹션의 내용과 목적을 설명하세요"
 msgid "Description"
 msgstr "설명"
 
-#: src/components/settings-panel/views/notifications.tsx:153
+#: src/components/settings-panel/views/notifications.tsx:151
 msgid "Detect meetings automatically"
 msgstr "자동으로 대화 감지"
 
@@ -244,7 +244,7 @@ msgstr "시스템 오디오 활성화"
 msgid "Enter a section title"
 msgstr "섹션 제목 입력"
 
-#: src/components/settings-panel/views/notifications.tsx:179
+#: src/components/settings-panel/views/notifications.tsx:176
 msgid "Exclude these apps from auto detection"
 msgstr "자동 감지에서 이 앱들 제외"
 
@@ -283,7 +283,7 @@ msgstr "HYPRNOTE"
 msgid "Hyprnote will be opened automatically when you start your computer."
 msgstr "컴퓨터를 시작할 때 하이퍼노트가 자동으로 열립니다."
 
-#: src/components/left-sidebar/note-item.tsx:146
+#: src/components/left-sidebar/all-list/note-item.tsx:145
 msgid "In calendar view"
 msgstr "캘린더 뷰에서 보기"
 
@@ -307,7 +307,7 @@ msgstr "전문 용어"
 msgid "Job title"
 msgstr "직책"
 
-#: src/components/settings-panel/views/profile.tsx:130
+#: src/components/settings-panel/views/profile.tsx:134
 #: src/components/note/header/chips/participants-chip/edit-participant-form.tsx:117
 msgid "Job Title"
 msgstr "직책"
@@ -316,7 +316,7 @@ msgstr "직책"
 msgid "Learn more about our pricing plans"
 msgstr "요금제에 대해 자세히 알아보기"
 
-#: src/components/settings-panel/views/profile.tsx:201
+#: src/components/settings-panel/views/profile.tsx:205
 #: src/components/note/header/chips/participants-chip/edit-participant-form.tsx:138
 msgid "LinkedIn Username"
 msgstr "링크드인 사용자 이름"
@@ -363,7 +363,7 @@ msgstr "새 노트"
 #~ msgid "New Note"
 #~ msgstr "새 노트<<<<<<< HEAD"
 
-#: src/components/left-sidebar/note-item.tsx:137
+#: src/components/left-sidebar/all-list/note-item.tsx:136
 msgid "New window"
 msgstr "새 창에서 열기"
 
@@ -393,7 +393,7 @@ msgstr "태그 없음"
 msgid "Notifications"
 msgstr "알림"
 
-#: src/components/settings-panel/views/notifications.tsx:128
+#: src/components/settings-panel/views/notifications.tsx:126
 msgid "Notify upcoming events"
 msgstr "예정된 이벤트 알림"
 
@@ -405,7 +405,7 @@ msgstr "공식 템플릿"
 msgid "Open Hyprnote on startup"
 msgstr "시작 시 하이퍼노트 열기"
 
-#: src/components/workspace-calendar/note-card.tsx:79
+#: src/components/workspace-calendar/note-card.tsx:80
 #: src/components/workspace-calendar/event-card.tsx:102
 msgid "Open Note"
 msgstr "노트 열기"
@@ -466,8 +466,8 @@ msgid "Saving..."
 msgstr "저장 중..."
 
 #: src/components/search/search-bar.tsx:10
-msgid "Search"
-msgstr "검색"
+#~ msgid "Search"
+#~ msgstr "검색"
 
 #: src/components/settings-panel/components/extension-list.tsx:52
 msgid "Search extensions..."
@@ -485,7 +485,7 @@ msgstr "템플릿 검색..."
 msgid "Sections"
 msgstr "섹션"
 
-#: src/components/settings-panel/views/notifications.tsx:182
+#: src/components/settings-panel/views/notifications.tsx:179
 msgid "Select apps that should not trigger meeting notifications"
 msgstr "회의 알림을 트리거하지 않아야 하는 앱 선택"
 
@@ -502,11 +502,11 @@ msgstr "초대장 보내기"
 msgid "Settings"
 msgstr "설정"
 
-#: src/components/settings-panel/views/notifications.tsx:131
+#: src/components/settings-panel/views/notifications.tsx:129
 msgid "Show notifications 1 minute before events start based on your calendars"
 msgstr "캘린더를 기반으로 이벤트 시작 1분 전에 알림 표시"
 
-#: src/components/settings-panel/views/notifications.tsx:156
+#: src/components/settings-panel/views/notifications.tsx:154
 msgid "Show notifications whenever a microphone is being used"
 msgstr "마이크가 사용될 때마다 알림 표시"
 
@@ -564,7 +564,7 @@ msgstr "템플릿"
 msgid "There's a plan for everyone"
 msgstr "모두를 위한 플랜이 있습니다"
 
-#: src/components/settings-panel/views/profile.tsx:179
+#: src/components/settings-panel/views/profile.tsx:183
 msgid "This is a short description of your company."
 msgstr "회사에 대한 간단한 설명입니다."
 
@@ -572,19 +572,19 @@ msgstr "회사에 대한 간단한 설명입니다."
 msgid "This is the language you mostly use."
 msgstr "당신이 주로 사용하는 언어입니다."
 
-#: src/components/settings-panel/views/profile.tsx:154
+#: src/components/settings-panel/views/profile.tsx:158
 msgid "This is the name of the company you work for."
 msgstr "당신이 일하는 회사의 이름입니다."
 
-#: src/routes/app.calendar.tsx:122
+#: src/routes/app.calendar.tsx:131
 msgid "Today"
 msgstr "오늘"
 
-#: src/components/toolbar/buttons/left-sidebar-button.tsx:60
+#: src/components/toolbar/buttons/left-sidebar-button.tsx:61
 msgid "Toggle left sidebar"
 msgstr "왼쪽 사이드바 전환"
 
-#: src/components/toolbar/buttons/right-panel-button.tsx:27
+#: src/components/toolbar/buttons/right-panel-button.tsx:28
 msgid "Toggle right panel"
 msgstr "오른쪽 패널 전환"
 
@@ -620,16 +620,16 @@ msgstr "제목 없는 템플릿"
 msgid "User"
 msgstr "사용자"
 
-#: src/components/settings-panel/views/profile.tsx:214
+#: src/components/settings-panel/views/profile.tsx:218
 #: src/components/note/header/chips/participants-chip/edit-participant-form.tsx:151
 msgid "username"
 msgstr "사용자명"
 
-#: src/components/settings-panel/views/profile.tsx:110
+#: src/components/settings-panel/views/profile.tsx:114
 msgid "Username"
 msgstr "사용자명"
 
-#: src/components/note/header/chips/event-chip.tsx:40
+#: src/components/note/header/chips/event-chip.tsx:43
 msgid "View in calendar"
 msgstr "캘린더에서 보기"
 
@@ -637,7 +637,7 @@ msgstr "캘린더에서 보기"
 msgid "Want to keep track of events?"
 msgstr "이벤트를 추적하고 싶으신가요?"
 
-#: src/components/settings-panel/views/profile.tsx:184
+#: src/components/settings-panel/views/profile.tsx:188
 msgid "We think different."
 msgstr "우리는 다르게 생각합니다."
 
@@ -649,11 +649,11 @@ msgstr "우리는 다르게 생각합니다."
 msgid "You can make Hyprnote takes these words into account when transcribing."
 msgstr "하이퍼노트가 텍스트를 변환할 때 이러한 단어를 고려하도록 할 수 있습니다."
 
-#: src/components/settings-panel/views/profile.tsx:204
+#: src/components/settings-panel/views/profile.tsx:208
 #: src/components/note/header/chips/participants-chip/edit-participant-form.tsx:141
 msgid "Your LinkedIn username (the part after linkedin.com/in/)"
 msgstr "링크드인 사용자명 (linkedin.com/in/ 다음 부분)"
 
-#: src/components/settings-panel/views/profile.tsx:114
+#: src/components/settings-panel/views/profile.tsx:118
 msgid "Your Name"
 msgstr "이름"
