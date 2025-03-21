@@ -1,30 +1,35 @@
-use crate::{LocalSttPluginExt, Status};
+use crate::LocalSttPluginExt;
+use tauri::{ipc::Channel, Manager};
 
 #[tauri::command]
 #[specta::specta]
-pub async fn get_status<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<Status, String> {
-    Ok(app.get_status().await)
+pub async fn is_server_running<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> bool {
+    app.is_server_running().await
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn load_model<R: tauri::Runtime>(
+pub async fn is_model_downloaded<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> bool {
+    let path = app.path().app_data_dir().unwrap().join("stt.gguf");
+    path.exists()
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn download_model<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
-    on_progress: tauri::ipc::Channel<u8>,
-) -> Result<u8, String> {
-    app.load_model(on_progress).await
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn unload_model<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
-    app.unload_model().await
+    channel: Channel<u8>,
+) -> Result<(), String> {
+    let path = app.path().app_data_dir().unwrap().join("stt.gguf");
+    app.download_model(path, channel).await
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn start_server<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
-    app.start_server().await
+    let data_dir = app.path().app_data_dir().unwrap();
+
+    app.start_server(data_dir).await
 }
 
 #[tauri::command]

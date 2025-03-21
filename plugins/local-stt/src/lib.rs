@@ -4,7 +4,6 @@ mod chunker;
 mod commands;
 mod error;
 mod ext;
-mod model;
 mod server;
 
 pub use error::*;
@@ -15,7 +14,6 @@ pub type SharedState = std::sync::Arc<tokio::sync::Mutex<State>>;
 #[derive(Default)]
 pub struct State {
     pub api_base: Option<String>,
-    pub model: Option<rwhisper::Whisper>,
     pub server: Option<crate::server::ServerHandle>,
 }
 
@@ -25,9 +23,9 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
-            commands::get_status::<Wry>,
-            commands::load_model::<Wry>,
-            commands::unload_model::<Wry>,
+            commands::is_server_running::<Wry>,
+            commands::is_model_downloaded::<Wry>,
+            commands::download_model::<Wry>,
             commands::start_server::<Wry>,
             commands::stop_server::<Wry>,
         ])
@@ -71,7 +69,36 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
+    // cargo test test_local_stt -p tauri-plugin-local-stt -- --ignored --nocapture
     async fn test_local_stt() {
-        let _app = create_app(tauri::test::mock_builder());
+        use futures_util::StreamExt;
+        use tauri_plugin_listener::ListenClientBuilder;
+
+        let app = create_app(tauri::test::mock_builder());
+        let cache_dir = app.path().data_dir().unwrap().join("com.hyprnote.dev");
+
+        app.start_server(cache_dir).await.unwrap();
+        let api_base = app.api_base().await.unwrap();
+
+        let listen_client = ListenClientBuilder::default()
+            .api_base(api_base)
+            .api_key("NONE")
+            .language(codes_iso_639::part_1::LanguageCode::En)
+            .build();
+
+        let audio_source = rodio::Decoder::new_wav(std::io::BufReader::new(
+            std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
+        ))
+        .unwrap();
+
+        let listen_stream = listen_client.from_audio(audio_source).await.unwrap();
+        let mut listen_stream = Box::pin(listen_stream);
+
+        while let Some(chunk) = listen_stream.next().await {
+            println!("{:?}", chunk);
+        }
+
+        app.stop_server().await.unwrap();
     }
 }

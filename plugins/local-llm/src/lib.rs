@@ -3,7 +3,6 @@ use tauri::{Manager, Wry};
 mod commands;
 mod error;
 mod ext;
-mod model;
 mod server;
 
 pub use error::*;
@@ -16,7 +15,7 @@ pub type SharedState = std::sync::Arc<tokio::sync::Mutex<State>>;
 #[derive(Default)]
 pub struct State {
     pub api_base: Option<String>,
-    pub model: Option<kalosm_llama::Llama>,
+    pub model: Option<hypr_llama::Llama>,
     pub server: Option<crate::server::ServerHandle>,
 }
 
@@ -24,7 +23,10 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
-            commands::get_status::<Wry>,
+            commands::is_server_running::<Wry>,
+            commands::is_model_loaded::<Wry>,
+            commands::is_model_downloaded::<Wry>,
+            commands::download_model::<Wry>,
             commands::load_model::<Wry>,
             commands::unload_model::<Wry>,
             commands::start_server::<Wry>,
@@ -51,8 +53,11 @@ mod test {
 
     use async_openai::types::{
         ChatCompletionRequestMessage, ChatCompletionRequestUserMessage,
-        ChatCompletionRequestUserMessageContent, CreateChatCompletionRequest,
+        ChatCompletionRequestUserMessageArgs, ChatCompletionRequestUserMessageContent,
+        CreateChatCompletionRequest, CreateChatCompletionResponse,
+        CreateChatCompletionStreamResponse,
     };
+    use futures_util::StreamExt;
 
     #[test]
     fn export_types() {
@@ -74,17 +79,22 @@ mod test {
             .unwrap()
     }
 
+    fn model_path<R: tauri::Runtime>(app: &tauri::App<R>) -> std::path::PathBuf {
+        app.path()
+            .data_dir()
+            .unwrap()
+            .join("com.hyprnote.dev")
+            .join("llm.gguf")
+    }
+
     #[tokio::test]
-    async fn test_local_llm() {
+    #[ignore]
+    // cargo test test_dynamic_loading -p tauri-plugin-local-llm -- --ignored --nocapture
+    async fn test_dynamic_loading() {
         let app = create_app(tauri::test::mock_builder());
         app.start_server().await.unwrap();
 
-        let api_base = {
-            let state = app.state::<crate::SharedState>();
-            let state = state.lock().await;
-            state.api_base.clone().unwrap()
-        };
-
+        let api_base = app.api_base().await.unwrap();
         let client = reqwest::Client::new();
 
         let req = CreateChatCompletionRequest {
@@ -115,9 +125,7 @@ mod test {
             .unwrap();
         assert_eq!(res.status(), axum::http::StatusCode::SERVICE_UNAVAILABLE);
 
-        let channel = tauri::ipc::Channel::new(|_progress: tauri::ipc::InvokeResponseBody| Ok(()));
-
-        let _ = app.load_model(channel).await.unwrap();
+        let _ = app.load_model(model_path(&app)).await.unwrap();
 
         let res = client
             .post(format!("{}/chat/completions", api_base))
@@ -136,5 +144,93 @@ mod test {
             .await
             .unwrap();
         assert_eq!(res.status(), axum::http::StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    fn shared_request() -> CreateChatCompletionRequest {
+        CreateChatCompletionRequest {
+            messages: vec![ChatCompletionRequestMessage::User(
+                ChatCompletionRequestUserMessageArgs::default()
+                    .content("What is the capital of South Korea?")
+                    .build()
+                    .unwrap()
+                    .into(),
+            )],
+            ..Default::default()
+        }
+    }
+
+    #[tokio::test]
+    #[ignore]
+    // cargo test test_non_streaming_response -p tauri-plugin-local-llm -- --ignored --nocapture
+    async fn test_non_streaming_response() {
+        let app = create_app(tauri::test::mock_builder());
+        app.load_model(model_path(&app)).await.unwrap();
+        app.start_server().await.unwrap();
+        let api_base = app.api_base().await.unwrap();
+
+        let client = reqwest::Client::new();
+
+        let response = client
+            .post(format!("{}/chat/completions", api_base))
+            .json(&CreateChatCompletionRequest {
+                stream: Some(false),
+                ..shared_request()
+            })
+            .send()
+            .await
+            .unwrap();
+
+        let data = response
+            .json::<CreateChatCompletionResponse>()
+            .await
+            .unwrap();
+
+        let content = data.choices[0].message.content.clone().unwrap();
+        assert!(content.contains("Seoul"));
+    }
+
+    #[tokio::test]
+    #[ignore]
+    // cargo test test_streaming_response -p tauri-plugin-local-llm -- --ignored --nocapture
+    async fn test_streaming_response() {
+        let app = create_app(tauri::test::mock_builder());
+        app.load_model(model_path(&app)).await.unwrap();
+        app.start_server().await.unwrap();
+        let api_base = app.api_base().await.unwrap();
+
+        let client = reqwest::Client::new();
+
+        let response = client
+            .post(format!("{}/chat/completions", api_base))
+            .json(&CreateChatCompletionRequest {
+                stream: Some(true),
+                ..shared_request()
+            })
+            .send()
+            .await
+            .unwrap();
+
+        let stream = response.bytes_stream().map(|chunk| {
+            chunk.map(|data| {
+                let text = String::from_utf8_lossy(&data);
+                let stripped = text.split("data: ").collect::<Vec<&str>>()[1];
+                let c: CreateChatCompletionStreamResponse = serde_json::from_str(stripped).unwrap();
+                c.choices
+                    .first()
+                    .unwrap()
+                    .delta
+                    .content
+                    .as_ref()
+                    .unwrap()
+                    .clone()
+            })
+        });
+
+        let content = stream
+            .filter_map(|r| async move { r.ok() })
+            .collect::<String>()
+            .await;
+
+        assert!(content.contains("Seoul"));
     }
 }
