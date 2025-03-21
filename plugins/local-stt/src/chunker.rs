@@ -8,7 +8,7 @@ use futures_util::Stream;
 use kalosm_sound::AsyncSource;
 use rodio::buffer::SamplesBuffer;
 
-pub trait FixedChunkExt: AsyncSource {
+trait FixedChunkExt: AsyncSource {
     fn fixed_chunks(self, chunk_duration: Duration) -> FixedChunkStream<Self>
     where
         Self: Sized + Unpin,

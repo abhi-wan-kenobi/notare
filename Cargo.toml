@@ -10,7 +10,7 @@ members = [
 ]
 
 [workspace.package]
-rust-version = "1.83.0"
+rust-version = "1.85.1"
 
 [workspace.dependencies]
 hypr-data = { path = "crates/data", package = "data" }

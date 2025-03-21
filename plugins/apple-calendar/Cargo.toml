@@ -5,7 +5,6 @@ authors = ["You"]
 edition = "2021"
 exclude = ["./generated"]
 links = "tauri-plugin-apple-calendar"
-rust-version = "1.77.2"
 description = ""
 
 [build-dependencies]

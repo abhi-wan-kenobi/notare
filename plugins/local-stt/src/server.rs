@@ -93,8 +93,9 @@ async fn websocket(socket: WebSocket, _params: ListenParams, model: rwhisper::Wh
     let mut stream = {
         let audio_source = WebSocketAudioSource::new(ws_receiver, 16 * 1000);
         let chunked =
-            crate::chunker::FixedChunkStream::new(audio_source, std::time::Duration::from_secs(10));
-        rwhisper::TranscribeChunkedAudioStreamExt::transcribe(chunked, model)
+            crate::chunker::FixedChunkStream::new(audio_source, std::time::Duration::from_secs(15));
+
+        rwhisper::TranscribeChunkedAudioStreamExt::transcribe(chunked, model).timestamped()
     };
 
     tracing::info!("stream_started");
