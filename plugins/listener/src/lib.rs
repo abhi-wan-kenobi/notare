@@ -113,43 +113,4 @@ mod test {
         assert_eq!(rx1.recv().unwrap(), SessionEvent::Stopped);
         assert_eq!(rx2.recv().unwrap(), SessionEvent::Stopped);
     }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_session() {
-        let app = create_app(tauri::test::mock_builder());
-
-        {
-            use tauri_plugin_local_stt::LocalSttPluginExt;
-            let c = tauri::ipc::Channel::<u8>::new(|_e| Ok(()));
-            app.load_model(c).await.unwrap();
-            app.start_server().await.unwrap();
-        }
-
-        let session_id = uuid::Uuid::new_v4().to_string();
-        app.start_session(session_id.clone()).await.unwrap();
-
-        {
-            let chan = tauri::ipc::Channel::<SessionEvent>::new(|e| {
-                let event: SessionEvent = e.deserialize().unwrap();
-                println!("event: {:?}", event);
-                Ok(())
-            });
-
-            app.subscribe(chan).await;
-        }
-
-        {
-            let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
-            let sink = rodio::Sink::try_new(&stream_handle).unwrap();
-            let source = rodio::Decoder::new_wav(std::io::BufReader::new(
-                std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
-            ))
-            .unwrap();
-            sink.append(source);
-            sink.sleep_until_end();
-        }
-
-        app.stop_session().await.unwrap();
-    }
 }
