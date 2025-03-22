@@ -28,10 +28,16 @@ function Component() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">Settings</h1>
+    <div className="flex h-screen w-screen overflow-hidden flex-col bg-white text-neutral-700">
+      <header className="flex w-full flex-col">
+        <div data-tauri-drag-region className="relative h-8 w-full flex items-center justify-center">
+          <h1 className="text-md font-semibold" data-tauri-drag-region>
+            Settings
+          </h1>
+        </div>
+      </header>
 
+      <div className="flex-1 h-full">
         {TABS.map((tab) => (
           <Button
             key={tab}

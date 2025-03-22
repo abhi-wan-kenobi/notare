@@ -13,24 +13,27 @@ export default function Toolbar() {
 
   const isMain = getCurrentWebviewWindowLabel() === "main";
   const isNote = !!noteMatch;
-  const isInNoteMain = isMain && isNote;
+
+  if (!isMain) {
+    return null;
+  }
 
   return (
     <header
       data-tauri-drag-region
       className={cn([
         "flex w-full items-center justify-between min-h-11 p-1 px-2 border-b",
-        isInNoteMain ? "border-border bg-neutral-50" : "border-transparent bg-transparent",
+        isNote ? "border-border bg-neutral-50" : "border-transparent bg-transparent",
       ])}
     >
-      {isInNoteMain && (
+      {isNote && (
         <div className="w-40 flex items-center" data-tauri-drag-region>
           <LeftSidebarButton type="toolbar" />
           <NewNoteButton />
         </div>
       )}
 
-      {isMain && <SearchBar />}
+      <SearchBar />
 
       {isMain && (
         <div
