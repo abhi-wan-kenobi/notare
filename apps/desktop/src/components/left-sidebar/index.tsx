@@ -2,7 +2,6 @@ import { useMatch, useSearch } from "@tanstack/react-router";
 import { motion } from "motion/react";
 
 import { useHyprSearch, useLeftSidebar, useOngoingSession } from "@/contexts";
-import SettingsButton from "../settings-panel";
 import { LeftSidebarButton } from "../toolbar/buttons/left-sidebar-button";
 import AllList from "./all-list";
 import OngoingSession from "./ongoing-session";
@@ -59,10 +58,6 @@ export default function LeftSidebar() {
           <>
             <div className="flex-1 h-full overflow-y-auto">
               <AllList />
-            </div>
-
-            <div className="flex items-center p-2 border-t">
-              <SettingsButton />
             </div>
           </>
         )}
