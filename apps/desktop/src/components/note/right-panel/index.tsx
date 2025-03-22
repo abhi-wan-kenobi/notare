@@ -1,8 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
 import { useMatch } from "@tanstack/react-router";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { useRightPanel } from "@/contexts";
+import { useHypr, useRightPanel } from "@/contexts";
+import { type ExtensionName } from "@hypr/extension-registry";
+import { commands as dbCommands } from "@hypr/plugin-db";
 import WidgetRenderer from "./renderer";
 
 export default function RightPanel() {
@@ -11,6 +14,24 @@ export default function RightPanel() {
 
   const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
   const show = noteMatch?.search.window === "main" && isExpanded;
+
+  const { userId } = useHypr();
+
+  const extensions = useQuery({
+    queryKey: ["extensions"],
+    queryFn: () => dbCommands.listExtensionMappings(userId),
+  });
+
+  const widgets = useMemo(() => {
+    return (extensions.data?.flatMap((extension) => {
+      return extension.widgets.map((widget) => ({
+        extensionName: extension.extension_id as ExtensionName,
+        groupName: widget.group,
+        widgetType: widget.kind,
+        layout: widget.position,
+      }));
+    }) ?? []);
+  }, [extensions.data]);
 
   useEffect(() => {
     const checkViewport = () => {
@@ -35,13 +56,11 @@ export default function RightPanel() {
 
         <motion.div
           initial={false}
-          animate={{
-            x: show ? 0 : "100%",
-          }}
+          animate={{ x: show ? 0 : "100%" }}
           transition={{ duration: 0.3 }}
           className="absolute right-0 top-0 z-40 h-full w-[380px] overflow-y-auto border-l bg-neutral-50 scrollbar-none shadow-lg"
         >
-          <WidgetRenderer />
+          <WidgetRenderer widgets={widgets} />
         </motion.div>
       </div>
     );
@@ -54,7 +73,7 @@ export default function RightPanel() {
       transition={{ duration: 0.3 }}
       className="h-full overflow-y-auto border-l bg-neutral-50 scrollbar-none"
     >
-      <WidgetRenderer />
+      <WidgetRenderer widgets={widgets} />
     </motion.div>
   );
 }
