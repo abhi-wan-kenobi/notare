@@ -19,6 +19,18 @@ async openMicrophoneAccessSettings() : Promise<null> {
 async openSystemAudioAccessSettings() : Promise<null> {
     return await TAURI_INVOKE("plugin:listener|open_system_audio_access_settings");
 },
+async getMicMuted() : Promise<boolean> {
+    return await TAURI_INVOKE("plugin:listener|get_mic_muted");
+},
+async setMicMuted(muted: boolean) : Promise<null> {
+    return await TAURI_INVOKE("plugin:listener|set_mic_muted", { muted });
+},
+async getSpeakerMuted() : Promise<boolean> {
+    return await TAURI_INVOKE("plugin:listener|get_speaker_muted");
+},
+async setSpeakerMuted(muted: boolean) : Promise<null> {
+    return await TAURI_INVOKE("plugin:listener|set_speaker_muted", { muted });
+},
 async getTimeline(filter: TimelineFilter) : Promise<TimelineView> {
     return await TAURI_INVOKE("plugin:listener|get_timeline", { filter });
 },

@@ -42,6 +42,38 @@ pub async fn open_system_audio_access_settings<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn get_mic_muted<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<bool, String> {
+    Ok(app.get_mic_muted().await)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_speaker_muted<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<bool, String> {
+    Ok(app.get_speaker_muted().await)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn set_mic_muted<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    muted: bool,
+) -> Result<(), String> {
+    Ok(app.set_mic_muted(muted).await)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn set_speaker_muted<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    muted: bool,
+) -> Result<(), String> {
+    Ok(app.set_speaker_muted(muted).await)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn get_timeline<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     filter: crate::TimelineFilter,

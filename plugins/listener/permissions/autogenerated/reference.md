@@ -11,6 +11,10 @@ Default permissions for the plugin
 - `allow-unsubscribe`
 - `allow-stop-session`
 - `allow-get-timeline`
+- `allow-get-mic-muted`
+- `allow-set-mic-muted`
+- `allow-get-speaker-muted`
+- `allow-set-speaker-muted`
 
 ## Permission Table
 
@@ -20,6 +24,58 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`listener:allow-get-mic-muted`
+
+</td>
+<td>
+
+Enables the get_mic_muted command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:deny-get-mic-muted`
+
+</td>
+<td>
+
+Denies the get_mic_muted command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:allow-get-speaker-muted`
+
+</td>
+<td>
+
+Enables the get_speaker_muted command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:deny-get-speaker-muted`
+
+</td>
+<td>
+
+Denies the get_speaker_muted command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>
@@ -147,6 +203,58 @@ Enables the request_system_audio_access command without any pre-configured scope
 <td>
 
 Denies the request_system_audio_access command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:allow-set-mic-muted`
+
+</td>
+<td>
+
+Enables the set_mic_muted command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:deny-set-mic-muted`
+
+</td>
+<td>
+
+Denies the set_mic_muted command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:allow-set-speaker-muted`
+
+</td>
+<td>
+
+Enables the set_speaker_muted command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:deny-set-speaker-muted`
+
+</td>
+<td>
+
+Denies the set_speaker_muted command without any pre-configured scope.
 
 </td>
 </tr>

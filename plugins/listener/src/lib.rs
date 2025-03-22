@@ -31,6 +31,10 @@ pub struct State {
     listen_stream_handle: Option<tokio::task::JoinHandle<()>>,
     silence_stream_tx: Option<std::sync::mpsc::Sender<()>>,
     channels: Arc<Mutex<HashMap<u32, tauri::ipc::Channel<SessionEvent>>>>,
+    mic_muted_tx: Option<tokio::sync::watch::Sender<bool>>,
+    speaker_muted_tx: Option<tokio::sync::watch::Sender<bool>>,
+    mic_muted: Option<bool>,
+    speaker_muted: Option<bool>,
 }
 
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
@@ -41,6 +45,10 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::request_system_audio_access::<tauri::Wry>,
             commands::open_microphone_access_settings::<tauri::Wry>,
             commands::open_system_audio_access_settings::<tauri::Wry>,
+            commands::get_mic_muted::<tauri::Wry>,
+            commands::set_mic_muted::<tauri::Wry>,
+            commands::get_speaker_muted::<tauri::Wry>,
+            commands::set_speaker_muted::<tauri::Wry>,
             commands::get_timeline::<tauri::Wry>,
             commands::subscribe::<tauri::Wry>,
             commands::unsubscribe::<tauri::Wry>,

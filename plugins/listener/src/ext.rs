@@ -22,6 +22,11 @@ pub trait ListenerPluginExt<R: tauri::Runtime> {
     fn unsubscribe(&self, channel: Channel<SessionEvent>) -> impl Future<Output = ()>;
     fn broadcast(&self, event: SessionEvent) -> impl Future<Output = Result<(), crate::Error>>;
 
+    fn get_mic_muted(&self) -> impl Future<Output = bool>;
+    fn get_speaker_muted(&self) -> impl Future<Output = bool>;
+    fn set_mic_muted(&self, muted: bool) -> impl Future<Output = ()>;
+    fn set_speaker_muted(&self, muted: bool) -> impl Future<Output = ()>;
+
     fn get_timeline(&self, filter: TimelineFilter) -> impl Future<Output = TimelineView>;
     fn stop_session(&self) -> impl Future<Output = Result<(), crate::Error>>;
     fn start_session(
@@ -102,6 +107,34 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
     }
 
     #[tracing::instrument(skip_all)]
+    async fn get_mic_muted(&self) -> bool {
+        let state = self.state::<crate::SharedState>();
+        let s = state.lock().await;
+        s.mic_muted.unwrap_or(false)
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn get_speaker_muted(&self) -> bool {
+        let state = self.state::<crate::SharedState>();
+        let s = state.lock().await;
+        s.speaker_muted.unwrap_or(false)
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn set_mic_muted(&self, muted: bool) {
+        let state = self.state::<crate::SharedState>();
+        let mut s = state.lock().await;
+        s.mic_muted = Some(muted);
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn set_speaker_muted(&self, muted: bool) {
+        let state = self.state::<crate::SharedState>();
+        let mut s = state.lock().await;
+        s.speaker_muted = Some(muted);
+    }
+
+    #[tracing::instrument(skip_all)]
     async fn get_timeline(&self, filter: TimelineFilter) -> TimelineView {
         let state = self.state::<crate::SharedState>();
         let s = state.lock().await;
@@ -119,11 +152,24 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
     async fn start_session(&self, session_id: impl Into<String>) -> Result<(), crate::Error> {
         let state = self.state::<crate::SharedState>();
 
+        let _ = self.stop_session().await;
+
         {
             let s = state.lock().await;
             if s.timeline.is_some() {
                 return Err(crate::Error::SessionAlreadyStarted);
             }
+        }
+
+        let (mic_muted_tx, mic_muted_rx) = tokio::sync::watch::channel(false);
+        let (speaker_muted_tx, speaker_muted_rx) = tokio::sync::watch::channel(false);
+
+        {
+            let mut s = state.lock().await;
+            s.mic_muted_tx = Some(mic_muted_tx);
+            s.speaker_muted_tx = Some(speaker_muted_tx);
+            s.mic_muted = Some(false);
+            s.speaker_muted = Some(false);
         }
 
         let session_id = session_id.into();
@@ -176,6 +222,10 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
         let mic_stream_handle = tokio::spawn({
             async move {
                 while let Some(chunk) = mic_stream.next().await {
+                    if *mic_muted_rx.borrow() {
+                        continue;
+                    }
+
                     if let Err(e) = mic_tx.send(chunk).await {
                         tracing::error!("mic_tx_send_error: {:?}", e);
                         break;
@@ -187,6 +237,10 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
         let speaker_stream_handle = tokio::spawn({
             async move {
                 while let Some(chunk) = speaker_stream.next().await {
+                    if *speaker_muted_rx.borrow() {
+                        continue;
+                    }
+
                     if let Err(e) = speaker_tx.send(chunk).await {
                         tracing::error!("speaker_tx_send_error: {:?}", e);
                         break;
