@@ -80,9 +80,9 @@ impl HyprWindow {
             Err(_) => {
                 let url = match self {
                     Self::Main => "/app/new",
-                    Self::Note(id) => &format!("/app/note/{}?window=sub", id),
-                    Self::Calendar => "/app/calendar?window=sub",
-                    Self::Settings => "/app/settings?window=sub",
+                    Self::Note(id) => &format!("/app/note/{}", id),
+                    Self::Calendar => "/app/calendar",
+                    Self::Settings => "/app/settings",
                 };
                 (self.window_builder(app, url).build()?, true)
             }

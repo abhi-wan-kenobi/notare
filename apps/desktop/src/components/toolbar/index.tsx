@@ -11,8 +11,9 @@ import { ShareButton } from "./buttons/share-button";
 export default function Toolbar() {
   const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
 
-  const isInNoteMain = noteMatch?.search.window === "main";
-  const windowLabel = getCurrentWebviewWindowLabel();
+  const isMain = getCurrentWebviewWindowLabel() === "main";
+  const isNote = !!noteMatch;
+  const isInNoteMain = isMain && isNote;
 
   return (
     <header
@@ -29,15 +30,17 @@ export default function Toolbar() {
         </div>
       )}
 
-      {windowLabel === "main" && <SearchBar />}
+      {isMain && <SearchBar />}
 
-      <div
-        className="flex w-40 items-center justify-end"
-        data-tauri-drag-region
-      >
-        <ShareButton />
-        {isInNoteMain && <RightPanelButton />}
-      </div>
+      {isMain && (
+        <div
+          className="flex w-40 items-center justify-end"
+          data-tauri-drag-region
+        >
+          <ShareButton />
+          {isNote && <RightPanelButton />}
+        </div>
+      )}
     </header>
   );
 }

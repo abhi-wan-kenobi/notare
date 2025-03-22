@@ -1,7 +1,8 @@
-import { useMatch, useSearch } from "@tanstack/react-router";
+import { useMatch } from "@tanstack/react-router";
 import { motion } from "motion/react";
 
 import { useHyprSearch, useLeftSidebar, useOngoingSession } from "@/contexts";
+import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 import { LeftSidebarButton } from "../toolbar/buttons/left-sidebar-button";
 import AllList from "./all-list";
 import OngoingSession from "./ongoing-session";
@@ -19,7 +20,7 @@ export default function LeftSidebar() {
     matches: s.matches,
   }));
 
-  const search = useSearch({ strict: false });
+  const windowLabel = getCurrentWebviewWindowLabel();
   const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
 
   const isInOngoingNoteMain = noteMatch?.params.id === ongoingSessionId;
@@ -27,7 +28,7 @@ export default function LeftSidebar() {
   const isInOngoingNote = isInOngoingNoteMain || isInOngoingNoteSub;
   const inMeetingAndNotInNote = listening && ongoingSessionId !== null && !isInOngoingNote;
 
-  if (search.window === "sub") {
+  if (windowLabel !== "main") {
     return null;
   }
 
