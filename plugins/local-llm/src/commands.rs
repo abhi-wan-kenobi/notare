@@ -17,20 +17,17 @@ pub async fn is_model_loaded<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> boo
 
 #[tauri::command]
 #[specta::specta]
-pub async fn is_model_downloaded<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> bool {
+pub async fn is_model_downloaded<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<bool, String> {
     let path = app.path().app_data_dir().unwrap().join("llm.gguf");
 
     if !path.exists() {
-        return false;
+        return Ok(false);
     }
 
-    match path.metadata() {
-        Ok(metadata) => {
-            let size = metadata.len();
-            size > 1_000_000
-        }
-        Err(_) => false,
-    }
+    let checksum = hypr_file::calculate_file_checksum(&path).map_err(|e| e.to_string())?;
+    Ok(checksum == 2831308098)
 }
 
 #[tauri::command]
