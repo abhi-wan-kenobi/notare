@@ -67,7 +67,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
 
     #[tracing::instrument(skip_all)]
     async fn download_config(&self, path: PathBuf) -> Result<(), String> {
-        let url = "https://pub-8987485129c64debb63bff7f35a2e5fd.r2.dev/v0/Demonthos/candle-quantized-whisper-large-v3-turbo/main/config.json";
+        let url = "https://pub-8987485129c64debb63bff7f35a2e5fd.r2.dev/v0/Demonthos/candle-quantized-whisper-distil-v3/main/config.json";
 
         tokio::spawn(async move {
             let callback = |_: u64, _: u64| {};
@@ -82,7 +82,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
 
     #[tracing::instrument(skip_all)]
     async fn download_tokenizer(&self, path: PathBuf) -> Result<(), String> {
-        let url = "https://pub-8987485129c64debb63bff7f35a2e5fd.r2.dev/v0/Demonthos/candle-quantized-whisper-large-v3-turbo/main/tokenizer.json";
+        let url = "https://pub-8987485129c64debb63bff7f35a2e5fd.r2.dev/v0/Demonthos/candle-quantized-whisper-distil-v3/main/tokenizer.json";
 
         tokio::spawn(async move {
             let callback = |_: u64, _: u64| {};
@@ -97,7 +97,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
 
     #[tracing::instrument(skip_all)]
     async fn download_model(&self, path: PathBuf, channel: Channel<u8>) -> Result<(), String> {
-        let url = "https://pub-8987485129c64debb63bff7f35a2e5fd.r2.dev/v0/Demonthos/candle-quantized-whisper-large-v3-turbo/main/model.gguf";
+        let url = "https://pub-8987485129c64debb63bff7f35a2e5fd.r2.dev/v0/Demonthos/candle-quantized-whisper-distil-v3/main/model.gguf";
 
         tokio::spawn(async move {
             let callback = |downloaded: u64, total_size: u64| {
