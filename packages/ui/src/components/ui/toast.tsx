@@ -3,6 +3,8 @@ import { useTheme } from "next-themes";
 import React from "react";
 import { toast as sonnerToast, Toaster as Sonner } from "sonner";
 
+export { sonnerToast };
+
 export interface ToastButtonProps {
   label: string;
   onClick: () => void;
@@ -61,22 +63,23 @@ export function CustomToast(props: CustomToastProps) {
   );
 }
 
-export function toast(toast: Omit<CustomToastProps, "id">) {
+export function toast(props: Omit<CustomToastProps, "id"> & { id?: string | number }) {
   return sonnerToast.custom(
-    (id) => (
+    (generatedId) => (
       <div className="group overflow-clip">
         <CustomToast
-          id={id}
-          title={toast.title}
-          content={toast.content}
-          buttons={toast.buttons}
-          dismissible={toast.dismissible}
-          children={toast.children}
+          id={props.id || generatedId}
+          title={props.title}
+          content={props.content}
+          buttons={props.buttons}
+          dismissible={props.dismissible}
+          children={props.children}
         />
       </div>
     ),
     {
-      duration: toast.dismissible === false ? Infinity : undefined,
+      id: props.id,
+      duration: props.dismissible === false ? Infinity : undefined,
     },
   );
 }

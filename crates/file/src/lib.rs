@@ -19,9 +19,11 @@ pub async fn download_file_with_callback<F: Fn(u64, u64)>(
     let res = client.get(url.into_url()?).send().await?;
     let total_size = res.content_length().unwrap_or(std::u64::MAX);
 
-    std::fs::create_dir_all(output_path.as_ref())?;
-    let mut file = std::fs::File::create(output_path.as_ref())?;
+    if let Some(parent) = output_path.as_ref().parent() {
+        std::fs::create_dir_all(parent)?;
+    }
 
+    let mut file = std::fs::File::create(output_path.as_ref())?;
     let mut downloaded: u64 = 0;
     let mut stream = res.bytes_stream();
 

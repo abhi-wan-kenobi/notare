@@ -5,6 +5,8 @@ import { clsx } from "clsx";
 import { CalendarDaysIcon, CreditCardIcon, FileIcon, SettingsIcon, UsersIcon } from "lucide-react";
 import { z } from "zod";
 
+import LocalAI from "@/components/settings-panel/views/local-ai";
+
 const TABS = ["general", "calendar", "extensions", "templates", "team", "billing"] as const;
 
 type Tab = typeof TABS[number];
@@ -65,6 +67,8 @@ function Component() {
           </Button>
         ))}
       </div>
+
+      <LocalAI />
     </div>
   );
 }

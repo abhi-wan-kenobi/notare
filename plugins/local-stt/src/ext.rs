@@ -8,6 +8,8 @@ pub trait LocalSttPluginExt<R: Runtime> {
     fn api_base(&self) -> impl Future<Output = Option<String>>;
     fn start_server(&self, p: impl Into<PathBuf>) -> impl Future<Output = Result<(), String>>;
     fn stop_server(&self) -> impl Future<Output = Result<(), String>>;
+    fn download_config(&self, path: PathBuf) -> impl Future<Output = Result<(), String>>;
+    fn download_tokenizer(&self, path: PathBuf) -> impl Future<Output = Result<(), String>>;
     fn download_model(
         &self,
         path: PathBuf,
@@ -64,12 +66,38 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn download_model(&self, path: PathBuf, channel: Channel<u8>) -> Result<(), String> {
-        let _url_1 = "https://pub-8987485129c64debb63bff7f35a2e5fd.r2.dev/v0/Demonthos/candle-quantized-whisper-large-v3-turbo/main/config.json";
-        let _url_2 = "https://pub-8987485129c64debb63bff7f35a2e5fd.r2.dev/v0/Demonthos/candle-quantized-whisper-large-v3-turbo/main/model.gguf";
-        let _url_3 = "https://pub-8987485129c64debb63bff7f35a2e5fd.r2.dev/v0/Demonthos/candle-quantized-whisper-large-v3-turbo/main/tokenizer.json";
+    async fn download_config(&self, path: PathBuf) -> Result<(), String> {
+        let url = "https://pub-8987485129c64debb63bff7f35a2e5fd.r2.dev/v0/Demonthos/candle-quantized-whisper-large-v3-turbo/main/config.json";
 
-        let url = _url_2;
+        tokio::spawn(async move {
+            let callback = |_: u64, _: u64| {};
+
+            if let Err(e) = hypr_file::download_file_with_callback(url, path, callback).await {
+                tracing::error!("Failed to download config: {}", e);
+            }
+        });
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn download_tokenizer(&self, path: PathBuf) -> Result<(), String> {
+        let url = "https://pub-8987485129c64debb63bff7f35a2e5fd.r2.dev/v0/Demonthos/candle-quantized-whisper-large-v3-turbo/main/tokenizer.json";
+
+        tokio::spawn(async move {
+            let callback = |_: u64, _: u64| {};
+
+            if let Err(e) = hypr_file::download_file_with_callback(url, path, callback).await {
+                tracing::error!("Failed to download tokenizer: {}", e);
+            }
+        });
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn download_model(&self, path: PathBuf, channel: Channel<u8>) -> Result<(), String> {
+        let url = "https://pub-8987485129c64debb63bff7f35a2e5fd.r2.dev/v0/Demonthos/candle-quantized-whisper-large-v3-turbo/main/model.gguf";
 
         tokio::spawn(async move {
             let callback = |downloaded: u64, total_size: u64| {
@@ -77,13 +105,8 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                 let _ = channel.send(percent as u8);
             };
 
-            match hypr_file::download_file_with_callback(url, path, callback).await {
-                Ok(_) => {
-                    let _ = channel.send(100);
-                }
-                Err(e) => {
-                    tracing::error!("Failed to download model: {}", e);
-                }
+            if let Err(e) = hypr_file::download_file_with_callback(url, path, callback).await {
+                tracing::error!("Failed to download model: {}", e);
             }
         });
 

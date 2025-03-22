@@ -70,6 +70,26 @@ mod test {
 
     #[tokio::test]
     #[ignore]
+    // cargo test test_download_model -p tauri-plugin-local-stt -- --ignored --nocapture
+    async fn test_download_model() {
+        let app = create_app(tauri::test::mock_builder());
+        let cache_dir = app.path().data_dir().unwrap().join("com.hyprnote.dev");
+
+        let cache = kalosm_common::Cache::new(cache_dir)
+            .with_huggingface_token(Some("***REMOVED-UPSTREAM-HF-TOKEN***".to_string()));
+
+        rwhisper::Whisper::builder()
+            .with_source(rwhisper::WhisperSource::QuantizedDistilLargeV3)
+            .with_cache(cache)
+            .build_with_loading_handler(|progress| {
+                println!("{:?}", progress);
+            })
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    #[ignore]
     // cargo test test_local_stt -p tauri-plugin-local-stt -- --ignored --nocapture
     async fn test_local_stt() {
         use futures_util::StreamExt;

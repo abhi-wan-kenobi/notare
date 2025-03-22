@@ -12,6 +12,7 @@ tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
 hypr-data = { workspace = true }
+kalosm-common = { workspace = true }
 tauri-plugin-listener = { path = "../listener" }
 
 bytes = { workspace = true }

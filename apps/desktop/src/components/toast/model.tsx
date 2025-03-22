@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { commands as localLlmCommands } from "@hypr/plugin-local-llm";
 import { commands as localSttCommands } from "@hypr/plugin-local-stt";
 import { Progress } from "@hypr/ui/components/ui/progress";
-import { toast } from "@hypr/ui/components/ui/toast";
+import { sonnerToast, toast } from "@hypr/ui/components/ui/toast";
 
 export default function ModelDownloadNotification() {
   const checkForModelDownload = useQuery({
@@ -29,17 +29,21 @@ export default function ModelDownloadNotification() {
     const llmChannel = new Channel();
 
     toast({
+      id: "model-download-needed",
       title: "Model Download Needed",
       content: "Local models are required for offline functionality.",
       buttons: [
         {
           label: "Download Models",
           onClick: () => {
+            sonnerToast.dismiss("model-download-needed");
+
             if (!checkForModelDownload.data?.stt) {
               localSttCommands.downloadModel(sttChannel);
 
               toast(
                 {
+                  id: "stt-model-download",
                   title: "Speech-to-Text Model",
                   content: (
                     <div className="space-y-1">
@@ -48,6 +52,7 @@ export default function ModelDownloadNotification() {
                         channel={sttChannel}
                         onComplete={() => {
                           toast({
+                            id: "stt-model-download",
                             title: "Speech-to-Text Model",
                             content: "Download complete!",
                             dismissible: true,
@@ -66,6 +71,7 @@ export default function ModelDownloadNotification() {
 
               toast(
                 {
+                  id: "llm-model-download",
                   title: "Large Language Model",
                   content: (
                     <div className="space-y-1">
@@ -74,6 +80,7 @@ export default function ModelDownloadNotification() {
                         channel={llmChannel}
                         onComplete={() => {
                           toast({
+                            id: "llm-model-download",
                             title: "Large Language Model",
                             content: "Download complete!",
                             dismissible: true,
@@ -97,25 +104,20 @@ export default function ModelDownloadNotification() {
   return null;
 }
 
-interface ProgressPayload {
-  progress: number;
-}
-
 const ModelDownloadProgress = ({
   channel,
   onComplete,
 }: {
-  channel: Channel<unknown>;
+  channel: Channel<number>;
   onComplete?: () => void;
 }) => {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    channel.onmessage = (response) => {
-      const data = response as unknown as ProgressPayload;
-      setProgress(data.progress);
+    channel.onmessage = (v) => {
+      setProgress(v);
 
-      if (data.progress >= 100 && onComplete) {
+      if (v >= 100 && onComplete) {
         onComplete();
       }
     };

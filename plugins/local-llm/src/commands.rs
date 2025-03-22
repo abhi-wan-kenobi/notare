@@ -19,7 +19,18 @@ pub async fn is_model_loaded<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> boo
 #[specta::specta]
 pub async fn is_model_downloaded<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> bool {
     let path = app.path().app_data_dir().unwrap().join("llm.gguf");
-    path.exists()
+
+    if !path.exists() {
+        return false;
+    }
+
+    match path.metadata() {
+        Ok(metadata) => {
+            let size = metadata.len();
+            size > 1_000_000
+        }
+        Err(_) => false,
+    }
 }
 
 #[tauri::command]
