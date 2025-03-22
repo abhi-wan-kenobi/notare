@@ -1,6 +1,7 @@
 import { useMatch } from "@tanstack/react-router";
 
 import { NewNoteButton } from "@/components/toolbar/buttons/new-note-button";
+import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 import { cn } from "@hypr/ui/lib/utils";
 import { SearchBar } from "../search-bar";
 import { LeftSidebarButton } from "./buttons/left-sidebar-button";
@@ -11,6 +12,7 @@ export default function Toolbar() {
   const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
 
   const isInNoteMain = noteMatch?.search.window === "main";
+  const windowLabel = getCurrentWebviewWindowLabel();
 
   return (
     <header
@@ -27,7 +29,7 @@ export default function Toolbar() {
         </div>
       )}
 
-      <SearchBar />
+      {windowLabel === "main" && <SearchBar />}
 
       <div
         className="flex w-40 items-center justify-end"
