@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Channel } from "@tauri-apps/api/core";
-import { useEffect } from "react";
-import { toast } from "sonner";
+import { useEffect, useState } from "react";
 
 import { commands as localLlmCommands } from "@hypr/plugin-local-llm";
 import { commands as localSttCommands } from "@hypr/plugin-local-stt";
+import { Progress } from "@hypr/ui/components/ui/progress";
+import { toast } from "@hypr/ui/components/ui/toast";
 
 export default function ModelDownloadNotification() {
   const checkForModelDownload = useQuery({
@@ -27,41 +28,103 @@ export default function ModelDownloadNotification() {
     const sttChannel = new Channel();
     const llmChannel = new Channel();
 
-    toast.custom(
-      (id) => (
-        <div className="flex flex-col gap-2 p-4 bg-white border rounded-lg shadow-lg">
-          <div className="font-medium">Model Download Needed</div>
+    toast({
+      title: "Model Download Needed",
+      content: "Local models are required for offline functionality.",
+      buttons: [
+        {
+          label: "Download Models",
+          onClick: () => {
+            if (!checkForModelDownload.data?.stt) {
+              localSttCommands.downloadModel(sttChannel);
 
-          {!checkForModelDownload.data?.stt && (
-            <div>
-              <button onClick={() => localSttCommands.downloadModel(sttChannel)}>
-                Download STT Model
-              </button>
-            </div>
-          )}
+              toast(
+                {
+                  title: "Speech-to-Text Model",
+                  content: (
+                    <div className="space-y-1">
+                      <div>Downloading the speech-to-text model...</div>
+                      <ModelDownloadProgress
+                        channel={sttChannel}
+                        onComplete={() => {
+                          toast({
+                            title: "Speech-to-Text Model",
+                            content: "Download complete!",
+                            dismissible: true,
+                          });
+                        }}
+                      />
+                    </div>
+                  ),
+                  dismissible: false,
+                },
+              );
+            }
 
-          {!checkForModelDownload.data?.llm && (
-            <div>
-              <button onClick={() => localLlmCommands.downloadModel(llmChannel)}>
-                Download LLM Model
-              </button>
-            </div>
-          )}
+            if (!checkForModelDownload.data?.llm) {
+              localLlmCommands.downloadModel(llmChannel);
 
-          <button
-            onClick={() => toast.dismiss(id)}
-            className="px-3 py-1.5 text-sm bg-neutral-200 text-neutral-800 rounded-md hover:bg-neutral-300"
-          >
-            Dismiss
-          </button>
-        </div>
-      ),
-      {
-        id: "model-download-notification",
-        duration: Infinity,
-      },
-    );
+              toast(
+                {
+                  title: "Large Language Model",
+                  content: (
+                    <div className="space-y-1">
+                      <div>Downloading the large language model...</div>
+                      <ModelDownloadProgress
+                        channel={llmChannel}
+                        onComplete={() => {
+                          toast({
+                            title: "Large Language Model",
+                            content: "Download complete!",
+                            dismissible: true,
+                          });
+                        }}
+                      />
+                    </div>
+                  ),
+                  dismissible: false,
+                },
+              );
+            }
+          },
+          primary: true,
+        },
+      ],
+      dismissible: false,
+    });
   }, [checkForModelDownload.data]);
 
   return null;
 }
+
+interface ProgressPayload {
+  progress: number;
+}
+
+const ModelDownloadProgress = ({
+  channel,
+  onComplete,
+}: {
+  channel: Channel<unknown>;
+  onComplete?: () => void;
+}) => {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    channel.onmessage = (response) => {
+      const data = response as unknown as ProgressPayload;
+      setProgress(data.progress);
+
+      if (data.progress >= 100 && onComplete) {
+        onComplete();
+      }
+    };
+  }, [channel, onComplete]);
+
+  return (
+    <div className="w-full space-y-2">
+      <Progress value={progress} className="h-2" />
+      <div className="text-xs text-right">{Math.round(progress)}%</div>
+    </div>
+  );
+};
