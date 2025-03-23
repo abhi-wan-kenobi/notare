@@ -1,6 +1,6 @@
 import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckIcon, EarIcon, EarOffIcon, XIcon } from "lucide-react";
+import { EarIcon, EarOffIcon, MicIcon, SpeakerIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import SoundIndicator from "@/components/sound-indicator";
@@ -47,14 +47,16 @@ export default function ListenButton({
     queryFn: () => listenerCommands.getSpeakerMuted(),
   });
 
-  const toggleMicMuted = useMutation({
+  // TOOD
+  useMutation({
     mutationFn: () => listenerCommands.setMicMuted(!micMuted.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["mic-muted"] });
     },
   });
 
-  const toggleSpeakerMuted = useMutation({
+  // TODO
+  useMutation({
     mutationFn: () => listenerCommands.setSpeakerMuted(!speakerMuted.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["speaker-muted"] });
@@ -91,6 +93,7 @@ export default function ListenButton({
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>{button}</PopoverTrigger>
         </TooltipTrigger>
+
         <TooltipContent side="bottom" align="end">
           <p>
             <Trans>Stop recording</Trans>
@@ -98,38 +101,42 @@ export default function ListenButton({
         </TooltipContent>
       </Tooltip>
 
-      <PopoverContent className="w-60 p-4" align="end">
-        <Button
-          variant="outline"
-          onClick={() => toggleMicMuted.mutate()}
-        >
-          <Trans>Mic</Trans>
-          {micMuted.data ? <XIcon size={16} /> : <CheckIcon size={16} />}
-        </Button>
+      <PopoverContent className="w-60 p-0" align="end">
+        <div className="flex flex-col w-full">
+          <div className="flex w-full justify-between">
+            <div className="flex-1 flex items-center gap-2 border-r border-neutral-200 pl-2 pr-4 py-4 justify-center">
+              <Button variant="ghost" size="icon">
+                <MicIcon size={20} />
+              </Button>
+              <SoundIndicator theme="light" input="mic" size="long" />
+            </div>
 
-        <Button
-          variant="outline"
-          onClick={() => toggleSpeakerMuted.mutate()}
-        >
-          <Trans>Speaker</Trans>
-          {speakerMuted.data ? <XIcon size={16} /> : <CheckIcon size={16} />}
-        </Button>
-
-        <div className="flex flex-col items-center gap-3 w-full">
-          <div className="text-sm font-medium">
-            <Trans>Stop listening to the meeting?</Trans>
+            <div className="flex-1 flex items-center gap-2 pl-2 pr-4 py-4 justify-center">
+              <Button variant="ghost" size="icon">
+                <SpeakerIcon size={20} />
+              </Button>
+              <SoundIndicator theme="light" input="speaker" size="long" />
+            </div>
           </div>
 
-          <Button
-            variant="destructive"
-            onClick={() => {
-              onStop?.();
-              setOpen(false);
-            }}
-            className=" w-full"
-          >
-            <Trans>Stop</Trans>
-          </Button>
+          <div className="border-t border-neutral-200 w-full" />
+
+          <div className="flex flex-col items-center gap-3 p-4">
+            <div className="text-sm font-medium">
+              <Trans>Stop listening to the meeting?</Trans>
+            </div>
+
+            <Button
+              variant="destructive"
+              onClick={() => {
+                onStop?.();
+                setOpen(false);
+              }}
+              className=" w-full"
+            >
+              <Trans>Stop</Trans>
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

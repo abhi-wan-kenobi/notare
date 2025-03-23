@@ -10,7 +10,7 @@ import { commands as windowsCommands, getCurrentWebviewWindowLabel } from "@hypr
 import WidgetRenderer from "./renderer";
 
 export default function RightPanel() {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isNarrow, setIsNarrow] = useState(false);
   const { isExpanded, hidePanel } = useRightPanel();
   const { userId } = useHypr();
 
@@ -49,7 +49,7 @@ export default function RightPanel() {
 
   useEffect(() => {
     const checkViewport = () => {
-      setIsMobile(window.innerWidth < 760);
+      setIsNarrow(window.innerWidth < 760);
     };
 
     checkViewport();
@@ -58,7 +58,7 @@ export default function RightPanel() {
     return () => window.removeEventListener("resize", checkViewport);
   }, []);
 
-  if (isMobile) {
+  if (isNarrow) {
     return (
       <div className="relative h-full">
         {show && (
@@ -72,9 +72,20 @@ export default function RightPanel() {
           initial={false}
           animate={{ x: show ? 0 : "100%" }}
           transition={{ duration: 0.3 }}
-          className="absolute right-0 top-0 z-40 h-full w-[380px] overflow-y-auto border-l bg-neutral-50 scrollbar-none shadow-lg"
+          className="absolute right-0 top-0 z-40 h-full w-[380px] overflow-y-auto border-l bg-neutral-50 scrollbar-none shadow-lg flex flex-col"
         >
-          <WidgetRenderer widgets={widgets} />
+          {widgets.length > 0
+            ? <WidgetRenderer widgets={widgets} />
+            : (
+              <div className="flex items-center justify-center h-full">
+                <button
+                  onClick={handleClickConfigureWidgets}
+                  className="px-3 py-2 text-sm rounded-full bg-white hover:bg-neutral-200 border border-border transition-all"
+                >
+                  Configure Widgets
+                </button>
+              </div>
+            )}
         </motion.div>
       </div>
     );
@@ -85,23 +96,15 @@ export default function RightPanel() {
       initial={false}
       animate={{ width: show ? 380 : 0 }}
       transition={{ duration: 0.3 }}
-      className="h-full overflow-y-auto border-l bg-neutral-50 scrollbar-none relative"
+      className="h-full overflow-y-auto border-l bg-neutral-50 scrollbar-none flex flex-col"
     >
-      <WidgetRenderer widgets={widgets} />
       {widgets.length > 0
-        ? (
-          <button
-            onClick={handleClickConfigureWidgets}
-            className="absolute bottom-0 w-full p-2 text-center hover:bg-neutral-100"
-          >
-            Configure Widgets
-          </button>
-        )
+        ? <WidgetRenderer widgets={widgets} />
         : (
-          <div className="flex h-full w-full items-center justify-center">
+          <div className="flex items-center justify-center h-full">
             <button
               onClick={handleClickConfigureWidgets}
-              className="aspect-square w-3/4 flex items-center justify-center bg-neutral-100 hover:bg-neutral-200 rounded-lg text-xl"
+              className="px-3 py-2 text-sm rounded-full bg-white hover:bg-neutral-200 border border-border transition-all"
             >
               Configure Widgets
             </button>
