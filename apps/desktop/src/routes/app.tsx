@@ -2,6 +2,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import LeftSidebar from "@/components/left-sidebar";
+import Notifications from "@/components/toast";
 import Toolbar from "@/components/toolbar";
 import {
   HyprProvider,
@@ -14,6 +15,7 @@ import {
   SettingsPanelProvider,
 } from "@/contexts";
 import { registerTemplates } from "@/templates";
+import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 
 export const Route = createFileRoute("/app")({
   component: Component,
@@ -25,33 +27,38 @@ export const Route = createFileRoute("/app")({
 function Component() {
   const store = Route.useLoaderData();
 
+  const windowLabel = getCurrentWebviewWindowLabel();
+
   useEffect(() => {
     registerTemplates();
   }, []);
 
   return (
-    <HyprProvider>
-      <SessionsProvider store={store}>
-        <OngoingSessionProvider>
-          <LeftSidebarProvider>
-            <RightPanelProvider>
-              <SettingsPanelProvider>
-                <NewNoteProvider>
-                  <SearchProvider>
-                    <div className="relative flex h-screen w-screen overflow-hidden">
-                      <LeftSidebar />
-                      <div className="flex-1 flex h-screen w-screen flex-col overflow-hidden">
-                        <Toolbar />
-                        <Outlet />
+    <>
+      <HyprProvider>
+        <SessionsProvider store={store}>
+          <OngoingSessionProvider>
+            <LeftSidebarProvider>
+              <RightPanelProvider>
+                <SettingsPanelProvider>
+                  <NewNoteProvider>
+                    <SearchProvider>
+                      <div className="relative flex h-screen w-screen overflow-hidden">
+                        <LeftSidebar />
+                        <div className="flex-1 flex h-screen w-screen flex-col overflow-hidden">
+                          <Toolbar />
+                          <Outlet />
+                        </div>
                       </div>
-                    </div>
-                  </SearchProvider>
-                </NewNoteProvider>
-              </SettingsPanelProvider>
-            </RightPanelProvider>
-          </LeftSidebarProvider>
-        </OngoingSessionProvider>
-      </SessionsProvider>
-    </HyprProvider>
+                    </SearchProvider>
+                  </NewNoteProvider>
+                </SettingsPanelProvider>
+              </RightPanelProvider>
+            </LeftSidebarProvider>
+          </OngoingSessionProvider>
+        </SessionsProvider>
+      </HyprProvider>
+      {windowLabel === "main" && <Notifications />}
+    </>
   );
 }

@@ -244,7 +244,6 @@ impl WindowsPluginExt<tauri::Wry> for AppHandle<tauri::Wry> {
         window: HyprWindow,
         path: impl AsRef<str>,
     ) -> Result<(), crate::Error> {
-        let app = self.app_handle();
-        window.navigate(&app, path)
+        window.navigate(self, path)
     }
 }

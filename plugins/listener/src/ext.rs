@@ -141,10 +141,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
 
         match s.timeline.as_ref() {
             None => TimelineView::default(),
-            Some(timeline) => {
-                let timeline_view = timeline.lock().await.view(filter);
-                timeline_view
-            }
+            Some(timeline) => timeline.lock().await.view(filter),
         }
     }
 

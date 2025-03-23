@@ -21,7 +21,7 @@ pub async fn download_file_with_callback<F: Fn(u64, u64)>(
     let client = reqwest::Client::new();
 
     let res = client.get(url.into_url()?).send().await?;
-    let total_size = res.content_length().unwrap_or(std::u64::MAX);
+    let total_size = res.content_length().unwrap_or(u64::MAX);
 
     if let Some(parent) = output_path.as_ref().parent() {
         std::fs::create_dir_all(parent)?;
