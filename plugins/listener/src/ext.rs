@@ -152,7 +152,10 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
         let _ = self.stop_session().await;
 
         {
-            let s = state.lock().await;
+            let mut s = state.lock().await;
+            s.mic_muted = Some(false);
+            s.speaker_muted = Some(false);
+
             if s.timeline.is_some() {
                 return Err(crate::Error::SessionAlreadyStarted);
             }
