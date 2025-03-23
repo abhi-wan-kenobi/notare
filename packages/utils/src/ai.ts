@@ -18,7 +18,7 @@ const getModel = async (model: string) => {
 
   const openai = createOpenAI({
     baseURL: apiBase,
-    apiKey: apiKey ?? undefined,
+    apiKey: apiKey ?? "SOMETHING_NON_EMPTY",
     fetch: customFetch,
   });
 
