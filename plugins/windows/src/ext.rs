@@ -11,6 +11,12 @@ pub enum HyprWindow {
     #[serde(rename = "note")]
     #[strum(serialize = "note")]
     Note(String),
+    #[serde(rename = "human")]
+    #[strum(serialize = "human")]
+    Human(String),
+    #[serde(rename = "organization")]
+    #[strum(serialize = "organization")]
+    Organization(String),
     #[serde(rename = "calendar")]
     #[strum(serialize = "calendar")]
     Calendar,
@@ -27,6 +33,8 @@ impl HyprWindow {
         match self {
             Self::Main => "main".into(),
             Self::Note(id) => format!("note-{}", id),
+            Self::Human(id) => format!("human-{}", id),
+            Self::Organization(id) => format!("organization-{}", id),
             Self::Calendar => "calendar".into(),
             Self::Settings => "settings".into(),
             Self::Video(id) => format!("video-{}", id),
@@ -67,6 +75,8 @@ impl HyprWindow {
         match self {
             Self::Main => "Hyprnote".into(),
             Self::Note(_) => "Note".into(),
+            Self::Human(_) => "Human".into(),
+            Self::Organization(_) => "Organization".into(),
             Self::Calendar => "Calendar".into(),
             Self::Settings => "Settings".into(),
             Self::Video(_) => "Video".into(),
@@ -86,6 +96,8 @@ impl HyprWindow {
                 let url = match self {
                     Self::Main => "/app/new",
                     Self::Note(id) => &format!("/app/note/{}", id),
+                    Self::Human(id) => &format!("/app/human/{}", id),
+                    Self::Organization(id) => &format!("/app/organization/{}", id),
                     Self::Calendar => "/app/calendar",
                     Self::Settings => "/app/settings",
                     Self::Video(id) => &format!("/app/video?id={}", id),
@@ -104,6 +116,38 @@ impl HyprWindow {
                     window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
                 }
                 Self::Note(_) => {
+                    window.hide()?;
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+
+                    window.set_maximizable(false)?;
+                    window.set_minimizable(false)?;
+                    window.set_size(LogicalSize::new(480.0, 500.0))?;
+                    window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
+
+                    {
+                        let mut cursor = app.cursor_position().unwrap();
+                        cursor.x -= 160.0;
+                        cursor.y -= 30.0;
+                        window.set_position(cursor)?;
+                    }
+                }
+                Self::Human(_) => {
+                    window.hide()?;
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+
+                    window.set_maximizable(false)?;
+                    window.set_minimizable(false)?;
+                    window.set_size(LogicalSize::new(480.0, 500.0))?;
+                    window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
+
+                    {
+                        let mut cursor = app.cursor_position().unwrap();
+                        cursor.x -= 160.0;
+                        cursor.y -= 30.0;
+                        window.set_position(cursor)?;
+                    }
+                }
+                Self::Organization(_) => {
                     window.hide()?;
                     std::thread::sleep(std::time::Duration::from_millis(100));
 
