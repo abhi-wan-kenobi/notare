@@ -125,7 +125,7 @@ async fn websocket(socket: WebSocket, _params: ListenParams, model: rwhisper::Wh
         }
     }
 
-    ws_sender.close().await.unwrap();
+    let _ = ws_sender.close().await;
     tracing::info!("websocket_disconnected");
 }
 
