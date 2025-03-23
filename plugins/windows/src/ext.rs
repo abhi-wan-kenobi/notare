@@ -17,6 +17,9 @@ pub enum HyprWindow {
     #[serde(rename = "settings")]
     #[strum(serialize = "settings")]
     Settings,
+    #[serde(rename = "video")]
+    #[strum(serialize = "video")]
+    Video(String),
 }
 
 impl HyprWindow {
@@ -26,6 +29,7 @@ impl HyprWindow {
             Self::Note(id) => format!("note-{}", id),
             Self::Calendar => "calendar".into(),
             Self::Settings => "settings".into(),
+            Self::Video(id) => format!("video-{}", id),
         }
     }
 
@@ -65,6 +69,7 @@ impl HyprWindow {
             Self::Note(_) => "Note".into(),
             Self::Calendar => "Calendar".into(),
             Self::Settings => "Settings".into(),
+            Self::Video(_) => "Video".into(),
         }
     }
 
@@ -83,6 +88,7 @@ impl HyprWindow {
                     Self::Note(id) => &format!("/app/note/{}", id),
                     Self::Calendar => "/app/calendar",
                     Self::Settings => "/app/settings",
+                    Self::Video(id) => &format!("/app/video?id={}", id),
                 };
                 (self.window_builder(app, url).build()?, true)
             }
@@ -130,6 +136,22 @@ impl HyprWindow {
                     }
                 }
                 Self::Settings => {
+                    window.hide()?;
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+
+                    window.set_maximizable(false)?;
+                    window.set_minimizable(false)?;
+                    window.set_size(LogicalSize::new(640.0, 532.0))?;
+                    window.set_min_size(Some(LogicalSize::new(640.0, 532.0)))?;
+
+                    {
+                        let mut cursor = app.cursor_position().unwrap();
+                        cursor.x -= 640.0;
+                        cursor.y -= 30.0;
+                        window.set_position(cursor)?;
+                    }
+                }
+                Self::Video(_) => {
                     window.hide()?;
                     std::thread::sleep(std::time::Duration::from_millis(100));
 
