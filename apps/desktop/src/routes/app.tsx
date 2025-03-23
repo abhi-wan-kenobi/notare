@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import LeftSidebar from "@/components/left-sidebar";
@@ -15,10 +15,17 @@ import {
   SettingsPanelProvider,
 } from "@/contexts";
 import { registerTemplates } from "@/templates";
+import { commands } from "@/types";
 import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 
 export const Route = createFileRoute("/app")({
   component: Component,
+  beforeLoad: async () => {
+    const isOnboardingNeeded = await commands.isOnboardingNeeded();
+    if (isOnboardingNeeded) {
+      throw redirect({ to: "/login" });
+    }
+  },
   loader: async ({ context: { sessionsStore } }) => {
     return sessionsStore;
   },

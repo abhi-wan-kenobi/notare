@@ -1,7 +1,9 @@
 mod commands;
 mod ext;
+mod store;
 
 use ext::*;
+use store::*;
 
 use tauri_plugin_windows::{HyprWindow, WindowsPluginExt};
 
@@ -122,7 +124,7 @@ pub async fn main() {
 
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async move {
-                    app.setup_for_local().await.unwrap();
+                    app.setup_db_for_local().await.unwrap();
                 })
             });
 
@@ -141,7 +143,9 @@ pub async fn main() {
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .commands(tauri_specta::collect_commands![
-            commands::setup_for_local::<tauri::Wry>,
+            commands::is_onboarding_needed::<tauri::Wry>,
+            commands::set_onboarding_needed::<tauri::Wry>,
+            commands::setup_db_for_cloud::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

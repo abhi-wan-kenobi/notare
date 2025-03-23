@@ -38,7 +38,7 @@ function Component() {
 
       events.authEvent.listen(({ payload }) => {
         if (payload === "success") {
-          commands.setupDb().then(() => {
+          commands.setupDbForCloud().then(() => {
             navigate({ to: "/onboarding", replace: true });
           });
           return;
@@ -119,7 +119,7 @@ function Component() {
             animation="slideUp"
             by="word"
             once
-            className="mb-12 text-center text-lg font-medium text-neutral-600 md:text-xl lg:text-2xl"
+            className="mb-16 text-center text-lg font-medium text-neutral-600 md:text-xl lg:text-2xl"
           >
             {t`AI notepad for meetings`}
           </TextAnimate>
