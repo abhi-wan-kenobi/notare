@@ -1,3 +1,5 @@
+use hypr_db_core::SqlTable;
+
 use super::{ListOrganizationFilter, Organization, UserDatabase};
 
 impl UserDatabase {
@@ -7,13 +9,13 @@ impl UserDatabase {
     ) -> Result<Organization, crate::Error> {
         let conn = self.conn()?;
 
-        let mut rows = conn
-            .query(
-                "INSERT INTO organizations (id, name, description) VALUES (?, ?, ?)",
-                (organization.id, organization.name, organization.description),
-            )
-            .await?;
+        let sql = format!(
+            "INSERT INTO {} (id, name, description) VALUES (?, ?, ?) RETURNING *",
+            Organization::sql_table()
+        );
+        let params = (organization.id, organization.name, organization.description);
 
+        let mut rows = conn.query(&sql, params).await?;
         let row = rows.next().await?.unwrap();
         let organization: Organization = libsql::de::from_row(&row)?;
         Ok(organization)
@@ -26,13 +28,17 @@ impl UserDatabase {
         let conn = self.conn()?;
 
         let mut rows = match &filter {
-            None => conn.query("SELECT * FROM organizations", ()).await?,
+            None => {
+                let sql = format!("SELECT * FROM {}", Organization::sql_table());
+                conn.query(&sql, ()).await?
+            }
             Some(ListOrganizationFilter::Search((max, q))) => {
-                conn.query(
-                    "SELECT * FROM organizations WHERE name LIKE ? LIMIT ?",
-                    vec![format!("%{}%", q), max.to_string()],
-                )
-                .await?
+                let sql = format!(
+                    "SELECT * FROM {} WHERE name LIKE ? LIMIT ?",
+                    Organization::sql_table()
+                );
+                let params = (format!("%{}%", q), max.to_string());
+                conn.query(&sql, params).await?
             }
         };
 
@@ -50,9 +56,8 @@ impl UserDatabase {
     ) -> Result<Option<Organization>, crate::Error> {
         let conn = self.conn()?;
 
-        let mut rows = conn
-            .query("SELECT * FROM organizations WHERE id = ?", vec![id.into()])
-            .await?;
+        let sql = format!("SELECT * FROM {} WHERE id = ?", Organization::sql_table());
+        let mut rows = conn.query(&sql, vec![id.into()]).await?;
 
         match rows.next().await? {
             None => Ok(None),
@@ -70,14 +75,13 @@ impl UserDatabase {
         let conn = self.conn()?;
         let id = id.into();
 
-        let mut rows = conn
-            .query(
-                "SELECT o.* FROM organizations o
+        let sql = format!(
+            "SELECT o.* FROM {} o
                 INNER JOIN users u ON u.organization_id = o.id
                 WHERE u.id = ?",
-                vec![id],
-            )
-            .await?;
+            Organization::sql_table()
+        );
+        let mut rows = conn.query(&sql, vec![id]).await?;
 
         match rows.next().await? {
             None => Ok(None),

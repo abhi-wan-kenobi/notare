@@ -1,6 +1,7 @@
 use crate::user_common_derives;
 
 user_common_derives! {
+    #[sql_table("organizations")]
     pub struct Organization {
         pub id: String,
         pub name: String,

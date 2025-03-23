@@ -25,13 +25,14 @@ export const Route = createFileRoute("/app/human/$id")({
       throw notFound();
     }
 
-    let organization = null;
-    if (human.organization_id) {
-      organization = await queryClient.fetchQuery({
-        queryKey: ["organization", human.organization_id],
-        queryFn: () => dbCommands.getOrganization(human.organization_id!),
-      });
+    if (!human.organization_id) {
+      return { human, organization: null };
     }
+
+    const organization = await queryClient.fetchQuery({
+      queryKey: ["organization", human.organization_id],
+      queryFn: () => dbCommands.getOrganization(human.organization_id!),
+    });
 
     return { human, organization };
   },

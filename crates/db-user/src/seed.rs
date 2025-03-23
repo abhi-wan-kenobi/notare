@@ -1,13 +1,20 @@
 use super::{
-    Calendar, ChatGroup, ChatMessage, ChatMessageRole, Event, Human, Platform, Session, Tag,
-    UserDatabase,
+    Calendar, ChatGroup, ChatMessage, ChatMessageRole, Event, Human, Organization, Platform,
+    Session, Tag, UserDatabase,
 };
 
 pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), crate::Error> {
     let now = chrono::Utc::now();
 
+    let org = Organization {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: "Fastrepl".to_string(),
+        description: Some("Fastrepl = fast + read-eval-print-loop".to_string()),
+    };
+
     let yujong = Human {
         id: user_id.into(),
+        organization_id: Some(org.id.clone()),
         is_user: true,
         full_name: Some("Yujong Lee".to_string()),
         email: Some("yujonglee@hyprnote.com".to_string()),
@@ -44,7 +51,7 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
         ..Human::default()
     };
 
-    let participants = vec![
+    let humans = vec![
         yujong.clone(),
         bobby.clone(),
         minjae.clone(),
@@ -182,8 +189,10 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
         },
     ];
 
-    for participant in participants.clone() {
-        db.upsert_human(participant).await?;
+    db.upsert_organization(org).await?;
+
+    for human in humans {
+        db.upsert_human(human).await?;
     }
 
     for calendar in calendars {
