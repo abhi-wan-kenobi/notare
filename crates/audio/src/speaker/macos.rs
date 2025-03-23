@@ -129,7 +129,7 @@ impl SpeakerInput {
         let asbd = self.tap.asbd().unwrap();
         let format = av::AudioFormat::with_asbd(&asbd).unwrap();
 
-        let rb = ringbuf::HeapRb::<f32>::new(512 * 16);
+        let rb = ringbuf::HeapRb::<f32>::new(48_000 * 2);
         let (producer, consumer) = rb.split();
 
         let mut ctx = Box::new(Ctx { format, producer });

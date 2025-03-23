@@ -4,7 +4,6 @@ import { EarIcon, EarOffIcon, MicIcon, SpeakerIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import SoundIndicator from "@/components/sound-indicator";
-
 import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
@@ -32,11 +31,6 @@ export default function ListenButton({
     }
   };
 
-  useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ["mic-muted"] });
-    queryClient.invalidateQueries({ queryKey: ["speaker-muted"] });
-  }, [isListening]);
-
   const micMuted = useQuery({
     queryKey: ["mic-muted"],
     queryFn: () => listenerCommands.getMicMuted(),
@@ -47,16 +41,19 @@ export default function ListenButton({
     queryFn: () => listenerCommands.getSpeakerMuted(),
   });
 
-  // TOOD
-  useMutation({
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["mic-muted"] });
+    queryClient.invalidateQueries({ queryKey: ["speaker-muted"] });
+  }, [isListening]);
+
+  const toggleMicMuted = useMutation({
     mutationFn: () => listenerCommands.setMicMuted(!micMuted.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["mic-muted"] });
     },
   });
 
-  // TODO
-  useMutation({
+  const toggleSpeakerMuted = useMutation({
     mutationFn: () => listenerCommands.setSpeakerMuted(!speakerMuted.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["speaker-muted"] });
@@ -105,17 +102,39 @@ export default function ListenButton({
         <div className="flex flex-col w-full">
           <div className="flex w-full justify-between">
             <div className="flex-1 flex items-center gap-2 border-r border-neutral-200 pl-2 pr-4 py-4 justify-center">
-              <Button variant="ghost" size="icon">
-                <MicIcon size={20} />
+              <Button variant="ghost" size="icon" onClick={() => toggleMicMuted.mutate()}>
+                {micMuted.data
+                  ? (
+                    <>
+                      <MicIcon size={20} />
+                      <SoundIndicator theme="light" input="mic" size="long" />
+                    </>
+                  )
+                  : (
+                    <>
+                      <MicIcon className="text-neutral-500" size={20} />
+                      <div className="w-8 h-0.5 bg-neutral-500 opacity-50 rounded-full" />
+                    </>
+                  )}
               </Button>
-              <SoundIndicator theme="light" input="mic" size="long" />
             </div>
 
             <div className="flex-1 flex items-center gap-2 pl-2 pr-4 py-4 justify-center">
-              <Button variant="ghost" size="icon">
-                <SpeakerIcon size={20} />
+              <Button variant="ghost" size="icon" onClick={() => toggleSpeakerMuted.mutate()}>
+                {speakerMuted.data
+                  ? (
+                    <>
+                      <SpeakerIcon size={20} />
+                      <SoundIndicator theme="light" input="speaker" size="long" />
+                    </>
+                  )
+                  : (
+                    <>
+                      <SpeakerIcon className="text-neutral-500" size={20} />
+                      <div className="w-8 h-0.5 bg-neutral-500 opacity-50 rounded-full" />
+                    </>
+                  )}
               </Button>
-              <SoundIndicator theme="light" input="speaker" size="long" />
             </div>
           </div>
 
