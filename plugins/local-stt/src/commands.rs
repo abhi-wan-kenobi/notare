@@ -16,7 +16,7 @@ pub async fn is_model_downloaded<R: tauri::Runtime>(
         .path()
         .app_data_dir()
         .unwrap()
-        .join("Demonthos/candle-quantized-whisper-distil-v3/main");
+        .join("Demonthos/candle-quantized-whisper-large-v3-turbo/main/");
 
     let model_path = base_path.join("model.gguf");
     let config_path = base_path.join("config.json");
@@ -30,9 +30,9 @@ pub async fn is_model_downloaded<R: tauri::Runtime>(
     }
 
     for (path, expected) in [
-        (model_path, 2256901249),
-        (config_path, 2494907048),
-        (tokenizer_path, 3277440189),
+        (model_path, 800664009),
+        (config_path, 472563957),
+        (tokenizer_path, 1395948910),
     ] {
         let actual = hypr_file::calculate_file_checksum(path).map_err(|e| e.to_string())?;
 
@@ -54,7 +54,7 @@ pub async fn download_model<R: tauri::Runtime>(
         .path()
         .app_data_dir()
         .unwrap()
-        .join("Demonthos/candle-quantized-whisper-distil-v3/main");
+        .join("Demonthos/candle-quantized-whisper-large-v3-turbo/main/");
 
     app.download_config(base.join("config.json")).await.unwrap();
     app.download_tokenizer(base.join("tokenizer.json"))

@@ -70,13 +70,13 @@ mod tests {
     fn test_calculate_file_checksum() {
         let files = vec![
             dirs::data_dir().unwrap().join(
-                "com.hyprnote.dev/Demonthos/candle-quantized-whisper-distil-v3/main/config.json",
+                "com.hyprnote.dev/Demonthos/candle-quantized-whisper-large-v3-turbo/main//config.json",
             ),
             dirs::data_dir().unwrap().join(
-                "com.hyprnote.dev/Demonthos/candle-quantized-whisper-distil-v3/main/model.gguf",
+                "com.hyprnote.dev/Demonthos/candle-quantized-whisper-large-v3-turbo/main//model.gguf",
             ),
             dirs::data_dir().unwrap().join(
-                "com.hyprnote.dev/Demonthos/candle-quantized-whisper-distil-v3/main/tokenizer.json",
+                "com.hyprnote.dev/Demonthos/candle-quantized-whisper-large-v3-turbo/main//tokenizer.json",
             ),
             dirs::data_dir().unwrap().join("com.hyprnote.dev/llm.gguf"),
         ];
