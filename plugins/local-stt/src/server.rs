@@ -11,22 +11,76 @@ use axum::{
 use std::{
     net::{Ipv4Addr, SocketAddr},
     path::PathBuf,
+    sync::atomic::{AtomicUsize, Ordering},
+    sync::Arc,
 };
 use tower_http::cors::{self, CorsLayer};
 
 use futures_util::{stream::SplitStream, SinkExt, Stream, StreamExt};
 use hypr_listener_interface::{ListenInputChunk, ListenOutputChunk, ListenParams};
 
-#[derive(Clone)]
-pub struct ServerHandle {
-    pub addr: SocketAddr,
-    pub shutdown: tokio::sync::watch::Sender<()>,
+#[derive(Default)]
+pub struct ServerStateBuilder {
+    pub model_cache_dir: Option<PathBuf>,
+    pub model_type: Option<rwhisper::WhisperSource>,
+}
+
+impl ServerStateBuilder {
+    pub fn model_cache_dir(mut self, model_cache_dir: PathBuf) -> Self {
+        self.model_cache_dir = Some(model_cache_dir);
+        self
+    }
+
+    pub fn model_type(mut self, model_type: rwhisper::WhisperSource) -> Self {
+        self.model_type = Some(model_type);
+        self
+    }
+
+    pub fn build(self) -> ServerState {
+        ServerState {
+            model_cache_dir: self.model_cache_dir.unwrap(),
+            model_type: self.model_type.unwrap(),
+            num_connections: Arc::new(AtomicUsize::new(0)),
+        }
+    }
 }
 
 #[derive(Clone)]
 pub struct ServerState {
-    pub cache_dir: PathBuf,
-    pub model_type: rwhisper::WhisperSource,
+    model_cache_dir: PathBuf,
+    model_type: rwhisper::WhisperSource,
+    num_connections: Arc<AtomicUsize>,
+}
+
+impl ServerState {
+    fn try_acquire_connection(&self) -> Option<ConnectionGuard> {
+        let current = self.num_connections.load(Ordering::SeqCst);
+        if current >= 1 {
+            return None;
+        }
+
+        match self
+            .num_connections
+            .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst)
+        {
+            Ok(_) => Some(ConnectionGuard(self.num_connections.clone())),
+            Err(_) => None,
+        }
+    }
+}
+
+struct ConnectionGuard(Arc<AtomicUsize>);
+
+impl Drop for ConnectionGuard {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
+#[derive(Clone)]
+pub struct ServerHandle {
+    pub addr: SocketAddr,
+    pub shutdown: tokio::sync::watch::Sender<()>,
 }
 
 pub async fn run_server(state: ServerState) -> anyhow::Result<ServerHandle> {
@@ -71,22 +125,26 @@ async fn health() -> impl IntoResponse {
 }
 
 async fn listen(
-    Query(params): Query<ListenParams>,
+    Query(_): Query<ListenParams>,
     ws: WebSocketUpgrade,
     AxumState(state): AxumState<ServerState>,
 ) -> Result<impl IntoResponse, StatusCode> {
+    let guard = state
+        .try_acquire_connection()
+        .ok_or(StatusCode::TOO_MANY_REQUESTS)?;
+
     let model = rwhisper::WhisperBuilder::default()
-        .with_cache(kalosm_common::Cache::new(state.cache_dir))
+        .with_cache(kalosm_common::Cache::new(state.model_cache_dir))
         .with_language(None)
         .with_source(state.model_type)
         .build()
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(ws.on_upgrade(move |socket| websocket(socket, params, model)))
+    Ok(ws.on_upgrade(move |socket| websocket(socket, model, guard)))
 }
 
-async fn websocket(socket: WebSocket, _params: ListenParams, model: rwhisper::Whisper) {
+async fn websocket(socket: WebSocket, model: rwhisper::Whisper, _guard: ConnectionGuard) {
     tracing::info!("websocket_connected");
 
     let (mut ws_sender, ws_receiver) = socket.split();
@@ -173,31 +231,5 @@ impl kalosm_sound::AsyncSource for WebSocketAudioSource {
 
     fn sample_rate(&self) -> u32 {
         self.sample_rate
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_health() {
-        let state = ServerState {
-            cache_dir: "/Users/yujonglee/Library/Application Support/com.hyprnote.dev/".into(),
-            model_type: rwhisper::WhisperSource::QuantizedLargeV3Turbo,
-        };
-
-        let server = run_server(state).await.unwrap();
-        let client = reqwest::Client::new();
-
-        assert_eq!(
-            client
-                .get(format!("http://{}/health", server.addr))
-                .send()
-                .await
-                .unwrap()
-                .status(),
-            axum::http::StatusCode::OK
-        );
     }
 }

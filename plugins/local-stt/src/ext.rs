@@ -3,6 +3,12 @@ use std::path::PathBuf;
 
 use tauri::{ipc::Channel, Manager, Runtime};
 
+#[derive(Debug, Clone)]
+pub struct ModelConfig {
+    pub dir: PathBuf,
+    pub source: rwhisper::WhisperSource,
+}
+
 pub trait LocalSttPluginExt<R: Runtime> {
     fn is_server_running(&self) -> impl Future<Output = bool>;
     fn api_base(&self) -> impl Future<Output = Option<String>>;
@@ -28,16 +34,17 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
 
     #[tracing::instrument(skip_all)]
     async fn start_server(&self, cache_dir: impl Into<PathBuf>) -> Result<(), String> {
-        let state = self.state::<crate::SharedState>();
+        let server_state = crate::ServerStateBuilder::default()
+            .model_cache_dir(cache_dir.into())
+            .model_type(rwhisper::WhisperSource::QuantizedLargeV3Turbo)
+            .build();
 
-        let server = crate::server::run_server(crate::server::ServerState {
-            cache_dir: cache_dir.into(),
-            model_type: rwhisper::WhisperSource::QuantizedLargeV3Turbo,
-        })
-        .await
-        .map_err(|e| e.to_string())?;
+        let server = crate::run_server(server_state)
+            .await
+            .map_err(|e| e.to_string())?;
 
         {
+            let state = self.state::<crate::SharedState>();
             let mut s = state.lock().await;
             s.api_base = Some(format!("http://{}", &server.addr));
             s.server = Some(server);
