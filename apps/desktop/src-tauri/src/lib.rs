@@ -95,14 +95,6 @@ pub async fn main() {
 
             specta_builder.mount_events(&app);
 
-            let main_window = app.window_show(HyprWindow::Main).unwrap();
-
-            #[cfg(target_os = "macos")]
-            {
-                use tauri_plugin_decorum::WebviewWindowExt;
-                main_window.set_traffic_lights_inset(12.0, 20.0).unwrap();
-            }
-
             {
                 use tauri_plugin_template::TemplatePluginExt;
                 for (name, template) in tauri_plugin_misc::TEMPLATES {

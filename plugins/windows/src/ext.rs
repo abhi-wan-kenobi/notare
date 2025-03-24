@@ -107,6 +107,11 @@ impl HyprWindow {
         };
 
         if created {
+            {
+                use tauri_plugin_decorum::WebviewWindowExt;
+                window.set_traffic_lights_inset(12.0, 20.0)?;
+            }
+
             match self {
                 Self::Main => {
                     window.set_maximizable(true)?;
