@@ -124,14 +124,24 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
     async fn set_mic_muted(&self, muted: bool) {
         let state = self.state::<crate::SharedState>();
         let mut s = state.lock().await;
-        s.mic_muted = Some(muted);
+
+        if let Some(tx) = &s.mic_muted_tx {
+            if tx.send(muted).is_ok() {
+                s.mic_muted = Some(muted);
+            }
+        }
     }
 
     #[tracing::instrument(skip_all)]
     async fn set_speaker_muted(&self, muted: bool) {
         let state = self.state::<crate::SharedState>();
         let mut s = state.lock().await;
-        s.speaker_muted = Some(muted);
+
+        if let Some(tx) = &s.speaker_muted_tx {
+            if tx.send(muted).is_ok() {
+                s.speaker_muted = Some(muted);
+            }
+        }
     }
 
     #[tracing::instrument(skip_all)]
@@ -221,12 +231,14 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
 
         let mic_stream_handle = tokio::spawn({
             async move {
-                while let Some(chunk) = mic_stream.next().await {
-                    if *mic_muted_rx.borrow() {
-                        continue;
-                    }
+                while let Some(actual) = mic_stream.next().await {
+                    let maybe_muted = if *mic_muted_rx.borrow() {
+                        vec![0.0; actual.len()]
+                    } else {
+                        actual
+                    };
 
-                    if let Err(e) = mic_tx.send(chunk).await {
+                    if let Err(e) = mic_tx.send(maybe_muted).await {
                         tracing::error!("mic_tx_send_error: {:?}", e);
                         break;
                     }
@@ -236,12 +248,14 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
 
         let speaker_stream_handle = tokio::spawn({
             async move {
-                while let Some(chunk) = speaker_stream.next().await {
-                    if *speaker_muted_rx.borrow() {
-                        continue;
-                    }
+                while let Some(actual) = speaker_stream.next().await {
+                    let maybe_muted = if *speaker_muted_rx.borrow() {
+                        vec![0.0; actual.len()]
+                    } else {
+                        actual
+                    };
 
-                    if let Err(e) = speaker_tx.send(chunk).await {
+                    if let Err(e) = speaker_tx.send(maybe_muted).await {
                         tracing::error!("speaker_tx_send_error: {:?}", e);
                         break;
                     }

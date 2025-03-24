@@ -1,6 +1,6 @@
 import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { EarIcon, EarOffIcon, MicIcon, SpeakerIcon } from "lucide-react";
+import { EarIcon, EarOffIcon, MicIcon, MicOffIcon, Volume2Icon, VolumeOffIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import SoundIndicator from "@/components/sound-indicator";
@@ -106,14 +106,14 @@ export default function ListenButton({
                 {micMuted.data
                   ? (
                     <>
-                      <MicIcon size={20} />
-                      <SoundIndicator theme="light" input="mic" size="long" />
+                      <MicOffIcon className="text-neutral-500" size={20} />
+                      <div className="w-8 h-0.5 bg-neutral-500 opacity-50 rounded-full" />
                     </>
                   )
                   : (
                     <>
-                      <MicIcon className="text-neutral-500" size={20} />
-                      <div className="w-8 h-0.5 bg-neutral-500 opacity-50 rounded-full" />
+                      <MicIcon size={20} />
+                      <SoundIndicator theme="light" input="mic" size="long" />
                     </>
                   )}
               </Button>
@@ -124,14 +124,14 @@ export default function ListenButton({
                 {speakerMuted.data
                   ? (
                     <>
-                      <SpeakerIcon size={20} />
-                      <SoundIndicator theme="light" input="speaker" size="long" />
+                      <VolumeOffIcon className="text-neutral-500" size={20} />
+                      <div className="w-8 h-0.5 bg-neutral-500 opacity-50 rounded-full" />
                     </>
                   )
                   : (
                     <>
-                      <SpeakerIcon className="text-neutral-500" size={20} />
-                      <div className="w-8 h-0.5 bg-neutral-500 opacity-50 rounded-full" />
+                      <Volume2Icon size={20} />
+                      <SoundIndicator theme="light" input="speaker" size="long" />
                     </>
                   )}
               </Button>
