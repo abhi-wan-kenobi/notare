@@ -45,7 +45,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
   }, [sessionStore.session?.id, showRaw]);
 
   const ongoingSessionStore = useOngoingSession((s) => ({
-    listening: s.listening,
+    status: s.status,
     timeline: s.timeline,
   }));
 
@@ -163,7 +163,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
       </div>
 
       <AnimatePresence>
-        {!ongoingSessionStore.listening
+        {ongoingSessionStore.status !== "active"
           && ongoingSessionStore.timeline?.items.length && (
           <motion.div
             className="absolute bottom-6 w-full flex justify-center items-center pointer-events-none z-10"
@@ -173,8 +173,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
             transition={{ duration: 0.2 }}
           >
             <div className="pointer-events-auto">
-              {ongoingSessionStore.listening
-                  || sessionStore.session?.enhanced_memo_html
+              {sessionStore.session?.enhanced_memo_html
                 ? <EnhanceControls showRaw={showRaw} setShowRaw={setShowRaw} />
                 : <EnhanceOnlyButton handleClick={handleClickEnhance} />}
             </div>

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 import EditorArea from "@/components/editor-area";
 import RightPanel from "@/components/right-panel";
-import { useSession } from "@/contexts";
+import { useOngoingSession, useSession } from "@/contexts";
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
 import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 
@@ -50,18 +50,21 @@ function Component() {
     getSession: s.getSession,
   }));
 
+  const ongoingSessionId = useOngoingSession((s) => s.sessionId);
+
   useEffect(() => {
     const isEmpty = (s: string | null) => s === "<p></p>" || !s;
 
     return () => {
       const session = getSession();
 
-      const isNoteEmpty = !session.title
+      const shouldDelete = !session.title
         && isEmpty(session.raw_memo_html)
         && isEmpty(session.enhanced_memo_html)
-        && session.conversations.length === 0;
+        && session.conversations.length === 0
+        && ongoingSessionId !== sessionId;
 
-      if (isNoteEmpty) {
+      if (shouldDelete) {
         mutation.mutate();
       }
     };

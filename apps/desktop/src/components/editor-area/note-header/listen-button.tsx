@@ -1,6 +1,6 @@
 import { Trans } from "@lingui/react/macro";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { EarIcon, EarOffIcon, MicIcon, MicOffIcon, Volume2Icon, VolumeOffIcon } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { EarIcon, EarOffIcon, Loader2Icon, MicIcon, MicOffIcon, Volume2Icon, VolumeOffIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import SoundIndicator from "@/components/sound-indicator";
@@ -16,20 +16,13 @@ interface ListenButtonProps {
 
 export default function ListenButton({ sessionId }: ListenButtonProps) {
   const [open, setOpen] = useState(false);
-  const queryClient = useQueryClient();
 
   const ongoingSessionStore = useOngoingSession((s) => ({
     start: s.start,
     pause: s.pause,
-    isListening: s.listening,
     isCurrent: s.sessionId === sessionId,
+    status: s.status,
   }));
-
-  const handleClick = () => {
-    if (!(ongoingSessionStore.isListening && ongoingSessionStore.isCurrent)) {
-      ongoingSessionStore.start(sessionId);
-    }
-  };
 
   const micMuted = useQuery({
     queryKey: ["mic-muted"],
@@ -42,41 +35,50 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
   });
 
   useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ["mic-muted"] });
-    queryClient.invalidateQueries({ queryKey: ["speaker-muted"] });
-  }, [ongoingSessionStore.isListening]);
+    micMuted.refetch();
+    speakerMuted.refetch();
+  }, [ongoingSessionStore.status]);
 
   const toggleMicMuted = useMutation({
     mutationFn: () => listenerCommands.setMicMuted(!micMuted.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["mic-muted"] });
-    },
+    onSuccess: () => micMuted.refetch(),
   });
 
   const toggleSpeakerMuted = useMutation({
     mutationFn: () => listenerCommands.setSpeakerMuted(!speakerMuted.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["speaker-muted"] });
-    },
+    onSuccess: () => speakerMuted.refetch(),
   });
 
-  const button = (
-    <Button
-      variant={ongoingSessionStore.isListening && ongoingSessionStore.isCurrent ? "default" : "outline"}
-      onClick={handleClick}
-      className="p-2"
-    >
-      {ongoingSessionStore.isListening && ongoingSessionStore.isCurrent
-        ? <EarIcon size={20} />
-        : <EarOffIcon size={20} />}
-      {ongoingSessionStore.isListening && ongoingSessionStore.isCurrent && <SoundIndicator theme="dark" />}
-    </Button>
-  );
+  const handleClick = () => {
+    if (ongoingSessionStore.status === "inactive") {
+      ongoingSessionStore.start(sessionId);
+    }
+  };
 
-  if (!(ongoingSessionStore.isListening && ongoingSessionStore.isCurrent)) {
+  if (ongoingSessionStore.status === "active" && !ongoingSessionStore.isCurrent) {
+    return null;
+  }
+
+  if (ongoingSessionStore.status === "loading") {
+    return (
+      <Button variant="outline" size="icon" onClick={handleClick}>
+        <Loader2Icon className="animate-spin" size={20} />
+      </Button>
+    );
+  }
+
+  if (ongoingSessionStore.status === "inactive") {
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{button}</TooltipTrigger>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            onClick={handleClick}
+            className="p-2"
+          >
+            <EarOffIcon size={20} />
+          </Button>
+        </TooltipTrigger>
         <TooltipContent side="bottom" align="end">
           <p>
             <Trans>Start recording</Trans>
@@ -90,7 +92,16 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
     <Popover open={open} onOpenChange={setOpen}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <PopoverTrigger asChild>{button}</PopoverTrigger>
+          <PopoverTrigger asChild>
+            <Button
+              variant="default"
+              onClick={handleClick}
+              className="p-2"
+            >
+              <EarIcon size={20} />
+              <SoundIndicator theme="dark" />
+            </Button>
+          </PopoverTrigger>
         </TooltipTrigger>
 
         <TooltipContent side="bottom" align="end">

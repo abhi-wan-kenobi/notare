@@ -8,7 +8,7 @@ type State = {
   sessionId: string | null;
   timeline: TimelineView | null;
   channel: Channel<SessionEvent> | null;
-  listening: boolean;
+  status: "active" | "loading" | "inactive";
   amplitude: { mic: number; speaker: number };
 };
 
@@ -21,13 +21,14 @@ export const createOngoingSessionStore = () => {
   return createStore<State & Actions>((set, get) => ({
     sessionId: null,
     timeline: null,
-    listening: false,
+    status: "inactive",
     channel: null,
     amplitude: { mic: 0, speaker: 0 },
     start: (sessionId: string) => {
       set((state) =>
         mutate(state, (draft) => {
           draft.sessionId = sessionId;
+          draft.status = "loading";
         })
       );
 
@@ -37,14 +38,15 @@ export const createOngoingSessionStore = () => {
         set((state) =>
           mutate(state, (draft) => {
             if (event.type === "started") {
-              draft.listening = true;
+              draft.status = "active";
             }
 
             if (event.type === "stopped") {
-              draft.listening = false;
+              draft.status = "inactive";
             }
 
             if (event.type === "timelineView") {
+              console.log("timelineView", event.timeline);
               draft.timeline = event.timeline;
             }
 
@@ -61,11 +63,11 @@ export const createOngoingSessionStore = () => {
       try {
         listenerCommands.startSession(sessionId).then(() => {
           listenerCommands.subscribe(channel);
-          set({ channel, listening: true });
+          set({ channel, status: "active" });
         });
       } catch (error) {
         console.error("failed to start session", error);
-        set({ channel, listening: false });
+        set({ channel, status: "inactive" });
       }
     },
     pause: () => {
@@ -80,7 +82,7 @@ export const createOngoingSessionStore = () => {
       } catch (error) {
         console.error(error);
       }
-      set({ channel: null, listening: false });
+      set({ channel: null, status: "inactive" });
     },
   }));
 };

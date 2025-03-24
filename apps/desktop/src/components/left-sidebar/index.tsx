@@ -16,8 +16,8 @@ import SearchList from "./search-list";
 
 export default function LeftSidebar() {
   const { isExpanded } = useLeftSidebar();
-  const { listening, ongoingSessionId } = useOngoingSession((s) => ({
-    listening: s.listening,
+  const { status, ongoingSessionId } = useOngoingSession((s) => ({
+    status: s.status,
     ongoingSessionId: s.sessionId,
   }));
 
@@ -32,7 +32,7 @@ export default function LeftSidebar() {
   const isInOngoingNoteMain = noteMatch?.params.id === ongoingSessionId;
   const isInOngoingNoteSub = noteMatch?.params.id === ongoingSessionId;
   const isInOngoingNote = isInOngoingNoteMain || isInOngoingNoteSub;
-  const inMeetingAndNotInNote = listening && ongoingSessionId !== null && !isInOngoingNote;
+  const inMeetingAndNotInNote = (status === "active") && ongoingSessionId !== null && !isInOngoingNote;
 
   if (windowLabel !== "main") {
     return null;

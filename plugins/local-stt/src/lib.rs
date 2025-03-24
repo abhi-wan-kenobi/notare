@@ -116,11 +116,9 @@ mod test {
         let listen_stream = listen_client.from_audio(audio_source).await.unwrap();
         let mut listen_stream = Box::pin(listen_stream);
 
-        println!("started");
         while let Some(chunk) = listen_stream.next().await {
             println!("{:?}", chunk);
         }
-        println!("stopped");
 
         app.stop_server().await.unwrap();
     }
