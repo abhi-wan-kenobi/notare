@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useMatch, useNavigate } from "@tanstack/react-router";
+import { useMatch } from "@tanstack/react-router";
 import { endOfMonth, startOfMonth, subMonths } from "date-fns";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef } from "react";
@@ -79,22 +79,9 @@ export default function NotesList() {
   }, []);
 
   const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
-  const navigate = useNavigate();
 
   if (!noteMatch) {
-    return (
-      <div className="border rounded-md p-2">
-        <p>Warning: trying to render NotesList outside of `/app/note/$id`</p>
-        <button
-          className="bg-blue-500 text-white p-2 rounded-md"
-          onClick={() => {
-            navigate({ to: "/app/new" });
-          }}
-        >
-          Create new note
-        </button>
-      </div>
-    );
+    return null;
   }
 
   const { params: { id: activeSessionId } } = noteMatch;

@@ -16,15 +16,16 @@ export type SearchMatch = {
 };
 
 type State = {
+  previous?: URL;
   query: string;
   matches: SearchMatch[];
+  searchInputRef: React.RefObject<HTMLInputElement> | null;
 };
 
 type Actions = {
   setQuery: (query: string) => void;
   clearSearch: () => void;
   focusSearch: () => void;
-  searchInputRef: React.RefObject<HTMLInputElement> | null;
   setSearchInputRef: (ref: React.RefObject<HTMLInputElement>) => void;
 };
 
@@ -57,11 +58,23 @@ export const createSearchStore = (userId: string) => {
         })),
       ];
 
+      const url = new URL(window.location.href);
+      if (url.pathname.includes("note")) {
+        set({ previous: url });
+      }
+
+      if (query === "") {
+        handleEmpty(get);
+      }
+
       set({ query, matches });
     },
     clearSearch: () => {
+      const { searchInputRef } = get();
+      searchInputRef?.current?.blur();
+
+      handleEmpty(get);
       set({ query: "" });
-      get().searchInputRef?.current?.blur();
     },
     focusSearch: () => {
       setTimeout(() => {
@@ -70,4 +83,11 @@ export const createSearchStore = (userId: string) => {
     },
     setSearchInputRef: (ref: React.RefObject<HTMLInputElement>) => set({ searchInputRef: ref }),
   }));
+};
+
+const handleEmpty = (get: () => State) => {
+  const { previous } = get();
+  if (previous) {
+    window.history.pushState({}, "", previous.pathname);
+  }
 };

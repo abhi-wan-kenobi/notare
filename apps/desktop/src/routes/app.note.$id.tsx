@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, notFound, useParams } from "@tanstack/react-router";
+import { createFileRoute, redirect, useParams } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import EditorArea from "@/components/note/editor-area";
@@ -28,7 +28,8 @@ export const Route = createFileRoute(PATH)({
         }
 
         if (!session) {
-          throw notFound();
+          // This is needed to support case where search is performed from empty session, and come back.
+          return redirect({ to: "/app/new" });
         }
 
         const { insert } = sessionsStore.getState();
