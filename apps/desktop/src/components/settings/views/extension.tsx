@@ -1,6 +1,6 @@
 import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PlusIcon } from "lucide-react";
+import { MinusIcon, PlusIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { useHypr } from "@/contexts";
@@ -72,7 +72,6 @@ export default function Extensions({ selectedExtension, onExtensionSelect }: Ext
       };
       await dbCommands.upsertExtensionMapping(mapping);
     },
-    onError: console.error,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["extensions"] });
       queryClient.invalidateQueries({ queryKey: ["extension-mapping", selectedExtension?.id] });
@@ -110,14 +109,31 @@ export default function Extensions({ selectedExtension, onExtensionSelect }: Ext
       <div className="border-b pb-4 border-border">
         <h3 className="text-2xl font-semibold text-neutral-700 mb-2">{selectedExtension.title}</h3>
         {extensionData?.groups.map((group) => (
-          <RenderGroup key={group.id} group={group} handler={toggleWidgetInsideExtensionGroup.mutate} />
+          <RenderGroup
+            key={group.id}
+            group={group}
+            handler={toggleWidgetInsideExtensionGroup.mutate}
+            activeWidgets={extension.data?.widgets || []}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function RenderGroup({ group, handler }: { group: ExtensionData["groups"][number]; handler: (args: any) => void }) {
+function RenderGroup({
+  group,
+  handler,
+  activeWidgets,
+}: {
+  group: ExtensionData["groups"][number];
+  handler: (args: any) => void;
+  activeWidgets: ExtensionMapping["widgets"];
+}) {
+  const isWidgetActive = (groupId: string, widgetKind: ExtensionWidgetKind) => {
+    return activeWidgets.some(widget => widget.group === groupId && widget.kind === widgetKind);
+  };
+
   return (
     <div className="flex flex-col gap-3">
       <h4 className="text-lg font-semibold text-neutral-700 mb-2">
@@ -143,11 +159,11 @@ function RenderGroup({ group, handler }: { group: ExtensionData["groups"][number
               </WidgetTwoByTwoWrapper>
             )}
             <Button
-              variant="outline"
+              variant={isWidgetActive(group.id, type as ExtensionWidgetKind) ? "default" : "outline"}
               size="icon"
               onClick={() => handler({ groupId: group.id, widgetKind: type })}
             >
-              <PlusIcon className="w-4 h-4" />
+              {isWidgetActive(group.id, type as ExtensionWidgetKind) ? <MinusIcon /> : <PlusIcon />}
             </Button>
           </div>
         ))}

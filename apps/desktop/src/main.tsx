@@ -3,6 +3,7 @@ import "./styles/globals.css";
 
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
+import { broadcastQueryClient } from "@tanstack/query-broadcast-client-experimental";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CatchBoundary, createRouter, ErrorComponent, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
@@ -37,6 +38,11 @@ const queryClient = new QueryClient({
       gcTime: 0,
     },
   },
+});
+
+broadcastQueryClient({
+  queryClient,
+  broadcastChannel: "hyprnote-desktop",
 });
 
 const context: Context = {
