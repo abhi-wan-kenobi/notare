@@ -60,15 +60,12 @@ export const createOngoingSessionStore = () => {
         );
       };
 
-      try {
-        listenerCommands.startSession(sessionId).then(() => {
-          listenerCommands.subscribe(channel);
-          set({ channel, status: "active" });
-        });
-      } catch (error) {
-        console.error("failed to start session", error);
+      listenerCommands.startSession(sessionId).then(() => {
+        set({ channel, status: "active" });
+        listenerCommands.subscribe(channel);
+      }).catch((error) => {
         set({ channel, status: "inactive" });
-      }
+      });
     },
     pause: () => {
       const { channel } = get();
