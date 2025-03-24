@@ -1,5 +1,6 @@
 use serde::de::DeserializeOwned;
 
+use backon::{ConstantBuilder, Retryable};
 use futures_util::{SinkExt, Stream, StreamExt};
 use tokio_tungstenite::{connect_async, tungstenite::client::IntoClientRequest};
 
@@ -27,12 +28,25 @@ impl WebSocketClient {
         &self,
         mut audio_stream: impl Stream<Item = bytes::Bytes> + Send + Unpin + 'static,
     ) -> Result<impl Stream<Item = T::Output>, crate::Error> {
-        let req = self.request.clone().into_client_request().unwrap();
+        let ws_stream = (|| self.try_connect(self.request.clone()))
+            .retry(
+                ConstantBuilder::default()
+                    .with_max_times(5)
+                    .with_delay(std::time::Duration::from_secs(3)),
+            )
+            .when(|e| {
+                if let crate::Error::Connection(te) = e {
+                    if let tokio_tungstenite::tungstenite::Error::Http(res) = te {
+                        if res.status() == 429 {
+                            return true;
+                        }
+                    }
+                }
 
-        tracing::info!("connect_async: {:?}", req.uri());
-
-        let (ws_stream, _) =
-            tokio::time::timeout(std::time::Duration::from_secs(25), connect_async(req)).await??;
+                false
+            })
+            .sleep(tokio::time::sleep)
+            .await?;
 
         let (mut ws_sender, mut ws_receiver) = ws_stream.split();
 
@@ -99,5 +113,24 @@ impl WebSocketClient {
         };
 
         Ok(output_stream)
+    }
+
+    async fn try_connect(
+        &self,
+        req: ClientRequestBuilder,
+    ) -> Result<
+        tokio_tungstenite::WebSocketStream<
+            tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+        >,
+        crate::Error,
+    > {
+        let req = req.into_client_request().unwrap();
+
+        tracing::info!("connect_async: {:?}", req.uri());
+
+        let (ws_stream, _) =
+            tokio::time::timeout(std::time::Duration::from_secs(6), connect_async(req)).await??;
+
+        Ok(ws_stream)
     }
 }

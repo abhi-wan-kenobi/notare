@@ -62,6 +62,7 @@ tokio-tungstenite = "0.26.0"
 
 anyhow = "1"
 approx = "0.5.1"
+backon = "1.4.1"
 bytes = "1.9.0"
 cached = "0.55.1"
 codes-iso-639 = "0.1.5"
