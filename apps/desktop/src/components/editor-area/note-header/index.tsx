@@ -1,7 +1,7 @@
 import { useMatch } from "@tanstack/react-router";
-import { type ChangeEvent, useCallback } from "react";
+import { type ChangeEvent } from "react";
 
-import { useOngoingSession, useSession } from "@/contexts";
+import { useSession } from "@/contexts";
 import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 import Chips from "./chips";
 import ListenButton from "./listen-button";
@@ -14,13 +14,6 @@ interface NoteHeaderProps {
 }
 
 export function NoteHeader({ onNavigateToEditor, editable, sessionId }: NoteHeaderProps) {
-  const ongoingSessionStore = useOngoingSession((s) => ({
-    onGoingSessionId: s.sessionId,
-    listening: s.listening,
-    start: s.start,
-    pause: s.pause,
-  }));
-
   const sessionStore = useSession(sessionId, (s) => ({
     sessionInView: s.session,
     updateTitle: s.updateTitle,
@@ -31,10 +24,6 @@ export function NoteHeader({ onNavigateToEditor, editable, sessionId }: NoteHead
     sessionStore.updateTitle(e.target.value);
     sessionStore.persistSession();
   };
-
-  const handleClickListen = useCallback(() => {
-    ongoingSessionStore.start(sessionStore.sessionInView?.id ?? "");
-  }, [sessionStore.sessionInView, ongoingSessionStore.start]);
 
   const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
   const windowLabel = getCurrentWebviewWindowLabel();
@@ -49,15 +38,7 @@ export function NoteHeader({ onNavigateToEditor, editable, sessionId }: NoteHead
           onChange={handleTitleChange}
           onNavigateToEditor={onNavigateToEditor}
         />
-        {isInNoteMain && (
-          <ListenButton
-            isCurrent={sessionStore.sessionInView?.id
-              === ongoingSessionStore.onGoingSessionId}
-            isListening={ongoingSessionStore.listening}
-            onClick={handleClickListen}
-            onStop={ongoingSessionStore.pause}
-          />
-        )}
+        {isInNoteMain && <ListenButton sessionId={sessionId} />}
       </div>
       <Chips />
     </>

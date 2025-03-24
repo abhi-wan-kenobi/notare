@@ -4,30 +4,30 @@ import { EarIcon, EarOffIcon, MicIcon, MicOffIcon, Volume2Icon, VolumeOffIcon } 
 import { useEffect, useState } from "react";
 
 import SoundIndicator from "@/components/sound-indicator";
+import { useOngoingSession } from "@/contexts";
 import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 
 interface ListenButtonProps {
-  isListening: boolean;
-  onClick: () => void;
-  onStop?: () => void;
-  isCurrent: boolean;
+  sessionId: string;
 }
 
-export default function ListenButton({
-  isListening,
-  onClick,
-  onStop,
-  isCurrent,
-}: ListenButtonProps) {
+export default function ListenButton({ sessionId }: ListenButtonProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
 
+  const ongoingSessionStore = useOngoingSession((s) => ({
+    start: s.start,
+    pause: s.pause,
+    isListening: s.listening,
+    isCurrent: s.sessionId === sessionId,
+  }));
+
   const handleClick = () => {
-    if (!(isListening && isCurrent)) {
-      onClick();
+    if (!(ongoingSessionStore.isListening && ongoingSessionStore.isCurrent)) {
+      ongoingSessionStore.start(sessionId);
     }
   };
 
@@ -44,7 +44,7 @@ export default function ListenButton({
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ["mic-muted"] });
     queryClient.invalidateQueries({ queryKey: ["speaker-muted"] });
-  }, [isListening]);
+  }, [ongoingSessionStore.isListening]);
 
   const toggleMicMuted = useMutation({
     mutationFn: () => listenerCommands.setMicMuted(!micMuted.data),
@@ -62,16 +62,18 @@ export default function ListenButton({
 
   const button = (
     <Button
-      variant={isListening && isCurrent ? "default" : "outline"}
+      variant={ongoingSessionStore.isListening && ongoingSessionStore.isCurrent ? "default" : "outline"}
       onClick={handleClick}
       className="p-2"
     >
-      {isListening && isCurrent ? <EarIcon size={20} /> : <EarOffIcon size={20} />}
-      {isListening && isCurrent && <SoundIndicator theme="dark" />}
+      {ongoingSessionStore.isListening && ongoingSessionStore.isCurrent
+        ? <EarIcon size={20} />
+        : <EarOffIcon size={20} />}
+      {ongoingSessionStore.isListening && ongoingSessionStore.isCurrent && <SoundIndicator theme="dark" />}
     </Button>
   );
 
-  if (!(isListening && isCurrent)) {
+  if (!(ongoingSessionStore.isListening && ongoingSessionStore.isCurrent)) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>{button}</TooltipTrigger>
@@ -98,65 +100,29 @@ export default function ListenButton({
         </TooltipContent>
       </Tooltip>
 
-      <PopoverContent className="w-60 p-0" align="end">
-        <div className="flex flex-col w-full">
-          <div className="flex w-full justify-between">
-            <div className="flex-1 flex items-center gap-2 border-r border-neutral-200 pl-2 pr-4 py-4 justify-center">
-              <Button variant="ghost" size="icon" onClick={() => toggleMicMuted.mutate()}>
-                {micMuted.data
-                  ? (
-                    <>
-                      <MicOffIcon className="text-neutral-500" size={20} />
-                      <div className="w-8 h-0.5 bg-neutral-500 opacity-50 rounded-full" />
-                    </>
-                  )
-                  : (
-                    <>
-                      <MicIcon size={20} />
-                      <SoundIndicator theme="light" input="mic" size="long" />
-                    </>
-                  )}
-              </Button>
-            </div>
+      <PopoverContent className="w-60" align="end">
+        <div className="flex w-full justify-between mb-4">
+          <Button variant="ghost" size="icon" onClick={() => toggleMicMuted.mutate()} className="w-full">
+            {micMuted.data ? <MicOffIcon className="text-neutral-500" size={20} /> : <MicIcon size={20} />}
+            <SoundIndicator theme="light" input="mic" size="long" />
+          </Button>
 
-            <div className="flex-1 flex items-center gap-2 pl-2 pr-4 py-4 justify-center">
-              <Button variant="ghost" size="icon" onClick={() => toggleSpeakerMuted.mutate()}>
-                {speakerMuted.data
-                  ? (
-                    <>
-                      <VolumeOffIcon className="text-neutral-500" size={20} />
-                      <div className="w-8 h-0.5 bg-neutral-500 opacity-50 rounded-full" />
-                    </>
-                  )
-                  : (
-                    <>
-                      <Volume2Icon size={20} />
-                      <SoundIndicator theme="light" input="speaker" size="long" />
-                    </>
-                  )}
-              </Button>
-            </div>
-          </div>
-
-          <div className="border-t border-neutral-200 w-full" />
-
-          <div className="flex flex-col items-center gap-3 p-4">
-            <div className="text-sm font-medium">
-              <Trans>Stop listening to the meeting?</Trans>
-            </div>
-
-            <Button
-              variant="destructive"
-              onClick={() => {
-                onStop?.();
-                setOpen(false);
-              }}
-              className=" w-full"
-            >
-              <Trans>Stop</Trans>
-            </Button>
-          </div>
+          <Button variant="ghost" size="icon" onClick={() => toggleSpeakerMuted.mutate()} className="w-full">
+            {speakerMuted.data ? <VolumeOffIcon className="text-neutral-500" size={20} /> : <Volume2Icon size={20} />}
+            <SoundIndicator theme="light" input="speaker" size="long" />
+          </Button>
         </div>
+
+        <Button
+          variant="destructive"
+          onClick={() => {
+            ongoingSessionStore.pause();
+            setOpen(false);
+          }}
+          className=" w-full"
+        >
+          <Trans>Stop listening</Trans>
+        </Button>
       </PopoverContent>
     </Popover>
   );

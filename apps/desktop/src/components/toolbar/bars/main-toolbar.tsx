@@ -7,7 +7,6 @@ import { cn } from "@hypr/ui/lib/utils";
 import { SearchBar } from "../../search-bar";
 import { LeftSidebarButton } from "../buttons/left-sidebar-button";
 import { RightPanelButton } from "../buttons/right-panel-button";
-import { ShareButton } from "../buttons/share-button";
 
 export function MainToolbar() {
   const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
@@ -42,7 +41,7 @@ export function MainToolbar() {
       >
         {isMain && (
           <>
-            {isNote && <ShareButton />}
+            {/* {isNote && <ShareButton />} */}
             {(organizationMatch || humanMatch) && <NewWindowButton />}
             <RightPanelButton />
           </>
