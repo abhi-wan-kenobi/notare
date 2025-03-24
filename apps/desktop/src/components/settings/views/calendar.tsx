@@ -14,8 +14,8 @@ import { Button } from "@hypr/ui/components/ui/button";
 
 const supportedIntegrations: CalendarIntegration[] = [
   "apple-calendar",
-  "google-calendar",
-  "outlook-calendar",
+  // "google-calendar",
+  // "outlook-calendar",
 ];
 
 export default function Calendar() {

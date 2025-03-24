@@ -14,13 +14,11 @@ import {
   TemplatesSidebar,
 } from "@/components/settings/components";
 import LocalAI from "@/components/settings/views/ai";
-import Billing from "@/components/settings/views/billing";
 import Calendar from "@/components/settings/views/calendar";
 import Extensions from "@/components/settings/views/extension";
 import General from "@/components/settings/views/general";
 import Notifications from "@/components/settings/views/notifications";
 import Profile from "@/components/settings/views/profile";
-import Team from "@/components/settings/views/team";
 import TemplateEditor from "@/components/settings/views/template";
 import { useHypr } from "@/contexts";
 import { EXTENSION_CONFIGS } from "@hypr/extension-registry";
@@ -220,8 +218,10 @@ function Component() {
                   onExtensionSelect={setSelectedExtension}
                 />
               )}
-              {current === "team" && <Team />}
-              {current === "billing" && <Billing />}
+              {
+                /* {current === "team" && <Team />}
+              {current === "billing" && <Billing />} */
+              }
             </div>
           </div>
         </div>

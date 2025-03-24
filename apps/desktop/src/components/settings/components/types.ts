@@ -6,8 +6,8 @@ export const TABS = [
   "notifications",
   "templates",
   "extensions",
-  "team",
-  "billing",
+  // "team",
+  // "billing",
 ] as const;
 
 export type Tab = typeof TABS[number];
