@@ -45,7 +45,7 @@ export const Route = createFileRoute(PATH)({
 function Component() {
   const { id: sessionId } = useParams({ from: PATH });
 
-  const getSession = useSession(sessionId, (s) => s.get);
+  const { getSession } = useSession(sessionId, (s) => ({ getSession: s.get }));
   const getOngoingSession = useOngoingSession((s) => s.get);
 
   useEffect(() => {
