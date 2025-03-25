@@ -13,7 +13,7 @@
     "generate": "openapi-ts && [ \"$GITHUB_WORKFLOW\" != \"\" ] && git diff --exit-code generated/ || true"
   },
   "devDependencies": {
-    "@hey-api/openapi-ts": "^0.64.10"
+    "@hey-api/openapi-ts": "^0.64.13"
   },
   "dependencies": {
     "@hey-api/client-fetch": "^0.8.3",

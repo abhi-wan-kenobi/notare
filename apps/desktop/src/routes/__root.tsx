@@ -50,7 +50,7 @@ function Component() {
 const TanStackRouterDevtools = process.env.NODE_ENV === "production"
   ? () => null
   : lazy(() =>
-    import("@tanstack/router-devtools").then((res) => ({
+    import("@tanstack/react-router-devtools").then((res) => ({
       default: (
         props: React.ComponentProps<typeof res.TanStackRouterDevtools>,
       ) => <res.TanStackRouterDevtools {...props} />,
