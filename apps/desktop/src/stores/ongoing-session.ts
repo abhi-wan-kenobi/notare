@@ -18,13 +18,17 @@ type Actions = {
   pause: () => void;
 };
 
+const initialState: State = {
+  sessionId: null,
+  timeline: null,
+  status: "inactive",
+  channel: null,
+  amplitude: { mic: 0, speaker: 0 },
+};
+
 export const createOngoingSessionStore = () => {
   return createStore<State & Actions>((set, get) => ({
-    sessionId: null,
-    timeline: null,
-    status: "inactive",
-    channel: null,
-    amplitude: { mic: 0, speaker: 0 },
+    ...initialState,
     get: () => get(),
     start: (sessionId: string) => {
       set((state) =>
@@ -66,7 +70,8 @@ export const createOngoingSessionStore = () => {
         set({ channel, status: "active" });
         listenerCommands.subscribe(channel);
       }).catch((error) => {
-        set({ channel, status: "inactive" });
+        console.error(error);
+        set(initialState);
       });
     },
     pause: () => {
@@ -81,7 +86,8 @@ export const createOngoingSessionStore = () => {
       } catch (error) {
         console.error(error);
       }
-      set({ channel: null, status: "inactive" });
+
+      set(initialState);
     },
   }));
 };

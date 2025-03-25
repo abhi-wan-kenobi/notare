@@ -15,7 +15,7 @@ export default function OtaNotification() {
       }
 
       return Promise.resolve({
-        available: true,
+        available: false,
         currentVersion: "0.0.1",
         version: "0.0.2",
       }) as ReturnType<typeof check>;

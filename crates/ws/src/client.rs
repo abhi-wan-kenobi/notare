@@ -31,8 +31,8 @@ impl WebSocketClient {
         let ws_stream = (|| self.try_connect(self.request.clone()))
             .retry(
                 ConstantBuilder::default()
-                    .with_max_times(5)
-                    .with_delay(std::time::Duration::from_secs(3)),
+                    .with_max_times(15)
+                    .with_delay(std::time::Duration::from_secs(1)),
             )
             .when(|e| {
                 if let crate::Error::Connection(te) = e {
