@@ -110,7 +110,10 @@ impl SpeakerInput {
             {
                 if let Some(data) = view.data_f32_at(0) {
                     let samples = data.to_vec();
-                    ctx.sender.start_send(samples).unwrap();
+
+                    if let Err(e) = ctx.sender.start_send(samples) {
+                        tracing::error!(error = ?e, "macos_speaker_stream_send_error");
+                    }
                 }
             } else {
                 tracing::warn!("macos_speaker_empty_buffer");
