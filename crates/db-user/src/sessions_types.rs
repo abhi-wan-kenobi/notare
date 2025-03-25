@@ -10,8 +10,6 @@ user_common_derives! {
         pub user_id: String,
         pub calendar_event_id: Option<String>,
         pub title: String,
-        pub audio_local_path: Option<String>,
-        pub audio_remote_path: Option<String>,
         pub raw_memo_html: String,
         pub enhanced_memo_html: Option<String>,
         pub conversations: Vec<ConversationChunk>,
@@ -37,12 +35,10 @@ impl Session {
             user_id: row.get(3).expect("user_id"),
             calendar_event_id: row.get(4).expect("calendar_event_id"),
             title: row.get(5).expect("title"),
-            audio_local_path: row.get(6).expect("audio_local_path"),
-            audio_remote_path: row.get(7).expect("audio_remote_path"),
-            raw_memo_html: row.get(8).expect("raw_memo_html"),
-            enhanced_memo_html: row.get(9).expect("enhanced_memo_html"),
+            raw_memo_html: row.get(6).expect("raw_memo_html"),
+            enhanced_memo_html: row.get(7).expect("enhanced_memo_html"),
             conversations: row
-                .get_str(10)
+                .get_str(8)
                 .map(|s| serde_json::from_str(s).unwrap())
                 .unwrap_or_default(),
         })

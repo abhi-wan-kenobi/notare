@@ -1,17 +1,14 @@
 import "../../styles/processing-status.css";
 
-import { type Session } from "@hypr/plugin-db";
 import { EarIcon, FileTextIcon, MicIcon, SparklesIcon, UploadIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface ProcessingStatusProps {
-  session: Session;
   noteStatus: "listening" | "uploading" | "transcribing" | "enhancing" | null;
   audioLevel?: number;
 }
 
 export function ProcessingStatus({
-  session,
   noteStatus,
   audioLevel: externalAudioLevel,
 }: ProcessingStatusProps) {
@@ -57,7 +54,6 @@ export function ProcessingStatus({
           {noteStatus === "uploading" && "Uploading recording..."}
           {noteStatus === "transcribing" && "Transcribing audio..."}
           {noteStatus === "enhancing" && "Enhancing notes..."}
-          {!noteStatus && (session.audio_local_path ? "Processing recording..." : "Listening...")}
         </h3>
         <p className="text-neutral-400 max-w-xs">
           {noteStatus === "listening"
@@ -68,9 +64,6 @@ export function ProcessingStatus({
             && "Converting speech to text. This may take a few minutes depending on the length of your recording."}
           {noteStatus === "enhancing"
             && "Applying AI enhancements to organize and structure your notes for better readability."}
-          {!noteStatus && (session.audio_local_path
-            ? "We're analyzing your recording to generate notes and transcript. This may take a moment."
-            : "Recording in progress. The transcript and notes will be available once the recording is complete.")}
         </p>
       </div>
     </div>

@@ -1,8 +1,9 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hypr/ui/components/ui/tabs";
 import type { ActivityLoaderArgs } from "@stackflow/config";
 import { AppScreen } from "@stackflow/plugin-basic-ui";
 import { ActivityComponentType, useLoaderData } from "@stackflow/react/future";
 import { Share2Icon } from "lucide-react";
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@hypr/ui/components/ui/tabs";
 import { useNote } from "../components/hooks/use-note";
 import { NoteContent, NoteInfo } from "../components/note";
 import { CalendarEventSheet, ParticipantsSheet, ShareSheet, TagsSheet } from "../components/note/bottom-sheets";
@@ -101,7 +102,7 @@ export const NoteView: ActivityComponentType<"NoteView"> = () => {
               </TabsContent>
             </Tabs>
           )
-          : <ProcessingStatus session={session} noteStatus={noteStatus} audioLevel={audioLevel} />}
+          : <ProcessingStatus noteStatus={noteStatus} audioLevel={audioLevel} />}
       </div>
 
       <ShareSheet

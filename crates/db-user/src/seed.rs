@@ -249,8 +249,6 @@ fn new_default_session(user_id: impl Into<String>) -> Session {
         created_at: now,
         visited_at: now,
         calendar_event_id: None,
-        audio_local_path: None,
-        audio_remote_path: None,
         raw_memo_html: "".to_string(),
         enhanced_memo_html: None,
         conversations: vec![],

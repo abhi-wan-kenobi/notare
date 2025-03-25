@@ -5,8 +5,6 @@ CREATE TABLE IF NOT EXISTS sessions (
   user_id TEXT NOT NULL,
   calendar_event_id TEXT DEFAULT NULL UNIQUE,
   title TEXT NOT NULL,
-  audio_local_path TEXT DEFAULT NULL,
-  audio_remote_path TEXT DEFAULT NULL,
   raw_memo_html TEXT NOT NULL,
   enhanced_memo_html TEXT DEFAULT NULL,
   conversations TEXT NOT NULL,

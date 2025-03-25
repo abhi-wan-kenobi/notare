@@ -117,8 +117,6 @@ mod tests {
                 visited_at: chrono::Utc::now(),
                 calendar_event_id: None,
                 title: "Test Session".to_string(),
-                audio_local_path: None,
-                audio_remote_path: None,
                 raw_memo_html: "".to_string(),
                 enhanced_memo_html: None,
                 conversations: vec![],

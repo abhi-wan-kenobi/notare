@@ -294,8 +294,6 @@ mod tests {
             title: "test".to_string(),
             raw_memo_html: "raw_memo_html_1".to_string(),
             conversations: vec![],
-            audio_local_path: None,
-            audio_remote_path: None,
             enhanced_memo_html: None,
         };
 
