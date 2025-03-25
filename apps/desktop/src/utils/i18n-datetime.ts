@@ -68,5 +68,52 @@ export function formatRelative(date: string, t?: string): string {
   }
 }
 
-// Export the original functions as fallbacks
+/**
+ * Formats a past date relative to now in a human-readable format with i18n support
+ * Examples: "just now", "1 minute ago", "2 hours ago", "Yesterday", etc.
+ */
+export function formatTimeAgo(date: Date | string): string {
+  const pastDate = typeof date === "string" ? new Date(date) : date;
+  const now = new Date();
+  const diff = now.getTime() - pastDate.getTime();
+
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+  const years = Math.floor(days / 365);
+
+  if (seconds < 30) {
+    return i18n._("just now");
+  } else if (seconds < 60) {
+    return i18n._("less than a minute ago");
+  } else if (minutes === 1) {
+    return i18n._("1 minute ago");
+  } else if (minutes < 60) {
+    return i18n._("{minutes} minutes ago", { minutes });
+  } else if (hours === 1) {
+    return i18n._("1 hour ago");
+  } else if (hours < 24) {
+    return i18n._("{hours} hours ago", { hours });
+  } else if (days === 1) {
+    return i18n._("Yesterday");
+  } else if (days < 7) {
+    return i18n._("{days} days ago", { days });
+  } else if (weeks === 1) {
+    return i18n._("1 week ago");
+  } else if (weeks < 4) {
+    return i18n._("{weeks} weeks ago", { weeks });
+  } else if (months === 1) {
+    return i18n._("1 month ago");
+  } else if (months < 12) {
+    return i18n._("{months} months ago", { months });
+  } else if (years === 1) {
+    return i18n._("1 year ago");
+  } else {
+    return i18n._("{years} years ago", { years });
+  }
+}
+
 export { originalFormatRelative, originalFormatRemainingTime };

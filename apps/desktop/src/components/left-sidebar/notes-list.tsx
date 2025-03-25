@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useSession } from "@/contexts";
 import { useHypr, useSessions } from "@/contexts";
+import { formatTimeAgo } from "@/utils/i18n-datetime";
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import {
@@ -18,7 +19,7 @@ import {
   ContextMenuTrigger,
 } from "@hypr/ui/components/ui/context-menu";
 import { cn } from "@hypr/ui/lib/utils";
-import { format } from "@hypr/utils/datetime";
+import { format, isToday } from "@hypr/utils/datetime";
 import { formatRelative } from "@hypr/utils/datetime";
 
 interface NotesListProps {
@@ -53,9 +54,7 @@ export default function NotesList({ ongoingSessionId, filter }: NotesListProps) 
       });
       sessions.forEach(insertSession);
 
-      return {
-        sessions: groupSessions(sessions),
-      };
+      return { sessions: groupSessions(sessions) };
     },
     initialPageParam: { monthOffset: 0 },
     getNextPageParam: (_lastPage, _, { monthOffset }) => {
@@ -168,6 +167,9 @@ function NoteItem({
   const [isOpen, setIsOpen] = useState(false);
   const isActive = activeSession.id === currentSession.id;
   const sessionDate = currentSessionEvent.data?.start_date ?? currentSession.created_at;
+  const formattedSessionDate = isToday(sessionDate)
+    ? formatTimeAgo(sessionDate)
+    : format(sessionDate, "h:mm a");
 
   const queryClient = useQueryClient();
 
@@ -248,7 +250,7 @@ function NoteItem({
             </div>
 
             <div className="flex items-center gap-3 text-xs text-neutral-500">
-              <span className="font-medium">{format(sessionDate, "h:mm a")}</span>
+              <span className="font-medium">{formattedSessionDate}</span>
               <span className="text-xs">
                 {html2text(currentSession.enhanced_memo_html || currentSession.raw_memo_html)}
               </span>

@@ -84,65 +84,6 @@ export const differenceInBusinessDays = (
   return FNS.differenceInBusinessDays(d1, d2, { in: FNS_TZ.tz(t || timezone()) });
 };
 
-// This function is now deprecated in favor of formatRelative which uses Lingui
-export const renderDaysDiff = (diff: number, t?: string) => {
-  const tz = t || timezone();
-
-  if (diff === 0) {
-    if (tz === "Asia/Seoul") {
-      return "오늘";
-    }
-
-    return "Today";
-  }
-
-  if (diff === 1) {
-    if (tz === "Asia/Seoul") {
-      return "어제";
-    }
-
-    return "Yesterday";
-  }
-
-  if (diff === 2) {
-    if (tz === "Asia/Seoul") {
-      return "그저께";
-    }
-
-    return "2 days ago";
-  }
-
-  if (diff < 7) {
-    if (tz === "Asia/Seoul") {
-      return `${diff} 일 전`;
-    }
-
-    return `${diff} days ago`;
-  }
-
-  if (diff < 14) {
-    if (tz === "Asia/Seoul") {
-      return "저번 주";
-    }
-
-    return "Last week";
-  }
-
-  if (diff < 21) {
-    if (tz === "Asia/Seoul") {
-      return "2주 전";
-    }
-
-    return "2 weeks ago";
-  }
-
-  if (diff < 30) {
-    if (tz === "Asia/Seoul") {
-      return "3주 전";
-    }
-
-    return "3 weeks ago";
-  }
-
-  return `${diff} days ago`;
+export const isToday = (d: Parameters<typeof FNS.isToday>[0]) => {
+  return FNS.isToday(d, { in: FNS_TZ.tz(timezone()) });
 };

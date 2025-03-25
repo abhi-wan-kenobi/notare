@@ -1,5 +1,6 @@
-import { type Session } from "@hypr/plugin-db";
 import { format } from "date-fns";
+
+import { type Session } from "@hypr/plugin-db";
 
 export function NoteItem({
   session,
