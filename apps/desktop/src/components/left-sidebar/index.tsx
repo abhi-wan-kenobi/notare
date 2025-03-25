@@ -1,20 +1,26 @@
 import { Trans } from "@lingui/react/macro";
+import { useQuery } from "@tanstack/react-query";
 import { useMatch } from "@tanstack/react-router";
+import { addDays } from "date-fns";
 import { CalendarDaysIcon, SettingsIcon } from "lucide-react";
-import { motion } from "motion/react";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 
-import { useHyprSearch, useLeftSidebar, useOngoingSession } from "@/contexts";
+import { useHypr, useHyprSearch, useLeftSidebar, useOngoingSession } from "@/contexts";
+import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as windowsCommands, getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import Shortcut from "../shortcut";
 import { LeftSidebarButton } from "../toolbar/buttons/left-sidebar-button";
-import AllList from "./all-list";
+import EventsList from "./events-list";
+import NotesList from "./notes-list";
 import OngoingSession from "./ongoing-session";
 import SearchList from "./search-list";
 
 export default function LeftSidebar() {
+  const { userId } = useHypr();
   const { isExpanded } = useLeftSidebar();
+
   const { status, ongoingSessionId } = useOngoingSession((s) => ({
     status: s.status,
     ongoingSessionId: s.sessionId,
@@ -27,23 +33,31 @@ export default function LeftSidebar() {
 
   const windowLabel = getCurrentWebviewWindowLabel();
   const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
-
-  const isInOngoingNoteMain = noteMatch?.params.id === ongoingSessionId;
-  const isInOngoingNoteSub = noteMatch?.params.id === ongoingSessionId;
+  const activeSessionId = noteMatch?.params.id;
+  const isInOngoingNoteMain = activeSessionId === ongoingSessionId;
+  const isInOngoingNoteSub = activeSessionId === ongoingSessionId;
   const isInOngoingNote = isInOngoingNoteMain || isInOngoingNoteSub;
   const inMeetingAndNotInNote = (status === "active") && ongoingSessionId !== null && !isInOngoingNote;
+
+  const events = useQuery({
+    queryKey: ["events", ongoingSessionId],
+    queryFn: async () => {
+      const events = await dbCommands.listEvents({
+        type: "dateRange",
+        user_id: userId,
+        limit: 3,
+        start: new Date().toISOString(),
+        end: addDays(new Date(), 40).toISOString(),
+      });
+
+      const sessions = await Promise.all(events.map((event) => dbCommands.getSession({ calendarEventId: event.id })));
+      return events.map((event, index) => ({ ...event, session: sessions[index] }));
+    },
+  });
 
   if (windowLabel !== "main") {
     return null;
   }
-
-  const handleClickSettings = () => {
-    windowsCommands.windowShow("settings");
-  };
-
-  const handleClickCalendar = () => {
-    windowsCommands.windowShow("calendar");
-  };
 
   return (
     <motion.nav
@@ -53,47 +67,7 @@ export default function LeftSidebar() {
       transition={{ duration: 0.2 }}
       className="h-full flex flex-col overflow-hidden border-r bg-neutral-50"
     >
-      <div
-        data-tauri-drag-region
-        className="flex items-center justify-end min-h-11 px-2"
-      >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClickSettings}
-              className="hover:bg-neutral-200"
-            >
-              <SettingsIcon className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <Trans>
-              Open settings
-            </Trans>{" "}
-            <Shortcut macDisplay="⌘," windowsDisplay="Ctrl+," />
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClickCalendar}
-              className="hover:bg-neutral-200"
-            >
-              <CalendarDaysIcon className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <Trans>Open calendar view</Trans>
-          </TooltipContent>
-        </Tooltip>
-
-        <LeftSidebarButton type="sidebar" />
-      </div>
+      <TopArea />
 
       {inMeetingAndNotInNote && <OngoingSession sessionId={ongoingSessionId} />}
 
@@ -104,12 +78,80 @@ export default function LeftSidebar() {
           </div>
         )
         : (
-          <>
-            <div className="flex-1 h-full overflow-y-auto">
-              <AllList />
-            </div>
-          </>
+          <LayoutGroup>
+            <AnimatePresence initial={false}>
+              <div className="flex-1 h-full overflow-y-auto">
+                <div className="h-full space-y-4 px-3 pb-4">
+                  <EventsList
+                    events={events.data?.filter((event) =>
+                      !(event.session?.id && ongoingSessionId && event.session.id === ongoingSessionId
+                        && event.session.id !== activeSessionId)
+                    )}
+                    activeSessionId={activeSessionId}
+                  />
+                  <NotesList
+                    filter={(session) => events.data?.every((event) => event.session?.id !== session.id) ?? true}
+                    ongoingSessionId={ongoingSessionId}
+                  />
+                </div>
+              </div>
+            </AnimatePresence>
+          </LayoutGroup>
         )}
     </motion.nav>
+  );
+}
+
+function TopArea() {
+  const handleClickSettings = () => {
+    windowsCommands.windowShow("settings");
+  };
+
+  const handleClickCalendar = () => {
+    windowsCommands.windowShow("calendar");
+  };
+
+  return (
+    <div
+      data-tauri-drag-region
+      className="flex items-center justify-end min-h-11 px-2"
+    >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleClickSettings}
+            className="hover:bg-neutral-200"
+          >
+            <SettingsIcon className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <Trans>
+            Open settings
+          </Trans>{" "}
+          <Shortcut macDisplay="⌘," windowsDisplay="Ctrl+," />
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleClickCalendar}
+            className="hover:bg-neutral-200"
+          >
+            <CalendarDaysIcon className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <Trans>Open calendar view</Trans>
+        </TooltipContent>
+      </Tooltip>
+
+      <LeftSidebarButton type="sidebar" />
+    </div>
   );
 }
