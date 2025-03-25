@@ -6,6 +6,7 @@ use tauri_plugin_store2::{ScopedStore, StorePluginExt};
 
 pub trait AppExt<R: tauri::Runtime> {
     fn desktop_store(&self) -> Result<ScopedStore<R, crate::StoreKey>, String>;
+    fn setup_local_ai(&self) -> impl Future<Output = Result<(), String>>;
     fn setup_db_for_local(&self) -> impl Future<Output = Result<(), String>>;
     fn setup_db_for_cloud(&self) -> impl Future<Output = Result<(), String>>;
 }
@@ -14,6 +15,25 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
     #[tracing::instrument(skip_all)]
     fn desktop_store(&self) -> Result<ScopedStore<R, crate::StoreKey>, String> {
         self.scoped_store("desktop").map_err(|e| e.to_string())
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn setup_local_ai(&self) -> Result<(), String> {
+        {
+            use tauri_plugin_local_llm::LocalLlmPluginExt;
+            if let Ok(true) = self.is_model_downloaded().await {
+                self.start_server().await.unwrap();
+            }
+        }
+
+        {
+            use tauri_plugin_local_stt::LocalSttPluginExt;
+            if let Ok(true) = self.is_model_downloaded().await {
+                self.start_server().await.unwrap();
+            }
+        }
+
+        Ok(())
     }
 
     #[tracing::instrument(skip_all)]

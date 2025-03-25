@@ -61,6 +61,8 @@ export default function ModelDownloadNotification() {
                             content: "Download complete!",
                             dismissible: true,
                           });
+
+                          localSttCommands.startServer();
                         }}
                       />
                     </div>
@@ -89,6 +91,7 @@ export default function ModelDownloadNotification() {
                             content: "Download complete!",
                             dismissible: true,
                           });
+                          localLlmCommands.startServer();
                         }}
                       />
                     </div>

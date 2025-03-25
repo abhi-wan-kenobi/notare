@@ -64,8 +64,7 @@ mod test {
     use super::*;
 
     use async_openai::types::{
-        ChatCompletionRequestMessage, ChatCompletionRequestUserMessage,
-        ChatCompletionRequestUserMessageArgs, ChatCompletionRequestUserMessageContent,
+        ChatCompletionRequestMessage, ChatCompletionRequestUserMessageArgs,
         CreateChatCompletionRequest, CreateChatCompletionResponse,
         CreateChatCompletionStreamResponse,
     };
@@ -85,18 +84,9 @@ mod test {
     }
 
     fn create_app<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::App<R> {
-        builder
-            .plugin(init())
-            .build(tauri::test::mock_context(tauri::test::noop_assets()))
-            .unwrap()
-    }
-
-    fn model_path<R: tauri::Runtime>(app: &tauri::App<R>) -> std::path::PathBuf {
-        app.path()
-            .data_dir()
-            .unwrap()
-            .join("com.hyprnote.dev")
-            .join("llm.gguf")
+        let mut ctx = tauri::test::mock_context(tauri::test::noop_assets());
+        ctx.config_mut().identifier = "com.hyprnote.dev".to_string();
+        builder.plugin(init()).build(ctx).unwrap()
     }
 
     fn shared_request() -> CreateChatCompletionRequest {

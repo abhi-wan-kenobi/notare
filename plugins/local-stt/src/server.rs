@@ -83,7 +83,7 @@ pub struct ServerHandle {
     pub shutdown: tokio::sync::watch::Sender<()>,
 }
 
-pub async fn run_server(state: ServerState) -> anyhow::Result<ServerHandle> {
+pub async fn run_server(state: ServerState) -> Result<ServerHandle, crate::Error> {
     let router = Router::new()
         .route("/health", get(health))
         // should match our app server

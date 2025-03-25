@@ -12255,7 +12255,6 @@ dependencies = [
 name = "tauri-plugin-local-stt"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "axum 0.8.1",
  "bytes",
  "codes-iso-639",

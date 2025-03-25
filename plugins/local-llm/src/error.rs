@@ -5,7 +5,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    LlamaError(#[from] hypr_llama::Error),
+    HyprLlamaError(#[from] hypr_llama::Error),
+    #[error(transparent)]
+    HyprFileError(#[from] hypr_file::Error),
     #[error(transparent)]
     ReqwestError(#[from] reqwest::Error),
     #[error(transparent)]

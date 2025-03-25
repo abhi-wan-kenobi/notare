@@ -63,10 +63,9 @@ mod test {
     }
 
     fn create_app<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::App<R> {
-        builder
-            .plugin(init())
-            .build(tauri::test::mock_context(tauri::test::noop_assets()))
-            .unwrap()
+        let mut ctx = tauri::test::mock_context(tauri::test::noop_assets());
+        ctx.config_mut().identifier = "com.hyprnote.dev".to_string();
+        builder.plugin(init()).build(ctx).unwrap()
     }
 
     #[tokio::test]
@@ -97,9 +96,7 @@ mod test {
         use tauri_plugin_listener::ListenClientBuilder;
 
         let app = create_app(tauri::test::mock_builder());
-        let cache_dir = app.path().data_dir().unwrap().join("com.hyprnote.dev");
-
-        app.start_server(cache_dir).await.unwrap();
+        app.start_server().await.unwrap();
         let api_base = app.api_base().await.unwrap();
 
         let listen_client = ListenClientBuilder::default()

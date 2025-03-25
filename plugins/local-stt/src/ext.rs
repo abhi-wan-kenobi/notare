@@ -10,10 +10,11 @@ pub struct ModelConfig {
 }
 
 pub trait LocalSttPluginExt<R: Runtime> {
-    fn is_server_running(&self) -> impl Future<Output = bool>;
     fn api_base(&self) -> impl Future<Output = Option<String>>;
-    fn start_server(&self, p: impl Into<PathBuf>) -> impl Future<Output = Result<(), String>>;
-    fn stop_server(&self) -> impl Future<Output = Result<(), String>>;
+    fn is_model_downloaded(&self) -> impl Future<Output = Result<bool, crate::Error>>;
+    fn is_server_running(&self) -> impl Future<Output = bool>;
+    fn start_server(&self) -> impl Future<Output = Result<(), crate::Error>>;
+    fn stop_server(&self) -> impl Future<Output = Result<(), crate::Error>>;
     fn download_config(&self, path: PathBuf) -> impl Future<Output = Result<(), String>>;
     fn download_tokenizer(&self, path: PathBuf) -> impl Future<Output = Result<(), String>>;
     fn download_model(
@@ -25,6 +26,48 @@ pub trait LocalSttPluginExt<R: Runtime> {
 
 impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
     #[tracing::instrument(skip_all)]
+    async fn api_base(&self) -> Option<String> {
+        let state = self.state::<crate::SharedState>();
+        let s = state.lock().await;
+
+        s.api_base.clone()
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn is_model_downloaded(&self) -> Result<bool, crate::Error> {
+        let base_path = self
+            .path()
+            .app_data_dir()
+            .unwrap()
+            .join("Demonthos/candle-quantized-whisper-large-v3-turbo/main/");
+
+        let model_path = base_path.join("model.gguf");
+        let config_path = base_path.join("config.json");
+        let tokenizer_path = base_path.join("tokenizer.json");
+
+        if [&model_path, &config_path, &tokenizer_path]
+            .iter()
+            .any(|p| !p.exists())
+        {
+            return Ok(false);
+        }
+
+        for (path, expected) in [
+            (model_path, 800664009),
+            (config_path, 472563957),
+            (tokenizer_path, 1395948910),
+        ] {
+            let actual = hypr_file::calculate_file_checksum(path)?;
+
+            if actual != expected {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
+
+    #[tracing::instrument(skip_all)]
     async fn is_server_running(&self) -> bool {
         let state = self.state::<crate::SharedState>();
         let s = state.lock().await;
@@ -33,15 +76,15 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn start_server(&self, cache_dir: impl Into<PathBuf>) -> Result<(), String> {
+    async fn start_server(&self) -> Result<(), crate::Error> {
+        let cache_dir = self.path().app_data_dir()?;
+
         let server_state = crate::ServerStateBuilder::default()
-            .model_cache_dir(cache_dir.into())
+            .model_cache_dir(cache_dir)
             .model_type(rwhisper::WhisperSource::QuantizedLargeV3Turbo)
             .build();
 
-        let server = crate::run_server(server_state)
-            .await
-            .map_err(|e| e.to_string())?;
+        let server = crate::run_server(server_state).await?;
 
         {
             let state = self.state::<crate::SharedState>();
@@ -54,7 +97,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn stop_server(&self) -> Result<(), String> {
+    async fn stop_server(&self) -> Result<(), crate::Error> {
         let state = self.state::<crate::SharedState>();
         let mut s = state.lock().await;
 
@@ -62,14 +105,6 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
             let _ = server.shutdown.send(());
         }
         Ok(())
-    }
-
-    #[tracing::instrument(skip_all)]
-    async fn api_base(&self) -> Option<String> {
-        let state = self.state::<crate::SharedState>();
-        let s = state.lock().await;
-
-        s.api_base.clone()
     }
 
     #[tracing::instrument(skip_all)]

@@ -117,6 +117,7 @@ pub async fn main() {
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async move {
                     app.setup_db_for_local().await.unwrap();
+                    app.setup_local_ai().await.unwrap();
                 })
             });
 
