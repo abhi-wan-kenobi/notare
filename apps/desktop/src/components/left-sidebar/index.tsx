@@ -1,13 +1,12 @@
+import { Trans } from "@lingui/react/macro";
 import { useMatch } from "@tanstack/react-router";
 import { CalendarDaysIcon, SettingsIcon } from "lucide-react";
 import { motion } from "motion/react";
 
 import { useHyprSearch, useLeftSidebar, useOngoingSession } from "@/contexts";
-import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
-import { commands as windowsCommands } from "@hypr/plugin-windows";
+import { commands as windowsCommands, getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
-import { Trans } from "@lingui/react/macro";
 import Shortcut from "../shortcut";
 import { LeftSidebarButton } from "../toolbar/buttons/left-sidebar-button";
 import AllList from "./all-list";

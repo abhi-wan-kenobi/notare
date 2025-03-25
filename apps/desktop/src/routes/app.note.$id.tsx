@@ -45,24 +45,21 @@ export const Route = createFileRoute(PATH)({
 function Component() {
   const { id: sessionId } = useParams({ from: PATH });
 
-  const { getSession } = useSession(sessionId, (s) => ({
-    sessionId: s.session.id,
-    getSession: s.getSession,
-  }));
-
-  const ongoingSessionId = useOngoingSession((s) => s.sessionId);
+  const { getSession } = useSession(sessionId, (s) => ({ getSession: s.get }));
+  const getOngoingSession = useOngoingSession((s) => s.get);
 
   useEffect(() => {
     const isEmpty = (s: string | null) => s === "<p></p>" || !s;
 
     return () => {
-      const session = getSession();
+      const { session } = getSession();
+      const { sessionId: ongoingSessionId } = getOngoingSession();
 
       const shouldDelete = !session.title
         && isEmpty(session.raw_memo_html)
         && isEmpty(session.enhanced_memo_html)
         && session.conversations.length === 0
-        && ongoingSessionId !== sessionId;
+        && ongoingSessionId !== session.id;
 
       if (shouldDelete) {
         mutation.mutate();

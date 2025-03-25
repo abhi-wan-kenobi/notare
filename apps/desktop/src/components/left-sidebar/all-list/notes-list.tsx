@@ -4,7 +4,7 @@ import { endOfMonth, startOfMonth, subMonths } from "date-fns";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef } from "react";
 
-import { useHypr, useSessions } from "@/contexts";
+import { useHypr, useOngoingSession, useSessions } from "@/contexts";
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
 import { formatRelative } from "@hypr/utils/datetime";
 import { NoteItem } from "./note-item";
@@ -16,6 +16,8 @@ export default function NotesList() {
   const { userId } = useHypr();
   const insertSession = useSessions((s) => s.insert);
   const sessionsStore = useSessions((s) => s.sessions);
+
+  const ongoingSessionId = useOngoingSession((s) => s.sessionId);
 
   const sessions = useInfiniteQuery({
     queryKey: ["sessions"],
@@ -98,6 +100,7 @@ export default function NotesList() {
             <motion.div layout>
               {items
                 .filter((session) => sessionsStore[session.id])
+                .filter((session) => !(session.id !== activeSessionId && session.id === ongoingSessionId))
                 .map((session: Session) => (
                   <motion.div
                     key={session.id}

@@ -126,7 +126,7 @@ function Component() {
                   {organization && (
                     <button
                       className="text-sm font-medium text-neutral-500 flex items-center gap-1 hover:scale-95 transition-all hover:text-neutral-700"
-                      onClick={() => windowsCommands.windowShow({ human: organization.id })}
+                      onClick={() => windowsCommands.windowShow({ organization: organization.id })}
                     >
                       <Building size={14} />
                       {organization.name}

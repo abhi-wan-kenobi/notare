@@ -13,6 +13,7 @@ type State = {
 };
 
 type Actions = {
+  get: () => State & Actions;
   start: (sessionId: string) => void;
   pause: () => void;
 };
@@ -24,6 +25,7 @@ export const createOngoingSessionStore = () => {
     status: "inactive",
     channel: null,
     amplitude: { mic: 0, speaker: 0 },
+    get: () => get(),
     start: (sessionId: string) => {
       set((state) =>
         mutate(state, (draft) => {
