@@ -20,14 +20,14 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
     #[tracing::instrument(skip_all)]
     async fn setup_local_ai(&self) -> Result<(), String> {
         {
-            use tauri_plugin_local_llm::LocalLlmPluginExt;
+            use tauri_plugin_local_stt::LocalSttPluginExt;
             if let Ok(true) = self.is_model_downloaded().await {
                 self.start_server().await.unwrap();
             }
         }
 
         {
-            use tauri_plugin_local_stt::LocalSttPluginExt;
+            use tauri_plugin_local_llm::LocalLlmPluginExt;
             if let Ok(true) = self.is_model_downloaded().await {
                 self.start_server().await.unwrap();
             }
