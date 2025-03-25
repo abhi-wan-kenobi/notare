@@ -4,7 +4,6 @@ import { endOfMonth, startOfMonth } from "date-fns";
 import { z } from "zod";
 
 import WorkspaceCalendar from "@/components/workspace-calendar";
-import { commands as authCommands } from "@hypr/plugin-auth";
 import { commands as dbCommands } from "@hypr/plugin-db";
 
 const schema = z.object({
@@ -16,13 +15,7 @@ export const Route = createFileRoute("/app/calendar")({
   component: Component,
   validateSearch: zodValidator(schema),
   loaderDeps: ({ search }) => ({ search }),
-  loader: async ({ context: { queryClient }, deps: { search } }) => {
-    // TODO: move to the context
-    const userIdPromise = queryClient.fetchQuery({
-      queryKey: ["userId"],
-      queryFn: () => authCommands.getFromStore("auth-user-id"),
-    }) as Promise<string>;
-
+  loader: async ({ context: { queryClient, userId }, deps: { search } }) => {
     const eventPromise = search.sessionId
       ? queryClient.fetchQuery({
         queryKey: ["event-session", search.sessionId],
@@ -30,7 +23,7 @@ export const Route = createFileRoute("/app/calendar")({
       })
       : Promise.resolve(null);
 
-    const [userId, event] = await Promise.all([userIdPromise, eventPromise]);
+    const event = await eventPromise;
 
     const date = event?.start_date
       ? new Date(event.start_date)

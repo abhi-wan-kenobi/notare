@@ -3,11 +3,12 @@ import "./styles/globals.css";
 
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { CatchBoundary, createRouter, ErrorComponent, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 
 import type { Context } from "@/types";
+import { commands as authCommands } from "@hypr/plugin-auth";
 import { Toaster } from "@hypr/ui/components/ui/toast";
 import { TooltipProvider } from "@hypr/ui/components/ui/tooltip";
 import { ThemeProvider } from "@hypr/ui/contexts/theme";
@@ -45,7 +46,7 @@ const context: Context = {
 
 const router = createRouter({
   routeTree,
-  context,
+  context: context as Required<Context>,
   defaultPreload: "intent",
   defaultViewTransition: false,
   // Since we're using React Query, we don't want loader calls to ever be stale
@@ -69,6 +70,20 @@ Sentry.init({
 
 const rootElement = document.getElementById("root")!;
 
+function App() {
+  const userId = useQuery({
+    queryKey: ["userId"],
+    queryFn: () => authCommands.getFromStore("auth-user-id"),
+    staleTime: Infinity,
+  });
+
+  if (!userId.data) {
+    return null;
+  }
+
+  return <RouterProvider router={router} context={{ ...context, userId: userId.data }} />;
+}
+
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
@@ -77,8 +92,7 @@ if (!rootElement.innerHTML) {
         <ThemeProvider defaultTheme="light">
           <QueryClientProvider client={queryClient}>
             <I18nProvider i18n={i18n}>
-              <RouterProvider router={router} context={context} />
-
+              <App />
               <Toaster
                 position="bottom-left"
                 expand={process.env.NODE_ENV === "development"}

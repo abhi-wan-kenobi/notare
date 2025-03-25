@@ -7,7 +7,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { CatchNotFoundFallback, NotFoundComponent } from "@/components/control";
 import type { Context } from "@/types";
 
-export const Route = createRootRouteWithContext<Context>()({
+export const Route = createRootRouteWithContext<Required<Context>>()({
   component: Component,
   notFoundComponent: NotFoundComponent,
 });

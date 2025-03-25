@@ -8,6 +8,7 @@ import { SessionsStore } from "@/stores";
 import type { NangoIntegration } from "./server.gen";
 
 export type Context = {
+  userId?: string;
   sessionsStore: SessionsStore;
   queryClient: QueryClient;
 };
