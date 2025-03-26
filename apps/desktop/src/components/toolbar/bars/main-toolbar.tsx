@@ -1,12 +1,15 @@
 import { useMatch } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 
 import { NewNoteButton } from "@/components/toolbar/buttons/new-note-button";
 import { NewWindowButton } from "@/components/toolbar/buttons/new-window-button";
+import { commands as flagsCommands } from "@hypr/plugin-flags";
 import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 import { cn } from "@hypr/ui/lib/utils";
 import { SearchBar } from "../../search-bar";
+import { ChatPanelButton } from "../buttons/chat-panel-button";
 import { LeftSidebarButton } from "../buttons/left-sidebar-button";
-import { RightPanelButton } from "../buttons/right-panel-button";
+import { WidgetPanelButton } from "../buttons/widget-panel-button";
 
 export function MainToolbar() {
   const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
@@ -15,6 +18,11 @@ export function MainToolbar() {
 
   const isNote = !!noteMatch;
   const isMain = getCurrentWebviewWindowLabel() === "main";
+
+  const noteChatQuery = useQuery({
+    queryKey: ["flags", "ChatRightPanel"],
+    queryFn: () => flagsCommands.isEnabled("ChatRightPanel"),
+  });
 
   return (
     <header
@@ -43,7 +51,8 @@ export function MainToolbar() {
           <>
             {/* {isNote && <ShareButton />} */}
             {(organizationMatch || humanMatch) && <NewWindowButton />}
-            <RightPanelButton />
+            {noteChatQuery.data && <ChatPanelButton />}
+            <WidgetPanelButton />
           </>
         )}
       </div>

@@ -13,18 +13,23 @@ import {
   TABS,
   TemplatesSidebar,
 } from "@/components/settings/components";
-import LocalAI from "@/components/settings/views/ai";
-import Calendar from "@/components/settings/views/calendar";
-import Extensions from "@/components/settings/views/extension";
-import General from "@/components/settings/views/general";
-import Notifications from "@/components/settings/views/notifications";
-import Profile from "@/components/settings/views/profile";
-import TemplateEditor from "@/components/settings/views/template";
+import {
+  Calendar,
+  Extensions,
+  General,
+  Lab,
+  LocalAI,
+  Notifications,
+  Permissions,
+  Profile,
+  TemplateEditor,
+} from "@/components/settings/views";
 import { useHypr } from "@/contexts";
 import { EXTENSION_CONFIGS } from "@hypr/extension-registry";
 import { type ExtensionDefinition, type Template } from "@hypr/plugin-db";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { Button } from "@hypr/ui/components/ui/button";
+import { Trans } from "@lingui/react/macro";
 
 const schema = z.object({
   current: z.enum(TABS).default("general"),
@@ -147,7 +152,9 @@ function Component() {
                   onClick={() => handleClickTab("general")}
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  <span>Back to Settings</span>
+                  <span>
+                    <Trans>Back to Settings</Trans>
+                  </span>
                 </Button>
               )}
             </div>
@@ -197,6 +204,7 @@ function Component() {
               {current === "ai" && <LocalAI />}
               {current === "calendar" && <Calendar />}
               {current === "notifications" && <Notifications />}
+              {current === "permissions" && <Permissions />}
               {current === "templates" && (
                 <TemplateEditor
                   disabled={false}
@@ -222,6 +230,7 @@ function Component() {
                 /* {current === "team" && <Team />}
               {current === "billing" && <Billing />} */
               }
+              {current === "lab" && <Lab />}
             </div>
           </div>
         </div>
