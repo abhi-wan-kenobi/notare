@@ -64,14 +64,29 @@ pub async fn run_server(model_manager: crate::ModelManager) -> Result<ServerHand
     Ok(server_handle)
 }
 
-async fn health() -> impl IntoResponse {
-    "ok"
+async fn health(AxumState(model_manager): AxumState<crate::ModelManager>) -> impl IntoResponse {
+    match model_manager.get_model().await {
+        Ok(_) => StatusCode::OK,
+        Err(_) => StatusCode::SERVICE_UNAVAILABLE,
+    };
 }
 
 async fn chat_completions(
     AxumState(model_manager): AxumState<crate::ModelManager>,
     Json(request): Json<CreateChatCompletionRequest>,
 ) -> Response {
+    let model = match model_manager.get_model().await {
+        Ok(model) => model,
+        Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    };
+
+    inference_with_hypr(&model, &request).await.into_response()
+}
+
+async fn inference_with_hypr(
+    model: &hypr_llama::Llama,
+    request: &CreateChatCompletionRequest,
+) -> impl IntoResponse {
     #[allow(deprecated)]
     let empty_message = ChatCompletionResponseMessage {
         content: None,
@@ -121,11 +136,6 @@ async fn chat_completions(
         tool_calls: None,
         role: None,
         refusal: None,
-    };
-
-    let model = match model_manager.get_model().await {
-        Ok(model) => model,
-        Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
     };
 
     if request.stream.unwrap_or(false) {
