@@ -74,19 +74,23 @@ async fn health(AxumState(model_manager): AxumState<crate::ModelManager>) -> imp
 async fn chat_completions(
     AxumState(model_manager): AxumState<crate::ModelManager>,
     Json(request): Json<CreateChatCompletionRequest>,
-) -> Response {
-    let model = match model_manager.get_model().await {
-        Ok(model) => model,
-        Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
-    };
+) -> Result<Response, (StatusCode, String)> {
+    let model = model_manager
+        .get_model()
+        .await
+        .map_err(|e| (StatusCode::SERVICE_UNAVAILABLE, e.to_string()))?;
 
-    inference_with_hypr(&model, &request).await.into_response()
+    let res = inference_with_hypr(&model, &request)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(res.into_response())
 }
 
 async fn inference_with_hypr(
     model: &hypr_llama::Llama,
     request: &CreateChatCompletionRequest,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, crate::Error> {
     #[allow(deprecated)]
     let empty_message = ChatCompletionResponseMessage {
         content: None,
@@ -139,7 +143,7 @@ async fn inference_with_hypr(
     };
 
     if request.stream.unwrap_or(false) {
-        let stream = build_response(&model, &request)
+        let stream = build_response(&model, &request)?
             .map(move |chunk| CreateChatCompletionStreamResponse {
                 choices: vec![ChatChoiceStream {
                     index: 0,
@@ -158,9 +162,9 @@ async fn inference_with_hypr(
                 )
             });
 
-        sse::Sse::new(stream).into_response()
+        Ok(sse::Sse::new(stream).into_response())
     } else {
-        let completion = build_response(&model, &request).collect::<String>().await;
+        let completion = build_response(&model, &request)?.collect::<String>().await;
 
         let res = CreateChatCompletionResponse {
             choices: vec![ChatChoice {
@@ -173,14 +177,14 @@ async fn inference_with_hypr(
             ..empty_response
         };
 
-        Json(res).into_response()
+        Ok(Json(res).into_response())
     }
 }
 
 fn build_response(
     model: &hypr_llama::Llama,
     request: &CreateChatCompletionRequest,
-) -> impl futures_util::Stream<Item = String> {
+) -> Result<impl futures_util::Stream<Item = String>, crate::Error> {
     let system_message_content = request
         .messages
         .iter()
@@ -201,7 +205,7 @@ fn build_response(
         .user_message(user_message_content)
         .build();
 
-    model.generate_stream(request)
+    model.generate_stream(request).map_err(Into::into)
 }
 
 fn extract_text_content(message: &ChatCompletionRequestMessage) -> Option<&String> {

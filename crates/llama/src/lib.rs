@@ -12,7 +12,7 @@ use llama_cpp_2::{
 mod error;
 pub use error::*;
 
-const DEFAULT_MAX_TOKENS: usize = 1024;
+const DEFAULT_MAX_TOKENS: i32 = 1024;
 const CONTEXT_SIZE: u32 = 2048;
 const SAMPLER_SEED: u32 = 1234;
 
@@ -20,7 +20,7 @@ pub struct Llama {
     task_sender: tokio::sync::mpsc::UnboundedSender<Task>,
 }
 
-enum Task {
+pub enum Task {
     Generate {
         request: LlamaRequest,
         response_sender: tokio::sync::mpsc::UnboundedSender<String>,
@@ -76,7 +76,7 @@ impl Llama {
                                 LlamaSampler::greedy(),
                             ]);
 
-                            while n_cur <= last_index as i32 + DEFAULT_MAX_TOKENS as i32 {
+                            while n_cur <= last_index + DEFAULT_MAX_TOKENS {
                                 let token = sampler.sample(&ctx, batch.n_tokens() - 1);
                                 sampler.accept(token);
 
@@ -93,7 +93,7 @@ impl Llama {
                                     false,
                                 );
 
-                                if let Err(_) = response_sender.send(output_string) {
+                                if response_sender.send(output_string).is_err() {
                                     break;
                                 }
 
@@ -115,7 +115,7 @@ impl Llama {
     pub fn generate_stream(
         &self,
         request: LlamaRequest,
-    ) -> impl futures_util::Stream<Item = String> {
+    ) -> Result<impl futures_util::Stream<Item = String>, crate::Error> {
         let (response_sender, response_receiver) = tokio::sync::mpsc::unbounded_channel::<String>();
 
         let task = Task::Generate {
@@ -123,11 +123,13 @@ impl Llama {
             response_sender,
         };
 
-        self.task_sender.send(task).unwrap();
+        self.task_sender.send(task)?;
 
-        futures_util::stream::unfold(response_receiver, |mut rx| async move {
+        let stream = futures_util::stream::unfold(response_receiver, |mut rx| async move {
             rx.recv().await.map(|token| (token, rx))
-        })
+        });
+
+        Ok(stream)
     }
 }
 

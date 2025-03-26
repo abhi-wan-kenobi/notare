@@ -16,6 +16,8 @@ pub enum Error {
     BatchAddError(#[from] llama_cpp_2::llama_batch::BatchAddError),
     #[error(transparent)]
     DecodeError(#[from] llama_cpp_2::DecodeError),
+    #[error(transparent)]
+    TaskSendError(#[from] tokio::sync::mpsc::error::SendError<crate::Task>),
 }
 
 impl Serialize for Error {
