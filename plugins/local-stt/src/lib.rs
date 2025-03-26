@@ -23,7 +23,7 @@ pub struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
-            model: SupportedModel::QuantizedTiny,
+            model: SupportedModel::QuantizedTinyEn,
             api_base: None,
             server: None,
         }
@@ -91,7 +91,7 @@ mod test {
             .with_huggingface_token(Some("***REMOVED-UPSTREAM-HF-TOKEN***".to_string()));
 
         rwhisper::Whisper::builder()
-            .with_source(rwhisper::WhisperSource::QuantizedTiny)
+            .with_source(rwhisper::WhisperSource::QuantizedTinyEn)
             .with_cache(cache)
             .build_with_loading_handler(|progress| {
                 println!("{:?}", progress);

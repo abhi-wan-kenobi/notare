@@ -79,6 +79,15 @@ mod tests {
                 "com.hyprnote.dev/lmz/candle-whisper/main/tokenizer-tiny.json",
             ),
             dirs::data_dir().unwrap().join(
+                "com.hyprnote.dev/lmz/candle-whisper/main/config-tiny-en.json",
+            ),
+            dirs::data_dir().unwrap().join(
+                "com.hyprnote.dev/lmz/candle-whisper/main/model-tiny-en-q80.gguf",
+            ),
+            dirs::data_dir().unwrap().join(
+                "com.hyprnote.dev/lmz/candle-whisper/main/tokenizer-tiny-en.json",
+            ),
+            dirs::data_dir().unwrap().join(
                 "com.hyprnote.dev/Demonthos/candle-quantized-whisper-large-v3-turbo/main/config.json",
             ),
             dirs::data_dir().unwrap().join(
