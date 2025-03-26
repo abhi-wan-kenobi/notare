@@ -129,6 +129,9 @@ importers:
       '@hypr/plugin-db':
         specifier: workspace:^
         version: link:../../plugins/db
+      '@hypr/plugin-flags':
+        specifier: workspace:^
+        version: link:../../plugins/flags
       '@hypr/plugin-listener':
         specifier: workspace:^
         version: link:../../plugins/listener
@@ -1404,6 +1407,12 @@ importers:
         version: 2.4.0
 
   plugins/db:
+    dependencies:
+      '@tauri-apps/api':
+        specifier: ^2.4.0
+        version: 2.4.0
+
+  plugins/flags:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.4.0

@@ -3256,6 +3256,7 @@ dependencies = [
  "tauri-plugin-decorum",
  "tauri-plugin-deep-link",
  "tauri-plugin-dialog",
+ "tauri-plugin-flags",
  "tauri-plugin-fs",
  "tauri-plugin-global-shortcut",
  "tauri-plugin-http",
@@ -12146,6 +12147,23 @@ dependencies = [
  "tauri-plugin-fs",
  "thiserror 2.0.12",
  "url",
+]
+
+[[package]]
+name = "tauri-plugin-flags"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "strum 0.26.3",
+ "tauri",
+ "tauri-plugin",
+ "tauri-plugin-store2",
+ "tauri-specta",
+ "thiserror 2.0.12",
+ "tracing",
 ]
 
 [[package]]

@@ -44,6 +44,7 @@ const plugins: DefaultTheme.SidebarItem = {
         { text: "Auth", link: "/plugins/auth" },
         { text: "Sound Effects", link: "/plugins/sfx" },
         { text: "Analytics", link: "/plugins/analytics" },
+        { text: "Flags", link: "/plugins/flags" },
       ].sort((a, b) => a.text.localeCompare(b.text)),
       collapsed: true,
     },
