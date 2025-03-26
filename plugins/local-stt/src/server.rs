@@ -175,11 +175,9 @@ async fn websocket(socket: WebSocket, model: rwhisper::Whisper, _guard: Connecti
         });
 
         let msg = Message::Text(serde_json::to_string(&data).unwrap().into());
-        match ws_sender.send(msg).await {
-            Ok(_) => {}
-            Err(e) => {
-                tracing::warn!("websocket_send_error: {}", e);
-            }
+        if let Err(e) = ws_sender.send(msg).await {
+            tracing::warn!("websocket_send_error: {}", e);
+            break;
         }
     }
 
@@ -212,18 +210,24 @@ impl kalosm_sound::AsyncSource for WebSocketAudioSource {
                 Some(Ok(Message::Text(data))) => {
                     let input: ListenInputChunk = serde_json::from_str(&data).unwrap();
 
-                    let samples: Vec<f32> = input
-                        .audio
-                        .chunks_exact(2)
-                        .map(|chunk| {
-                            let sample = i16::from_le_bytes([chunk[0], chunk[1]]);
-                            sample as f32 / 32767.0
-                        })
-                        .collect();
+                    if input.audio.is_empty() {
+                        None
+                    } else {
+                        let samples: Vec<f32> = input
+                            .audio
+                            .chunks_exact(2)
+                            .map(|chunk| {
+                                let sample = i16::from_le_bytes([chunk[0], chunk[1]]);
+                                sample as f32 / 32767.0
+                            })
+                            .collect();
 
-                    Some((samples, receiver))
+                        Some((samples, receiver))
+                    }
                 }
-                _ => None,
+                Some(Ok(Message::Close(_))) => None,
+                Some(Err(_)) => None,
+                _ => Some((Vec::new(), receiver)),
             }
         })
         .flat_map(futures_util::stream::iter)

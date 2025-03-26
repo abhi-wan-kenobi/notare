@@ -125,12 +125,12 @@ dasp = "0.11.0"
 hound = "3.5.1"
 rodio = "0.20.1"
 
-kalosm-common = { git = "https://github.com/floneum/floneum", rev = "464bfed472ea500ed5411fb2233fca401b57220a" }
-kalosm-llama = { git = "https://github.com/floneum/floneum", rev = "464bfed472ea500ed5411fb2233fca401b57220a" }
-kalosm-model-types = { git = "https://github.com/floneum/floneum", rev = "464bfed472ea500ed5411fb2233fca401b57220a" }
-kalosm-sound = { git = "https://github.com/floneum/floneum", rev = "464bfed472ea500ed5411fb2233fca401b57220a", default-features = false }
-kalosm-streams = { git = "https://github.com/floneum/floneum", rev = "464bfed472ea500ed5411fb2233fca401b57220a" }
-rwhisper = { git = "https://github.com/floneum/floneum", rev = "464bfed472ea500ed5411fb2233fca401b57220a" }
+kalosm-common = { git = "https://github.com/floneum/floneum", rev = "52967ae" }
+kalosm-llama = { git = "https://github.com/floneum/floneum", rev = "52967ae" }
+kalosm-model-types = { git = "https://github.com/floneum/floneum", rev = "52967ae" }
+kalosm-sound = { git = "https://github.com/floneum/floneum", rev = "52967ae", default-features = false }
+kalosm-streams = { git = "https://github.com/floneum/floneum", rev = "52967ae" }
+rwhisper = { git = "https://github.com/floneum/floneum", rev = "52967ae" }
 
 libsql = "0.6.0"
 

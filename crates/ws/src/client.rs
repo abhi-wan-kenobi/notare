@@ -7,7 +7,7 @@ use tokio_tungstenite::{connect_async, tungstenite::client::IntoClientRequest};
 pub use tokio_tungstenite::tungstenite::{protocol::Message, ClientRequestBuilder};
 
 pub trait WebSocketIO: Send + 'static {
-    type Input: Send;
+    type Input: Send + Default;
     type Output: DeserializeOwned;
 
     fn to_input(data: bytes::Bytes) -> Self::Input;
@@ -49,7 +49,6 @@ impl WebSocketClient {
             .await?;
 
         let (mut ws_sender, mut ws_receiver) = ws_stream.split();
-        let (send_done_tx, send_done_rx) = tokio::sync::oneshot::channel();
 
         let _send_task = tokio::spawn(async move {
             while let Some(data) = audio_stream.next().await {
@@ -62,32 +61,21 @@ impl WebSocketClient {
                 }
             }
 
-            tracing::info!("audio_stream_done");
-            let _ = ws_sender.send(Message::Close(None)).await;
-            let _ = send_done_tx.send(());
+            // We shouldn't send a 'Close' message, as it would prevent receiving remaining transcripts from the server.
+            let _ = ws_sender.send(T::to_message(T::Input::default())).await;
         });
 
         let output_stream = async_stream::stream! {
-            let mut send_done_rx = send_done_rx;
-
-            loop {
-                tokio::select! {
-                    _ = &mut send_done_rx => break,
-                    msg = ws_receiver.next() => {
-                        match msg {
-                            Some(Ok(msg)) => {
-                                match msg {
-                                    Message::Text(_) | Message::Binary(_) => {
-                                        if let Some(output) = T::from_message(msg) {
-                                            yield output;
-                                        }
-                                    },
-                                    Message::Ping(_) | Message::Pong(_) | Message::Frame(_) => continue,
-                                    Message::Close(_) => break,
-                                }
-                            },
-                            _ => continue,
-                        }
+            while let Some(msg_result) = ws_receiver.next().await {
+                if let Ok(msg) = msg_result {
+                    match msg {
+                        Message::Text(_) | Message::Binary(_) => {
+                            if let Some(output) = T::from_message(msg) {
+                                yield output;
+                            }
+                        },
+                        Message::Ping(_) | Message::Pong(_) | Message::Frame(_) => continue,
+                        Message::Close(_) => break,
                     }
                 }
             }

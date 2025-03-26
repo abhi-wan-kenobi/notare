@@ -6074,7 +6074,7 @@ dependencies = [
 [[package]]
 name = "kalosm-common"
 version = "0.4.0"
-source = "git+https://github.com/floneum/floneum?rev=464bfed472ea500ed5411fb2233fca401b57220a#464bfed472ea500ed5411fb2233fca401b57220a"
+source = "git+https://github.com/floneum/floneum?rev=52967ae#52967ae5dcd161e5cbe9507282b52df0946706f9"
 dependencies = [
  "candle-core",
  "candle-nn",
@@ -6091,8 +6091,8 @@ dependencies = [
 
 [[package]]
 name = "kalosm-language-model"
-version = "0.4.0"
-source = "git+https://github.com/floneum/floneum?rev=464bfed472ea500ed5411fb2233fca401b57220a#464bfed472ea500ed5411fb2233fca401b57220a"
+version = "0.4.1"
+source = "git+https://github.com/floneum/floneum?rev=52967ae#52967ae5dcd161e5cbe9507282b52df0946706f9"
 dependencies = [
  "anyhow",
  "async-lock",
@@ -6110,8 +6110,8 @@ dependencies = [
 
 [[package]]
 name = "kalosm-llama"
-version = "0.4.0"
-source = "git+https://github.com/floneum/floneum?rev=464bfed472ea500ed5411fb2233fca401b57220a#464bfed472ea500ed5411fb2233fca401b57220a"
+version = "0.4.1"
+source = "git+https://github.com/floneum/floneum?rev=52967ae#52967ae5dcd161e5cbe9507282b52df0946706f9"
 dependencies = [
  "candle-core",
  "candle-nn",
@@ -6138,7 +6138,7 @@ dependencies = [
 [[package]]
 name = "kalosm-model-types"
 version = "0.4.0"
-source = "git+https://github.com/floneum/floneum?rev=464bfed472ea500ed5411fb2233fca401b57220a#464bfed472ea500ed5411fb2233fca401b57220a"
+source = "git+https://github.com/floneum/floneum?rev=52967ae#52967ae5dcd161e5cbe9507282b52df0946706f9"
 dependencies = [
  "indicatif",
 ]
@@ -6146,7 +6146,7 @@ dependencies = [
 [[package]]
 name = "kalosm-parse-macro"
 version = "0.4.0"
-source = "git+https://github.com/floneum/floneum?rev=464bfed472ea500ed5411fb2233fca401b57220a#464bfed472ea500ed5411fb2233fca401b57220a"
+source = "git+https://github.com/floneum/floneum?rev=52967ae#52967ae5dcd161e5cbe9507282b52df0946706f9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6156,7 +6156,7 @@ dependencies = [
 [[package]]
 name = "kalosm-sample"
 version = "0.4.0"
-source = "git+https://github.com/floneum/floneum?rev=464bfed472ea500ed5411fb2233fca401b57220a#464bfed472ea500ed5411fb2233fca401b57220a"
+source = "git+https://github.com/floneum/floneum?rev=52967ae#52967ae5dcd161e5cbe9507282b52df0946706f9"
 dependencies = [
  "kalosm-parse-macro",
  "regex-automata 0.4.9",
@@ -6165,7 +6165,7 @@ dependencies = [
 [[package]]
 name = "kalosm-sound"
 version = "0.4.0"
-source = "git+https://github.com/floneum/floneum?rev=464bfed472ea500ed5411fb2233fca401b57220a#464bfed472ea500ed5411fb2233fca401b57220a"
+source = "git+https://github.com/floneum/floneum?rev=52967ae#52967ae5dcd161e5cbe9507282b52df0946706f9"
 dependencies = [
  "byteorder",
  "candle-core",
@@ -10242,8 +10242,8 @@ dependencies = [
 
 [[package]]
 name = "rwhisper"
-version = "0.4.0"
-source = "git+https://github.com/floneum/floneum?rev=464bfed472ea500ed5411fb2233fca401b57220a#464bfed472ea500ed5411fb2233fca401b57220a"
+version = "0.4.1"
+source = "git+https://github.com/floneum/floneum?rev=52967ae#52967ae5dcd161e5cbe9507282b52df0946706f9"
 dependencies = [
  "accelerate-src",
  "byteorder",

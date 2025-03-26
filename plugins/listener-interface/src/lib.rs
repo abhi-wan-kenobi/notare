@@ -17,6 +17,7 @@ common_derives! {
 }
 
 common_derives! {
+    #[derive(Default)]
     pub struct ListenInputChunk {
         #[serde(serialize_with = "serde_bytes::serialize")]
         pub audio: Vec<u8>,

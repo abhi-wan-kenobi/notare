@@ -77,7 +77,7 @@ impl WebSocketIO for DiarizeClient {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Default, Clone, serde::Serialize)]
 pub struct DiarizeInputChunk {
     #[serde(serialize_with = "serde_bytes::serialize")]
     pub audio: Vec<u8>,
