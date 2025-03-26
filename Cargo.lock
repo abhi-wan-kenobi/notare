@@ -163,10 +163,10 @@ dependencies = [
 name = "analytics"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-posthog",
  "serde",
  "serde_json",
+ "thiserror 2.0.12",
  "tokio",
 ]
 
@@ -582,13 +582,13 @@ dependencies = [
 [[package]]
 name = "async-posthog"
 version = "0.2.3"
-source = "git+https://github.com/shuttle-hq/posthog-rs?rev=f20f60de7eb786ea80d7a276073fecdfc697bc61#f20f60de7eb786ea80d7a276073fecdfc697bc61"
+source = "git+https://github.com/shuttle-hq/posthog-rs?rev=160e609#160e60941cb13b99ec5ef59667ec7d0eb427f961"
 dependencies = [
  "posthog-core",
  "reqwest 0.12.14",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
  "tokio",
 ]
 
@@ -8848,12 +8848,12 @@ dependencies = [
 [[package]]
 name = "posthog-core"
 version = "0.1.0"
-source = "git+https://github.com/shuttle-hq/posthog-rs?rev=f20f60de7eb786ea80d7a276073fecdfc697bc61#f20f60de7eb786ea80d7a276073fecdfc697bc61"
+source = "git+https://github.com/shuttle-hq/posthog-rs?rev=160e609#160e60941cb13b99ec5ef59667ec7d0eb427f961"
 dependencies = [
  "chrono",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.12",
 ]
 
 [[package]]

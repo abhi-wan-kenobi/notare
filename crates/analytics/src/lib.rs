@@ -1,10 +1,16 @@
-use anyhow::Result;
-use serde::Serialize;
 use std::collections::HashMap;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+
+mod error;
+pub use error::*;
 
 #[derive(Clone)]
 pub struct AnalyticsClient {
     client: posthog::Client,
+    disabled: Arc<AtomicBool>,
 }
 
 impl AnalyticsClient {
@@ -17,10 +23,27 @@ impl AnalyticsClient {
 
         Self {
             client: posthog::client(config),
+            disabled: Arc::new(AtomicBool::new(false)),
         }
     }
 
-    pub async fn event(&self, payload: AnalyticsPayload) -> Result<()> {
+    pub fn enable(&self) {
+        self.disabled.store(false, Ordering::SeqCst);
+    }
+
+    pub fn disable(&self) {
+        self.disabled.store(true, Ordering::SeqCst);
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        !self.disabled.load(Ordering::SeqCst)
+    }
+
+    pub fn is_disabled(&self) -> bool {
+        self.disabled.load(Ordering::SeqCst)
+    }
+
+    pub async fn event(&self, payload: AnalyticsPayload) -> Result<(), Error> {
         let mut e = posthog::Event::new(payload.event, payload.distinct_id);
         for (key, value) in payload.props {
             let _ = e.insert_prop(key, value);
@@ -31,7 +54,7 @@ impl AnalyticsClient {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, serde::Serialize)]
 pub struct AnalyticsPayload {
     event: String,
     distinct_id: String,
