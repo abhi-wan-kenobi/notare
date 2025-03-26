@@ -10,8 +10,8 @@ dotenv = { workspace = true }
 hypr-auth-interface = { path = "../../../plugins/auth-interface", package = "auth-interface" }
 hypr-listener-interface = { workspace = true }
 
-hypr-analytics = { path = "../../../crates/analytics", package = "analytics" }
-hypr-buffer = { path = "../../../crates/buffer", package = "buffer" }
+hypr-analytics = { workspace = true }
+hypr-buffer = { workspace = true }
 hypr-calendar-google = { path = "../../../crates/calendar-google", package = "calendar-google" }
 hypr-calendar-interface = { path = "../../../crates/calendar-interface", package = "calendar-interface" }
 hypr-calendar-outlook = { path = "../../../crates/calendar-outlook", package = "calendar-outlook" }

@@ -1,10 +1,10 @@
 [package]
-name = "tauri-plugin-misc"
+name = "tauri-plugin-analytics"
 version = "0.1.0"
 authors = ["You"]
 edition = "2021"
-exclude = ["./js"]
-links = "tauri-plugin-misc"
+exclude = ["/js", "/node_modules"]
+links = "tauri-plugin-analytics"
 description = ""
 
 [build-dependencies]
@@ -14,15 +14,16 @@ tauri-plugin = { workspace = true, features = ["build"] }
 specta-typescript = { workspace = true }
 
 [dependencies]
-hypr-buffer = { workspace = true }
-hypr-host = { workspace = true }
+hypr-analytics = { workspace = true }
 
-tracing = { workspace = true }
+tauri = { workspace = true, features = ["test"] }
+tauri-plugin-store2 = { workspace = true }
+tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 
 serde = { workspace = true }
 serde_json = { workspace = true }
 specta = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 
-tauri = { workspace = true, features = ["test"] }
-tauri-specta = { workspace = true, features = ["derive", "typescript"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }

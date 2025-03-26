@@ -8,6 +8,7 @@ posthog = { git = "https://github.com/shuttle-hq/posthog-rs", package = "async-p
 
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+specta = { workspace = true, features = ["derive", "serde_json"] }
 thiserror = { workspace = true }
 
 [dev-dependencies]

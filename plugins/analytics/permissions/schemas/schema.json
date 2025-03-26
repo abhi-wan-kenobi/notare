@@ -295,84 +295,34 @@
       "type": "string",
       "oneOf": [
         {
-          "description": "Enables the calendar_access_status command without any pre-configured scope.",
+          "description": "Enables the event command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-calendar-access-status"
+          "const": "allow-event"
         },
         {
-          "description": "Denies the calendar_access_status command without any pre-configured scope.",
+          "description": "Denies the event command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-calendar-access-status"
+          "const": "deny-event"
         },
         {
-          "description": "Enables the contacts_access_status command without any pre-configured scope.",
+          "description": "Enables the is_disabled command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-contacts-access-status"
+          "const": "allow-is-disabled"
         },
         {
-          "description": "Denies the contacts_access_status command without any pre-configured scope.",
+          "description": "Denies the is_disabled command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-contacts-access-status"
+          "const": "deny-is-disabled"
         },
         {
-          "description": "Enables the open_calendar_access_settings command without any pre-configured scope.",
+          "description": "Enables the set_disabled command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-open-calendar-access-settings"
+          "const": "allow-set-disabled"
         },
         {
-          "description": "Denies the open_calendar_access_settings command without any pre-configured scope.",
+          "description": "Denies the set_disabled command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-open-calendar-access-settings"
-        },
-        {
-          "description": "Enables the open_contacts_access_settings command without any pre-configured scope.",
-          "type": "string",
-          "const": "allow-open-contacts-access-settings"
-        },
-        {
-          "description": "Denies the open_contacts_access_settings command without any pre-configured scope.",
-          "type": "string",
-          "const": "deny-open-contacts-access-settings"
-        },
-        {
-          "description": "Enables the request_calendar_access command without any pre-configured scope.",
-          "type": "string",
-          "const": "allow-request-calendar-access"
-        },
-        {
-          "description": "Denies the request_calendar_access command without any pre-configured scope.",
-          "type": "string",
-          "const": "deny-request-calendar-access"
-        },
-        {
-          "description": "Enables the request_contacts_access command without any pre-configured scope.",
-          "type": "string",
-          "const": "allow-request-contacts-access"
-        },
-        {
-          "description": "Denies the request_contacts_access command without any pre-configured scope.",
-          "type": "string",
-          "const": "deny-request-contacts-access"
-        },
-        {
-          "description": "Enables the start_worker command without any pre-configured scope.",
-          "type": "string",
-          "const": "allow-start-worker"
-        },
-        {
-          "description": "Denies the start_worker command without any pre-configured scope.",
-          "type": "string",
-          "const": "deny-start-worker"
-        },
-        {
-          "description": "Enables the stop_worker command without any pre-configured scope.",
-          "type": "string",
-          "const": "allow-stop-worker"
-        },
-        {
-          "description": "Denies the stop_worker command without any pre-configured scope.",
-          "type": "string",
-          "const": "deny-stop-worker"
+          "const": "deny-set-disabled"
         },
         {
           "description": "Default permissions for the plugin",

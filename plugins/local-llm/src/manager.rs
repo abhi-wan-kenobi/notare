@@ -59,7 +59,6 @@ impl ModelManager {
         let model = self.model.clone();
         let last_activity = self.last_activity.clone();
 
-        println!("model_manager_monitor_started");
         let _handle = tokio::spawn(async move {
             let mut shutdown_rx = shutdown_rx;
             let mut interval = tokio::time::interval(activity_check_interval);

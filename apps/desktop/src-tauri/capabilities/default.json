@@ -41,6 +41,8 @@
     "auth:default",
     "tray:default",
     "store:default",
+    "store2:default",
+    "analytics:default",
     {
       "identifier": "http:default",
       "allow": [

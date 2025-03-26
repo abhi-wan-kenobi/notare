@@ -117,6 +117,9 @@ importers:
       '@hypr/extension-utils':
         specifier: workspace:^
         version: link:../../extensions/utils
+      '@hypr/plugin-analytics':
+        specifier: workspace:^
+        version: link:../../plugins/analytics
       '@hypr/plugin-apple-calendar':
         specifier: workspace:^
         version: link:../../plugins/apple-calendar
@@ -1375,6 +1378,12 @@ importers:
       vitest:
         specifier: ^3.0.9
         version: 3.0.9(@types/node@22.13.13)(jiti@2.4.2)(msw@2.7.3(@types/node@22.13.13)(typescript@5.8.2))(tsx@4.19.3)(yaml@2.7.0)
+
+  plugins/analytics:
+    dependencies:
+      '@tauri-apps/api':
+        specifier: ^2.4.0
+        version: 2.4.0
 
   plugins/apple-calendar:
     dependencies:
