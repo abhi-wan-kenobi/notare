@@ -13,7 +13,7 @@ mod error;
 pub use error::*;
 
 const DEFAULT_MAX_TOKENS: i32 = 1024;
-const CONTEXT_SIZE: u32 = 2048;
+const CONTEXT_SIZE: usize = 2048;
 const SAMPLER_SEED: u32 = 1234;
 
 pub struct Llama {
@@ -54,12 +54,12 @@ impl Llama {
                                 .new_context(
                                     &backend,
                                     LlamaContextParams::default()
-                                        .with_n_ctx(std::num::NonZeroU32::new(CONTEXT_SIZE)),
+                                        .with_n_ctx(std::num::NonZeroU32::new(CONTEXT_SIZE as u32)),
                                 )
                                 .unwrap();
 
                             let tokens_list = model.str_to_token(&prompt, AddBos::Always).unwrap();
-                            let mut batch = LlamaBatch::new(512, 1);
+                            let mut batch = LlamaBatch::new(CONTEXT_SIZE, 1);
 
                             let last_index = (tokens_list.len() - 1) as i32;
                             for (i, token) in (0_i32..).zip(tokens_list.into_iter()) {

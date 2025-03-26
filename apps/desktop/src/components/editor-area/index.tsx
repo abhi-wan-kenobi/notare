@@ -1,9 +1,15 @@
+import { Button } from "@hypr/ui/components/ui/button";
+import { Trans } from "@lingui/react/macro";
 import { useMutation } from "@tanstack/react-query";
 import { smoothStream, streamText } from "ai";
-import { AnimatePresence, motion } from "motion/react";
+import { AlignLeft, Loader2, Zap } from "lucide-react";
+import { motion } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { commands as dbCommands } from "@hypr/plugin-db";
+import { useOngoingSession, useSession } from "@/contexts";
+import { ENHANCE_SYSTEM_TEMPLATE_KEY, ENHANCE_USER_TEMPLATE_KEY } from "@/templates";
+import { commands as dbCommands, Session } from "@hypr/plugin-db";
 import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { commands as miscCommands } from "@hypr/plugin-misc";
 import { commands as templateCommands } from "@hypr/plugin-template";
@@ -11,11 +17,6 @@ import Editor, { TiptapEditor } from "@hypr/tiptap/editor";
 import Renderer from "@hypr/tiptap/renderer";
 import { cn } from "@hypr/ui/lib/utils";
 import { modelProvider } from "@hypr/utils";
-
-import { useOngoingSession, useSession } from "@/contexts";
-import { ENHANCE_SYSTEM_TEMPLATE_KEY, ENHANCE_USER_TEMPLATE_KEY } from "@/templates";
-import { EnhanceControls } from "./enhanced-controls";
-import { EnhanceOnlyButton } from "./enhanced-only-button";
 import { NoteHeader } from "./note-header";
 
 interface EditorAreaProps {
@@ -43,11 +44,6 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
     editorRef.current?.editor?.commands?.setContent("");
     setInitialContent(content ?? "");
   }, [sessionStore.session?.id, showRaw]);
-
-  const ongoingSessionStore = useOngoingSession((s) => ({
-    status: s.status,
-    timeline: s.timeline,
-  }));
 
   const enhance = useMutation({
     mutationFn: async () => {
@@ -87,7 +83,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
       let acc = "";
       for await (const chunk of textStream) {
         acc += chunk;
-        const html = await miscCommands.opinionatedMdToHtml(chunk);
+        const html = await miscCommands.opinionatedMdToHtml(acc);
 
         setInitialContent(html);
         sessionStore.updateEnhancedNote(html);
@@ -163,23 +159,126 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
       </div>
 
       <AnimatePresence>
-        {ongoingSessionStore.status !== "active"
-          && ongoingSessionStore.timeline?.items.length && (
-          <motion.div
-            className="absolute bottom-6 w-full flex justify-center items-center pointer-events-none z-10"
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 50, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="pointer-events-auto">
-              {sessionStore.session?.enhanced_memo_html
-                ? <EnhanceControls showRaw={showRaw} setShowRaw={setShowRaw} />
-                : <EnhanceOnlyButton handleClick={handleClickEnhance} />}
-            </div>
-          </motion.div>
-        )}
+        <motion.div
+          className="absolute bottom-6 w-full flex justify-center items-center pointer-events-none z-10"
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 50, opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="pointer-events-auto">
+            <EnhanceButton
+              handleClick={handleClickEnhance}
+              session={sessionStore.session}
+              showRaw={showRaw}
+              enhanceStatus={enhance.status}
+              setShowRaw={setShowRaw}
+            />
+          </div>
+        </motion.div>
       </AnimatePresence>
+    </div>
+  );
+}
+
+function EnhanceButton(
+  { handleClick, session, showRaw, setShowRaw, enhanceStatus }: {
+    handleClick: () => void;
+    session: Session;
+    showRaw: boolean;
+    setShowRaw: (showRaw: boolean) => void;
+    enhanceStatus: "error" | "idle" | "pending" | "success";
+  },
+) {
+  const ongoingSessionStore = useOngoingSession((s) => ({
+    status: s.status,
+    timeline: s.timeline,
+  }));
+
+  if (!ongoingSessionStore.timeline?.items.length) {
+    return null;
+  }
+
+  return (session.enhanced_memo_html || enhanceStatus === "pending")
+    ? (
+      <EnhanceControls
+        showRaw={showRaw}
+        setShowRaw={setShowRaw}
+        enhanceStatus={enhanceStatus}
+        handleRunEnhance={handleClick}
+      />
+    )
+    : <EnhanceOnlyButton handleRunEnhance={handleClick} enhanceStatus={enhanceStatus} />;
+}
+
+function EnhanceOnlyButton(
+  { handleRunEnhance, enhanceStatus }: {
+    handleRunEnhance: () => void;
+    enhanceStatus: "error" | "idle" | "pending" | "success";
+  },
+) {
+  return (
+    <Button
+      variant="default"
+      size="lg"
+      onClick={handleRunEnhance}
+      className="hover:scale-95 transition-all"
+    >
+      {enhanceStatus === "pending" ? <Loader2 className="animate-spin" size={20} /> : <Zap size={20} />}
+      <Trans>Hypercharge</Trans>
+    </Button>
+  );
+}
+
+function EnhanceControls(
+  { showRaw, setShowRaw, enhanceStatus, handleRunEnhance }: {
+    showRaw: boolean;
+    setShowRaw: (showRaw: boolean) => void;
+    enhanceStatus: "error" | "idle" | "pending" | "success";
+    handleRunEnhance: () => void;
+  },
+) {
+  const handleClickLeftButton = () => {
+    setShowRaw(true);
+  };
+
+  const handleClickRightButton = () => {
+    if (showRaw) {
+      setShowRaw(false);
+    } else {
+      handleRunEnhance();
+    }
+  };
+
+  return (
+    <div className="flex w-fit flex-row items-center">
+      <button
+        disabled={enhanceStatus === "pending"}
+        onClick={handleClickLeftButton}
+        className={cn(
+          "rounded-l-xl border-l border-y",
+          "border-border px-4 py-2.5 transition-all ease-in-out",
+          showRaw
+            ? "bg-primary text-primary-foreground"
+            : "bg-background text-neutral-200",
+        )}
+      >
+        <AlignLeft size={20} />
+      </button>
+
+      <button
+        disabled={enhanceStatus === "pending"}
+        onClick={handleClickRightButton}
+        className={cn(
+          "rounded-r-xl border-r border-y",
+          "border border-border px-4 py-2.5 transition-all ease-in-out",
+          showRaw
+            ? "bg-background text-neutral-200"
+            : "bg-primary text-primary-foreground",
+        )}
+      >
+        {enhanceStatus === "pending" ? <Loader2 className="animate-spin" size={20} /> : <Zap size={20} />}
+      </button>
     </div>
   );
 }
