@@ -4,18 +4,30 @@ mod chunker;
 mod commands;
 mod error;
 mod ext;
+mod model;
 mod server;
 
 pub use error::*;
 pub use ext::*;
+use model::*;
 use server::*;
 
 pub type SharedState = std::sync::Arc<tokio::sync::Mutex<State>>;
 
-#[derive(Default)]
 pub struct State {
+    pub model: SupportedModel,
     pub api_base: Option<String>,
     pub server: Option<crate::server::ServerHandle>,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            model: SupportedModel::QuantizedTiny,
+            api_base: None,
+            server: None,
+        }
+    }
 }
 
 const PLUGIN_NAME: &str = "local-stt";
@@ -79,7 +91,7 @@ mod test {
             .with_huggingface_token(Some("***REMOVED-UPSTREAM-HF-TOKEN***".to_string()));
 
         rwhisper::Whisper::builder()
-            .with_source(rwhisper::WhisperSource::QuantizedLargeV3Turbo)
+            .with_source(rwhisper::WhisperSource::QuantizedTiny)
             .with_cache(cache)
             .build_with_loading_handler(|progress| {
                 println!("{:?}", progress);
