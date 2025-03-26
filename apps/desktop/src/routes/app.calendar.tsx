@@ -4,7 +4,6 @@ import { endOfMonth, startOfMonth } from "date-fns";
 import { z } from "zod";
 
 import WorkspaceCalendar from "@/components/workspace-calendar";
-import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as dbCommands } from "@hypr/plugin-db";
 
 const schema = z.object({
@@ -16,12 +15,6 @@ export const Route = createFileRoute("/app/calendar")({
   component: Component,
   validateSearch: zodValidator(schema),
   loaderDeps: ({ search }) => ({ search }),
-  beforeLoad: () => {
-    analyticsCommands.event({
-      event: "calendar_viewed",
-      distinct_id: "123",
-    });
-  },
   loader: async ({ context: { queryClient, userId }, deps: { search } }) => {
     const eventPromise = search.sessionId
       ? queryClient.fetchQuery({
