@@ -11,11 +11,20 @@ pub trait AnalyticsPluginExt<R: tauri::Runtime> {
 }
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> crate::AnalyticsPluginExt<R> for T {
-    async fn event(&self, payload: hypr_analytics::AnalyticsPayload) -> Result<(), crate::Error> {
+    async fn event(
+        &self,
+        mut payload: hypr_analytics::AnalyticsPayload,
+    ) -> Result<(), crate::Error> {
         let disabled = {
             let store = self.scoped_store(crate::PLUGIN_NAME)?;
             store.get(crate::StoreKey::Disabled)?.unwrap_or(false)
         };
+
+        let bundle_id = self.config().identifier.clone();
+        payload
+            .props
+            .entry("bundle_id".into())
+            .or_insert(bundle_id.into());
 
         if !disabled {
             let client = self.state::<hypr_analytics::AnalyticsClient>();

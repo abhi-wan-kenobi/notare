@@ -37,7 +37,7 @@ pub struct AnalyticsPayload {
     event: String,
     distinct_id: String,
     #[serde(flatten)]
-    props: HashMap<String, serde_json::Value>,
+    pub props: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Clone)]
