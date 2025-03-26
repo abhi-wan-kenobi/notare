@@ -7,6 +7,7 @@ Default permissions for the plugin
 - `allow-download-model`
 - `allow-start-server`
 - `allow-stop-server`
+- `allow-list-ollama-models`
 
 ## Permission Table
 
@@ -117,6 +118,32 @@ Enables the is_server_running command without any pre-configured scope.
 <td>
 
 Denies the is_server_running command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-llm:allow-list-ollama-models`
+
+</td>
+<td>
+
+Enables the list_ollama_models command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-llm:deny-list-ollama-models`
+
+</td>
+<td>
+
+Denies the list_ollama_models command without any pre-configured scope.
 
 </td>
 </tr>

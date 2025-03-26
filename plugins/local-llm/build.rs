@@ -4,6 +4,7 @@ const COMMANDS: &[&str] = &[
     "download_model",
     "start_server",
     "stop_server",
+    "list_ollama_models",
 ];
 
 fn main() {

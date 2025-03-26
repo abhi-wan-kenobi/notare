@@ -335,6 +335,16 @@
           "const": "deny-is-server-running"
         },
         {
+          "description": "Enables the list_ollama_models command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-list-ollama-models"
+        },
+        {
+          "description": "Denies the list_ollama_models command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-list-ollama-models"
+        },
+        {
           "description": "Enables the start_server command without any pre-configured scope.",
           "type": "string",
           "const": "allow-start-server"

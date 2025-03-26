@@ -21,6 +21,9 @@ async startServer() : Promise<null> {
 },
 async stopServer() : Promise<null> {
     return await TAURI_INVOKE("plugin:local-llm|stop_server");
+},
+async listOllamaModels() : Promise<string[]> {
+    return await TAURI_INVOKE("plugin:local-llm|list_ollama_models");
 }
 }
 

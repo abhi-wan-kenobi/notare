@@ -7975,6 +7975,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ollama-rs"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5df54edb7e1264719be607cd40590d3769b5b35a2623e6e02681e6591aea5b8"
+dependencies = [
+ "async-stream",
+ "log",
+ "reqwest 0.12.14",
+ "schemars",
+ "serde",
+ "serde_json",
+ "static_assertions",
+ "thiserror 2.0.12",
+ "url",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -12236,6 +12253,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "llama",
+ "ollama-rs",
  "reqwest 0.12.14",
  "serde",
  "serde_json",

@@ -6,4 +6,5 @@ permissions = [
     "allow-download-model",
     "allow-start-server",
     "allow-stop-server",
+    "allow-list-ollama-models",
 ]
