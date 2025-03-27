@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type LinkProps } from "@tanstack/react-router";
 import { clsx } from "clsx";
 import { CircleMinus, MailIcon, SearchIcon } from "lucide-react";
-import { KeyboardEvent, useState } from "react";
+import React, { useState } from "react";
 
 import { useHypr } from "@/contexts/hypr";
 import { commands as dbCommands, type Human } from "@hypr/plugin-db";
@@ -239,7 +239,9 @@ function ParticipantAddControl({ sessionId }: { sessionId: string }) {
       }),
   });
 
-  const handleAddParticipants = () => {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
     const name = newParticipantInput.trim();
     if (name === "") {
       return;
@@ -249,43 +251,60 @@ function ParticipantAddControl({ sessionId }: { sessionId: string }) {
     setNewParticipantInput("");
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      handleAddParticipants();
+
+      const name = newParticipantInput.trim();
+      if (name === "") {
+        return;
+      }
+
+      addParticipantMutation.mutate({ name });
+      setNewParticipantInput("");
     }
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center w-full px-2 py-1.5 gap-2 rounded bg-neutral-50 border border-neutral-200">
-        <span className="text-neutral-500 flex-shrink-0">
-          <SearchIcon className="size-4" />
-        </span>
-        <input
-          type="text"
-          value={newParticipantInput}
-          onChange={(e) => setNewParticipantInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={t`Add participant`}
-          className="w-full bg-transparent text-sm focus:outline-none placeholder:text-neutral-400"
+    <form
+      onSubmit={handleSubmit}
+    >
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center w-full px-2 py-1.5 gap-2 rounded bg-neutral-50 border border-neutral-200">
+          <span className="text-neutral-500 flex-shrink-0">
+            <SearchIcon className="size-4" />
+          </span>
+          <input
+            type="text"
+            value={newParticipantInput}
+            onChange={(e) => setNewParticipantInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={t`Add participant`}
+            className="w-full bg-transparent text-sm focus:outline-none placeholder:text-neutral-400"
+          />
+          {newParticipantInput.trim() && (
+            <button
+              type="submit"
+              className="text-neutral-500 hover:text-neutral-700 transition-colors flex-shrink-0"
+              aria-label="Add participant"
+            >
+              <RiCornerDownLeftLine className="size-4" />
+            </button>
+          )}
+        </div>
+        <ParticipantCandidates
+          query={newParticipantInput}
+          sessionId={sessionId}
+          onMutation={() => setNewParticipantInput("")}
         />
-        {newParticipantInput.trim() && (
-          <button
-            onClick={handleAddParticipants}
-            className="text-neutral-500 hover:text-neutral-700 transition-colors flex-shrink-0"
-            aria-label="Add participant"
-          >
-            <RiCornerDownLeftLine className="size-4" />
-          </button>
-        )}
       </div>
-      <ParticipantCandidates query={newParticipantInput} sessionId={sessionId} />
-    </div>
+    </form>
   );
 }
 
-function ParticipantCandidates({ query, sessionId }: { query: string; sessionId: string }) {
+function ParticipantCandidates(
+  { query, sessionId, onMutation }: { query: string; sessionId: string; onMutation: () => void },
+) {
   const queryClient = useQueryClient();
 
   const participants = useQuery({
@@ -318,8 +337,9 @@ function ParticipantCandidates({ query, sessionId }: { query: string; sessionId:
       }),
   });
 
-  const handleCreateParticipant = () => {
+  const handleClick = () => {
     addParticipantMutation.mutate({ name: query.trim() });
+    onMutation();
   };
 
   if (!query.trim()) {
@@ -329,13 +349,19 @@ function ParticipantCandidates({ query, sessionId }: { query: string; sessionId:
   return (
     <div className="flex flex-col w-full rounded border border-neutral-200 overflow-hidden">
       {participants.data?.map((participant) => (
-        <ParticipantCandidate key={participant.id} participant={participant} sessionId={sessionId} />
+        <ParticipantCandidate
+          key={participant.id}
+          participant={participant}
+          sessionId={sessionId}
+          onMutation={onMutation}
+        />
       ))}
 
       {(!participants.data || participants.data.length === 0) && (
         <button
+          type="button"
           className="flex items-center px-3 py-2 text-sm text-left hover:bg-neutral-100 transition-colors w-full"
-          onClick={handleCreateParticipant}
+          onClick={handleClick}
         >
           <span className="flex-shrink-0 size-5 flex items-center justify-center mr-2 bg-neutral-200 rounded-full">
             <span className="text-xs">+</span>
@@ -350,7 +376,9 @@ function ParticipantCandidates({ query, sessionId }: { query: string; sessionId:
   );
 }
 
-function ParticipantCandidate({ participant, sessionId }: { participant: Human; sessionId: string }) {
+function ParticipantCandidate(
+  { participant, sessionId, onMutation }: { participant: Human; sessionId: string; onMutation: () => void },
+) {
   const queryClient = useQueryClient();
 
   const organization = useQuery({
@@ -368,10 +396,12 @@ function ParticipantCandidate({ participant, sessionId }: { participant: Human; 
 
   const handleClick = (id: string) => {
     addParticipantMutation.mutate({ id });
+    onMutation();
   };
 
   return (
     <button
+      type="button"
       className="flex items-center px-3 py-2 text-sm text-left hover:bg-neutral-100 transition-colors w-full"
       key={participant.id}
       onClick={() => handleClick(participant.id)}
