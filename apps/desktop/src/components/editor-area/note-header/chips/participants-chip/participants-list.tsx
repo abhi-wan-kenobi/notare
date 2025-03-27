@@ -1,10 +1,12 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { RiCornerDownLeftLine, RiLinkedinBoxFill } from "@remixicon/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type LinkProps } from "@tanstack/react-router";
 import { clsx } from "clsx";
 import { CircleMinus, MailIcon, SearchIcon } from "lucide-react";
 import { KeyboardEvent, useState } from "react";
 
+import { useHypr } from "@/contexts/hypr";
 import { commands as dbCommands, type Human } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
@@ -30,6 +32,10 @@ export function ParticipantsList({ sessionId }: ParticipantsListProps) {
       return ret;
     },
   });
+
+  if (!Object.keys(groupedParticipants.data ?? {}).length) {
+    return <ParticipantAddControl sessionId={sessionId} />;
+  }
 
   return (
     <div className="flex flex-col gap-3 max-w-[450px]">
@@ -83,6 +89,7 @@ function ParticipentItem({
   isLast?: boolean;
 }) {
   const queryClient = useQueryClient();
+  const { userId } = useHypr();
 
   const removeParticipantMutation = useMutation({
     mutationFn: ({ id }: { id: string }) => dbCommands.sessionRemoveParticipant(sessionId, id),
@@ -93,6 +100,22 @@ function ParticipentItem({
   });
 
   const handleClickHuman = (human: Human) => {
+    if (human.id == userId) {
+      const params = {
+        to: "/app/settings",
+        search: { current: "profile" },
+      } as const satisfies LinkProps;
+
+      const url = `${params.to}?current=${params.search.current}`;
+
+      windowsCommands.windowShow("settings").then(() => {
+        setTimeout(() => {
+          windowsCommands.windowEmitNavigate("settings", url);
+        }, 500);
+      });
+      return;
+    }
+
     windowsCommands.windowShow({ human: human.id });
   };
 
@@ -234,7 +257,7 @@ function ParticipantAddControl({ sessionId }: { sessionId: string }) {
   };
 
   return (
-    <div className="flex flex-col gap-2 border-t border-border pt-4">
+    <div className="flex flex-col gap-2">
       <div className="flex items-center w-full px-2 py-1.5 gap-2 rounded bg-neutral-50 border border-neutral-200">
         <span className="text-neutral-500 flex-shrink-0">
           <SearchIcon className="size-4" />

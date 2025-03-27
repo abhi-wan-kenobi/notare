@@ -38,7 +38,7 @@ export function WidgetsView() {
     windowsCommands.windowShow("settings").then(() => {
       setTimeout(() => {
         windowsCommands.windowEmitNavigate("settings", url);
-      }, 200);
+      }, 500);
     });
   };
 

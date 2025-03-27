@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import { Building, Calendar, ExternalLink, FileText, Globe, Mail } from "lucide-react";
 
 import RightPanel from "@/components/right-panel";
-import { commands as dbCommands, type Session } from "@hypr/plugin-db";
+import { commands as dbCommands, type Human, type Session } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
 import { Button } from "@hypr/ui/components/ui/button";
@@ -45,48 +45,6 @@ function Component() {
   const getOrganizationWebsite = () => {
     return organization ? extractWebsiteUrl(human.email) : null;
   };
-
-  const { data: upcomingEvents = [] } = useQuery({
-    queryKey: ["events", "upcoming", human.id],
-    queryFn: async () => {
-      const now = new Date();
-      const startDate = now.toISOString();
-
-      const endDate = new Date(now);
-      endDate.setMonth(now.getMonth() + 3);
-
-      const events = await dbCommands.listEvents({
-        user_id: human.id,
-        limit: 5,
-        type: "dateRange",
-        start: startDate,
-        end: endDate.toISOString(),
-      });
-
-      return events;
-    },
-  });
-
-  const { data: sessions = [] } = useQuery({
-    queryKey: ["sessions", "human", human.id],
-    queryFn: async () => {
-      const allSessions = await dbCommands.listSessions({
-        user_id: human.id,
-        limit: 10,
-        type: "recentlyVisited",
-      });
-
-      const sessionsWithHuman = await Promise.all(
-        allSessions.map(async (session) => {
-          const participants = await dbCommands.sessionListParticipants(session.id);
-          const hasHuman = participants.some((p) => p.id === human.id);
-          return hasHuman ? session : null;
-        }),
-      );
-
-      return sessionsWithHuman.filter((s): s is Session => s !== null);
-    },
-  });
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -205,94 +163,147 @@ function Component() {
                 )}
               </div>
             </div>
-
-            <div className="mt-8">
-              <h2 className="mb-4 flex items-center gap-2 font-semibold">
-                <Calendar className="size-5" />
-                <Trans>Upcoming Events</Trans>
-              </h2>
-              {upcomingEvents.length > 0
-                ? (
-                  <div className="space-y-4">
-                    {upcomingEvents.map((event) => (
-                      <Card key={event.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="font-medium">{event.name}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                {format(new Date(event.start_date), "PPP")} • {format(new Date(event.start_date), "p")}
-                                {" "}
-                                - {format(new Date(event.end_date), "p")}
-                              </p>
-                              {event.note && <p className="mt-2 text-sm">{event.note}</p>}
-                            </div>
-                            {event.google_event_url && (
-                              <a
-                                href={event.google_event_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )
-                : (
-                  <p className="text-muted-foreground">
-                    <Trans>No upcoming events with this contact</Trans>
-                  </p>
-                )}
-            </div>
-
-            <div className="mt-8">
-              <h2 className="mb-4 flex items-center gap-2 font-semibold">
-                <FileText className="size-5" />
-                <Trans>Past Notes</Trans>
-              </h2>
-              {sessions.length > 0
-                ? (
-                  <div className="space-y-4">
-                    {sessions.map((session) => (
-                      <Card key={session.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="font-medium">{session.title}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                {format(new Date(session.created_at), "PPP")}
-                              </p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="ml-2"
-                            >
-                              <Link to="/app/note/$id" params={{ id: session.id }}>
-                                <Trans>View Note</Trans>
-                              </Link>
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )
-                : (
-                  <p className="text-muted-foreground">
-                    <Trans>No past notes with this contact</Trans>
-                  </p>
-                )}
-            </div>
+            <UpcomingEvents human={human} />
+            <PastNotes human={human} />
           </div>
         </main>
       </div>
       <RightPanel />
+    </div>
+  );
+}
+
+function UpcomingEvents({ human }: { human: Human }) {
+  const { data: upcomingEvents = [] } = useQuery({
+    queryKey: ["events", "upcoming", human.id],
+    queryFn: async () => {
+      const now = new Date();
+      const startDate = now.toISOString();
+
+      const endDate = new Date(now);
+      endDate.setMonth(now.getMonth() + 3);
+
+      const events = await dbCommands.listEvents({
+        user_id: human.id,
+        limit: 5,
+        type: "dateRange",
+        start: startDate,
+        end: endDate.toISOString(),
+      });
+
+      return events;
+    },
+  });
+
+  return (
+    <div className="mt-8">
+      <h2 className="mb-4 font-semibold text-zinc-800 flex items-center gap-2">
+        <Calendar className="size-5" />
+        <span>Upcoming Events</span>
+      </h2>
+      {upcomingEvents.length > 0
+        ? (
+          <div className="space-y-3">
+            {upcomingEvents.map((event) => (
+              <Card
+                key={event.id}
+                className="hover:bg-gray-50 transition-colors cursor-pointer border border-gray-200 shadow-sm rounded-lg"
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-medium text-zinc-900">{event.name}</h3>
+                      <p className="text-sm text-zinc-500 mt-1">
+                        {format(new Date(event.start_date), "MMMM do, yyyy")} •{" "}
+                        {format(new Date(event.start_date), "h:mm a")} - {format(new Date(event.end_date), "h:mm a")}
+                      </p>
+                      {event.note && <p className="mt-2 text-sm text-zinc-600">{event.note}</p>}
+                    </div>
+                    {event.google_event_url && (
+                      <a
+                        href={event.google_event_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-zinc-400 hover:text-zinc-600 transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )
+        : (
+          <p className="text-zinc-500">
+            <Trans>No upcoming events with this contact</Trans>
+          </p>
+        )}
+    </div>
+  );
+}
+
+function PastNotes({ human }: { human: Human }) {
+  const { data: sessions = [] } = useQuery({
+    queryKey: ["sessions", "human", human.id],
+    queryFn: async () => {
+      const allSessions = await dbCommands.listSessions({
+        user_id: human.id,
+        limit: 10,
+        type: "recentlyVisited",
+      });
+
+      const sessionsWithHuman = await Promise.all(
+        allSessions.map(async (session) => {
+          const participants = await dbCommands.sessionListParticipants(session.id);
+          const hasHuman = participants.some((p) => p.id === human.id);
+          return hasHuman ? session : null;
+        }),
+      );
+
+      return sessionsWithHuman.filter((s): s is Session => s !== null);
+    },
+  });
+
+  return (
+    <div className="mt-12">
+      <h2 className="mb-4 font-semibold text-zinc-800 flex items-center gap-2">
+        <FileText className="size-5" />
+        <span>Past Notes</span>
+      </h2>
+      {sessions.length > 0
+        ? (
+          <div className="space-y-3">
+            {sessions.map((session) => (
+              <Link
+                key={session.id}
+                to="/app/note/$id"
+                params={{ id: session.id }}
+                className="block"
+              >
+                <Card className="hover:bg-gray-50 transition-colors cursor-pointer border border-gray-200 shadow-sm rounded-lg">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-medium text-zinc-900">{session.title}</h3>
+                        <p className="text-sm text-zinc-500 mt-1">
+                          {format(new Date(session.created_at), "MMMM do, yyyy")}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )
+        : (
+          <p className="text-zinc-500">
+            <Trans>No past notes with this contact</Trans>
+          </p>
+        )}
     </div>
   );
 }

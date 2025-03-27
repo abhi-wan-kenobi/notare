@@ -61,6 +61,10 @@ export const Route = createFileRoute("/app/new")({
       }
 
       await queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "events",
+      });
+
+      await queryClient.invalidateQueries({
         queryKey: ["sessions"],
       });
 

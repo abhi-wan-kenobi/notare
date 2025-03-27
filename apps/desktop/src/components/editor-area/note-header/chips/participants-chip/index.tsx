@@ -33,14 +33,8 @@ export function ParticipantsChip({ sessionId }: ParticipantsChipProps) {
         </div>
       </PopoverTrigger>
 
-      <PopoverContent
-        className="shadow-lg"
-        align="start"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <ParticipantsList
-          sessionId={sessionId}
-        />
+      <PopoverContent className="shadow-lg" align="start">
+        <ParticipantsList sessionId={sessionId} />
       </PopoverContent>
     </Popover>
   );
