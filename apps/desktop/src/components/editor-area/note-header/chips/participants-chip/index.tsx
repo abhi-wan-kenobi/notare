@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Users2Icon } from "lucide-react";
 
-import { commands as authCommands } from "@hypr/plugin-auth";
-import { commands as dbCommands, type Human } from "@hypr/plugin-db";
+import { commands as dbCommands } from "@hypr/plugin-db";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { ParticipantsList } from "./participants-list";
 
@@ -11,33 +10,26 @@ interface ParticipantsChipProps {
 }
 
 export function ParticipantsChip({ sessionId }: ParticipantsChipProps) {
-  const userId = useQuery({
-    queryKey: ["userId"],
-    queryFn: () => authCommands.getFromStore("auth-user-id"),
-  });
-
   const participants = useQuery({
     queryKey: ["participants", sessionId],
     queryFn: () => dbCommands.sessionListParticipants(sessionId),
   });
 
-  const theUser = useQuery({
-    enabled: !!userId.data,
-    queryKey: ["human", userId.data],
-    queryFn: async () => {
-      const human = await dbCommands.getHuman(userId.data!) as Human;
-      return human;
-    },
-  });
-
-  const previewHuman = (participants.data && participants.data.length > 0) ? participants.data[0] : theUser.data!;
+  const previewHuman = ((participants.data ?? []).sort((a, b) => {
+    if (a.is_user && !b.is_user) return 1;
+    if (!a.is_user && b.is_user) return -1;
+    return 0;
+  })).at(0);
 
   return (
     <Popover>
       <PopoverTrigger>
-        <div className="flex flex-row items-center gap-2 rounded-md px-2 py-1.5 hover:bg-neutral-100 text-xs">
+        <div className="flex flex-row items-center gap-1 rounded-md px-2 py-1.5 hover:bg-neutral-100 text-xs">
           <Users2Icon size={14} />
-          {previewHuman?.full_name ?? ""}
+          <span>{previewHuman?.full_name ?? "Add participants"}</span>
+          <span className="text-neutral-400">
+            {participants.data?.length ?? 0}
+          </span>
         </div>
       </PopoverTrigger>
 
@@ -47,10 +39,6 @@ export function ParticipantsChip({ sessionId }: ParticipantsChipProps) {
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <ParticipantsList
-          participants={[
-            ...(participants.data ?? []),
-            theUser.data!,
-          ]}
           sessionId={sessionId}
         />
       </PopoverContent>
