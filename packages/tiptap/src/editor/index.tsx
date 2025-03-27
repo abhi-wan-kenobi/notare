@@ -1,10 +1,8 @@
 import "../styles/tiptap.css";
 
 import { type Editor as TiptapEditor, EditorContent, type HTMLContent, useEditor } from "@tiptap/react";
-import clsx from "clsx";
 import { forwardRef, useEffect } from "react";
 import * as shared from "../shared";
-import { editorStyle } from "../shared/editorStyle";
 
 export type { TiptapEditor };
 export const extensions = [...shared.extensions];
@@ -33,11 +31,6 @@ const Editor = forwardRef<{ editor: TiptapEditor | null }, EditorProps>(
         editor.view.dom.setAttribute("autocapitalize", "off");
       },
       onUpdate,
-      editorProps: {
-        attributes: {
-          class: clsx(editorStyle),
-        },
-      },
       autofocus: autoFocus,
     });
 
@@ -62,13 +55,9 @@ const Editor = forwardRef<{ editor: TiptapEditor | null }, EditorProps>(
           }
         }
 
-        if (e.key === "Tab" && e.shiftKey) {
+        // Prevent Tab and Shift+Tab from moving focus out of the editor
+        if (e.key === "Tab") {
           e.preventDefault();
-
-          const titleInput = document.getElementById("note-title-input") as HTMLElement;
-          if (titleInput) {
-            titleInput.focus();
-          }
         }
 
         if (e.key === "ArrowUp" && editor?.state.selection.empty) {

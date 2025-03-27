@@ -5,10 +5,7 @@
   "type": "module",
   "exports": {
     "./editor": "./src/editor/index.tsx",
-    "./editor/tailwind.config": "./src/editor/tailwind.config.ts",
-    "./renderer": "./src/renderer/index.tsx",
-    "./renderer/tailwind.config": "./src/renderer/tailwind.config.ts",
-    "./renderer/style.css": "./src/renderer/style.css"
+    "./renderer": "./src/renderer/index.tsx"
   },
   "peerDependencies": {
     "react": "^18.3.1",
@@ -17,9 +14,14 @@
   "dependencies": {
     "@remixicon/react": "^4.6.0",
     "@tiptap/core": "^2.11.5",
+    "@tiptap/extension-highlight": "^2.11.5",
+    "@tiptap/extension-link": "^2.11.5",
+    "@tiptap/extension-list-keymap": "^2.11.5",
     "@tiptap/extension-mention": "^2.11.5",
     "@tiptap/extension-placeholder": "^2.11.5",
     "@tiptap/extension-strike": "^2.11.5",
+    "@tiptap/extension-task-item": "^2.11.5",
+    "@tiptap/extension-task-list": "^2.11.5",
     "@tiptap/extension-typography": "^2.11.5",
     "@tiptap/extension-underline": "^2.11.5",
     "@tiptap/pm": "^2.11.5",
@@ -32,7 +34,6 @@
   "devDependencies": {
     "@types/node": "^22.13.13",
     "@types/react": "^18.3.20",
-    "@types/react-dom": "^18.3.5",
-    "tailwindcss": "^3.4.17"
+    "@types/react-dom": "^18.3.5"
   }
 }
