@@ -48,6 +48,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::organizations::get_organization_by_user_id,
             commands::organizations::upsert_organization,
             commands::organizations::list_organizations,
+            commands::organizations::list_organization_members,
             commands::chats::list_chat_groups,
             commands::chats::list_chat_messages,
             commands::chats::create_chat_group,

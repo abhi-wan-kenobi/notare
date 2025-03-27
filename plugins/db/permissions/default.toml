@@ -32,6 +32,7 @@ permissions = [
     "allow-get-organization",
     "allow-get-organization-by-user-id",
     "allow-list-organizations",
+    "allow-list-organization-members",
     "allow-upsert-organization",
     # chat
     "allow-list-chat-groups",

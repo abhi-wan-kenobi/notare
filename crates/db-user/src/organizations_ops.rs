@@ -1,6 +1,6 @@
 use hypr_db_core::SqlTable;
 
-use super::{ListOrganizationFilter, Organization, UserDatabase};
+use super::{Human, ListOrganizationFilter, Organization, UserDatabase};
 
 impl UserDatabase {
     pub async fn upsert_organization(
@@ -45,6 +45,26 @@ impl UserDatabase {
         let mut items = Vec::new();
         while let Some(row) = rows.next().await? {
             let item: Organization = libsql::de::from_row(&row)?;
+            items.push(item);
+        }
+        Ok(items)
+    }
+
+    pub async fn list_organization_members(
+        &self,
+        organization_id: impl Into<String>,
+    ) -> Result<Vec<Human>, crate::Error> {
+        let conn = self.conn()?;
+
+        let sql = format!(
+            "SELECT * FROM {} WHERE organization_id = ?",
+            Human::sql_table()
+        );
+        let mut rows = conn.query(&sql, vec![organization_id.into()]).await?;
+
+        let mut items = Vec::new();
+        while let Some(row) = rows.next().await? {
+            let item: Human = libsql::de::from_row(&row)?;
             items.push(item);
         }
         Ok(items)

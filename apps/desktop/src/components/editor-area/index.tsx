@@ -49,6 +49,8 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
 
   const enhance = useMutation({
     mutationFn: async () => {
+      setInitialContent("");
+
       const config = await dbCommands.getConfig();
       const provider = await modelProvider();
 
@@ -155,6 +157,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
                 ref={editorRef}
                 handleChange={handleChangeNote}
                 initialContent={initialContent}
+                editable={enhance.status !== "pending"}
               />
             )
             : (

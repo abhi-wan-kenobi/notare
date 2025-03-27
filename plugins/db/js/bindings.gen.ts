@@ -85,6 +85,9 @@ async upsertOrganization(organization: Organization) : Promise<Organization> {
 async listOrganizations(filter: ListOrganizationFilter | null) : Promise<Organization[]> {
     return await TAURI_INVOKE("plugin:db|list_organizations", { filter });
 },
+async listOrganizationMembers(organizationId: string) : Promise<Human[]> {
+    return await TAURI_INVOKE("plugin:db|list_organization_members", { organizationId });
+},
 async listChatGroups(userId: string) : Promise<ChatGroup[]> {
     return await TAURI_INVOKE("plugin:db|list_chat_groups", { userId });
 },

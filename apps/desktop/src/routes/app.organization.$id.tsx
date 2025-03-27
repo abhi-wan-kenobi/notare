@@ -32,13 +32,7 @@ function Component() {
 
   const { data: members = [] } = useQuery({
     queryKey: ["organization", organization.id, "members"],
-    queryFn: async () => {
-      // TODO: Add a filter for better data fetching
-      // Get all humans first
-      const allHumans = await dbCommands.listHumans({ search: [0, ""] });
-      // Then filter by organization_id
-      return allHumans.filter(human => human.organization_id === organization.id);
-    },
+    queryFn: () => dbCommands.listOrganizationMembers(organization.id),
   });
 
   const { data: upcomingEvents = [] } = useQuery({

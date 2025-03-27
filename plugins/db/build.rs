@@ -31,6 +31,7 @@ const COMMANDS: &[&str] = &[
     "get_organization",
     "get_organization_by_user_id",
     "list_organizations",
+    "list_organization_members",
     // chat
     "list_chat_groups",
     "list_chat_messages",

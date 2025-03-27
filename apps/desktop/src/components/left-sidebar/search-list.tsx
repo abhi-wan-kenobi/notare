@@ -179,8 +179,9 @@ function HumanMatch({ match: { item: human } }: { match: SearchMatch & { type: "
           ])}
         >
           <div className="flex flex-col items-start gap-1">
-            <div className="font-medium text-sm line-clamp-1">
-              {human.full_name || "Unnamed Person"} <span className="text-neutral-700">{human.job_title}</span>
+            <div className="font-medium text-sm line-clamp-1 flex items-center justify-between w-full">
+              <span>{human.full_name || "Unnamed Person"}</span>
+              <span className="text-neutral-500 text-xs font-normal ml-auto">{human.job_title}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-neutral-500 line-clamp-1">
               {human.email}
@@ -238,9 +239,9 @@ function OrganizationMatch(
             isOpen && "bg-neutral-100",
           ])}
         >
-          <div className="flex flex-col items-start gap-1">
-            <div className="font-medium text-sm line-clamp-1">{organization.name}</div>
-            <div className="flex items-center gap-2 text-xs text-neutral-500 line-clamp-1">
+          <div className="flex flex-col items-start gap-1 w-full overflow-hidden">
+            <div className="font-medium text-sm line-clamp-1 w-full">{organization.name}</div>
+            <div className="text-xs text-neutral-500 truncate w-full overflow-hidden text-ellipsis whitespace-nowrap">
               {organization.description}
             </div>
           </div>

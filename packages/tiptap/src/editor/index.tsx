@@ -11,10 +11,11 @@ interface EditorProps {
   handleChange: (content: HTMLContent) => void;
   initialContent: HTMLContent;
   autoFocus?: boolean;
+  editable?: boolean;
 }
 
 const Editor = forwardRef<{ editor: TiptapEditor | null }, EditorProps>(
-  ({ handleChange, initialContent, autoFocus = true }, ref) => {
+  ({ handleChange, initialContent, autoFocus = true, editable = true }, ref) => {
     const onUpdate = ({ editor }: { editor: TiptapEditor }) => {
       if (!editor.isInitialized) {
         return;
@@ -25,6 +26,7 @@ const Editor = forwardRef<{ editor: TiptapEditor | null }, EditorProps>(
 
     const editor = useEditor({
       extensions,
+      editable,
       onCreate: ({ editor }) => {
         editor.view.dom.setAttribute("spellcheck", "false");
         editor.view.dom.setAttribute("autocomplete", "off");
@@ -45,6 +47,12 @@ const Editor = forwardRef<{ editor: TiptapEditor | null }, EditorProps>(
         editor.commands.setContent(initialContent);
       }
     }, [editor, initialContent]);
+
+    useEffect(() => {
+      if (editor) {
+        editor.setEditable(editable);
+      }
+    }, [editor, editable]);
 
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {

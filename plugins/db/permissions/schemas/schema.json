@@ -475,6 +475,16 @@
           "const": "deny-list-humans"
         },
         {
+          "description": "Enables the list_organization_members command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-list-organization-members"
+        },
+        {
+          "description": "Denies the list_organization_members command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-list-organization-members"
+        },
+        {
           "description": "Enables the list_organizations command without any pre-configured scope.",
           "type": "string",
           "const": "allow-list-organizations"
