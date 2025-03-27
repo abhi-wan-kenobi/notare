@@ -2,7 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { RiCornerDownLeftLine, RiLinkedinBoxFill } from "@remixicon/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { CircleMinus, Mail, PlusIcon } from "lucide-react";
+import { CircleMinus, MailIcon, SearchIcon } from "lucide-react";
 import { KeyboardEvent, useState } from "react";
 
 import { commands as dbCommands, type Human } from "@hypr/plugin-db";
@@ -32,10 +32,10 @@ export function ParticipantsList({ sessionId }: ParticipantsListProps) {
   });
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 max-w-[450px]">
       <div className="text-sm font-medium text-neutral-700">Participants</div>
 
-      <div className="flex flex-col gap-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+      <div className="flex flex-col gap-4 max-h-[40vh] overflow-y-auto custom-scrollbar pr-1">
         {Object.entries(groupedParticipants.data ?? {}).map(([orgId, members]) => (
           <OrganizationWithParticipants key={orgId} orgId={orgId} members={members} sessionId={sessionId} />
         ))}
@@ -56,7 +56,7 @@ function OrganizationWithParticipants(
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="text-xs font-medium text-neutral-400">
+      <div className="text-xs font-medium text-neutral-400 truncate">
         {organization.data?.name ?? "No organization"}
       </div>
       <div className="flex flex-col rounded-md overflow-hidden bg-neutral-50 border border-neutral-100">
@@ -109,7 +109,7 @@ function ParticipentItem({
       )}
       onClick={() => handleClickHuman(member)}
     >
-      <div className="flex items-center gap-2.5 relative">
+      <div className="flex items-center gap-2.5 relative min-w-0">
         <div className="relative size-7 flex items-center justify-center flex-shrink-0">
           <div className="absolute inset-0 flex items-center justify-center group-hover:opacity-0 transition-opacity">
             <Avatar className="size-7">
@@ -149,12 +149,19 @@ function ParticipentItem({
             </TooltipContent>
           </Tooltip>
         </div>
-        <span className="text-sm font-medium text-neutral-700">
-          {member.full_name}
-        </span>
+        <div className="flex flex-col min-w-0 flex-1">
+          <span className="text-sm font-medium text-neutral-700 truncate">
+            {member.full_name}
+          </span>
+          {member.job_title && (
+            <span className="text-xs text-neutral-400 truncate">
+              {member.job_title}
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center gap-2 transition-colors">
+      <div className="flex items-center gap-2 transition-colors flex-shrink-0">
         {member.email && (
           <a
             href={`mailto:${member.email}`}
@@ -163,7 +170,7 @@ function ParticipentItem({
             className="text-neutral-400 transition-colors hover:text-neutral-600 p-1 rounded-full hover:bg-neutral-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <Mail className="size-3.5" />
+            <MailIcon className="size-3.5" />
           </a>
         )}
         {member.linkedin_username && (
@@ -230,7 +237,7 @@ function ParticipantAddControl({ sessionId }: { sessionId: string }) {
     <div className="flex flex-col gap-2 border-t border-border pt-4">
       <div className="flex items-center w-full px-2 py-1.5 gap-2 rounded bg-neutral-50 border border-neutral-200">
         <span className="text-neutral-500 flex-shrink-0">
-          <PlusIcon className="size-4" />
+          <SearchIcon className="size-4" />
         </span>
         <input
           type="text"
@@ -268,6 +275,67 @@ function ParticipantCandidates({ query, sessionId }: { query: string; sessionId:
   });
 
   const addParticipantMutation = useMutation({
+    mutationFn: async ({ name }: { name: string }) => {
+      const newParticipant: Human = {
+        id: crypto.randomUUID(),
+        full_name: name,
+        organization_id: null,
+        is_user: false,
+        email: null,
+        job_title: null,
+        linkedin_username: null,
+      };
+
+      await dbCommands.upsertHuman(newParticipant);
+      await dbCommands.sessionAddParticipant(sessionId, newParticipant.id);
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        predicate: (query) => (query.queryKey[0] as string).includes("participants") && query.queryKey[1] === sessionId,
+      }),
+  });
+
+  const handleCreateParticipant = () => {
+    addParticipantMutation.mutate({ name: query.trim() });
+  };
+
+  if (!query.trim()) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col w-full rounded border border-neutral-200 overflow-hidden">
+      {participants.data?.map((participant) => (
+        <ParticipantCandidate key={participant.id} participant={participant} sessionId={sessionId} />
+      ))}
+
+      {(!participants.data || participants.data.length === 0) && (
+        <button
+          className="flex items-center px-3 py-2 text-sm text-left hover:bg-neutral-100 transition-colors w-full"
+          onClick={handleCreateParticipant}
+        >
+          <span className="flex-shrink-0 size-5 flex items-center justify-center mr-2 bg-neutral-200 rounded-full">
+            <span className="text-xs">+</span>
+          </span>
+          <span className="flex items-center gap-1 font-medium text-neutral-600">
+            <Trans>Create</Trans>
+            <span className="text-neutral-900 truncate max-w-[140px]">&quot;{query.trim()}&quot;</span>
+          </span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ParticipantCandidate({ participant, sessionId }: { participant: Human; sessionId: string }) {
+  const queryClient = useQueryClient();
+
+  const organization = useQuery({
+    queryKey: ["organization", participant.organization_id],
+    queryFn: () => participant.organization_id ? dbCommands.getOrganization(participant.organization_id) : null,
+  });
+
+  const addParticipantMutation = useMutation({
     mutationFn: ({ id }: { id: string }) => dbCommands.sessionAddParticipant(sessionId, id),
     onSuccess: () =>
       queryClient.invalidateQueries({
@@ -279,24 +347,24 @@ function ParticipantCandidates({ query, sessionId }: { query: string; sessionId:
     addParticipantMutation.mutate({ id });
   };
 
-  if (!query.trim() || !participants.data?.length) {
-    return null;
-  }
-
   return (
-    <div className="flex flex-col w-full rounded border border-neutral-200 overflow-hidden">
-      {participants.data?.map((participant) => (
-        <button
-          className="flex items-center px-3 py-2 text-sm text-left hover:bg-neutral-100 transition-colors w-full"
-          key={participant.id}
-          onClick={() => handleClick(participant.id)}
-        >
-          <span className="flex-shrink-0 size-5 flex items-center justify-center mr-2 bg-neutral-100 rounded-full">
-            <span className="text-xs">{participant.full_name ? getInitials(participant.full_name) : "?"}</span>
+    <button
+      className="flex items-center px-3 py-2 text-sm text-left hover:bg-neutral-100 transition-colors w-full"
+      key={participant.id}
+      onClick={() => handleClick(participant.id)}
+    >
+      <span className="flex-shrink-0 size-5 flex items-center justify-center mr-2 bg-neutral-100 rounded-full">
+        <span className="text-xs">{participant.full_name ? getInitials(participant.full_name) : "?"}</span>
+      </span>
+      <span className="font-medium truncate max-w-[180px]">{participant.full_name}</span>
+
+      <div className="flex gap-0 items-center justify-between flex-1 min-w-0">
+        {organization.data?.name && (
+          <span className="text-xs text-neutral-400 ml-auto truncate max-w-[110px]">
+            {[participant.job_title, organization.data.name].filter(Boolean).join(", ")}
           </span>
-          {participant.full_name}
-        </button>
-      ))}
-    </div>
+        )}
+      </div>
+    </button>
   );
 }

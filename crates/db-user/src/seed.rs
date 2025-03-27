@@ -6,15 +6,24 @@ use super::{
 pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), crate::Error> {
     let now = chrono::Utc::now();
 
-    let org = Organization {
+    let org_1 = Organization {
         id: uuid::Uuid::new_v4().to_string(),
         name: "Fastrepl".to_string(),
         description: Some("Fastrepl = fast + read-eval-print-loop".to_string()),
     };
 
+    let org_2 = Organization {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: "Krew Capital".to_string(),
+        description: Some(
+            "Krew Capital is a venture capital firm that invests in early-stage startups"
+                .to_string(),
+        ),
+    };
+
     let yujong = Human {
         id: user_id.into(),
-        organization_id: Some(org.id.clone()),
+        organization_id: Some(org_1.id.clone()),
         is_user: true,
         full_name: Some("Yujong Lee".to_string()),
         email: Some("yujonglee@hyprnote.com".to_string()),
@@ -22,12 +31,18 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
     };
 
     let bobby = Human {
+        id: uuid::Uuid::new_v4().to_string(),
+        organization_id: Some(org_2.id.clone()),
+        job_title: Some("Partner".to_string()),
         full_name: Some("Bobby Min".to_string()),
         email: Some("bobby.min@krewcapital.com".to_string()),
         ..Human::default()
     };
 
     let minjae = Human {
+        id: uuid::Uuid::new_v4().to_string(),
+        organization_id: Some(org_2.id.clone()),
+        job_title: Some("Partner".to_string()),
         full_name: Some("Minjae Song".to_string()),
         email: Some("minjae.song@krewcapital.com".to_string()),
         ..Human::default()
@@ -189,7 +204,9 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
         },
     ];
 
-    db.upsert_organization(org).await?;
+    for org in [org_1, org_2] {
+        db.upsert_organization(org).await?;
+    }
 
     for human in humans {
         db.upsert_human(human).await?;

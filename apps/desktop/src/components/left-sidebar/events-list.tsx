@@ -25,6 +25,7 @@ export default function EventsList({ events, activeSessionId }: EventsListProps)
 
       <div>
         {events
+          .sort((a, b) => a.start_date.localeCompare(b.start_date))
           .map((event) => <EventItem key={event.id} event={event} activeSessionId={activeSessionId} />)}
       </div>
     </section>

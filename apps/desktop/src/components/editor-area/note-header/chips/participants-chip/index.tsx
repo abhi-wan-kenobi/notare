@@ -21,15 +21,15 @@ export function ParticipantsChip({ sessionId }: ParticipantsChipProps) {
     return 0;
   })).at(0);
 
+  const count = participants.data?.length ?? 0;
+
   return (
     <Popover>
       <PopoverTrigger>
         <div className="flex flex-row items-center gap-1 rounded-md px-2 py-1.5 hover:bg-neutral-100 text-xs">
           <Users2Icon size={14} />
           <span>{previewHuman?.full_name ?? "Add participants"}</span>
-          <span className="text-neutral-400">
-            {participants.data?.length ?? 0}
-          </span>
+          {count > 1 && <span className="text-neutral-400">+ {count - 1}</span>}
         </div>
       </PopoverTrigger>
 
