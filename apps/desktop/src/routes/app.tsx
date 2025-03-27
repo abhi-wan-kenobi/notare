@@ -1,7 +1,8 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
 import LeftSidebar from "@/components/left-sidebar";
+import { LoginModal } from "@/components/login-modal";
 import Notifications from "@/components/toast";
 import Toolbar from "@/components/toolbar";
 import {
@@ -20,21 +21,17 @@ import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 
 export const Route = createFileRoute("/app")({
   component: Component,
-  beforeLoad: async () => {
-    const isOnboardingNeeded = await commands.isOnboardingNeeded();
-    if (isOnboardingNeeded) {
-      throw redirect({ to: "/login" });
-    }
-  },
   loader: async ({ context: { sessionsStore } }) => {
-    return sessionsStore;
+    const isOnboardingNeeded = await commands.isOnboardingNeeded();
+    return { sessionsStore, isOnboardingNeeded };
   },
 });
 
 function Component() {
-  const store = Route.useLoaderData();
-
+  const { sessionsStore, isOnboardingNeeded } = Route.useLoaderData();
   const windowLabel = getCurrentWebviewWindowLabel();
+
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(isOnboardingNeeded);
 
   useEffect(() => {
     registerTemplates();
@@ -43,7 +40,7 @@ function Component() {
   return (
     <>
       <HyprProvider>
-        <SessionsProvider store={store}>
+        <SessionsProvider store={sessionsStore}>
           <OngoingSessionProvider>
             <LeftSidebarProvider>
               <RightPanelProvider>
@@ -57,6 +54,10 @@ function Component() {
                           <Outlet />
                         </div>
                       </div>
+                      <LoginModal
+                        isOpen={isLoginModalOpen}
+                        onClose={() => setIsLoginModalOpen(false)}
+                      />
                     </SearchProvider>
                   </NewNoteProvider>
                 </SettingsProvider>
