@@ -10,10 +10,9 @@ use std::net::{Ipv4Addr, SocketAddr};
 use tower_http::cors::{self, CorsLayer};
 
 use async_openai::types::{
-    ChatChoice, ChatChoiceStream, ChatCompletionRequestMessage,
-    ChatCompletionRequestSystemMessageContent, ChatCompletionRequestUserMessageContent,
-    ChatCompletionResponseMessage, ChatCompletionStreamResponseDelta, CreateChatCompletionRequest,
-    CreateChatCompletionResponse, CreateChatCompletionStreamResponse, Role,
+    ChatChoice, ChatChoiceStream, ChatCompletionResponseMessage, ChatCompletionStreamResponseDelta,
+    CreateChatCompletionRequest, CreateChatCompletionResponse, CreateChatCompletionStreamResponse,
+    Role,
 };
 
 #[derive(Clone)]
@@ -185,45 +184,12 @@ fn build_response(
     model: &hypr_llama::Llama,
     request: &CreateChatCompletionRequest,
 ) -> Result<impl futures_util::Stream<Item = String>, crate::Error> {
-    let system_message_content = request
+    let messages = request
         .messages
         .iter()
-        .find(|msg| matches!(msg, ChatCompletionRequestMessage::System(_)))
-        .and_then(extract_text_content);
+        .map(hypr_llama::FromOpenAI::from_openai)
+        .collect();
 
-    let user_message_content = request
-        .messages
-        .iter()
-        .find(|msg| matches!(msg, ChatCompletionRequestMessage::User(_)))
-        .and_then(extract_text_content)
-        .unwrap();
-
-    let request = hypr_llama::LlamaRequest::builder()
-        .system_message(
-            system_message_content.unwrap_or(&"You are a helpful assistant.".to_string()),
-        )
-        .user_message(user_message_content)
-        .build();
-
+    let request = hypr_llama::LlamaRequest::new(messages);
     model.generate_stream(request).map_err(Into::into)
-}
-
-fn extract_text_content(message: &ChatCompletionRequestMessage) -> Option<&String> {
-    match message {
-        ChatCompletionRequestMessage::System(msg) => {
-            if let ChatCompletionRequestSystemMessageContent::Text(text) = &msg.content {
-                Some(text)
-            } else {
-                None
-            }
-        }
-        ChatCompletionRequestMessage::User(msg) => {
-            if let ChatCompletionRequestUserMessageContent::Text(text) = &msg.content {
-                Some(text)
-            } else {
-                None
-            }
-        }
-        _ => None,
-    }
 }

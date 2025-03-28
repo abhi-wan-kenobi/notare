@@ -2,15 +2,16 @@ use llama_cpp_2::{
     context::params::LlamaContextParams,
     llama_backend::LlamaBackend,
     llama_batch::LlamaBatch,
-    model::{
-        params::LlamaModelParams, AddBos, LlamaChatMessage, LlamaChatTemplate, LlamaModel, Special,
-    },
+    model::{params::LlamaModelParams, AddBos, LlamaChatTemplate, LlamaModel, Special},
     sampling::LlamaSampler,
     send_logs_to_tracing, LogOptions,
 };
 
 mod error;
 pub use error::*;
+
+mod message;
+pub use message::*;
 
 const DEFAULT_MAX_TOKENS: i32 = 1024;
 const CONTEXT_SIZE: usize = 2048;
@@ -130,42 +131,5 @@ impl Llama {
         });
 
         Ok(stream)
-    }
-}
-
-pub struct LlamaRequest {
-    pub messages: [LlamaChatMessage; 2],
-}
-
-#[derive(Default)]
-pub struct LlamaRequestBuilder {
-    pub system_message: Option<String>,
-    pub user_message: Option<String>,
-}
-
-impl LlamaRequest {
-    pub fn builder() -> LlamaRequestBuilder {
-        LlamaRequestBuilder::default()
-    }
-}
-
-impl LlamaRequestBuilder {
-    pub fn system_message(mut self, message: impl Into<String>) -> Self {
-        self.system_message = Some(message.into());
-        self
-    }
-
-    pub fn user_message(mut self, message: impl Into<String>) -> Self {
-        self.user_message = Some(message.into());
-        self
-    }
-
-    pub fn build(self) -> LlamaRequest {
-        LlamaRequest {
-            messages: [
-                LlamaChatMessage::new("system".into(), self.system_message.unwrap()).unwrap(),
-                LlamaChatMessage::new("user".into(), self.user_message.unwrap()).unwrap(),
-            ],
-        }
     }
 }

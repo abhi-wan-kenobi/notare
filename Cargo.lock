@@ -6606,6 +6606,7 @@ checksum = "b4ce301924b7887e9d637144fdade93f9dfff9b60981d4ac161db09720d39aa5"
 name = "llama"
 version = "0.1.0"
 dependencies = [
+ "async-openai",
  "encoding_rs",
  "futures-util",
  "llama-cpp-2",
