@@ -38,27 +38,39 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
 
     #[tracing::instrument(skip_all)]
     async fn setup_db_for_local(&self) -> Result<(), String> {
-        let db = {
+        let (db, db_created) = {
             if cfg!(debug_assertions) {
-                hypr_db_core::DatabaseBuilder::default().memory()
+                (
+                    hypr_db_core::DatabaseBuilder::default()
+                        .memory()
+                        .build()
+                        .await
+                        .unwrap(),
+                    true,
+                )
             } else {
                 let local_db_path = self.db_local_path();
-                hypr_db_core::DatabaseBuilder::default().local(local_db_path)
+
+                (
+                    hypr_db_core::DatabaseBuilder::default()
+                        .local(local_db_path)
+                        .build()
+                        .await
+                        .unwrap(),
+                    false,
+                )
             }
-        }
-        .build()
-        .await
-        .unwrap();
+        };
 
         self.db_attach(db).await.unwrap();
 
         {
             use tauri_plugin_auth::{AuthPluginExt, StoreKey as AuthStoreKey};
 
-            let user_id = {
+            let (user_id, user_id_just_created) = {
                 let stored = self.get_from_store(AuthStoreKey::UserId).unwrap_or(None);
                 if let Some(id) = stored {
-                    id
+                    (id, false)
                 } else {
                     let store = self.desktop_store();
                     store
@@ -68,18 +80,24 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
 
                     let id = uuid::Uuid::new_v4().to_string();
                     self.set_in_store(AuthStoreKey::UserId, &id).unwrap();
-                    id
+                    (id, true)
                 }
             };
 
             self.db_ensure_user(&user_id).await.unwrap();
 
-            #[cfg(debug_assertions)]
             {
                 let state = self.state::<tauri_plugin_db::ManagedState>();
                 let s = state.lock().await;
                 let user_db = s.db.as_ref().unwrap();
-                hypr_db_user::seed(user_db, &user_id).await.unwrap();
+
+                if db_created {
+                    hypr_db_user::seed(user_db, &user_id).await.unwrap();
+                }
+
+                if db_created || user_id_just_created {
+                    hypr_db_user::seed2(user_db, &user_id).await.unwrap();
+                }
             }
         }
 

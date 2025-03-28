@@ -6,7 +6,11 @@ import EditorArea from "@/components/editor-area";
 import RightPanel from "@/components/right-panel";
 import { useOngoingSession, useSession } from "@/contexts";
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
-import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
+import {
+  commands as windowsCommands,
+  events as windowsEvents,
+  getCurrentWebviewWindowLabel,
+} from "@hypr/plugin-windows";
 
 const PATH = "/app/note/$id";
 
@@ -39,14 +43,69 @@ export const Route = createFileRoute(PATH)({
       },
     });
   },
+  loader: async ({ params: { id } }) => {
+    const onboardingSessionId = await dbCommands.onboardingSessionId();
+    return { isDemo: id === onboardingSessionId, video: "cVEAlhaghbBcj1eZDW202URXSJq3ewZb02l7C9jG5mKrY" };
+  },
   component: Component,
 });
 
 function Component() {
+  const { isDemo, video } = Route.useLoaderData();
   const { id: sessionId } = useParams({ from: PATH });
 
   const { getSession } = useSession(sessionId, (s) => ({ getSession: s.get }));
-  const getOngoingSession = useOngoingSession((s) => s.get);
+  const { getOngoingSession, startOngoingSession, pauseOngoingSession, ongoingSessionStatus } = useOngoingSession((
+    s,
+  ) => ({
+    getOngoingSession: s.get,
+    startOngoingSession: s.start,
+    pauseOngoingSession: s.pause,
+    ongoingSessionStatus: s.status,
+  }));
+
+  useEffect(() => {
+    if (!isDemo) {
+      return;
+    }
+
+    startOngoingSession(sessionId);
+  }, [isDemo]);
+
+  useEffect(() => {
+    if (!isDemo) {
+      return;
+    }
+
+    let unlisten: () => void;
+
+    windowsEvents.windowDestroyed.listen(({ payload }) => {
+      if (payload.window.type === "video") {
+        pauseOngoingSession();
+      }
+    }).then((u) => {
+      unlisten = u;
+    });
+
+    return () => unlisten?.();
+  }, [isDemo]);
+
+  useEffect(() => {
+    if (!isDemo) {
+      return;
+    }
+
+    if (ongoingSessionStatus === "active") {
+      windowsCommands.windowShow({ type: "video", value: video }).then(() => {
+        windowsCommands.windowPosition({ type: "video", value: video }, "left-half");
+        windowsCommands.windowPosition({ type: "main" }, "right-half");
+      });
+    }
+
+    if (ongoingSessionStatus === "inactive") {
+      windowsCommands.windowDestroy({ type: "video", value: video });
+    }
+  }, [isDemo, ongoingSessionStatus]);
 
   useEffect(() => {
     const isEmpty = (s: string | null) => s === "<p></p>" || !s;
