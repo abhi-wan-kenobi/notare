@@ -2,7 +2,7 @@
   word-break: break-word;
   overflow-wrap: break-word;
   white-space: pre-wrap;
-  padding-bottom: 1rem;
+  padding-bottom: 1.5rem;
   hyphens: auto;
 
   :first-child {
@@ -36,14 +36,26 @@
     word-break: break-word;
     overflow-wrap: break-word;
     hyphens: auto;
+    min-height: 1.5rem;
+    position: relative;
 
     /* placeholder */
-    &.is-editor-empty:first-child::before {
-      color: #d1d5db;
+    &.is-empty {
+      min-height: 1.5rem;
+      display: block;
+    }
+
+    &.is-empty::before {
+      color: #ebebeb;
       content: attr(data-placeholder);
-      float: left;
-      height: 0;
+      position: absolute;
       pointer-events: none;
+      margin-left: 0.15rem;
+    }
+
+    &:empty::after {
+      content: "\00a0";
+      visibility: hidden;
     }
   }
 
@@ -95,38 +107,45 @@
     list-style-type: disc;
     padding-left: 1.5rem;
     margin-bottom: 0.25rem;
+    display: block;
+    position: relative;
   }
 
   /* Second-level bullets - hollow circles */
   ul ul {
-    list-style-type: circle; /* Hollow bullets for second level */
+    list-style-type: circle;
   }
 
   /* Third-level bullets - square */
   ul ul ul {
-    list-style-type: square; /* Square bullets for third level */
+    list-style-type: square;
   }
 
   ol {
     list-style-type: decimal;
     padding-left: 1.5rem;
     margin-bottom: 0.25rem;
+    display: block;
+    position: relative;
   }
 
   /* Second-level ordered items - lowercase alphabets */
   ol ol {
-    list-style-type: lower-alpha; /* a, b, c, ... */
+    list-style-type: lower-alpha;
   }
 
   /* Third-level ordered items - lowercase Roman numerals */
   ol ol ol {
-    list-style-type: lower-roman; /* i, ii, iii, ... */
+    list-style-type: lower-roman;
   }
 
   ul li,
   ol li {
     display: list-item;
     margin-bottom: 0.25rem;
+    list-style-position: outside;
+    visibility: visible;
+    position: relative;
   }
 
   ul li::marker,
@@ -136,6 +155,7 @@
 
   li p {
     margin: 0 0 0.25rem 0;
+    display: inline;
   }
 
   /* task list */
@@ -145,22 +165,62 @@
     padding: 0;
 
     li {
-      align-items: flex-start;
+      align-items: center;
       display: flex;
+      margin-bottom: 0.25rem;
 
       > label {
         flex: 0 0 auto;
         margin-right: 0.5rem;
         user-select: none;
+        position: relative;
+        display: inline-flex;
+        align-items: center;
       }
 
       > div {
         flex: 1 1 auto;
+        margin-top: 0;
       }
     }
 
     input[type="checkbox"] {
       cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      margin: 0;
+      transition: all 0.2s ease;
+      position: relative;
+
+      &:checked {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+      }
+
+      &:checked::after {
+        content: "";
+        position: absolute;
+        left: 4.5px;
+        top: 1px;
+        width: 5px;
+        height: 10px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+      }
+
+      &:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+      }
+
+      &:hover:not(:checked) {
+        border-color: #9ca3af;
+      }
     }
 
     ul[data-type="taskList"] {
@@ -192,4 +252,8 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.ProseMirror {
+  caret-color: black;
 }
