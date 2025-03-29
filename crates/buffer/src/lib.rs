@@ -46,7 +46,7 @@ fn md_to_md(text: impl AsRef<str>) -> Result<String, Error> {
         .map_err(|e| Error::MarkdownParseError(e.to_string()))?;
 
     convert_ordered_to_unordered(&mut ast);
-    set_heading_level_from(&mut ast, 2, false);
+    set_heading_level_from(&mut ast, 1, false);
 
     let md = mdast_util_to_markdown::to_markdown_with_options(
         &ast,
@@ -123,10 +123,14 @@ mod tests {
     fn test_1() {
         let buffer = Buffer::default();
 
-        buffer.write("### Hello\n");
-        buffer.write("#### World\n\n");
+        buffer.write("# Hello\n");
+        buffer.write("## World\n\n");
         buffer.write("1. Hi\n");
-        buffer.write("2. Bye!");
+        buffer.write("2. Bye!\n\n");
+        buffer.write("## Programming!\n");
+        buffer.write("- Foo\n");
+        buffer.write("- Bar\n");
+        buffer.write("- Baz");
 
         let result = buffer.read().unwrap();
         assert_eq!(

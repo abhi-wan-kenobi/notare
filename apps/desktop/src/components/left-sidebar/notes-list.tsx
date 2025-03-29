@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useSession } from "@/contexts";
 import { useHypr, useSessions } from "@/contexts";
-import { commands as dbCommands, type Session } from "@hypr/plugin-db";
+import { commands as dbCommands, type Event, type Session } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import {
   ContextMenu,
@@ -24,6 +24,10 @@ interface NotesListProps {
   filter: (session: Session) => boolean;
   ongoingSessionId?: string | null;
 }
+
+type SessionWithEvent = Session & {
+  event: Event | null;
+};
 
 export default function NotesList({ ongoingSessionId, filter }: NotesListProps) {
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -52,7 +56,12 @@ export default function NotesList({ ongoingSessionId, filter }: NotesListProps) 
       });
       sessions.forEach(insertSession);
 
-      return { sessions: groupSessions(sessions) };
+      const sessionWithEvents = await Promise.all(sessions.map(async (session) => {
+        const event = await dbCommands.sessionGetEvent(session.id);
+        return { ...session, event };
+      }));
+
+      return { sessions: groupSessions(sessionWithEvents) };
     },
     initialPageParam: { monthOffset: 0 },
     getNextPageParam: (_lastPage, _, { monthOffset }) => {
@@ -288,9 +297,10 @@ function NoteItem({
   );
 }
 
-const groupSessions = (sessions: Session[]): [string, Session[]][] => {
-  const grouped = sessions.reduce<Record<string, Session[]>>((acc, session) => {
-    const key = formatRelative(session.created_at);
+const groupSessions = (sessions: SessionWithEvent[]): [string, SessionWithEvent[]][] => {
+  const grouped = sessions.reduce<Record<string, SessionWithEvent[]>>((acc, session) => {
+    const key = formatRelative(session.event?.start_date ?? session.created_at);
+
     return {
       ...acc,
       [key]: [...(acc[key] ?? []), session],
@@ -299,7 +309,7 @@ const groupSessions = (sessions: Session[]): [string, Session[]][] => {
 
   const groupedAndSorted = Object.entries(grouped).map(([key, sessions]) => {
     const sorted = sessions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    return [key, sorted] as [string, Session[]];
+    return [key, sorted] as [string, SessionWithEvent[]];
   });
 
   return groupedAndSorted.sort(([_, sessionsA], [__, sessionsB]) => {
