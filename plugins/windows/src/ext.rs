@@ -136,6 +136,30 @@ impl HyprWindow {
             .ok_or(crate::Error::WindowNotFound(label))
     }
 
+    pub fn get_default_size(&self) -> LogicalSize<f64> {
+        match self {
+            Self::Main => LogicalSize::new(800.0, 600.0),
+            Self::Note(_) => LogicalSize::new(480.0, 500.0),
+            Self::Human(_) => LogicalSize::new(480.0, 500.0),
+            Self::Organization(_) => LogicalSize::new(480.0, 500.0),
+            Self::Calendar => LogicalSize::new(640.0, 532.0),
+            Self::Settings => LogicalSize::new(800.0, 600.0),
+            Self::Video(_) => LogicalSize::new(640.0, 360.0),
+        }
+    }
+
+    pub fn get_min_size(&self) -> LogicalSize<f64> {
+        match self {
+            Self::Main => LogicalSize::new(620.0, 500.0),
+            Self::Note(_) => LogicalSize::new(480.0, 360.0),
+            Self::Human(_) => LogicalSize::new(480.0, 360.0),
+            Self::Organization(_) => LogicalSize::new(480.0, 360.0),
+            Self::Calendar => LogicalSize::new(640.0, 532.0),
+            Self::Settings => LogicalSize::new(800.0, 600.0),
+            Self::Video(_) => LogicalSize::new(640.0, 360.0),
+        }
+    }
+
     pub fn position(
         &self,
         app: &AppHandle<tauri::Wry>,
@@ -201,13 +225,16 @@ impl HyprWindow {
                 window.set_traffic_lights_inset(12.0, 20.0)?;
             }
 
+            let default_size = self.get_default_size();
+            let min_size = self.get_min_size();
+
             match self {
                 Self::Main => {
                     window.set_maximizable(true)?;
                     window.set_minimizable(true)?;
 
-                    window.set_size(LogicalSize::new(800.0, 600.0))?;
-                    window.set_min_size(Some(LogicalSize::new(620.0, 500.0)))?;
+                    window.set_size(default_size)?;
+                    window.set_min_size(Some(min_size))?;
                 }
                 Self::Note(_) => {
                     window.hide()?;
@@ -215,8 +242,9 @@ impl HyprWindow {
 
                     window.set_maximizable(false)?;
                     window.set_minimizable(false)?;
-                    window.set_size(LogicalSize::new(480.0, 500.0))?;
-                    window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
+
+                    window.set_size(default_size)?;
+                    window.set_min_size(Some(min_size))?;
 
                     {
                         let mut cursor = app.cursor_position().unwrap();
@@ -231,8 +259,9 @@ impl HyprWindow {
 
                     window.set_maximizable(false)?;
                     window.set_minimizable(false)?;
-                    window.set_size(LogicalSize::new(480.0, 500.0))?;
-                    window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
+
+                    window.set_size(default_size)?;
+                    window.set_min_size(Some(min_size))?;
 
                     {
                         let mut cursor = app.cursor_position().unwrap();
@@ -247,8 +276,9 @@ impl HyprWindow {
 
                     window.set_maximizable(false)?;
                     window.set_minimizable(false)?;
-                    window.set_size(LogicalSize::new(480.0, 500.0))?;
-                    window.set_min_size(Some(LogicalSize::new(480.0, 360.0)))?;
+
+                    window.set_size(default_size)?;
+                    window.set_min_size(Some(min_size))?;
 
                     {
                         let mut cursor = app.cursor_position().unwrap();
@@ -263,8 +293,9 @@ impl HyprWindow {
 
                     window.set_maximizable(false)?;
                     window.set_minimizable(false)?;
-                    window.set_size(LogicalSize::new(640.0, 532.0))?;
-                    window.set_min_size(Some(LogicalSize::new(640.0, 532.0)))?;
+
+                    window.set_size(default_size)?;
+                    window.set_min_size(Some(min_size))?;
 
                     {
                         let mut cursor = app.cursor_position().unwrap();
@@ -279,8 +310,9 @@ impl HyprWindow {
 
                     window.set_maximizable(false)?;
                     window.set_minimizable(false)?;
-                    window.set_size(LogicalSize::new(800.0, 600.0))?;
-                    window.set_min_size(Some(LogicalSize::new(800.0, 600.0)))?;
+
+                    window.set_size(default_size)?;
+                    window.set_min_size(Some(min_size))?;
 
                     {
                         let mut cursor = app.cursor_position().unwrap();
@@ -296,8 +328,9 @@ impl HyprWindow {
                     window.set_resizable(false)?;
                     window.set_maximizable(false)?;
                     window.set_minimizable(false)?;
-                    window.set_size(LogicalSize::new(640.0, 360.0))?;
-                    window.set_min_size(Some(LogicalSize::new(640.0, 360.0)))?;
+
+                    window.set_size(default_size)?;
+                    window.set_min_size(Some(min_size))?;
                 }
             };
         }
@@ -333,6 +366,7 @@ pub trait WindowsPluginExt<R: tauri::Runtime> {
     fn window_show(&self, window: HyprWindow) -> Result<WebviewWindow, crate::Error>;
     fn window_destroy(&self, window: HyprWindow) -> Result<(), crate::Error>;
     fn window_position(&self, window: HyprWindow, pos: KnownPosition) -> Result<(), crate::Error>;
+    fn window_resize_default(&self, window: HyprWindow) -> Result<(), crate::Error>;
 
     fn window_get_floating(&self, window: HyprWindow) -> Result<bool, crate::Error>;
     fn window_set_floating(&self, window: HyprWindow, v: bool) -> Result<(), crate::Error>;
@@ -361,6 +395,14 @@ impl WindowsPluginExt<tauri::Wry> for AppHandle<tauri::Wry> {
 
     fn window_position(&self, window: HyprWindow, pos: KnownPosition) -> Result<(), crate::Error> {
         window.position(self, pos)
+    }
+
+    fn window_resize_default(&self, window: HyprWindow) -> Result<(), crate::Error> {
+        let default_size = window.get_default_size();
+
+        let window = window.get(self)?;
+        window.set_size(default_size)?;
+        Ok(())
     }
 
     fn window_get_floating(&self, window: HyprWindow) -> Result<bool, crate::Error> {

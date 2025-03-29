@@ -31,6 +31,18 @@ pub async fn window_position(
         .map_err(|e| e.to_string())?;
     Ok(())
 }
+
+#[tauri::command]
+#[specta::specta]
+pub async fn window_resize_default(
+    app: tauri::AppHandle<tauri::Wry>,
+    window: HyprWindow,
+) -> Result<(), String> {
+    app.window_resize_default(window)
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn window_get_floating(

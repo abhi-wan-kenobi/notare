@@ -34,6 +34,7 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::window_show,
             commands::window_destroy,
             commands::window_position,
+            commands::window_resize_default,
             commands::window_get_floating,
             commands::window_set_floating,
             commands::window_navigate,

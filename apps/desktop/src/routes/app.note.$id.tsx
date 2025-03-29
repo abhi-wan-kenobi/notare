@@ -98,6 +98,7 @@ function Component() {
     if (ongoingSessionStatus === "active") {
       windowsCommands.windowShow({ type: "video", value: video }).then(() => {
         windowsCommands.windowPosition({ type: "video", value: video }, "left-half");
+        windowsCommands.windowResizeDefault({ type: "video", value: video });
         windowsCommands.windowPosition({ type: "main" }, "right-half");
       });
     }

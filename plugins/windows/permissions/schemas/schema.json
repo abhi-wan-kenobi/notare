@@ -345,6 +345,16 @@
           "const": "deny-window-position"
         },
         {
+          "description": "Enables the window_resize_default command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-window-resize-default"
+        },
+        {
+          "description": "Denies the window_resize_default command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-window-resize-default"
+        },
+        {
           "description": "Enables the window_set_floating command without any pre-configured scope.",
           "type": "string",
           "const": "allow-window-set-floating"

@@ -5,6 +5,7 @@ Default permissions for the plugin
 - `allow-window-show`
 - `allow-window-destroy`
 - `allow-window-position`
+- `allow-window-resize-default`
 - `allow-window-get-floating`
 - `allow-window-set-floating`
 - `allow-window-navigate`
@@ -145,6 +146,32 @@ Enables the window_position command without any pre-configured scope.
 <td>
 
 Denies the window_position command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:allow-window-resize-default`
+
+</td>
+<td>
+
+Enables the window_resize_default command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:deny-window-resize-default`
+
+</td>
+<td>
+
+Denies the window_resize_default command without any pre-configured scope.
 
 </td>
 </tr>

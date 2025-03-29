@@ -16,6 +16,9 @@ async windowDestroy(window: HyprWindow) : Promise<null> {
 async windowPosition(window: HyprWindow, pos: KnownPosition) : Promise<null> {
     return await TAURI_INVOKE("plugin:windows|window_position", { window, pos });
 },
+async windowResizeDefault(window: HyprWindow) : Promise<null> {
+    return await TAURI_INVOKE("plugin:windows|window_resize_default", { window });
+},
 async windowGetFloating(window: HyprWindow) : Promise<boolean> {
     return await TAURI_INVOKE("plugin:windows|window_get_floating", { window });
 },
