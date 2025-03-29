@@ -28,6 +28,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
   const [showRaw, setShowRaw] = useState(true);
   const { userId } = useHypr();
 
+  const ongoingSessionTimeline = useOngoingSession((s) => s.timeline);
   const sessionStore = useSession(sessionId, (s) => ({
     session: s.session,
     updateRawNote: s.updateRawNote,
@@ -143,6 +144,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
         className={cn([
           "h-full overflow-y-auto",
           enhance.status === "pending" && "tiptap-animate",
+          ongoingSessionTimeline?.items?.length && "pb-16",
         ])}
         onClick={(e) => {
           e.stopPropagation();
@@ -170,7 +172,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
 
       <AnimatePresence>
         <motion.div
-          className="absolute bottom-6 w-full flex justify-center items-center pointer-events-none z-10"
+          className="absolute bottom-4 w-full flex justify-center items-center pointer-events-none z-10"
           initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 50, opacity: 0 }}
