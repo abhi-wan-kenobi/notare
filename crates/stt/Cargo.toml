@@ -10,12 +10,13 @@ recorded = []
 local = []
 
 [dependencies]
-deepgram = { version = "0.6.6", default-features = false, features = ["listen"] }
 hypr-audio-utils = { path = "../audio-utils", package = "audio-utils" }
 hypr-clova = { path = "../clova", package = "clova" }
 hypr-db-user = { workspace = true }
 hypr-rtzr = { path = "../rtzr", package = "rtzr" }
 hypr-whisper = { path = "../whisper", package = "whisper", default-features = false, features = ["cloud"] }
+
+deepgram = { workspace = true, default-features = false, features = ["listen"] }
 
 anyhow = { workspace = true }
 thiserror = { workspace = true }

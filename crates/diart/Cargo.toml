@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hypr-db-user = { workspace = true }
+hypr-listener-interface = { workspace = true }
 hypr-ws = { path = "../ws", package = "ws" }
 
 anyhow = { workspace = true }

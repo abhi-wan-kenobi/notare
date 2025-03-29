@@ -17,7 +17,7 @@ use std::{
 use tower_http::cors::{self, CorsLayer};
 
 use futures_util::{stream::SplitStream, SinkExt, Stream, StreamExt};
-use hypr_listener_interface::{ListenInputChunk, ListenOutputChunk, ListenParams};
+use hypr_listener_interface::{ListenInputChunk, ListenOutputChunk, ListenParams, TranscriptChunk};
 
 #[derive(Default)]
 pub struct ServerStateBuilder {
@@ -168,7 +168,7 @@ async fn websocket(socket: WebSocket, model: rwhisper::Whisper, _guard: Connecti
             continue;
         }
 
-        let data = ListenOutputChunk::Transcribe(hypr_db_user::TranscriptChunk {
+        let data = ListenOutputChunk::Transcribe(TranscriptChunk {
             text,
             start,
             end: start + duration,

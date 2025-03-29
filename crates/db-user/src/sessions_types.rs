@@ -46,27 +46,11 @@ impl Session {
 }
 
 user_common_derives! {
-    pub struct TranscriptChunk {
-        pub start: u64,
-        pub end: u64,
-        pub text: String,
-    }
-}
-
-user_common_derives! {
-    pub struct DiarizationChunk {
-        pub start: u64,
-        pub end: u64,
-        pub speaker: String,
-    }
-}
-
-user_common_derives! {
     pub struct ConversationChunk {
         pub start: DateTime<Utc>,
         pub end: DateTime<Utc>,
-        pub transcripts: Vec<TranscriptChunk>,
-        pub diarizations: Vec<DiarizationChunk>,
+        pub transcripts: Vec<hypr_listener_interface::TranscriptChunk>,
+        pub diarizations: Vec<hypr_listener_interface::DiarizationChunk>,
     }
 }
 

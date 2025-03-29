@@ -83,7 +83,7 @@ pub struct DiarizeInputChunk {
     pub audio: Vec<u8>,
 }
 
-pub type DiarizeOutputChunk = hypr_db_user::DiarizationChunk;
+pub type DiarizeOutputChunk = hypr_listener_interface::DiarizationChunk;
 
 impl DiarizeClient {
     pub fn builder() -> DiarizeClientBuilder {

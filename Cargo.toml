@@ -15,6 +15,7 @@ rust-version = "1.85.1"
 [workspace.dependencies]
 hypr-analytics = { path = "crates/analytics", package = "analytics" }
 hypr-buffer = { path = "crates/buffer", package = "buffer" }
+hypr-calendar-interface = { path = "crates/calendar-interface", package = "calendar-interface" }
 hypr-data = { path = "crates/data", package = "data" }
 hypr-db-admin = { path = "crates/db-admin", package = "db-admin" }
 hypr-db-core = { path = "crates/db-core", package = "db-core" }
@@ -137,6 +138,7 @@ kalosm-sound = { git = "https://github.com/floneum/floneum", rev = "52967ae", de
 kalosm-streams = { git = "https://github.com/floneum/floneum", rev = "52967ae" }
 rwhisper = { git = "https://github.com/floneum/floneum", rev = "52967ae" }
 
+deepgram = { version = "0.6.6", default-features = false }
 libsql = "0.6.0"
 
 [patch.crates-io]

@@ -1,11 +1,24 @@
 use super::{
-    Event, GetSessionFilter, Human, ListSessionFilter, ListSessionFilterCommon,
+    ConversationChunk, Event, GetSessionFilter, Human, ListSessionFilter, ListSessionFilterCommon,
     ListSessionFilterSpecific, Session, UserDatabase,
 };
 
 impl UserDatabase {
-    pub async fn onboarding_session_id(&self) -> String {
+    pub fn onboarding_session_id(&self) -> String {
         "df1d8c52-6d9d-4471-aff1-5dbd35899cbe".to_string()
+    }
+
+    pub fn onboarding_session_conversations(&self) -> Vec<ConversationChunk> {
+        vec![ConversationChunk {
+            start: chrono::Utc::now(),
+            end: chrono::Utc::now(),
+            transcripts: vec![hypr_listener_interface::TranscriptChunk {
+                start: 0,
+                end: 1000,
+                text: "Hello, how are you?".to_string(),
+            }],
+            diarizations: vec![],
+        }]
     }
 
     pub async fn get_session(

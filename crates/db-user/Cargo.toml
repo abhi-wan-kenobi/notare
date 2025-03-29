@@ -3,10 +3,16 @@ name = "db-user"
 version = "0.1.0"
 edition = "2021"
 
+[build-dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+hypr-listener-interface = { workspace = true }
+
 [dependencies]
 hypr-buffer = { workspace = true }
-hypr-calendar-interface = { path = "../calendar-interface", package = "calendar-interface" }
+hypr-calendar-interface = { workspace = true }
 hypr-db-core = { workspace = true }
+hypr-listener-interface = { workspace = true }
 
 libsql = { workspace = true }
 tokio = { workspace = true, features = ["rt", "macros"] }

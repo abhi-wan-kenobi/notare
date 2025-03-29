@@ -3051,6 +3051,7 @@ dependencies = [
  "codes-iso-639",
  "db-core",
  "libsql",
+ "listener-interface",
  "schemars",
  "serde",
  "serde_json",
@@ -3306,10 +3307,10 @@ dependencies = [
  "bytes",
  "codes-iso-639",
  "data",
- "db-user",
  "futures-channel",
  "futures-util",
  "hound",
+ "listener-interface",
  "reqwest 0.12.14",
  "serde",
  "serde_bytes",
@@ -6583,7 +6584,6 @@ name = "listener-interface"
 version = "0.1.0"
 dependencies = [
  "codes-iso-639",
- "db-user",
  "schemars",
  "serde",
  "serde_bytes",

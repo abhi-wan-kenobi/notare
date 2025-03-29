@@ -12,7 +12,7 @@ pub async fn onboarding_session_id(
         .ok_or(crate::Error::NoneDatabase)
         .map_err(|e| e.to_string())?;
 
-    let id = db.onboarding_session_id().await;
+    let id = db.onboarding_session_id();
     Ok(id)
 }
 

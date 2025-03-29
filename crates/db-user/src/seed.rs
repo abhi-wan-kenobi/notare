@@ -30,7 +30,7 @@ pub async fn seed2(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), 
         google_event_url: None,
     };
 
-    let onboarding_session_id = db.onboarding_session_id().await;
+    let onboarding_session_id = db.onboarding_session_id();
 
     let session_1 = Session {
         id: uuid::Uuid::new_v4().to_string(),
@@ -39,7 +39,7 @@ pub async fn seed2(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), 
         created_at: chrono::Utc::now(),
         visited_at: chrono::Utc::now(),
         calendar_event_id: None,
-        raw_memo_html: hypr_buffer::md_to_html(USER_MANUAL_MD).unwrap(),
+        raw_memo_html: hypr_buffer::opinionated_md_to_html(USER_MANUAL_MD).unwrap(),
         enhanced_memo_html: None,
         conversations: vec![],
     };
@@ -51,7 +51,7 @@ pub async fn seed2(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), 
         created_at: chrono::Utc::now() + chrono::Duration::days(2),
         visited_at: chrono::Utc::now() + chrono::Duration::days(2),
         calendar_event_id: Some(onboarding_event.id.clone()),
-        raw_memo_html: hypr_buffer::md_to_html(ONBOARDING_MD).unwrap(),
+        raw_memo_html: hypr_buffer::opinionated_md_to_html(ONBOARDING_MD).unwrap(),
         enhanced_memo_html: None,
         conversations: vec![],
     };

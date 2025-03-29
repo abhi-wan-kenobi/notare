@@ -2,7 +2,13 @@
 macro_rules! common_derives {
     ($item:item) => {
         #[derive(
-            Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type, schemars::JsonSchema,
+            PartialEq,
+            Debug,
+            Clone,
+            serde::Serialize,
+            serde::Deserialize,
+            specta::Type,
+            schemars::JsonSchema,
         )]
         #[schemars(deny_unknown_fields)]
         $item
@@ -10,9 +16,25 @@ macro_rules! common_derives {
 }
 
 common_derives! {
+    pub struct TranscriptChunk {
+        pub start: u64,
+        pub end: u64,
+        pub text: String,
+    }
+}
+
+common_derives! {
+    pub struct DiarizationChunk {
+        pub start: u64,
+        pub end: u64,
+        pub speaker: String,
+    }
+}
+
+common_derives! {
     pub enum ListenOutputChunk {
-        Transcribe(hypr_db_user::TranscriptChunk),
-        Diarize(hypr_db_user::DiarizationChunk),
+        Transcribe(TranscriptChunk),
+        Diarize(DiarizationChunk),
     }
 }
 
