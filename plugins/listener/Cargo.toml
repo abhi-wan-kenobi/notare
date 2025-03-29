@@ -14,7 +14,6 @@ tauri-plugin = { workspace = true, features = ["build"] }
 hypr-data = { path = "../../crates/data", package = "data" }
 tauri-plugin-local-stt = { path = "../local-stt" }
 
-insta = "1.42.1"
 rodio = { workspace = true, features = ["wav"] }
 serde_json = { workspace = true }
 specta-typescript = { workspace = true }
@@ -29,6 +28,7 @@ hypr-audio = { path = "../../crates/audio", package = "audio" }
 hypr-audio-utils = { path = "../../crates/audio-utils", package = "audio-utils" }
 hypr-db-core = { workspace = true }
 hypr-db-user = { workspace = true }
+hypr-timeline = { workspace = true }
 hypr-ws = { path = "../../crates/ws", package = "ws" }
 
 tauri = { workspace = true, features = ["specta", "test"] }
@@ -48,4 +48,3 @@ futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 hound = { workspace = true }
-intervaltree = "0.2.7"

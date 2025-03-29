@@ -20,7 +20,7 @@ pub struct SessionEventStarted {
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, specta::Type)]
 pub struct SessionEventTimelineView {
-    pub timeline: crate::TimelineView,
+    pub timeline: hypr_timeline::TimelineView,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, specta::Type)]

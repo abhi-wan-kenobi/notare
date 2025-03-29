@@ -9,13 +9,11 @@ mod commands;
 mod error;
 mod events;
 mod ext;
-mod timeline;
 
 pub use client::*;
 pub use error::*;
 pub use events::*;
 pub use ext::ListenerPluginExt;
-pub use timeline::*;
 
 pub use hypr_listener_interface::*;
 
@@ -25,7 +23,7 @@ pub type SharedState = Mutex<State>;
 
 #[derive(Default)]
 pub struct State {
-    timeline: Option<Arc<Mutex<crate::Timeline>>>,
+    timeline: Option<Arc<Mutex<hypr_timeline::Timeline>>>,
     mic_stream_handle: Option<tokio::task::JoinHandle<()>>,
     speaker_stream_handle: Option<tokio::task::JoinHandle<()>>,
     listen_stream_handle: Option<tokio::task::JoinHandle<()>>,

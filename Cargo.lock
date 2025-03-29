@@ -2996,6 +2996,8 @@ dependencies = [
 name = "data"
 version = "0.1.0"
 dependencies = [
+ "listener-interface",
+ "serde",
  "serde_json",
 ]
 
@@ -12252,8 +12254,6 @@ dependencies = [
  "db-user",
  "futures-util",
  "hound",
- "insta",
- "intervaltree",
  "listener-interface",
  "rodio",
  "serde",
@@ -12268,6 +12268,7 @@ dependencies = [
  "tauri-plugin-local-stt",
  "tauri-specta",
  "thiserror 2.0.12",
+ "timeline",
  "tokio",
  "tracing",
  "url",
@@ -12973,6 +12974,19 @@ checksum = "e8093bc3e81c3bc5f7879de09619d06c9a5a5e45ca44dfeeb7225bae38005c5c"
 dependencies = [
  "num-conv",
  "time-core",
+]
+
+[[package]]
+name = "timeline"
+version = "0.1.0"
+dependencies = [
+ "data",
+ "insta",
+ "intervaltree",
+ "listener-interface",
+ "serde",
+ "serde_json",
+ "specta",
 ]
 
 [[package]]

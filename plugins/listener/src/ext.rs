@@ -6,9 +6,8 @@ use hypr_audio::AsyncSource;
 use tauri::ipc::Channel;
 use tokio::sync::{mpsc, Mutex};
 
-use crate::{
-    SessionEvent, SessionEventStarted, SessionEventTimelineView, TimelineFilter, TimelineView,
-};
+use crate::{SessionEvent, SessionEventStarted, SessionEventTimelineView};
+use hypr_timeline::{Timeline, TimelineFilter, TimelineView};
 
 const SAMPLE_RATE: u32 = 16000;
 
@@ -312,7 +311,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
             wav.finalize().unwrap();
         });
 
-        let timeline = Arc::new(Mutex::new(crate::Timeline::default()));
+        let timeline = Arc::new(Mutex::new(Timeline::default()));
         let audio_stream = hypr_audio::ReceiverStreamSource::new(mixed_rx, SAMPLE_RATE);
 
         {
@@ -352,7 +351,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
                     }
 
                     app.broadcast(SessionEvent::TimelineView(SessionEventTimelineView {
-                        timeline: timeline.view(crate::TimelineFilter::default()),
+                        timeline: timeline.view(TimelineFilter::default()),
                     }))
                     .await
                     .unwrap();
