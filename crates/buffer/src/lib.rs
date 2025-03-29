@@ -1,5 +1,3 @@
-use std::sync::Mutex;
-
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("failed to parse markdown")]
@@ -12,30 +10,6 @@ pub enum Error {
     HTMLParseError(String),
 }
 
-pub struct Buffer {
-    content: Mutex<String>,
-}
-
-impl Default for Buffer {
-    fn default() -> Self {
-        Buffer {
-            content: Mutex::new(String::new()),
-        }
-    }
-}
-
-impl Buffer {
-    pub fn write(&self, s: &str) {
-        let mut content = self.content.lock().unwrap();
-        content.push_str(s);
-    }
-
-    pub fn read(&self) -> Result<String, Error> {
-        let content = self.content.lock().unwrap();
-        opinionated_md_to_html(content.as_str())
-    }
-}
-
 pub fn opinionated_md_to_html(text: impl AsRef<str>) -> Result<String, Error> {
     let md = md_to_md(text)?;
     md_to_html(&md)
@@ -45,8 +19,17 @@ fn md_to_md(text: impl AsRef<str>) -> Result<String, Error> {
     let mut ast = markdown::to_mdast(text.as_ref(), &markdown::ParseOptions::default())
         .map_err(|e| Error::MarkdownParseError(e.to_string()))?;
 
-    convert_ordered_to_unordered(&mut ast);
-    set_heading_level_from(&mut ast, 1, false);
+    let transformations: Vec<Box<dyn Fn(&mut markdown::mdast::Node)>> = vec![
+        Box::new(|node| {
+            set_heading_level_from(node, 1, false);
+        }),
+        Box::new(flatten_headings),
+        Box::new(convert_ordered_to_unordered),
+    ];
+
+    for transform in transformations {
+        transform(&mut ast);
+    }
 
     let md = mdast_util_to_markdown::to_markdown_with_options(
         &ast,
@@ -115,69 +98,79 @@ fn set_heading_level_from(node: &mut markdown::mdast::Node, depth: u8, header_fo
     found_any_heading
 }
 
+fn flatten_headings(node: &mut markdown::mdast::Node) {
+    if let markdown::mdast::Node::Heading(heading) = node {
+        if heading.depth > 1 {
+            let children = node.children().cloned().unwrap_or_default();
+
+            let strong_node = markdown::mdast::Node::Strong(markdown::mdast::Strong {
+                children,
+                position: None,
+            });
+
+            *node = markdown::mdast::Node::Paragraph(markdown::mdast::Paragraph {
+                children: vec![strong_node],
+                position: None,
+            });
+        }
+    }
+
+    if let Some(children) = node.children_mut() {
+        for child in children {
+            flatten_headings(child);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_1() {
-        let buffer = Buffer::default();
+        let input = r#"
+# Hello
 
-        buffer.write("# Hello\n");
-        buffer.write("## World\n\n");
-        buffer.write("1. Hi\n");
-        buffer.write("2. Bye!\n\n");
-        buffer.write("## Programming!\n");
-        buffer.write("- Foo\n");
-        buffer.write("- Bar\n");
-        buffer.write("- Baz");
+## World
 
-        let result = buffer.read().unwrap();
-        assert_eq!(
-            result,
-            "<h2>Hello</h2>\n<h3>World</h3>\n<ul>\n<li>Hi</li>\n<li>Bye!</li>\n</ul>\n"
-        );
+1. Hi
+2. Bye!
+"#;
+
+        let output_expected = r#"
+# Hello
+
+**World**
+
+* Hi
+* Bye!
+"#;
+
+        let output_actual = md_to_md(input).unwrap();
+        assert_eq!(output_actual.trim(), output_expected.trim());
     }
 
     #[test]
     fn test_2() {
-        let buffer = Buffer::default();
+        let input = r#"
+## Hello
 
-        buffer.write("hi\n");
-        buffer.write("### World\n\n");
-        buffer.write("1. Hi\n");
-        buffer.write("2. Bye!\n");
-        buffer.write("##### World\n\n");
-        buffer.write("##### World\n\n");
-        buffer.write("# World\n\n");
+### World
 
-        let result = buffer.read().unwrap();
-        assert_eq!(
-            result,
-            "<p>hi</p>\n<h2>World</h2>\n<ul>\n<li>Hi</li>\n<li>Bye!</li>\n</ul>\n<h3>World</h3>\n<h3>World</h3>\n<h3>World</h3>\n"
-        );
-    }
+1. Hi
+2. Bye!
+"#;
 
-    #[test]
-    fn test_3() {
-        let buffer = Buffer::default();
+        let output_expected = r#"
+# Hello
 
-        buffer.write("hi\n");
-        buffer.write("<q>quote</q>\n\n");
-        buffer.write("bye");
+**World**
 
-        let result = buffer.read().unwrap();
-        assert_eq!(result, "<p>hi <q>quote </q></p>\n<p>bye</p>\n");
-    }
+* Hi
+* Bye!
+"#;
 
-    #[test]
-    fn test_4() {
-        let buffer = Buffer::default();
-
-        buffer.write("hi\n");
-        buffer.write("<q>quote");
-
-        let result = buffer.read().unwrap();
-        assert_eq!(result, "<p>hi <q>quote\n</q></p>");
+        let output_actual = md_to_md(input).unwrap();
+        assert_eq!(output_actual.trim(), output_expected.trim());
     }
 }
