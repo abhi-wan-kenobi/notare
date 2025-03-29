@@ -92,11 +92,13 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
                 let user_db = s.db.as_ref().unwrap();
 
                 if db_created {
-                    hypr_db_user::seed(user_db, &user_id).await.unwrap();
+                    hypr_db_user::init::seed(user_db, &user_id).await.unwrap();
                 }
 
                 if db_created || user_id_just_created {
-                    hypr_db_user::seed2(user_db, &user_id).await.unwrap();
+                    hypr_db_user::init::onboarding(user_db, &user_id)
+                        .await
+                        .unwrap();
                 }
             }
         }
@@ -159,7 +161,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
                     let user_db = s.db.as_ref().unwrap();
 
                     if let Some(id) = user_id.as_ref() {
-                        hypr_db_user::seed(user_db, id).await.unwrap();
+                        hypr_db_user::init::seed(user_db, id).await.unwrap();
                     }
                 }
 

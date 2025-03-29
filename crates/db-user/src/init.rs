@@ -6,7 +6,7 @@ use super::{
 const USER_MANUAL_MD: &str = include_str!("../assets/manual.md");
 const ONBOARDING_MD: &str = include_str!("../assets/onboarding.md");
 
-pub async fn seed2(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), crate::Error> {
+pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), crate::Error> {
     let user_id = user_id.into();
 
     let default_calendar = Calendar {
@@ -66,6 +66,7 @@ pub async fn seed2(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), 
     Ok(())
 }
 
+#[cfg(debug_assertions)]
 pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), crate::Error> {
     let now = chrono::Utc::now();
 

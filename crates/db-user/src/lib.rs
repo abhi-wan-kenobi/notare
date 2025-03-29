@@ -66,10 +66,7 @@ pub use templates_ops::*;
 #[allow(unused)]
 pub use templates_types::*;
 
-#[cfg(debug_assertions)]
-mod seed;
-#[cfg(debug_assertions)]
-pub use seed::*;
+pub mod init;
 
 pub use hypr_db_core::{Database, Error};
 
@@ -157,7 +154,7 @@ pub async fn migrate(db: &UserDatabase) -> Result<(), crate::Error> {
 #[cfg(test)]
 mod tests {
     use super::UserDatabase;
-    use crate::{migrate, seed};
+    use crate::{init, migrate};
     use hypr_db_core::DatabaseBuilder;
 
     pub async fn setup_db() -> UserDatabase {
@@ -171,6 +168,6 @@ mod tests {
     async fn test_seed() {
         let db = setup_db().await;
         let user_id = uuid::Uuid::new_v4().to_string();
-        seed(&db, user_id).await.unwrap();
+        init::seed(&db, user_id).await.unwrap();
     }
 }
