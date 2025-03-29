@@ -78,8 +78,8 @@ pub async fn set_speaker_muted<R: tauri::Runtime>(
 #[specta::specta]
 pub async fn get_timeline<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
-    filter: crate::TimelineFilter,
-) -> Result<crate::TimelineView, String> {
+    filter: hypr_timeline::TimelineFilter,
+) -> Result<hypr_timeline::TimelineView, String> {
     let timeline = app.get_timeline(filter).await;
     Ok(timeline)
 }
