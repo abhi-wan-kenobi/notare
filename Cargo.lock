@@ -6610,11 +6610,14 @@ name = "llama"
 version = "0.1.0"
 dependencies = [
  "async-openai",
+ "dirs 6.0.0",
  "encoding_rs",
  "futures-util",
  "llama-cpp-2",
+ "reqwest 0.12.14",
  "serde",
  "thiserror 2.0.12",
+ "tokenizers",
  "tokio",
 ]
 
@@ -12265,6 +12268,7 @@ dependencies = [
  "tauri-plugin",
  "tauri-plugin-auth",
  "tauri-plugin-connector",
+ "tauri-plugin-db",
  "tauri-plugin-local-stt",
  "tauri-specta",
  "thiserror 2.0.12",
