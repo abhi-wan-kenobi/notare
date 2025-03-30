@@ -18,6 +18,7 @@ export interface CustomToastProps {
   buttons?: ToastButtonProps[];
   dismissible?: boolean;
   children?: React.ReactNode;
+  duration?: number;
 }
 
 export function CustomToast(props: CustomToastProps) {
@@ -79,7 +80,7 @@ export function toast(props: CustomToastProps) {
     ),
     {
       id: props.id,
-      duration: props.dismissible === false ? Infinity : undefined,
+      duration: props.dismissible === false ? Infinity : props.duration,
     },
   );
 }
