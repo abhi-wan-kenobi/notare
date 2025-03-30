@@ -44,10 +44,6 @@ extension-name/
 - **src/utils.ts**: Shared utility functions
 - **config.json**: Extension metadata and configuration
 
-## Utils
-
-[@hypr/extension-utils](https://github.com/fastrepl/hyprnote/tree/main/extensions/utils) contains essential utilities for extension development.
-
 ## Interface
 
 All extension must **default-export** [Extension](https://github.com/fastrepl/hyprnote/blob/main/extensions/types.ts) interface.

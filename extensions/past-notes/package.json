@@ -16,7 +16,7 @@
     "build": "storybook build -o ../../apps/storybook/storybook-static/past-notes"
   },
   "dependencies": {
-    "@hypr/extension-utils": "workspace:^",
+    "@hypr/extension-types": "workspace:^",
     "@hypr/plugin-db": "workspace:^",
     "@hypr/plugin-listener": "workspace:^",
     "@hypr/ui": "workspace:^",

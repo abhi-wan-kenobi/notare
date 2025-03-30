@@ -8,10 +8,6 @@ id: sse
 
 **{{ $frontmatter.description }}**
 
-## Notes
-
-- Intended to be used only in [`@hypr/extension-utils`](https://github.com/fastrepl/hyprnote/blob/main/extensions/utils/src/index.ts)
-
 ## Commands
 
 ```ts-vue

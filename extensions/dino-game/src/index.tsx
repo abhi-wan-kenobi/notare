@@ -1,4 +1,4 @@
-import type { Extension } from "@hypr/extension-utils";
+import type { Extension } from "@hypr/extension-types";
 import ChromeDino from "./widgets/chrome";
 
 export default {

@@ -1,4 +1,4 @@
-import type { Extension } from "@hypr/extension-utils";
+import type { Extension } from "@hypr/extension-types";
 
 import Analog from "./widgets/analog";
 import Digital from "./widgets/digital";

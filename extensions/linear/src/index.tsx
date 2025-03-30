@@ -1,4 +1,4 @@
-import type { Extension } from "@hypr/extension-utils";
+import type { Extension } from "@hypr/extension-types";
 import NewTicketsSuggestion from "./widgets/new-tickets-suggestion";
 import RelatedTickets from "./widgets/related-tickets";
 

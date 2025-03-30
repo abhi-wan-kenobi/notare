@@ -132,9 +132,9 @@ importers:
       '@hypr/extension-transcript':
         specifier: workspace:^
         version: link:../../extensions/transcript
-      '@hypr/extension-utils':
+      '@hypr/extension-types':
         specifier: workspace:^
-        version: link:../../extensions/utils
+        version: link:../../extensions/types
       '@hypr/plugin-analytics':
         specifier: workspace:^
         version: link:../../plugins/analytics
@@ -582,9 +582,9 @@ importers:
 
   extensions/calculator:
     dependencies:
-      '@hypr/extension-utils':
+      '@hypr/extension-types':
         specifier: workspace:^
-        version: link:../utils
+        version: link:../types
       '@hypr/ui':
         specifier: workspace:^
         version: link:../../packages/ui
@@ -634,9 +634,9 @@ importers:
 
   extensions/clock:
     dependencies:
-      '@hypr/extension-utils':
+      '@hypr/extension-types':
         specifier: workspace:^
-        version: link:../utils
+        version: link:../types
       '@hypr/ui':
         specifier: workspace:^
         version: link:../../packages/ui
@@ -686,9 +686,9 @@ importers:
 
   extensions/dino-game:
     dependencies:
-      '@hypr/extension-utils':
+      '@hypr/extension-types':
         specifier: workspace:^
-        version: link:../utils
+        version: link:../types
       '@hypr/ui':
         specifier: workspace:^
         version: link:../../packages/ui
@@ -738,9 +738,9 @@ importers:
 
   extensions/linear:
     dependencies:
-      '@hypr/extension-utils':
+      '@hypr/extension-types':
         specifier: workspace:^
-        version: link:../utils
+        version: link:../types
       '@hypr/plugin-db':
         specifier: workspace:^
         version: link:../../plugins/db
@@ -814,9 +814,9 @@ importers:
 
   extensions/obsidian:
     dependencies:
-      '@hypr/extension-utils':
+      '@hypr/extension-types':
         specifier: workspace:^
-        version: link:../utils
+        version: link:../types
       '@hypr/obsidian':
         specifier: workspace:^
         version: link:../../packages/obsidian
@@ -827,9 +827,9 @@ importers:
 
   extensions/past-notes:
     dependencies:
-      '@hypr/extension-utils':
+      '@hypr/extension-types':
         specifier: workspace:^
-        version: link:../utils
+        version: link:../types
       '@hypr/plugin-db':
         specifier: workspace:^
         version: link:../../plugins/db
@@ -931,9 +931,9 @@ importers:
 
   extensions/summary:
     dependencies:
-      '@hypr/extension-utils':
+      '@hypr/extension-types':
         specifier: workspace:^
-        version: link:../utils
+        version: link:../types
       '@hypr/plugin-db':
         specifier: workspace:^
         version: link:../../plugins/db
@@ -1013,9 +1013,9 @@ importers:
 
   extensions/timer:
     dependencies:
-      '@hypr/extension-utils':
+      '@hypr/extension-types':
         specifier: workspace:^
-        version: link:../utils
+        version: link:../types
       '@hypr/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -1071,9 +1071,9 @@ importers:
 
   extensions/transcript:
     dependencies:
-      '@hypr/extension-utils':
+      '@hypr/extension-types':
         specifier: workspace:^
-        version: link:../utils
+        version: link:../types
       '@hypr/plugin-db':
         specifier: workspace:^
         version: link:../../plugins/db
@@ -1142,7 +1142,7 @@ importers:
         specifier: ^5.8.2
         version: 5.8.2
 
-  extensions/utils:
+  extensions/types:
     dependencies:
       '@hypr/ui':
         specifier: workspace:^

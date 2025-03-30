@@ -1,4 +1,4 @@
-import type { Extension } from "@hypr/extension-utils";
+import type { Extension } from "@hypr/extension-types";
 import { commands as templateCommands } from "@hypr/plugin-template";
 
 import systemTemplate from "./system.jinja?raw";

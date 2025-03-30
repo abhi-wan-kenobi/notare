@@ -1,4 +1,4 @@
-import type { WidgetGroup } from "@hypr/extension-utils";
+import type { WidgetGroup } from "@hypr/extension-types";
 
 import Widget2x2 from "./2x2";
 

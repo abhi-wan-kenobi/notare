@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hypr/extension-utils": "workspace:^",
+    "@hypr/extension-types": "workspace:^",
     "@hypr/obsidian": "workspace:^"
   },
   "devDependencies": {

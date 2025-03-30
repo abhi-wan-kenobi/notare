@@ -3,7 +3,7 @@ import React from "react";
 import type { Layout } from "react-grid-layout";
 
 import { ExtensionName, importExtension } from "@hypr/extension-registry";
-import type { WidgetType } from "@hypr/extension-utils";
+import type { WidgetType } from "@hypr/extension-types";
 
 const componentCache: Record<string, React.LazyExoticComponent<React.ComponentType<any>>> = {};
 

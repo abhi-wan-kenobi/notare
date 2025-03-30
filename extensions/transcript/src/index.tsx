@@ -1,4 +1,4 @@
-import type { Extension } from "@hypr/extension-utils";
+import type { Extension } from "@hypr/extension-types";
 
 import Checkpoint from "./widgets/checkpoint";
 import Default from "./widgets/default";

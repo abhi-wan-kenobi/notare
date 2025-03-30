@@ -15,7 +15,7 @@
     "preview": "storybook dev -p 6006"
   },
   "dependencies": {
-    "@hypr/extension-utils": "workspace:^",
+    "@hypr/extension-types": "workspace:^",
     "@hypr/ui": "workspace:^"
   },
   "devDependencies": {

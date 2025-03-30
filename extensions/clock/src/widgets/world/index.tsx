@@ -1,4 +1,4 @@
-import type { WidgetGroup } from "@hypr/extension-utils";
+import type { WidgetGroup } from "@hypr/extension-types";
 import WorldClock2x2 from "./2x2";
 
 const clockWorld: WidgetGroup = {

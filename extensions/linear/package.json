@@ -16,7 +16,7 @@
     "build": "storybook build -o ../../apps/storybook/storybook-static/linear"
   },
   "dependencies": {
-    "@hypr/extension-utils": "workspace:^",
+    "@hypr/extension-types": "workspace:^",
     "@hypr/plugin-db": "workspace:^",
     "@hypr/ui": "workspace:^",
     "@hypr/utils": "workspace:^",

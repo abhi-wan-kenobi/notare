@@ -25,7 +25,7 @@
     "@hypr/extension-summary": "workspace:^",
     "@hypr/extension-timer": "workspace:^",
     "@hypr/extension-transcript": "workspace:^",
-    "@hypr/extension-utils": "workspace:^",
+    "@hypr/extension-types": "workspace:^",
     "@hypr/plugin-analytics": "workspace:^",
     "@hypr/plugin-apple-calendar": "workspace:^",
     "@hypr/plugin-auth": "workspace:^",
