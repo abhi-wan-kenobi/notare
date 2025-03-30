@@ -4,13 +4,13 @@ import { useEffect, useMemo } from "react";
 
 import EditorArea from "@/components/editor-area";
 import RightPanel from "@/components/right-panel";
-import { useOngoingSession, useSession } from "@/contexts";
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
 import {
   commands as windowsCommands,
   events as windowsEvents,
   getCurrentWebviewWindowLabel,
 } from "@hypr/plugin-windows";
+import { useOngoingSession, useSession } from "@hypr/utils/contexts";
 
 export const Route = createFileRoute("/app/note/$id")({
   beforeLoad: ({ context: { queryClient, sessionsStore }, params: { id } }) => {

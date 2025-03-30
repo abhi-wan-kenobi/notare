@@ -7,7 +7,7 @@ import { motion } from "motion/react";
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useHypr, useOngoingSession, useSession } from "@/contexts";
+import { useHypr } from "@/contexts";
 import { ENHANCE_SYSTEM_TEMPLATE_KEY, ENHANCE_USER_TEMPLATE_KEY } from "@/templates";
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as dbCommands, Session } from "@hypr/plugin-db";
@@ -18,6 +18,7 @@ import Editor, { TiptapEditor } from "@hypr/tiptap/editor";
 import Renderer from "@hypr/tiptap/renderer";
 import { cn } from "@hypr/ui/lib/utils";
 import { modelProvider, smoothStream, streamText } from "@hypr/utils/ai";
+import { useOngoingSession, useSession } from "@hypr/utils/contexts";
 import { NoteHeader } from "./note-header";
 
 interface EditorAreaProps {

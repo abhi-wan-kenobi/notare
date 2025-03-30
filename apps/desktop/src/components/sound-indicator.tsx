@@ -1,6 +1,7 @@
-import { useOngoingSession } from "@/contexts/ongoing-session";
 import { DancingSticks } from "@hypr/ui/components/ui/dancing-sticks";
 import { useEffect, useState } from "react";
+
+import { useOngoingSession } from "@hypr/utils/contexts";
 
 export default function SoundIndicator(
   { theme = "light", input = "all", size = "default" }: {

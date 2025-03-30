@@ -16,8 +16,8 @@ import { ThemeProvider } from "@hypr/ui/contexts/theme";
 import { messages as enMessages } from "./locales/en/messages";
 import { messages as koMessages } from "./locales/ko/messages";
 
+import { createSessionsStore } from "@hypr/utils/stores";
 import { routeTree } from "./routeTree.gen";
-import { createSessionsStore } from "./stores";
 
 import * as Sentry from "@sentry/react";
 import { defaultOptions } from "tauri-plugin-sentry-api";

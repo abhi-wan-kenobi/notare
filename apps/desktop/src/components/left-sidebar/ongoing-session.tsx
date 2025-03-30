@@ -1,7 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
 
-import { useHyprSearch, useSession } from "@/contexts";
+import { useHyprSearch } from "@/contexts";
+import { useSession } from "@hypr/utils/contexts";
 
 export default function OngoingSession({
   sessionId,

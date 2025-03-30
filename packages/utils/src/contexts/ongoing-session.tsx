@@ -1,7 +1,8 @@
-import { createOngoingSessionStore } from "@/stores/ongoing-session";
-import { createContext, useContext, useRef } from "react";
+import React, { createContext, useContext, useRef } from "react";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/shallow";
+
+import { createOngoingSessionStore } from "../stores";
 
 const OngoingSessionContext = createContext<
   ReturnType<

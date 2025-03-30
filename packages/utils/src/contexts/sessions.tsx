@@ -1,8 +1,8 @@
-import { createContext, useContext, useRef } from "react";
+import React, { createContext, useContext, useRef } from "react";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/shallow";
 
-import { createSessionsStore, createSessionStore, SessionsStore } from "@/stores";
+import { createSessionsStore, createSessionStore, SessionsStore } from "../stores";
 
 const SessionsContext = createContext<
   ReturnType<

@@ -4,7 +4,7 @@ import type { RegisteredRouter, RouteIds } from "@tanstack/react-router";
 export * from "./server.gen";
 export * from "./tauri.gen";
 
-import { SessionsStore } from "@/stores";
+import type { SessionsStore } from "@hypr/utils/stores";
 import type { NangoIntegration } from "./server.gen";
 
 export type Context = {

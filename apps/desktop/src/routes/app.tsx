@@ -10,15 +10,14 @@ import {
   HyprProvider,
   LeftSidebarProvider,
   NewNoteProvider,
-  OngoingSessionProvider,
   RightPanelProvider,
   SearchProvider,
-  SessionsProvider,
   SettingsProvider,
 } from "@/contexts";
 import { registerTemplates } from "@/templates";
 import { commands } from "@/types";
 import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
+import { OngoingSessionProvider, SessionsProvider } from "@hypr/utils/contexts";
 
 export const Route = createFileRoute("/app")({
   component: Component,

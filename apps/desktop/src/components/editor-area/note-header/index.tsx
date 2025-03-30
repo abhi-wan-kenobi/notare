@@ -1,8 +1,8 @@
 import { useMatch } from "@tanstack/react-router";
 import { type ChangeEvent } from "react";
 
-import { useSession } from "@/contexts";
 import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
+import { useSession } from "@hypr/utils/contexts";
 import Chips from "./chips";
 import ListenButton from "./listen-button";
 import TitleInput from "./title-input";

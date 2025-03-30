@@ -4,12 +4,12 @@ import { EarIcon, EarOffIcon, MicIcon, MicOffIcon, Volume2Icon, VolumeOffIcon } 
 import { useEffect, useState } from "react";
 
 import SoundIndicator from "@/components/sound-indicator";
-import { useOngoingSession } from "@/contexts";
 import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { Spinner } from "@hypr/ui/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
+import { useOngoingSession } from "@hypr/utils/contexts";
 
 interface ListenButtonProps {
   sessionId: string;

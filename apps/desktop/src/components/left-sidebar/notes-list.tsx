@@ -6,8 +6,7 @@ import { AppWindowMacIcon, CalendarDaysIcon, TrashIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useSession } from "@/contexts";
-import { useHypr, useSessions } from "@/contexts";
+import { useHypr } from "@/contexts";
 import { commands as dbCommands, type Event, type Session } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import {
@@ -18,6 +17,7 @@ import {
   ContextMenuTrigger,
 } from "@hypr/ui/components/ui/context-menu";
 import { cn } from "@hypr/ui/lib/utils";
+import { useSession, useSessions } from "@hypr/utils/contexts";
 import { format, formatRelative, formatTimeAgo, isToday } from "@hypr/utils/datetime";
 
 interface NotesListProps {

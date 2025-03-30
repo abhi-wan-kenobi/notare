@@ -5,11 +5,12 @@ import { addDays } from "date-fns";
 import { CalendarDaysIcon, SettingsIcon } from "lucide-react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 
-import { useHypr, useHyprSearch, useLeftSidebar, useOngoingSession } from "@/contexts";
+import { useHypr, useHyprSearch, useLeftSidebar } from "@/contexts";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as windowsCommands, getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
+import { useOngoingSession } from "@hypr/utils/contexts";
 import Shortcut from "../shortcut";
 import { LeftSidebarButton } from "../toolbar/buttons/left-sidebar-button";
 import EventsList from "./events-list";

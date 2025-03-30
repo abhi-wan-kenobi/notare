@@ -3,7 +3,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./datetime": "./src/datetime.ts",
-    "./ai": "./src/ai.ts"
+    "./ai": "./src/ai.ts",
+    "./contexts": "./src/contexts/index.ts",
+    "./stores": "./src/stores/index.ts"
   },
   "scripts": {
     "test": "vitest run"
@@ -15,14 +17,21 @@
     "@hypr/client": "workspace:^",
     "@hypr/plugin-auth": "workspace:^",
     "@hypr/plugin-connector": "workspace:^",
+    "@hypr/plugin-db": "workspace:^",
+    "@hypr/plugin-listener": "workspace:^",
     "@hypr/plugin-sse": "workspace:^",
     "@lingui/core": "^5.3.0",
     "@tauri-apps/api": "^2.4.0",
     "@tauri-apps/plugin-http": "^2.4.2",
     "ai": "^4.2.6",
-    "date-fns": "^4.1.0"
+    "date-fns": "^4.1.0",
+    "mutative": "^1.1.0",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "vitest": "^3.0.9"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
   }
 }

@@ -2,9 +2,10 @@ import { Trans } from "@lingui/react/macro";
 import { useParams } from "@tanstack/react-router";
 import { SquarePenIcon } from "lucide-react";
 
-import { useNewNote, useSession } from "@/contexts";
+import { useNewNote } from "@/contexts";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
+import { useSession } from "@hypr/utils/contexts";
 import Shortcut from "../../shortcut";
 
 export function NewNoteButton() {
