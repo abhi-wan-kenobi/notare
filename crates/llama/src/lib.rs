@@ -15,7 +15,8 @@ pub use error::*;
 mod message;
 pub use message::*;
 
-const DEFAULT_MAX_TOKENS: i32 = 1024;
+const DEFAULT_MAX_INPUT_TOKENS: u32 = 1024 * 8;
+const DEFAULT_MAX_OUTPUT_TOKENS: u32 = 1024 * 2;
 
 static LLAMA_BACKEND: OnceLock<Arc<LlamaBackend>> = OnceLock::new();
 
@@ -32,7 +33,9 @@ pub enum Task {
 
 impl Llama {
     pub fn new(model_path: impl Into<std::path::PathBuf>) -> Result<Self, crate::Error> {
-        send_logs_to_tracing(LogOptions::default().with_logs_enabled(true));
+        if !cfg!(debug_assertions) {
+            send_logs_to_tracing(LogOptions::default().with_logs_enabled(true));
+        }
 
         let backend = LLAMA_BACKEND
             .get_or_init(|| {
@@ -62,13 +65,20 @@ impl Llama {
                             let mut ctx = model
                                 .new_context(
                                     &backend,
+                                    // https://github.com/ggml-org/llama.cpp/blob/492d7f1/src/llama-context.cpp#L2261
                                     LlamaContextParams::default()
-                                        .with_n_ctx(std::num::NonZeroU32::new(4096 * 2))
-                                        .with_n_batch(4096),
+                                        .with_n_ctx(std::num::NonZeroU32::new(
+                                            DEFAULT_MAX_INPUT_TOKENS + DEFAULT_MAX_OUTPUT_TOKENS,
+                                        ))
+                                        .with_n_batch(DEFAULT_MAX_INPUT_TOKENS)
+                                        .with_n_ubatch(256)
+                                        .with_flash_attention(true),
                                 )
                                 .unwrap();
 
-                            let tokens_list = model.str_to_token(&prompt, AddBos::Always).unwrap();
+                            let mut tokens_list =
+                                model.str_to_token(&prompt, AddBos::Always).unwrap();
+                            tokens_list.truncate(DEFAULT_MAX_INPUT_TOKENS as usize);
 
                             let batch_size = tokens_list.len().max(256);
                             let mut batch = LlamaBatch::new(batch_size, 1);
@@ -88,7 +98,7 @@ impl Llama {
                                 LlamaSampler::greedy(),
                             ]);
 
-                            while n_cur <= last_index + DEFAULT_MAX_TOKENS {
+                            while n_cur <= last_index + DEFAULT_MAX_OUTPUT_TOKENS as i32 {
                                 let token = sampler.sample(&ctx, batch.n_tokens() - 1);
                                 sampler.accept(token);
 
@@ -159,71 +169,37 @@ mod tests {
         Llama::new(model_path).unwrap()
     }
 
-    struct Tokenizer {
-        tokenizer: tokenizers::Tokenizer,
-    }
-
-    impl Tokenizer {
-        async fn new() -> Self {
-            let url = "https://pub-8987485129c64debb63bff7f35a2e5fd.r2.dev/v0/lmstudio-community/Llama-3.2-3B-Instruct-GGUF/main/tokenizer.json";
-            let bytes = reqwest::get(url).await.unwrap().bytes().await.unwrap();
-            let tokenizer = tokenizers::Tokenizer::from_bytes(&bytes).unwrap();
-            Self { tokenizer }
-        }
-
-        fn count_tokens(&self, text: &str) -> usize {
-            self.tokenizer.encode(text, true).unwrap().len()
-        }
-    }
-
-    static TOKENIZER: tokio::sync::OnceCell<Arc<Tokenizer>> = tokio::sync::OnceCell::const_new();
-
-    async fn get_tokenizer() -> Arc<Tokenizer> {
-        TOKENIZER
-            .get_or_init(|| async {
-                let tokenizer = Tokenizer::new().await;
-                Arc::new(tokenizer)
-            })
-            .await
-            .clone()
-    }
-
+    // cargo test test_simple -p llama -- --nocapture
     #[tokio::test]
     async fn test_simple() {
         let llama = get_model();
-        let tokenizer = get_tokenizer().await;
-
         let prompt = "Hello, how are you?";
-
-        let tokens_count = tokenizer.count_tokens(prompt);
-        assert_eq!(tokens_count, 7);
 
         let request = LlamaRequest::new(vec![
             LlamaChatMessage::new("user".into(), prompt.into()).unwrap()
         ]);
 
         let response: String = llama.generate_stream(request).unwrap().collect().await;
+        println!("response: {}", response);
         assert!(response.len() > 4);
     }
 
+    // cargo test test_long -p llama -- --nocapture
     #[tokio::test]
     async fn test_long() {
         let llama = get_model();
-        let tokenizer = get_tokenizer().await;
 
         let prompt = std::iter::repeat("Hello, how are you?")
-            .take(400)
+            .take(800)
             .collect::<Vec<_>>()
             .join("\n");
-
-        let tokens_count = tokenizer.count_tokens(&prompt);
-        assert_eq!(tokens_count, 2401);
 
         let request = LlamaRequest::new(vec![
             LlamaChatMessage::new("user".into(), prompt.into()).unwrap()
         ]);
 
         let response: String = llama.generate_stream(request).unwrap().collect().await;
+        println!("response: {}", response);
         assert!(response.len() > 4);
     }
 }
