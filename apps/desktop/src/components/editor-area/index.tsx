@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import usePreviousValue from "beautiful-react-hooks/usePreviousValue";
 import { motion } from "motion/react";
 import { AnimatePresence } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useHypr } from "@/contexts";
 import { ENHANCE_SYSTEM_TEMPLATE_KEY, ENHANCE_USER_TEMPLATE_KEY } from "@/templates";
@@ -25,7 +25,6 @@ interface EditorAreaProps {
 }
 
 export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
-  const [showRaw, setShowRaw] = useState(true);
   const { userId, onboardingSessionId } = useHypr();
 
   const { ongoingSessionTimeline, ongoingSessionStatus } = useOngoingSession((s) => ({
@@ -35,34 +34,28 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
 
   const prevOngoingSessionStatus = usePreviousValue(ongoingSessionStatus);
 
+  const [showRaw, setShowRaw] = useSession(sessionId, (s) => [s.showRaw, s.setShowRaw]);
+
+  const [rawContent, setRawContent] = useSession(
+    sessionId,
+    (s) => [s.session?.raw_memo_html ?? "", s.updateRawNote],
+  );
+
+  const [enhancedContent, setEnhancedContent] = useSession(
+    sessionId,
+    (s) => [s.session?.enhanced_memo_html ?? "", s.updateEnhancedNote],
+  );
+
   const sessionStore = useSession(sessionId, (s) => ({
     session: s.session,
-    updateRawNote: s.updateRawNote,
-    updateEnhancedNote: s.updateEnhancedNote,
     persistSession: s.persistSession,
   }));
 
   const editorRef = useRef<{ editor: TiptapEditor | null }>(null);
 
-  const [initialContent, setInitialContent] = useState("");
-  const [editorKey, setEditorKey] = useState(sessionStore.session?.id || "default");
-
-  useEffect(() => {
-    if (sessionStore.session?.id) {
-      setEditorKey(`${sessionStore.session.id}-${showRaw ? "raw" : "enhanced"}-${Date.now()}`);
-
-      const content = showRaw
-        ? sessionStore.session?.raw_memo_html
-        : sessionStore.session?.enhanced_memo_html;
-
-      setInitialContent(content ?? "");
-    }
-  }, [sessionStore.session?.id, showRaw]);
-
   const enhance = useMutation({
     mutationFn: async () => {
-      setInitialContent("");
-
+      setEnhancedContent("");
       const config = await dbCommands.getConfig();
       const provider = await modelProvider();
 
@@ -100,16 +93,13 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
       for await (const chunk of textStream) {
         acc += chunk;
         const html = await miscCommands.opinionatedMdToHtml(acc);
-
-        setInitialContent(html);
-        sessionStore.updateEnhancedNote(html);
+        setEnhancedContent(html);
       }
 
       return text.then(miscCommands.opinionatedMdToHtml);
     },
     onSuccess: () => {
       sessionStore.persistSession();
-      setShowRaw(false);
     },
     onError: (error) => {
       console.error(error);
@@ -136,15 +126,17 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
   const handleChangeNote = useCallback(
     (content: string) => {
       if (showRaw) {
-        sessionStore.updateRawNote(content);
+        setRawContent(content);
       } else {
-        sessionStore.updateEnhancedNote(content);
+        setEnhancedContent(content);
       }
-
-      sessionStore.persistSession(); // TODO
     },
-    [showRaw, sessionStore],
+    [showRaw, setRawContent, setEnhancedContent],
   );
+
+  const noteContent = useMemo(() => {
+    return showRaw ? rawContent : enhancedContent;
+  }, [showRaw, rawContent, enhancedContent]);
 
   const handleClickEnhance = useCallback(() => {
     try {
@@ -192,18 +184,16 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
           {editable
             ? (
               <Editor
-                key={editorKey}
                 ref={editorRef}
                 handleChange={handleChangeNote}
-                initialContent={initialContent}
+                initialContent={noteContent}
                 editable={enhance.status !== "pending"}
               />
             )
             : (
               <Renderer
-                key={editorKey}
                 ref={editorRef}
-                initialContent={initialContent}
+                initialContent={noteContent}
               />
             )}
         </div>

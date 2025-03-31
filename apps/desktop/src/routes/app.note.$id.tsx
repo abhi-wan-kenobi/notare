@@ -109,7 +109,7 @@ function OnboardingSupport({ session }: { session: Session }) {
 
   const enabled = useMemo(() => {
     const isOnboardingSession = onboardingSessionId.data === session.id;
-    const alreadyEnhanced = !!session.enhanced_memo_html;
+    const alreadyEnhanced = session.enhanced_memo_html !== null;
 
     return isOnboardingSession && !alreadyEnhanced;
   }, [
