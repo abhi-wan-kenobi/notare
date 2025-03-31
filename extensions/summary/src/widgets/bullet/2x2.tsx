@@ -16,7 +16,7 @@ import {
   type LiveSummarySystemInput,
   type LiveSummaryUserInput,
 } from "../../types";
-import { TEMPLATE_LIVE_SUMMARY_SYSTEM, TEMPLATE_LIVE_SUMMARY_USER } from ".";
+import { TEMPLATE_SYSTEM_KEY, TEMPLATE_USER_KEY } from ".";
 
 const DEFAULT_INTERVAL = 10 * 1000;
 
@@ -68,14 +68,14 @@ const Widget: WidgetTwoByTwo = ({ queryClient }) => {
         // });
 
         const systemMessageContent = await templateCommands.render(
-          TEMPLATE_LIVE_SUMMARY_SYSTEM,
+          TEMPLATE_SYSTEM_KEY,
           {
             config: config.data,
           } satisfies LiveSummarySystemInput,
         );
 
         const userMessageContent = await templateCommands.render(
-          TEMPLATE_LIVE_SUMMARY_USER,
+          TEMPLATE_USER_KEY,
           {
             timeline: { items: [] },
           } satisfies LiveSummaryUserInput,

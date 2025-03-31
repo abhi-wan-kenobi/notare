@@ -34,9 +34,10 @@ export default function Extensions({ selectedExtension, onExtensionSelect }: Ext
   const [extensionData, setExtensionData] = useState<ExtensionData | null>(null);
 
   useEffect(() => {
-    windowsEvents.mainWindowState.emit({ left_sidebar_expanded: false, right_panel_expanded: true });
-    windowsCommands.windowPosition({ type: "main" }, "right-half");
-    windowsCommands.windowResizeDefault({ type: "main" });
+    windowsCommands.windowResizeDefault({ type: "main" }).then(() => {
+      windowsCommands.windowPosition({ type: "main" }, "right-half");
+      windowsEvents.mainWindowState.emit({ left_sidebar_expanded: false, right_panel_expanded: true });
+    });
 
     return () => {
       windowsEvents.mainWindowState.emit({ left_sidebar_expanded: true, right_panel_expanded: false });
@@ -48,7 +49,7 @@ export default function Extensions({ selectedExtension, onExtensionSelect }: Ext
       importExtension(selectedExtension.id as ExtensionName).then((module) => {
         const groups = module.default.widgetGroups.map((group) => ({
           id: group.id,
-          types: group.items.map((item) => item.type),
+          types: group.items.map((item) => item.type).filter((type) => type !== "full"),
         }));
 
         setExtensionData({
@@ -62,10 +63,7 @@ export default function Extensions({ selectedExtension, onExtensionSelect }: Ext
   const extension = useQuery({
     enabled: !!selectedExtension?.id,
     queryKey: ["extension-mapping", selectedExtension?.id],
-    queryFn: async () => {
-      const extensionMapping = await dbCommands.getExtensionMapping(userId, selectedExtension?.id!);
-      return extensionMapping;
-    },
+    queryFn: () => dbCommands.getExtensionMapping(userId, selectedExtension?.id!),
   });
 
   const toggleWidgetInsideExtensionGroup = useMutation({

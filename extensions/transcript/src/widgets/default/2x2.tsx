@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@hypr/ui/components/ui/dropdown-menu";
 import { WidgetHeader, WidgetTwoByTwo, WidgetTwoByTwoWrapper } from "@hypr/ui/components/ui/widgets";
-import Transcript from "../components/transcript";
+import Transcript from "../../components/transcript";
 
 const LiveTranscript2x2: WidgetTwoByTwo = ({ onMaximize }) => {
   const [timeline, setTimeline] = useState<TimelineView | null>(null);

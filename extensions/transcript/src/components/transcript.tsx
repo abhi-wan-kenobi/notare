@@ -1,5 +1,6 @@
 import { TimelineView } from "@hypr/plugin-listener";
-import { formatTime } from "../../utils";
+
+import { formatTime } from "../utils";
 
 export default function Transcript({
   transcript,

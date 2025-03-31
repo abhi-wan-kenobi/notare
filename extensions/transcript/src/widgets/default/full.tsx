@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@hypr/ui/components/ui/dropdown-menu";
 import { WidgetFullSize, WidgetFullSizeWrapper, WidgetHeader } from "@hypr/ui/components/ui/widgets";
-import Transcript from "../components/transcript";
+import Transcript from "../../components/transcript";
 
 const LiveTranscriptFull: WidgetFullSize = ({ onMinimize }) => {
   const [timeline, setTimeline] = useState<TimelineView | null>(null);
