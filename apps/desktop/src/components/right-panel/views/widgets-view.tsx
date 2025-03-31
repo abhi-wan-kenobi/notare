@@ -1,30 +1,64 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { LinkProps, useMatch } from "@tanstack/react-router";
+import { useMemo } from "react";
+import type { Layout } from "react-grid-layout";
 
 import { useHypr } from "@/contexts";
 import { type ExtensionName } from "@hypr/extension-registry";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import WidgetRenderer from "../components/widget-renderer";
+import { parseID } from "../components/widget-renderer/widgets";
 
 export function WidgetsView() {
   const { userId } = useHypr();
   const { id: sessionId } = useMatch({ from: "/app/note/$id", shouldThrow: true });
 
-  const widgets = useQuery({
+  const extensions = useQuery({
     queryKey: ["extensions"],
-    queryFn: async () => {
-      const extensions = await dbCommands.listExtensionMappings(userId);
+    queryFn: () => dbCommands.listExtensionMappings(userId),
+  });
 
-      return extensions.flatMap((extension) => {
-        return extension.widgets.map((widget) => ({
-          extensionName: extension.extension_id as ExtensionName,
-          groupName: widget.group,
-          widgetType: widget.kind,
-          layout: widget.position,
-        }));
+  const widgets = useMemo(() => {
+    return extensions.data?.flatMap((extension) => {
+      return extension.widgets.map((widget) => ({
+        extensionName: extension.extension_id as ExtensionName,
+        groupName: widget.group,
+        widgetType: widget.kind,
+        layout: widget.position,
+      }));
+    });
+  }, [extensions.data]);
+
+  const updateExtensions = useMutation({
+    mutationFn: async (args: Pick<Layout, "i" | "x" | "y">[]) => {
+      const updates = args.map(async (arg) => {
+        const { extensionName, groupName, widgetType } = parseID(arg.i);
+
+        const extension = extensions.data?.find(ext =>
+          ext.extension_id === extensionName
+          && ext.widgets.some(w => w.group === groupName && w.kind === widgetType)
+        );
+
+        if (!extension) {
+          return null;
+        }
+
+        const updatedWidgets = extension.widgets.map(widget =>
+          (widget.group === groupName && widget.kind === widgetType)
+            ? { ...widget, position: { x: arg.x, y: arg.y } }
+            : widget
+        );
+
+        return dbCommands.upsertExtensionMapping({
+          ...extension,
+          widgets: updatedWidgets,
+        });
       });
+
+      return Promise.all(updates.filter(Boolean));
     },
+    onSuccess: () => extensions.refetch(),
   });
 
   const handleClickConfigureWidgets = () => {
@@ -42,11 +76,12 @@ export function WidgetsView() {
     });
   };
 
-  return widgets.data?.length
+  return widgets?.length
     ? (
       <WidgetRenderer
         key={sessionId}
-        widgets={widgets.data}
+        widgets={widgets}
+        handleUpdateLayout={updateExtensions.mutate}
       />
     )
     : (

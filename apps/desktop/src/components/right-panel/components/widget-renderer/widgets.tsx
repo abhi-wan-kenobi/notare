@@ -77,7 +77,13 @@ export interface WidgetConfig {
   layout?: Omit<Layout, "i" | "w" | "h"> | null;
 }
 
-export const getID = (widget: WidgetConfig) => `${widget.extensionName}-${widget.groupName}-${widget.widgetType}`;
+export const getID = (widget: WidgetConfig) =>
+  `${widget.extensionName}_HYPR_${widget.groupName}_HYPR_${widget.widgetType}`;
+
+export const parseID = (id: string) => {
+  const [extensionName, groupName, widgetType] = id.split("_HYPR_");
+  return { extensionName, groupName, widgetType };
+};
 
 export const getSize = (widgetType: WidgetType) => {
   switch (widgetType) {

@@ -10,17 +10,18 @@ import { getID, getSize, SuspenseWidget, WidgetConfig } from "./widgets";
 
 export type { WidgetConfig };
 
-export default function WidgetRenderer({ widgets }: { widgets: WidgetConfig[] }) {
+interface WidgetRendererProps {
+  widgets: WidgetConfig[];
+  handleUpdateLayout: (layout: Pick<Layout, "x" | "y" | "i">[]) => void;
+}
+
+export default function WidgetRenderer({ widgets, handleUpdateLayout }: WidgetRendererProps) {
   const queryClient = useQueryClient();
-  const [layout, setLayout] = useState<Layout[]>(
-    widgets
-      .map((w) => {
-        if (!w.layout) return null;
-        const size = getSize(w.widgetType);
-        return { ...w.layout, i: getID(w), ...size };
-      })
-      .filter(Boolean) as Layout[],
-  );
+
+  const layout = useMemo(() => {
+    return widgets
+      .map((w) => ({ ...(w.layout ?? { x: 0, y: 0 }), i: getID(w), ...getSize(w.widgetType) }));
+  }, [widgets]);
 
   const [showFull, setShowFull] = useState(false);
   const [fullWidgetConfig, setFullWidgetConfig] = useState<WidgetConfig | null>(null);
@@ -53,7 +54,11 @@ export default function WidgetRenderer({ widgets }: { widgets: WidgetConfig[] })
   }, [widgets, hasFullWidgetForGroup]);
 
   const handleLayoutChange = useCallback((newLayout: Layout[]) => {
-    setLayout(newLayout);
+    handleUpdateLayout(newLayout.map(({ i, x, y }) => ({
+      x,
+      y,
+      i,
+    })));
   }, []);
 
   const getFullWidgetConfig = useMemo(() => (baseConfig: WidgetConfig): WidgetConfig => ({
