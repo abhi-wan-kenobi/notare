@@ -11,7 +11,9 @@
     "lingui:extract": "lingui extract",
     "lingui:compile": "lingui compile --typescript",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@date-fns/tz": "^1.2.0",

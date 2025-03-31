@@ -13,3 +13,4 @@ Secrets*.toml
 restate-data
 
 .windsurfrules
+.turbo
