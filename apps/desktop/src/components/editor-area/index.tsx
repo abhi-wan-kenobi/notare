@@ -50,6 +50,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
   }));
 
   const editorRef = useRef<{ editor: TiptapEditor | null }>(null);
+  const editorKey = useMemo(() => `session-${sessionId}-${showRaw ? "raw" : "enhanced"}`, [sessionId, showRaw]);
 
   const enhance = useMutation({
     mutationFn: async () => {
@@ -187,6 +188,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
           {editable
             ? (
               <Editor
+                key={editorKey}
                 ref={editorRef}
                 handleChange={handleChangeNote}
                 initialContent={noteContent}
