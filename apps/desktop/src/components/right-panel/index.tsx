@@ -1,28 +1,17 @@
+import useViewportState from "beautiful-react-hooks/useViewportState";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
 
 import { useRightPanel } from "@/contexts";
 import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 import { ChatView, WidgetsView } from "./views";
 
 export default function RightPanel() {
-  const [isNarrow, setIsNarrow] = useState(false);
   const { isExpanded, currentView, hidePanel } = useRightPanel();
+  const { width } = useViewportState();
 
   const show = getCurrentWebviewWindowLabel() === "main" && isExpanded;
 
-  useEffect(() => {
-    const checkViewport = () => {
-      setIsNarrow(window.innerWidth < 760);
-    };
-
-    checkViewport();
-    window.addEventListener("resize", checkViewport);
-
-    return () => window.removeEventListener("resize", checkViewport);
-  }, []);
-
-  if (isNarrow) {
+  if (width < 760) {
     return (
       <div className="relative h-full">
         {show && (
