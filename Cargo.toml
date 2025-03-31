@@ -143,7 +143,7 @@ kalosm-streams = { git = "https://github.com/floneum/floneum", rev = "52967ae" }
 rwhisper = { git = "https://github.com/floneum/floneum", rev = "52967ae" }
 
 deepgram = { version = "0.6.6", default-features = false }
-libsql = "0.6.0"
+libsql = "0.9.1"
 
 [patch.crates-io]
 # This includes a currently-unreleased fix that ensures the audio stream is actually stopped and released on drop on macOS.
