@@ -2,6 +2,7 @@ import { create as mutate } from "mutative";
 import { createStore } from "zustand";
 
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
+import pDebounce from "p-debounce";
 
 type State = {
   session: Session;
@@ -14,7 +15,7 @@ type Actions = {
   updateTitle: (title: string) => void;
   updateRawNote: (note: string) => void;
   updateEnhancedNote: (note: string) => void;
-  persistSession: () => Promise<void>;
+  persistSession: (now?: boolean) => Promise<void>;
 };
 
 export type SessionStore = ReturnType<typeof createSessionStore>;
@@ -32,45 +33,58 @@ export const createSessionStore = (session: Session) => {
       );
     },
     updateTitle: (title: string) => {
-      set((state) =>
-        mutate(state, (draft) => {
-          if (!draft.session) {
-            return;
-          }
+      set((state) => {
+        if (!state.session) {
+          return state;
+        }
+
+        state.persistSession();
+        return mutate(state, (draft) => {
           draft.session.title = title;
-        })
-      );
+        });
+      });
     },
     updateRawNote: (note: string) => {
-      set((state) =>
-        mutate(state, (draft) => {
+      set((state) => {
+        if (!state.session) {
+          return state;
+        }
+
+        state.persistSession();
+        return mutate(state, (draft) => {
           if (!draft.session) {
             return;
           }
 
           draft.session.raw_memo_html = note;
-        })
-      );
+        });
+      });
     },
     updateEnhancedNote: (note: string) => {
-      set((state) =>
-        mutate(state, (draft) => {
+      set((state) => {
+        if (!state.session) {
+          return state;
+        }
+
+        state.persistSession();
+        return mutate(state, (draft) => {
           if (!draft.session) {
             return;
           }
 
           draft.showRaw = false;
           draft.session.enhanced_memo_html = note;
-        })
-      );
+        });
+      });
     },
-    persistSession: async () => {
+    persistSession: async (now = false) => {
       const { session } = get();
       if (!session) {
         return;
       }
 
-      await dbCommands.upsertSession(session);
+      const fn = now ? dbCommands.upsertSession : pDebounce(() => dbCommands.upsertSession(session), 250);
+      await fn(session);
     },
   }));
 };
