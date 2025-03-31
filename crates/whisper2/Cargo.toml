@@ -1,0 +1,10 @@
+[package]
+name = "whisper2"
+version = "0.1.0"
+edition = "2021"
+
+[dev-dependencies]
+hypr-data = { workspace = true }
+
+[dependencies]
+whisper-rs = { git = "https://github.com/tazz4843/whisper-rs", rev = "f5ee632" }
