@@ -1,35 +1,31 @@
-import { LinkProps } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { LinkProps, useMatch } from "@tanstack/react-router";
 
 import { useHypr } from "@/contexts";
 import { type ExtensionName } from "@hypr/extension-registry";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
-import { useQuery } from "@tanstack/react-query";
 import WidgetRenderer from "../components/widget-renderer";
 
 export function WidgetsView() {
   const { userId } = useHypr();
+  const { id: sessionId } = useMatch({ from: "/app/note/$id", shouldThrow: true });
 
-  const extensions = useQuery({
+  const widgets = useQuery({
     queryKey: ["extensions"],
     queryFn: async () => {
       const extensions = await dbCommands.listExtensionMappings(userId);
-      console.log("extensions", extensions);
-      return extensions;
+
+      return extensions.flatMap((extension) => {
+        return extension.widgets.map((widget) => ({
+          extensionName: extension.extension_id as ExtensionName,
+          groupName: widget.group,
+          widgetType: widget.kind,
+          layout: widget.position,
+        }));
+      });
     },
   });
-
-  const widgets = useMemo(() => {
-    return (extensions.data?.flatMap((extension) => {
-      return extension.widgets.map((widget) => ({
-        extensionName: extension.extension_id as ExtensionName,
-        groupName: widget.group,
-        widgetType: widget.kind,
-        layout: widget.position,
-      }));
-    }) ?? []);
-  }, [extensions.data]);
 
   const handleClickConfigureWidgets = () => {
     const params = {
@@ -46,8 +42,13 @@ export function WidgetsView() {
     });
   };
 
-  return widgets.length > 0
-    ? <WidgetRenderer widgets={widgets} />
+  return widgets.data?.length
+    ? (
+      <WidgetRenderer
+        key={sessionId}
+        widgets={widgets.data}
+      />
+    )
     : (
       <div className="flex items-center justify-center h-full">
         <button
