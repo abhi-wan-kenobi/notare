@@ -78,7 +78,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
         {
           editor: sessionStore.session?.raw_memo_html ?? "",
           timeline: timeline,
-          ...(onboardingOutputExample ? { example: onboardingOutputExample } : {}),
+          ...((sessionId === onboardingSessionId) ? { example: onboardingOutputExample } : {}),
         },
       );
 
