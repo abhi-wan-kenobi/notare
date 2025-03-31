@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import usePreviousValue from "beautiful-react-hooks/usePreviousValue";
 import { motion } from "motion/react";
 import { AnimatePresence } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useHypr } from "@/contexts";
 import { ENHANCE_SYSTEM_TEMPLATE_KEY, ENHANCE_USER_TEMPLATE_KEY } from "@/templates";
@@ -11,8 +11,9 @@ import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { commands as miscCommands } from "@hypr/plugin-misc";
 import { commands as templateCommands } from "@hypr/plugin-template";
-import Editor, { TiptapEditor } from "@hypr/tiptap/editor";
+import Editor, { type TiptapEditor } from "@hypr/tiptap/editor";
 import Renderer from "@hypr/tiptap/renderer";
+import { extractHashtags } from "@hypr/tiptap/shared";
 import { cn } from "@hypr/ui/lib/utils";
 import { modelProvider, smoothStream, streamText } from "@hypr/utils/ai";
 import { useOngoingSession, useSession } from "@hypr/utils/contexts";
@@ -38,6 +39,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
     sessionId,
     (s) => [s.session?.raw_memo_html ?? "", s.updateRawNote],
   );
+  const hashtags = useMemo(() => extractHashtags(rawContent), [rawContent]);
 
   const [enhancedContent, setEnhancedContent] = useSession(
     sessionId,
@@ -137,10 +139,11 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
     [showRaw, setRawContent, setEnhancedContent],
   );
 
-  const noteContent = useMemo(() => {
-    return showRaw ? rawContent : enhancedContent;
+  const noteContent = useMemo(
+    () => showRaw ? rawContent : enhancedContent,
     // Excluding rawContent from deps list is intentional. We don't want to rerender the entire editor during editing.
-  }, [showRaw, enhancedContent]);
+    [showRaw, enhancedContent],
+  );
 
   const handleClickEnhance = useCallback(() => {
     try {
@@ -170,6 +173,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
         sessionId={sessionId}
         editable={editable}
         onNavigateToEditor={safelyFocusEditor}
+        hashtags={hashtags}
       />
 
       <div
