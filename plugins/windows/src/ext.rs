@@ -181,14 +181,18 @@ impl HyprWindow {
         let logical_window_height = window_size.height as f64 / scale_factor;
 
         let split_point = logical_monitor_width * 0.5;
-        let overlap = -4.0;
 
         let y = (logical_monitor_height - logical_window_height) / 2.0;
         let x = match pos {
-            KnownPosition::LeftHalf => split_point - logical_window_width + overlap,
-            KnownPosition::RightHalf => split_point - overlap,
+            KnownPosition::LeftHalf => split_point - logical_window_width,
+            KnownPosition::RightHalf => split_point,
             KnownPosition::Center => split_point - logical_window_width / 2.0,
         };
+
+        let x = x.max(0.0).min(logical_monitor_width - logical_window_width);
+        let y = y
+            .max(0.0)
+            .min(logical_monitor_height - logical_window_height);
 
         window.set_position(LogicalPosition::new(x, y))?;
         Ok(())
