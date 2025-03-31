@@ -20,22 +20,23 @@ uuid = { workspace = true }
 
 [dependencies]
 hypr-listener-interface = { workspace = true }
-tauri-plugin-auth = { path = "../auth" }
-tauri-plugin-connector = { path = "../connector" }
+tauri-plugin-auth = { workspace = true }
+tauri-plugin-connector = { workspace = true }
 tauri-plugin-db = { workspace = true }
 
-hypr-audio = { path = "../../crates/audio", package = "audio" }
-hypr-audio-utils = { path = "../../crates/audio-utils", package = "audio-utils" }
+hypr-audio = { workspace = true }
+hypr-audio-utils = { workspace = true }
 hypr-data = { workspace = true }
 hypr-db-core = { workspace = true }
 hypr-db-user = { workspace = true }
 hypr-timeline = { workspace = true }
-hypr-ws = { path = "../../crates/ws", package = "ws" }
+hypr-ws = { workspace = true }
 
 tauri = { workspace = true, features = ["specta", "test"] }
 tracing = { workspace = true }
 
 bytes = { workspace = true }
+chrono = { workspace = true }
 codes-iso-639 = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
