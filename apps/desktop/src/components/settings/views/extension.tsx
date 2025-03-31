@@ -11,6 +11,7 @@ import {
   type ExtensionMapping,
   type ExtensionWidgetKind,
 } from "@hypr/plugin-db";
+import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { WidgetOneByOneWrapper, WidgetTwoByOneWrapper, WidgetTwoByTwoWrapper } from "@hypr/ui/components/ui/widgets";
 
@@ -72,9 +73,11 @@ export default function Extensions({ selectedExtension, onExtensionSelect }: Ext
       };
       await dbCommands.upsertExtensionMapping(mapping);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["extensions"] });
-      queryClient.invalidateQueries({ queryKey: ["extension-mapping", selectedExtension?.id] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["extensions"] });
+      await queryClient.refetchQueries({ queryKey: ["extension-mapping", selectedExtension?.id] });
+      await windowsCommands.windowShow({ type: "main" });
+      console.log("extensions is now refetchQueries");
     },
   });
 

@@ -65,50 +65,27 @@ function PermissionItem({
 }
 
 export default function Permissions() {
-  const queryClient = useQueryClient();
   const { t } = useLingui();
 
   const micPermissionStatus = useQuery({
     queryKey: ["micPermission"],
-    queryFn: async () => {
-      try {
-        return await listenerCommands.requestMicrophoneAccess();
-      } catch (e) {
-        console.error(e);
-        return false;
-      }
-    },
+    queryFn: () => listenerCommands.requestMicrophoneAccess(),
   });
 
   const systemAudioPermissionStatus = useQuery({
     queryKey: ["systemAudioPermission"],
-    queryFn: async () => {
-      try {
-        return await listenerCommands.requestSystemAudioAccess();
-      } catch (e) {
-        console.error(e);
-        return false;
-      }
-    },
+    queryFn: () => listenerCommands.requestSystemAudioAccess(),
   });
 
   const micPermission = useMutation({
-    mutationFn: async (): Promise<boolean> => {
-      return listenerCommands.requestMicrophoneAccess();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["micPermission"] });
-    },
+    mutationFn: () => listenerCommands.requestMicrophoneAccess(),
+    onSuccess: () => micPermissionStatus.refetch(),
     onError: console.error,
   });
 
   const capturePermission = useMutation({
-    mutationFn: async (): Promise<boolean> => {
-      return listenerCommands.requestSystemAudioAccess();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["systemAudioPermission"] });
-    },
+    mutationFn: () => listenerCommands.requestSystemAudioAccess(),
+    onSuccess: () => systemAudioPermissionStatus.refetch(),
     onError: console.error,
   });
 

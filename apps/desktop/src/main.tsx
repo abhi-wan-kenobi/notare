@@ -3,8 +3,9 @@ import "./styles/globals.css";
 
 import { i18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CatchBoundary, createRouter, ErrorComponent, RouterProvider } from "@tanstack/react-router";
+import { useEffect } from "react";
 import ReactDOM from "react-dom/client";
 
 import type { Context } from "@/types";
@@ -12,6 +13,7 @@ import { commands as authCommands } from "@hypr/plugin-auth";
 import { Toaster } from "@hypr/ui/components/ui/toast";
 import { TooltipProvider } from "@hypr/ui/components/ui/tooltip";
 import { ThemeProvider } from "@hypr/ui/contexts/theme";
+import { broadcastQueryClient } from "./utils";
 
 import { messages as enMessages } from "./locales/en/messages";
 import { messages as koMessages } from "./locales/ko/messages";
@@ -71,6 +73,12 @@ Sentry.init({
 const rootElement = document.getElementById("root")!;
 
 function App() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    return broadcastQueryClient(queryClient);
+  }, [queryClient]);
+
   const userId = useQuery({
     queryKey: ["userId"],
     queryFn: () => authCommands.getFromStore("auth-user-id"),

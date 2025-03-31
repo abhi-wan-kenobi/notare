@@ -13,7 +13,11 @@ export function WidgetsView() {
 
   const extensions = useQuery({
     queryKey: ["extensions"],
-    queryFn: () => dbCommands.listExtensionMappings(userId),
+    queryFn: async () => {
+      const extensions = await dbCommands.listExtensionMappings(userId);
+      console.log("extensions", extensions);
+      return extensions;
+    },
   });
 
   const widgets = useMemo(() => {

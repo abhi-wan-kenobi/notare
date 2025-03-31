@@ -1,0 +1,55 @@
+// Based on https://github.com/TanStack/query/blob/6d03341/packages/query-broadcast-client-experimental/src/index.ts
+
+import type { QueryCacheNotifyEvent, QueryClient } from "@tanstack/react-query";
+import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
+
+import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
+
+const EVENT_NAME = "tanstack-query-broadcast";
+
+type BroadcastEvent = {
+  queryKey: QueryCacheNotifyEvent["query"]["queryKey"];
+  window: string;
+};
+
+export function broadcastQueryClient(queryClient: QueryClient) {
+  const queryCache = queryClient.getQueryCache();
+  const currentWindow = getCurrentWebviewWindowLabel();
+
+  queryCache.subscribe((queryEvent) => {
+    const updated = queryEvent.type === "updated" && queryEvent.action.type === "success";
+    const removed = queryEvent.type === "removed";
+
+    if (updated || removed) {
+      emit(
+        EVENT_NAME,
+        {
+          queryKey: queryEvent.query.queryKey,
+          window: currentWindow,
+        } satisfies BroadcastEvent,
+      );
+    }
+  });
+
+  let unlisten: UnlistenFn | null = null;
+
+  const setup = async () => {
+    unlisten = await listen<BroadcastEvent>(EVENT_NAME, (event) => {
+      if (event.payload.window === currentWindow) {
+        return;
+      }
+
+      if ((event.payload.queryKey as string[]).some((key) => key.includes("extension"))) {
+        queryClient.refetchQueries({ queryKey: ["extensions"] });
+      }
+    });
+  };
+
+  setup();
+
+  return () => {
+    if (unlisten) {
+      unlisten();
+    }
+  };
+}
