@@ -100,7 +100,8 @@ pub async fn get_timeline<R: tauri::Runtime>(
         (requested_session, onboarding_session_id)
     };
 
-    if requested_session.id == onboarding_session_id {
+    if filter.onboarding_override.unwrap_or(false) && requested_session.id == onboarding_session_id
+    {
         let (transcripts, diarizations): (
             Vec<hypr_listener_interface::TranscriptChunk>,
             Vec<hypr_listener_interface::DiarizationChunk>,

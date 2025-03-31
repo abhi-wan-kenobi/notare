@@ -8,8 +8,14 @@ pub enum Error {
     IoError(#[from] std::io::Error),
     #[error(transparent)]
     ListenClientError(#[from] hypr_ws::Error),
+    #[error(transparent)]
+    DatabaseError(#[from] tauri_plugin_db::Error),
     #[error("session already started")]
     SessionAlreadyStarted,
+    #[error("no STT connection")]
+    NoSTTConnection,
+    #[error("no session")]
+    NoneSession,
 }
 
 impl Serialize for Error {

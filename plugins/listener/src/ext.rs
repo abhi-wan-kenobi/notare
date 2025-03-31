@@ -156,9 +156,16 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
 
     #[tracing::instrument(skip_all)]
     async fn start_session(&self, session_id: impl Into<String>) -> Result<(), crate::Error> {
+        let app = self.app_handle();
         let state = self.state::<crate::SharedState>();
 
-        let _ = self.stop_session().await;
+        let session_id = session_id.into();
+        let mut session = {
+            use tauri_plugin_db::DatabasePluginExt;
+            app.db_get_session(&session_id)
+                .await?
+                .ok_or(crate::Error::NoneSession)?
+        };
 
         {
             let mut s = state.lock().await;
@@ -181,32 +188,9 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
             s.speaker_muted = Some(false);
         }
 
-        let session_id = session_id.into();
         let app_dir = self.path().app_data_dir().unwrap();
 
-        let api_base = {
-            let app = self.app_handle();
-            use tauri_plugin_connector::ConnectorPluginExt;
-            app.get_api_base(tauri_plugin_connector::ConnectionType::AutoSTT)
-                .await
-                .unwrap()
-        };
-
-        let api_key = {
-            let app = self.app_handle();
-            use tauri_plugin_auth::AuthPluginExt;
-            app.get_from_vault(tauri_plugin_auth::VaultKey::RemoteServer)
-                .unwrap_or_default()
-                .unwrap_or_default()
-        };
-
-        tracing::info!(api_base = ?api_base, api_key = ?api_key, "listen_client");
-
-        let listen_client = crate::client::ListenClient::builder()
-            .api_base(api_base)
-            .api_key(api_key)
-            .language(codes_iso_639::part_1::LanguageCode::En)
-            .build();
+        let listen_client = setup_listen_client(app).await?;
 
         let mic_sample_stream = {
             let mut input = hypr_audio::AudioInput::from_mic();
@@ -343,6 +327,10 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
 
                     match result {
                         crate::ListenOutputChunk::Transcribe(chunk) => {
+                            update_session(&app, &mut session, chunk.clone())
+                                .await
+                                .unwrap();
+
                             timeline.add_transcription(chunk);
                         }
                         crate::ListenOutputChunk::Diarize(chunk) => {
@@ -396,4 +384,48 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
 
         Ok(())
     }
+}
+
+async fn setup_listen_client<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+) -> Result<crate::client::ListenClient, crate::Error> {
+    let api_base = {
+        use tauri_plugin_connector::ConnectorPluginExt;
+        app.get_api_base(tauri_plugin_connector::ConnectionType::AutoSTT)
+            .await
+            .ok_or(crate::Error::NoSTTConnection)?
+    };
+
+    let api_key = {
+        use tauri_plugin_auth::AuthPluginExt;
+        app.get_from_vault(tauri_plugin_auth::VaultKey::RemoteServer)
+            .unwrap_or_default()
+            .unwrap_or_default()
+    };
+
+    tracing::info!(api_base = ?api_base, api_key = ?api_key, "listen_client");
+
+    Ok(crate::client::ListenClient::builder()
+        .api_base(api_base)
+        .api_key(api_key)
+        .language(codes_iso_639::part_1::LanguageCode::En)
+        .build())
+}
+
+async fn update_session<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    session: &mut hypr_db_user::Session,
+    transcript: hypr_listener_interface::TranscriptChunk,
+) -> Result<(), crate::Error> {
+    use tauri_plugin_db::DatabasePluginExt;
+
+    session.conversations.push(hypr_db_user::ConversationChunk {
+        transcripts: vec![transcript],
+        diarizations: vec![],
+        start: chrono::Utc::now(),
+        end: chrono::Utc::now(),
+    });
+
+    app.db_upsert_session(session.clone()).await.unwrap();
+    Ok(())
 }

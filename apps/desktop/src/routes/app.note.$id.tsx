@@ -34,8 +34,9 @@ export const Route = createFileRoute("/app/note/$id")({
           return redirect({ to: "/app/new" });
         }
 
-        const { insert } = sessionsStore.getState();
+        const { insert, setCurrentSessionId } = sessionsStore.getState();
         insert(session);
+        setCurrentSessionId(session.id);
 
         return session;
       },

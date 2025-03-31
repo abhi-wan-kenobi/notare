@@ -64,6 +64,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
 
       const timeline = await listenerCommands.getTimeline(sessionId, {
         last_n_seconds: null,
+        onboarding_override: true,
       });
 
       const systemMessage = await templateCommands.render(

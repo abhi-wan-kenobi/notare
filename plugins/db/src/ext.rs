@@ -12,6 +12,14 @@ pub trait DatabasePluginExt<R: tauri::Runtime> {
         &self,
         user_id: impl Into<String>,
     ) -> impl Future<Output = Result<(), crate::Error>>;
+    fn db_get_session(
+        &self,
+        session_id: impl Into<String>,
+    ) -> impl Future<Output = Result<Option<hypr_db_user::Session>, crate::Error>>;
+    fn db_upsert_session(
+        &self,
+        session: hypr_db_user::Session,
+    ) -> impl Future<Output = Result<(), crate::Error>>;
 }
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> DatabasePluginExt<R> for T {
@@ -69,6 +77,30 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> DatabasePluginExt<R> for T {
 
             db.upsert_human(human).await?;
         }
+
+        Ok(())
+    }
+
+    async fn db_get_session(
+        &self,
+        session_id: impl Into<String>,
+    ) -> Result<Option<hypr_db_user::Session>, crate::Error> {
+        let state = self.state::<crate::ManagedState>();
+        let guard = state.lock().await;
+
+        let db = guard.db.as_ref().ok_or(crate::Error::NoneDatabase)?;
+        let session = db
+            .get_session(hypr_db_user::GetSessionFilter::Id(session_id.into()))
+            .await?;
+        Ok(session)
+    }
+
+    async fn db_upsert_session(&self, session: hypr_db_user::Session) -> Result<(), crate::Error> {
+        let state = self.state::<crate::ManagedState>();
+        let guard = state.lock().await;
+
+        let db = guard.db.as_ref().ok_or(crate::Error::NoneDatabase)?;
+        db.upsert_session(session).await?;
 
         Ok(())
     }

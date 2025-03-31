@@ -63,7 +63,7 @@ export type SessionEventAudioAmplitude = { mic: number; speaker: number }
 export type SessionEventStarted = { seconds: number }
 export type SessionEventTimelineView = { timeline: TimelineView }
 export type TAURI_CHANNEL<TSend> = null
-export type TimelineFilter = { last_n_seconds: number | null }
+export type TimelineFilter = { onboarding_override: boolean | null; last_n_seconds: number | null }
 export type TimelineView = { items: TimelineViewItem[] }
 export type TimelineViewItem = { start: number; end: number; speaker: string; text: string }
 

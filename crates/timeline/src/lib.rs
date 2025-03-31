@@ -79,6 +79,7 @@ common_derives! {
 
 common_derives! {
     pub struct TimelineFilter {
+        pub onboarding_override: Option<bool>,
         pub last_n_seconds: Option<u64>,
     }
 }
