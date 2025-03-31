@@ -11,7 +11,7 @@ import {
   type ExtensionMapping,
   type ExtensionWidgetKind,
 } from "@hypr/plugin-db";
-import { commands as windowsCommands } from "@hypr/plugin-windows";
+import { commands as windowsCommands, events as windowsEvents } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { WidgetOneByOneWrapper, WidgetTwoByOneWrapper, WidgetTwoByTwoWrapper } from "@hypr/ui/components/ui/widgets";
 
@@ -32,6 +32,16 @@ export default function Extensions({ selectedExtension, onExtensionSelect }: Ext
   const { userId } = useHypr();
   const queryClient = useQueryClient();
   const [extensionData, setExtensionData] = useState<ExtensionData | null>(null);
+
+  useEffect(() => {
+    windowsEvents.mainWindowState.emit({ left_sidebar_expanded: false, right_panel_expanded: true });
+    windowsCommands.windowPosition({ type: "main" }, "right-half");
+    windowsCommands.windowResizeDefault({ type: "main" });
+
+    return () => {
+      windowsEvents.mainWindowState.emit({ left_sidebar_expanded: true, right_panel_expanded: false });
+    };
+  }, []);
 
   useEffect(() => {
     if (selectedExtension?.id) {

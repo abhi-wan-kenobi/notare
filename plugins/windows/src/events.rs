@@ -27,6 +27,16 @@ pub fn on_window_event<R: tauri::Runtime>(window: &tauri::Window<R>, event: &tau
                         guard.windows.remove(&w);
                     }
 
+                    {
+                        if w.label() == HyprWindow::Settings.label() {
+                            let event = MainWindowState {
+                                left_sidebar_expanded: Some(true),
+                                right_panel_expanded: Some(false),
+                            };
+                            let _ = event.emit(app);
+                        }
+                    }
+
                     let event = WindowDestroyed { window: w };
                     let _ = event.emit(app);
                 }
@@ -36,12 +46,29 @@ pub fn on_window_event<R: tauri::Runtime>(window: &tauri::Window<R>, event: &tau
     }
 }
 
-#[derive(serde::Serialize, Clone, specta::Type, tauri_specta::Event)]
-pub struct Navigate {
-    pub path: String,
+#[macro_export]
+macro_rules! common_event_derives {
+    ($item:item) => {
+        #[derive(serde::Serialize, Clone, specta::Type, tauri_specta::Event)]
+        $item
+    };
 }
 
-#[derive(serde::Serialize, Clone, specta::Type, tauri_specta::Event)]
-pub struct WindowDestroyed {
-    pub window: HyprWindow,
+common_event_derives! {
+    pub struct Navigate {
+        pub path: String,
+    }
+}
+
+common_event_derives! {
+    pub struct WindowDestroyed {
+        pub window: HyprWindow,
+    }
+}
+
+common_event_derives! {
+    pub struct MainWindowState {
+        pub left_sidebar_expanded: Option<bool>,
+        pub right_panel_expanded: Option<bool>,
+    }
 }

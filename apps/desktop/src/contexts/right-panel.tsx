@@ -9,6 +9,7 @@ export type RightPanelView = "chat" | "widget";
 interface RightPanelContextType {
   isExpanded: boolean;
   currentView: RightPanelView;
+  setIsExpanded: (v: boolean) => void;
   togglePanel: (view?: RightPanelView) => void;
   hidePanel: () => void;
   switchView: (view: RightPanelView) => void;
@@ -168,7 +169,7 @@ export function RightPanelProvider({
   );
 
   return (
-    <RightPanelContext.Provider value={{ isExpanded, currentView, togglePanel, hidePanel, switchView }}>
+    <RightPanelContext.Provider value={{ isExpanded, currentView, togglePanel, hidePanel, switchView, setIsExpanded }}>
       {children}
     </RightPanelContext.Provider>
   );

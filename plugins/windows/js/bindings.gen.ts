@@ -37,9 +37,11 @@ async windowEmitNavigate(window: HyprWindow, path: string) : Promise<null> {
 
 
 export const events = __makeEvents__<{
+mainWindowState: MainWindowState,
 navigate: Navigate,
 windowDestroyed: WindowDestroyed
 }>({
+mainWindowState: "plugin:windows:main-window-state",
 navigate: "plugin:windows:navigate",
 windowDestroyed: "plugin:windows:window-destroyed"
 })
@@ -52,6 +54,7 @@ windowDestroyed: "plugin:windows:window-destroyed"
 
 export type HyprWindow = { type: "main" } | { type: "note"; value: string } | { type: "human"; value: string } | { type: "organization"; value: string } | { type: "calendar" } | { type: "settings" } | { type: "video"; value: string }
 export type KnownPosition = "left-half" | "right-half" | "center"
+export type MainWindowState = { left_sidebar_expanded: boolean | null; right_panel_expanded: boolean | null }
 export type Navigate = { path: string }
 export type WindowDestroyed = { window: HyprWindow }
 

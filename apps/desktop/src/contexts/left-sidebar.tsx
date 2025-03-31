@@ -3,6 +3,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 
 interface LeftSidebarContextType {
   isExpanded: boolean;
+  setIsExpanded: (v: boolean) => void;
   togglePanel: () => void;
 }
 
@@ -32,7 +33,7 @@ export function LeftSidebarProvider({
   );
 
   return (
-    <LeftSidebarContext.Provider value={{ isExpanded, togglePanel }}>
+    <LeftSidebarContext.Provider value={{ isExpanded, setIsExpanded, togglePanel }}>
       {children}
     </LeftSidebarContext.Provider>
   );

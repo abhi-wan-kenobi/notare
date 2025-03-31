@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useEffect, useState } from "react";
 
 import LeftSidebar from "@/components/left-sidebar";
@@ -13,10 +14,12 @@ import {
   RightPanelProvider,
   SearchProvider,
   SettingsProvider,
+  useLeftSidebar,
+  useRightPanel,
 } from "@/contexts";
 import { registerTemplates } from "@/templates";
 import { commands } from "@/types";
-import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
+import { events as windowsEvents, getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 import { OngoingSessionProvider, SessionsProvider } from "@hypr/utils/contexts";
 
 export const Route = createFileRoute("/app")({
@@ -44,6 +47,7 @@ function Component() {
           <OngoingSessionProvider>
             <LeftSidebarProvider>
               <RightPanelProvider>
+                <MainWindowStateEventSupport />
                 <SettingsProvider>
                   <NewNoteProvider>
                     <SearchProvider>
@@ -71,4 +75,24 @@ function Component() {
       {windowLabel === "main" && <Notifications />}
     </>
   );
+}
+
+function MainWindowStateEventSupport() {
+  const { setIsExpanded: setLeftSidebarExpanded } = useLeftSidebar();
+  const { setIsExpanded: setRightPanelExpanded } = useRightPanel();
+
+  useEffect(() => {
+    const currentWindow = getCurrentWebviewWindow();
+    windowsEvents.mainWindowState(currentWindow).listen(({ payload }) => {
+      if (payload.left_sidebar_expanded !== null) {
+        setLeftSidebarExpanded(payload.left_sidebar_expanded);
+      }
+
+      if (payload.right_panel_expanded !== null) {
+        setRightPanelExpanded(payload.right_panel_expanded);
+      }
+    });
+  }, []);
+
+  return null;
 }
