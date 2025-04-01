@@ -13,7 +13,7 @@ pub trait StorePluginExt<R: tauri::Runtime> {
 impl<R: tauri::Runtime, T: tauri::Manager<R>> StorePluginExt<R> for T {
     fn store(&self) -> Result<std::sync::Arc<tauri_plugin_store::Store<R>>, crate::Error> {
         let app = self.app_handle();
-        <tauri::AppHandle<R> as tauri_plugin_store::StoreExt<R>>::store(&app, STORE_FILENAME)
+        <tauri::AppHandle<R> as tauri_plugin_store::StoreExt<R>>::store(app, STORE_FILENAME)
             .map_err(Into::into)
     }
 

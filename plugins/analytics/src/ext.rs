@@ -31,7 +31,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> crate::AnalyticsPluginExt<R> for T
             client
                 .event(payload)
                 .await
-                .map_err(|e| crate::Error::HyprAnalytics(e))?;
+                .map_err(crate::Error::HyprAnalytics)?;
         }
 
         Ok(())

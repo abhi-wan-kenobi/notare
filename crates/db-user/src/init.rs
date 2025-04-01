@@ -144,13 +144,11 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
     }
 
     for participant in onboarding_participants {
-        let _ = db
-            .session_add_participant(onboarding_session.id.clone(), participant.id)
+        db.session_add_participant(onboarding_session.id.clone(), participant.id)
             .await?;
     }
 
-    let _ = db
-        .session_add_participant(manual_session.id.clone(), user_id.clone())
+    db.session_add_participant(manual_session.id.clone(), user_id.clone())
         .await?;
 
     Ok(())

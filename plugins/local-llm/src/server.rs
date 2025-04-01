@@ -142,7 +142,7 @@ async fn inference_with_hypr(
     };
 
     if request.stream.unwrap_or(false) {
-        let stream = build_response(&model, &request)?
+        let stream = build_response(model, request)?
             .map(move |chunk| CreateChatCompletionStreamResponse {
                 choices: vec![ChatChoiceStream {
                     index: 0,
@@ -163,7 +163,7 @@ async fn inference_with_hypr(
 
         Ok(sse::Sse::new(stream).into_response())
     } else {
-        let completion = build_response(&model, &request)?.collect::<String>().await;
+        let completion = build_response(model, request)?.collect::<String>().await;
 
         let res = CreateChatCompletionResponse {
             choices: vec![ChatChoice {

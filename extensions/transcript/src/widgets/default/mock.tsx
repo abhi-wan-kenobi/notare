@@ -22,7 +22,7 @@ export default function MockProvider({
   useEffect(() => {
     let cleanup: (() => void) | undefined = undefined;
 
-    // Will cause "Attempted to assign to read only property" in Tauri env 
+    // Will cause "Attempted to assign to read only property" in Tauri env
     if (!isTauri()) {
       cleanup = mockTranscriptIPC();
     }

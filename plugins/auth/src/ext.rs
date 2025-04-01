@@ -128,8 +128,7 @@ pub(crate) fn generate_html(env: &minijinja::Environment) -> Result<String, Stri
         .get_template(CALLBACK_TEMPLATE_KEY)
         .map_err(|e| e.to_string())?
         .render(&context)
-        .map_err(|e| e.to_string())?
-        .into();
+        .map_err(|e| e.to_string())?;
 
     Ok(response)
 }
