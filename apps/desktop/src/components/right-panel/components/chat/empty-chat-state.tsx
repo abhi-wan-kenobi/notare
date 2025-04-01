@@ -1,36 +1,27 @@
 import { Trans } from "@lingui/react/macro";
-import { memo } from "react";
+import { memo, useCallback } from "react";
 
 interface EmptyChatStateProps {
-  isAnimating: boolean;
   onQuickAction: (prompt: string) => void;
   onFocusInput: () => void;
 }
 
-function EmptyChatStateBase({ isAnimating, onQuickAction, onFocusInput }: EmptyChatStateProps) {
-  const handleContainerClick = () => {
+export const EmptyChatState = memo(({ onQuickAction, onFocusInput }: EmptyChatStateProps) => {
+  const handleContainerClick = useCallback(() => {
     onFocusInput();
-  };
+  }, [onFocusInput]);
 
-  const handleButtonClick = (prompt: string) => (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent container click from triggering
+  const handleButtonClick = useCallback((prompt: string) => (e: React.MouseEvent) => {
     onQuickAction(prompt);
-  };
+  }, [onQuickAction]);
 
   return (
     <div
-      className="flex flex-col items-center justify-center h-full p-4 text-center"
+      className="flex-1 flex flex-col items-center justify-center h-full p-4 text-center"
       onClick={handleContainerClick}
     >
-      <div className="relative w-16 aspect-square flex items-center justify-center">
-        <img
-          src={isAnimating ? "/assets/dynamic.gif" : "/assets/static.png"}
-          alt="Chat Assistant"
-          className="w-full h-full"
-        />
-      </div>
       <h3 className="text-lg font-medium mb-4">
-        <Trans>Hyprnote Assistant</Trans>
+        <Trans>How can I help you today?</Trans>
       </h3>
       <div className="flex flex-wrap gap-2 justify-center mb-4 max-w-[280px]">
         <button
@@ -60,6 +51,4 @@ function EmptyChatStateBase({ isAnimating, onQuickAction, onFocusInput }: EmptyC
       </div>
     </div>
   );
-}
-
-export const EmptyChatState = memo(EmptyChatStateBase);
+});

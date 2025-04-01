@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useRightPanel } from "@/contexts";
+import { useMatch, useNavigate } from "@tanstack/react-router";
 import {
   ChatHistoryView,
   ChatInput,
@@ -11,38 +12,68 @@ import {
   Message,
 } from "../components/chat";
 
+interface ActiveEntityInfo {
+  id: string;
+  type: BadgeType;
+}
+
+export type BadgeType = "note" | "human" | "organization";
+
 export function ChatView() {
+  const navigate = useNavigate();
+  const { isExpanded, chatInputRef } = useRightPanel();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
-  const [isAnimating, setIsAnimating] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [searchValue, setSearchValue] = useState("");
-  const { isExpanded } = useRightPanel();
+
+  const [activeEntity, setActiveEntity] = useState<ActiveEntityInfo | null>(null);
+  const [hasChatStarted, setHasChatStarted] = useState(false);
+
+  const [chatHistory, _setChatHistory] = useState<ChatSession[]>([]);
+
+  const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
+  const humanMatch = useMatch({ from: "/app/human/$id", shouldThrow: false });
+  const organizationMatch = useMatch({ from: "/app/organization/$id", shouldThrow: false });
 
   useEffect(() => {
-    const animationInterval = setInterval(() => {
-      setIsAnimating(true);
-      const timeout = setTimeout(() => {
-        setIsAnimating(false);
-      }, 1625);
-      return () => clearTimeout(timeout);
-    }, 4625);
-
-    return () => clearInterval(animationInterval);
-  }, []);
+    if (!hasChatStarted) {
+      if (noteMatch) {
+        const noteId = noteMatch.params.id;
+        setActiveEntity({
+          id: noteId,
+          type: "note",
+        });
+      } else if (humanMatch) {
+        const humanId = humanMatch.params.id;
+        setActiveEntity({
+          id: humanId,
+          type: "human",
+        });
+      } else if (organizationMatch) {
+        const orgId = organizationMatch.params.id;
+        setActiveEntity({
+          id: orgId,
+          type: "organization",
+        });
+      } else {
+        setActiveEntity(null);
+      }
+    }
+  }, [noteMatch, humanMatch, organizationMatch, hasChatStarted]);
 
   useEffect(() => {
     if (isExpanded) {
       const focusTimeout = setTimeout(() => {
-        const chatInput = document.querySelector(".right-panel-container textarea");
-        if (chatInput) {
-          (chatInput as HTMLTextAreaElement).focus();
+        if (chatInputRef.current) {
+          chatInputRef.current.focus();
         }
       }, 200);
 
       return () => clearTimeout(focusTimeout);
     }
-  }, [isExpanded]);
+  }, [isExpanded, chatInputRef]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
@@ -51,6 +82,10 @@ export function ChatView() {
   const handleSubmit = () => {
     if (!inputValue.trim()) {
       return;
+    }
+
+    if (!hasChatStarted && activeEntity) {
+      setHasChatStarted(true);
     }
 
     const userMessage: Message = {
@@ -102,17 +137,22 @@ export function ChatView() {
       setMessages((prev) => [...prev, aiMessage]);
     }, 1000);
 
-    document.querySelector("textarea")?.focus();
+    if (chatInputRef.current) {
+      chatInputRef.current.focus();
+    }
   };
 
   const handleFocusInput = () => {
-    document.querySelector("textarea")?.focus();
+    if (chatInputRef.current) {
+      chatInputRef.current.focus();
+    }
   };
 
   const handleNewChat = () => {
     setMessages([]);
     setInputValue("");
     setShowHistory(false);
+    setHasChatStarted(false);
   };
 
   const handleViewHistory = () => {
@@ -154,50 +194,11 @@ export function ChatView() {
     }
   };
 
-  const [chatHistory] = useState<ChatSession[]>([
-    {
-      id: "1",
-      title: "New chat",
-      lastMessageDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-      messages: [],
-    },
-    {
-      id: "2",
-      title: "New chat",
-      lastMessageDate: new Date(2025, 1, 13),
-      messages: [],
-    },
-    {
-      id: "3",
-      title: "Summarize Hyprnote AI",
-      lastMessageDate: new Date(2025, 1, 5),
-      messages: [],
-    },
-    {
-      id: "4",
-      title: "New chat",
-      lastMessageDate: new Date(2025, 1, 5),
-      messages: [],
-    },
-    {
-      id: "5",
-      title: "New chat",
-      lastMessageDate: new Date(2025, 1, 5),
-      messages: [],
-    },
-    {
-      id: "6",
-      title: "New chat",
-      lastMessageDate: new Date(2025, 0, 3),
-      messages: [],
-    },
-    {
-      id: "7",
-      title: "New chat",
-      lastMessageDate: new Date(2024, 11, 31),
-      messages: [],
-    },
-  ]);
+  const handleNoteBadgeClick = () => {
+    if (activeEntity) {
+      navigate({ to: `/app/${activeEntity.type}/$id`, params: { id: activeEntity.id } });
+    }
+  };
 
   if (showHistory) {
     return (
@@ -214,7 +215,7 @@ export function ChatView() {
   }
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex-1 flex flex-col relative overflow-hidden h-full">
       <FloatingActionButtons
         onNewChat={handleNewChat}
         onViewHistory={handleViewHistory}
@@ -223,7 +224,6 @@ export function ChatView() {
       {messages.length === 0
         ? (
           <EmptyChatState
-            isAnimating={isAnimating}
             onQuickAction={handleQuickAction}
             onFocusInput={handleFocusInput}
           />
@@ -236,6 +236,9 @@ export function ChatView() {
         onSubmit={handleSubmit}
         onKeyDown={handleKeyDown}
         autoFocus={true}
+        entityId={activeEntity?.id}
+        entityType={activeEntity?.type}
+        onNoteBadgeClick={handleNoteBadgeClick}
       />
     </div>
   );
