@@ -24,7 +24,7 @@ export const createSessionStore = (session: Session) => {
   return createStore<State & Actions>((set, get) => ({
     session,
     showRaw: !session.enhanced_memo_html,
-    get: () => get(),
+    get,
     setShowRaw: (showRaw: boolean) => {
       set((state) =>
         mutate(state, (draft) => {

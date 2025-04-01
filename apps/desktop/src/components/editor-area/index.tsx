@@ -142,8 +142,8 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
 
   const noteContent = useMemo(
     () => showRaw ? rawContent : enhancedContent,
-    // Excluding rawContent from deps list is intentional. We don't want to rerender the entire editor during editing.
-    [showRaw, enhancedContent],
+    // Replacing 'rawContent' with 'editorKey' in deps list is intentional. We don't want to rerender the entire editor during editing.
+    [showRaw, enhancedContent, editorKey],
   );
 
   const handleClickEnhance = useCallback(() => {

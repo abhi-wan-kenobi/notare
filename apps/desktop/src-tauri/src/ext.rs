@@ -38,21 +38,28 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
 
     #[tracing::instrument(skip_all)]
     async fn setup_db_for_local(&self) -> Result<(), String> {
-        let db = {
+        let (db, db_just_created) = {
             if cfg!(debug_assertions) {
-                hypr_db_core::DatabaseBuilder::default()
-                    .memory()
-                    .build()
-                    .await
-                    .unwrap()
+                (
+                    hypr_db_core::DatabaseBuilder::default()
+                        .memory()
+                        .build()
+                        .await
+                        .unwrap(),
+                    true,
+                )
             } else {
                 let local_db_path = self.db_local_path();
+                let is_existing = std::path::Path::new(&local_db_path).exists();
 
-                hypr_db_core::DatabaseBuilder::default()
-                    .local(local_db_path)
-                    .build()
-                    .await
-                    .unwrap()
+                (
+                    hypr_db_core::DatabaseBuilder::default()
+                        .local(local_db_path)
+                        .build()
+                        .await
+                        .unwrap(),
+                    !is_existing,
+                )
             }
         };
 
@@ -85,14 +92,14 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
                 let s = state.lock().await;
                 let user_db = s.db.as_ref().unwrap();
 
-                #[cfg(debug_assertions)]
-                hypr_db_user::init::seed(user_db, &user_id).await.unwrap();
-
-                if user_id_just_created {
+                if db_just_created || user_id_just_created {
                     hypr_db_user::init::onboarding(user_db, &user_id)
                         .await
                         .unwrap();
                 }
+
+                #[cfg(debug_assertions)]
+                hypr_db_user::init::seed(user_db, &user_id).await.unwrap();
             }
         }
 

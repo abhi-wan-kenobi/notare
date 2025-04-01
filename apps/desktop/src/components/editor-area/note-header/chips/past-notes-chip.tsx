@@ -5,6 +5,10 @@ interface PastNotesChipProps {
 }
 
 export function PastNotesChip({ sessionId }: PastNotesChipProps) {
+  if (sessionId) {
+    return null;
+  }
+
   return (
     <button className="flex flex-row items-center gap-2 rounded-md px-2 py-1.5 hover:bg-neutral-100 flex-shrink-0 text-xs">
       <FileClock size={14} className="flex-shrink-0" />
