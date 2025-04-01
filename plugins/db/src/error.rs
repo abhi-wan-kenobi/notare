@@ -9,7 +9,11 @@ pub enum Error {
     #[error("database is None")]
     NoneDatabase,
     #[error(transparent)]
+    TauriError(#[from] tauri::Error),
+    #[error(transparent)]
     DatabaseCoreError(#[from] hypr_db_core::Error),
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
 }
 
 impl Serialize for Error {

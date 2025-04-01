@@ -49,7 +49,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
                     true,
                 )
             } else {
-                let local_db_path = self.db_local_path();
+                let local_db_path = self.db_local_path().unwrap();
                 let is_existing = std::path::Path::new(&local_db_path).exists();
 
                 (
@@ -134,7 +134,8 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
             use hypr_turso::{format_db_name, format_db_url, DEFAULT_ORG_SLUG};
             use tauri_plugin_db::DatabasePluginExt;
 
-            let local_db_path = app.db_local_path();
+            let local_db_path = app.db_local_path().unwrap();
+
             if let Some(account_id) = account_id.as_ref() {
                 let db = {
                     if cfg!(debug_assertions) {

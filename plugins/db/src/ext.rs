@@ -2,7 +2,7 @@ use std::future::Future;
 use tauri::Manager;
 
 pub trait DatabasePluginExt<R: tauri::Runtime> {
-    fn db_local_path(&self) -> String;
+    fn db_local_path(&self) -> Result<String, crate::Error>;
     fn db_attach(
         &self,
         db: hypr_db_core::Database,
@@ -23,15 +23,17 @@ pub trait DatabasePluginExt<R: tauri::Runtime> {
 }
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> DatabasePluginExt<R> for T {
-    fn db_local_path(&self) -> String {
+    fn db_local_path(&self) -> Result<String, crate::Error> {
         let v = {
             let app = self.app_handle();
-            let dir = app.path().app_data_dir().unwrap();
+            let dir = app.path().app_data_dir()?;
+            std::fs::create_dir_all(&dir)?;
+
             dir.join("db.sqlite").to_str().unwrap().to_string()
         };
 
         tracing::info!(path = %v, "local_db");
-        v
+        Ok(v)
     }
 
     async fn db_attach(&self, db: hypr_db_core::Database) -> Result<(), crate::Error> {
