@@ -45,6 +45,16 @@ pub async fn window_resize_default(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn window_is_visible(
+    app: tauri::AppHandle<tauri::Wry>,
+    window: HyprWindow,
+) -> Result<bool, String> {
+    let v = app.window_is_visible(window).map_err(|e| e.to_string())?;
+    Ok(v)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn window_get_floating(
     app: tauri::AppHandle<tauri::Wry>,
     window: HyprWindow,

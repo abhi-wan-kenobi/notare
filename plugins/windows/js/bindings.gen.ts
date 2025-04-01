@@ -30,6 +30,9 @@ async windowNavigate(window: HyprWindow, path: string) : Promise<null> {
 },
 async windowEmitNavigate(window: HyprWindow, path: string) : Promise<null> {
     return await TAURI_INVOKE("plugin:windows|window_emit_navigate", { window, path });
+},
+async windowIsVisible(window: HyprWindow) : Promise<boolean> {
+    return await TAURI_INVOKE("plugin:windows|window_is_visible", { window });
 }
 }
 

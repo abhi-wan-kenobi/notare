@@ -10,6 +10,7 @@ Default permissions for the plugin
 - `allow-window-set-floating`
 - `allow-window-navigate`
 - `allow-window-emit-navigate`
+- `allow-window-is-visible`
 
 ## Permission Table
 
@@ -94,6 +95,32 @@ Enables the window_get_floating command without any pre-configured scope.
 <td>
 
 Denies the window_get_floating command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:allow-window-is-visible`
+
+</td>
+<td>
+
+Enables the window_is_visible command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:deny-window-is-visible`
+
+</td>
+<td>
+
+Denies the window_is_visible command without any pre-configured scope.
 
 </td>
 </tr>

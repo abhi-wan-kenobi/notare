@@ -1,12 +1,13 @@
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import GridLayout, { Layout } from "react-grid-layout";
 
 import { ExtensionName, importExtension } from "@hypr/extension-registry";
+import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { getID, getSize, SuspenseWidget, WidgetConfig } from "./widgets";
 
 export type { WidgetConfig };
@@ -27,6 +28,12 @@ export default function WidgetRenderer({ widgets, handleUpdateLayout }: WidgetRe
   const [showFull, setShowFull] = useState(false);
   const [fullWidgetConfig, setFullWidgetConfig] = useState<WidgetConfig | null>(null);
   const [widgetsWithFullVersion, setWidgetsWithFullVersion] = useState<Record<string, boolean>>({});
+
+  const isSettingsVisible = useQuery({
+    queryKey: ["is-settings-visible"],
+    queryFn: () => windowsCommands.windowIsVisible({ type: "settings" }),
+    refetchInterval: 1000,
+  });
 
   const hasFullWidgetForGroup = useCallback(
     async (extensionName: ExtensionName, groupName: string): Promise<boolean> => {
@@ -133,7 +140,7 @@ export default function WidgetRenderer({ widgets, handleUpdateLayout }: WidgetRe
                 width={380}
                 margin={[20, 20]}
                 onLayoutChange={handleLayoutChange}
-                isDraggable={true}
+                isDraggable={!!isSettingsVisible.data}
                 isResizable={false}
                 compactType="vertical"
                 draggableCancel=".not-draggable"

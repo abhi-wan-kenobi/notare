@@ -93,7 +93,7 @@ impl HyprWindow {
         app: &AppHandle<tauri::Wry>,
         path: impl AsRef<str>,
     ) -> Result<(), crate::Error> {
-        if let Ok(window) = self.get(app) {
+        if let Some(window) = self.get(app) {
             let mut url = window.url().unwrap();
             url.set_path(path.as_ref());
 
@@ -110,11 +110,12 @@ impl HyprWindow {
         app: &AppHandle<tauri::Wry>,
         path: impl AsRef<str>,
     ) -> Result<(), crate::Error> {
-        if let Ok(window) = self.get(app) {
+        if let Some(window) = self.get(app) {
             let mut url = window.url().unwrap();
             url.set_path(path.as_ref());
             window.navigate(url)?;
         }
+
         Ok(())
     }
 
@@ -130,10 +131,9 @@ impl HyprWindow {
         }
     }
 
-    pub fn get(&self, app: &AppHandle<tauri::Wry>) -> Result<WebviewWindow, crate::Error> {
+    pub fn get(&self, app: &AppHandle<tauri::Wry>) -> Option<WebviewWindow> {
         let label = self.label();
         app.get_webview_window(&label)
-            .ok_or(crate::Error::WindowNotFound(label))
     }
 
     pub fn get_default_size(&self) -> LogicalSize<f64> {
@@ -165,51 +165,58 @@ impl HyprWindow {
         app: &AppHandle<tauri::Wry>,
         pos: KnownPosition,
     ) -> Result<(), crate::Error> {
-        let window = self.get(app)?;
+        if let Some(window) = self.get(app) {
+            let monitor = window
+                .current_monitor()?
+                .ok_or(crate::Error::MonitorNotFound)?;
 
-        let monitor = window
-            .current_monitor()?
-            .ok_or(crate::Error::MonitorNotFound)?;
+            let monitor_size = monitor.size();
+            let window_size = window.outer_size()?;
 
-        let monitor_size = monitor.size();
-        let window_size = window.outer_size()?;
+            let scale_factor = window.scale_factor()?;
+            let logical_monitor_width = monitor_size.width as f64 / scale_factor;
+            let logical_monitor_height = monitor_size.height as f64 / scale_factor;
+            let logical_window_width = window_size.width as f64 / scale_factor;
+            let logical_window_height = window_size.height as f64 / scale_factor;
 
-        let scale_factor = window.scale_factor()?;
-        let logical_monitor_width = monitor_size.width as f64 / scale_factor;
-        let logical_monitor_height = monitor_size.height as f64 / scale_factor;
-        let logical_window_width = window_size.width as f64 / scale_factor;
-        let logical_window_height = window_size.height as f64 / scale_factor;
+            let split_point = logical_monitor_width * 0.5;
 
-        let split_point = logical_monitor_width * 0.5;
+            let y = (logical_monitor_height - logical_window_height) / 2.0;
+            let x = match pos {
+                KnownPosition::LeftHalf => split_point - logical_window_width,
+                KnownPosition::RightHalf => split_point,
+                KnownPosition::Center => split_point - logical_window_width / 2.0,
+            };
 
-        let y = (logical_monitor_height - logical_window_height) / 2.0;
-        let x = match pos {
-            KnownPosition::LeftHalf => split_point - logical_window_width,
-            KnownPosition::RightHalf => split_point,
-            KnownPosition::Center => split_point - logical_window_width / 2.0,
-        };
+            let x = x.max(0.0).min(logical_monitor_width - logical_window_width);
+            let y = y
+                .max(0.0)
+                .min(logical_monitor_height - logical_window_height);
 
-        let x = x.max(0.0).min(logical_monitor_width - logical_window_width);
-        let y = y
-            .max(0.0)
-            .min(logical_monitor_height - logical_window_height);
+            window.set_position(LogicalPosition::new(x, y))?;
+        }
 
-        window.set_position(LogicalPosition::new(x, y))?;
         Ok(())
     }
 
     fn destroy(&self, app: &AppHandle<tauri::Wry>) -> Result<(), crate::Error> {
-        if let Ok(window) = self.get(app) {
+        if let Some(window) = self.get(app) {
             window.destroy()?;
         }
 
         Ok(())
     }
 
+    pub fn is_visible(&self, app: &AppHandle<tauri::Wry>) -> Result<bool, crate::Error> {
+        self.get(app).map_or(Ok(false), |w| {
+            w.is_visible().map_err(crate::Error::TauriError)
+        })
+    }
+
     pub fn show(&self, app: &AppHandle<tauri::Wry>) -> Result<WebviewWindow, crate::Error> {
         let (window, created) = match self.get(app) {
-            Ok(window) => (window, false),
-            Err(_) => {
+            Some(window) => (window, false),
+            None => {
                 let url = match self {
                     Self::Main => "/app/new",
                     Self::Note(id) => &format!("/app/note/{}", id),
@@ -371,6 +378,7 @@ pub trait WindowsPluginExt<R: tauri::Runtime> {
     fn window_destroy(&self, window: HyprWindow) -> Result<(), crate::Error>;
     fn window_position(&self, window: HyprWindow, pos: KnownPosition) -> Result<(), crate::Error>;
     fn window_resize_default(&self, window: HyprWindow) -> Result<(), crate::Error>;
+    fn window_is_visible(&self, window: HyprWindow) -> Result<bool, crate::Error>;
 
     fn window_get_floating(&self, window: HyprWindow) -> Result<bool, crate::Error>;
     fn window_set_floating(&self, window: HyprWindow, v: bool) -> Result<(), crate::Error>;
@@ -402,11 +410,16 @@ impl WindowsPluginExt<tauri::Wry> for AppHandle<tauri::Wry> {
     }
 
     fn window_resize_default(&self, window: HyprWindow) -> Result<(), crate::Error> {
-        let default_size = window.get_default_size();
+        if let Some(w) = window.get(self) {
+            let default_size = window.get_default_size();
+            w.set_size(default_size)?;
+        }
 
-        let window = window.get(self)?;
-        window.set_size(default_size)?;
         Ok(())
+    }
+
+    fn window_is_visible(&self, window: HyprWindow) -> Result<bool, crate::Error> {
+        window.is_visible(self)
     }
 
     fn window_get_floating(&self, window: HyprWindow) -> Result<bool, crate::Error> {
@@ -429,14 +442,17 @@ impl WindowsPluginExt<tauri::Wry> for AppHandle<tauri::Wry> {
         let app = self.app_handle();
         let state = app.state::<crate::ManagedState>();
 
-        window.get(self)?.set_always_on_top(v)?;
-        {
-            let mut guard = state.lock().unwrap();
-            guard
-                .windows
-                .entry(window)
-                .or_insert(WindowState::default())
-                .floating = v;
+        if let Some(w) = window.get(self) {
+            w.set_always_on_top(v)?;
+
+            {
+                let mut guard = state.lock().unwrap();
+                guard
+                    .windows
+                    .entry(window)
+                    .or_insert(WindowState::default())
+                    .floating = v;
+            }
         }
 
         Ok(())

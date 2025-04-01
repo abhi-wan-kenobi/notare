@@ -9,4 +9,5 @@ permissions = [
     "allow-window-set-floating",
     "allow-window-navigate",
     "allow-window-emit-navigate",
+    "allow-window-is-visible",
 ]

@@ -4,8 +4,6 @@ use serde::{ser::Serializer, Serialize};
 pub enum Error {
     #[error(transparent)]
     TauriError(#[from] tauri::Error),
-    #[error("window not found: {0}")]
-    WindowNotFound(String),
     #[error("monitor not found")]
     MonitorNotFound,
 }
