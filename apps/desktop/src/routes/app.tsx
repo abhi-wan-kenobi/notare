@@ -32,13 +32,14 @@ export const Route = createFileRoute("/app")({
 
 function Component() {
   const { sessionsStore, isOnboardingNeeded } = Route.useLoaderData();
-  const windowLabel = getCurrentWebviewWindowLabel();
-
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(isOnboardingNeeded);
 
   useEffect(() => {
     registerTemplates();
   }, []);
+
+  const windowLabel = getCurrentWebviewWindowLabel();
+  const showNotifications = windowLabel === "main" && !isLoginModalOpen;
 
   return (
     <>
@@ -72,7 +73,7 @@ function Component() {
           </OngoingSessionProvider>
         </SessionsProvider>
       </HyprProvider>
-      {windowLabel === "main" && <Notifications />}
+      {showNotifications && <Notifications />}
     </>
   );
 }

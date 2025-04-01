@@ -68,7 +68,6 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
   const handleStartLocal = () => {
     onClose();
-    // navigate({ to: "/onboarding" });
   };
 
   return (

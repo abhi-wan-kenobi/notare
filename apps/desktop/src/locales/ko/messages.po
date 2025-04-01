@@ -14,112 +14,134 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. js-lingui-explicit-id
+#: src/components/settings/views/general.tsx:150
+msgid "Select language"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: src/components/settings/views/general.tsx:206
+msgid "Type jargons (e.g., Blitz Meeting, PaC Squad)"
+msgstr ""
+
+#. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:16
-msgid "{days} day{plural} later"
-msgstr "{days}일 후"
+#~ msgid "{days} day{plural} later"
+#~ msgstr "{days}일 후"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:21
-msgid "{hours} hour{plural} later"
-msgstr "{hours}시간 후"
+#~ msgid "{hours} hour{plural} later"
+#~ msgstr "{hours}시간 후"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:26
-msgid "{minutes} minutes later"
-msgstr "{minutes}분 후"
+#~ msgid "{minutes} minutes later"
+#~ msgstr "{minutes}분 후"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:30
-msgid "Starting soon"
-msgstr "곧 시작"
+#~ msgid "Starting soon"
+#~ msgstr "곧 시작"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:32
-msgid "In progress"
-msgstr "진행 중"
+#~ msgid "In progress"
+#~ msgstr "진행 중"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:50
-msgid "Today"
-msgstr "오늘"
+#~ msgid "Today"
+#~ msgstr "오늘"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:52
-msgid "Yesterday"
-msgstr "어제"
+#~ msgid "Yesterday"
+#~ msgstr "어제"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:54
-msgid "2 days ago"
-msgstr "2일 전"
+#~ msgid "2 days ago"
+#~ msgstr "2일 전"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:56
 #: src/utils/i18n-datetime.ts:64
-msgid "{days} days ago"
-msgstr "{days}일 전"
+#~ msgid "{days} days ago"
+#~ msgstr "{days}일 전"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:58
-msgid "Last week"
-msgstr "지난 주"
+#~ msgid "Last week"
+#~ msgstr "지난 주"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:60
-msgid "2 weeks ago"
-msgstr "2주 전"
+#~ msgid "2 weeks ago"
+#~ msgstr "2주 전"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:62
-msgid "3 weeks ago"
-msgstr "3주 전"
+#~ msgid "3 weeks ago"
+#~ msgstr "3주 전"
 
 #. placeholder {0}: type === "google-calendar" ? "Google Calendar" : "Outlook Calendar"
-#: src/components/settings/views/calendar.tsx:113
+#: src/components/settings/views/calendar.tsx:96
 msgid "{0}"
 msgstr "{0}"
 
-#. placeholder {0}: members.length
 #: src/routes/app.organization.$id.tsx:126
-msgid "{0} members"
-msgstr "멤버 {0}명"
+#~ msgid "{0} members"
+#~ msgstr "멤버 {0}명"
 
 #: src/components/settings/components/settings-header.tsx:19
 #~ msgid "{current}"
 #~ msgstr "{현재}"
 
-#: src/components/settings/views/calendar.tsx:187
-#: src/components/settings/views/calendar.tsx:219
+#: src/components/settings/views/lab.tsx:97
+msgid "{description}"
+msgstr ""
+
+#: src/components/settings/views/lab.tsx:94
+msgid "{title}"
+msgstr ""
+
+#: src/components/settings/views/calendar.tsx:170
+#: src/components/settings/views/calendar.tsx:202
 msgid "Access granted"
 msgstr "접근 권한이 승인되었습니다."
+
+#: src/components/settings/views/ai.tsx:72
+#: src/components/settings/views/ai.tsx:129
+msgid "Active"
+msgstr ""
 
 #: src/components/settings/views/template.tsx:115
 msgid "Add a description..."
 msgstr "설명을 추가하세요..."
 
-#: src/components/settings/views/team.tsx:92
+#: src/components/settings/views/team.tsx:94
 msgid "Add members"
 msgstr "팀원을 추가하세요."
 
-#: src/components/editor-area/note-header/chips/participants-chip/participants-list.tsx:229
+#: src/components/editor-area/note-header/chips/participants-chip/participants-list.tsx:299
 msgid "Add participant"
 msgstr "참석자를 추가하세요."
 
-#: src/components/settings/views/team.tsx:140
-#: src/components/settings/views/team.tsx:227
+#: src/components/settings/views/team.tsx:142
+#: src/components/settings/views/team.tsx:229
 msgid "Admin"
 msgstr "관리자"
 
-#: src/components/settings/components/settings-header.tsx:23
+#: src/components/settings/components/settings-header.tsx:24
 #: src/components/settings/components/main-sidebar.tsx:33
 msgid "AI"
 msgstr "AI"
 
 #: src/routes/onboarding.tsx:78
-msgid "AI Meeting Notepad that keeps you in flow"
-msgstr "회의에 집중하도록 도와주는 AI 메모장"
+#~ msgid "AI Meeting Notepad that keeps you in flow"
+#~ msgstr "회의에 집중하도록 도와주는 AI 메모장"
 
-#: src/routes/login.tsx:124
+#: src/components/login-modal.tsx:100
 msgid "AI notepad for meetings"
 msgstr "회의용 AI 메모장"
 
@@ -128,11 +150,11 @@ msgid "All Participants"
 msgstr "모든 참가자"
 
 #. placeholder {0}: members.length - 5
-#: src/routes/app.organization.$id.tsx:189
+#: src/components/organization-profile/members-list.tsx:51
 msgid "and {0} more members"
 msgstr "그리고 {0}명의 추가 멤버"
 
-#: src/components/settings/views/billing.tsx:123
+#: src/components/settings/views/billing.tsx:131
 msgid "Annual"
 msgstr "연간"
 
@@ -148,12 +170,19 @@ msgstr "애플"
 msgid "Ask questions about past meetings"
 msgstr "과거 회의에 대해 질문하세요."
 
-#: src/components/settings/components/settings-header.tsx:35
-#: src/components/settings/components/main-sidebar.tsx:45
+#: src/components/right-panel/components/chat/chat-message.tsx:18
+msgid "Assistant:"
+msgstr ""
+
+#: src/routes/app.settings.tsx:160
+msgid "Back to Settings"
+msgstr ""
+
+#: src/components/settings/components/settings-header.tsx:36
 msgid "Billing"
 msgstr "결제"
 
-#: src/components/settings/views/billing.tsx:96
+#: src/components/settings/views/billing.tsx:104
 msgid "Billing features are currently under development and will be available in a future update."
 msgstr "결제 기능은 현재 개발 중이며 향후 업데이트에서 제공될 예정입니다."
 
@@ -161,16 +190,16 @@ msgstr "결제 기능은 현재 개발 중이며 향후 업데이트에서 제�
 msgid "Built-in Templates"
 msgstr "기본 템플릿"
 
-#: src/components/settings/components/settings-header.tsx:25
+#: src/components/settings/components/settings-header.tsx:26
 #: src/components/settings/components/main-sidebar.tsx:35
 msgid "Calendar"
 msgstr "캘린더"
 
-#: src/components/settings/views/calendar.tsx:183
+#: src/components/settings/views/calendar.tsx:166
 msgid "Calendar Access"
 msgstr "캘린더 접근 권한"
 
-#: src/components/settings/views/calendar.tsx:121
+#: src/components/settings/views/calendar.tsx:104
 msgid "Calendar connected"
 msgstr "캘린더가 연결되었습니다."
 
@@ -182,9 +211,9 @@ msgstr "대표"
 msgid "Collaborate with others in meetings"
 msgstr "회의에서 다른 사람들과 협업하세요."
 
-#: src/components/settings/views/team.tsx:67
-#: src/components/settings/views/billing.tsx:62
-#: src/components/settings/views/billing.tsx:93
+#: src/components/settings/views/team.tsx:69
+#: src/components/settings/views/billing.tsx:63
+#: src/components/settings/views/billing.tsx:101
 #: src/components/settings/components/extensions-sidebar.tsx:54
 msgid "Coming Soon"
 msgstr "곧 출시 예정"
@@ -197,54 +226,63 @@ msgstr "회사 설명"
 msgid "Company Name"
 msgstr "회사명"
 
-#: src/components/settings/views/calendar.tsx:140
+#: src/components/settings/views/calendar.tsx:123
 msgid "Connect"
 msgstr "연결하기"
 
 #: src/routes/onboarding.tsx:118
-msgid "Connect to Calendar"
-msgstr "캘린더에 연결하기"
+#~ msgid "Connect to Calendar"
+#~ msgstr "캘린더에 연결하기"
 
 #: src/routes/onboarding.tsx:132
-msgid "Connect to Contacts"
-msgstr "연락처에 연결하기"
+#~ msgid "Connect to Contacts"
+#~ msgstr "연락처에 연결하기"
 
 #. placeholder {0}: type === "google-calendar" ? "Google" : "Outlook"
-#: src/components/settings/views/calendar.tsx:123
+#: src/components/settings/views/calendar.tsx:106
 msgid "Connect your {0} calendar to track upcoming events"
 msgstr "{0} 캘린더를 연결하여 예정된 일정을 추적하세요."
 
-#: src/components/settings/views/calendar.tsx:188
+#: src/components/settings/views/calendar.tsx:171
 msgid "Connect your calendar and track events"
 msgstr "캘린더를 연결하고 일정을 추적하세요."
 
-#: src/components/settings/views/calendar.tsx:215
+#: src/components/settings/views/calendar.tsx:198
 msgid "Contacts Access"
 msgstr "연락처 접근 권한"
 
 #: src/routes/onboarding.tsx:151
-msgid "Continue"
-msgstr "계속하기"
+#~ msgid "Continue"
+#~ msgstr "계속하기"
 
-#: src/components/toolbar/buttons/new-note-button.tsx:45
+#: src/components/human-profile/profile-header.tsx:152
+#: src/components/editor-area/note-header/chips/participants-chip/participants-list.tsx:387
+msgid "Create"
+msgstr ""
+
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:58
+msgid "Create agenda"
+msgstr ""
+
+#: src/components/toolbar/buttons/new-note-button.tsx:46
 msgid "Create new note"
 msgstr "노트 생성"
 
 #: src/components/settings/components/settings-header.tsx:63
-msgid "Create new template"
-msgstr "템플릿 생성"
+#~ msgid "Create new template"
+#~ msgstr "템플릿 생성"
 
 #: src/components/workspace-calendar/event-card.tsx:115
 msgid "Create Note"
 msgstr "노트 생성"
 
-#: src/components/settings/views/billing.tsx:63
+#: src/components/settings/views/billing.tsx:66
 msgid "Current Plan"
 msgstr "현재 요금제"
 
 #: src/components/settings/views/template.tsx:86
-#: src/components/settings/views/team.tsx:163
-#: src/components/left-sidebar/all-list/note-item.tsx:156
+#: src/components/settings/views/team.tsx:165
+#: src/components/left-sidebar/notes-list.tsx:300
 msgid "Delete"
 msgstr "삭제"
 
@@ -256,11 +294,11 @@ msgstr "이 섹션의 내용과 목적을 설명하세요."
 msgid "Description"
 msgstr "설명"
 
-#: src/components/settings/views/notifications.tsx:151
+#: src/components/settings/views/notifications.tsx:153
 msgid "Detect meetings automatically"
 msgstr "자동으로 회의를 감지하세요."
 
-#: src/components/settings/views/general.tsx:134
+#: src/components/settings/views/general.tsx:135
 msgid "Display language"
 msgstr "언어"
 
@@ -276,7 +314,7 @@ msgstr "이메일"
 msgid "Email address"
 msgstr "이메일"
 
-#: src/components/settings/views/team.tsx:199
+#: src/components/settings/views/team.tsx:201
 msgid "Email addresses"
 msgstr "이메일 주소"
 
@@ -284,26 +322,38 @@ msgstr "이메일 주소"
 msgid "Email separated by commas"
 msgstr "이메일 주소를 쉼표로 구분하여 입력하세요."
 
+#: src/components/settings/views/permissions.tsx:59
+msgid "Enable"
+msgstr ""
+
 #: src/routes/onboarding.tsx:92
-msgid "Enable Microphone"
-msgstr "마이크 활성화"
+#~ msgid "Enable Microphone"
+#~ msgstr "마이크 활성화"
 
 #: src/routes/onboarding.tsx:102
-msgid "Enable System Audio"
-msgstr "시스템 오디오 활성화"
+#~ msgid "Enable System Audio"
+#~ msgstr "시스템 오디오 활성화"
+
+#: src/components/editor-area/enhance-button/enhance-only-button.tsx:24
+msgid "Enhance"
+msgstr ""
 
 #: src/components/settings/components/template-sections.tsx:119
 msgid "Enter a section title"
 msgstr "섹션 제목을 입력하세요."
 
-#: src/components/settings/views/notifications.tsx:176
+#: src/components/settings/views/notifications.tsx:178
 msgid "Exclude these apps from auto detection"
 msgstr "자동 감지에서 제외할 앱을 선택하세요."
 
-#: src/components/settings/components/settings-header.tsx:31
-#: src/components/settings/components/main-sidebar.tsx:41
+#: src/components/settings/components/settings-header.tsx:32
+#: src/components/settings/components/main-sidebar.tsx:43
 msgid "Extensions"
 msgstr "익스텐션"
+
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:52
+msgid "Extract action items"
+msgstr ""
 
 #: src/components/settings/views/billing.tsx:47
 msgid "For fast growing teams like energetic startups"
@@ -325,43 +375,55 @@ msgstr "템플릿을 사용하여 노트를 형식화하세요."
 msgid "Free"
 msgstr "무료"
 
-#: src/components/settings/views/billing.tsx:65
+#: src/components/settings/views/billing.tsx:72
 msgid "Free Trial"
 msgstr "무료 체험"
 
-#: src/components/settings/components/settings-header.tsx:19
+#: src/components/settings/components/settings-header.tsx:20
 #: src/components/settings/components/main-sidebar.tsx:29
 msgid "General"
 msgstr "일반"
 
-#: src/routes/login.tsx:132
+#: src/components/login-modal.tsx:108
 msgid "Get Started"
 msgstr "시작하기"
 
-#: src/components/settings/views/calendar.tsx:201
-#: src/components/settings/views/calendar.tsx:233
+#: src/components/settings/views/calendar.tsx:184
+#: src/components/settings/views/calendar.tsx:216
 msgid "Grant Access"
 msgstr "접근 권한 부여"
 
+#: src/components/settings/views/general.tsx:176
+msgid "Help us improve Hyprnote by sharing anonymous usage data"
+msgstr ""
+
 #: src/routes/onboarding.tsx:129
-msgid "How about your contacts?"
-msgstr "연락처는 어떠세요?"
+#~ msgid "How about your contacts?"
+#~ msgstr "연락처는 어떠세요?"
 
 #: src/components/editor-area/enhanced-only-button.tsx:18
-msgid "Hypercharge"
-msgstr "하이퍼차지"
+#~ msgid "Hypercharge"
+#~ msgstr "하이퍼차지"
 
-#: src/routes/login.tsx:115
+#: src/components/login-modal.tsx:91
 msgid "HYPRNOTE"
 msgstr "하이퍼노트"
 
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:33
+msgid "Hyprnote Assistant"
+msgstr ""
+
+#: src/components/settings/views/general.tsx:113
+msgid "Hyprnote will be opened automatically when you start your computer"
+msgstr ""
+
 #: src/components/settings/views/general.tsx:112
-msgid "Hyprnote will be opened automatically when you start your computer."
-msgstr "컴퓨터를 시작할 때 하이퍼노트가 자동으로 열립니다."
+#~ msgid "Hyprnote will be opened automatically when you start your computer."
+#~ msgstr "컴퓨터를 시작할 때 하이퍼노트가 자동으로 열립니다."
 
 #: src/components/left-sidebar/all-list/note-item.tsx:145
-msgid "In calendar view"
-msgstr "캘린더 뷰에서"
+#~ msgid "In calendar view"
+#~ msgstr "캘린더 뷰에서"
 
 #: src/components/settings/views/billing.tsx:38
 msgid "Integration with other apps like Notion and Google Calendar"
@@ -371,11 +433,11 @@ msgstr "노션, 구글 캘린더와 같은 다른 앱과의 통합"
 msgid "Invite"
 msgstr "초대하기"
 
-#: src/components/settings/views/team.tsx:187
+#: src/components/settings/views/team.tsx:189
 msgid "Invite members"
 msgstr "멤버 초대하기"
 
-#: src/components/settings/views/general.tsx:172
+#: src/components/settings/views/general.tsx:198
 msgid "Jargons"
 msgstr "전문 용어"
 
@@ -388,11 +450,19 @@ msgstr "직책"
 msgid "Job Title"
 msgstr "직책"
 
-#: src/components/settings/views/ai.tsx:316
-msgid "Language Model"
-msgstr "언어 모델"
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:46
+msgid "Key decisions"
+msgstr ""
 
-#: src/components/settings/views/billing.tsx:192
+#: src/components/settings/components/main-sidebar.tsx:49
+msgid "Lab"
+msgstr ""
+
+#: src/components/settings/views/ai.tsx:316
+#~ msgid "Language Model"
+#~ msgstr "언어 모델"
+
+#: src/components/settings/views/billing.tsx:200
 msgid "Learn more about our pricing plans"
 msgstr "요금제에 대해 더 알아보세요."
 
@@ -406,22 +476,24 @@ msgid "Live summary of the meeting"
 msgstr "실시간 회의 요약"
 
 #: src/components/settings/views/ai.tsx:240
-msgid "Load Model"
-msgstr "모델 로드"
+#~ msgid "Load Model"
+#~ msgstr "모델 로드"
 
-#: src/components/settings/views/extension.tsx:100
+#: src/components/settings/views/extension.tsx:109
 msgid "Loading extension details..."
 msgstr "익스텐션 정보 로딩 중..."
 
 #: src/components/workspace-calendar/event-card.tsx:112
+#: src/components/settings/views/ai.tsx:88
+#: src/components/settings/views/ai.tsx:184
 msgid "Loading..."
 msgstr "로딩 중..."
 
-#: src/components/settings/views/ai.tsx:198
+#: src/components/settings/views/ai.tsx:113
 msgid "Local Language Model"
 msgstr "로컬 언어 모델"
 
-#: src/components/settings/views/ai.tsx:95
+#: src/components/settings/views/ai.tsx:56
 msgid "Local Speech-to-Text"
 msgstr "로컬 음성-텍스트 변환"
 
@@ -437,24 +509,28 @@ msgstr "공개하기"
 msgid "Meeting note sharing via links"
 msgstr "링크를 통한 회의 노트 공유"
 
-#: src/components/settings/views/team.tsx:143
-#: src/components/settings/views/team.tsx:230
+#: src/components/settings/views/team.tsx:145
+#: src/components/settings/views/team.tsx:232
 msgid "Member"
 msgstr "멤버"
 
-#: src/routes/app.organization.$id.tsx:166
+#: src/components/organization-profile/members-list.tsx:26
 msgid "Members"
 msgstr "멤버"
 
-#: src/components/settings/views/ai.tsx:274
+#: src/components/settings/views/permissions.tsx:97
+msgid "Microphone Access"
+msgstr ""
+
+#: src/components/settings/views/ai.tsx:233
 msgid "Model is working correctly"
 msgstr "모델이 올바르게 작동합니다."
 
 #: src/components/settings/views/ai.tsx:203
-msgid "Model loaded and ready"
-msgstr "모델 로드 완료 및 준비 완료"
+#~ msgid "Model loaded and ready"
+#~ msgstr "모델 로드 완료 및 준비 완료"
 
-#: src/components/settings/views/billing.tsx:117
+#: src/components/settings/views/billing.tsx:125
 msgid "Monthly"
 msgstr "월간"
 
@@ -471,35 +547,34 @@ msgid "New note"
 msgstr "노트 생성"
 
 #: src/components/left-sidebar/all-list/note-item.tsx:136
-msgid "New window"
-msgstr "새로운 창에서 열기"
+#~ msgid "New window"
+#~ msgstr "새로운 창에서 열기"
 
-#: src/components/settings/views/team.tsx:173
+#: src/components/settings/views/team.tsx:175
 msgid "No members found"
 msgstr "멤버가 없습니다."
 
-#: src/routes/app.human.$id.tsx:304
+#: src/components/human-profile/past-notes.tsx:68
 msgid "No past notes with this contact"
 msgstr "이 연락처와의 이전 노트가 없습니다."
 
-#: src/routes/app.organization.$id.tsx:277
+#: src/components/organization-profile/recent-notes.tsx:74
 msgid "No recent notes for this organization"
 msgstr "이 조직에 대한 최근 노트가 없습니다."
 
-#: src/routes/app.organization.$id.tsx:237
+#: src/components/organization-profile/upcoming-events.tsx:83
 msgid "No upcoming events for this organization"
 msgstr "이 조직에 대한 예정된 일정이 없습니다."
 
-#: src/routes/app.human.$id.tsx:264
+#: src/components/human-profile/upcoming-events.tsx:76
 msgid "No upcoming events with this contact"
 msgstr "이 연락처와의 예정된 일정이 없습니다."
 
-#: src/components/settings/components/settings-header.tsx:27
-#: src/components/settings/components/main-sidebar.tsx:37
+#: src/components/settings/components/settings-header.tsx:28
 msgid "Notifications"
 msgstr "알림"
 
-#: src/components/settings/views/notifications.tsx:126
+#: src/components/settings/views/notifications.tsx:128
 msgid "Notify upcoming events"
 msgstr "예정된 일정을 알림"
 
@@ -507,49 +582,64 @@ msgstr "예정된 일정을 알림"
 msgid "Official Templates"
 msgstr "공식 템플릿"
 
-#: src/components/left-sidebar/index.tsx:92
+#: src/components/left-sidebar/index.tsx:151
 msgid "Open calendar view"
 msgstr "캘린더 뷰 열기"
 
-#: src/components/settings/views/general.tsx:109
+#: src/components/settings/views/general.tsx:110
 msgid "Open Hyprnote on startup"
 msgstr "시작 시 하이퍼노트 열기"
+
+#: src/components/left-sidebar/notes-list.tsx:290
+msgid "Open in calendar view"
+msgstr ""
+
+#: src/components/toolbar/buttons/new-window-button.tsx:35
+#: src/components/left-sidebar/search-list.tsx:199
+#: src/components/left-sidebar/search-list.tsx:257
+#: src/components/left-sidebar/notes-list.tsx:282
+msgid "Open in new window"
+msgstr ""
 
 #: src/components/workspace-calendar/note-card.tsx:80
 #: src/components/workspace-calendar/event-card.tsx:102
 msgid "Open Note"
 msgstr "노트 열기"
 
-#: src/components/left-sidebar/index.tsx:73
+#: src/components/left-sidebar/index.tsx:132
 msgid "Open settings"
 msgstr "설정 열기"
 
-#: src/components/settings/views/calendar.tsx:220
+#: src/components/settings/views/calendar.tsx:203
 msgid "Optional for participant suggestions"
 msgstr "참가자 추천을 위한 선택 사항"
 
 #: src/routes/onboarding.tsx:111
-msgid "Optional Permissions"
-msgstr "선택적 권한"
+#~ msgid "Optional Permissions"
+#~ msgstr "선택적 권한"
 
-#: src/components/settings/views/team.tsx:137
-#: src/components/settings/views/team.tsx:224
+#: src/components/settings/views/team.tsx:139
+#: src/components/settings/views/team.tsx:226
 msgid "Owner"
 msgstr "소유자"
 
 #: src/routes/app.human.$id.tsx:272
-msgid "Past Notes"
-msgstr "이전 노트"
+#~ msgid "Past Notes"
+#~ msgstr "이전 노트"
 
 #: src/components/share-and-permission/participants-selector.tsx:35
 msgid "people"
 msgstr "명"
 
+#: src/components/settings/components/main-sidebar.tsx:39
+msgid "Permissions"
+msgstr ""
+
 #: src/components/settings/views/billing.tsx:33
 msgid "Pro"
 msgstr "프로"
 
-#: src/components/settings/components/settings-header.tsx:21
+#: src/components/settings/components/settings-header.tsx:22
 #: src/components/settings/components/main-sidebar.tsx:31
 msgid "Profile"
 msgstr "프로필"
@@ -558,30 +648,47 @@ msgstr "프로필"
 msgid "Publish your note"
 msgstr "노트 발행하기"
 
-#: src/routes/app.organization.$id.tsx:245
+#: src/components/organization-profile/recent-notes.tsx:42
 msgid "Recent Notes"
 msgstr "최근 노트"
 
-#: src/routes/onboarding.tsx:83
-msgid "Required Permissions"
-msgstr "필수 권한"
+#. placeholder {0}: member.full_name
+#: src/components/editor-area/note-header/chips/participants-chip/participants-list.tsx:188
+msgid "Remove {0} from list"
+msgstr ""
 
-#: src/components/settings/views/team.tsx:102
-#: src/components/settings/views/team.tsx:211
+#: src/components/settings/views/permissions.tsx:56
+msgid "Requesting..."
+msgstr ""
+
+#: src/routes/onboarding.tsx:83
+#~ msgid "Required Permissions"
+#~ msgstr "필수 권한"
+
+#: src/components/settings/views/permissions.tsx:107
+msgid "Required to transcribe other people's voice during meetings"
+msgstr ""
+
+#: src/components/settings/views/permissions.tsx:98
+msgid "Required to transcribe your voice during meetings"
+msgstr ""
+
+#: src/components/settings/views/team.tsx:104
+#: src/components/settings/views/team.tsx:213
 msgid "Role"
 msgstr "역할"
 
-#: src/components/settings/views/ai.tsx:205
+#: src/components/settings/views/ai.tsx:116
 msgid "Run language models locally for enhanced privacy"
 msgstr "향상된 개인 정보 보호를 위해 언어 모델을 로컬에서 실행"
 
-#: src/components/settings/views/ai.tsx:100
+#: src/components/settings/views/ai.tsx:59
 msgid "Run speech recognition locally for enhanced privacy"
 msgstr "향상된 개인 정보 보호를 위해 음성 인식을 로컬에서 실행"
 
 #: src/components/settings/views/ai.tsx:320
-msgid "Running"
-msgstr "실행 중"
+#~ msgid "Running"
+#~ msgstr "실행 중"
 
 #: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:166
 msgid "Save Changes"
@@ -596,10 +703,10 @@ msgid "Search & ask across all notes in workspace"
 msgstr "작업 공간의 모든 노트에서 검색 및 질문"
 
 #: src/components/settings/components/extension-list.tsx:53
-msgid "Search extensions..."
-msgstr "익스텐션 검색..."
+#~ msgid "Search extensions..."
+#~ msgstr "익스텐션 검색..."
 
-#: src/components/settings/views/team.tsx:202
+#: src/components/settings/views/team.tsx:204
 msgid "Search names or emails"
 msgstr "이름 또는 이메일 검색"
 
@@ -616,33 +723,37 @@ msgstr "검색..."
 msgid "Sections"
 msgstr "섹션"
 
-#: src/components/settings/views/notifications.tsx:179
+#: src/components/settings/views/notifications.tsx:181
 msgid "Select apps that should not trigger meeting notifications"
 msgstr "회의 알림을 발생시키지 않을 앱을 선택하세요."
 
 #: src/components/settings/views/general.tsx:149
-msgid "Select language"
-msgstr "언어 선택"
+#~ msgid "Select language"
+#~ msgstr "언어 선택"
 
-#: src/components/settings/views/team.tsx:238
+#: src/components/settings/views/team.tsx:240
 msgid "Send invite"
 msgstr "초대장 보내기"
 
 #: src/components/settings/views/ai.tsx:99
 #: src/components/settings/views/ai.tsx:204
-msgid "Server is running"
-msgstr "서버가 실행 중입니다."
+#~ msgid "Server is running"
+#~ msgstr "서버가 실행 중입니다."
 
 #: src/components/settings/index.tsx:80
 #: src/components/settings/views/index.tsx:71
 #~ msgid "Settings"
 #~ msgstr "설정"
 
-#: src/components/settings/views/notifications.tsx:129
+#: src/components/settings/views/general.tsx:173
+msgid "Share usage data"
+msgstr ""
+
+#: src/components/settings/views/notifications.tsx:131
 msgid "Show notifications 1 minute before events start based on your calendars"
 msgstr "캘린더 일정 시작 1분 전에 알림 표시"
 
-#: src/components/settings/views/notifications.tsx:154
+#: src/components/settings/views/notifications.tsx:156
 msgid "Show notifications whenever a microphone is being used"
 msgstr "마이크가 사용될 때마다 알림 표시"
 
@@ -655,54 +766,65 @@ msgstr "모든 사용자를 위한 단일 로그인"
 #~ msgstr "로컬 사용으로 건너뛰기"
 
 #: src/components/settings/views/ai.tsx:316
-msgid "Speech-to-Text"
-msgstr "음성-텍스트 변환"
+#~ msgid "Speech-to-Text"
+#~ msgstr "음성-텍스트 변환"
 
-#: src/components/settings/views/billing.tsx:68
+#: src/components/settings/views/billing.tsx:76
 msgid "Start Annual Plan"
 msgstr "연간 요금제 시작"
 
-#: src/components/settings/views/billing.tsx:67
+#: src/components/settings/views/billing.tsx:75
 msgid "Start Monthly Plan"
 msgstr "월간 요금제 시작"
 
-#: src/components/editor-area/note-header/listen-button.tsx:80
+#: src/components/editor-area/note-header/listen-button.tsx:112
 msgid "Start recording"
 msgstr "녹음 시작"
 
-#: src/components/settings/views/ai.tsx:116
-#: src/components/settings/views/ai.tsx:256
+#: src/components/settings/views/ai.tsx:91
+#: src/components/settings/views/ai.tsx:187
 msgid "Start Server"
 msgstr "서버 시작"
 
 #: src/components/editor-area/note-header/listen-button.tsx:156
-msgid "Stop"
-msgstr "중지"
+#~ msgid "Stop"
+#~ msgstr "중지"
+
+#: src/components/editor-area/note-header/listen-button.tsx:155
+msgid "Stop listening"
+msgstr ""
 
 #: src/components/editor-area/note-header/listen-button.tsx:145
-msgid "Stop listening to the meeting?"
-msgstr "회의 듣기를 중지하시겠습니까?"
+#~ msgid "Stop listening to the meeting?"
+#~ msgstr "회의 듣기를 중지하시겠습니까?"
 
-#: src/components/editor-area/note-header/listen-button.tsx:96
+#: src/components/editor-area/note-header/listen-button.tsx:131
 msgid "Stop recording"
 msgstr "녹음 중지"
 
 #: src/components/settings/views/ai.tsx:115
 #: src/components/settings/views/ai.tsx:225
-msgid "Stop Server"
-msgstr "서버 중지"
+#~ msgid "Stop Server"
+#~ msgstr "서버 중지"
+
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:40
+msgid "Summarize meeting"
+msgstr ""
 
 #: src/components/settings/views/billing.tsx:42
 msgid "Synchronization across multiple devices"
 msgstr "여러 기기 간 동기화"
 
+#: src/components/settings/views/permissions.tsx:106
+msgid "System Audio Access"
+msgstr ""
+
 #: src/components/settings/views/billing.tsx:46
-#: src/components/settings/components/settings-header.tsx:33
-#: src/components/settings/components/main-sidebar.tsx:43
+#: src/components/settings/components/settings-header.tsx:34
 msgid "Team"
 msgstr "팀"
 
-#: src/components/settings/views/team.tsx:70
+#: src/components/settings/views/team.tsx:72
 msgid "Team management features are currently under development and will be available in a future update."
 msgstr "팀 관리 기능은 현재 개발 중이며 향후 업데이트에서 제공될 예정입니다."
 
@@ -711,27 +833,26 @@ msgid "Teamspace"
 msgstr "팀스페이스"
 
 #: src/components/editor-area/enhanced-controls.tsx:38
-msgid "Template Selector"
-msgstr "템플릿 선택기"
+#~ msgid "Template Selector"
+#~ msgstr "템플릿 선택기"
 
-#: src/components/settings/components/settings-header.tsx:29
-#: src/components/settings/components/main-sidebar.tsx:39
+#: src/components/settings/components/settings-header.tsx:30
 msgid "Templates"
 msgstr "템플릿"
 
-#: src/components/settings/views/ai.tsx:270
+#: src/components/settings/views/ai.tsx:229
 msgid "Test Language Model"
 msgstr "언어 모델 테스트"
 
-#: src/components/settings/views/ai.tsx:297
+#: src/components/settings/views/ai.tsx:256
 msgid "Test Model"
 msgstr "모델 테스트"
 
-#: src/components/settings/views/ai.tsx:294
+#: src/components/settings/views/ai.tsx:253
 msgid "Testing..."
 msgstr "테스트 중..."
 
-#: src/components/settings/views/billing.tsx:105
+#: src/components/settings/views/billing.tsx:113
 msgid "There's a plan for everyone"
 msgstr "모두를 위한 요금제가 있습니다."
 
@@ -739,51 +860,63 @@ msgstr "모두를 위한 요금제가 있습니다."
 msgid "This is a short description of your company."
 msgstr "회사에 대한 간략한 설명입니다."
 
+#: src/components/settings/views/general.tsx:138
+msgid "This is the language you mostly use"
+msgstr ""
+
 #: src/components/settings/views/general.tsx:137
-msgid "This is the language you mostly use."
-msgstr "주로 사용하는 언어입니다."
+#~ msgid "This is the language you mostly use."
+#~ msgstr "주로 사용하는 언어입니다."
 
 #: src/components/settings/views/profile.tsx:158
 msgid "This is the name of the company you work for."
 msgstr "귀하가 근무하는 회사의 이름입니다."
 
-#: src/routes/app.calendar.tsx:131
+#: src/components/toolbar/bars/calendar-toolbar.tsx:67
 msgid "Today"
 msgstr "오늘"
+
+#: src/components/toolbar/buttons/chat-panel-button.tsx:52
+msgid "Toggle chat panel"
+msgstr ""
 
 #: src/components/toolbar/buttons/left-sidebar-button.tsx:45
 msgid "Toggle left sidebar"
 msgstr "왼쪽 사이드바 전환"
 
 #: src/components/toolbar/buttons/right-panel-button.tsx:28
-msgid "Toggle right panel"
-msgstr "오른쪽 패널 전환"
+#~ msgid "Toggle right panel"
+#~ msgstr "오른쪽 패널 전환"
+
+#: src/components/toolbar/buttons/widget-panel-button.tsx:33
+msgid "Toggle widget panel"
+msgstr ""
 
 #: src/routes/onboarding.tsx:87
-msgid "Transcribe my voice"
-msgstr "내 목소리 텍스트 변환"
+#~ msgid "Transcribe my voice"
+#~ msgstr "내 목소리 텍스트 변환"
 
 #: src/routes/onboarding.tsx:97
-msgid "Transcribe other people's voice"
-msgstr "다른 사람의 목소리 텍스트 변환"
+#~ msgid "Transcribe other people's voice"
+#~ msgstr "다른 사람의 목소리 텍스트 변환"
 
 #: src/components/settings/views/general.tsx:180
-msgid "Type jargons (e.g., Blitz Meeting, PaC Squad)"
-msgstr "전문 용어 입력 (예: 블리츠 회의, PaC 스쿼드)"
+#~ msgid "Type jargons (e.g., Blitz Meeting, PaC Squad)"
+#~ msgstr "전문 용어 입력 (예: 블리츠 회의, PaC 스쿼드)"
 
-#: src/components/settings/views/team.tsx:190
+#: src/components/settings/views/team.tsx:192
 msgid "Type or paste in emails below, separated by commas. Your workspace will be billed by members."
 msgstr "이메일을 쉼표로 구분하여 아래에 입력하거나 붙여넣으세요. 작업 공간은 멤버 수에 따라 요금이 청구됩니다."
 
-#: src/components/settings/views/team.tsx:81
+#: src/components/settings/views/team.tsx:83
 msgid "Type to search..."
 msgstr "검색어 입력..."
 
-#: src/routes/app.human.$id.tsx:122
+#: src/components/human-profile/profile-header.tsx:170
 msgid "Unnamed Contact"
 msgstr "이름 없는 연락처"
 
-#: src/routes/app.organization.$id.tsx:122
+#: src/components/organization-profile/profile-header.tsx:51
 msgid "Unnamed Organization"
 msgstr "이름 없는 조직"
 
@@ -795,22 +928,25 @@ msgstr "제목 없음"
 msgid "Untitled Template"
 msgstr "제목 없는 템플릿"
 
-#: src/components/left-sidebar/all-list/events-list.tsx:38
+#: src/components/left-sidebar/events-list.tsx:24
 msgid "Upcoming"
 msgstr "예정된 일정"
 
-#: src/routes/app.organization.$id.tsx:202
-#: src/routes/app.human.$id.tsx:229
+#: src/components/organization-profile/upcoming-events.tsx:48
 msgid "Upcoming Events"
 msgstr "예정된 일정"
 
-#: src/components/settings/views/billing.tsx:64
+#: src/components/settings/views/billing.tsx:69
 msgid "Upgrade"
 msgstr "업그레이드"
 
-#: src/components/settings/views/team.tsx:99
+#: src/components/settings/views/team.tsx:101
 msgid "User"
 msgstr "사용자"
+
+#: src/components/right-panel/components/chat/chat-message.tsx:18
+msgid "User:"
+msgstr ""
 
 #: src/components/settings/views/profile.tsx:218
 #: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:152
@@ -821,7 +957,7 @@ msgstr "사용자명"
 msgid "Username"
 msgstr "사용자명"
 
-#: src/components/settings/views/ai.tsx:275
+#: src/components/settings/views/ai.tsx:234
 msgid "Verify that your local language model is working correctly"
 msgstr "로컬 언어 모델이 올바르게 작동하는지 확인하세요."
 
@@ -829,14 +965,13 @@ msgstr "로컬 언어 모델이 올바르게 작동하는지 확인하세요."
 msgid "View in calendar"
 msgstr "캘린더에서 보기"
 
-#: src/routes/app.organization.$id.tsx:266
-#: src/routes/app.human.$id.tsx:293
+#: src/components/organization-profile/recent-notes.tsx:63
 msgid "View Note"
 msgstr "노트 보기"
 
 #: src/routes/onboarding.tsx:115
-msgid "Want to keep track of events?"
-msgstr "향후 일정을 관리하고 싶으신가요?"
+#~ msgid "Want to keep track of events?"
+#~ msgstr "향후 일정을 관리하고 싶으신가요?"
 
 #: src/components/settings/views/profile.tsx:188
 msgid "We think different."
@@ -850,9 +985,13 @@ msgstr "대면 및 원격으로 모두 사용 가능"
 msgid "Works offline"
 msgstr "오프라인에서도 작동"
 
+#: src/components/settings/views/general.tsx:201
+msgid "You can make Hyprnote takes these words into account when transcribing"
+msgstr ""
+
 #: src/components/settings/views/general.tsx:175
-msgid "You can make Hyprnote takes these words into account when transcribing."
-msgstr "하이퍼노트가 텍스트 변환 시 이러한 단어들을 고려하도록 설정할 수 있습니다."
+#~ msgid "You can make Hyprnote takes these words into account when transcribing."
+#~ msgstr "하이퍼노트가 텍스트 변환 시 이러한 단어들을 고려하도록 설정할 수 있습니다."
 
 #: src/components/settings/views/profile.tsx:208
 #: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:142
