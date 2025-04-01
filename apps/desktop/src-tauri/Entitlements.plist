@@ -6,7 +6,5 @@
     <true/>
     <key>com.apple.security.personal-information.addressbook</key>
     <true/>
-    <key>com.apple.developer.contacts.notes</key>
-    <true/>
 </dict>
 </plist>
