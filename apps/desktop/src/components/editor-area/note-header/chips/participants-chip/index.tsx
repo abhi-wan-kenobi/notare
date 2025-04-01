@@ -16,8 +16,12 @@ export function ParticipantsChip({ sessionId }: ParticipantsChipProps) {
   });
 
   const previewHuman = ((participants.data ?? []).sort((a, b) => {
-    if (a.is_user && !b.is_user) return 1;
-    if (!a.is_user && b.is_user) return -1;
+    if (a.is_user && !b.is_user) {
+      return 1;
+    }
+    if (!a.is_user && b.is_user) {
+      return -1;
+    }
     return 0;
   })).at(0);
 

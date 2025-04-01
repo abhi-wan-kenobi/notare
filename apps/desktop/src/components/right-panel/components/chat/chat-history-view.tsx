@@ -56,7 +56,9 @@ export function ChatHistoryView({
 
         {chatHistory
           .filter(chat => {
-            if (!searchValue) return true;
+            if (!searchValue) {
+              return true;
+            }
             return chat.title.toLowerCase().includes(searchValue.toLowerCase());
           })
           .map((chat, index) => {

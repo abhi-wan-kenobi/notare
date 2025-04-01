@@ -15,7 +15,9 @@ export function ChatInput({ inputValue, onChange, onSubmit, onKeyDown, autoFocus
 
   useEffect(() => {
     const textarea = textareaRef.current;
-    if (!textarea) return;
+    if (!textarea) {
+      return;
+    }
 
     textarea.style.height = "auto";
 

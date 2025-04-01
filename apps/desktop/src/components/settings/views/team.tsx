@@ -46,7 +46,9 @@ export default function TeamComponent() {
   const [inviteRole, setInviteRole] = useState<Member["role"]>("member");
 
   const filteredMembers = useMemo(() => {
-    if (!searchQuery) return members;
+    if (!searchQuery) {
+      return members;
+    }
 
     const query = searchQuery.toLowerCase();
     return members.filter(

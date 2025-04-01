@@ -14,7 +14,8 @@
   "typescript": {
     "associations": [
       "**/*.{js,ts,jsx,tsx,mjs,mts}"
-    ]
+    ],
+    "singleBodyPosition": "nextLine"
   },
   "excludes": [
     ".venv",

@@ -45,7 +45,9 @@ const CommandDialog = ({
     },
   );
 
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
 
   return (
     <>

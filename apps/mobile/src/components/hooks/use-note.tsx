@@ -67,7 +67,9 @@ export function useNote({ session }: UseNoteProps) {
 
   // Mock changing audio levels when in listening mode
   useEffect(() => {
-    if (noteStatus !== "listening") return;
+    if (noteStatus !== "listening") {
+      return;
+    }
 
     const interval = setInterval(() => {
       // Generate random audio level between 10 and 90

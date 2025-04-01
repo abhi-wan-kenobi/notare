@@ -73,7 +73,9 @@ const DiscTimer2x2: WidgetTwoByTwo = () => {
   };
 
   const startEditing = () => {
-    if (isRunning || isTimeUp) return;
+    if (isRunning || isTimeUp) {
+      return;
+    }
     setIsEditing(true);
     setTimeout(() => {
       inputRef.current?.focus();

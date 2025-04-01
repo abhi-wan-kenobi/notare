@@ -59,10 +59,18 @@ export default function Billing({ currentPlan, trialDaysLeft }: BillingProps) {
 
   const getButtonText = (planName: string) => {
     const plan = planName.toLowerCase();
-    if (plan === "team") return t`Coming Soon`;
-    if (currentPlan === plan) return t`Current Plan`;
-    if (currentPlan === "basic" && plan === "pro") return t`Upgrade`;
-    if (trialDaysLeft && plan === "pro") return t`Free Trial`;
+    if (plan === "team") {
+      return t`Coming Soon`;
+    }
+    if (currentPlan === plan) {
+      return t`Current Plan`;
+    }
+    if (currentPlan === "basic" && plan === "pro") {
+      return t`Upgrade`;
+    }
+    if (trialDaysLeft && plan === "pro") {
+      return t`Free Trial`;
+    }
     return billingCycle === "monthly"
       ? t`Start Monthly Plan`
       : t`Start Annual Plan`;

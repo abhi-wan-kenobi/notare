@@ -46,7 +46,9 @@ export function Modal({
     };
   }, [open, preventClose, onClose]);
 
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
 
   return (
     <>

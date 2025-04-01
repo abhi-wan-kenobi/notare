@@ -1,7 +1,9 @@
 export const extractTextFromHtml = (
   html: string | null | undefined,
 ): string => {
-  if (!html) return "";
+  if (!html) {
+    return "";
+  }
 
   const tempDiv = document.createElement("div");
   tempDiv.innerHTML = html;

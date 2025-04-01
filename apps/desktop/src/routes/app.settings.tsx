@@ -104,7 +104,9 @@ function Component() {
   // }, [builtinTemplates, searchQuery]);
 
   const filteredExtensions = useMemo(() => {
-    if (!searchQuery) return extensionsList;
+    if (!searchQuery) {
+      return extensionsList;
+    }
 
     const query = searchQuery.toLowerCase();
     return extensionsList.filter(

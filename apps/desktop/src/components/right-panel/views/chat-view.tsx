@@ -49,7 +49,9 @@ export function ChatView() {
   };
 
   const handleSubmit = () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim()) {
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),

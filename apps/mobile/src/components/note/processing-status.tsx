@@ -17,15 +17,23 @@ export function ProcessingStatus({
   const audioLevel = externalAudioLevel !== undefined ? externalAudioLevel : mockAudioLevel;
 
   const getPulseClass = () => {
-    if (noteStatus !== "listening") return "";
+    if (noteStatus !== "listening") {
+      return "";
+    }
 
-    if (audioLevel < 30) return "pulse-low";
-    if (audioLevel < 70) return "pulse-medium";
+    if (audioLevel < 30) {
+      return "pulse-low";
+    }
+    if (audioLevel < 70) {
+      return "pulse-medium";
+    }
     return "pulse-high";
   };
 
   useEffect(() => {
-    if (noteStatus !== "listening") return;
+    if (noteStatus !== "listening") {
+      return;
+    }
 
     const interval = setInterval(() => {
       const newLevel = Math.floor(Math.random() * 80) + 10;

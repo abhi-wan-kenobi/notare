@@ -204,7 +204,9 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
     const state = gameStateRef.current;
 
     const canvas = canvasRef.current;
-    if (!canvas || !document.activeElement) return;
+    if (!canvas || !document.activeElement) {
+      return;
+    }
 
     const target = evt.target as HTMLElement;
 
@@ -261,7 +263,9 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
 
   const handleMouseMove = (evt: MouseEvent) => {
     const canvas = canvasRef.current;
-    if (!canvas || gameStateRef.current.gamespeed !== 0) return;
+    if (!canvas || gameStateRef.current.gamespeed !== 0) {
+      return;
+    }
 
     const rect = canvas.getBoundingClientRect();
     const x = evt.clientX - rect.left;
@@ -275,7 +279,9 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
       gameStateRef.current.isButtonHovered = isHovered;
 
       const ctx = canvas.getContext("2d");
-      if (ctx) drawGameOverScreen(ctx, canvas);
+      if (ctx) {
+        drawGameOverScreen(ctx, canvas);
+      }
     }
   };
 
@@ -310,10 +316,14 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
 
   const update = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      return;
+    }
 
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
     const state = gameStateRef.current;
     const plat = {
@@ -549,7 +559,9 @@ const ChromeDino2x1: WidgetTwoByOne = () => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      return;
+    }
 
     gameStateRef.current.sprImg.src = spriteImage;
     gameStateRef.current.sprImg.onload = () => {

@@ -214,7 +214,9 @@ function TestModelButton({ isRunning }: { isRunning: boolean }) {
     },
   });
 
-  if (!isRunning) return null;
+  if (!isRunning) {
+    return null;
+  }
 
   return (
     <div className="flex items-center justify-between">

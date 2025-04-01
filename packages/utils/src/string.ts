@@ -1,5 +1,7 @@
 export function getInitials(name: string | null | undefined, maxLength: number = 2): string {
-  if (!name) return "?";
+  if (!name) {
+    return "?";
+  }
 
   return name
     .split(" ")

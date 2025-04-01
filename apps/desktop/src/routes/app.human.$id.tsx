@@ -70,7 +70,9 @@ function Component() {
   const { data: orgSearchResults = [] } = useQuery({
     queryKey: ["search-organizations", orgSearchQuery],
     queryFn: async () => {
-      if (!orgSearchQuery.trim()) return [];
+      if (!orgSearchQuery.trim()) {
+        return [];
+      }
       return dbCommands.listOrganizations({ search: [4, orgSearchQuery] });
     },
     enabled: !!orgSearchQuery.trim() && showOrgSearch,

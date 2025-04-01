@@ -47,7 +47,9 @@ export default function WorkspaceCalendar({ sessions, events, month }: Workspace
     const observer = new ResizeObserver((entries) => {
       entries.forEach(entry => {
         const height = entry.contentRect.height;
-        if (height > 75 * 6) updateCellHeight(height);
+        if (height > 75 * 6) {
+          updateCellHeight(height);
+        }
       });
     });
 

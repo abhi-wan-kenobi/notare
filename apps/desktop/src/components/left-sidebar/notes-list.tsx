@@ -313,7 +313,9 @@ const groupSessions = (sessions: SessionWithEvent[]): [string, SessionWithEvent[
   });
 
   return groupedAndSorted.sort(([_, sessionsA], [__, sessionsB]) => {
-    if (sessionsA.length === 0 || sessionsB.length === 0) return 0;
+    if (sessionsA.length === 0 || sessionsB.length === 0) {
+      return 0;
+    }
 
     const newestA = new Date(sessionsA[0].created_at).getTime();
     const newestB = new Date(sessionsB[0].created_at).getTime();

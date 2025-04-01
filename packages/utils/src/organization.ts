@@ -1,5 +1,7 @@
 export function extractWebsiteUrl(email?: string | null): string | null {
-  if (!email) return null;
+  if (!email) {
+    return null;
+  }
 
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const urlMatches = email.match(urlRegex);
@@ -24,7 +26,9 @@ export function extractWebsiteUrl(email?: string | null): string | null {
       return !personalDomains.some(domain => url.includes(domain));
     });
 
-    if (validUrls.length > 0) return validUrls[0];
+    if (validUrls.length > 0) {
+      return validUrls[0];
+    }
   }
 
   const emailRegex = /@([a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/;
