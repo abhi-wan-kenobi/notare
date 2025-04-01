@@ -27,7 +27,11 @@ pub async fn main() {
     }
 
     let client = tauri_plugin_sentry::sentry::init((
-        option_env!("SENTRY_DSN").unwrap_or_default(),
+        if cfg!(not(debug_assertions)) {
+            option_env!("SENTRY_DSN").expect("SENTRY_DSN must be set in production")
+        } else {
+            option_env!("SENTRY_DSN").unwrap_or_default()
+        },
         tauri_plugin_sentry::sentry::ClientOptions {
             release: tauri_plugin_sentry::sentry::release_name!(),
             auto_session_tracking: true,
