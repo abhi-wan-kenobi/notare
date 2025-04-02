@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 pub enum SupportedModel {
     QuantizedTiny,
     QuantizedTinyEn,

@@ -15,11 +15,13 @@ export default function LocalAI() {
   const sttRunning = useQuery({
     queryKey: ["local-stt", "running"],
     queryFn: async () => localSttCommands.isServerRunning(),
+    refetchInterval: 3000,
   });
 
   const llmRunning = useQuery({
     queryKey: ["local-llm", "running"],
     queryFn: async () => localLlmCommands.isServerRunning(),
+    refetchInterval: 3000,
   });
 
   return (
@@ -43,6 +45,20 @@ function SpeechToTextDetails(
       queryClient.invalidateQueries({ queryKey: ["local-stt", "running"] });
     },
   });
+
+  // const currentModel = useQuery({
+  //   queryKey: ["local-stt", "current-model"],
+  //   queryFn: () => localSttCommands.getCurrentModel(),
+  // });
+
+  // const setCurrentModel = useMutation({
+  //   mutationFn: async (model: SupportedModel) => {
+  //     await localSttCommands.setCurrentModel(model);
+  //   },
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ["local-stt", "current-model"] });
+  //   },
+  // });
 
   return (
     <div className="space-y-4">

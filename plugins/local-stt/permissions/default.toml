@@ -6,4 +6,6 @@ permissions = [
     "allow-download-model",
     "allow-start-server",
     "allow-stop-server",
+    "allow-get-current-model",
+    "allow-set-current-model",
 ]

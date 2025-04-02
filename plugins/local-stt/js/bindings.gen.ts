@@ -21,6 +21,12 @@ async startServer() : Promise<null> {
 },
 async stopServer() : Promise<null> {
     return await TAURI_INVOKE("plugin:local-stt|stop_server");
+},
+async getCurrentModel() : Promise<SupportedModel> {
+    return await TAURI_INVOKE("plugin:local-stt|get_current_model");
+},
+async setCurrentModel(model: SupportedModel) : Promise<null> {
+    return await TAURI_INVOKE("plugin:local-stt|set_current_model", { model });
 }
 }
 
@@ -34,6 +40,7 @@ async stopServer() : Promise<null> {
 
 /** user-defined types **/
 
+export type SupportedModel = "QuantizedTiny" | "QuantizedTinyEn" | "QuantizedLargeV3Turbo"
 export type TAURI_CHANNEL<TSend> = null
 
 /** tauri-specta globals **/

@@ -38,3 +38,20 @@ pub async fn start_server<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result
 pub async fn stop_server<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
     app.stop_server().await.map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_current_model<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<crate::SupportedModel, String> {
+    app.get_current_model().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn set_current_model<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    model: crate::SupportedModel,
+) -> Result<(), String> {
+    app.set_current_model(model).map_err(|e| e.to_string())
+}

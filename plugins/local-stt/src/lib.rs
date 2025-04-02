@@ -6,11 +6,13 @@ mod error;
 mod ext;
 mod model;
 mod server;
+mod store;
 
 pub use error::*;
 pub use ext::*;
 use model::*;
 use server::*;
+use store::*;
 
 pub type SharedState = std::sync::Arc<tokio::sync::Mutex<State>>;
 
@@ -41,6 +43,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::download_model::<Wry>,
             commands::start_server::<Wry>,
             commands::stop_server::<Wry>,
+            commands::get_current_model::<Wry>,
+            commands::set_current_model::<Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
@@ -51,6 +55,11 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
         .setup(|app, _api| {
+            let mut state = State::default();
+            state.model = app
+                .get_current_model()
+                .unwrap_or(SupportedModel::QuantizedLargeV3Turbo);
+
             app.manage(SharedState::default());
             Ok(())
         })

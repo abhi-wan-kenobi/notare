@@ -2,6 +2,7 @@ use std::future::Future;
 use std::path::PathBuf;
 
 use tauri::{ipc::Channel, Manager, Runtime};
+use tauri_plugin_store2::StorePluginExt;
 
 #[derive(Debug, Clone)]
 pub struct ModelConfig {
@@ -10,6 +11,7 @@ pub struct ModelConfig {
 }
 
 pub trait LocalSttPluginExt<R: Runtime> {
+    fn local_stt_store(&self) -> tauri_plugin_store2::ScopedStore<R, crate::StoreKey>;
     fn api_base(&self) -> impl Future<Output = Option<String>>;
     fn is_model_downloaded(&self) -> impl Future<Output = Result<bool, crate::Error>>;
     fn is_server_running(&self) -> impl Future<Output = bool>;
@@ -18,9 +20,15 @@ pub trait LocalSttPluginExt<R: Runtime> {
     fn download_config(&self) -> impl Future<Output = Result<(), crate::Error>>;
     fn download_tokenizer(&self) -> impl Future<Output = Result<(), crate::Error>>;
     fn download_model(&self, c: Channel<u8>) -> impl Future<Output = Result<(), crate::Error>>;
+    fn get_current_model(&self) -> Result<crate::SupportedModel, crate::Error>;
+    fn set_current_model(&self, model: crate::SupportedModel) -> Result<(), crate::Error>;
 }
 
 impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
+    fn local_stt_store(&self) -> tauri_plugin_store2::ScopedStore<R, crate::StoreKey> {
+        self.scoped_store(crate::PLUGIN_NAME).unwrap()
+    }
+
     #[tracing::instrument(skip_all)]
     async fn api_base(&self) -> Option<String> {
         let state = self.state::<crate::SharedState>();
@@ -184,6 +192,20 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
             }
         });
 
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all)]
+    fn get_current_model(&self) -> Result<crate::SupportedModel, crate::Error> {
+        let store = self.local_stt_store();
+        let model = store.get(crate::StoreKey::DefaultModel)?;
+        Ok(model.unwrap_or(crate::SupportedModel::QuantizedLargeV3Turbo))
+    }
+
+    #[tracing::instrument(skip_all)]
+    fn set_current_model(&self, model: crate::SupportedModel) -> Result<(), crate::Error> {
+        let store = self.local_stt_store();
+        store.set(crate::StoreKey::DefaultModel, model)?;
         Ok(())
     }
 }

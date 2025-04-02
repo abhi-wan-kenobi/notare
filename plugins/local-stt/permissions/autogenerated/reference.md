@@ -7,6 +7,8 @@ Default permissions for the plugin
 - `allow-download-model`
 - `allow-start-server`
 - `allow-stop-server`
+- `allow-get-current-model`
+- `allow-set-current-model`
 
 ## Permission Table
 
@@ -39,6 +41,32 @@ Enables the download_model command without any pre-configured scope.
 <td>
 
 Denies the download_model command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-stt:allow-get-current-model`
+
+</td>
+<td>
+
+Enables the get_current_model command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-stt:deny-get-current-model`
+
+</td>
+<td>
+
+Denies the get_current_model command without any pre-configured scope.
 
 </td>
 </tr>
@@ -117,6 +145,32 @@ Enables the is_server_running command without any pre-configured scope.
 <td>
 
 Denies the is_server_running command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-stt:allow-set-current-model`
+
+</td>
+<td>
+
+Enables the set_current_model command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-stt:deny-set-current-model`
+
+</td>
+<td>
+
+Denies the set_current_model command without any pre-configured scope.
 
 </td>
 </tr>
