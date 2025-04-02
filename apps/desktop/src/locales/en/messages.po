@@ -141,7 +141,7 @@ msgstr "AI"
 #~ msgid "AI Meeting Notepad that keeps you in flow"
 #~ msgstr "AI Meeting Notepad that keeps you in flow"
 
-#: src/components/login-modal.tsx:100
+#: src/components/login-modal.tsx:99
 msgid "AI notepad for meetings"
 msgstr "AI notepad for meetings"
 
@@ -260,7 +260,7 @@ msgstr "Contacts Access"
 msgid "Create"
 msgstr "Create"
 
-#: src/components/right-panel/components/chat/empty-chat-state.tsx:58
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:49
 msgid "Create agenda"
 msgstr "Create agenda"
 
@@ -351,7 +351,7 @@ msgstr "Exclude these apps from auto detection"
 msgid "Extensions"
 msgstr "Extensions"
 
-#: src/components/right-panel/components/chat/empty-chat-state.tsx:52
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:43
 msgid "Extract action items"
 msgstr "Extract action items"
 
@@ -384,7 +384,7 @@ msgstr "Free Trial"
 msgid "General"
 msgstr "General"
 
-#: src/components/login-modal.tsx:108
+#: src/components/login-modal.tsx:107
 msgid "Get Started"
 msgstr "Get Started"
 
@@ -401,17 +401,21 @@ msgstr "Help us improve Hyprnote by sharing anonymous usage data"
 #~ msgid "How about your contacts?"
 #~ msgstr "How about your contacts?"
 
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:24
+msgid "How can I help you today?"
+msgstr "How can I help you today?"
+
 #: src/components/editor-area/enhanced-only-button.tsx:18
 #~ msgid "Hypercharge"
 #~ msgstr "Hypercharge"
 
-#: src/components/login-modal.tsx:91
+#: src/components/login-modal.tsx:90
 msgid "HYPRNOTE"
 msgstr "HYPRNOTE"
 
 #: src/components/right-panel/components/chat/empty-chat-state.tsx:33
-msgid "Hyprnote Assistant"
-msgstr "Hyprnote Assistant"
+#~ msgid "Hyprnote Assistant"
+#~ msgstr "Hyprnote Assistant"
 
 #: src/components/settings/views/general.tsx:113
 msgid "Hyprnote will be opened automatically when you start your computer"
@@ -450,7 +454,7 @@ msgstr "Job title"
 msgid "Job Title"
 msgstr "Job Title"
 
-#: src/components/right-panel/components/chat/empty-chat-state.tsx:46
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:37
 msgid "Key decisions"
 msgstr "Key decisions"
 
@@ -715,7 +719,7 @@ msgstr "Search names or emails"
 msgid "Search templates..."
 msgstr "Search templates..."
 
-#: src/components/search-bar.tsx:63
+#: src/components/search-bar.tsx:51
 msgid "Search..."
 msgstr "Search..."
 
@@ -807,7 +811,7 @@ msgstr "Stop recording"
 #~ msgid "Stop Server"
 #~ msgstr "Stop Server"
 
-#: src/components/right-panel/components/chat/empty-chat-state.tsx:40
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:31
 msgid "Summarize meeting"
 msgstr "Summarize meeting"
 

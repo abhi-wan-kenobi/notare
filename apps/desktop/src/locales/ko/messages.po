@@ -141,7 +141,7 @@ msgstr "AI"
 #~ msgid "AI Meeting Notepad that keeps you in flow"
 #~ msgstr "회의에 집중하도록 도와주는 AI 메모장"
 
-#: src/components/login-modal.tsx:100
+#: src/components/login-modal.tsx:99
 msgid "AI notepad for meetings"
 msgstr "회의용 AI 메모장"
 
@@ -260,7 +260,7 @@ msgstr "연락처 접근 권한"
 msgid "Create"
 msgstr ""
 
-#: src/components/right-panel/components/chat/empty-chat-state.tsx:58
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:49
 msgid "Create agenda"
 msgstr ""
 
@@ -351,7 +351,7 @@ msgstr "자동 감지에서 제외할 앱을 선택하세요."
 msgid "Extensions"
 msgstr "익스텐션"
 
-#: src/components/right-panel/components/chat/empty-chat-state.tsx:52
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:43
 msgid "Extract action items"
 msgstr ""
 
@@ -384,7 +384,7 @@ msgstr "무료 체험"
 msgid "General"
 msgstr "일반"
 
-#: src/components/login-modal.tsx:108
+#: src/components/login-modal.tsx:107
 msgid "Get Started"
 msgstr "시작하기"
 
@@ -401,17 +401,21 @@ msgstr ""
 #~ msgid "How about your contacts?"
 #~ msgstr "연락처는 어떠세요?"
 
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:24
+msgid "How can I help you today?"
+msgstr ""
+
 #: src/components/editor-area/enhanced-only-button.tsx:18
 #~ msgid "Hypercharge"
 #~ msgstr "하이퍼차지"
 
-#: src/components/login-modal.tsx:91
+#: src/components/login-modal.tsx:90
 msgid "HYPRNOTE"
 msgstr "하이퍼노트"
 
 #: src/components/right-panel/components/chat/empty-chat-state.tsx:33
-msgid "Hyprnote Assistant"
-msgstr ""
+#~ msgid "Hyprnote Assistant"
+#~ msgstr ""
 
 #: src/components/settings/views/general.tsx:113
 msgid "Hyprnote will be opened automatically when you start your computer"
@@ -450,7 +454,7 @@ msgstr "직책"
 msgid "Job Title"
 msgstr "직책"
 
-#: src/components/right-panel/components/chat/empty-chat-state.tsx:46
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:37
 msgid "Key decisions"
 msgstr ""
 
@@ -715,7 +719,7 @@ msgstr "이름 또는 이메일 검색"
 msgid "Search templates..."
 msgstr "템플릿 검색..."
 
-#: src/components/search-bar.tsx:63
+#: src/components/search-bar.tsx:51
 msgid "Search..."
 msgstr "검색..."
 
@@ -807,7 +811,7 @@ msgstr "녹음 중지"
 #~ msgid "Stop Server"
 #~ msgstr "서버 중지"
 
-#: src/components/right-panel/components/chat/empty-chat-state.tsx:40
+#: src/components/right-panel/components/chat/empty-chat-state.tsx:31
 msgid "Summarize meeting"
 msgstr ""
 
