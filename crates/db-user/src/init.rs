@@ -11,32 +11,32 @@ const ONBOARDING_RAW_MD: &str = include_str!("../assets/onboarding-raw.md");
 pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), crate::Error> {
     let user_id = user_id.into();
 
-    // let fastrepl_org = Organization {
-    //     id: uuid::Uuid::new_v4().to_string(),
-    //     name: "Fastrepl".to_string(),
-    //     description: Some("https://github.com/fastrepl".to_string()),
-    // };
+    let fastrepl_org = Organization {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: "Fastrepl".to_string(),
+        description: Some("https://github.com/fastrepl".to_string()),
+    };
 
-    // let fastrepl_members = vec![
-    //     Human {
-    //         id: uuid::Uuid::new_v4().to_string(),
-    //         full_name: Some("Yujong Lee".to_string()),
-    //         email: Some("yujonglee@hyprnote.com".to_string()),
-    //         organization_id: Some(fastrepl_org.id.clone()),
-    //         is_user: false,
-    //         job_title: Some("Co-Founder".to_string()),
-    //         linkedin_username: Some("yujong1ee".to_string()),
-    //     },
-    //     Human {
-    //         id: uuid::Uuid::new_v4().to_string(),
-    //         full_name: Some("John Jeong".to_string()),
-    //         email: Some("john@hyprnote.com".to_string()),
-    //         organization_id: Some(fastrepl_org.id.clone()),
-    //         is_user: false,
-    //         job_title: Some("Co-Founder".to_string()),
-    //         linkedin_username: Some("johntopia".to_string()),
-    //     },
-    // ];
+    let fastrepl_members = vec![
+        Human {
+            id: uuid::Uuid::new_v4().to_string(),
+            full_name: Some("Yujong Lee".to_string()),
+            email: Some("yujonglee@hyprnote.com".to_string()),
+            organization_id: Some(fastrepl_org.id.clone()),
+            is_user: false,
+            job_title: None,
+            linkedin_username: Some("yujong1ee".to_string()),
+        },
+        Human {
+            id: uuid::Uuid::new_v4().to_string(),
+            full_name: Some("John Jeong".to_string()),
+            email: Some("john@hyprnote.com".to_string()),
+            organization_id: Some(fastrepl_org.id.clone()),
+            is_user: false,
+            job_title: None,
+            linkedin_username: Some("johntopia".to_string()),
+        },
+    ];
 
     let onboarding_org = Organization {
         id: uuid::Uuid::new_v4().to_string(),
@@ -137,7 +137,7 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         let _ = db.upsert_session(session.clone()).await?;
     }
 
-    for org in [onboarding_org] {
+    for org in [onboarding_org, fastrepl_org] {
         let _ = db.upsert_organization(org).await?;
     }
 
@@ -145,13 +145,19 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         let _ = db.upsert_human(participant).await?;
     }
 
+    for member in fastrepl_members.clone() {
+        let _ = db.upsert_human(member).await?;
+    }
+
     for participant in onboarding_participants {
         db.session_add_participant(onboarding_session.id.clone(), participant.id)
             .await?;
     }
 
-    db.session_add_participant(manual_session.id.clone(), user_id.clone())
-        .await?;
+    for participant in fastrepl_members {
+        db.session_add_participant(manual_session.id.clone(), participant.id)
+            .await?;
+    }
 
     db.upsert_extension_mapping(ExtensionMapping {
         id: uuid::Uuid::new_v4().to_string(),
@@ -181,11 +187,8 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
 
     let org_2 = Organization {
         id: uuid::Uuid::new_v4().to_string(),
-        name: "Krew Capital".to_string(),
-        description: Some(
-            "Krew Capital is a venture capital firm that invests in early-stage startups"
-                .to_string(),
-        ),
+        name: "Boring Company".to_string(),
+        description: Some("Boring Company is a tunnel construction company".to_string()),
     };
 
     let yujong = Human {
@@ -200,18 +203,9 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
     let bobby = Human {
         id: uuid::Uuid::new_v4().to_string(),
         organization_id: Some(org_2.id.clone()),
-        job_title: Some("Partner".to_string()),
-        full_name: Some("Bobby Min".to_string()),
-        email: Some("bobby.min@krewcapital.com".to_string()),
-        ..Human::default()
-    };
-
-    let minjae = Human {
-        id: uuid::Uuid::new_v4().to_string(),
-        organization_id: Some(org_2.id.clone()),
-        job_title: Some("Partner".to_string()),
-        full_name: Some("Minjae Song".to_string()),
-        email: Some("minjae.song@krewcapital.com".to_string()),
+        job_title: Some("CEO".to_string()),
+        full_name: Some("Elon Musk".to_string()),
+        email: Some("elon@boringcompany.com".to_string()),
         ..Human::default()
     };
 
@@ -236,7 +230,6 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
     let humans = vec![
         yujong.clone(),
         bobby.clone(),
-        minjae.clone(),
         john.clone(),
         alex.clone(),
         jenny.clone(),
