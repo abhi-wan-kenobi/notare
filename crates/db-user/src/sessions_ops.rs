@@ -161,7 +161,7 @@ impl UserDatabase {
 
         let mut rows = conn
             .query(
-                "INSERT OR REPLACE INTO sessions (
+                "INSERT INTO sessions (
                     id,
                     created_at,
                     visited_at,
@@ -171,23 +171,28 @@ impl UserDatabase {
                     raw_memo_html,
                     enhanced_memo_html,
                     conversations
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (:id, :created_at, :visited_at, :user_id, :calendar_event_id, :title, :raw_memo_html, :enhanced_memo_html, :conversations)
+                ON CONFLICT(id) DO UPDATE SET
+                    created_at = :created_at,
+                    visited_at = :visited_at,
+                    user_id = :user_id,
+                    calendar_event_id = :calendar_event_id,
+                    title = :title,
+                    raw_memo_html = :raw_memo_html,
+                    enhanced_memo_html = :enhanced_memo_html,
+                    conversations = :conversations
                 RETURNING *",
-                vec![
-                    libsql::Value::Text(session.id),
-                    libsql::Value::Text(session.created_at.to_rfc3339()),
-                    libsql::Value::Text(session.visited_at.to_rfc3339()),
-                    libsql::Value::Text(session.user_id),
-                    session
-                        .calendar_event_id
-                        .map_or(libsql::Value::Null, libsql::Value::Text),
-                    libsql::Value::Text(session.title),
-                    libsql::Value::Text(session.raw_memo_html),
-                    session
-                        .enhanced_memo_html
-                        .map_or(libsql::Value::Null, libsql::Value::Text),
-                    libsql::Value::Text(serde_json::to_string(&session.conversations).unwrap()),
-                ],
+                libsql::named_params! {
+                    ":id": session.id.clone(),
+                    ":created_at": session.created_at.to_rfc3339(),
+                    ":visited_at": session.visited_at.to_rfc3339(),
+                    ":user_id": session.user_id.clone(),
+                    ":calendar_event_id": session.calendar_event_id.clone(),
+                    ":title": session.title.clone(),
+                    ":raw_memo_html": session.raw_memo_html.clone(),
+                    ":enhanced_memo_html": session.enhanced_memo_html.clone(),
+                    ":conversations": serde_json::to_string(&session.conversations).unwrap(),
+                },
             )
             .await?;
 
