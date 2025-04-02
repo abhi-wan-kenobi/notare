@@ -6121,44 +6121,15 @@ name = "kalosm-language-model"
 version = "0.4.1"
 source = "git+https://github.com/floneum/floneum?rev=52967ae#52967ae5dcd161e5cbe9507282b52df0946706f9"
 dependencies = [
- "anyhow",
  "async-lock",
  "futures-channel",
  "futures-util",
  "kalosm-model-types",
  "kalosm-sample",
- "llm-samplers",
  "lru",
  "rand 0.8.5",
  "serde",
  "thiserror 2.0.12",
- "tracing",
-]
-
-[[package]]
-name = "kalosm-llama"
-version = "0.4.1"
-source = "git+https://github.com/floneum/floneum?rev=52967ae#52967ae5dcd161e5cbe9507282b52df0946706f9"
-dependencies = [
- "candle-core",
- "candle-nn",
- "candle-transformers",
- "half",
- "kalosm-common",
- "kalosm-language-model",
- "kalosm-model-types",
- "kalosm-sample",
- "llm-samplers",
- "minijinja",
- "minijinja-contrib",
- "rand 0.8.5",
- "rayon",
- "safetensors",
- "serde",
- "serde_json",
- "thiserror 2.0.12",
- "tokenizers",
- "tokio",
  "tracing",
 ]
 
@@ -6667,18 +6638,6 @@ dependencies = [
  "find_cuda_helper",
  "glob",
  "walkdir",
-]
-
-[[package]]
-name = "llm-samplers"
-version = "0.0.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e85df656cd89e7702cb56171d75aa77c7bec828af7d2054d9987c34411cf896"
-dependencies = [
- "anyhow",
- "num-traits",
- "rand 0.8.5",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -11524,6 +11483,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "hound",
+ "listener-interface",
  "rtzr",
  "serde",
  "serde_json",
@@ -12300,24 +12260,6 @@ dependencies = [
  "url",
  "uuid",
  "ws",
-]
-
-[[package]]
-name = "tauri-plugin-local-ai"
-version = "0.1.0"
-dependencies = [
- "async-openai",
- "codes-iso-639",
- "data",
- "dirs 6.0.0",
- "futures-util",
- "kalosm-llama",
- "rodio",
- "tauri",
- "tauri-plugin-listener",
- "tauri-plugin-local-llm",
- "tauri-plugin-local-stt",
- "tokio",
 ]
 
 [[package]]

@@ -135,7 +135,7 @@ async fn listen(
 
     let model = rwhisper::WhisperBuilder::default()
         .with_cache(kalosm_common::Cache::new(state.model_cache_dir))
-        .with_language(None)
+        .with_language(Some(rwhisper::WhisperLanguage::English))
         .with_source(state.model_type)
         .build()
         .await

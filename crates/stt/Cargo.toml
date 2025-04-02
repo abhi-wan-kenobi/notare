@@ -10,9 +10,10 @@ recorded = []
 local = []
 
 [dependencies]
-hypr-audio-utils = { path = "../audio-utils", package = "audio-utils" }
+hypr-audio-utils = { workspace = true }
 hypr-clova = { path = "../clova", package = "clova" }
 hypr-db-user = { workspace = true }
+hypr-listener-interface = { workspace = true }
 hypr-rtzr = { path = "../rtzr", package = "rtzr" }
 hypr-whisper = { path = "../whisper", package = "whisper", default-features = false, features = ["cloud"] }
 

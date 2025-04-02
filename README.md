@@ -3,7 +3,7 @@
 <p align="center">
 	<h1 align="center"><b>Hyprnote</b></h1>
 	<p align="center">
-		Hackable AI notepad for meetings, with <strong>local AI support and community extensions.</strong>
+		Hackable AI notepad for meetings, with <strong>local AI support and extensions.</strong>
     <br />
     <br />
     <b>Download for </b>
@@ -16,15 +16,12 @@
 <br/>
 
 <p align="center">
-  <a href="https://hyprnote.com/discord" target="_blank">
-    <img src="https://img.shields.io/static/v1?label=Join%20our&message=Discord&color=blue&logo=Discord&style=flat" alt="Discord">
-  </a>
-  <a href="https://x.com/tryhyprnote" target="_blank">
-    <img src="https://img.shields.io/static/v1?label=Follow%20us%20on&message=X&color=black&logo=x&style=flat" alt="X">
-  </a>
-  <a href="https://www.linkedin.com/company/hyprnote" target="_blank">
-    <img src="https://img.shields.io/static/v1?label=Connect%20on&message=LinkedIn&color=0077B5&logo=linkedin&style=flat" alt="LinkedIn">
-  </a>
+  <a href="https://hyprnote.com/discord" target="_blank"><img src="https://img.shields.io/static/v1?label=Join%20our&message=Discord&color=blue&logo=Discord" alt="Discord"></a>
+  <a href="https://x.com/tryhyprnote" target="_blank"><img src="https://img.shields.io/static/v1?label=Follow%20us%20on&message=X&color=black&logo=x" alt="X"></a>
 </p>
 
+## What does Hyprnote do?
 
+- Records and transcribes your meetings
+- Generates **powerful summaries** from your raw meeting notes
+- Works **offline** using **open source models**
