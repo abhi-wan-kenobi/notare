@@ -1,3 +1,10 @@
 [default]
 description = "Default permissions for the plugin"
-permissions = ["allow-start-oauth-server", "allow-stop-oauth-server", "allow-get-from-store", "allow-get-from-vault", "allow-reset-vault"]
+permissions = [
+    "allow-start-oauth-server",
+    "allow-stop-oauth-server",
+    "allow-get-from-store",
+    "allow-get-from-vault",
+    "allow-set-in-store",
+    "allow-set-in-vault",
+]

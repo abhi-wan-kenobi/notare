@@ -6,7 +6,8 @@ Default permissions for the plugin
 - `allow-stop-oauth-server`
 - `allow-get-from-store`
 - `allow-get-from-vault`
-- `allow-reset-vault`
+- `allow-set-in-store`
+- `allow-set-in-vault`
 
 ## Permission Table
 
@@ -91,6 +92,58 @@ Enables the reset_vault command without any pre-configured scope.
 <td>
 
 Denies the reset_vault command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`auth:allow-set-in-store`
+
+</td>
+<td>
+
+Enables the set_in_store command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`auth:deny-set-in-store`
+
+</td>
+<td>
+
+Denies the set_in_store command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`auth:allow-set-in-vault`
+
+</td>
+<td>
+
+Enables the set_in_vault command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`auth:deny-set-in-vault`
+
+</td>
+<td>
+
+Denies the set_in_vault command without any pre-configured scope.
 
 </td>
 </tr>

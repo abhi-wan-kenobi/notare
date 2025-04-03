@@ -325,6 +325,26 @@
           "const": "deny-reset-vault"
         },
         {
+          "description": "Enables the set_in_store command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-in-store"
+        },
+        {
+          "description": "Denies the set_in_store command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-in-store"
+        },
+        {
+          "description": "Enables the set_in_vault command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-in-vault"
+        },
+        {
+          "description": "Denies the set_in_vault command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-in-vault"
+        },
+        {
           "description": "Enables the start_oauth_server command without any pre-configured scope.",
           "type": "string",
           "const": "allow-start-oauth-server"
