@@ -40,16 +40,10 @@ impl ListenClientBuilder {
             url.set_path("/api/native/listen/realtime");
             url.query_pairs_mut().append_pair("language", &language);
 
-            if cfg!(debug_assertions) {
-                if url.port().is_none() {
-                    url.set_port(Some(3000)).unwrap();
-                }
-
+            if url.host_str().unwrap().contains("127.0.0.1") {
                 url.set_scheme("ws").unwrap();
-                url.set_host(Some("localhost")).unwrap();
             } else {
                 url.set_scheme("wss").unwrap();
-                url.set_host(Some("app.hyprnote.com")).unwrap();
             }
 
             url.to_string().parse().unwrap()
