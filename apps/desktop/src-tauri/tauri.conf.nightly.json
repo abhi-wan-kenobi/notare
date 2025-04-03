@@ -5,7 +5,10 @@
   "identifier": "com.hyprnote.nightly",
   "plugins": {
     "updater": {
-      "active": true
+      "active": true,
+      "endpoints": [
+        "https://cdn.crabnebula.app/update/fastrepl/hyprnote/{{target}}-{{arch}}/{{current_version}}?channel=nightly"
+      ]
     }
   },
   "bundle": {
