@@ -29,39 +29,40 @@ const schema = z.object({
 
 type Schema = z.infer<typeof schema>;
 
-type ConfigData = {
-  human: Human | null;
-  organization: Organization;
-};
-
 export default function ProfileComponent() {
   const { t } = useLingui();
   const { userId } = useHypr();
   const queryClient = useQueryClient();
 
-  const config = useQuery<ConfigData>({
-    queryKey: ["config", "profile"],
+  const config = useQuery({
+    enabled: !!userId,
+    queryKey: ["config", "profile", userId],
     queryFn: async () => {
       const [human, organization] = await Promise.all([
         dbCommands.getHuman(userId),
         dbCommands.getOrganizationByUserId(userId),
       ]);
 
-      // TODO
-      return { human: human!, organization: organization! };
+      return { human: human!, organization };
     },
   });
 
   const form = useForm<Schema>({
+    mode: "onTouched",
     resolver: zodResolver(schema),
-    defaultValues: {
-      fullName: config.data?.human?.full_name ?? undefined,
-      jobTitle: config.data?.human?.job_title ?? undefined,
-      companyName: config.data?.organization.name ?? undefined,
-      companyDescription: config.data?.organization.description ?? undefined,
-      linkedinUserName: config.data?.human?.linkedin_username ?? undefined,
-    },
   });
+
+  useEffect(() => {
+    if (config.data) {
+      form.reset({
+        fullName: config.data.human?.full_name ?? "",
+        jobTitle: config.data.human?.job_title ?? "",
+        companyName: config.data.organization?.name ?? "",
+        companyDescription: config.data.organization?.description ?? "",
+        linkedinUserName: config.data.human?.linkedin_username ?? "",
+      });
+    }
+  }, [config.data, form]);
 
   const mutation = useMutation({
     mutationFn: async (v: Schema) => {
@@ -79,28 +80,29 @@ export default function ProfileComponent() {
       };
 
       const newOrganization: Organization = {
-        ...config.data.organization,
+        id: config.data.organization?.id ?? crypto.randomUUID(),
         name: v.companyName,
         description: v.companyDescription ?? null,
       };
 
-      try {
-        await dbCommands.upsertHuman(newHuman);
-        await dbCommands.upsertOrganization(newOrganization);
-      } catch (error) {
-        console.error("error upserting human or organization", error);
-      }
+      await Promise.all([
+        dbCommands.upsertHuman(newHuman),
+        dbCommands.upsertOrganization(newOrganization),
+      ]);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["config", "profile"] });
+      queryClient.invalidateQueries({ queryKey: ["config", "profile", userId] });
     },
   });
-
   useEffect(() => {
-    const subscription = form.watch(() => form.handleSubmit((v) => mutation.mutate(v))());
+    const subscription = form.watch((value, { name }) => {
+      if (form.formState.isDirty && form.formState.isValid) {
+        form.handleSubmit((v) => mutation.mutate(v))();
+      }
+    });
+
     return () => subscription.unsubscribe();
   }, [mutation]);
-
   return (
     <div>
       <Form {...form}>
