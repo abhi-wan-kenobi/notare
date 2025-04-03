@@ -39,15 +39,3 @@ pub fn request_calendar_access<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
 pub fn request_contacts_access<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
     app.request_contacts_access();
 }
-
-#[tauri::command]
-#[specta::specta]
-pub fn start_worker<R: tauri::Runtime>(app: tauri::AppHandle<R>, user_id: String) {
-    app.start_worker(user_id).unwrap();
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn stop_worker<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
-    app.stop_worker();
-}

@@ -7,6 +7,4 @@ permissions = [
     "allow-contacts-access-status",
     "allow-request-calendar-access",
     "allow-request-contacts-access",
-    "allow-start-worker",
-    "allow-stop-worker",
 ]

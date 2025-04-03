@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use std::time::Duration;
 
 use block2::RcBlock;
 use objc2::{
@@ -55,10 +56,9 @@ impl Handle {
                 .requestFullAccessToEventsWithCompletion(&*completion as *const _ as *mut _)
         };
 
-        if let Ok(true) = rx.recv() {
-            self.calendar_access_granted = true;
-        } else {
-            self.calendar_access_granted = false;
+        match rx.recv_timeout(Duration::from_secs(5)) {
+            Ok(true) => self.calendar_access_granted = true,
+            _ => self.calendar_access_granted = false,
         }
     }
 
@@ -77,10 +77,9 @@ impl Handle {
                 .requestAccessForEntityType_completionHandler(CNEntityType::Contacts, &completion);
         };
 
-        if let Ok(true) = rx.recv() {
-            self.contacts_access_granted = true;
-        } else {
-            self.contacts_access_granted = false;
+        match rx.recv_timeout(Duration::from_secs(5)) {
+            Ok(true) => self.contacts_access_granted = true,
+            _ => self.contacts_access_granted = false,
         }
     }
 

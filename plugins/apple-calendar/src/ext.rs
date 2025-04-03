@@ -1,3 +1,5 @@
+use std::future::Future;
+
 pub trait AppleCalendarPluginExt<R: tauri::Runtime> {
     fn open_calendar_access_settings(&self) -> Result<(), String>;
     fn open_contacts_access_settings(&self) -> Result<(), String>;
@@ -5,7 +7,7 @@ pub trait AppleCalendarPluginExt<R: tauri::Runtime> {
     fn contacts_access_status(&self) -> bool;
     fn request_calendar_access(&self);
     fn request_contacts_access(&self);
-    fn start_worker(&self, user_id: impl Into<String>) -> Result<(), String>;
+    fn start_worker(&self, user_id: impl Into<String>) -> impl Future<Output = Result<(), String>>;
     fn stop_worker(&self);
 }
 
@@ -59,8 +61,13 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> crate::AppleCalendarPluginExt<R> f
     }
 
     #[tracing::instrument(skip_all)]
-    fn start_worker(&self, user_id: impl Into<String>) -> Result<(), String> {
-        let db = self.state::<hypr_db_user::UserDatabase>().inner().clone();
+    async fn start_worker(&self, user_id: impl Into<String>) -> Result<(), String> {
+        let db_state = self.state::<tauri_plugin_db::ManagedState>();
+        let db = {
+            let guard = db_state.lock().await;
+            guard.db.clone().unwrap()
+        };
+
         let user_id = user_id.into();
 
         let state = self.state::<crate::ManagedState>();

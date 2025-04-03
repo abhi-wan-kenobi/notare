@@ -92,6 +92,12 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
 
             self.db_ensure_user(&user_id).await.unwrap();
 
+            #[cfg(target_os = "macos")]
+            {
+                use tauri_plugin_apple_calendar::AppleCalendarPluginExt;
+                self.start_worker(&user_id).await.unwrap();
+            }
+
             {
                 let state = self.state::<tauri_plugin_db::ManagedState>();
                 let s = state.lock().await;

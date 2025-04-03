@@ -132,23 +132,33 @@ function CloudCalendarIntegrationDetails({
 function AppleCalendarIntegrationDetails() {
   const calendarAccess = useQuery({
     queryKey: ["settings", "calendarAccess"],
-    queryFn: async () => appleCalendarCommands.calendarAccessStatus(),
+    queryFn: () => appleCalendarCommands.calendarAccessStatus(),
+    refetchInterval: 1000,
   });
 
   const contactsAccess = useQuery({
     queryKey: ["settings", "contactsAccess"],
-    queryFn: async () => appleCalendarCommands.contactsAccessStatus(),
+    queryFn: () => appleCalendarCommands.contactsAccessStatus(),
+    refetchInterval: 1000,
   });
 
   const handleRequestCalendarAccess = useCallback(() => {
     if (getOsType() === "macos") {
-      appleCalendarCommands.requestCalendarAccess();
+      appleCalendarCommands.requestCalendarAccess().then(() => {
+        calendarAccess.refetch();
+      }).catch((error) => {
+        console.error(error);
+      });
     }
   }, []);
 
   const handleRequestContactsAccess = useCallback(() => {
     if (getOsType() === "macos") {
-      appleCalendarCommands.requestContactsAccess();
+      appleCalendarCommands.requestContactsAccess().then(() => {
+        contactsAccess.refetch();
+      }).catch((error) => {
+        console.error(error);
+      });
     }
   }, []);
 

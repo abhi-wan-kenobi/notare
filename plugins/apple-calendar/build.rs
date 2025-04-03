@@ -5,8 +5,6 @@ const COMMANDS: &[&str] = &[
     "contacts_access_status",
     "request_calendar_access",
     "request_contacts_access",
-    "start_worker",
-    "stop_worker",
 ];
 
 fn main() {
