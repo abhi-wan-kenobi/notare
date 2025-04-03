@@ -1,4 +1,4 @@
-import { ServerBlockNoteEditor } from "@blocknote/server-util";
+import { BlockNoteEditor } from "@blocknote/core";
 
 const BASE = "https://api.twenty.com/rest";
 const KEY = "TODO";
@@ -33,7 +33,7 @@ export const findManyPeople = async (email: string) => {
 
 // https://twenty.com/developers/rest-api/core#/operations/createOneNote
 export const createOneNote = async (title: string, body: string) => {
-  const editor = ServerBlockNoteEditor.create();
+  const editor = BlockNoteEditor.create();
   const blocks = await editor.tryParseMarkdownToBlocks(body);
 
   const res = await fetch(`${BASE}/notes`, {
