@@ -14,6 +14,132 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:57
+msgid "Today ({dayOfWeek})"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:59
+msgid "Yesterday ({dayOfWeek})"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:61
+msgid "{days} days ago ({dayOfWeek})"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:71
+#: ../../packages/utils/src/datetime.ts:75
+msgid "{date} ({dayOfWeek})"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:118
+msgid "just now"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:120
+msgid "{seconds} seconds ago"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:122
+msgid "1 minute ago"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:124
+msgid "{minutes} minutes ago"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:126
+msgid "1 hour ago"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:128
+msgid "{hours} hours ago"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:134
+msgid "1 week ago"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:136
+msgid "{weeks} weeks ago"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:138
+msgid "1 month ago"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:140
+msgid "{months} months ago"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:142
+msgid "1 year ago"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:144
+msgid "{years} years ago"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:159
+msgid "in progress"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:169
+msgid "in {seconds} seconds"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:171
+msgid "in 1 minute"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:173
+msgid "in {minutes} minutes"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:175
+msgid "in 1 hour"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:177
+msgid "in {hours} hours"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:179
+msgid "1 day later"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:181
+msgid "{days} days later"
+msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:183
+msgid "{weeks} weeks later"
+msgstr ""
+
+#. js-lingui-explicit-id
 #: src/components/settings/views/general.tsx:150
 msgid "Select language"
 msgstr ""
@@ -24,29 +150,39 @@ msgid "Type jargons (e.g., Blitz Meeting, PaC Squad)"
 msgstr ""
 
 #. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:16
-#~ msgid "{days} day{plural} later"
-#~ msgstr "{days}일 후"
+#: ../../packages/utils/src/datetime.ts:23
+msgid "{days} day{plural} later"
+msgstr "{days}일 후"
 
 #. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:21
-#~ msgid "{hours} hour{plural} later"
-#~ msgstr "{hours}시간 후"
+#: ../../packages/utils/src/datetime.ts:28
+msgid "{hours} hour{plural} later"
+msgstr "{hours}시간 후"
 
 #. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:26
-#~ msgid "{minutes} minutes later"
-#~ msgstr "{minutes}분 후"
+#: ../../packages/utils/src/datetime.ts:33
+msgid "{minutes} minutes later"
+msgstr "{minutes}분 후"
 
 #. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:30
-#~ msgid "Starting soon"
-#~ msgstr "곧 시작"
+#: ../../packages/utils/src/datetime.ts:37
+msgid "Starting soon"
+msgstr "곧 시작"
 
 #. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:32
-#~ msgid "In progress"
-#~ msgstr "진행 중"
+#: ../../packages/utils/src/datetime.ts:39
+msgid "In progress"
+msgstr "진행 중"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:130
+msgid "Yesterday"
+msgstr "어제"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:132
+msgid "{days} days ago"
+msgstr "{days}일 전"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:50
@@ -54,20 +190,9 @@ msgstr ""
 #~ msgstr "오늘"
 
 #. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:52
-#~ msgid "Yesterday"
-#~ msgstr "어제"
-
-#. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:54
 #~ msgid "2 days ago"
 #~ msgstr "2일 전"
-
-#. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:56
-#: src/utils/i18n-datetime.ts:64
-#~ msgid "{days} days ago"
-#~ msgstr "{days}일 전"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:58
@@ -110,8 +235,8 @@ msgstr ""
 msgid "Access granted"
 msgstr "접근 권한이 승인되었습니다."
 
-#: src/components/settings/views/ai.tsx:72
-#: src/components/settings/views/ai.tsx:129
+#: src/components/settings/views/ai.tsx:88
+#: src/components/settings/views/ai.tsx:145
 msgid "Active"
 msgstr ""
 
@@ -206,6 +331,10 @@ msgstr "캘린더가 연결되었습니다."
 #: src/components/settings/views/profile.tsx:138
 msgid "CEO"
 msgstr "대표"
+
+#: src/components/settings/views/ai.tsx:179
+#~ msgid "Choose between speed and quality for speech recognition"
+#~ msgstr ""
 
 #: src/components/settings/views/billing.tsx:52
 msgid "Collaborate with others in meetings"
@@ -488,16 +617,16 @@ msgid "Loading extension details..."
 msgstr "익스텐션 정보 로딩 중..."
 
 #: src/components/workspace-calendar/event-card.tsx:112
-#: src/components/settings/views/ai.tsx:88
-#: src/components/settings/views/ai.tsx:184
+#: src/components/settings/views/ai.tsx:104
+#: src/components/settings/views/ai.tsx:200
 msgid "Loading..."
 msgstr "로딩 중..."
 
-#: src/components/settings/views/ai.tsx:113
+#: src/components/settings/views/ai.tsx:129
 msgid "Local Language Model"
 msgstr "로컬 언어 모델"
 
-#: src/components/settings/views/ai.tsx:56
+#: src/components/settings/views/ai.tsx:72
 msgid "Local Speech-to-Text"
 msgstr "로컬 음성-텍스트 변환"
 
@@ -526,13 +655,17 @@ msgstr "멤버"
 msgid "Microphone Access"
 msgstr ""
 
-#: src/components/settings/views/ai.tsx:233
+#: src/components/settings/views/ai.tsx:249
 msgid "Model is working correctly"
 msgstr "모델이 올바르게 작동합니다."
 
 #: src/components/settings/views/ai.tsx:203
 #~ msgid "Model loaded and ready"
 #~ msgstr "모델 로드 완료 및 준비 완료"
+
+#: src/components/settings/views/ai.tsx:176
+#~ msgid "Model Selection"
+#~ msgstr ""
 
 #: src/components/settings/views/billing.tsx:125
 msgid "Monthly"
@@ -652,6 +785,14 @@ msgstr "프로필"
 msgid "Publish your note"
 msgstr "노트 발행하기"
 
+#: src/components/settings/views/ai.tsx:196
+#~ msgid "Quality"
+#~ msgstr ""
+
+#: src/components/settings/views/ai.tsx:213
+#~ msgid "Quality (v3 large)"
+#~ msgstr ""
+
 #: src/components/organization-profile/recent-notes.tsx:42
 msgid "Recent Notes"
 msgstr "최근 노트"
@@ -682,11 +823,11 @@ msgstr ""
 msgid "Role"
 msgstr "역할"
 
-#: src/components/settings/views/ai.tsx:116
+#: src/components/settings/views/ai.tsx:132
 msgid "Run language models locally for enhanced privacy"
 msgstr "향상된 개인 정보 보호를 위해 언어 모델을 로컬에서 실행"
 
-#: src/components/settings/views/ai.tsx:59
+#: src/components/settings/views/ai.tsx:75
 msgid "Run speech recognition locally for enhanced privacy"
 msgstr "향상된 개인 정보 보호를 위해 음성 인식을 로컬에서 실행"
 
@@ -773,6 +914,14 @@ msgstr "모든 사용자를 위한 단일 로그인"
 #~ msgid "Speech-to-Text"
 #~ msgstr "음성-텍스트 변환"
 
+#: src/components/settings/views/ai.tsx:196
+#~ msgid "Speed"
+#~ msgstr ""
+
+#: src/components/settings/views/ai.tsx:206
+#~ msgid "Speed (tiny-en)"
+#~ msgstr ""
+
 #: src/components/settings/views/billing.tsx:76
 msgid "Start Annual Plan"
 msgstr "연간 요금제 시작"
@@ -785,8 +934,8 @@ msgstr "월간 요금제 시작"
 msgid "Start recording"
 msgstr "녹음 시작"
 
-#: src/components/settings/views/ai.tsx:91
-#: src/components/settings/views/ai.tsx:187
+#: src/components/settings/views/ai.tsx:107
+#: src/components/settings/views/ai.tsx:203
 msgid "Start Server"
 msgstr "서버 시작"
 
@@ -844,15 +993,15 @@ msgstr "팀스페이스"
 msgid "Templates"
 msgstr "템플릿"
 
-#: src/components/settings/views/ai.tsx:229
+#: src/components/settings/views/ai.tsx:245
 msgid "Test Language Model"
 msgstr "언어 모델 테스트"
 
-#: src/components/settings/views/ai.tsx:256
+#: src/components/settings/views/ai.tsx:272
 msgid "Test Model"
 msgstr "모델 테스트"
 
-#: src/components/settings/views/ai.tsx:253
+#: src/components/settings/views/ai.tsx:269
 msgid "Testing..."
 msgstr "테스트 중..."
 
@@ -961,7 +1110,7 @@ msgstr "사용자명"
 msgid "Username"
 msgstr "사용자명"
 
-#: src/components/settings/views/ai.tsx:234
+#: src/components/settings/views/ai.tsx:250
 msgid "Verify that your local language model is working correctly"
 msgstr "로컬 언어 모델이 올바르게 작동하는지 확인하세요."
 

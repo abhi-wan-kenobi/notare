@@ -14,6 +14,132 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:57
+msgid "Today ({dayOfWeek})"
+msgstr "Today ({dayOfWeek})"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:59
+msgid "Yesterday ({dayOfWeek})"
+msgstr "Yesterday ({dayOfWeek})"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:61
+msgid "{days} days ago ({dayOfWeek})"
+msgstr "{days} days ago ({dayOfWeek})"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:71
+#: ../../packages/utils/src/datetime.ts:75
+msgid "{date} ({dayOfWeek})"
+msgstr "{date} ({dayOfWeek})"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:118
+msgid "just now"
+msgstr "just now"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:120
+msgid "{seconds} seconds ago"
+msgstr "{seconds} seconds ago"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:122
+msgid "1 minute ago"
+msgstr "1 minute ago"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:124
+msgid "{minutes} minutes ago"
+msgstr "{minutes} minutes ago"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:126
+msgid "1 hour ago"
+msgstr "1 hour ago"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:128
+msgid "{hours} hours ago"
+msgstr "{hours} hours ago"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:134
+msgid "1 week ago"
+msgstr "1 week ago"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:136
+msgid "{weeks} weeks ago"
+msgstr "{weeks} weeks ago"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:138
+msgid "1 month ago"
+msgstr "1 month ago"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:140
+msgid "{months} months ago"
+msgstr "{months} months ago"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:142
+msgid "1 year ago"
+msgstr "1 year ago"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:144
+msgid "{years} years ago"
+msgstr "{years} years ago"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:159
+msgid "in progress"
+msgstr "in progress"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:169
+msgid "in {seconds} seconds"
+msgstr "in {seconds} seconds"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:171
+msgid "in 1 minute"
+msgstr "in 1 minute"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:173
+msgid "in {minutes} minutes"
+msgstr "in {minutes} minutes"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:175
+msgid "in 1 hour"
+msgstr "in 1 hour"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:177
+msgid "in {hours} hours"
+msgstr "in {hours} hours"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:179
+msgid "1 day later"
+msgstr "1 day later"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:181
+msgid "{days} days later"
+msgstr "{days} days later"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:183
+msgid "{weeks} weeks later"
+msgstr "{weeks} weeks later"
+
+#. js-lingui-explicit-id
 #: src/components/settings/views/general.tsx:150
 msgid "Select language"
 msgstr "Select language"
@@ -24,29 +150,39 @@ msgid "Type jargons (e.g., Blitz Meeting, PaC Squad)"
 msgstr "Type jargons (e.g., Blitz Meeting, PaC Squad)"
 
 #. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:16
-#~ msgid "{days} day{plural} later"
-#~ msgstr "{days} day{plural} later"
+#: ../../packages/utils/src/datetime.ts:23
+msgid "{days} day{plural} later"
+msgstr "{days} day{plural} later"
 
 #. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:21
-#~ msgid "{hours} hour{plural} later"
-#~ msgstr "{hours} hour{plural} later"
+#: ../../packages/utils/src/datetime.ts:28
+msgid "{hours} hour{plural} later"
+msgstr "{hours} hour{plural} later"
 
 #. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:26
-#~ msgid "{minutes} minutes later"
-#~ msgstr "{minutes} minutes later"
+#: ../../packages/utils/src/datetime.ts:33
+msgid "{minutes} minutes later"
+msgstr "{minutes} minutes later"
 
 #. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:30
-#~ msgid "Starting soon"
-#~ msgstr "Starting soon"
+#: ../../packages/utils/src/datetime.ts:37
+msgid "Starting soon"
+msgstr "Starting soon"
 
 #. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:32
-#~ msgid "In progress"
-#~ msgstr "In progress"
+#: ../../packages/utils/src/datetime.ts:39
+msgid "In progress"
+msgstr "In progress"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:130
+msgid "Yesterday"
+msgstr "Yesterday"
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:132
+msgid "{days} days ago"
+msgstr "{days} days ago"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:50
@@ -54,20 +190,9 @@ msgstr "Type jargons (e.g., Blitz Meeting, PaC Squad)"
 #~ msgstr "Today"
 
 #. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:52
-#~ msgid "Yesterday"
-#~ msgstr "Yesterday"
-
-#. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:54
 #~ msgid "2 days ago"
 #~ msgstr "2 days ago"
-
-#. js-lingui-explicit-id
-#: src/utils/i18n-datetime.ts:56
-#: src/utils/i18n-datetime.ts:64
-#~ msgid "{days} days ago"
-#~ msgstr "{days} days ago"
 
 #. js-lingui-explicit-id
 #: src/utils/i18n-datetime.ts:58
@@ -110,8 +235,8 @@ msgstr "{title}"
 msgid "Access granted"
 msgstr "Access granted"
 
-#: src/components/settings/views/ai.tsx:72
-#: src/components/settings/views/ai.tsx:129
+#: src/components/settings/views/ai.tsx:88
+#: src/components/settings/views/ai.tsx:145
 msgid "Active"
 msgstr "Active"
 
@@ -206,6 +331,10 @@ msgstr "Calendar connected"
 #: src/components/settings/views/profile.tsx:138
 msgid "CEO"
 msgstr "CEO"
+
+#: src/components/settings/views/ai.tsx:179
+#~ msgid "Choose between speed and quality for speech recognition"
+#~ msgstr "Choose between speed and quality for speech recognition"
 
 #: src/components/settings/views/billing.tsx:52
 msgid "Collaborate with others in meetings"
@@ -488,16 +617,16 @@ msgid "Loading extension details..."
 msgstr "Loading extension details..."
 
 #: src/components/workspace-calendar/event-card.tsx:112
-#: src/components/settings/views/ai.tsx:88
-#: src/components/settings/views/ai.tsx:184
+#: src/components/settings/views/ai.tsx:104
+#: src/components/settings/views/ai.tsx:200
 msgid "Loading..."
 msgstr "Loading..."
 
-#: src/components/settings/views/ai.tsx:113
+#: src/components/settings/views/ai.tsx:129
 msgid "Local Language Model"
 msgstr "Local Language Model"
 
-#: src/components/settings/views/ai.tsx:56
+#: src/components/settings/views/ai.tsx:72
 msgid "Local Speech-to-Text"
 msgstr "Local Speech-to-Text"
 
@@ -526,13 +655,17 @@ msgstr "Members"
 msgid "Microphone Access"
 msgstr "Microphone Access"
 
-#: src/components/settings/views/ai.tsx:233
+#: src/components/settings/views/ai.tsx:249
 msgid "Model is working correctly"
 msgstr "Model is working correctly"
 
 #: src/components/settings/views/ai.tsx:203
 #~ msgid "Model loaded and ready"
 #~ msgstr "Model loaded and ready"
+
+#: src/components/settings/views/ai.tsx:176
+#~ msgid "Model Selection"
+#~ msgstr "Model Selection"
 
 #: src/components/settings/views/billing.tsx:125
 msgid "Monthly"
@@ -652,6 +785,14 @@ msgstr "Profile"
 msgid "Publish your note"
 msgstr "Publish your note"
 
+#: src/components/settings/views/ai.tsx:196
+#~ msgid "Quality"
+#~ msgstr "Quality"
+
+#: src/components/settings/views/ai.tsx:213
+#~ msgid "Quality (v3 large)"
+#~ msgstr "Quality (v3 large)"
+
 #: src/components/organization-profile/recent-notes.tsx:42
 msgid "Recent Notes"
 msgstr "Recent Notes"
@@ -682,11 +823,11 @@ msgstr "Required to transcribe your voice during meetings"
 msgid "Role"
 msgstr "Role"
 
-#: src/components/settings/views/ai.tsx:116
+#: src/components/settings/views/ai.tsx:132
 msgid "Run language models locally for enhanced privacy"
 msgstr "Run language models locally for enhanced privacy"
 
-#: src/components/settings/views/ai.tsx:59
+#: src/components/settings/views/ai.tsx:75
 msgid "Run speech recognition locally for enhanced privacy"
 msgstr "Run speech recognition locally for enhanced privacy"
 
@@ -773,6 +914,14 @@ msgstr "Single sign-on for all users"
 #~ msgid "Speech-to-Text"
 #~ msgstr "Speech-to-Text"
 
+#: src/components/settings/views/ai.tsx:196
+#~ msgid "Speed"
+#~ msgstr "Speed"
+
+#: src/components/settings/views/ai.tsx:206
+#~ msgid "Speed (tiny-en)"
+#~ msgstr "Speed (tiny-en)"
+
 #: src/components/settings/views/billing.tsx:76
 msgid "Start Annual Plan"
 msgstr "Start Annual Plan"
@@ -785,8 +934,8 @@ msgstr "Start Monthly Plan"
 msgid "Start recording"
 msgstr "Start recording"
 
-#: src/components/settings/views/ai.tsx:91
-#: src/components/settings/views/ai.tsx:187
+#: src/components/settings/views/ai.tsx:107
+#: src/components/settings/views/ai.tsx:203
 msgid "Start Server"
 msgstr "Start Server"
 
@@ -844,15 +993,15 @@ msgstr "Teamspace"
 msgid "Templates"
 msgstr "Templates"
 
-#: src/components/settings/views/ai.tsx:229
+#: src/components/settings/views/ai.tsx:245
 msgid "Test Language Model"
 msgstr "Test Language Model"
 
-#: src/components/settings/views/ai.tsx:256
+#: src/components/settings/views/ai.tsx:272
 msgid "Test Model"
 msgstr "Test Model"
 
-#: src/components/settings/views/ai.tsx:253
+#: src/components/settings/views/ai.tsx:269
 msgid "Testing..."
 msgstr "Testing..."
 
@@ -961,7 +1110,7 @@ msgstr "username"
 msgid "Username"
 msgstr "Username"
 
-#: src/components/settings/views/ai.tsx:234
+#: src/components/settings/views/ai.tsx:250
 msgid "Verify that your local language model is working correctly"
 msgstr "Verify that your local language model is working correctly"
 
