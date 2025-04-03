@@ -4,7 +4,7 @@ import {
   CalendarIcon,
   // CreditCardIcon,
   // FileTextIcon,
-  FlaskConicalIcon,
+  // FlaskConicalIcon,
   LockIcon,
   SettingsIcon,
   SparklesIcon,
