@@ -17,6 +17,7 @@
   "dependencies": {
     "@blocknote/core": "^0.26.0",
     "@hypr/extension-types": "workspace:^",
+    "@hypr/plugin-auth": "workspace:^",
     "@hypr/plugin-db": "workspace:^",
     "@hypr/plugin-listener": "workspace:^",
     "@hypr/ui": "workspace:^",

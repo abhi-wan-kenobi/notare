@@ -23,6 +23,10 @@ pub enum VaultKey {
     #[serde(rename = "remote-server")]
     #[specta(rename = "remote-server")]
     RemoteServer,
+    #[strum(serialize = "twenty-api-key")]
+    #[serde(rename = "twenty-api-key")]
+    #[specta(rename = "twenty-api-key")]
+    TwentyApiKey,
 }
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
@@ -31,6 +35,8 @@ pub struct VaultData {
     pub remote_database: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remote_server: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twenty_api_key: Option<String>,
 }
 
 impl VaultData {
@@ -38,6 +44,7 @@ impl VaultData {
         match key {
             VaultKey::RemoteDatabase => self.remote_database.clone(),
             VaultKey::RemoteServer => self.remote_server.clone(),
+            VaultKey::TwentyApiKey => self.twenty_api_key.clone(),
         }
     }
 
@@ -45,6 +52,7 @@ impl VaultData {
         match key {
             VaultKey::RemoteDatabase => self.remote_database = Some(value.into()),
             VaultKey::RemoteServer => self.remote_server = Some(value.into()),
+            VaultKey::TwentyApiKey => self.twenty_api_key = Some(value.into()),
         }
     }
 }

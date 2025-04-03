@@ -1,9 +1,9 @@
 import { BlockNoteEditor } from "@blocknote/core";
 
-const BASE = "https://api.twenty.com/rest";
-const KEY = "TODO";
-
+import { commands as authCommands } from "@hypr/plugin-auth";
 import { fetch } from "@hypr/utils";
+
+const BASE = "https://api.twenty.com/rest";
 
 type Person = {
   id: string;
@@ -17,13 +17,28 @@ type Note = {
   bodyV2: { blocknote: any };
 };
 
+export const setApiKey = async (key: string) => {
+  await authCommands.setInVault("twenty-api-key", key);
+};
+
+const getApiKey = async () => {
+  const key = await authCommands.getFromVault("twenty-api-key");
+  if (!key) {
+    throw new Error("no_twenty_api_key");
+  }
+
+  return key;
+};
+
 // https://twenty.com/developers/rest-api/core#/operations/findManyPeople
 export const findManyPeople = async (email: string) => {
+  const key = await getApiKey();
+
   const filter = `emails.primaryEmail[eq]:${encodeURIComponent(email)}`;
 
   const response = await fetch(`${BASE}/people?depth=0&filter=${filter}`, {
     headers: {
-      Authorization: `Bearer ${KEY}`,
+      Authorization: `Bearer ${key}`,
     },
   });
 
@@ -33,6 +48,8 @@ export const findManyPeople = async (email: string) => {
 
 // https://twenty.com/developers/rest-api/core#/operations/createOneNote
 export const createOneNote = async (title: string, body: string) => {
+  const key = await getApiKey();
+
   const editor = BlockNoteEditor.create();
   const blocks = await editor.tryParseMarkdownToBlocks(body);
 
@@ -40,7 +57,7 @@ export const createOneNote = async (title: string, body: string) => {
     method: "POST",
     headers: {
       "Accept": "application/json",
-      "Authorization": `Bearer ${KEY}`,
+      "Authorization": `Bearer ${key}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -60,14 +77,18 @@ export const createOneNote = async (title: string, body: string) => {
 
 // https://twenty.com/developers/rest-api/core#/operations/createManyNoteTargets
 export const createManyNoteTargets = async (noteId: string, personIds: string[]) => {
+  const key = await getApiKey();
+
   const response = await fetch(`${BASE}/batch/noteTargets`, {
     method: "POST",
     headers: {
       "Accept": "application/json",
-      "Authorization": `Bearer ${KEY}`,
+      "Authorization": `Bearer ${key}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(personIds.map((personId) => ({ noteId, personId }))),
   });
-  return response.json();
+
+  const { data } = await response.json();
+  return data;
 };

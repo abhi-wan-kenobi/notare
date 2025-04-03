@@ -32,6 +32,26 @@ pub fn get_from_vault<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
+pub fn set_in_vault<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    key: VaultKey,
+    value: String,
+) -> Result<(), String> {
+    app.set_in_vault(key, value)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn set_in_store<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    key: StoreKey,
+    value: String,
+) -> Result<(), String> {
+    app.set_in_store(key, value)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn get_from_store<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     key: StoreKey,

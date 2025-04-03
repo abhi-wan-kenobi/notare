@@ -15,6 +15,7 @@ pub trait AuthPluginExt<R: tauri::Runtime> {
     fn reset_vault(&self) -> Result<(), String>;
     fn get_from_vault(&self, key: VaultKey) -> Result<Option<String>, String>;
     fn get_from_store(&self, key: StoreKey) -> Result<Option<String>, String>;
+    fn set_in_vault(&self, key: VaultKey, value: impl Into<String>) -> Result<(), String>;
     fn set_in_store(&self, key: StoreKey, value: impl Into<String>) -> Result<(), String>;
 }
 
@@ -106,6 +107,11 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AuthPluginExt<R> for T {
         });
 
         Ok(v)
+    }
+
+    fn set_in_vault(&self, key: VaultKey, value: impl Into<String>) -> Result<(), String> {
+        let vault = self.state::<Vault>();
+        vault.set(key, value).map_err(|err| err.to_string())
     }
 
     fn set_in_store(&self, key: StoreKey, value: impl Into<String>) -> Result<(), String> {

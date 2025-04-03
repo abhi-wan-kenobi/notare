@@ -21,6 +21,12 @@ async getFromVault(key: VaultKey) : Promise<string | null> {
 },
 async getFromStore(key: StoreKey) : Promise<string | null> {
     return await TAURI_INVOKE("plugin:auth|get_from_store", { key });
+},
+async setInVault(key: VaultKey, value: string) : Promise<null> {
+    return await TAURI_INVOKE("plugin:auth|set_in_vault", { key, value });
+},
+async setInStore(key: StoreKey, value: string) : Promise<null> {
+    return await TAURI_INVOKE("plugin:auth|set_in_store", { key, value });
 }
 }
 
@@ -43,7 +49,7 @@ export type AuthEvent = "success" | { error: string }
 export type RequestParams = { c: string; f: string; p: number }
 export type ResponseParams = { ui: string; ai: string; st: string; dt: string }
 export type StoreKey = "auth-user-id" | "auth-account-id"
-export type VaultKey = "remote-database" | "remote-server"
+export type VaultKey = "remote-database" | "remote-server" | "twenty-api-key"
 
 /** tauri-specta globals **/
 

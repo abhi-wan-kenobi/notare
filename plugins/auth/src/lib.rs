@@ -30,6 +30,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::reset_vault::<tauri::Wry>,
             commands::get_from_vault::<tauri::Wry>,
             commands::get_from_store::<tauri::Wry>,
+            commands::set_in_vault::<tauri::Wry>,
+            commands::set_in_store::<tauri::Wry>,
         ])
         .typ::<RequestParams>()
         .typ::<ResponseParams>()

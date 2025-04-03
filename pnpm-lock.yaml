@@ -1071,6 +1071,9 @@ importers:
       '@hypr/extension-types':
         specifier: workspace:^
         version: link:../types
+      '@hypr/plugin-auth':
+        specifier: workspace:^
+        version: link:../../plugins/auth
       '@hypr/plugin-db':
         specifier: workspace:^
         version: link:../../plugins/db
@@ -1085,7 +1088,7 @@ importers:
         version: link:../../packages/utils
       '@tanstack/react-query':
         specifier: ^5.69.0
-        version: 5.69.0(react@19.0.0)
+        version: 5.69.0(react@18.3.1)
       '@tauri-apps/api':
         specifier: ^2.4.0
         version: 2.4.0
@@ -1101,10 +1104,10 @@ importers:
         version: 8.6.9(storybook@8.6.9(prettier@3.5.3))
       '@storybook/react':
         specifier: ^8.6.9
-        version: 8.6.9(@storybook/test@8.6.9(storybook@8.6.9(prettier@3.5.3)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(storybook@8.6.9(prettier@3.5.3))(typescript@5.8.2)
+        version: 8.6.9(@storybook/test@8.6.9(storybook@8.6.9(prettier@3.5.3)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.6.9(prettier@3.5.3))(typescript@5.8.2)
       '@storybook/react-vite':
         specifier: ^8.6.9
-        version: 8.6.9(@storybook/test@8.6.9(storybook@8.6.9(prettier@3.5.3)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(rollup@4.37.0)(storybook@8.6.9(prettier@3.5.3))(typescript@5.8.2)(vite@6.2.3(@types/node@22.13.13)(jiti@2.4.2)(tsx@4.19.3)(yaml@2.7.0))
+        version: 8.6.9(@storybook/test@8.6.9(storybook@8.6.9(prettier@3.5.3)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.37.0)(storybook@8.6.9(prettier@3.5.3))(typescript@5.8.2)(vite@6.2.3(@types/node@22.13.13)(jiti@2.4.2)(tsx@4.19.3)(yaml@2.7.0))
       '@types/node':
         specifier: ^22.13.13
         version: 22.13.13
