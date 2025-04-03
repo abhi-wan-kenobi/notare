@@ -45,8 +45,8 @@ export function MainSidebar({ current, onTabClick }: MainSidebarProps) {
                   // ? <Trans>Team</Trans>
                   // : tab === "billing"
                   // ? <Trans>Billing</Trans>
-                  : tab === "lab"
-                  ? <Trans>Lab</Trans>
+                  // : tab === "lab"
+                  // ? <Trans>Lab</Trans>
                   : null}
               </span>
             </button>

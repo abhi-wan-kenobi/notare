@@ -36,8 +36,8 @@ export function TabIcon({ tab }: { tab: Tab }) {
       //   return <UsersIcon className="h-4 w-4" />;
       // case "billing":
       //   return <CreditCardIcon className="h-4 w-4" />;
-    case "lab":
-      return <FlaskConicalIcon className="h-4 w-4" />;
+    // case "lab":
+    //   return <FlaskConicalIcon className="h-4 w-4" />;
     default:
       return null;
   }

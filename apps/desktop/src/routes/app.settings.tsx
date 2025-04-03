@@ -17,7 +17,7 @@ import {
   Calendar,
   Extensions,
   General,
-  Lab,
+  // Lab,
   LocalAI,
   // Notifications,
   Permissions,
@@ -239,7 +239,7 @@ function Component() {
                 /* {current === "team" && <Team />}
               {current === "billing" && <Billing />} */
               }
-              {current === "lab" && <Lab />}
+              {/* {current === "lab" && <Lab />} */}
             </div>
           </div>
         </div>
