@@ -1,5 +1,5 @@
 {
-  "name": "@hypr/extension-transcript",
+  "name": "@hypr/extension-twenty",
   "version": "1.0.0",
   "private": true,
   "license": "MIT",
@@ -15,16 +15,14 @@
     "preview": "storybook dev -p 6006"
   },
   "dependencies": {
+    "@blocknote/server-util": "^0.26.0",
     "@hypr/extension-types": "workspace:^",
     "@hypr/plugin-db": "workspace:^",
     "@hypr/plugin-listener": "workspace:^",
-    "@hypr/plugin-template": "workspace:^",
     "@hypr/ui": "workspace:^",
     "@hypr/utils": "workspace:^",
     "@tanstack/react-query": "^5.69.0",
     "@tauri-apps/api": "^2.4.0",
-    "lucide-react": "^0.474.0",
-    "motion": "^12.5.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {

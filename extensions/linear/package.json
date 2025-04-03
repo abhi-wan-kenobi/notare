@@ -21,7 +21,6 @@
     "@hypr/utils": "workspace:^",
     "@tanstack/react-query": "^5.69.0",
     "@tauri-apps/api": "^2.4.0",
-    "@tauri-apps/plugin-http": "^2.4.2",
     "lucide-react": "^0.474.0",
     "motion": "^12.5.0",
     "zod": "^3.24.2"
