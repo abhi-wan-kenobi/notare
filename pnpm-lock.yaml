@@ -259,8 +259,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0
       '@tauri-apps/plugin-shell':
-        specifier: ^2.2.0
-        version: 2.2.0
+        specifier: ^2.2.1
+        version: 2.2.1
       '@tauri-apps/plugin-store':
         specifier: ^2.2.0
         version: 2.2.0
@@ -1115,7 +1115,7 @@ importers:
     dependencies:
       '@remixicon/react':
         specifier: ^4.6.0
-        version: 4.6.0(react@18.3.1)
+        version: 4.6.0(react@19.0.0)
       '@tiptap/core':
         specifier: ^2.11.5
         version: 2.11.5(@tiptap/pm@2.11.5)
@@ -1151,7 +1151,7 @@ importers:
         version: 2.11.5
       '@tiptap/react':
         specifier: ^2.11.5
-        version: 2.11.5(@tiptap/core@2.11.5(@tiptap/pm@2.11.5))(@tiptap/pm@2.11.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 2.11.5(@tiptap/core@2.11.5(@tiptap/pm@2.11.5))(@tiptap/pm@2.11.5)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@tiptap/starter-kit':
         specifier: ^2.11.5
         version: 2.11.5
@@ -1160,10 +1160,10 @@ importers:
         version: 2.1.1
       react:
         specifier: ^18.3.1
-        version: 18.3.1
+        version: 19.0.0
       react-dom:
         specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
+        version: 19.0.0(react@19.0.0)
       tippy.js:
         specifier: ^6.3.7
         version: 6.3.7
@@ -1309,7 +1309,7 @@ importers:
         version: 1.3.3(zod@3.24.2)
       '@ai-sdk/react':
         specifier: ^1.2.2
-        version: 1.2.2(react@18.3.1)(zod@3.24.2)
+        version: 1.2.2(react@19.0.0)(zod@3.24.2)
       '@date-fns/tz':
         specifier: ^1.2.0
         version: 1.2.0
@@ -1342,7 +1342,7 @@ importers:
         version: 2.4.2
       ai:
         specifier: ^4.2.6
-        version: 4.2.6(react@18.3.1)(zod@3.24.2)
+        version: 4.2.6(react@19.0.0)(zod@3.24.2)
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -1354,10 +1354,10 @@ importers:
         version: 4.0.0
       react:
         specifier: ^18.3.1
-        version: 18.3.1
+        version: 19.0.0
       zustand:
         specifier: ^5.0.3
-        version: 5.0.3(@types/react@18.3.20)(react@18.3.1)(use-sync-external-store@1.4.0(react@18.3.1))
+        version: 5.0.3(@types/react@18.3.20)(react@19.0.0)(use-sync-external-store@1.4.0(react@19.0.0))
     devDependencies:
       '@types/react':
         specifier: ^18.3.1
@@ -2500,8 +2500,8 @@ packages:
     engines: {node: '>=16.3.0'}
     hasBin: true
 
-  '@puppeteer/browsers@2.8.0':
-    resolution: {integrity: sha512-yTwt2KWRmCQAfhvbCRjebaSX8pV1//I0Y3g+A7f/eS7gf0l4eRJoUCvcYdVtboeU4CTOZQuqYbZNS8aBYb8ROQ==}
+  '@puppeteer/browsers@2.9.0':
+    resolution: {integrity: sha512-8+xM+cFydYET4X/5/3yZMHs7sjS6c9I6H5I3xJdb6cinzxWUT/I2QVw4avxCQ8QDndwdHkG/FiSZIrCjAbaKvQ==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -3494,8 +3494,8 @@ packages:
   '@swc/counter@0.1.3':
     resolution: {integrity: sha512-e2BR4lsJkkRlKZ/qCHPw9ZaSxc0MVUd7gtbtaB7aMvHeJVYe8sOB8DBZkP2DtISHGSku9sCK6T6cnY0CtXrOCQ==}
 
-  '@swc/types@0.1.20':
-    resolution: {integrity: sha512-/rlIpxwKrhz4BIplXf6nsEHtqlhzuNN34/k3kMAXH4/lvVoA3cdq+60aqVNnyvw2uITEaCi0WV3pxBe4dQqoXQ==}
+  '@swc/types@0.1.21':
+    resolution: {integrity: sha512-2YEtj5HJVbKivud9N4bpPBAyZhj4S2Ipe5LkUG94alTpr7in/GU/EARgPAd3BwU+YOmFVJC2+kjqhGRi3r0ZpQ==}
 
   '@szmarczak/http-timer@5.0.1':
     resolution: {integrity: sha512-+PmQX0PiAYPMeVYe237LJAYvOMYW1j2rH5YROyS3b4CTVJum34HfRvKvAzozHAQG0TnHNdUfY9nCeUyRAs//cw==}
@@ -3721,8 +3721,8 @@ packages:
   '@tauri-apps/plugin-process@2.2.0':
     resolution: {integrity: sha512-uypN2Crmyop9z+KRJr3zl71OyVFgTuvHFjsJ0UxxQ/J5212jVa5w4nPEYjIewcn8bUEXacRebwE6F7owgrbhSw==}
 
-  '@tauri-apps/plugin-shell@2.2.0':
-    resolution: {integrity: sha512-iC3Ic1hLmasoboG7BO+7p+AriSoqAwKrIk+Hpk+S/bjTQdXqbl2GbdclghI4gM32X0bls7xHzIFqhRdrlvJeaA==}
+  '@tauri-apps/plugin-shell@2.2.1':
+    resolution: {integrity: sha512-G1GFYyWe/KlCsymuLiNImUgC8zGY0tI0Y3p8JgBCWduR5IEXlIJS+JuG1qtveitwYXlfJrsExt3enhv5l2/yhA==}
 
   '@tauri-apps/plugin-store@2.2.0':
     resolution: {integrity: sha512-hJTRtuJis4w5fW1dkcgftsYxKXK0+DbAqurZ3CURHG5WkAyyZgbxpeYctw12bbzF9ZbZREXZklPq8mocCC3Sgg==}
@@ -4014,11 +4014,14 @@ packages:
   '@types/node@18.19.83':
     resolution: {integrity: sha512-D69JeR5SfFS5H6FLbUaS0vE4r1dGhmMBbG4Ed6BNS4wkDK8GZjsdCShT5LCN59vOHEUHnFCY9J4aclXlIphMkA==}
 
-  '@types/node@20.17.28':
-    resolution: {integrity: sha512-DHlH/fNL6Mho38jTy7/JT7sn2wnXI+wULR6PV4gy4VHLVvnrV/d3pHAMQHhc4gjdLmK2ZiPoMxzp6B3yRajLSQ==}
+  '@types/node@20.17.30':
+    resolution: {integrity: sha512-7zf4YyHA+jvBNfVrk2Gtvs6x7E8V+YDW05bNfG2XkWDJfYRXrTiP/DsB2zSYTaHX0bGIujTBQdMVAhb+j7mwpg==}
 
   '@types/node@22.13.13':
     resolution: {integrity: sha512-ClsL5nMwKaBRwPcCvH8E7+nU4GxHVx1axNvMZTFHMEfNI7oahimt26P5zjVCRrjiIWj6YFXfE1v3dEp94wLcGQ==}
+
+  '@types/node@22.14.0':
+    resolution: {integrity: sha512-Kmpl+z84ILoG+3T/zQFyAJsU6EPTmOCj8/2+83fSN6djd6I4o7uOuGIH6vq3PrjY5BGitSbFuMN18j3iknubbA==}
 
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
@@ -4072,6 +4075,9 @@ packages:
 
   '@types/ws@8.18.0':
     resolution: {integrity: sha512-8svvI3hMyvN0kKCJMvTJP/x6Y/EoQbepff882wL+Sn5QsXb3etnamgrJq4isrBxSJj5L2AuXcI0+bgkoAXGUJw==}
+
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@types/yargs-parser@21.0.3':
     resolution: {integrity: sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==}
@@ -4475,6 +4481,10 @@ packages:
 
   '@zip.js/zip.js@2.7.57':
     resolution: {integrity: sha512-BtonQ1/jDnGiMed6OkV6rZYW78gLmLswkHOzyMrMb+CAR7CZO8phOHO6c2qw6qb1g1betN7kwEHhhZk30dv+NA==}
+    engines: {bun: '>=0.7.0', deno: '>=1.0.0', node: '>=16.5.0'}
+
+  '@zip.js/zip.js@2.7.60':
+    resolution: {integrity: sha512-vA3rLyqdxBrVo1FWSsbyoecaqWTV+vgPRf0QKeM7kVDG0r+lHUqd7zQDv1TO9k4BcAoNzNDSNrrel24Mk6addA==}
     engines: {bun: '>=0.7.0', deno: '>=1.0.0', node: '>=16.5.0'}
 
   abort-controller@3.0.0:
@@ -5973,8 +5983,8 @@ packages:
   html-void-elements@3.0.0:
     resolution: {integrity: sha512-bEqo66MRXsUGxWHV5IP0PUiAWwoEjba4VCzg0LjFJBpchPaTfyfCKTG6bc5F8ucKec3q5y6qOdGyYTSBEvhCrg==}
 
-  htmlfy@0.6.5:
-    resolution: {integrity: sha512-2idle1yo+Ft3ttDc4cZkVPaWBS5F15Pyrq4XGecSxF2ksqZVUzuCTd0OXar1vxq9UDQX/lzfr/iDwYo3aRuOTA==}
+  htmlfy@0.6.6:
+    resolution: {integrity: sha512-NsJ/YV/FQ9XpU0t+TkCMqXVsedNqSSImrI1E4aRBX8uDSaXzF7FOBl/8HKnnqm50RngNfLIoAVLyPQbyVi8EaQ==}
 
   htmlparser2@9.1.0:
     resolution: {integrity: sha512-5zfg6mHUoaer/97TxnGpxmbR7zJtPwIYFMZ/H5ucTlPZhKvtum05yiPK3Mgai3a0DyVxv7qYqoweaEd2nrYQzQ==}
@@ -8243,6 +8253,9 @@ packages:
   undici-types@6.20.0:
     resolution: {integrity: sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg==}
 
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
   undici@6.21.2:
     resolution: {integrity: sha512-uROZWze0R0itiAKVPsYhFov9LxrPMHLMEQFszeI2gCN6bnIIZ8twzBCJcN2LJrBBLfrP0t1FW0g+JmKVl8Vk1g==}
     engines: {node: '>=18.17'}
@@ -8803,12 +8816,12 @@ snapshots:
     optionalDependencies:
       zod: 3.24.2
 
-  '@ai-sdk/react@1.2.2(react@18.3.1)(zod@3.24.2)':
+  '@ai-sdk/react@1.2.2(react@19.0.0)(zod@3.24.2)':
     dependencies:
       '@ai-sdk/provider-utils': 2.2.1(zod@3.24.2)
       '@ai-sdk/ui-utils': 1.2.1(zod@3.24.2)
-      react: 18.3.1
-      swr: 2.3.3(react@18.3.1)
+      react: 19.0.0
+      swr: 2.3.3(react@19.0.0)
       throttleit: 2.1.0
     optionalDependencies:
       zod: 3.24.2
@@ -9870,7 +9883,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@puppeteer/browsers@2.8.0':
+  '@puppeteer/browsers@2.9.0':
     dependencies:
       debug: 4.4.0(supports-color@8.1.1)
       extract-zip: 2.0.1
@@ -10416,6 +10429,10 @@ snapshots:
     dependencies:
       react: 18.3.1
 
+  '@remixicon/react@4.6.0(react@19.0.0)':
+    dependencies:
+      react: 19.0.0
+
   '@rollup/pluginutils@5.1.4(rollup@4.37.0)':
     dependencies:
       '@types/estree': 1.0.7
@@ -10939,7 +10956,7 @@ snapshots:
   '@swc/core@1.10.6':
     dependencies:
       '@swc/counter': 0.1.3
-      '@swc/types': 0.1.20
+      '@swc/types': 0.1.21
     optionalDependencies:
       '@swc/core-darwin-arm64': 1.10.6
       '@swc/core-darwin-x64': 1.10.6
@@ -10956,7 +10973,7 @@ snapshots:
   '@swc/counter@0.1.3':
     optional: true
 
-  '@swc/types@0.1.20':
+  '@swc/types@0.1.21':
     dependencies:
       '@swc/counter': 0.1.3
     optional: true
@@ -11210,7 +11227,7 @@ snapshots:
     dependencies:
       '@tauri-apps/api': 2.4.0
 
-  '@tauri-apps/plugin-shell@2.2.0':
+  '@tauri-apps/plugin-shell@2.2.1':
     dependencies:
       '@tauri-apps/api': 2.4.0
 
@@ -11406,7 +11423,7 @@ snapshots:
       prosemirror-transform: 1.10.3
       prosemirror-view: 1.38.1
 
-  '@tiptap/react@2.11.5(@tiptap/core@2.11.5(@tiptap/pm@2.11.5))(@tiptap/pm@2.11.5)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@tiptap/react@2.11.5(@tiptap/core@2.11.5(@tiptap/pm@2.11.5))(@tiptap/pm@2.11.5)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@tiptap/core': 2.11.5(@tiptap/pm@2.11.5)
       '@tiptap/extension-bubble-menu': 2.11.5(@tiptap/core@2.11.5(@tiptap/pm@2.11.5))(@tiptap/pm@2.11.5)
@@ -11414,9 +11431,9 @@ snapshots:
       '@tiptap/pm': 2.11.5
       '@types/use-sync-external-store': 0.0.6
       fast-deep-equal: 3.1.3
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      use-sync-external-store: 1.4.0(react@18.3.1)
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+      use-sync-external-store: 1.4.0(react@19.0.0)
 
   '@tiptap/starter-kit@2.11.5':
     dependencies:
@@ -11535,7 +11552,7 @@ snapshots:
     dependencies:
       undici-types: 5.26.5
 
-  '@types/node@20.17.28':
+  '@types/node@20.17.30':
     dependencies:
       undici-types: 6.19.8
     optional: true
@@ -11543,6 +11560,11 @@ snapshots:
   '@types/node@22.13.13':
     dependencies:
       undici-types: 6.20.0
+
+  '@types/node@22.14.0':
+    dependencies:
+      undici-types: 6.21.0
+    optional: true
 
   '@types/normalize-package-data@2.4.4': {}
 
@@ -11587,6 +11609,11 @@ snapshots:
   '@types/ws@8.18.0':
     dependencies:
       '@types/node': 22.13.13
+
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 22.14.0
+    optional: true
 
   '@types/yargs-parser@21.0.3': {}
 
@@ -12216,7 +12243,7 @@ snapshots:
 
   '@wdio/repl@9.4.4':
     dependencies:
-      '@types/node': 20.17.28
+      '@types/node': 20.17.30
     optional: true
 
   '@wdio/reporter@8.43.0':
@@ -12262,7 +12289,7 @@ snapshots:
 
   '@wdio/types@9.12.2':
     dependencies:
-      '@types/node': 20.17.28
+      '@types/node': 20.17.30
     optional: true
 
   '@wdio/utils@8.41.0':
@@ -12286,7 +12313,7 @@ snapshots:
 
   '@wdio/utils@9.12.2':
     dependencies:
-      '@puppeteer/browsers': 2.8.0
+      '@puppeteer/browsers': 2.9.0
       '@wdio/logger': 9.4.4
       '@wdio/types': 9.12.2
       decamelize: 6.0.0
@@ -12307,6 +12334,9 @@ snapshots:
   '@wojtekmaj/date-utils@1.5.1': {}
 
   '@zip.js/zip.js@2.7.57': {}
+
+  '@zip.js/zip.js@2.7.60':
+    optional: true
 
   abort-controller@3.0.0:
     dependencies:
@@ -12341,17 +12371,17 @@ snapshots:
     optionalDependencies:
       react: 18.3.1
 
-  ai@4.2.6(react@18.3.1)(zod@3.24.2):
+  ai@4.2.6(react@19.0.0)(zod@3.24.2):
     dependencies:
       '@ai-sdk/provider': 1.1.0
       '@ai-sdk/provider-utils': 2.2.1(zod@3.24.2)
-      '@ai-sdk/react': 1.2.2(react@18.3.1)(zod@3.24.2)
+      '@ai-sdk/react': 1.2.2(react@19.0.0)(zod@3.24.2)
       '@ai-sdk/ui-utils': 1.2.1(zod@3.24.2)
       '@opentelemetry/api': 1.9.0
       jsondiffpatch: 0.6.0
       zod: 3.24.2
     optionalDependencies:
-      react: 18.3.1
+      react: 19.0.0
 
   ajv@6.12.6:
     dependencies:
@@ -13200,7 +13230,7 @@ snapshots:
   edgedriver@6.1.1:
     dependencies:
       '@wdio/logger': 9.4.4
-      '@zip.js/zip.js': 2.7.57
+      '@zip.js/zip.js': 2.7.60
       decamelize: 6.0.0
       edge-paths: 3.0.5
       fast-xml-parser: 4.5.3
@@ -13813,7 +13843,7 @@ snapshots:
   geckodriver@5.0.0:
     dependencies:
       '@wdio/logger': 9.4.4
-      '@zip.js/zip.js': 2.7.57
+      '@zip.js/zip.js': 2.7.60
       decamelize: 6.0.0
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
@@ -14065,7 +14095,7 @@ snapshots:
 
   html-void-elements@3.0.0: {}
 
-  htmlfy@0.6.5:
+  htmlfy@0.6.6:
     optional: true
 
   htmlparser2@9.1.0:
@@ -16249,6 +16279,12 @@ snapshots:
       react: 18.3.1
       use-sync-external-store: 1.4.0(react@18.3.1)
 
+  swr@2.3.3(react@19.0.0):
+    dependencies:
+      dequal: 2.0.3
+      react: 19.0.0
+      use-sync-external-store: 1.4.0(react@19.0.0)
+
   tabbable@6.2.0: {}
 
   tailwind-merge@2.6.0: {}
@@ -16613,6 +16649,9 @@ snapshots:
 
   undici-types@6.20.0: {}
 
+  undici-types@6.21.0:
+    optional: true
+
   undici@6.21.2:
     optional: true
 
@@ -16739,6 +16778,10 @@ snapshots:
   use-sync-external-store@1.4.0(react@18.3.1):
     dependencies:
       react: 18.3.1
+
+  use-sync-external-store@1.4.0(react@19.0.0):
+    dependencies:
+      react: 19.0.0
 
   userhome@1.0.1: {}
 
@@ -16984,8 +17027,8 @@ snapshots:
 
   webdriver@9.12.2:
     dependencies:
-      '@types/node': 20.17.28
-      '@types/ws': 8.18.0
+      '@types/node': 20.17.30
+      '@types/ws': 8.18.1
       '@wdio/config': 9.12.2
       '@wdio/logger': 9.4.4
       '@wdio/protocols': 9.12.2
@@ -17037,7 +17080,7 @@ snapshots:
 
   webdriverio@9.12.2:
     dependencies:
-      '@types/node': 20.17.28
+      '@types/node': 20.17.30
       '@types/sinonjs__fake-timers': 8.1.5
       '@wdio/config': 9.12.2
       '@wdio/logger': 9.4.4
@@ -17051,7 +17094,7 @@ snapshots:
       css-shorthand-properties: 1.1.2
       css-value: 0.0.1
       grapheme-splitter: 1.0.4
-      htmlfy: 0.6.5
+      htmlfy: 0.6.6
       is-plain-obj: 4.1.0
       jszip: 3.10.1
       lodash.clonedeep: 4.5.0
@@ -17255,5 +17298,11 @@ snapshots:
       '@types/react': 18.3.20
       react: 18.3.1
       use-sync-external-store: 1.4.0(react@18.3.1)
+
+  zustand@5.0.3(@types/react@18.3.20)(react@19.0.0)(use-sync-external-store@1.4.0(react@19.0.0)):
+    optionalDependencies:
+      '@types/react': 18.3.20
+      react: 19.0.0
+      use-sync-external-store: 1.4.0(react@19.0.0)
 
   zwitch@2.0.4: {}
