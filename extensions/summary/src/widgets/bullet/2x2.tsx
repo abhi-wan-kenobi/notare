@@ -62,11 +62,6 @@ const Widget: WidgetTwoByTwo = ({ queryClient }) => {
           return null;
         }
 
-        // TODO
-        // const timeline_view = await listenerCommands.getTimeline({
-        //   last_n_seconds: 100,
-        // });
-
         const systemMessageContent = await templateCommands.render(
           TEMPLATE_SYSTEM_KEY,
           {

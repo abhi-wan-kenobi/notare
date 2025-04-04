@@ -64,7 +64,7 @@ export default function MockProvider({
 const mockTranscriptIPC = (): (() => void) | undefined => {
   try {
     mockIPC((cmd, args) => {
-      if (cmd == "plugin:listener|get_timeline") {
+      if (cmd == "plugin:listener|get_timeline_view") {
         return handleGetTimeline();
       }
 

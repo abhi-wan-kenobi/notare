@@ -27,6 +27,60 @@ impl UserDatabase {
         }]
     }
 
+    pub async fn get_timeline_view_onboarding(
+        &self,
+    ) -> Result<hypr_timeline::TimelineView, crate::Error> {
+        let (transcripts, diarizations): (
+            Vec<hypr_listener_interface::TranscriptChunk>,
+            Vec<hypr_listener_interface::DiarizationChunk>,
+        ) = (
+            serde_json::from_str(hypr_data::english_3::TRANSCRIPTION_JSON).unwrap(),
+            serde_json::from_str(hypr_data::english_3::DIARIZATION_JSON).unwrap(),
+        );
+
+        let mut timeline = hypr_timeline::Timeline::default();
+
+        for t in transcripts {
+            timeline.add_transcription(t);
+        }
+        for d in diarizations {
+            timeline.add_diarization(d);
+        }
+
+        return Ok(timeline.view(hypr_timeline::TimelineFilter {
+            last_n_seconds: None,
+        }));
+    }
+
+    pub async fn get_timeline_view(
+        &self,
+        session_id: impl Into<String>,
+    ) -> Result<Option<hypr_timeline::TimelineView>, crate::Error> {
+        let session = self
+            .get_session(GetSessionFilter::Id(session_id.into()))
+            .await?;
+
+        if session.is_none() {
+            return Ok(None);
+        }
+
+        let session = session.unwrap();
+        let mut timeline = hypr_timeline::Timeline::default();
+
+        for chunk in session.conversations {
+            for transcript in chunk.transcripts {
+                timeline.add_transcription(transcript);
+            }
+            for diarization in chunk.diarizations {
+                timeline.add_diarization(diarization);
+            }
+        }
+
+        Ok(Some(timeline.view(hypr_timeline::TimelineFilter {
+            last_n_seconds: None,
+        })))
+    }
+
     pub async fn get_session(
         &self,
         filter: GetSessionFilter,

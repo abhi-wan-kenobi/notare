@@ -3071,6 +3071,7 @@ dependencies = [
  "calendar-interface",
  "chrono",
  "codes-iso-639",
+ "data",
  "db-core",
  "libsql",
  "listener-interface",
@@ -3080,6 +3081,7 @@ dependencies = [
  "specta",
  "strum 0.26.3",
  "thiserror 2.0.12",
+ "timeline",
  "tokio",
  "uuid",
 ]
@@ -12087,6 +12089,7 @@ dependencies = [
  "tauri-plugin",
  "tauri-specta",
  "thiserror 2.0.12",
+ "timeline",
  "tokio",
  "tracing",
  "turso",

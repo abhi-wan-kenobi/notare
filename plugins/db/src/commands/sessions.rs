@@ -37,6 +37,49 @@ pub async fn onboarding_session_id(
 #[tauri::command]
 #[specta::specta]
 #[tracing::instrument(skip(state))]
+pub async fn get_timeline_view_onboarding(
+    state: tauri::State<'_, crate::ManagedState>,
+) -> Result<hypr_timeline::TimelineView, String> {
+    let guard = state.lock().await;
+
+    let db = guard
+        .db
+        .as_ref()
+        .ok_or(crate::Error::NoneDatabase)
+        .map_err(|e| e.to_string())?;
+
+    let v = db
+        .get_timeline_view_onboarding()
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(v)
+}
+
+#[tauri::command]
+#[specta::specta]
+#[tracing::instrument(skip(state))]
+pub async fn get_timeline_view(
+    state: tauri::State<'_, crate::ManagedState>,
+    session_id: String,
+) -> Result<Option<hypr_timeline::TimelineView>, String> {
+    let guard = state.lock().await;
+
+    let db = guard
+        .db
+        .as_ref()
+        .ok_or(crate::Error::NoneDatabase)
+        .map_err(|e| e.to_string())?;
+
+    let v = db
+        .get_timeline_view(session_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(v)
+}
+
+#[tauri::command]
+#[specta::specta]
+#[tracing::instrument(skip(state))]
 pub async fn upsert_session(
     state: tauri::State<'_, crate::ManagedState>,
     session: hypr_db_user::Session,

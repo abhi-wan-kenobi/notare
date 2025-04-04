@@ -2,6 +2,7 @@ import { Channel } from "@tauri-apps/api/core";
 import { LanguagesIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as listenerCommands, type SessionEvent, type TimelineView } from "@hypr/plugin-listener";
 import { Badge } from "@hypr/ui/components/ui/badge";
 import { Button } from "@hypr/ui/components/ui/button";
@@ -42,12 +43,17 @@ export function TranscriptWidget({
   }, [timeline?.items?.length, isLive]);
 
   useEffect(() => {
-    listenerCommands.getTimeline(sessionId, {
-      onboarding_override: isEnhanced,
-      last_n_seconds: null,
-    }).then((timeline) => {
+    const fn = async () => {
+      const onboardingSessionId = await dbCommands.onboardingSessionId();
+      const fn = (sessionId === onboardingSessionId && isEnhanced)
+        ? dbCommands.getTimelineViewOnboarding
+        : dbCommands.getTimelineView;
+
+      const timeline = await fn(sessionId);
       setTimeline(timeline);
-    });
+    };
+
+    fn();
   }, [sessionId, isEnhanced]);
 
   useEffect(() => {

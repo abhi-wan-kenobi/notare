@@ -7,12 +7,12 @@ const COMMANDS: &[&str] = &[
     "set_mic_muted",
     "get_speaker_muted",
     "set_speaker_muted",
-    "get_timeline",
     "subscribe",
     "unsubscribe",
     "start_session",
     "stop_session",
 ];
+
 fn main() {
     tauri_plugin::Builder::new(COMMANDS).build();
 }

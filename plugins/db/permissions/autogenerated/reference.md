@@ -14,6 +14,8 @@ Default permissions for the plugin
 - `allow-session-remove-participant`
 - `allow-session-list-participants`
 - `allow-session-get-event`
+- `allow-get-timeline-view`
+- `allow-get-timeline-view-onboarding`
 - `allow-upsert-calendar`
 - `allow-list-calendars`
 - `allow-list-templates`
@@ -334,6 +336,58 @@ Enables the get_session command without any pre-configured scope.
 <td>
 
 Denies the get_session command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-get-timeline-view`
+
+</td>
+<td>
+
+Enables the get_timeline_view command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-get-timeline-view`
+
+</td>
+<td>
+
+Denies the get_timeline_view command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-get-timeline-view-onboarding`
+
+</td>
+<td>
+
+Enables the get_timeline_view_onboarding command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-get-timeline-view-onboarding`
+
+</td>
+<td>
+
+Denies the get_timeline_view_onboarding command without any pre-configured scope.
 
 </td>
 </tr>

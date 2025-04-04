@@ -8,7 +8,6 @@ import { useHypr } from "@/contexts";
 import { ENHANCE_SYSTEM_TEMPLATE_KEY, ENHANCE_USER_TEMPLATE_KEY } from "@/templates";
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as dbCommands } from "@hypr/plugin-db";
-import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { commands as miscCommands } from "@hypr/plugin-misc";
 import { commands as templateCommands } from "@hypr/plugin-template";
 import Editor, { type TiptapEditor } from "@hypr/tiptap/editor";
@@ -62,10 +61,8 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
 
       const onboardingOutputExample = await dbCommands.onboardingSessionEnhancedMemoHtml();
 
-      const timeline = await listenerCommands.getTimeline(sessionId, {
-        last_n_seconds: null,
-        onboarding_override: true,
-      });
+      const fn = sessionId === onboardingSessionId ? dbCommands.getTimelineViewOnboarding : dbCommands.getTimelineView;
+      const timeline = await fn(sessionId);
 
       const systemMessage = await templateCommands.render(
         ENHANCE_SYSTEM_TEMPLATE_KEY,
@@ -219,6 +216,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
         >
           <div className="pointer-events-auto">
             <EnhanceButton
+              key={`enhance-button-${sessionId}`}
               handleClick={handleClickEnhance}
               session={sessionStore.session}
               showRaw={showRaw}

@@ -7,7 +7,7 @@ use tauri::ipc::Channel;
 use tokio::sync::{mpsc, Mutex};
 
 use crate::{SessionEvent, SessionEventStarted, SessionEventTimelineView};
-use hypr_timeline::{Timeline, TimelineFilter, TimelineView};
+use hypr_timeline::{Timeline, TimelineFilter};
 
 const SAMPLE_RATE: u32 = 16000;
 
@@ -26,7 +26,6 @@ pub trait ListenerPluginExt<R: tauri::Runtime> {
     fn set_mic_muted(&self, muted: bool) -> impl Future<Output = ()>;
     fn set_speaker_muted(&self, muted: bool) -> impl Future<Output = ()>;
 
-    fn get_timeline(&self, filter: TimelineFilter) -> impl Future<Output = TimelineView>;
     fn stop_session(&self) -> impl Future<Output = Result<(), crate::Error>>;
     fn start_session(
         &self,
@@ -140,17 +139,6 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
             if tx.send(muted).is_ok() {
                 s.speaker_muted = Some(muted);
             }
-        }
-    }
-
-    #[tracing::instrument(skip_all)]
-    async fn get_timeline(&self, filter: TimelineFilter) -> TimelineView {
-        let state = self.state::<crate::SharedState>();
-        let s = state.lock().await;
-
-        match s.timeline.as_ref() {
-            None => TimelineView::default(),
-            Some(timeline) => timeline.lock().await.view(filter),
         }
     }
 

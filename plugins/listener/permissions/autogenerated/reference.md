@@ -10,7 +10,6 @@ Default permissions for the plugin
 - `allow-subscribe`
 - `allow-unsubscribe`
 - `allow-stop-session`
-- `allow-get-timeline`
 - `allow-get-mic-muted`
 - `allow-set-mic-muted`
 - `allow-get-speaker-muted`

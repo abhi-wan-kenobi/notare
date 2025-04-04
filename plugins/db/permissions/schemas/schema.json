@@ -405,6 +405,26 @@
           "const": "deny-get-session"
         },
         {
+          "description": "Enables the get_timeline_view command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-timeline-view"
+        },
+        {
+          "description": "Denies the get_timeline_view command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-timeline-view"
+        },
+        {
+          "description": "Enables the get_timeline_view_onboarding command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-timeline-view-onboarding"
+        },
+        {
+          "description": "Denies the get_timeline_view_onboarding command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-timeline-view-onboarding"
+        },
+        {
           "description": "Enables the list_all_tags command without any pre-configured scope.",
           "type": "string",
           "const": "allow-list-all-tags"

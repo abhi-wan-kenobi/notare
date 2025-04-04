@@ -64,6 +64,12 @@ async sessionListParticipants(sessionId: string) : Promise<Human[]> {
 async sessionGetEvent(sessionId: string) : Promise<Event | null> {
     return await TAURI_INVOKE("plugin:db|session_get_event", { sessionId });
 },
+async getTimelineView(sessionId: string) : Promise<TimelineView | null> {
+    return await TAURI_INVOKE("plugin:db|get_timeline_view", { sessionId });
+},
+async getTimelineViewOnboarding() : Promise<TimelineView> {
+    return await TAURI_INVOKE("plugin:db|get_timeline_view_onboarding");
+},
 async getConfig() : Promise<Config> {
     return await TAURI_INVOKE("plugin:db|get_config");
 },
@@ -168,6 +174,8 @@ export type Session = { id: string; created_at: string; visited_at: string; user
 export type Tag = { id: string; name: string }
 export type Template = { id: string; user_id: string; title: string; description: string; sections: TemplateSection[]; tags: string[] }
 export type TemplateSection = { title: string; description: string }
+export type TimelineView = { items: TimelineViewItem[] }
+export type TimelineViewItem = { start: number; end: number; speaker: string; text: string }
 export type TranscriptChunk = { start: number; end: number; text: string }
 
 /** tauri-specta globals **/
