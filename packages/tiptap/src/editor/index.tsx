@@ -63,27 +63,8 @@ const Editor = forwardRef<{ editor: TiptapEditor | null }, EditorProps>(
           }
         }
 
-        // Prevent Tab and Shift+Tab from moving focus out of the editor
         if (e.key === "Tab") {
           e.preventDefault();
-        }
-
-        if (e.key === "ArrowUp" && editor?.state.selection.empty) {
-          const { from } = editor.state.selection;
-          const resolvedPos = editor.state.doc.resolve(from);
-
-          const isFirstNode = resolvedPos.depth > 0 && resolvedPos.index(0) === 0;
-
-          if (isFirstNode) {
-            e.preventDefault();
-            const titleInput = document.getElementById("note-title-input") as HTMLInputElement;
-            if (titleInput) {
-              titleInput.focus();
-
-              const length = titleInput.value.length;
-              titleInput.setSelectionRange(length, length);
-            }
-          }
         }
       };
 
