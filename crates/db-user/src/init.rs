@@ -191,12 +191,12 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
         description: Some("Boring Company is a tunnel construction company".to_string()),
     };
 
-    let yujong = Human {
+    let user = Human {
         id: user_id.into(),
         organization_id: Some(org_1.id.clone()),
         is_user: true,
-        full_name: Some("Yujong Lee".to_string()),
-        email: Some("yujonglee@hyprnote.com".to_string()),
+        full_name: None,
+        email: None,
         ..Human::default()
     };
 
@@ -228,7 +228,7 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
     };
 
     let humans = vec![
-        yujong.clone(),
+        user.clone(),
         bobby.clone(),
         john.clone(),
         alex.clone(),
@@ -237,7 +237,7 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
 
     let calendars = vec![Calendar {
         id: uuid::Uuid::new_v4().to_string(),
-        user_id: yujong.clone().id,
+        user_id: user.clone().id,
         tracking_id: "calendar_1".to_string(),
         name: "Work".to_string(),
         platform: Platform::Apple,
@@ -248,7 +248,7 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
         // previous
         Event {
             id: uuid::Uuid::new_v4().to_string(),
-            user_id: yujong.clone().id,
+            user_id: user.clone().id,
             tracking_id: "event_1".to_string(),
             calendar_id: calendars[0].id.clone(),
             name: "User Interview with Alex".to_string(),
@@ -260,7 +260,7 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
         // ongoing
         Event {
             id: uuid::Uuid::new_v4().to_string(),
-            user_id: yujong.clone().id,
+            user_id: user.clone().id,
             tracking_id: "event_2".to_string(),
             calendar_id: calendars[0].id.clone(),
             name: "Seed round pitch".to_string(),
@@ -272,7 +272,7 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
         // upcoming 1
         Event {
             id: uuid::Uuid::new_v4().to_string(),
-            user_id: yujong.clone().id,
+            user_id: user.clone().id,
             tracking_id: "event_4".to_string(),
             calendar_id: calendars[0].id.clone(),
             name: "Quick chat with Alex".to_string(),
@@ -283,7 +283,7 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
         },
         Event {
             id: uuid::Uuid::new_v4().to_string(),
-            user_id: yujong.clone().id,
+            user_id: user.clone().id,
             tracking_id: "event_5".to_string(),
             calendar_id: calendars[0].id.clone(),
             name: "Litellm dev meeting".to_string(),
@@ -311,56 +311,56 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
             title: "Session 0".to_string(),
             created_at: now - chrono::Duration::hours(1),
             visited_at: now - chrono::Duration::hours(1),
-            ..new_default_session(&yujong.id)
+            ..new_default_session(&user.id)
         },
         Session {
             title: "Session 1".to_string(),
             created_at: now,
             visited_at: now,
             calendar_event_id: Some(events[0].id.clone()),
-            ..new_default_session(&yujong.id)
+            ..new_default_session(&user.id)
         },
         Session {
             title: "Session 2".to_string(),
             created_at: now - chrono::Duration::days(1),
             visited_at: now - chrono::Duration::days(1),
-            ..new_default_session(&yujong.id)
+            ..new_default_session(&user.id)
         },
         Session {
             title: "Session 3".to_string(),
             created_at: now - chrono::Duration::days(7),
             visited_at: now - chrono::Duration::days(7),
-            ..new_default_session(&yujong.id)
+            ..new_default_session(&user.id)
         },
         Session {
             title: "Session 4".to_string(),
             created_at: now - chrono::Duration::days(10),
             visited_at: now - chrono::Duration::days(10),
-            ..new_default_session(&yujong.id)
+            ..new_default_session(&user.id)
         },
         Session {
             title: "Session 5".to_string(),
             created_at: now - chrono::Duration::days(34),
             visited_at: now - chrono::Duration::days(34),
-            ..new_default_session(&yujong.id)
+            ..new_default_session(&user.id)
         },
         Session {
             title: "Session 6".to_string(),
             created_at: now - chrono::Duration::days(48),
             visited_at: now - chrono::Duration::days(48),
-            ..new_default_session(&yujong.id)
+            ..new_default_session(&user.id)
         },
         Session {
             title: "Session 7".to_string(),
             created_at: now - chrono::Duration::days(98),
             visited_at: now - chrono::Duration::days(98),
-            ..new_default_session(&yujong.id)
+            ..new_default_session(&user.id)
         },
         Session {
             title: "Session 8".to_string(),
             created_at: now - chrono::Duration::days(148),
             visited_at: now - chrono::Duration::days(148),
-            ..new_default_session(&yujong.id)
+            ..new_default_session(&user.id)
         },
     ];
 
@@ -395,7 +395,7 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
     {
         let chat_group_1 = ChatGroup {
             id: uuid::Uuid::new_v4().to_string(),
-            user_id: yujong.clone().id,
+            user_id: user.clone().id,
             name: Some("Chat Group 1".to_string()),
             created_at: now,
         };

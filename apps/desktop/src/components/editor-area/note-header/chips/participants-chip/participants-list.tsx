@@ -190,9 +190,17 @@ function ParticipentItem({
           </Tooltip>
         </div>
         <div className="flex flex-col min-w-0 flex-1">
-          <span className="text-sm font-medium text-neutral-700 truncate">
-            {member.full_name}
-          </span>
+          {member.full_name
+            ? (
+              <span className="text-sm font-medium text-neutral-700 truncate">
+                {member.full_name ?? "???"}
+              </span>
+            )
+            : (
+              <span className="text-sm font-medium text-neutral-400">
+                {member.id === userId ? "You" : "Unknown"}
+              </span>
+            )}
           {member.job_title && (
             <span className="text-xs text-neutral-400 truncate">
               {member.job_title}
