@@ -1,20 +1,35 @@
 inputs:
-  cmd:
-    required: true
+  raw:
     type: string
-  app:
-    required: true
+    required: false
+    default: ""
   key:
     required: true
+  cmd:
+    required: false
+    type: string
+  app:
+    required: false
   channel:
     required: false
   working-directory:
-    required: true
+    required: false
+
+outputs:
+  raw:
+    value: ${{ steps.raw.outputs.stdout }}
 
 runs:
   using: "composite"
   steps:
     - uses: crabnebula-dev/cloud-release@v0
+      id: raw
+      if: inputs.raw != ''
+      with:
+        command: ${{ inputs.raw }}
+        api-key: ${{ inputs.key }}
+    - uses: crabnebula-dev/cloud-release@v0
+      if: inputs.raw == ''
       with:
         command: >-
           release ${{ inputs.cmd }} ${{ inputs.app }}
