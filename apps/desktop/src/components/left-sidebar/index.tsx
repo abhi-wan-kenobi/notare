@@ -41,6 +41,7 @@ export default function LeftSidebar() {
   const inMeetingAndNotInNote = (status === "active") && ongoingSessionId !== null && !isInOngoingNote;
 
   const events = useQuery({
+    refetchInterval: 3000,
     queryKey: ["events", ongoingSessionId],
     queryFn: async () => {
       const events = await dbCommands.listEvents({

@@ -210,7 +210,7 @@ msgstr "{weeks} weeks later"
 #~ msgstr "3 weeks ago"
 
 #. placeholder {0}: type === "google-calendar" ? "Google Calendar" : "Outlook Calendar"
-#: src/components/settings/views/calendar.tsx:96
+#: src/components/settings/views/calendar.tsx:106
 msgid "{0}"
 msgstr "{0}"
 
@@ -226,12 +226,16 @@ msgstr "{0}"
 msgid "{description}"
 msgstr "{description}"
 
+#: src/components/settings/views/calendar.tsx:275
+msgid "{selectedCount} calendars selected"
+msgstr "{selectedCount} calendars selected"
+
 #: src/components/settings/views/lab.tsx:94
 msgid "{title}"
 msgstr "{title}"
 
-#: src/components/settings/views/calendar.tsx:180
-#: src/components/settings/views/calendar.tsx:212
+#: src/components/settings/views/calendar.tsx:190
+#: src/components/settings/views/calendar.tsx:222
 msgid "Access granted"
 msgstr "Access granted"
 
@@ -320,17 +324,21 @@ msgstr "Built-in Templates"
 msgid "Calendar"
 msgstr "Calendar"
 
-#: src/components/settings/views/calendar.tsx:176
+#: src/components/settings/views/calendar.tsx:186
 msgid "Calendar Access"
 msgstr "Calendar Access"
 
-#: src/components/settings/views/calendar.tsx:104
+#: src/components/settings/views/calendar.tsx:114
 msgid "Calendar connected"
 msgstr "Calendar connected"
 
 #: src/components/settings/views/profile.tsx:140
 msgid "CEO"
 msgstr "CEO"
+
+#: src/components/settings/views/calendar.tsx:283
+msgid "Choose"
+msgstr "Choose"
 
 #: src/components/settings/views/ai.tsx:220
 msgid "Choose between speed and quality for speech recognition"
@@ -355,7 +363,7 @@ msgstr "Company Description"
 msgid "Company Name"
 msgstr "Company Name"
 
-#: src/components/settings/views/calendar.tsx:123
+#: src/components/settings/views/calendar.tsx:133
 msgid "Connect"
 msgstr "Connect"
 
@@ -368,15 +376,15 @@ msgstr "Connect"
 #~ msgstr "Connect to Contacts"
 
 #. placeholder {0}: type === "google-calendar" ? "Google" : "Outlook"
-#: src/components/settings/views/calendar.tsx:106
+#: src/components/settings/views/calendar.tsx:116
 msgid "Connect your {0} calendar to track upcoming events"
 msgstr "Connect your {0} calendar to track upcoming events"
 
-#: src/components/settings/views/calendar.tsx:181
+#: src/components/settings/views/calendar.tsx:191
 msgid "Connect your calendar and track events"
 msgstr "Connect your calendar and track events"
 
-#: src/components/settings/views/calendar.tsx:208
+#: src/components/settings/views/calendar.tsx:218
 msgid "Contacts Access"
 msgstr "Contacts Access"
 
@@ -517,8 +525,8 @@ msgstr "General"
 msgid "Get Started"
 msgstr "Get Started"
 
-#: src/components/settings/views/calendar.tsx:194
-#: src/components/settings/views/calendar.tsx:226
+#: src/components/settings/views/calendar.tsx:204
+#: src/components/settings/views/calendar.tsx:236
 msgid "Grant Access"
 msgstr "Grant Access"
 
@@ -617,6 +625,7 @@ msgid "Loading extension details..."
 msgstr "Loading extension details..."
 
 #: src/components/workspace-calendar/event-card.tsx:112
+#: src/components/settings/views/calendar.tsx:294
 #: src/components/settings/views/ai.tsx:199
 #: src/components/settings/views/ai.tsx:373
 msgid "Loading..."
@@ -687,6 +696,10 @@ msgstr "New note"
 #~ msgid "New window"
 #~ msgstr "New window"
 
+#: src/components/settings/views/calendar.tsx:300
+msgid "No calendars found"
+msgstr "No calendars found"
+
 #: src/components/settings/views/team.tsx:175
 msgid "No members found"
 msgstr "No members found"
@@ -719,7 +732,7 @@ msgstr "Notify upcoming events"
 msgid "Official Templates"
 msgstr "Official Templates"
 
-#: src/components/left-sidebar/index.tsx:151
+#: src/components/left-sidebar/index.tsx:152
 msgid "Open calendar view"
 msgstr "Open calendar view"
 
@@ -743,11 +756,11 @@ msgstr "Open in new window"
 msgid "Open Note"
 msgstr "Open Note"
 
-#: src/components/left-sidebar/index.tsx:132
+#: src/components/left-sidebar/index.tsx:133
 msgid "Open settings"
 msgstr "Open settings"
 
-#: src/components/settings/views/calendar.tsx:213
+#: src/components/settings/views/calendar.tsx:223
 msgid "Optional for participant suggestions"
 msgstr "Optional for participant suggestions"
 
@@ -884,6 +897,10 @@ msgstr "Sections"
 #: src/components/settings/views/notifications.tsx:181
 msgid "Select apps that should not trigger meeting notifications"
 msgstr "Select apps that should not trigger meeting notifications"
+
+#: src/components/settings/views/calendar.tsx:272
+msgid "Select Calendars"
+msgstr "Select Calendars"
 
 #: src/components/settings/views/general.tsx:149
 #~ msgid "Select language"
@@ -1158,6 +1175,10 @@ msgstr "You can make Hyprnote takes these words into account when transcribing"
 #: src/components/settings/views/general.tsx:175
 #~ msgid "You can make Hyprnote takes these words into account when transcribing."
 #~ msgstr "You can make Hyprnote takes these words into account when transcribing."
+
+#: src/components/settings/views/calendar.tsx:288
+msgid "Your Calendars"
+msgstr "Your Calendars"
 
 #: src/components/settings/views/profile.tsx:210
 #: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:142

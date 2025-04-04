@@ -16,8 +16,9 @@ Default permissions for the plugin
 - `allow-session-get-event`
 - `allow-get-timeline-view`
 - `allow-get-timeline-view-onboarding`
-- `allow-upsert-calendar`
 - `allow-list-calendars`
+- `allow-upsert-calendar`
+- `allow-toggle-calendar-selected`
 - `allow-list-templates`
 - `allow-upsert-template`
 - `allow-delete-template`
@@ -908,6 +909,32 @@ Enables the set_session_event command without any pre-configured scope.
 <td>
 
 Denies the set_session_event command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-toggle-calendar-selected`
+
+</td>
+<td>
+
+Enables the toggle_calendar_selected command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-toggle-calendar-selected`
+
+</td>
+<td>
+
+Denies the toggle_calendar_selected command without any pre-configured scope.
 
 </td>
 </tr>

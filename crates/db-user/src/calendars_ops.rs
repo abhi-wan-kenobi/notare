@@ -35,8 +35,7 @@ impl UserDatabase {
                     :selected
                 ) ON CONFLICT(tracking_id) DO UPDATE SET
                     name = :name,
-                    platform = :platform,
-                    selected = :selected
+                    platform = :platform
                 RETURNING *",
                 libsql::named_params! {
                     ":id": calendar.id,
@@ -46,6 +45,27 @@ impl UserDatabase {
                     ":platform": calendar.platform.to_string(),
                     ":selected": calendar.selected,
                 },
+            )
+            .await?;
+
+        let row = rows.next().await?.unwrap();
+        let calendar: Calendar = libsql::de::from_row(&row)?;
+        Ok(calendar)
+    }
+
+    pub async fn toggle_calendar_selected(
+        &self,
+        tracking_id: impl AsRef<str>,
+    ) -> Result<Calendar, crate::Error> {
+        let conn = self.conn()?;
+
+        let mut rows = conn
+            .query(
+                "UPDATE calendars 
+                SET selected = NOT selected 
+                WHERE tracking_id = ?
+                RETURNING *",
+                vec![tracking_id.as_ref()],
             )
             .await?;
 

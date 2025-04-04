@@ -21,9 +21,7 @@ impl From<DateTime<Utc>> for Job {
 
 const WORKER_NAME: &str = "apple_calendar_worker";
 
-pub async fn perform(_job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
-    tracing::info!("{}_perform_started", WORKER_NAME);
-
+async fn check_calendar_access() -> Result<(), Error> {
     let calendar_access = tauri::async_runtime::spawn_blocking(|| {
         let handle = hypr_calendar_apple::Handle::new();
         handle.calendar_access_status()
@@ -35,11 +33,18 @@ pub async fn perform(_job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
         return Err(crate::Error::CalendarAccessDenied.as_worker_error());
     }
 
+    Ok(())
+}
+
+#[tracing::instrument(skip(ctx), name = "apple_calendar_worker")]
+pub async fn perform(_job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
+    check_calendar_access().await?;
+
     let user_id = ctx.user_id.clone();
     let calendars = list_calendars().await.unwrap_or(vec![]);
 
     for calendar in calendars {
-        let _ = ctx
+        let db_calendar = match ctx
             .db
             .upsert_calendar(hypr_db_user::Calendar {
                 id: uuid::Uuid::new_v4().to_string(),
@@ -50,7 +55,17 @@ pub async fn perform(_job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
                 selected: false,
             })
             .await
-            .unwrap();
+        {
+            Ok(cal) => cal,
+            Err(e) => {
+                tracing::error!("calendar_upsert_error: {:?}", e);
+                continue;
+            }
+        };
+
+        if !db_calendar.selected {
+            continue;
+        }
 
         let events: Vec<hypr_db_user::Event> = list_events(calendar.clone())
             .await
@@ -60,7 +75,7 @@ pub async fn perform(_job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
                 id: uuid::Uuid::new_v4().to_string(),
                 tracking_id: e.id.clone(),
                 user_id: user_id.clone(),
-                calendar_id: calendar.id.clone(),
+                calendar_id: db_calendar.id.clone(),
                 name: e.name.clone(),
                 note: e.note.clone(),
                 start_date: e.start_date,
@@ -70,15 +85,12 @@ pub async fn perform(_job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
             .collect();
 
         for event in events {
-            let _ = ctx
-                .db
-                .upsert_event(event)
-                .await
-                .map_err(|e| crate::Error::DatabaseError(e).as_worker_error())?;
+            if let Err(e) = ctx.db.upsert_event(event).await {
+                tracing::error!("event_upsert_error: {:?}", e);
+            }
         }
     }
 
-    tracing::info!("{}_perform_finished", WORKER_NAME);
     Ok(())
 }
 
@@ -104,8 +116,8 @@ async fn list_events(calendar: Calendar) -> Result<Vec<Event>, String> {
 
     let filter = EventFilter {
         calendars: vec![calendar],
-        from: (now - chrono::Duration::days(30)),
-        to: (now + chrono::Duration::days(30)),
+        from: now,
+        to: (now + chrono::Duration::days(28)),
     };
 
     let apple_events = tauri::async_runtime::spawn_blocking(move || {

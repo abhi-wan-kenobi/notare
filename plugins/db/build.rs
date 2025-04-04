@@ -2,6 +2,7 @@ const COMMANDS: &[&str] = &[
     // calendar
     "list_calendars",
     "upsert_calendar",
+    "toggle_calendar_selected",
     // session
     "onboarding_session_enhanced_memo_html",
     "onboarding_session_id",

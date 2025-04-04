@@ -625,6 +625,16 @@
           "const": "deny-set-session-event"
         },
         {
+          "description": "Enables the toggle_calendar_selected command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-toggle-calendar-selected"
+        },
+        {
+          "description": "Denies the toggle_calendar_selected command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-toggle-calendar-selected"
+        },
+        {
           "description": "Enables the unassign_tag_from_session command without any pre-configured scope.",
           "type": "string",
           "const": "allow-unassign-tag-from-session"

@@ -34,3 +34,23 @@ pub async fn upsert_calendar(
         .await
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+#[specta::specta]
+#[tracing::instrument(skip(state))]
+pub async fn toggle_calendar_selected(
+    state: tauri::State<'_, crate::ManagedState>,
+    tracking_id: String,
+) -> Result<hypr_db_user::Calendar, String> {
+    let guard = state.lock().await;
+
+    let db = guard
+        .db
+        .as_ref()
+        .ok_or(crate::Error::NoneDatabase)
+        .map_err(|e| e.to_string())?;
+
+    db.toggle_calendar_selected(tracking_id)
+        .await
+        .map_err(|e| e.to_string())
+}

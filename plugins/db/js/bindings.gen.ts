@@ -19,6 +19,9 @@ async listCalendars() : Promise<Calendar[]> {
 async upsertCalendar(calendar: Calendar) : Promise<Calendar> {
     return await TAURI_INVOKE("plugin:db|upsert_calendar", { calendar });
 },
+async toggleCalendarSelected(trackingId: string) : Promise<Calendar> {
+    return await TAURI_INVOKE("plugin:db|toggle_calendar_selected", { trackingId });
+},
 async upsertSession(session: Session) : Promise<Session> {
     return await TAURI_INVOKE("plugin:db|upsert_session", { session });
 },

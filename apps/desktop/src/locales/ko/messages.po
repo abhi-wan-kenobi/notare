@@ -210,7 +210,7 @@ msgstr ""
 #~ msgstr "3주 전"
 
 #. placeholder {0}: type === "google-calendar" ? "Google Calendar" : "Outlook Calendar"
-#: src/components/settings/views/calendar.tsx:96
+#: src/components/settings/views/calendar.tsx:106
 msgid "{0}"
 msgstr "{0}"
 
@@ -226,12 +226,16 @@ msgstr "{0}"
 msgid "{description}"
 msgstr ""
 
+#: src/components/settings/views/calendar.tsx:275
+msgid "{selectedCount} calendars selected"
+msgstr ""
+
 #: src/components/settings/views/lab.tsx:94
 msgid "{title}"
 msgstr ""
 
-#: src/components/settings/views/calendar.tsx:180
-#: src/components/settings/views/calendar.tsx:212
+#: src/components/settings/views/calendar.tsx:190
+#: src/components/settings/views/calendar.tsx:222
 msgid "Access granted"
 msgstr "접근 권한이 승인되었습니다."
 
@@ -320,17 +324,21 @@ msgstr "기본 템플릿"
 msgid "Calendar"
 msgstr "캘린더"
 
-#: src/components/settings/views/calendar.tsx:176
+#: src/components/settings/views/calendar.tsx:186
 msgid "Calendar Access"
 msgstr "캘린더 접근 권한"
 
-#: src/components/settings/views/calendar.tsx:104
+#: src/components/settings/views/calendar.tsx:114
 msgid "Calendar connected"
 msgstr "캘린더가 연결되었습니다."
 
 #: src/components/settings/views/profile.tsx:140
 msgid "CEO"
 msgstr "대표"
+
+#: src/components/settings/views/calendar.tsx:283
+msgid "Choose"
+msgstr ""
 
 #: src/components/settings/views/ai.tsx:220
 msgid "Choose between speed and quality for speech recognition"
@@ -355,7 +363,7 @@ msgstr "회사 설명"
 msgid "Company Name"
 msgstr "회사명"
 
-#: src/components/settings/views/calendar.tsx:123
+#: src/components/settings/views/calendar.tsx:133
 msgid "Connect"
 msgstr "연결하기"
 
@@ -368,15 +376,15 @@ msgstr "연결하기"
 #~ msgstr "연락처에 연결하기"
 
 #. placeholder {0}: type === "google-calendar" ? "Google" : "Outlook"
-#: src/components/settings/views/calendar.tsx:106
+#: src/components/settings/views/calendar.tsx:116
 msgid "Connect your {0} calendar to track upcoming events"
 msgstr "{0} 캘린더를 연결하여 예정된 일정을 추적하세요."
 
-#: src/components/settings/views/calendar.tsx:181
+#: src/components/settings/views/calendar.tsx:191
 msgid "Connect your calendar and track events"
 msgstr "캘린더를 연결하고 일정을 추적하세요."
 
-#: src/components/settings/views/calendar.tsx:208
+#: src/components/settings/views/calendar.tsx:218
 msgid "Contacts Access"
 msgstr "연락처 접근 권한"
 
@@ -517,8 +525,8 @@ msgstr "일반"
 msgid "Get Started"
 msgstr "시작하기"
 
-#: src/components/settings/views/calendar.tsx:194
-#: src/components/settings/views/calendar.tsx:226
+#: src/components/settings/views/calendar.tsx:204
+#: src/components/settings/views/calendar.tsx:236
 msgid "Grant Access"
 msgstr "접근 권한 부여"
 
@@ -617,6 +625,7 @@ msgid "Loading extension details..."
 msgstr "익스텐션 정보 로딩 중..."
 
 #: src/components/workspace-calendar/event-card.tsx:112
+#: src/components/settings/views/calendar.tsx:294
 #: src/components/settings/views/ai.tsx:199
 #: src/components/settings/views/ai.tsx:373
 msgid "Loading..."
@@ -687,6 +696,10 @@ msgstr "노트 생성"
 #~ msgid "New window"
 #~ msgstr "새로운 창에서 열기"
 
+#: src/components/settings/views/calendar.tsx:300
+msgid "No calendars found"
+msgstr ""
+
 #: src/components/settings/views/team.tsx:175
 msgid "No members found"
 msgstr "멤버가 없습니다."
@@ -719,7 +732,7 @@ msgstr "예정된 일정을 알림"
 msgid "Official Templates"
 msgstr "공식 템플릿"
 
-#: src/components/left-sidebar/index.tsx:151
+#: src/components/left-sidebar/index.tsx:152
 msgid "Open calendar view"
 msgstr "캘린더 뷰 열기"
 
@@ -743,11 +756,11 @@ msgstr ""
 msgid "Open Note"
 msgstr "노트 열기"
 
-#: src/components/left-sidebar/index.tsx:132
+#: src/components/left-sidebar/index.tsx:133
 msgid "Open settings"
 msgstr "설정 열기"
 
-#: src/components/settings/views/calendar.tsx:213
+#: src/components/settings/views/calendar.tsx:223
 msgid "Optional for participant suggestions"
 msgstr "참가자 추천을 위한 선택 사항"
 
@@ -884,6 +897,10 @@ msgstr "섹션"
 #: src/components/settings/views/notifications.tsx:181
 msgid "Select apps that should not trigger meeting notifications"
 msgstr "회의 알림을 발생시키지 않을 앱을 선택하세요."
+
+#: src/components/settings/views/calendar.tsx:272
+msgid "Select Calendars"
+msgstr ""
 
 #: src/components/settings/views/general.tsx:149
 #~ msgid "Select language"
@@ -1158,6 +1175,10 @@ msgstr ""
 #: src/components/settings/views/general.tsx:175
 #~ msgid "You can make Hyprnote takes these words into account when transcribing."
 #~ msgstr "하이퍼노트가 텍스트 변환 시 이러한 단어들을 고려하도록 설정할 수 있습니다."
+
+#: src/components/settings/views/calendar.tsx:288
+msgid "Your Calendars"
+msgstr ""
 
 #: src/components/settings/views/profile.tsx:210
 #: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:142

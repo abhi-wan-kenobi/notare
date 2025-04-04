@@ -25,3 +25,7 @@
 - Records and transcribes your meetings
 - Generates **powerful summaries** from your raw meeting notes
 - Works **offline** using **open source models**
+
+## Features
+
+- [x] Apple Calendar integration
