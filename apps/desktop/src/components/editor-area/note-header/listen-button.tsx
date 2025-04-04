@@ -1,6 +1,6 @@
 import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { EarIcon, EarOffIcon, MicIcon, MicOffIcon, Volume2Icon, VolumeOffIcon } from "lucide-react";
+import { MicIcon, MicOffIcon, PauseIcon, Volume2Icon, VolumeOffIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import SoundIndicator from "@/components/sound-indicator";
@@ -24,7 +24,12 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
     pause: s.pause,
     isCurrent: s.sessionId === sessionId,
     status: s.status,
+    timeline: s.timeline,
   }));
+
+  const hasTimeline = ongoingSessionStore.timeline !== null && ongoingSessionStore.timeline.items
+    && ongoingSessionStore.timeline.items.length > 0;
+  const showResumeButton = ongoingSessionStore.status === "inactive" && hasTimeline;
 
   const { data: isMicMuted, refetch: refetchMicMuted } = useQuery({
     queryKey: ["mic-muted"],
@@ -61,8 +66,6 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
     },
   });
 
-  // TODO: Inactivity detection will be handled in the server
-
   const handleStartSession = () => {
     if (ongoingSessionStore.status === "inactive") {
       ongoingSessionStore.start(sessionId);
@@ -89,23 +92,43 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
   return (
     <>
       {ongoingSessionStore.status === "loading" && (
-        <Button variant="outline" className="p-2" disabled>
-          <div className="flex items-center justify-center size-5">
-            <Spinner color="black" />
-          </div>
-        </Button>
+        <div className="w-9 h-9 flex items-center justify-center">
+          <button className="w-9 h-9 rounded-full bg-red-500 border-none cursor-pointer outline-none p-0 flex items-center justify-center">
+            <Spinner color="white" />
+          </button>
+        </div>
       )}
-
-      {ongoingSessionStore.status === "inactive" && (
+      {showResumeButton && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              variant="outline"
+            <button
               onClick={handleStartSession}
-              className="p-2"
+              className="w-14 h-9 rounded-full bg-red-100 border-2 transition-all hover:scale-95 border-red-400 cursor-pointer outline-none p-0 flex items-center justify-center"
+              style={{
+                boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8) inset",
+              }}
             >
-              <EarOffIcon size={20} />
-            </Button>
+              <Trans>Resume</Trans>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="end">
+            <p>
+              <Trans>Resume recording</Trans>
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {ongoingSessionStore.status === "inactive" && !showResumeButton && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={handleStartSession}
+              className="w-9 h-9 rounded-full bg-red-500 border-2 transition-all hover:scale-95 border-neutral-400 cursor-pointer outline-none p-0 flex items-center justify-center"
+              style={{
+                boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8) inset",
+              }}
+            >
+            </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" align="end">
             <p>
@@ -120,15 +143,20 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <PopoverTrigger asChild>
-                <Button variant="default" className="p-2">
-                  <EarIcon size={20} />
-                  <SoundIndicator theme="light" />
-                </Button>
+                <button
+                  onClick={handleStartSession}
+                  className="w-14 h-9 rounded-full bg-red-100 border-2 transition-all hover:scale-95 border-red-400 cursor-pointer outline-none p-0 flex items-center justify-center"
+                  style={{
+                    boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8) inset",
+                  }}
+                >
+                  <SoundIndicator color="#ef4444" size="long" />
+                </button>
               </PopoverTrigger>
             </TooltipTrigger>
             <TooltipContent side="bottom" align="end">
               <p>
-                <Trans>Stop recording</Trans>
+                <Trans>Pause recording</Trans>
               </p>
             </TooltipContent>
           </Tooltip>
@@ -152,7 +180,8 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
               onClick={handleStopSession}
               className="w-full"
             >
-              <Trans>Stop listening</Trans>
+              <PauseIcon size={16} />
+              <Trans>Pause recording</Trans>
             </Button>
           </PopoverContent>
         </Popover>
