@@ -138,6 +138,9 @@ importers:
       '@hypr/extension-transcript':
         specifier: workspace:^
         version: link:../../extensions/transcript
+      '@hypr/extension-twenty':
+        specifier: workspace:^
+        version: link:../../extensions/twenty
       '@hypr/extension-types':
         specifier: workspace:^
         version: link:../../extensions/types
@@ -845,6 +848,9 @@ importers:
       '@hypr/extension-transcript':
         specifier: workspace:^
         version: link:../transcript
+      '@hypr/extension-twenty':
+        specifier: workspace:^
+        version: link:../twenty
     devDependencies:
       typescript:
         specifier: ^5.8.2
@@ -1068,6 +1074,9 @@ importers:
       '@blocknote/core':
         specifier: ^0.26.0
         version: 0.26.0(@types/hast@3.0.4)
+      '@hookform/resolvers':
+        specifier: ^3.10.0
+        version: 3.10.0(react-hook-form@7.54.2(react@18.3.1))
       '@hypr/extension-types':
         specifier: workspace:^
         version: link:../types
@@ -1092,6 +1101,12 @@ importers:
       '@tauri-apps/api':
         specifier: ^2.4.0
         version: 2.4.0
+      lucide-react:
+        specifier: ^0.474.0
+        version: 0.474.0(react@18.3.1)
+      react-hook-form:
+        specifier: ^7.54.2
+        version: 7.54.2(react@18.3.1)
       zod:
         specifier: ^3.24.2
         version: 3.24.2

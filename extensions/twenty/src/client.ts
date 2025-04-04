@@ -7,6 +7,7 @@ const BASE = "https://api.twenty.com/rest";
 
 type Person = {
   id: string;
+  avatarUrl: string;
   emails: { primaryEmail: string };
   name: { firstName: string; lastName: string };
 };
@@ -17,11 +18,15 @@ type Note = {
   bodyV2: { blocknote: any };
 };
 
-export const setApiKey = async (key: string) => {
+const setApiKey = async (key: string) => {
   await authCommands.setInVault("twenty-api-key", key);
 };
 
 const getApiKey = async () => {
+  if (import.meta.env.DEV && import.meta.env.VITE_TWENTY_API_KEY) {
+    return import.meta.env.VITE_TWENTY_API_KEY;
+  }
+
   const key = await authCommands.getFromVault("twenty-api-key");
   if (!key) {
     throw new Error("no_twenty_api_key");
@@ -31,23 +36,38 @@ const getApiKey = async () => {
 };
 
 // https://twenty.com/developers/rest-api/core#/operations/findManyPeople
-export const findManyPeople = async (email: string) => {
+const findManyPeople = async (query?: string) => {
+  if (!query || query.trim() === "") {
+    return [];
+  }
+
   const key = await getApiKey();
 
-  const filter = `emails.primaryEmail[eq]:${encodeURIComponent(email)}`;
+  const filterParts = [
+    `name.firstName[ilike]:${query}`,
+    `name.lastName[ilike]:${query}`,
+    `emails.primaryEmail[ilike]:${query}`,
+  ];
+  const filter = `or(${filterParts.join(",")})`;
 
-  const response = await fetch(`${BASE}/people?depth=0&filter=${filter}`, {
+  const url = new URL(`${BASE}/people`);
+  url.search = new URLSearchParams({
+    limit: "10",
+    depth: "0",
+    filter,
+  }).toString();
+
+  const response = await fetch(url.toString(), {
     headers: {
       Authorization: `Bearer ${key}`,
     },
   });
-
   const { data: { people } } = await response.json();
   return people as Person[];
 };
 
 // https://twenty.com/developers/rest-api/core#/operations/createOneNote
-export const createOneNote = async (title: string, body: string) => {
+const createOneNote = async (title: string, body: string) => {
   const key = await getApiKey();
 
   const editor = BlockNoteEditor.create();
@@ -71,12 +91,12 @@ export const createOneNote = async (title: string, body: string) => {
     }),
   });
 
-  const { data } = await res.json();
-  return data as Note;
+  const { data: { createNote } } = await res.json();
+  return createNote as Note;
 };
 
 // https://twenty.com/developers/rest-api/core#/operations/createManyNoteTargets
-export const createManyNoteTargets = async (noteId: string, personIds: string[]) => {
+const createManyNoteTargets = async (noteId: string, personIds: string[]) => {
   const key = await getApiKey();
 
   const response = await fetch(`${BASE}/batch/noteTargets`, {
@@ -92,3 +112,13 @@ export const createManyNoteTargets = async (noteId: string, personIds: string[])
   const { data } = await response.json();
   return data;
 };
+
+export const ops = {
+  setApiKey,
+  getApiKey,
+  findManyPeople,
+  createOneNote,
+  createManyNoteTargets,
+};
+
+export type { Note, Person };

@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
-import Twenty2x1 from "../widgets/default/2x1";
+import Config from "../config/api-key-form";
 import MockProvider from "../widgets/default/mock";
 
 const meta = {
-  title: "Twenty/Default/2x1",
-  component: Twenty2x1,
-} satisfies Meta<typeof Twenty2x1>;
+  title: "Twenty/Config",
+  component: Config,
+} satisfies Meta<typeof Config>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
