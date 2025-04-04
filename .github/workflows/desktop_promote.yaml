@@ -30,6 +30,8 @@ jobs:
             update_platform=$(jq -r '.updatePlatform' <<< "$asset")
             public_platform=$(jq -r '.publicPlatform' <<< "$asset")
             filename=$(jq -r '.filename' <<< "$asset")
+            cleaned_filename=$(echo "$filename" | sed 's/ Nightly//g' | sed 's/Nightly //g' | sed 's/Nightly_/_/g')
+            filename=$cleaned_filename
             signature=$(jq -r '.signature' <<< "$asset")
 
             curl "https://cdn.crabnebula.app/asset/$asset_id" --output "$filename"

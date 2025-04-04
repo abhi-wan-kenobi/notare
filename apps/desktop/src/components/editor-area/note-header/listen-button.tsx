@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/
 import { Spinner } from "@hypr/ui/components/ui/spinner";
 import { toast } from "@hypr/ui/components/ui/toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
-import { useOngoingSession } from "@hypr/utils/contexts";
+import { useOngoingSession, useSession } from "@hypr/utils/contexts";
 
 interface ListenButtonProps {
   sessionId: string;
@@ -27,9 +27,8 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
     timeline: s.timeline,
   }));
 
-  const hasTimeline = ongoingSessionStore.timeline !== null && ongoingSessionStore.timeline.items
-    && ongoingSessionStore.timeline.items.length > 0;
-  const showResumeButton = ongoingSessionStore.status === "inactive" && hasTimeline;
+  const startedBefore = useSession(sessionId, (s) => s.session.conversations.length > 0);
+  const showResumeButton = ongoingSessionStore.status === "inactive" && startedBefore;
 
   const { data: isMicMuted, refetch: refetchMicMuted } = useQuery({
     queryKey: ["mic-muted"],
