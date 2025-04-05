@@ -20,6 +20,7 @@ import {
 } from "@/contexts";
 import { registerTemplates } from "@/templates";
 import { commands } from "@/types";
+import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { events as windowsEvents, getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 import { OngoingSessionProvider, SessionsProvider } from "@hypr/utils/contexts";
 
@@ -49,6 +50,7 @@ function Component() {
           <OngoingSessionProvider>
             <LeftSidebarProvider>
               <RightPanelProvider>
+                <AudioPermissions />
                 <MainWindowStateEventSupport />
                 <SettingsProvider>
                   <NewNoteProvider>
@@ -82,6 +84,24 @@ function Component() {
       {showNotifications && <Notifications />}
     </>
   );
+}
+
+function AudioPermissions() {
+  useEffect(() => {
+    listenerCommands.checkMicrophoneAccess().then((isGranted) => {
+      if (!isGranted) {
+        listenerCommands.requestMicrophoneAccess();
+      }
+    });
+
+    listenerCommands.checkSystemAudioAccess().then((isGranted) => {
+      if (!isGranted) {
+        listenerCommands.requestSystemAudioAccess();
+      }
+    });
+  }, []);
+
+  return null;
 }
 
 function MainWindowStateEventSupport() {

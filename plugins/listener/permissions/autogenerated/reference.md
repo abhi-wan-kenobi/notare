@@ -4,6 +4,8 @@ Default permissions for the plugin
 
 #### This default permission set includes the following:
 
+- `allow-check-microphone-access`
+- `allow-check-system-audio-access`
 - `allow-request-microphone-access`
 - `allow-request-system-audio-access`
 - `allow-open-microphone-access-settings`
@@ -25,6 +27,58 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`listener:allow-check-microphone-access`
+
+</td>
+<td>
+
+Enables the check_microphone_access command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:deny-check-microphone-access`
+
+</td>
+<td>
+
+Denies the check_microphone_access command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:allow-check-system-audio-access`
+
+</td>
+<td>
+
+Enables the check_system_audio_access command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`listener:deny-check-system-audio-access`
+
+</td>
+<td>
+
+Denies the check_system_audio_access command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>

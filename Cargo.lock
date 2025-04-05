@@ -12185,6 +12185,8 @@ dependencies = [
  "futures-util",
  "hound",
  "listener-interface",
+ "objc2 0.6.0",
+ "objc2-foundation 0.3.0",
  "rodio",
  "serde",
  "serde_json",

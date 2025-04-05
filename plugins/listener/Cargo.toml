@@ -50,3 +50,7 @@ futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 hound = { workspace = true }
+
+[target."cfg(target_os = \"macos\")".dependencies]
+objc2 = "0.6"
+objc2-foundation = "0.3"

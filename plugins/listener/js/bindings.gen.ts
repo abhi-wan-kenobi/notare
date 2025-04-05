@@ -7,10 +7,16 @@
 
 
 export const commands = {
-async requestMicrophoneAccess() : Promise<boolean> {
+async checkMicrophoneAccess() : Promise<boolean> {
+    return await TAURI_INVOKE("plugin:listener|check_microphone_access");
+},
+async checkSystemAudioAccess() : Promise<boolean> {
+    return await TAURI_INVOKE("plugin:listener|check_system_audio_access");
+},
+async requestMicrophoneAccess() : Promise<null> {
     return await TAURI_INVOKE("plugin:listener|request_microphone_access");
 },
-async requestSystemAudioAccess() : Promise<boolean> {
+async requestSystemAudioAccess() : Promise<null> {
     return await TAURI_INVOKE("plugin:listener|request_system_audio_access");
 },
 async openMicrophoneAccessSettings() : Promise<null> {

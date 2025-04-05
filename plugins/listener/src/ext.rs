@@ -6,14 +6,22 @@ use hypr_audio::AsyncSource;
 use tauri::ipc::Channel;
 use tokio::sync::{mpsc, Mutex};
 
+#[cfg(target_os = "macos")]
+use {
+    objc2::{class, msg_send, runtime::Bool},
+    objc2_foundation::NSString,
+};
+
 use crate::{SessionEvent, SessionEventStarted, SessionEventTimelineView};
 use hypr_timeline::{Timeline, TimelineFilter};
 
 const SAMPLE_RATE: u32 = 16000;
 
 pub trait ListenerPluginExt<R: tauri::Runtime> {
-    fn request_microphone_access(&self) -> impl Future<Output = Result<bool, crate::Error>>;
-    fn request_system_audio_access(&self) -> impl Future<Output = Result<bool, crate::Error>>;
+    fn check_microphone_access(&self) -> impl Future<Output = Result<bool, crate::Error>>;
+    fn check_system_audio_access(&self) -> impl Future<Output = Result<bool, crate::Error>>;
+    fn request_microphone_access(&self) -> impl Future<Output = Result<(), crate::Error>>;
+    fn request_system_audio_access(&self) -> impl Future<Output = Result<(), crate::Error>>;
     fn open_microphone_access_settings(&self) -> impl Future<Output = Result<(), crate::Error>>;
     fn open_system_audio_access_settings(&self) -> impl Future<Output = Result<(), crate::Error>>;
 
@@ -35,21 +43,69 @@ pub trait ListenerPluginExt<R: tauri::Runtime> {
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
     #[tracing::instrument(skip_all)]
-    async fn request_microphone_access(&self) -> Result<bool, crate::Error> {
-        let mut mic_sample_stream = hypr_audio::AudioInput::from_mic().stream();
-        let sample = mic_sample_stream.next().await;
-        Ok(sample.is_some())
+    async fn check_microphone_access(&self) -> Result<bool, crate::Error> {
+        #[cfg(target_os = "macos")]
+        // https://github.com/ayangweb/tauri-plugin-macos-permissions/blob/c025ab4/src/commands.rs#L157
+        {
+            unsafe {
+                let av_media_type = NSString::from_str("soun");
+                let status: i32 = msg_send![
+                    class!(AVCaptureDevice),
+                    authorizationStatusForMediaType: &*av_media_type
+                ];
+
+                Ok(status == 3)
+            }
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            let mut mic_sample_stream = hypr_audio::AudioInput::from_mic().stream();
+            let sample = mic_sample_stream.next().await;
+            Ok(sample.is_some())
+        }
     }
 
     #[tracing::instrument(skip_all)]
-    async fn request_system_audio_access(&self) -> Result<bool, crate::Error> {
+    async fn check_system_audio_access(&self) -> Result<bool, crate::Error> {
+        Ok(true)
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn request_microphone_access(&self) -> Result<(), crate::Error> {
+        #[cfg(target_os = "macos")]
+        // https://github.com/ayangweb/tauri-plugin-macos-permissions/blob/c025ab4/src/commands.rs#L184
+        {
+            unsafe {
+                let av_media_type = NSString::from_str("soun");
+                type CompletionBlock = Option<extern "C" fn(Bool)>;
+                let completion_block: CompletionBlock = None;
+                let _: () = msg_send![
+                    class!(AVCaptureDevice),
+                    requestAccessForMediaType: &*av_media_type,
+                    completionHandler: completion_block
+                ];
+            }
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            let mut mic_sample_stream = hypr_audio::AudioInput::from_mic().stream();
+            mic_sample_stream.next().await;
+        }
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn request_system_audio_access(&self) -> Result<(), crate::Error> {
         let stop = hypr_audio::AudioOutput::silence();
 
         let mut speaker_sample_stream = hypr_audio::AudioInput::from_speaker(None).stream();
-        let sample = speaker_sample_stream.next().await;
+        speaker_sample_stream.next().await;
 
         let _ = stop.send(());
-        Ok(sample.is_some())
+        Ok(())
     }
 
     #[tracing::instrument(skip_all)]

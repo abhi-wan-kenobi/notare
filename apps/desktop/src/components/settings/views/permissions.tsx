@@ -69,12 +69,12 @@ export default function Permissions() {
 
   const micPermissionStatus = useQuery({
     queryKey: ["micPermission"],
-    queryFn: () => listenerCommands.requestMicrophoneAccess(),
+    queryFn: () => listenerCommands.checkMicrophoneAccess(),
   });
 
   const systemAudioPermissionStatus = useQuery({
     queryKey: ["systemAudioPermission"],
-    queryFn: () => listenerCommands.requestSystemAudioAccess(),
+    queryFn: () => listenerCommands.checkSystemAudioAccess(),
   });
 
   const micPermission = useMutation({
