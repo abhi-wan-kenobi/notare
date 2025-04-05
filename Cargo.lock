@@ -6368,6 +6368,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "include_url_macro"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91acbbba84ea9a052bdaa07984178b032b95fbef36a82758dbaeb63783b5f796"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "reqwest 0.11.27",
+ "serde",
+ "serde_json",
+ "syn 2.0.100",
+ "url",
+]
+
+[[package]]
 name = "indenter"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7228,6 +7243,7 @@ dependencies = [
  "dirs 6.0.0",
  "encoding_rs",
  "futures-util",
+ "include_url_macro",
  "llama-cpp-2",
  "serde",
  "thiserror 2.0.12",

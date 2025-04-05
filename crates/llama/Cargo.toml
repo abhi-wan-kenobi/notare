@@ -14,5 +14,6 @@ async-openai = { workspace = true }
 futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt", "sync"] }
 
+include_url_macro = "0.1.0"
 serde = { workspace = true }
 thiserror = { workspace = true }
