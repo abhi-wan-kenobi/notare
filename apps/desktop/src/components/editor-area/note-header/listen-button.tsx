@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import SoundIndicator from "@/components/sound-indicator";
 import { commands as listenerCommands } from "@hypr/plugin-listener";
+import { commands as localSttCommands } from "@hypr/plugin-local-stt";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { Spinner } from "@hypr/ui/components/ui/spinner";
@@ -18,6 +19,16 @@ interface ListenButtonProps {
 
 export default function ListenButton({ sessionId }: ListenButtonProps) {
   const [open, setOpen] = useState(false);
+
+  const modelDownloaded = useQuery({
+    queryKey: ["check-stt-model-downloaded"],
+    refetchInterval: 1000,
+    queryFn: async () => {
+      const currentModel = await localSttCommands.getCurrentModel();
+      const isDownloaded = await localSttCommands.isModelDownloaded(currentModel);
+      return isDownloaded;
+    },
+  });
 
   const ongoingSessionStore = useOngoingSession((s) => ({
     start: s.start,
@@ -99,6 +110,7 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
+              disabled={!modelDownloaded.data}
               onClick={handleStartSession}
               className="w-14 h-9 rounded-full bg-red-100 border-2 transition-all hover:scale-95 border-red-400 cursor-pointer outline-none p-0 flex items-center justify-center"
               style={{
@@ -119,6 +131,7 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
+              disabled={!modelDownloaded.data}
               onClick={handleStartSession}
               className="w-9 h-9 rounded-full bg-red-500 border-2 transition-all hover:scale-95 border-neutral-400 cursor-pointer outline-none p-0 flex items-center justify-center"
               style={{
