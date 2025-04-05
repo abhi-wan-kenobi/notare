@@ -307,6 +307,18 @@
           "markdownDescription": "Denies the get_fingerprint command without any pre-configured scope."
         },
         {
+          "description": "Enables the get_git_hash command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-git-hash",
+          "markdownDescription": "Enables the get_git_hash command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_git_hash command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-git-hash",
+          "markdownDescription": "Denies the get_git_hash command without any pre-configured scope."
+        },
+        {
           "description": "Enables the opinionated_md_to_html command without any pre-configured scope.",
           "type": "string",
           "const": "allow-opinionated-md-to-html",

@@ -9,6 +9,7 @@ description = ""
 
 [build-dependencies]
 tauri-plugin = { workspace = true, features = ["build"] }
+vergen-gix = { version = "1.0.0", features = ["build"] }
 
 [dev-dependencies]
 specta-typescript = { workspace = true }

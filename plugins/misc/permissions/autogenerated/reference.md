@@ -45,6 +45,32 @@ Denies the get_fingerprint command without any pre-configured scope.
 <tr>
 <td>
 
+`misc:allow-get-git-hash`
+
+</td>
+<td>
+
+Enables the get_git_hash command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`misc:deny-get-git-hash`
+
+</td>
+<td>
+
+Denies the get_git_hash command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `misc:allow-opinionated-md-to-html`
 
 </td>

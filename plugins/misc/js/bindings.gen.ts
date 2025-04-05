@@ -7,6 +7,9 @@
 
 
 export const commands = {
+async getGitHash() : Promise<string> {
+    return await TAURI_INVOKE("plugin:misc|get_git_hash");
+},
 async getFingerprint() : Promise<string> {
     return await TAURI_INVOKE("plugin:misc|get_fingerprint");
 },

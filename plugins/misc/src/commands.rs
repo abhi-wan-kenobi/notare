@@ -2,6 +2,12 @@ use crate::ext::UtilsPluginExt;
 
 #[tauri::command]
 #[specta::specta]
+pub async fn get_git_hash<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<String, String> {
+    Ok(app.get_git_hash())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn get_fingerprint<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<String, String> {
