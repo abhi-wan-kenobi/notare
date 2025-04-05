@@ -23,25 +23,25 @@
     "@hypr/plugin-listener": "workspace:^",
     "@hypr/ui": "workspace:^",
     "@hypr/utils": "workspace:^",
-    "@tanstack/react-query": "^5.69.0",
-    "@tauri-apps/api": "^2.4.0",
+    "@tanstack/react-query": "^5.71.10",
+    "@tauri-apps/api": "^2.4.1",
     "lucide-react": "^0.474.0",
-    "react-hook-form": "^7.54.2",
+    "react-hook-form": "^7.55.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@storybook/addon-essentials": "^8.6.9",
-    "@storybook/addon-interactions": "^8.6.9",
-    "@storybook/react": "^8.6.9",
-    "@storybook/react-vite": "^8.6.9",
-    "@types/node": "^22.13.13",
+    "@storybook/addon-essentials": "^8.6.12",
+    "@storybook/addon-interactions": "^8.6.12",
+    "@storybook/react": "^8.6.12",
+    "@storybook/react-vite": "^8.6.12",
+    "@types/node": "^22.14.0",
     "@types/react": "^18.3.20",
     "autoprefixer": "^10.4.21",
     "msw": "^2.7.3",
     "msw-storybook-addon": "^2.0.4",
-    "storybook": "^8.6.9",
+    "storybook": "^8.6.12",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.3"
   },
   "msw": {
     "workerDirectory": [

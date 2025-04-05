@@ -14,25 +14,25 @@
   },
   "dependencies": {
     "@remixicon/react": "^4.6.0",
-    "@tiptap/core": "^2.11.5",
-    "@tiptap/extension-highlight": "^2.11.5",
-    "@tiptap/extension-link": "^2.11.5",
-    "@tiptap/extension-list-keymap": "^2.11.5",
-    "@tiptap/extension-placeholder": "^2.11.5",
-    "@tiptap/extension-strike": "^2.11.5",
-    "@tiptap/extension-task-item": "^2.11.5",
-    "@tiptap/extension-task-list": "^2.11.5",
-    "@tiptap/extension-typography": "^2.11.5",
-    "@tiptap/extension-underline": "^2.11.5",
-    "@tiptap/pm": "^2.11.5",
-    "@tiptap/react": "^2.11.5",
-    "@tiptap/starter-kit": "^2.11.5",
+    "@tiptap/core": "^2.11.7",
+    "@tiptap/extension-highlight": "^2.11.7",
+    "@tiptap/extension-link": "^2.11.7",
+    "@tiptap/extension-list-keymap": "^2.11.7",
+    "@tiptap/extension-placeholder": "^2.11.7",
+    "@tiptap/extension-strike": "^2.11.7",
+    "@tiptap/extension-task-item": "^2.11.7",
+    "@tiptap/extension-task-list": "^2.11.7",
+    "@tiptap/extension-typography": "^2.11.7",
+    "@tiptap/extension-underline": "^2.11.7",
+    "@tiptap/pm": "^2.11.7",
+    "@tiptap/react": "^2.11.7",
+    "@tiptap/starter-kit": "^2.11.7",
     "clsx": "^2.1.1",
     "tippy.js": "^6.3.7"
   },
   "devDependencies": {
-    "@types/node": "^22.13.13",
+    "@types/node": "^22.14.0",
     "@types/react": "^18.3.20",
-    "@types/react-dom": "^18.3.5"
+    "@types/react-dom": "^18.3.6"
   }
 }
