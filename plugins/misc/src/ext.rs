@@ -1,12 +1,12 @@
 use tauri::{Manager, Runtime};
 
-pub trait UtilsPluginExt<R: Runtime> {
+pub trait MiscPluginExt<R: Runtime> {
     fn get_git_hash(&self) -> String;
     fn get_fingerprint(&self) -> String;
     fn opinionated_md_to_html(&self, text: impl AsRef<str>) -> Result<String, String>;
 }
 
-impl<R: Runtime, T: Manager<R>> UtilsPluginExt<R> for T {
+impl<R: Runtime, T: Manager<R>> MiscPluginExt<R> for T {
     fn get_git_hash(&self) -> String {
         env!("VERGEN_GIT_SHA").to_string()
     }

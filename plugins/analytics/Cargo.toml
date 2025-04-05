@@ -16,8 +16,10 @@ specta-typescript = { workspace = true }
 [dependencies]
 hypr-analytics = { workspace = true }
 
-tauri = { workspace = true, features = ["test"] }
+tauri-plugin-misc = { workspace = true }
 tauri-plugin-store2 = { workspace = true }
+
+tauri = { workspace = true, features = ["test"] }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 
 serde = { workspace = true }

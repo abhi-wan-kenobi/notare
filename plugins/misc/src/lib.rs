@@ -1,5 +1,6 @@
 mod commands;
 mod ext;
+pub use ext::*;
 
 const PLUGIN_NAME: &str = "misc";
 

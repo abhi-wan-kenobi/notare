@@ -1,4 +1,4 @@
-use crate::ext::UtilsPluginExt;
+use crate::MiscPluginExt;
 
 #[tauri::command]
 #[specta::specta]

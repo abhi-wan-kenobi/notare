@@ -1,4 +1,6 @@
 use std::future::Future;
+
+use tauri_plugin_misc::MiscPluginExt;
 use tauri_plugin_store2::StorePluginExt;
 
 pub trait AnalyticsPluginExt<R: tauri::Runtime> {
@@ -20,11 +22,18 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> crate::AnalyticsPluginExt<R> for T
             store.get(crate::StoreKey::Disabled)?.unwrap_or(false)
         };
 
+        let git_hash = self.get_git_hash();
         let bundle_id = self.config().identifier.clone();
+
         payload
             .props
             .entry("bundle_id".into())
             .or_insert(bundle_id.into());
+
+        payload
+            .props
+            .entry("git_hash".into())
+            .or_insert(git_hash.into());
 
         if !disabled {
             let client = self.state::<hypr_analytics::AnalyticsClient>();

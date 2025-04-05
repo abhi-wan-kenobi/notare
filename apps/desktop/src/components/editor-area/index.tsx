@@ -106,6 +106,16 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
       return text.then(miscCommands.opinionatedMdToHtml);
     },
     onSuccess: () => {
+      try {
+        analyticsCommands.event({
+          event: "enhance_note_clicked",
+          distinct_id: userId,
+          session_id: sessionId,
+        });
+      } catch (error) {
+        console.error(error);
+      }
+
       sessionStore.persistSession();
     },
     onError: (error) => {
