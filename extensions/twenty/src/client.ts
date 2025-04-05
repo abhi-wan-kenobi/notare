@@ -67,11 +67,27 @@ const findManyPeople = async (query?: string) => {
 };
 
 // https://twenty.com/developers/rest-api/core#/operations/createOneNote
-const createOneNote = async (title: string, body: string) => {
+const createOneNote = async (title: string, html: string) => {
   const key = await getApiKey();
 
   const editor = BlockNoteEditor.create();
-  const blocks = await editor.tryParseMarkdownToBlocks(body);
+  const blocks = await editor.tryParseHTMLToBlocks(html);
+
+  blocks.push({
+    type: "paragraph",
+    content: [{
+      type: "text",
+      text: `Notes from meeting on ${new Date().toLocaleDateString()}`,
+      styles: {},
+    }],
+    children: [],
+    id: crypto.randomUUID(),
+    props: {
+      backgroundColor: "default",
+      textColor: "default",
+      textAlignment: "right",
+    },
+  });
 
   const res = await fetch(`${BASE}/notes`, {
     method: "POST",

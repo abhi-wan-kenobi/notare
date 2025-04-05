@@ -1,13 +1,13 @@
-import { useOngoingSession, useSession } from "@hypr/utils/contexts";
+import { useOngoingSession } from "@hypr/utils/contexts";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
+import { commands as dbCommands } from "@hypr/plugin-db";
 import { ops as twenty, type Person } from "../../client";
 
 export const useTwentyNotes = (sessionId: string) => {
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const session = useSession(sessionId, (s) => s.session);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPeople, setSelectedPeople] = useState<Array<Person>>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -23,9 +23,15 @@ export const useTwentyNotes = (sessionId: string) => {
 
   const createNoteMutation = useMutation({
     mutationFn: async () => {
+      const session = await dbCommands.getSession({ id: sessionId });
+
+      if (!session || !session.enhanced_memo_html) {
+        return;
+      }
+
       const note = await twenty.createOneNote(
         session.title,
-        `${session.enhanced_memo_html}\n\nNotes from meeting on ${new Date().toLocaleDateString()}`,
+        session.enhanced_memo_html,
       );
 
       await twenty.createManyNoteTargets(
