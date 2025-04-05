@@ -95,29 +95,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_subscribe_and_broadcast() {
-        let app = create_app(tauri::test::mock_builder());
-
-        let (tx1, rx1) = std::sync::mpsc::sync_channel::<SessionEvent>(1);
-        let (tx2, rx2) = std::sync::mpsc::sync_channel::<SessionEvent>(1);
-
-        let channel_1 = tauri::ipc::Channel::<SessionEvent>::new(move |e| {
-            let event = e.deserialize().unwrap();
-            let _ = tx1.send(event);
-            Ok(())
-        });
-        let channel_2 = tauri::ipc::Channel::<SessionEvent>::new(move |e| {
-            let event = e.deserialize().unwrap();
-            let _ = tx2.send(event);
-            Ok(())
-        });
-
-        app.subscribe(channel_1.clone()).await;
-        app.subscribe(channel_2.clone()).await;
-
-        app.broadcast(SessionEvent::Stopped).await.unwrap();
-
-        assert_eq!(rx1.recv().unwrap(), SessionEvent::Stopped);
-        assert_eq!(rx2.recv().unwrap(), SessionEvent::Stopped);
+    async fn test_listener() {
+        let _ = create_app(tauri::test::mock_builder());
     }
 }

@@ -25,8 +25,9 @@ pub trait ListenerPluginExt<R: tauri::Runtime> {
     fn open_microphone_access_settings(&self) -> impl Future<Output = Result<(), crate::Error>>;
     fn open_system_audio_access_settings(&self) -> impl Future<Output = Result<(), crate::Error>>;
 
-    fn subscribe(&self, channel: Channel<SessionEvent>) -> impl Future<Output = ()>;
-    fn unsubscribe(&self, channel: Channel<SessionEvent>) -> impl Future<Output = ()>;
+    fn subscribe(&self, c: Channel<SessionEvent>)
+        -> impl Future<Output = Result<(), crate::Error>>;
+    fn unsubscribe(&self, c: Channel<SessionEvent>) -> impl Future<Output = ()>;
     fn broadcast(&self, event: SessionEvent) -> impl Future<Output = Result<(), crate::Error>>;
 
     fn get_mic_muted(&self) -> impl Future<Output = bool>;
@@ -127,12 +128,20 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn subscribe(&self, channel: Channel<SessionEvent>) {
+    async fn subscribe(&self, channel: Channel<SessionEvent>) -> Result<(), crate::Error> {
         let state = self.state::<crate::SharedState>();
         let s = state.lock().await;
 
-        let id = channel.id();
-        s.channels.lock().await.insert(id, channel);
+        if s.listen_stream_handle.is_some() {}
+
+        match s.listen_stream_handle {
+            None => Err(crate::Error::SessionNotStarted),
+            Some(_) => {
+                let id = channel.id();
+                s.channels.lock().await.insert(id, channel);
+                Ok(())
+            }
+        }
     }
 
     #[tracing::instrument(skip_all)]

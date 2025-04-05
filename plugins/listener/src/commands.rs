@@ -100,8 +100,7 @@ pub async fn subscribe<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     channel: tauri::ipc::Channel<SessionEvent>,
 ) -> Result<(), String> {
-    app.subscribe(channel).await;
-    Ok(())
+    app.subscribe(channel).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

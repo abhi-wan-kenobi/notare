@@ -32,6 +32,10 @@ export function useTranscript(sessionId: string | null) {
   }, [sessionId, isEnhanced]);
 
   useEffect(() => {
+    if (ongoingSessionStatus !== "active") {
+      return;
+    }
+
     const channel = new Channel<SessionEvent>();
     listenerCommands.subscribe(channel);
 
@@ -52,7 +56,7 @@ export function useTranscript(sessionId: string | null) {
     return () => {
       listenerCommands.unsubscribe(channel);
     };
-  }, []);
+  }, [ongoingSessionStatus]);
 
   const handleLanguageChange = (value: string) => {
     setSelectedLanguage(value);
