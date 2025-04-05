@@ -85,11 +85,11 @@ export default function ProfileComponent() {
         description: v.companyDescription ?? null,
       };
 
-      await Promise.all([
-        dbCommands.upsertHuman(newHuman),
-        dbCommands.upsertOrganization(newOrganization),
-      ]);
+      await dbCommands.upsertOrganization(newOrganization).then(() => {
+        dbCommands.upsertHuman(newHuman);
+      });
     },
+    onError: console.error,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["config", "profile", userId] });
     },

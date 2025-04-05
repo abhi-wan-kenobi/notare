@@ -10,7 +10,7 @@ impl UserDatabase {
         let conn = self.conn()?;
 
         let sql = format!(
-            "INSERT INTO {} (id, name, description) VALUES (?, ?, ?) RETURNING *",
+            "INSERT OR REPLACE INTO {} (id, name, description) VALUES (?, ?, ?) RETURNING *",
             Organization::sql_table()
         );
         let params = (organization.id, organization.name, organization.description);
