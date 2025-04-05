@@ -11,6 +11,7 @@ type State = {
 
 type Actions = {
   get: () => State & Actions;
+  refresh: () => Promise<void>;
   setShowRaw: (showRaw: boolean) => void;
   updateTitle: (title: string) => void;
   updateRawNote: (note: string) => void;
@@ -25,6 +26,13 @@ export const createSessionStore = (session: Session) => {
     session,
     showRaw: !session.enhanced_memo_html,
     get,
+    refresh: async () => {
+      const { session: { id } } = get();
+      const session = await dbCommands.getSession({ id });
+      if (session) {
+        set({ session });
+      }
+    },
     setShowRaw: (showRaw: boolean) => {
       set((state) =>
         mutate(state, (draft) => {

@@ -48,10 +48,15 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
   const sessionStore = useSession(sessionId, (s) => ({
     session: s.session,
     persistSession: s.persistSession,
+    refresh: s.refresh,
   }));
 
   const editorRef = useRef<{ editor: TiptapEditor | null }>(null);
   const editorKey = useMemo(() => `session-${sessionId}-${showRaw ? "raw" : "enhanced"}`, [sessionId, showRaw]);
+
+  useEffect(() => {
+    sessionStore.refresh();
+  }, [sessionStore.refresh, ongoingSessionStatus]);
 
   const enhance = useMutation({
     mutationFn: async () => {

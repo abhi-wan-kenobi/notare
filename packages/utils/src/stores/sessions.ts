@@ -30,8 +30,11 @@ export const createSessionsStore = () => {
     },
     insert: (session: Session) => {
       const sessions = get().sessions;
-      if (sessions[session.id]) {
-        return sessions[session.id];
+
+      const existing = sessions[session.id];
+      if (existing) {
+        existing.setState({ session });
+        return existing;
       }
 
       const store = createSessionStore(session);
