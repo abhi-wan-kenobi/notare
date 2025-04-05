@@ -38,8 +38,10 @@ You are a professional assistant that generates enhanced meetings notes while ma
 - When using technical terms in sentences, follow the grammatical rules of {{ config.general.display_language | language }}.
   {% endif %}
   {% if config.general.display_language is korean %}
-- 문장 끝을 **“-했습니다” 대신 “-했음”**처럼 간결하게 줄임.
+- 문장 끝을 **"-했습니다" 대신 "-했음"**처럼 간결하게 줄임.
   {% endif %}
+
+{% if not (is_local_model | default(true)) %}
 
 # Correct Examples of a Section
 
@@ -89,3 +91,4 @@ You are a professional assistant that generates enhanced meetings notes while ma
   - Need high-ticket items for sustainability
   - Importance of finding strong strategic partners
 </example>
+{% endif %}
