@@ -2,6 +2,8 @@
 
 Default permissions for the plugin
 
+#### This default permission set includes the following:
+
 - `allow-start-oauth-server`
 - `allow-stop-oauth-server`
 - `allow-init-vault`

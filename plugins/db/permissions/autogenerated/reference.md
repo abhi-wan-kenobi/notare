@@ -2,6 +2,8 @@
 
 Default permissions for the plugin
 
+#### This default permission set includes the following:
+
 - `allow-onboarding-session-enhanced-memo-html`
 - `allow-onboarding-session-id`
 - `allow-upsert-session`

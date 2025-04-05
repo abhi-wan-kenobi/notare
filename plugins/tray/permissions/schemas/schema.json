@@ -297,7 +297,8 @@
         {
           "description": "Default permissions for the plugin",
           "type": "string",
-          "const": "default"
+          "const": "default",
+          "markdownDescription": "Default permissions for the plugin"
         }
       ]
     }

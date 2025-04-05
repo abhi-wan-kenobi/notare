@@ -297,97 +297,116 @@
         {
           "description": "Enables the window_destroy command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-window-destroy"
+          "const": "allow-window-destroy",
+          "markdownDescription": "Enables the window_destroy command without any pre-configured scope."
         },
         {
           "description": "Denies the window_destroy command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-window-destroy"
+          "const": "deny-window-destroy",
+          "markdownDescription": "Denies the window_destroy command without any pre-configured scope."
         },
         {
           "description": "Enables the window_emit_navigate command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-window-emit-navigate"
+          "const": "allow-window-emit-navigate",
+          "markdownDescription": "Enables the window_emit_navigate command without any pre-configured scope."
         },
         {
           "description": "Denies the window_emit_navigate command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-window-emit-navigate"
+          "const": "deny-window-emit-navigate",
+          "markdownDescription": "Denies the window_emit_navigate command without any pre-configured scope."
         },
         {
           "description": "Enables the window_get_floating command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-window-get-floating"
+          "const": "allow-window-get-floating",
+          "markdownDescription": "Enables the window_get_floating command without any pre-configured scope."
         },
         {
           "description": "Denies the window_get_floating command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-window-get-floating"
+          "const": "deny-window-get-floating",
+          "markdownDescription": "Denies the window_get_floating command without any pre-configured scope."
         },
         {
           "description": "Enables the window_is_visible command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-window-is-visible"
+          "const": "allow-window-is-visible",
+          "markdownDescription": "Enables the window_is_visible command without any pre-configured scope."
         },
         {
           "description": "Denies the window_is_visible command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-window-is-visible"
+          "const": "deny-window-is-visible",
+          "markdownDescription": "Denies the window_is_visible command without any pre-configured scope."
         },
         {
           "description": "Enables the window_navigate command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-window-navigate"
+          "const": "allow-window-navigate",
+          "markdownDescription": "Enables the window_navigate command without any pre-configured scope."
         },
         {
           "description": "Denies the window_navigate command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-window-navigate"
+          "const": "deny-window-navigate",
+          "markdownDescription": "Denies the window_navigate command without any pre-configured scope."
         },
         {
           "description": "Enables the window_position command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-window-position"
+          "const": "allow-window-position",
+          "markdownDescription": "Enables the window_position command without any pre-configured scope."
         },
         {
           "description": "Denies the window_position command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-window-position"
+          "const": "deny-window-position",
+          "markdownDescription": "Denies the window_position command without any pre-configured scope."
         },
         {
           "description": "Enables the window_resize_default command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-window-resize-default"
+          "const": "allow-window-resize-default",
+          "markdownDescription": "Enables the window_resize_default command without any pre-configured scope."
         },
         {
           "description": "Denies the window_resize_default command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-window-resize-default"
+          "const": "deny-window-resize-default",
+          "markdownDescription": "Denies the window_resize_default command without any pre-configured scope."
         },
         {
           "description": "Enables the window_set_floating command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-window-set-floating"
+          "const": "allow-window-set-floating",
+          "markdownDescription": "Enables the window_set_floating command without any pre-configured scope."
         },
         {
           "description": "Denies the window_set_floating command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-window-set-floating"
+          "const": "deny-window-set-floating",
+          "markdownDescription": "Denies the window_set_floating command without any pre-configured scope."
         },
         {
           "description": "Enables the window_show command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-window-show"
+          "const": "allow-window-show",
+          "markdownDescription": "Enables the window_show command without any pre-configured scope."
         },
         {
           "description": "Denies the window_show command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-window-show"
+          "const": "deny-window-show",
+          "markdownDescription": "Denies the window_show command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-window-show`\n- `allow-window-destroy`\n- `allow-window-position`\n- `allow-window-resize-default`\n- `allow-window-get-floating`\n- `allow-window-set-floating`\n- `allow-window-navigate`\n- `allow-window-emit-navigate`\n- `allow-window-is-visible`",
           "type": "string",
-          "const": "default"
+          "const": "default",
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-window-show`\n- `allow-window-destroy`\n- `allow-window-position`\n- `allow-window-resize-default`\n- `allow-window-get-floating`\n- `allow-window-set-floating`\n- `allow-window-navigate`\n- `allow-window-emit-navigate`\n- `allow-window-is-visible`"
         }
       ]
     }

@@ -297,437 +297,524 @@
         {
           "description": "Enables the assign_tag_to_session command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-assign-tag-to-session"
+          "const": "allow-assign-tag-to-session",
+          "markdownDescription": "Enables the assign_tag_to_session command without any pre-configured scope."
         },
         {
           "description": "Denies the assign_tag_to_session command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-assign-tag-to-session"
+          "const": "deny-assign-tag-to-session",
+          "markdownDescription": "Denies the assign_tag_to_session command without any pre-configured scope."
         },
         {
           "description": "Enables the create_chat_group command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-create-chat-group"
+          "const": "allow-create-chat-group",
+          "markdownDescription": "Enables the create_chat_group command without any pre-configured scope."
         },
         {
           "description": "Denies the create_chat_group command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-create-chat-group"
+          "const": "deny-create-chat-group",
+          "markdownDescription": "Denies the create_chat_group command without any pre-configured scope."
         },
         {
           "description": "Enables the delete_session command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-delete-session"
+          "const": "allow-delete-session",
+          "markdownDescription": "Enables the delete_session command without any pre-configured scope."
         },
         {
           "description": "Denies the delete_session command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-delete-session"
+          "const": "deny-delete-session",
+          "markdownDescription": "Denies the delete_session command without any pre-configured scope."
         },
         {
           "description": "Enables the delete_template command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-delete-template"
+          "const": "allow-delete-template",
+          "markdownDescription": "Enables the delete_template command without any pre-configured scope."
         },
         {
           "description": "Denies the delete_template command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-delete-template"
+          "const": "deny-delete-template",
+          "markdownDescription": "Denies the delete_template command without any pre-configured scope."
         },
         {
           "description": "Enables the get_config command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-config"
+          "const": "allow-get-config",
+          "markdownDescription": "Enables the get_config command without any pre-configured scope."
         },
         {
           "description": "Denies the get_config command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-config"
+          "const": "deny-get-config",
+          "markdownDescription": "Denies the get_config command without any pre-configured scope."
         },
         {
           "description": "Enables the get_event command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-event"
+          "const": "allow-get-event",
+          "markdownDescription": "Enables the get_event command without any pre-configured scope."
         },
         {
           "description": "Denies the get_event command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-event"
+          "const": "deny-get-event",
+          "markdownDescription": "Denies the get_event command without any pre-configured scope."
         },
         {
           "description": "Enables the get_extension_mapping command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-extension-mapping"
+          "const": "allow-get-extension-mapping",
+          "markdownDescription": "Enables the get_extension_mapping command without any pre-configured scope."
         },
         {
           "description": "Denies the get_extension_mapping command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-extension-mapping"
+          "const": "deny-get-extension-mapping",
+          "markdownDescription": "Denies the get_extension_mapping command without any pre-configured scope."
         },
         {
           "description": "Enables the get_human command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-human"
+          "const": "allow-get-human",
+          "markdownDescription": "Enables the get_human command without any pre-configured scope."
         },
         {
           "description": "Denies the get_human command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-human"
+          "const": "deny-get-human",
+          "markdownDescription": "Denies the get_human command without any pre-configured scope."
         },
         {
           "description": "Enables the get_organization command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-organization"
+          "const": "allow-get-organization",
+          "markdownDescription": "Enables the get_organization command without any pre-configured scope."
         },
         {
           "description": "Denies the get_organization command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-organization"
+          "const": "deny-get-organization",
+          "markdownDescription": "Denies the get_organization command without any pre-configured scope."
         },
         {
           "description": "Enables the get_organization_by_user_id command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-organization-by-user-id"
+          "const": "allow-get-organization-by-user-id",
+          "markdownDescription": "Enables the get_organization_by_user_id command without any pre-configured scope."
         },
         {
           "description": "Denies the get_organization_by_user_id command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-organization-by-user-id"
+          "const": "deny-get-organization-by-user-id",
+          "markdownDescription": "Denies the get_organization_by_user_id command without any pre-configured scope."
         },
         {
           "description": "Enables the get_session command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-session"
+          "const": "allow-get-session",
+          "markdownDescription": "Enables the get_session command without any pre-configured scope."
         },
         {
           "description": "Denies the get_session command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-session"
+          "const": "deny-get-session",
+          "markdownDescription": "Denies the get_session command without any pre-configured scope."
         },
         {
           "description": "Enables the get_timeline_view command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-timeline-view"
+          "const": "allow-get-timeline-view",
+          "markdownDescription": "Enables the get_timeline_view command without any pre-configured scope."
         },
         {
           "description": "Denies the get_timeline_view command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-timeline-view"
+          "const": "deny-get-timeline-view",
+          "markdownDescription": "Denies the get_timeline_view command without any pre-configured scope."
         },
         {
           "description": "Enables the get_timeline_view_onboarding command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-timeline-view-onboarding"
+          "const": "allow-get-timeline-view-onboarding",
+          "markdownDescription": "Enables the get_timeline_view_onboarding command without any pre-configured scope."
         },
         {
           "description": "Denies the get_timeline_view_onboarding command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-timeline-view-onboarding"
+          "const": "deny-get-timeline-view-onboarding",
+          "markdownDescription": "Denies the get_timeline_view_onboarding command without any pre-configured scope."
         },
         {
           "description": "Enables the list_all_tags command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-list-all-tags"
+          "const": "allow-list-all-tags",
+          "markdownDescription": "Enables the list_all_tags command without any pre-configured scope."
         },
         {
           "description": "Denies the list_all_tags command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-list-all-tags"
+          "const": "deny-list-all-tags",
+          "markdownDescription": "Denies the list_all_tags command without any pre-configured scope."
         },
         {
           "description": "Enables the list_calendars command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-list-calendars"
+          "const": "allow-list-calendars",
+          "markdownDescription": "Enables the list_calendars command without any pre-configured scope."
         },
         {
           "description": "Denies the list_calendars command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-list-calendars"
+          "const": "deny-list-calendars",
+          "markdownDescription": "Denies the list_calendars command without any pre-configured scope."
         },
         {
           "description": "Enables the list_chat_groups command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-list-chat-groups"
+          "const": "allow-list-chat-groups",
+          "markdownDescription": "Enables the list_chat_groups command without any pre-configured scope."
         },
         {
           "description": "Denies the list_chat_groups command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-list-chat-groups"
+          "const": "deny-list-chat-groups",
+          "markdownDescription": "Denies the list_chat_groups command without any pre-configured scope."
         },
         {
           "description": "Enables the list_chat_messages command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-list-chat-messages"
+          "const": "allow-list-chat-messages",
+          "markdownDescription": "Enables the list_chat_messages command without any pre-configured scope."
         },
         {
           "description": "Denies the list_chat_messages command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-list-chat-messages"
+          "const": "deny-list-chat-messages",
+          "markdownDescription": "Denies the list_chat_messages command without any pre-configured scope."
         },
         {
           "description": "Enables the list_events command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-list-events"
+          "const": "allow-list-events",
+          "markdownDescription": "Enables the list_events command without any pre-configured scope."
         },
         {
           "description": "Denies the list_events command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-list-events"
+          "const": "deny-list-events",
+          "markdownDescription": "Denies the list_events command without any pre-configured scope."
         },
         {
           "description": "Enables the list_extension_mappings command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-list-extension-mappings"
+          "const": "allow-list-extension-mappings",
+          "markdownDescription": "Enables the list_extension_mappings command without any pre-configured scope."
         },
         {
           "description": "Denies the list_extension_mappings command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-list-extension-mappings"
+          "const": "deny-list-extension-mappings",
+          "markdownDescription": "Denies the list_extension_mappings command without any pre-configured scope."
         },
         {
           "description": "Enables the list_humans command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-list-humans"
+          "const": "allow-list-humans",
+          "markdownDescription": "Enables the list_humans command without any pre-configured scope."
         },
         {
           "description": "Denies the list_humans command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-list-humans"
+          "const": "deny-list-humans",
+          "markdownDescription": "Denies the list_humans command without any pre-configured scope."
         },
         {
           "description": "Enables the list_organization_members command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-list-organization-members"
+          "const": "allow-list-organization-members",
+          "markdownDescription": "Enables the list_organization_members command without any pre-configured scope."
         },
         {
           "description": "Denies the list_organization_members command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-list-organization-members"
+          "const": "deny-list-organization-members",
+          "markdownDescription": "Denies the list_organization_members command without any pre-configured scope."
         },
         {
           "description": "Enables the list_organizations command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-list-organizations"
+          "const": "allow-list-organizations",
+          "markdownDescription": "Enables the list_organizations command without any pre-configured scope."
         },
         {
           "description": "Denies the list_organizations command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-list-organizations"
+          "const": "deny-list-organizations",
+          "markdownDescription": "Denies the list_organizations command without any pre-configured scope."
         },
         {
           "description": "Enables the list_session_tags command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-list-session-tags"
+          "const": "allow-list-session-tags",
+          "markdownDescription": "Enables the list_session_tags command without any pre-configured scope."
         },
         {
           "description": "Denies the list_session_tags command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-list-session-tags"
+          "const": "deny-list-session-tags",
+          "markdownDescription": "Denies the list_session_tags command without any pre-configured scope."
         },
         {
           "description": "Enables the list_sessions command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-list-sessions"
+          "const": "allow-list-sessions",
+          "markdownDescription": "Enables the list_sessions command without any pre-configured scope."
         },
         {
           "description": "Denies the list_sessions command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-list-sessions"
+          "const": "deny-list-sessions",
+          "markdownDescription": "Denies the list_sessions command without any pre-configured scope."
         },
         {
           "description": "Enables the list_templates command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-list-templates"
+          "const": "allow-list-templates",
+          "markdownDescription": "Enables the list_templates command without any pre-configured scope."
         },
         {
           "description": "Denies the list_templates command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-list-templates"
+          "const": "deny-list-templates",
+          "markdownDescription": "Denies the list_templates command without any pre-configured scope."
         },
         {
           "description": "Enables the onboarding_session_enhanced_memo_html command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-onboarding-session-enhanced-memo-html"
+          "const": "allow-onboarding-session-enhanced-memo-html",
+          "markdownDescription": "Enables the onboarding_session_enhanced_memo_html command without any pre-configured scope."
         },
         {
           "description": "Denies the onboarding_session_enhanced_memo_html command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-onboarding-session-enhanced-memo-html"
+          "const": "deny-onboarding-session-enhanced-memo-html",
+          "markdownDescription": "Denies the onboarding_session_enhanced_memo_html command without any pre-configured scope."
         },
         {
           "description": "Enables the onboarding_session_id command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-onboarding-session-id"
+          "const": "allow-onboarding-session-id",
+          "markdownDescription": "Enables the onboarding_session_id command without any pre-configured scope."
         },
         {
           "description": "Denies the onboarding_session_id command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-onboarding-session-id"
+          "const": "deny-onboarding-session-id",
+          "markdownDescription": "Denies the onboarding_session_id command without any pre-configured scope."
         },
         {
           "description": "Enables the session_add_participant command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-session-add-participant"
+          "const": "allow-session-add-participant",
+          "markdownDescription": "Enables the session_add_participant command without any pre-configured scope."
         },
         {
           "description": "Denies the session_add_participant command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-session-add-participant"
+          "const": "deny-session-add-participant",
+          "markdownDescription": "Denies the session_add_participant command without any pre-configured scope."
         },
         {
           "description": "Enables the session_get_event command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-session-get-event"
+          "const": "allow-session-get-event",
+          "markdownDescription": "Enables the session_get_event command without any pre-configured scope."
         },
         {
           "description": "Denies the session_get_event command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-session-get-event"
+          "const": "deny-session-get-event",
+          "markdownDescription": "Denies the session_get_event command without any pre-configured scope."
         },
         {
           "description": "Enables the session_list_participants command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-session-list-participants"
+          "const": "allow-session-list-participants",
+          "markdownDescription": "Enables the session_list_participants command without any pre-configured scope."
         },
         {
           "description": "Denies the session_list_participants command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-session-list-participants"
+          "const": "deny-session-list-participants",
+          "markdownDescription": "Denies the session_list_participants command without any pre-configured scope."
         },
         {
           "description": "Enables the session_remove_participant command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-session-remove-participant"
+          "const": "allow-session-remove-participant",
+          "markdownDescription": "Enables the session_remove_participant command without any pre-configured scope."
         },
         {
           "description": "Denies the session_remove_participant command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-session-remove-participant"
+          "const": "deny-session-remove-participant",
+          "markdownDescription": "Denies the session_remove_participant command without any pre-configured scope."
         },
         {
           "description": "Enables the set_config command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-set-config"
+          "const": "allow-set-config",
+          "markdownDescription": "Enables the set_config command without any pre-configured scope."
         },
         {
           "description": "Denies the set_config command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-set-config"
+          "const": "deny-set-config",
+          "markdownDescription": "Denies the set_config command without any pre-configured scope."
         },
         {
           "description": "Enables the set_session_event command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-set-session-event"
+          "const": "allow-set-session-event",
+          "markdownDescription": "Enables the set_session_event command without any pre-configured scope."
         },
         {
           "description": "Denies the set_session_event command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-set-session-event"
+          "const": "deny-set-session-event",
+          "markdownDescription": "Denies the set_session_event command without any pre-configured scope."
         },
         {
           "description": "Enables the toggle_calendar_selected command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-toggle-calendar-selected"
+          "const": "allow-toggle-calendar-selected",
+          "markdownDescription": "Enables the toggle_calendar_selected command without any pre-configured scope."
         },
         {
           "description": "Denies the toggle_calendar_selected command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-toggle-calendar-selected"
+          "const": "deny-toggle-calendar-selected",
+          "markdownDescription": "Denies the toggle_calendar_selected command without any pre-configured scope."
         },
         {
           "description": "Enables the unassign_tag_from_session command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-unassign-tag-from-session"
+          "const": "allow-unassign-tag-from-session",
+          "markdownDescription": "Enables the unassign_tag_from_session command without any pre-configured scope."
         },
         {
           "description": "Denies the unassign_tag_from_session command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-unassign-tag-from-session"
+          "const": "deny-unassign-tag-from-session",
+          "markdownDescription": "Denies the unassign_tag_from_session command without any pre-configured scope."
         },
         {
           "description": "Enables the upsert_calendar command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-upsert-calendar"
+          "const": "allow-upsert-calendar",
+          "markdownDescription": "Enables the upsert_calendar command without any pre-configured scope."
         },
         {
           "description": "Denies the upsert_calendar command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-upsert-calendar"
+          "const": "deny-upsert-calendar",
+          "markdownDescription": "Denies the upsert_calendar command without any pre-configured scope."
         },
         {
           "description": "Enables the upsert_chat_message command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-upsert-chat-message"
+          "const": "allow-upsert-chat-message",
+          "markdownDescription": "Enables the upsert_chat_message command without any pre-configured scope."
         },
         {
           "description": "Denies the upsert_chat_message command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-upsert-chat-message"
+          "const": "deny-upsert-chat-message",
+          "markdownDescription": "Denies the upsert_chat_message command without any pre-configured scope."
         },
         {
           "description": "Enables the upsert_extension_mapping command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-upsert-extension-mapping"
+          "const": "allow-upsert-extension-mapping",
+          "markdownDescription": "Enables the upsert_extension_mapping command without any pre-configured scope."
         },
         {
           "description": "Denies the upsert_extension_mapping command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-upsert-extension-mapping"
+          "const": "deny-upsert-extension-mapping",
+          "markdownDescription": "Denies the upsert_extension_mapping command without any pre-configured scope."
         },
         {
           "description": "Enables the upsert_human command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-upsert-human"
+          "const": "allow-upsert-human",
+          "markdownDescription": "Enables the upsert_human command without any pre-configured scope."
         },
         {
           "description": "Denies the upsert_human command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-upsert-human"
+          "const": "deny-upsert-human",
+          "markdownDescription": "Denies the upsert_human command without any pre-configured scope."
         },
         {
           "description": "Enables the upsert_organization command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-upsert-organization"
+          "const": "allow-upsert-organization",
+          "markdownDescription": "Enables the upsert_organization command without any pre-configured scope."
         },
         {
           "description": "Denies the upsert_organization command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-upsert-organization"
+          "const": "deny-upsert-organization",
+          "markdownDescription": "Denies the upsert_organization command without any pre-configured scope."
         },
         {
           "description": "Enables the upsert_session command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-upsert-session"
+          "const": "allow-upsert-session",
+          "markdownDescription": "Enables the upsert_session command without any pre-configured scope."
         },
         {
           "description": "Denies the upsert_session command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-upsert-session"
+          "const": "deny-upsert-session",
+          "markdownDescription": "Denies the upsert_session command without any pre-configured scope."
         },
         {
           "description": "Enables the upsert_template command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-upsert-template"
+          "const": "allow-upsert-template",
+          "markdownDescription": "Enables the upsert_template command without any pre-configured scope."
         },
         {
           "description": "Denies the upsert_template command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-upsert-template"
+          "const": "deny-upsert-template",
+          "markdownDescription": "Denies the upsert_template command without any pre-configured scope."
         },
         {
           "description": "Enables the visit_session command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-visit-session"
+          "const": "allow-visit-session",
+          "markdownDescription": "Enables the visit_session command without any pre-configured scope."
         },
         {
           "description": "Denies the visit_session command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-visit-session"
+          "const": "deny-visit-session",
+          "markdownDescription": "Denies the visit_session command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-onboarding-session-enhanced-memo-html`\n- `allow-onboarding-session-id`\n- `allow-upsert-session`\n- `allow-list-sessions`\n- `allow-get-session`\n- `allow-visit-session`\n- `allow-delete-session`\n- `allow-set-session-event`\n- `allow-session-add-participant`\n- `allow-session-remove-participant`\n- `allow-session-list-participants`\n- `allow-session-get-event`\n- `allow-get-timeline-view`\n- `allow-get-timeline-view-onboarding`\n- `allow-list-calendars`\n- `allow-upsert-calendar`\n- `allow-toggle-calendar-selected`\n- `allow-list-templates`\n- `allow-upsert-template`\n- `allow-delete-template`\n- `allow-get-event`\n- `allow-list-events`\n- `allow-get-config`\n- `allow-set-config`\n- `allow-get-human`\n- `allow-upsert-human`\n- `allow-list-humans`\n- `allow-get-organization`\n- `allow-get-organization-by-user-id`\n- `allow-list-organizations`\n- `allow-list-organization-members`\n- `allow-upsert-organization`\n- `allow-list-chat-groups`\n- `allow-list-chat-messages`\n- `allow-create-chat-group`\n- `allow-upsert-chat-message`\n- `allow-list-all-tags`\n- `allow-list-session-tags`\n- `allow-assign-tag-to-session`\n- `allow-unassign-tag-from-session`\n- `allow-get-extension-mapping`\n- `allow-list-extension-mappings`\n- `allow-upsert-extension-mapping`",
           "type": "string",
-          "const": "default"
+          "const": "default",
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-onboarding-session-enhanced-memo-html`\n- `allow-onboarding-session-id`\n- `allow-upsert-session`\n- `allow-list-sessions`\n- `allow-get-session`\n- `allow-visit-session`\n- `allow-delete-session`\n- `allow-set-session-event`\n- `allow-session-add-participant`\n- `allow-session-remove-participant`\n- `allow-session-list-participants`\n- `allow-session-get-event`\n- `allow-get-timeline-view`\n- `allow-get-timeline-view-onboarding`\n- `allow-list-calendars`\n- `allow-upsert-calendar`\n- `allow-toggle-calendar-selected`\n- `allow-list-templates`\n- `allow-upsert-template`\n- `allow-delete-template`\n- `allow-get-event`\n- `allow-list-events`\n- `allow-get-config`\n- `allow-set-config`\n- `allow-get-human`\n- `allow-upsert-human`\n- `allow-list-humans`\n- `allow-get-organization`\n- `allow-get-organization-by-user-id`\n- `allow-list-organizations`\n- `allow-list-organization-members`\n- `allow-upsert-organization`\n- `allow-list-chat-groups`\n- `allow-list-chat-messages`\n- `allow-create-chat-group`\n- `allow-upsert-chat-message`\n- `allow-list-all-tags`\n- `allow-list-session-tags`\n- `allow-assign-tag-to-session`\n- `allow-unassign-tag-from-session`\n- `allow-get-extension-mapping`\n- `allow-list-extension-mappings`\n- `allow-upsert-extension-mapping`"
         }
       ]
     }

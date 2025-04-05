@@ -2,6 +2,8 @@
 
 Default permissions for the plugin
 
+#### This default permission set includes the following:
+
 - `allow-open-calendar-access-settings`
 - `allow-open-contacts-access-settings`
 - `allow-calendar-access-status`

@@ -297,27 +297,32 @@
         {
           "description": "Enables the get_fingerprint command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-fingerprint"
+          "const": "allow-get-fingerprint",
+          "markdownDescription": "Enables the get_fingerprint command without any pre-configured scope."
         },
         {
           "description": "Denies the get_fingerprint command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-fingerprint"
+          "const": "deny-get-fingerprint",
+          "markdownDescription": "Denies the get_fingerprint command without any pre-configured scope."
         },
         {
           "description": "Enables the opinionated_md_to_html command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-opinionated-md-to-html"
+          "const": "allow-opinionated-md-to-html",
+          "markdownDescription": "Enables the opinionated_md_to_html command without any pre-configured scope."
         },
         {
           "description": "Denies the opinionated_md_to_html command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-opinionated-md-to-html"
+          "const": "deny-opinionated-md-to-html",
+          "markdownDescription": "Denies the opinionated_md_to_html command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-get-fingerprint`\n- `allow-opinionated-md-to-html`",
           "type": "string",
-          "const": "default"
+          "const": "default",
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-get-fingerprint`\n- `allow-opinionated-md-to-html`"
         }
       ]
     }

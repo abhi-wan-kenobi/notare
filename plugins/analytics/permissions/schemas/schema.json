@@ -297,37 +297,44 @@
         {
           "description": "Enables the event command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-event"
+          "const": "allow-event",
+          "markdownDescription": "Enables the event command without any pre-configured scope."
         },
         {
           "description": "Denies the event command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-event"
+          "const": "deny-event",
+          "markdownDescription": "Denies the event command without any pre-configured scope."
         },
         {
           "description": "Enables the is_disabled command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-is-disabled"
+          "const": "allow-is-disabled",
+          "markdownDescription": "Enables the is_disabled command without any pre-configured scope."
         },
         {
           "description": "Denies the is_disabled command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-is-disabled"
+          "const": "deny-is-disabled",
+          "markdownDescription": "Denies the is_disabled command without any pre-configured scope."
         },
         {
           "description": "Enables the set_disabled command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-set-disabled"
+          "const": "allow-set-disabled",
+          "markdownDescription": "Enables the set_disabled command without any pre-configured scope."
         },
         {
           "description": "Denies the set_disabled command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-set-disabled"
+          "const": "deny-set-disabled",
+          "markdownDescription": "Denies the set_disabled command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-event`\n- `allow-set-disabled`\n- `allow-is-disabled`",
           "type": "string",
-          "const": "default"
+          "const": "default",
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-event`\n- `allow-set-disabled`\n- `allow-is-disabled`"
         }
       ]
     }

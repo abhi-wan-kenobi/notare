@@ -297,27 +297,32 @@
         {
           "description": "Enables the play command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-play"
+          "const": "allow-play",
+          "markdownDescription": "Enables the play command without any pre-configured scope."
         },
         {
           "description": "Denies the play command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-play"
+          "const": "deny-play",
+          "markdownDescription": "Denies the play command without any pre-configured scope."
         },
         {
           "description": "Enables the stop command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-stop"
+          "const": "allow-stop",
+          "markdownDescription": "Enables the stop command without any pre-configured scope."
         },
         {
           "description": "Denies the stop command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-stop"
+          "const": "deny-stop",
+          "markdownDescription": "Denies the stop command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-play`\n- `allow-stop`",
           "type": "string",
-          "const": "default"
+          "const": "default",
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-play`\n- `allow-stop`"
         }
       ]
     }

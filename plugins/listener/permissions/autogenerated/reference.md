@@ -2,6 +2,8 @@
 
 Default permissions for the plugin
 
+#### This default permission set includes the following:
+
 - `allow-request-microphone-access`
 - `allow-request-system-audio-access`
 - `allow-open-microphone-access-settings`

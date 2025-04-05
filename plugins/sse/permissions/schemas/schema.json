@@ -297,17 +297,20 @@
         {
           "description": "Enables the fetch command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-fetch"
+          "const": "allow-fetch",
+          "markdownDescription": "Enables the fetch command without any pre-configured scope."
         },
         {
           "description": "Denies the fetch command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-fetch"
+          "const": "deny-fetch",
+          "markdownDescription": "Denies the fetch command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-fetch`",
           "type": "string",
-          "const": "default"
+          "const": "default",
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-fetch`"
         }
       ]
     }

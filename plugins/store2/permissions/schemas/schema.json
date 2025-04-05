@@ -297,77 +297,92 @@
         {
           "description": "Enables the get_bool command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-bool"
+          "const": "allow-get-bool",
+          "markdownDescription": "Enables the get_bool command without any pre-configured scope."
         },
         {
           "description": "Denies the get_bool command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-bool"
+          "const": "deny-get-bool",
+          "markdownDescription": "Denies the get_bool command without any pre-configured scope."
         },
         {
           "description": "Enables the get_number command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-number"
+          "const": "allow-get-number",
+          "markdownDescription": "Enables the get_number command without any pre-configured scope."
         },
         {
           "description": "Denies the get_number command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-number"
+          "const": "deny-get-number",
+          "markdownDescription": "Denies the get_number command without any pre-configured scope."
         },
         {
           "description": "Enables the get_str command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-str"
+          "const": "allow-get-str",
+          "markdownDescription": "Enables the get_str command without any pre-configured scope."
         },
         {
           "description": "Denies the get_str command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-str"
+          "const": "deny-get-str",
+          "markdownDescription": "Denies the get_str command without any pre-configured scope."
         },
         {
           "description": "Enables the ping command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-ping"
+          "const": "allow-ping",
+          "markdownDescription": "Enables the ping command without any pre-configured scope."
         },
         {
           "description": "Denies the ping command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-ping"
+          "const": "deny-ping",
+          "markdownDescription": "Denies the ping command without any pre-configured scope."
         },
         {
           "description": "Enables the set_bool command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-set-bool"
+          "const": "allow-set-bool",
+          "markdownDescription": "Enables the set_bool command without any pre-configured scope."
         },
         {
           "description": "Denies the set_bool command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-set-bool"
+          "const": "deny-set-bool",
+          "markdownDescription": "Denies the set_bool command without any pre-configured scope."
         },
         {
           "description": "Enables the set_number command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-set-number"
+          "const": "allow-set-number",
+          "markdownDescription": "Enables the set_number command without any pre-configured scope."
         },
         {
           "description": "Denies the set_number command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-set-number"
+          "const": "deny-set-number",
+          "markdownDescription": "Denies the set_number command without any pre-configured scope."
         },
         {
           "description": "Enables the set_str command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-set-str"
+          "const": "allow-set-str",
+          "markdownDescription": "Enables the set_str command without any pre-configured scope."
         },
         {
           "description": "Denies the set_str command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-set-str"
+          "const": "deny-set-str",
+          "markdownDescription": "Denies the set_str command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-ping`",
           "type": "string",
-          "const": "default"
+          "const": "default",
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-ping`"
         }
       ]
     }

@@ -297,87 +297,104 @@
         {
           "description": "Enables the get_from_store command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-from-store"
+          "const": "allow-get-from-store",
+          "markdownDescription": "Enables the get_from_store command without any pre-configured scope."
         },
         {
           "description": "Denies the get_from_store command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-from-store"
+          "const": "deny-get-from-store",
+          "markdownDescription": "Denies the get_from_store command without any pre-configured scope."
         },
         {
           "description": "Enables the get_from_vault command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-from-vault"
+          "const": "allow-get-from-vault",
+          "markdownDescription": "Enables the get_from_vault command without any pre-configured scope."
         },
         {
           "description": "Denies the get_from_vault command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-from-vault"
+          "const": "deny-get-from-vault",
+          "markdownDescription": "Denies the get_from_vault command without any pre-configured scope."
         },
         {
           "description": "Enables the init_vault command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-init-vault"
+          "const": "allow-init-vault",
+          "markdownDescription": "Enables the init_vault command without any pre-configured scope."
         },
         {
           "description": "Denies the init_vault command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-init-vault"
+          "const": "deny-init-vault",
+          "markdownDescription": "Denies the init_vault command without any pre-configured scope."
         },
         {
           "description": "Enables the reset_vault command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-reset-vault"
+          "const": "allow-reset-vault",
+          "markdownDescription": "Enables the reset_vault command without any pre-configured scope."
         },
         {
           "description": "Denies the reset_vault command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-reset-vault"
+          "const": "deny-reset-vault",
+          "markdownDescription": "Denies the reset_vault command without any pre-configured scope."
         },
         {
           "description": "Enables the set_in_store command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-set-in-store"
+          "const": "allow-set-in-store",
+          "markdownDescription": "Enables the set_in_store command without any pre-configured scope."
         },
         {
           "description": "Denies the set_in_store command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-set-in-store"
+          "const": "deny-set-in-store",
+          "markdownDescription": "Denies the set_in_store command without any pre-configured scope."
         },
         {
           "description": "Enables the set_in_vault command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-set-in-vault"
+          "const": "allow-set-in-vault",
+          "markdownDescription": "Enables the set_in_vault command without any pre-configured scope."
         },
         {
           "description": "Denies the set_in_vault command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-set-in-vault"
+          "const": "deny-set-in-vault",
+          "markdownDescription": "Denies the set_in_vault command without any pre-configured scope."
         },
         {
           "description": "Enables the start_oauth_server command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-start-oauth-server"
+          "const": "allow-start-oauth-server",
+          "markdownDescription": "Enables the start_oauth_server command without any pre-configured scope."
         },
         {
           "description": "Denies the start_oauth_server command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-start-oauth-server"
+          "const": "deny-start-oauth-server",
+          "markdownDescription": "Denies the start_oauth_server command without any pre-configured scope."
         },
         {
           "description": "Enables the stop_oauth_server command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-stop-oauth-server"
+          "const": "allow-stop-oauth-server",
+          "markdownDescription": "Enables the stop_oauth_server command without any pre-configured scope."
         },
         {
           "description": "Denies the stop_oauth_server command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-stop-oauth-server"
+          "const": "deny-stop-oauth-server",
+          "markdownDescription": "Denies the stop_oauth_server command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-start-oauth-server`\n- `allow-stop-oauth-server`\n- `allow-init-vault`\n- `allow-reset-vault`\n- `allow-get-from-store`\n- `allow-get-from-vault`\n- `allow-set-in-store`\n- `allow-set-in-vault`",
           "type": "string",
-          "const": "default"
+          "const": "default",
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-start-oauth-server`\n- `allow-stop-oauth-server`\n- `allow-init-vault`\n- `allow-reset-vault`\n- `allow-get-from-store`\n- `allow-get-from-vault`\n- `allow-set-in-store`\n- `allow-set-in-vault`"
         }
       ]
     }

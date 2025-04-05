@@ -297,17 +297,20 @@
         {
           "description": "Enables the get_api_base command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-get-api-base"
+          "const": "allow-get-api-base",
+          "markdownDescription": "Enables the get_api_base command without any pre-configured scope."
         },
         {
           "description": "Denies the get_api_base command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-get-api-base"
+          "const": "deny-get-api-base",
+          "markdownDescription": "Denies the get_api_base command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-get-api-base`",
           "type": "string",
-          "const": "default"
+          "const": "default",
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-get-api-base`"
         }
       ]
     }
