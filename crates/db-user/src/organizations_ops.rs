@@ -10,7 +10,15 @@ impl UserDatabase {
         let conn = self.conn()?;
 
         let sql = format!(
-            "INSERT OR REPLACE INTO {} (id, name, description) VALUES (?, ?, ?) RETURNING *",
+            "INSERT INTO {} (
+                id,
+                name,
+                description
+            )  VALUES (?, ?, ?) 
+            ON CONFLICT (id) DO UPDATE SET 
+                name = excluded.name,
+                description = excluded.description
+            RETURNING *",
             Organization::sql_table()
         );
         let params = (organization.id, organization.name, organization.description);

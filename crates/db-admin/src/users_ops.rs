@@ -20,13 +20,19 @@ impl AdminDatabase {
 
         let mut rows = conn
             .query(
-                "INSERT OR REPLACE INTO users (
+                "INSERT INTO users (
                     id,
                     account_id,
                     human_id,
                     timestamp,
                     clerk_user_id
-                ) VALUES (?, ?, ?, ?, ?) RETURNING *",
+                ) VALUES (?, ?, ?, ?, ?) 
+                ON CONFLICT (id) DO UPDATE SET
+                    account_id = excluded.account_id,
+                    human_id = excluded.human_id,
+                    timestamp = excluded.timestamp,
+                    clerk_user_id = excluded.clerk_user_id
+                RETURNING *",
                 vec![
                     user.id,
                     user.account_id,

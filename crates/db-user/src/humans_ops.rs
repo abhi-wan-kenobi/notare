@@ -17,7 +17,7 @@ impl UserDatabase {
         let conn = self.conn()?;
 
         let sql = format!(
-            "INSERT OR REPLACE INTO {} (
+            "INSERT INTO {} (
                 id,
                 organization_id,
                 is_user,
@@ -25,7 +25,15 @@ impl UserDatabase {
                 email,
                 job_title,
                 linkedin_username
-            ) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?) 
+            ON CONFLICT (id) DO UPDATE SET
+                organization_id = excluded.organization_id,
+                is_user = excluded.is_user,
+                full_name = excluded.full_name,
+                email = excluded.email,
+                job_title = excluded.job_title,
+                linkedin_username = excluded.linkedin_username
+            RETURNING *",
             Human::sql_table()
         );
 
