@@ -144,9 +144,8 @@ async fn listen(
     Ok(ws.on_upgrade(move |socket| websocket(socket, model, guard)))
 }
 
+#[tracing::instrument(skip_all)]
 async fn websocket(socket: WebSocket, model: rwhisper::Whisper, _guard: ConnectionGuard) {
-    tracing::info!("websocket_connected");
-
     let (mut ws_sender, ws_receiver) = socket.split();
     let mut stream = {
         let audio_source = WebSocketAudioSource::new(ws_receiver, 16 * 1000);
@@ -155,8 +154,6 @@ async fn websocket(socket: WebSocket, model: rwhisper::Whisper, _guard: Connecti
 
         rwhisper::TranscribeChunkedAudioStreamExt::transcribe(chunked, model)
     };
-
-    tracing::info!("stream_started");
 
     while let Some(chunk) = stream.next().await {
         let text = chunk.text().to_string();
@@ -182,7 +179,6 @@ async fn websocket(socket: WebSocket, model: rwhisper::Whisper, _guard: Connecti
     }
 
     let _ = ws_sender.close().await;
-    tracing::info!("websocket_disconnected");
 }
 
 pub struct WebSocketAudioSource {

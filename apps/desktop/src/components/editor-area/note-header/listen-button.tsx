@@ -76,10 +76,8 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
     },
   });
 
-  const handleStartSession = () => {
-    if (ongoingSessionStore.status === "inactive") {
-      ongoingSessionStore.start(sessionId);
-
+  useEffect(() => {
+    if (ongoingSessionStore.status === "active") {
       toast({
         id: "recording-consent",
         title: "Recording Started",
@@ -87,6 +85,12 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
         dismissible: true,
         duration: 3000,
       });
+    }
+  }, [ongoingSessionStore.status]);
+
+  const handleStartSession = () => {
+    if (ongoingSessionStore.status === "inactive") {
+      ongoingSessionStore.start(sessionId);
     }
   };
 
