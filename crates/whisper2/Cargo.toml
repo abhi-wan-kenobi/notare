@@ -7,4 +7,4 @@ edition = "2021"
 hypr-data = { workspace = true }
 
 [dependencies]
-whisper-rs = { git = "https://github.com/tazz4843/whisper-rs", rev = "f5ee632" }
+whisper-rs = { git = "https://github.com/tazz4843/whisper-rs", rev = "f5ee632", features = ["metal", "tracing_backend"] }

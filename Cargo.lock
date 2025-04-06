@@ -15123,6 +15123,7 @@ name = "whisper-rs"
 version = "0.14.2"
 source = "git+https://github.com/tazz4843/whisper-rs?rev=f5ee632#f5ee632f6e1e682668295696d9cf280041a997bb"
 dependencies = [
+ "tracing",
  "whisper-rs-sys",
 ]
 
