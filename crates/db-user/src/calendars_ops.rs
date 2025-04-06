@@ -44,15 +44,12 @@ impl UserDatabase {
         Ok(items)
     }
 
-    pub async fn delete_calendar_by_tracking_id(
-        &self,
-        tracking_id: impl AsRef<str>,
-    ) -> Result<(), crate::Error> {
+    pub async fn delete_calendar(&self, calendar_id: impl AsRef<str>) -> Result<(), crate::Error> {
         let conn = self.conn()?;
 
         conn.execute(
-            "DELETE FROM calendars WHERE tracking_id = ?",
-            vec![tracking_id.as_ref()],
+            "DELETE FROM calendars WHERE id = ?",
+            vec![calendar_id.as_ref()],
         )
         .await?;
 
