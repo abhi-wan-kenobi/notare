@@ -20,6 +20,21 @@ import { useTranscript } from "../../hooks/useTranscript";
 
 const Transcript2x2: WidgetTwoByTwo = ({ onMaximize }) => {
   const sessionId = useSessions((s) => s.currentSessionId);
+
+  return (
+    <WidgetTwoByTwoWrapper>
+      {sessionId
+        ? <Inner sessionId={sessionId} onMaximize={onMaximize} />
+        : (
+          <div className="p-4 pb-0">
+            Session not found
+          </div>
+        )}
+    </WidgetTwoByTwoWrapper>
+  );
+};
+
+function Inner({ sessionId, onMaximize }: { sessionId: string } & Parameters<WidgetTwoByTwo>["0"]) {
   const { timeline, isLive, selectedLanguage, handleLanguageChange } = useTranscript(sessionId);
 
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -55,46 +70,42 @@ const Transcript2x2: WidgetTwoByTwo = ({ onMaximize }) => {
   );
 
   return (
-    <WidgetTwoByTwoWrapper>
-      {sessionId && (
-        <>
-          <div className="p-4 pb-0">
-            <WidgetHeader
-              title={
-                <div className="flex items-center gap-2">
-                  Transcript
-                  {isLive && <Badge variant="destructive" className="hover:bg-destructive">LIVE</Badge>}
-                </div>
-              }
-              actions={[
-                <DropdownMenu key="language">
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="p-0"
-                    >
-                      <LanguagesIcon size={16} className="text-black" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end">
-                    <DropdownMenuLabel>Select Language</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuRadioGroup value={selectedLanguage} onValueChange={handleLanguageChange}>
-                      <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>,
-                maximizeButton,
-              ]}
-            />
-          </div>
+    <>
+      <div className="p-4 pb-0">
+        <WidgetHeader
+          title={
+            <div className="flex items-center gap-2">
+              Transcript
+              {isLive && <Badge variant="destructive" className="hover:bg-destructive">LIVE</Badge>}
+            </div>
+          }
+          actions={[
+            <DropdownMenu key="language">
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="p-0"
+                >
+                  <LanguagesIcon size={16} className="text-black" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end">
+                <DropdownMenuLabel>Select Language</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup value={selectedLanguage} onValueChange={handleLanguageChange}>
+                  <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>,
+            maximizeButton,
+          ]}
+        />
+      </div>
 
-          <Transcript ref={transcriptRef} transcript={timeline} isLive={isLive} />
-        </>
-      )}
-    </WidgetTwoByTwoWrapper>
+      <Transcript ref={transcriptRef} transcript={timeline} isLive={isLive} />
+    </>
   );
-};
+}
 
 export default Transcript2x2;
