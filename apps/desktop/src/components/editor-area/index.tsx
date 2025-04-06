@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import usePreviousValue from "beautiful-react-hooks/usePreviousValue";
 import { motion } from "motion/react";
 import { AnimatePresence } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useHypr } from "@/contexts";
 import { ENHANCE_SYSTEM_TEMPLATE_KEY, ENHANCE_USER_TEMPLATE_KEY } from "@/templates";
@@ -19,13 +19,11 @@ import { useOngoingSession, useSession } from "@hypr/utils/contexts";
 import { EnhanceButton } from "./enhance-button";
 import { NoteHeader } from "./note-header";
 
-interface EditorAreaProps {
+export default function EditorArea({ editable, sessionId }: {
   editable: boolean;
   sessionId: string;
-}
-
-export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
-  const { userId, onboardingSessionId } = useHypr();
+}) {
+  const { userId } = useHypr();
 
   const { ongoingSessionTimeline, ongoingSessionStatus } = useOngoingSession((s) => ({
     ongoingSessionStatus: s.status,
@@ -47,7 +45,6 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
 
   const sessionStore = useSession(sessionId, (s) => ({
     session: s.session,
-    persistSession: s.persistSession,
     refresh: s.refresh,
   }));
 
@@ -58,88 +55,16 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
     sessionStore.refresh();
   }, [sessionStore.refresh, ongoingSessionStatus]);
 
-  const enhance = useMutation({
-    mutationFn: async () => {
-      setEnhancedContent("");
-      const config = await dbCommands.getConfig();
-      const provider = await modelProvider();
-
-      const onboardingOutputExample = await dbCommands.onboardingSessionEnhancedMemoHtml();
-
-      const fn = sessionId === onboardingSessionId ? dbCommands.getTimelineViewOnboarding : dbCommands.getTimelineView;
-      const timeline = await fn(sessionId);
-
-      const systemMessage = await templateCommands.render(
-        ENHANCE_SYSTEM_TEMPLATE_KEY,
-        {
-          config,
-        },
-      );
-
-      const userMessage = await templateCommands.render(
-        ENHANCE_USER_TEMPLATE_KEY,
-        {
-          editor: sessionStore.session?.raw_memo_html ?? "",
-          timeline: timeline,
-          ...((sessionId === onboardingSessionId) ? { example: onboardingOutputExample } : {}),
-        },
-      );
-
-      const { text, textStream } = streamText({
-        model: provider.languageModel("any"),
-        messages: [
-          { role: "system", content: systemMessage },
-          { role: "user", content: userMessage },
-        ],
-        experimental_transform: [
-          smoothStream({ delayInMs: 80, chunking: "line" }),
-        ],
-      });
-
-      let acc = "";
-      for await (const chunk of textStream) {
-        acc += chunk;
-        const html = await miscCommands.opinionatedMdToHtml(acc);
-        setEnhancedContent(html);
-      }
-
-      return text.then(miscCommands.opinionatedMdToHtml);
-    },
-    onSuccess: () => {
-      try {
-        analyticsCommands.event({
-          event: "enhance_note_clicked",
-          distinct_id: userId,
-          session_id: sessionId,
-        });
-      } catch (error) {
-        console.error(error);
-      }
-
-      sessionStore.persistSession();
-    },
-    onError: (error) => {
-      console.error(error);
-    },
+  const { enhance, animate } = useEnhanceMutation({
+    sessionId,
+    rawContent,
   });
 
-  // For auto-enhancing. Only needed while onboarding.
-  const prevOngoingSessionStatus = usePreviousValue(ongoingSessionStatus);
-  useEffect(() => {
-    if (sessionId !== onboardingSessionId) {
-      return;
-    }
-
-    const justFinishedListening = prevOngoingSessionStatus === "active" && ongoingSessionStatus === "inactive";
-
-    if (justFinishedListening && !sessionStore.session.enhanced_memo_html) {
-      setTimeout(() => {
-        if (enhance.status === "idle") {
-          enhance.mutate();
-        }
-      }, 1800);
-    }
-  }, [ongoingSessionStatus, prevOngoingSessionStatus, enhance.status, sessionStore.session.enhanced_memo_html]);
+  useAutoEnhanceForOnboarding({
+    sessionId,
+    enhanceStatus: enhance.status,
+    enhanceMutate: enhance.mutate,
+  });
 
   const handleChangeNote = useCallback(
     (content: string) => {
@@ -193,7 +118,7 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
         id={EDITOR_CONTENT_AREA_ID}
         className={cn([
           "h-full overflow-y-auto",
-          enhance.status === "pending" && "tiptap-animate",
+          (!showRaw && animate) && "tiptap-animate",
           ongoingSessionTimeline?.items?.length && "pb-10",
         ])}
         onClick={(e) => {
@@ -243,4 +168,127 @@ export default function EditorArea({ editable, sessionId }: EditorAreaProps) {
       </AnimatePresence>
     </div>
   );
+}
+
+export function useEnhanceMutation({
+  sessionId,
+  rawContent,
+}: {
+  sessionId: string;
+  rawContent: string;
+}) {
+  const { userId, onboardingSessionId } = useHypr();
+  const [animate, setAnimate] = useState(false);
+
+  const { persistSession, setEnhancedContent } = useSession(sessionId, (s) => ({
+    persistSession: s.persistSession,
+    setEnhancedContent: s.updateEnhancedNote,
+  }));
+
+  const enhance = useMutation({
+    mutationFn: async () => {
+      setAnimate(false);
+      const config = await dbCommands.getConfig();
+      const provider = await modelProvider();
+
+      const onboardingOutputExample = await dbCommands.onboardingSessionEnhancedMemoHtml();
+
+      const fn = sessionId === onboardingSessionId ? dbCommands.getTimelineViewOnboarding : dbCommands.getTimelineView;
+      const timeline = await fn(sessionId);
+
+      const systemMessage = await templateCommands.render(
+        ENHANCE_SYSTEM_TEMPLATE_KEY,
+        { config },
+      );
+
+      const userMessage = await templateCommands.render(
+        ENHANCE_USER_TEMPLATE_KEY,
+        {
+          editor: rawContent,
+          timeline: timeline,
+          ...((sessionId === onboardingSessionId) ? { example: onboardingOutputExample } : {}),
+        },
+      );
+
+      const { text, textStream } = streamText({
+        model: provider.languageModel("any"),
+        messages: [
+          { role: "system", content: systemMessage },
+          { role: "user", content: userMessage },
+        ],
+        experimental_transform: [
+          smoothStream({ delayInMs: 80, chunking: "line" }),
+        ],
+      });
+
+      let acc = "";
+      for await (const chunk of textStream) {
+        setAnimate(true);
+        acc += chunk;
+        const html = await miscCommands.opinionatedMdToHtml(acc);
+        setEnhancedContent(html);
+      }
+
+      setAnimate(false);
+      return text.then(miscCommands.opinionatedMdToHtml);
+    },
+    onSuccess: () => {
+      try {
+        analyticsCommands.event({
+          event: "enhance_note_clicked",
+          distinct_id: userId,
+          session_id: sessionId,
+        });
+      } catch (error) {
+        console.error(error);
+      }
+
+      persistSession();
+    },
+    onError: (error) => {
+      console.error(error);
+    },
+  });
+
+  return { enhance, animate };
+}
+
+export function useAutoEnhanceForOnboarding({
+  sessionId,
+  enhanceStatus,
+  enhanceMutate,
+}: {
+  sessionId: string;
+  enhanceStatus: string;
+  enhanceMutate: () => void;
+}) {
+  const { onboardingSessionId } = useHypr();
+
+  const enhancedMemoHtml = useSession(sessionId, (s) => s.session.enhanced_memo_html);
+  const ongoingSessionStatus = useOngoingSession((s) => s.status);
+  const prevOngoingSessionStatus = usePreviousValue(ongoingSessionStatus);
+
+  useEffect(() => {
+    if (sessionId !== onboardingSessionId) {
+      return;
+    }
+
+    const justFinishedListening = prevOngoingSessionStatus === "active" && ongoingSessionStatus === "inactive";
+
+    if (justFinishedListening && !enhancedMemoHtml) {
+      setTimeout(() => {
+        if (enhanceStatus === "idle") {
+          enhanceMutate();
+        }
+      }, 1800);
+    }
+  }, [
+    ongoingSessionStatus,
+    prevOngoingSessionStatus,
+    enhanceStatus,
+    enhancedMemoHtml,
+    sessionId,
+    onboardingSessionId,
+    enhanceMutate,
+  ]);
 }

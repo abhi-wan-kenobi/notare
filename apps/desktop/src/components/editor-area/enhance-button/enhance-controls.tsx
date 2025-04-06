@@ -37,7 +37,7 @@ export function EnhanceControls({
           "border-border px-4 py-2.5 transition-all ease-in-out",
           showRaw
             ? "bg-primary text-primary-foreground border-black"
-            : "bg-background text-neutral-200",
+            : "bg-background text-neutral-400",
         )}
       >
         <AlignLeft size={20} />
@@ -50,7 +50,7 @@ export function EnhanceControls({
           "rounded-r-xl border-r border-y",
           "border border-border px-4 py-2.5 transition-all ease-in-out",
           showRaw
-            ? "bg-background text-neutral-200"
+            ? "bg-background text-neutral-400"
             : "bg-primary text-primary-foreground border-black",
         )}
       >
