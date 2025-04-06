@@ -5,9 +5,9 @@ import { Pen } from "lucide-react";
 import { useState } from "react";
 
 import { type Session } from "@hypr/plugin-db";
-import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
+import { safeNavigate } from "@hypr/utils/navigation";
 
 export function NoteCard({ session, showTime = false }: { session: Session; showTime?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -22,9 +22,7 @@ export function NoteCard({ session, showTime = false }: { session: Session; show
 
     const url = props.to.replace("$id", props.params.id);
 
-    windowsCommands.windowEmitNavigate({ type: "main" }, url).then(() => {
-      windowsCommands.windowShow({ type: "main" });
-    });
+    safeNavigate({ type: "main" }, url);
   };
 
   const getStartDate = () => {

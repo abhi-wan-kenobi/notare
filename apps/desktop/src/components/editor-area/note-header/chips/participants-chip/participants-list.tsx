@@ -12,6 +12,7 @@ import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import { getInitials } from "@hypr/utils";
+import { safeNavigate } from "@hypr/utils/navigation";
 
 interface ParticipantsListProps {
   sessionId: string;
@@ -120,16 +121,12 @@ function ParticipentItem({
     if (human.id == userId) {
       const params = {
         to: "/app/settings",
-        search: { current: "profile" },
+        search: { tab: "profile" },
       } as const satisfies LinkProps;
 
-      const url = `${params.to}?current=${params.search.current}`;
+      const url = `${params.to}?tab=${params.search.tab}`;
 
-      windowsCommands.windowShow({ type: "settings" }).then(() => {
-        setTimeout(() => {
-          windowsCommands.windowEmitNavigate({ type: "settings" }, url);
-        }, 500);
-      });
+      safeNavigate({ type: "settings" }, url);
       return;
     }
 

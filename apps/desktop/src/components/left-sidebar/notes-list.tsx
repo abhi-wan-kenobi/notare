@@ -19,6 +19,7 @@ import {
 import { cn } from "@hypr/ui/lib/utils";
 import { useSession, useSessions } from "@hypr/utils/contexts";
 import { format, formatRelative, formatTimeAgo, isToday } from "@hypr/utils/datetime";
+import { safeNavigate } from "@hypr/utils/navigation";
 
 interface NotesListProps {
   filter: (session: Session) => boolean;
@@ -206,16 +207,14 @@ function NoteItem({
   };
 
   const handleOpenCalendar = () => {
-    const props = {
+    const params = {
       to: "/app/calendar",
-      search: { sessionId: currentSession.id },
+      search: { date: format(currentSession.created_at, "yyyy-MM-dd") },
     } as const satisfies LinkProps;
 
-    const url = props.to.concat(`?sessionId=${props.search.sessionId}`);
+    const url = `${params.to}?date=${params.search.date}`;
 
-    windowsCommands.windowEmitNavigate({ type: "calendar" }, url).then(() => {
-      windowsCommands.windowShow({ type: "calendar" });
-    });
+    safeNavigate({ type: "calendar" }, url);
   };
   const html2text = (html: string) => {
     return html.replace(/<[^>]*>?/g, "");

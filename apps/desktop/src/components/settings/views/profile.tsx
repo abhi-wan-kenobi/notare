@@ -91,7 +91,9 @@ export default function ProfileComponent() {
     },
     onError: console.error,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["config", "profile", userId] });
+      queryClient.invalidateQueries({
+        queryKey: ["config", "profile", userId],
+      });
     },
   });
   useEffect(() => {
@@ -111,9 +113,9 @@ export default function ProfileComponent() {
             control={form.control}
             name="fullName"
             render={({ field }) => (
-              <FormItem className="max-w-sm">
+              <FormItem className="w-60">
                 <FormLabel>
-                  <Trans>Username</Trans>
+                  <Trans>Full name</Trans>
                 </FormLabel>
                 <FormControl>
                   <Input
@@ -131,9 +133,9 @@ export default function ProfileComponent() {
             control={form.control}
             name="jobTitle"
             render={({ field }) => (
-              <FormItem className="max-w-sm">
+              <FormItem className="w-60">
                 <FormLabel>
-                  <Trans>Job Title</Trans>
+                  <Trans>Job title</Trans>
                 </FormLabel>
                 <FormControl>
                   <Input
@@ -151,10 +153,10 @@ export default function ProfileComponent() {
             control={form.control}
             name="companyName"
             render={({ field }) => (
-              <FormItem className="max-w-sm">
+              <FormItem className="w-60">
                 <div>
                   <FormLabel>
-                    <Trans>Company Name</Trans>
+                    <Trans>Company name</Trans>
                   </FormLabel>
                   <FormDescription>
                     <Trans>This is the name of the company you work for.</Trans>
@@ -179,7 +181,7 @@ export default function ProfileComponent() {
               <FormItem className="max-w-lg">
                 <div>
                   <FormLabel>
-                    <Trans>Company Description</Trans>
+                    <Trans>Company description</Trans>
                   </FormLabel>
                   <FormDescription>
                     <Trans>This is a short description of your company.</Trans>
@@ -204,10 +206,12 @@ export default function ProfileComponent() {
               <FormItem className="max-w-sm">
                 <div>
                   <FormLabel>
-                    <Trans>LinkedIn Username</Trans>
+                    <Trans>LinkedIn username</Trans>
                   </FormLabel>
                   <FormDescription>
-                    <Trans>Your LinkedIn username (the part after linkedin.com/in/)</Trans>
+                    <Trans>
+                      Your LinkedIn username (the part after linkedin.com/in/)
+                    </Trans>
                   </FormDescription>
                 </div>
                 <FormControl>

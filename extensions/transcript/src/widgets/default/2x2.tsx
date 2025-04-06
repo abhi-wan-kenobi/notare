@@ -14,6 +14,7 @@ import {
 } from "@hypr/ui/components/ui/dropdown-menu";
 import { WidgetHeader } from "@hypr/ui/components/ui/widgets";
 import { WidgetTwoByTwo, WidgetTwoByTwoWrapper } from "@hypr/ui/components/ui/widgets";
+import { safeNavigate } from "@hypr/utils";
 import { useSessions } from "@hypr/utils/contexts";
 import Transcript from "../../components/transcript";
 import { useTranscript } from "../../hooks/useTranscript";
@@ -38,6 +39,17 @@ function Inner({ sessionId, onMaximize }: { sessionId: string } & Parameters<Wid
   const { timeline, isLive, selectedLanguage, handleLanguageChange } = useTranscript(sessionId);
 
   const transcriptRef = useRef<HTMLDivElement>(null);
+
+  const handleOpenTranscriptSettings = () => {
+    const extensionId = "@hypr/extension-transcript";
+    const url = `/app/settings?current=extensions&extension=${
+      encodeURIComponent(
+        extensionId,
+      )
+    }`;
+
+    safeNavigate({ type: "settings" }, url);
+  };
 
   useEffect(() => {
     const scrollToBottom = () => {
@@ -70,41 +82,66 @@ function Inner({ sessionId, onMaximize }: { sessionId: string } & Parameters<Wid
   );
 
   return (
-    <>
-      <div className="p-4 pb-0">
-        <WidgetHeader
-          title={
-            <div className="flex items-center gap-2">
-              Transcript
-              {isLive && <Badge variant="destructive" className="hover:bg-destructive">LIVE</Badge>}
-            </div>
-          }
-          actions={[
-            <DropdownMenu key="language">
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="p-0"
-                >
-                  <LanguagesIcon size={16} className="text-black" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end">
-                <DropdownMenuLabel>Select Language</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup value={selectedLanguage} onValueChange={handleLanguageChange}>
-                  <DropdownMenuRadioItem value="en">English</DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>,
-            maximizeButton,
-          ]}
-        />
-      </div>
+    <WidgetTwoByTwoWrapper>
+      {sessionId && (
+        <>
+          <div className="p-4 pb-0">
+            <WidgetHeader
+              title={
+                <div className="flex items-center gap-2">
+                  <button onClick={handleOpenTranscriptSettings}>
+                    <img
+                      src="/assets/transcript-icon.jpg"
+                      className="size-5 rounded-md cursor-pointer"
+                      title="Configure Transcript extension"
+                    />
+                  </button>
+                  Transcript
+                  {isLive && (
+                    <Badge
+                      variant="destructive"
+                      className="hover:bg-destructive"
+                    >
+                      LIVE
+                    </Badge>
+                  )}
+                </div>
+              }
+              actions={[
+                <DropdownMenu key="language">
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="p-0">
+                      <LanguagesIcon size={16} className="text-black" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end">
+                    <DropdownMenuLabel>Select Language</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup
+                      value={selectedLanguage}
+                      onValueChange={handleLanguageChange}
+                    >
+                      <DropdownMenuRadioItem value="en">
+                        English
+                      </DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>,
+                maximizeButton,
+              ]}
+            />
+          </div>
 
-      <Transcript ref={transcriptRef} transcript={timeline} isLive={isLive} />
-    </>
+          {timeline && (
+            <Transcript
+              ref={transcriptRef}
+              transcript={timeline}
+              isLive={isLive}
+            />
+          )}
+        </>
+      )}
+    </WidgetTwoByTwoWrapper>
   );
 }
 
