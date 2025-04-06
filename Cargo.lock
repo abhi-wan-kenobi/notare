@@ -15143,6 +15143,10 @@ name = "whisper2"
 version = "0.1.0"
 dependencies = [
  "data",
+ "dirs 6.0.0",
+ "futures-util",
+ "llama",
+ "tokio",
  "whisper-rs",
 ]
 

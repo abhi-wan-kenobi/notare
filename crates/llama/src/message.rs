@@ -2,7 +2,8 @@ use async_openai::types::{
     ChatCompletionRequestAssistantMessageContent, ChatCompletionRequestMessage,
     ChatCompletionRequestSystemMessageContent, ChatCompletionRequestUserMessageContent,
 };
-use llama_cpp_2::model::LlamaChatMessage;
+
+pub use llama_cpp_2::model::LlamaChatMessage;
 
 pub trait FromOpenAI {
     fn from_openai(message: &ChatCompletionRequestMessage) -> Self;
