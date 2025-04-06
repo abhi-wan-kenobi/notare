@@ -3,9 +3,11 @@ import { RiAppleFill as AppleIcon } from "@remixicon/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type as getOsType } from "@tauri-apps/plugin-os";
 import { open } from "@tauri-apps/plugin-shell";
+import { CalendarIcon } from "lucide-react";
 import { useCallback } from "react";
 
 import { client, getApiDesktopUserIntegrationsOptions, getIntegrationURL } from "@/client";
+import { useHypr } from "@/contexts";
 import { type CalendarIntegration } from "@/types";
 import { commands as appleCalendarCommands } from "@hypr/plugin-apple-calendar";
 import { type Calendar } from "@hypr/plugin-db";
@@ -20,7 +22,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@hypr/ui/components/ui/dropdown-menu";
-import { CalendarIcon } from "lucide-react";
 
 const supportedIntegrations: CalendarIntegration[] = [
   "apple-calendar",
@@ -245,10 +246,11 @@ function AppleCalendarIntegrationDetails() {
 
 function CalendarSelector() {
   const queryClient = useQueryClient();
+  const { userId } = useHypr();
 
   const calendarsQuery = useQuery({
     queryKey: ["calendars"],
-    queryFn: () => dbCommands.listCalendars(),
+    queryFn: () => dbCommands.listCalendars(userId),
     enabled: true,
   });
 
