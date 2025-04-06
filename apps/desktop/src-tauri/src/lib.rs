@@ -134,9 +134,12 @@ pub async fn main() {
         .build(tauri::generate_context!())
         .unwrap();
 
+    let app_handle = app.handle().clone();
+    HyprWindow::Main.show(&app_handle).unwrap();
+
     app.run(|app, event| {
         if let tauri::RunEvent::Reopen { .. } = event {
-            HyprWindow::Main.show(app).unwrap();
+            HyprWindow::Main.show(&app).unwrap();
         }
     });
 }
