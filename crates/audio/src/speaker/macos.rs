@@ -1,5 +1,11 @@
 use anyhow::Result;
-use futures_util::{Stream, StreamExt};
+use futures_util::Stream;
+use ringbuf::{
+    traits::{Consumer, Producer, Split},
+    HeapRb,
+};
+use std::sync::{Arc, Mutex};
+use std::task::{Poll, Waker};
 
 use ca::aggregate_device_keys as agg_keys;
 use cidre::{arc, av, cat, cf, core_audio as ca, ns, os};
@@ -12,13 +18,19 @@ pub struct SpeakerInput {
     sample_rate_override: Option<u32>,
 }
 
+struct WakerState {
+    waker: Option<Waker>,
+    has_data: bool,
+}
+
 pub struct SpeakerStream {
-    receiver: std::pin::Pin<Box<dyn Stream<Item = f32> + Send + Sync>>,
+    consumer: ringbuf::HeapCons<f32>,
     stream_desc: cat::AudioBasicStreamDesc,
     sample_rate_override: Option<u32>,
     _device: ca::hardware::StartedDevice<ca::AggregateDevice>,
     _ctx: Box<Ctx>,
     _tap: ca::TapGuard,
+    waker_state: Arc<Mutex<WakerState>>,
 }
 
 impl SpeakerStream {
@@ -28,10 +40,10 @@ impl SpeakerStream {
     }
 }
 
-#[derive(Clone)]
 struct Ctx {
     format: arc::R<av::AudioFormat>,
-    sender: futures_channel::mpsc::UnboundedSender<Vec<f32>>,
+    producer: ringbuf::HeapProd<f32>,
+    waker_state: Arc<Mutex<WakerState>>,
 }
 
 impl SpeakerInput {
@@ -109,10 +121,19 @@ impl SpeakerInput {
                 av::AudioPcmBuf::with_buf_list_no_copy(&ctx.format, input_data, None)
             {
                 if let Some(data) = view.data_f32_at(0) {
-                    let samples = data.to_vec();
+                    let buffer_size = data.len();
+                    let pushed = ctx.producer.push_slice(data);
+                    if pushed < buffer_size {
+                        tracing::warn!("macos_speaker_dropped_{}_samples", buffer_size - pushed,);
+                    }
 
-                    if let Err(e) = ctx.sender.start_send(samples) {
-                        tracing::error!(error = ?e, "macos_speaker_stream_send_error");
+                    let mut waker_state = ctx.waker_state.lock().unwrap();
+                    if pushed > 0 && !waker_state.has_data {
+                        waker_state.has_data = true;
+                        if let Some(waker) = waker_state.waker.take() {
+                            drop(waker_state);
+                            waker.wake();
+                        }
                     }
                 }
             } else {
@@ -133,19 +154,30 @@ impl SpeakerInput {
         let asbd = self.tap.asbd().unwrap();
         let format = av::AudioFormat::with_asbd(&asbd).unwrap();
 
-        let (tx, rx) = futures_channel::mpsc::unbounded();
-        let mut ctx = Box::new(Ctx { format, sender: tx });
+        let rb = HeapRb::<f32>::new(8192);
+        let (producer, consumer) = rb.split();
+
+        let waker_state = Arc::new(Mutex::new(WakerState {
+            waker: None,
+            has_data: false,
+        }));
+
+        let mut ctx = Box::new(Ctx {
+            format,
+            producer,
+            waker_state: waker_state.clone(),
+        });
 
         let device = self.start_device(&mut ctx).unwrap();
-        let receiver = rx.map(futures_util::stream::iter).flatten();
 
         SpeakerStream {
-            receiver: Box::pin(receiver),
+            consumer,
             stream_desc: asbd,
             sample_rate_override: self.sample_rate_override,
             _device: device,
             _ctx: ctx,
             _tap: self.tap,
+            waker_state,
         }
     }
 }
@@ -156,11 +188,21 @@ impl Stream for SpeakerStream {
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        match self.receiver.as_mut().poll_next_unpin(cx) {
-            std::task::Poll::Ready(Some(chunk)) => std::task::Poll::Ready(Some(chunk)),
-            std::task::Poll::Ready(None) => std::task::Poll::Ready(None),
-            std::task::Poll::Pending => std::task::Poll::Pending,
+    ) -> Poll<Option<Self::Item>> {
+        if let Some(sample) = self.consumer.try_pop() {
+            return Poll::Ready(Some(sample));
+        }
+
+        {
+            let mut state = self.waker_state.lock().unwrap();
+            state.has_data = false;
+            state.waker = Some(cx.waker().clone());
+            drop(state);
+        }
+
+        match self.consumer.try_pop() {
+            Some(sample) => Poll::Ready(Some(sample)),
+            None => Poll::Pending,
         }
     }
 }
