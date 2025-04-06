@@ -1,30 +1,62 @@
 import { useQuery } from "@tanstack/react-query";
-import { ask } from "@tauri-apps/plugin-dialog";
+import { Channel } from "@tauri-apps/api/core";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import { useEffect } from "react";
 
-import { toast } from "@hypr/ui/components/ui/toast";
+import { sonnerToast, toast } from "@hypr/ui/components/ui/toast";
+import { DownloadProgress } from "./shared";
 
 export default function OtaNotification() {
   const checkForUpdate = useQuery({
     queryKey: ["check-for-update"],
-    queryFn: () => {
+    queryFn: async () => {
       if (process.env.NODE_ENV === "production") {
         return check();
       }
 
-      return Promise.resolve({
-        available: false,
-        currentVersion: "0.0.1",
-        version: "0.0.2",
-      }) as ReturnType<typeof check>;
+      return null;
+      // return {
+      //   currentVersion: "0.0.1",
+      //   version: "0.0.2",
+      //   body: "This is a mock update for development testing",
+      //   downloadAndInstall: (onEvent?: (progress: DownloadEvent) => void, _options?: DownloadOptions) => {
+      //     if (onEvent) {
+      //       onEvent({
+      //         event: "Started",
+      //         data: { contentLength: 300 },
+      //       });
+
+      //       setTimeout(() => {
+      //         onEvent({
+      //           event: "Progress",
+      //           data: { chunkLength: 100 },
+      //         });
+      //       }, 1000);
+
+      //       setTimeout(() => {
+      //         onEvent({
+      //           event: "Progress",
+      //           data: { chunkLength: 100 },
+      //         });
+      //       }, 2000);
+
+      //       setTimeout(() => {
+      //         onEvent({
+      //           event: "Finished",
+      //         });
+      //       }, 3000);
+      //     }
+
+      //     return Promise.resolve(null);
+      //   },
+      // } as unknown as ReturnType<typeof check>;
     },
     refetchInterval: 1000 * 60,
   });
 
   useEffect(() => {
-    if (!checkForUpdate.data?.available) {
+    if (!checkForUpdate.data) {
       return;
     }
 
@@ -38,23 +70,44 @@ export default function OtaNotification() {
         {
           label: "Update Now",
           onClick: async () => {
-            const yes = await ask(
-              `
-                Update to ${update.version} is available!
-                Release notes: ${update.body}
-                `,
-              {
-                title: "Update Now!",
-                kind: "info",
-                okLabel: "Update",
-                cancelLabel: "Cancel",
-              },
-            );
+            sonnerToast.dismiss("ota-notification");
 
-            if (yes && process.env.NODE_ENV === "production") {
-              await update.downloadAndInstall();
-              await relaunch();
-            }
+            const updateChannel = new Channel<number>();
+            let totalDownloaded = 0;
+            let contentLength: number | undefined;
+
+            toast({
+              id: "update-download",
+              title: `Downloading Update ${update.version}`,
+              content: (
+                <div className="space-y-1">
+                  <div>This may take a while...</div>
+                  <DownloadProgress
+                    channel={updateChannel}
+                    onComplete={async () => {
+                      if (process.env.NODE_ENV === "production") {
+                        await relaunch();
+                      }
+                    }}
+                  />
+                </div>
+              ),
+              dismissible: false,
+            });
+
+            await update.downloadAndInstall((progressEvent) => {
+              if (progressEvent.event === "Started") {
+                totalDownloaded = 0;
+                contentLength = progressEvent.data.contentLength;
+              } else if (progressEvent.event === "Progress") {
+                totalDownloaded += progressEvent.data.chunkLength;
+                const totalSize = contentLength || (50 * 1024 * 1024);
+                const progressPercentage = Math.min(Math.round((totalDownloaded / totalSize) * 100), 99);
+                updateChannel.onmessage(progressPercentage);
+              } else if (progressEvent.event === "Finished") {
+                updateChannel.onmessage(100);
+              }
+            });
           },
           primary: true,
         },

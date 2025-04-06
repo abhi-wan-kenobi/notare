@@ -52,6 +52,7 @@ pub async fn main() {
         .plugin(tauri_plugin_sse::init())
         .plugin(tauri_plugin_misc::init())
         .plugin(tauri_plugin_db::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_store2::init())
         .plugin(tauri_plugin_template::init())
