@@ -42,11 +42,7 @@ function Inner({ sessionId, onMaximize }: { sessionId: string } & Parameters<Wid
 
   const handleOpenTranscriptSettings = () => {
     const extensionId = "@hypr/extension-transcript";
-    const url = `/app/settings?current=extensions&extension=${
-      encodeURIComponent(
-        extensionId,
-      )
-    }`;
+    const url = `/app/settings?tab=extensions&extension=${extensionId}`;
 
     safeNavigate({ type: "settings" }, url);
   };

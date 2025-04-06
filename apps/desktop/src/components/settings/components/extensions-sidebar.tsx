@@ -44,7 +44,7 @@ export function ExtensionsSidebar({
                 "flex w-full items-center gap-2 rounded-lg p-2 text-sm text-neutral-600 hover:bg-neutral-100",
                 selectedExtension === extension.id && "bg-neutral-100 font-medium",
               )}
-              onClick={() => onExtensionSelect(extension as unknown as ExtensionName)}
+              onClick={() => onExtensionSelect(extension.id as ExtensionName)}
               disabled={!extension.implemented}
             >
               <BlocksIcon className="h-4 w-4" />

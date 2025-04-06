@@ -17,7 +17,7 @@ export function ConfigureWidgetsButton({
       search: { tab: "extensions" },
     } as const satisfies LinkProps;
 
-    const url = `${params.to}?current=${params.search.tab}`;
+    const url = `${params.to}?tab=${params.search.tab}`;
 
     windowsCommands.windowShow({ type: "settings" }).then(() => {
       setTimeout(() => {

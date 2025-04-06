@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { ArrowLeft } from "lucide-react";
@@ -26,7 +27,6 @@ import {
 import { EXTENSION_CONFIGS, ExtensionName, ExtensionNames } from "@hypr/extension-registry";
 import { type ExtensionDefinition } from "@hypr/plugin-db";
 import { Button } from "@hypr/ui/components/ui/button";
-import { Trans } from "@lingui/react/macro";
 
 const schema = z.object({
   tab: z.enum(TABS).default("general"),

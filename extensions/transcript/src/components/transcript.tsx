@@ -14,7 +14,7 @@ const Transcript = forwardRef<
   return (
     <div
       ref={ref}
-      className="flex-1 scrollbar-none px-4 flex flex-col gap-2 overflow-y-auto text-sm pb-4"
+      className="flex-1 scrollbar-none px-4 flex flex-col gap-2 overflow-y-auto text-sm py-4"
     >
       {transcript.items.length > 0
         ? (
