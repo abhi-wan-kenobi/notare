@@ -24,7 +24,10 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> crate::TemplatePluginExt<R> for T 
             .env
             .get_template(name.as_ref())
             .map_err(|e| e.to_string())?;
-        tpl.render(&ctx).map_err(|e| e.to_string())
+
+        tpl.render(&ctx)
+            .map(|s| s.trim().to_string())
+            .map_err(|e| e.to_string())
     }
 
     #[tracing::instrument(skip_all)]

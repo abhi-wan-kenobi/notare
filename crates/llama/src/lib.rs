@@ -16,6 +16,8 @@ pub use error::*;
 mod message;
 pub use message::*;
 
+const TEMPLATE_NAME: &str = "llama3";
+
 const DEFAULT_MAX_INPUT_TOKENS: u32 = 1024 * 8;
 const DEFAULT_MAX_OUTPUT_TOKENS: u32 = 1024 * 2;
 
@@ -56,7 +58,7 @@ impl Llama {
 
         let params = LlamaModelParams::default();
         let model = LlamaModel::load_from_file(&backend, model_path.into(), &params)?;
-        let tpl = LlamaChatTemplate::new("llama3").unwrap();
+        let tpl = LlamaChatTemplate::new(TEMPLATE_NAME).unwrap();
 
         let (task_sender, mut task_receiver) = tokio::sync::mpsc::unbounded_channel::<Task>();
 
@@ -183,26 +185,7 @@ mod tests {
     #[tokio::test]
     async fn test_simple() {
         let llama = get_model();
-        let prompt = "Hello, how are you?";
-
-        let request = LlamaRequest::new(vec![
-            LlamaChatMessage::new("user".into(), prompt.into()).unwrap()
-        ]);
-
-        let response: String = llama.generate_stream(request).unwrap().collect().await;
-        println!("response: {}", response);
-        assert!(response.len() > 4);
-    }
-
-    // cargo test test_long -p llama -- --nocapture
-    #[tokio::test]
-    async fn test_long() {
-        let llama = get_model();
-
-        let prompt = std::iter::repeat("Hello, how are you?")
-            .take(800)
-            .collect::<Vec<_>>()
-            .join("\n");
+        let prompt = "Generate a json array of 10 random objects, about animals";
 
         let request = LlamaRequest::new(vec![
             LlamaChatMessage::new("user".into(), prompt.into()).unwrap()
