@@ -27,8 +27,10 @@ tracing = { workspace = true }
 hypr-db-user = { workspace = true }
 hypr-file = { workspace = true }
 hypr-listener-interface = { workspace = true }
+hypr-whisper = { workspace = true }
 
 tauri = { workspace = true, features = ["test"] }
+tauri-plugin-store = { workspace = true }
 tauri-plugin-store2 = { workspace = true }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 
@@ -47,11 +49,7 @@ tower-http = { workspace = true, features = ["cors", "trace"] }
 rodio = { workspace = true, features = ["wav"] }
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
-kalosm-common = { workspace = true }
 kalosm-sound = { workspace = true, default-features = false }
-rwhisper = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-kalosm-common = { workspace = true, features = ["metal"] }
 kalosm-sound = { workspace = true, default-features = false, features = ["metal"] }
-rwhisper = { workspace = true, features = ["metal"] }

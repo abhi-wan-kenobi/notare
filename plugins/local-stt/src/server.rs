@@ -21,8 +21,8 @@ use hypr_listener_interface::{ListenInputChunk, ListenOutputChunk, ListenParams,
 
 #[derive(Default)]
 pub struct ServerStateBuilder {
+    pub model_type: Option<crate::SupportedModel>,
     pub model_cache_dir: Option<PathBuf>,
-    pub model_type: Option<rwhisper::WhisperSource>,
 }
 
 impl ServerStateBuilder {
@@ -31,15 +31,15 @@ impl ServerStateBuilder {
         self
     }
 
-    pub fn model_type(mut self, model_type: rwhisper::WhisperSource) -> Self {
+    pub fn model_type(mut self, model_type: crate::SupportedModel) -> Self {
         self.model_type = Some(model_type);
         self
     }
 
     pub fn build(self) -> ServerState {
         ServerState {
-            model_cache_dir: self.model_cache_dir.unwrap(),
             model_type: self.model_type.unwrap(),
+            model_cache_dir: self.model_cache_dir.unwrap(),
             num_connections: Arc::new(AtomicUsize::new(0)),
         }
     }
@@ -47,8 +47,8 @@ impl ServerStateBuilder {
 
 #[derive(Clone)]
 pub struct ServerState {
+    model_type: crate::SupportedModel,
     model_cache_dir: PathBuf,
-    model_type: rwhisper::WhisperSource,
     num_connections: Arc<AtomicUsize>,
 }
 
@@ -133,26 +133,25 @@ async fn listen(
         .try_acquire_connection()
         .ok_or(StatusCode::TOO_MANY_REQUESTS)?;
 
-    let model = rwhisper::WhisperBuilder::default()
-        .with_cache(kalosm_common::Cache::new(state.model_cache_dir))
-        .with_language(Some(rwhisper::WhisperLanguage::English))
-        .with_source(state.model_type)
-        .build()
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let model_path = state.model_type.model_path(&state.model_cache_dir);
+    let model = hypr_whisper::local::Whisper::new(model_path.to_str().unwrap());
 
     Ok(ws.on_upgrade(move |socket| websocket(socket, model, guard)))
 }
 
 #[tracing::instrument(skip_all)]
-async fn websocket(socket: WebSocket, model: rwhisper::Whisper, _guard: ConnectionGuard) {
+async fn websocket(
+    socket: WebSocket,
+    model: hypr_whisper::local::Whisper,
+    _guard: ConnectionGuard,
+) {
     let (mut ws_sender, ws_receiver) = socket.split();
     let mut stream = {
         let audio_source = WebSocketAudioSource::new(ws_receiver, 16 * 1000);
         let chunked =
             crate::chunker::FixedChunkStream::new(audio_source, std::time::Duration::from_secs(12));
 
-        rwhisper::TranscribeChunkedAudioStreamExt::transcribe(chunked, model)
+        hypr_whisper::local::TranscribeChunkedAudioStreamExt::transcribe(chunked, model)
     };
 
     while let Some(chunk) = stream.next().await {
