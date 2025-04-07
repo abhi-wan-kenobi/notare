@@ -159,7 +159,7 @@ async fn websocket(
         let start = chunk.start() as u64;
         let duration = chunk.duration() as u64;
 
-        if chunk.confidence() < 0.8 && text.len() < 12 {
+        if chunk.confidence() < 0.5 && text.len() < 12 {
             tracing::warn!("skipping_transcript: {}", text);
             continue;
         }

@@ -2,11 +2,13 @@
 
 use whisper_rs::{
     FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperState,
+    WhisperToken,
 };
 
 pub struct Whisper {
     state: WhisperState,
     prompt: String,
+    eot: WhisperToken,
 }
 
 impl Whisper {
@@ -29,10 +31,12 @@ impl Whisper {
 
         let ctx = WhisperContext::new_with_params(model_path.as_ref(), context_param).unwrap();
         let state = ctx.create_state().unwrap();
+        let eot = ctx.token_eot();
 
         Self {
             state,
             prompt: "".to_string(),
+            eot,
         }
     }
 
@@ -67,13 +71,13 @@ impl Whisper {
                 self.state.full_get_segment_t0(i).unwrap(),
                 self.state.full_get_segment_t1(i).unwrap(),
             );
+            let confidence = self.calculate_segment_confidence(i);
 
             segments.push(Segment {
                 text,
                 start: start as f32 / 1000.0,
                 end: end as f32 / 1000.0,
-                // TODO
-                confidence: 0.99,
+                confidence,
             });
         }
 
@@ -85,9 +89,48 @@ impl Whisper {
 
         segments
     }
+
+    // https://github.com/ggml-org/whisper.cpp/pull/971/files#diff-2d3599a9fad195f2c3c60bd06691bc1815325b3560b5feda41a91fa71194e805R310-R327
+    fn calculate_segment_confidence(&self, segment_idx: i32) -> f32 {
+        let n_tokens = self.state.full_n_tokens(segment_idx).unwrap_or(0);
+        if n_tokens == 0 {
+            return 0.0;
+        }
+
+        let mut total_confidence = 0.0;
+        let mut valid_tokens = 0;
+
+        for j in 0..n_tokens {
+            let token_id = match self.state.full_get_token_id(segment_idx, j) {
+                Ok(id) => id,
+                Err(_) => continue,
+            };
+
+            if token_id >= self.eot {
+                continue;
+            }
+
+            let token_p = self
+                .state
+                .full_get_token_prob(segment_idx, j)
+                .unwrap_or(0.0);
+
+            let token_confidence = token_p.powi(3);
+
+            total_confidence += token_confidence;
+            valid_tokens += 1;
+        }
+
+        if valid_tokens == 0 {
+            return 0.0;
+        }
+
+        total_confidence / valid_tokens as f32
+    }
 }
 
 // https://github.com/floneum/floneum/blob/52967ae/models/rwhisper/src/lib.rs#L116
+#[derive(Debug)]
 pub struct Segment {
     pub text: String,
     pub start: f32,
