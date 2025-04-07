@@ -4,8 +4,6 @@ export const ExtensionNames = [
   "@hypr/extension-summary",
   "@hypr/extension-dino-game",
   "@hypr/extension-timer",
-  "@hypr/extension-clock",
-  "@hypr/extension-calculator",
 ] as const;
 
 export type ExtensionName = typeof ExtensionNames[number];
@@ -20,10 +18,6 @@ export function importExtension(name: ExtensionName) {
       return import("@hypr/extension-transcript");
     case "@hypr/extension-timer":
       return import("@hypr/extension-timer");
-    case "@hypr/extension-clock":
-      return import("@hypr/extension-clock");
-    case "@hypr/extension-calculator":
-      return import("@hypr/extension-calculator");
     case "@hypr/extension-twenty":
       return import("@hypr/extension-twenty");
     default:
@@ -31,8 +25,6 @@ export function importExtension(name: ExtensionName) {
   }
 }
 
-import calculatorConfig from "@hypr/extension-calculator/config.json";
-import clockConfig from "@hypr/extension-clock/config.json";
 import dinoGameConfig from "@hypr/extension-dino-game/config.json";
 import summaryConfig from "@hypr/extension-summary/config.json";
 import timerConfig from "@hypr/extension-timer/config.json";
@@ -40,8 +32,6 @@ import transcriptConfig from "@hypr/extension-transcript/config.json";
 import twentyConfig from "@hypr/extension-twenty/config.json";
 
 export const EXTENSION_CONFIGS = [
-  calculatorConfig,
-  clockConfig,
   dinoGameConfig,
   summaryConfig,
   timerConfig,

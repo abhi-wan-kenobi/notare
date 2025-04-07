@@ -117,12 +117,6 @@ importers:
       '@hypr/client':
         specifier: workspace:^
         version: link:../../packages/client
-      '@hypr/extension-calculator':
-        specifier: workspace:^
-        version: link:../../extensions/calculator
-      '@hypr/extension-clock':
-        specifier: workspace:^
-        version: link:../../extensions/clock
       '@hypr/extension-dino-game':
         specifier: workspace:^
         version: link:../../extensions/dino-game
@@ -471,110 +465,6 @@ importers:
         specifier: ^3.24.2
         version: 3.24.2
 
-  extensions/calculator:
-    dependencies:
-      '@hypr/extension-types':
-        specifier: workspace:^
-        version: link:../types
-      '@hypr/ui':
-        specifier: workspace:^
-        version: link:../../packages/ui
-    devDependencies:
-      '@storybook/addon-essentials':
-        specifier: ^8.6.12
-        version: 8.6.12(@types/react@18.3.20)(storybook@8.6.12(prettier@3.5.3))
-      '@storybook/addon-interactions':
-        specifier: ^8.6.12
-        version: 8.6.12(storybook@8.6.12(prettier@3.5.3))
-      '@storybook/react':
-        specifier: ^8.6.12
-        version: 8.6.12(@storybook/test@8.6.12(storybook@8.6.12(prettier@3.5.3)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.6.12(prettier@3.5.3))(typescript@5.8.3)
-      '@storybook/react-vite':
-        specifier: ^8.6.12
-        version: 8.6.12(@storybook/test@8.6.12(storybook@8.6.12(prettier@3.5.3)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.39.0)(storybook@8.6.12(prettier@3.5.3))(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@2.4.2)(tsx@4.19.3)(yaml@2.7.1))
-      '@types/node':
-        specifier: ^22.14.0
-        version: 22.14.0
-      '@types/react':
-        specifier: ^18.3.20
-        version: 18.3.20
-      autoprefixer:
-        specifier: ^10.4.21
-        version: 10.4.21(postcss@8.5.3)
-      msw:
-        specifier: ^2.7.3
-        version: 2.7.3(@types/node@22.14.0)(typescript@5.8.3)
-      msw-storybook-addon:
-        specifier: ^2.0.4
-        version: 2.0.4(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
-      storybook:
-        specifier: ^8.6.12
-        version: 8.6.12(prettier@3.5.3)
-      tailwindcss:
-        specifier: ^3.4.17
-        version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.6)(@types/node@22.14.0)(typescript@5.8.3))
-      typescript:
-        specifier: ^5.8.3
-        version: 5.8.3
-
-  extensions/clock:
-    dependencies:
-      '@hypr/extension-types':
-        specifier: workspace:^
-        version: link:../types
-      '@hypr/ui':
-        specifier: workspace:^
-        version: link:../../packages/ui
-      react-clock:
-        specifier: ^5.1.0
-        version: 5.1.0(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-    devDependencies:
-      '@storybook/addon-essentials':
-        specifier: ^8.6.12
-        version: 8.6.12(@types/react@18.3.20)(storybook@8.6.12(prettier@3.5.3))
-      '@storybook/addon-interactions':
-        specifier: ^8.6.12
-        version: 8.6.12(storybook@8.6.12(prettier@3.5.3))
-      '@storybook/react':
-        specifier: ^8.6.12
-        version: 8.6.12(@storybook/test@8.6.12(storybook@8.6.12(prettier@3.5.3)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.6.12(prettier@3.5.3))(typescript@5.8.3)
-      '@storybook/react-vite':
-        specifier: ^8.6.12
-        version: 8.6.12(@storybook/test@8.6.12(storybook@8.6.12(prettier@3.5.3)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.39.0)(storybook@8.6.12(prettier@3.5.3))(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@2.4.2)(tsx@4.19.3)(yaml@2.7.1))
-      '@types/react':
-        specifier: ^18.3.20
-        version: 18.3.20
-      autoprefixer:
-        specifier: ^10.4.21
-        version: 10.4.21(postcss@8.5.3)
-      msw:
-        specifier: ^2.7.3
-        version: 2.7.3(@types/node@22.14.0)(typescript@5.8.3)
-      msw-storybook-addon:
-        specifier: ^2.0.4
-        version: 2.0.4(msw@2.7.3(@types/node@22.14.0)(typescript@5.8.3))
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
-      storybook:
-        specifier: ^8.6.12
-        version: 8.6.12(prettier@3.5.3)
-      tailwindcss:
-        specifier: ^3.4.17
-        version: 3.4.17(ts-node@10.9.2(@swc/core@1.10.6)(@types/node@22.14.0)(typescript@5.8.3))
-      typescript:
-        specifier: ^5.8.3
-        version: 5.8.3
-
   extensions/dino-game:
     dependencies:
       '@hypr/extension-types':
@@ -715,12 +605,6 @@ importers:
 
   extensions/registry:
     dependencies:
-      '@hypr/extension-calculator':
-        specifier: workspace:^
-        version: link:../calculator
-      '@hypr/extension-clock':
-        specifier: workspace:^
-        version: link:../clock
       '@hypr/extension-dino-game':
         specifier: workspace:^
         version: link:../dino-game
@@ -4396,9 +4280,6 @@ packages:
     resolution: {integrity: sha512-0TcTjBiax1VxtJQ/iQA0ZyYOSHjjX2ARVmEI0AMo9+AuIq+xBfnY561+v8k9GqOMPKsiH/HrK3xwjx8xCVS03g==}
     engines: {node: ^16.13 || >=18}
 
-  '@wojtekmaj/date-utils@1.5.1':
-    resolution: {integrity: sha512-+i7+JmNiE/3c9FKxzWFi2IjRJ+KzZl1QPu6QNrsgaa2MuBgXvUy4gA1TVzf/JMdIIloB76xSKikTWuyYAIVLww==}
-
   '@zip.js/zip.js@2.7.60':
     resolution: {integrity: sha512-vA3rLyqdxBrVo1FWSsbyoecaqWTV+vgPRf0QKeM7kVDG0r+lHUqd7zQDv1TO9k4BcAoNzNDSNrrel24Mk6addA==}
     engines: {bun: '>=0.7.0', deno: '>=1.0.0', node: '>=16.5.0'}
@@ -5699,9 +5580,6 @@ packages:
     resolution: {integrity: sha512-E1b1lFFLvLgak2whF2xDBcOy6NLVGZBqqjJjsIhvopKfWWEi64pLVTWWehV8KlLerZkfNTA95sTe2OdJKm1OzQ==}
     engines: {node: '>= 14'}
 
-  get-user-locale@2.3.2:
-    resolution: {integrity: sha512-O2GWvQkhnbDoWFUJfaBlDIKUEdND8ATpBXD6KXcbhxlfktyD/d8w6mkzM/IlQEqGZAMz/PW6j6Hv53BiigKLUQ==}
-
   giget@1.2.5:
     resolution: {integrity: sha512-r1ekGw/Bgpi3HLV3h1MRBIlSAdHoIMklpaQ3OQLFcRw9PwAj2rqigvIbg+dBUI51OxVI2jsEtDywDBjSiuf7Ug==}
     hasBin: true
@@ -6487,10 +6365,6 @@ packages:
   make-error@1.3.6:
     resolution: {integrity: sha512-s8UhlNe7vPKomQhC1qFelMokr/Sc3AgNbso3n74mVPA5LTZwkB9NlXf4XPamLxJE8h0gh73rM94xvwRT2CVInw==}
 
-  map-age-cleaner@0.1.3:
-    resolution: {integrity: sha512-bJzx6nMoP6PDLPBFmg7+xRKeFZvFboMrGlxmNj9ClvX53KrmvM5bXFXEWjbz4cz1AFn+jWJ9z/DJSz7hrs0w3w==}
-    engines: {node: '>=6'}
-
   map-or-similar@1.5.0:
     resolution: {integrity: sha512-0aF7ZmVon1igznGI4VS30yugpduQW3y3GkcgGJOp7d8x8QrizhigUxjI/m2UojsXXto+jLAH3KSz+xOJTiORjg==}
 
@@ -6561,10 +6435,6 @@ packages:
 
   media-tracks@0.3.3:
     resolution: {integrity: sha512-9P2FuUHnZZ3iji+2RQk7Zkh5AmZTnOG5fODACnjhCVveX1McY3jmCRHofIEI+yTBqplz7LXy48c7fQ3Uigp88w==}
-
-  mem@8.1.1:
-    resolution: {integrity: sha512-qFCFUDs7U3b8mBDPyz5EToEKoAkgCzqquIgi9nkkR9bixxOVOre+09lbuH7+9Kn2NFpm56M3GUWVbU2hQgdACA==}
-    engines: {node: '>=10'}
 
   memoizerific@1.11.3:
     resolution: {integrity: sha512-/EuHYwAPdLtXwAwSZkh/Gutery6pD2KYd44oQLhAvQp/50mpyduZh8Q7PYHXTCJ+wuXxt7oij2LXyIJOOYFPog==}
@@ -6690,10 +6560,6 @@ packages:
   mimic-fn@2.1.0:
     resolution: {integrity: sha512-OqbOk5oEQeAZ8WXWydlu9HJjz9WVdEIvamMCcXmuqUYjTknH/sqsWvhQ3vgwKFRR1HpjvNBKQ37nbJgYzGqGcg==}
     engines: {node: '>=6'}
-
-  mimic-fn@3.1.0:
-    resolution: {integrity: sha512-Ysbi9uYW9hFyfrThdDEQuykN4Ey6BuwPD2kpI5ES/nFTDn/98yxYNLZJcgUAKPT/mcrLLKaGzJR9YVxJrIdASQ==}
-    engines: {node: '>=8'}
 
   mimic-fn@4.0.0:
     resolution: {integrity: sha512-vqiC06CuhBTUdZH+RYl8sFrL096vA45Ok5ISO6sE/Mr1jRbGH4Csnhi8f3wKVl7x8mO4Au7Ir9D3Oyv1VYMFJw==}
@@ -7051,10 +6917,6 @@ packages:
   p-debounce@4.0.0:
     resolution: {integrity: sha512-4Ispi9I9qYGO4lueiLDhe4q4iK5ERK8reLsuzH6BPaXn53EGaua8H66PXIFGrW897hwjXp+pVLrm/DLxN0RF0A==}
     engines: {node: '>=12'}
-
-  p-defer@1.0.0:
-    resolution: {integrity: sha512-wB3wfAxZpk2AzOfUMJNL+d36xothRSyj8EXOa4f6GMqYDN9BJaaSISbsk+wS9abmnebVw95C2Kb5t85UmpCxuw==}
-    engines: {node: '>=4'}
 
   p-limit@2.3.0:
     resolution: {integrity: sha512-//88mFWSJx8lxCzwdAABTJL2MyWB12+eIY7MDL2SqLmAkeKU9qxRvWuSyTjm3FUmpBEMuFfckAIqEaVGUDxb6w==}
@@ -7475,16 +7337,6 @@ packages:
 
   rc9@2.1.2:
     resolution: {integrity: sha512-btXCnMmRIBINM2LDZoEmOogIZU7Qe7zn4BpomSKZ/ykbLObuBdvG+mFq11DL6fjH1DRwHhrlgtYWG96bJiC7Cg==}
-
-  react-clock@5.1.0:
-    resolution: {integrity: sha512-DKmr29VOK6M8wpbzGUZZa9PwGnG9uC6QXtDLwGwcc2r3vdS/HxNhf5xMMjudXLk7m096mNJQf7AgfjiDpzAYYw==}
-    peerDependencies:
-      '@types/react': ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
 
   react-docgen-typescript@2.2.2:
     resolution: {integrity: sha512-tvg2ZtOpOi6QDwsb3GZhOjDkkX0h8Z2gipvTg6OVMUyoYoURhEiRNePT8NZItTVCDh39JJHnLdfCOkzoLbFnTg==}
@@ -12499,8 +12351,6 @@ snapshots:
       - bare-buffer
       - supports-color
 
-  '@wojtekmaj/date-utils@1.5.1': {}
-
   '@zip.js/zip.js@2.7.60': {}
 
   abort-controller@3.0.0:
@@ -13979,10 +13829,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  get-user-locale@2.3.2:
-    dependencies:
-      mem: 8.1.1
-
   giget@1.2.5:
     dependencies:
       citty: 0.1.6
@@ -14918,10 +14764,6 @@ snapshots:
   make-error@1.3.6:
     optional: true
 
-  map-age-cleaner@0.1.3:
-    dependencies:
-      p-defer: 1.0.0
-
   map-or-similar@1.5.0: {}
 
   mark.js@8.11.1: {}
@@ -15067,11 +14909,6 @@ snapshots:
       - react
 
   media-tracks@0.3.3: {}
-
-  mem@8.1.1:
-    dependencies:
-      map-age-cleaner: 0.1.3
-      mimic-fn: 3.1.0
 
   memoizerific@1.11.3:
     dependencies:
@@ -15301,8 +15138,6 @@ snapshots:
       mime-db: 1.52.0
 
   mimic-fn@2.1.0: {}
-
-  mimic-fn@3.1.0: {}
 
   mimic-fn@4.0.0: {}
 
@@ -15687,8 +15522,6 @@ snapshots:
   p-cancelable@3.0.0: {}
 
   p-debounce@4.0.0: {}
-
-  p-defer@1.0.0: {}
 
   p-limit@2.3.0:
     dependencies:
@@ -16126,16 +15959,6 @@ snapshots:
     dependencies:
       defu: 6.1.4
       destr: 2.0.5
-
-  react-clock@5.1.0(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      '@wojtekmaj/date-utils': 1.5.1
-      clsx: 2.1.1
-      get-user-locale: 2.3.2
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-    optionalDependencies:
-      '@types/react': 18.3.20
 
   react-docgen-typescript@2.2.2(typescript@5.8.3):
     dependencies:

@@ -6,8 +6,6 @@
   "type": "module",
   "main": "./src/index.ts",
   "dependencies": {
-    "@hypr/extension-calculator": "workspace:^",
-    "@hypr/extension-clock": "workspace:^",
     "@hypr/extension-dino-game": "workspace:^",
     "@hypr/extension-summary": "workspace:^",
     "@hypr/extension-timer": "workspace:^",

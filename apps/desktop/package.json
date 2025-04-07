@@ -20,8 +20,6 @@
     "@hookform/resolvers": "^3.10.0",
     "@huggingface/languages": "^1.0.0",
     "@hypr/client": "workspace:^",
-    "@hypr/extension-calculator": "workspace:^",
-    "@hypr/extension-clock": "workspace:^",
     "@hypr/extension-dino-game": "workspace:^",
     "@hypr/extension-registry": "workspace:^",
     "@hypr/extension-summary": "workspace:^",
