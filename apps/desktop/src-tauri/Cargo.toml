@@ -47,7 +47,6 @@ tauri-plugin-tray = { workspace = true }
 tauri-plugin-windows = { workspace = true }
 
 tauri = { workspace = true, features = ["specta", "macos-private-api"] }
-tauri-nspanel = { workspace = true }
 tauri-plugin-autostart = "2"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-decorum = { workspace = true }

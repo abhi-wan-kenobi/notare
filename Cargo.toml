@@ -36,15 +36,13 @@ hypr-ws = { path = "crates/ws", package = "ws" }
 tauri = "2"
 tauri-build = "2"
 tauri-plugin = "2"
+tauri-plugin-decorum = "1.1.1"
 tauri-plugin-deep-link = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-http = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-store = "2"
-
-tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", rev = "16111b1" }
-tauri-plugin-decorum = "1.1.1"
 
 tauri-plugin-analytics = { path = "plugins/analytics" }
 tauri-plugin-auth = { path = "plugins/auth" }
