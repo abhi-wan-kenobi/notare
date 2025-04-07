@@ -3,6 +3,7 @@
   "identifier": "default",
   "description": "Capability for Hyprnote",
   "windows": ["*"],
+  "platforms": ["macOS", "windows", "linux"],
   "withGlobalTauri": true,
   "permissions": [
     "core:default",
@@ -32,7 +33,6 @@
     "template:default",
     "local-llm:default",
     "local-stt:default",
-    "apple-calendar:default",
     "misc:default",
     "sse:default",
     "connector:default",
