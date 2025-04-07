@@ -2175,6 +2175,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "chunker"
+version = "0.1.0"
+dependencies = [
+ "data",
+ "futures-util",
+ "hound",
+ "kalosm-sound",
+ "rodio",
+ "silero",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "cidre"
 version = "0.5.0"
 source = "git+https://github.com/yury/cidre?rev=3f786684ef19186f02606b22d4dabdea1ee7a82b#3f786684ef19186f02606b22d4dabdea1ee7a82b"
@@ -12958,6 +12972,7 @@ version = "0.1.0"
 dependencies = [
  "axum 0.8.3",
  "bytes",
+ "chunker",
  "codes-iso-639",
  "data",
  "db-user",
@@ -14662,20 +14677,6 @@ checksum = "458f7a779bf54acc9f347480ac654f68407d3aab21269a6e3c9f922acd9e2da9"
 dependencies = [
  "getrandom 0.3.2",
  "serde",
-]
-
-[[package]]
-name = "vad"
-version = "0.1.0"
-dependencies = [
- "data",
- "futures-util",
- "hound",
- "kalosm-sound",
- "rodio",
- "silero",
- "tokio",
- "tracing",
 ]
 
 [[package]]

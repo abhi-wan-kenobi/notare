@@ -17,6 +17,7 @@ hypr-audio = { path = "crates/audio", package = "audio" }
 hypr-audio-utils = { path = "crates/audio-utils", package = "audio-utils" }
 hypr-buffer = { path = "crates/buffer", package = "buffer" }
 hypr-calendar-interface = { path = "crates/calendar-interface", package = "calendar-interface" }
+hypr-chunker = { path = "crates/chunker", package = "chunker" }
 hypr-data = { path = "crates/data", package = "data" }
 hypr-db-admin = { path = "crates/db-admin", package = "db-admin" }
 hypr-db-core = { path = "crates/db-core", package = "db-core" }

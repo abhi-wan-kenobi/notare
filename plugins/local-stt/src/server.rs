@@ -149,7 +149,7 @@ async fn websocket(
     let mut stream = {
         let audio_source = WebSocketAudioSource::new(ws_receiver, 16 * 1000);
         let chunked =
-            crate::chunker::FixedChunkStream::new(audio_source, std::time::Duration::from_secs(12));
+            hypr_chunker::FixedChunkStream::new(audio_source, std::time::Duration::from_secs(15));
 
         hypr_whisper::local::TranscribeChunkedAudioStreamExt::transcribe(chunked, model)
     };

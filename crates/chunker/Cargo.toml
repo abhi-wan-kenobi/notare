@@ -1,16 +1,17 @@
 [package]
-name = "vad"
+name = "chunker"
 version = "0.1.0"
 edition = "2021"
 
 [dev-dependencies]
 hound = { workspace = true }
 hypr-data = { workspace = true }
-rodio = { workspace = true, features = ["wav"] }
 
 [dependencies]
-futures-util = { workspace = true }
 kalosm-sound = { workspace = true, default-features = false }
+rodio = { workspace = true, features = ["wav"] }
 silero = { git = "https://github.com/emotechlab/silero-rs", rev = "99dc5ea" }
+
+futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tracing = { workspace = true }

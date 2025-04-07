@@ -1,6 +1,5 @@
 use tauri::{Manager, Wry};
 
-mod chunker;
 mod commands;
 mod error;
 mod ext;

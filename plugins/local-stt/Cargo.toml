@@ -24,6 +24,7 @@ specta-typescript = { workspace = true }
 tracing = { workspace = true }
 
 [dependencies]
+hypr-chunker = { workspace = true }
 hypr-db-user = { workspace = true }
 hypr-file = { workspace = true }
 hypr-listener-interface = { workspace = true }
@@ -45,8 +46,6 @@ axum = { workspace = true, features = ["ws"] }
 futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt", "macros"] }
 tower-http = { workspace = true, features = ["cors", "trace"] }
-
-rodio = { workspace = true, features = ["wav"] }
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 kalosm-sound = { workspace = true, default-features = false }
