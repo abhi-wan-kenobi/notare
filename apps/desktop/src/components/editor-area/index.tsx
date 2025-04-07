@@ -191,6 +191,7 @@ export function useEnhanceMutation({
       const config = await dbCommands.getConfig();
       const provider = await modelProvider();
 
+      const participants = await dbCommands.sessionListParticipants(sessionId);
       const onboardingOutputExample = await dbCommands.onboardingSessionEnhancedMemoHtml();
 
       const fn = sessionId === onboardingSessionId ? dbCommands.getTimelineViewOnboarding : dbCommands.getTimelineView;
@@ -206,6 +207,7 @@ export function useEnhanceMutation({
         {
           editor: rawContent,
           timeline: timeline,
+          participants,
           ...((sessionId === onboardingSessionId) ? { example: onboardingOutputExample } : {}),
         },
       );
