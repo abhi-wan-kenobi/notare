@@ -23,9 +23,8 @@ export default function EditorArea({ editable, sessionId }: {
   editable: boolean;
   sessionId: string;
 }) {
-  const { ongoingSessionTimeline, ongoingSessionStatus } = useOngoingSession((s) => ({
+  const { ongoingSessionStatus } = useOngoingSession((s) => ({
     ongoingSessionStatus: s.status,
-    ongoingSessionTimeline: s.timeline,
   }));
 
   const [showRaw, setShowRaw] = useSession(sessionId, (s) => [s.showRaw, s.setShowRaw]);
