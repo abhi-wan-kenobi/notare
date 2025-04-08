@@ -42,16 +42,56 @@ impl AEC {
         reference_frame: &[i16],
         out_buffer: &mut [i16],
     ) -> Result<(), Error> {
-        if input_frame.len() != self.config.frame_size {
-            return Err(Error::InvalidInputFrameLength);
-        }
+        let frame_size = self.config.frame_size;
 
-        if reference_frame.len() != self.config.frame_size {
-            return Err(Error::InvalidReferenceFrameLength);
-        }
+        let max_len = std::cmp::max(
+            std::cmp::min(input_frame.len(), out_buffer.len()),
+            reference_frame.len(),
+        );
 
-        self.inner
-            .cancel_echo(input_frame, reference_frame, out_buffer);
+        for chunk_idx in 0..(max_len + frame_size - 1) / frame_size {
+            let start_idx = chunk_idx * frame_size;
+
+            if start_idx >= out_buffer.len() {
+                break;
+            }
+
+            let mut chunk_input = vec![0i16; frame_size];
+            let mut chunk_reference = vec![0i16; frame_size];
+            let mut chunk_output = vec![0i16; frame_size];
+
+            let input_copy_len = if start_idx < input_frame.len() {
+                std::cmp::min(input_frame.len() - start_idx, frame_size)
+            } else {
+                0
+            };
+
+            let reference_copy_len = if start_idx < reference_frame.len() {
+                std::cmp::min(reference_frame.len() - start_idx, frame_size)
+            } else {
+                0
+            };
+
+            if input_copy_len > 0 {
+                chunk_input[..input_copy_len]
+                    .copy_from_slice(&input_frame[start_idx..start_idx + input_copy_len]);
+            }
+
+            if reference_copy_len > 0 {
+                chunk_reference[..reference_copy_len]
+                    .copy_from_slice(&reference_frame[start_idx..start_idx + reference_copy_len]);
+            }
+
+            self.inner
+                .cancel_echo(&chunk_input, &chunk_reference, &mut chunk_output);
+
+            let output_copy_len = std::cmp::min(out_buffer.len() - start_idx, frame_size);
+
+            if output_copy_len > 0 {
+                out_buffer[start_idx..start_idx + output_copy_len]
+                    .copy_from_slice(&chunk_output[..output_copy_len]);
+            }
+        }
 
         Ok(())
     }
@@ -60,39 +100,35 @@ impl AEC {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hound::WavReader;
+    use hound::{WavReader, WavWriter};
 
     #[test]
     fn test_aec() {
-        let data_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../aec/data");
+        let data_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data");
+        let lpb_wav_reader = WavReader::open(data_dir.join("echo.wav")).unwrap();
+        let mic_wav_reader = WavReader::open(data_dir.join("rec.wav")).unwrap();
 
-        // all pcm_s16le, 16k, 1chan.
-        let lpb_wav_reader = WavReader::open(data_dir.join("doubletalk_lpb_sample.wav")).unwrap();
-        let mic_wav_reader = WavReader::open(data_dir.join("doubletalk_mic_sample.wav")).unwrap();
-
-        let _spec = lpb_wav_reader.spec();
+        let spec = lpb_wav_reader.spec();
         let lpb_data: Vec<i16> = lpb_wav_reader
             .into_samples()
             .filter_map(Result::ok)
             .collect();
-        let _mic_data: Vec<i16> = mic_wav_reader
+        let mic_data: Vec<i16> = mic_wav_reader
             .into_samples()
             .filter_map(Result::ok)
-            .take(lpb_data.len())
             .collect();
 
-        let _aec = AEC::builder().sample_rate(16000).build();
+        let mut aec = AEC::builder().sample_rate(16000).build();
 
-        // let mut out_buffer = vec![0i16; lpb_data.len()];
+        let mut out_buffer = vec![0i16; mic_data.len()];
 
-        // aec.process(&lpb_data, &mic_data, &mut out_buffer).unwrap();
+        aec.process(&mic_data, &lpb_data, &mut out_buffer).unwrap();
 
-        // let mut writer =
-        //     WavWriter::create(data_dir.join("doubletalk_aec2_output.wav"), spec).unwrap();
+        let mut writer = WavWriter::create(data_dir.join("output.wav"), spec).unwrap();
 
-        // for sample in out_buffer {
-        //     writer.write_sample(sample).unwrap();
-        // }
-        // writer.finalize().unwrap();
+        for sample in out_buffer {
+            writer.write_sample(sample).unwrap();
+        }
+        writer.finalize().unwrap();
     }
 }
