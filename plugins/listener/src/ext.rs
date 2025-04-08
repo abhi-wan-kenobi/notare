@@ -6,6 +6,8 @@ use hypr_audio::AsyncSource;
 use tauri::ipc::Channel;
 use tokio::sync::{mpsc, Mutex};
 
+use tauri_plugin_db::DatabasePluginExt;
+
 #[cfg(target_os = "macos")]
 use {
     objc2::{class, msg_send, runtime::Bool},
@@ -212,12 +214,17 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
         let app = self.app_handle();
         let state = self.state::<crate::SharedState>();
 
+        let user_id = app.db_user_id().await?.unwrap();
         let session_id = session_id.into();
         let mut session = {
-            use tauri_plugin_db::DatabasePluginExt;
             app.db_get_session(&session_id)
                 .await?
                 .ok_or(crate::Error::NoneSession)?
+        };
+
+        let jargons = match app.db_get_config(&user_id).await? {
+            Some(config) => config.general.jargons,
+            None => vec![],
         };
 
         {
@@ -243,7 +250,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
 
         let app_dir = self.path().app_data_dir().unwrap();
 
-        let listen_client = setup_listen_client(app).await?;
+        let listen_client = setup_listen_client(app, jargons).await?;
 
         let mic_sample_stream = {
             let mut input = hypr_audio::AudioInput::from_mic();
@@ -441,6 +448,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
 
 async fn setup_listen_client<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
+    jargons: Vec<String>,
 ) -> Result<crate::client::ListenClient, crate::Error> {
     let api_base = {
         use tauri_plugin_connector::ConnectorPluginExt;
@@ -461,7 +469,11 @@ async fn setup_listen_client<R: tauri::Runtime>(
     Ok(crate::client::ListenClient::builder()
         .api_base(api_base)
         .api_key(api_key)
-        .language(codes_iso_639::part_1::LanguageCode::En)
+        .params(hypr_listener_interface::ListenParams {
+            language: codes_iso_639::part_1::LanguageCode::En,
+            static_prompt: jargons.join(", "),
+            ..Default::default()
+        })
         .build())
 }
 
@@ -470,8 +482,6 @@ async fn update_session<R: tauri::Runtime>(
     session: &mut hypr_db_user::Session,
     transcript: hypr_listener_interface::TranscriptChunk,
 ) -> Result<(), crate::Error> {
-    use tauri_plugin_db::DatabasePluginExt;
-
     session.conversations.push(hypr_db_user::ConversationChunk {
         transcripts: vec![transcript],
         diarizations: vec![],
@@ -480,5 +490,6 @@ async fn update_session<R: tauri::Runtime>(
     });
 
     app.db_upsert_session(session.clone()).await.unwrap();
+
     Ok(())
 }
