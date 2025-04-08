@@ -4,6 +4,8 @@ use serde::{ser::Serializer, Serialize};
 pub enum Error {
     #[error(transparent)]
     PosthogError(#[from] posthog::Error),
+    #[error(transparent)]
+    ReqwestError(#[from] reqwest::Error),
 }
 
 impl Serialize for Error {

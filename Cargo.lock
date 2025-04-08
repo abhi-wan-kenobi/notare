@@ -193,6 +193,8 @@ name = "analytics"
 version = "0.1.0"
 dependencies = [
  "async-posthog",
+ "posthog-core",
+ "reqwest 0.12.15",
  "serde",
  "serde_json",
  "specta",

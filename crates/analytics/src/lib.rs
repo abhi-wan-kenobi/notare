@@ -5,29 +5,37 @@ pub use error::*;
 
 #[derive(Clone)]
 pub struct AnalyticsClient {
-    client: posthog::Client,
+    client: reqwest::Client,
+    api_key: String,
 }
 
 impl AnalyticsClient {
     pub fn new(api_key: impl Into<String>) -> Self {
-        let config = posthog::ClientOptions::new(
-            "https://us.i.posthog.com".to_string(),
-            api_key.into(),
-            std::time::Duration::from_secs(10),
-        );
+        let client = reqwest::Client::new();
 
         Self {
-            client: posthog::client(config),
+            client,
+            api_key: api_key.into(),
         }
     }
 
     pub async fn event(&self, payload: AnalyticsPayload) -> Result<(), Error> {
         let mut e = posthog::Event::new(payload.event, payload.distinct_id);
+
         for (key, value) in payload.props {
             let _ = e.insert_prop(key, value);
         }
 
-        self.client.capture(e).await?;
+        let inner_event = posthog_core::event::InnerEvent::new(e, self.api_key.clone());
+
+        let _ = self
+            .client
+            .post("https://us.i.posthog.com/capture/")
+            .json(&inner_event)
+            .send()
+            .await?
+            .error_for_status()?;
+
         Ok(())
     }
 }
@@ -88,13 +96,13 @@ mod tests {
     #[ignore]
     #[tokio::test]
     async fn test_analytics() {
-        let client = AnalyticsClient::new("test");
+        let client = AnalyticsClient::new("");
         let payload = AnalyticsPayload::for_user("user_id_123")
             .event("test_event")
             .with("key1", "value1")
             .with("key2", 2)
             .build();
 
-        let _ = client.event(payload).await;
+        client.event(payload).await.unwrap();
     }
 }
