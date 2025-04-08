@@ -23,8 +23,6 @@ export default function EditorArea({ editable, sessionId }: {
   editable: boolean;
   sessionId: string;
 }) {
-  const { userId } = useHypr();
-
   const { ongoingSessionTimeline, ongoingSessionStatus } = useOngoingSession((s) => ({
     ongoingSessionStatus: s.status,
     ongoingSessionTimeline: s.timeline,
@@ -84,16 +82,6 @@ export default function EditorArea({ editable, sessionId }: {
   );
 
   const handleClickEnhance = useCallback(() => {
-    try {
-      analyticsCommands.event({
-        event: "enhance_note_clicked",
-        distinct_id: userId,
-        session_id: sessionId,
-      });
-    } catch (error) {
-      console.error(error);
-    }
-
     enhance.mutate();
   }, [enhance]);
 
@@ -235,15 +223,11 @@ export function useEnhanceMutation({
       return text.then(miscCommands.opinionatedMdToHtml);
     },
     onSuccess: () => {
-      try {
-        analyticsCommands.event({
-          event: "enhance_note_clicked",
-          distinct_id: userId,
-          session_id: sessionId,
-        });
-      } catch (error) {
-        console.error(error);
-      }
+      analyticsCommands.event({
+        event: "enhance_note_done",
+        distinct_id: userId,
+        session_id: sessionId,
+      });
 
       persistSession();
     },
@@ -264,7 +248,7 @@ export function useAutoEnhanceForOnboarding({
   enhanceStatus: string;
   enhanceMutate: () => void;
 }) {
-  const { onboardingSessionId } = useHypr();
+  const { userId, onboardingSessionId } = useHypr();
 
   const enhancedMemoHtml = useSession(sessionId, (s) => s.session.enhanced_memo_html);
   const ongoingSessionStatus = useOngoingSession((s) => s.status);
@@ -275,11 +259,23 @@ export function useAutoEnhanceForOnboarding({
       return;
     }
 
+    analyticsCommands.event({
+      event: "onboarding_session_visited",
+      distinct_id: userId,
+      session_id: sessionId,
+    });
+
     const justFinishedListening = prevOngoingSessionStatus === "active" && ongoingSessionStatus === "inactive";
 
     if (justFinishedListening && !enhancedMemoHtml) {
       setTimeout(() => {
         if (enhanceStatus === "idle") {
+          analyticsCommands.event({
+            event: "onboarding_auto_enhance_triggered",
+            distinct_id: userId,
+            session_id: sessionId,
+          });
+
           enhanceMutate();
         }
       }, 1800);
