@@ -9,7 +9,7 @@ use super::{
 };
 
 const USER_MANUAL_MD: &str = include_str!("../assets/manual.md");
-const ONBOARDING_RAW_MD: &str = include_str!("../assets/onboarding-raw.md");
+const ONBOARDING_RAW_HTML: &str = include_str!("../assets/onboarding-raw.html");
 
 pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), crate::Error> {
     let user_id = user_id.into();
@@ -46,45 +46,6 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         name: "Dunder Mifflin".to_string(),
         description: None,
     };
-
-    let onboarding_participants = vec![
-        Human {
-            id: uuid::Uuid::new_v4().to_string(),
-            full_name: Some("Michael Scott".to_string()),
-            email: None,
-            organization_id: Some(onboarding_org.id.clone()),
-            is_user: false,
-            job_title: None,
-            linkedin_username: None,
-        },
-        Human {
-            id: uuid::Uuid::new_v4().to_string(),
-            full_name: Some("Ryan Howard".to_string()),
-            email: None,
-            organization_id: Some(onboarding_org.id.clone()),
-            is_user: false,
-            job_title: None,
-            linkedin_username: None,
-        },
-        Human {
-            id: uuid::Uuid::new_v4().to_string(),
-            full_name: Some("Daryl Philbin".to_string()),
-            email: None,
-            organization_id: Some(onboarding_org.id.clone()),
-            is_user: false,
-            job_title: None,
-            linkedin_username: None,
-        },
-        Human {
-            id: uuid::Uuid::new_v4().to_string(),
-            full_name: Some("Toby Flenderson".to_string()),
-            email: None,
-            organization_id: Some(onboarding_org.id.clone()),
-            is_user: false,
-            job_title: None,
-            linkedin_username: None,
-        },
-    ];
 
     let default_calendar = Calendar {
         id: uuid::Uuid::new_v4().to_string(),
@@ -128,7 +89,7 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         created_at: chrono::Utc::now() + chrono::Duration::days(2),
         visited_at: chrono::Utc::now() + chrono::Duration::days(2),
         calendar_event_id: Some(onboarding_event.id.clone()),
-        raw_memo_html: hypr_buffer::opinionated_md_to_html(ONBOARDING_RAW_MD).unwrap(),
+        raw_memo_html: ONBOARDING_RAW_HTML.to_string(),
         enhanced_memo_html: None,
         conversations: vec![],
     };
@@ -144,21 +105,14 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         let _ = db.upsert_organization(org).await?;
     }
 
-    for participant in onboarding_participants.clone() {
-        let _ = db.upsert_human(participant).await?;
-    }
-
     for member in fastrepl_members.clone() {
         let _ = db.upsert_human(member).await?;
     }
 
-    for participant in onboarding_participants {
-        db.session_add_participant(onboarding_session.id.clone(), participant.id)
-            .await?;
-    }
-
     for participant in fastrepl_members {
-        db.session_add_participant(manual_session.id.clone(), participant.id)
+        db.session_add_participant(&manual_session.id, &participant.id)
+            .await?;
+        db.session_add_participant(&onboarding_session.id, &participant.id)
             .await?;
     }
 

@@ -107,7 +107,7 @@ export default function EditorArea({ editable, sessionId }: {
         className={cn([
           "h-full overflow-y-auto",
           (!showRaw && animate) && "tiptap-animate",
-          ongoingSessionTimeline?.items?.length && "pb-10",
+          enhancedContent && "pb-10",
         ])}
         onClick={(e) => {
           e.stopPropagation();

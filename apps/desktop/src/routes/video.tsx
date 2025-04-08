@@ -1,8 +1,9 @@
 import type MuxPlayerElement from "@mux/mux-player";
+import type { MuxPlayerElementEventMap } from "@mux/mux-player";
 import MuxPlayer from "@mux/mux-player-react/lazy";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { z } from "zod";
 
 import { commands as windowsCommands, events as windowsEvents } from "@hypr/plugin-windows";
@@ -38,6 +39,18 @@ function Component() {
     });
   };
 
+  const [didExpandRightPanel, setDidExpandRightPanel] = useState(false);
+
+  const handleTimeUpdate = (e: MuxPlayerElementEventMap["timeupdate"]) => {
+    if (e.timeStamp > 67500 && !didExpandRightPanel) {
+      setDidExpandRightPanel(true);
+      windowsEvents.mainWindowState.emit({
+        left_sidebar_expanded: false,
+        right_panel_expanded: true,
+      });
+    }
+  };
+
   return (
     <div
       data-tauri-drag-region
@@ -51,6 +64,7 @@ function Component() {
         style={styles}
         loading="viewport"
         onEnded={handleEnded}
+        onTimeUpdate={handleTimeUpdate}
       />
     </div>
   );
