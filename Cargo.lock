@@ -46,6 +46,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "aec-rs"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cfe3690e535043ac90c0daf997f02111d06c758de5c4fb52aebd0dfb18f16b1"
+dependencies = [
+ "aec-rs-sys",
+]
+
+[[package]]
+name = "aec-rs-sys"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ae9a6febcaa759f69f5de10de33a7b005af57d476f7e33e0b4f7cabb0d1e67f"
+dependencies = [
+ "bindgen 0.69.5",
+ "cmake",
+]
+
+[[package]]
+name = "aec2"
+version = "0.1.0"
+dependencies = [
+ "aec-rs",
+ "hound",
+ "serde",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "aes"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
