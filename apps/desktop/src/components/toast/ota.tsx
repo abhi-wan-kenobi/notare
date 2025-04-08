@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Channel } from "@tauri-apps/api/core";
+import { message } from "@tauri-apps/plugin-dialog";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import { useEffect } from "react";
@@ -82,20 +83,13 @@ export default function OtaNotification() {
               content: (
                 <div className="space-y-1">
                   <div>This may take a while...</div>
-                  <DownloadProgress
-                    channel={updateChannel}
-                    onComplete={async () => {
-                      if (process.env.NODE_ENV === "production") {
-                        await relaunch();
-                      }
-                    }}
-                  />
+                  <DownloadProgress channel={updateChannel} />
                 </div>
               ),
               dismissible: false,
             });
 
-            await update.downloadAndInstall((progressEvent) => {
+            update.downloadAndInstall((progressEvent) => {
               if (progressEvent.event === "Started") {
                 totalDownloaded = 0;
                 contentLength = progressEvent.data.contentLength;
@@ -107,6 +101,13 @@ export default function OtaNotification() {
               } else if (progressEvent.event === "Finished") {
                 updateChannel.onmessage(100);
               }
+            }).then(() => {
+              message("Update installed successfully", { kind: "info" });
+              setTimeout(() => {
+                relaunch();
+              }, 2000);
+            }).catch((err) => {
+              message(`Failed to install update: ${err}`, { kind: "error" });
             });
           },
           primary: true,
