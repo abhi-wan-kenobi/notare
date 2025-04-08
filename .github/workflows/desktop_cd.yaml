@@ -34,8 +34,9 @@ jobs:
       matrix:
         include:
           - platform: "macos-latest"
+            runner: "warp-macos-15-arm64-6x"
             target: "universal-apple-darwin"
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: arduino/setup-protoc@v3
