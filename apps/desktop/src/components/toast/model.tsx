@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Channel } from "@tauri-apps/api/core";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { commands as localLlmCommands } from "@hypr/plugin-local-llm";
 import { commands as localSttCommands } from "@hypr/plugin-local-stt";
@@ -26,6 +26,9 @@ export default function ModelDownloadNotification() {
     },
   });
 
+  const [sttDownloadStarted, setSttDownloadStarted] = useState(false);
+  const [llmDownloadStarted, setLlmDownloadStarted] = useState(false);
+
   useEffect(() => {
     if (!checkForModelDownload.data) {
       return;
@@ -48,7 +51,8 @@ export default function ModelDownloadNotification() {
           onClick: () => {
             sonnerToast.dismiss("model-download-needed");
 
-            if (!checkForModelDownload.data?.sttModelDownloaded) {
+            if (!checkForModelDownload.data?.sttModelDownloaded && !sttDownloadStarted) {
+              setSttDownloadStarted(true);
               localSttCommands.downloadModel(checkForModelDownload.data?.currentSttModel, sttChannel);
 
               toast(
@@ -61,13 +65,6 @@ export default function ModelDownloadNotification() {
                       <DownloadProgress
                         channel={sttChannel}
                         onComplete={() => {
-                          toast({
-                            id: "stt-model-download",
-                            title: "Speech-to-Text Model",
-                            content: "Download complete!",
-                            dismissible: true,
-                          });
-
                           localSttCommands.startServer();
                         }}
                       />
@@ -78,7 +75,8 @@ export default function ModelDownloadNotification() {
               );
             }
 
-            if (!checkForModelDownload.data?.llmModelDownloaded) {
+            if (!checkForModelDownload.data?.llmModelDownloaded && !llmDownloadStarted) {
+              setLlmDownloadStarted(true);
               localLlmCommands.downloadModel(llmChannel);
 
               toast(
@@ -91,12 +89,6 @@ export default function ModelDownloadNotification() {
                       <DownloadProgress
                         channel={llmChannel}
                         onComplete={() => {
-                          toast({
-                            id: "llm-model-download",
-                            title: "Large Language Model",
-                            content: "Download complete!",
-                            dismissible: true,
-                          });
                           localLlmCommands.startServer();
                         }}
                       />
