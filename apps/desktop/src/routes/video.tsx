@@ -30,18 +30,12 @@ function Component() {
   } as React.CSSProperties;
 
   const handleEnded = () => {
-    const fn = async () => {
-      await windowsCommands.windowShow({ type: "main" });
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await windowsEvents.mainWindowState.emit({
-        left_sidebar_expanded: true,
-        right_panel_expanded: false,
-      });
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await windowsCommands.windowDestroy({ type: "video", value: id });
-    };
-
-    fn().catch(console.error);
+    windowsEvents.mainWindowState.emit({
+      left_sidebar_expanded: true,
+      right_panel_expanded: false,
+    }).then(() => {
+      windowsCommands.windowDestroy({ type: "video", value: id });
+    });
   };
 
   return (
