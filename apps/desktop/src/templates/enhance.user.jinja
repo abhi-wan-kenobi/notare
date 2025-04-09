@@ -15,7 +15,9 @@
 # Meeting Transcript:
 
 <transcript>
-{{ timeline | tojson }}
+{% for item in timeline %}
+- {{ item.text }}
+{% endfor %}
 </transcript>
 
 {% if example %}
@@ -27,5 +29,5 @@ For now, just return this:
 
 {% endif %}
 
-Now, based on the above information, please generate an enhanced note.
+Now, based on the above information, please generate an enhanced note in markdown format.
 Note that participants list is already displayed in the UI, so you don't need to repeat it.
