@@ -14,5 +14,6 @@ macro_rules! include_wav {
 pub mod english_1;
 pub mod english_2;
 pub mod english_3;
+pub mod english_4;
 pub mod korean_1;
 pub mod korean_2;

@@ -1,6 +1,7 @@
-fn main() {
-    let raw: serde_json::Value =
-        serde_json::from_str(include_str!("src/english_3/raw.json")).unwrap();
+fn run(name: &str) {
+    let raw_path = format!("src/{}/raw.json", name);
+    let raw_content = std::fs::read_to_string(&raw_path).unwrap();
+    let raw: serde_json::Value = serde_json::from_str(&raw_content).unwrap();
 
     let paragraphs =
         raw["results"]["channels"][0]["alternatives"][0]["paragraphs"]["paragraphs"].clone();
@@ -34,14 +35,19 @@ fn main() {
         .collect();
 
     std::fs::write(
-        "src/english_3/transcription.json",
+        format!("src/{}/transcription.json", name),
         serde_json::to_string_pretty(&transcripts).unwrap() + "\n",
     )
     .unwrap();
 
     std::fs::write(
-        "src/english_3/diarization.json",
+        format!("src/{}/diarization.json", name),
         serde_json::to_string_pretty(&diarizations).unwrap() + "\n",
     )
     .unwrap();
+}
+
+fn main() {
+    run("english_3");
+    run("english_4");
 }

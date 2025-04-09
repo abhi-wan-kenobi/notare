@@ -14,19 +14,6 @@ impl UserDatabase {
         "df1d8c52-6d9d-4471-aff1-5dbd35899cbe".to_string()
     }
 
-    pub fn onboarding_session_conversations(&self) -> Vec<ConversationChunk> {
-        vec![ConversationChunk {
-            start: chrono::Utc::now(),
-            end: chrono::Utc::now(),
-            transcripts: vec![hypr_listener_interface::TranscriptChunk {
-                start: 0,
-                end: 1000,
-                text: "Hello, how are you?".to_string(),
-            }],
-            diarizations: vec![],
-        }]
-    }
-
     pub async fn get_timeline_view_onboarding(
         &self,
     ) -> Result<hypr_timeline::TimelineView, crate::Error> {
@@ -34,8 +21,8 @@ impl UserDatabase {
             Vec<hypr_listener_interface::TranscriptChunk>,
             Vec<hypr_listener_interface::DiarizationChunk>,
         ) = (
-            serde_json::from_str(hypr_data::english_3::TRANSCRIPTION_JSON).unwrap(),
-            serde_json::from_str(hypr_data::english_3::DIARIZATION_JSON).unwrap(),
+            serde_json::from_str(hypr_data::english_4::TRANSCRIPTION_JSON).unwrap(),
+            serde_json::from_str(hypr_data::english_4::DIARIZATION_JSON).unwrap(),
         );
 
         let mut timeline = hypr_timeline::Timeline::default();
