@@ -34,7 +34,7 @@ jobs:
       matrix:
         include:
           - platform: "macos-latest"
-            runner: "macos-latest"
+            runner: "warp-macos-15-arm64-6x"
             target: "universal-apple-darwin"
     runs-on: ${{ matrix.runner }}
     steps:
