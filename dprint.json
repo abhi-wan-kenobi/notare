@@ -2,7 +2,8 @@
   "markdown": {
     "associations": [
       "**/*.jinja",
-      "apps/docs/src/**/*.md"
+      "apps/docs/src/**/*.md",
+      "crates/db-user/assets/**/*.md"
     ]
   },
   "markup": {

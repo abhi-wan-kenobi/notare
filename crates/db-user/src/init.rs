@@ -87,8 +87,8 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         id: onboarding_session_id,
         user_id: user_id.clone(),
         title: "Onboarding".to_string(),
-        created_at: chrono::Utc::now() + chrono::Duration::days(2),
-        visited_at: chrono::Utc::now() + chrono::Duration::days(2),
+        created_at: chrono::Utc::now(),
+        visited_at: chrono::Utc::now(),
         calendar_event_id: Some(onboarding_event.id.clone()),
         raw_memo_html: ONBOARDING_RAW_HTML.to_string(),
         enhanced_memo_html: None,
@@ -99,8 +99,8 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         id: uuid::Uuid::new_v4().to_string(),
         user_id: user_id.clone(),
         title: "Thank you".to_string(),
-        created_at: chrono::Utc::now() + chrono::Duration::days(3),
-        visited_at: chrono::Utc::now() + chrono::Duration::days(3),
+        created_at: chrono::Utc::now(),
+        visited_at: chrono::Utc::now(),
         calendar_event_id: None,
         raw_memo_html: hypr_buffer::opinionated_md_to_html(THANK_YOU_MD).unwrap(),
         enhanced_memo_html: None,
@@ -110,7 +110,7 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
     let _ = db.upsert_calendar(default_calendar).await?;
     let _ = db.upsert_event(onboarding_event).await?;
 
-    for session in [&manual_session, &onboarding_session] {
+    for session in [&manual_session, &onboarding_session, &thank_you_session] {
         let _ = db.upsert_session(session.clone()).await?;
     }
 
@@ -124,6 +124,8 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
 
     for participant in fastrepl_members {
         db.session_add_participant(&manual_session.id, &participant.id)
+            .await?;
+        db.session_add_participant(&thank_you_session.id, &participant.id)
             .await?;
         db.session_add_participant(&onboarding_session.id, &participant.id)
             .await?;

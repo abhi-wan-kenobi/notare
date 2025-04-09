@@ -4,14 +4,13 @@ Hyprnote supports **Markdown** for quick formatting. Here are some essential com
 
 - Headers: `# + SPACE` (only one depth available)
 - **Bold**: `CMD(CTRL) + B`
-- *Italic*: `CMD(CTRL) + I`
+- _Italic_: `CMD(CTRL) + I`
 - <u>Underline</u>: `CMD(CTRL) + U`
 - ~~Strikethrough~~: `CMD(CTRL) + SHIFT + S`
 - <mark>Highlight</mark>: `CMD(CTRL) + SHIFT + H`
 - Bullet Lists: `- + SPACE`
 - Numbered Lists: `1. + SPACE`
 - Checklists: `[ + ] + SPACE`
-
 
 # Keyboard Shortcuts
 
