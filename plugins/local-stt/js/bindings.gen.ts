@@ -30,6 +30,9 @@ async getCurrentModel() : Promise<SupportedModel> {
 },
 async setCurrentModel(model: SupportedModel) : Promise<null> {
     return await TAURI_INVOKE("plugin:local-stt|set_current_model", { model });
+},
+async listSupportedModels() : Promise<SupportedModel[]> {
+    return await TAURI_INVOKE("plugin:local-stt|list_supported_models");
 }
 }
 
@@ -43,7 +46,7 @@ async setCurrentModel(model: SupportedModel) : Promise<null> {
 
 /** user-defined types **/
 
-export type SupportedModel = "QuantizedTinyEn" | "QuantizedBaseEn" | "QuantizedSmallEn"
+export type SupportedModel = "QuantizedTinyEn" | "QuantizedBaseEn" | "QuantizedSmallEn" | "QuantizedSmall" | "QuantizedMedium"
 export type TAURI_CHANNEL<TSend> = null
 
 /** tauri-specta globals **/

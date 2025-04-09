@@ -4,6 +4,12 @@ use tauri::ipc::Channel;
 
 #[tauri::command]
 #[specta::specta]
+pub async fn list_supported_models() -> Result<Vec<crate::SupportedModel>, String> {
+    Ok(crate::SUPPORTED_MODELS.to_vec())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn is_server_running<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> bool {
     app.is_server_running().await
 }
