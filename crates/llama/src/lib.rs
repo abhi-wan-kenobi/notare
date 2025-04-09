@@ -32,6 +32,9 @@ const JSON_ARR_GRAMMAR: &str = include_url!(
 const JSON_GRAMMAR: &str =
     include_url!("https://raw.githubusercontent.com/ggml-org/llama.cpp/7a84777/grammars/json.gbnf");
 
+#[allow(dead_code)]
+const MARKDOWN_GRAMMAR: &str = include_str!("./markdown.gbnf");
+
 pub struct Llama {
     task_sender: tokio::sync::mpsc::UnboundedSender<Task>,
 }
@@ -106,13 +109,12 @@ impl Llama {
                             let mut n_cur = batch.n_tokens();
                             let mut decoder = encoding_rs::UTF_8.new_decoder();
                             let mut sampler = LlamaSampler::chain_simple([
+                                LlamaSampler::grammar(&model, MARKDOWN_GRAMMAR, "root"),
                                 LlamaSampler::dist(1234),
-                                LlamaSampler::greedy(),
                             ]);
 
                             while n_cur <= last_index + DEFAULT_MAX_OUTPUT_TOKENS as i32 {
                                 let token = sampler.sample(&ctx, batch.n_tokens() - 1);
-                                sampler.accept(token);
 
                                 if model.is_eog_token(token) {
                                     break;
@@ -184,15 +186,23 @@ mod tests {
     // cargo test test_simple -p llama -- --nocapture
     #[tokio::test]
     async fn test_simple() {
+        use futures_util::pin_mut;
+        use std::io::{self, Write};
+
         let llama = get_model();
-        let prompt = "Generate a json array of 10 random objects, about animals";
+        let prompt = "Generate a random meeting summary note.";
 
         let request = LlamaRequest::new(vec![
             LlamaChatMessage::new("user".into(), prompt.into()).unwrap()
         ]);
 
-        let response: String = llama.generate_stream(request).unwrap().collect().await;
-        println!("response: {}", response);
-        assert!(response.len() > 4);
+        let stream = llama.generate_stream(request).unwrap();
+        pin_mut!(stream);
+
+        while let Some(token) = stream.next().await {
+            print!("{}", token);
+            io::stdout().flush().unwrap();
+        }
+        println!();
     }
 }
