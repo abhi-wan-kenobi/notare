@@ -10,6 +10,7 @@ use super::{
 
 const USER_MANUAL_MD: &str = include_str!("../assets/manual.md");
 const ONBOARDING_RAW_HTML: &str = include_str!("../assets/onboarding-raw.html");
+const THANK_YOU_MD: &str = include_str!("../assets/thank-you.md");
 
 pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), crate::Error> {
     let user_id = user_id.into();
@@ -90,6 +91,18 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         visited_at: chrono::Utc::now() + chrono::Duration::days(2),
         calendar_event_id: Some(onboarding_event.id.clone()),
         raw_memo_html: ONBOARDING_RAW_HTML.to_string(),
+        enhanced_memo_html: None,
+        conversations: vec![],
+    };
+
+    let thank_you_session = Session {
+        id: uuid::Uuid::new_v4().to_string(),
+        user_id: user_id.clone(),
+        title: "Thank you".to_string(),
+        created_at: chrono::Utc::now() + chrono::Duration::days(3),
+        visited_at: chrono::Utc::now() + chrono::Duration::days(3),
+        calendar_event_id: None,
+        raw_memo_html: hypr_buffer::opinionated_md_to_html(THANK_YOU_MD).unwrap(),
         enhanced_memo_html: None,
         conversations: vec![],
     };

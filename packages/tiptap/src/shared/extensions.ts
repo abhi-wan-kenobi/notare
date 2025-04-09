@@ -1,4 +1,5 @@
 import Highlight from "@tiptap/extension-highlight";
+import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import ListKeymap from "@tiptap/extension-list-keymap";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -17,6 +18,7 @@ export const extensions = [
       levels: [1],
     },
   }),
+  Image,
   Underline,
   Placeholder.configure({
     placeholder: ({ node }) => {
