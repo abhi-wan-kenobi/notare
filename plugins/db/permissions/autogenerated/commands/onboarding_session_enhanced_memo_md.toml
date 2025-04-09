@@ -3,11 +3,11 @@
 "$schema" = "../../schemas/schema.json"
 
 [[permission]]
-identifier = "allow-onboarding-session-enhanced-memo-html"
+identifier = "allow-onboarding-session-enhanced-memo-md"
 description = "Enables the onboarding_session_enhanced_memo_md command without any pre-configured scope."
 commands.allow = ["onboarding_session_enhanced_memo_md"]
 
 [[permission]]
-identifier = "deny-onboarding-session-enhanced-memo-html"
+identifier = "deny-onboarding-session-enhanced-memo-md"
 description = "Denies the onboarding_session_enhanced_memo_md command without any pre-configured scope."
 commands.deny = ["onboarding_session_enhanced_memo_md"]

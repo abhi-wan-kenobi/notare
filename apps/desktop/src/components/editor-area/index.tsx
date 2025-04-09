@@ -179,7 +179,7 @@ export function useEnhanceMutation({
       const provider = await modelProvider();
 
       const participants = await dbCommands.sessionListParticipants(sessionId);
-      const onboardingOutputExample = await dbCommands.onboardingSessionEnhancedMemoHtml();
+      const onboardingOutputExample = await dbCommands.onboardingSessionEnhancedMemoMd();
 
       const fn = sessionId === onboardingSessionId ? dbCommands.getTimelineViewOnboarding : dbCommands.getTimelineView;
       const timeline = await fn(sessionId);

@@ -20,6 +20,7 @@ fn md_to_md(text: impl AsRef<str>) -> Result<String, Error> {
         .map_err(|e| Error::MarkdownParseError(e.to_string()))?;
 
     let transformations: Vec<Box<dyn Fn(&mut markdown::mdast::Node)>> = vec![
+        Box::new(remove_empty_headings),
         Box::new(|node| {
             set_heading_level_from(node, 1, false);
         }),
@@ -122,6 +123,27 @@ fn flatten_headings(node: &mut markdown::mdast::Node) {
     }
 }
 
+fn remove_empty_headings(node: &mut markdown::mdast::Node) {
+    if let Some(children) = node.children_mut() {
+        let mut i = 0;
+        while i < children.len() {
+            if let Some(next) = children.get(i + 1) {
+                if matches!(&children[i], markdown::mdast::Node::Heading(_))
+                    && matches!(next, markdown::mdast::Node::Heading(_))
+                {
+                    children.remove(i);
+                    continue;
+                }
+            }
+            i += 1;
+        }
+
+        for child in children.iter_mut() {
+            remove_empty_headings(child);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -138,9 +160,7 @@ mod tests {
 "#;
 
         let output_expected = r#"
-# Hello
-
-**World**
+# World
 
 * Hi
 * Bye!
@@ -162,9 +182,7 @@ mod tests {
 "#;
 
         let output_expected = r#"
-# Hello
-
-**World**
+# World
 
 * Hi
 * Bye!
