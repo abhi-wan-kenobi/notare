@@ -97,7 +97,10 @@ export default function NotificationsComponent() {
   });
 
   useEffect(() => {
-    const subscription = form.watch(() => form.handleSubmit((v) => mutation.mutate(v))());
+    const subscription = form.watch((value, { name }) => {
+      mutation.mutate(form.getValues());
+    });
+
     return () => subscription.unsubscribe();
   }, [mutation]);
 

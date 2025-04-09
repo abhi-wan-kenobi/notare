@@ -20,7 +20,7 @@ import { Input } from "@hypr/ui/components/ui/input";
 import { Switch } from "@hypr/ui/components/ui/switch";
 
 type ISO_639_1_CODE = keyof typeof LANGUAGES_ISO_639_1;
-const SUPPORTED_LANGUAGES: ISO_639_1_CODE[] = ["en", "ko"];
+const SUPPORTED_LANGUAGES: ISO_639_1_CODE[] = ["en"];
 
 const schema = z.object({
   autostart: z.boolean().optional(),
@@ -60,30 +60,31 @@ export default function General() {
         return;
       }
 
-      // TODO: remove tags
       const nextGeneral: ConfigGeneral = {
         autostart: v.autostart ?? true,
         display_language: v.displayLanguage,
         telemetry_consent: v.telemetryConsent ?? true,
-        jargons: v.jargons.split(",").map((jargon) => jargon.trim()),
+        jargons: v.jargons.split(",").map((jargon) => jargon.trim()).filter(Boolean),
       };
 
-      try {
-        await dbCommands.setConfig({
-          ...config.data,
-          general: nextGeneral,
-        });
-      } catch (e) {
-        console.error(e);
-      }
+      await dbCommands.setConfig({
+        ...config.data,
+        general: nextGeneral,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["config", "general"] });
     },
+    onError: console.error,
   });
 
   useEffect(() => {
-    const subscription = form.watch(() => form.handleSubmit((v) => mutation.mutate(v))());
+    const subscription = form.watch((value, { name }) => {
+      if (name !== "jargons") {
+        mutation.mutate(form.getValues());
+      }
+    });
+
     return () => subscription.unsubscribe();
   }, [mutation]);
 
@@ -162,10 +163,11 @@ export default function General() {
                 </div>
                 <FormControl>
                   <Input
+                    {...field}
+                    onBlur={() => mutation.mutate(form.getValues())}
                     placeholder={t({
                       id: "Type jargons (e.g., Blitz Meeting, PaC Squad)",
                     })}
-                    {...field}
                     value={field.value ?? ""}
                     className="focus-visible:ring-0 focus-visible:ring-offset-0"
                   />

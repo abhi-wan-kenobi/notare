@@ -140,7 +140,11 @@ export default function Extensions({
         </h3>
 
         {/* Display configComponent if it exists */}
-        {extensionInView?.configComponent && <div className="mb-8">{extensionInView.configComponent}</div>}
+        {extensionInView?.configComponent && (
+          <div className="mb-8">
+            <extensionInView.configComponent queryClient={queryClient} />
+          </div>
+        )}
 
         {/* Display widget groups */}
         {extensionInView?.widgetGroups.map((group) => (

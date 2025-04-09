@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { QueryClient } from "@tanstack/react-query";
 
 import Config from "../config/api-key-form";
 import MockProvider from "../widgets/default/mock";
@@ -10,6 +11,8 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+const queryClient = new QueryClient();
 
 export const Main: Story = {
   parameters: {
@@ -26,4 +29,7 @@ export const Main: Story = {
       );
     },
   ],
+  args: {
+    queryClient,
+  },
 };

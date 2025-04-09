@@ -1,6 +1,7 @@
-import type { QueryClient } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Maximize2Icon } from "lucide-react";
 import React, { type ReactNode } from "react";
+
 import { Button } from "./button";
 
 interface WidgetHeaderProps {
@@ -39,6 +40,7 @@ const WidgetHeader = ({
 };
 
 type WidgetWrapperPropsBase = {
+  queryClient?: QueryClient;
   width?: string;
   height?: string;
   children: ReactNode;
@@ -59,12 +61,36 @@ type WidgetWrapperProps =
   | WidgetWrapperPropsFullSize;
 
 const WidgetWrapper = ({
+  queryClient,
   width = "340px",
   height = "340px",
   children,
   className,
   style,
 }: WidgetWrapperProps) => {
+  if (queryClient) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <div
+          className={className}
+          style={{
+            width,
+            height,
+            borderWidth: "1px",
+            borderRadius: "16px",
+            overflow: "hidden",
+            background: "white",
+            display: "flex",
+            flexDirection: "column",
+            ...style,
+          }}
+        >
+          {children}
+        </div>
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <div
       className={className}
@@ -86,30 +112,21 @@ const WidgetWrapper = ({
 };
 
 const WidgetTwoByTwoWrapper = (
-  props: Omit<WidgetWrapperPropsNonFullSize, "width" | "height"> & {
-    queryClient?: QueryClient;
-  },
+  props: Omit<WidgetWrapperPropsNonFullSize, "width" | "height">,
 ) => <WidgetWrapper width="340px" height="340px" {...props} />;
 
 const WidgetOneByOneWrapper = (
-  props: Omit<WidgetWrapperPropsNonFullSize, "width" | "height"> & {
-    queryClient?: QueryClient;
-  },
+  props: Omit<WidgetWrapperPropsNonFullSize, "width" | "height">,
 ) => <WidgetWrapper width="160px" height="160px" {...props} />;
 
 const WidgetTwoByOneWrapper = (
-  props: Omit<WidgetWrapperPropsNonFullSize, "width" | "height"> & {
-    queryClient?: QueryClient;
-  },
+  props: Omit<WidgetWrapperPropsNonFullSize, "width" | "height">,
 ) => <WidgetWrapper width="340px" height="160px" {...props} />;
 
 const WidgetFullSizeWrapper = ({
   onMinimize,
   ...props
-}: Omit<WidgetWrapperPropsFullSize, "width" | "height" | "onMaximize"> & {
-  queryClient?: QueryClient;
-  onMinimize: () => void;
-}) => (
+}: Omit<WidgetWrapperPropsFullSize, "width" | "height" | "onMaximize">) => (
   <div className="flex items-center justify-center w-full h-full p-[10px]">
     <WidgetWrapper
       width="calc(100% - 20px)"

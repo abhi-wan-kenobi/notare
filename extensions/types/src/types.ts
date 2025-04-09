@@ -1,4 +1,6 @@
 import { ExtensionWidgetKind } from "@hypr/plugin-db";
+import { type QueryClient } from "@tanstack/react-query";
+
 import type { WidgetFullSize, WidgetOneByOne, WidgetTwoByOne, WidgetTwoByTwo } from "@hypr/ui/components/ui/widgets";
 
 import { assert, type TypeEqualityGuard } from "./utils";
@@ -6,7 +8,7 @@ import { assert, type TypeEqualityGuard } from "./utils";
 export type Extension = {
   id: string;
   init: () => Promise<void>;
-  configComponent?: React.ReactNode;
+  configComponent?: ({ queryClient }: { queryClient: QueryClient }) => JSX.Element;
   widgetGroups: Array<WidgetGroup>;
 };
 

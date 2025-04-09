@@ -13,5 +13,5 @@ export default {
       authCommands.initVault(userId);
     }
   },
-  configComponent: <ApiKeyForm />,
+  configComponent: ({ queryClient }) => <ApiKeyForm queryClient={queryClient} />,
 } satisfies Extension;

@@ -8,7 +8,7 @@ import { useSessions } from "@hypr/utils/contexts";
 
 import { LanguageSelector, TranscriptBody, TranscriptContent } from "../../components";
 
-const Transcript2x2: WidgetTwoByTwo = ({ onMaximize }) => {
+const Transcript2x2: WidgetTwoByTwo = ({ onMaximize, queryClient }) => {
   const sessionId = useSessions((s) => s.currentSessionId);
 
   const handleOpenTranscriptSettings = () => {
@@ -31,7 +31,7 @@ const Transcript2x2: WidgetTwoByTwo = ({ onMaximize }) => {
   );
 
   return (
-    <WidgetTwoByTwoWrapper>
+    <WidgetTwoByTwoWrapper queryClient={queryClient}>
       <div className="p-4 pb-0">
         <WidgetHeader
           title={

@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { CheckCircle } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -14,9 +14,8 @@ const apiKeySchema = z.object({
   apiKey: z.string().min(2, "API key must be at least 2 characters"),
 });
 
-export default function ApiKeyForm() {
+export default function ApiKeyForm({ queryClient }: { queryClient: QueryClient }) {
   const [isEditing, setIsEditing] = useState(false);
-  const queryClient = useQueryClient();
 
   const form = useForm({
     resolver: zodResolver(apiKeySchema),
@@ -29,7 +28,7 @@ export default function ApiKeyForm() {
     queryKey: ["vault", "twenty-api-key"],
     queryFn: () => twenty.getApiKey(),
     refetchOnWindowFocus: false,
-  });
+  }, queryClient);
 
   const setKeyMutation = useMutation({
     mutationFn: async (form: z.infer<typeof apiKeySchema>) => {
@@ -41,7 +40,7 @@ export default function ApiKeyForm() {
       queryClient.setQueryData(["vault", "twenty-api-key"], form.apiKey);
     },
     onError: console.error,
-  });
+  }, queryClient);
 
   const hasStoredKey = Boolean(getKeyQuery.data);
   const isDirty = form.formState.isDirty;

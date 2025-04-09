@@ -99,12 +99,13 @@ export default function ProfileComponent() {
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (form.formState.isDirty && form.formState.isValid) {
-        form.handleSubmit((v) => mutation.mutate(v))();
+        mutation.mutate(form.getValues());
       }
     });
 
     return () => subscription.unsubscribe();
   }, [mutation]);
+
   return (
     <div>
       <Form {...form}>
