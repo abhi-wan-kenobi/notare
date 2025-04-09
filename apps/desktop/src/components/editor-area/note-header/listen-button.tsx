@@ -25,7 +25,9 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
     refetchInterval: 1000,
     queryFn: async () => {
       const currentModel = await localSttCommands.getCurrentModel();
-      const isDownloaded = await localSttCommands.isModelDownloaded(currentModel);
+      const isDownloaded = await localSttCommands.isModelDownloaded(
+        currentModel,
+      );
       return isDownloaded;
     },
   });
@@ -38,8 +40,17 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
     timeline: s.timeline,
   }));
 
-  const startedBefore = useSession(sessionId, (s) => s.session.conversations.length > 0);
+  const startedBefore = useSession(
+    sessionId,
+    (s) => s.session.conversations.length > 0,
+  );
   const showResumeButton = ongoingSessionStore.status === "inactive" && startedBefore;
+
+  const sessionData = useSession(sessionId, (s) => ({
+    session: s.session,
+  }));
+
+  const isEnhanced = sessionData.session.enhanced_memo_html;
 
   const { data: isMicMuted, refetch: refetchMicMuted } = useQuery({
     queryKey: ["mic-muted"],
@@ -99,7 +110,10 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
     setOpen(false);
   };
 
-  if (ongoingSessionStore.status === "active" && !ongoingSessionStore.isCurrent) {
+  if (
+    ongoingSessionStore.status === "active"
+    && !ongoingSessionStore.isCurrent
+  ) {
     return null;
   }
 
@@ -111,25 +125,20 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
         </div>
       )}
       {showResumeButton && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              disabled={!modelDownloaded.data}
-              onClick={handleStartSession}
-              className="w-16 h-9 rounded-full bg-red-100 border-2 transition-all hover:scale-95 border-red-400 cursor-pointer outline-none p-0 flex items-center justify-center text-xs text-red-600 font-medium"
-              style={{
-                boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8) inset",
-              }}
-            >
-              <Trans>Resume</Trans>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" align="end">
-            <p>
-              <Trans>Resume recording</Trans>
-            </p>
-          </TooltipContent>
-        </Tooltip>
+        <button
+          disabled={!modelDownloaded.data}
+          onClick={handleStartSession}
+          className={`w-16 h-9 rounded-full transition-all hover:scale-95 cursor-pointer outline-none p-0 flex items-center justify-center text-xs font-medium ${
+            isEnhanced
+              ? "bg-neutral-200 border-2 border-neutral-400 text-neutral-600 opacity-30 hover:opacity-100 hover:bg-red-100 hover:text-red-600 hover:border-red-400"
+              : "bg-red-100 border-2 border-red-400 text-red-600"
+          }`}
+          style={{
+            boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8) inset",
+          }}
+        >
+          <Trans>Resume</Trans>
+        </button>
       )}
       {ongoingSessionStore.status === "inactive" && !showResumeButton && (
         <Tooltip>
@@ -214,8 +223,12 @@ function AudioControlButton({
   type: "mic" | "speaker";
 }) {
   const Icon = type === "mic"
-    ? (isMuted ? MicOffIcon : MicIcon)
-    : (isMuted ? VolumeOffIcon : Volume2Icon);
+    ? isMuted
+      ? MicOffIcon
+      : MicIcon
+    : isMuted
+    ? VolumeOffIcon
+    : Volume2Icon;
 
   return (
     <Button variant="ghost" size="icon" onClick={onToggle} className="w-full">
