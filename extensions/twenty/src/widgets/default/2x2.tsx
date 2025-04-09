@@ -7,7 +7,7 @@ import { ParticipantsList } from "../components/participants-list";
 import { SearchInput } from "../components/search-input";
 import { useTwentyNotes } from "../hooks/useTwentyNotes";
 
-const Twenty2x2: WidgetTwoByTwo = () => {
+const Twenty2x2: WidgetTwoByTwo = ({ queryClient }) => {
   const sessionId = useSessions((s) => s.currentSessionId);
 
   const handleOpenTwentySettings = () => {
@@ -17,7 +17,7 @@ const Twenty2x2: WidgetTwoByTwo = () => {
   };
 
   return (
-    <WidgetTwoByTwoWrapper>
+    <WidgetTwoByTwoWrapper queryClient={queryClient}>
       <div className="p-4 pb-2">
         <WidgetHeader
           title={
