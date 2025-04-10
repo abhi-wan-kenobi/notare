@@ -111,7 +111,10 @@ pub async fn main() {
             {
                 use tauri_plugin_autostart::ManagerExt;
                 let autostart_manager = app.autolaunch();
-                autostart_manager.enable().unwrap();
+
+                if let Err(e) = autostart_manager.enable() {
+                    tracing::error!("autostart_enable_failed: {:?}", e);
+                }
             }
 
             {
