@@ -64,9 +64,16 @@ where
                 Poll::Ready(Some(source)) => {
                     let samples: Vec<f32> = source.convert_samples().collect();
                     if !samples.is_empty() {
-                        let segments = this.whisper.transcribe(&samples);
-                        this.current_segment_task =
-                            Some(Box::pin(futures_util::stream::iter(segments)));
+                        match this.whisper.transcribe(&samples) {
+                            Err(e) => {
+                                tracing::error!("{:?}", e);
+                                return Poll::Pending;
+                            }
+                            Ok(segments) => {
+                                this.current_segment_task =
+                                    Some(Box::pin(futures_util::stream::iter(segments)));
+                            }
+                        }
                     }
                 }
                 Poll::Ready(None) => return Poll::Ready(None),

@@ -74,7 +74,7 @@ impl Whisper {
         WhisperBuilder::default()
     }
 
-    pub fn transcribe(&mut self, audio: &[f32]) -> Vec<Segment> {
+    pub fn transcribe(&mut self, audio: &[f32]) -> Result<Vec<Segment>, super::Error> {
         let params = {
             let mut p = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
             p.set_translate(false);
@@ -100,15 +100,15 @@ impl Whisper {
             p
         };
 
-        self.state.full(params, &audio[..]).unwrap();
-        let num_segments = self.state.full_n_segments().unwrap();
+        self.state.full(params, &audio[..])?;
+        let num_segments = self.state.full_n_segments()?;
 
         let mut segments = Vec::new();
         for i in 0..num_segments {
-            let text = self.state.full_get_segment_text(i).unwrap();
+            let text = self.state.full_get_segment_text(i)?;
             let (start, end) = (
-                self.state.full_get_segment_t0(i).unwrap(),
-                self.state.full_get_segment_t1(i).unwrap(),
+                self.state.full_get_segment_t0(i)?,
+                self.state.full_get_segment_t1(i)?,
             );
             let confidence = self.calculate_segment_confidence(i);
 
@@ -126,7 +126,7 @@ impl Whisper {
             .collect::<Vec<&str>>()
             .join(" ");
 
-        segments
+        Ok(segments)
     }
 
     // https://github.com/ggml-org/whisper.cpp/pull/971/files#diff-2d3599a9fad195f2c3c60bd06691bc1815325b3560b5feda41a91fa71194e805R310-R327
@@ -215,7 +215,7 @@ mod tests {
             .map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]]) as f32 / 32768.0)
             .collect();
 
-        let segments = whisper.transcribe(&audio);
+        let segments = whisper.transcribe(&audio).unwrap();
         assert!(segments.len() > 0);
     }
 
@@ -247,7 +247,7 @@ mod tests {
             .take(16000 * 30)
             .collect();
 
-        let segments = whisper.transcribe(&audio);
+        let segments = whisper.transcribe(&audio).unwrap();
         assert!(segments.len() > 0);
     }
 }
