@@ -110,6 +110,7 @@ impl Llama {
                             let mut decoder = encoding_rs::UTF_8.new_decoder();
                             let mut sampler = LlamaSampler::chain_simple([
                                 LlamaSampler::grammar(&model, MARKDOWN_GRAMMAR, "root"),
+                                LlamaSampler::penalties(0, 1.5, 0.0, 0.0),
                                 LlamaSampler::dist(1234),
                             ]);
 

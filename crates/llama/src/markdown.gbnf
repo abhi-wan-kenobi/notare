@@ -1,2 +1,4 @@
-root ::= "# " content
-content ::= [^`]*
+header ::= "# " content
+section ::= header "\n\n" content
+root ::= section+
+content ::= [^#] .*

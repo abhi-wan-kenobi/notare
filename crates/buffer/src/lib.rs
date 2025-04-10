@@ -16,10 +16,19 @@ pub fn opinionated_md_to_html(text: impl AsRef<str>) -> Result<String, Error> {
 }
 
 fn md_to_md(text: impl AsRef<str>) -> Result<String, Error> {
+    let mut text = text.as_ref().to_string();
+
+    let txt_transformations: Vec<Box<dyn Fn(&mut String)>> = vec![Box::new(remove_char_repeat)];
+
+    for t in txt_transformations {
+        t(&mut text);
+    }
+
     let mut ast = markdown::to_mdast(text.as_ref(), &markdown::ParseOptions::default())
         .map_err(|e| Error::MarkdownParseError(e.to_string()))?;
 
-    let transformations: Vec<Box<dyn Fn(&mut markdown::mdast::Node)>> = vec![
+    let md_transformations: Vec<Box<dyn Fn(&mut markdown::mdast::Node)>> = vec![
+        Box::new(remove_thematic_break),
         Box::new(remove_empty_headings),
         Box::new(|node| {
             set_heading_level_from(node, 1, false);
@@ -28,13 +37,16 @@ fn md_to_md(text: impl AsRef<str>) -> Result<String, Error> {
         Box::new(convert_ordered_to_unordered),
     ];
 
-    for transform in transformations {
-        transform(&mut ast);
+    for t in md_transformations {
+        t(&mut ast);
     }
 
     let md = mdast_util_to_markdown::to_markdown_with_options(
         &ast,
-        &mdast_util_to_markdown::Options::default(),
+        &mdast_util_to_markdown::Options {
+            bullet: '-',
+            ..Default::default()
+        },
     )
     .map_err(|e| Error::MarkdownRenderError(e.to_string()))?;
 
@@ -58,6 +70,29 @@ fn md_to_html(text: &str) -> Result<String, Error> {
         .map_err(|e| Error::HTMLParseError(e.to_string()))?;
 
     Ok(dom.outer_html())
+}
+
+fn remove_char_repeat(text: &mut String) {
+    let lines: Vec<&str> = text.lines().collect();
+    let filtered_lines: Vec<String> = lines
+        .iter()
+        .filter_map(|line| {
+            if line.len() >= 6 {
+                let chars: Vec<char> = line.chars().collect();
+                if !chars.is_empty() {
+                    let first_char = chars[0];
+                    if !first_char.is_alphanumeric() && !first_char.is_whitespace() {
+                        if chars.iter().all(|&c| c == first_char) {
+                            return None;
+                        }
+                    }
+                }
+            }
+            Some(line.to_string())
+        })
+        .collect();
+
+    *text = filtered_lines.join("\n");
 }
 
 fn convert_ordered_to_unordered(node: &mut markdown::mdast::Node) {
@@ -87,11 +122,7 @@ fn set_heading_level_from(node: &mut markdown::mdast::Node, depth: u8, header_fo
         }
     } else if let Some(children) = node.children_mut() {
         for child in children {
-            let child_found = set_heading_level_from(
-                child,
-                if found_any_heading { depth + 1 } else { depth },
-                found_any_heading,
-            );
+            let child_found = set_heading_level_from(child, depth, found_any_heading);
             found_any_heading = found_any_heading || child_found;
         }
     }
@@ -119,6 +150,21 @@ fn flatten_headings(node: &mut markdown::mdast::Node) {
     if let Some(children) = node.children_mut() {
         for child in children {
             flatten_headings(child);
+        }
+    }
+}
+
+fn remove_thematic_break(node: &mut markdown::mdast::Node) {
+    if let markdown::mdast::Node::ThematicBreak(_) = node {
+        *node = markdown::mdast::Node::Paragraph(markdown::mdast::Paragraph {
+            children: vec![],
+            position: None,
+        });
+    }
+
+    if let Some(children) = node.children_mut() {
+        for child in children {
+            remove_thematic_break(child);
         }
     }
 }
@@ -162,8 +208,8 @@ mod tests {
         let output_expected = r#"
 # World
 
-* Hi
-* Bye!
+- Hi
+- Bye!
 "#;
 
         let output_actual = md_to_md(input).unwrap();
@@ -184,9 +230,79 @@ mod tests {
         let output_expected = r#"
 # World
 
-* Hi
-* Bye!
+- Hi
+- Bye!
 "#;
+
+        let output_actual = md_to_md(input).unwrap();
+        assert_eq!(output_actual.trim(), output_expected.trim());
+    }
+
+    #[test]
+    fn test_3() {
+        let input = r#"
+# Enhanced Meeting Notes
+## What Hyprnote Does
+- A smart notepad for people with back-to-back meetings.
+- Listens to the meeting so you don't have to write everything down.
+- Merges your notes and the transcript into a clean, context-aware summary.
+- Note-taking is optional but helps highlight what's important to you.
+
+## Privacy and Performance
+- Built local-first: works offline and stores data on your device.
+- Prioritizes user privacy and seamless experience.
+
+## Flexible and Extendable
+- Not limited to specific use cases like sales.
+- Simple for anyone to use out of the box.
+- Offers powerful extensions—like real-time transcripts and CRM uploads (e.g. Twenty).
+
+## Stay Connected
+- Follow updates on [X](https://hyprnote.com/x).
+- Join the community and chat on [Discord](https://hyprnote.com/discord). 
+
+# Participants:
+
+* [John Jeong](mailto:john@hyprnote.com)
+* [Yujong Lee](mailto:yujonglee@hyprnote.com)
+
+# Meeting Transcript
+(No raw excerpt provided, utilized to generate the enhanced note)
+"#;
+
+        let output_expected = r#"
+# What Hyprnote Does
+
+- A smart notepad for people with back-to-back meetings.
+- Listens to the meeting so you don't have to write everything down.
+- Merges your notes and the transcript into a clean, context-aware summary.
+- Note-taking is optional but helps highlight what's important to you.
+
+# Privacy and Performance
+
+- Built local-first: works offline and stores data on your device.
+- Prioritizes user privacy and seamless experience.
+
+# Flexible and Extendable
+
+- Not limited to specific use cases like sales.
+- Simple for anyone to use out of the box.
+- Offers powerful extensions—like real-time transcripts and CRM uploads (e.g. Twenty).
+
+# Stay Connected
+
+- Follow updates on [X](https://hyprnote.com/x).
+- Join the community and chat on [Discord](https://hyprnote.com/discord).
+
+# Participants:
+
+- [John Jeong](mailto:john@hyprnote.com)
+- [Yujong Lee](mailto:yujonglee@hyprnote.com)
+
+# Meeting Transcript
+
+(No raw excerpt provided, utilized to generate the enhanced note)
+        "#;
 
         let output_actual = md_to_md(input).unwrap();
         assert_eq!(output_actual.trim(), output_expected.trim());
