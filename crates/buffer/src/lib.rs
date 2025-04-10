@@ -35,6 +35,7 @@ fn md_to_md(text: impl AsRef<str>) -> Result<String, Error> {
         }),
         Box::new(flatten_headings),
         Box::new(convert_ordered_to_unordered),
+        Box::new(add_paragraphs_before_headings),
     ];
 
     for t in md_transformations {
@@ -190,12 +191,47 @@ fn remove_empty_headings(node: &mut markdown::mdast::Node) {
     }
 }
 
+fn add_paragraphs_before_headings(node: &mut markdown::mdast::Node) {
+    if let Some(children) = node.children_mut() {
+        let mut heading_positions = Vec::new();
+        let mut found_first_heading = false;
+
+        for (i, child) in children.iter().enumerate() {
+            if let markdown::mdast::Node::Heading(_) = child {
+                if found_first_heading {
+                    heading_positions.push(i);
+                } else {
+                    found_first_heading = true;
+                }
+            }
+        }
+
+        for pos in heading_positions.iter().rev() {
+            let text_node = markdown::mdast::Node::Text(markdown::mdast::Text {
+                value: "\u{00A0}".to_string(),
+                position: None,
+            });
+
+            let para = markdown::mdast::Node::Paragraph(markdown::mdast::Paragraph {
+                children: vec![text_node],
+                position: None,
+            });
+
+            children.insert(*pos, para);
+        }
+
+        for child in children.iter_mut() {
+            add_paragraphs_before_headings(child);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_1() {
+    fn test_md_to_md_1() {
         let input = r#"
 # Hello
 
@@ -205,19 +241,16 @@ mod tests {
 2. Bye!
 "#;
 
-        let output_expected = r#"
-# World
+        insta::assert_snapshot!(md_to_md(input).unwrap().to_string(), @r###"
+        # World
 
-- Hi
-- Bye!
-"#;
-
-        let output_actual = md_to_md(input).unwrap();
-        assert_eq!(output_actual.trim(), output_expected.trim());
+        - Hi
+        - Bye!
+        "###);
     }
 
     #[test]
-    fn test_2() {
+    fn test_md_to_md_2() {
         let input = r#"
 ## Hello
 
@@ -226,20 +259,16 @@ mod tests {
 1. Hi
 2. Bye!
 "#;
+        insta::assert_snapshot!(md_to_md(input).unwrap().to_string(), @r###"
+        # World
 
-        let output_expected = r#"
-# World
-
-- Hi
-- Bye!
-"#;
-
-        let output_actual = md_to_md(input).unwrap();
-        assert_eq!(output_actual.trim(), output_expected.trim());
+        - Hi
+        - Bye!
+        "###);
     }
 
     #[test]
-    fn test_3() {
+    fn test_md_to_md_3() {
         let input = r#"
 # Enhanced Meeting Notes
 ## What Hyprnote Does
@@ -270,41 +299,102 @@ mod tests {
 (No raw excerpt provided, utilized to generate the enhanced note)
 "#;
 
-        let output_expected = r#"
-# What Hyprnote Does
+        insta::assert_snapshot!(md_to_md(input).unwrap().to_string(), @r###"
+        # What Hyprnote Does
 
+        - A smart notepad for people with back-to-back meetings.
+        - Listens to the meeting so you don't have to write everything down.
+        - Merges your notes and the transcript into a clean, context-aware summary.
+        - Note-taking is optional but helps highlight what's important to you.
+
+         
+
+        # Privacy and Performance
+
+        - Built local-first: works offline and stores data on your device.
+        - Prioritizes user privacy and seamless experience.
+
+         
+
+        # Flexible and Extendable
+
+        - Not limited to specific use cases like sales.
+        - Simple for anyone to use out of the box.
+        - Offers powerful extensions—like real-time transcripts and CRM uploads (e.g. Twenty).
+
+         
+
+        # Stay Connected
+
+        - Follow updates on [X](https://hyprnote.com/x).
+        - Join the community and chat on [Discord](https://hyprnote.com/discord).
+
+         
+
+        # Participants:
+
+        - [John Jeong](mailto:john@hyprnote.com)
+        - [Yujong Lee](mailto:yujonglee@hyprnote.com)
+
+         
+
+        # Meeting Transcript
+
+        (No raw excerpt provided, utilized to generate the enhanced note)
+        "###);
+    }
+
+    #[test]
+    fn test_opinionated_md_to_html() {
+        let input = r#"
+# Enhanced Meeting Notes
+## What Hyprnote Does
 - A smart notepad for people with back-to-back meetings.
 - Listens to the meeting so you don't have to write everything down.
 - Merges your notes and the transcript into a clean, context-aware summary.
 - Note-taking is optional but helps highlight what's important to you.
 
-# Privacy and Performance
-
+## Privacy and Performance
 - Built local-first: works offline and stores data on your device.
 - Prioritizes user privacy and seamless experience.
 
-# Flexible and Extendable
-
+## Flexible and Extendable
 - Not limited to specific use cases like sales.
 - Simple for anyone to use out of the box.
 - Offers powerful extensions—like real-time transcripts and CRM uploads (e.g. Twenty).
 
-# Stay Connected
-
+## Stay Connected
 - Follow updates on [X](https://hyprnote.com/x).
 - Join the community and chat on [Discord](https://hyprnote.com/discord).
+"#;
 
-# Participants:
-
-- [John Jeong](mailto:john@hyprnote.com)
-- [Yujong Lee](mailto:yujonglee@hyprnote.com)
-
-# Meeting Transcript
-
-(No raw excerpt provided, utilized to generate the enhanced note)
-        "#;
-
-        let output_actual = md_to_md(input).unwrap();
-        assert_eq!(output_actual.trim(), output_expected.trim());
+        insta::assert_snapshot!(opinionated_md_to_html(input).unwrap().to_string(), @r###"
+        <h1>What Hyprnote Does</h1>
+        <ul>
+        <li>A smart notepad for people with back-to-back meetings.</li>
+        <li>Listens to the meeting so you don't have to write everything down.</li>
+        <li>Merges your notes and the transcript into a clean, context-aware summary.</li>
+        <li>Note-taking is optional but helps highlight what's important to you.</li>
+        </ul>
+        <p> </p>
+        <h1>Privacy and Performance</h1>
+        <ul>
+        <li>Built local-first: works offline and stores data on your device.</li>
+        <li>Prioritizes user privacy and seamless experience.</li>
+        </ul>
+        <p> </p>
+        <h1>Flexible and Extendable</h1>
+        <ul>
+        <li>Not limited to specific use cases like sales.</li>
+        <li>Simple for anyone to use out of the box.</li>
+        <li>Offers powerful extensions—like real-time transcripts and CRM uploads (e.g. Twenty).</li>
+        </ul>
+        <p> </p>
+        <h1>Stay Connected</h1>
+        <ul>
+        <li>Follow updates on <a href="https://hyprnote.com/x">X</a>.</li>
+        <li>Join the community and chat on <a href="https://hyprnote.com/discord">Discord</a>.</li>
+        </ul>
+        "###);
     }
 }

@@ -1812,6 +1812,7 @@ dependencies = [
 name = "buffer"
 version = "0.1.0"
 dependencies = [
+ "insta",
  "markdown",
  "mdast_util_to_markdown",
  "thiserror 2.0.12",

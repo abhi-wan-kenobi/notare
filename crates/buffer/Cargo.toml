@@ -3,6 +3,9 @@ name = "buffer"
 version = "0.1.0"
 edition = "2021"
 
+[dev-dependencies]
+insta = "1.42.2"
+
 [dependencies]
 thiserror = { workspace = true }
 
