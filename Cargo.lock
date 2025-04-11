@@ -4289,6 +4289,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "gbnf-validator"
+version = "0.1.0"
+source = "git+https://github.com/fastrepl/gbnf-validator?branch=main#a1ef153aa3d96bf4cac6d9333ead2977f4b26058"
+dependencies = [
+ "anyhow",
+ "tempfile",
+]
+
+[[package]]
 name = "gdk"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7495,6 +7504,7 @@ dependencies = [
  "encoding_rs",
  "futures-util",
  "gbnf",
+ "gbnf-validator",
  "include_url_macro",
  "llama-cpp-2",
  "serde",

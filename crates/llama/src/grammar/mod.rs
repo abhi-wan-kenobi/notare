@@ -17,14 +17,23 @@ mod tests {
 
     #[test]
     fn test_markdown_grammar() {
-        let a = include_url!(
-            "https://raw.githubusercontent.com/freeCodeCamp/freeCodeCamp/refs/heads/main/README.md"
-        );
-        let md_a = hypr_buffer::opinionated_md_to_md(a).unwrap();
-        assert!(md_a.len() > 10);
+        let test_cases = vec![
+            (
+                "freeCodeCamp",
+                "root ::= .*",
+                include_url!("https://raw.githubusercontent.com/freeCodeCamp/freeCodeCamp/refs/heads/main/README.md"),
+            ),
+            (
+                "build-your-own-x",
+                "root ::= .*",
+                include_url!("https://raw.githubusercontent.com/codecrafters-io/build-your-own-x/refs/heads/master/README.md"),
+            ),
+        ];
 
-        let b = include_url!("https://raw.githubusercontent.com/codecrafters-io/build-your-own-x/refs/heads/master/README.md");
-        let md_b = hypr_buffer::opinionated_md_to_md(b).unwrap();
-        assert!(md_b.len() > 10);
+        for (name, grammar, content) in test_cases {
+            let transformed_md = hypr_buffer::opinionated_md_to_md(content).unwrap();
+            let validated = gbnf_validator::llama_gbnf_validator(grammar, &transformed_md).unwrap();
+            assert!(validated, "Validation failed for: {}", name);
+        }
     }
 }
