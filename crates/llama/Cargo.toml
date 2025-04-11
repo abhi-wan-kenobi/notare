@@ -7,6 +7,7 @@ edition = "2021"
 dirs = { workspace = true }
 gbnf-validator = { git = "https://github.com/fastrepl/gbnf-validator", branch = "main" }
 hypr-buffer = { workspace = true }
+indoc = "2.0.6"
 
 [dependencies]
 include_url_macro = { workspace = true }

@@ -1,4 +1,5 @@
-header ::= "# " content
+header ::= "# " title
 section ::= header "\n\n" content
 root ::= section+
-content ::= [^#] .*
+title ::= .*
+content ::= [^#*-] .*
