@@ -15,32 +15,73 @@ pub const JSON_GRAMMAR: &str =
 mod tests {
     use super::*;
 
+    struct TestCase {
+        pub grammar: &'static str,
+        pub text: &'static str,
+        pub valid: bool,
+        pub debug: bool,
+    }
+
     #[test]
     fn test_markdown_grammar() {
         let test_cases = vec![
-            (
-                "root ::= .*",
-                include_url!("https://raw.githubusercontent.com/codecrafters-io/build-your-own-x/refs/heads/master/README.md"),
-                true
-            ),
-            (
-                MARKDOWN_GRAMMAR,
-                indoc::indoc! {r#"
+            TestCase {
+                grammar: MARKDOWN_GRAMMAR,
+                text: indoc::indoc! {r#"
                 Here's a response:
 
                 # This is a test"#},
-                false,
-            ),
+                valid: false,
+                debug: false,
+            },
+            TestCase {
+                grammar: MARKDOWN_GRAMMAR,
+                text: indoc::indoc! {r#"
+                # This is a test
+                
+                12"#},
+                valid: true,
+                debug: false,
+            },
         ];
 
         let gbnf = gbnf_validator::Validator::new().unwrap();
 
-        for (i, (grammar, text, expected)) in test_cases.iter().enumerate() {
-            match gbnf.validate(grammar, text) {
-                Ok(validated) => assert_eq!(validated, *expected, "{}th_test_case_failed", i),
-                Err(e) => {
-                    panic!("{}th_test_case_failed: {}", i, e);
+        for (i, test_case) in test_cases.iter().enumerate() {
+            match gbnf.validate(test_case.grammar, test_case.text) {
+                Err(e) => panic!("{}th_test_case_failed: {}", i, e),
+                Ok(valid_actual) => {
+                    if valid_actual != test_case.valid {
+                        println!("{}", "=".repeat(80));
+                        println!("{}_failed", i);
+                        debug_grammar_failure_point(&gbnf, test_case.grammar, test_case.text);
+                        println!("\n{}", "=".repeat(80));
+
+                        panic!("{}th_test_case_failed", i);
+                    }
+
+                    if test_case.debug {
+                        println!("{}", "=".repeat(80));
+                        println!("{}_passed", i);
+                        debug_grammar_failure_point(&gbnf, test_case.grammar, test_case.text);
+                        println!("\n{}", "=".repeat(80));
+                    }
                 }
+            }
+        }
+    }
+
+    fn debug_grammar_failure_point(gbnf: &gbnf_validator::Validator, grammar: &str, text: &str) {
+        use colored::Colorize;
+
+        for length in 1..=text.len() {
+            let substring = &text[0..length];
+            let current_char = text.chars().nth(length - 1).unwrap();
+
+            match gbnf.validate(grammar, substring) {
+                Ok(true) => print!("{}", current_char.to_string().green()),
+                Ok(false) => print!("{}", current_char.to_string().red()),
+                Err(_) => print!("{}", current_char.to_string().yellow()),
             }
         }
     }

@@ -2448,6 +2448,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 
 [[package]]
+name = "colored"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fde0e0ec90c9dfb3b4b1a0891a7dcd0e2bffde2f7efed5fe7c9bb00e5bfb915e"
+dependencies = [
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "combine"
 version = "4.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4291,7 +4300,7 @@ dependencies = [
 [[package]]
 name = "gbnf-validator"
 version = "0.1.0"
-source = "git+https://github.com/fastrepl/gbnf-validator?rev=1421aa1#1421aa1a4c99eea1704b100276de32751da66581"
+source = "git+https://github.com/fastrepl/gbnf-validator?rev=3dec055#3dec0551311840ae8c9a0feb10e556dd18ffe291"
 dependencies = [
  "anyhow",
  "tempfile",
@@ -7506,6 +7515,7 @@ version = "0.1.0"
 dependencies = [
  "async-openai",
  "buffer",
+ "colored",
  "dirs 6.0.0",
  "encoding_rs",
  "futures-util",

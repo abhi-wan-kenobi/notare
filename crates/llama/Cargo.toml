@@ -4,9 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dev-dependencies]
-dirs = { workspace = true }
-gbnf-validator = { git = "https://github.com/fastrepl/gbnf-validator", rev = "1421aa1" }
+gbnf-validator = { git = "https://github.com/fastrepl/gbnf-validator", rev = "3dec055" }
 hypr-buffer = { workspace = true }
+
+colored = "3.0.0"
+dirs = { workspace = true }
 indoc = "2.0.6"
 
 [dependencies]
