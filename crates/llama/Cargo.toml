@@ -5,7 +5,7 @@ edition = "2021"
 
 [dev-dependencies]
 dirs = { workspace = true }
-gbnf-validator = { git = "https://github.com/fastrepl/gbnf-validator", branch = "main" }
+gbnf-validator = { git = "https://github.com/fastrepl/gbnf-validator", rev = "1421aa1" }
 hypr-buffer = { workspace = true }
 indoc = "2.0.6"
 

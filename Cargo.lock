@@ -4291,7 +4291,7 @@ dependencies = [
 [[package]]
 name = "gbnf-validator"
 version = "0.1.0"
-source = "git+https://github.com/fastrepl/gbnf-validator?branch=main#a1ef153aa3d96bf4cac6d9333ead2977f4b26058"
+source = "git+https://github.com/fastrepl/gbnf-validator?rev=1421aa1#1421aa1a4c99eea1704b100276de32751da66581"
 dependencies = [
  "anyhow",
  "tempfile",

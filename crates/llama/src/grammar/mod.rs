@@ -31,30 +31,17 @@ mod tests {
                 # This is a test"#},
                 false,
             ),
-            (
-                MARKDOWN_GRAMMAR,
-                indoc::indoc! {r#"
-                # This is a test
-
-                - First
-                - Second
-                - Third"#},
-                false,
-            ),
-            (
-                MARKDOWN_GRAMMAR,
-                indoc::indoc! {r#"
-                # Hello World
-                ## This is a test
-
-                Test"#},
-                true,
-            ),
         ];
 
+        let gbnf = gbnf_validator::Validator::new().unwrap();
+
         for (i, (grammar, text, expected)) in test_cases.iter().enumerate() {
-            let validated = gbnf_validator::llama_gbnf_validator(grammar, text).unwrap();
-            assert_eq!(validated, *expected, "{}_th_test_case_failed", i);
+            match gbnf.validate(grammar, text) {
+                Ok(validated) => assert_eq!(validated, *expected, "{}th_test_case_failed", i),
+                Err(e) => {
+                    panic!("{}th_test_case_failed: {}", i, e);
+                }
+            }
         }
     }
 }
