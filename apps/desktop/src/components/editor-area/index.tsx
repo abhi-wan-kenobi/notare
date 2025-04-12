@@ -65,7 +65,7 @@ export default function EditorArea({
     rawContent,
   });
 
-  useAutoEnhanceForOnboarding({
+  useAutoEnhance({
     sessionId,
     enhanceStatus: enhance.status,
     enhanceMutate: enhance.mutate,
@@ -197,7 +197,7 @@ export function useEnhanceMutation({
         "enhance.user",
         {
           editor: rawContent,
-          timeline: timeline,
+          timeline,
           participants,
           ...(sessionId === onboardingSessionId
             ? { example: onboardingOutputExample }
@@ -245,7 +245,7 @@ export function useEnhanceMutation({
   return { enhance, animate };
 }
 
-export function useAutoEnhanceForOnboarding({
+export function useAutoEnhance({
   sessionId,
   enhanceStatus,
   enhanceMutate,
@@ -254,7 +254,7 @@ export function useAutoEnhanceForOnboarding({
   enhanceStatus: string;
   enhanceMutate: () => void;
 }) {
-  const { userId, onboardingSessionId } = useHypr();
+  const { userId } = useHypr();
 
   const enhancedMemoHtml = useSession(
     sessionId,
@@ -264,10 +264,6 @@ export function useAutoEnhanceForOnboarding({
   const prevOngoingSessionStatus = usePreviousValue(ongoingSessionStatus);
 
   useEffect(() => {
-    if (sessionId !== onboardingSessionId) {
-      return;
-    }
-
     analyticsCommands.event({
       event: "onboarding_session_visited",
       distinct_id: userId,
@@ -296,7 +292,6 @@ export function useAutoEnhanceForOnboarding({
     enhanceStatus,
     enhancedMemoHtml,
     sessionId,
-    onboardingSessionId,
     enhanceMutate,
   ]);
 }

@@ -37,7 +37,6 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
     pause: s.pause,
     isCurrent: s.sessionId === sessionId,
     status: s.status,
-    timeline: s.timeline,
   }));
 
   const startedBefore = useSession(
