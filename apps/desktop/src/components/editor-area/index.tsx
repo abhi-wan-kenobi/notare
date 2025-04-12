@@ -220,7 +220,6 @@ export function useEnhanceMutation({
       for await (const chunk of textStream) {
         setAnimate(true);
         acc += chunk;
-        console.log("acc", acc);
         const html = await miscCommands.opinionatedMdToHtml(acc);
         setEnhancedContent(html);
       }
@@ -230,7 +229,9 @@ export function useEnhanceMutation({
     },
     onSuccess: () => {
       analyticsCommands.event({
-        event: "enhance_note_done",
+        event: sessionId === onboardingSessionId
+          ? "onboarding_enhance_done"
+          : "normal_enhance_done",
         distinct_id: userId,
         session_id: sessionId,
       });
