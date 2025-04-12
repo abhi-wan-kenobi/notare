@@ -3,7 +3,7 @@ import { useLingui } from "@lingui/react/macro";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type LinkProps, useMatch, useNavigate } from "@tanstack/react-router";
 import { endOfMonth, startOfMonth, subMonths } from "date-fns";
-import { AppWindowMacIcon, CalendarDaysIcon, TrashIcon } from "lucide-react";
+import { AppWindowMacIcon, ArrowUpRight, CalendarDaysIcon, TrashIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef } from "react";
 
@@ -283,19 +283,25 @@ function NoteItem({
 
       <ContextMenuContent>
         <ContextMenuItem
-          className="cursor-pointer"
+          className="cursor-pointer flex items-center justify-between"
           onClick={handleOpenWindow}
         >
-          <AppWindowMacIcon size={16} className="mr-2" />
-          <Trans>Open in new window</Trans>
+          <div className="flex items-center gap-2">
+            <AppWindowMacIcon size={16} />
+            <Trans>New window</Trans>
+          </div>
+          <ArrowUpRight size={16} className="ml-1 text-zinc-500" />
         </ContextMenuItem>
 
         <ContextMenuItem
-          className="cursor-pointer"
+          className="cursor-pointer flex items-center justify-between"
           onClick={handleOpenCalendar}
         >
-          <CalendarDaysIcon size={16} className="mr-2" />
-          <Trans>Open in calendar view</Trans>
+          <div className="flex items-center gap-2">
+            <CalendarDaysIcon size={16} />
+            <Trans>View calendar</Trans>
+          </div>
+          <ArrowUpRight size={16} className="ml-1 text-zinc-500" />
         </ContextMenuItem>
 
         <ContextMenuSeparator />

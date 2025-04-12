@@ -233,6 +233,7 @@ msgid "Access granted"
 msgstr "Access granted"
 
 #: src/components/settings/components/calendar/apple-calendar-integration-details.tsx:78
+#: src/components/settings/components/calendar/apple-calendar-integration-details.tsx:127
 #: src/components/settings/components/ai/transcribing-model.tsx:179
 #: src/components/settings/components/ai/local-llm-button.tsx:38
 #: src/components/settings/components/ai/enhancing-model.tsx:79
@@ -257,7 +258,6 @@ msgid "Admin"
 msgstr "Admin"
 
 #: src/components/settings/components/settings-header.tsx:24
-#: src/components/settings/components/main-sidebar.tsx:33
 msgid "AI"
 msgstr "AI"
 
@@ -287,6 +287,7 @@ msgid "Apple"
 msgstr "Apple"
 
 #: src/components/toolbar/buttons/delete-note-button.tsx:37
+#: src/components/left-sidebar/notes-list.tsx:248
 msgid "Are you sure you want to delete this note?"
 msgstr "Are you sure you want to delete this note?"
 
@@ -422,7 +423,7 @@ msgstr "Current Plan"
 
 #: src/components/settings/views/template.tsx:86
 #: src/components/settings/views/team.tsx:165
-#: src/components/left-sidebar/notes-list.tsx:300
+#: src/components/left-sidebar/notes-list.tsx:314
 msgid "Delete"
 msgstr "Delete"
 
@@ -533,7 +534,7 @@ msgid "Get Started"
 msgstr "Get Started"
 
 #: src/components/settings/components/calendar/apple-calendar-integration-details.tsx:89
-#: src/components/settings/components/calendar/apple-calendar-integration-details.tsx:130
+#: src/components/settings/components/calendar/apple-calendar-integration-details.tsx:138
 msgid "Grant Access"
 msgstr "Grant Access"
 
@@ -680,6 +681,10 @@ msgstr "Needs download"
 msgid "New note"
 msgstr "New note"
 
+#: src/components/left-sidebar/notes-list.tsx:291
+msgid "New window"
+msgstr "New window"
+
 #: src/components/settings/components/calendar/calendar-selector.tsx:57
 msgid "No calendars found"
 msgstr "No calendars found"
@@ -733,13 +738,12 @@ msgid "Open Hyprnote on startup"
 msgstr "Open Hyprnote on startup"
 
 #: src/components/left-sidebar/notes-list.tsx:290
-msgid "Open in calendar view"
-msgstr "Open in calendar view"
+#~ msgid "Open in calendar view"
+#~ msgstr "Open in calendar view"
 
 #: src/components/toolbar/buttons/new-window-button.tsx:35
 #: src/components/left-sidebar/search-list.tsx:199
 #: src/components/left-sidebar/search-list.tsx:257
-#: src/components/left-sidebar/notes-list.tsx:282
 msgid "Open in new window"
 msgstr "Open in new window"
 
@@ -1057,7 +1061,11 @@ msgstr "username"
 #~ msgid "Verify that your local language model is working correctly"
 #~ msgstr "Verify that your local language model is working correctly"
 
-#: src/components/editor-area/note-header/chips/event-chip.tsx:41
+#: src/components/left-sidebar/notes-list.tsx:302
+msgid "View calendar"
+msgstr "View calendar"
+
+#: src/components/editor-area/note-header/chips/event-chip.tsx:40
 msgid "View in calendar"
 msgstr "View in calendar"
 

@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarIcon } from "lucide-react";
 
@@ -5,9 +6,7 @@ import { commands as dbCommands } from "@hypr/plugin-db";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { useSession } from "@hypr/utils/contexts";
-
 import { formatRelativeWithDay } from "@hypr/utils/datetime";
-import { Trans } from "@lingui/react/macro";
 
 interface EventChipProps {
   sessionId: string;
