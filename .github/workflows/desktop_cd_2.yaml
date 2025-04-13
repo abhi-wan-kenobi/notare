@@ -1,9 +1,5 @@
-# https://docs.crabnebula.dev/cloud/ci/tauri-v2-workflow/
 on:
   workflow_dispatch:
-  release:
-    types:
-      - published
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -13,12 +9,10 @@ env:
   TAURI_CONF_PATH: ${{ endsWith(github.event.release.tag_name, 'nightly') && './src-tauri/tauri.conf.nightly.json' || './src-tauri/tauri.conf.stable.json' }}
 jobs:
   build:
-    if: ${{ startsWith(github.event.release.tag_name, 'desktop_') }}
-    needs: draft
     permissions:
       contents: write
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - platform: "macos"
@@ -43,6 +37,7 @@ jobs:
       - run: pnpm -F desktop lingui:compile
       - run: pnpm -F ui build
       - uses: ./.github/actions/apple_cert
+        if: ${{ matrix.platform == 'macos' }}
         with:
           apple-certificate: ${{ secrets.APPLE_CERTIFICATE }}
           apple-certificate-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
