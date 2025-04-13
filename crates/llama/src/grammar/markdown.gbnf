@@ -5,7 +5,7 @@ sectionf ::= "# Objective\n\n" content "\n"
 section ::= header "\n\n" content "\n"
 header ::= "# " [^*.\n]+
 
-line ::= "- **" [^*\n]+ "**: " [^*,.\n]+ ".\n"
+line ::= "- **" [^*\n:]+ "**: " [^*,.\n]+ ".\n"
 content ::= line line line? line? line?
 
 hsf ::= "- Objective\n"
