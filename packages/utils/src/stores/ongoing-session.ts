@@ -2,25 +2,29 @@ import { Channel } from "@tauri-apps/api/core";
 import { create as mutate } from "mutative";
 import { createStore } from "zustand";
 
-import { commands as listenerCommands, type SessionEvent } from "@hypr/plugin-listener";
+import { commands as listenerCommands, type SessionEvent, type State as ListenerState } from "@hypr/plugin-listener";
 import { createSessionsStore } from "./sessions";
 
 type State = {
   sessionId: string | null;
   channel: Channel<SessionEvent> | null;
-  status: "active" | "loading" | "inactive";
+  loading: boolean;
+  status: ListenerState;
   amplitude: { mic: number; speaker: number };
 };
 
 type Actions = {
   get: () => State & Actions;
   start: (sessionId: string) => void;
+  stop: () => void;
   pause: () => void;
+  resume: () => void;
 };
 
 const initialState: State = {
   sessionId: null,
   status: "inactive",
+  loading: false,
   channel: null,
   amplitude: { mic: 0, speaker: 0 },
 };
@@ -33,7 +37,7 @@ export const createOngoingSessionStore = (sessionsStore: ReturnType<typeof creat
       set((state) =>
         mutate(state, (draft) => {
           draft.sessionId = sessionId;
-          draft.status = "loading";
+          draft.loading = true;
         })
       );
 
@@ -42,14 +46,6 @@ export const createOngoingSessionStore = (sessionsStore: ReturnType<typeof creat
       channel.onmessage = (event) => {
         set((state) =>
           mutate(state, (draft) => {
-            if (event.type === "started") {
-              draft.status = "active";
-            }
-
-            if (event.type === "stopped") {
-              draft.status = "inactive";
-            }
-
             if (event.type === "audioAmplitude") {
               draft.amplitude = {
                 mic: event.mic,
@@ -61,33 +57,47 @@ export const createOngoingSessionStore = (sessionsStore: ReturnType<typeof creat
       };
 
       listenerCommands.startSession(sessionId).then(() => {
-        set({ channel, status: "active" });
+        set({ channel, status: "running_active", loading: false });
         listenerCommands.subscribe(channel);
       }).catch((error) => {
         console.error(error);
         set(initialState);
       });
     },
-    pause: () => {
-      const { channel, sessionId } = get();
+    stop: () => {
+      const { sessionId, channel } = get();
 
-      try {
-        listenerCommands.stopSession();
+      if (channel) {
+        listenerCommands.unsubscribe(channel);
+      }
 
-        if (channel) {
-          listenerCommands.unsubscribe(channel);
+      listenerCommands.stopSession().then(() => {
+        set(initialState);
+
+        // session stored in sessionStore become stale during ongoing-session. Refresh it here.
+        if (sessionId) {
+          const sessionStore = sessionsStore.getState().sessions[sessionId];
+          sessionStore.getState().refresh();
         }
-      } catch (error) {
-        console.error(error);
-      }
+      });
+    },
+    pause: () => {
+      const { sessionId } = get();
 
-      // session stored in sessionStore become stale during ongoing-session. Refresh it here.
-      if (sessionId) {
-        const sessionStore = sessionsStore.getState().sessions[sessionId];
-        sessionStore.getState().refresh();
-      }
+      listenerCommands.pauseSession().then(() => {
+        set({ status: "running_paused" });
 
-      set(initialState);
+        // session stored in sessionStore become stale during ongoing-session. Refresh it here.
+        if (sessionId) {
+          const sessionStore = sessionsStore.getState().sessions[sessionId];
+          sessionStore.getState().refresh();
+        }
+      });
+    },
+    resume: () => {
+      listenerCommands.resumeSession().then(() => {
+        set({ status: "running_active" });
+      });
     },
   }));
 };

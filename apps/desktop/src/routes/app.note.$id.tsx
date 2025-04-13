@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 
@@ -104,6 +104,11 @@ function OnboardingSupport({ session }: { session: Session }) {
     queryKey: ["onboarding-session-id"],
     queryFn: () => dbCommands.onboardingSessionId(),
   });
+  const enhanceStates = useMutationState({
+    filters: { mutationKey: ["enhance", session.id], exact: true },
+    select: (mutation) => mutation.state.status,
+  });
+  const isEnhancePending = useMemo(() => enhanceStates.some((s) => s === "pending"), [enhanceStates]);
 
   const enabled = useMemo(() => {
     const isOnboardingSession = onboardingSessionId.data === session.id;
@@ -116,11 +121,11 @@ function OnboardingSupport({ session }: { session: Session }) {
     session.enhanced_memo_html,
   ]);
 
-  const { startOngoingSession, pauseOngoingSession, ongoingSessionStatus } = useOngoingSession((
+  const { startOngoingSession, stopOngoingSession, ongoingSessionStatus } = useOngoingSession((
     s,
   ) => ({
     startOngoingSession: s.start,
-    pauseOngoingSession: s.pause,
+    stopOngoingSession: s.stop,
     ongoingSessionStatus: s.status,
   }));
 
@@ -131,7 +136,7 @@ function OnboardingSupport({ session }: { session: Session }) {
 
     windowsEvents.windowDestroyed.listen(({ payload: { window } }) => {
       if (window.type === "video" && window.value === video) {
-        pauseOngoingSession();
+        stopOngoingSession();
 
         if (onboardingSessionId.data) {
           navigate({ to: "/app/note/$id", params: { id: onboardingSessionId.data } });
@@ -149,7 +154,7 @@ function OnboardingSupport({ session }: { session: Session }) {
       return;
     }
 
-    if (ongoingSessionStatus === "inactive") {
+    if (ongoingSessionStatus === "inactive" && !isEnhancePending) {
       startOngoingSession(session.id);
     }
   }, [enabled]);
@@ -159,7 +164,7 @@ function OnboardingSupport({ session }: { session: Session }) {
       return;
     }
 
-    if (ongoingSessionStatus === "active") {
+    if (ongoingSessionStatus === "running_active" && !isEnhancePending) {
       windowsCommands.windowShow({ type: "video", value: video }).then(() => {
         windowsCommands.windowPosition({ type: "video", value: video }, "left-half");
         windowsCommands.windowPosition({ type: "main" }, "right-half");

@@ -15,7 +15,7 @@ import { extractHashtags } from "@hypr/tiptap/shared";
 import { cn } from "@hypr/ui/lib/utils";
 import { modelProvider, smoothStream, streamText } from "@hypr/utils/ai";
 import { useOngoingSession, useSession } from "@hypr/utils/contexts";
-import { EnhanceButton } from "./enhance-button";
+import { FloatingButton } from "./floating-button";
 import { NoteHeader } from "./note-header";
 
 export default function EditorArea({
@@ -29,10 +29,7 @@ export default function EditorArea({
     ongoingSessionStatus: s.status,
   }));
 
-  const [showRaw, setShowRaw] = useSession(sessionId, (s) => [
-    s.showRaw,
-    s.setShowRaw,
-  ]);
+  const showRaw = useSession(sessionId, (s) => s.showRaw);
 
   const [rawContent, setRawContent] = useSession(sessionId, (s) => [
     s.session?.raw_memo_html ?? "",
@@ -144,13 +141,10 @@ export default function EditorArea({
           transition={{ duration: 0.2 }}
         >
           <div className="pointer-events-auto">
-            <EnhanceButton
-              key={`enhance-button-${sessionId}`}
-              handleClick={handleClickEnhance}
+            <FloatingButton
+              key={`floating-button-${sessionId}`}
+              handleEnhance={handleClickEnhance}
               session={sessionStore.session}
-              showRaw={showRaw}
-              enhanceStatus={enhance.status}
-              setShowRaw={setShowRaw}
             />
           </div>
         </motion.div>
@@ -175,6 +169,7 @@ export function useEnhanceMutation({
   }));
 
   const enhance = useMutation({
+    mutationKey: ["enhance", sessionId],
     mutationFn: async () => {
       setAnimate(false);
       const config = await dbCommands.getConfig();
@@ -270,7 +265,7 @@ export function useAutoEnhance({
       session_id: sessionId,
     });
 
-    const justFinishedListening = prevOngoingSessionStatus === "active"
+    const justFinishedListening = prevOngoingSessionStatus === "running_active"
       && ongoingSessionStatus === "inactive";
 
     if (justFinishedListening && !enhancedMemoHtml) {
