@@ -80,6 +80,7 @@
     "react-hook-form": "^7.55.0",
     "react-hotkeys-hook": "^4.6.2",
     "react-resizable": "^3.0.5",
+    "react-scan": "^0.3.3",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
     "tauri-plugin-sentry-api": "^0.4.1",

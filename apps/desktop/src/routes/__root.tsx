@@ -1,3 +1,6 @@
+// react-scan must be imported before React
+import { scan } from "react-scan";
+
 import { events as windowsEvents } from "@hypr/plugin-windows";
 import { useQuery } from "@tanstack/react-query";
 import { CatchNotFound, createRootRouteWithContext, Outlet } from "@tanstack/react-router";
@@ -41,6 +44,12 @@ function Component() {
 
     return () => unlisten?.();
   }, [navigate]);
+
+  useEffect(() => {
+    scan({
+      enabled: true,
+    });
+  }, []);
 
   return (
     <>
