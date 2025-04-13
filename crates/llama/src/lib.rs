@@ -101,8 +101,8 @@ impl Llama {
                             let mut decoder = encoding_rs::UTF_8.new_decoder();
                             let mut sampler = LlamaSampler::chain_simple([
                                 LlamaSampler::grammar(&model, grammar::MARKDOWN_GRAMMAR, "root"),
-                                LlamaSampler::temp(0.1),
-                                LlamaSampler::penalties(0, 1.2, 0.1, 0.0),
+                                LlamaSampler::temp(0.8),
+                                LlamaSampler::penalties(0, 1.4, 0.1, 0.0),
                                 LlamaSampler::mirostat_v2(1234, 3.0, 0.2),
                             ]);
 

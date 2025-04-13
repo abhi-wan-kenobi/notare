@@ -1,12 +1,13 @@
-root ::= thinking section+
-section ::= header "\n\n" content
-header ::= "# " char+
-content ::= [^#[^*\n] [^#`<[^=]*
+root ::= thinking sectionf section section section? section?
 
-line ::= "- " char+ "\n"
-thinking ::= "<headers>" line+ "</headers>"
+sectionf ::= "# Objective\n\n" content "\n"
 
-char ::= letter | digit | others
-letter ::= [a-zA-Z]
-digit ::= [0-9]
-others ::= "'" | "\"" | "," | "." | " "
+section ::= header "\n\n" content "\n"
+header ::= "# " [^*.\n]+
+
+line ::= "- **" [^*\n]+ "**: " [^*,.\n]+ ".\n"
+content ::= line line line? line? line?
+
+hsf ::= "- Objective\n"
+hd ::= "- " [^*\n]+ "\n"
+thinking ::= "<headers>\n" hsf hd hd? hd? hd? "</headers>"
