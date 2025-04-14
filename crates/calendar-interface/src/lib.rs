@@ -2,7 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 
-pub type Error = anyhow::Error;
+mod error;
+pub use error::*;
 
 pub trait CalendarSource {
     fn list_calendars(&self) -> impl Future<Output = Result<Vec<Calendar>, Error>>;
