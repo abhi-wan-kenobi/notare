@@ -23,7 +23,7 @@ export function RightPanelProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [currentView, setCurrentView] = useState<RightPanelView>("widget");
   const previouslyFocusedElement = useRef<HTMLElement | null>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -47,51 +47,54 @@ export function RightPanelProvider({
     setCurrentView(view);
   }, []);
 
-  const togglePanel = useCallback((view?: RightPanelView) => {
-    if (view && isExpanded && currentView !== view) {
-      setCurrentView(view);
+  const togglePanel = useCallback(
+    (view?: RightPanelView) => {
+      if (view && isExpanded && currentView !== view) {
+        setCurrentView(view);
 
-      if (view === "chat") {
-        setTimeout(() => {
-          if (chatInputRef.current) {
-            chatInputRef.current.focus();
-          }
-        }, 350);
-      }
-    } else {
-      if (!isExpanded) {
-        previouslyFocusedElement.current = document.activeElement as HTMLElement;
-
-        setIsExpanded(true);
-
-        const targetView = view || currentView;
-        if (targetView === "chat") {
+        if (view === "chat") {
           setTimeout(() => {
-            const focusInput = () => {
-              if (chatInputRef.current) {
-                chatInputRef.current.focus();
-              } else {
-                setTimeout(focusInput, 50);
-              }
-            };
-            focusInput();
+            if (chatInputRef.current) {
+              chatInputRef.current.focus();
+            }
           }, 350);
         }
       } else {
-        setIsExpanded(false);
+        if (!isExpanded) {
+          previouslyFocusedElement.current = document.activeElement as HTMLElement;
 
-        setTimeout(() => {
-          if (previouslyFocusedElement.current) {
-            previouslyFocusedElement.current.focus();
+          setIsExpanded(true);
+
+          const targetView = view || currentView;
+          if (targetView === "chat") {
+            setTimeout(() => {
+              const focusInput = () => {
+                if (chatInputRef.current) {
+                  chatInputRef.current.focus();
+                } else {
+                  setTimeout(focusInput, 50);
+                }
+              };
+              focusInput();
+            }, 350);
           }
-        }, 350);
-      }
+        } else {
+          setIsExpanded(false);
 
-      if (view) {
-        setCurrentView(view);
+          setTimeout(() => {
+            if (previouslyFocusedElement.current) {
+              previouslyFocusedElement.current.focus();
+            }
+          }, 350);
+        }
+
+        if (view) {
+          setCurrentView(view);
+        }
       }
-    }
-  }, [isExpanded, currentView]);
+    },
+    [isExpanded, currentView],
+  );
 
   useHotkeys(
     "mod+r",
