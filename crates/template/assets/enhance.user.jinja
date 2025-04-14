@@ -1,5 +1,7 @@
 <participants>
-{{ participants | tojson }}
+{% for participant in participants %}
+- {{ participant.full_name }}
+{% endfor %}
 </participants>
 
 <raw_note>

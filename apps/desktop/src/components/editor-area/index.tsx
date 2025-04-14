@@ -269,17 +269,15 @@ export function useAutoEnhance({
       && ongoingSessionStatus === "inactive";
 
     if (justFinishedListening && !enhancedMemoHtml) {
-      setTimeout(() => {
-        if (enhanceStatus === "idle") {
-          analyticsCommands.event({
-            event: "onboarding_auto_enhance_triggered",
-            distinct_id: userId,
-            session_id: sessionId,
-          });
+      if (enhanceStatus === "idle") {
+        analyticsCommands.event({
+          event: "onboarding_auto_enhance_triggered",
+          distinct_id: userId,
+          session_id: sessionId,
+        });
 
-          enhanceMutate();
-        }
-      }, 1800);
+        enhanceMutate();
+      }
     }
   }, [
     ongoingSessionStatus,
