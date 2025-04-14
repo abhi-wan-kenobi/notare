@@ -124,7 +124,13 @@ pub async fn main() {
 
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async move {
-                    app.setup_db_for_local().await.unwrap();
+                    if let Err(e) = app.setup_db_for_local().await {
+                        tracing::error!("failed_to_setup_db_for_local: {}", e);
+                    }
+
+                    if let Err(e) = app.setup_auto_start().await {
+                        tracing::error!("failed_to_setup_auto_start: {}", e);
+                    }
 
                     tokio::spawn(async move {
                         app.setup_local_ai().await.unwrap();
@@ -155,6 +161,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::is_onboarding_needed::<tauri::Wry>,
             commands::set_onboarding_needed::<tauri::Wry>,
             commands::setup_db_for_cloud::<tauri::Wry>,
+            commands::set_autostart::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

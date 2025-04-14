@@ -10,10 +10,6 @@ pub enum Error {
     ListenClientError(#[from] hypr_ws::Error),
     #[error(transparent)]
     DatabaseError(#[from] tauri_plugin_db::Error),
-    #[error("session not started")]
-    SessionNotStarted,
-    #[error("session already started")]
-    SessionAlreadyStarted,
     #[error("no STT connection")]
     NoSTTConnection,
     #[error("no session")]
