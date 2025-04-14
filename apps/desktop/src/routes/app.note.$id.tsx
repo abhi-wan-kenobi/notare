@@ -1,8 +1,9 @@
-import { useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 
 import EditorArea from "@/components/editor-area";
+import { useEnhancePendingState } from "@/hooks/enhance-pending";
 import { commands as dbCommands, type Session } from "@hypr/plugin-db";
 import {
   commands as windowsCommands,
@@ -104,11 +105,8 @@ function OnboardingSupport({ session }: { session: Session }) {
     queryKey: ["onboarding-session-id"],
     queryFn: () => dbCommands.onboardingSessionId(),
   });
-  const enhanceStates = useMutationState({
-    filters: { mutationKey: ["enhance", session.id], exact: true },
-    select: (mutation) => mutation.state.status,
-  });
-  const isEnhancePending = useMemo(() => enhanceStates.some((s) => s === "pending"), [enhanceStates]);
+
+  const isEnhancePending = useEnhancePendingState(session.id);
 
   const enabled = useMemo(() => {
     const isOnboardingSession = onboardingSessionId.data === session.id;

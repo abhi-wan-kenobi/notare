@@ -1,7 +1,6 @@
-import { useMutationState } from "@tanstack/react-query";
 import { AlignLeft, Loader2, Zap } from "lucide-react";
-import { useMemo } from "react";
 
+import { useEnhancePendingState } from "@/hooks/enhance-pending";
 import { Session } from "@hypr/plugin-db";
 import { cn } from "@hypr/ui/lib/utils";
 import { useSession } from "@hypr/utils/contexts";
@@ -13,12 +12,7 @@ interface FloatingButtonProps {
 
 export function FloatingButton({ session, handleEnhance }: FloatingButtonProps) {
   const [showRaw, setShowRaw] = useSession(session.id, (s) => [s.showRaw, s.setShowRaw]);
-
-  const enhanceStates = useMutationState({
-    filters: { mutationKey: ["enhance", session.id], exact: true },
-    select: (mutation) => mutation.state.status,
-  });
-  const isEnhancePending = useMemo(() => enhanceStates.some((s) => s === "pending"), [enhanceStates]);
+  const isEnhancePending = useEnhancePendingState(session.id);
 
   const handleClickLeftButton = () => {
     setShowRaw(true);

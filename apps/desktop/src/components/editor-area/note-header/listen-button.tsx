@@ -6,6 +6,7 @@ import { MicIcon, MicOffIcon, PauseIcon, StopCircleIcon, Volume2Icon, VolumeOffI
 import { useEffect, useState } from "react";
 
 import SoundIndicator from "@/components/sound-indicator";
+import { useEnhancePendingState } from "@/hooks/enhance-pending";
 import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { commands as localSttCommands } from "@hypr/plugin-local-stt";
 import { Button } from "@hypr/ui/components/ui/button";
@@ -21,6 +22,7 @@ interface ListenButtonProps {
 
 export default function ListenButton({ sessionId }: ListenButtonProps) {
   const [open, setOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const modelDownloaded = useQuery({
     queryKey: ["check-stt-model-downloaded"],
@@ -44,13 +46,15 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
     stop: s.stop,
     isCurrent: s.sessionId === sessionId,
     loading: s.loading,
+    sessionId: s.sessionId,
   }));
 
-  const sessionData = useSession(sessionId, (s) => ({
-    session: s.session,
-  }));
-
-  const isEnhanced = sessionData.session.enhanced_memo_html;
+  const isEnhancePending = useEnhancePendingState(sessionId);
+  const nonEmptySession = useSession(
+    sessionId,
+    (s) => s.session.conversations.length > 0 || s.session.enhanced_memo_html,
+  );
+  const meetingEnded = isEnhancePending || nonEmptySession;
 
   const { data: isMicMuted, refetch: refetchMicMuted } = useQuery({
     queryKey: ["mic-muted"],
@@ -134,9 +138,7 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
         onClick={handleResumeSession}
         className={clsx(
           "w-16 h-9 rounded-full transition-all hover:scale-95 cursor-pointer outline-none p-0 flex items-center justify-center text-xs font-medium",
-          isEnhanced
-            ? "bg-neutral-200 border-2 border-neutral-400 text-neutral-600 opacity-30 hover:opacity-100 hover:bg-red-100 hover:text-red-600 hover:border-red-400"
-            : "bg-red-100 border-2 border-red-400 text-red-600",
+          "bg-red-100 border-2 border-red-400 text-red-600",
         )}
         style={{
           boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8) inset",
@@ -148,29 +150,48 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
   }
 
   if (ongoingSessionStatus === "inactive") {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            disabled={!modelDownloaded.data}
-            onClick={handleStartSession}
-            className={clsx([
-              "w-9 h-9 rounded-full border-2 transition-all hover:scale-95  cursor-pointer outline-none p-0 flex items-center justify-center",
-              !modelDownloaded.data ? "bg-neutral-200 border-neutral-400" : "bg-red-500 border-neutral-400",
-            ])}
-            style={{
-              boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8) inset",
-            }}
-          >
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" align="end">
-          <p>
-            <Trans>Start recording</Trans>
-          </p>
-        </TooltipContent>
-      </Tooltip>
-    );
+    if (!meetingEnded) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              disabled={!modelDownloaded.data}
+              onClick={handleStartSession}
+              className={clsx([
+                "w-9 h-9 rounded-full border-2 transition-all hover:scale-95  cursor-pointer outline-none p-0 flex items-center justify-center",
+                !modelDownloaded.data ? "bg-neutral-200 border-neutral-400" : "bg-red-500 border-neutral-400",
+              ])}
+              style={{
+                boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8) inset",
+              }}
+            >
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="end">
+            <p>
+              <Trans>Start recording</Trans>
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    } else {
+      return (
+        <button
+          disabled={!modelDownloaded.data || isEnhancePending}
+          onClick={handleStartSession}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          className={clsx(
+            "w-16 h-9 rounded-full transition-all hover:scale-95 cursor-pointer outline-none p-0 flex items-center justify-center text-xs font-medium",
+            "bg-neutral-200 border-2 border-neutral-400 text-neutral-600 opacity-30",
+            !isEnhancePending && "hover:opacity-100 hover:bg-red-100 hover:text-red-600 hover:border-red-400",
+          )}
+          style={{ boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8) inset" }}
+        >
+          <Trans>{isHovered ? "Resume" : "Ended"}</Trans>
+        </button>
+      );
+    }
   }
 
   if (ongoingSessionStatus === "running_active") {
@@ -228,8 +249,6 @@ export default function ListenButton({ sessionId }: ListenButtonProps) {
       </Popover>
     );
   }
-
-  return <div>.</div>;
 }
 
 function AudioControlButton({
