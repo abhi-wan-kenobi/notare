@@ -773,6 +773,7 @@ dependencies = [
  "anyhow",
  "bytes",
  "cidre",
+ "cpal",
  "futures-channel",
  "futures-util",
  "kalosm-sound",
@@ -1938,6 +1939,7 @@ dependencies = [
 name = "calendar-apple"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "block2 0.5.1",
  "calendar-interface",
  "chrono",
@@ -1965,7 +1967,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "serde",
- "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -2652,7 +2653,7 @@ dependencies = [
 [[package]]
 name = "cpal"
 version = "0.15.3"
-source = "git+https://github.com/RustAudio/cpal?rev=f43d36e55494993bbbde3299af0c53e5cdf4d4cf#f43d36e55494993bbbde3299af0c53e5cdf4d4cf"
+source = "git+https://github.com/RustAudio/cpal?rev=51c3b43#51c3b43c54591203fe3edc9a31ff7595650f7103"
 dependencies = [
  "alsa",
  "core-foundation-sys",

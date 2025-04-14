@@ -1,6 +1,7 @@
 use std::future::Future;
 
 use futures_util::StreamExt;
+use hypr_audio::cpal::traits::{DeviceTrait, HostTrait};
 use tauri::ipc::Channel;
 
 #[cfg(target_os = "macos")]
@@ -12,6 +13,8 @@ use {
 use crate::SessionEvent;
 
 pub trait ListenerPluginExt<R: tauri::Runtime> {
+    fn list_microphone_devices(&self) -> impl Future<Output = Result<Vec<String>, crate::Error>>;
+
     fn check_microphone_access(&self) -> impl Future<Output = Result<bool, crate::Error>>;
     fn check_system_audio_access(&self) -> impl Future<Output = Result<bool, crate::Error>>;
     fn request_microphone_access(&self) -> impl Future<Output = Result<(), crate::Error>>;
@@ -34,6 +37,13 @@ pub trait ListenerPluginExt<R: tauri::Runtime> {
 }
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
+    #[tracing::instrument(skip_all)]
+    async fn list_microphone_devices(&self) -> Result<Vec<String>, crate::Error> {
+        let host = hypr_audio::cpal::default_host();
+        let devices = host.input_devices()?;
+        Ok(devices.filter_map(|d| d.name().ok()).collect())
+    }
+
     #[tracing::instrument(skip_all)]
     async fn check_microphone_access(&self) -> Result<bool, crate::Error> {
         #[cfg(target_os = "macos")]

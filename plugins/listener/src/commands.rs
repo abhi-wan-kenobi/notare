@@ -2,6 +2,16 @@ use crate::{ListenerPluginExt, SessionEvent};
 
 #[tauri::command]
 #[specta::specta]
+pub async fn list_microphone_devices<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<Vec<String>, String> {
+    app.list_microphone_devices()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn check_microphone_access<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<bool, String> {
