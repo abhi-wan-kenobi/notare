@@ -1,4 +1,5 @@
-import { AlignLeft, Loader2, Zap } from "lucide-react";
+import { AlignLeft, Loader2Icon, RotateCcwIcon, ZapIcon } from "lucide-react";
+import { useState } from "react";
 
 import { useEnhancePendingState } from "@/hooks/enhance-pending";
 import { Session } from "@hypr/plugin-db";
@@ -13,6 +14,7 @@ interface FloatingButtonProps {
 export function FloatingButton({ session, handleEnhance }: FloatingButtonProps) {
   const [showRaw, setShowRaw] = useSession(session.id, (s) => [s.showRaw, s.setShowRaw]);
   const isEnhancePending = useEnhancePendingState(session.id);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleClickLeftButton = () => {
     setShowRaw(true);
@@ -48,6 +50,8 @@ export function FloatingButton({ session, handleEnhance }: FloatingButtonProps) 
 
       <button
         disabled={isEnhancePending}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         onClick={handleClickRightButton}
         className={cn(
           "rounded-r-xl border-r border-y",
@@ -57,7 +61,11 @@ export function FloatingButton({ session, handleEnhance }: FloatingButtonProps) 
             : "bg-primary text-primary-foreground border-black hover:bg-primary/90",
         )}
       >
-        {isEnhancePending ? <Loader2 className="animate-spin" size={20} /> : <Zap size={20} />}
+        {isEnhancePending
+          ? <Loader2Icon size={20} className="animate-spin" />
+          : isHovered
+          ? <RotateCcwIcon size={20} />
+          : <ZapIcon size={20} />}
       </button>
     </div>
   );
