@@ -15,6 +15,7 @@ const SAMPLE_RATE: u32 = 16000;
 
 pub struct Session {
     app: tauri::AppHandle,
+    session_id: Option<String>,
     channels: Arc<Mutex<HashMap<u32, Channel<SessionEvent>>>>,
     mic_muted_tx: Option<tokio::sync::watch::Sender<bool>>,
     speaker_muted_tx: Option<tokio::sync::watch::Sender<bool>>,
@@ -29,6 +30,7 @@ impl Session {
     pub fn new(app: tauri::AppHandle) -> Self {
         Self {
             app,
+            session_id: None,
             channels: Arc::new(Mutex::new(HashMap::new())),
             mic_muted_tx: None,
             speaker_muted_tx: None,
@@ -58,6 +60,8 @@ impl Session {
 
         let user_id = self.app.db_user_id().await?.unwrap();
         let session_id = id.into();
+        self.session_id = Some(session_id.clone());
+
         let mut session = {
             self.app
                 .db_get_session(&session_id)
@@ -242,6 +246,8 @@ impl Session {
 
     #[tracing::instrument(skip_all)]
     async fn teardown_resources(&mut self) {
+        self.session_id = None;
+
         if let Some(tx) = self.silence_stream_tx.take() {
             let _ = tx.send(());
         }
@@ -364,17 +370,32 @@ impl Session {
     }
 
     #[state(superstate = "common")]
-    async fn running_active(event: &Event) -> Response<State> {
+    async fn running_active(&mut self, event: &Event) -> Response<State> {
         match event {
+            Event::Start(incoming_session_id) => match &self.session_id {
+                Some(current_id) if current_id != incoming_session_id => {
+                    Transition(State::inactive())
+                }
+                _ => Handled,
+            },
             Event::Stop => Transition(State::inactive()),
             Event::Pause => Transition(State::running_paused()),
+            Event::Resume => Handled,
             _ => Super,
         }
     }
 
     #[state(superstate = "common")]
-    async fn running_paused(event: &Event) -> Response<State> {
+    async fn running_paused(&mut self, event: &Event) -> Response<State> {
         match event {
+            Event::Start(incoming_session_id) => match &self.session_id {
+                Some(current_id) if current_id != incoming_session_id => {
+                    Transition(State::inactive())
+                }
+                _ => Handled,
+            },
+            Event::Stop => Transition(State::inactive()),
+            Event::Pause => Handled,
             Event::Resume => Transition(State::running_active()),
             _ => Super,
         }
@@ -391,6 +412,9 @@ impl Session {
                     Transition(State::inactive())
                 }
             },
+            Event::Stop => Handled,
+            Event::Pause => Handled,
+            Event::Resume => Handled,
             _ => Super,
         }
     }
