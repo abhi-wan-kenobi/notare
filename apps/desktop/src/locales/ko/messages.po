@@ -234,6 +234,10 @@ msgstr ""
 msgid "{title}"
 msgstr ""
 
+#: src/components/human-profile/past-notes.tsx:91
+msgid "<0>Create Note</0>"
+msgstr ""
+
 #: src/components/settings/components/calendar/apple-calendar-integration-details.tsx:71
 #: src/components/settings/components/calendar/apple-calendar-integration-details.tsx:113
 msgid "Access granted"
@@ -409,7 +413,6 @@ msgstr ""
 msgid "Contacts Access"
 msgstr ""
 
-#: src/components/human-profile/profile-header.tsx:152
 #: src/components/editor-area/note-header/chips/participants-chip/participants-list.tsx:392
 msgid "Create"
 msgstr ""
@@ -461,12 +464,12 @@ msgid "Edit Widgets"
 msgstr ""
 
 #: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:97
-msgid "Email"
-msgstr ""
+#~ msgid "Email"
+#~ msgstr ""
 
 #: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:101
-msgid "Email address"
-msgstr ""
+#~ msgid "Email address"
+#~ msgstr ""
 
 #: src/components/settings/views/team.tsx:201
 msgid "Email addresses"
@@ -580,13 +583,12 @@ msgid "Jargons"
 msgstr ""
 
 #: src/components/settings/views/profile.tsx:139
-#: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:122
 msgid "Job title"
 msgstr ""
 
 #: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:118
-msgid "Job Title"
-msgstr ""
+#~ msgid "Job Title"
+#~ msgstr ""
 
 #: src/components/right-panel/components/chat/empty-chat-state.tsx:37
 msgid "Key decisions"
@@ -601,8 +603,8 @@ msgid "LinkedIn username"
 msgstr ""
 
 #: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:139
-msgid "LinkedIn Username"
-msgstr ""
+#~ msgid "LinkedIn Username"
+#~ msgstr ""
 
 #: src/components/settings/views/billing.tsx:28
 msgid "Live summary of the meeting"
@@ -702,7 +704,7 @@ msgstr ""
 msgid "No members found"
 msgstr ""
 
-#: src/components/human-profile/past-notes.tsx:68
+#: src/components/human-profile/past-notes.tsx:89
 msgid "No past notes with this contact"
 msgstr ""
 
@@ -714,7 +716,7 @@ msgstr ""
 msgid "No upcoming events for this organization"
 msgstr ""
 
-#: src/components/human-profile/upcoming-events.tsx:76
+#: src/components/human-profile/upcoming-events.tsx:81
 msgid "No upcoming events with this contact"
 msgstr ""
 
@@ -746,7 +748,7 @@ msgstr ""
 msgid "Open Hyprnote on startup"
 msgstr ""
 
-#: src/components/left-sidebar/notes-list.tsx:290
+#: src/components/left-sidebar/notes-list.tsx:298
 #~ msgid "Open in calendar view"
 #~ msgstr ""
 
@@ -862,12 +864,12 @@ msgstr ""
 #~ msgstr ""
 
 #: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:166
-msgid "Save Changes"
-msgstr ""
+#~ msgid "Save Changes"
+#~ msgstr ""
 
 #: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:166
-msgid "Saving..."
-msgstr ""
+#~ msgid "Saving..."
+#~ msgstr ""
 
 #: src/components/settings/views/billing.tsx:51
 msgid "Search & ask across all notes in workspace"
@@ -1038,12 +1040,12 @@ msgid "Type to search..."
 msgstr ""
 
 #: src/components/human-profile/profile-header.tsx:170
-msgid "Unnamed Contact"
-msgstr ""
+#~ msgid "Unnamed Contact"
+#~ msgstr ""
 
 #: src/components/organization-profile/profile-header.tsx:51
-msgid "Unnamed Organization"
-msgstr ""
+#~ msgid "Unnamed Organization"
+#~ msgstr ""
 
 #: src/components/editor-area/note-header/title-input.tsx:33
 msgid "Untitled"
@@ -1074,7 +1076,6 @@ msgid "User:"
 msgstr ""
 
 #: src/components/settings/views/profile.tsx:225
-#: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:152
 msgid "username"
 msgstr ""
 
@@ -1111,7 +1112,6 @@ msgid "You can make Hyprnote takes these words into account when transcribing"
 msgstr ""
 
 #: src/components/settings/views/profile.tsx:213
-#: src/components/editor-area/note-header/chips/participants-chip/edit-participant-form.tsx:142
 msgid "Your LinkedIn username (the part after linkedin.com/in/)"
 msgstr ""
 

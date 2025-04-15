@@ -1,17 +1,20 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, notFound } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { createFileRoute, notFound, useRouter } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { ContactInfo, EditButton, PastNotes, ProfileHeader, UpcomingEvents } from "@/components/human-profile";
-import { useEditMode } from "@/contexts/edit-mode-context";
+import { EditableEntityWrapper } from "@/components/toolbar/bars";
+import { useEditMode } from "@/contexts";
 import { commands as dbCommands, type Human } from "@hypr/plugin-db";
-import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
-import { extractWebsiteUrl } from "@hypr/utils";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@hypr/ui/components/ui/form";
+import { Input } from "@hypr/ui/components/ui/input";
 
 export const Route = createFileRoute("/app/human/$id")({
   component: Component,
-  loader: async ({ context: { queryClient }, params }) => {
-    const human = await queryClient.fetchQuery({
+  loader: async ({ context: { queryClient }, params }: { context: { queryClient: any }; params: { id: string } }) => {
+    const human: Human | null = await queryClient.fetchQuery({
       queryKey: ["human", params.id],
       queryFn: () => dbCommands.getHuman(params.id),
     });
@@ -25,7 +28,7 @@ export const Route = createFileRoute("/app/human/$id")({
     }
 
     const organization = await queryClient.fetchQuery({
-      queryKey: ["organization", human.organization_id],
+      queryKey: ["org", human.organization_id],
       queryFn: () => dbCommands.getOrganization(human.organization_id!),
     });
 
@@ -33,114 +36,120 @@ export const Route = createFileRoute("/app/human/$id")({
   },
 });
 
+const formSchema = z.object({
+  full_name: z.string().optional(),
+  job_title: z.string().optional(),
+  email: z.string().email().optional(),
+  linkedin_username: z.string().optional(),
+});
+
+type FormSchema = z.infer<typeof formSchema>;
+
 function Component() {
-  const { human, organization } = Route.useLoaderData();
-  const { isEditing, setIsEditing } = useEditMode();
-  const [editedHuman, setEditedHuman] = useState<Human>(human);
-  const [orgSearchQuery, setOrgSearchQuery] = useState("");
-  const [showOrgSearch, setShowOrgSearch] = useState(false);
-  const queryClient = useQueryClient();
-  const orgSearchRef = useRef<HTMLDivElement>(null);
+  const { human } = Route.useLoaderData();
+  const router = useRouter();
+  const { isEditing } = useEditMode();
 
-  const isMain = getCurrentWebviewWindowLabel() === "main";
-
-  useEffect(() => {
-    const preventBackNavigation = (e: KeyboardEvent) => {
-      if (e.metaKey && e.key === "ArrowLeft") {
-        e.preventDefault();
-      }
-    };
-
-    window.addEventListener("keydown", preventBackNavigation);
-    return () => {
-      window.removeEventListener("keydown", preventBackNavigation);
-    };
-  }, []);
-
-  const getOrganizationWebsite = () => {
-    return organization ? extractWebsiteUrl(human.email) : null;
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setEditedHuman(prev => ({ ...prev, [name]: value }));
-  };
-
-  const { data: orgSearchResults = [] } = useQuery({
-    queryKey: ["search-organizations", orgSearchQuery],
-    queryFn: async () => {
-      if (!orgSearchQuery.trim()) {
-        return [];
-      }
-      return dbCommands.listOrganizations({ search: [4, orgSearchQuery] });
+  const form = useForm<FormSchema>({
+    resolver: zodResolver(formSchema),
+    values: {
+      full_name: human.full_name ?? "",
+      job_title: human.job_title ?? "",
+      email: human.email ?? "",
+      linkedin_username: human.linkedin_username ?? "",
     },
-    enabled: !!orgSearchQuery.trim() && showOrgSearch,
   });
 
-  const handleSave = () => {
-    try {
-      dbCommands.upsertHuman(editedHuman);
-
-      queryClient.invalidateQueries({ queryKey: ["human", human.id] });
-    } catch (error) {
-      console.error("Failed to update human:", error);
-    }
-  };
+  const updateHumanMutation = useMutation({
+    mutationFn: (data: Partial<Human>) =>
+      dbCommands.upsertHuman({
+        ...human,
+        ...data,
+      }),
+    onSuccess: () => {
+      router.invalidate();
+    },
+  });
 
   useEffect(() => {
     if (!isEditing) {
-      handleSave();
+      form.handleSubmit((v) => updateHumanMutation.mutate(v))();
     }
-  }, [isEditing, editedHuman, human.id, queryClient]);
-
-  useEffect(() => {
-    setEditedHuman(human);
-  }, [human]);
+  }, [isEditing]);
 
   return (
-    <div className="flex h-full overflow-hidden">
-      <div className="flex-1">
-        <main className="flex h-full overflow-auto bg-white relative">
-          {isMain && (
-            <div className="absolute top-4 right-4 z-10">
-              <EditButton
-                isEditing={isEditing}
-                setIsEditing={setIsEditing}
-                onSave={handleSave}
-              />
-            </div>
-          )}
-          <div className="max-w-lg mx-auto px-4 lg:px-6 pt-6 pb-20">
-            <div className="mb-6 flex flex-col items-center gap-8">
-              <ProfileHeader
-                human={human}
-                organization={organization}
-                isEditing={isEditing}
-                editedHuman={editedHuman}
-                handleInputChange={handleInputChange}
-                setEditedHuman={setEditedHuman}
-                orgSearchQuery={orgSearchQuery}
-                setOrgSearchQuery={setOrgSearchQuery}
-                showOrgSearch={showOrgSearch}
-                setShowOrgSearch={setShowOrgSearch}
-                orgSearchResults={orgSearchResults}
-                orgSearchRef={orgSearchRef}
-              />
+    <EditableEntityWrapper>
+      {isEditing ? <HumanEdit form={form} /> : <HumanView value={human} />}
+    </EditableEntityWrapper>
+  );
+}
 
-              <ContactInfo
-                human={human}
-                organization={organization}
-                isEditing={isEditing}
-                editedHuman={editedHuman}
-                handleInputChange={handleInputChange}
-                getOrganizationWebsite={getOrganizationWebsite}
-              />
-            </div>
-            <UpcomingEvents human={human} />
-            <PastNotes human={human} />
-          </div>
-        </main>
-      </div>
+function HumanView({ value }: { value: Human }) {
+  return (
+    <div>
+      <h1>full_name: {value.full_name}</h1>
+      <h1>email: {value.email}</h1>
+      <h1>job_title: {value.job_title}</h1>
+      <h1>linkedin_username: {value.linkedin_username}</h1>
+    </div>
+  );
+}
+
+function HumanEdit({ form }: { form: ReturnType<typeof useForm<FormSchema>> }) {
+  return (
+    <div>
+      <Form {...form}>
+        <form className="space-y-8">
+          <FormField
+            control={form.control}
+            name="full_name"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input placeholder="Full Name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input type="email" placeholder="Email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="job_title"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input placeholder="Job Title" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="linkedin_username"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input placeholder="LinkedIn Username" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </form>
+      </Form>
     </div>
   );
 }
