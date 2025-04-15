@@ -1,5 +1,5 @@
 import { RefreshCwIcon, TypeOutlineIcon, ZapIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useEnhancePendingState } from "@/hooks/enhance-pending";
 import { Session } from "@hypr/plugin-db";
@@ -22,14 +22,22 @@ export function FloatingButton({
   ]);
   const isEnhancePending = useEnhancePendingState(session.id);
   const [isHovered, setIsHovered] = useState(false);
+  const [showRefreshIcon, setShowRefreshIcon] = useState(true);
 
-  const handleClickLeftButton = () => {
+  useEffect(() => {
+    if (!isHovered) {
+      setShowRefreshIcon(true);
+    }
+  }, [isHovered]);
+
+  const handleRawView = () => {
     setShowRaw(true);
   };
 
-  const handleClickRightButton = () => {
+  const handleEnhanceOrReset = () => {
     if (showRaw) {
       setShowRaw(false);
+      setShowRefreshIcon(false);
     } else {
       handleEnhance();
     }
@@ -39,18 +47,30 @@ export function FloatingButton({
     return null;
   }
 
+  const rawButtonClasses = cn(
+    "rounded-l-xl border-l border-y",
+    "border-border px-4 py-2.5 transition-all ease-in-out",
+    showRaw
+      ? "bg-primary text-primary-foreground border-black hover:bg-neutral-800"
+      : "bg-background text-neutral-400 hover:bg-neutral-100",
+  );
+
+  const enhanceButtonClasses = cn(
+    "rounded-r-xl border-r border-y",
+    "border border-border px-4 py-2.5 transition-all ease-in-out",
+    showRaw
+      ? "bg-background text-neutral-400 hover:bg-neutral-100"
+      : "bg-primary text-primary-foreground border-black hover:bg-neutral-800",
+  );
+
+  const showRefresh = !showRaw && isHovered && showRefreshIcon;
+
   return (
     <div className="flex w-fit flex-row items-center group hover:scale-105 transition-transform duration-200">
       <button
         disabled={isEnhancePending}
-        onClick={handleClickLeftButton}
-        className={cn(
-          "rounded-l-xl border-l border-y",
-          "border-border px-4 py-2.5 transition-all ease-in-out",
-          showRaw
-            ? "bg-primary text-primary-foreground border-black hover:bg-neutral-800"
-            : "bg-background text-neutral-400 hover:bg-neutral-100",
-        )}
+        onClick={handleRawView}
+        className={rawButtonClasses}
       >
         <TypeOutlineIcon size={20} />
       </button>
@@ -59,36 +79,36 @@ export function FloatingButton({
         disabled={isEnhancePending}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        onClick={handleClickRightButton}
+        onClick={handleEnhanceOrReset}
+        className={enhanceButtonClasses}
+      >
+        {isEnhancePending
+          ? <SplashLoader size={20} strokeWidth={2} />
+          : <IconToggle showRefresh={showRefresh} />}
+      </button>
+    </div>
+  );
+}
+
+function IconToggle({ showRefresh }: { showRefresh: boolean }) {
+  return (
+    <div className="relative h-5 w-5">
+      <div
         className={cn(
-          "rounded-r-xl border-r border-y",
-          "border border-border px-4 py-2.5 transition-all ease-in-out",
-          showRaw
-            ? "bg-background text-neutral-400 hover:bg-neutral-100"
-            : "bg-primary text-primary-foreground border-black hover:bg-neutral-800",
+          "absolute inset-0 transition-opacity duration-300",
+          showRefresh ? "opacity-100" : "opacity-0",
         )}
       >
-        {isEnhancePending ? <SplashLoader size={20} strokeWidth={2} /> : (
-          <div className="relative h-5 w-5">
-            <div
-              className={cn(
-                "absolute inset-0 transition-opacity duration-300",
-                isHovered ? "opacity-100" : "opacity-0",
-              )}
-            >
-              <RefreshCwIcon size={20} />
-            </div>
-            <div
-              className={cn(
-                "absolute inset-0 transition-opacity duration-300",
-                isHovered ? "opacity-0" : "opacity-100",
-              )}
-            >
-              <ZapIcon size={20} />
-            </div>
-          </div>
+        <RefreshCwIcon size={20} />
+      </div>
+      <div
+        className={cn(
+          "absolute inset-0 transition-opacity duration-300",
+          showRefresh ? "opacity-0" : "opacity-100",
         )}
-      </button>
+      >
+        <ZapIcon size={20} />
+      </div>
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { RiCornerDownLeftLine, RiLinkedinBoxFill } from "@remixicon/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type LinkProps } from "@tanstack/react-router";
 import { clsx } from "clsx";
 import { CircleMinus, MailIcon, SearchIcon } from "lucide-react";
 import React, { useState } from "react";
@@ -12,7 +11,6 @@ import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import { getInitials } from "@hypr/utils";
-import { safeNavigate } from "@hypr/utils/navigation";
 
 interface ParticipantsListProps {
   sessionId: string;
