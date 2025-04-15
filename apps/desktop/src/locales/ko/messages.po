@@ -411,7 +411,7 @@ msgstr ""
 
 #: src/components/settings/components/calendar/apple-calendar-integration-details.tsx:109
 msgid "Contacts Access"
-msgstr ""
+msgstr "<<<<<<< HEAD"
 
 #: src/components/editor-area/note-header/chips/participants-chip/participants-list.tsx:378
 msgid "Create"
