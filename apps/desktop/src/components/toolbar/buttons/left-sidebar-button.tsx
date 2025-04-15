@@ -16,7 +16,7 @@ export function LeftSidebarButton({ type }: { type: "toolbar" | "sidebar" }) {
   }
 
   return (
-    <div data-tauri-drag-region>
+    <div>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button

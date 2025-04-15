@@ -1,8 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-
-import { commands as flagsCommands } from "@hypr/plugin-flags";
 
 export type RightPanelView = "chat" | "widget";
 
@@ -27,11 +24,6 @@ export function RightPanelProvider({
   const [currentView, setCurrentView] = useState<RightPanelView>("widget");
   const previouslyFocusedElement = useRef<HTMLElement | null>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
-
-  const noteChatQuery = useQuery({
-    queryKey: ["flags", "ChatRightPanel"],
-    queryFn: () => flagsCommands.isEnabled("ChatRightPanel"),
-  });
 
   const hidePanel = useCallback(() => {
     setIsExpanded(false);
@@ -126,10 +118,6 @@ export function RightPanelProvider({
   useHotkeys(
     "mod+j",
     (event) => {
-      if (!noteChatQuery.data) {
-        return;
-      }
-
       event.preventDefault();
 
       if (isExpanded && currentView === "chat") {
