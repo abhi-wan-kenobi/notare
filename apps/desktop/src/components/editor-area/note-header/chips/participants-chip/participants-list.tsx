@@ -118,18 +118,6 @@ function ParticipentItem({
   });
 
   const handleClickHuman = (human: Human) => {
-    if (human.id == userId) {
-      const params = {
-        to: "/app/settings",
-        search: { tab: "profile" },
-      } as const satisfies LinkProps;
-
-      const url = `${params.to}?tab=${params.search.tab}`;
-
-      safeNavigate({ type: "settings" }, url);
-      return;
-    }
-
     windowsCommands.windowShow({ type: "human", value: human.id });
   };
 
