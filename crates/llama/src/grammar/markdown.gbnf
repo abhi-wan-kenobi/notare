@@ -9,5 +9,5 @@ line ::= "- **" [^*\n:]+ "**: " [^*,.\n]+ ".\n"
 content ::= line line line? line? line?
 
 hsf ::= "- Objective\n"
-hd ::= "- " [^*\n]+ "\n"
+hd ::= "- " [A-Z] [^*\n]+ "\n"
 thinking ::= "<headers>\n" hsf hd hd? hd? hd? "</headers>"
