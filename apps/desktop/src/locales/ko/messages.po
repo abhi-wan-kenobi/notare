@@ -1023,7 +1023,7 @@ msgstr ""
 msgid "Toggle left sidebar"
 msgstr ""
 
-#: src/components/toolbar/buttons/widget-panel-button.tsx:33
+#: src/components/toolbar/buttons/widget-panel-button.tsx:36
 msgid "Toggle widget panel"
 msgstr ""
 

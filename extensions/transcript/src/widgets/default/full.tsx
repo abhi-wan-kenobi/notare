@@ -6,10 +6,12 @@ import { WidgetFullSize, WidgetFullSizeWrapper } from "@hypr/ui/components/ui/wi
 import { safeNavigate } from "@hypr/utils";
 import { useSessions } from "@hypr/utils/contexts";
 
-import { LanguageSelector, TranscriptBody, TranscriptContent } from "../../components";
+import { LanguageSelector, Transcript, TranscriptContent } from "../../components";
+import { useTranscriptWidget } from "../../hooks/useTranscriptWidget";
 
 const TranscriptFull: WidgetFullSize = ({ onMinimize }) => {
   const sessionId = useSessions((s) => s.currentSessionId);
+  const { showEmptyMessage } = useTranscriptWidget(sessionId);
 
   const handleOpenTranscriptSettings = () => {
     const extensionId = "@hypr/extension-transcript";
@@ -25,7 +27,10 @@ const TranscriptFull: WidgetFullSize = ({ onMinimize }) => {
   );
 
   return (
-    <WidgetFullSizeWrapper onMinimize={onMinimize}>
+    <WidgetFullSizeWrapper
+      onMinimize={onMinimize}
+      className="relative w-full h-full"
+    >
       <div className="p-4 pb-0">
         <WidgetHeader
           title={
@@ -48,13 +53,21 @@ const TranscriptFull: WidgetFullSize = ({ onMinimize }) => {
         />
       </div>
 
-      {sessionId
-        ? <TranscriptBody sessionId={sessionId} />
-        : (
-          <div className="flex items-center justify-center h-full text-neutral-400 p-4">
-            Session not found
+      {sessionId && <Transcript sessionId={sessionId} />}
+
+      {!sessionId && (
+        <div className="absolute inset-0 backdrop-blur-sm bg-white/50 flex items-center justify-center z-10">
+          <div className="text-neutral-500 font-medium">Session not found</div>
+        </div>
+      )}
+
+      {sessionId && showEmptyMessage && (
+        <div className="absolute inset-0 backdrop-blur-sm bg-white/50 flex items-center justify-center z-10 rounded-2xl">
+          <div className="text-neutral-500 font-medium">
+            Meeting is not active
           </div>
-        )}
+        </div>
+      )}
     </WidgetFullSizeWrapper>
   );
 };
