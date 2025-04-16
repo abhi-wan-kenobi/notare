@@ -83,42 +83,60 @@ function Component() {
 
 function OrgView({ value }: { value: Organization }) {
   return (
-    <div>
-      <h1>Organization Name: {value.name}</h1>
+    <div className="max-w-2xl mx-auto pt-6">
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="px-6 py-8 border-b border-gray-100">
+          <h1 className="text-2xl font-semibold text-gray-900">{value.name}</h1>
+          {value.description && <p className="mt-2 text-gray-600">{value.description}</p>}
+        </div>
+      </div>
     </div>
   );
 }
+
 function OrgEdit({ form }: { form: ReturnType<typeof useForm<FormSchema>> }) {
   return (
-    <div>
-      <Form {...form}>
-        <form className="space-y-8">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Input placeholder="Organization Name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Textarea placeholder="Description" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </form>
-      </Form>
+    <div className="max-w-2xl mx-auto pt-6">
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="px-6 py-8 border-b border-gray-100">
+          <Form {...form}>
+            <form className="space-y-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        placeholder="Organization Name"
+                        className="h-10 text-base"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Description"
+                        className="min-h-[100px] text-base"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </form>
+          </Form>
+        </div>
+      </div>
     </div>
   );
 }

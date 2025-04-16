@@ -1,10 +1,12 @@
 import { Trans } from "@lingui/react/macro";
+import { useQuery } from "@tanstack/react-query";
 import { useMatch, useNavigate } from "@tanstack/react-router";
 import { BuildingIcon, CalendarIcon, FileTextIcon, UserIcon } from "lucide-react";
 import { AppWindowMacIcon } from "lucide-react";
 import { useState } from "react";
 
 import { type SearchMatch } from "@/stores/search";
+import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import {
   ContextMenu,
@@ -144,22 +146,28 @@ function EventMatch({ match }: { match: SearchMatch & { type: "event" } }) {
   );
 }
 
-function HumanMatch({ match: { item: human } }: { match: SearchMatch & { type: "human" } }) {
+function HumanMatch({ match: { item } }: { match: SearchMatch & { type: "human" } }) {
   const navigate = useNavigate();
   const match = useMatch({ from: "/app/human/$id", shouldThrow: false });
   const [isOpen, setIsOpen] = useState(false);
 
-  const isActive = match?.params.id === human.id;
+  const human = useQuery({
+    initialData: item,
+    queryKey: ["human", item.id],
+    queryFn: () => dbCommands.getHuman(item.id),
+  });
+
+  const isActive = match?.params.id === item.id;
 
   const handleClick = () => {
     navigate({
       to: "/app/human/$id",
-      params: { id: human.id },
+      params: { id: item.id },
     });
   };
 
   const handleOpenWindow = () => {
-    windowsCommands.windowShow({ type: "human", value: human.id });
+    windowsCommands.windowShow({ type: "human", value: item.id });
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -180,11 +188,11 @@ function HumanMatch({ match: { item: human } }: { match: SearchMatch & { type: "
         >
           <div className="flex flex-col items-start gap-1">
             <div className="font-medium text-sm line-clamp-1 flex items-center justify-between w-full">
-              <span>{human.full_name || "Unnamed Person"}</span>
-              <span className="text-neutral-500 text-xs font-normal ml-auto">{human.job_title}</span>
+              <span>{human.data?.full_name || "Unnamed Person"}</span>
+              <span className="text-neutral-500 text-xs font-normal ml-auto">{human.data?.job_title}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-neutral-500 line-clamp-1">
-              {human.email}
+              {human.data?.email}
             </div>
           </div>
         </button>
@@ -206,6 +214,12 @@ function HumanMatch({ match: { item: human } }: { match: SearchMatch & { type: "
 function OrganizationMatch(
   { match: { item: organization } }: { match: SearchMatch & { type: "organization" } },
 ) {
+  const org = useQuery({
+    initialData: organization,
+    queryKey: ["org", organization.id],
+    queryFn: () => dbCommands.getOrganization(organization.id),
+  });
+
   const navigate = useNavigate();
   const match = useMatch({ from: "/app/organization/$id", shouldThrow: false });
   const [isOpen, setIsOpen] = useState(false);
@@ -240,9 +254,9 @@ function OrganizationMatch(
           ])}
         >
           <div className="flex flex-col items-start gap-1 w-full overflow-hidden">
-            <div className="font-medium text-sm line-clamp-1 w-full">{organization.name}</div>
+            <div className="font-medium text-sm line-clamp-1 w-full">{org.data?.name}</div>
             <div className="text-xs text-neutral-500 truncate w-full overflow-hidden text-ellipsis whitespace-nowrap">
-              {organization.description}
+              {org.data?.description}
             </div>
           </div>
         </button>

@@ -413,6 +413,7 @@ msgstr ""
 msgid "Contacts Access"
 msgstr "<<<<<<< HEAD"
 
+#: src/routes/app.human.$id.tsx:335
 #: src/components/editor-area/note-header/chips/participants-chip/participants-list.tsx:378
 msgid "Create"
 msgstr ""
@@ -761,8 +762,8 @@ msgstr ""
 #~ msgstr ""
 
 #: src/components/toolbar/buttons/new-window-button.tsx:35
-#: src/components/left-sidebar/search-list.tsx:199
-#: src/components/left-sidebar/search-list.tsx:257
+#: src/components/left-sidebar/search-list.tsx:207
+#: src/components/left-sidebar/search-list.tsx:271
 msgid "Open in new window"
 msgstr ""
 
