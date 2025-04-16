@@ -77,9 +77,6 @@ impl<T: tauri::Manager<tauri::Wry>> TrayPluginExt<tauri::Wry> for T {
                     TrayItem::Open => {
                         use tauri_plugin_windows::HyprWindow;
                         let _ = HyprWindow::Main.show(app);
-
-                        #[cfg(target_os = "macos")]
-                        let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
                     }
                     TrayItem::Github => {
                         let _ = webbrowser::open("https://github.com/fastrepl/hyprnote");

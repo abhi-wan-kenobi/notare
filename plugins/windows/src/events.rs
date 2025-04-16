@@ -6,16 +6,11 @@ use crate::HyprWindow;
 pub fn on_window_event<R: tauri::Runtime>(window: &tauri::Window<R>, event: &tauri::WindowEvent) {
     match event {
         tauri::WindowEvent::CloseRequested { api, .. } => {
-            let app = window.app_handle();
-
             match window.label().parse::<HyprWindow>() {
                 Err(e) => tracing::warn!("window_parse_error: {:?}", e),
                 Ok(w) => {
                     if w == HyprWindow::Main && window.hide().is_ok() {
                         api.prevent_close();
-
-                        #[cfg(target_os = "macos")]
-                        let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
                     }
                 }
             }
