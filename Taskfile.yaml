@@ -42,3 +42,11 @@ tasks:
               ($4 == "-" ? 0: $4)
           }' |
           jq -s . > ./apps/docs/data/i18n.json
+
+  bindgen:
+    cmds:
+      - |
+          cargo metadata --format-version=1 --no-deps \
+            | jq -r '.packages[].name' \
+            | grep '^tauri-plugin-' \
+            | xargs -n1 cargo test export_types --package

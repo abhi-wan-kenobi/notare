@@ -462,9 +462,9 @@ impl serde::Serialize for State {
         S: serde::Serializer,
     {
         match self {
-            State::Inactive {} => serializer.serialize_str("__LISTENER_TODO__inactive"),
-            State::RunningActive {} => serializer.serialize_str("__LISTENER_TODO__running_active"),
-            State::RunningPaused {} => serializer.serialize_str("__LISTENER_TODO__running_paused"),
+            State::Inactive {} => serializer.serialize_str("inactive"),
+            State::RunningActive {} => serializer.serialize_str("running_active"),
+            State::RunningPaused {} => serializer.serialize_str("running_paused"),
         }
     }
 }
