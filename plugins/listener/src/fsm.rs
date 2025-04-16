@@ -117,8 +117,15 @@ impl Session {
         self.mic_stream_handle = Some(tokio::spawn({
             let mic_muted_rx = mic_muted_rx_main.clone();
             async move {
+                let mut is_muted = *mic_muted_rx.borrow();
+                let watch_rx = mic_muted_rx.clone();
+
                 while let Some(actual) = mic_stream.next().await {
-                    let maybe_muted = if *mic_muted_rx.borrow() {
+                    if watch_rx.has_changed().unwrap_or(false) {
+                        is_muted = *watch_rx.borrow();
+                    }
+
+                    let maybe_muted = if is_muted {
                         vec![0.0; actual.len()]
                     } else {
                         actual
@@ -135,8 +142,15 @@ impl Session {
         self.speaker_stream_handle = Some(tokio::spawn({
             let speaker_muted_rx = speaker_muted_rx_main.clone();
             async move {
+                let mut is_muted = *speaker_muted_rx.borrow();
+                let watch_rx = speaker_muted_rx.clone();
+
                 while let Some(actual) = speaker_stream.next().await {
-                    let maybe_muted = if *speaker_muted_rx.borrow() {
+                    if watch_rx.has_changed().unwrap_or(false) {
+                        is_muted = *watch_rx.borrow();
+                    }
+
+                    let maybe_muted = if is_muted {
                         vec![0.0; actual.len()]
                     } else {
                         actual
@@ -179,7 +193,9 @@ impl Session {
             while let (Some(mic_chunk), Some(speaker_chunk)) =
                 (mic_rx.recv().await, speaker_rx.recv().await)
             {
-                if let State::RunningPaused {} = *session_state_rx.borrow() {
+                if matches!(*session_state_rx.borrow(), State::RunningPaused {}) {
+                    let mut rx = session_state_rx.clone();
+                    let _ = rx.changed().await;
                     continue;
                 }
 
@@ -280,17 +296,17 @@ impl Session {
     }
 
     pub fn is_mic_muted(&self) -> bool {
-        self.mic_muted_rx
-            .as_ref()
-            .map(|rx| *rx.borrow())
-            .unwrap_or(false)
+        match &self.mic_muted_rx {
+            Some(rx) => *rx.borrow(),
+            None => false,
+        }
     }
 
     pub fn is_speaker_muted(&self) -> bool {
-        self.speaker_muted_rx
-            .as_ref()
-            .map(|rx| *rx.borrow())
-            .unwrap_or(false)
+        match &self.speaker_muted_rx {
+            Some(rx) => *rx.borrow(),
+            None => false,
+        }
     }
 }
 
