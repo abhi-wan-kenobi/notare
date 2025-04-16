@@ -27,26 +27,11 @@ export default function Toolbar() {
       return <NoteToolbar />;
     }
 
-    if (isOrg) {
-      const { organization } = organizationMatch?.loaderData || { organization: { name: "" } };
+    if (isOrg || isHuman) {
       return (
         <EntityToolbar
-          title={organization?.name || ""}
           isEditing={isEditing}
           onEditToggle={toggleEditMode}
-          entityType="organization"
-        />
-      );
-    }
-
-    if (isHuman) {
-      const { human } = humanMatch?.loaderData || { human: { full_name: "" } };
-      return (
-        <EntityToolbar
-          title={human?.full_name || ""}
-          isEditing={isEditing}
-          onEditToggle={toggleEditMode}
-          entityType="human"
         />
       );
     }

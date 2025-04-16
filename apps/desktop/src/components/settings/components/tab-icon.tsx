@@ -2,7 +2,7 @@ import {
   AudioLinesIcon,
   // BellIcon,
   BlocksIcon,
-  CalendarIcon,
+  // CalendarIcon,
   // CreditCardIcon,
   // FileTextIcon,
   // FlaskConicalIcon,
@@ -19,8 +19,8 @@ export function TabIcon({ tab }: { tab: Tab }) {
       return <SettingsIcon className="h-4 w-4" />;
     // case "ai":
     //   return <SparklesIcon className="h-4 w-4" />;
-    case "calendar":
-      return <CalendarIcon className="h-4 w-4" />;
+    // case "calendar":
+    //   return <CalendarIcon className="h-4 w-4" />;
     // case "notifications":
     //   return <BellIcon className="h-4 w-4" />;
     case "sound":
