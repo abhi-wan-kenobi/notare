@@ -24,6 +24,12 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> crate::AnalyticsPluginExt<R> for T
 
         let git_hash = self.get_git_hash();
         let bundle_id = self.config().identifier.clone();
+        let version = self.config().version.clone();
+
+        payload
+            .props
+            .entry("version".into())
+            .or_insert(version.into());
 
         payload
             .props

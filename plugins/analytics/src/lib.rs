@@ -67,14 +67,31 @@ mod test {
     }
 
     fn create_app<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::App<R> {
-        builder
-            .plugin(init())
-            .build(tauri::test::mock_context(tauri::test::noop_assets()))
-            .unwrap()
+        let mut ctx = tauri::test::mock_context(tauri::test::noop_assets());
+        ctx.config_mut().identifier = "com.hyprnote.dev".to_string();
+        ctx.config_mut().version = Some("0.0.1".to_string());
+
+        builder.plugin(init()).build(ctx).unwrap()
     }
 
     #[test]
     fn test_analytics() {
-        let _app = create_app(tauri::test::mock_builder());
+        let app = create_app(tauri::test::mock_builder());
+
+        {
+            use tauri_plugin_misc::MiscPluginExt;
+            let git_hash = app.get_git_hash();
+            println!("git_hash: {}", git_hash);
+        }
+
+        {
+            let version = app.config().version.clone();
+            println!("version: {}", version.unwrap_or_default());
+        }
+
+        {
+            let bundle_id = app.config().identifier.clone();
+            println!("bundle_id: {}", bundle_id);
+        }
     }
 }
