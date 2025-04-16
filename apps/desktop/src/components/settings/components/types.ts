@@ -1,7 +1,7 @@
 export const TABS = [
   "general",
   // "ai",
-  "calendar",
+  // "calendar",
   // "notifications",
   "sound",
   // "templates",

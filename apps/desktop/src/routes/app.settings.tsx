@@ -14,7 +14,7 @@ import {
   // TemplatesSidebar,
 } from "@/components/settings/components";
 import {
-  Calendar,
+  // Calendar,
   Extensions,
   General,
   // Lab,
@@ -162,7 +162,7 @@ function Component() {
             <div className="flex-1 overflow-auto p-6">
               {search.tab === "general" && <General />}
               {/* {search.tab === "ai" && <LocalAI />} */}
-              {search.tab === "calendar" && <Calendar />}
+              {/* {search.tab === "calendar" && <Calendar />} */}
               {/* {current === "notifications" && <Notifications />} */}
               {search.tab === "sound" && <Sound />}
               {
