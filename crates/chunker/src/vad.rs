@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use futures_util::{ready, Stream};
+use futures_util::Stream;
 use kalosm_sound::{rodio::buffer::SamplesBuffer, AsyncSource};
 use silero::{VadConfig, VadSession, VadTransition};
 
@@ -57,17 +57,17 @@ impl<S: AsyncSource + Unpin> Stream for VoiceActivityRechunker<S> {
             let stream = this.source.as_stream();
             let mut stream = std::pin::pin!(stream);
 
-            let sample = ready!(stream.as_mut().poll_next(cx));
-
-            match sample {
-                Some(sample) => this.buffer.push(sample),
-                None => {
-                    if !this.buffer.is_empty() {
-                        break;
-                    }
-                    return Poll::Ready(None);
+            let sample = match stream.as_mut().poll_next(cx) {
+                Poll::Ready(Some(sample)) => sample,
+                Poll::Ready(None) if !this.buffer.is_empty() => {
+                    let data = std::mem::take(&mut this.buffer);
+                    return Poll::Ready(Some(SamplesBuffer::new(1, this.sample_rate as u32, data)));
                 }
-            }
+                Poll::Ready(None) => return Poll::Ready(None),
+                Poll::Pending => return Poll::Pending,
+            };
+
+            this.buffer.push(sample);
         }
 
         let data = this
