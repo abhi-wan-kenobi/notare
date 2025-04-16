@@ -39,9 +39,7 @@ pub enum Task {
 
 impl Llama {
     pub fn new(model_path: impl Into<std::path::PathBuf>) -> Result<Self, crate::Error> {
-        if !cfg!(debug_assertions) {
-            send_logs_to_tracing(LogOptions::default().with_logs_enabled(true));
-        }
+        send_logs_to_tracing(LogOptions::default().with_logs_enabled(false));
 
         let backend = LLAMA_BACKEND
             .get_or_init(|| {
