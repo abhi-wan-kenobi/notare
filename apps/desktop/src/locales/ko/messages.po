@@ -14,7 +14,7 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. js-lingui-explicit-id
-#: src/components/settings/views/general.tsx:175
+#: src/components/settings/views/general.tsx:177
 msgid "Type jargons (e.g., Blitz Meeting, PaC Squad)"
 msgstr ""
 
@@ -551,7 +551,7 @@ msgstr ""
 msgid "Grant Access"
 msgstr ""
 
-#: src/components/settings/views/general.tsx:139
+#: src/components/settings/views/general.tsx:141
 msgid "Help us improve Hyprnote by sharing anonymous usage data"
 msgstr ""
 
@@ -564,8 +564,8 @@ msgstr ""
 #~ msgstr ""
 
 #: src/components/settings/views/general.tsx:112
-msgid "Hyprnote will be opened automatically when you start your computer"
-msgstr ""
+#~ msgid "Hyprnote will be opened automatically when you start your computer"
+#~ msgstr ""
 
 #: src/components/settings/views/billing.tsx:38
 msgid "Integration with other apps like Notion and Google Calendar"
@@ -579,7 +579,7 @@ msgstr ""
 msgid "Invite members"
 msgstr ""
 
-#: src/components/settings/views/general.tsx:163
+#: src/components/settings/views/general.tsx:165
 msgid "Jargons"
 msgstr ""
 
@@ -754,8 +754,8 @@ msgid "Open calendar view"
 msgstr ""
 
 #: src/components/settings/views/general.tsx:109
-msgid "Open Hyprnote on startup"
-msgstr ""
+#~ msgid "Open Hyprnote on startup"
+#~ msgstr ""
 
 #: src/components/left-sidebar/notes-list.tsx:298
 #~ msgid "Open in calendar view"
@@ -916,7 +916,7 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
-#: src/components/settings/views/general.tsx:136
+#: src/components/settings/views/general.tsx:138
 msgid "Share usage data"
 msgstr ""
 
@@ -1119,7 +1119,7 @@ msgstr ""
 msgid "Works offline"
 msgstr ""
 
-#: src/components/settings/views/general.tsx:166
+#: src/components/settings/views/general.tsx:168
 msgid "You can make Hyprnote takes these words into account when transcribing"
 msgstr ""
 

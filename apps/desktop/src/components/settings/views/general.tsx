@@ -99,7 +99,8 @@ export default function General() {
     <div>
       <Form {...form}>
         <form className="space-y-6">
-          <FormField
+          {
+            /* <FormField
             control={form.control}
             name="autostart"
             render={({ field }) => (
@@ -124,7 +125,8 @@ export default function General() {
                 </FormControl>
               </FormItem>
             )}
-          />
+          /> */
+          }
 
           <FormField
             control={form.control}

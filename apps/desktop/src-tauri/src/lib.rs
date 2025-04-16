@@ -110,15 +110,6 @@ pub async fn main() {
             specta_builder.mount_events(&app);
 
             {
-                use tauri_plugin_autostart::ManagerExt;
-                let autostart_manager = app.autolaunch();
-
-                if let Err(e) = autostart_manager.enable() {
-                    tracing::error!("autostart_enable_failed: {:?}", e);
-                }
-            }
-
-            {
                 use tauri_plugin_tray::TrayPluginExt;
                 app.create_tray().unwrap();
             }
@@ -129,9 +120,9 @@ pub async fn main() {
                         tracing::error!("failed_to_setup_db_for_local: {}", e);
                     }
 
-                    if let Err(e) = app.setup_auto_start().await {
-                        tracing::error!("failed_to_setup_auto_start: {}", e);
-                    }
+                    // if let Err(e) = app.setup_auto_start().await {
+                    //     tracing::error!("failed_to_setup_auto_start: {}", e);
+                    // }
 
                     tokio::spawn(async move {
                         app.setup_local_ai().await.unwrap();
