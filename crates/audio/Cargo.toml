@@ -23,10 +23,8 @@ rodio = { workspace = true, features = ["vorbis"] }
 kalosm-sound = { workspace = true, default-features = false }
 ringbuf = "0.4.8"
 
-[target.'cfg(target_os = "macos")'.dependencies.cidre]
-git = "https://github.com/yury/cidre"
-rev = "3f786684ef19186f02606b22d4dabdea1ee7a82b"
-features = ["av"]
+[target.'cfg(target_os = "macos")'.dependencies]
+cidre = { workspace = true, features = ["av"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 wasapi = { git = "https://github.com/HEnquist/wasapi-rs", rev = "24ae99c0134f7e1429d79ba3105a4f796e92ee6d" }

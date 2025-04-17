@@ -1,0 +1,7 @@
+[package]
+name = "detect"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cidre = { workspace = true }
