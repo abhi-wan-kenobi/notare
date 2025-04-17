@@ -114,6 +114,12 @@ pub async fn main() {
                 app.create_tray().unwrap();
             }
 
+            {
+                use tauri_plugin_autostart::ManagerExt;
+                let autostart_manager = app.autolaunch();
+                let _ = autostart_manager.disable();
+            }
+
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async move {
                     if let Err(e) = app.setup_db_for_local().await {
