@@ -14,6 +14,22 @@ impl UserDatabase {
         "df1d8c52-6d9d-4471-aff1-5dbd35899cbe".to_string()
     }
 
+    pub async fn cleanup_sessions(&self) -> Result<(), crate::Error> {
+        let conn = self.conn()?;
+
+        conn.execute(
+            "DELETE FROM sessions WHERE 
+            title = '' AND
+            raw_memo_html = '' AND 
+            (enhanced_memo_html IS NULL OR enhanced_memo_html = '') AND 
+            conversations = '[]'",
+            (),
+        )
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn get_timeline_view_onboarding(
         &self,
     ) -> Result<hypr_timeline::TimelineView, crate::Error> {
