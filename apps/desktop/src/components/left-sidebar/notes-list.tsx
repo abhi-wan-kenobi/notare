@@ -182,14 +182,16 @@ function NoteItem({
     created_at: s.session.created_at,
   }));
 
+  const isActive = activeSessionId === currentSessionId;
+
   const isEnhancePending = useEnhancePendingState(currentSessionId);
+  const shouldShowEnhancePending = !isActive && isEnhancePending;
 
   const currentSessionEvent = useQuery({
     queryKey: ["event", currentSessionId],
     queryFn: () => dbCommands.sessionGetEvent(currentSessionId),
   });
 
-  const isActive = activeSessionId === currentSessionId;
   const sessionDate = currentSessionEvent.data?.start_date ?? currentSession.created_at;
   const formattedSessionDate = isToday(sessionDate)
     ? formatTimeAgo(sessionDate)
@@ -280,7 +282,7 @@ function NoteItem({
               </div>
             </div>
 
-            {isEnhancePending && <SplashLoader size={20} strokeWidth={2} />}
+            {shouldShowEnhancePending && <SplashLoader size={20} strokeWidth={2} />}
           </div>
         </button>
       </ContextMenuTrigger>

@@ -98,7 +98,7 @@ function EventItem({
 
   const sessionId = event.session?.id || "";
   const isEnhancePending = useEnhancePendingState(sessionId);
-  const shouldShowPending = !!event.session?.id && isEnhancePending;
+  const shouldShowEnhancePending = !isActive && !!event.session?.id && isEnhancePending;
 
   return (
     <ContextMenu>
@@ -119,7 +119,7 @@ function EventItem({
               </div>
             </div>
 
-            {shouldShowPending && <SplashLoader size={20} strokeWidth={2} />}
+            {shouldShowEnhancePending && <SplashLoader size={20} strokeWidth={2} />}
           </div>
         </button>
       </ContextMenuTrigger>
