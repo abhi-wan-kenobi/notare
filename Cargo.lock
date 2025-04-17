@@ -7541,6 +7541,7 @@ dependencies = [
  "futures-util",
  "gbnf",
  "gbnf-validator",
+ "gguf",
  "include_url_macro",
  "indoc",
  "listener-interface",

@@ -19,6 +19,7 @@ rand = "0.9.0"
 serde_json = { workspace = true }
 
 [dependencies]
+hypr-gguf = { workspace = true }
 include_url_macro = { workspace = true }
 
 encoding_rs = "0.8.35"

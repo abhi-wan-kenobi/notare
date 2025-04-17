@@ -3,6 +3,8 @@ use serde::{ser::Serializer, Serialize};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
+    GgufError(#[from] hypr_gguf::Error),
+    #[error(transparent)]
     LlamaCppError(#[from] llama_cpp_2::LLamaCppError),
     #[error(transparent)]
     LlamaModelLoadError(#[from] llama_cpp_2::LlamaModelLoadError),

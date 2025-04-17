@@ -10,6 +10,8 @@ use llama_cpp_2::{
 };
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+use hypr_gguf::GgufExt;
+
 mod error;
 mod grammar;
 mod message;
@@ -18,8 +20,6 @@ mod stream;
 pub use error::*;
 pub use message::*;
 pub use stream::filter_tag;
-
-const TEMPLATE_NAME: &str = "llama3";
 
 const DEFAULT_MAX_INPUT_TOKENS: u32 = 1024 * 8;
 const DEFAULT_MAX_OUTPUT_TOKENS: u32 = 1024;
@@ -38,7 +38,7 @@ pub enum Task {
 }
 
 impl Llama {
-    pub fn new(model_path: impl Into<std::path::PathBuf>) -> Result<Self, crate::Error> {
+    pub fn new(model_path: impl AsRef<std::path::Path>) -> Result<Self, crate::Error> {
         send_logs_to_tracing(LogOptions::default().with_logs_enabled(false));
 
         let backend = LLAMA_BACKEND
@@ -48,9 +48,11 @@ impl Llama {
             })
             .clone();
 
+        let fmt = model_path.gguf_chat_format()?.unwrap();
+        let tpl = LlamaChatTemplate::new(fmt.as_ref()).unwrap();
+
         let params = LlamaModelParams::default();
-        let model = LlamaModel::load_from_file(&backend, model_path.into(), &params)?;
-        let tpl = LlamaChatTemplate::new(TEMPLATE_NAME).unwrap();
+        let model = LlamaModel::load_from_file(&backend, model_path, &params)?;
 
         let (task_sender, mut task_receiver) = tokio::sync::mpsc::unbounded_channel::<Task>();
 

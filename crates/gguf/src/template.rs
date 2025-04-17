@@ -5,7 +5,7 @@ pub enum ChatTemplate {
 }
 
 // https://github.com/ggml-org/llama.cpp/blob/8a8c4ceb6050bd9392609114ca56ae6d26f5b8f5/src/llama-chat.cpp#L27-L61
-#[derive(Debug, strum::EnumString)]
+#[derive(Debug, strum::Display, strum::AsRefStr)]
 pub enum LlamaCppRegistry {
     #[strum(serialize = "chatml")]
     ChatML,
@@ -73,4 +73,13 @@ pub enum LlamaCppRegistry {
     Gigachat,
     #[strum(serialize = "megrez")]
     Megrez,
+}
+
+impl AsRef<str> for ChatTemplate {
+    fn as_ref(&self) -> &str {
+        match self {
+            Self::TemplateKey(k) => k.as_ref(),
+            Self::TemplateValue(v) => v.as_ref(),
+        }
+    }
 }
