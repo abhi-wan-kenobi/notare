@@ -222,7 +222,7 @@ msgstr "{weeks} weeks later"
 msgid "{0}"
 msgstr "{0}"
 
-#: src/components/settings/views/lab.tsx:97
+#: src/components/settings/views/lab.tsx:112
 msgid "{description}"
 msgstr "{description}"
 
@@ -230,7 +230,7 @@ msgstr "{description}"
 msgid "{selectedCount} calendars selected"
 msgstr "{selectedCount} calendars selected"
 
-#: src/components/settings/views/lab.tsx:94
+#: src/components/settings/views/lab.tsx:109
 msgid "{title}"
 msgstr "{title}"
 
@@ -500,7 +500,7 @@ msgid "Exclude these apps from auto detection"
 msgstr "Exclude these apps from auto detection"
 
 #: src/components/settings/components/settings-header.tsx:32
-#: src/components/settings/components/main-sidebar.tsx:40
+#: src/components/settings/components/main-sidebar.tsx:33
 msgid "Extensions"
 msgstr "Extensions"
 
@@ -593,6 +593,10 @@ msgstr "Job title"
 #: src/components/right-panel/components/chat/empty-chat-state.tsx:37
 msgid "Key decisions"
 msgstr "Key decisions"
+
+#: src/components/settings/components/main-sidebar.tsx:35
+msgid "Lab"
+msgstr "Lab"
 
 #: src/components/settings/views/billing.tsx:200
 msgid "Learn more about our pricing plans"
@@ -932,7 +936,7 @@ msgstr "Show notifications whenever a microphone is being used"
 msgid "Single sign-on for all users"
 msgstr "Single sign-on for all users"
 
-#: src/components/settings/components/main-sidebar.tsx:36
+#: src/components/settings/components/main-sidebar.tsx:31
 msgid "Sound"
 msgstr "Sound"
 

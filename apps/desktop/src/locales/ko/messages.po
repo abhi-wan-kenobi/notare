@@ -222,7 +222,7 @@ msgstr ""
 msgid "{0}"
 msgstr ""
 
-#: src/components/settings/views/lab.tsx:97
+#: src/components/settings/views/lab.tsx:112
 msgid "{description}"
 msgstr ""
 
@@ -230,7 +230,7 @@ msgstr ""
 msgid "{selectedCount} calendars selected"
 msgstr ""
 
-#: src/components/settings/views/lab.tsx:94
+#: src/components/settings/views/lab.tsx:109
 msgid "{title}"
 msgstr ""
 
@@ -500,7 +500,7 @@ msgid "Exclude these apps from auto detection"
 msgstr ""
 
 #: src/components/settings/components/settings-header.tsx:32
-#: src/components/settings/components/main-sidebar.tsx:40
+#: src/components/settings/components/main-sidebar.tsx:33
 msgid "Extensions"
 msgstr ""
 
@@ -592,6 +592,10 @@ msgstr ""
 
 #: src/components/right-panel/components/chat/empty-chat-state.tsx:37
 msgid "Key decisions"
+msgstr ""
+
+#: src/components/settings/components/main-sidebar.tsx:35
+msgid "Lab"
 msgstr ""
 
 #: src/components/settings/views/billing.tsx:200
@@ -932,7 +936,7 @@ msgstr ""
 msgid "Single sign-on for all users"
 msgstr ""
 
-#: src/components/settings/components/main-sidebar.tsx:36
+#: src/components/settings/components/main-sidebar.tsx:31
 msgid "Sound"
 msgstr ""
 

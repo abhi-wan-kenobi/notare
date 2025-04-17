@@ -58,6 +58,8 @@ jobs:
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
       - run: pnpm -F desktop tauri build --target ${{ matrix.target }} --config ${{ env.TAURI_CONF_PATH }}
         env:
+          # https://github.com/tauri-apps/tauri-action/issues/740
+          CI: false
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
