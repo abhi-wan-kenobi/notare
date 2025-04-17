@@ -1,0 +1,7 @@
+[package]
+name = "notification2"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wezterm = { git = "https://github.com/wezterm/wezterm", rev = "f06d6fc", package = "wezterm-toast-notification" }

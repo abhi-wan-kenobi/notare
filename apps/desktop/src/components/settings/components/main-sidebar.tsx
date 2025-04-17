@@ -27,22 +27,12 @@ export function MainSidebar({ current, onTabClick }: MainSidebarProps) {
               <span>
                 {tab === "general"
                   ? <Trans>General</Trans>
-                  // : tab === "calendar"
-                  // ? (
-                  //   <Trans>Calendar</Trans> // : tab === "notifications"
-                  // ) // ? <Trans>Notifications</Trans>
                   : tab === "sound"
-                  ? (
-                    <Trans>Sound</Trans> // : tab === "templates"
-                  ) // ? <Trans>Templates</Trans>
+                  ? <Trans>Sound</Trans>
                   : tab === "extensions"
-                  ? (
-                    <Trans>Extensions</Trans> // : tab === "team"
-                  ) // ? <Trans>Team</Trans>
-                  // : tab === "billing"
-                  // ? <Trans>Billing</Trans>
-                  // : tab === "lab"
-                  // ? <Trans>Lab</Trans>
+                  ? <Trans>Extensions</Trans>
+                  : tab === "lab"
+                  ? <Trans>Lab</Trans>
                   : null}
               </span>
             </button>

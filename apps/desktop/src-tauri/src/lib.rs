@@ -47,7 +47,17 @@ pub async fn main() {
 
     let _guard = tauri_plugin_sentry::minidump::init(&client);
 
-    let mut builder = tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    // https://v2.tauri.app/plugin/deep-linking/#desktop
+    // should always be the first plugin
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            app.window_show(HyprWindow::Main).unwrap();
+        }));
+    }
+
+    builder = tauri::Builder::default()
         .plugin(tauri_plugin_listener::init())
         .plugin(tauri_plugin_sse::init())
         .plugin(tauri_plugin_misc::init())
@@ -80,10 +90,7 @@ pub async fn main() {
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![]),
-        ))
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            app.window_show(HyprWindow::Main).unwrap();
-        }));
+        ));
 
     #[cfg(target_os = "macos")]
     {
@@ -160,6 +167,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::set_onboarding_needed::<tauri::Wry>,
             commands::setup_db_for_cloud::<tauri::Wry>,
             commands::set_autostart::<tauri::Wry>,
+            commands::notify::<tauri::Wry>,
+            commands::notify2::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

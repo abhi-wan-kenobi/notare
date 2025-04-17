@@ -17,7 +17,7 @@ import {
   // Calendar,
   Extensions,
   General,
-  // Lab,
+  Lab,
   // LocalAI,
   // Notifications,
   Sound,
@@ -161,38 +161,14 @@ function Component() {
 
             <div className="flex-1 overflow-auto p-6">
               {search.tab === "general" && <General />}
-              {/* {search.tab === "ai" && <LocalAI />} */}
-              {/* {search.tab === "calendar" && <Calendar />} */}
-              {/* {current === "notifications" && <Notifications />} */}
               {search.tab === "sound" && <Sound />}
-              {
-                /* {current === "templates" && (
-                <TemplateEditor
-                  disabled={false}
-                  template={customTemplates.find(template => template.id === selectedTemplate)
-                    || builtinTemplates.find(template => template.id === selectedTemplate) || {
-                    id: selectedTemplate || "",
-                    title: "",
-                    description: "",
-                    sections: [],
-                    tags: [],
-                    user_id: userId,
-                  }}
-                  onTemplateUpdate={handleTemplateUpdate}
-                />
-              )} */
-              }
               {search.tab === "extensions" && (
                 <Extensions
                   selectedExtension={selectedExtension}
                   onExtensionSelect={handleExtensionSelect}
                 />
               )}
-              {
-                /* {current === "team" && <Team />}
-              {current === "billing" && <Billing />} */
-              }
-              {/* {current === "lab" && <Lab />} */}
+              {search.tab === "lab" && <Lab />}
             </div>
           </div>
         </div>

@@ -46,6 +46,7 @@
     "flags:default",
     "autostart:default",
     "clipboard-manager:allow-write-text",
+    "deep-link:default",
     {
       "identifier": "http:default",
       "allow": [
