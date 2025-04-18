@@ -51,7 +51,7 @@ const Transcript = forwardRef<HTMLDivElement, TranscriptProps>(
               {items.length > 0
                 && items.map((item, index) => (
                   <div key={index}>
-                    <p>{item.text}</p>
+                    <p className="select-text">{item.text}</p>
                   </div>
                 ))}
 
