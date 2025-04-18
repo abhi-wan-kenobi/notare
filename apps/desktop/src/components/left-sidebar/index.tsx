@@ -6,7 +6,7 @@ import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { useHypr, useHyprSearch, useLeftSidebar } from "@/contexts";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
-import { useOngoingSession } from "@hypr/utils/contexts";
+import { useOngoingSession, useSessions } from "@hypr/utils/contexts";
 import EventsList from "./events-list";
 import NotesList from "./notes-list";
 import OngoingSession from "./ongoing-session";
@@ -17,6 +17,7 @@ export default function LeftSidebar() {
   const { userId } = useHypr();
   const { isExpanded } = useLeftSidebar();
 
+  const insertSession = useSessions((s) => s.insert);
   const { status, ongoingSessionId } = useOngoingSession((s) => ({
     status: s.status,
     ongoingSessionId: s.sessionId,
@@ -52,6 +53,10 @@ export default function LeftSidebar() {
       const sessions = await Promise.all(
         events.map((event) => dbCommands.getSession({ calendarEventId: event.id })),
       );
+      sessions
+        .filter((s) => s !== null)
+        .forEach((s) => insertSession(s));
+
       return events.map((event, index) => ({
         ...event,
         session: sessions[index],
