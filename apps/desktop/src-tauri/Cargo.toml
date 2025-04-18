@@ -28,7 +28,6 @@ tauri-plugin-apple-calendar = { path = "../../../plugins/apple-calendar" }
 hypr-data = { workspace = true, optional = true }
 hypr-db-core = { workspace = true }
 hypr-db-user = { workspace = true }
-hypr-notification2 = { workspace = true }
 hypr-turso = { workspace = true }
 
 tauri-plugin-analytics = { workspace = true }
@@ -40,6 +39,7 @@ tauri-plugin-listener = { workspace = true }
 tauri-plugin-local-llm = { workspace = true }
 tauri-plugin-local-stt = { workspace = true }
 tauri-plugin-misc = { workspace = true }
+tauri-plugin-notification = { workspace = true }
 tauri-plugin-sfx = { workspace = true }
 tauri-plugin-sse = { workspace = true }
 tauri-plugin-store2 = { workspace = true }

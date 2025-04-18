@@ -57,7 +57,7 @@ pub async fn main() {
         }));
     }
 
-    builder = tauri::Builder::default()
+    builder = builder
         .plugin(tauri_plugin_listener::init())
         .plugin(tauri_plugin_sse::init())
         .plugin(tauri_plugin_misc::init())
@@ -82,6 +82,7 @@ pub async fn main() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_analytics::init())
         .plugin(tauri_plugin_tray::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_decorum::init())
         .plugin(tauri_plugin_windows::init())
@@ -167,8 +168,6 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::set_onboarding_needed::<tauri::Wry>,
             commands::setup_db_for_cloud::<tauri::Wry>,
             commands::set_autostart::<tauri::Wry>,
-            commands::notify::<tauri::Wry>,
-            commands::notify2::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
