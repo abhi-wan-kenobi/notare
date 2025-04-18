@@ -221,7 +221,7 @@ impl Session {
             wav.finalize().unwrap();
         });
 
-        let timeline = Arc::new(Mutex::new(Timeline::default()));
+        let timeline = Arc::new(Mutex::new(initialize_timeline(&session).await));
         let audio_stream = hypr_audio::ReceiverStreamSource::new(mixed_rx, SAMPLE_RATE);
 
         let listen_stream = listen_client.from_audio(audio_stream).await?;
@@ -336,6 +336,21 @@ async fn setup_listen_client<R: tauri::Runtime>(
             ..Default::default()
         })
         .build())
+}
+
+async fn initialize_timeline(session: &hypr_db_user::Session) -> Timeline {
+    let mut timeline = Timeline::default();
+
+    for conversation in &session.conversations {
+        for t in &conversation.transcripts {
+            timeline.add_transcription(t.clone());
+        }
+        for d in &conversation.diarizations {
+            timeline.add_diarization(d.clone());
+        }
+    }
+
+    timeline
 }
 
 async fn update_session<R: tauri::Runtime>(
