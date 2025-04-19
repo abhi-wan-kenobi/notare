@@ -4,6 +4,8 @@ use kalosm_sound::AsyncSource;
 use hypr_audio_utils::AudioFormatExt;
 use hypr_ws::client::{ClientRequestBuilder, Message, WebSocketClient, WebSocketIO};
 
+use super::WhisperOutput;
+
 #[derive(Default)]
 pub struct WhisperClientBuilder {
     api_base: Option<String>,
@@ -68,24 +70,11 @@ impl WhisperClient {
         &self,
         audio_stream: impl AsyncSource + Send + Unpin + 'static,
     ) -> Result<impl Stream<Item = WhisperOutput>, hypr_ws::Error> {
-        let processed_stream = audio_stream.to_i16_le_chunks(16 * 1000, 1024);
+        let processed_stream = audio_stream.to_i16_le_chunks(16 * 1000, 800);
 
         let ws = WebSocketClient::new(self.request.clone());
         ws.from_audio::<Self>(processed_stream).await
     }
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct WhisperOutput {
-    pub language: String,
-    pub text: String,
-    pub segments: Vec<WhisperOutputSegment>,
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct WhisperOutputSegment {
-    pub id: String,
-    pub text: String,
 }
 
 impl WebSocketIO for WhisperClient {
