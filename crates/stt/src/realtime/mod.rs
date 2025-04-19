@@ -1,5 +1,5 @@
 use bytes::Bytes;
-use futures_core::{Future, Stream};
+use futures_util::{Future, Stream};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 

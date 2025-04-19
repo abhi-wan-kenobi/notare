@@ -33,7 +33,6 @@ tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 async-openai = { workspace = true }
 axum = { workspace = true }
 
-futures-core = { workspace = true }
 futures-util = { workspace = true }
 reqwest = { workspace = true, features = ["stream"] }
 tokio = { workspace = true, features = ["rt", "macros"] }

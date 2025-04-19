@@ -4,8 +4,7 @@ pub mod interface;
 
 use anyhow::Result;
 use bytes::Bytes;
-use futures_core::Stream;
-use futures_util::StreamExt;
+use futures_util::{Stream, StreamExt};
 
 use interface::nest_service_client::NestServiceClient;
 use tonic::{service::interceptor::InterceptedService, transport::Channel, Request, Status};

@@ -893,9 +893,9 @@ dependencies = [
 
 [[package]]
 name = "aws-lc-sys"
-version = "0.28.0"
+version = "0.28.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9f7720b74ed28ca77f90769a71fd8c637a0137f6fae4ae947e1050229cff57f"
+checksum = "0ddeb19ee86cb16ecfc871e5b0660aff6285760957aaedda6284cf0e790d3769"
 dependencies = [
  "bindgen 0.69.5",
  "cc",
@@ -2259,9 +2259,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.36"
+version = "4.5.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2df961d8c8a0d08aa9945718ccf584145eee3f3aa06cddbeac12933781102e04"
+checksum = "eccb054f56cbd38340b380d4a8e69ef1f02f1af43db2f0cc817a4774d80ae071"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -2269,9 +2269,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.36"
+version = "4.5.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "132dbda40fb6753878316a489d5a1242a8ef2f0d9e47ba01c951ea8aa7d013a5"
+checksum = "efd9466fac8543255d3b1fcad4762c5e116ffe808c8a3043d4263cd4fd4862a2"
 dependencies = [
  "anstream",
  "anstyle",
@@ -2350,7 +2350,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
- "futures-core",
  "futures-util",
  "prost 0.13.5",
  "reqwest 0.12.15",
@@ -3314,7 +3313,6 @@ dependencies = [
  "db-core",
  "db-user",
  "dotenvy_macro",
- "futures-core",
  "futures-util",
  "hound",
  "reqwest 0.12.15",
@@ -3989,7 +3987,6 @@ dependencies = [
  "base64 0.22.1",
  "crc32fast",
  "dirs 6.0.0",
- "futures-core",
  "futures-util",
  "reqwest 0.12.15",
  "s3",
@@ -10842,7 +10839,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
- "futures-core",
  "futures-util",
  "prost 0.13.5",
  "reqwest 0.12.15",
@@ -10926,9 +10922,9 @@ dependencies = [
 
 [[package]]
 name = "rustfft"
-version = "6.2.0"
+version = "6.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43806561bc506d0c5d160643ad742e3161049ac01027b5e6d7524091fd401d86"
+checksum = "f266ff9b0cfc79de11fd5af76a2bc672fe3ace10c96fa06456740fa70cb1ed49"
 dependencies = [
  "num-complex",
  "num-integer",
@@ -12429,7 +12425,6 @@ dependencies = [
  "data",
  "db-user",
  "deepgram",
- "futures-core",
  "futures-util",
  "hound",
  "listener-interface",
@@ -13212,7 +13207,6 @@ dependencies = [
  "axum 0.8.3",
  "dirs 6.0.0",
  "file",
- "futures-core",
  "futures-util",
  "llama",
  "ollama-rs",
@@ -13242,7 +13236,6 @@ dependencies = [
  "data",
  "db-user",
  "file",
- "futures-core",
  "futures-util",
  "kalosm-common",
  "kalosm-sound",
@@ -13519,9 +13512,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-updater"
-version = "2.7.0"
+version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d82da763248e635d60ee4aed56c862290e523acc838d83097171f9a544708387"
+checksum = "73f05c38afd77a4b8fd98e8fb6f1cdbb5fbb8a46ba181eb2758b05321e3c6209"
 dependencies = [
  "base64 0.22.1",
  "dirs 6.0.0",

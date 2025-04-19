@@ -17,7 +17,6 @@ tauri-plugin-listener = { path = "../listener" }
 
 bytes = { workspace = true }
 codes-iso-639 = { workspace = true }
-futures-core = { workspace = true }
 reqwest = { workspace = true }
 rodio = { workspace = true, features = ["wav"] }
 specta-typescript = { workspace = true }

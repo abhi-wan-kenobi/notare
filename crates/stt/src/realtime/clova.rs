@@ -1,6 +1,5 @@
 use bytes::Bytes;
-use futures_core::Stream;
-use futures_util::{future, StreamExt};
+use futures_util::{future, Stream, StreamExt};
 use std::error::Error;
 
 use super::{RealtimeSpeechToText, StreamResponse, StreamResponseWord};
