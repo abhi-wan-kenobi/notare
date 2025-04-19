@@ -41,6 +41,9 @@ export const createOngoingSessionStore = (sessionsStore: ReturnType<typeof creat
         })
       );
 
+      const sessionStore = sessionsStore.getState().sessions[sessionId];
+      sessionStore.getState().persistSession(undefined, true);
+
       const channel = new Channel<SessionEvent>();
 
       channel.onmessage = (event) => {

@@ -16,7 +16,7 @@ type Actions = {
   updateTitle: (title: string) => void;
   updateRawNote: (note: string) => void;
   updateEnhancedNote: (note: string) => void;
-  persistSession: (session?: Session) => Promise<void>;
+  persistSession: (session?: Session, force?: boolean) => Promise<void>;
 };
 
 export type SessionStore = ReturnType<typeof createSessionStore>;
@@ -68,9 +68,11 @@ export const createSessionStore = (session: Session) => {
         return next;
       });
     },
-    persistSession: async (session?: Session) => {
+    persistSession: async (session?: Session, force?: boolean) => {
       const item = session ?? get().session;
-      const fn = pDebounce((v: Session) => dbCommands.upsertSession(v), 150);
+      const fn = force
+        ? dbCommands.upsertSession
+        : pDebounce((v: Session) => dbCommands.upsertSession(v), 50);
       await fn(item);
     },
   }));
