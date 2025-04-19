@@ -11,7 +11,7 @@ export const Route = createFileRoute("/app/plans")({
 function Component() {
   return (
     <div className="flex h-full overflow-hidden bg-gradient-to-b from-background to-background/80">
-      <main className="container mx-auto pb-16 px-4 max-w-5xl overflow-y-auto scrollbar-none">
+      <main className="container mx-auto pb-16 px-4 max-w-5xl overflow-hidden">
         <div className="grid grid-cols-2 gap-4">
           <PricingCard
             title="Local"
