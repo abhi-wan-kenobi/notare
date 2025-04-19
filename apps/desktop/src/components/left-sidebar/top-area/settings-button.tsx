@@ -1,5 +1,6 @@
 import { Trans } from "@lingui/react/macro";
 import { CogIcon, CpuIcon } from "lucide-react";
+import { useState } from "react";
 
 import Shortcut from "@/components/shortcut";
 import { useHypr } from "@/contexts";
@@ -13,22 +14,26 @@ import {
 } from "@hypr/ui/components/ui/dropdown-menu";
 
 export function SettingsButton() {
+  const [open, setOpen] = useState(false);
   const { userId } = useHypr();
 
   const handleClickSettings = () => {
+    setOpen(false);
     windowsCommands.windowShow({ type: "settings" });
   };
 
   const handleClickProfile = () => {
+    setOpen(false);
     windowsCommands.windowShow({ type: "human", value: userId });
   };
 
   const handleClickPlans = () => {
+    setOpen(false);
     windowsCommands.windowShow({ type: "plans" });
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="hover:bg-neutral-200">
           <CogIcon className="size-4" />
