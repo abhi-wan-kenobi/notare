@@ -24,10 +24,10 @@
 ## Installation
 
 ```bash
-brew tap fastrepl/hyprnote && brew install hyprnote@nightly --cask # If you're macos
+brew tap fastrepl/hyprnote && brew install hyprnote --cask
 ```
 
-- [Macos](https://hyprnote.com/download/macos) (nightly, public beta)
+- [Macos](https://hyprnote.com/download/macos) (public beta)
 - [Windows](https://github.com/fastrepl/hyprnote/issues/66) (soon)
 - [Linux](https://github.com/fastrepl/hyprnote/issues/67) (maybe)
 

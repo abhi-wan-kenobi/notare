@@ -36,11 +36,11 @@ const vitepressConfig: Parameters<typeof defineConfig>[0] = {
         items: [
           {
             text: "MacOS (Silicon)",
-            link: "https://cdn.crabnebula.app/download/fastrepl/hyprnote/latest/platform/dmg-aarch64",
+            link: "https://cdn.crabnebula.app/download/fastrepl/hyprnote/latest/platform/dmg-aarch4?channel=stable",
           },
           {
             text: "MacOS (Intel)",
-            link: "https://cdn.crabnebula.app/download/fastrepl/hyprnote/latest/platform/dmg-x86_64",
+            link: "https://cdn.crabnebula.app/download/fastrepl/hyprnote/latest/platform/dmg-x86_64?channel=stable",
           },
         ],
       },
