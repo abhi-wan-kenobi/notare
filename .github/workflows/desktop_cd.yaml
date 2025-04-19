@@ -9,11 +9,11 @@ concurrency:
   cancel-in-progress: true
 env:
   CN_APPLICATION: "fastrepl/hyprnote"
-  RELEASE_CHANNEL: ${{ endsWith(github.event.release.tag_name, 'nightly') && 'nightly' || '' }}
-  TAURI_CONF_PATH: ${{ endsWith(github.event.release.tag_name, 'nightly') && './src-tauri/tauri.conf.nightly.json' || './src-tauri/tauri.conf.stable.json' }}
+  RELEASE_CHANNEL: ${{ github.event_name == 'workflow_dispatch' && 'stable' || 'nightly' }}
+  TAURI_CONF_PATH: ${{ github.event_name == 'workflow_dispatch' && './src-tauri/tauri.conf.stable.json' || './src-tauri/tauri.conf.nightly.json' }}
 jobs:
   draft:
-    if: ${{ startsWith(github.event.release.tag_name, 'desktop_') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'desktop_') }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
           channel: ${{ env.RELEASE_CHANNEL }}
           working-directory: ./apps/desktop
   build:
-    if: ${{ startsWith(github.event.release.tag_name, 'desktop_') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'desktop_') }}
     needs: draft
     permissions:
       contents: write
@@ -40,6 +40,14 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+      - run: |
+          VERSION=$(jq -r '.version' ./apps/desktop/src-tauri/tauri.conf.json)
+          TAG_NAME="${{ github.event.release.tag_name }}"
+          echo "Version: $VERSION, Tag name: $TAG_NAME"
+          if [[ ! "$TAG_NAME" == *"$VERSION"* ]]; then
+            exit 1
+          fi
+        shell: bash
       - uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -85,7 +93,7 @@ jobs:
           channel: ${{ env.RELEASE_CHANNEL }}
           working-directory: ./apps/desktop
   publish:
-    if: ${{ startsWith(github.event.release.tag_name, 'desktop_') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'desktop_') }}
     needs: build
     runs-on: ubuntu-24.04
     steps:
