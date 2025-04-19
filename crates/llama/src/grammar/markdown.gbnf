@@ -8,7 +8,7 @@ line ::= "- " [[A-Z] [^*.\n[(]+ ".\n"
 bline ::= "- **" [^*\n:]+ "**: " ([^*;,[.\n] | link)+ ".\n"
 
 hsf ::= "- Objective\n"
-hd ::= "- " [A-Z] [^*\n]+ "\n"
+hd ::= "- " [A-Z] [^[(*\n]+ "\n"
 thinking ::= "<headers>\n" hsf hd hd? hd? hd? "</headers>"
 
 link ::= "[" [^\]]+ "]" "(" [^)]+ ")"
