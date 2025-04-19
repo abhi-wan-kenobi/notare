@@ -11,7 +11,7 @@ pub struct WhisperClientBuilder {
     language: Option<codes_iso_639::part_1::LanguageCode>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct WhisperClient {
     request: ClientRequestBuilder,
 }
