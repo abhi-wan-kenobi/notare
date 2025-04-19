@@ -118,6 +118,21 @@ pub async fn main() {
             specta_builder.mount_events(&app);
 
             {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                use tauri_plugin_windows::WindowsPluginExt;
+
+                let app_clone = app.clone();
+
+                app.deep_link().on_open_url(move |event| {
+                    if let Some(_) = event.urls().first() {
+                        if let Ok(_) = app_clone.window_show(HyprWindow::Main) {
+                            let _ = app_clone.window_navigate(HyprWindow::Main, "/app/new");
+                        }
+                    }
+                });
+            }
+
+            {
                 use tauri_plugin_tray::TrayPluginExt;
                 app.create_tray().unwrap();
             }
