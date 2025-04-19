@@ -106,10 +106,11 @@ function OnboardingSupport({ session }: { session: Session }) {
 
   const isEnhancePending = useEnhancePendingState(session.id);
 
-  const { stopOngoingSession, ongoingSessionStatus } = useOngoingSession((
+  const { stopOngoingSession, ongoingSessionId, ongoingSessionStatus } = useOngoingSession((
     s,
   ) => ({
     stopOngoingSession: s.stop,
+    ongoingSessionId: s.sessionId,
     ongoingSessionStatus: s.status,
   }));
 
@@ -133,7 +134,7 @@ function OnboardingSupport({ session }: { session: Session }) {
   }, []);
 
   useEffect(() => {
-    if (onboardingSessionId !== session.id) {
+    if (onboardingSessionId !== ongoingSessionId) {
       return;
     }
 
