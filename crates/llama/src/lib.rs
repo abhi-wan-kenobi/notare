@@ -77,7 +77,8 @@ impl Llama {
                                             DEFAULT_MAX_INPUT_TOKENS + DEFAULT_MAX_OUTPUT_TOKENS,
                                         ))
                                         .with_n_batch(DEFAULT_MAX_INPUT_TOKENS)
-                                        .with_n_ubatch(256)
+                                        .with_n_ubatch(512)
+                                        .with_embeddings(false)
                                         .with_flash_attention(true),
                                 )
                                 .unwrap();
@@ -86,7 +87,7 @@ impl Llama {
                                 model.str_to_token(&prompt, AddBos::Always).unwrap();
                             tokens_list.truncate(DEFAULT_MAX_INPUT_TOKENS as usize);
 
-                            let batch_size = tokens_list.len().max(256);
+                            let batch_size = tokens_list.len().max(512);
                             let mut batch = LlamaBatch::new(batch_size, 1);
 
                             let last_index = (tokens_list.len() - 1) as i32;
