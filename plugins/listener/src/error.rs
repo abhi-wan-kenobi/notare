@@ -12,6 +12,8 @@ pub enum Error {
     ListenClientError(#[from] hypr_ws::Error),
     #[error(transparent)]
     DatabaseError(#[from] tauri_plugin_db::Error),
+    #[error(transparent)]
+    ConnectorError(#[from] tauri_plugin_connector::Error),
     #[error("no STT connection")]
     NoSTTConnection,
     #[error("no session")]

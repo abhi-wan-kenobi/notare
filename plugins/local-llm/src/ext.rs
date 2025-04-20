@@ -9,7 +9,7 @@ pub trait LocalLlmPluginExt<R: Runtime> {
     fn is_model_downloaded(&self) -> impl Future<Output = Result<bool, crate::Error>>;
     fn is_server_running(&self) -> impl Future<Output = bool>;
     fn download_model(&self, channel: Channel<u8>) -> impl Future<Output = Result<(), String>>;
-    fn start_server(&self) -> impl Future<Output = Result<(), crate::Error>>;
+    fn start_server(&self) -> impl Future<Output = Result<String, crate::Error>>;
     fn stop_server(&self) -> impl Future<Output = Result<(), crate::Error>>;
 }
 
@@ -85,7 +85,7 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn start_server(&self) -> Result<(), crate::Error> {
+    async fn start_server(&self) -> Result<String, crate::Error> {
         let state = self.state::<crate::SharedState>();
 
         let model_manager = {
@@ -96,9 +96,10 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
         let server = crate::server::run_server(model_manager).await?;
 
         let mut s = state.lock().await;
-        s.api_base = Some(format!("http://{}", &server.addr));
+        let api_base = format!("http://{}", &server.addr);
+        s.api_base = Some(api_base.clone());
         s.server = Some(server);
-        Ok(())
+        Ok(api_base)
     }
 
     #[tracing::instrument(skip_all)]

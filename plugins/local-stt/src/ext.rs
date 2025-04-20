@@ -9,7 +9,7 @@ pub trait LocalSttPluginExt<R: Runtime> {
     fn local_stt_store(&self) -> tauri_plugin_store2::ScopedStore<R, crate::StoreKey>;
     fn api_base(&self) -> impl Future<Output = Option<String>>;
     fn is_server_running(&self) -> impl Future<Output = bool>;
-    fn start_server(&self) -> impl Future<Output = Result<(), crate::Error>>;
+    fn start_server(&self) -> impl Future<Output = Result<String, crate::Error>>;
     fn stop_server(&self) -> impl Future<Output = Result<(), crate::Error>>;
     fn get_current_model(&self) -> Result<crate::SupportedModel, crate::Error>;
     fn set_current_model(&self, model: crate::SupportedModel) -> Result<(), crate::Error>;
@@ -70,7 +70,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn start_server(&self) -> Result<(), crate::Error> {
+    async fn start_server(&self) -> Result<String, crate::Error> {
         let cache_dir = self.path().app_data_dir()?;
         let model = self.get_current_model()?;
 
@@ -80,15 +80,16 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
             .build();
 
         let server = crate::run_server(server_state).await?;
+        let api_base = format!("http://{}", &server.addr);
 
         {
             let state = self.state::<crate::SharedState>();
             let mut s = state.lock().await;
-            s.api_base = Some(format!("http://{}", &server.addr));
+            s.api_base = Some(api_base.clone());
             s.server = Some(server);
         }
 
-        Ok(())
+        Ok(api_base)
     }
 
     #[tracing::instrument(skip_all)]

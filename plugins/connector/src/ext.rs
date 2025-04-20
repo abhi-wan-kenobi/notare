@@ -12,7 +12,10 @@ pub enum ConnectionType {
 
 pub trait ConnectorPluginExt<R: tauri::Runtime> {
     fn is_online(&self) -> impl Future<Output = bool>;
-    fn get_api_base(&self, t: ConnectionType) -> impl Future<Output = Option<String>>;
+    fn get_api_base(
+        &self,
+        t: ConnectionType,
+    ) -> impl Future<Output = Result<Option<String>, crate::Error>>;
 }
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> ConnectorPluginExt<R> for T {
@@ -33,36 +36,43 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ConnectorPluginExt<R> for T {
         false
     }
 
-    async fn get_api_base(&self, t: ConnectionType) -> Option<String> {
+    async fn get_api_base(&self, t: ConnectionType) -> Result<Option<String>, crate::Error> {
+        if self.is_online().await {
+            use tauri_plugin_auth::{AuthPluginExt, StoreKey};
+            if let Ok(Some(_)) = self.get_from_store(StoreKey::AccountId) {
+                let api_base = if cfg!(debug_assertions) {
+                    "http://localhost:1234".to_string()
+                } else {
+                    "https://app.hyprnote.com".to_string()
+                };
+
+                return Ok(Some(api_base));
+            }
+        }
+
         match t {
             ConnectionType::AutoLLM => {
-                let local_llm_state = self.state::<tauri_plugin_local_llm::SharedState>();
-                let local_llm_state = local_llm_state.lock().await;
+                use tauri_plugin_local_llm::{LocalLlmPluginExt, SharedState};
 
-                match local_llm_state.api_base.clone() {
-                    Some(api_base) => Some(api_base),
-                    None => {
-                        if cfg!(debug_assertions) {
-                            Some("http://localhost:1234".to_string())
-                        } else {
-                            Some("https://app.hyprnote.com".to_string())
-                        }
-                    }
+                if self.is_server_running().await {
+                    let state = self.state::<SharedState>();
+                    let guard = state.lock().await;
+                    Ok(guard.api_base.clone())
+                } else {
+                    let api_base = self.start_server().await?;
+                    Ok(Some(api_base))
                 }
             }
             ConnectionType::AutoSTT => {
-                let local_stt_state = self.state::<tauri_plugin_local_stt::SharedState>();
-                let local_stt_state = local_stt_state.lock().await;
+                use tauri_plugin_local_stt::{LocalSttPluginExt, SharedState};
 
-                match local_stt_state.api_base.clone() {
-                    Some(api_base) => Some(api_base),
-                    None => {
-                        if cfg!(debug_assertions) {
-                            Some("http://localhost:1234".to_string())
-                        } else {
-                            Some("https://app.hyprnote.com".to_string())
-                        }
-                    }
+                if self.is_server_running().await {
+                    let state = self.state::<SharedState>();
+                    let guard = state.lock().await;
+                    Ok(guard.api_base.clone())
+                } else {
+                    let api_base = self.start_server().await?;
+                    Ok(Some(api_base))
                 }
             }
         }

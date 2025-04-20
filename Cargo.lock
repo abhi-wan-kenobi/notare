@@ -13001,6 +13001,7 @@ dependencies = [
  "tauri-plugin-local-llm",
  "tauri-plugin-local-stt",
  "tauri-specta",
+ "thiserror 2.0.12",
  "tracing",
 ]
 

@@ -19,7 +19,7 @@ async isModelDownloading() : Promise<boolean> {
 async downloadModel(model: SupportedModel, channel: TAURI_CHANNEL<number>) : Promise<null> {
     return await TAURI_INVOKE("plugin:local-stt|download_model", { model, channel });
 },
-async startServer() : Promise<null> {
+async startServer() : Promise<string> {
     return await TAURI_INVOKE("plugin:local-stt|start_server");
 },
 async stopServer() : Promise<null> {

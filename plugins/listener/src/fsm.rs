@@ -314,7 +314,7 @@ async fn setup_listen_client<R: tauri::Runtime>(
     let api_base = {
         use tauri_plugin_connector::ConnectorPluginExt;
         app.get_api_base(tauri_plugin_connector::ConnectionType::AutoSTT)
-            .await
+            .await?
             .ok_or(crate::Error::NoSTTConnection)?
     };
 

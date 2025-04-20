@@ -1,6 +1,8 @@
 mod commands;
+mod error;
 mod ext;
 
+pub use error::*;
 pub use ext::*;
 
 const PLUGIN_NAME: &str = "connector";
