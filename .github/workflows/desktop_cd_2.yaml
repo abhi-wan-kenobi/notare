@@ -15,9 +15,6 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - platform: "macos"
-            runner: "warp-macos-15-arm64-6x"
-            target: "universal-apple-darwin"
           - platform: "windows"
             runner: "warp-windows-latest-x64-8x"
             target: "x86_64-pc-windows-msvc"

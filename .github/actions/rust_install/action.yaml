@@ -17,4 +17,7 @@ runs:
     - if: inputs.target == 'android'
       run: rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
       shell: bash
+    - if: inputs.target == 'windows'
+      run: rustup target add x86_64-pc-windows-msvc
+      shell: bash
     - uses: Swatinem/rust-cache@v2
