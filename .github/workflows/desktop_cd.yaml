@@ -33,9 +33,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: "aarch64-apple-darwin"
+          - platform: "macos"
+            target: "aarch64-apple-darwin"
             runner: "macos-latest"
-          - target: "x86_64-apple-darwin"
+          - platform: "macos"
+            target: "x86_64-apple-darwin"
             runner: "macos-latest"
     runs-on: ${{ matrix.runner }}
     steps:
@@ -64,6 +66,7 @@ jobs:
       - run: pnpm -F desktop lingui:compile
       - run: pnpm -F ui build
       - uses: ./.github/actions/apple_cert
+        if: ${{ matrix.platform == 'macos' }}
         with:
           apple-certificate: ${{ secrets.APPLE_CERTIFICATE }}
           apple-certificate-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}

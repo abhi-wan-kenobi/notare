@@ -20,6 +20,13 @@
     "active": true,
     "createUpdaterArtifacts": true,
     "targets": "all",
+    "icon": [
+      "icons/stable/32x32.png",
+      "icons/stable/128x128.png",
+      "icons/stable/128x128@2x.png",
+      "icons/stable/icon.icns",
+      "icons/stable/icon.ico"
+    ],
     "macOS": {
       "minimumSystemVersion": "14.2",
       "entitlements": "./Entitlements.plist",
@@ -39,13 +46,11 @@
         }
       }
     },
-    "icon": [
-      "icons/stable/32x32.png",
-      "icons/stable/128x128.png",
-      "icons/stable/128x128@2x.png",
-      "icons/stable/icon.icns",
-      "icons/stable/icon.ico"
-    ]
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      }
+    }
   },
   "plugins": {
     "deep-link": {

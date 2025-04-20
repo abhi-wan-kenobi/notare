@@ -33,12 +33,6 @@ jobs:
       - uses: ./.github/actions/pnpm_install
       - run: pnpm -F desktop lingui:compile
       - run: pnpm -F ui build
-      - uses: ./.github/actions/apple_cert
-        if: ${{ matrix.platform == 'macos' }}
-        with:
-          apple-certificate: ${{ secrets.APPLE_CERTIFICATE }}
-          apple-certificate-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
       - run: pnpm -F desktop tauri build --target ${{ matrix.target }} --config ${{ env.TAURI_CONF_PATH }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
