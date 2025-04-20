@@ -28,7 +28,7 @@ COPY . .
 RUN cargo build --release --package app
 
 FROM debian:bookworm-slim AS runtime
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates libasound2 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=web-builder /app/apps/app/dist ./static
 COPY --from=rust-builder /app/target/release/app ./app

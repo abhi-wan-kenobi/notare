@@ -565,8 +565,6 @@ export type ResponseParams = {
 export type ServiceTier = 'auto' | 'default';
 
 export type Session = {
-    audio_local_path?: string | null;
-    audio_remote_path?: string | null;
     calendar_event_id?: string | null;
     conversations: Array<ConversationChunk>;
     created_at: string;
