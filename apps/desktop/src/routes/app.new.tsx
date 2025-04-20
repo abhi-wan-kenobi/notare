@@ -40,7 +40,7 @@ export const Route = createFileRoute("/app/new")({
         insert(session);
 
         await queryClient.invalidateQueries({
-          queryKey: ["event-session", calendarEventId],
+          predicate: (query) => query.queryKey.some((key) => (typeof key === "string") && key.includes("session")),
         });
       } else {
         const session = await dbCommands.upsertSession({

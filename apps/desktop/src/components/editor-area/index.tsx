@@ -25,10 +25,6 @@ export default function EditorArea({
   editable: boolean;
   sessionId: string;
 }) {
-  const { ongoingSessionStatus } = useOngoingSession((s) => ({
-    ongoingSessionStatus: s.status,
-  }));
-
   const showRaw = useSession(sessionId, (s) => s.showRaw);
 
   const [rawContent, setRawContent] = useSession(sessionId, (s) => [
@@ -44,7 +40,6 @@ export default function EditorArea({
 
   const sessionStore = useSession(sessionId, (s) => ({
     session: s.session,
-    refresh: s.refresh,
   }));
 
   const editorRef = useRef<{ editor: TiptapEditor | null }>(null);
@@ -52,10 +47,6 @@ export default function EditorArea({
     () => `session-${sessionId}-${showRaw ? "raw" : "enhanced"}`,
     [sessionId, showRaw],
   );
-
-  useEffect(() => {
-    sessionStore.refresh();
-  }, [sessionStore.refresh, ongoingSessionStatus]);
 
   const enhance = useEnhanceMutation({
     sessionId,

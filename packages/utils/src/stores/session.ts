@@ -69,7 +69,15 @@ export const createSessionStore = (session: Session) => {
       });
     },
     persistSession: async (session?: Session, force?: boolean) => {
-      const item = session ?? get().session;
+      const { session: { id } } = get();
+      const sessionFromDB = await dbCommands.getSession({ id });
+
+      // TODO: this is temp solution.
+      const item: Session = {
+        ...(session ?? get().session),
+        conversations: sessionFromDB?.conversations ?? [],
+      };
+
       const fn = force
         ? dbCommands.upsertSession
         : pDebounce((v: Session) => dbCommands.upsertSession(v), 50);

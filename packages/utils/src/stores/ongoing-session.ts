@@ -68,7 +68,7 @@ export const createOngoingSessionStore = (sessionsStore: ReturnType<typeof creat
       });
     },
     stop: () => {
-      const { sessionId, channel } = get();
+      const { channel, sessionId } = get();
 
       if (channel) {
         listenerCommands.unsubscribe(channel);
@@ -77,11 +77,14 @@ export const createOngoingSessionStore = (sessionsStore: ReturnType<typeof creat
       listenerCommands.stopSession().then(() => {
         set(initialState);
 
-        // session stored in sessionStore become stale during ongoing-session. Refresh it here.
-        if (sessionId) {
-          const sessionStore = sessionsStore.getState().sessions[sessionId];
-          sessionStore.getState().refresh();
-        }
+        // We need refresh since session in store is now stale.
+        // setTimeout is needed because of debounce.
+        setTimeout(() => {
+          if (sessionId) {
+            const sessionStore = sessionsStore.getState().sessions[sessionId];
+            sessionStore.getState().refresh();
+          }
+        }, 1500);
       });
     },
     pause: () => {
@@ -90,11 +93,14 @@ export const createOngoingSessionStore = (sessionsStore: ReturnType<typeof creat
       listenerCommands.pauseSession().then(() => {
         set({ status: "running_paused" });
 
-        // session stored in sessionStore become stale during ongoing-session. Refresh it here.
-        if (sessionId) {
-          const sessionStore = sessionsStore.getState().sessions[sessionId];
-          sessionStore.getState().refresh();
-        }
+        // We need refresh since session in store is now stale.
+        // setTimeout is needed because of debounce.
+        setTimeout(() => {
+          if (sessionId) {
+            const sessionStore = sessionsStore.getState().sessions[sessionId];
+            sessionStore.getState().refresh();
+          }
+        }, 1500);
       });
     },
     resume: () => {
