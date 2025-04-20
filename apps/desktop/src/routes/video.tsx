@@ -30,11 +30,11 @@ function Component() {
     let unlisten: () => void;
 
     listenerEvents.statusEvent.listen(({ payload }) => {
-      if (payload === "running-paused") {
+      if (payload === "running_paused") {
         player.current?.pause();
       }
 
-      if (payload === "running-active") {
+      if (payload === "running_active") {
         player.current?.play();
       }
 

@@ -70,9 +70,9 @@ common_event_derives! {
     pub enum StatusEvent {
         #[serde(rename = "inactive")]
         Inactive,
-        #[serde(rename = "running-active")]
+        #[serde(rename = "running_active")]
         RunningActive,
-        #[serde(rename = "running-paused")]
+        #[serde(rename = "running_paused")]
         RunningPaused,
     }
 }

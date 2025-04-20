@@ -2,7 +2,11 @@ import { Channel } from "@tauri-apps/api/core";
 import { create as mutate } from "mutative";
 import { createStore } from "zustand";
 
-import { commands as listenerCommands, type SessionEvent, type State as ListenerState } from "@hypr/plugin-listener";
+import {
+  commands as listenerCommands,
+  type SessionEvent,
+  type StatusEvent as ListenerState,
+} from "@hypr/plugin-listener";
 import { createSessionsStore } from "./sessions";
 
 type State = {
@@ -15,6 +19,7 @@ type State = {
 
 type Actions = {
   get: () => State & Actions;
+  setStatus: (status: ListenerState) => void;
   start: (sessionId: string) => void;
   stop: () => void;
   pause: () => void;
@@ -33,6 +38,13 @@ export const createOngoingSessionStore = (sessionsStore: ReturnType<typeof creat
   return createStore<State & Actions>((set, get) => ({
     ...initialState,
     get: () => get(),
+    setStatus: (status: ListenerState) => {
+      set((state) =>
+        mutate(state, (draft) => {
+          draft.status = status;
+        })
+      );
+    },
     start: (sessionId: string) => {
       set((state) =>
         mutate(state, (draft) => {

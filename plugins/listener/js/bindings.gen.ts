@@ -82,7 +82,7 @@ export type SessionEvent = ({ type: "started" } & SessionEventStarted) | { type:
 export type SessionEventAudioAmplitude = { mic: number; speaker: number }
 export type SessionEventStarted = { seconds: number }
 export type SessionEventTimelineView = { timeline: TimelineView }
-export type StatusEvent = "inactive" | "running-active" | "running-paused"
+export type StatusEvent = "inactive" | "running_active" | "running_paused"
 export type TimelineView = { items: TimelineViewItem[] }
 export type TimelineViewItem = { start: number; end: number; speaker: string; text: string }
 
