@@ -3,22 +3,35 @@ use futures_util::{Stream, StreamExt};
 
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(target_os = "macos")]
+type PlatformSpeakerInput = macos::SpeakerInput;
+#[cfg(target_os = "macos")]
+type PlatformSpeakerStream = macos::SpeakerStream;
 
 #[cfg(target_os = "windows")]
 mod windows;
+#[cfg(target_os = "windows")]
+type PlatformSpeakerInput = windows::SpeakerInput;
+#[cfg(target_os = "windows")]
+type PlatformSpeakerStream = windows::SpeakerStream;
+
+#[cfg(target_os = "linux")]
+mod linux;
+#[cfg(target_os = "linux")]
+type PlatformSpeakerInput = linux::SpeakerInput;
+#[cfg(target_os = "linux")]
+type PlatformSpeakerStream = linux::SpeakerStream;
 
 // https://github.com/floneum/floneum/blob/50afe10/interfaces/kalosm-sound/src/source/mic.rs#L41
 pub struct SpeakerInput {
-    #[cfg(target_os = "macos")]
-    inner: macos::SpeakerInput,
-    #[cfg(target_os = "windows")]
-    inner: windows::SpeakerInput,
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    inner: PlatformSpeakerInput,
 }
 
 impl SpeakerInput {
     #[cfg(target_os = "macos")]
     pub fn new(sample_rate_override: Option<u32>) -> Result<Self> {
-        let inner = macos::SpeakerInput::new(sample_rate_override)?;
+        let inner = PlatformSpeakerInput::new(sample_rate_override)?;
         Ok(Self { inner })
     }
 
@@ -45,10 +58,7 @@ impl SpeakerInput {
 
 // https://github.com/floneum/floneum/blob/50afe10/interfaces/kalosm-sound/src/source/mic.rs#L140
 pub struct SpeakerStream {
-    #[cfg(target_os = "macos")]
-    inner: macos::SpeakerStream,
-    #[cfg(target_os = "windows")]
-    inner: windows::SpeakerStream,
+    inner: PlatformSpeakerStream,
 }
 
 impl Stream for SpeakerStream {
