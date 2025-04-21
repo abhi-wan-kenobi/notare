@@ -1,40 +1,91 @@
-#[cfg(target_os = "macos")]
-mod macos;
+mod app;
+mod browser;
+mod utils;
+
+use app::*;
+use browser::*;
+use utils::*;
+
+pub type DetectCallback = std::sync::Arc<dyn Fn(String) + Send + Sync + 'static>;
+
+pub fn new_callback<F>(f: F) -> DetectCallback
+where
+    F: Fn(String) + Send + Sync + 'static,
+{
+    std::sync::Arc::new(f)
+}
 
 trait Observer: Send + Sync {
-    fn start(&mut self, f: Box<dyn Fn(String) + Send + Sync + 'static>);
+    fn start(&mut self, f: DetectCallback);
     fn stop(&mut self);
 }
 
+#[derive(Default)]
 pub struct Detector {
-    observer: Box<dyn Observer>,
-}
-
-pub type DetectCallback = Box<dyn Fn(String) + Send + Sync + 'static>;
-
-impl Default for Detector {
-    fn default() -> Self {
-        let observer = {
-            #[cfg(target_os = "macos")]
-            {
-                Box::new(macos::Detector::default())
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                panic!("Unsupported platform");
-            }
-        };
-
-        Self { observer }
-    }
+    app_detector: AppDetector,
+    browser_detector: BrowserDetector,
 }
 
 impl Detector {
+    #[cfg(target_os = "macos")]
+    pub fn macos_check_accessibility_permission(&self) -> Result<bool, String> {
+        let is_trusted = macos_accessibility_client::accessibility::application_is_trusted();
+        Ok(is_trusted)
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn macos_request_accessibility_permission(&self) -> Result<(), String> {
+        macos_accessibility_client::accessibility::application_is_trusted_with_prompt();
+        Ok(())
+    }
+
+    // Not sure why this not works.
+    // TODO: remove `macos_accessibility_client`
+
+    // #[cfg(target_os = "macos")]
+    // // https://github.com/next-slide-please/macos-accessibility-client/blob/03025a9/src/lib.rs#L38
+    // pub fn macos_request_accessibility_permission(&self) -> Result<(), String> {
+    //     let keys = [&*objc2_core_foundation::CFString::from_static_str(
+    //         "kAXTrustedCheckOptionPrompt",
+    //     )];
+    //     let values = [&*objc2_core_foundation::CFBoolean::new(true)];
+    //     let options = objc2_core_foundation::CFDictionary::from_slices(&keys, &values);
+
+    //     unsafe {
+    //         objc2_application_services::AXIsProcessTrustedWithOptions(Some(options.as_opaque()))
+    //     };
+
+    //     Ok(())
+    // }
+
     pub fn start(&mut self, f: DetectCallback) {
-        self.observer.start(f);
+        self.app_detector.start(f.clone());
+        self.browser_detector.start(f);
     }
 
     pub fn stop(&mut self) {
-        self.observer.stop();
+        self.app_detector.stop();
+        self.browser_detector.stop();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore]
+    #[cfg(target_os = "macos")]
+    fn test_macos_check_accessibility_permission() {
+        let detector = Detector::default();
+        let is_trusted = detector.macos_check_accessibility_permission();
+        assert!(is_trusted.is_ok());
+    }
+
+    #[test]
+    #[ignore]
+    #[cfg(target_os = "macos")]
+    fn test_macos_request_accessibility_permission() {
+        macos_accessibility_client::accessibility::application_is_trusted_with_prompt();
     }
 }
