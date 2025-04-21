@@ -1,3 +1,4 @@
+mod error;
 mod middleware;
 mod nango;
 mod native;

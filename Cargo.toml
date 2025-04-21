@@ -16,27 +16,37 @@ hypr-analytics = { path = "crates/analytics", package = "analytics" }
 hypr-audio = { path = "crates/audio", package = "audio" }
 hypr-audio-utils = { path = "crates/audio-utils", package = "audio-utils" }
 hypr-buffer = { path = "crates/buffer", package = "buffer" }
+hypr-calendar-google = { path = "crates/calendar-google", package = "calendar-google" }
 hypr-calendar-interface = { path = "crates/calendar-interface", package = "calendar-interface" }
+hypr-calendar-outlook = { path = "crates/calendar-outlook", package = "calendar-outlook" }
 hypr-chunker = { path = "crates/chunker", package = "chunker" }
 hypr-data = { path = "crates/data", package = "data" }
 hypr-db-admin = { path = "crates/db-admin", package = "db-admin" }
 hypr-db-core = { path = "crates/db-core", package = "db-core" }
 hypr-db-user = { path = "crates/db-user", package = "db-user" }
 hypr-detect = { path = "crates/detect", package = "detect" }
+hypr-diart = { path = "crates/diart", package = "diart" }
 hypr-file = { path = "crates/file", package = "file" }
 hypr-gguf = { path = "crates/gguf", package = "gguf" }
 hypr-host = { path = "crates/host", package = "host" }
-hypr-listener-interface = { path = "plugins/listener-interface", package = "listener-interface" }
 hypr-llama = { path = "crates/llama", package = "llama" }
 hypr-loops = { path = "crates/loops", package = "loops" }
 hypr-nango = { path = "crates/nango", package = "nango" }
 hypr-notification = { path = "crates/notification", package = "notification" }
 hypr-notification2 = { path = "crates/notification2", package = "notification2" }
+hypr-notion = { path = "crates/notion", package = "notion" }
+hypr-openai = { path = "crates/openai", package = "openai" }
+hypr-s3 = { path = "crates/s3", package = "s3" }
+hypr-slack = { path = "crates/slack", package = "slack" }
+hypr-stt = { path = "crates/stt", package = "stt", features = ["realtime", "recorded"] }
 hypr-template = { path = "crates/template", package = "template" }
 hypr-timeline = { path = "crates/timeline", package = "timeline" }
 hypr-turso = { path = "crates/turso", package = "turso" }
 hypr-whisper = { path = "crates/whisper", package = "whisper" }
 hypr-ws = { path = "crates/ws", package = "ws" }
+
+hypr-auth-interface = { path = "plugins/auth-interface", package = "auth-interface" }
+hypr-listener-interface = { path = "plugins/listener-interface", package = "listener-interface" }
 
 tauri = "2"
 tauri-build = "2"

@@ -7,25 +7,25 @@ edition = "2021"
 dotenv = { workspace = true }
 
 [dependencies]
-hypr-auth-interface = { path = "../../../plugins/auth-interface", package = "auth-interface" }
+hypr-auth-interface = { workspace = true }
 hypr-listener-interface = { workspace = true }
 
 hypr-analytics = { workspace = true }
 hypr-buffer = { workspace = true }
-hypr-calendar-google = { path = "../../../crates/calendar-google", package = "calendar-google" }
-hypr-calendar-interface = { path = "../../../crates/calendar-interface", package = "calendar-interface" }
-hypr-calendar-outlook = { path = "../../../crates/calendar-outlook", package = "calendar-outlook" }
+hypr-calendar-google = { workspace = true }
+hypr-calendar-interface = { workspace = true }
+hypr-calendar-outlook = { workspace = true }
 hypr-db-admin = { workspace = true }
 hypr-db-core = { workspace = true }
 hypr-db-user = { workspace = true }
-hypr-diart = { path = "../../../crates/diart", package = "diart" }
-hypr-nango = { path = "../../../crates/nango", package = "nango" }
-hypr-notion = { path = "../../../crates/notion", package = "notion" }
-hypr-openai = { path = "../../../crates/openai", package = "openai" }
-hypr-s3 = { path = "../../../crates/s3", package = "s3" }
-hypr-slack = { path = "../../../crates/slack", package = "slack" }
-hypr-stt = { path = "../../../crates/stt", package = "stt", features = ["realtime", "recorded"] }
-hypr-turso = { path = "../../../crates/turso", package = "turso" }
+hypr-diart = { workspace = true }
+hypr-nango = { workspace = true }
+hypr-notion = { workspace = true }
+hypr-openai = { workspace = true }
+hypr-s3 = { workspace = true }
+hypr-slack = { workspace = true }
+hypr-stt = { workspace = true, features = ["realtime", "recorded"] }
+hypr-turso = { workspace = true }
 
 async-stream = { workspace = true }
 futures-core = { workspace = true }
