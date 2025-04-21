@@ -2,6 +2,7 @@ import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type LinkProps, useMatch, useNavigate } from "@tanstack/react-router";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import { endOfMonth, startOfMonth, subMonths } from "date-fns";
 import { AppWindowMacIcon, ArrowUpRight, CalendarDaysIcon, TrashIcon } from "lucide-react";
 import { motion } from "motion/react";
@@ -10,6 +11,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useHypr } from "@/contexts";
 import { useEnhancePendingState } from "@/hooks/enhance-pending";
 import { commands as dbCommands, type Event, type Session } from "@hypr/plugin-db";
+import { commands as miscCommands } from "@hypr/plugin-misc";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import {
   ContextMenu,
@@ -23,7 +25,6 @@ import { cn } from "@hypr/ui/lib/utils";
 import { useSession, useSessions } from "@hypr/utils/contexts";
 import { format, formatRelative, formatTimeAgo, isToday } from "@hypr/utils/datetime";
 import { safeNavigate } from "@hypr/utils/navigation";
-import { confirm } from "@tauri-apps/plugin-dialog";
 
 interface NotesListProps {
   filter: (session: Session) => boolean;
@@ -203,9 +204,11 @@ function NoteItem({
     mutationFn: () => dbCommands.deleteSession(currentSessionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      if (isActive) {
-        navigate({ to: "/app/new" });
-      }
+      miscCommands.deleteSessionFolder(currentSessionId).then(() => {
+        if (isActive) {
+          navigate({ to: "/app/new" });
+        }
+      });
     },
   });
 

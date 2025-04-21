@@ -8,6 +8,7 @@ Default permissions for the plugin
 - `allow-get-fingerprint`
 - `allow-opinionated-md-to-html`
 - `allow-open-audio`
+- `allow-delete-session-folder`
 
 ## Permission Table
 
@@ -17,6 +18,32 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`misc:allow-delete-session-folder`
+
+</td>
+<td>
+
+Enables the delete_session_folder command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`misc:deny-delete-session-folder`
+
+</td>
+<td>
+
+Denies the delete_session_folder command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>

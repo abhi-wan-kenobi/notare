@@ -41,3 +41,19 @@ pub async fn open_audio<R: tauri::Runtime>(
 
     Ok(())
 }
+
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_session_folder<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    session_id: String,
+) -> Result<(), String> {
+    let data_dir = app.path().app_data_dir().unwrap();
+    let session_dir = data_dir.join(session_id);
+
+    if session_dir.exists() {
+        std::fs::remove_dir_all(session_dir).map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}

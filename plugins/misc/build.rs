@@ -3,6 +3,7 @@ const COMMANDS: &[&str] = &[
     "get_fingerprint",
     "opinionated_md_to_html",
     "open_audio",
+    "delete_session_folder",
 ];
 
 fn main() {

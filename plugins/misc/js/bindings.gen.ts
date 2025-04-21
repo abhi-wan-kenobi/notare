@@ -18,6 +18,9 @@ async opinionatedMdToHtml(text: string) : Promise<string> {
 },
 async openAudio(sessionId: string) : Promise<null> {
     return await TAURI_INVOKE("plugin:misc|open_audio", { sessionId });
+},
+async deleteSessionFolder(sessionId: string) : Promise<null> {
+    return await TAURI_INVOKE("plugin:misc|delete_session_folder", { sessionId });
 }
 }
 

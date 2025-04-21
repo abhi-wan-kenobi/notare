@@ -5,4 +5,5 @@ permissions = [
     "allow-get-fingerprint",
     "allow-opinionated-md-to-html",
     "allow-open-audio",
+    "allow-delete-session-folder",
 ]

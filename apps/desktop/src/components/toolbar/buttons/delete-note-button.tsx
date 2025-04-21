@@ -1,10 +1,11 @@
 import { useLingui } from "@lingui/react/macro";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { Trash2 } from "lucide-react";
 
 import { commands as dbCommands } from "@hypr/plugin-db";
+import { commands as miscCommands } from "@hypr/plugin-misc";
 import { Button } from "@hypr/ui/components/ui/button";
 import { useSession } from "@hypr/utils/contexts";
 
@@ -15,6 +16,8 @@ export function DeleteNoteButton() {
 
 function DeleteNoteButtonInNote() {
   const { t } = useLingui();
+  const queryClient = useQueryClient();
+
   const navigate = useNavigate();
   const param = useParams({ from: "/app/note/$id", shouldThrow: true });
 
@@ -29,7 +32,10 @@ function DeleteNoteButtonInNote() {
   const deleteMutation = useMutation({
     mutationFn: () => dbCommands.deleteSession(param.id),
     onSuccess: () => {
-      navigate({ to: "/app/new" });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      miscCommands.deleteSessionFolder(param.id).then(() => {
+        navigate({ to: "/app/new" });
+      });
     },
   });
 
