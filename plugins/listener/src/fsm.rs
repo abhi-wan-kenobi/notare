@@ -214,7 +214,9 @@ impl Session {
 
                 for &sample in &mixed {
                     wav.write_sample(sample).unwrap();
-                    mixed_tx.send(sample).await.unwrap();
+                    if let Err(e) = mixed_tx.send(sample).await {
+                        tracing::error!("mixed_tx_send_error: {:?}", e);
+                    }
                 }
             }
 
