@@ -69,7 +69,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> NotificationPluginExt<R> for T {
                 title: "Meeting detected".to_string(),
                 message: "Click here to start writing a note".to_string(),
                 url: Some("hypr://todo".to_string()),
-                timeout: Some(std::time::Duration::from_secs(5)),
+                timeout: Some(std::time::Duration::from_secs(10)),
             };
 
             hypr_notification2::show(notif);

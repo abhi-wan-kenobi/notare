@@ -3,7 +3,11 @@ use tokio::time::{interval, Duration};
 
 use crate::BackgroundTask;
 
-const MEETING_URL_KEYWORDS: [&str; 2] = ["meet.google.com", "app.cal.com/video"];
+lazy_static::lazy_static! {
+    static ref MEETING_REGEXES: Vec<regex::Regex> = vec![
+        regex::Regex::new(r"meet\.google\.com/[a-z0-9]{3,4}-[a-z0-9]{3,4}-[a-z0-9]{3,4}").unwrap(),
+    ];
+}
 
 #[derive(Debug)]
 pub enum SupportedBrowsers {
@@ -62,10 +66,13 @@ impl SupportedBrowsers {
 #[derive(Default)]
 pub struct Detector {
     background: BackgroundTask,
+    detected_urls: std::collections::HashSet<String>,
 }
 
 impl crate::Observer for Detector {
     fn start(&mut self, f: crate::DetectCallback) {
+        let mut detected_urls = self.detected_urls.clone();
+
         self.background.start(|running, mut rx| async move {
             let mut interval_timer = interval(Duration::from_secs(5));
 
@@ -93,8 +100,11 @@ impl crate::Observer for Detector {
                                         .and_then(|browser| browser.extract_url());
 
                                     if let Some(url) = browser_url {
-                                        if MEETING_URL_KEYWORDS.iter().any(|keyword| url.contains(keyword)) {
-                                            f(url);
+                                        if MEETING_REGEXES.iter().any(|re| re.is_match(&url)) {
+                                            if !detected_urls.contains(&url) {
+                                                detected_urls.insert(url.clone());
+                                                f(url);
+                                            }
                                         }
                                     }
                                 }
@@ -108,6 +118,7 @@ impl crate::Observer for Detector {
 
     fn stop(&mut self) {
         self.background.stop();
+        self.detected_urls.clear();
     }
 }
 
@@ -143,6 +154,15 @@ fn run_applescript(script: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_url_regex() {
+        let landing_url = "https://meet.google.com/landing";
+        assert!(!MEETING_REGEXES.iter().any(|re| re.is_match(&landing_url)));
+
+        let meeting_url = "https://meet.google.com/tjw-fcje-ewx";
+        assert!(MEETING_REGEXES.iter().any(|re| re.is_match(&meeting_url)));
+    }
 
     #[test]
     fn test_detect() {
