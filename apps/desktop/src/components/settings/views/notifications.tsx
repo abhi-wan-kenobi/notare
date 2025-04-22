@@ -33,7 +33,9 @@ export default function NotificationsComponent() {
   const mutation = useMutation({
     mutationFn: async (v: Schema) => {
       if (v.auto) {
-        notificationCommands.setDetectNotification(true);
+        notificationCommands.requestNotificationPermission().then(() => {
+          notificationCommands.setDetectNotification(true);
+        });
       } else {
         notificationCommands.setDetectNotification(false);
       }
