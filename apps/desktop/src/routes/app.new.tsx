@@ -38,10 +38,6 @@ export const Route = createFileRoute("/app/new")({
 
         const { insert } = sessionsStore.getState();
         insert(session);
-
-        await queryClient.invalidateQueries({
-          predicate: (query) => query.queryKey.some((key) => (typeof key === "string") && key.includes("session")),
-        });
       } else {
         const session = await dbCommands.upsertSession({
           id: sessionId,
@@ -65,7 +61,7 @@ export const Route = createFileRoute("/app/new")({
       });
 
       await queryClient.invalidateQueries({
-        queryKey: ["sessions"],
+        predicate: (query) => query.queryKey.some((key) => (typeof key === "string") && key.includes("session")),
       });
 
       return redirect({
