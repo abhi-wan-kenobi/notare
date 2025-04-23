@@ -1,4 +1,5 @@
 import { Trans } from "@lingui/react/macro";
+import { getName, getVersion } from "@tauri-apps/api/app";
 import { CogIcon, CpuIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -13,10 +14,19 @@ import {
   DropdownMenuTrigger,
 } from "@hypr/ui/components/ui/dropdown-menu";
 import { cn } from "@hypr/ui/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
 export function SettingsButton() {
   const [open, setOpen] = useState(false);
   const { userId } = useHypr();
+
+  const versionQuery = useQuery({
+    queryKey: ["appVersion"],
+    queryFn: async () => {
+      const [version, name] = await Promise.all([getVersion(), getName()]);
+      return `${name} ${version}`;
+    },
+  });
 
   const handleClickSettings = () => {
     setOpen(false);
@@ -77,6 +87,9 @@ export function SettingsButton() {
             className="cursor-pointer"
           >
             <Trans>My Profile</Trans>
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+            {versionQuery.data ?? "..."}
           </DropdownMenuItem>
         </div>
       </DropdownMenuContent>
