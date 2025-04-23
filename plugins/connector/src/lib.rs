@@ -1,9 +1,11 @@
 mod commands;
 mod error;
 mod ext;
+mod store;
 
 pub use error::*;
 pub use ext::*;
+pub use store::*;
 
 const PLUGIN_NAME: &str = "connector";
 
@@ -11,7 +13,12 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
-            commands::get_api_base::<tauri::Wry>
+            commands::get_custom_llm_enabled::<tauri::Wry>,
+            commands::set_custom_llm_enabled::<tauri::Wry>,
+            commands::get_custom_llm_connection::<tauri::Wry>,
+            commands::set_custom_llm_connection::<tauri::Wry>,
+            commands::get_llm_connection::<tauri::Wry>,
+            commands::get_stt_connection::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
@@ -49,7 +56,7 @@ mod test {
     }
 
     #[test]
-    fn test_apple_calendar() {
+    fn test_connector() {
         let _app = create_app(tauri::test::mock_builder());
     }
 }

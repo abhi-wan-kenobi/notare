@@ -314,10 +314,9 @@ async fn setup_listen_client<R: tauri::Runtime>(
     jargons: Vec<String>,
 ) -> Result<crate::client::ListenClient, crate::Error> {
     let api_base = {
-        use tauri_plugin_connector::ConnectorPluginExt;
-        app.get_api_base(tauri_plugin_connector::ConnectionType::AutoSTT)
-            .await?
-            .ok_or(crate::Error::NoSTTConnection)?
+        use tauri_plugin_connector::{Connection, ConnectorPluginExt};
+        let conn: Connection = app.get_stt_connection().await?.into();
+        conn.api_base
     };
 
     let api_key = {
@@ -484,14 +483,14 @@ impl Session {
         #[cfg(debug_assertions)]
         tracing::info!("transitioned from `{:?}` to `{:?}`", source, target);
 
+        match target {
+            State::RunningActive {} => StatusEvent::RunningActive.emit(&self.app).unwrap(),
+            State::RunningPaused {} => StatusEvent::RunningPaused.emit(&self.app).unwrap(),
+            State::Inactive {} => StatusEvent::Inactive.emit(&self.app).unwrap(),
+        }
+
         if let Some(tx) = &self.session_state_tx {
             let _ = tx.send(target.clone());
-
-            match target {
-                State::RunningActive {} => StatusEvent::RunningActive.emit(&self.app).unwrap(),
-                State::RunningPaused {} => StatusEvent::RunningPaused.emit(&self.app).unwrap(),
-                State::Inactive {} => StatusEvent::Inactive.emit(&self.app).unwrap(),
-            }
         }
     }
 }
