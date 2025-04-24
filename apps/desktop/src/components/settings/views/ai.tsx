@@ -156,16 +156,16 @@ export default function LocalAI() {
           </AccordionTrigger>
           <AccordionContent className="p-2">
             <RadioGroup
-              value={customLLMEnabled.data ? "custom" : "llama-3.2-3b-q8"}
+              value={customLLMEnabled.data ? "custom" : "llama-3.2-3b-q4"}
               onValueChange={(value) => {
                 setCustomLLMEnabled.mutate(value === "custom");
               }}
               className="space-y-2"
             >
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="llama-3.2-3b-q8" id="model-llama-3-2" />
+                <RadioGroupItem value="llama-3.2-3b-q4" id="model-llama-3-2" />
                 <Label htmlFor="model-llama-3-2" className="flex items-center cursor-pointer">
-                  <span>llama-3.2-3b-q8</span>
+                  <span>llama-3.2-3b-q4</span>
                 </Label>
               </div>
               <div className="flex flex-col space-y-2">
