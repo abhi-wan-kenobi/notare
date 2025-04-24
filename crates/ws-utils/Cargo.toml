@@ -1,0 +1,12 @@
+[package]
+name = "ws-utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hypr-listener-interface = { workspace = true }
+
+axum = { workspace = true, features = ["ws"] }
+futures-util = { workspace = true }
+kalosm-sound = { workspace = true, default-features = false }
+serde_json = { workspace = true }

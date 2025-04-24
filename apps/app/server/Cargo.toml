@@ -25,13 +25,14 @@ hypr-s3 = { workspace = true }
 hypr-slack = { workspace = true }
 hypr-stt = { workspace = true, features = ["realtime", "recorded"] }
 hypr-turso = { workspace = true }
+hypr-ws-utils = { workspace = true }
 
 async-stream = { workspace = true }
 futures-core = { workspace = true }
 futures-util = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
-axum = { workspace = true, features = ["ws", "multipart"] }
+axum = { workspace = true, features = ["ws"] }
 tower = { workspace = true }
 tower-http = { workspace = true, features = ["fs", "cors", "timeout", "trace"] }
 

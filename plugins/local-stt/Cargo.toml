@@ -12,6 +12,7 @@ tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
 hypr-data = { workspace = true }
+
 kalosm-common = { workspace = true }
 tauri-plugin-listener = { path = "../listener" }
 
@@ -28,6 +29,7 @@ hypr-db-user = { workspace = true }
 hypr-file = { workspace = true }
 hypr-listener-interface = { workspace = true }
 hypr-whisper = { workspace = true }
+hypr-ws-utils = { workspace = true }
 
 tauri = { workspace = true, features = ["test"] }
 tauri-plugin-store = { workspace = true }
