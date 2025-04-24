@@ -118,12 +118,6 @@ fn main() {
                 .clova_api_key(get_env("CLOVA_API_KEY"))
                 .build();
 
-            let diarize = hypr_diart::DiarizeClient::builder()
-                .api_base(get_env("DIARIZE_API_BASE"))
-                .api_key(get_env("DIARIZE_API_KEY"))
-                .sample_rate(16000)
-                .build();
-
             let admin_db = {
                 let base_db = {
                     let name = get_env("TURSO_ADMIN_DB_NAME");
@@ -170,7 +164,6 @@ fn main() {
                 clerk: clerk.clone(),
                 realtime_stt,
                 recorded_stt,
-                diarize,
                 turso,
                 admin_db,
                 nango,
@@ -215,22 +208,22 @@ fn main() {
                     api_get(native::user::list_integrations),
                 )
                 .api_route("/subscription", api_get(native::subscription::handler))
-                .route("/listen/realtime", get(native::listen::realtime::handler))
-                .layer(
-                    tower::builder::ServiceBuilder::new()
-                        // .layer(axum::middleware::from_fn_with_state(
-                        //     AuthState::from_ref(&state),
-                        //     middleware::verify_api_key,
-                        // ))
-                        // .layer(axum::middleware::from_fn_with_state(
-                        //     AuthState::from_ref(&state),
-                        //     middleware::attach_user_db,
-                        // ))
-                        .layer(axum::middleware::from_fn_with_state(
-                            AnalyticsState::from_ref(&state),
-                            middleware::send_analytics,
-                        )),
-                );
+                .route("/listen/realtime", get(native::listen::realtime::handler));
+            // .layer(
+            //     tower::builder::ServiceBuilder::new()
+            //         .layer(axum::middleware::from_fn_with_state(
+            //             AuthState::from_ref(&state),
+            //             middleware::verify_api_key,
+            //         ))
+            //         .layer(axum::middleware::from_fn_with_state(
+            //             AuthState::from_ref(&state),
+            //             middleware::attach_user_db,
+            //         ))
+            //         .layer(axum::middleware::from_fn_with_state(
+            //             AnalyticsState::from_ref(&state),
+            //             middleware::send_analytics,
+            //         )),
+            // );
 
             let slack_router = ApiRouter::new();
 

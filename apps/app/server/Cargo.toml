@@ -18,7 +18,6 @@ hypr-calendar-outlook = { workspace = true }
 hypr-db-admin = { workspace = true }
 hypr-db-core = { workspace = true }
 hypr-db-user = { workspace = true }
-hypr-diart = { workspace = true }
 hypr-nango = { workspace = true }
 hypr-notion = { workspace = true }
 hypr-openai = { workspace = true }

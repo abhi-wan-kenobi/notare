@@ -87,8 +87,7 @@ pub struct ServerHandle {
 pub async fn run_server(state: ServerState) -> Result<ServerHandle, crate::Error> {
     let router = Router::new()
         .route("/health", get(health))
-        // should match our app server
-        .route("/api/native/listen/realtime", get(listen))
+        .route("/api/desktop/listen/realtime", get(listen))
         .layer(
             CorsLayer::new()
                 .allow_origin(cors::Any)

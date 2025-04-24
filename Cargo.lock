@@ -348,7 +348,6 @@ dependencies = [
  "db-admin",
  "db-core",
  "db-user",
- "diart",
  "dotenv",
  "futures-core",
  "futures-util",

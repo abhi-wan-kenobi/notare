@@ -9,11 +9,7 @@ use axum::{
 };
 
 use bytes::Bytes;
-use std::sync::atomic::Ordering;
-use std::sync::{atomic::AtomicU64, Arc};
-
 use futures_util::{SinkExt, StreamExt};
-use tokio::sync::broadcast;
 
 use hypr_listener_interface::{ListenInputChunk, ListenOutputChunk, ListenParams, TranscriptChunk};
 use hypr_stt::realtime::RealtimeSpeechToText;
@@ -31,114 +27,58 @@ pub async fn handler(
 async fn websocket(socket: WebSocket, state: STTState, params: ListenParams) {
     tracing::info!("websocket_connected");
 
-    let (mut ws_sender, mut ws_receiver) = socket.split();
+    let (mut ws_sender, ws_receiver) = socket.split();
 
     let mut stt = state.realtime_stt.for_language(params.language).await;
 
-    let start_time = tokio::time::Instant::now();
-    let last_activity_receive = Arc::new(AtomicU64::new(0));
-    let last_activity_send = last_activity_receive.clone();
+    let input_stream =
+        futures_util::stream::try_unfold(ws_receiver, |mut ws_receiver| async move {
+            match ws_receiver.next().await {
+                Some(Ok(Message::Text(data))) => {
+                    let input: ListenInputChunk = serde_json::from_str(&data).unwrap();
+                    let audio = Bytes::from(input.audio);
+                    Ok::<Option<(Bytes, _)>, axum::Error>(Some((audio, ws_receiver)))
+                }
+                _ => Ok::<Option<(Bytes, _)>, axum::Error>(Some((Bytes::new(), ws_receiver))),
+            }
+        });
 
-    let (tx, rx_transcribe) = broadcast::channel::<Bytes>(1024);
-    let rx_diarize = tx.subscribe();
+    let input_stream = Box::pin(input_stream);
 
-    let ws_handler = tokio::spawn(async move {
-        while let Some(Ok(Message::Text(data))) = ws_receiver.next().await {
-            last_activity_receive.store(start_time.elapsed().as_secs(), Ordering::SeqCst);
+    let _handle = tokio::spawn(async move {
+        match stt.transcribe(input_stream).await {
+            Err(e) => tracing::error!("transcription error: {:?}", e),
+            Ok(mut transcript_stream) => {
+                while let Some(result) = transcript_stream.next().await {
+                    match result {
+                        Ok(transcript) => {
+                            for word in transcript.words {
+                                let data = ListenOutputChunk::Transcribe(TranscriptChunk {
+                                    text: word.text,
+                                    start: word.start,
+                                    end: word.end,
+                                });
 
-            let input: ListenInputChunk = serde_json::from_str(&data).unwrap();
-            let audio = Bytes::from(input.audio);
+                                let msg =
+                                    Message::Text(serde_json::to_string(&data).unwrap().into());
 
-            if tx.send(audio).is_err() {
-                break;
+                                if let Err(e) = ws_sender.send(msg).await {
+                                    tracing::error!("websocket send error: {:?}", e);
+                                    break;
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!("transcription error: {:?}", e);
+                            break;
+                        }
+                    }
+                }
             }
         }
 
         tracing::info!("websocket_disconnected");
     });
-
-    let audio_stream_for_transcribe = Box::pin(create_audio_stream(rx_transcribe));
-    let audio_stream_for_diarize = Box::pin(create_audio_stream(rx_diarize));
-
-    let mut transcript_stream = stt.transcribe(audio_stream_for_transcribe).await.unwrap();
-    let mut diarization_stream = Box::pin(
-        state
-            .diarize
-            .from_audio(audio_stream_for_diarize)
-            .await
-            .unwrap(),
-    );
-
-    let task = async {
-        loop {
-            let current_time = start_time.elapsed().as_secs();
-            let last_activity = last_activity_send.load(Ordering::Relaxed);
-            let idle_time = current_time.saturating_sub(last_activity);
-
-            tokio::select! {
-                item = diarization_stream.next() => {
-                    if let Some(result) = item {
-                        last_activity_send.store(current_time, Ordering::Relaxed);
-
-                        let data = ListenOutputChunk::Diarize(result);
-                        let msg = Message::Text(serde_json::to_string(&data).unwrap().into());
-
-                        if ws_sender.send(msg).await.is_err() {
-                            break;
-                        }
-                    }
-                }
-
-                item = transcript_stream.next() => {
-                    match item {
-                        Some(Ok(result)) => {
-                            last_activity_send.store(current_time, Ordering::Relaxed);
-
-                            for word in result.words {
-                                let data = ListenOutputChunk::Transcribe(TranscriptChunk{
-                                    text: word.text,
-                                    start: word.start,
-                                    end: word.end,
-                                });
-                                let msg = Message::Text(serde_json::to_string(&data).unwrap().into());
-
-                                if ws_sender.send(msg).await.is_err() {
-                                    break;
-                                }
-                            }
-                        }
-                        _ => continue,
-                    }
-                }
-
-                _ = tokio::time::sleep(tokio::time::Duration::from_millis(500)) => {
-                    if idle_time >= 15 {
-                        break;
-                    }
-                }
-            }
-        }
-    };
-
-    task.await;
-    ws_handler.abort();
-
-    tracing::info!("websocket_disconnected");
-}
-
-fn create_audio_stream(
-    rx: broadcast::Receiver<Bytes>,
-) -> impl futures_util::Stream<Item = Result<Bytes, std::io::Error>> {
-    futures_util::stream::try_unfold(rx, move |mut rx| async move {
-        match rx.recv().await {
-            Ok(audio) => Ok(Some((audio, rx))),
-            Err(broadcast::error::RecvError::Closed) => Ok(None),
-            Err(broadcast::error::RecvError::Lagged(n)) => {
-                tracing::warn!("audio_stream is lagging by {}", n);
-                Ok(Some((Bytes::new(), rx)))
-            }
-        }
-    })
 }
 
 #[cfg(test)]
@@ -151,7 +91,7 @@ mod tests {
 
     fn app() -> axum::Router {
         axum::Router::new()
-            .route("/api/native/transcribe", axum::routing::get(handler))
+            .route("/api/desktop/transcribe", axum::routing::get(handler))
             .with_state(STTState {
                 realtime_stt: hypr_stt::realtime::Client::builder()
                     .deepgram_api_key("".to_string())
@@ -160,11 +100,6 @@ mod tests {
                 recorded_stt: hypr_stt::recorded::Client::builder()
                     .deepgram_api_key("".to_string())
                     .clova_api_key("".to_string())
-                    .build(),
-                diarize: hypr_diart::DiarizeClient::builder()
-                    .sample_rate(16000)
-                    .api_base("http://localhost:3000".to_string())
-                    .api_key("".to_string())
                     .build(),
             })
     }
@@ -175,7 +110,7 @@ mod tests {
         let listener = tokio::net::TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)))
             .await
             .unwrap();
-        let addr = listener.local_addr().unwrap();
+        let _addr = listener.local_addr().unwrap();
         tokio::spawn(axum::serve(listener, app()).into_future());
     }
 }

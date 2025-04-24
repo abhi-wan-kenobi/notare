@@ -38,7 +38,7 @@ impl ListenClientBuilder {
             let language =
                 language.chars().next().unwrap().to_uppercase().to_string() + &language[1..];
 
-            url.set_path("/api/native/listen/realtime");
+            url.set_path("/api/desktop/listen/realtime");
             url.query_pairs_mut()
                 .append_pair("language", &language)
                 .append_pair("static_prompt", &params.static_prompt)
@@ -102,5 +102,36 @@ impl ListenClient {
         let input_stream = audio_stream.to_i16_le_chunks(16 * 1000, 1024);
         let ws = WebSocketClient::new(self.request.clone());
         ws.from_audio::<Self>(input_stream).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use futures_util::StreamExt;
+
+    #[tokio::test]
+    // #[ignore]
+    async fn test_listen_client() {
+        let audio = rodio::Decoder::new_wav(std::io::BufReader::new(
+            std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
+        ))
+        .unwrap();
+
+        let client = ListenClient::builder()
+            .api_base("http://127.0.0.1:1234")
+            .api_key("".to_string())
+            .params(hypr_listener_interface::ListenParams {
+                language: codes_iso_639::part_1::LanguageCode::En,
+                ..Default::default()
+            })
+            .build();
+
+        let stream = client.from_audio(audio).await.unwrap();
+        futures_util::pin_mut!(stream);
+
+        while let Some(result) = stream.next().await {
+            println!("{:?}", result);
+        }
     }
 }
