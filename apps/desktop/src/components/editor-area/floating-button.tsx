@@ -5,7 +5,7 @@ import { useEnhancePendingState } from "@/hooks/enhance-pending";
 import { Session } from "@hypr/plugin-db";
 import { SplashLoader } from "@hypr/ui/components/ui/splash";
 import { cn } from "@hypr/ui/lib/utils";
-import { useSession } from "@hypr/utils/contexts";
+import { useOngoingSession, useSession } from "@hypr/utils/contexts";
 
 interface FloatingButtonProps {
   session: Session;
@@ -20,6 +20,7 @@ export function FloatingButton({
     s.showRaw,
     s.setShowRaw,
   ]);
+  const cancelEnhance = useOngoingSession((s) => s.cancelEnhance);
   const isEnhancePending = useEnhancePendingState(session.id);
   const [isHovered, setIsHovered] = useState(false);
   const [showRefreshIcon, setShowRefreshIcon] = useState(true);
@@ -38,6 +39,11 @@ export function FloatingButton({
     if (showRaw) {
       setShowRaw(false);
       setShowRefreshIcon(false);
+      return;
+    }
+
+    if (isEnhancePending) {
+      cancelEnhance();
     } else {
       handleEnhance();
     }
@@ -76,7 +82,6 @@ export function FloatingButton({
       </button>
 
       <button
-        disabled={isEnhancePending}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={handleEnhanceOrReset}

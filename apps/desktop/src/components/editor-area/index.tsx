@@ -16,7 +16,7 @@ import { extractHashtags } from "@hypr/tiptap/shared";
 import { cn } from "@hypr/ui/lib/utils";
 import { markdownTransform, modelProvider, smoothStream, streamText } from "@hypr/utils/ai";
 import { useOngoingSession, useSession } from "@hypr/utils/contexts";
-import { noLlmConnectionToast } from "../toast/shared";
+import { enhanceFailedToast } from "../toast/shared";
 import { FloatingButton } from "./floating-button";
 import { NoteHeader } from "./note-header";
 
@@ -154,6 +154,7 @@ export function useEnhanceMutation({
 }) {
   const { userId, onboardingSessionId } = useHypr();
 
+  const setEnhanceController = useOngoingSession((s) => s.setEnhanceController);
   const { persistSession, setEnhancedContent } = useSession(sessionId, (s) => ({
     persistSession: s.persistSession,
     setEnhancedContent: s.updateEnhancedNote,
@@ -191,10 +192,14 @@ export function useEnhanceMutation({
         },
       );
 
+      const abortController = new AbortController();
+      setEnhanceController(abortController);
+
       const provider = await modelProvider();
 
       const { text, textStream } = streamText({
-        model: provider?.languageModel("any"),
+        abortSignal: abortController.signal,
+        model: provider.languageModel("any"),
         messages: [
           { role: "system", content: systemMessage },
           { role: "user", content: userMessage },
@@ -226,8 +231,11 @@ export function useEnhanceMutation({
       persistSession();
     },
     onError: (error) => {
-      noLlmConnectionToast();
       console.error(error);
+
+      if (!(error as unknown as string).includes("cancel")) {
+        enhanceFailedToast();
+      }
     },
   });
 
