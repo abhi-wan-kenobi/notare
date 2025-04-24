@@ -102,8 +102,13 @@ impl crate::Observer for Detector {
                                     if let Some(url) = browser_url {
                                         if MEETING_REGEXES.iter().any(|re| re.is_match(&url)) {
                                             if !detected_urls.contains(&url) {
-                                                detected_urls.insert(url.clone());
-                                                f(url);
+                                                let normalized_url = {
+                                                    let mut u = url::Url::parse(&url).unwrap();
+                                                    u.set_query(None);
+                                                    u.to_string()
+                                                };
+                                                detected_urls.insert(normalized_url.clone());
+                                                f(normalized_url);
                                             }
                                         }
                                     }
