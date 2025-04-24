@@ -218,32 +218,14 @@ fn main() {
                 .route("/listen/realtime", get(native::listen::realtime::handler))
                 .layer(
                     tower::builder::ServiceBuilder::new()
-                        .layer(axum::middleware::from_fn_with_state(
-                            AuthState::from_ref(&state),
-                            middleware::verify_api_key,
-                        ))
-                        .layer(axum::middleware::from_fn_with_state(
-                            AuthState::from_ref(&state),
-                            middleware::attach_user_db,
-                        ))
-                        .layer(axum::middleware::from_fn_with_state(
-                            AnalyticsState::from_ref(&state),
-                            middleware::send_analytics,
-                        )),
-                );
-
-            let mobile_router = ApiRouter::new()
-                .route("/listen/recorded", post(native::listen::recorded::handler))
-                .layer(
-                    tower::builder::ServiceBuilder::new()
-                        .layer(axum::middleware::from_fn_with_state(
-                            AuthState::from_ref(&state),
-                            middleware::verify_api_key,
-                        ))
-                        .layer(axum::middleware::from_fn_with_state(
-                            AuthState::from_ref(&state),
-                            middleware::attach_user_db,
-                        ))
+                        // .layer(axum::middleware::from_fn_with_state(
+                        //     AuthState::from_ref(&state),
+                        //     middleware::verify_api_key,
+                        // ))
+                        // .layer(axum::middleware::from_fn_with_state(
+                        //     AuthState::from_ref(&state),
+                        //     middleware::attach_user_db,
+                        // ))
                         .layer(axum::middleware::from_fn_with_state(
                             AnalyticsState::from_ref(&state),
                             middleware::send_analytics,
@@ -262,7 +244,6 @@ fn main() {
                 .route("/scalar", Scalar::new("/openapi.json").axum_route())
                 .api_route("/health", api_get(|| async { (StatusCode::OK, "OK") }))
                 .nest("/api/desktop", desktop_router)
-                .nest("/api/mobile", mobile_router)
                 .nest("/api/web", web_router)
                 .api_route(
                     "/chat/completions",
