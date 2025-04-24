@@ -21,11 +21,14 @@ const endpointSchema = z.object({
     (value) => !value.includes("192"),
     { message: "Should use 'localhost' or '127.0.0.1' as the host" },
   ).refine(
-    (value) => ["openai.", "openrouter.ai", "localhost", "127.0.0.1"].some((host) => value.includes(host)),
-    { message: "Only one of 'openai', 'openrouter' and 'localhost' are allowed" },
+    (value) => ["localhost", "127.0.0.1"].some((host) => value.includes(host)),
+    { message: "Only one of 'localhost' or '127.0.0.1' are allowed as the host" },
   ).refine(
     (value) => value.endsWith("/v1"),
     { message: "Should end with '/v1'" },
+  ).refine(
+    (value) => !value.includes("chat/completions"),
+    { message: "`/chat/completions` will be appended automatically" },
   ),
 });
 type FormValues = z.infer<typeof endpointSchema>;
