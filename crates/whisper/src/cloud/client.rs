@@ -68,6 +68,14 @@ impl WhisperClient {
 
     pub async fn from_audio(
         &self,
+        audio_stream: impl Stream<Item = bytes::Bytes> + Send + Unpin + 'static,
+    ) -> Result<impl Stream<Item = WhisperOutput>, hypr_ws::Error> {
+        let ws = WebSocketClient::new(self.request.clone());
+        ws.from_audio::<Self>(audio_stream).await
+    }
+
+    pub async fn from_audio2(
+        &self,
         audio_stream: impl AsyncSource + Send + Unpin + 'static,
     ) -> Result<impl Stream<Item = WhisperOutput>, hypr_ws::Error> {
         let processed_stream = audio_stream.to_i16_le_chunks(16 * 1000, 800);

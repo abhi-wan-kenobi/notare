@@ -22,7 +22,7 @@ mod tests {
         ))
         .unwrap();
 
-        let stream = client.from_audio(audio).await.unwrap();
+        let stream = client.from_audio2(audio).await.unwrap();
         futures_util::pin_mut!(stream);
 
         while let Some(result) = stream.next().await {
