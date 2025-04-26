@@ -1,9 +1,7 @@
-import React, { createContext, useContext, useEffect, useRef } from "react";
+import React, { createContext, useContext, useRef } from "react";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/shallow";
 
-import { events as listenerEvents } from "@hypr/plugin-listener";
-import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { createOngoingSessionStore, createSessionsStore } from "../stores";
 
 const OngoingSessionContext = createContext<
@@ -25,20 +23,6 @@ export const OngoingSessionProvider = ({
   if (!storeRef.current) {
     storeRef.current = createOngoingSessionStore(sessionsStore);
   }
-
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    const currentWindow = getCurrentWebviewWindow();
-
-    listenerEvents.statusEvent(currentWindow).listen(({ payload }) => {
-      let api = storeRef.current?.getState();
-      api?.setStatus(payload);
-    }).then((fn) => {
-      unlisten = fn;
-    });
-
-    return () => unlisten?.();
-  }, []);
 
   return (
     <OngoingSessionContext.Provider value={storeRef.current}>
