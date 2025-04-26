@@ -18,7 +18,7 @@
     "@hypr/extension-types": "workspace:^",
     "@hypr/ui": "workspace:*",
     "@tanstack/react-query": "^5.74.4",
-    "lucide-react": "^0.474.0"
+    "lucide-react": "^0.487.0"
   },
   "devDependencies": {
     "@storybook/addon-essentials": "^8.6.12",
