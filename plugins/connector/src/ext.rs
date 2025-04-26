@@ -88,8 +88,14 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ConnectorPluginExt<R> for T {
                 .is_enabled(FlagsStoreKey::CloudPreview)
                 .unwrap_or(false)
             {
+                let api_base = if cfg!(debug_assertions) {
+                    "http://127.0.0.1:1234".to_string()
+                } else {
+                    "https://app.hyprnote.com".to_string()
+                };
+
                 return Ok(ConnectionLLM::HyprCloud(Connection {
-                    api_base: "https://app.hyprnote.com".to_string(),
+                    api_base,
                     api_key: None,
                 }));
             }
@@ -100,7 +106,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ConnectorPluginExt<R> for T {
 
             if let Ok(Some(_)) = self.get_from_store(StoreKey::AccountId) {
                 let api_base = if cfg!(debug_assertions) {
-                    "http://localhost:1234".to_string()
+                    "http://127.0.0.1:1234".to_string()
                 } else {
                     "https://app.hyprnote.com".to_string()
                 };
@@ -158,8 +164,14 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ConnectorPluginExt<R> for T {
                 .is_enabled(FlagsStoreKey::CloudPreview)
                 .unwrap_or(false)
             {
+                let api_base = if cfg!(debug_assertions) {
+                    "http://127.0.0.1:1234".to_string()
+                } else {
+                    "https://app.hyprnote.com".to_string()
+                };
+
                 return Ok(ConnectionSTT::HyprCloud(Connection {
-                    api_base: "https://app.hyprnote.com".to_string(),
+                    api_base,
                     api_key: None,
                 }));
             }
@@ -170,7 +182,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ConnectorPluginExt<R> for T {
 
             if let Ok(Some(_)) = self.get_from_store(StoreKey::AccountId) {
                 let api_base = if cfg!(debug_assertions) {
-                    "http://localhost:1234".to_string()
+                    "http://127.0.0.1:1234".to_string()
                 } else {
                     "https://app.hyprnote.com".to_string()
                 };

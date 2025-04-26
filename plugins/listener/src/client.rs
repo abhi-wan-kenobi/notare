@@ -44,7 +44,9 @@ impl ListenClientBuilder {
                 .append_pair("static_prompt", &params.static_prompt)
                 .append_pair("dynamic_prompt", &params.dynamic_prompt);
 
-            if url.host_str().unwrap().contains("127.0.0.1") {
+            let host = url.host_str().unwrap();
+
+            if host.contains("127.0.0.1") || host.contains("localhost") {
                 url.set_scheme("ws").unwrap();
             } else {
                 url.set_scheme("wss").unwrap();
