@@ -24,7 +24,7 @@
     "@lingui/core": "^5.3.1",
     "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-http": "^2.4.3",
-    "ai": "^4.3.9",
+    "ai": "^4.3.10",
     "date-fns": "^4.1.0",
     "mutative": "^1.1.0",
     "p-debounce": "^4.0.0",
@@ -32,7 +32,7 @@
   },
   "devDependencies": {
     "@types/react": "^18.3.20",
-    "vitest": "^3.1.1"
+    "vitest": "^3.1.2"
   },
   "peerDependencies": {
     "react": "^18.3.1"
