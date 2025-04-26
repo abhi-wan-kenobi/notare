@@ -1,2 +1,0 @@
-- `segmentation.onnx`: https://huggingface.co/onnx-community/pyannote-segmentation-3.0/resolve/main/onnx/model.onnx
-- `embedding.onnx`: https://huggingface.co/hbredin/wespeaker-voxceleb-resnet34-LM/blob/main/speaker-embedding.onnx

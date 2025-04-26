@@ -4,21 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["local", "cloud"]
-local = ["hypr-onnx", "knf-rs"]
+default = ["cloud"]
 cloud = ["reqwest", "url"]
 
 [dependencies]
-hypr-onnx = { path = "../onnx", package = "onnx", optional = true }
-knf-rs = { version = "0.2.9", optional = true }
-
 reqwest = { workspace = true, features = ["json"], optional = true }
 url = { workspace = true, optional = true }
 
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 
-pyannote-rs = "0.3.0"
 serde = { workspace = true, features = ["derive"] }
 specta = { workspace = true, features = ["derive"] }
 
