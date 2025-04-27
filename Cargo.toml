@@ -27,6 +27,7 @@ hypr-db-user = { path = "crates/db-user", package = "db-user" }
 hypr-detect = { path = "crates/detect", package = "detect" }
 hypr-diart = { path = "crates/diart", package = "diart" }
 hypr-file = { path = "crates/file", package = "file" }
+hypr-gbnf = { path = "crates/gbnf", package = "gbnf" }
 hypr-gguf = { path = "crates/gguf", package = "gguf" }
 hypr-host = { path = "crates/host", package = "host" }
 hypr-llama = { path = "crates/llama", package = "llama" }
@@ -129,6 +130,7 @@ tonic-build = "0.12.3"
 
 async-openai = { git = "https://github.com/fastrepl/async-openai", rev = "6404d307f3f706e818ad91544dc82fac5c545aee", default-features = false }
 async-stripe = { version = "0.39.1", default-features = false }
+gbnf-validator = { git = "https://github.com/fastrepl/gbnf-validator", rev = "3dec055" }
 graph-rs-sdk = "2.0.3"
 
 sentry = "0.36.0"

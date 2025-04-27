@@ -1,15 +1,17 @@
-use include_url_macro::include_url;
+pub const ENHANCE_AUTO: &str = include_str!("../assets/enhance-auto.gbnf");
 
-pub const MARKDOWN_GRAMMAR: &str = include_str!("./markdown.gbnf");
+pub enum GBNF {
+    Enhance(Option<Vec<String>>),
+}
 
-#[allow(dead_code)]
-pub const JSON_ARR_GRAMMAR: &str = include_url!(
-    "https://raw.githubusercontent.com/ggml-org/llama.cpp/7a84777/grammars/json_arr.gbnf"
-);
-
-#[allow(dead_code)]
-pub const JSON_GRAMMAR: &str =
-    include_url!("https://raw.githubusercontent.com/ggml-org/llama.cpp/7a84777/grammars/json.gbnf");
+impl GBNF {
+    pub fn build(&self) -> String {
+        match self {
+            GBNF::Enhance(Some(_)) => ENHANCE_AUTO.to_string(),
+            GBNF::Enhance(None) => ENHANCE_AUTO.to_string(),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -55,7 +57,7 @@ mod tests {
             "};
 
         assert_eq!(input_1, input_2);
-        assert!(gbnf.validate(MARKDOWN_GRAMMAR, input_1).unwrap());
+        assert!(gbnf.validate(ENHANCE_AUTO, input_1).unwrap());
     }
 
     #[test]
@@ -96,7 +98,7 @@ mod tests {
             
             "};
 
-        assert!(gbnf.validate(MARKDOWN_GRAMMAR, input).unwrap());
+        assert!(gbnf.validate(ENHANCE_AUTO, input).unwrap());
     }
 
     #[allow(dead_code)]
