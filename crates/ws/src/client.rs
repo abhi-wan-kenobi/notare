@@ -35,10 +35,11 @@ impl WebSocketClient {
                     .with_delay(std::time::Duration::from_secs(1)),
             )
             .when(|e| {
+                tracing::error!("ws_connect_failed: {:?}", e);
+
                 if let crate::Error::Connection(te) = e {
                     if let tokio_tungstenite::tungstenite::Error::Http(res) = te {
                         if res.status() == 429 {
-                            tracing::info!("429");
                             return true;
                         }
                     }
