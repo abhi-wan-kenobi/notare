@@ -7,22 +7,15 @@ use store::*;
 
 use tauri_plugin_windows::{HyprWindow, WindowsPluginExt};
 
+use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
+
 #[tokio::main]
 pub async fn main() {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
 
     {
-        tracing_subscriber::fmt()
-            .with_file(true)
-            .with_line_number(true)
-            .with_env_filter(
-                tracing_subscriber::EnvFilter::from_default_env()
-                    .add_directive(tracing::Level::INFO.into())
-                    .add_directive("ort=error".parse().unwrap())
-                    .add_directive("hyper=error".parse().unwrap())
-                    .add_directive("rustls=error".parse().unwrap())
-                    .add_directive("llama-cpp-2=error".parse().unwrap()),
-            )
+        tracing_subscriber::Registry::default()
+            .with(tauri_plugin_sentry::sentry::integrations::tracing::layer())
             .init();
     }
 
@@ -40,6 +33,7 @@ pub async fn main() {
         },
         tauri_plugin_sentry::sentry::ClientOptions {
             release: tauri_plugin_sentry::sentry::release_name!(),
+            traces_sample_rate: 1.0,
             auto_session_tracking: true,
             ..Default::default()
         },
