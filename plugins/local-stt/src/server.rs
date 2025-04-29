@@ -1,3 +1,8 @@
+use std::{
+    net::{Ipv4Addr, SocketAddr},
+    path::PathBuf,
+};
+
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -8,19 +13,15 @@ use axum::{
     routing::get,
     Router,
 };
-use std::{
-    net::{Ipv4Addr, SocketAddr},
-    path::PathBuf,
-    sync::atomic::{AtomicUsize, Ordering},
-    sync::Arc,
-};
-use tower_http::cors::{self, CorsLayer};
 
 use futures_util::{SinkExt, StreamExt};
+use tower_http::cors::{self, CorsLayer};
 
 use hypr_chunker::ChunkerExt;
 use hypr_listener_interface::{ListenOutputChunk, ListenParams, TranscriptChunk};
 use hypr_ws_utils::WebSocketAudioSource;
+
+use crate::manager::{ConnectionGuard, ConnectionManager};
 
 #[derive(Default)]
 pub struct ServerStateBuilder {
@@ -43,7 +44,7 @@ impl ServerStateBuilder {
         ServerState {
             model_type: self.model_type.unwrap(),
             model_cache_dir: self.model_cache_dir.unwrap(),
-            num_connections: Arc::new(AtomicUsize::new(0)),
+            connection_manager: ConnectionManager::default(),
         }
     }
 }
@@ -52,31 +53,12 @@ impl ServerStateBuilder {
 pub struct ServerState {
     model_type: crate::SupportedModel,
     model_cache_dir: PathBuf,
-    num_connections: Arc<AtomicUsize>,
+    connection_manager: ConnectionManager,
 }
 
 impl ServerState {
-    fn try_acquire_connection(&self) -> Option<ConnectionGuard> {
-        let current = self.num_connections.load(Ordering::SeqCst);
-        if current >= 1 {
-            return None;
-        }
-
-        match self
-            .num_connections
-            .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst)
-        {
-            Ok(_) => Some(ConnectionGuard(self.num_connections.clone())),
-            Err(_) => None,
-        }
-    }
-}
-
-struct ConnectionGuard(Arc<AtomicUsize>);
-
-impl Drop for ConnectionGuard {
-    fn drop(&mut self) {
-        self.0.fetch_sub(1, Ordering::SeqCst);
+    pub fn try_acquire_connection(&self) -> Option<ConnectionGuard> {
+        self.connection_manager.try_acquire_connection()
     }
 }
 

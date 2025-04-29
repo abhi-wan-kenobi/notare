@@ -13190,6 +13190,7 @@ dependencies = [
  "tauri-specta",
  "thiserror 2.0.12",
  "tokio",
+ "tokio-tungstenite 0.26.2",
  "tower-http 0.6.2",
  "tracing",
  "whisper",
