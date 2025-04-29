@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+
     paths:
       - apps/desktop/**
       - plugins/**
@@ -26,9 +27,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
-      - uses: arduino/setup-protoc@v3
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: ./.github/actions/setup_protoc
       - uses: ./.github/actions/pnpm_install
       - run: pnpm -F ui build
       - run: pnpm -r typecheck
