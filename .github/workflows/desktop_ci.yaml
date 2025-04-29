@@ -28,6 +28,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup_protoc
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/pnpm_install
       - run: pnpm -F ui build
       - run: pnpm -r typecheck

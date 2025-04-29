@@ -57,6 +57,8 @@ jobs:
           fi
         shell: bash
       - uses: ./.github/actions/setup_protoc
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/install_desktop_deps
         with:
           target: "macos"

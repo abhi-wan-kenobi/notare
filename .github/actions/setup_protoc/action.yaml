@@ -1,3 +1,8 @@
+inputs:
+  repo-token:
+    required: true
+    type: string
+
 runs:
   using: "composite"
   steps:
@@ -9,4 +14,4 @@ runs:
     - uses: arduino/setup-protoc@v3
       with:
         version: "25.7"
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        repo-token: ${{ inputs.repo-token }}
