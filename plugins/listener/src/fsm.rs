@@ -179,7 +179,7 @@ impl Session {
             let path = dir.join("audio.wav");
 
             let wav_spec = hound::WavSpec {
-                channels: 1,
+                channels: 2,
                 sample_rate: SAMPLE_RATE,
                 bits_per_sample: 32,
                 sample_format: hound::SampleFormat::Float,
@@ -218,6 +218,7 @@ impl Session {
                     .collect();
 
                 for &sample in &mixed {
+                    wav.write_sample(sample).unwrap();
                     wav.write_sample(sample).unwrap();
                     if let Err(e) = mixed_tx.send(sample).await {
                         tracing::error!("mixed_tx_send_error: {:?}", e);
