@@ -93,7 +93,7 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
 
             if let Err(e) = download_file_with_callback(url, path, callback).await {
                 tracing::error!("model_download_error: {}", e);
-                channel.send(-1);
+                let _ = channel.send(-1);
             }
         });
 

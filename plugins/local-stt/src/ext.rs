@@ -134,7 +134,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                 download_file_with_callback(m.model_url(), m.model_path(&data_dir), callback).await
             {
                 tracing::error!("model_download_error: {}", e);
-                channel.send(-1);
+                let _ = channel.send(-1);
             }
         });
 
