@@ -23,7 +23,7 @@
     "@hypr/utils": "workspace:^",
     "@tanstack/react-query": "^5.74.11",
     "@tauri-apps/api": "^2.5.0",
-    "ai": "^4.3.11",
+    "ai": "^4.3.12",
     "motion": "^12.9.2",
     "zod": "^3.24.3"
   },
