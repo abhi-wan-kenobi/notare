@@ -148,9 +148,19 @@ pub async fn main() {
                         tracing::error!("failed_to_setup_db_for_local: {}", e);
                     }
 
-                    // if let Err(e) = app.setup_auto_start().await {
-                    //     tracing::error!("failed_to_setup_auto_start: {}", e);
-                    // }
+                    {
+                        use tauri_plugin_db::DatabasePluginExt;
+                        let user_id = app.db_user_id().await;
+
+                        if let Ok(Some(ref user_id)) = user_id {
+                            tauri_plugin_sentry::sentry::configure_scope(|scope| {
+                                scope.set_user(Some(tauri_plugin_sentry::sentry::User {
+                                    id: Some(user_id.clone()),
+                                    ..Default::default()
+                                }));
+                            });
+                        }
+                    }
 
                     tokio::spawn(async move {
                         app.setup_local_ai().await.unwrap();
