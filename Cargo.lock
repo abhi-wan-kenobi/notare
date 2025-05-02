@@ -14955,6 +14955,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "vad"
+version = "0.1.0"
+dependencies = [
+ "ndarray",
+ "ort",
+ "serde",
+ "thiserror 2.0.12",
+ "tracing",
+]
+
+[[package]]
 name = "valuable"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
