@@ -102,8 +102,8 @@ impl Whisper {
             p.set_initial_prompt(&initial_prompt);
 
             p.set_n_threads(1);
-            p.set_token_timestamps(true);
-            p.set_split_on_word(true);
+            p.set_detect_language(false);
+            p.set_token_timestamps(false);
             p.set_single_segment(true);
             p.set_suppress_blank(true);
             p.set_suppress_nst(true);
