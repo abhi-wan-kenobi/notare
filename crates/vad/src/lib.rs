@@ -110,10 +110,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_vad() {
+    fn test_vad_silence() {
         let mut vad = Vad::new().unwrap();
         let audio_samples = vec![0.0; 16000];
         let prob = vad.run(&audio_samples).unwrap();
         assert!(prob < 0.1);
+    }
+
+    #[test]
+    fn test_vad_long() {
+        let mut vad = Vad::new().unwrap();
+        let audio_samples = to_f32(hypr_data::english_2::AUDIO);
+        let prob = vad.run(&audio_samples).unwrap();
+        assert!(prob > 0.8);
+    }
+
+    fn to_f32(bytes: &[u8]) -> Vec<f32> {
+        let mut samples = Vec::with_capacity(bytes.len() / 2);
+        for chunk in bytes.chunks_exact(2) {
+            let sample = i16::from_le_bytes([chunk[0], chunk[1]]) as f32 / 32768.0;
+            samples.push(sample);
+        }
+        samples
     }
 }

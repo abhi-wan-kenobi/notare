@@ -2213,6 +2213,7 @@ dependencies = [
  "rodio",
  "tokio",
  "tracing",
+ "vad",
 ]
 
 [[package]]
@@ -14958,6 +14959,7 @@ dependencies = [
 name = "vad"
 version = "0.1.0"
 dependencies = [
+ "data",
  "ndarray",
  "ort",
  "serde",
