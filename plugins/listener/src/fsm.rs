@@ -332,14 +332,14 @@ async fn setup_listen_client<R: tauri::Runtime>(
             .unwrap_or_default()
     };
 
-    tracing::info!(api_base = ?api_base, api_key = ?api_key, "listen_client");
+    tracing::info!(api_base = ?api_base, api_key = ?api_key, language = ?language, "listen_client");
 
     Ok(crate::client::ListenClient::builder()
         .api_base(api_base)
         .api_key(api_key)
         .params(hypr_listener_interface::ListenParams {
             language,
-            static_prompt: jargons.join(", "),
+            static_prompt: "".to_string(),
             ..Default::default()
         })
         .build())
