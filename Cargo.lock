@@ -2211,6 +2211,8 @@ dependencies = [
  "hound",
  "kalosm-sound",
  "rodio",
+ "serde",
+ "thiserror 2.0.12",
  "tokio",
  "tracing",
  "vad",

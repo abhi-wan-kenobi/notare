@@ -1,6 +1,9 @@
-mod rms;
+mod error;
+mod predictor;
+mod stream;
 
-pub use rms::*;
+pub use error::*;
+pub use stream::*;
 
 use kalosm_sound::AsyncSource;
 use std::time::Duration;
@@ -37,8 +40,10 @@ mod tests {
 
         let mut stream = audio_source.rms_chunks(Duration::from_secs(12));
         let mut i = 0;
+
+        std::fs::create_dir_all("tmp/english_1").unwrap();
         while let Some(chunk) = stream.next().await {
-            let file = std::fs::File::create(format!("chunk_{}.wav", i)).unwrap();
+            let file = std::fs::File::create(format!("tmp/english_1/chunk_{}.wav", i)).unwrap();
             let mut writer = hound::WavWriter::new(file, spec).unwrap();
             for sample in chunk {
                 writer.write_sample(sample).unwrap();

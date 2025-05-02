@@ -1,5 +1,5 @@
 mod error;
-use error::*;
+pub use error::*;
 
 use ndarray::{Array1, Array2, Array3, ArrayBase, Ix1, Ix3, OwnedRepr};
 use ort::session::{builder::GraphOptimizationLevel, Session};
@@ -8,8 +8,12 @@ const MODEL_BYTES: &[u8] =
     include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/model.onnx"));
 
 const SAMPLE_RATE: i64 = 16000;
-const CHUNK_SIZE_MS: usize = 30; // 30ms chunks for processing
 
+const fn ms_to_samples(ms: usize) -> usize {
+    (ms * SAMPLE_RATE as usize) / 1000
+}
+
+#[derive(Debug)]
 pub struct Vad {
     session: Session,
     h_tensor: ArrayBase<OwnedRepr<f32>, Ix3>,
@@ -74,11 +78,11 @@ impl Vad {
 
     /// For longer audio, this will process in 30ms chunks and return the maximum probability
     pub fn run(&mut self, audio_samples: &[f32]) -> Result<f32, crate::Error> {
-        if audio_samples.len() < 480 {
+        if audio_samples.len() < ms_to_samples(30) {
             return self.forward(audio_samples);
         }
 
-        let chunk_size = (CHUNK_SIZE_MS * SAMPLE_RATE as usize) / 1000;
+        let chunk_size = ms_to_samples(30);
         let num_chunks = audio_samples.len() / chunk_size;
 
         let mut max_prob = 0.0f32;
@@ -91,7 +95,9 @@ impl Vad {
         }
 
         let remaining_start = num_chunks * chunk_size;
-        if remaining_start < audio_samples.len() && audio_samples.len() - remaining_start >= 240 {
+        if remaining_start < audio_samples.len()
+            && audio_samples.len() - remaining_start >= (chunk_size / 2)
+        {
             let prob = self.forward(&audio_samples[remaining_start..])?;
             max_prob = max_prob.max(prob);
         }
@@ -118,7 +124,15 @@ mod tests {
     }
 
     #[test]
-    fn test_vad_long() {
+    fn test_vad_english_1() {
+        let mut vad = Vad::new().unwrap();
+        let audio_samples = to_f32(hypr_data::english_1::AUDIO);
+        let prob = vad.run(&audio_samples).unwrap();
+        assert!(prob > 0.8);
+    }
+
+    #[test]
+    fn test_vad_english_2() {
         let mut vad = Vad::new().unwrap();
         let audio_samples = to_f32(hypr_data::english_2::AUDIO);
         let prob = vad.run(&audio_samples).unwrap();
