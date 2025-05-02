@@ -189,12 +189,14 @@ export function useEnhanceMutation({
       );
 
       const abortController = new AbortController();
+      const timeoutSignal = AbortSignal.timeout(60 * 1000);
+      const combinedSignal = AbortSignal.any([abortController.signal, timeoutSignal]);
       setEnhanceController(abortController);
 
       const provider = await modelProvider();
 
       const { text, textStream } = streamText({
-        abortSignal: abortController.signal,
+        abortSignal: combinedSignal,
         model: sessionId === onboardingSessionId
           ? provider.languageModel("onboardingModel")
           : provider.languageModel("defaultModel"),
