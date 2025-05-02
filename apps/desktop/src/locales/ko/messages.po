@@ -362,7 +362,11 @@ msgid "CEO"
 msgstr ""
 
 #: src/components/settings/views/general.tsx:150
-msgid "Choose the language you want to use for the application interface"
+#~ msgid "Choose the language you want to use for the application interface"
+#~ msgstr ""
+
+#: src/components/settings/views/general.tsx:150
+msgid "Choose the language you want to use for the speech-to-text model and language model"
 msgstr ""
 
 #: src/components/settings/views/billing.tsx:52

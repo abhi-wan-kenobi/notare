@@ -147,7 +147,7 @@ export default function General() {
                   <Trans>Language</Trans>
                 </FormLabel>
                 <FormDescription>
-                  <Trans>Choose the language you want to use for the application interface</Trans>
+                  <Trans>Choose the language you want to use for the speech-to-text model and language model</Trans>
                 </FormDescription>
                 <FormControl>
                   <Select
