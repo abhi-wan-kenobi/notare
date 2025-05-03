@@ -47,21 +47,32 @@ common_derives! {
 }
 
 common_derives! {
+    #[derive(Default)]
     pub struct ListenParams {
         #[specta(type = String)]
         #[schemars(with = "String")]
-        pub language: codes_iso_639::part_1::LanguageCode,
+        #[serde(serialize_with = "serialize_language", deserialize_with = "deserialize_language")]
+        pub language: hypr_language::Language,
         pub static_prompt: String,
         pub dynamic_prompt: String,
     }
 }
 
-impl Default for ListenParams {
-    fn default() -> Self {
-        Self {
-            language: codes_iso_639::part_1::LanguageCode::En,
-            static_prompt: "".to_string(),
-            dynamic_prompt: "".to_string(),
-        }
-    }
+use serde::Deserialize;
+use std::str::FromStr;
+
+fn serialize_language<S: serde::Serializer>(
+    lang: &hypr_language::Language,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let code = lang.iso639().code();
+    serializer.serialize_str(code)
+}
+
+fn deserialize_language<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<hypr_language::Language, D::Error> {
+    let str = String::deserialize(deserializer)?;
+    let iso639 = hypr_language::ISO639::from_str(&str).map_err(serde::de::Error::custom)?;
+    Ok(iso639.into())
 }

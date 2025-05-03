@@ -1,0 +1,18 @@
+[package]
+name = "language"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["whisper"]
+whisper = ["dep:hypr-whisper"]
+deepgram = ["dep:deepgram"]
+
+[dependencies]
+codes-iso-639 = { workspace = true }
+
+deepgram = { workspace = true, optional = true, features = ["listen"] }
+hypr-whisper = { workspace = true, optional = true }
+
+serde = { workspace = true }
+thiserror = { workspace = true }

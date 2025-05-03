@@ -3134,6 +3134,7 @@ dependencies = [
  "codes-iso-639",
  "data",
  "db-core",
+ "language",
  "libsql",
  "listener-interface",
  "schemars",
@@ -7140,6 +7141,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "language"
+version = "0.1.0"
+dependencies = [
+ "codes-iso-639",
+ "deepgram",
+ "serde",
+ "thiserror 2.0.12",
+ "whisper",
+]
+
+[[package]]
 name = "lazy-regex"
 version = "3.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7436,6 +7448,7 @@ name = "listener-interface"
 version = "0.1.0"
 dependencies = [
  "codes-iso-639",
+ "language",
  "schemars",
  "serde",
  "serde_bytes",
@@ -12356,6 +12369,7 @@ dependencies = [
  "deepgram",
  "futures-util",
  "hound",
+ "language",
  "listener-interface",
  "rtzr",
  "serde",
@@ -13108,6 +13122,7 @@ dependencies = [
  "db-user",
  "futures-util",
  "hound",
+ "language",
  "listener-interface",
  "objc2 0.6.1",
  "objc2-foundation 0.3.1",
@@ -13171,13 +13186,13 @@ dependencies = [
  "axum 0.8.3",
  "bytes",
  "chunker",
- "codes-iso-639",
  "data",
  "db-user",
  "file",
  "futures-util",
  "kalosm-common",
  "kalosm-sound",
+ "language",
  "listener-interface",
  "reqwest 0.12.15",
  "rodio",
@@ -15454,7 +15469,6 @@ version = "0.1.0"
 dependencies = [
  "audio-utils",
  "bytes",
- "codes-iso-639",
  "cpal",
  "data",
  "dirs 6.0.0",
@@ -15464,6 +15478,7 @@ dependencies = [
  "rodio",
  "serde",
  "serde_json",
+ "strum 0.26.3",
  "thiserror 2.0.12",
  "tokio",
  "tracing",
