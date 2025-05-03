@@ -1,49 +1,5 @@
 # Extension Development
 
-## File Structure (recommended)
-
-```
-extension-name/
-├── .storybook/                     # Storybook configuration
-├── assets/                         # Raw assets (images, videos)
-├── public/                         # Static files served as-is
-├── src/
-│   ├── stories/                    # Storybook stories for components
-│   │   ├── <widget-name-1>-1x1-1.stories.tsx
-│   │   ├── <widget-name-1>-1x1-2.stories.tsx
-│   │   ├── <widget-name-2>-2x2.stories.tsx
-│   │   └── <widget-name-2>-full.stories.tsx
-│   ├── widgets/                    # Widget implementations
-│   │   ├── components/             # Shared components
-│   │   │   └── <shared-component>.tsx
-│   │   └── <widget-name-1>/        # Example widget 1 implementation
-│   │   │   ├── 1x1-1.tsx           # First 1x1 layout widget
-│   │   │   ├── 1x1-2.tsx           # Second 1x1 layout widget
-│   │   │   └── index.tsx           # Widget group
-│   │   └── <widget-name-2>/        
-│   │       ├── 2x2.tsx             
-│   │       ├── full.tsx            
-│   │       └── index.tsx             
-│   ├── globals.css                 # Global styles
-│   ├── index.tsx                   # Extension entry point and initialization
-│   ├── types.ts                    # Type definitions
-│   └── utils.ts                    # Utility functions
-├── config.json                     # Extension configuration
-├── package.json                    # Dependencies and scripts
-├── tailwind.config.ts              # Tailwind CSS configuration
-└── tsconfig.json                   # TypeScript configuration
-```
-
-### Key Directories and Files
-
-- **src/stories/**: Contains Storybook stories for testing widgets in isolation
-- **src/widgets/**: Main widget implementations
-  - **components/**: Reusable components shared across widgets
-  - **\<widget-name\>/**: Specific widget implementation (e.g., live, replay)
-- **src/types.ts**: TypeScript type definitions and interfaces
-- **src/utils.ts**: Shared utility functions
-- **config.json**: Extension metadata and configuration
-
 ## Interface
 
 All extension must **default-export** [Extension](https://github.com/fastrepl/hyprnote/blob/main/extensions/types.ts) interface.

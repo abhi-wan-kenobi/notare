@@ -12,7 +12,7 @@ export async function showModelSelectToast(language: string) {
   }
 
   const id = "language-model-mismatch";
-
+  // TODO: this should not pop up if using Cloud
   toast({
     id,
     title: "Speech-to-Text Model Mismatch",
