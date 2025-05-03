@@ -383,7 +383,7 @@ mod tests {
         let llama = get_model();
         let request = LlamaRequest {
             messages: english_1_messages(),
-            grammar: Some(hypr_gbnf::GBNF::Enhance(None).build()),
+            grammar: Some(hypr_gbnf::GBNF::Enhance(Some(vec!["header".to_string()])).build()),
         };
 
         run(&llama, request, true).await;

@@ -4300,7 +4300,7 @@ dependencies = [
  "colored",
  "gbnf-validator",
  "indoc",
- "minijinja",
+ "insta",
 ]
 
 [[package]]
