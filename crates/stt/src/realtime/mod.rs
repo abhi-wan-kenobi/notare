@@ -82,16 +82,16 @@ impl Client {
 
     pub async fn for_language(&self, language: hypr_language::Language) -> MultiClient {
         match language.iso639() {
-            // hypr_language::ISO639::Ko => {
-            //     let clova = hypr_clova::realtime::Client::builder()
-            //         .api_key(self.clova_api_key.as_ref().unwrap())
-            //         .keywords(vec!["하이퍼노트".to_string()])
-            //         .build()
-            //         .await
-            //         .unwrap();
-            //     MultiClient::Clova(clova)
-            // }
             hypr_language::ISO639::Ko => {
+                let clova = hypr_clova::realtime::Client::builder()
+                    .api_key(self.clova_api_key.as_ref().unwrap())
+                    .keywords(vec!["하이퍼노트".to_string()])
+                    .build()
+                    .await
+                    .unwrap();
+                MultiClient::Clova(clova)
+            }
+            hypr_language::ISO639::De => {
                 let whisper = hypr_whisper::cloud::WhisperClient::builder()
                     .api_base(std::env::var("WHISPER_API_BASE").unwrap())
                     .api_key(std::env::var("WHISPER_API_KEY").unwrap())
