@@ -14,11 +14,6 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. js-lingui-explicit-id
-#: src/components/settings/views/general.tsx:198
-msgid "Type jargons (e.g., Blitz Meeting, PaC Squad)"
-msgstr ""
-
-#. js-lingui-explicit-id
 #: ../../packages/utils/src/datetime.ts:22
 msgid "{days} day{plural} later"
 msgstr ""
@@ -215,12 +210,17 @@ msgstr ""
 msgid "{weeks} weeks later"
 msgstr ""
 
+#. js-lingui-explicit-id
+#: src/components/settings/views/general.tsx:198
+#~ msgid "Type jargons (e.g., Blitz Meeting, PaC Squad)"
+#~ msgstr ""
+
 #. placeholder {0}: type === "google-calendar" ? "Google Calendar" : "Outlook Calendar"
 #. placeholder {0}: disabled ? "Wait..." : isHovered ? "Resume" : "Ended"
 #. placeholder {0}: disabled ? "Wait..." : "Play again"
 #: src/components/settings/components/calendar/cloud-calendar-integration-details.tsx:36
-#: src/components/editor-area/note-header/listen-button.tsx:193
-#: src/components/editor-area/note-header/listen-button.tsx:232
+#: src/components/editor-area/note-header/listen-button.tsx:275
+#: src/components/editor-area/note-header/listen-button.tsx:314
 msgid "{0}"
 msgstr ""
 
@@ -365,7 +365,7 @@ msgstr ""
 #~ msgid "Choose the language you want to use for the application interface"
 #~ msgstr ""
 
-#: src/components/settings/views/general.tsx:155
+#: src/components/settings/views/general.tsx:135
 msgid "Choose the language you want to use for the speech-to-text model and language model"
 msgstr ""
 
@@ -428,6 +428,10 @@ msgstr ""
 
 #: src/components/settings/views/billing.tsx:66
 msgid "Current Plan"
+msgstr ""
+
+#: src/components/editor-area/note-header/listen-button.tsx:221
+msgid "Custom instruction"
 msgstr ""
 
 #: src/components/settings/views/ai.tsx:264
@@ -555,7 +559,7 @@ msgstr ""
 msgid "Grant Access"
 msgstr ""
 
-#: src/components/settings/views/general.tsx:129
+#: src/components/settings/views/general.tsx:109
 msgid "Help us improve Hyprnote by sharing anonymous usage data"
 msgstr ""
 
@@ -571,6 +575,10 @@ msgstr ""
 msgid "How can I help you today?"
 msgstr ""
 
+#: src/components/editor-area/note-header/chips/instruction-chip.tsx:63
+#~ msgid "Instruction"
+#~ msgstr ""
+
 #: src/components/settings/views/billing.tsx:38
 msgid "Integration with other apps like Notion and Google Calendar"
 msgstr ""
@@ -584,8 +592,8 @@ msgid "Invite members"
 msgstr ""
 
 #: src/components/settings/views/general.tsx:186
-msgid "Jargons"
-msgstr ""
+#~ msgid "Jargons"
+#~ msgstr ""
 
 #: src/components/settings/views/profile.tsx:139
 msgid "Job title"
@@ -599,7 +607,7 @@ msgstr ""
 msgid "Lab"
 msgstr ""
 
-#: src/components/settings/views/general.tsx:152
+#: src/components/settings/views/general.tsx:132
 msgid "Language"
 msgstr ""
 
@@ -755,7 +763,7 @@ msgstr ""
 msgid "Owner"
 msgstr ""
 
-#: src/components/editor-area/note-header/listen-button.tsx:316
+#: src/components/editor-area/note-header/listen-button.tsx:398
 msgid "Pause"
 msgstr ""
 
@@ -763,7 +771,7 @@ msgstr ""
 msgid "people"
 msgstr ""
 
-#: src/components/editor-area/note-header/listen-button.tsx:212
+#: src/components/editor-area/note-header/listen-button.tsx:294
 msgid "Play video"
 msgstr ""
 
@@ -773,6 +781,10 @@ msgstr ""
 
 #: src/components/settings/components/settings-header.tsx:22
 msgid "Profile"
+msgstr ""
+
+#: src/components/editor-area/note-header/listen-button.tsx:230
+msgid "Provide descriptions about the meeting. Company specific terms, acronyms, jargons... any thing!"
 msgstr ""
 
 #: src/components/share-and-permission/publish.tsx:15
@@ -800,7 +812,7 @@ msgstr ""
 msgid "Required to transcribe your voice during meetings"
 msgstr ""
 
-#: src/components/editor-area/note-header/listen-button.tsx:102
+#: src/components/editor-area/note-header/listen-button.tsx:103
 msgid "Resume"
 msgstr ""
 
@@ -842,7 +854,7 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
-#: src/components/settings/views/general.tsx:126
+#: src/components/settings/views/general.tsx:106
 msgid "Share usage data"
 msgstr ""
 
@@ -866,15 +878,19 @@ msgstr ""
 msgid "Start Annual Plan"
 msgstr ""
 
+#: src/components/editor-area/note-header/listen-button.tsx:249
+msgid "Start Meeting"
+msgstr ""
+
 #: src/components/settings/views/billing.tsx:75
 msgid "Start Monthly Plan"
 msgstr ""
 
 #: src/components/editor-area/note-header/listen-button.tsx:168
-msgid "Start recording"
-msgstr ""
+#~ msgid "Start recording"
+#~ msgstr ""
 
-#: src/components/editor-area/note-header/listen-button.tsx:324
+#: src/components/editor-area/note-header/listen-button.tsx:406
 msgid "Stop"
 msgstr ""
 
@@ -988,7 +1004,7 @@ msgid "View calendar"
 msgstr ""
 
 #: src/components/left-sidebar/events-list.tsx:147
-#: src/components/editor-area/note-header/chips/event-chip.tsx:43
+#: src/components/editor-area/note-header/chips/event-chip.tsx:50
 msgid "View in calendar"
 msgstr ""
 
@@ -1013,8 +1029,8 @@ msgid "Works offline"
 msgstr ""
 
 #: src/components/settings/views/general.tsx:189
-msgid "You can make Hyprnote takes these words into account when transcribing"
-msgstr ""
+#~ msgid "You can make Hyprnote takes these words into account when transcribing"
+#~ msgstr ""
 
 #: src/components/settings/views/profile.tsx:213
 msgid "Your LinkedIn username (the part after linkedin.com/in/)"
