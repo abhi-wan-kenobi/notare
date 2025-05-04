@@ -2,11 +2,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use statig::prelude::*;
+
 use tauri::{ipc::Channel, Manager};
+use tauri_specta::Event;
 
 use futures_util::StreamExt;
-use tauri_specta::Event;
 use tokio::sync::{mpsc, Mutex};
+use tokio::task::JoinSet;
 
 use crate::{SessionEvent, SessionEventStarted, SessionEventTimelineView, StatusEvent};
 use hypr_audio::AsyncSource;
@@ -23,10 +25,8 @@ pub struct Session {
     speaker_muted_tx: Option<tokio::sync::watch::Sender<bool>>,
     speaker_muted_rx: Option<tokio::sync::watch::Receiver<bool>>,
     silence_stream_tx: Option<std::sync::mpsc::Sender<()>>,
-    mic_stream_handle: Option<tokio::task::JoinHandle<()>>,
-    speaker_stream_handle: Option<tokio::task::JoinHandle<()>>,
-    listen_stream_handle: Option<tokio::task::JoinHandle<()>>,
     session_state_tx: Option<tokio::sync::watch::Sender<State>>,
+    tasks: Option<JoinSet<()>>,
 }
 
 impl Session {
@@ -40,9 +40,7 @@ impl Session {
             speaker_muted_tx: None,
             speaker_muted_rx: None,
             silence_stream_tx: None,
-            mic_stream_handle: None,
-            speaker_stream_handle: None,
-            listen_stream_handle: None,
+            tasks: None,
             session_state_tx: None,
         }
     }
@@ -89,6 +87,8 @@ impl Session {
         let (session_state_tx, session_state_rx) =
             tokio::sync::watch::channel(State::RunningActive {});
 
+        let (stop_tx, mut stop_rx) = tokio::sync::mpsc::channel::<()>(1);
+
         self.mic_muted_tx = Some(mic_muted_tx);
         self.mic_muted_rx = Some(mic_muted_rx_main.clone());
         self.speaker_muted_tx = Some(speaker_muted_tx);
@@ -120,7 +120,9 @@ impl Session {
             self.silence_stream_tx = Some(silence_stream_tx);
         }
 
-        self.mic_stream_handle = Some(tokio::spawn({
+        let mut tasks = JoinSet::new();
+
+        tasks.spawn({
             let mic_muted_rx = mic_muted_rx_main.clone();
             async move {
                 let mut is_muted = *mic_muted_rx.borrow();
@@ -143,9 +145,9 @@ impl Session {
                     }
                 }
             }
-        }));
+        });
 
-        self.speaker_stream_handle = Some(tokio::spawn({
+        tasks.spawn({
             let speaker_muted_rx = speaker_muted_rx_main.clone();
             async move {
                 let mut is_muted = *speaker_muted_rx.borrow();
@@ -168,12 +170,12 @@ impl Session {
                     }
                 }
             }
-        }));
+        });
 
         let app_dir = self.app.path().app_data_dir().unwrap();
         let channels = self.channels.clone();
 
-        tokio::spawn(async move {
+        tasks.spawn(async move {
             let dir = app_dir.join(session_id);
             std::fs::create_dir_all(&dir).unwrap();
             let path = dir.join("audio.wav");
@@ -222,6 +224,7 @@ impl Session {
                     wav.write_sample(sample).unwrap();
                     if let Err(e) = mixed_tx.send(sample).await {
                         tracing::error!("mixed_tx_send_error: {:?}", e.0);
+                        return;
                     }
                 }
             }
@@ -235,9 +238,11 @@ impl Session {
         let listen_stream = listen_client.from_audio(audio_stream).await?;
         let channels = self.channels.clone();
 
-        self.listen_stream_handle = Some(tokio::spawn({
+        // Spawn listen stream task
+        tasks.spawn({
             let app = self.app.clone();
             let timeline = timeline.clone();
+            let stop_tx = stop_tx.clone();
 
             async move {
                 futures_util::pin_mut!(listen_stream);
@@ -266,8 +271,25 @@ impl Session {
                     .await
                     .unwrap();
                 }
+
+                tracing::info!("listen_stream_ended");
+                if stop_tx.send(()).await.is_err() {
+                    tracing::warn!("failed_to_send_stop_signal");
+                }
             }
-        }));
+        });
+
+        let app_handle = self.app.clone();
+        tasks.spawn(async move {
+            if stop_rx.recv().await.is_some() {
+                if let Some(state) = app_handle.try_state::<crate::SharedState>() {
+                    let mut guard = state.lock().await;
+                    guard.fsm.handle(&crate::fsm::StateEvent::Stop).await;
+                }
+            }
+        });
+
+        self.tasks = Some(tasks);
 
         Ok(())
     }
@@ -280,19 +302,11 @@ impl Session {
             let _ = tx.send(());
         }
 
-        if let Some(handle) = self.mic_stream_handle.take() {
-            handle.abort();
-            let _ = handle.await;
-        }
-
-        if let Some(handle) = self.speaker_stream_handle.take() {
-            handle.abort();
-            let _ = handle.await;
-        }
-
-        if let Some(handle) = self.listen_stream_handle.take() {
-            handle.abort();
-            let _ = handle.await;
+        if let Some(mut tasks) = self.tasks.take() {
+            tasks.abort_all();
+            while let Some(res) = tasks.join_next().await {
+                let _ = res;
+            }
         }
 
         let mut channels = self.channels.lock().await;

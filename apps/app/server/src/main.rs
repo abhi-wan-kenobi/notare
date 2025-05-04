@@ -42,7 +42,7 @@ use clerk_rs::{
     ClerkConfiguration,
 };
 
-use state::{AnalyticsState, AuthState, WorkerState};
+use state::{AuthState, WorkerState};
 
 fn main() {
     #[cfg(debug_assertions)]
