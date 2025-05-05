@@ -138,6 +138,12 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
                 #[cfg(debug_assertions)]
                 hypr_db_user::init::seed(user_db, &user_id).await.unwrap();
             }
+
+            #[cfg(target_os = "macos")]
+            {
+                use tauri_plugin_apple_calendar::AppleCalendarPluginExt;
+                self.start_worker(&user_id).await?;
+            }
         }
 
         Ok(())
