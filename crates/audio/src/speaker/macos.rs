@@ -35,6 +35,12 @@ pub struct SpeakerStream {
 
 impl SpeakerStream {
     pub fn sample_rate(&self) -> u32 {
+        tracing::info!(
+            tap_sample_rate = self.stream_desc.sample_rate,
+            override_sample_rate = self.sample_rate_override,
+            "speaker_stream"
+        );
+
         self.sample_rate_override
             .unwrap_or(self.stream_desc.sample_rate as u32)
     }
@@ -53,8 +59,9 @@ impl SpeakerInput {
 
         tracing::info!(
             name = ?output_device.name().unwrap().to_string(),
-            sample_rate = ?output_device.actual_sample_rate().unwrap(),
-            "output_device"
+            nominal_sample_rate = ?output_device.nominal_sample_rate().unwrap(),
+            actual_sample_rate = ?output_device.actual_sample_rate().unwrap(),
+            "speaker_output_device"
         );
 
         let sub_device = cf::DictionaryOf::with_keys_values(
