@@ -65,7 +65,7 @@ impl<S, E> RealtimeSpeechToText<S, E> for crate::deepgram::DeepgramClient {
                                     text: word_text.clone(),
                                     start: (w.start * 1000.0) as u64,
                                     end: (w.end * 1000.0) as u64,
-                                    confidence: None,
+                                    confidence: Some(w.confidence as f32),
                                 });
 
                                 if let Some(speaker) = w.speaker {
@@ -73,7 +73,7 @@ impl<S, E> RealtimeSpeechToText<S, E> for crate::deepgram::DeepgramClient {
                                         speaker,
                                         start: (w.start * 1000.0) as u64,
                                         end: (w.end * 1000.0) as u64,
-                                        confidence: None,
+                                        confidence: Some(w.confidence as f32),
                                     });
                                 }
                             }
