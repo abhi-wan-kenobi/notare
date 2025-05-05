@@ -126,7 +126,11 @@ pub async fn perform_events_sync(_job: Job, ctx: Data<WorkerState>) -> Result<()
             platform: db_calendar.platform.into(),
         })
         .await
-        .unwrap();
+        .map_err(|e| {
+            tracing::error!("list_events_error: {}", e);
+            e
+        })
+        .unwrap_or_default();
 
         let existing_events = ctx
             .db

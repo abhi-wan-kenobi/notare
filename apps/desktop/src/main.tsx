@@ -110,7 +110,7 @@ if (!rootElement.innerHTML) {
               <App />
               <Toaster
                 position="bottom-left"
-                expand={process.env.NODE_ENV === "development"}
+                expand={true}
                 offset={16}
                 duration={Infinity}
                 swipeDirections={[]}
