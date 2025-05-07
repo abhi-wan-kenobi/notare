@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use statig::prelude::*;
 
@@ -15,6 +16,7 @@ use hypr_audio::AsyncSource;
 use hypr_timeline::{Timeline, TimelineFilter};
 
 const SAMPLE_RATE: u32 = 16000;
+const AUDIO_AMPLITUDE_THROTTLE: Duration = Duration::from_millis(100);
 
 pub struct Session {
     app: tauri::AppHandle,
@@ -198,6 +200,8 @@ impl Session {
             });
             Session::broadcast(&channels, start_event).await.unwrap();
 
+            let mut last_broadcast = Instant::now();
+
             while let (Some(mic_chunk), Some(speaker_chunk)) =
                 (mic_rx.recv().await, speaker_rx.recv().await)
             {
@@ -207,11 +211,18 @@ impl Session {
                     continue;
                 }
 
-                let event = crate::SessionEventAudioAmplitude::from((&mic_chunk, &speaker_chunk));
+                let now = Instant::now();
+                if now.duration_since(last_broadcast) >= AUDIO_AMPLITUDE_THROTTLE {
+                    let event =
+                        crate::SessionEventAudioAmplitude::from((&mic_chunk, &speaker_chunk));
 
-                Session::broadcast(&channels, SessionEvent::AudioAmplitude(event))
-                    .await
-                    .unwrap();
+                    if let Err(e) =
+                        Session::broadcast(&channels, SessionEvent::AudioAmplitude(event)).await
+                    {
+                        tracing::error!("broadcast_error: {:?}", e);
+                    }
+                    last_broadcast = now;
+                }
 
                 let mixed: Vec<f32> = mic_chunk
                     .into_iter()
