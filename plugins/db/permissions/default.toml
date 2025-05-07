@@ -31,6 +31,7 @@ permissions = [
     "allow-set-config",
     # user
     "allow-get-human",
+    "allow-delete-human",
     "allow-upsert-human",
     "allow-list-humans",
     "allow-get-organization",
@@ -38,6 +39,7 @@ permissions = [
     "allow-list-organizations",
     "allow-list-organization-members",
     "allow-upsert-organization",
+    "allow-delete-organization",
     # chat
     "allow-list-chat-groups",
     "allow-list-chat-messages",

@@ -29,6 +29,14 @@ impl UserDatabase {
         Ok(organization)
     }
 
+    pub async fn delete_organization(&self, id: impl Into<String>) -> Result<(), crate::Error> {
+        let conn = self.conn()?;
+
+        let sql = format!("DELETE FROM {} WHERE id = ?", Organization::sql_table());
+        conn.query(&sql, vec![id.into()]).await?;
+        Ok(())
+    }
+
     pub async fn list_organizations(
         &self,
         filter: Option<ListOrganizationFilter>,

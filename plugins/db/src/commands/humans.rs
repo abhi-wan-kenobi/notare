@@ -19,6 +19,24 @@ pub async fn get_human(
 #[tauri::command]
 #[specta::specta]
 #[tracing::instrument(skip(state))]
+pub async fn delete_human(
+    state: tauri::State<'_, crate::ManagedState>,
+    id: String,
+) -> Result<(), String> {
+    let guard = state.lock().await;
+
+    let db = guard
+        .db
+        .as_ref()
+        .ok_or(crate::Error::NoneDatabase)
+        .map_err(|e| e.to_string())?;
+
+    db.delete_human(id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+#[tracing::instrument(skip(state))]
 pub async fn upsert_human(
     state: tauri::State<'_, crate::ManagedState>,
     human: hypr_db_user::Human,

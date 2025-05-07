@@ -13,6 +13,14 @@ impl UserDatabase {
         Ok(row.map(|row| libsql::de::from_row(&row)).transpose()?)
     }
 
+    pub async fn delete_human(&self, id: impl Into<String>) -> Result<(), crate::Error> {
+        let conn = self.conn()?;
+
+        let sql = format!("DELETE FROM {} WHERE id = ?", Human::sql_table());
+        conn.query(&sql, vec![id.into()]).await?;
+        Ok(())
+    }
+
     pub async fn upsert_human(&self, human: Human) -> Result<Human, crate::Error> {
         let conn = self.conn()?;
 

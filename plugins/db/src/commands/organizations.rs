@@ -21,6 +21,24 @@ pub async fn list_organizations(
 #[tauri::command]
 #[specta::specta]
 #[tracing::instrument(skip(state))]
+pub async fn delete_organization(
+    state: tauri::State<'_, crate::ManagedState>,
+    id: String,
+) -> Result<(), String> {
+    let guard = state.lock().await;
+
+    let db = guard
+        .db
+        .as_ref()
+        .ok_or(crate::Error::NoneDatabase)
+        .map_err(|e| e.to_string())?;
+
+    db.delete_organization(id).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+#[tracing::instrument(skip(state))]
 pub async fn list_organization_members(
     state: tauri::State<'_, crate::ManagedState>,
     organization_id: String,

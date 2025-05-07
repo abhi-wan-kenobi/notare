@@ -28,6 +28,7 @@ Default permissions for the plugin
 - `allow-get-config`
 - `allow-set-config`
 - `allow-get-human`
+- `allow-delete-human`
 - `allow-upsert-human`
 - `allow-list-humans`
 - `allow-get-organization`
@@ -35,6 +36,7 @@ Default permissions for the plugin
 - `allow-list-organizations`
 - `allow-list-organization-members`
 - `allow-upsert-organization`
+- `allow-delete-organization`
 - `allow-list-chat-groups`
 - `allow-list-chat-messages`
 - `allow-create-chat-group`
@@ -104,6 +106,58 @@ Enables the create_chat_group command without any pre-configured scope.
 <td>
 
 Denies the create_chat_group command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-delete-human`
+
+</td>
+<td>
+
+Enables the delete_human command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-delete-human`
+
+</td>
+<td>
+
+Denies the delete_human command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-delete-organization`
+
+</td>
+<td>
+
+Enables the delete_organization command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-delete-organization`
+
+</td>
+<td>
+
+Denies the delete_organization command without any pre-configured scope.
 
 </td>
 </tr>
