@@ -37,8 +37,9 @@ export const createSearchStore = (userId: string) => {
     matches: [],
     searchInputRef: null,
     setQuery: async (query: string) => {
-      const [sessions, humans, organizations] = await Promise.all([
-        dbCommands.listSessions({ type: "search", query, limit: 5, user_id: userId }),
+      const [sessions, events, humans, organizations] = await Promise.all([
+        dbCommands.listSessions({ type: "search", query, limit: 10, user_id: userId }),
+        dbCommands.listEvents({ type: "search", query, limit: 5, user_id: userId }),
         dbCommands.listHumans({ search: [3, query] }),
         dbCommands.listOrganizations({ search: [3, query] }),
       ]);
@@ -47,6 +48,10 @@ export const createSearchStore = (userId: string) => {
         ...sessions.map((session) => ({
           type: "session" as const,
           item: session,
+        })),
+        ...events.map((event) => ({
+          type: "event" as const,
+          item: event,
         })),
         ...humans.map((human) => ({
           type: "human" as const,
