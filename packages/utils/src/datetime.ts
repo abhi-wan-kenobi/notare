@@ -246,7 +246,7 @@ export function formatUpcomingTime(date: Date | string): string {
 export function formatDate(date: Date | string): string {
   const d = new Date(date);
   const now = new Date();
-  const diffInDays = FNS.differenceInCalendarDays(now, d);  
+  const diffInDays = FNS.differenceInCalendarDays(now, d);
   if (diffInDays === 0) {
     return format(d, "h:mm a");
   } else if (diffInDays > 0) {
