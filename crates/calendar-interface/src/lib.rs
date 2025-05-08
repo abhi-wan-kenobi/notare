@@ -57,7 +57,7 @@ pub struct Participant {
 pub struct EventFilter {
     pub from: DateTime<Utc>,
     pub to: DateTime<Utc>,
-    pub calendars: Vec<Calendar>,
+    pub calendar_tracking_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

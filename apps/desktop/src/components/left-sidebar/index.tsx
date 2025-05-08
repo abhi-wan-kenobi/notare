@@ -48,7 +48,7 @@ export default function LeftSidebar() {
         user_id: userId,
         limit: 3,
         start: new Date().toISOString(),
-        end: addDays(new Date(), 40).toISOString(),
+        end: addDays(new Date(), 28).toISOString(),
       });
 
       const sessions = await Promise.all(

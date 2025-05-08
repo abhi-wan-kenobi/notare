@@ -107,7 +107,7 @@ impl Handle {
             .into_iter()
             .filter(|c| {
                 let id = unsafe { c.calendarIdentifier() }.to_string();
-                filter.calendars.iter().any(|c| c.id.eq(&id))
+                filter.calendar_tracking_id.eq(&id)
             })
             .collect();
 
@@ -180,11 +180,7 @@ impl CalendarSource for Handle {
                 let calendar_id = unsafe { calendar.calendarIdentifier() };
 
                 // This is theoretically not needed, but it seems like the 'calendars' filter does not work in the predicate.
-                if !filter
-                    .calendars
-                    .iter()
-                    .any(|c| c.id.eq(&calendar_id.to_string()))
-                {
+                if !filter.calendar_tracking_id.eq(&calendar_id.to_string()) {
                     return None;
                 }
 
@@ -294,7 +290,7 @@ mod tests {
     async fn test_list_events() {
         let handle = Handle::new();
         let filter = EventFilter {
-            calendars: vec![],
+            calendar_tracking_id: "".to_string(),
             from: chrono::Utc::now() - chrono::Duration::days(100),
             to: chrono::Utc::now() + chrono::Duration::days(100),
         };

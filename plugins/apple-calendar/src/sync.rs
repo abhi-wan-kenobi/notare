@@ -1,5 +1,8 @@
 use chrono::Utc;
-use hypr_calendar_interface::{Calendar, CalendarSource, Event, EventFilter};
+use hypr_calendar_interface::{CalendarSource, EventFilter};
+use hypr_db_user::{
+    GetSessionFilter, ListEventFilter, ListEventFilterCommon, ListEventFilterSpecific,
+};
 
 pub async fn sync_calendars(
     db: hypr_db_user::UserDatabase,
@@ -65,6 +68,10 @@ pub async fn sync_calendars(
     Ok(())
 }
 
+// 1. For selected calendars: we fetch ~28D future events and insert them.
+//    - Event updates are handled through upsert operations.
+// 2. For ~28D future events: if the attached calendar is de-selected, we should remove them.
+//    - The only exception is when an event has an attached note.
 pub async fn sync_events(
     db: hypr_db_user::UserDatabase,
     user_id: String,
@@ -86,25 +93,68 @@ pub async fn sync_events(
         items
     };
 
-    let now = Utc::now();
-    let future_date = now + chrono::Duration::days(28);
+    let db_existing_events = {
+        let items = db
+            .list_events(Some(ListEventFilter {
+                common: ListEventFilterCommon {
+                    user_id: user_id.clone(),
+                    limit: Some(200),
+                },
+                specific: ListEventFilterSpecific::DateRange {
+                    start: Utc::now(),
+                    end: Utc::now() + chrono::Duration::days(28),
+                },
+            }))
+            .await
+            .map_err(|e| crate::Error::DatabaseError(e.into()))?
+            .into_iter()
+            .collect::<Vec<hypr_db_user::Event>>();
+
+        tracing::info!("db_existing_events_len: {}", items.len());
+        items
+    };
+
+    for db_event in db_existing_events {
+        let session = db
+            .get_session(GetSessionFilter::CalendarEventId(db_event.id.clone()))
+            .await
+            .map_err(|e| crate::Error::DatabaseError(e.into()))?;
+
+        let is_selected_cal = db_selected_calendars
+            .iter()
+            .any(|c| c.tracking_id == db_event.calendar_id.clone().unwrap_or_default());
+
+        if is_selected_cal && session.is_none() {
+            if let Err(e) = db.delete_event(&db_event.id).await {
+                tracing::error!("delete_event_error: {}", e);
+            }
+        }
+    }
 
     for db_calendar in db_selected_calendars {
-        let fresh_events = list_events(
-            Calendar {
-                id: db_calendar.tracking_id,
-                name: db_calendar.name,
-                platform: db_calendar.platform.into(),
-                source: None,
-            },
-            now,
-            future_date,
-        )
-        .await
-        .map_err(|e| {
-            tracing::error!("list_events_error: {}", e);
-            e
+        let fresh_events = tauri::async_runtime::spawn_blocking(move || {
+            let handle = hypr_calendar_apple::Handle::new();
+
+            let filter = EventFilter {
+                calendar_tracking_id: db_calendar.tracking_id,
+                from: Utc::now(),
+                to: Utc::now() + chrono::Duration::days(28),
+            };
+
+            let events =
+                tauri::async_runtime::block_on(handle.list_events(filter)).unwrap_or_default();
+
+            tracing::info!(
+                "calendar: {}, events: {:?}",
+                db_calendar.name,
+                events
+                    .iter()
+                    .map(|e| e.name.clone())
+                    .collect::<Vec<String>>()
+            );
+            events
         })
+        .await
         .unwrap_or_default();
 
         let events_to_upsert = fresh_events
@@ -130,27 +180,6 @@ pub async fn sync_events(
     }
 
     Ok(())
-}
-
-pub async fn list_events(
-    calendar: Calendar,
-    from: chrono::DateTime<Utc>,
-    to: chrono::DateTime<Utc>,
-) -> Result<Vec<Event>, String> {
-    let filter = EventFilter {
-        calendars: vec![calendar],
-        from,
-        to,
-    };
-
-    let events = tauri::async_runtime::spawn_blocking(move || {
-        let handle = hypr_calendar_apple::Handle::new();
-        tauri::async_runtime::block_on(handle.list_events(filter)).unwrap_or_default()
-    })
-    .await
-    .map_err(|e| e.to_string())?;
-
-    Ok(events)
 }
 
 pub async fn check_calendar_access() -> Result<(), crate::Error> {

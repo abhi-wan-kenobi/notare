@@ -109,7 +109,7 @@ impl UserDatabase {
                 specific: ListEventFilterSpecific::DateRange { start, end },
             }) => {
                 conn.query(
-                    "SELECT * FROM events WHERE user_id = ? AND start_date BETWEEN ? AND ? ORDER BY start_date DESC LIMIT ?",
+                    "SELECT * FROM events WHERE user_id = ? AND start_date BETWEEN ? AND ? ORDER BY start_date ASC LIMIT ?",
                     vec![user_id, start.to_rfc3339(), end.to_rfc3339(), limit.unwrap_or(100).to_string()],
                 )
                 .await?

@@ -80,7 +80,7 @@ pub async fn perform(job: Job, ctx: Data<WorkerState>) -> Result<(), Error> {
                 let gcal = hypr_calendar_google::Handle::new(token).await;
 
                 let filter = hypr_calendar_interface::EventFilter {
-                    calendars: vec![],
+                    calendar_tracking_id: "TODO".to_string(),
                     from: now - chrono::Duration::days(1),
                     to: now + chrono::Duration::days(1),
                 };
