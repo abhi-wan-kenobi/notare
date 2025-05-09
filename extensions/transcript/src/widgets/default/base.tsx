@@ -35,12 +35,15 @@ export const TranscriptBase: React.FC<TranscriptBaseProps> = ({
     safeNavigate({ type: "settings" }, url);
   };
 
-  const audioExist = useQuery({
-    refetchInterval: 2000,
-    enabled: !!sessionId,
-    queryKey: ["audioExist", sessionId],
-    queryFn: () => miscCommands.audioExist(sessionId!),
-  });
+  const audioExist = useQuery(
+    {
+      refetchInterval: 2500,
+      enabled: !!sessionId,
+      queryKey: ["audioExist", sessionId],
+      queryFn: () => miscCommands.audioExist(sessionId!),
+    },
+    wrapperProps.queryClient,
+  );
 
   const handleOpenSession = () => {
     if (sessionId) {
