@@ -1,5 +1,6 @@
 const COMMANDS: &[&str] = &[
     // calendar
+    "get_calendar",
     "list_calendars",
     "upsert_calendar",
     "toggle_calendar_selected",

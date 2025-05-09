@@ -17,6 +17,7 @@ Default permissions for the plugin
 - `allow-session-get-event`
 - `allow-get-timeline-view`
 - `allow-get-timeline-view-onboarding`
+- `allow-get-calendar`
 - `allow-list-calendars`
 - `allow-upsert-calendar`
 - `allow-toggle-calendar-selected`
@@ -210,6 +211,32 @@ Enables the delete_template command without any pre-configured scope.
 <td>
 
 Denies the delete_template command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:allow-get-calendar`
+
+</td>
+<td>
+
+Enables the get_calendar command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`db:deny-get-calendar`
+
+</td>
+<td>
+
+Denies the get_calendar command without any pre-configured scope.
 
 </td>
 </tr>

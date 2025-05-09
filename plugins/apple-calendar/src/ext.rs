@@ -1,6 +1,7 @@
 use std::future::Future;
 
 pub trait AppleCalendarPluginExt<R: tauri::Runtime> {
+    fn open_calendar(&self) -> Result<(), String>;
     fn open_calendar_access_settings(&self) -> Result<(), String>;
     fn open_contacts_access_settings(&self) -> Result<(), String>;
     fn calendar_access_status(&self) -> bool;
@@ -14,6 +15,29 @@ pub trait AppleCalendarPluginExt<R: tauri::Runtime> {
 }
 
 impl<R: tauri::Runtime, T: tauri::Manager<R>> crate::AppleCalendarPluginExt<R> for T {
+    #[tracing::instrument(skip_all)]
+    fn open_calendar(&self) -> Result<(), String> {
+        let script = String::from(
+            "
+            tell application \"Calendar\"
+                activate
+                switch view to month view
+                view calendar at current date
+            end tell
+        ",
+        );
+
+        std::process::Command::new("osascript")
+            .arg("-e")
+            .arg(script)
+            .spawn()
+            .map_err(|e| e.to_string())?
+            .wait()
+            .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
     #[tracing::instrument(skip_all)]
     fn open_calendar_access_settings(&self) -> Result<(), String> {
         std::process::Command::new("open")

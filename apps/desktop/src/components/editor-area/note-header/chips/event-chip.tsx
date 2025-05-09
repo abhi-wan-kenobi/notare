@@ -1,8 +1,10 @@
 import { Trans } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { CalendarIcon, VideoIcon } from "lucide-react";
 
 import { useHypr } from "@/contexts";
+import { commands as appleCalendarCommands } from "@hypr/plugin-apple-calendar";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as miscCommands } from "@hypr/plugin-misc";
 import { Button } from "@hypr/ui/components/ui/button";
@@ -35,6 +37,23 @@ export function EventChip({ sessionId }: EventChipProps) {
     },
   });
 
+  const calendar = useQuery({
+    enabled: !!event.data?.calendar_id,
+    queryKey: ["calendar", event.data?.calendar_id],
+    queryFn: async () => {
+      const id = event.data?.calendar_id!;
+      return dbCommands.getCalendar(id);
+    },
+  });
+
+  const handleClickCalendar = () => {
+    if (calendar.data) {
+      if (calendar.data.platform === "Apple") {
+        appleCalendarCommands.openCalendar();
+      }
+    }
+  };
+
   const date = event.data?.start_date ?? sessionCreatedAt;
 
   return (
@@ -57,9 +76,25 @@ export function EventChip({ sessionId }: EventChipProps) {
       <PopoverContent align="start" className="shadow-lg w-72">
         <div className="flex flex-col gap-2">
           <div className="font-semibold">{event.data?.name}</div>
-          <div className="text-sm text-neutral-600">{event.data?.note}</div>
-          <p>{event.data?.meetingLink}</p>
-          <Button variant="outline">
+          <div className="text-sm text-neutral-600 whitespace-pre-wrap break-words max-h-24 overflow-y-auto">
+            {event.data?.note}
+          </div>
+          {event.data?.meetingLink && (
+            <Button
+              variant="outline"
+              className="flex items-center gap-2 text-xs overflow-hidden text-ellipsis whitespace-nowrap"
+              onClick={() => {
+                const meetingLink = event.data?.meetingLink;
+                if (typeof meetingLink === "string") {
+                  openUrl(meetingLink);
+                }
+              }}
+            >
+              <VideoIcon size={14} />
+              <span className="truncate">Join meeting</span>
+            </Button>
+          )}
+          <Button variant="outline" onClick={handleClickCalendar}>
             <Trans>View in calendar</Trans>
           </Button>
         </div>

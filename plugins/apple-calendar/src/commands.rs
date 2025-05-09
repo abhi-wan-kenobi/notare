@@ -2,6 +2,12 @@ use crate::AppleCalendarPluginExt;
 
 #[tauri::command]
 #[specta::specta]
+pub fn open_calendar<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
+    app.open_calendar()
+}
+
+#[tauri::command]
+#[specta::specta]
 pub fn open_calendar_access_settings<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<(), String> {

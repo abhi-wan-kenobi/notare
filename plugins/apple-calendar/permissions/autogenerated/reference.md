@@ -4,6 +4,7 @@ Default permissions for the plugin
 
 #### This default permission set includes the following:
 
+- `allow-open-calendar`
 - `allow-open-calendar-access-settings`
 - `allow-open-contacts-access-settings`
 - `allow-calendar-access-status`
@@ -70,6 +71,32 @@ Enables the contacts_access_status command without any pre-configured scope.
 <td>
 
 Denies the contacts_access_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`apple-calendar:allow-open-calendar`
+
+</td>
+<td>
+
+Enables the open_calendar command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`apple-calendar:deny-open-calendar`
+
+</td>
+<td>
+
+Denies the open_calendar command without any pre-configured scope.
 
 </td>
 </tr>

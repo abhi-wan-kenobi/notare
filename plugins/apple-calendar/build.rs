@@ -1,4 +1,5 @@
 const COMMANDS: &[&str] = &[
+    "open_calendar",
     "open_calendar_access_settings",
     "open_contacts_access_settings",
     "calendar_access_status",

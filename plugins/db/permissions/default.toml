@@ -16,6 +16,7 @@ permissions = [
     "allow-get-timeline-view",
     "allow-get-timeline-view-onboarding",
     # calendar
+    "allow-get-calendar",
     "allow-list-calendars",
     "allow-upsert-calendar",
     "allow-toggle-calendar-selected",

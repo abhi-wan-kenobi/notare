@@ -1,6 +1,7 @@
 [default]
 description = "Default permissions for the plugin"
 permissions = [
+    "allow-open-calendar",
     "allow-open-calendar-access-settings",
     "allow-open-contacts-access-settings",
     "allow-calendar-access-status",

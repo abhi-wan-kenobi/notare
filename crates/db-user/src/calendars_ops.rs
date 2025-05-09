@@ -1,6 +1,23 @@
 use super::{Calendar, UserDatabase};
 
 impl UserDatabase {
+    pub async fn get_calendar(
+        &self,
+        calendar_id: impl AsRef<str>,
+    ) -> Result<Calendar, crate::Error> {
+        let conn = self.conn()?;
+
+        let mut rows = conn
+            .query(
+                "SELECT * FROM calendars WHERE id = ?",
+                vec![calendar_id.as_ref()],
+            )
+            .await?;
+        let row = rows.next().await?.unwrap();
+        let calendar: Calendar = libsql::de::from_row(&row)?;
+        Ok(calendar)
+    }
+
     pub async fn list_calendars(
         &self,
         user_id: impl AsRef<str>,

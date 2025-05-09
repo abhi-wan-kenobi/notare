@@ -7,6 +7,9 @@
 
 
 export const commands = {
+async openCalendar() : Promise<null> {
+    return await TAURI_INVOKE("plugin:apple-calendar|open_calendar");
+},
 async openCalendarAccessSettings() : Promise<null> {
     return await TAURI_INVOKE("plugin:apple-calendar|open_calendar_access_settings");
 },
