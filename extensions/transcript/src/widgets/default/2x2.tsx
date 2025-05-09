@@ -5,7 +5,7 @@ import { WidgetTwoByTwo, WidgetTwoByTwoWrapper } from "@hypr/ui/components/ui/wi
 
 import { TranscriptBase } from "./base";
 
-const Transcript2x2: WidgetTwoByTwo = ({ onMaximize, queryClient }) => {
+const Transcript2x2: WidgetTwoByTwo = ({ queryClient, onMaximize }) => {
   const maximizeButton = (
     <Button
       key="maximize"
@@ -22,7 +22,7 @@ const Transcript2x2: WidgetTwoByTwo = ({ onMaximize, queryClient }) => {
     <TranscriptBase
       sizeToggleButton={maximizeButton}
       WrapperComponent={WidgetTwoByTwoWrapper}
-      wrapperProps={{ queryClient }}
+      wrapperProps={{ queryClient, onMaximize }}
     />
   );
 };

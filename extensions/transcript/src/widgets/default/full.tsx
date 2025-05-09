@@ -5,7 +5,7 @@ import { WidgetFullSize, WidgetFullSizeWrapper } from "@hypr/ui/components/ui/wi
 
 import { TranscriptBase } from "./base";
 
-const TranscriptFull: WidgetFullSize = ({ onMinimize }) => {
+const TranscriptFull: WidgetFullSize = ({ queryClient, onMinimize }) => {
   const minimizeButton = (
     <Button key="minimize" variant="ghost" size="icon" onClick={onMinimize}>
       <Minimize2Icon className="h-4 w-4 text-black" />
@@ -16,7 +16,7 @@ const TranscriptFull: WidgetFullSize = ({ onMinimize }) => {
     <TranscriptBase
       sizeToggleButton={minimizeButton}
       WrapperComponent={WidgetFullSizeWrapper}
-      wrapperProps={{ onMinimize }}
+      wrapperProps={{ queryClient, onMinimize }}
     />
   );
 };
