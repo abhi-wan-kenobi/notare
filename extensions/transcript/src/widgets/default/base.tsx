@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { FileAudioIcon } from "lucide-react";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { ClipboardCopyIcon, FileAudioIcon } from "lucide-react";
 import React from "react";
 
 import { commands as miscCommands } from "@hypr/plugin-misc";
@@ -10,13 +11,14 @@ import { useOngoingSession, useSessions } from "@hypr/utils/contexts";
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import { Transcript, TranscriptContent } from "../../components";
+import { useTranscript } from "../../hooks/useTranscript";
 import { useTranscriptWidget } from "../../hooks/useTranscriptWidget";
 
 export interface TranscriptBaseProps {
   onSizeToggle?: () => void;
   sizeToggleButton: React.ReactNode;
   WrapperComponent: React.ComponentType<any>;
-  wrapperProps?: Record<string, any>;
+  wrapperProps?: Partial<any>;
 }
 
 export const TranscriptBase: React.FC<TranscriptBaseProps> = ({
@@ -27,12 +29,20 @@ export const TranscriptBase: React.FC<TranscriptBaseProps> = ({
   const sessionId = useSessions((s) => s.currentSessionId);
   const isInactive = useOngoingSession((s) => s.status === "inactive");
   const { showEmptyMessage, isEnhanced, hasTranscript } = useTranscriptWidget(sessionId);
+  const { timeline } = useTranscript(sessionId);
 
   const handleOpenTranscriptSettings = () => {
     const extensionId = "@hypr/extension-transcript";
     const url = `/app/settings?tab=extensions&extension=${extensionId}`;
 
     safeNavigate({ type: "settings" }, url);
+  };
+
+  const handleCopyAll = () => {
+    if (timeline && timeline.items && timeline.items.length > 0) {
+      const transcriptText = timeline.items.map((item) => item.text).join("\n");
+      writeText(transcriptText);
+    }
   };
 
   const audioExist = useQuery(
@@ -82,6 +92,20 @@ export const TranscriptBase: React.FC<TranscriptBaseProps> = ({
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     <p>Listen to recording</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ),
+            (hasTranscript && sessionId) && (
+              <TooltipProvider key="copy-all-tooltip">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="p-0" onClick={handleCopyAll}>
+                      <ClipboardCopyIcon size={16} className="text-black" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>Copy transcript</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
