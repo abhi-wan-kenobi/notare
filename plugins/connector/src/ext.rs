@@ -157,10 +157,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ConnectorPluginExt<R> for T {
                 .flatten();
 
             let conn = ConnectionLLM::Custom(Connection { api_base, api_key });
-            match conn.models().await {
-                Ok(models) if !models.is_empty() => Ok(conn),
-                _ => Err(crate::Error::NoModelsFound),
-            }
+            Ok(conn)
         } else {
             self.get_local_llm_connection().await
         }

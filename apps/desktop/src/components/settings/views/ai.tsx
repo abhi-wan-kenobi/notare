@@ -194,9 +194,6 @@ export default function LocalAI() {
 
   const setCustomLLMModel = useMutation({
     mutationFn: (model: string) => connectorCommands.setCustomLlmModel(model),
-    onSuccess: () => {
-      customLLMModels.refetch();
-    },
   });
 
   const setCustomLLMConnection = useMutation({
@@ -210,11 +207,6 @@ export default function LocalAI() {
   const customLLMEnabled = useQuery({
     queryKey: ["custom-llm-enabled"],
     queryFn: () => connectorCommands.getCustomLlmEnabled(),
-  });
-
-  const customLLMModels = useQuery({
-    queryKey: ["custom-llm-models"],
-    queryFn: () => connectorCommands.listCustomLlmModels(),
   });
 
   const setCustomLLMEnabled = useMutation({
