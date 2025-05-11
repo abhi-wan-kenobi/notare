@@ -1,0 +1,60 @@
+.transcript-speaker {
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.transcript-speaker-label {
+  font-weight: 600;
+  color: #3a3a3a;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.transcript-speaker-content {
+  display: inline;
+  line-height: 1.7;
+}
+
+.transcript-word {
+  display: inline-block;
+  margin-right: 3px;
+  margin-bottom: 6px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  background-color: #eef5fd;
+  border: 1px solid transparent;
+  position: relative;
+  transition: all 0.15s ease;
+  font-size: 15px;
+}
+
+.transcript-word:hover {
+  background-color: #d9e8fb;
+  border-color: #b8d5fa;
+}
+
+.transcript-word[data-time] {
+  background-color: #e6f0ff;
+}
+
+.transcript-word::after {
+  content: " ";
+}
+
+.transcript-speaker > .transcript-word:last-child::after {
+  content: "";
+}
+
+.transcript-word.selected {
+  background-color: #c0d8f9;
+  border-color: #80b5f8;
+}
+
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror-selectednode {
+  outline: 2px solid #4a9af4;
+}
