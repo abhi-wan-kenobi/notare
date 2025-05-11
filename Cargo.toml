@@ -1,3 +1,12 @@
+[profile.dev]
+incremental = true
+opt-level = 0
+debug = true
+
+[profile.dev.package."*"]
+opt-level = 1
+debug = false
+
 [workspace]
 resolver = "2"
 members = [
