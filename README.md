@@ -18,8 +18,7 @@
 
 **What’s special about it?**
 
-- <ins>Works **offline**</ins> using **open-source models** (_Whisper_ & _Llama_)  
-- Highly [extensible](https://docs.hyprnote.com/extensions/), powered by [plugins](https://docs.hyprnote.com/plugins/)
+- <ins>Works **offline**</ins> using **open-source models** (_Whisper_ & _Llama_)
 
 ## Installation
 
