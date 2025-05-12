@@ -126,3 +126,34 @@ export const WordSplit = Extension.create({
     ];
   },
 });
+
+export const SpeakerSplit = Extension.create({
+  name: "speakerSplit",
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("hypr-speaker-split"),
+        props: {
+          handleKeyDown(view, event) {
+            if (
+              event.key === "Enter"
+              && !event.ctrlKey
+              && !event.metaKey
+              && !event.altKey
+            ) {
+              const { state } = view;
+              const { selection } = state;
+
+              if (!selection.empty) {
+                return false;
+              }
+            }
+
+            return false;
+          },
+        },
+      }),
+    ];
+  },
+});
