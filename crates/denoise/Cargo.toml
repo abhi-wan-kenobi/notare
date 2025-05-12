@@ -1,0 +1,7 @@
+[package]
+name = "denoise"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hypr-onnx = { workspace = true }
