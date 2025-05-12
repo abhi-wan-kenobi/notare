@@ -171,6 +171,7 @@ cidre = { git = "https://github.com/yury/cidre", rev = "4f0eff4" }
 cpal = "0.15.3"
 dasp = "0.11.0"
 hound = "3.5.1"
+realfft = "3.4.0"
 rodio = "0.20.1"
 
 kalosm-common = { git = "https://github.com/floneum/floneum", rev = "52967ae" }
