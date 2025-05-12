@@ -56,8 +56,10 @@ const TranscriptEditor = forwardRef<{ editor: TiptapEditor | null }, TranscriptE
     }, [editor, initialContent]);
 
     return (
-      <div role="textbox">
-        <EditorContent editor={editor} />
+      <div role="textbox" className="h-full flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
+          <EditorContent editor={editor} className="h-full" />
+        </div>
       </div>
     );
   },
