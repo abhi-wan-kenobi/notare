@@ -3,6 +3,8 @@ import { Plugin, PluginKey, TextSelection } from "prosemirror-state";
 
 import { WordNode } from "./nodes";
 
+const ZERO_WIDTH_SPACE = "\u200B";
+
 export const WordSplit = Extension.create({
   name: "wordSplit",
 
@@ -32,18 +34,26 @@ export const WordSplit = Extension.create({
                 return false;
               }
 
-              if ($pos.parent.textContent.length === 0) {
+              if ($pos.parent.textContent === ZERO_WIDTH_SPACE) {
                 event.preventDefault();
                 return true;
               }
 
               event.preventDefault();
 
-              let tr = state.tr.insert($pos.after(), WORD_NODE_TYPE.create());
-              const cursor = TextSelection.create(tr.doc, $pos.after() + 1);
-              tr = tr.setSelection(cursor);
+              const posAfter = $pos.after();
 
-              dispatch(tr.scrollIntoView());
+              let transaction = state.tr.insert(
+                posAfter,
+                WORD_NODE_TYPE.create(
+                  null,
+                  state.schema.text(ZERO_WIDTH_SPACE),
+                ),
+              );
+              const cursor = TextSelection.create(transaction.doc, posAfter + 2);
+              transaction = transaction.setSelection(cursor);
+
+              dispatch(transaction.scrollIntoView());
               return true;
             }
 
