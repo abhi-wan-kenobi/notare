@@ -4,8 +4,8 @@ import { useRef } from "react";
 
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
-import { Button } from "@hypr/ui/components/ui/button";
 import TranscriptEditor from "@hypr/tiptap/transcript";
+import { Button } from "@hypr/ui/components/ui/button";
 
 export const Route = createFileRoute("/app/transcript/$id")({
   component: Component,
@@ -53,15 +53,15 @@ function Component() {
           <span>{session.title}</span>
         </h1>
         <div className="absolute right-3 flex items-center gap-2">
-          <Button 
-            onClick={handleCancel} 
-            variant="ghost" 
+          <Button
+            onClick={handleCancel}
+            variant="ghost"
             size="sm"
           >
             Cancel
           </Button>
-          <Button 
-            onClick={handleSave} 
+          <Button
+            onClick={handleSave}
             size="sm"
           >
             Save
