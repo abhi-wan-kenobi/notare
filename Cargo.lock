@@ -3220,6 +3220,8 @@ version = "0.1.0"
 dependencies = [
  "onnx",
  "realfft",
+ "serde",
+ "thiserror 2.0.12",
 ]
 
 [[package]]

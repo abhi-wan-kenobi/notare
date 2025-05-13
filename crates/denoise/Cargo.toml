@@ -5,4 +5,7 @@ edition = "2021"
 
 [dependencies]
 hypr-onnx = { workspace = true }
+
 realfft = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
