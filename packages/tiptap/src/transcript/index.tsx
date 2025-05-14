@@ -1,5 +1,6 @@
 import "../styles/transcript.css";
 
+import { SearchAndReplace } from "@sereneinserenade/tiptap-search-and-replace";
 import { type Editor as TiptapEditor } from "@tiptap/core";
 import Document from "@tiptap/extension-document";
 import History from "@tiptap/extension-history";
@@ -26,6 +27,10 @@ const TranscriptEditor = forwardRef<{ editor: TiptapEditor | null }, TranscriptE
       createSpeakerNode(speakers),
       WordSplit,
       SpeakerSplit,
+      SearchAndReplace.configure({
+        searchResultClass: "search-result",
+        disableRegex: false,
+      }),
     ];
 
     const editor = useEditor({
