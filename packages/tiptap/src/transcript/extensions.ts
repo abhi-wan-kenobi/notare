@@ -15,7 +15,7 @@ export const WordSplit = Extension.create({
         key: new PluginKey("hypr-word-split"),
         props: {
           handleKeyDown(view, event) {
-            if (checkKey(" ")) {
+            if (checkKey(" ")(event)) {
               const { state, dispatch } = view;
               const { selection } = state;
 
@@ -53,7 +53,7 @@ export const WordSplit = Extension.create({
               return true;
             }
 
-            if (checkKey("Backspace")) {
+            if (checkKey("Backspace")(event)) {
               const { state, dispatch } = view;
               const { selection } = state;
 
@@ -127,7 +127,7 @@ export const SpeakerSplit = Extension.create({
         key: new PluginKey("hypr-speaker-split"),
         props: {
           handleKeyDown(view, event) {
-            if (checkKey("Enter")) {
+            if (checkKey("Enter")(event)) {
               const { state, dispatch } = view;
               const { selection } = state;
 
