@@ -1,4 +1,5 @@
 import { Extension } from "@tiptap/core";
+import { splitBlock } from "prosemirror-commands";
 import { Plugin, PluginKey, TextSelection } from "prosemirror-state";
 
 import { WordNode } from "./nodes";
@@ -142,12 +143,33 @@ export const SpeakerSplit = Extension.create({
               && !event.metaKey
               && !event.altKey
             ) {
-              const { state } = view;
+              const { state, dispatch } = view;
               const { selection } = state;
 
               if (!selection.empty) {
                 return false;
               }
+
+              event.preventDefault();
+
+              const WORD = state.schema.nodes[WordNode.name];
+              const $from = selection.$from;
+
+              if ($from.parent.type === WORD) {
+                const isFirstWord = $from.index(1) === 0;
+                const isLastWord = $from.index(1) === $from.node(1).childCount - 1;
+
+                if (isFirstWord || isLastWord) {
+                  return true;
+                }
+
+                const tr = state.tr.split($from.before());
+                const selection = TextSelection.create(tr.doc, tr.mapping.map($from.after()));
+                dispatch(tr.setSelection(selection).scrollIntoView());
+                return true;
+              }
+
+              return splitBlock(state, dispatch);
             }
 
             return false;
