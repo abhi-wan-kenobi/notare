@@ -79,11 +79,11 @@ impl AudioInput {
         }
     }
 
-    pub fn from_speaker(sample_rate_override: Option<u32>) -> Self {
+    pub fn from_speaker() -> Self {
         Self {
             source: AudioSource::RealtimeSpeaker,
             mic: None,
-            speaker: Some(SpeakerInput::new(sample_rate_override).unwrap()),
+            speaker: Some(SpeakerInput::new().unwrap()),
             data: None,
         }
     }

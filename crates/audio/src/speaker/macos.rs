@@ -16,7 +16,6 @@ use cidre::{arc, av, cat, cf, core_audio as ca, ns, os};
 pub struct SpeakerInput {
     tap: ca::TapGuard,
     agg_desc: arc::Retained<cf::DictionaryOf<cf::String, cf::Type>>,
-    sample_rate_override: Option<u32>,
 }
 
 struct WakerState {
@@ -26,8 +25,7 @@ struct WakerState {
 
 pub struct SpeakerStream {
     consumer: HeapCons<f32>,
-    stream_desc: cat::AudioBasicStreamDesc,
-    sample_rate_override: Option<u32>,
+    sample_rate: u32,
     _device: ca::hardware::StartedDevice<ca::AggregateDevice>,
     _ctx: Box<Ctx>,
     _tap: ca::TapGuard,
@@ -36,14 +34,7 @@ pub struct SpeakerStream {
 
 impl SpeakerStream {
     pub fn sample_rate(&self) -> u32 {
-        tracing::info!(
-            tap_sample_rate = self.stream_desc.sample_rate,
-            override_sample_rate = self.sample_rate_override,
-            "speaker_stream"
-        );
-
-        self.sample_rate_override
-            .unwrap_or(self.stream_desc.sample_rate as u32)
+        self.sample_rate
     }
 }
 
@@ -54,7 +45,7 @@ struct Ctx {
 }
 
 impl SpeakerInput {
-    pub fn new(sample_rate_override: Option<u32>) -> Result<Self> {
+    pub fn new() -> Result<Self> {
         let output_device = ca::System::default_output_device()?;
         let output_uid = output_device.uid()?;
 
@@ -101,17 +92,13 @@ impl SpeakerInput {
             ],
         );
 
-        Ok(Self {
-            tap,
-            agg_desc,
-            sample_rate_override,
-        })
+        Ok(Self { tap, agg_desc })
     }
 
     fn start_device(
         &self,
         ctx: &mut Box<Ctx>,
-    ) -> Result<ca::hardware::StartedDevice<ca::AggregateDevice>> {
+    ) -> Result<(ca::hardware::StartedDevice<ca::AggregateDevice>, u32)> {
         extern "C" fn proc(
             _device: ca::Device,
             _now: &cat::AudioTimeStamp,
@@ -152,10 +139,12 @@ impl SpeakerInput {
         }
 
         let agg_device = ca::AggregateDevice::with_desc(&self.agg_desc)?;
+        let sample_rate = agg_device.nominal_sample_rate()? as u32;
+
         let proc_id = agg_device.create_io_proc_id(proc, Some(ctx))?;
         let started_device = ca::device_start(agg_device, Some(proc_id))?;
 
-        Ok(started_device)
+        Ok((started_device, sample_rate))
     }
 
     pub fn stream(self) -> SpeakerStream {
@@ -176,12 +165,11 @@ impl SpeakerInput {
             waker_state: waker_state.clone(),
         });
 
-        let device = self.start_device(&mut ctx).unwrap();
+        let (device, sample_rate) = self.start_device(&mut ctx).unwrap();
 
         SpeakerStream {
             consumer,
-            stream_desc: asbd,
-            sample_rate_override: self.sample_rate_override,
+            sample_rate,
             _device: device,
             _ctx: ctx,
             _tap: self.tap,
