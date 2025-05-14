@@ -1,31 +1,31 @@
 import { NodeViewContent, NodeViewWrapper } from "@tiptap/react";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hypr/ui/components/ui/select";
+import type { Speaker } from "./nodes";
 
 export const SpeakerView = ({ node, updateAttributes }: any) => {
-  const names = node.attrs.speakers || [];
+  const { speakers, speakerId } = node.attrs as { speakers: Speaker[]; speakerId: string };
 
-  const label = node.attrs.label && names.includes(node.attrs.label)
-    ? node.attrs.label
-    : names[0] || "";
+  const selectedSpeaker = speakers.find((s) => s.id === speakerId);
+  const displayName = selectedSpeaker?.name || speakerId;
 
-  const handleChange = (newLabel: string) => {
-    if (names.includes(newLabel)) {
-      updateAttributes({ label: newLabel });
+  const handleChange = (speakerId: string) => {
+    if (speakers.map((s) => s.id).includes(speakerId)) {
+      updateAttributes({ speakerId });
     }
   };
 
   return (
     <NodeViewWrapper className="transcript-speaker">
       <div style={{ width: "140px", padding: "8px" }}>
-        <Select value={label} onValueChange={handleChange}>
-          <SelectTrigger className="transcript-speaker-select" data-speaker-label={label}>
-            <SelectValue placeholder="Select speaker" />
+        <Select value={speakerId} onValueChange={handleChange}>
+          <SelectTrigger className="transcript-speaker-select" data-speaker-id={speakerId}>
+            <SelectValue placeholder="Select speaker">{displayName}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {names.map((name: string) => (
-              <SelectItem key={name} value={name}>
-                {name}
+            {speakers.map((speaker: any) => (
+              <SelectItem key={speaker.id} value={speaker.id}>
+                {speaker.name}
               </SelectItem>
             ))}
           </SelectContent>

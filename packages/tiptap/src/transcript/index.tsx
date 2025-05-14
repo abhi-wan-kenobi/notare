@@ -9,12 +9,12 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { forwardRef, useEffect } from "react";
 
 import { SpeakerSplit, WordSplit } from "./extensions";
-import { createSpeakerNode, WordNode } from "./nodes";
+import { createSpeakerNode, type Speaker, WordNode } from "./nodes";
 
 interface TranscriptEditorProps {
   editable?: boolean;
   initialContent: Record<string, unknown>;
-  speakers: string[];
+  speakers: Speaker[];
 }
 
 const TranscriptEditor = forwardRef<{ editor: TiptapEditor | null }, TranscriptEditorProps>(

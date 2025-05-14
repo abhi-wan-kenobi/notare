@@ -11,16 +11,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/
 export const Route = createFileRoute("/app/transcript/$id")({
   component: Component,
   loader: async ({ params: { id }, context: { onboardingSessionId } }) => {
+    const participants = await dbCommands.sessionListParticipants(id);
     const timeline = onboardingSessionId
       ? await dbCommands.getTimelineViewOnboarding()
       : await dbCommands.getTimelineView(id);
 
-    return { timeline };
+    return { participants, timeline };
   },
 });
 
 function Component() {
-  const { timeline } = Route.useLoaderData();
+  const { participants, timeline } = Route.useLoaderData();
   const editorRef = useRef(null);
 
   const content = {
@@ -109,7 +110,7 @@ function Component() {
         <TranscriptEditor
           ref={editorRef}
           initialContent={content}
-          speakers={["TODO 1", "TODO 2", "TODO 3"]}
+          speakers={participants.map((p) => ({ id: p.id, name: p.full_name ?? "Unknown" }))}
         />
       </div>
     </div>

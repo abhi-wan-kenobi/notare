@@ -3,22 +3,31 @@ import { ReactNodeViewRenderer } from "@tiptap/react";
 
 import { SpeakerView } from "./views";
 
-export const createSpeakerNode = (speakers: string[]) =>
-  Node.create({
+export interface Speaker {
+  id: string;
+  name: string;
+}
+
+export const createSpeakerNode = (speakers: Speaker[]) => {
+  const defaultSpeaker = speakers[0];
+
+  return Node.create({
     name: "speaker",
     group: "block",
     content: "word*",
     addAttributes() {
       return {
-        label: {
-          default: speakers[0],
+        speakerId: {
+          default: defaultSpeaker.id,
           parseHTML: element => {
-            const label = element.getAttribute("data-speaker-label");
-            return label && speakers.includes(label) ? label : speakers[0];
+            const speakerId = element.getAttribute("data-speaker-id");
+            return speakerId && speakers.some(s => s.id === speakerId) ? speakerId : defaultSpeaker.id;
           },
           renderHTML: attributes => {
-            const label = speakers.includes(attributes.label) ? attributes.label : speakers[0];
-            return { "data-speaker-label": label };
+            const speakerId = speakers.some(s => s.id === attributes.speakerId)
+              ? attributes.speakerId
+              : defaultSpeaker.id;
+            return { "data-speaker-id": speakerId };
           },
         },
         speakers: {
@@ -31,7 +40,10 @@ export const createSpeakerNode = (speakers: string[]) =>
       return [{ tag: "div.transcript-speaker" }];
     },
     renderHTML({ HTMLAttributes, node }) {
-      const label = node.attrs.label && speakers.includes(node.attrs.label) ? node.attrs.label : speakers[0];
+      const speakerIds = (node.attrs.speakers || []).map((s: Speaker) => s.id);
+      const speakerId = node.attrs.speakerId && speakerIds.includes(node.attrs.speakerId)
+        ? node.attrs.speakerId
+        : defaultSpeaker.id;
 
       return [
         "div",
@@ -40,9 +52,11 @@ export const createSpeakerNode = (speakers: string[]) =>
           "select",
           {
             class: "transcript-speaker-select",
-            "data-speaker-label": label,
+            "data-speaker-id": speakerId,
           },
-          ...speakers.map(name => ["option", { value: name, selected: label === name }, name]),
+          ...speakers.map(
+            speaker => ["option", { value: speaker.id, selected: speakerId === speaker.id }, speaker.name],
+          ),
         ]],
         ["div", { class: "transcript-speaker-content" }, 0],
       ];
@@ -51,6 +65,7 @@ export const createSpeakerNode = (speakers: string[]) =>
       return ReactNodeViewRenderer(SpeakerView);
     },
   });
+};
 
 export const WordNode = Node.create({
   name: "word",
