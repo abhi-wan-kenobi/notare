@@ -141,7 +141,8 @@ pub async fn main() {
 
             {
                 use tauri_plugin_tray::TrayPluginExt;
-                app.create_tray().unwrap();
+                app.create_tray_menu().unwrap();
+                app.create_app_menu().unwrap();
             }
 
             {
