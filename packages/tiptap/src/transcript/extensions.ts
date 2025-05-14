@@ -143,14 +143,22 @@ export const SpeakerSplit = Extension.create({
               if ($from.parent.type === WORD) {
                 const isFirstWord = $from.index(1) === 0;
                 const isLastWord = $from.index(1) === $from.node(1).childCount - 1;
+                const isAtEndOfWord = $from.parentOffset === $from.parent.content.size;
 
-                if (isFirstWord || isLastWord) {
+                if ((isFirstWord && !isAtEndOfWord) || isLastWord) {
                   return true;
                 }
 
-                const tr = state.tr.split($from.before());
-                const selection = TextSelection.create(tr.doc, tr.mapping.map($from.after()));
+                const splitPos = isAtEndOfWord ? $from.after() : $from.before();
+                const tr = state.tr.split(splitPos);
+
+                const newPos = isAtEndOfWord
+                  ? tr.mapping.map(splitPos + 1)
+                  : tr.mapping.map($from.pos);
+
+                const selection = TextSelection.create(tr.doc, newPos);
                 dispatch(tr.setSelection(selection).scrollIntoView());
+
                 return true;
               }
 
