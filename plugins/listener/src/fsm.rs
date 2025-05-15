@@ -202,14 +202,14 @@ impl Session {
                         .collect();
 
                     for &sample in &mixed {
-                        if let Err(e) = process_tx.send(sample).await {
-                            tracing::error!("process_tx_send_error: {:?}", e.0);
+                        if let Err(_) = process_tx.send(sample).await {
+                            tracing::error!("process_tx_send_error");
                             return;
                         }
 
                         if record {
-                            if let Err(e) = save_tx.send(sample).await {
-                                tracing::error!("save_tx_send_error: {:?}", e.0);
+                            if let Err(_) = save_tx.send(sample).await {
+                                tracing::error!("save_tx_send_error");
                             }
                         }
                     }
