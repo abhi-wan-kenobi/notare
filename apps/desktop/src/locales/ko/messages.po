@@ -208,6 +208,41 @@ msgstr ""
 msgid "{weeks} weeks later"
 msgstr ""
 
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:168
+#~ msgid "just now"
+#~ msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:207
+#~ msgid "in progress"
+#~ msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:223
+#~ msgid "in {seconds} seconds"
+#~ msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:225
+#~ msgid "in 1 minute"
+#~ msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:227
+#~ msgid "in {minutes} minutes"
+#~ msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:229
+#~ msgid "in 1 hour"
+#~ msgstr ""
+
+#. js-lingui-explicit-id
+#: ../../packages/utils/src/datetime.ts:231
+#~ msgid "in {hours} hours"
+#~ msgstr ""
+
 #: src/components/settings/views/notifications.tsx:105
 msgid "(Beta) Detect meetings automatically"
 msgstr ""
