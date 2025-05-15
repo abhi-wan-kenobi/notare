@@ -119,7 +119,10 @@ async fn listen(
         .ok_or(StatusCode::TOO_MANY_REQUESTS)?;
 
     let model_path = state.model_type.model_path(&state.model_cache_dir);
-    let language = params.language.try_into().unwrap();
+    let language = params.language.try_into().unwrap_or_else(|e| {
+        tracing::error!("convert_to_whisper_language: {:?}", e);
+        hypr_whisper::Language::En
+    });
 
     let model = hypr_whisper::local::Whisper::builder()
         .model_path(model_path.to_str().unwrap())
