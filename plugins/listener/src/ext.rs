@@ -98,7 +98,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
     async fn request_system_audio_access(&self) -> Result<(), crate::Error> {
         let stop = hypr_audio::AudioOutput::silence();
 
-        let mut speaker_sample_stream = hypr_audio::AudioInput::from_speaker().stream();
+        let mut speaker_sample_stream = hypr_audio::AudioInput::from_speaker(None).stream();
         speaker_sample_stream.next().await;
 
         let _ = stop.send(());

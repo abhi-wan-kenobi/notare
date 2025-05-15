@@ -30,13 +30,13 @@ pub struct SpeakerInput {
 
 impl SpeakerInput {
     #[cfg(target_os = "macos")]
-    pub fn new() -> Result<Self> {
-        let inner = PlatformSpeakerInput::new()?;
+    pub fn new(sample_rate_override: Option<u32>) -> Result<Self> {
+        let inner = PlatformSpeakerInput::new(sample_rate_override)?;
         Ok(Self { inner })
     }
 
     #[cfg(not(any(target_os = "macos")))]
-    pub fn new() -> Result<Self> {
+    pub fn new(sample_rate_override: Option<u32>) -> Result<Self> {
         Err(anyhow::anyhow!(
             "'SpeakerInput::new' is not supported on this platform"
         ))
@@ -131,7 +131,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_macos() {
-        let input = SpeakerInput::new().unwrap();
+        let input = SpeakerInput::new(None).unwrap();
         let mut stream = input.stream().unwrap();
 
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
