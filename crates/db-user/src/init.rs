@@ -338,7 +338,7 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
 
     // Get IDs of specific events for linking sessions
     let daily_standup_event_id = events[0].id.clone(); // Assumes Daily Standup is the first event
-    let past_kickoff_event_id = events[4].id.clone(); // Assumes Project Kickoff (Past) is the 5th event
+    let past_kickoff_event_id = events[1].id.clone(); // Project Kickoff (Past) event
 
     let sessions = vec![
         // --- Sessions for NotesList --- (Sorted by created_at desc in UI group)
@@ -414,7 +414,7 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
             title: "Q3 Strategy Notes".to_string(),
             created_at: now - chrono::Duration::days(65),
             visited_at: now - chrono::Duration::days(65),
-            calendar_event_id: Some(events[5].id.clone()), // Link to Q3 Strategy Meeting event
+            calendar_event_id: Some(events[2].id.clone()), // Q3 Strategy Meeting event
             raw_memo_html: hypr_buffer::opinionated_md_to_html("Focus on growth metrics.").unwrap(),
             ..new_default_session(&user.id)
         },
