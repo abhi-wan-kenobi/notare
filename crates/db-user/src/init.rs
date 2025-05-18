@@ -1,15 +1,10 @@
-use crate::{
-    Config, ConfigAI, ConfigGeneral, ConfigNotification, ExtensionMapping, ExtensionWidget,
-    ExtensionWidgetKind,
-};
+use crate::{Config, ConfigAI, ConfigGeneral, ConfigNotification};
 
 use super::{
     Calendar, ChatGroup, ChatMessage, ChatMessageRole, Event, Human, Organization, Platform,
     Session, Tag, UserDatabase,
 };
 
-const EDITOR_BASICS_MD: &str = include_str!("../assets/editor-basics.md");
-const KEYBOARD_SHORTCUTS_MD: &str = include_str!("../assets/keyboard-shortcuts.md");
 const ONBOARDING_RAW_HTML: &str = include_str!("../assets/onboarding-raw.html");
 const THANK_YOU_MD: &str = include_str!("../assets/thank-you.md");
 
@@ -40,12 +35,6 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         is_user: false,
         job_title: None,
         linkedin_username: Some("yujong1ee".to_string()),
-    };
-
-    let onboarding_org = Organization {
-        id: uuid::Uuid::new_v4().to_string(),
-        name: "Dunder Mifflin".to_string(),
-        description: None,
     };
 
     let default_calendar = Calendar {
@@ -85,32 +74,6 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         words: vec![],
     };
 
-    let keyboard_shortcuts_session = Session {
-        id: uuid::Uuid::new_v4().to_string(),
-        user_id: user_id.clone(),
-        title: "Keyboard Shortcuts".to_string(),
-        created_at: chrono::Utc::now(),
-        visited_at: chrono::Utc::now(),
-        calendar_event_id: None,
-        raw_memo_html: hypr_buffer::opinionated_md_to_html(KEYBOARD_SHORTCUTS_MD).unwrap(),
-        enhanced_memo_html: None,
-        conversations: vec![],
-        words: vec![],
-    };
-
-    let editor_basics_session = Session {
-        id: uuid::Uuid::new_v4().to_string(),
-        user_id: user_id.clone(),
-        title: "Editor Basics".to_string(),
-        created_at: chrono::Utc::now(),
-        visited_at: chrono::Utc::now(),
-        calendar_event_id: None,
-        raw_memo_html: hypr_buffer::opinionated_md_to_html(EDITOR_BASICS_MD).unwrap(),
-        enhanced_memo_html: None,
-        conversations: vec![],
-        words: vec![],
-    };
-
     let onboarding_session = Session {
         id: onboarding_session_id,
         user_id: user_id.clone(),
@@ -127,16 +90,11 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
     let _ = db.upsert_calendar(default_calendar).await?;
     let _ = db.upsert_event(onboarding_event).await?;
 
-    for session in [
-        &thank_you_session,
-        &keyboard_shortcuts_session,
-        &editor_basics_session,
-        &onboarding_session,
-    ] {
+    for session in [&thank_you_session, &onboarding_session] {
         let _ = db.upsert_session(session.clone()).await?;
     }
 
-    for org in [onboarding_org, fastrepl_org] {
+    for org in [fastrepl_org] {
         let _ = db.upsert_organization(org).await?;
     }
 
@@ -145,29 +103,12 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
     }
 
     for participant in [&fastrepl_john, &fastrepl_yujong] {
-        db.session_add_participant(&editor_basics_session.id, &participant.id)
-            .await?;
-        db.session_add_participant(&keyboard_shortcuts_session.id, &participant.id)
-            .await?;
         db.session_add_participant(&thank_you_session.id, &participant.id)
             .await?;
     }
 
     db.session_add_participant(&onboarding_session.id, &fastrepl_john.id)
         .await?;
-
-    db.upsert_extension_mapping(ExtensionMapping {
-        id: uuid::Uuid::new_v4().to_string(),
-        user_id: user_id.clone(),
-        extension_id: "@hypr/extension-transcript".to_string(),
-        config: serde_json::Value::from(r#"{}"#),
-        widgets: vec![ExtensionWidget {
-            kind: ExtensionWidgetKind::TwoByTwo,
-            group: "transcript-default".to_string(),
-            position: None,
-        }],
-    })
-    .await?;
 
     db.set_config(Config {
         id: uuid::Uuid::new_v4().to_string(),
