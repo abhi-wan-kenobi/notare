@@ -2,44 +2,16 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMatch } from "@tanstack/react-router";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { ClipboardCopyIcon, EarIcon, FileAudioIcon, Loader2Icon } from "lucide-react";
-
 import { useEffect, useRef } from "react";
 
 import { commands as miscCommands } from "@hypr/plugin-misc";
 import { commands as windowsCommands, events as windowsEvents } from "@hypr/plugin-windows";
-import { Badge } from "@hypr/ui/components/ui/badge";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import { useOngoingSession, useSessions } from "@hypr/utils/contexts";
+import { CheckIcon, PencilIcon } from "lucide-react";
 import { useTranscript } from "../hooks/useTranscript";
 import { useTranscriptWidget } from "../hooks/useTranscriptWidget";
-
-interface CustomHeaderProps {
-  leading?: React.ReactNode;
-  title?: React.ReactNode;
-  actions?: React.ReactNode[];
-}
-
-const CustomHeader: React.FC<CustomHeaderProps> = ({ leading, title, actions }) => {
-  return (
-    <header style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%" }}>
-      {leading && <div>{leading}</div>}
-      {title && (
-        <div style={{ flex: 1, fontSize: "18px", fontWeight: 600 }}>
-          {title}
-        </div>
-      )}
-      {actions && (
-        <div
-          style={{ display: "flex", alignItems: "center", gap: "8px" }}
-          className="not-draggable"
-        >
-          {actions.filter(Boolean)} {/* Ensure actions are filtered like before if they might contain falsy values */}
-        </div>
-      )}
-    </header>
-  );
-};
 
 export function TranscriptView() {
   const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
@@ -59,11 +31,11 @@ export function TranscriptView() {
   const sessionId = useSessions((s) => s.currentSessionId);
   const isInactive = useOngoingSession((s) => s.status === "inactive");
   const { showEmptyMessage, isEnhanced, hasTranscript } = useTranscriptWidget(sessionId);
-  const { isLive, timeline, isLoading } = useTranscript(sessionId);
+  const { isLive, words, isLoading } = useTranscript(sessionId);
 
   const handleCopyAll = () => {
-    if (timeline && timeline.items && timeline.items.length > 0) {
-      const transcriptText = timeline.items.map((item) => item.text).join("\n");
+    if (words && words.length > 0) {
+      const transcriptText = words.map((item) => item.text).join("\n");
       writeText(transcriptText);
     }
   };
@@ -77,6 +49,23 @@ export function TranscriptView() {
     },
     queryClient,
   );
+
+  const editing = useQuery({
+    queryKey: ["editing", sessionId],
+    queryFn: () => windowsCommands.windowIsVisible({ type: "main" }).then((v) => !v),
+  });
+
+  const handleClickToggleEditing = () => {
+    if (editing.data) {
+      windowsCommands.windowHide({ type: "transcript", value: sessionId! }).then(() => {
+        windowsCommands.windowShow({ type: "main" });
+      });
+    } else {
+      windowsCommands.windowHide({ type: "main" }).then(() => {
+        windowsCommands.windowShow({ type: "transcript", value: sessionId! });
+      });
+    }
+  };
 
   const handleOpenSession = () => {
     if (sessionId) {
@@ -93,10 +82,10 @@ export function TranscriptView() {
       });
     };
 
-    if (timeline?.items?.length) {
+    if (words?.length) {
       scrollToBottom();
     }
-  }, [timeline?.items, isLive, transcriptContainerRef]);
+  }, [words, isLive, transcriptContainerRef]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -115,23 +104,16 @@ export function TranscriptView() {
   return (
     <div className="relative w-full h-full flex flex-col">
       <div className="p-4 pb-0">
-        <CustomHeader
-          title={
+        <header className="flex items-center gap-2 w-full">
+          <div className="flex-1 text-md font-medium">
             <div className="flex text-md items-center gap-2">
               Transcript
               {isLive
-                && (
-                  <Badge
-                    variant="destructive"
-                    className="hover:bg-destructive"
-                  >
-                    LIVE
-                  </Badge>
-                )}
+                && <span className="inline-block w-3 h-3 rounded-full bg-red-500 animate-pulse"></span>}
             </div>
-          }
-          actions={[
-            (audioExist.data && isInactive && hasTranscript && sessionId) && (
+          </div>
+          <div className="not-draggable flex items-center gap-2">
+            {(audioExist.data && isInactive && hasTranscript && sessionId) && (
               <TooltipProvider key="listen-recording-tooltip">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -144,8 +126,8 @@ export function TranscriptView() {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            ),
-            (hasTranscript && sessionId) && (
+            )}
+            {(hasTranscript && sessionId) && (
               <TooltipProvider key="copy-all-tooltip">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -158,9 +140,16 @@ export function TranscriptView() {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            ),
-          ]}
-        />
+            )}
+            {!isLive && (
+              <Button variant="ghost" size="icon" className="p-0" onClick={handleClickToggleEditing}>
+                {editing.data
+                  ? <CheckIcon size={16} className="text-black" />
+                  : <PencilIcon size={16} className="text-black" />}
+              </Button>
+            )}
+          </div>
+        </header>
       </div>
 
       {sessionId && (
@@ -176,13 +165,14 @@ export function TranscriptView() {
             )
             : (
               <>
-                {(timeline?.items ?? []).map((item, index) => (
-                  <div key={index}>
-                    <p>
-                      {item.text}
-                    </p>
-                  </div>
-                ))}
+                <p className="whitespace-pre-wrap">
+                  {words.map((word, i) => (
+                    <span key={`${word.text}-${i}`}>
+                      {i > 0 ? " " : ""}
+                      {word.text}
+                    </span>
+                  ))}
+                </p>
                 {isLive && (
                   <div className="flex items-center gap-2 justify-center py-2 text-neutral-400">
                     <EarIcon size={14} /> Listening... (there might be a delay)

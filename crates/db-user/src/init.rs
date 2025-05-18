@@ -22,26 +22,25 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         description: Some("https://github.com/fastrepl".to_string()),
     };
 
-    let fastrepl_members = vec![
-        Human {
-            id: uuid::Uuid::new_v4().to_string(),
-            full_name: Some("Yujong Lee".to_string()),
-            email: Some("yujonglee@hyprnote.com".to_string()),
-            organization_id: Some(fastrepl_org.id.clone()),
-            is_user: false,
-            job_title: None,
-            linkedin_username: Some("yujong1ee".to_string()),
-        },
-        Human {
-            id: uuid::Uuid::new_v4().to_string(),
-            full_name: Some("John Jeong".to_string()),
-            email: Some("john@hyprnote.com".to_string()),
-            organization_id: Some(fastrepl_org.id.clone()),
-            is_user: false,
-            job_title: None,
-            linkedin_username: Some("johntopia".to_string()),
-        },
-    ];
+    let fastrepl_john = Human {
+        id: uuid::Uuid::new_v4().to_string(),
+        full_name: Some("John Jeong".to_string()),
+        email: Some("john@hyprnote.com".to_string()),
+        organization_id: Some(fastrepl_org.id.clone()),
+        is_user: false,
+        job_title: None,
+        linkedin_username: Some("johntopia".to_string()),
+    };
+
+    let fastrepl_yujong = Human {
+        id: uuid::Uuid::new_v4().to_string(),
+        full_name: Some("Yujong Lee".to_string()),
+        email: Some("yujonglee@hyprnote.com".to_string()),
+        organization_id: Some(fastrepl_org.id.clone()),
+        is_user: false,
+        job_title: None,
+        linkedin_username: Some("yujong1ee".to_string()),
+    };
 
     let onboarding_org = Organization {
         id: uuid::Uuid::new_v4().to_string(),
@@ -83,6 +82,7 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         raw_memo_html: hypr_buffer::opinionated_md_to_html(THANK_YOU_MD).unwrap(),
         enhanced_memo_html: None,
         conversations: vec![],
+        words: vec![],
     };
 
     let keyboard_shortcuts_session = Session {
@@ -95,6 +95,7 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         raw_memo_html: hypr_buffer::opinionated_md_to_html(KEYBOARD_SHORTCUTS_MD).unwrap(),
         enhanced_memo_html: None,
         conversations: vec![],
+        words: vec![],
     };
 
     let editor_basics_session = Session {
@@ -107,6 +108,7 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         raw_memo_html: hypr_buffer::opinionated_md_to_html(EDITOR_BASICS_MD).unwrap(),
         enhanced_memo_html: None,
         conversations: vec![],
+        words: vec![],
     };
 
     let onboarding_session = Session {
@@ -119,6 +121,7 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         raw_memo_html: ONBOARDING_RAW_HTML.to_string(),
         enhanced_memo_html: None,
         conversations: vec![],
+        words: vec![],
     };
 
     let _ = db.upsert_calendar(default_calendar).await?;
@@ -137,20 +140,21 @@ pub async fn onboarding(db: &UserDatabase, user_id: impl Into<String>) -> Result
         let _ = db.upsert_organization(org).await?;
     }
 
-    for member in fastrepl_members.clone() {
-        let _ = db.upsert_human(member).await?;
+    for member in [&fastrepl_john, &fastrepl_yujong] {
+        let _ = db.upsert_human(member.clone()).await?;
     }
 
-    for participant in fastrepl_members {
+    for participant in [&fastrepl_john, &fastrepl_yujong] {
         db.session_add_participant(&editor_basics_session.id, &participant.id)
             .await?;
         db.session_add_participant(&keyboard_shortcuts_session.id, &participant.id)
             .await?;
         db.session_add_participant(&thank_you_session.id, &participant.id)
             .await?;
-        db.session_add_participant(&onboarding_session.id, &participant.id)
-            .await?;
     }
+
+    db.session_add_participant(&onboarding_session.id, &fastrepl_john.id)
+        .await?;
 
     db.upsert_extension_mapping(ExtensionMapping {
         id: uuid::Uuid::new_v4().to_string(),
@@ -502,5 +506,6 @@ fn new_default_session(user_id: impl Into<String>) -> Session {
         raw_memo_html: "".to_string(),
         enhanced_memo_html: None,
         conversations: vec![],
+        words: vec![],
     }
 }
