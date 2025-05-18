@@ -189,7 +189,7 @@ async fn list_db_calendars(
     let items = db
         .list_calendars(user_id.into())
         .await
-        .map_err(|e| crate::Error::DatabaseError(e.into()))?
+        .map_err(|e| crate::Error::DatabaseError(e))?
         .into_iter()
         .collect::<Vec<hypr_db_user::Calendar>>();
 
@@ -225,7 +225,7 @@ async fn list_db_events(
             },
         }))
         .await
-        .map_err(|e| crate::Error::DatabaseError(e.into()))?
+        .map_err(|e| crate::Error::DatabaseError(e))?
         .into_iter()
         .collect::<Vec<hypr_db_user::Event>>();
 

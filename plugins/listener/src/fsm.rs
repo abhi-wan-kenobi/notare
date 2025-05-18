@@ -56,7 +56,7 @@ impl Session {
 
             let record = config
                 .as_ref()
-                .map_or(true, |c| c.general.save_recordings.unwrap_or(true));
+                .is_none_or(|c| c.general.save_recordings.unwrap_or(true));
 
             let language = config.as_ref().map_or_else(
                 || hypr_language::ISO639::En.into(),
@@ -199,13 +199,13 @@ impl Session {
                         .collect();
 
                     for &sample in &mixed {
-                        if let Err(_) = process_tx.send(sample).await {
+                        if process_tx.send(sample).await.is_err() {
                             tracing::error!("process_tx_send_error");
                             return;
                         }
 
                         if record {
-                            if let Err(_) = save_tx.send(sample).await {
+                            if save_tx.send(sample).await.is_err() {
                                 tracing::error!("save_tx_send_error");
                             }
                         }

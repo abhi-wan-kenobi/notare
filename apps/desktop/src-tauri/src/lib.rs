@@ -131,10 +131,10 @@ pub async fn main() {
                 let dest = "/app/new?record=true";
 
                 app.deep_link().on_open_url(move |event| {
-                    if let Some(_) = event.urls().first() {
-                        if let Ok(_) = app_clone.window_show(HyprWindow::Main) {
-                            let _ = app_clone.window_navigate(HyprWindow::Main, dest);
-                        }
+                    if event.urls().first().is_some()
+                        && app_clone.window_show(HyprWindow::Main).is_ok()
+                    {
+                        let _ = app_clone.window_navigate(HyprWindow::Main, dest);
                     }
                 });
             }
@@ -188,7 +188,7 @@ pub async fn main() {
     app.run(|app, event| {
         #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Reopen { .. } = event {
-            HyprWindow::Main.show(&app).unwrap();
+            HyprWindow::Main.show(app).unwrap();
         }
     });
 }

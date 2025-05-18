@@ -38,7 +38,7 @@ impl ListenClientBuilder {
 
             url.set_path("/api/desktop/listen/realtime");
             url.query_pairs_mut()
-                .append_pair("language", &language)
+                .append_pair("language", language)
                 .append_pair("static_prompt", &params.static_prompt)
                 .append_pair("dynamic_prompt", &params.dynamic_prompt);
 
