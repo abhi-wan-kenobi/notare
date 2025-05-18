@@ -31,7 +31,7 @@ export function TranscriptView() {
   const sessionId = useSessions((s) => s.currentSessionId);
   const isInactive = useOngoingSession((s) => s.status === "inactive");
   const { showEmptyMessage, isEnhanced, hasTranscript } = useTranscriptWidget(sessionId);
-  const { isLive, words, isLoading } = useTranscript(sessionId);
+  const { isLive, words } = useTranscript(sessionId);
 
   const handleCopyAll = () => {
     if (words && words.length > 0) {
@@ -157,29 +157,19 @@ export function TranscriptView() {
           ref={transcriptContainerRef}
           className="flex-1 scrollbar-none px-4 flex flex-col gap-2 overflow-y-auto text-sm py-4"
         >
-          {isLoading
-            ? (
-              <div className="flex items-center gap-2 justify-center py-2 text-neutral-400">
-                <Loader2Icon size={14} className="animate-spin" /> Loading transcript...
-              </div>
-            )
-            : (
-              <>
-                <p className="whitespace-pre-wrap">
-                  {words.map((word, i) => (
-                    <span key={`${word.text}-${i}`}>
-                      {i > 0 ? " " : ""}
-                      {word.text}
-                    </span>
-                  ))}
-                </p>
-                {isLive && (
-                  <div className="flex items-center gap-2 justify-center py-2 text-neutral-400">
-                    <EarIcon size={14} /> Listening... (there might be a delay)
-                  </div>
-                )}
-              </>
-            )}
+          <p className="whitespace-pre-wrap">
+            {words.map((word, i) => (
+              <span key={`${word.text}-${i}`}>
+                {i > 0 ? " " : ""}
+                {word.text}
+              </span>
+            ))}
+          </p>
+          {isLive && (
+            <div className="flex items-center gap-2 justify-center py-2 text-neutral-400">
+              <EarIcon size={14} /> Listening... (there might be a delay)
+            </div>
+          )}
         </div>
       )}
 

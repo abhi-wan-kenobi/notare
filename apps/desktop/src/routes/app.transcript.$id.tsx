@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { ReplaceAllIcon } from "lucide-react";
 import { PencilIcon } from "lucide-react";
@@ -37,6 +37,11 @@ type SpeakerContent = {
 type WordContent = {
   type: "word";
   content: { type: "text"; text: string }[];
+  attrs?: {
+    start_ms?: number | null;
+    end_ms?: number | null;
+    confidence?: number | null;
+  };
 };
 
 function Component() {
@@ -62,6 +67,7 @@ function Component() {
 
 function TranscriptToolbar({ editorRef }: { editorRef: React.RefObject<any> }) {
   const { id } = useParams({ from: "/app/transcript/$id" });
+  const queryClient = useQueryClient();
 
   const title = useQuery({
     queryKey: ["session-title", id],
@@ -80,6 +86,7 @@ function TranscriptToolbar({ editorRef }: { editorRef: React.RefObject<any> }) {
         });
       }
     }).then(() => {
+      queryClient.invalidateQueries({ predicate: (query) => (query.queryKey[0] as string).includes("session") });
       windowsCommands.windowDestroy({ type: "transcript", value: id });
     });
   };
@@ -226,6 +233,11 @@ const fromWordsToEditor = (words: Word[]): EditorContent => {
         state.acc[state.acc.length - 1].content.push({
           type: "word",
           content: [{ type: "text", text: word.text }],
+          attrs: {
+            confidence: word.confidence ?? null,
+            start_ms: word.start_ms ?? null,
+            end_ms: word.end_ms ?? null,
+          },
         });
       }
 
@@ -268,13 +280,13 @@ const fromEditorToWords = (content: EditorContent): Word[] => {
       if (wordBlock.type !== "word" || !wordBlock.content?.[0]?.text) {
         continue;
       }
-
+      const attrs = wordBlock.attrs || {};
       words.push({
         text: wordBlock.content[0].text,
         speaker,
-        confidence: 1,
-        start_ms: 0,
-        end_ms: 0,
+        confidence: attrs.confidence ?? null,
+        start_ms: attrs.start_ms ?? null,
+        end_ms: attrs.end_ms ?? null,
       });
     }
   }

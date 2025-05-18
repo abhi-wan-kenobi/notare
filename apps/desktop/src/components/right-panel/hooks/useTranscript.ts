@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { events as listenerEvents, type Word } from "@hypr/plugin-listener";
 import { useOngoingSession, useSession } from "@hypr/utils/contexts";
+import { useQuery } from "@tanstack/react-query";
 
 export function useTranscript(sessionId: string | null) {
   const ongoingSessionState = useOngoingSession((s) => ({
@@ -21,31 +22,23 @@ export function useTranscript(sessionId: string | null) {
 
   const [words, setWords] = useState<Word[]>([]);
   const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const existingWords = useQuery({
+    enabled: !!sessionId,
+    queryKey: ["session", "words", sessionId],
+    queryFn: async () => {
+      const onboardingSessionId = await dbCommands.onboardingSessionId();
+      const fn = (sessionId === onboardingSessionId && isEnhanced)
+        ? dbCommands.getWordsOnboarding
+        : dbCommands.getWords;
+
+      return fn(sessionId!);
+    },
+  });
 
   useEffect(() => {
-    if (!sessionId) {
-      setWords([]);
-      return;
-    }
-
-    setIsLoading(true);
-    const fn = async () => {
-      try {
-        const onboardingSessionId = await dbCommands.onboardingSessionId();
-        const fn = (sessionId === onboardingSessionId && isEnhanced)
-          ? dbCommands.getWordsOnboarding
-          : dbCommands.getWords;
-
-        const words = await fn(sessionId);
-        setWords(words as Word[]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fn();
-  }, [sessionId, isEnhanced]);
+    setWords(existingWords.data ?? []);
+  }, [existingWords.data]);
 
   useEffect(() => {
     if (ongoingSessionState.status !== "running_active" || ongoingSessionState.sessionId !== sessionId) {
@@ -78,6 +71,5 @@ export function useTranscript(sessionId: string | null) {
     isLive,
     selectedLanguage,
     handleLanguageChange,
-    isLoading,
   };
 }
