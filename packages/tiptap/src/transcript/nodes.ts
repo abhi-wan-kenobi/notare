@@ -9,7 +9,7 @@ export interface Speaker {
 }
 
 export const createSpeakerNode = (speakers: Speaker[]) => {
-  const defaultSpeaker = speakers[0];
+  const defaultSpeaker = speakers.length > 0 ? speakers[0] : null;
 
   return Node.create({
     name: "speaker",
@@ -18,15 +18,15 @@ export const createSpeakerNode = (speakers: Speaker[]) => {
     addAttributes() {
       return {
         speakerId: {
-          default: defaultSpeaker.id,
+          default: defaultSpeaker?.id,
           parseHTML: element => {
             const speakerId = element.getAttribute("data-speaker-id");
-            return speakerId && speakers.some(s => s.id === speakerId) ? speakerId : defaultSpeaker.id;
+            return speakerId && speakers.some(s => s.id === speakerId) ? speakerId : defaultSpeaker?.id;
           },
           renderHTML: attributes => {
             const speakerId = speakers.some(s => s.id === attributes.speakerId)
               ? attributes.speakerId
-              : defaultSpeaker.id;
+              : defaultSpeaker?.id;
             return { "data-speaker-id": speakerId };
           },
         },
@@ -43,7 +43,7 @@ export const createSpeakerNode = (speakers: Speaker[]) => {
       const speakerIds = (node.attrs.speakers || []).map((s: Speaker) => s.id);
       const speakerId = node.attrs.speakerId && speakerIds.includes(node.attrs.speakerId)
         ? node.attrs.speakerId
-        : defaultSpeaker.id;
+        : defaultSpeaker?.id;
 
       return [
         "div",

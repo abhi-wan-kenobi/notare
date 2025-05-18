@@ -380,6 +380,16 @@ pub async fn seed(db: &UserDatabase, user_id: impl Into<String>) -> Result<(), c
                 "**Action Items**\n- Send proposal by EOD Friday",
             )
             .unwrap(),
+            enhanced_memo_html: Some(
+                hypr_buffer::opinionated_md_to_html(
+                    "**Action Items**\n- Send proposal by EOD Friday",
+                )
+                .unwrap(),
+            ),
+            words: serde_json::from_str::<Vec<hypr_listener_interface::Word>>(
+                &hypr_data::english_4::WORDS_JSON,
+            )
+            .unwrap(),
             ..new_default_session(&user.id)
         },
         // Last week, not linked, untitled

@@ -1,32 +1,20 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMatch } from "@tanstack/react-router";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { ClipboardCopyIcon, EarIcon, FileAudioIcon, Loader2Icon } from "lucide-react";
+import { CheckIcon, ClipboardCopyIcon, EarIcon, FileAudioIcon, PencilIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 
+import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as miscCommands } from "@hypr/plugin-misc";
 import { commands as windowsCommands, events as windowsEvents } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import { useOngoingSession, useSessions } from "@hypr/utils/contexts";
-import { CheckIcon, PencilIcon } from "lucide-react";
 import { useTranscript } from "../hooks/useTranscript";
 import { useTranscriptWidget } from "../hooks/useTranscriptWidget";
 
 export function TranscriptView() {
-  const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
   const queryClient = useQueryClient();
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
-
-  if (!noteMatch) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-sm text-neutral-500">
-          Widgets are only available in note view.
-        </div>
-      </div>
-    );
-  }
 
   const sessionId = useSessions((s) => s.currentSessionId);
   const isInactive = useOngoingSession((s) => s.status === "inactive");
@@ -39,6 +27,11 @@ export function TranscriptView() {
       writeText(transcriptText);
     }
   };
+
+  const isOnboarding = useQuery({
+    queryKey: ["onboarding"],
+    queryFn: () => dbCommands.onboardingSessionId().then((v) => v === sessionId),
+  });
 
   const audioExist = useQuery(
     {
@@ -141,7 +134,7 @@ export function TranscriptView() {
                 </Tooltip>
               </TooltipProvider>
             )}
-            {!isLive && (
+            {!isLive && !isOnboarding.data && (
               <Button variant="ghost" size="icon" className="p-0" onClick={handleClickToggleEditing}>
                 {editing.data
                   ? <CheckIcon size={16} className="text-black" />
