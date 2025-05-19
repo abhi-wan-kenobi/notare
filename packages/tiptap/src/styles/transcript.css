@@ -6,7 +6,7 @@
 
 .transcript-speaker {
   margin-bottom: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .transcript-speaker-label {
@@ -19,29 +19,25 @@
 .transcript-speaker-content {
   display: inline;
   line-height: 1.7;
+  white-space: normal;
+}
+
+.tiptap-transcript {
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: normal;
+  word-wrap: break-word;
+  color: #333;
+  text-align: left;
 }
 
 .transcript-word {
-  display: inline-block;
-  margin-right: 3px;
-  margin-bottom: 6px;
-  padding: 2px 4px;
+  position: relative;
+  display: inline;
   border-radius: 3px;
   cursor: pointer;
-  background-color: #eef5fd;
-  border: 1px solid transparent;
-  position: relative;
-  transition: all 0.15s ease;
-  font-size: 15px;
-}
-
-.transcript-word:hover {
-  background-color: #d9e8fb;
-  border-color: #b8d5fa;
-}
-
-.transcript-word[data-time] {
-  background-color: #e6f0ff;
+  background-color: transparent;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .transcript-word::after {
@@ -52,9 +48,23 @@
   content: "";
 }
 
+.transcript-word:hover {
+  background-color: #d9e8fb;
+  box-shadow: 0 0 0 1px #b8d5fa;
+}
+
+.transcript-word[data-time] {
+  background-color: transparent;
+}
+
+.transcript-word[data-time]:hover {
+  background-color: #e6f0ff;
+  box-shadow: 0 0 0 1px #b8d5fa;
+}
+
 .transcript-word.selected {
   background-color: #c0d8f9;
-  border-color: #80b5f8;
+  box-shadow: 0 0 0 1px #80b5f8;
 }
 
 .ProseMirror {

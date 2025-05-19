@@ -9,7 +9,7 @@ import {
   PencilIcon,
   UploadIcon,
 } from "lucide-react";
-import { type RefObject, useEffect, useRef } from "react";
+import { Fragment, type RefObject, useEffect, useRef } from "react";
 
 import { commands as dbCommands, type Word } from "@hypr/plugin-db";
 import { commands as miscCommands } from "@hypr/plugin-misc";
@@ -79,7 +79,6 @@ export function TranscriptView() {
       miscCommands.audioOpen(sessionId);
     }
   };
-
 
   useEffect(() => {
     const scrollToBottom = () => {
@@ -242,10 +241,10 @@ function RenderContent({ words, isLive, ref }: {
     >
       <p className="whitespace-pre-wrap">
         {words.map((word, i) => (
-          <span key={`${word.text}-${i}`}>
-            {i > 0 ? " " : ""}
-            {word.text}
-          </span>
+          <Fragment key={`${word.text}-${i}`}>
+            {i > 0 && " "}
+            <span>{word.text}</span>
+          </Fragment>
         ))}
       </p>
       {isLive && (
