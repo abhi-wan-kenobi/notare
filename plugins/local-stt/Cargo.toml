@@ -44,9 +44,11 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 axum = { workspace = true, features = ["ws"] }
+tower-http = { workspace = true, features = ["cors", "trace"] }
+
 futures-util = { workspace = true }
 tokio = { workspace = true, features = ["rt", "macros"] }
-tower-http = { workspace = true, features = ["cors", "trace"] }
+tokio-util = { workspace = true }
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 kalosm-sound = { workspace = true, default-features = false }

@@ -35,14 +35,6 @@ impl WebSocketClient {
                     .with_delay(std::time::Duration::from_millis(500)),
             )
             .when(|e| {
-                if let crate::Error::Connection(te) = e {
-                    if let tokio_tungstenite::tungstenite::Error::Http(res) = te {
-                        if res.status() == 429 {
-                            return true;
-                        }
-                    }
-                }
-
                 tracing::error!("ws_connect_failed: {:?}", e);
                 true
             })
@@ -105,7 +97,7 @@ impl WebSocketClient {
         tracing::info!("connect_async: {:?}", req.uri());
 
         let (ws_stream, _) =
-            tokio::time::timeout(std::time::Duration::from_secs(4), connect_async(req)).await??;
+            tokio::time::timeout(std::time::Duration::from_secs(8), connect_async(req)).await??;
 
         Ok(ws_stream)
     }

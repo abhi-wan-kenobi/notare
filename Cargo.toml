@@ -98,6 +98,7 @@ reqwest = "0.12"
 tokio = "1"
 tokio-stream = "0.1.17"
 tokio-tungstenite = "0.26.0"
+tokio-util = "0.7.15"
 
 anyhow = "1"
 approx = "0.5.1"
