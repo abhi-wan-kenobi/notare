@@ -12,3 +12,6 @@ serde_json = { workspace = true }
 
 [dev-dependencies]
 hypr-data = { workspace = true }
+hypr-db-core = { workspace = true }
+
+tokio = { workspace = true, features = ["macros"] }

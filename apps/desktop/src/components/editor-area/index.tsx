@@ -212,7 +212,7 @@ export function useEnhanceMutation({
         {
           type,
           editor: rawContent,
-          words,
+          words: JSON.stringify(words),
           participants,
         },
       );

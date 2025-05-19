@@ -3132,10 +3132,12 @@ name = "db-script"
 version = "0.1.0"
 dependencies = [
  "data",
+ "db-core",
  "libsql",
  "listener-interface",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

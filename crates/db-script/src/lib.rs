@@ -45,7 +45,7 @@ pub mod conversation_to_words {
                 Err(_) => continue,
             };
 
-            let conversations_str = match row.get_str(8) {
+            let conversations_str = match row.get_str(1) {
                 Ok(convs) => convs.to_string(),
                 Err(_) => continue,
             };
@@ -83,5 +83,22 @@ pub mod conversation_to_words {
                 )
                 .await;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_run() {
+        let db = hypr_db_core::DatabaseBuilder::default()
+            .local("./src/db.sqlite")
+            .build()
+            .await
+            .unwrap();
+
+        let conn = db.conn().unwrap();
+        conversation_to_words::run(&conn).await;
     }
 }
