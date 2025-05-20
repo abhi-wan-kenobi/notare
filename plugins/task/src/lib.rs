@@ -3,6 +3,7 @@ use tauri::{Manager, Wry};
 mod commands;
 mod error;
 mod ext;
+mod store;
 
 pub use error::*;
 pub use ext::*;
@@ -12,7 +13,10 @@ const PLUGIN_NAME: &str = "task";
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
-        .commands(tauri_specta::collect_commands![commands::ping::<Wry>,])
+        .commands(tauri_specta::collect_commands![
+            commands::get_task<Wry>,
+            commands::cancel_task<Wry>,
+        ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
 

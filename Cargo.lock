@@ -13517,6 +13517,7 @@ name = "tauri-plugin-task"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "serde_json",
  "specta",
  "specta-typescript",
  "strum 0.26.3",
@@ -13526,6 +13527,7 @@ dependencies = [
  "tauri-plugin-store2",
  "tauri-specta",
  "thiserror 2.0.12",
+ "uuid",
 ]
 
 [[package]]
