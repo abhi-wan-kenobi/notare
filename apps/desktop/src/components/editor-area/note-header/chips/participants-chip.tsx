@@ -2,48 +2,94 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { RiCornerDownLeftLine, RiLinkedinBoxFill } from "@remixicon/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
+import { Users2Icon } from "lucide-react";
 import { CircleMinus, MailIcon, SearchIcon } from "lucide-react";
+import { useMemo } from "react";
 import React, { useState } from "react";
 
 import { useHypr } from "@/contexts/hypr";
 import { commands as dbCommands, type Human } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import { getInitials } from "@hypr/utils";
 
-interface ParticipantsListProps {
-  sessionId: string;
-}
-
 const NO_ORGANIZATION_ID = "__NO_ORGANIZATION__";
 
-export function ParticipantsList({ sessionId }: ParticipantsListProps) {
-  const groupedParticipants = useQuery({
-    queryKey: ["grouped-participants", sessionId],
+export function ParticipantsChip({ sessionId }: { sessionId: string }) {
+  const { userId } = useHypr();
+
+  const { data: participants = [] } = useQuery({
+    queryKey: ["participants", sessionId],
     queryFn: async () => {
       const participants = await dbCommands.sessionListParticipants(sessionId);
-      const ret: Record<string, Human[]> = {};
 
-      participants.forEach((participant) => {
-        const group = participant.organization_id ?? NO_ORGANIZATION_ID;
-        ret[group] = [...(ret[group] || []), participant];
+      return participants.sort((a, b) => {
+        if (a.is_user && !b.is_user) {
+          return 1;
+        }
+        if (!a.is_user && b.is_user) {
+          return -1;
+        }
+        return 0;
       });
-
-      Object.keys(ret).forEach((group) => {
-        ret[group].sort((a, b) => {
-          const nameA = a.full_name ?? "";
-          const nameB = b.full_name ?? "";
-          return nameB.localeCompare(nameA);
-        });
-      });
-
-      return Object.entries(ret)
-        .sort(([_, membersA], [__, membersB]) => membersB.length - membersA.length);
     },
   });
 
-  if (!groupedParticipants.data?.length) {
+  const count = participants.length;
+  const buttonText = useMemo(() => {
+    const previewHuman = participants.at(0);
+    if (!previewHuman) {
+      return "Add participants";
+    }
+    if (previewHuman.id === userId && !previewHuman.full_name) {
+      return "You";
+    }
+    return previewHuman.full_name ?? "??";
+  }, [participants, userId]);
+
+  return (
+    <Popover>
+      <PopoverTrigger>
+        <div className="flex flex-row items-center gap-1 rounded-md px-2 py-1.5 hover:bg-neutral-100 text-xs">
+          <Users2Icon size={14} />
+          <span>{buttonText}</span>
+          {count > 1 && <span className="text-neutral-400">+ {count - 1}</span>}
+        </div>
+      </PopoverTrigger>
+
+      <PopoverContent className="shadow-lg w-80" align="start">
+        <ParticipantsList sessionId={sessionId} participants={participants} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ParticipantsList(
+  { sessionId, participants }: { sessionId: string; participants: Human[] },
+) {
+  const grouped = useMemo(() => {
+    if (!participants?.length) {
+      return [];
+    }
+    const ret: Record<string, Human[]> = {};
+
+    participants.forEach((p) => {
+      const group = p.organization_id ?? NO_ORGANIZATION_ID;
+      ret[group] = [...(ret[group] || []), p];
+    });
+
+    Object.values(ret).forEach((members) =>
+      members.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""))
+    );
+
+    return Object.entries(ret).sort(
+      ([, a], [, b]) => b.length - a.length,
+    );
+  }, [participants]);
+
+  if (!grouped.length) {
     return <ParticipantAddControl sessionId={sessionId} />;
   }
 
@@ -52,8 +98,13 @@ export function ParticipantsList({ sessionId }: ParticipantsListProps) {
       <div className="text-sm font-medium text-neutral-700">Participants</div>
 
       <div className="flex flex-col gap-4 max-h-[40vh] overflow-y-auto custom-scrollbar pr-1">
-        {groupedParticipants.data.map(([orgId, members]) => (
-          <OrganizationWithParticipants key={orgId} orgId={orgId} members={members} sessionId={sessionId} />
+        {grouped.map(([orgId, members]) => (
+          <OrganizationWithParticipants
+            key={orgId}
+            orgId={orgId}
+            members={members}
+            sessionId={sessionId}
+          />
         ))}
       </div>
 

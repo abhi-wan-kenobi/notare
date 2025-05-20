@@ -1,11 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { AudioLinesIcon, CheckIcon, ClipboardIcon, Copy, EarIcon, PencilIcon, UploadIcon } from "lucide-react";
-import { Fragment, type RefObject, useEffect, useRef } from "react";
+import { Fragment, type RefObject, useEffect, useRef, useState } from "react";
 
 import { commands as dbCommands, type Word } from "@hypr/plugin-db";
 import { commands as miscCommands } from "@hypr/plugin-misc";
-import { commands as windowsCommands, events as windowsEvents } from "@hypr/plugin-windows";
+import TranscriptEditor from "@hypr/tiptap/transcript";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Spinner } from "@hypr/ui/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
@@ -49,20 +49,32 @@ export function TranscriptView() {
     queryClient,
   );
 
-  const editing = useQuery({
-    queryKey: ["editing", sessionId],
-    queryFn: () => windowsCommands.windowIsVisible({ type: "main" }).then((v) => !v),
-  });
+  const [editing, setEditing] = useState(false);
+  const editorRef = useRef(null);
 
   const handleClickToggleEditing = () => {
-    if (editing.data) {
-      windowsCommands.windowHide({ type: "transcript", value: sessionId! }).then(() => {
-        windowsCommands.windowShow({ type: "main" });
-      });
-    } else {
-      windowsCommands.windowHide({ type: "main" }).then(() => {
-        windowsCommands.windowShow({ type: "transcript", value: sessionId! });
-      });
+    setEditing(!editing);
+
+    if (!editing) {
+      if (editorRef.current) {
+        // @ts-expect-error
+        const words = editorRef.current.getWords();
+
+        if (words && sessionId) {
+          dbCommands.getSession({ id: sessionId! }).then((session) => {
+            if (session) {
+              dbCommands.upsertSession({
+                ...session,
+                words,
+              });
+            }
+          }).then(() => {
+            queryClient.invalidateQueries({
+              predicate: (query) => (query.queryKey[0] as string).includes("session"),
+            });
+          });
+        }
+      }
     }
   };
 
@@ -85,20 +97,6 @@ export function TranscriptView() {
       scrollToBottom();
     }
   }, [words, isLive, transcriptContainerRef]);
-
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-
-    windowsEvents.windowDestroyed.listen(({ payload: { window } }) => {
-      if (window.type === "transcript") {
-        windowsCommands.windowShow({ type: "main" });
-      }
-    }).then((u) => {
-      unlisten = u;
-    });
-
-    return () => unlisten?.();
-  }, []);
 
   if (!sessionId) {
     return null;
@@ -123,7 +121,7 @@ export function TranscriptView() {
             </div>
           )}
           <div className="not-draggable flex items-center gap-2">
-            {(audioExist.data && ongoingSession.isInactive && hasTranscript && sessionId) && (
+            {(audioExist.data && ongoingSession.isInactive && hasTranscript && sessionId && !editing) && (
               <TooltipProvider key="listen-recording-tooltip">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -137,7 +135,7 @@ export function TranscriptView() {
                 </Tooltip>
               </TooltipProvider>
             )}
-            {(hasTranscript && sessionId) && (
+            {(hasTranscript && sessionId && !editing) && (
               <TooltipProvider key="copy-all-tooltip">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -153,7 +151,7 @@ export function TranscriptView() {
             )}
             {hasTranscript && ongoingSession.isInactive && !isOnboarding.data && (
               <Button variant="ghost" size="icon" className="p-0" onClick={handleClickToggleEditing}>
-                {editing.data
+                {editing
                   ? <CheckIcon size={16} className="text-black" />
                   : <PencilIcon size={16} className="text-black" />}
               </Button>
@@ -163,9 +161,17 @@ export function TranscriptView() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {showEmptyMessage
+        {editing
+          ? (
+            <TranscriptEditor
+              ref={editorRef}
+              editable={true}
+              initialWords={words}
+            />
+          )
+          : showEmptyMessage
           ? <RenderEmpty sessionId={sessionId} />
-          : <RenderContent words={words} isLive={isLive} ref={transcriptContainerRef} />}
+          : <RenderContent words={words} isLive={isLive} containerRef={transcriptContainerRef} />}
       </div>
     </div>
   );
@@ -221,14 +227,14 @@ function RenderEmpty({ sessionId }: { sessionId: string }) {
   );
 }
 
-function RenderContent({ words, isLive, ref }: {
+function RenderContent({ containerRef, words, isLive }: {
+  containerRef: RefObject<HTMLDivElement>;
   isLive: boolean;
   words: Word[];
-  ref: RefObject<HTMLDivElement>;
 }) {
   return (
     <div
-      ref={ref}
+      ref={containerRef}
       className="h-full scrollbar-none px-4 flex flex-col gap-2 overflow-y-auto text-sm py-4"
     >
       <p className="whitespace-pre-wrap">
