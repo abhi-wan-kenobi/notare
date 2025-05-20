@@ -29,7 +29,7 @@ export function TranscriptView() {
 
   const handleCopyAll = () => {
     if (words && words.length > 0) {
-      const transcriptText = words.map((item) => item.text).join("\n");
+      const transcriptText = words.map((word) => word.text).join(" ");
       writeText(transcriptText);
     }
   };
