@@ -45,7 +45,15 @@ impl<S, E> RealtimeSpeechToText<S, E> for crate::deepgram::DeepgramClient {
             .stream(stream)
             .await?;
 
-        let transformed_stream = deepgram_stream.filter_map(move |result| {
+        let filtered_stream = deepgram_stream.take_while(|result| {
+            let continue_stream = match result {
+                Ok(DeepgramStreamResponse::TerminalResponse { .. }) => false,
+                _ => true,
+            };
+            future::ready(continue_stream)
+        });
+
+        let transformed_stream = filtered_stream.filter_map(move |result| {
             let item = match result {
                 Err(e) => Some(Err(e.into())),
                 Ok(resp) => match resp {
@@ -77,9 +85,6 @@ impl<S, E> RealtimeSpeechToText<S, E> for crate::deepgram::DeepgramClient {
                             Some(Ok(ListenOutputChunk { words }))
                         }
                     }
-                    DeepgramStreamResponse::TerminalResponse { .. }
-                    | DeepgramStreamResponse::SpeechStartedResponse { .. }
-                    | DeepgramStreamResponse::UtteranceEndResponse { .. } => None,
                     _ => None,
                 },
             };

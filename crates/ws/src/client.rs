@@ -73,7 +73,11 @@ impl WebSocketClient {
                         }
                     }
                     Err(e) => {
-                        tracing::error!("ws_receiver_failed: {:?}", e);
+                        if let tokio_tungstenite::tungstenite::Error::Protocol(tokio_tungstenite::tungstenite::error::ProtocolError::ResetWithoutClosingHandshake) = e {
+                            tracing::debug!("ws_receiver_failed: {:?}", e);
+                        } else {
+                            tracing::error!("ws_receiver_failed: {:?}", e);
+                        }
                         break;
                     }
                 }
