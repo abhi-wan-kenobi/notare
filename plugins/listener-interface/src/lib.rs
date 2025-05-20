@@ -42,10 +42,21 @@ common_derives! {
 }
 
 common_derives! {
-    #[derive(Default)]
-    pub struct ListenInputChunk {
-        #[serde(serialize_with = "serde_bytes::serialize")]
-        pub audio: Vec<u8>,
+    #[serde(tag = "type", content = "value")]
+    pub enum ListenInputChunk {
+        #[serde(rename = "audio")]
+        Audio {
+            #[serde(serialize_with = "serde_bytes::serialize")]
+            data: Vec<u8>,
+        },
+        #[serde(rename = "end")]
+        End,
+    }
+}
+
+impl Default for ListenInputChunk {
+    fn default() -> Self {
+        ListenInputChunk::End
     }
 }
 
