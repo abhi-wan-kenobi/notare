@@ -153,6 +153,9 @@ importers:
       '@hypr/plugin-sfx':
         specifier: workspace:^
         version: link:../../plugins/sfx
+      '@hypr/plugin-task':
+        specifier: workspace:^
+        version: link:../../plugins/task
       '@hypr/plugin-template':
         specifier: workspace:^
         version: link:../../plugins/template
@@ -861,6 +864,12 @@ importers:
         version: 2.5.0
 
   plugins/store2:
+    dependencies:
+      '@tauri-apps/api':
+        specifier: ^2.5.0
+        version: 2.5.0
+
+  plugins/task:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.5.0

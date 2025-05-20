@@ -74,6 +74,7 @@ tauri-plugin-opener = "2"
 tauri-plugin-store = "2"
 
 tauri-plugin-analytics = { path = "plugins/analytics" }
+tauri-plugin-apple-calendar = { path = "plugins/apple-calendar" }
 tauri-plugin-auth = { path = "plugins/auth" }
 tauri-plugin-connector = { path = "plugins/connector" }
 tauri-plugin-db = { path = "plugins/db" }
@@ -86,6 +87,7 @@ tauri-plugin-notification = { path = "plugins/notification" }
 tauri-plugin-sfx = { path = "plugins/sfx" }
 tauri-plugin-sse = { path = "plugins/sse" }
 tauri-plugin-store2 = { path = "plugins/store2" }
+tauri-plugin-task = { path = "plugins/task" }
 tauri-plugin-template = { path = "plugins/template" }
 tauri-plugin-tray = { path = "plugins/tray" }
 tauri-plugin-windows = { path = "plugins/windows" }
