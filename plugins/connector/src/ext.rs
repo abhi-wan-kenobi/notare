@@ -97,10 +97,11 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ConnectorPluginExt<R> for T {
             self.start_server().await?
         };
 
-        Ok(ConnectionLLM::HyprLocal(Connection {
+        let conn = ConnectionLLM::HyprLocal(Connection {
             api_base,
             api_key: None,
-        }))
+        });
+        Ok(conn)
     }
 
     async fn get_llm_connection(&self) -> Result<ConnectionLLM, crate::Error> {
@@ -140,7 +141,8 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ConnectorPluginExt<R> for T {
                     self.get_from_vault(VaultKey::RemoteServer)?
                 };
 
-                return Ok(ConnectionLLM::HyprCloud(Connection { api_base, api_key }));
+                let conn = ConnectionLLM::HyprCloud(Connection { api_base, api_key });
+                return Ok(conn);
             }
         }
 
@@ -159,7 +161,8 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ConnectorPluginExt<R> for T {
             let conn = ConnectionLLM::Custom(Connection { api_base, api_key });
             Ok(conn)
         } else {
-            self.get_local_llm_connection().await
+            let conn = self.get_local_llm_connection().await?;
+            Ok(conn)
         }
     }
 
@@ -200,7 +203,8 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ConnectorPluginExt<R> for T {
                     self.get_from_vault(VaultKey::RemoteServer)?
                 };
 
-                return Ok(ConnectionSTT::HyprCloud(Connection { api_base, api_key }));
+                let conn = ConnectionSTT::HyprCloud(Connection { api_base, api_key });
+                return Ok(conn);
             }
         }
 
@@ -215,10 +219,11 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ConnectorPluginExt<R> for T {
                 self.start_server().await?
             };
 
-            Ok(ConnectionSTT::HyprLocal(Connection {
+            let conn = ConnectionSTT::HyprLocal(Connection {
                 api_base,
                 api_key: None,
-            }))
+            });
+            Ok(conn)
         }
     }
 }
