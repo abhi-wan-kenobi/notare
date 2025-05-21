@@ -149,7 +149,7 @@ export function TranscriptView() {
                 </Tooltip>
               </TooltipProvider>
             )}
-            {hasTranscript && ongoingSession.isInactive && !isOnboarding.data && (
+            {false && hasTranscript && ongoingSession.isInactive && !isOnboarding.data && (
               <Button variant="ghost" size="icon" className="p-0" onClick={handleClickToggleEditing}>
                 {editing
                   ? <CheckIcon size={16} className="text-black" />
