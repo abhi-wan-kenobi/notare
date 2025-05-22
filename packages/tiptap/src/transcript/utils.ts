@@ -1,17 +1,25 @@
 import type { SpeakerIdentity, Word } from "@hypr/plugin-db";
-import { EditorContent } from "@tiptap/react";
+import { JSONContent } from "@tiptap/react";
 
 export type { Word };
 
-type EditorContent = {
-  type: "doc";
+export type DocContent = {
+  type: string;
   content: SpeakerContent[];
 };
 
+const SPEAKER_ID_ATTR = "speaker-id";
+const SPEAKER_INDEX_ATTR = "speaker-index";
+const SPEAKER_LABEL_ATTR = "speaker-label";
+
 type SpeakerContent = {
   type: "speaker";
-  attrs: { "speaker-index": number | null; "speaker-id": string | null; "speaker-label": string | null };
   content: WordContent[];
+  attrs: {
+    [SPEAKER_INDEX_ATTR]: number | null;
+    [SPEAKER_ID_ATTR]: string | null;
+    [SPEAKER_LABEL_ATTR]: string | null;
+  };
 };
 
 type WordContent = {
@@ -24,7 +32,7 @@ type WordContent = {
   };
 };
 
-export const fromWordsToEditor = (words: Word[]): EditorContent => {
+export const fromWordsToEditor = (words: Word[]): DocContent => {
   return {
     type: "doc",
     content: words.reduce<{ cur: SpeakerIdentity | null; acc: SpeakerContent[] }>((state, word) => {
@@ -42,9 +50,9 @@ export const fromWordsToEditor = (words: Word[]): EditorContent => {
         state.acc.push({
           type: "speaker",
           attrs: {
-            "speaker-index": word.speaker?.type === "unassigned" ? word.speaker.value?.index : null,
-            "speaker-id": word.speaker?.type === "assigned" ? word.speaker.value?.id : null,
-            "speaker-label": word.speaker?.type === "assigned" ? word.speaker.value?.label || "" : null,
+            [SPEAKER_INDEX_ATTR]: word.speaker?.type === "unassigned" ? word.speaker.value?.index : null,
+            [SPEAKER_ID_ATTR]: word.speaker?.type === "assigned" ? word.speaker.value?.id : null,
+            [SPEAKER_LABEL_ATTR]: word.speaker?.type === "assigned" ? word.speaker.value?.label || "" : null,
           },
           content: [],
         });
@@ -67,7 +75,7 @@ export const fromWordsToEditor = (words: Word[]): EditorContent => {
   };
 };
 
-export const fromEditorToWords = (content: EditorContent): Word[] => {
+export const fromEditorToWords = (content: DocContent | JSONContent): Word[] => {
   if (!content?.content) {
     return [];
   }
@@ -80,19 +88,21 @@ export const fromEditorToWords = (content: EditorContent): Word[] => {
     }
 
     let speaker: SpeakerIdentity | null = null;
-    if (speakerBlock.attrs["speaker-id"]) {
+    const attrs = speakerBlock.attrs || {};
+
+    if (attrs[SPEAKER_ID_ATTR]) {
       speaker = {
         type: "assigned",
         value: {
-          id: speakerBlock.attrs["speaker-id"],
-          label: speakerBlock.attrs["speaker-label"] ?? "",
+          id: attrs[SPEAKER_ID_ATTR],
+          label: attrs[SPEAKER_LABEL_ATTR] ?? "",
         },
       };
-    } else if (typeof speakerBlock.attrs["speaker-index"] === "number") {
+    } else if (typeof attrs[SPEAKER_INDEX_ATTR] === "number") {
       speaker = {
         type: "unassigned",
         value: {
-          index: speakerBlock.attrs["speaker-index"],
+          index: attrs[SPEAKER_INDEX_ATTR],
         },
       };
     }
@@ -101,13 +111,13 @@ export const fromEditorToWords = (content: EditorContent): Word[] => {
       if (wordBlock.type !== "word" || !wordBlock.content?.[0]?.text) {
         continue;
       }
-      const attrs = wordBlock.attrs || {};
+      const wordAttrs = wordBlock.attrs || {};
       words.push({
         text: wordBlock.content[0].text,
         speaker,
-        confidence: attrs.confidence ?? null,
-        start_ms: attrs.start_ms ?? null,
-        end_ms: attrs.end_ms ?? null,
+        confidence: wordAttrs.confidence ?? null,
+        start_ms: wordAttrs.start_ms ?? null,
+        end_ms: wordAttrs.end_ms ?? null,
       });
     }
   }

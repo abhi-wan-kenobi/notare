@@ -2,52 +2,74 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { RiCornerDownLeftLine, RiLinkedinBoxFill } from "@remixicon/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { Users2Icon } from "lucide-react";
-import { CircleMinus, MailIcon, SearchIcon } from "lucide-react";
-import { useMemo } from "react";
-import React, { useState } from "react";
+import { CircleMinus, MailIcon, SearchIcon, Users2Icon } from "lucide-react";
+import React, { useMemo, useState } from "react";
 
 import { useHypr } from "@/contexts/hypr";
 import { commands as dbCommands, type Human } from "@hypr/plugin-db";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Avatar, AvatarFallback } from "@hypr/ui/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import { getInitials } from "@hypr/utils";
 
 const NO_ORGANIZATION_ID = "__NO_ORGANIZATION__";
 
-export function ParticipantsChip({ sessionId }: { sessionId: string }) {
-  const { userId } = useHypr();
-
+export function useParticipantsWithOrg(sessionId: string) {
   const { data: participants = [] } = useQuery({
     queryKey: ["participants", sessionId],
     queryFn: async () => {
       const participants = await dbCommands.sessionListParticipants(sessionId);
+      const orgs = await Promise.all(
+        participants
+          .map((p) => p.organization_id)
+          .filter((id) => id !== null)
+          .map((id) => dbCommands.getOrganization(id)),
+      ).then((orgs) => orgs.filter((o) => o !== null));
 
-      return participants.sort((a, b) => {
-        if (a.is_user && !b.is_user) {
+      const grouped = participants.reduce((acc, participant) => {
+        const orgId = participant.organization_id ?? NO_ORGANIZATION_ID;
+        acc[orgId] = [...(acc[orgId] || []), participant];
+        return acc;
+      }, {} as Record<string, Human[]>);
+
+      return Object.entries(grouped).map(([orgId, participants]) => ({
+        organization: orgs.find((o) => o.id === orgId) ?? null,
+        participants,
+      })).sort((a, b) => {
+        if (!a.organization && b.organization) {
           return 1;
         }
-        if (!a.is_user && b.is_user) {
+        if (a.organization && !b.organization) {
           return -1;
         }
-        return 0;
+        return (a.organization?.name || "").localeCompare(b.organization?.name || "");
       });
     },
   });
 
-  const count = participants.length;
+  return participants;
+}
+
+export function ParticipantsChip({ sessionId }: { sessionId: string }) {
+  const participants = useParticipantsWithOrg(sessionId);
+  const { userId } = useHypr();
+
+  const count = participants.reduce((acc, group) => acc + (group.participants?.length ?? 0), 0);
   const buttonText = useMemo(() => {
-    const previewHuman = participants.at(0);
-    if (!previewHuman) {
+    if (count === 0) {
       return "Add participants";
     }
+
+    const previewHuman = participants.find((group) => group.participants.length > 0)?.participants[0]!;
     if (previewHuman.id === userId && !previewHuman.full_name) {
       return "You";
     }
     return previewHuman.full_name ?? "??";
   }, [participants, userId]);
+
+  const handleClickHuman = (human: Human) => {
+    windowsCommands.windowShow({ type: "human", value: human.id });
+  };
 
   return (
     <Popover>
@@ -60,89 +82,46 @@ export function ParticipantsChip({ sessionId }: { sessionId: string }) {
       </PopoverTrigger>
 
       <PopoverContent className="shadow-lg w-80" align="start">
-        <ParticipantsList sessionId={sessionId} participants={participants} />
+        <ParticipantsChipInner sessionId={sessionId} handleClickHuman={handleClickHuman} />
       </PopoverContent>
     </Popover>
   );
 }
 
-function ParticipantsList(
-  { sessionId, participants }: { sessionId: string; participants: Human[] },
+export function ParticipantsChipInner(
+  { sessionId, handleClickHuman }: { sessionId: string; handleClickHuman: (human: Human) => void },
 ) {
-  const grouped = useMemo(() => {
-    if (!participants?.length) {
-      return [];
-    }
-    const ret: Record<string, Human[]> = {};
-
-    participants.forEach((p) => {
-      const group = p.organization_id ?? NO_ORGANIZATION_ID;
-      ret[group] = [...(ret[group] || []), p];
-    });
-
-    Object.values(ret).forEach((members) =>
-      members.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""))
-    );
-
-    return Object.entries(ret).sort(
-      ([, a], [, b]) => b.length - a.length,
-    );
-  }, [participants]);
-
-  if (!grouped.length) {
-    return <ParticipantAddControl sessionId={sessionId} />;
-  }
+  const participants = useParticipantsWithOrg(sessionId);
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="text-sm font-medium text-neutral-700">Participants</div>
-
-      <div className="flex flex-col gap-4 max-h-[40vh] overflow-y-auto custom-scrollbar pr-1">
-        {grouped.map(([orgId, members]) => (
-          <OrganizationWithParticipants
-            key={orgId}
-            orgId={orgId}
-            members={members}
-            sessionId={sessionId}
-          />
-        ))}
-      </div>
-
-      <ParticipantAddControl sessionId={sessionId} />
-    </div>
-  );
-}
-
-function OrganizationWithParticipants(
-  { orgId, members, sessionId }: { orgId: string; members: Human[]; sessionId: string },
-) {
-  const organization = useQuery({
-    queryKey: ["org", orgId],
-    queryFn: () => {
-      if (orgId === NO_ORGANIZATION_ID) {
-        return null;
-      }
-
-      return dbCommands.getOrganization(orgId);
-    },
-  });
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="text-xs font-medium text-neutral-400 truncate">
-        {organization.data?.name ?? "No organization"}
-      </div>
-      <div className="flex flex-col rounded-md overflow-hidden bg-neutral-50 border border-neutral-100">
-        {members.map((member, index) => (
-          <ParticipentItem
-            key={member.id}
-            member={member}
-            sessionId={sessionId}
-            isLast={index === members.length - 1}
-          />
-        ))}
-      </div>
-    </div>
+    !participants.length
+      ? <ParticipantAddControl sessionId={sessionId} />
+      : (
+        <div className="flex flex-col gap-3">
+          <div className="text-sm font-medium text-neutral-700">Participants</div>
+          <div className="flex flex-col gap-4 max-h-[40vh] overflow-y-auto custom-scrollbar pr-1">
+            {participants.map(({ organization, participants }) => (
+              <div key={organization?.id ?? NO_ORGANIZATION_ID} className="flex flex-col gap-1.5">
+                <div className="text-xs font-medium text-neutral-400 truncate">
+                  {organization?.name ?? "No organization"}
+                </div>
+                <div className="flex flex-col rounded-md overflow-hidden bg-neutral-50 border border-neutral-100">
+                  {(participants ?? []).map((member, index) => (
+                    <ParticipentItem
+                      key={member.id}
+                      member={member}
+                      sessionId={sessionId}
+                      isLast={index === (participants ?? []).length - 1}
+                      handleClickHuman={handleClickHuman}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <ParticipantAddControl sessionId={sessionId} />
+        </div>
+      )
   );
 }
 
@@ -150,10 +129,12 @@ function ParticipentItem({
   member,
   sessionId,
   isLast = false,
+  handleClickHuman,
 }: {
   member: Human;
   sessionId: string;
   isLast?: boolean;
+  handleClickHuman: (human: Human) => void;
 }) {
   const queryClient = useQueryClient();
   const { userId } = useHypr();
@@ -165,10 +146,6 @@ function ParticipentItem({
         predicate: (query) => (query.queryKey[0] as string).includes("participants") && query.queryKey[1] === sessionId,
       }),
   });
-
-  const handleClickHuman = (human: Human) => {
-    windowsCommands.windowShow({ type: "human", value: human.id });
-  };
 
   const handleRemoveParticipant = (id: string) => {
     removeParticipantMutation.mutate({ id: id });
@@ -192,36 +169,29 @@ function ParticipentItem({
               </AvatarFallback>
             </Avatar>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRemoveParticipant(member.id);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleRemoveParticipant(member.id);
-                  }
-                }}
-                className={clsx([
-                  "flex items-center justify-center",
-                  "text-red-400 hover:text-red-600",
-                  "absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity",
-                  "bg-white shadow-sm",
-                ])}
-              >
-                <CircleMinus className="size-4" />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={10}>
-              <Trans>Remove {member.full_name} from list</Trans>
-            </TooltipContent>
-          </Tooltip>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRemoveParticipant(member.id);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                handleRemoveParticipant(member.id);
+              }
+            }}
+            className={clsx([
+              "flex items-center justify-center",
+              "text-red-400 hover:text-red-600",
+              "absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity",
+              "bg-white shadow-sm",
+            ])}
+          >
+            <CircleMinus className="size-4" />
+          </div>
         </div>
         <div className="flex flex-col min-w-0 flex-1">
           {member.full_name

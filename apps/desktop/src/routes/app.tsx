@@ -15,7 +15,6 @@ import {
   RightPanelProvider,
   SearchProvider,
   SettingsProvider,
-  TinyBaseProvider,
   useLeftSidebar,
   useRightPanel,
 } from "@/contexts";
@@ -43,51 +42,49 @@ function Component() {
   return (
     <>
       <HyprProvider>
-        <TinyBaseProvider>
-          <SessionsProvider store={sessionsStore}>
-            <OngoingSessionProvider store={ongoingSessionStore}>
-              <LeftSidebarProvider>
-                <RightPanelProvider>
-                  <AudioPermissions />
-                  <MainWindowStateEventSupport />
-                  <SettingsProvider>
-                    <NewNoteProvider>
-                      <SearchProvider>
-                        <EditModeProvider>
-                          <div className="flex h-screen w-screen overflow-hidden">
-                            <LeftSidebar />
-                            <div className="flex-1 flex h-screen w-screen flex-col overflow-hidden">
-                              <Toolbar />
+        <SessionsProvider store={sessionsStore}>
+          <OngoingSessionProvider store={ongoingSessionStore}>
+            <LeftSidebarProvider>
+              <RightPanelProvider>
+                <AudioPermissions />
+                <MainWindowStateEventSupport />
+                <SettingsProvider>
+                  <NewNoteProvider>
+                    <SearchProvider>
+                      <EditModeProvider>
+                        <div className="flex h-screen w-screen overflow-hidden">
+                          <LeftSidebar />
+                          <div className="flex-1 flex h-screen w-screen flex-col overflow-hidden">
+                            <Toolbar />
 
-                              <ResizablePanelGroup
-                                direction="horizontal"
-                                className="flex-1 overflow-hidden flex"
-                                autoSaveId="main"
-                              >
-                                <ResizablePanel className="flex-1 overflow-hidden">
-                                  <Outlet />
-                                </ResizablePanel>
-                                <ResizableHandle className="w-0" />
-                                <RightPanel />
-                              </ResizablePanelGroup>
-                            </div>
+                            <ResizablePanelGroup
+                              direction="horizontal"
+                              className="flex-1 overflow-hidden flex"
+                              autoSaveId="main"
+                            >
+                              <ResizablePanel className="flex-1 overflow-hidden">
+                                <Outlet />
+                              </ResizablePanel>
+                              <ResizableHandle className="w-0" />
+                              <RightPanel />
+                            </ResizablePanelGroup>
                           </div>
-                          <WelcomeModal
-                            isOpen={isOnboardingNeeded}
-                            onClose={() => {
-                              commands.setOnboardingNeeded(false);
-                              router.invalidate();
-                            }}
-                          />
-                        </EditModeProvider>
-                      </SearchProvider>
-                    </NewNoteProvider>
-                  </SettingsProvider>
-                </RightPanelProvider>
-              </LeftSidebarProvider>
-            </OngoingSessionProvider>
-          </SessionsProvider>
-        </TinyBaseProvider>
+                        </div>
+                        <WelcomeModal
+                          isOpen={isOnboardingNeeded}
+                          onClose={() => {
+                            commands.setOnboardingNeeded(false);
+                            router.invalidate();
+                          }}
+                        />
+                      </EditModeProvider>
+                    </SearchProvider>
+                  </NewNoteProvider>
+                </SettingsProvider>
+              </RightPanelProvider>
+            </LeftSidebarProvider>
+          </OngoingSessionProvider>
+        </SessionsProvider>
       </HyprProvider>
       {showNotifications && <Notifications />}
     </>

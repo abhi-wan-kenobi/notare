@@ -1,12 +1,15 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMatch } from "@tanstack/react-router";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { AudioLinesIcon, CheckIcon, ClipboardIcon, Copy, EarIcon, PencilIcon, UploadIcon } from "lucide-react";
-import { Fragment, type RefObject, useEffect, useRef, useState } from "react";
+import { AudioLinesIcon, ClipboardIcon, Copy, UploadIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
-import { commands as dbCommands, type Word } from "@hypr/plugin-db";
+import { ParticipantsChipInner } from "@/components/editor-area/note-header/chips/participants-chip";
+import { commands as dbCommands, Human, Word } from "@hypr/plugin-db";
 import { commands as miscCommands } from "@hypr/plugin-misc";
-import TranscriptEditor from "@hypr/tiptap/transcript";
+import TranscriptEditor, { type SpeakerViewInnerProps, type TranscriptEditorRef } from "@hypr/tiptap/transcript";
 import { Button } from "@hypr/ui/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { Spinner } from "@hypr/ui/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import { useOngoingSession, useSessions } from "@hypr/utils/contexts";
@@ -15,7 +18,6 @@ import { useTranscriptWidget } from "../hooks/useTranscriptWidget";
 
 export function TranscriptView() {
   const queryClient = useQueryClient();
-  const transcriptContainerRef = useRef<HTMLDivElement>(null);
 
   const sessionId = useSessions((s) => s.currentSessionId);
   const ongoingSession = useOngoingSession((s) => ({
@@ -27,17 +29,20 @@ export function TranscriptView() {
   const { showEmptyMessage, hasTranscript } = useTranscriptWidget(sessionId);
   const { isLive, words } = useTranscript(sessionId);
 
+  const editorRef = useRef<TranscriptEditorRef | null>(null);
+
+  useEffect(() => {
+    if (words && words.length > 0) {
+      editorRef.current?.setWords(words);
+    }
+  }, [words]);
+
   const handleCopyAll = () => {
     if (words && words.length > 0) {
       const transcriptText = words.map((word) => word.text).join(" ");
       writeText(transcriptText);
     }
   };
-
-  const isOnboarding = useQuery({
-    queryKey: ["onboarding"],
-    queryFn: () => dbCommands.onboardingSessionId().then((v) => v === sessionId),
-  });
 
   const audioExist = useQuery(
     {
@@ -49,54 +54,21 @@ export function TranscriptView() {
     queryClient,
   );
 
-  const [editing, setEditing] = useState(false);
-  const editorRef = useRef(null);
-
-  const handleClickToggleEditing = () => {
-    setEditing(!editing);
-
-    if (!editing) {
-      if (editorRef.current) {
-        // @ts-expect-error
-        const words = editorRef.current.getWords();
-
-        if (words && sessionId) {
-          dbCommands.getSession({ id: sessionId! }).then((session) => {
-            if (session) {
-              dbCommands.upsertSession({
-                ...session,
-                words,
-              });
-            }
-          }).then(() => {
-            queryClient.invalidateQueries({
-              predicate: (query) => (query.queryKey[0] as string).includes("session"),
-            });
-          });
-        }
-      }
-    }
-  };
-
   const handleOpenSession = () => {
     if (sessionId) {
       miscCommands.audioOpen(sessionId);
     }
   };
 
-  useEffect(() => {
-    const scrollToBottom = () => {
-      requestAnimationFrame(() => {
-        if (transcriptContainerRef.current && "scrollTop" in transcriptContainerRef.current) {
-          transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+  const handleUpdate = (words: Word[]) => {
+    if (!isLive) {
+      dbCommands.getSession({ id: sessionId! }).then((session) => {
+        if (session) {
+          dbCommands.upsertSession({ ...session, words });
         }
       });
-    };
-
-    if (words?.length) {
-      scrollToBottom();
     }
-  }, [words, isLive, transcriptContainerRef]);
+  };
 
   if (!sessionId) {
     return null;
@@ -121,7 +93,7 @@ export function TranscriptView() {
             </div>
           )}
           <div className="not-draggable flex items-center gap-2">
-            {(audioExist.data && ongoingSession.isInactive && hasTranscript && sessionId && !editing) && (
+            {(audioExist.data && ongoingSession.isInactive && hasTranscript && sessionId) && (
               <TooltipProvider key="listen-recording-tooltip">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -135,7 +107,7 @@ export function TranscriptView() {
                 </Tooltip>
               </TooltipProvider>
             )}
-            {(hasTranscript && sessionId && !editing) && (
+            {(hasTranscript && sessionId) && (
               <TooltipProvider key="copy-all-tooltip">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -149,29 +121,24 @@ export function TranscriptView() {
                 </Tooltip>
               </TooltipProvider>
             )}
-            {false && hasTranscript && ongoingSession.isInactive && !isOnboarding.data && (
-              <Button variant="ghost" size="icon" className="p-0" onClick={handleClickToggleEditing}>
-                {editing
-                  ? <CheckIcon size={16} className="text-black" />
-                  : <PencilIcon size={16} className="text-black" />}
-              </Button>
-            )}
           </div>
         </header>
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {editing
-          ? (
-            <TranscriptEditor
-              ref={editorRef}
-              editable={true}
-              initialWords={words}
-            />
-          )
-          : showEmptyMessage
+        {showEmptyMessage
           ? <RenderEmpty sessionId={sessionId} />
-          : <RenderContent words={words} isLive={isLive} containerRef={transcriptContainerRef} />}
+          : (
+            <div className="px-4 h-full">
+              <TranscriptEditor
+                ref={editorRef}
+                initialWords={words}
+                editable={ongoingSession.isInactive}
+                onUpdate={handleUpdate}
+                c={SpeakerSelector}
+              />
+            </div>
+          )}
       </div>
     </div>
   );
@@ -227,29 +194,56 @@ function RenderEmpty({ sessionId }: { sessionId: string }) {
   );
 }
 
-function RenderContent({ containerRef, words, isLive }: {
-  containerRef: RefObject<HTMLDivElement>;
-  isLive: boolean;
-  words: Word[];
-}) {
+const SpeakerSelector = ({
+  onSpeakerIdChange,
+  speakerId,
+  speakerIndex,
+}: SpeakerViewInnerProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const inactive = useOngoingSession(s => s.status === "inactive");
+
+  const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
+  const sessionId = noteMatch?.params.id;
+
+  const { data: participants = [] } = useQuery({
+    enabled: !!sessionId,
+    queryKey: ["participants", sessionId!, "selector"],
+    queryFn: () => dbCommands.sessionListParticipants(sessionId!),
+  });
+
+  const handleClickHuman = (human: Human) => {
+    onSpeakerIdChange(human.id);
+    setIsOpen(false);
+  };
+
+  const foundSpeaker = participants.length === 1 ? participants[0] : participants.find((s) => s.id === speakerId);
+  const displayName = foundSpeaker?.full_name ?? `Speaker ${speakerIndex ?? 0}`;
+
+  if (!sessionId) {
+    return <p></p>;
+  }
+
+  if (!inactive && !foundSpeaker) {
+    return <p></p>;
+  }
+
   return (
-    <div
-      ref={containerRef}
-      className="h-full scrollbar-none px-4 flex flex-col gap-2 overflow-y-auto text-sm py-4"
-    >
-      <p className="whitespace-pre-wrap">
-        {words.map((word, i) => (
-          <Fragment key={`${word.text}-${i}`}>
-            {i > 0 && " "}
-            <span>{word.text}</span>
-          </Fragment>
-        ))}
-      </p>
-      {isLive && (
-        <div className="flex items-center gap-2 justify-center py-2 text-neutral-400">
-          <EarIcon size={14} /> Listening... (there might be a delay)
-        </div>
-      )}
+    <div className="mt-2">
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger
+          onMouseDown={(e) => {
+            // prevent cursor from moving to the end of the editor
+            e.preventDefault();
+          }}
+        >
+          <span className="underline py-1 font-semibold">
+            {displayName}
+          </span>
+        </PopoverTrigger>
+        <PopoverContent align="start" side="bottom">
+          <ParticipantsChipInner sessionId={sessionId} handleClickHuman={handleClickHuman} />
+        </PopoverContent>
+      </Popover>
     </div>
   );
-}
+};

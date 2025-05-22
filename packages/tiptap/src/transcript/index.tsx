@@ -2,6 +2,7 @@ import "../styles/transcript.css";
 
 import { SearchAndReplace } from "@sereneinserenade/tiptap-search-and-replace";
 import { type Editor as TiptapEditor } from "@tiptap/core";
+import BubbleMenu from "@tiptap/extension-bubble-menu";
 import Document from "@tiptap/extension-document";
 import History from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
@@ -11,34 +12,49 @@ import { forwardRef, useEffect } from "react";
 import { SpeakerSplit, WordSplit } from "./extensions";
 import { SpeakerNode, WordNode } from "./nodes";
 import { fromEditorToWords, fromWordsToEditor, type Word } from "./utils";
+import type { SpeakerViewInnerComponent, SpeakerViewInnerProps } from "./views";
+
+export { SpeakerViewInnerProps };
 
 interface TranscriptEditorProps {
   editable?: boolean;
-  initialWords?: Word[];
+  initialWords: Word[] | null;
+  onUpdate?: (words: Word[]) => void;
+  c: SpeakerViewInnerComponent;
 }
 
-const TranscriptEditor = forwardRef<
-  { editor: TiptapEditor | null; getWords: () => Word[] | null },
-  TranscriptEditorProps
->(
-  ({ initialWords, editable = true }, ref) => {
+export interface TranscriptEditorRef {
+  editor: TiptapEditor | null;
+  getWords: () => Word[] | null;
+  setWords: (words: Word[]) => void;
+}
+
+const TranscriptEditor = forwardRef<TranscriptEditorRef, TranscriptEditorProps>(
+  ({ editable = true, c, onUpdate, initialWords }, ref) => {
     const extensions = [
       Document.configure({ content: "speaker+" }),
       History,
       Text,
       WordNode,
-      SpeakerNode,
+      SpeakerNode(c),
       WordSplit,
       SpeakerSplit,
       SearchAndReplace.configure({
         searchResultClass: "search-result",
         disableRegex: false,
       }),
+      BubbleMenu,
     ];
 
     const editor = useEditor({
       extensions,
       editable,
+      onUpdate: ({ editor }) => {
+        if (onUpdate) {
+          onUpdate(fromEditorToWords(editor.getJSON() as any));
+        }
+      },
+      content: initialWords ? fromWordsToEditor(initialWords) : undefined,
       editorProps: {
         attributes: {
           class: "tiptap-transcript",
@@ -47,15 +63,22 @@ const TranscriptEditor = forwardRef<
     });
 
     useEffect(() => {
-      if (ref && typeof ref === "object") {
-        (ref as any).current = {
+      if (ref && typeof ref === "object" && editor) {
+        ref.current = {
           editor,
+          setWords: (words: Word[]) => {
+            if (!editor) {
+              return;
+            }
+
+            const content = fromWordsToEditor(words);
+            editor.commands.setContent(content);
+          },
           getWords: () => {
             if (!editor) {
               return null;
             }
-            // @ts-expect-error: tiptap types
-            return fromEditorToWords(editor.getJSON());
+            return fromEditorToWords(editor.getJSON() as any);
           },
         };
       }
@@ -66,12 +89,6 @@ const TranscriptEditor = forwardRef<
         editor.setEditable(editable);
       }
     }, [editor, editable]);
-
-    useEffect(() => {
-      if (editor) {
-        editor.commands.setContent(fromWordsToEditor(initialWords ?? []));
-      }
-    }, [editor, initialWords]);
 
     return (
       <div role="textbox" className="h-full flex flex-col overflow-hidden">
