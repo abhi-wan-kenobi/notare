@@ -267,7 +267,7 @@ const SpeakerSelector = ({
           }}
         >
           <span className="underline py-1 font-semibold">
-            {human ? (human.full_name ?? "You") : `Speaker ${speakerIndex ?? 0}`}
+            {human?.full_name ?? `Speaker ${speakerIndex ?? 0}`}
           </span>
         </PopoverTrigger>
         <PopoverContent align="start" side="bottom">
