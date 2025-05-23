@@ -1,5 +1,4 @@
-import { mergeAttributes, Node } from "@tiptap/core";
-import { CommandProps } from "@tiptap/core";
+import { type CommandProps, mergeAttributes, Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { Node as ProseNode } from "prosemirror-model";
 
@@ -7,6 +6,11 @@ import { createSpeakerView, SpeakerViewInnerComponent } from "./views";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
+    searchAndReplace: {
+      setSearchTerm: (s: string) => ReturnType;
+      setReplaceTerm: (s: string) => ReturnType;
+      replaceAll: () => ReturnType;
+    };
     speaker: {
       updateSpeakerIndexToId: (
         speakerIndex: number,
