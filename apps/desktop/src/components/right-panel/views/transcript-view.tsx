@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMatch } from "@tanstack/react-router";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { AudioLinesIcon, ClipboardIcon, Copy, TextSearchIcon, UploadIcon } from "lucide-react";
+import { AudioLinesIcon, CheckIcon, ClipboardIcon, CopyIcon, TextSearchIcon, UploadIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { ParticipantsChipInner } from "@/components/editor-area/note-header/chips/participants-chip";
@@ -12,7 +12,6 @@ import { Button } from "@hypr/ui/components/ui/button";
 import { Input } from "@hypr/ui/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { Spinner } from "@hypr/ui/components/ui/spinner";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
 import { useOngoingSession, useSessions } from "@hypr/utils/contexts";
 import { useTranscript } from "../hooks/useTranscript";
 import { useTranscriptWidget } from "../hooks/useTranscriptWidget";
@@ -78,65 +77,35 @@ export function TranscriptView() {
 
   return (
     <div className="w-full h-full flex flex-col">
-      <div className="px-4 py-1 border-b border-neutral-100">
-        <header className="flex items-center justify-between w-full">
-          {!showEmptyMessage && (
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-neutral-900">Transcript</h2>
-              {isLive && (
-                <div className="flex items-center gap-1.5">
-                  <div className="relative h-1.5 w-1.5">
-                    <div className="absolute inset-0 rounded-full bg-red-500/30"></div>
-                    <div className="absolute inset-0 rounded-full bg-red-500 animate-ping"></div>
-                  </div>
-                  <span className="text-xs font-medium text-red-600">Live</span>
+      <header className="flex items-center justify-between w-full px-4 py-1 my-1 border-b border-neutral-100">
+        {!showEmptyMessage && (
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-neutral-900">Transcript</h2>
+            {isLive && (
+              <div className="flex items-center gap-1.5">
+                <div className="relative h-1.5 w-1.5">
+                  <div className="absolute inset-0 rounded-full bg-red-500/30"></div>
+                  <div className="absolute inset-0 rounded-full bg-red-500 animate-ping"></div>
                 </div>
-              )}
-            </div>
-          )}
-          <div className="not-draggable flex items-center gap-1">
-            {(hasTranscript && sessionId) && <SearchAndReplace editorRef={editorRef} />}
-            {(audioExist.data && ongoingSession.isInactive && hasTranscript && sessionId) && (
-              <TooltipProvider key="listen-recording-tooltip">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 hover:bg-neutral-100"
-                      onClick={handleOpenSession}
-                    >
-                      <AudioLinesIcon size={14} className="text-neutral-600" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <p>Listen to recording</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            {(hasTranscript && sessionId) && (
-              <TooltipProvider key="copy-all-tooltip">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 hover:bg-neutral-100"
-                      onClick={handleCopyAll}
-                    >
-                      <Copy size={14} className="text-neutral-600" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <p>Copy transcript</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+                <span className="text-xs font-medium text-red-600">Live</span>
+              </div>
             )}
           </div>
-        </header>
-      </div>
+        )}
+        <div className="not-draggable flex items-center ">
+          {(hasTranscript && sessionId) && <SearchAndReplace editorRef={editorRef} />}
+          {(audioExist.data && ongoingSession.isInactive && hasTranscript && sessionId) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenSession}
+            >
+              <AudioLinesIcon size={14} className="text-neutral-600" />
+            </Button>
+          )}
+          {(hasTranscript && sessionId) && <CopyButton onCopy={handleCopyAll} />}
+        </div>
+      </header>
 
       <div className="flex-1 overflow-hidden">
         {showEmptyMessage
@@ -358,10 +327,15 @@ function SearchAndReplace({ editorRef }: { editorRef: React.RefObject<any> }) {
     if (editorRef.current && searchTerm) {
       editorRef.current.editor.commands.replaceAll(replaceTerm);
       setExpanded(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!expanded) {
       setSearchTerm("");
       setReplaceTerm("");
     }
-  };
+  }, [expanded]);
 
   return (
     <Popover open={expanded} onOpenChange={setExpanded}>
@@ -398,5 +372,27 @@ function SearchAndReplace({ editorRef }: { editorRef: React.RefObject<any> }) {
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+function CopyButton({ onCopy }: { onCopy: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleClick = () => {
+    onCopy();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={handleClick}
+    >
+      {copied
+        ? <CheckIcon size={14} className="text-neutral-800" />
+        : <CopyIcon size={14} className="text-neutral-600" />}
+    </Button>
   );
 }
