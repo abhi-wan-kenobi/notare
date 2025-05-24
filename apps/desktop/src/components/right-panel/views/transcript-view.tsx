@@ -5,6 +5,7 @@ import { AudioLinesIcon, CheckIcon, ClipboardIcon, CopyIcon, TextSearchIcon, Upl
 import { useEffect, useRef, useState } from "react";
 
 import { ParticipantsChipInner } from "@/components/editor-area/note-header/chips/participants-chip";
+import { useHypr } from "@/contexts";
 import { commands as dbCommands, Human, Word } from "@hypr/plugin-db";
 import { commands as miscCommands } from "@hypr/plugin-misc";
 import TranscriptEditor, { type SpeakerViewInnerProps, type TranscriptEditorRef } from "@hypr/tiptap/transcript";
@@ -181,6 +182,7 @@ const SpeakerSelector = ({
   speakerId,
   speakerIndex,
 }: SpeakerViewInnerProps) => {
+  const { userId } = useHypr();
   const [isOpen, setIsOpen] = useState(false);
   const [speakerRange, setSpeakerRange] = useState<SpeakerChangeRange>("current");
   const inactive = useOngoingSession(s => s.status === "inactive");
@@ -222,9 +224,19 @@ const SpeakerSelector = ({
     return <p></p>;
   }
 
-  if (!inactive && !human) {
+  if (!inactive) {
     return <p></p>;
   }
+
+  const getDisplayName = (human: Human | null) => {
+    if (!human) {
+      return `Speaker ${speakerIndex ?? 0}`;
+    }
+    if (human.id === userId && !human.full_name) {
+      return "You";
+    }
+    return human.full_name ?? `Speaker ${speakerIndex ?? 0}`;
+  };
 
   return (
     <div className="mt-2 sticky top-0 z-10 bg-neutral-50">
@@ -236,7 +248,7 @@ const SpeakerSelector = ({
           }}
         >
           <span className="underline py-1 font-semibold">
-            {human?.full_name ?? `Speaker ${speakerIndex ?? 0}`}
+            {getDisplayName(human)}
           </span>
         </PopoverTrigger>
         <PopoverContent align="start" side="bottom">
