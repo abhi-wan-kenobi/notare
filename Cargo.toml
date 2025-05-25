@@ -111,8 +111,6 @@ codes-iso-639 = "0.1.5"
 derive_more = "2"
 dirs = "6.0.0"
 dotenv = "0.15.0"
-dotenvy = "0.15.7"
-dotenvy_macro = "0.15.7"
 include_url_macro = "0.1.0"
 indoc = "2"
 insta = "1.42"
@@ -150,8 +148,8 @@ async-stripe = { version = "0.39.1", default-features = false }
 gbnf-validator = { git = "https://github.com/fastrepl/gbnf-validator", rev = "3dec055" }
 graph-rs-sdk = "2.0.3"
 
-sentry = "0.36.0"
-sentry-rust-minidump = "0.10.0"
+sentry = "0.38.1"
+sentry-rust-minidump = "0.11.0"
 
 markdown = { git = "https://github.com/wooorm/markdown-rs.git", rev = "5c9eba146f06b2e0531a901cb586c0a877edb3ea" }
 mdast_util_to_markdown = { git = "https://github.com/wooorm/markdown-rs.git", rev = "5c9eba146f06b2e0531a901cb586c0a877edb3ea" }
@@ -169,7 +167,7 @@ specta = "2.0.0-rc.21"
 specta-typescript = "0.0.9"
 tauri-specta = "2.0.0-rc.21"
 
-cidre = { git = "https://github.com/yury/cidre", rev = "4f0eff4" }
+cidre = { git = "https://github.com/yury/cidre", rev = "c5b0022" }
 cpal = "0.15.3"
 dasp = "0.11.0"
 hound = "3.5.1"
@@ -182,8 +180,8 @@ kalosm-model-types = { git = "https://github.com/floneum/floneum", rev = "52967a
 kalosm-sound = { git = "https://github.com/floneum/floneum", rev = "52967ae", default-features = false }
 kalosm-streams = { git = "https://github.com/floneum/floneum", rev = "52967ae" }
 
-deepgram = { version = "0.6.6", default-features = false }
-libsql = "0.9.4"
+deepgram = { version = "0.6.8", default-features = false }
+libsql = "0.9.8"
 
 block2 = "0.6"
 objc2 = "0.6"
