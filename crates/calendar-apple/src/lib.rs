@@ -8,7 +8,9 @@ use objc2::{
     ClassType,
 };
 use objc2_contacts::{CNAuthorizationStatus, CNContactStore, CNEntityType, CNKeyDescriptor};
-use objc2_event_kit::{EKAuthorizationStatus, EKCalendar, EKEntityType, EKEventStore};
+use objc2_event_kit::{
+    EKAuthorizationStatus, EKCalendar, EKEntityType, EKEventStore, EKParticipant,
+};
 use objc2_foundation::{NSArray, NSDate, NSError, NSPredicate, NSString};
 
 use hypr_calendar_interface::{
@@ -120,6 +122,42 @@ impl Handle {
                 )
         }
     }
+
+    fn transform_participant(&self, participant: &EKParticipant) -> Participant {
+        let name = unsafe { participant.name() }
+            .unwrap_or_default()
+            .to_string();
+
+        let email = {
+            if !self.contacts_access_granted {
+                None
+            } else {
+                let email_string = NSString::from_str("emailAddresses");
+                let cnkey_email: Retained<ProtocolObject<dyn CNKeyDescriptor>> =
+                    ProtocolObject::from_retained(email_string);
+                let keys = NSArray::from_vec(vec![cnkey_email]);
+
+                let contact_pred = unsafe { participant.contactPredicate() };
+                let contact = unsafe {
+                    self.contacts_store
+                        .unifiedContactsMatchingPredicate_keysToFetch_error(&contact_pred, &keys)
+                }
+                .unwrap_or_default();
+
+                let email = contact.first().and_then(|contact| {
+                    let emails = unsafe { contact.emailAddresses() };
+
+                    emails
+                        .first()
+                        .map(|email| unsafe { email.value() }.to_string())
+                });
+
+                email
+            }
+        };
+
+        Participant { name, email }
+    }
 }
 
 impl CalendarSource for Handle {
@@ -184,43 +222,10 @@ impl CalendarSource for Handle {
                     return None;
                 }
 
-                let participants = unsafe { event.attendees().unwrap_or_default() }
+                let participants = unsafe { event.attendees().unwrap_or_default() };
+                let participants = participants
                     .iter()
-                    .map(|p| {
-                        let name = unsafe { p.name() }.unwrap_or_default().to_string();
-
-                        let email = {
-                            if !self.contacts_access_granted {
-                                None
-                            } else {
-                                let email_string = NSString::from_str("emailAddresses");
-                                let cnkey_email: Retained<ProtocolObject<dyn CNKeyDescriptor>> =
-                                    ProtocolObject::from_retained(email_string);
-                                let keys = NSArray::from_vec(vec![cnkey_email]);
-
-                                let contact_pred = unsafe { p.contactPredicate() };
-                                let contact = unsafe {
-                                    self.contacts_store
-                                        .unifiedContactsMatchingPredicate_keysToFetch_error(
-                                            &contact_pred,
-                                            &keys,
-                                        )
-                                }
-                                .unwrap_or_default();
-
-                                let s = match contact.first() {
-                                    Some(contact) => {
-                                        unsafe { contact.emailAddresses().first().unwrap().value() }
-                                            .to_string()
-                                    }
-                                    None => "".to_string(),
-                                };
-                                Some(s)
-                            }
-                        };
-
-                        Participant { name, email }
-                    })
+                    .map(|p| self.transform_participant(p))
                     .collect();
 
                 Some(Event {
