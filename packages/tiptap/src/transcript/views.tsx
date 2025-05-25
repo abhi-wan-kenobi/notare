@@ -10,10 +10,12 @@ export const createSpeakerView = (Comp: SpeakerViewInnerComponent): ComponentTyp
     const speakerIndex = node.attrs?.["speaker-index"] ?? undefined;
     const speakerLabel = node.attrs?.["speaker-label"] ?? undefined;
 
-    const onSpeakerChange = (speaker: Human) => {
-      setSpeakerId(speaker.id);
-      updateAttributes({ "speaker-id": speaker.id });
-      updateAttributes({ "speaker-label": speaker.full_name });
+    const onSpeakerChange = (speaker: Human, range: SpeakerChangeRange) => {
+      if (range === "current") {
+        setSpeakerId(speaker.id);
+        updateAttributes({ "speaker-id": speaker.id });
+        updateAttributes({ "speaker-label": speaker.full_name });
+      }
     };
 
     return (
@@ -35,8 +37,10 @@ export type SpeakerViewInnerProps = {
   speakerId: string | undefined;
   speakerIndex: number | undefined;
   speakerLabel: string | undefined;
-  onSpeakerChange: (speaker: Human) => void;
+  onSpeakerChange: (speaker: Human, range: SpeakerChangeRange) => void;
   editorRef?: TiptapEditor;
 };
+
+export type SpeakerChangeRange = "current" | "all" | "fromHere";
 
 export type SpeakerViewInnerComponent = (props: SpeakerViewInnerProps) => JSX.Element;

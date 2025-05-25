@@ -12,9 +12,9 @@ import { forwardRef, useEffect, useRef } from "react";
 import { SpeakerSplit, WordSplit } from "./extensions";
 import { SpeakerNode, WordNode } from "./nodes";
 import { fromEditorToWords, fromWordsToEditor, type Word } from "./utils";
-import type { SpeakerViewInnerComponent, SpeakerViewInnerProps } from "./views";
+import type { SpeakerChangeRange, SpeakerViewInnerComponent, SpeakerViewInnerProps } from "./views";
 
-export { SpeakerViewInnerProps };
+export { SpeakerChangeRange, SpeakerViewInnerProps };
 
 interface TranscriptEditorProps {
   editable?: boolean;

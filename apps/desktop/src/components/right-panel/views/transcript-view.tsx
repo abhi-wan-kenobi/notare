@@ -8,7 +8,11 @@ import { ParticipantsChipInner } from "@/components/editor-area/note-header/chip
 import { useHypr } from "@/contexts";
 import { commands as dbCommands, Human, Word } from "@hypr/plugin-db";
 import { commands as miscCommands } from "@hypr/plugin-misc";
-import TranscriptEditor, { type SpeakerViewInnerProps, type TranscriptEditorRef } from "@hypr/tiptap/transcript";
+import TranscriptEditor, {
+  type SpeakerChangeRange,
+  type SpeakerViewInnerProps,
+  type TranscriptEditorRef,
+} from "@hypr/tiptap/transcript";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Input } from "@hypr/ui/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
@@ -201,7 +205,7 @@ const SpeakerSelector = ({
 
   useEffect(() => {
     if (human) {
-      onSpeakerChange(human);
+      onSpeakerChange(human, speakerRange);
     }
   }, [human]);
 
@@ -272,8 +276,6 @@ const SpeakerSelector = ({
   );
 };
 
-type SpeakerChangeRange = "current" | "all" | "fromHere";
-
 interface SpeakerRangeSelectorProps {
   value: SpeakerChangeRange;
   onChange: (value: SpeakerChangeRange) => void;
@@ -291,7 +293,10 @@ function SpeakerRangeSelector({ value, onChange }: SpeakerRangeSelectorProps) {
       <p className="text-sm font-medium text-neutral-700">Apply speaker change to:</p>
       <div className="flex rounded-md border border-neutral-200 p-0.5 bg-neutral-50">
         {options.map((option) => (
-          <label key={option.value} className="flex-1 cursor-pointer">
+          <label
+            key={option.value}
+            className={`flex-1 ${option.value === "current" ? "cursor-pointer" : "cursor-not-allowed"}`}
+          >
             <input
               type="radio"
               name="speaker-range"
@@ -299,13 +304,14 @@ function SpeakerRangeSelector({ value, onChange }: SpeakerRangeSelectorProps) {
               className="sr-only"
               checked={value === option.value}
               onChange={() => onChange(option.value)}
+              disabled={option.value !== "current"}
             />
             <div
               className={`px-2 py-1 text-xs font-medium text-center rounded transition-colors ${
                 value === option.value
                   ? "bg-white text-neutral-900 shadow-sm"
                   : "text-neutral-600 hover:text-neutral-900 hover:bg-white/50"
-              }`}
+              } ${option.value !== "current" ? "opacity-50" : ""}`}
             >
               {option.label}
             </div>
