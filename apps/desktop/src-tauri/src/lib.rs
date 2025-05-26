@@ -133,6 +133,8 @@ pub async fn main() {
                         return;
                     };
 
+                    tracing::info!("deeplink: {:?}", url::Url::parse(&url));
+
                     let dest = if let Ok(parsed_url) = url::Url::parse(&url) {
                         match parsed_url.path() {
                             "/notification" => {
@@ -148,7 +150,7 @@ pub async fn main() {
                                         "/app/new?record=true".to_string()
                                     }
                                 } else {
-                                    "/app/new?record=true".to_string()
+                                    "/app/new?record=false".to_string()
                                 }
                             }
                             _ => "/app/new?record=false".to_string(),
