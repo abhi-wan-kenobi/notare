@@ -307,7 +307,7 @@ impl UserDatabase {
             .await?;
 
         let mut items = Vec::new();
-        while let Some(row) = rows.next().await.unwrap() {
+        while let Some(row) = rows.next().await? {
             let item: Human = libsql::de::from_row(&row)?;
             items.push(item);
         }

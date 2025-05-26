@@ -269,28 +269,27 @@ impl OpenaiCompatible for ConnectionLLM {
 
         let res: serde_json::Value = req.send().await?.json().await?;
         let data = res["data"].as_array();
-
-        let ids = match data {
-            None => {
-                tracing::error!("{:?}", res);
-                vec![]
-            }
+        let models = match data {
+            None => return Err(crate::Error::UnknownError(format!("no_models: {:?}", res))),
             Some(models) => models
                 .iter()
-                .map(|v| v["id"].as_str().unwrap().to_string())
+                .filter_map(|v| v["id"].as_str().map(String::from))
+                .filter(|id| {
+                    ![
+                        "audio",
+                        "video",
+                        "image",
+                        "tts",
+                        "dall-e",
+                        "moderation",
+                        "transcribe",
+                        "embedding",
+                    ]
+                    .iter()
+                    .any(|&excluded| id.contains(excluded))
+                })
                 .collect(),
         };
-
-        let models = ids
-            .into_iter()
-            .filter(|id| !id.contains("audio"))
-            .filter(|id| !id.contains("tts"))
-            .filter(|id| !id.contains("image"))
-            .filter(|id| !id.contains("dall-e"))
-            .filter(|id| !id.contains("moderation"))
-            .filter(|id| !id.contains("transcribe"))
-            .filter(|id| !id.contains("embedding"))
-            .collect();
 
         Ok(models)
     }
