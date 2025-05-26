@@ -17,14 +17,16 @@ import { Button } from "@hypr/ui/components/ui/button";
 import { Input } from "@hypr/ui/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { Spinner } from "@hypr/ui/components/ui/spinner";
-import { useOngoingSession, useSessions } from "@hypr/utils/contexts";
+import { useOngoingSession } from "@hypr/utils/contexts";
 import { useTranscript } from "../hooks/useTranscript";
 import { useTranscriptWidget } from "../hooks/useTranscriptWidget";
 
 export function TranscriptView() {
   const queryClient = useQueryClient();
 
-  const sessionId = useSessions((s) => s.currentSessionId);
+  const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: true });
+  const sessionId = noteMatch.params.id;
+
   const ongoingSession = useOngoingSession((s) => ({
     start: s.start,
     status: s.status,
