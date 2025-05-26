@@ -15887,7 +15887,7 @@ checksum = "a751b3277700db47d3e574514de2eced5e54dc8a5436a3bf7a0b248b2cee16f3"
 [[package]]
 name = "wezterm-open-url"
 version = "0.1.0"
-source = "git+https://github.com/wezterm/wezterm?rev=f06d6fc#f06d6fc04fd55995dd4c0e7c8cf1bee5c63bc005"
+source = "git+https://github.com/yujonglee/wezterm?rev=ba9d6a6#ba9d6a6973ed00408365cf3bc1bf9d034bfcae5e"
 dependencies = [
  "winapi",
 ]
@@ -15895,7 +15895,7 @@ dependencies = [
 [[package]]
 name = "wezterm-toast-notification"
 version = "0.1.0"
-source = "git+https://github.com/wezterm/wezterm?rev=f06d6fc#f06d6fc04fd55995dd4c0e7c8cf1bee5c63bc005"
+source = "git+https://github.com/yujonglee/wezterm?rev=ba9d6a6#ba9d6a6973ed00408365cf3bc1bf9d034bfcae5e"
 dependencies = [
  "async-io",
  "block2 0.6.1",
