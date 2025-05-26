@@ -117,7 +117,11 @@ impl Whisper {
 
         let mut segments = Vec::new();
         for i in 0..num_segments {
-            let text = self.state.full_get_segment_text(i)?;
+            let text = {
+                let mut raw = self.state.full_get_segment_text(i)?;
+                raw = raw.trim().trim_end_matches('.').to_string();
+            };
+
             let (start, end) = (
                 self.state.full_get_segment_t0(i)?,
                 self.state.full_get_segment_t1(i)?,
