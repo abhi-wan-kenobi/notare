@@ -177,30 +177,29 @@ pub async fn main() {
                 let _ = autostart_manager.disable();
             }
 
-            tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async move {
-                    if let Err(e) = app.setup_db_for_local().await {
-                        tracing::error!("failed_to_setup_db_for_local: {}", e);
+            let app_clone = app.clone();
+            tokio::spawn(async move {
+                if let Err(e) = app_clone.setup_db_for_local().await {
+                    tracing::error!("failed_to_setup_db_for_local: {}", e);
+                }
+
+                {
+                    use tauri_plugin_db::DatabasePluginExt;
+                    let user_id = app_clone.db_user_id().await;
+
+                    if let Ok(Some(ref user_id)) = user_id {
+                        tauri_plugin_sentry::sentry::configure_scope(|scope| {
+                            scope.set_user(Some(tauri_plugin_sentry::sentry::User {
+                                id: Some(user_id.clone()),
+                                ..Default::default()
+                            }));
+                        });
                     }
+                }
 
-                    {
-                        use tauri_plugin_db::DatabasePluginExt;
-                        let user_id = app.db_user_id().await;
-
-                        if let Ok(Some(ref user_id)) = user_id {
-                            tauri_plugin_sentry::sentry::configure_scope(|scope| {
-                                scope.set_user(Some(tauri_plugin_sentry::sentry::User {
-                                    id: Some(user_id.clone()),
-                                    ..Default::default()
-                                }));
-                            });
-                        }
-                    }
-
-                    tokio::spawn(async move {
-                        app.setup_local_ai().await.unwrap();
-                    });
-                })
+                tokio::spawn(async move {
+                    app_clone.setup_local_ai().await.unwrap();
+                });
             });
 
             Ok(())
