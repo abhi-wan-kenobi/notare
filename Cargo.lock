@@ -15936,7 +15936,9 @@ dependencies = [
  "dirs 6.0.0",
  "futures-util",
  "kalosm-sound",
+ "lazy_static",
  "llama",
+ "regex",
  "rodio",
  "serde",
  "serde_json",
@@ -15952,7 +15954,7 @@ dependencies = [
 [[package]]
 name = "whisper-rs"
 version = "0.14.2"
-source = "git+https://github.com/tazz4843/whisper-rs?rev=f5ee632#f5ee632f6e1e682668295696d9cf280041a997bb"
+source = "git+https://github.com/tazz4843/whisper-rs?rev=de30f9c#de30f9c23da52c81b06fa78bab005ab353d74637"
 dependencies = [
  "tracing",
  "whisper-rs-sys",
@@ -15961,7 +15963,7 @@ dependencies = [
 [[package]]
 name = "whisper-rs-sys"
 version = "0.12.1"
-source = "git+https://github.com/tazz4843/whisper-rs?rev=f5ee632#f5ee632f6e1e682668295696d9cf280041a997bb"
+source = "git+https://github.com/tazz4843/whisper-rs?rev=de30f9c#de30f9c23da52c81b06fa78bab005ab353d74637"
 dependencies = [
  "bindgen 0.71.1",
  "cfg-if",
