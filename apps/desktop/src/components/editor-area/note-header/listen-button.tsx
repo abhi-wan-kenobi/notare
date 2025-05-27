@@ -1,5 +1,5 @@
 import { Trans } from "@lingui/react/macro";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, UseMutationResult, useQuery } from "@tanstack/react-query";
 import {
   CheckIcon,
   MicIcon,
@@ -28,14 +28,14 @@ import ShinyButton from "./shiny-button";
 
 export default function ListenButton({ sessionId }: { sessionId: string }) {
   const { userId, onboardingSessionId } = useHypr();
+  const isOnboarding = sessionId === onboardingSessionId;
+
   const modelDownloaded = useQuery({
     queryKey: ["check-stt-model-downloaded"],
     refetchInterval: 1000,
     queryFn: async () => {
       const currentModel = await localSttCommands.getCurrentModel();
-      const isDownloaded = await localSttCommands.isModelDownloaded(
-        currentModel,
-      );
+      const isDownloaded = await localSttCommands.isModelDownloaded(currentModel);
       return isDownloaded;
     },
   });
@@ -55,7 +55,7 @@ export default function ListenButton({ sessionId }: { sessionId: string }) {
   const isEnhancePending = useEnhancePendingState(sessionId);
   const nonEmptySession = useSession(
     sessionId,
-    (s) => s.session.words.length > 0 || s.session.enhanced_memo_html,
+    (s) => !!(s.session.words.length > 0 || s.session.enhanced_memo_html),
   );
   const meetingEnded = isEnhancePending || nonEmptySession;
 
@@ -100,38 +100,19 @@ export default function ListenButton({ sessionId }: { sessionId: string }) {
   }
 
   if (ongoingSessionStatus === "inactive") {
+    const buttonProps = {
+      disabled: !modelDownloaded.data || (meetingEnded && isEnhancePending),
+      onClick: handleStartSession,
+    };
+
     if (!meetingEnded) {
-      if (sessionId === onboardingSessionId) {
-        return (
-          <WhenInactiveAndMeetingNotEndedOnboarding
-            disabled={!modelDownloaded.data}
-            onClick={handleStartSession}
-          />
-        );
-      } else {
-        return (
-          <WhenInactiveAndMeetingNotEnded
-            disabled={!modelDownloaded.data}
-            onClick={handleStartSession}
-          />
-        );
-      }
+      return isOnboarding
+        ? <WhenInactiveAndMeetingNotEndedOnboarding {...buttonProps} />
+        : <WhenInactiveAndMeetingNotEnded {...buttonProps} />;
     } else {
-      if (sessionId === onboardingSessionId) {
-        return (
-          <WhenInactiveAndMeetingEndedOnboarding
-            disabled={!modelDownloaded.data || isEnhancePending}
-            onClick={handleStartSession}
-          />
-        );
-      } else {
-        return (
-          <WhenInactiveAndMeetingEnded
-            disabled={!modelDownloaded.data || isEnhancePending}
-            onClick={handleStartSession}
-          />
-        );
-      }
+      return isOnboarding
+        ? <WhenInactiveAndMeetingEndedOnboarding {...buttonProps} />
+        : <WhenInactiveAndMeetingEnded {...buttonProps} />;
     }
   }
 
@@ -231,70 +212,40 @@ function WhenInactiveAndMeetingEndedOnboarding({ disabled, onClick }: { disabled
 
 export function WhenActive() {
   const [open, setOpen] = useState(true);
+  const { sessionId } = useOngoingSession((s) => ({ sessionId: s.sessionId }));
+  const { onboardingSessionId } = useHypr();
+  const isOnboarding = sessionId === onboardingSessionId;
 
   const ongoingSessionStore = useOngoingSession((s) => ({
     pause: s.pause,
     stop: s.stop,
     loading: s.loading,
-    hasShownConsent: s.hasShownConsent,
-    setHasShownConsent: s.setHasShownConsent,
   }));
 
-  const showConsent = !ongoingSessionStore.hasShownConsent;
-
-  const { data: isMicMuted, refetch: refetchMicMuted } = useQuery({
-    queryKey: ["mic-muted"],
-    queryFn: () => listenerCommands.getMicMuted(),
-  });
-
-  const { data: isSpeakerMuted, refetch: refetchSpeakerMuted } = useQuery({
-    queryKey: ["speaker-muted"],
-    queryFn: () => listenerCommands.getSpeakerMuted(),
-  });
+  const { showConsent, setHasShownConsent } = useConsentManagement(isOnboarding);
+  const audioControls = useAudioControls();
 
   useEffect(() => {
     if (showConsent) {
       listenerCommands.setSpeakerMuted(true).then(() => {
-        refetchSpeakerMuted();
+        audioControls.refetchSpeakerMuted();
       });
     }
-  }, [showConsent, refetchSpeakerMuted]);
+  }, [showConsent, audioControls.refetchSpeakerMuted]);
 
-  const toggleMicMuted = useMutation({
-    mutationFn: () => listenerCommands.setMicMuted(!isMicMuted),
-    onSuccess: () => {
-      refetchMicMuted();
-    },
-  });
-
-  const toggleSpeakerMuted = useMutation({
-    mutationFn: () => listenerCommands.setSpeakerMuted(!isSpeakerMuted),
-    onSuccess: () => {
-      refetchSpeakerMuted();
-    },
-  });
-
-  const activateSpeaker = useMutation({
-    mutationFn: async () => {
-      await listenerCommands.setSpeakerMuted(false);
-      ongoingSessionStore.setHasShownConsent(true);
-      return false;
+  const handleConsentDecision = useMutation({
+    mutationFn: async (recordEveryone: boolean) => {
+      if (recordEveryone) {
+        await listenerCommands.setSpeakerMuted(false);
+      } else {
+        await listenerCommands.setSpeakerMuted(true);
+        await listenerCommands.setMicMuted(false);
+      }
+      setHasShownConsent(true);
     },
     onSuccess: () => {
-      refetchSpeakerMuted();
-    },
-  });
-
-  const recordMeOnly = useMutation({
-    mutationFn: async () => {
-      await listenerCommands.setSpeakerMuted(true);
-      await listenerCommands.setMicMuted(false);
-      ongoingSessionStore.setHasShownConsent(true);
-      return true;
-    },
-    onSuccess: () => {
-      refetchSpeakerMuted();
-      refetchMicMuted();
+      audioControls.refetchSpeakerMuted();
+      audioControls.refetchMicMuted();
     },
   });
 
@@ -333,74 +284,98 @@ export function WhenActive() {
       </PopoverTrigger>
 
       <PopoverContent className="w-64" align="end">
-        {showConsent
-          ? (
-            <div className="flex flex-col gap-4">
-              <div>
-                <h4 className="font-medium text-sm mb-2">
-                  <Trans>Recording Started</Trans>
-                </h4>
-                <p className="text-xs text-gray-500 mb-4">
-                  <Trans>Did you get consent from everyone in the meeting?</Trans>
-                </p>
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="default"
-                    onClick={() => activateSpeaker.mutate()}
-                    className="w-full"
-                  >
-                    <CheckIcon size={16} className="mr-1" />
-                    <Trans>Yes, activate speaker</Trans>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => recordMeOnly.mutate()}
-                    className="w-full"
-                  >
-                    <MicIcon size={16} className="mr-1" />
-                    <Trans>Record me only</Trans>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )
-          : (
-            <>
-              <div className="flex w-full justify-between mb-4">
-                <AudioControlButton
-                  isMuted={isMicMuted}
-                  onClick={() => toggleMicMuted.mutate()}
-                  type="mic"
-                />
-                <AudioControlButton
-                  isMuted={isSpeakerMuted}
-                  onClick={() => toggleSpeakerMuted.mutate()}
-                  type="speaker"
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handlePauseSession}
-                  className="w-full"
-                >
-                  <PauseIcon size={16} />
-                  <Trans>Pause</Trans>
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleStopSession}
-                  className="w-full"
-                >
-                  <StopCircleIcon size={16} />
-                  <Trans>Stop</Trans>
-                </Button>
-              </div>
-            </>
-          )}
+        {showConsent ? <ConsentDialog onDecision={handleConsentDecision} /> : (
+          <RecordingControls
+            audioControls={audioControls}
+            onPause={handlePauseSession}
+            onStop={handleStopSession}
+          />
+        )}
       </PopoverContent>
     </Popover>
+  );
+}
+
+function ConsentDialog({
+  onDecision,
+}: {
+  onDecision: UseMutationResult<void, Error, boolean, unknown>;
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <h4 className="font-medium text-sm mb-2">
+          <Trans>Recording Started</Trans>
+        </h4>
+        <p className="text-xs text-gray-500 mb-4">
+          <Trans>Did you get consent from everyone in the meeting?</Trans>
+        </p>
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="default"
+            onClick={() => onDecision.mutate(true)}
+            className="w-full"
+          >
+            <CheckIcon size={16} className="mr-1" />
+            <Trans>Yes, activate speaker</Trans>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => onDecision.mutate(false)}
+            className="w-full"
+          >
+            <MicIcon size={16} className="mr-1" />
+            <Trans>Record me only</Trans>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RecordingControls({
+  audioControls,
+  onPause,
+  onStop,
+}: {
+  audioControls: ReturnType<typeof useAudioControls>;
+  onPause: () => void;
+  onStop: () => void;
+}) {
+  return (
+    <>
+      <div className="flex w-full justify-between mb-4">
+        <AudioControlButton
+          isMuted={audioControls.isMicMuted}
+          onClick={() => audioControls.toggleMicMuted.mutate()}
+          type="mic"
+        />
+        <AudioControlButton
+          isMuted={audioControls.isSpeakerMuted}
+          onClick={() => audioControls.toggleSpeakerMuted.mutate()}
+          type="speaker"
+        />
+      </div>
+
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          onClick={onPause}
+          className="w-full"
+        >
+          <PauseIcon size={16} />
+          <Trans>Pause</Trans>
+        </Button>
+        <Button
+          variant="destructive"
+          onClick={onStop}
+          className="w-full"
+        >
+          <StopCircleIcon size={16} />
+          <Trans>Stop</Trans>
+        </Button>
+      </div>
+    </>
   );
 }
 
@@ -435,4 +410,50 @@ function AudioControlButton({
       {!disabled && <SoundIndicator input={type} size="long" />}
     </Button>
   );
+}
+
+function useConsentManagement(isOnboarding: boolean) {
+  const ongoingSessionStore = useOngoingSession((s) => ({
+    hasShownConsent: s.hasShownConsent,
+    setHasShownConsent: s.setHasShownConsent,
+  }));
+
+  const effectiveHasShownConsent = isOnboarding ? true : ongoingSessionStore.hasShownConsent;
+  const showConsent = !effectiveHasShownConsent && !isOnboarding;
+
+  return {
+    showConsent,
+    setHasShownConsent: ongoingSessionStore.setHasShownConsent,
+  };
+}
+
+function useAudioControls() {
+  const { data: isMicMuted, refetch: refetchMicMuted } = useQuery({
+    queryKey: ["mic-muted"],
+    queryFn: () => listenerCommands.getMicMuted(),
+  });
+
+  const { data: isSpeakerMuted, refetch: refetchSpeakerMuted } = useQuery({
+    queryKey: ["speaker-muted"],
+    queryFn: () => listenerCommands.getSpeakerMuted(),
+  });
+
+  const toggleMicMuted = useMutation({
+    mutationFn: () => listenerCommands.setMicMuted(!isMicMuted),
+    onSuccess: () => refetchMicMuted(),
+  });
+
+  const toggleSpeakerMuted = useMutation({
+    mutationFn: () => listenerCommands.setSpeakerMuted(!isSpeakerMuted),
+    onSuccess: () => refetchSpeakerMuted(),
+  });
+
+  return {
+    isMicMuted,
+    isSpeakerMuted,
+    toggleMicMuted,
+    toggleSpeakerMuted,
+    refetchSpeakerMuted,
+    refetchMicMuted,
+  };
 }
