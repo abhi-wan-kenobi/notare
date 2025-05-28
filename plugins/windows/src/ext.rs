@@ -277,12 +277,6 @@ impl HyprWindow {
         };
 
         if created {
-            #[cfg(target_os = "macos")]
-            {
-                use tauri_plugin_decorum::WebviewWindowExt;
-                window.set_traffic_lights_inset(12.0, 20.0)?;
-            }
-
             let default_size = self.get_default_size();
             let min_size = self.get_min_size();
 
@@ -400,6 +394,7 @@ impl HyprWindow {
             builder = builder
                 .hidden_title(true)
                 .theme(Some(tauri::Theme::Light))
+                .traffic_light_position(tauri::LogicalPosition::new(12.0, 20.0))
                 .title_bar_style(tauri::TitleBarStyle::Overlay);
         }
 

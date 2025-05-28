@@ -23,7 +23,6 @@ tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 
 tauri-plugin-analytics = { workspace = true }
 tauri-plugin-auth = { workspace = true }
-tauri-plugin-decorum = { workspace = true }
 
 thiserror = { workspace = true }
 tracing = { workspace = true }
