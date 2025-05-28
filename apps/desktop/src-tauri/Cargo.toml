@@ -19,6 +19,7 @@ tauri-build = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-apple-calendar = { workspace = true }
+tauri-nspanel = { workspace = true }
 
 [dependencies]
 hypr-data = { workspace = true, optional = true }
