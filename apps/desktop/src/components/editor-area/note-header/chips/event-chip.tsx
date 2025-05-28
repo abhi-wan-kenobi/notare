@@ -2,6 +2,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@hypr/
 import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { format, isSameDay, subDays } from "date-fns";
 import { CalendarIcon, SearchIcon, SpeechIcon, VideoIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -14,7 +15,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/
 import { cn } from "@hypr/ui/lib/utils";
 import { useSession } from "@hypr/utils/contexts";
 import { formatRelativeWithDay } from "@hypr/utils/datetime";
-import { format, isSameDay, subDays } from "date-fns";
 
 interface EventChipProps {
   sessionId: string;
