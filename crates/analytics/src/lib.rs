@@ -25,6 +25,7 @@ impl AnalyticsClient {
         }
 
         let mut e = posthog::Event::new(payload.event, payload.distinct_id);
+        e.set_timestamp(chrono::Utc::now().naive_utc());
 
         for (key, value) in payload.props {
             let _ = e.insert_prop(key, value);

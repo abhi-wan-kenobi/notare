@@ -339,6 +339,7 @@ name = "analytics"
 version = "0.1.0"
 dependencies = [
  "async-posthog",
+ "chrono",
  "network",
  "posthog-core",
  "reqwest 0.12.15",
@@ -764,7 +765,7 @@ dependencies = [
 [[package]]
 name = "async-posthog"
 version = "0.2.3"
-source = "git+https://github.com/shuttle-hq/posthog-rs?rev=160e609#160e60941cb13b99ec5ef59667ec7d0eb427f961"
+source = "git+https://github.com/yujonglee/posthog-rs?rev=1779042#1779042e6b579eed355ae4d6cdaeac78dd55272f"
 dependencies = [
  "posthog-core",
  "reqwest 0.12.15",
@@ -9886,7 +9887,7 @@ dependencies = [
 [[package]]
 name = "posthog-core"
 version = "0.1.0"
-source = "git+https://github.com/shuttle-hq/posthog-rs?rev=160e609#160e60941cb13b99ec5ef59667ec7d0eb427f961"
+source = "git+https://github.com/yujonglee/posthog-rs?rev=1779042#1779042e6b579eed355ae4d6cdaeac78dd55272f"
 dependencies = [
  "chrono",
  "serde",
