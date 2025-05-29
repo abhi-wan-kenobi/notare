@@ -6,7 +6,6 @@ import { useState } from "react";
 import SoundIndicator from "@/components/sound-indicator";
 import { useHypr } from "@/contexts";
 import { useEnhancePendingState } from "@/hooks/enhance-pending";
-import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as listenerCommands } from "@hypr/plugin-listener";
 import { commands as localSttCommands } from "@hypr/plugin-local-stt";
 import { Button } from "@hypr/ui/components/ui/button";
@@ -18,7 +17,7 @@ import { useOngoingSession, useSession } from "@hypr/utils/contexts";
 import ShinyButton from "./shiny-button";
 
 export default function ListenButton({ sessionId }: { sessionId: string }) {
-  const { userId, onboardingSessionId } = useHypr();
+  const { onboardingSessionId } = useHypr();
   const isOnboarding = sessionId === onboardingSessionId;
 
   const modelDownloaded = useQuery({
@@ -51,12 +50,6 @@ export default function ListenButton({ sessionId }: { sessionId: string }) {
   const handleStartSession = () => {
     if (ongoingSessionStatus === "inactive") {
       ongoingSessionStore.start(sessionId);
-
-      analyticsCommands.event({
-        event: "onboarding_video_started",
-        distinct_id: isOnboarding ? "onboarding" : userId,
-        session_id: sessionId,
-      });
     }
   };
 
