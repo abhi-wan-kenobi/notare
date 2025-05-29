@@ -44,6 +44,7 @@ hypr-language = { path = "crates/language", package = "language" }
 hypr-llama = { path = "crates/llama", package = "llama" }
 hypr-loops = { path = "crates/loops", package = "loops" }
 hypr-nango = { path = "crates/nango", package = "nango" }
+hypr-network = { path = "crates/network", package = "network" }
 hypr-notification = { path = "crates/notification", package = "notification" }
 hypr-notification2 = { path = "crates/notification2", package = "notification2" }
 hypr-notion = { path = "crates/notion", package = "notion" }

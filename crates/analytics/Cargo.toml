@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+hypr-network = { workspace = true }
+
 posthog = { git = "https://github.com/shuttle-hq/posthog-rs", package = "async-posthog", rev = "160e609" }
 posthog-core = { git = "https://github.com/shuttle-hq/posthog-rs", package = "posthog-core", rev = "160e609" }
 

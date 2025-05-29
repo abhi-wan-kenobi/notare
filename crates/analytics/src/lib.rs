@@ -20,6 +20,10 @@ impl AnalyticsClient {
     }
 
     pub async fn event(&self, payload: AnalyticsPayload) -> Result<(), Error> {
+        if !hypr_network::is_online().await {
+            return Ok(());
+        }
+
         let mut e = posthog::Event::new(payload.event, payload.distinct_id);
 
         for (key, value) in payload.props {
