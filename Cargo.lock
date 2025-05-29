@@ -348,6 +348,7 @@ dependencies = [
  "specta",
  "thiserror 2.0.12",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -13921,6 +13922,7 @@ dependencies = [
  "tauri-specta",
  "thiserror 2.0.12",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

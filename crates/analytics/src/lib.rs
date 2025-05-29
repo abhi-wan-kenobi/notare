@@ -41,6 +41,11 @@ impl AnalyticsClient {
                 .send()
                 .await?
                 .error_for_status()?;
+        } else {
+            tracing::info!(
+                "analytics: {}",
+                serde_json::to_string(&inner_event).unwrap()
+            );
         }
 
         Ok(())
