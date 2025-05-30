@@ -13835,6 +13835,7 @@ dependencies = [
 name = "tauri-plugin-template"
 version = "0.1.0"
 dependencies = [
+ "insta",
  "serde",
  "serde_json",
  "specta",
@@ -14085,6 +14086,7 @@ dependencies = [
  "serde",
  "serde_json",
  "strum 0.26.3",
+ "tauri-plugin-connector",
  "thiserror 2.0.12",
 ]
 
