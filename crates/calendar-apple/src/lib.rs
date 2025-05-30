@@ -9,9 +9,9 @@ use objc2::{
 };
 use objc2_contacts::{CNAuthorizationStatus, CNContactStore, CNEntityType, CNKeyDescriptor};
 use objc2_event_kit::{
-    EKAuthorizationStatus, EKCalendar, EKEntityType, EKEventStore, EKParticipant,
+    EKAuthorizationStatus, EKCalendar, EKEntityType, EKEvent, EKEventStore, EKParticipant,
 };
-use objc2_foundation::{NSArray, NSDate, NSError, NSPredicate, NSString};
+use objc2_foundation::{NSArray, NSDate, NSError, NSString};
 
 use hypr_calendar_interface::{
     Calendar, CalendarSource, Error, Event, EventFilter, Participant, Platform,
@@ -96,16 +96,8 @@ impl Handle {
         matches!(status, CNAuthorizationStatus::Authorized)
     }
 
-    fn events_predicate(&self, filter: &EventFilter) -> Retained<NSPredicate> {
-        let start_date = unsafe {
-            NSDate::initWithTimeIntervalSince1970(NSDate::alloc(), filter.from.timestamp() as f64)
-        };
-        let end_date = unsafe {
-            NSDate::initWithTimeIntervalSince1970(NSDate::alloc(), filter.to.timestamp() as f64)
-        };
-
-        let calendars = unsafe { self.event_store.calendars() };
-        let calendars: Retained<NSArray<EKCalendar>> = calendars
+    fn fetch_events(&self, filter: &EventFilter) -> Retained<NSArray<EKEvent>> {
+        let calendars: Retained<NSArray<EKCalendar>> = unsafe { self.event_store.calendars() }
             .into_iter()
             .filter(|c| {
                 let id = unsafe { c.calendarIdentifier() }.to_string();
@@ -113,14 +105,31 @@ impl Handle {
             })
             .collect();
 
-        unsafe {
+        if calendars.is_empty() {
+            let empty_array: Retained<NSArray<EKEvent>> = NSArray::new();
+            return empty_array;
+        }
+
+        let (start_date, end_date) = [filter.from, filter.to]
+            .iter()
+            .sorted_by(|a, b| a.cmp(b))
+            .map(|v| unsafe {
+                NSDate::initWithTimeIntervalSince1970(NSDate::alloc(), v.timestamp() as f64)
+            })
+            .collect_tuple()
+            .unwrap();
+
+        let predicate = unsafe {
             self.event_store
                 .predicateForEventsWithStartDate_endDate_calendars(
                     &start_date,
                     &end_date,
                     Some(&calendars),
                 )
-        }
+        };
+
+        let events = unsafe { self.event_store.eventsMatchingPredicate(&predicate) };
+        events
     }
 
     fn transform_participant(&self, participant: &EKParticipant) -> Participant {
@@ -200,10 +209,8 @@ impl CalendarSource for Handle {
             return Err(anyhow::anyhow!("calendar_access_denied"));
         }
 
-        let predicate = self.events_predicate(&filter);
-        let events = unsafe { self.event_store.eventsMatchingPredicate(&predicate) };
-
-        let list = events
+        let events = self
+            .fetch_events(&filter)
             .iter()
             .filter_map(|event| {
                 // https://docs.rs/objc2-event-kit/latest/objc2_event_kit/struct.EKEvent.html
@@ -243,7 +250,7 @@ impl CalendarSource for Handle {
             .sorted_by(|a, b| a.start_date.cmp(&b.start_date))
             .collect();
 
-        Ok(list)
+        Ok(events)
     }
 }
 
