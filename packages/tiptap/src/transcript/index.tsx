@@ -52,6 +52,8 @@ const TranscriptEditor = forwardRef<TranscriptEditorRef, TranscriptEditorProps>(
     const editor = useEditor({
       extensions,
       editable,
+      immediatelyRender: true,
+      shouldRerenderOnTransaction: false,
       onUpdate: ({ editor }) => {
         if (onUpdate) {
           onUpdate(fromEditorToWords(editor.getJSON() as any));

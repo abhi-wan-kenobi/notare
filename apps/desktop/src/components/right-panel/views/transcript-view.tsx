@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMatch } from "@tanstack/react-router";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { AudioLinesIcon, CheckIcon, ClipboardIcon, CopyIcon, TextSearchIcon, UploadIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import { ParticipantsChipInner } from "@/components/editor-area/note-header/chips/participants-chip";
 import { useHypr } from "@/contexts";
@@ -46,13 +46,6 @@ export function TranscriptView() {
     }
   }, [words, isLive]);
 
-  const handleCopyAll = () => {
-    if (words && words.length > 0) {
-      const transcriptText = words.map((word) => word.text).join(" ");
-      writeText(transcriptText);
-    }
-  };
-
   const audioExist = useQuery(
     {
       refetchInterval: 2500,
@@ -63,11 +56,18 @@ export function TranscriptView() {
     queryClient,
   );
 
-  const handleOpenSession = () => {
+  const handleCopyAll = useCallback(() => {
+    if (words && words.length > 0) {
+      const transcriptText = words.map((word) => word.text).join(" ");
+      writeText(transcriptText);
+    }
+  }, [words]);
+
+  const handleOpenSession = useCallback(() => {
     if (sessionId) {
       miscCommands.audioOpen(sessionId);
     }
-  };
+  }, [sessionId]);
 
   const handleUpdate = (words: Word[]) => {
     if (!isLive) {
@@ -184,7 +184,11 @@ function RenderEmpty({ sessionId }: { sessionId: string }) {
   );
 }
 
-const SpeakerSelector = ({
+const SpeakerSelector = (props: SpeakerViewInnerProps) => {
+  return <MemoizedSpeakerSelector {...props} />;
+};
+
+const MemoizedSpeakerSelector = memo(({
   onSpeakerChange,
   speakerId,
   speakerIndex,
@@ -275,7 +279,7 @@ const SpeakerSelector = ({
       </Popover>
     </div>
   );
-};
+});
 
 interface SpeakerRangeSelectorProps {
   value: SpeakerChangeRange;
