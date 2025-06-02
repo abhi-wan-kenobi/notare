@@ -1,12 +1,14 @@
 use std::future::Future;
 
-use hypr_file::{download_file_with_callback, DownloadProgress};
 use tauri::{ipc::Channel, Manager, Runtime};
 use tauri_plugin_store2::StorePluginExt;
 
+use crate::local::{ModelManager, SupportedModel};
+use hypr_file::{download_file_with_callback, DownloadProgress};
+
 pub trait LocalLlmPluginExt<R: Runtime> {
     fn local_llm_store(&self) -> tauri_plugin_store2::ScopedStore<R, crate::StoreKey>;
-    fn current_model(&self) -> impl Future<Output = Result<crate::SupportedModel, crate::Error>>;
+    fn current_model(&self) -> impl Future<Output = Result<SupportedModel, crate::Error>>;
     fn api_base(&self) -> impl Future<Output = Option<String>>;
     fn is_model_downloading(&self) -> impl Future<Output = bool>;
     fn is_model_downloaded(&self) -> impl Future<Output = Result<bool, crate::Error>>;
@@ -24,13 +26,13 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
         self.scoped_store(crate::PLUGIN_NAME).unwrap()
     }
 
-    async fn current_model(&self) -> Result<crate::SupportedModel, crate::Error> {
+    async fn current_model(&self) -> Result<SupportedModel, crate::Error> {
         let store = self.local_llm_store();
 
         let stored = store
-            .get::<Option<crate::SupportedModel>>(crate::StoreKey::Model)?
+            .get::<Option<SupportedModel>>(crate::StoreKey::Model)?
             .flatten();
-        Ok(stored.unwrap_or(crate::SupportedModel::Llama3p2_3bQ4))
+        Ok(stored.unwrap_or(SupportedModel::Llama3p2_3bQ4))
     }
 
     #[tracing::instrument(skip_all)]
@@ -116,7 +118,7 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
 
         let model_manager = {
             let s = state.lock().await;
-            crate::ModelManager::new(s.model_path.clone())
+            ModelManager::new(s.model_path.clone())
         };
 
         let server = crate::server::run_server(model_manager).await?;

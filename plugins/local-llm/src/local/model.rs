@@ -1,6 +1,6 @@
 pub static SUPPORTED_MODELS: &[SupportedModel; 1] = &[SupportedModel::Llama3p2_3bQ4];
 
-#[derive(serde::Serialize, serde::Deserialize, specta::Type)]
+#[derive(serde::Serialize, serde::Deserialize, specta::Type, Clone)]
 pub enum SupportedModel {
     Llama3p2_3bQ4,
 }
@@ -23,4 +23,12 @@ impl SupportedModel {
             SupportedModel::Llama3p2_3bQ4 => 2019377440,
         }
     }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, specta::Type)]
+pub enum ModelIdentifier {
+    #[serde(rename = "local")]
+    Local,
+    #[serde(rename = "mock-onboarding")]
+    MockOnboarding,
 }

@@ -5,15 +5,12 @@ use tokio::sync::Mutex;
 mod commands;
 mod error;
 mod ext;
-mod manager;
-mod model;
+mod local;
 mod server;
 mod store;
 
 pub use error::*;
 pub use ext::*;
-use manager::ModelManager;
-pub use model::*;
 pub use store::*;
 
 const ONBOARDING_ENHANCED_MD: &str = include_str!("../assets/onboarding-enhanced.md");
@@ -44,13 +41,13 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
+            commands::list_supported_models,
             commands::is_server_running::<Wry>,
             commands::is_model_downloaded::<Wry>,
             commands::is_model_downloading::<Wry>,
             commands::download_model::<Wry>,
             commands::start_server::<Wry>,
             commands::stop_server::<Wry>,
-            commands::list_ollama_models::<Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

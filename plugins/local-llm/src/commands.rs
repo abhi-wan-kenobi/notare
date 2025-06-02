@@ -1,7 +1,12 @@
 use crate::LocalLlmPluginExt;
 
-use ollama_rs::Ollama;
 use tauri::ipc::Channel;
+
+#[tauri::command]
+#[specta::specta]
+pub async fn list_supported_models() -> Result<Vec<crate::local::SupportedModel>, String> {
+    Ok(crate::local::SUPPORTED_MODELS.to_vec())
+}
 
 #[tauri::command]
 #[specta::specta]
@@ -44,18 +49,4 @@ pub async fn start_server<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result
 #[specta::specta]
 pub async fn stop_server<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
     app.stop_server().await.map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn list_ollama_models<R: tauri::Runtime>(
-    _app: tauri::AppHandle<R>,
-) -> Result<Vec<String>, String> {
-    let ollama = Ollama::default();
-    let models = ollama
-        .list_local_models()
-        .await
-        .map_err(|e| e.to_string())?;
-
-    Ok(models.into_iter().map(|m| m.name).collect::<Vec<_>>())
 }

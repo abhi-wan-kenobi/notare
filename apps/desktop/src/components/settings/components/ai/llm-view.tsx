@@ -1,5 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { cn } from "@hypr/ui/lib/utils";
+import { Trans } from "@lingui/react/macro";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
 import { commands as connectorCommands, type Connection } from "@hypr/plugin-connector";
+import { type SupportedModel as SupportedModelLLM } from "@hypr/plugin-local-llm";
 import {
   Form,
   FormControl,
@@ -13,12 +21,6 @@ import { Input } from "@hypr/ui/components/ui/input";
 import { Label } from "@hypr/ui/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@hypr/ui/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hypr/ui/components/ui/select";
-import { cn } from "@hypr/ui/lib/utils";
-import { Trans } from "@lingui/react/macro";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 const endpointSchema = z.object({
   model: z.string().min(1),
@@ -121,7 +123,7 @@ export function LLMView() {
     return apiBase && (apiBase.includes("localhost") || apiBase.includes("127.0.0.1"));
   };
 
-  const currentLLM = customLLMEnabled.data ? "custom" : "llama-3.2-3b-q4";
+  const currentLLM: SupportedModelLLM | "custom" = customLLMEnabled.data ? "custom" : "Llama3p2_3bQ4";
 
   return (
     <RadioGroup
@@ -135,7 +137,7 @@ export function LLMView() {
         htmlFor="llama-3.2-3b-q4"
         className={cn(
           "p-4 rounded-lg shadow-sm transition-all duration-150 ease-in-out",
-          currentLLM === "llama-3.2-3b-q4"
+          currentLLM === "Llama3p2_3bQ4"
             ? "border border-blue-500 ring-2 ring-blue-500 bg-blue-50"
             : "border border-neutral-200 bg-white hover:border-neutral-300",
           "cursor-pointer flex flex-col gap-2",
@@ -146,7 +148,7 @@ export function LLMView() {
             <RadioGroupItem value="llama-3.2-3b-q4" id="llama-3.2-3b-q4" className="peer sr-only" />
             <div className="flex flex-col">
               <span className="font-medium">
-                <Trans>Default (llama-3.2-3b-q4)</Trans>
+                Default (llama-3.2-3b-q4)
               </span>
               <p className="text-xs font-normal text-neutral-500 mt-1">
                 <Trans>Use the local Llama 3.2 model for enhanced privacy and offline capability.</Trans>

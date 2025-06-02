@@ -7,6 +7,9 @@
 
 
 export const commands = {
+async listSupportedModels() : Promise<SupportedModel[]> {
+    return await TAURI_INVOKE("plugin:local-llm|list_supported_models");
+},
 async isServerRunning() : Promise<boolean> {
     return await TAURI_INVOKE("plugin:local-llm|is_server_running");
 },
@@ -24,9 +27,6 @@ async startServer() : Promise<string> {
 },
 async stopServer() : Promise<null> {
     return await TAURI_INVOKE("plugin:local-llm|stop_server");
-},
-async listOllamaModels() : Promise<string[]> {
-    return await TAURI_INVOKE("plugin:local-llm|list_ollama_models");
 }
 }
 
@@ -40,6 +40,7 @@ async listOllamaModels() : Promise<string[]> {
 
 /** user-defined types **/
 
+export type SupportedModel = "Llama3p2_3bQ4"
 export type TAURI_CHANNEL<TSend> = null
 
 /** tauri-specta globals **/

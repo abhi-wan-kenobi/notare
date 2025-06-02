@@ -17,6 +17,8 @@ use async_openai::types::{
     Role,
 };
 
+use crate::local::ModelManager;
+
 #[derive(Clone)]
 pub struct ServerHandle {
     pub addr: SocketAddr,
@@ -29,7 +31,7 @@ impl ServerHandle {
     }
 }
 
-pub async fn run_server(model_manager: crate::ModelManager) -> Result<ServerHandle, crate::Error> {
+pub async fn run_server(model_manager: ModelManager) -> Result<ServerHandle, crate::Error> {
     let app = Router::new()
         .route("/health", get(health))
         .route("/chat/completions", post(chat_completions))
@@ -66,7 +68,7 @@ pub async fn run_server(model_manager: crate::ModelManager) -> Result<ServerHand
     Ok(server_handle)
 }
 
-async fn health(AxumState(model_manager): AxumState<crate::ModelManager>) -> impl IntoResponse {
+async fn health(AxumState(model_manager): AxumState<ModelManager>) -> impl IntoResponse {
     match model_manager.get_model().await {
         Ok(_) => StatusCode::OK,
         Err(_) => StatusCode::SERVICE_UNAVAILABLE,
@@ -74,7 +76,7 @@ async fn health(AxumState(model_manager): AxumState<crate::ModelManager>) -> imp
 }
 
 async fn chat_completions(
-    AxumState(model_manager): AxumState<crate::ModelManager>,
+    AxumState(model_manager): AxumState<ModelManager>,
     Json(request): Json<CreateChatCompletionRequest>,
 ) -> Result<Response, (StatusCode, String)> {
     let inference_result = if request.model == "mock-onboarding" {
