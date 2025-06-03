@@ -504,10 +504,10 @@ impl Session {
 
     #[action]
     async fn enter_running_active(&mut self) {
-        {
-            use tauri_plugin_windows::{HyprWindow, WindowsPluginExt};
-            let _ = self.app.window_show(HyprWindow::Control);
-        }
+        // {
+        //     use tauri_plugin_windows::{HyprWindow, WindowsPluginExt};
+        //     let _ = self.app.window_show(HyprWindow::Control);
+        // }
 
         if let Some(session_id) = &self.session_id {
             use tauri_plugin_db::DatabasePluginExt;

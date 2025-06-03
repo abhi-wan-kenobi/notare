@@ -262,6 +262,9 @@ function useFloatingPosition(toolbarRef: React.RefObject<HTMLDivElement>) {
   const POSITION_SYNC_DELAY = 100;
   const BOUNDS_UPDATE_DELAY = 100;
 
+  const isInitialMountRef = useRef(true);
+  const hasRestoredPositionRef = useRef(false);
+
   const [position, setPosition] = useState<{ x: number; y: number }>(() => {
     const savedPosition = localStorage.getItem(STORAGE_KEY);
 
@@ -270,13 +273,16 @@ function useFloatingPosition(toolbarRef: React.RefObject<HTMLDivElement>) {
         const parsed = JSON.parse(savedPosition);
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
+        
+        const margin = 50;
 
         if (
           parsed.x >= 0
-          && parsed.x <= windowWidth - 200
+          && parsed.x <= windowWidth - margin
           && parsed.y >= 0
-          && parsed.y <= windowHeight - 100
+          && parsed.y <= windowHeight - margin
         ) {
+          hasRestoredPositionRef.current = true;
           return parsed;
         }
       } catch (e) {
@@ -330,11 +336,9 @@ function useFloatingPosition(toolbarRef: React.RefObject<HTMLDivElement>) {
     lastInteractionRef.current = Date.now();
   }, []);
 
-  // Smart recovery for window focus/visibility changes
   const smartRecovery = useCallback(() => {
     const timeSinceInteraction = Date.now() - lastInteractionRef.current;
     if (timeSinceInteraction > 10000) {
-      // Aggressive recovery after 10 seconds of no interaction
       windowsCommands.removeFakeWindow("control")
         .then(() => setTimeout(updateOverlayBounds, POSITION_SYNC_DELAY))
         .catch(console.error);
@@ -344,9 +348,16 @@ function useFloatingPosition(toolbarRef: React.RefObject<HTMLDivElement>) {
     trackInteraction();
   }, [updateOverlayBounds, trackInteraction]);
 
-  // Sync actual DOM position with React state
   const syncActualPosition = useCallback((element: HTMLDivElement | null) => {
     if (!element) {
+      return;
+    }
+
+    if (isInitialMountRef.current && hasRestoredPositionRef.current) {
+      isInitialMountRef.current = false;
+      setTimeout(() => {
+        updateOverlayBounds();
+      }, POSITION_SYNC_DELAY * 2);
       return;
     }
 
@@ -362,12 +373,13 @@ function useFloatingPosition(toolbarRef: React.RefObject<HTMLDivElement>) {
         setPosition(actualPosition);
       }
     }, POSITION_SYNC_DELAY);
-  }, [position]);
+  }, [position, updateOverlayBounds]);
 
-  // Handle drag start
   const handleDragStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    isInitialMountRef.current = false;
 
     setIsDragging(true);
     setDragOffset({
@@ -377,13 +389,11 @@ function useFloatingPosition(toolbarRef: React.RefObject<HTMLDivElement>) {
     trackInteraction();
   }, [position, trackInteraction]);
 
-  // Save position to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(position));
     debouncedUpdateBounds();
   }, [position, debouncedUpdateBounds]);
 
-  // Handle global mouse events
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) {
@@ -417,7 +427,6 @@ function useFloatingPosition(toolbarRef: React.RefObject<HTMLDivElement>) {
     };
   }, [isDragging, dragOffset, toolbarRef, updateOverlayBounds]);
 
-  // Handle window events
   useEffect(() => {
     const handleWindowFocus = () => smartRecovery();
     const handleVisibilityChange = () => {
@@ -431,7 +440,6 @@ function useFloatingPosition(toolbarRef: React.RefObject<HTMLDivElement>) {
     window.addEventListener("resize", handleWindowResize);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Initial bounds setup
     setTimeout(updateOverlayBounds, 200);
 
     return () => {
