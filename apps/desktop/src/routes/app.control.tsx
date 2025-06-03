@@ -80,6 +80,12 @@ function Component() {
           }}
         >
           <div className="flex gap-2 items-center">
+            <img
+              src="/icons/logo.png"
+              alt="Logo"
+              className="size-8"
+            />
+
             <AudioControls
               micMuted={micMuted}
               speakerMuted={speakerMuted}
