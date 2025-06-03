@@ -197,8 +197,6 @@ function WhenActive() {
     pause: s.pause,
     stop: s.stop,
   }));
-  const audioControls = useAudioControls();
-
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const handlePauseSession = () => {
@@ -226,7 +224,6 @@ function WhenActive() {
       </PopoverTrigger>
       <PopoverContent className="w-64" align="end">
         <RecordingControls
-          audioControls={audioControls}
           onPause={handlePauseSession}
           onStop={handleStopSession}
         />
@@ -236,25 +233,36 @@ function WhenActive() {
 }
 
 function RecordingControls({
-  audioControls,
   onPause,
   onStop,
 }: {
-  audioControls: ReturnType<typeof useAudioControls>;
   onPause: () => void;
   onStop: () => void;
 }) {
+  const ongoingSessionMuted = useOngoingSession((s) => ({
+    micMuted: s.micMuted,
+    speakerMuted: s.speakerMuted,
+  }));
+
+  const toggleMicMuted = useMutation({
+    mutationFn: () => listenerCommands.setMicMuted(!ongoingSessionMuted.micMuted),
+  });
+
+  const toggleSpeakerMuted = useMutation({
+    mutationFn: () => listenerCommands.setSpeakerMuted(!ongoingSessionMuted.speakerMuted),
+  });
+
   return (
     <>
       <div className="flex w-full justify-between mb-4">
         <AudioControlButton
-          isMuted={audioControls.isMicMuted}
-          onClick={() => audioControls.toggleMicMuted.mutate()}
+          isMuted={ongoingSessionMuted.micMuted}
+          onClick={() => toggleMicMuted.mutate()}
           type="mic"
         />
         <AudioControlButton
-          isMuted={audioControls.isSpeakerMuted}
-          onClick={() => audioControls.toggleSpeakerMuted.mutate()}
+          isMuted={ongoingSessionMuted.speakerMuted}
+          onClick={() => toggleSpeakerMuted.mutate()}
           type="speaker"
         />
       </div>
@@ -312,35 +320,4 @@ function AudioControlButton({
       {!disabled && <SoundIndicator input={type} size="long" />}
     </Button>
   );
-}
-
-function useAudioControls() {
-  const { data: isMicMuted, refetch: refetchMicMuted } = useQuery({
-    queryKey: ["mic-muted"],
-    queryFn: () => listenerCommands.getMicMuted(),
-  });
-
-  const { data: isSpeakerMuted, refetch: refetchSpeakerMuted } = useQuery({
-    queryKey: ["speaker-muted"],
-    queryFn: () => listenerCommands.getSpeakerMuted(),
-  });
-
-  const toggleMicMuted = useMutation({
-    mutationFn: () => listenerCommands.setMicMuted(!isMicMuted),
-    onSuccess: () => refetchMicMuted(),
-  });
-
-  const toggleSpeakerMuted = useMutation({
-    mutationFn: () => listenerCommands.setSpeakerMuted(!isSpeakerMuted),
-    onSuccess: () => refetchSpeakerMuted(),
-  });
-
-  return {
-    isMicMuted,
-    isSpeakerMuted,
-    toggleMicMuted,
-    toggleSpeakerMuted,
-    refetchSpeakerMuted,
-    refetchMicMuted,
-  };
 }

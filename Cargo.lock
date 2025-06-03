@@ -13911,6 +13911,10 @@ dependencies = [
 name = "tauri-plugin-windows"
 version = "0.1.0"
 dependencies = [
+ "objc2 0.6.1",
+ "objc2-app-kit 0.3.1",
+ "objc2-foundation 0.3.1",
+ "once_cell",
  "serde",
  "specta",
  "specta-typescript",
@@ -13922,6 +13926,7 @@ dependencies = [
  "tauri-plugin-auth",
  "tauri-specta",
  "thiserror 2.0.12",
+ "tokio",
  "tracing",
  "uuid",
 ]

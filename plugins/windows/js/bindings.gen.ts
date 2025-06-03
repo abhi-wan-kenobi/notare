@@ -10,6 +10,9 @@ export const commands = {
 async windowShow(window: HyprWindow) : Promise<null> {
     return await TAURI_INVOKE("plugin:windows|window_show", { window });
 },
+async windowClose(window: HyprWindow) : Promise<null> {
+    return await TAURI_INVOKE("plugin:windows|window_close", { window });
+},
 async windowHide(window: HyprWindow) : Promise<null> {
     return await TAURI_INVOKE("plugin:windows|window_hide", { window });
 },
@@ -18,9 +21,6 @@ async windowDestroy(window: HyprWindow) : Promise<null> {
 },
 async windowPosition(window: HyprWindow, pos: KnownPosition) : Promise<null> {
     return await TAURI_INVOKE("plugin:windows|window_position", { window, pos });
-},
-async windowResizeDefault(window: HyprWindow) : Promise<null> {
-    return await TAURI_INVOKE("plugin:windows|window_resize_default", { window });
 },
 async windowGetFloating(window: HyprWindow) : Promise<boolean> {
     return await TAURI_INVOKE("plugin:windows|window_get_floating", { window });
@@ -36,6 +36,18 @@ async windowEmitNavigate(window: HyprWindow, path: string) : Promise<null> {
 },
 async windowIsVisible(window: HyprWindow) : Promise<boolean> {
     return await TAURI_INVOKE("plugin:windows|window_is_visible", { window });
+},
+async windowSetOverlayBounds(name: string, bounds: OverlayBound) : Promise<null> {
+    return await TAURI_INVOKE("plugin:windows|window_set_overlay_bounds", { name, bounds });
+},
+async windowRemoveOverlayBounds(name: string) : Promise<null> {
+    return await TAURI_INVOKE("plugin:windows|window_remove_overlay_bounds", { name });
+},
+async setFakeWindowBounds(name: string, bounds: OverlayBound) : Promise<null> {
+    return await TAURI_INVOKE("plugin:windows|set_fake_window_bounds", { name, bounds });
+},
+async removeFakeWindow(name: string) : Promise<null> {
+    return await TAURI_INVOKE("plugin:windows|remove_fake_window", { name });
 }
 }
 
@@ -58,10 +70,11 @@ windowDestroyed: "plugin:windows:window-destroyed"
 
 /** user-defined types **/
 
-export type HyprWindow = { type: "main" } | { type: "note"; value: string } | { type: "human"; value: string } | { type: "organization"; value: string } | { type: "calendar" } | { type: "settings" } | { type: "video"; value: string } | { type: "plans" }
+export type HyprWindow = { type: "main" } | { type: "note"; value: string } | { type: "human"; value: string } | { type: "organization"; value: string } | { type: "calendar" } | { type: "settings" } | { type: "video"; value: string } | { type: "plans" } | { type: "control" }
 export type KnownPosition = "left-half" | "right-half" | "center"
 export type MainWindowState = { left_sidebar_expanded: boolean | null; right_panel_expanded: boolean | null }
 export type Navigate = { path: string }
+export type OverlayBound = { x: number; y: number; width: number; height: number }
 export type WindowDestroyed = { window: HyprWindow }
 
 /** tauri-specta globals **/

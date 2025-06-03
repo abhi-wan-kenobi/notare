@@ -403,12 +403,14 @@ impl Session {
             StateEvent::MicMuted(muted) => {
                 if let Some(tx) = &self.mic_muted_tx {
                     let _ = tx.send(*muted);
+                    let _ = SessionEvent::MicMuted { value: *muted }.emit(&self.app);
                 }
                 Handled
             }
             StateEvent::SpeakerMuted(muted) => {
                 if let Some(tx) = &self.speaker_muted_tx {
                     let _ = tx.send(*muted);
+                    let _ = SessionEvent::SpeakerMuted { value: *muted }.emit(&self.app);
                 }
                 Handled
             }
@@ -477,6 +479,11 @@ impl Session {
             let _ = self.app.set_start_disabled(false);
         }
 
+        {
+            use tauri_plugin_windows::{HyprWindow, WindowsPluginExt};
+            let _ = self.app.window_hide(HyprWindow::Control);
+        }
+
         if let Some(session_id) = &self.session_id {
             use tauri_plugin_db::DatabasePluginExt;
 
@@ -497,6 +504,11 @@ impl Session {
 
     #[action]
     async fn enter_running_active(&mut self) {
+        {
+            use tauri_plugin_windows::{HyprWindow, WindowsPluginExt};
+            let _ = self.app.window_show(HyprWindow::Control);
+        }
+
         if let Some(session_id) = &self.session_id {
             use tauri_plugin_db::DatabasePluginExt;
 

@@ -19,6 +19,10 @@ common_event_derives! {
         Words { words: Vec<hypr_listener_interface::Word>},
         #[serde(rename = "audioAmplitude")]
         AudioAmplitude { mic: u16, speaker: u16 },
+        #[serde(rename = "micMuted")]
+        MicMuted { value: bool },
+        #[serde(rename = "speakerMuted")]
+        SpeakerMuted { value: bool },
     }
 }
 

@@ -11,6 +11,8 @@ type State = {
   status: "inactive" | "running_active" | "running_paused";
   amplitude: { mic: number; speaker: number };
   enhanceController: AbortController | null;
+  micMuted: boolean;
+  speakerMuted: boolean;
 };
 
 type Actions = {
@@ -29,6 +31,8 @@ const initialState: State = {
   loading: false,
   amplitude: { mic: 0, speaker: 0 },
   enhanceController: null,
+  micMuted: false,
+  speakerMuted: false,
 };
 
 export type OngoingSessionStore = ReturnType<typeof createOngoingSessionStore>;
@@ -71,6 +75,39 @@ export const createOngoingSessionStore = (sessionsStore: ReturnType<typeof creat
               };
             })
           );
+        } else if (payload.type === "running_active") {
+          set((state) =>
+            mutate(state, (draft) => {
+              draft.status = "running_active";
+              draft.loading = false;
+            })
+          );
+        } else if (payload.type === "running_paused") {
+          set((state) =>
+            mutate(state, (draft) => {
+              draft.status = "running_paused";
+              draft.loading = false;
+            })
+          );
+        } else if (payload.type === "inactive") {
+          set((state) =>
+            mutate(state, (draft) => {
+              draft.status = "inactive";
+              draft.loading = false;
+            })
+          );
+        } else if (payload.type === "micMuted") {
+          set((state) =>
+            mutate(state, (draft) => {
+              draft.micMuted = payload.value;
+            })
+          );
+        } else if (payload.type === "speakerMuted") {
+          set((state) =>
+            mutate(state, (draft) => {
+              draft.speakerMuted = payload.value;
+            })
+          );
         }
       }).then((unlisten) => {
         set((state) =>
@@ -90,6 +127,12 @@ export const createOngoingSessionStore = (sessionsStore: ReturnType<typeof creat
     stop: () => {
       const { sessionId } = get();
 
+      set((state) =>
+        mutate(state, (draft) => {
+          draft.loading = true;
+        })
+      );
+
       listenerCommands.stopSession().then(() => {
         set(initialState);
 
@@ -101,13 +144,31 @@ export const createOngoingSessionStore = (sessionsStore: ReturnType<typeof creat
             sessionStore.getState().refresh();
           }
         }, 1500);
+      }).catch((error) => {
+        console.error("Failed to stop session:", error);
+        set((state) =>
+          mutate(state, (draft) => {
+            draft.loading = false;
+          })
+        );
       });
     },
     pause: () => {
       const { sessionId } = get();
 
+      set((state) =>
+        mutate(state, (draft) => {
+          draft.loading = true;
+        })
+      );
+
       listenerCommands.pauseSession().then(() => {
-        set({ status: "running_paused" });
+        set((state) =>
+          mutate(state, (draft) => {
+            draft.status = "running_paused";
+            draft.loading = false;
+          })
+        );
 
         // We need refresh since session in store is now stale.
         // setTimeout is needed because of debounce.
@@ -117,11 +178,36 @@ export const createOngoingSessionStore = (sessionsStore: ReturnType<typeof creat
             sessionStore.getState().refresh();
           }
         }, 1500);
+      }).catch((error) => {
+        console.error("Failed to pause session:", error);
+        set((state) =>
+          mutate(state, (draft) => {
+            draft.loading = false;
+          })
+        );
       });
     },
     resume: () => {
+      set((state) =>
+        mutate(state, (draft) => {
+          draft.loading = true;
+        })
+      );
+
       listenerCommands.resumeSession().then(() => {
-        set({ status: "running_active" });
+        set((state) =>
+          mutate(state, (draft) => {
+            draft.status = "running_active";
+            draft.loading = false;
+          })
+        );
+      }).catch((error) => {
+        console.error("Failed to resume session:", error);
+        set((state) =>
+          mutate(state, (draft) => {
+            draft.loading = false;
+          })
+        );
       });
     },
   }));

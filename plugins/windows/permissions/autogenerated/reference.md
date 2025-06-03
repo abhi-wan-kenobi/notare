@@ -5,15 +5,19 @@ Default permissions for the plugin
 #### This default permission set includes the following:
 
 - `allow-window-show`
+- `allow-window-close`
 - `allow-window-hide`
 - `allow-window-destroy`
 - `allow-window-position`
-- `allow-window-resize-default`
 - `allow-window-get-floating`
 - `allow-window-set-floating`
 - `allow-window-navigate`
 - `allow-window-emit-navigate`
 - `allow-window-is-visible`
+- `allow-window-set-overlay-bounds`
+- `allow-window-remove-overlay-bounds`
+- `allow-set-fake-window-bounds`
+- `allow-remove-fake-window`
 
 ## Permission Table
 
@@ -23,6 +27,84 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`windows:allow-remove-fake-window`
+
+</td>
+<td>
+
+Enables the remove_fake_window command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:deny-remove-fake-window`
+
+</td>
+<td>
+
+Denies the remove_fake_window command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:allow-set-fake-window-bounds`
+
+</td>
+<td>
+
+Enables the set_fake_window_bounds command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:deny-set-fake-window-bounds`
+
+</td>
+<td>
+
+Denies the set_fake_window_bounds command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:allow-window-close`
+
+</td>
+<td>
+
+Enables the window_close command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:deny-window-close`
+
+</td>
+<td>
+
+Denies the window_close command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>
@@ -209,6 +291,32 @@ Denies the window_position command without any pre-configured scope.
 <tr>
 <td>
 
+`windows:allow-window-remove-overlay-bounds`
+
+</td>
+<td>
+
+Enables the window_remove_overlay_bounds command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:deny-window-remove-overlay-bounds`
+
+</td>
+<td>
+
+Denies the window_remove_overlay_bounds command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `windows:allow-window-resize-default`
 
 </td>
@@ -254,6 +362,32 @@ Enables the window_set_floating command without any pre-configured scope.
 <td>
 
 Denies the window_set_floating command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:allow-window-set-overlay-bounds`
+
+</td>
+<td>
+
+Enables the window_set_overlay_bounds command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:deny-window-set-overlay-bounds`
+
+</td>
+<td>
+
+Denies the window_set_overlay_bounds command without any pre-configured scope.
 
 </td>
 </tr>
