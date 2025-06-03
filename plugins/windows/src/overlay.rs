@@ -1,4 +1,5 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use once_cell::sync::Lazy;
+use std::{collections::HashMap, sync::Arc, sync::Mutex, time::Duration};
 use tauri::{AppHandle, Manager, WebviewWindow};
 use tokio::{sync::RwLock, time::sleep};
 
@@ -18,13 +19,21 @@ impl Default for FakeWindowBounds {
     }
 }
 
-pub fn spawn_overlay_listener(
-    app: AppHandle,
-    window: WebviewWindow,
-) -> tokio::task::JoinHandle<()> {
+static OVERLAY_JOIN_HANDLE: Lazy<Mutex<Option<tokio::task::JoinHandle<()>>>> =
+    Lazy::new(|| Mutex::new(None));
+
+pub fn abort_overlay_join_handle() {
+    if let Ok(mut guard) = OVERLAY_JOIN_HANDLE.lock() {
+        if let Some(handle) = guard.take() {
+            handle.abort();
+        }
+    }
+}
+
+pub fn spawn_overlay_listener(app: AppHandle, window: WebviewWindow) {
     window.set_ignore_cursor_events(true).ok();
 
-    tokio::spawn(async move {
+    let handle = tokio::spawn(async move {
         let state = app.state::<FakeWindowBounds>();
         let mut last_ignore_state = true;
         let mut last_focus_state = false;
@@ -102,5 +111,12 @@ pub fn spawn_overlay_listener(
                 last_focus_state = false;
             }
         }
-    })
+    });
+
+    if let Ok(mut guard) = OVERLAY_JOIN_HANDLE.lock() {
+        if let Some(old_handle) = guard.take() {
+            old_handle.abort();
+        }
+        *guard = Some(handle);
+    }
 }

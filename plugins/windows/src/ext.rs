@@ -387,18 +387,15 @@ impl HyprWindow {
                             use objc2::runtime::AnyObject;
                             use objc2::msg_send;
 
-                            // Hide traffic lights using cocoa APIs
                             if let Ok(ns_window) = window.ns_window() {
                                 unsafe {
                                     let ns_window = ns_window as *mut AnyObject;
                                     let ns_window = &*ns_window;
 
-                                    // NSWindow button type constants
                                     const NS_WINDOW_CLOSE_BUTTON: u64 = 0;
                                     const NS_WINDOW_MINIATURIZE_BUTTON: u64 = 1;
                                     const NS_WINDOW_ZOOM_BUTTON: u64 = 2;
 
-                                    // Get and hide the standard window buttons
                                     let close_button: *mut AnyObject = msg_send![ns_window, standardWindowButton: NS_WINDOW_CLOSE_BUTTON];
                                     let miniaturize_button: *mut AnyObject = msg_send![ns_window, standardWindowButton: NS_WINDOW_MINIATURIZE_BUTTON];
                                     let zoom_button: *mut AnyObject = msg_send![ns_window, standardWindowButton: NS_WINDOW_ZOOM_BUTTON];
@@ -422,10 +419,8 @@ impl HyprWindow {
                     }).map_err(|e| tracing::warn!("Failed to run window setup on main thread: {}", e)).ok();
                 }
 
-                let join_handle = crate::spawn_overlay_listener(app.clone(), window.clone());
-                crate::set_overlay_join_handle(join_handle);
+                crate::spawn_overlay_listener(app.clone(), window.clone());
 
-                // Cancel the overlay listener when the window is closed
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { .. } = event {
                         crate::abort_overlay_join_handle();
