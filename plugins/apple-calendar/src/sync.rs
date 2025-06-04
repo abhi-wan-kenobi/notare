@@ -75,15 +75,20 @@ async fn _sync_calendars(
     let calendars_to_upsert = {
         let items = system_calendars
             .iter()
-            .filter(|sys_c| !db_calendars.iter().any(|db_c| db_c.tracking_id == sys_c.id))
-            .map(|sys_c| hypr_db_user::Calendar {
-                id: uuid::Uuid::new_v4().to_string(),
-                tracking_id: sys_c.id.clone(),
-                user_id: user_id.clone(),
-                name: sys_c.name.clone(),
-                platform: sys_c.platform.clone().into(),
-                selected: false,
-                source: sys_c.source.clone(),
+            .map(|sys_c| {
+                let existing = db_calendars
+                    .iter()
+                    .find(|db_c| db_c.tracking_id == sys_c.id);
+
+                hypr_db_user::Calendar {
+                    id: uuid::Uuid::new_v4().to_string(),
+                    tracking_id: sys_c.id.clone(),
+                    user_id: user_id.clone(),
+                    name: sys_c.name.clone(),
+                    platform: sys_c.platform.clone().into(),
+                    selected: existing.map_or(false, |c| c.selected),
+                    source: sys_c.source.clone(),
+                }
             })
             .collect::<Vec<hypr_db_user::Calendar>>();
 

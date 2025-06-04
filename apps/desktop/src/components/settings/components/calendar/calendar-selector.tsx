@@ -16,12 +16,7 @@ export function CalendarSelector() {
     queryFn: async () => {
       const calendars = await dbCommands.listCalendars(userId);
       const grouped = calendars.reduce((acc, calendar) => {
-        let source = calendar.source || "Other";
-
-        if (!source.includes("@")) {
-          source = "Other";
-        }
-
+        const source = calendar.source || "Other";
         acc[source] = acc[source] || [];
         acc[source].push(calendar);
         return acc;
