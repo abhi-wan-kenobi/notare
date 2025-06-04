@@ -1,25 +1,25 @@
 use serde::{Deserialize, Serialize};
 use tauri_plugin_store2::ScopedStoreKey;
 
-#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub enum TaskStatus {
-    Running { step: u32, total: u32 },
+    Running { current: u32, total: u32 },
     Completed,
-    Failed { step: u32, error: String },
+    Failed { error: String },
     Cancelled,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub struct TaskRecord {
-    pub kind: String,
-    pub created_at: i64,
+    pub id: String,
     pub status: TaskStatus,
-    pub total_steps: u32,
+    #[specta(type = String)]
+    pub data: std::collections::HashMap<u32, serde_json::Value>,
 }
 
 #[derive(Deserialize, specta::Type, PartialEq, Eq, Hash, strum::Display)]
 pub enum StoreKey {
-    Tasks,
+    Tasks(String),
 }
 
 impl ScopedStoreKey for StoreKey {}

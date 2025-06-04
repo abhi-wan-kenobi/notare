@@ -1,12 +1,17 @@
 use tauri::{Manager, Wry};
 
 mod commands;
+mod ctx;
 mod error;
 mod ext;
+mod state;
 mod store;
 
+pub use ctx::*;
 pub use error::*;
 pub use ext::*;
+pub use state::*;
+pub use store::*;
 
 const PLUGIN_NAME: &str = "task";
 
@@ -26,7 +31,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
         .setup(|app, _api| {
-            app.manage(());
+            app.manage(TaskState::default());
             Ok(())
         })
         .build()
@@ -59,6 +64,16 @@ mod test {
 
     #[test]
     fn test_task() {
-        let _app = create_app(tauri::test::mock_builder());
+        let app = create_app(tauri::test::mock_builder());
+
+        let task_id = app.spawn_task(10, |mut ctx| async move {
+            ctx.advance(1).unwrap();
+            Ok(())
+        });
+
+        std::thread::sleep(std::time::Duration::from_millis(100));
+
+        let task = app.get_task(task_id).unwrap();
+        assert_eq!(task.status, TaskStatus::Completed);
     }
 }
