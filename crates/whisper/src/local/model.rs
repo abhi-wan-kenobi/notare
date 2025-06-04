@@ -107,6 +107,7 @@ impl Whisper {
 
             p.set_no_timestamps(true);
             p.set_token_timestamps(false);
+            p.set_split_on_word(true);
 
             p.set_temperature(0.0);
             p.set_temperature_inc(0.2);
@@ -128,7 +129,7 @@ impl Whisper {
 
         let mut segments = Vec::new();
         for i in 0..num_segments {
-            let text = self.state.full_get_segment_text(i)?;
+            let text = self.state.full_get_segment_text_lossy(i)?;
             let (start, end) = (
                 self.state.full_get_segment_t0(i)?,
                 self.state.full_get_segment_t1(i)?,
