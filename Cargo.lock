@@ -3616,6 +3616,7 @@ dependencies = [
  "tauri-plugin-listener",
  "tauri-plugin-local-llm",
  "tauri-plugin-local-stt",
+ "tauri-plugin-machine-uid",
  "tauri-plugin-membership",
  "tauri-plugin-misc",
  "tauri-plugin-notification",
@@ -7949,6 +7950,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b955cdeb2a02b9117f121ce63aa52d08ade45de53e48fe6a38b39c10f6f709"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "machine-uid"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c4506fa0abb0a2ea93f5862f55973da0a662d2ad0e98f337a1c5aac657f0892"
+dependencies = [
+ "libc",
+ "winreg 0.52.0",
 ]
 
 [[package]]
@@ -13778,6 +13789,21 @@ dependencies = [
  "tracing",
  "whisper",
  "ws-utils",
+]
+
+[[package]]
+name = "tauri-plugin-machine-uid"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26fa354bbb89810d44692be4d669d0fcd9f8db6a15f40f4dad18526ca7275765"
+dependencies = [
+ "machine-uid",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-plugin",
+ "tauri-specta",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
