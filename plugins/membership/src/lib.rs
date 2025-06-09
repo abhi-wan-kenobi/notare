@@ -1,6 +1,8 @@
 mod commands;
 mod error;
 mod ext;
+mod license;
+mod machine;
 mod store;
 
 pub use error::*;
@@ -25,15 +27,17 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .invoke_handler(specta_builder.invoke_handler())
         .setup(|_app, _api| {
             // https://github.com/ahonn/keygen-rs/blob/c02516c/packages/tauri-plugin-keygen-rs2/src/lib.rs#L116
-            keygen_rs::config::set_config(keygen_rs::config::KeygenConfig {
+            let config = keygen_rs::config::KeygenConfig {
                 api_url: "https://api.keygen.sh".to_string(),
-                api_version: "1.7".to_string(),
+                // https://keygen.sh/docs/api/versioning
+                api_version: "1.8".to_string(),
                 api_prefix: "v1".to_string(),
                 account: "fastrepl".to_string(),
-                product: "".to_string(),
+                product: "a5a28e7d-f1b9-4ef3-b29a-4579ecf0dab7".to_string(),
                 public_key: Some("".to_string()),
                 ..Default::default()
-            });
+            };
+            keygen_rs::config::set_config(config);
 
             Ok(())
         })
