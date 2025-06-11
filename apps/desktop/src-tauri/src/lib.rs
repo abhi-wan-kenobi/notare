@@ -92,7 +92,6 @@ pub async fn main() {
         .plugin(tauri_plugin_analytics::init())
         .plugin(tauri_plugin_tray::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_windows::init())
         .plugin(tauri_plugin_membership::init())
         .plugin(tauri_plugin_process::init())
@@ -232,6 +231,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::set_onboarding_needed::<tauri::Wry>,
             commands::setup_db_for_cloud::<tauri::Wry>,
             commands::set_autostart::<tauri::Wry>,
+            commands::safe_write_text::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

@@ -29,7 +29,8 @@
     "**/public",
     "**/gen/**",
     "**/generated/**",
-    "**/permissions/**"
+    "**/permissions/**",
+    "**/*.swift"
   ],
   "exec": {
     "cwd": "${configDir}",

@@ -1,6 +1,6 @@
+import { commands as tauriCommands } from "@/types/tauri.gen";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMatch } from "@tanstack/react-router";
-import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import useDebouncedCallback from "beautiful-react-hooks/useDebouncedCallback";
 import { AudioLinesIcon, CheckIcon, ClipboardIcon, CopyIcon, TextSearchIcon, UploadIcon } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
@@ -57,10 +57,10 @@ export function TranscriptView() {
     queryClient,
   );
 
-  const handleCopyAll = useCallback(() => {
+  const handleCopyAll = useCallback(async () => {
     if (words && words.length > 0) {
       const transcriptText = words.map((word) => word.text).join(" ");
-      writeText(transcriptText);
+      await tauriCommands.safeWriteText(transcriptText);
     }
   }, [words]);
 
