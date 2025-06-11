@@ -65,7 +65,7 @@ pub async fn clipboard_write_text<R: tauri::Runtime>(
 
     match result {
         Ok(()) => Ok(()),
-        Err(_) => {
+        Err(_e) => {
             tracing::error!("clipboard write failed, trying main thread dispatch");
 
             #[cfg(target_os = "macos")]
@@ -88,7 +88,7 @@ pub async fn clipboard_write_text<R: tauri::Runtime>(
 
             #[cfg(not(target_os = "macos"))]
             {
-                Err(e.to_string())
+                Err(_e.to_string())
             }
         }
     }
