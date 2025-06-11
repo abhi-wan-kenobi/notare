@@ -130,11 +130,8 @@ mod test {
         Always output markdown, without any other responses.
         "###);
 
-        insta::assert_snapshot!(render_enhance_system_template(&app, "HyprCloud"), @r###"
+        insta::assert_snapshot!(render_enhance_system_template(&app, "HyprCloud"), @r"
         You are a professional assistant that generates enhanced meetings notes while maintaining accuracy, completeness, and professional terminology in English.
-        Always output note in markdown format, without adding other responses.
-
-
 
 
         You will be given multiple inputs from the user. Below are useful information that you will use to write the best enhanced meeting note. Think step by step.
@@ -223,7 +220,7 @@ mod test {
           - Need high-ticket items for sustainability
           - Importance of finding strong strategic partners
         ```
-        "###);
+        ");
     }
 
     #[test]

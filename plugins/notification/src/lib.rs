@@ -88,8 +88,8 @@ mod test {
 
     fn create_app<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::App<R> {
         builder
-            .plugin(init())
             .plugin(tauri_plugin_store::Builder::default().build())
+            .plugin(init())
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .unwrap()
     }

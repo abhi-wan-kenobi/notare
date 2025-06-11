@@ -1,0 +1,15 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dprint/check@v2.3
+        with:
+          config-path: dprint.json

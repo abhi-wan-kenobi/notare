@@ -25,8 +25,8 @@ async cancelTask(id: string) : Promise<null> {
 
 /** user-defined types **/
 
-export type TaskRecord = { kind: string; created_at: number; status: TaskStatus; total_steps: number }
-export type TaskStatus = { Running: { step: number; total: number } } | "Completed" | { Failed: { step: number; error: string } } | "Cancelled"
+export type TaskRecord = { id: string; status: TaskStatus; data: string }
+export type TaskStatus = { Running: { current: number; total: number } } | "Completed" | { Failed: { error: string } } | "Cancelled"
 
 /** tauri-specta globals **/
 

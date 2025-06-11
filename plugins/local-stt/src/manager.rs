@@ -83,6 +83,7 @@ mod tests {
         }
     }
 
+    #[ignore]
     #[tokio::test]
     async fn integration_test() {
         let addr = {

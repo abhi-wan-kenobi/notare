@@ -75,3 +75,9 @@ We use [dprint](https://dprint.dev/) to format the code.
 ```bash
 dprint fmt
 ```
+
+## Testing
+
+```bash
+cargo install cargo-insta
+```
