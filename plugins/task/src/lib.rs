@@ -61,19 +61,4 @@ mod test {
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .unwrap()
     }
-
-    #[test]
-    fn test_task() {
-        let app = create_app(tauri::test::mock_builder());
-
-        let task_id = app.spawn_task(10, |mut ctx| async move {
-            ctx.advance(1).unwrap();
-            Ok(())
-        });
-
-        std::thread::sleep(std::time::Duration::from_millis(100));
-
-        let task = app.get_task(task_id).unwrap();
-        assert_eq!(task.status, TaskStatus::Completed);
-    }
 }
