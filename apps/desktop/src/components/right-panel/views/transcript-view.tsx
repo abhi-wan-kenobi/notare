@@ -60,7 +60,7 @@ export function TranscriptView() {
   const handleCopyAll = useCallback(async () => {
     if (words && words.length > 0) {
       const transcriptText = words.map((word) => word.text).join(" ");
-      await tauriCommands.safeWriteText(transcriptText);
+      await tauriCommands.clipboardWriteText(transcriptText);
     }
   }, [words]);
 

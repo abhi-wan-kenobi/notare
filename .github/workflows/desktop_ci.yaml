@@ -46,3 +46,4 @@ jobs:
             | jq -r '.packages[].name' \
             | grep '^tauri-plugin-' \
             | xargs -P 0 -n1 cargo test --package
+        shell: bash

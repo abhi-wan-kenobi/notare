@@ -125,7 +125,7 @@ function ClipboardHandler() {
   useEffect(() => {
     const handleCopy = async (e: ClipboardEvent) => {
       const text = e.clipboardData?.getData("text/plain") || "";
-      await tauriCommands.safeWriteText(text);
+      await tauriCommands.clipboardWriteText(text);
     };
 
     document.addEventListener("copy", handleCopy);

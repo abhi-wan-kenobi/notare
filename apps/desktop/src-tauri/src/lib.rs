@@ -231,7 +231,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::set_onboarding_needed::<tauri::Wry>,
             commands::setup_db_for_cloud::<tauri::Wry>,
             commands::set_autostart::<tauri::Wry>,
-            commands::safe_write_text::<tauri::Wry>,
+            commands::clipboard_write_text::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
