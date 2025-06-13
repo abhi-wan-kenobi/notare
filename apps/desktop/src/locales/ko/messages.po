@@ -1072,7 +1072,7 @@ msgstr ""
 msgid "Ugh! Can't use it!"
 msgstr ""
 
-#: src/components/editor-area/note-header/title-input.tsx:33
+#: src/components/editor-area/note-header/title-input.tsx:39
 msgid "Untitled"
 msgstr ""
 
