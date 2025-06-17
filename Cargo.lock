@@ -7835,6 +7835,7 @@ dependencies = [
  "thiserror 2.0.12",
  "tokio",
  "tokio-stream",
+ "tracing",
 ]
 
 [[package]]
@@ -14041,6 +14042,7 @@ dependencies = [
  "tauri-specta",
  "thiserror 2.0.12",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
