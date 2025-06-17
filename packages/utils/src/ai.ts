@@ -15,7 +15,8 @@ export const useChat = (options: Parameters<typeof useChat$1>[0]) => {
   });
 };
 
-export const providerName = "hypr-llm";
+export const localProviderName = "hypr-llm-local";
+export const remoteProviderName = "hypr-llm-remote";
 
 const reasoningMiddleware = extractReasoningMiddleware({
   tagName: "thinking",
@@ -28,7 +29,7 @@ const getModel = async ({ onboarding }: { onboarding: boolean }) => {
   const { type, connection: { api_base, api_key } } = await getter();
 
   const openai = createOpenAICompatible({
-    name: providerName,
+    name: type === "HyprLocal" ? localProviderName : remoteProviderName,
     baseURL: api_base,
     apiKey: api_key ?? "SOMETHING_NON_EMPTY",
     fetch: customFetch,
