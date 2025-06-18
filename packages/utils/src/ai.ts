@@ -18,8 +18,14 @@ export const useChat = (options: Parameters<typeof useChat$1>[0]) => {
 export const localProviderName = "hypr-llm-local";
 export const remoteProviderName = "hypr-llm-remote";
 
-const reasoningMiddleware = extractReasoningMiddleware({
+const thinkingMiddleware = extractReasoningMiddleware({
   tagName: "thinking",
+  separator: "\n",
+  startWithReasoning: false,
+});
+
+const thinkMiddleware = extractReasoningMiddleware({
+  tagName: "think",
   separator: "\n",
   startWithReasoning: false,
 });
@@ -45,8 +51,10 @@ const getModel = async ({ onboarding }: { onboarding: boolean }) => {
     ? customModel
     : "gpt-4";
 
-  const model = openai(id);
-  return wrapLanguageModel({ model, middleware: [reasoningMiddleware] });
+  return wrapLanguageModel({
+    model: openai(id),
+    middleware: [thinkingMiddleware, thinkMiddleware],
+  });
 };
 
 export const modelProvider = async () => {
