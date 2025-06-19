@@ -35,21 +35,40 @@ pub enum Task {
 }
 
 impl Llama {
-    pub fn new(model_path: impl AsRef<std::path::Path>) -> Result<Self, crate::Error> {
-        send_logs_to_tracing(LogOptions::default().with_logs_enabled(false));
-
-        let backend = LLAMA_BACKEND
+    fn get_backend() -> Arc<LlamaBackend> {
+        LLAMA_BACKEND
             .get_or_init(|| {
                 let backend = LlamaBackend::init().unwrap();
                 Arc::new(backend)
             })
-            .clone();
+            .clone()
+    }
+
+    fn load_model(model_path: impl AsRef<std::path::Path>) -> Result<LlamaModel, crate::Error> {
+        let backend = Self::get_backend();
+
+        let full_gpu_layers: u32 = std::num::NonZeroU32::MAX.into();
+        let cpu_only_layers: u32 = 0;
+
+        let gpu_params = LlamaModelParams::default().with_n_gpu_layers(full_gpu_layers);
+
+        match LlamaModel::load_from_file(&backend, &model_path, &gpu_params) {
+            Ok(model) => Ok(model),
+            Err(_) => {
+                let params = LlamaModelParams::default().with_n_gpu_layers(cpu_only_layers);
+                LlamaModel::load_from_file(&backend, model_path, &params).map_err(Into::into)
+            }
+        }
+    }
+
+    pub fn new(model_path: impl AsRef<std::path::Path>) -> Result<Self, crate::Error> {
+        send_logs_to_tracing(LogOptions::default().with_logs_enabled(false));
 
         let fmt = model_path.gguf_chat_format()?.unwrap();
         let tpl = LlamaChatTemplate::new(fmt.as_ref()).unwrap();
 
-        let params = LlamaModelParams::default();
-        let model = LlamaModel::load_from_file(&backend, model_path, &params)?;
+        let backend = Self::get_backend();
+        let model = Self::load_model(model_path)?;
 
         let (task_sender, mut task_receiver) = tokio::sync::mpsc::unbounded_channel::<Task>();
 
