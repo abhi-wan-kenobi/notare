@@ -180,7 +180,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
         // https://github.com/thewh1teagle/pyannote-rs/issues/13
 
         // let mut segmenter = hypr_pyannote::local::segmentation::Segmenter::new(16000).unwrap();
-        let segments = segmenter.process(&samples, 16000).unwrap();
+        // let segments = segmenter.process(&samples, 16000).unwrap();
 
         let mut words = Vec::new();
 
