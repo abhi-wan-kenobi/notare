@@ -18,8 +18,8 @@ mod types;
 pub use error::*;
 pub use types::*;
 
-const DEFAULT_MAX_INPUT_TOKENS: u32 = 1024 * 8;
-const DEFAULT_MAX_OUTPUT_TOKENS: u32 = 1024;
+const DEFAULT_MAX_INPUT_TOKENS: u32 = 1024 * 16;
+const DEFAULT_MAX_OUTPUT_TOKENS: u32 = 1024 * 2;
 
 static LLAMA_BACKEND: OnceLock<Arc<LlamaBackend>> = OnceLock::new();
 
@@ -61,6 +61,21 @@ impl Llama {
         }
     }
 
+    fn get_sampler(model: &LlamaModel, grammar: Option<&str>) -> LlamaSampler {
+        let items = [
+            if let Some(grammar) = grammar {
+                Some(LlamaSampler::grammar(&model, grammar, "root"))
+            } else {
+                None
+            },
+            Some(LlamaSampler::temp(0.8)),
+            Some(LlamaSampler::penalties(0, 1.4, 0.1, 0.0)),
+            Some(LlamaSampler::mirostat_v2(1234, 3.0, 0.2)),
+        ];
+
+        LlamaSampler::chain_simple(items.into_iter().flatten().collect::<Vec<_>>())
+    }
+
     pub fn new(model_path: impl AsRef<std::path::Path>) -> Result<Self, crate::Error> {
         send_logs_to_tracing(LogOptions::default().with_logs_enabled(false));
 
@@ -84,24 +99,24 @@ impl Llama {
                                 .apply_chat_template(&tpl, &request.messages, true)
                                 .unwrap();
 
+                            let mut tokens_list =
+                                model.str_to_token(&prompt, AddBos::Always).unwrap();
+                            tokens_list.truncate(DEFAULT_MAX_INPUT_TOKENS as usize);
+                            let input_tokens_len = tokens_list.len() as u32;
+
                             let mut ctx = model
                                 .new_context(
                                     &backend,
                                     // https://github.com/ggml-org/llama.cpp/blob/492d7f1/src/llama-context.cpp#L2261
                                     LlamaContextParams::default()
                                         .with_n_ctx(std::num::NonZeroU32::new(
-                                            DEFAULT_MAX_INPUT_TOKENS + DEFAULT_MAX_OUTPUT_TOKENS,
-                                        ))
-                                        .with_n_batch(DEFAULT_MAX_INPUT_TOKENS)
-                                        .with_n_ubatch(512)
+                                            input_tokens_len + DEFAULT_MAX_OUTPUT_TOKENS,
+                                        )) // NoKvCacheSlot
+                                        .with_n_batch(input_tokens_len) // GGML_ASSERT(n_tokens_all <= cparams.n_batch)
                                         .with_embeddings(false)
                                         .with_flash_attention(true),
                                 )
                                 .unwrap();
-
-                            let mut tokens_list =
-                                model.str_to_token(&prompt, AddBos::Always).unwrap();
-                            tokens_list.truncate(DEFAULT_MAX_INPUT_TOKENS as usize);
 
                             let batch_size = tokens_list.len().max(512);
                             let mut batch = LlamaBatch::new(batch_size, 1);
@@ -116,20 +131,7 @@ impl Llama {
 
                             let mut n_cur = batch.n_tokens();
                             let mut decoder = encoding_rs::UTF_8.new_decoder();
-
-                            let mut sampler = match request.grammar {
-                                Some(grammar) => LlamaSampler::chain_simple([
-                                    LlamaSampler::grammar(&model, grammar.as_str(), "root"),
-                                    LlamaSampler::temp(0.8),
-                                    LlamaSampler::penalties(0, 1.4, 0.1, 0.0),
-                                    LlamaSampler::mirostat_v2(1234, 3.0, 0.2),
-                                ]),
-                                None => LlamaSampler::chain_simple([
-                                    LlamaSampler::temp(0.8),
-                                    LlamaSampler::penalties(0, 1.4, 0.1, 0.0),
-                                    LlamaSampler::mirostat_v2(1234, 3.0, 0.2),
-                                ]),
-                            };
+                            let mut sampler = Self::get_sampler(&model, request.grammar.as_deref());
 
                             let mut got_first_token = false;
                             while n_cur <= last_index + DEFAULT_MAX_OUTPUT_TOKENS as i32 {
@@ -242,9 +244,18 @@ mod tests {
     #[tokio::test]
     async fn test_english_1() {
         let llama = get_model();
+
         let request = LlamaRequest {
-            messages: vec![],
             grammar: Some(hypr_gbnf::GBNF::Enhance.build()),
+            messages: vec![
+                LlamaChatMessage::new(
+                    "system".into(),
+                    "Summarize the text the user gives you.".into(),
+                )
+                .unwrap(),
+                LlamaChatMessage::new("user".into(), hypr_data::english_4::WORDS_JSON.repeat(1))
+                    .unwrap(),
+            ],
         };
 
         run(&llama, request, true).await;
