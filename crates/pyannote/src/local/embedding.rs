@@ -1,3 +1,6 @@
+use dasp::sample::{FromSample, Sample, ToSample};
+use simsimd::SpatialSimilarity;
+
 use hypr_onnx::{
     ndarray::{self, Array2},
     ort::{self, session::Session},
@@ -15,9 +18,11 @@ impl EmbeddingExtractor {
         Self { session }
     }
 
-    pub fn compute(&mut self, samples: &[i16]) -> Result<Vec<f32>, anyhow::Error> {
-        let mut samples_f32 = vec![0.0; samples.len()];
-        knf_rs::convert_integer_to_float_audio(samples, &mut samples_f32);
+    pub fn compute(
+        &mut self,
+        samples: impl Iterator<Item: ToSample<f32>>,
+    ) -> Result<Vec<f32>, anyhow::Error> {
+        let samples_f32 = samples.map(|s| s.to_sample_()).collect::<Vec<_>>();
         let samples = &samples_f32;
 
         let features: Array2<f32> = knf_rs::compute_fbank(samples).unwrap();
@@ -34,31 +39,30 @@ impl EmbeddingExtractor {
         let embeddings = ort_out.iter().copied().collect::<Vec<_>>();
         Ok(embeddings)
     }
+
+    pub fn cluster(&self, n_clusters: usize, embeddings: &[f32]) -> Vec<usize> {
+        let assignments = vec![0; n_embeddings];
+        assignments
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn get_audio(path: &str) -> Vec<i16> {
+    fn get_audio<T: FromSample<i16>>(path: &str) -> Vec<T> {
         let base = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
         let p = base.join("src/local/data").join(path);
 
-        let audio = rodio::Decoder::new(std::io::BufReader::new(std::fs::File::open(p).unwrap()))
-            .unwrap()
-            .collect::<Vec<_>>();
+        let i16_samples =
+            rodio::Decoder::new(std::io::BufReader::new(std::fs::File::open(p).unwrap()))
+                .unwrap()
+                .collect::<Vec<_>>();
 
-        audio
-    }
-
-    fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
-        assert_eq!(a.len(), b.len());
-
-        let dot_product: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
-        let norm_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
-        let norm_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
-
-        dot_product / (norm_a * norm_b)
+        i16_samples
+            .iter()
+            .map(|s| s.to_sample())
+            .collect::<Vec<_>>()
     }
 
     #[test]
@@ -68,10 +72,14 @@ mod tests {
         let mut extractor = EmbeddingExtractor::new();
 
         let female_1 = extractor
-            .compute(&get_audio("female_welcome_1.mp3"))
+            .compute(get_audio::<i16>("female_welcome_1.mp3").into_iter())
             .unwrap();
-        let male_1 = extractor.compute(&get_audio("male_welcome_1.mp3")).unwrap();
-        let male_2 = extractor.compute(&get_audio("male_welcome_2.mp3")).unwrap();
+        let male_1 = extractor
+            .compute(get_audio::<i16>("male_welcome_1.mp3").into_iter())
+            .unwrap();
+        let male_2 = extractor
+            .compute(get_audio::<i16>("male_welcome_2.mp3").into_iter())
+            .unwrap();
 
         assert_eq!(female_1.len(), male_1.len());
         assert_eq!(female_1.len(), male_2.len());
@@ -84,5 +92,18 @@ mod tests {
             (1.0 - f32::cosine(&female_1, &male_2).unwrap())
                 < (1.0 - f32::cosine(&male_2, &male_1).unwrap())
         );
+    }
+
+    #[test]
+    fn test_embedding_extractor_with_f32() {
+        let mut extractor = EmbeddingExtractor::new();
+
+        let i16_samples: Vec<i16> = get_audio("female_welcome_1.mp3");
+        let embedding_from_i16 = extractor.compute(i16_samples.into_iter()).unwrap();
+
+        let f32_samples: Vec<f32> = get_audio("female_welcome_1.mp3");
+        let embedding_from_f32 = extractor.compute(f32_samples.into_iter()).unwrap();
+
+        assert_eq!(embedding_from_i16, embedding_from_f32);
     }
 }

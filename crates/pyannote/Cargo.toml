@@ -6,12 +6,13 @@ edition = "2021"
 [features]
 default = []
 cloud = ["dep:reqwest", "dep:url"]
-local = ["dep:hypr-onnx", "dep:knf-rs", "dep:simsimd"]
+local = ["dep:hypr-onnx", "dep:knf-rs", "dep:simsimd", "dep:dasp"]
 
 [dependencies]
 reqwest = { workspace = true, features = ["json"], optional = true }
 url = { workspace = true, optional = true }
 
+dasp = { workspace = true, optional = true }
 hypr-onnx = { workspace = true, optional = true }
 knf-rs = { git = "https://github.com/thewh1teagle/pyannote-rs", rev = "d97bd3b", package = "knf-rs", optional = true }
 simsimd = { version = "6", optional = true }
