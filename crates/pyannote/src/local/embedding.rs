@@ -40,9 +40,49 @@ impl EmbeddingExtractor {
 mod tests {
     use super::*;
 
+    fn get_audio(path: &str) -> Vec<i16> {
+        let base = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let p = base.join("src/local/data").join(path);
+
+        let audio = rodio::Decoder::new(std::io::BufReader::new(std::fs::File::open(p).unwrap()))
+            .unwrap()
+            .collect::<Vec<_>>();
+
+        audio
+    }
+
+    fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+        assert_eq!(a.len(), b.len());
+
+        let dot_product: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+        let norm_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
+        let norm_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
+
+        dot_product / (norm_a * norm_b)
+    }
+
     #[test]
     fn test_embedding_extractor() {
+        use simsimd::SpatialSimilarity;
+
         let mut extractor = EmbeddingExtractor::new();
-        extractor.compute(&[0; 16000]).unwrap();
+
+        let female_1 = extractor
+            .compute(&get_audio("female_welcome_1.mp3"))
+            .unwrap();
+        let male_1 = extractor.compute(&get_audio("male_welcome_1.mp3")).unwrap();
+        let male_2 = extractor.compute(&get_audio("male_welcome_2.mp3")).unwrap();
+
+        assert_eq!(female_1.len(), male_1.len());
+        assert_eq!(female_1.len(), male_2.len());
+
+        assert!(
+            (1.0 - f32::cosine(&female_1, &male_1).unwrap())
+                < (1.0 - f32::cosine(&male_1, &male_2).unwrap())
+        );
+        assert!(
+            (1.0 - f32::cosine(&female_1, &male_2).unwrap())
+                < (1.0 - f32::cosine(&male_2, &male_1).unwrap())
+        );
     }
 }
