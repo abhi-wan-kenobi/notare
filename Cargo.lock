@@ -13767,7 +13767,6 @@ dependencies = [
  "dirs 6.0.0",
  "file",
  "futures-util",
- "hound",
  "kalosm-common",
  "kalosm-sound",
  "language",
