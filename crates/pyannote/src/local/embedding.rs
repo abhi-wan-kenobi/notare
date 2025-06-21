@@ -41,7 +41,7 @@ impl EmbeddingExtractor {
     }
 
     pub fn cluster(&self, n_clusters: usize, embeddings: &[f32]) -> Vec<usize> {
-        let assignments = vec![0; n_embeddings];
+        let assignments = vec![0; embeddings.len()];
         assignments
     }
 }
