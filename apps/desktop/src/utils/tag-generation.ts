@@ -3,7 +3,7 @@ import { z } from "zod";
 import { commands as connectorCommands } from "@hypr/plugin-connector";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as templateCommands } from "@hypr/plugin-template";
-import { generateText, modelProvider, providerName } from "@hypr/utils/ai";
+import { generateText, localProviderName, modelProvider } from "@hypr/utils/ai";
 
 export async function generateTagsForSession(sessionId: string): Promise<string[]> {
   const { type: connectionType } = await connectorCommands.getLlmConnection();
@@ -50,7 +50,7 @@ export async function generateTagsForSession(sessionId: string): Promise<string[
       { role: "user", content: userPrompt },
     ],
     providerOptions: {
-      [providerName]: {
+      [localProviderName]: {
         metadata: {
           grammar: "tags",
         },
