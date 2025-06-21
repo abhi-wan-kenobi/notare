@@ -17,6 +17,7 @@
     }
   },
   "bundle": {
+    "publisher": "Fastrepl",
     "active": true,
     "createUpdaterArtifacts": true,
     "targets": "all",
@@ -47,8 +48,17 @@
       }
     },
     "windows": {
+      "webviewInstallMode": {
+        "type": "offlineInstaller"
+      },
       "wix": {
-        "language": "en-US"
+        "language": {
+          "en-US": {
+            "localePath": "./windows/locales/en-US.wxl"
+          }
+        },
+        "fragmentPaths": ["./windows/fragments/registry.wxs"],
+        "componentRefs": ["HyprnoteRegistryEntries"]
       }
     }
   },
