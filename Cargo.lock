@@ -13554,6 +13554,7 @@ dependencies = [
  "db-user",
  "listener-interface",
  "serde",
+ "serde_json",
  "specta",
  "specta-typescript",
  "strum 0.26.3",
