@@ -58,10 +58,11 @@ export async function generateTagsForSession(sessionId: string): Promise<string[
     },
   });
 
-  const schema = z.object({
-    tags: z.array(z.string()).min(1).max(5),
-  });
+  const schema = z.preprocess(
+    (val) => (typeof val === "string" ? JSON.parse(val) : val),
+    z.array(z.string().min(1)).min(1).max(5),
+  );
 
   const parsed = schema.safeParse(result.text);
-  return parsed.success ? parsed.data.tags : [];
+  return parsed.success ? parsed.data : [];
 }
