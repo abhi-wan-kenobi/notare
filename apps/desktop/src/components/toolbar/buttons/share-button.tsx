@@ -26,12 +26,14 @@ function ShareButtonInNote() {
   const [open, setOpen] = useState(false);
   const hasEnhancedNote = !!session?.enhanced_memo_html;
 
-  const handleClickShare = () => {
-    setOpen(false);
-    analyticsCommands.event({
-      event: "share_option_expanded",
-      distinct_id: userId,
-    });
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (newOpen) {
+      analyticsCommands.event({
+        event: "share_option_expanded",
+        distinct_id: userId,
+      });
+    }
   };
 
   const exportAction = useMutation({
@@ -62,7 +64,7 @@ function ShareButtonInNote() {
   });
 
   return (
-    <Popover open={open} onOpenChange={handleClickShare}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           disabled={!hasEnhancedNote}
