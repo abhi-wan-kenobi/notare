@@ -16115,6 +16115,7 @@ dependencies = [
  "rodio",
  "serde",
  "serde_json",
+ "specta",
  "thiserror 2.0.12",
  "tokio",
  "tracing",

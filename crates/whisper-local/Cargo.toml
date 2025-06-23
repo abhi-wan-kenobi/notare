@@ -36,6 +36,7 @@ tracing = { workspace = true }
 
 serde = { workspace = true }
 serde_json = { workspace = true }
+specta = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 
 lazy_static = { workspace = true }
