@@ -11,6 +11,7 @@ use hypr_listener_interface::Word;
 
 pub trait LocalSttPluginExt<R: Runtime> {
     fn local_stt_store(&self) -> tauri_plugin_store2::ScopedStore<R, crate::StoreKey>;
+    fn list_ggml_backends(&self) -> Vec<hypr_whisper_local::GgmlBackend>;
     fn api_base(&self) -> impl Future<Output = Option<String>>;
     fn is_server_running(&self) -> impl Future<Output = bool>;
     fn start_server(&self) -> impl Future<Output = Result<String, crate::Error>>;
@@ -40,6 +41,10 @@ pub trait LocalSttPluginExt<R: Runtime> {
 impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
     fn local_stt_store(&self) -> tauri_plugin_store2::ScopedStore<R, crate::StoreKey> {
         self.scoped_store(crate::PLUGIN_NAME).unwrap()
+    }
+
+    fn list_ggml_backends(&self) -> Vec<hypr_whisper_local::GgmlBackend> {
+        hypr_whisper_local::list_ggml_backends()
     }
 
     #[tracing::instrument(skip_all)]

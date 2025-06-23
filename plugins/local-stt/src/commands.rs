@@ -4,8 +4,10 @@ use tauri::ipc::Channel;
 
 #[tauri::command]
 #[specta::specta]
-pub fn list_ggml_backends() -> Vec<hypr_whisper_local::GgmlBackend> {
-    hypr_whisper_local::list_ggml_backends()
+pub fn list_ggml_backends<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Vec<hypr_whisper_local::GgmlBackend> {
+    app.list_ggml_backends()
 }
 
 #[tauri::command]
