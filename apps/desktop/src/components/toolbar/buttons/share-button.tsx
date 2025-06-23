@@ -39,8 +39,8 @@ function ShareButtonInNote() {
       const start = performance.now();
       const result = await exportToPDF(session);
       const elapsed = performance.now() - start;
-      if (elapsed < 1000) {
-        await new Promise((resolve) => setTimeout(resolve, 500 - elapsed));
+      if (elapsed < 800) {
+        await new Promise((resolve) => setTimeout(resolve, 800 - elapsed));
       }
 
       return result;
