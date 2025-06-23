@@ -179,14 +179,14 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
 
         let samples_i16 = hypr_audio_utils::f32_to_i16_samples(&samples_f32);
 
-        let mut model = hypr_whisper::local::Whisper::builder()
+        let mut model = hypr_whisper_local::Whisper::builder()
             .model_path(model_path.as_ref().to_str().unwrap())
             .language(hypr_whisper::Language::En)
             .static_prompt("")
             .dynamic_prompt("")
             .build();
 
-        let mut segmenter = hypr_pyannote::local::segmentation::Segmenter::new(16000).unwrap();
+        let mut segmenter = hypr_pyannote_local::segmentation::Segmenter::new(16000).unwrap();
         let segments = segmenter.process(&samples_i16, 16000).unwrap();
 
         let mut words = Vec::new();

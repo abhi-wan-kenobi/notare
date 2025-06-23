@@ -517,27 +517,21 @@ dependencies = [
  "anyhow",
  "apalis",
  "apalis-cron",
- "async-stream",
  "async-stripe",
  "auth-interface",
  "axum 0.8.4",
- "buffer",
  "bytes",
  "calendar-google",
  "calendar-interface",
- "calendar-outlook",
  "chrono",
  "clerk-rs",
- "codes-iso-639",
  "db-admin",
  "db-core",
  "db-user",
  "dotenv",
- "futures-core",
  "futures-util",
  "listener-interface",
  "nango",
- "notion",
  "openai",
  "s3",
  "schemars",
@@ -557,9 +551,7 @@ dependencies = [
  "tracing-axiom",
  "tracing-subscriber",
  "turso",
- "url",
  "uuid",
- "ws-utils",
 ]
 
 [[package]]
@@ -2424,7 +2416,6 @@ dependencies = [
  "serde",
  "thiserror 2.0.12",
  "tokio",
- "tracing",
  "vad",
 ]
 
@@ -2572,7 +2563,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.12",
- "tokio",
  "tonic 0.12.3",
  "tonic-build",
  "url",
@@ -3365,7 +3355,6 @@ dependencies = [
  "db-core",
  "libsql",
  "listener-interface",
- "serde",
  "serde_json",
  "tokio",
 ]
@@ -3377,7 +3366,6 @@ dependencies = [
  "buffer",
  "calendar-interface",
  "chrono",
- "codes-iso-639",
  "data",
  "db-core",
  "db-script",
@@ -3390,7 +3378,6 @@ dependencies = [
  "serde_json",
  "specta",
  "strum 0.26.3",
- "thiserror 2.0.12",
  "tokio",
  "uuid",
 ]
@@ -7823,7 +7810,6 @@ dependencies = [
  "encoding_rs",
  "futures-util",
  "gbnf",
- "gbnf-validator",
  "gguf",
  "listener-interface",
  "llama-cpp-2",
@@ -9217,23 +9203,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ollama-rs"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5df54edb7e1264719be607cd40590d3769b5b35a2623e6e02681e6591aea5b8"
-dependencies = [
- "async-stream",
- "log",
- "reqwest 0.12.15",
- "schemars",
- "serde",
- "serde_json",
- "static_assertions",
- "thiserror 2.0.12",
- "url",
-]
-
-[[package]]
 name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10366,7 +10335,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "pyannote"
+name = "pyannote-cloud"
+version = "0.1.0"
+dependencies = [
+ "data",
+ "reqwest 0.12.15",
+ "rodio",
+ "serde",
+ "specta",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "pyannote-local"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -10382,7 +10364,6 @@ dependencies = [
  "specta",
  "thiserror 2.0.12",
  "tokio",
- "url",
 ]
 
 [[package]]
@@ -11237,18 +11218,9 @@ dependencies = [
 name = "rtzr"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "bytes",
- "futures-util",
  "prost 0.13.5",
- "reqwest 0.12.15",
- "serde",
- "serde_json",
- "thiserror 2.0.12",
- "tokio",
  "tonic 0.12.3",
  "tonic-build",
- "url",
 ]
 
 [[package]]
@@ -12950,22 +12922,17 @@ dependencies = [
  "audio-utils",
  "bytes",
  "clova",
- "codes-iso-639",
  "data",
- "db-user",
  "deepgram",
  "futures-util",
  "hound",
  "language",
  "listener-interface",
- "rtzr",
- "serde",
  "serde_json",
  "serial_test",
- "specta",
  "thiserror 2.0.12",
  "tokio",
- "whisper",
+ "whisper-cloud",
 ]
 
 [[package]]
@@ -13441,7 +13408,6 @@ version = "0.1.0"
 dependencies = [
  "analytics",
  "serde",
- "serde_json",
  "specta",
  "specta-typescript",
  "strum 0.26.3",
@@ -13451,7 +13417,6 @@ dependencies = [
  "tauri-plugin-store2",
  "tauri-specta",
  "thiserror 2.0.12",
- "tracing",
 ]
 
 [[package]]
@@ -13465,7 +13430,6 @@ dependencies = [
  "chrono",
  "db-user",
  "serde",
- "serde_json",
  "specta",
  "specta-typescript",
  "tauri",
@@ -13486,7 +13450,6 @@ dependencies = [
  "base64 0.22.1",
  "keyring",
  "minijinja",
- "schemars",
  "serde",
  "serde_json",
  "serde_qs 0.14.0",
@@ -13551,8 +13514,6 @@ dependencies = [
  "tauri-plugin-store2",
  "tauri-specta",
  "thiserror 2.0.12",
- "tokio",
- "tracing",
  "url",
 ]
 
@@ -13564,17 +13525,14 @@ dependencies = [
  "db-user",
  "listener-interface",
  "serde",
- "serde_json",
  "specta",
  "specta-typescript",
- "strum 0.26.3",
  "tauri",
  "tauri-plugin",
  "tauri-specta",
  "thiserror 2.0.12",
  "tokio",
  "tracing",
- "turso",
  "uuid",
 ]
 
@@ -13621,7 +13579,6 @@ name = "tauri-plugin-flags"
 version = "0.1.0"
 dependencies = [
  "serde",
- "serde_json",
  "specta",
  "specta-typescript",
  "strum 0.26.3",
@@ -13630,7 +13587,6 @@ dependencies = [
  "tauri-plugin-store2",
  "tauri-specta",
  "thiserror 2.0.12",
- "tracing",
 ]
 
 [[package]]
@@ -13747,7 +13703,6 @@ dependencies = [
  "futures-util",
  "gbnf",
  "llama",
- "ollama-rs",
  "reqwest 0.12.15",
  "serde",
  "serde_json",
@@ -13774,7 +13729,6 @@ dependencies = [
  "bytes",
  "chunker",
  "data",
- "db-user",
  "dirs 6.0.0",
  "file",
  "futures-util",
@@ -13782,7 +13736,7 @@ dependencies = [
  "kalosm-sound",
  "language",
  "listener-interface",
- "pyannote",
+ "pyannote-local",
  "reqwest 0.12.15",
  "rodio",
  "serde",
@@ -13803,6 +13757,7 @@ dependencies = [
  "tower-http 0.6.4",
  "tracing",
  "whisper",
+ "whisper-local",
  "ws-utils",
 ]
 
@@ -13849,16 +13804,12 @@ dependencies = [
  "host",
  "indoc",
  "regex",
- "serde",
- "serde_json",
  "specta",
  "specta-typescript",
- "strum 0.26.3",
  "tauri",
  "tauri-plugin",
  "tauri-plugin-opener",
  "tauri-specta",
- "tracing",
  "vergen-gix",
 ]
 
@@ -13871,10 +13822,8 @@ dependencies = [
  "chrono",
  "db-user",
  "detect",
- "keygen-rs",
  "notification2",
  "serde",
- "serde_json",
  "specta",
  "specta-typescript",
  "strum 0.26.3",
@@ -14048,13 +13997,11 @@ dependencies = [
  "futures-util",
  "reqwest 0.12.15",
  "serde",
- "serde_json",
  "specta",
  "specta-typescript",
  "tauri",
  "tauri-plugin",
  "tauri-specta",
- "thiserror 2.0.12",
  "tokio",
  "tracing",
 ]
@@ -14097,7 +14044,6 @@ dependencies = [
 name = "tauri-plugin-task"
 version = "0.1.0"
 dependencies = [
- "chrono",
  "serde",
  "serde_json",
  "specta",
@@ -14117,7 +14063,6 @@ name = "tauri-plugin-template"
 version = "0.1.0"
 dependencies = [
  "insta",
- "serde",
  "serde_json",
  "specta",
  "specta-typescript",
@@ -14134,7 +14079,6 @@ version = "0.1.0"
 dependencies = [
  "specta",
  "specta-typescript",
- "strum 0.26.3",
  "tauri",
  "tauri-plugin",
  "tauri-plugin-windows",
@@ -15245,7 +15189,6 @@ dependencies = [
  "cached",
  "reqwest 0.12.15",
  "serde",
- "serde_json",
  "thiserror 2.0.12",
  "tokio",
  "url",
@@ -15639,7 +15582,6 @@ dependencies = [
  "ort",
  "serde",
  "thiserror 2.0.12",
- "tracing",
 ]
 
 [[package]]
@@ -16134,9 +16076,35 @@ dependencies = [
 name = "whisper"
 version = "0.1.0"
 dependencies = [
+ "strum 0.26.3",
+]
+
+[[package]]
+name = "whisper-cloud"
+version = "0.1.0"
+dependencies = [
  "audio-utils",
  "bytes",
- "cpal",
+ "data",
+ "dirs 6.0.0",
+ "futures-util",
+ "kalosm-sound",
+ "llama",
+ "rodio",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
+ "whisper",
+ "ws",
+]
+
+[[package]]
+name = "whisper-local"
+version = "0.1.0"
+dependencies = [
+ "audio-utils",
+ "dasp",
  "data",
  "dirs 6.0.0",
  "futures-util",
@@ -16147,19 +16115,17 @@ dependencies = [
  "rodio",
  "serde",
  "serde_json",
- "strum 0.26.3",
  "thiserror 2.0.12",
  "tokio",
  "tracing",
- "url",
+ "whisper",
  "whisper-rs",
- "ws",
 ]
 
 [[package]]
 name = "whisper-rs"
-version = "0.14.2"
-source = "git+https://github.com/tazz4843/whisper-rs?rev=de30f9c#de30f9c23da52c81b06fa78bab005ab353d74637"
+version = "0.14.3"
+source = "git+https://github.com/tazz4843/whisper-rs?rev=e3d67d5#e3d67d513b86c6360f62e1f563bc4601c87946d6"
 dependencies = [
  "tracing",
  "whisper-rs-sys",
@@ -16167,8 +16133,8 @@ dependencies = [
 
 [[package]]
 name = "whisper-rs-sys"
-version = "0.12.1"
-source = "git+https://github.com/tazz4843/whisper-rs?rev=de30f9c#de30f9c23da52c81b06fa78bab005ab353d74637"
+version = "0.13.0"
+source = "git+https://github.com/tazz4843/whisper-rs?rev=e3d67d5#e3d67d513b86c6360f62e1f563bc4601c87946d6"
 dependencies = [
  "bindgen 0.71.1",
  "cfg-if",
@@ -16971,7 +16937,6 @@ dependencies = [
  "bytes",
  "futures-util",
  "serde",
- "serde_json",
  "thiserror 2.0.12",
  "tokio",
  "tokio-tungstenite 0.26.2",
