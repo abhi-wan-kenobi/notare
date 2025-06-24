@@ -92,7 +92,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       - run: |
           mkdir -p target/release/
-          find target/${{ matrix.target }}/release -type f -not -path "*/\.*" -exec cp {} target/release/ \;
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            find target/${{ matrix.target }}/release -type f ! -name ".*" -exec cp {} target/release/ \;
+          else
+            find target/${{ matrix.target }}/release -type f -not -path "*/\.*" -exec cp {} target/release/ \;
+          fi
+        shell: bash
         working-directory: ./apps/desktop/src-tauri
       - uses: ./.github/actions/cn_release
         with:

@@ -326,7 +326,7 @@ impl Session {
 async fn setup_listen_client<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     language: hypr_language::Language,
-    jargons: Vec<String>,
+    _jargons: Vec<String>,
 ) -> Result<crate::client::ListenClient, crate::Error> {
     let api_base = {
         use tauri_plugin_connector::{Connection, ConnectorPluginExt};
@@ -343,13 +343,14 @@ async fn setup_listen_client<R: tauri::Runtime>(
 
     tracing::info!(api_base = ?api_base, api_key = ?api_key, language = ?language, "listen_client");
 
-    let static_prompt = format!(
-        "{} / {}:",
-        jargons.join(", "),
-        language
-            .text_transcript()
-            .unwrap_or("transcript".to_string())
-    );
+    // let static_prompt = format!(
+    //     "{} / {}:",
+    //     jargons.join(", "),
+    //     language
+    //         .text_transcript()
+    //         .unwrap_or("transcript".to_string())
+    // );
+    let static_prompt = "".to_string();
 
     Ok(crate::client::ListenClient::builder()
         .api_base(api_base)
