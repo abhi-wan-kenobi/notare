@@ -1,0 +1,9 @@
+on:
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry_install
+      - run: poetry run scripts/pre_build.py
