@@ -1,4 +1,3 @@
-use anyhow::Result;
 use hypr_onnx::{
     ndarray::{self, ArrayBase, Axis, IxDyn, ViewRepr},
     ort::{self, session::Session},
@@ -22,8 +21,8 @@ pub struct Segmenter {
 }
 
 impl Segmenter {
-    pub fn new(sample_rate: u32) -> Result<Self> {
-        let session = hypr_onnx::load_model(SEGMENTATION_ONNX).unwrap();
+    pub fn new(sample_rate: u32) -> Result<Self, crate::Error> {
+        let session = hypr_onnx::load_model(SEGMENTATION_ONNX)?;
 
         Ok(Self {
             session,
@@ -31,7 +30,11 @@ impl Segmenter {
         })
     }
 
-    pub fn process(&mut self, samples: &[i16], sample_rate: u32) -> Result<Vec<Segment>> {
+    pub fn process(
+        &mut self,
+        samples: &[i16],
+        sample_rate: u32,
+    ) -> Result<Vec<Segment>, crate::Error> {
         let mut segments = Vec::new();
         let padded = self.pad_samples(samples);
         let mut offset = FRAME_START;
@@ -87,7 +90,7 @@ impl Segmenter {
         sample_rate: u32,
         padded_samples: &[i16],
         segments: &mut Vec<Segment>,
-    ) -> Result<()> {
+    ) -> Result<(), crate::Error> {
         for row in outputs.outer_iter() {
             for sub_row in row.axis_iter(Axis(0)) {
                 let max_index = self.find_max_index(sub_row)?;
@@ -114,12 +117,12 @@ impl Segmenter {
         Ok(())
     }
 
-    fn find_max_index(&self, row: ArrayBase<ViewRepr<&f32>, IxDyn>) -> Result<usize> {
+    fn find_max_index(&self, row: ArrayBase<ViewRepr<&f32>, IxDyn>) -> Result<usize, crate::Error> {
         row.iter()
             .enumerate()
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(i, _)| i)
-            .ok_or(anyhow::anyhow!("Empty row in outputs"))
+            .ok_or(crate::Error::EmptyRowError)
     }
 
     fn create_segment(
@@ -129,7 +132,7 @@ impl Segmenter {
         sample_rate: u32,
         samples: &[i16],
         segments: &mut Vec<Segment>,
-    ) -> Result<()> {
+    ) -> Result<(), crate::Error> {
         let start = start_offset / sample_rate as f64;
         let end = end_offset as f64 / sample_rate as f64;
 

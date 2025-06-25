@@ -20,20 +20,17 @@ impl EmbeddingExtractor {
     pub fn compute(
         &mut self,
         samples: impl Iterator<Item: ToSample<f32>>,
-    ) -> Result<Vec<f32>, anyhow::Error> {
+    ) -> Result<Vec<f32>, crate::Error> {
         let samples_f32 = samples.map(|s| s.to_sample_()).collect::<Vec<_>>();
-        let samples = &samples_f32;
 
-        let features: Array2<f32> = knf_rs::compute_fbank(samples).unwrap();
+        let features: Array2<f32> = knf_rs::compute_fbank(&samples_f32)
+            .map_err(|s| crate::Error::KnfError(s.to_string()))?;
+
         let features = features.insert_axis(ndarray::Axis(0));
         let inputs = ort::inputs! ["feats" => features.view()]?;
 
         let ort_outs = self.session.run(inputs)?;
-        let ort_out = ort_outs
-            .get("embs")
-            .unwrap()
-            .try_extract_tensor::<f32>()
-            .unwrap();
+        let ort_out = ort_outs.get("embs").unwrap().try_extract_tensor::<f32>()?;
 
         let embeddings = ort_out.iter().copied().collect::<Vec<_>>();
         Ok(embeddings)
@@ -53,7 +50,7 @@ mod tests {
 
     fn get_audio<T: FromSample<i16>>(path: &str) -> Vec<T> {
         let base = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-        let p = base.join("src/local/data").join(path);
+        let p = base.join("src/data").join(path);
 
         let i16_samples =
             rodio::Decoder::new(std::io::BufReader::new(std::fs::File::open(p).unwrap()))

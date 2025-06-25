@@ -3,18 +3,20 @@ use tauri::{Manager, Wry};
 
 mod commands;
 mod error;
+mod events;
 mod ext;
 mod manager;
 mod model;
-pub mod server;
 mod store;
+
+pub mod server;
+
+use server::*;
+use store::*;
 
 pub use error::*;
 pub use ext::*;
 pub use model::*;
-
-use server::*;
-use store::*;
 
 pub type SharedState = std::sync::Arc<tokio::sync::Mutex<State>>;
 
@@ -42,6 +44,9 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::set_current_model::<Wry>,
             commands::list_supported_models,
         ])
+        .events(tauri_specta::collect_events![
+            events::RecordedProcessingEvent
+        ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }
 
@@ -50,7 +55,9 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
-        .setup(|app, _api| {
+        .setup(move |app, _api| {
+            specta_builder.mount_events(app);
+
             let backends = app.list_ggml_backends();
             tracing::info!(backends = ?backends, "ggml");
 

@@ -10351,19 +10351,16 @@ dependencies = [
 name = "pyannote-local"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "approx",
  "dasp",
  "data",
  "knf-rs",
  "onnx",
- "reqwest 0.12.15",
  "rodio",
  "serde",
  "simsimd",
  "specta",
  "thiserror 2.0.12",
- "tokio",
 ]
 
 [[package]]
@@ -13749,6 +13746,7 @@ dependencies = [
  "tauri-plugin-listener",
  "tauri-plugin-store",
  "tauri-plugin-store2",
+ "tauri-plugin-task",
  "tauri-specta",
  "thiserror 2.0.12",
  "tokio",

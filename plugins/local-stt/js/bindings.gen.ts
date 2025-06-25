@@ -42,6 +42,11 @@ async listSupportedModels() : Promise<SupportedModel[]> {
 /** user-defined events **/
 
 
+export const events = __makeEvents__<{
+recordedProcessingEvent: RecordedProcessingEvent
+}>({
+recordedProcessingEvent: "plugin:local-stt:recorded-processing-event"
+})
 
 /** user-defined constants **/
 
@@ -50,8 +55,8 @@ async listSupportedModels() : Promise<SupportedModel[]> {
 /** user-defined types **/
 
 export type GgmlBackend = { kind: string; name: string; description: string; total_memory_mb: number; free_memory_mb: number }
+export type RecordedProcessingEvent = { type: "inactive"; current: number; total: number }
 export type SupportedModel = "QuantizedTiny" | "QuantizedTinyEn" | "QuantizedBase" | "QuantizedBaseEn" | "QuantizedSmall" | "QuantizedSmallEn" | "QuantizedLargeTurbo"
-export type TAURI_CHANNEL<TSend> = null
 
 /** tauri-specta globals **/
 
