@@ -66,6 +66,8 @@ jobs:
         with:
           target: "macos"
       - uses: ./.github/actions/pnpm_install
+      - uses: ./.github/actions/pnpm_install
+      - run: poetry run scripts/pre_build.py
       - run: pnpm -F desktop lingui:compile
       - run: pnpm -F ui build
       - uses: ./.github/actions/apple_cert
