@@ -155,6 +155,7 @@ impl Whisper {
                 start: start as f32 / 1000.0,
                 end: end as f32 / 1000.0,
                 confidence,
+                ..Default::default()
             };
             segment.trim();
             segments.push(segment);
@@ -238,6 +239,7 @@ pub struct Segment {
     pub start: f32,
     pub end: f32,
     pub confidence: f32,
+    pub metadata: Option<serde_json::Value>,
 }
 
 impl Segment {
@@ -259,6 +261,10 @@ impl Segment {
 
     pub fn confidence(&self) -> f32 {
         self.confidence
+    }
+
+    pub fn metadata(&self) -> Option<&serde_json::Value> {
+        self.metadata.as_ref()
     }
 
     pub fn trim(&mut self) {
