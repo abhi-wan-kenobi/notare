@@ -27,9 +27,6 @@ jobs:
   build:
     if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'desktop_') }}
     needs: draft
-    defaults:
-      run:
-        shell: bash
     permissions:
       contents: write
     strategy:
@@ -46,6 +43,9 @@ jobs:
             runner: "warp-windows-latest-x64-8x"
             target: "x86_64-pc-windows-msvc"
     runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - run: |
