@@ -1,5 +1,8 @@
+import { commands as localLlmCommands } from "@hypr/plugin-local-llm";
 import { createFileRoute, Outlet, useRouter } from "@tanstack/react-router";
+import { appDataDir, join } from "@tauri-apps/api/path";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { watch } from "@tauri-apps/plugin-fs";
 import { useEffect, useState } from "react";
 
 import { IndividualizationModal } from "@/components/individualization-modal";
@@ -54,6 +57,7 @@ function Component() {
           <LeftSidebarProvider>
             <RightPanelProvider>
               <AudioPermissions />
+              <RestartLlmServer />
               <MainWindowStateEventSupport />
               <SettingsProvider>
                 <NewNoteProvider>
@@ -103,6 +107,31 @@ function Component() {
       {showNotifications && <Notifications />}
     </>
   );
+}
+
+function RestartLlmServer() {
+  const watchLlm = async () => {
+    const path = await appDataDir();
+    const llmPath = await join(path, "llm.gguf");
+
+    return watch(llmPath, (_event) => {
+      localLlmCommands.restartServer();
+    }, { delayMs: 1000 });
+  };
+
+  useEffect(() => {
+    let unwatch: () => void;
+
+    watchLlm().then((f) => {
+      unwatch = f;
+    });
+
+    return () => {
+      unwatch?.();
+    };
+  }, []);
+
+  return null;
 }
 
 function AudioPermissions() {

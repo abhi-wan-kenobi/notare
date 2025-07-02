@@ -38,11 +38,12 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::is_model_downloaded::<Wry>,
             commands::is_model_downloading::<Wry>,
             commands::download_model::<Wry>,
-            commands::start_server::<Wry>,
-            commands::stop_server::<Wry>,
+            commands::list_supported_models,
             commands::get_current_model::<Wry>,
             commands::set_current_model::<Wry>,
-            commands::list_supported_models,
+            commands::start_server::<Wry>,
+            commands::stop_server::<Wry>,
+            commands::restart_server::<Wry>,
         ])
         .events(tauri_specta::collect_events![
             events::RecordedProcessingEvent

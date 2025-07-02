@@ -22,11 +22,8 @@ async isModelDownloading(model: SupportedModel) : Promise<boolean> {
 async downloadModel(model: SupportedModel, channel: TAURI_CHANNEL<number>) : Promise<null> {
     return await TAURI_INVOKE("plugin:local-stt|download_model", { model, channel });
 },
-async startServer() : Promise<string> {
-    return await TAURI_INVOKE("plugin:local-stt|start_server");
-},
-async stopServer() : Promise<null> {
-    return await TAURI_INVOKE("plugin:local-stt|stop_server");
+async listSupportedModels() : Promise<SupportedModel[]> {
+    return await TAURI_INVOKE("plugin:local-stt|list_supported_models");
 },
 async getCurrentModel() : Promise<SupportedModel> {
     return await TAURI_INVOKE("plugin:local-stt|get_current_model");
@@ -34,8 +31,14 @@ async getCurrentModel() : Promise<SupportedModel> {
 async setCurrentModel(model: SupportedModel) : Promise<null> {
     return await TAURI_INVOKE("plugin:local-stt|set_current_model", { model });
 },
-async listSupportedModels() : Promise<SupportedModel[]> {
-    return await TAURI_INVOKE("plugin:local-stt|list_supported_models");
+async startServer() : Promise<string> {
+    return await TAURI_INVOKE("plugin:local-stt|start_server");
+},
+async stopServer() : Promise<null> {
+    return await TAURI_INVOKE("plugin:local-stt|stop_server");
+},
+async restartServer() : Promise<string> {
+    return await TAURI_INVOKE("plugin:local-stt|restart_server");
 }
 }
 
