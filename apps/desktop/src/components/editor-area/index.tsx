@@ -253,9 +253,6 @@ export function useEnhanceMutation({
         },
       );
 
-      // console.log("systemMessage", systemMessage);
-      // console.log("userMessage", userMessage);
-
       const abortController = new AbortController();
       const abortSignal = AbortSignal.any([abortController.signal, AbortSignal.timeout(60 * 1000)]);
       setEnhanceController(abortController);
@@ -266,10 +263,13 @@ export function useEnhanceMutation({
         : provider.languageModel("defaultModel");
 
       if (sessionId !== onboardingSessionId) {
+        const { type } = await connectorCommands.getLlmConnection();
+
         analyticsCommands.event({
           event: "normal_enhance_start",
           distinct_id: userId,
           session_id: sessionId,
+          connection_type: type,
         });
       }
 
