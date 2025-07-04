@@ -11,7 +11,7 @@ description = ""
 tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
-tauri-plugin-local-stt = { path = "../local-stt" }
+tauri-plugin-local-stt = { workspace = true }
 
 rodio = { workspace = true, features = ["wav"] }
 serde_json = { workspace = true }

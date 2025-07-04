@@ -59,7 +59,7 @@ specta = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 
-axum = { workspace = true, features = ["ws"] }
+axum = { workspace = true, features = ["ws", "multipart"] }
 tower-http = { workspace = true, features = ["cors", "trace"] }
 
 futures-util = { workspace = true }
