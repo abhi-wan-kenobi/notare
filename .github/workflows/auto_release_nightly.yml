@@ -86,7 +86,8 @@ jobs:
           echo "Final version for release: $version"
 
       - run: |
-          git push origin --delete ${{ steps.final-version.outputs.tag }} || echo "Tag does not exist or already removed"
+          git push origin --delete ${{ steps.final-version.outputs.tag }} || echo "Remote tag does not exist or already removed"
+          git tag -d ${{ steps.final-version.outputs.tag }} || echo "Local tag does not exist or already removed"
         continue-on-error: true
 
       - uses: actions/github-script@v7
@@ -94,17 +95,26 @@ jobs:
         with:
           script: |
             const tag = '${{ steps.final-version.outputs.tag }}';
-            const release = await github.rest.repos.getReleaseByTag({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag: tag
-            });
+            try {
+              const release = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: tag
+              });
 
-            await github.rest.repos.deleteRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: release.data.id
-            });
+              await github.rest.repos.deleteRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.data.id
+              });
+              console.log(`Deleted existing release for tag: ${tag}`);
+            } catch (error) {
+              if (error.status === 404) {
+                console.log(`No existing release found for tag: ${tag}`);
+              } else {
+                throw error;
+              }
+            }
 
       - run: |
           git tag ${{ steps.final-version.outputs.tag }}
