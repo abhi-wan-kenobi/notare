@@ -50,7 +50,10 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'desktop_cd.yaml',
-              ref: tag
+              ref: tag,
+              inputs: {
+                channel: 'stable'
+              }
             })
 
       - if: steps.set-result.outputs.new_version_available == 'true'
