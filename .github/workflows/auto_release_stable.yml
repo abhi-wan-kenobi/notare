@@ -20,7 +20,7 @@ jobs:
       - id: get-current
         run: |
           set -euo pipefail
-          current_version=$(jq -r '.package.version' apps/desktop/src-tauri/tauri.conf.json)
+          current_version=$(jq -r '.version' apps/desktop/src-tauri/tauri.conf.json)
           echo "current_version=$current_version" >> $GITHUB_OUTPUT
 
       - id: compare-versions
