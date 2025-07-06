@@ -7946,6 +7946,7 @@ dependencies = [
  "gguf",
  "listener-interface",
  "llama-cpp-2",
+ "llama-cpp-sys-2",
  "rand 0.9.1",
  "serde",
  "serde_json",
@@ -13998,6 +13999,7 @@ name = "tauri-plugin-local-llm"
 version = "0.1.0"
 dependencies = [
  "async-openai",
+ "async-stream",
  "axum 0.8.4",
  "dirs 6.0.0",
  "file",

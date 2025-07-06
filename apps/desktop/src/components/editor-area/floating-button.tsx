@@ -7,16 +7,47 @@ import { SplashLoader as EnhanceWIP } from "@hypr/ui/components/ui/splash";
 import { cn } from "@hypr/ui/lib/utils";
 import { useOngoingSession, useSession } from "@hypr/utils/contexts";
 
+function AnimatedEnhanceIcon({ size = 20 }: { size?: number }) {
+  const [currentFrame, setCurrentFrame] = useState(1);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentFrame(prev => prev === 3 ? 1 : prev + 1);
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      {[1, 2, 3].map((frame) => (
+        <img
+          key={frame}
+          src={`/icons/Frame${frame}.svg`}
+          alt={`Loading frame ${frame}`}
+          className={cn(
+            "absolute inset-0 transition-opacity duration-200 text-white",
+            currentFrame === frame ? "opacity-100" : "opacity-0",
+          )}
+          style={{ width: size, height: size }}
+        />
+      ))}
+    </div>
+  );
+}
+
 interface FloatingButtonProps {
   session: Session;
   handleEnhance: () => void;
   isError: boolean;
+  progress: number;
 }
 
 export function FloatingButton({
   session,
   handleEnhance,
   isError,
+  progress,
 }: FloatingButtonProps) {
   const [showRaw, setShowRaw] = useSession(session.id, (s) => [
     s.showRaw,
@@ -111,8 +142,28 @@ export function FloatingButton({
       >
         {isEnhancePending
           ? isHovered
-            ? <XIcon size={20} />
-            : <EnhanceWIP size={20} strokeWidth={2} />
+            ? (
+              <div className="flex items-center gap-2">
+                <XIcon size={20} />
+                {progress >= 0 && progress < 1 && (
+                  <span className="text-xs font-mono">
+                    {Math.round(progress * 100)}%
+                  </span>
+                )}
+              </div>
+            )
+            : (
+              <div className="flex items-center gap-2">
+                {progress >= 0 && progress < 1
+                  ? <AnimatedEnhanceIcon size={20} />
+                  : <EnhanceWIP size={20} strokeWidth={2} />}
+                {progress >= 0 && progress < 1 && (
+                  <span className="text-xs font-mono">
+                    {Math.round(progress * 100)}%
+                  </span>
+                )}
+              </div>
+            )
           : <RunOrRerun showRefresh={showRefresh} />}
       </button>
     </div>
