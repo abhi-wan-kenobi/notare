@@ -359,7 +359,7 @@ msgid "Apple"
 msgstr ""
 
 #: src/components/toolbar/buttons/delete-note-button.tsx:43
-#: src/components/left-sidebar/notes-list.tsx:267
+#: src/components/left-sidebar/notes-list.tsx:268
 msgid "Are you sure you want to delete this note?"
 msgstr ""
 
@@ -507,7 +507,7 @@ msgstr ""
 
 #: src/components/settings/views/template.tsx:206
 #: src/components/settings/views/team.tsx:165
-#: src/components/left-sidebar/notes-list.tsx:334
+#: src/components/left-sidebar/notes-list.tsx:335
 msgid "Delete"
 msgstr ""
 
@@ -795,7 +795,7 @@ msgstr ""
 msgid "New note"
 msgstr ""
 
-#: src/components/left-sidebar/notes-list.tsx:311
+#: src/components/left-sidebar/notes-list.tsx:312
 #: src/components/left-sidebar/events-list.tsx:181
 msgid "New window"
 msgstr ""
@@ -1165,7 +1165,7 @@ msgstr ""
 msgid "username"
 msgstr ""
 
-#: src/components/left-sidebar/notes-list.tsx:322
+#: src/components/left-sidebar/notes-list.tsx:323
 msgid "View calendar"
 msgstr ""
 
