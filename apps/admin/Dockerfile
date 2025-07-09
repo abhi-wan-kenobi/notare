@@ -4,31 +4,24 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
 FROM base AS build
-COPY pnpm-lock.yaml /app/
-COPY pnpm-workspace.yaml /app/
-COPY package.json /app/
 WORKDIR /app
-
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 RUN pnpm fetch
-
-COPY . /app
+COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter="@hypr/admin" run build
 
-FROM base AS prod
-COPY pnpm-lock.yaml /app/
-COPY pnpm-workspace.yaml /app/
-COPY package.json /app/
+FROM base AS prod-deps
 WORKDIR /app
-
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 RUN pnpm fetch --prod
-COPY . /app
+COPY . .
 RUN pnpm install --frozen-lockfile --prod
 
-FROM base
-COPY --from=build /app/apps/admin/.output /app/.output
-COPY --from=prod /app/apps/admin/package.json /app/package.json
-COPY --from=prod /app/node_modules /app/node_modules
+FROM base AS runtime
 WORKDIR /app
+COPY --from=build /app/apps/admin/.output ./.output
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=prod-deps /app/apps/admin/package.json ./package.json
 EXPOSE 8000
 CMD ["pnpm", "start"]
