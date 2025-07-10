@@ -36,7 +36,7 @@ COPY --from=build /app/apps/admin/src/lib/db/schema ./src/lib/db/schema
 ENV DATABASE_URL="file:/app/data/db.sqlite"
 EXPOSE 8000
 
-COPY scripts/init.sh /app/start.sh
+COPY apps/admin/scripts/init.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 CMD ["/app/start.sh"]
