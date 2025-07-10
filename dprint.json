@@ -33,7 +33,8 @@
     "**/generated/**",
     "**/permissions/**",
     "**/*.swift",
-    "**/migrations/**"
+    "**/migrations/**",
+    "**/charts/**"
   ],
   "exec": {
     "cwd": "${configDir}",
