@@ -19,6 +19,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 RUN pnpm fetch --prod
 COPY . .
 RUN pnpm install --frozen-lockfile --prod
+RUN pnpm rebuild
 
 FROM base AS runtime
 WORKDIR /app
@@ -27,6 +28,7 @@ RUN mkdir -p /app/data
 
 COPY --from=build /app/apps/admin/.output ./.output
 COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=prod-deps /app/node_modules ./.output/server/node_modules
 COPY --from=prod-deps /app/apps/admin/package.json ./package.json
 
 COPY --from=build /app/apps/admin/src/lib/db/migrations ./src/lib/db/migrations
