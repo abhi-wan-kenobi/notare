@@ -3,6 +3,7 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "packageManager": "pnpm@10.13.1",
   "scripts": {
     "auth:generate": "npx @better-auth/cli@latest generate --output src/lib/db/schema/auth.ts -y",
     "drizzle:generate": "npx drizzle-kit generate",

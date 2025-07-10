@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 import { QueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 
@@ -52,6 +53,16 @@ export const Route = createRootRouteWithContext<{
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const showDevtools = useQuery({
+    queryKey: ["showDevtools"],
+    queryFn: () => {
+      const flag = (window as any).TANSTACK_DEVTOOLS;
+      return (flag ?? false);
+    },
+    enabled: process.env.NODE_ENV !== "production",
+    refetchInterval: 1000,
+  });
+
   return (
     <html>
       <head>
@@ -60,14 +71,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         {children}
         <Scripts />
-        <Suspense>
-          <TanStackRouterDevtools position={"bottom-right"} initialIsOpen={false} />
-          <TanStackQueryDevtools
-            buttonPosition={"bottom-right"}
-            position="bottom"
-            initialIsOpen={false}
-          />
-        </Suspense>
+        {showDevtools.data && (
+          <Suspense>
+            <TanStackRouterDevtools position={"bottom-right"} initialIsOpen={false} />
+            <TanStackQueryDevtools
+              buttonPosition={"bottom-right"}
+              position="bottom"
+              initialIsOpen={false}
+            />
+          </Suspense>
+        )}
       </body>
     </html>
   );
