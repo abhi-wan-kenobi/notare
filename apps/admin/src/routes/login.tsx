@@ -20,17 +20,24 @@ import { z } from "zod";
 
 import { authClient } from "@/lib/auth/client";
 import { adminCreated } from "@/services/auth.api";
+import { getEnv } from "@/services/env.api";
 
 export const Route = createFileRoute("/login")({
   component: Component,
   beforeLoad: async ({ context: { userSession } }) => {
     if (userSession) {
-      return redirect({ to: "/" });
+      return redirect({ to: "/app" });
     }
+  },
+  loader: async () => {
+    const adminEmail = await getEnv({ data: { key: "ADMIN_EMAIL" } }) as string;
+    return { adminEmail };
   },
 });
 
 function Component() {
+  const { adminEmail } = Route.useLoaderData();
+
   const adminCreatedQuery = useQuery({
     queryKey: ["adminCreated"],
     queryFn: () => adminCreated(),
@@ -44,65 +51,20 @@ function Component() {
     )
     : (
       <Container title="Sign Up" description="Sign up to create an account">
-        <PasswordAdminSignUpForm />
+        <PasswordAdminSignUpForm adminEmail={adminEmail} />
       </Container>
     );
 }
 
-function Container(
-  { title, children, description }: { title: string; description: string; children: React.ReactNode },
-) {
-  return (
-    <Center h="100vh">
-      <Paper shadow="md" p="xl" radius="md" w={400}>
-        <Stack gap="lg">
-          <Stack gap="xs" align="center">
-            <Title order={2} ta="center">{title}</Title>
-            <Text c="dimmed" ta="center">{description}</Text>
-          </Stack>
-          <Tabs defaultValue="password" variant="pills">
-            <Tabs.List grow>
-              <Tabs.Tab value="password" leftSection={<IconLock size={16} />}>
-                Email & Password
-              </Tabs.Tab>
-              <Tooltip
-                label="Enterprise license required"
-                withArrow
-                position="top"
-              >
-                <Tabs.Tab
-                  value="sso"
-                  leftSection={<IconBrandGoogle size={16} />}
-                  disabled={true}
-                >
-                  Single Sign On
-                </Tabs.Tab>
-              </Tooltip>
-            </Tabs.List>
-
-            <Tabs.Panel value="password" pt="md">
-              {children}
-            </Tabs.Panel>
-
-            <Tabs.Panel value="sso" pt="md">
-              <div>TODO</div>
-            </Tabs.Panel>
-          </Tabs>
-        </Stack>
-      </Paper>
-    </Center>
-  );
-}
-
-function PasswordAdminSignUpForm() {
+function PasswordAdminSignUpForm({ adminEmail }: { adminEmail: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const signInMutation = useMutation({
+  const signUpMutation = useMutation({
     mutationFn: async (data: { email: string; password: string }) => {
-      const { error, data: response } = await authClient.signIn.email({
-        email: data.email,
-        password: data.password,
+      const { error, data: response } = await authClient.signUp.email({
+        name: "Yujong Lee",
+        ...data,
       });
 
       if (error) {
@@ -111,9 +73,12 @@ function PasswordAdminSignUpForm() {
 
       return response;
     },
+    onError: (error) => {
+      form.setFieldError("email", error.message);
+    },
     onSuccess: (response) => {
       queryClient.resetQueries();
-      navigate({ to: "/" });
+      navigate({ to: "/app" });
     },
   });
 
@@ -121,10 +86,15 @@ function PasswordAdminSignUpForm() {
     email: z.string().email(),
     password: z.string().min(1),
     passwordConfirm: z.string().min(1),
-  }).refine((data) => data.password === data.passwordConfirm, {
-    message: "Passwords do not match",
-    path: ["passwordConfirm"],
-  });
+  })
+    .refine((data) => data.password === data.passwordConfirm, {
+      message: "Passwords do not match",
+      path: ["passwordConfirm"],
+    })
+    .refine((data) => data.email === adminEmail, {
+      message: "Email must be " + adminEmail,
+      path: ["email"],
+    });
 
   type FormData = z.infer<typeof schema>;
 
@@ -133,8 +103,8 @@ function PasswordAdminSignUpForm() {
     validate: zodResolver(schema),
   });
 
-  const handleSubmit = async (values: FormData) => {
-    await signInMutation.mutateAsync(values);
+  const handleSubmit = (values: FormData) => {
+    signUpMutation.mutate(values);
   };
 
   return (
@@ -168,7 +138,7 @@ function PasswordAdminSignUpForm() {
         <Button
           type="submit"
           fullWidth
-          loading={signInMutation.isPending}
+          loading={signUpMutation.isPending}
           mt="md"
         >
           Sign Up
@@ -197,7 +167,7 @@ function PasswordSignInForm() {
     },
     onSuccess: (response) => {
       queryClient.resetQueries();
-      navigate({ to: "/" });
+      navigate({ to: "/app" });
     },
   });
 
@@ -247,5 +217,50 @@ function PasswordSignInForm() {
         </Button>
       </Stack>
     </form>
+  );
+}
+
+function Container(
+  { title, children, description }: { title: string; description: string; children: React.ReactNode },
+) {
+  return (
+    <Center h="100vh">
+      <Paper shadow="md" p="xl" radius="md" w={400}>
+        <Stack gap="lg">
+          <Stack gap="xs" align="center">
+            <Title order={2} ta="center">{title}</Title>
+            <Text c="dimmed" ta="center">{description}</Text>
+          </Stack>
+          <Tabs defaultValue="password" variant="pills">
+            <Tabs.List grow>
+              <Tabs.Tab value="password" leftSection={<IconLock size={16} />}>
+                Email & Password
+              </Tabs.Tab>
+              <Tooltip
+                label="Enterprise license required"
+                withArrow
+                position="top"
+              >
+                <Tabs.Tab
+                  value="sso"
+                  leftSection={<IconBrandGoogle size={16} />}
+                  disabled={true}
+                >
+                  Single Sign On
+                </Tabs.Tab>
+              </Tooltip>
+            </Tabs.List>
+
+            <Tabs.Panel value="password" pt="md">
+              {children}
+            </Tabs.Panel>
+
+            <Tabs.Panel value="sso" pt="md">
+              <div>TODO</div>
+            </Tabs.Panel>
+          </Tabs>
+        </Stack>
+      </Paper>
+    </Center>
   );
 }

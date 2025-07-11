@@ -1,7 +1,6 @@
 import { Button, Modal, Table, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
-import { notifications } from "@mantine/notifications";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodResolver } from "mantine-form-zod-resolver";
@@ -38,21 +37,14 @@ function Component() {
   });
 
   return (
-    <>
-      <NewProviderModal />
-
-      <Button
-        onClick={() => {
-          console.log("click");
-          notifications.show({
-            title: "Default notification",
-            message: "Do not forget to star Mantine on GitHub! 🌟",
-          });
-        }}
-      >
-        Click
-      </Button>
-    </>
+    <div>
+      <section>
+        <NewProviderModal />
+      </section>
+      <section>
+        <ProvidersTable />
+      </section>
+    </div>
   );
 }
 

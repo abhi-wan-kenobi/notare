@@ -1,7 +1,10 @@
 import { createMiddleware, createServerFn, json } from "@tanstack/react-start";
 import { getWebRequest } from "@tanstack/react-start/server";
 
+import { envServerSchema } from "@/env";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { organization } from "@/lib/db/schema";
 
 export const getUserSession = createServerFn({ method: "GET" }).handler(
   async () => {
@@ -18,7 +21,8 @@ export const getUserSession = createServerFn({ method: "GET" }).handler(
 
 export const adminCreated = createServerFn({ method: "POST" }).handler(
   async () => {
-    return false;
+    const organizations = await db.select().from(organization);
+    return organizations.some((org) => org.slug === envServerSchema.ORG_SLUG);
   },
 );
 

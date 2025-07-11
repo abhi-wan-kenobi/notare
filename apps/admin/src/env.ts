@@ -24,4 +24,5 @@ if (!envServer.success) {
   throw new Error(`There is an error with the server environment variables: ${JSON.stringify(envServer.error.issues)}`);
 }
 
+export const ENV_KEYS = Object.keys(envSchema.shape) as [keyof EnvSchemaType, ...(keyof EnvSchemaType)[]];
 export const envServerSchema = envServer.data;
