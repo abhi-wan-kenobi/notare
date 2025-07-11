@@ -119,8 +119,12 @@ CREATE TABLE `verification` (
 	`updated_at` integer
 );
 --> statement-breakpoint
-CREATE TABLE `device` (
+CREATE TABLE `llm_provider` (
 	`id` text PRIMARY KEY NOT NULL,
 	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL
+	`updated_at` integer NOT NULL,
+	`name` text NOT NULL,
+	`model` text NOT NULL,
+	`base_url` text NOT NULL,
+	`api_key` text NOT NULL
 );

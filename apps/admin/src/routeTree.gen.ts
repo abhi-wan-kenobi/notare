@@ -14,6 +14,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as IndexRouteImport } from './routes/index'
+import { ServerRoute as ChatCompletionServerRouteImport } from './routes/chat.completion'
 import { ServerRoute as ApiAuthSplatServerRouteImport } from './routes/api.auth.$'
 
 const rootServerRouteImport = createServerRootRoute()
@@ -32,6 +33,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ChatCompletionServerRoute = ChatCompletionServerRouteImport.update({
+  id: '/chat/completion',
+  path: '/chat/completion',
+  getParentRoute: () => rootServerRouteImport,
 } as any)
 const ApiAuthSplatServerRoute = ApiAuthSplatServerRouteImport.update({
   id: '/api/auth/$',
@@ -69,24 +75,28 @@ export interface RootRouteChildren {
   SignUpRoute: typeof SignUpRoute
 }
 export interface FileServerRoutesByFullPath {
+  '/chat/completion': typeof ChatCompletionServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
 }
 export interface FileServerRoutesByTo {
+  '/chat/completion': typeof ChatCompletionServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
 }
 export interface FileServerRoutesById {
   __root__: typeof rootServerRouteImport
+  '/chat/completion': typeof ChatCompletionServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
 }
 export interface FileServerRouteTypes {
   fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/auth/$'
+  fullPaths: '/chat/completion' | '/api/auth/$'
   fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/auth/$'
-  id: '__root__' | '/api/auth/$'
+  to: '/chat/completion' | '/api/auth/$'
+  id: '__root__' | '/chat/completion' | '/api/auth/$'
   fileServerRoutesById: FileServerRoutesById
 }
 export interface RootServerRouteChildren {
+  ChatCompletionServerRoute: typeof ChatCompletionServerRoute
   ApiAuthSplatServerRoute: typeof ApiAuthSplatServerRoute
 }
 
@@ -117,6 +127,13 @@ declare module '@tanstack/react-router' {
 }
 declare module '@tanstack/react-start/server' {
   interface ServerFileRoutesByPath {
+    '/chat/completion': {
+      id: '/chat/completion'
+      path: '/chat/completion'
+      fullPath: '/chat/completion'
+      preLoaderRoute: typeof ChatCompletionServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -136,6 +153,7 @@ export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 const rootServerRouteChildren: RootServerRouteChildren = {
+  ChatCompletionServerRoute: ChatCompletionServerRoute,
   ApiAuthSplatServerRoute: ApiAuthSplatServerRoute,
 }
 export const serverRouteTree = rootServerRouteImport

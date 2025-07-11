@@ -6,9 +6,15 @@ import { sso } from "better-auth/plugins/sso";
 import { reactStartCookies } from "better-auth/react-start";
 
 import { db } from "@/lib/db";
+import * as schema from "@/lib/db/schema";
+
+export * from "./client";
 
 export const auth = betterAuth({
-  database: drizzleAdapter(db, { provider: "sqlite" }),
+  database: drizzleAdapter(db, {
+    provider: "sqlite",
+    schema,
+  }),
   plugins: [
     apiKey({
       customAPIKeyGetter(ctx) {

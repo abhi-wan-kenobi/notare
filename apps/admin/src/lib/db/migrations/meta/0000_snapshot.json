@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "55abad9b-767b-4776-b1f6-7553fd42a678",
+  "id": "bdcb5656-de40-4847-96ae-d640a61955b0",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -816,8 +816,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "device": {
-      "name": "device",
+    "llm_provider": {
+      "name": "llm_provider",
       "columns": {
         "id": {
           "name": "id",
@@ -836,6 +836,34 @@
         "updated_at": {
           "name": "updated_at",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "base_url": {
+          "name": "base_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "api_key": {
+          "name": "api_key",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
