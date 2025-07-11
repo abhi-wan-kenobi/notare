@@ -2,6 +2,7 @@ import {
   Button,
   Center,
   Divider,
+  LoadingOverlay,
   Paper,
   PasswordInput,
   Stack,
@@ -31,17 +32,22 @@ export const Route = createFileRoute("/login")({
   },
   loader: async () => {
     const adminEmail = await getEnv({ data: { key: "ADMIN_EMAIL" } }) as string;
-    return { adminEmail };
+    const orgSlug = await getEnv({ data: { key: "ORG_SLUG" } }) as string;
+    return { adminEmail, orgSlug };
   },
 });
 
 function Component() {
-  const { adminEmail } = Route.useLoaderData();
+  const { adminEmail, orgSlug } = Route.useLoaderData();
 
   const adminCreatedQuery = useQuery({
     queryKey: ["adminCreated"],
     queryFn: () => adminCreated(),
   });
+
+  if (adminCreatedQuery.isLoading) {
+    return <LoadingOverlay visible={true} zIndex={1000} overlayProps={{ radius: "sm", blur: 2 }} />;
+  }
 
   return adminCreatedQuery.data
     ? (
@@ -51,24 +57,34 @@ function Component() {
     )
     : (
       <Container title="Sign Up" description="Sign up to create an account">
-        <PasswordAdminSignUpForm adminEmail={adminEmail} />
+        <PasswordAdminSignUpForm adminEmail={adminEmail} orgSlug={orgSlug} />
       </Container>
     );
 }
 
-function PasswordAdminSignUpForm({ adminEmail }: { adminEmail: string }) {
+function PasswordAdminSignUpForm({ adminEmail, orgSlug }: { adminEmail: string; orgSlug: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const signUpMutation = useMutation({
     mutationFn: async (data: { email: string; password: string }) => {
       const { error, data: response } = await authClient.signUp.email({
-        name: "Yujong Lee",
+        name: data.email,
         ...data,
       });
 
       if (error) {
-        throw new Error(error.message);
+        throw error;
+      }
+
+      const { error: orgError } = await authClient.organization.create({
+        name: orgSlug,
+        slug: orgSlug,
+        userId: response?.user.id,
+      });
+
+      if (orgError) {
+        throw orgError;
       }
 
       return response;
@@ -160,10 +176,13 @@ function PasswordSignInForm() {
       });
 
       if (error) {
-        throw new Error(error.message);
+        throw error;
       }
 
       return response;
+    },
+    onError: (error) => {
+      form.setFieldError("email", error.message);
     },
     onSuccess: (response) => {
       queryClient.resetQueries();

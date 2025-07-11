@@ -1,5 +1,6 @@
 import { createMiddleware, createServerFn, json } from "@tanstack/react-start";
 import { getWebRequest } from "@tanstack/react-start/server";
+import { eq } from "drizzle-orm";
 
 import { envServerSchema } from "@/env";
 import { auth } from "@/lib/auth";
@@ -21,8 +22,8 @@ export const getUserSession = createServerFn({ method: "GET" }).handler(
 
 export const adminCreated = createServerFn({ method: "POST" }).handler(
   async () => {
-    const organizations = await db.select().from(organization);
-    return organizations.some((org) => org.slug === envServerSchema.ORG_SLUG);
+    const organizations = await db.select().from(organization).where(eq(organization.slug, envServerSchema.ORG_SLUG));
+    return organizations.length > 0;
   },
 );
 

@@ -56,6 +56,9 @@ importers:
       better-auth:
         specifier: ^1.2.12
         version: 1.2.12
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
       drizzle-kit:
         specifier: ^0.31.4
         version: 0.31.4
