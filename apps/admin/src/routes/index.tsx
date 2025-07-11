@@ -1,13 +1,15 @@
-import { Button, Modal, TextInput } from "@mantine/core";
+import { Button, Modal, Table, TextInput } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodResolver } from "mantine-form-zod-resolver";
 import { z } from "zod";
 
-import { insertLlmProvider } from "@/services/provider.api";
+import { db } from "@/lib/db";
+import { llmProvider } from "@/lib/db/schema";
+import { insertLlmProvider, listLlmProvider } from "@/services/provider.api";
 
 export const Route = createFileRoute("/")({
   component: Component,
@@ -100,5 +102,30 @@ function NewProviderModal() {
         Open centered Modal
       </Button>
     </>
+  );
+}
+
+function ProvidersTable() {
+  const { data } = useQuery({
+    queryKey: ["providers"],
+    queryFn: async () => {
+      const rows = await listLlmProvider();
+      return rows;
+    },
+  });
+
+  return (
+    <Table variant="vertical" layout="fixed" withTableBorder>
+      <Table.Tbody>
+        {data?.map((row) => (
+          <Table.Tr key={row.id}>
+            <Table.Th w={160}>{row.name}</Table.Th>
+            <Table.Td>{row.model}</Table.Td>
+            <Table.Td>{row.baseUrl}</Table.Td>
+            <Table.Td>{row.apiKey}</Table.Td>
+          </Table.Tr>
+        ))}
+      </Table.Tbody>
+    </Table>
   );
 }

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "dde0f0f0-92ea-4153-8431-13ff7b1aa0be",
+  "id": "de1bbfbe-9d44-4f28-ba86-a0726a20fa5c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -840,8 +840,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "user_id": {
-          "name": "user_id",
+        "organization_id": {
+          "name": "organization_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -878,12 +878,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "llm_provider_user_id_user_id_fk": {
-          "name": "llm_provider_user_id_user_id_fk",
+        "llm_provider_organization_id_organization_id_fk": {
+          "name": "llm_provider_organization_id_organization_id_fk",
           "tableFrom": "llm_provider",
-          "tableTo": "user",
+          "tableTo": "organization",
           "columnsFrom": [
-            "user_id"
+            "organization_id"
           ],
           "columnsTo": [
             "id"

@@ -55,3 +55,21 @@ export const userRequiredMiddlewareForFunction = createMiddleware({ type: "funct
 
     return next({ context: { userSession: context.userSession } });
   });
+
+export const activeOrgRequiredMiddlewareForFunction = createMiddleware({ type: "function" })
+  .middleware([userRequiredMiddlewareForFunction])
+  .server(async ({ next, context }) => {
+    if (!context.userSession?.session?.activeOrganizationId) {
+      throw json(
+        { message: "You must have an active organization!" },
+        { status: 403 },
+      );
+    }
+
+    return next({
+      context: {
+        userSession: context.userSession,
+        activeOrganizationId: context.userSession.session.activeOrganizationId,
+      },
+    });
+  });
