@@ -123,8 +123,10 @@ CREATE TABLE `llm_provider` (
 	`id` text PRIMARY KEY NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
+	`user_id` text NOT NULL,
 	`name` text NOT NULL,
 	`model` text NOT NULL,
 	`base_url` text NOT NULL,
-	`api_key` text NOT NULL
+	`api_key` text NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
 );

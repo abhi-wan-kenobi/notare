@@ -1,30 +1,39 @@
-import { createServerFileRoute } from "@tanstack/react-start/server";
-
 import { createOpenAI } from "@ai-sdk/openai";
+import { json } from "@tanstack/react-start";
+import { createServerFileRoute } from "@tanstack/react-start/server";
 import { generateText, streamText } from "ai";
 
-export const ServerRoute = createServerFileRoute("/chat/completion").methods({
-  POST: async ({ request }) => {
-    const openai = createOpenAI({
-      baseURL: "TODO",
-      apiKey: "TODO",
-      compatibility: "compatible",
-    });
+import { userRequiredMiddlewareForRequest } from "@/services/auth.api";
+import { findLlmProvider } from "@/services/llm.api";
 
-    const { model, messages, stream = false } = await request.json();
+export const ServerRoute = createServerFileRoute("/chat/completion")
+  .methods((api) => ({
+    POST: api.middleware([userRequiredMiddlewareForRequest]).handler(async ({ request, context }) => {
+      const { model, messages, stream = false } = await request.json();
+      const provider = await findLlmProvider(model);
 
-    if (!stream) {
-      const result = await generateText({
-        model: openai(model),
-        messages,
+      if (!provider) {
+        return json({ error: "no_provider" }, { status: 400 });
+      }
+
+      const openai = createOpenAI({
+        baseURL: provider.baseUrl,
+        apiKey: provider.apiKey,
+        compatibility: "compatible",
       });
 
-      return new Response(JSON.stringify(result.response.body as any));
-    }
+      if (!stream) {
+        const result = await generateText({
+          model: openai(provider.model),
+          messages,
+        });
 
-    return streamText({
-      model: openai(model),
-      messages,
-    }).toDataStreamResponse();
-  },
-});
+        return new Response(JSON.stringify(result.response.body as any));
+      }
+
+      return streamText({
+        model: openai(model),
+        messages,
+      }).toDataStreamResponse();
+    }),
+  }));
