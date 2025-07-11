@@ -7,23 +7,24 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodResolver } from "mantine-form-zod-resolver";
 import { z } from "zod";
 
-import { db } from "@/lib/db";
-import { llmProvider } from "@/lib/db/schema";
+import { authClient } from "@/lib/auth/client";
 import { insertLlmProvider, listLlmProvider } from "@/services/provider.api";
 
 export const Route = createFileRoute("/")({
   component: Component,
-  // beforeLoad: ({ context }) => {
-  //   if (!context.userSession) {
-  //     throw redirect({ to: "/sign-in" });
-  //   }
-  // },
+  beforeLoad: ({ context }) => {
+    if (!context.userSession) {
+      throw redirect({ to: "/login" });
+    }
+  },
 });
 
 function Component() {
   return (
     <>
       <NewProviderModal />
+
+      <Button onClick={() => authClient.signOut()}>Log out</Button>
 
       <Button
         onClick={() => {

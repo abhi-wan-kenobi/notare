@@ -14,16 +14,26 @@ import {
 import { useForm } from "@mantine/form";
 import { IconBrandGoogle, IconLock } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { zodResolver } from "mantine-form-zod-resolver";
+import { z } from "zod";
 
 import { authClient } from "@/lib/auth/client";
 
-export const Route = createFileRoute("/sign-in")({
+export const Route = createFileRoute("/login")({
   component: Component,
+  beforeLoad: async ({ context: { userSession } }) => {
+    if (userSession) {
+      return redirect({ to: "/" });
+    }
+  },
 });
 
 function Component() {
+  return <Form />;
+}
+
+function Form() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -46,24 +56,19 @@ function Component() {
     },
   });
 
-  const form = useForm({
-    mode: "uncontrolled",
-    initialValues: {
-      email: "example@org.com",
-      password: "password",
-    },
-    validate: {
-      email: (value) => {
-        if (!value) {
-          return "Email is required";
-        }
-        return !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? "Please enter a valid email address" : null;
-      },
-      password: (value) => (!value ? "Password is required" : null),
-    },
+  const schema = z.object({
+    email: z.string().email(),
+    password: z.string().min(1),
   });
 
-  const handleSubmit = async (values: typeof form.values) => {
+  type FormData = z.infer<typeof schema>;
+
+  const form = useForm<FormData>({
+    mode: "uncontrolled",
+    validate: zodResolver(schema),
+  });
+
+  const handleSubmit = async (values: FormData) => {
     await signInMutation.mutateAsync(values);
   };
 
@@ -79,7 +84,7 @@ function Component() {
           <Tabs defaultValue="password" variant="pills">
             <Tabs.List grow>
               <Tabs.Tab value="password" leftSection={<IconLock size={16} />}>
-                Password
+                Email & Password
               </Tabs.Tab>
               <Tooltip
                 label="Enterprise license required"
@@ -89,9 +94,9 @@ function Component() {
                 <Tabs.Tab
                   value="sso"
                   leftSection={<IconBrandGoogle size={16} />}
-                  disabled={process.env.NODE_ENV !== "development"}
+                  disabled={true}
                 >
-                  SSO
+                  Single Sign On
                 </Tabs.Tab>
               </Tooltip>
             </Tabs.List>
@@ -129,30 +134,9 @@ function Component() {
             </Tabs.Panel>
 
             <Tabs.Panel value="sso" pt="md">
-              <Stack gap="md">
-                <Text ta="center" c="dimmed" size="sm">
-                  Configure your Identity Provider (IDP) settings in the admin panel after signing in.
-                </Text>
-                <Button
-                  fullWidth
-                  variant="outline"
-                  leftSection={<IconBrandGoogle size={16} />}
-                  disabled
-                >
-                  Continue with SSO
-                </Button>
-              </Stack>
+              <div>TODO</div>
             </Tabs.Panel>
           </Tabs>
-
-          <Divider />
-
-          <Text ta="center" size="sm">
-            Don't have an account?{" "}
-            <Text component={Link} to="/sign-up" c="blue" td="underline">
-              Sign Up
-            </Text>
-          </Text>
         </Stack>
       </Paper>
     </Center>

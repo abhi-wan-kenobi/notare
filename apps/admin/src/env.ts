@@ -9,12 +9,15 @@ declare global {
 }
 
 const envSchema = z.object({
-  TELEMETRY: z.boolean().default(true),
   ADMIN_EMAIL: z.string().email().default("yujonglee@hyprnote.com"),
+  ORG_SLUG: z.string().default("hyprnote"),
+  TELEMETRY: z.coerce.boolean().default(true),
 });
 
 const envServer = envSchema.safeParse({
   ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+  ORG_SLUG: process.env.ORG_SLUG,
+  TELEMETRY: process.env.TELEMETRY,
 });
 
 if (!envServer.success) {

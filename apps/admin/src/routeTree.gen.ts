@@ -11,24 +11,17 @@
 import { createServerRootRoute } from '@tanstack/react-start/server'
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SignUpRouteImport } from './routes/sign-up'
-import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
-import { Route as AppMembersRouteImport } from './routes/app.members'
 import { ServerRoute as ChatCompletionServerRouteImport } from './routes/chat.completion'
 import { ServerRoute as ApiAuthSplatServerRouteImport } from './routes/api.auth.$'
 
 const rootServerRouteImport = createServerRootRoute()
 
-const SignUpRoute = SignUpRouteImport.update({
-  id: '/sign-up',
-  path: '/sign-up',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SignInRoute = SignInRouteImport.update({
-  id: '/sign-in',
-  path: '/sign-in',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -39,11 +32,6 @@ const IndexRoute = IndexRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/app/',
   path: '/app/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppMembersRoute = AppMembersRouteImport.update({
-  id: '/app/members',
-  path: '/app/members',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatCompletionServerRoute = ChatCompletionServerRouteImport.update({
@@ -59,39 +47,31 @@ const ApiAuthSplatServerRoute = ApiAuthSplatServerRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/sign-in': typeof SignInRoute
-  '/sign-up': typeof SignUpRoute
-  '/app/members': typeof AppMembersRoute
+  '/login': typeof LoginRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/sign-in': typeof SignInRoute
-  '/sign-up': typeof SignUpRoute
-  '/app/members': typeof AppMembersRoute
+  '/login': typeof LoginRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/sign-in': typeof SignInRoute
-  '/sign-up': typeof SignUpRoute
-  '/app/members': typeof AppMembersRoute
+  '/login': typeof LoginRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sign-in' | '/sign-up' | '/app/members' | '/app'
+  fullPaths: '/' | '/login' | '/app'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sign-in' | '/sign-up' | '/app/members' | '/app'
-  id: '__root__' | '/' | '/sign-in' | '/sign-up' | '/app/members' | '/app/'
+  to: '/' | '/login' | '/app'
+  id: '__root__' | '/' | '/login' | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  SignInRoute: typeof SignInRoute
-  SignUpRoute: typeof SignUpRoute
-  AppMembersRoute: typeof AppMembersRoute
+  LoginRoute: typeof LoginRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 export interface FileServerRoutesByFullPath {
@@ -122,18 +102,11 @@ export interface RootServerRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sign-up': {
-      id: '/sign-up'
-      path: '/sign-up'
-      fullPath: '/sign-up'
-      preLoaderRoute: typeof SignUpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sign-in': {
-      id: '/sign-in'
-      path: '/sign-in'
-      fullPath: '/sign-in'
-      preLoaderRoute: typeof SignInRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -148,13 +121,6 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app/members': {
-      id: '/app/members'
-      path: '/app/members'
-      fullPath: '/app/members'
-      preLoaderRoute: typeof AppMembersRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -180,9 +146,7 @@ declare module '@tanstack/react-start/server' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  SignInRoute: SignInRoute,
-  SignUpRoute: SignUpRoute,
-  AppMembersRoute: AppMembersRoute,
+  LoginRoute: LoginRoute,
   AppIndexRoute: AppIndexRoute,
 }
 export const routeTree = rootRouteImport

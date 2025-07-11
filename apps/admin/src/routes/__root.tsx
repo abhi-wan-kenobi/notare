@@ -5,7 +5,6 @@ import { Notifications } from "@mantine/notifications";
 import { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
 
 import { authQueries } from "@/services/queries";
 
@@ -22,9 +21,7 @@ export const Route = createRootRouteWithContext<{
   },
   head: () => ({
     meta: [
-      {
-        charSet: "utf-8",
-      },
+      { charSet: "utf-8" },
       {
         name: "viewport",
         content: "width=device-width, initial-scale=1",
@@ -32,41 +29,12 @@ export const Route = createRootRouteWithContext<{
     ],
     links: [
       { rel: "stylesheet", href: css },
-      {
-        rel: "apple-touch-icon",
-        sizes: "180x180",
-        href: "/apple-touch-icon.png",
-      },
-      {
-        rel: "icon",
-        type: "image/png",
-        sizes: "32x32",
-        href: "/favicon-32x32.png",
-      },
-      {
-        rel: "icon",
-        type: "image/png",
-        sizes: "16x16",
-        href: "/favicon-16x16.png",
-      },
-      { rel: "manifest", href: "/site.webmanifest", color: "#fffff" },
-      { rel: "icon", href: "/favicon.ico" },
     ],
   }),
   shellComponent: RootDocument,
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const showDevtools = useQuery({
-    queryKey: ["showDevtools"],
-    queryFn: () => {
-      const flag = (window as any).TANSTACK_DEVTOOLS;
-      return (flag ?? false);
-    },
-    enabled: process.env.NODE_ENV !== "production",
-    refetchInterval: 1000,
-  });
-
   return (
     <html {...mantineHtmlProps}>
       <head>
@@ -74,38 +42,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <ColorSchemeScript />
       </head>
       <body>
-        <MantineProvider theme={theme} forceColorScheme="dark">
+        <MantineProvider theme={theme} forceColorScheme="light">
           <Notifications />
           {children}
           <Scripts />
-          {showDevtools.data && (
-            <Suspense>
-              <TanStackRouterDevtools position={"bottom-right"} initialIsOpen={false} />
-              <TanStackQueryDevtools
-                buttonPosition={"bottom-right"}
-                position="bottom"
-                initialIsOpen={false}
-              />
-            </Suspense>
-          )}
         </MantineProvider>
       </body>
     </html>
   );
 }
-
-const TanStackRouterDevtools = lazy(() =>
-  import("@tanstack/react-router-devtools").then((res) => ({
-    default: (
-      props: React.ComponentProps<typeof res.TanStackRouterDevtools>,
-    ) => <res.TanStackRouterDevtools {...props} />,
-  }))
-);
-
-const TanStackQueryDevtools = lazy(() =>
-  import("@tanstack/react-query-devtools").then((res) => ({
-    default: (
-      props: React.ComponentProps<typeof res.ReactQueryDevtools>,
-    ) => <res.ReactQueryDevtools {...props} />,
-  }))
-);
