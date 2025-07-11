@@ -5,6 +5,7 @@ import { apiKey, organization } from "better-auth/plugins";
 import { sso } from "better-auth/plugins/sso";
 import { reactStartCookies } from "better-auth/react-start";
 
+import { envServerSchema } from "@/env";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 
@@ -32,7 +33,11 @@ export const auth = betterAuth({
       },
     }),
     sso(),
-    organization(),
+    organization({
+      allowUserToCreateOrganization: async (user) => {
+        return user.email === envServerSchema.ADMIN_EMAIL;
+      },
+    }),
     reactStartCookies(),
   ],
   emailAndPassword: {
