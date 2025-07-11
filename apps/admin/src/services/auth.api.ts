@@ -16,6 +16,12 @@ export const getUserSession = createServerFn({ method: "GET" }).handler(
   },
 );
 
+export const adminCreated = createServerFn({ method: "POST" }).handler(
+  async () => {
+    return false;
+  },
+);
+
 export const userMiddlewareForRequest = createMiddleware({ type: "request" }).server(
   async ({ next }) => {
     const userSession = await getUserSession();
