@@ -4,7 +4,7 @@ import { createServerFileRoute } from "@tanstack/react-start/server";
 import { generateText, streamText } from "ai";
 
 import { userRequiredMiddlewareForRequest } from "@/services/auth.api";
-import { findLlmProvider } from "@/services/llm.api";
+import { findLlmProvider } from "@/services/provider.api";
 
 export const ServerRoute = createServerFileRoute("/chat/completion")
   .methods((api) => ({

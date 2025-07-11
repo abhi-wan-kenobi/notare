@@ -1,7 +1,4 @@
-import dotenv from "dotenv";
 import { z } from "zod";
-
-dotenv.config();
 
 type EnvSchemaType = z.infer<typeof envSchema>;
 
@@ -13,7 +10,7 @@ declare global {
 
 const envSchema = z.object({
   TELEMETRY: z.boolean().default(true),
-  ADMIN_EMAIL: z.string(),
+  ADMIN_EMAIL: z.string().email().default("yujonglee@hyprnote.com"),
 });
 
 const envServer = envSchema.safeParse({

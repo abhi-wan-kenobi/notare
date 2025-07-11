@@ -13,3 +13,14 @@ export const findLlmProvider = createServerFn()
     const rows = await db.select().from(llmProvider).where(eq(llmProvider.userId, userSession.user.id));
     return rows.find((row) => row.model === data.model);
   });
+
+export const insertLlmProvider = createServerFn()
+  .validator(z.object({ name: z.string(), model: z.string(), baseUrl: z.string(), apiKey: z.string() }))
+  .middleware([userRequiredMiddlewareForFunction])
+  .handler(async ({ data, context: { userSession } }) => {
+    const rows = await db.insert(llmProvider).values({
+      ...data,
+      userId: userSession.user.id,
+    }).returning();
+    return rows;
+  });

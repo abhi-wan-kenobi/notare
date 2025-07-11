@@ -2,7 +2,6 @@ import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { authClient } from "@/lib/auth/client";
-import { Button } from "@hypr/ui/components/ui/button";
 
 export const Route = createFileRoute("/app/")({
   component: Component,
@@ -29,7 +28,6 @@ function Component() {
   return (
     <div>
       <h1>Hyprnote</h1>
-      <Button onClick={() => m.mutate({ name: "test" })}>Create API Key</Button>
     </div>
   );
 }
