@@ -1,9 +1,10 @@
+import { Button, Group, PasswordInput, TextInput } from "@mantine/core";
+import { useForm } from "@mantine/form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 
 import { authClient } from "@/lib/auth/client";
-import { useAppForm } from "@/lib/form";
 
 export const Route = createFileRoute("/sign-in")({
   component: Component,
@@ -32,62 +33,55 @@ function Component() {
     },
   });
 
-  const form = useAppForm({
-    defaultValues: {
+  const form = useForm({
+    mode: "uncontrolled",
+    initialValues: {
       email: "example@org.com",
       password: "password",
     },
-    validators: {
-      onChange: ({ value }) => {
-        if (!value.email) {
-          return {
-            fields: {
-              email: "Email is required",
-            },
-          };
+    validate: {
+      email: (value) => {
+        if (!value) {
+          return "Email is required";
         }
-        if (!value.password) {
-          return {
-            fields: {
-              password: "Password is required",
-            },
-          };
-        }
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email)) {
-          return {
-            fields: {
-              email: "Please enter a valid email address",
-            },
-          };
-        }
-        return undefined;
+        return !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? "Please enter a valid email address" : null;
       },
-    },
-    onSubmit: async ({ value }) => {
-      await signInMutation.mutateAsync(value);
+      password: (value) => (!value ? "Password is required" : null),
     },
   });
+
+  const handleSubmit = async (values: typeof form.values) => {
+    await signInMutation.mutateAsync(values);
+  };
 
   return (
     <div className="flex h-screen w-1/3 items-center justify-center flex-col">
       <form
         className="flex flex-col gap-2 w-full"
-        onSubmit={(e) => {
-          e.preventDefault();
-          form.handleSubmit();
-        }}
+        onSubmit={form.onSubmit(handleSubmit)}
       >
-        <form.AppField
-          name="email"
-          children={(field) => <field.TextField label="Email" required type="email" />}
+        <TextInput
+          withAsterisk
+          label="Email"
+          placeholder="your@email.com"
+          type="email"
+          key={form.key("email")}
+          {...form.getInputProps("email")}
         />
-        <form.AppField
-          name="password"
-          children={(field) => <field.TextField label="Password" required type="password" />}
+
+        <PasswordInput
+          withAsterisk
+          label="Password"
+          placeholder="Enter your password"
+          key={form.key("password")}
+          {...form.getInputProps("password")}
         />
-        <form.AppForm>
-          <form.SubmitButton label="Sign In" />
-        </form.AppForm>
+
+        <Group justify="flex-end" mt="md">
+          <Button type="submit" loading={signInMutation.isPending}>
+            Sign In
+          </Button>
+        </Group>
       </form>
 
       <small>

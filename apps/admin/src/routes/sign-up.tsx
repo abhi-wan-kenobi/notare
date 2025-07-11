@@ -1,9 +1,10 @@
+import { Button, Group, PasswordInput, TextInput } from "@mantine/core";
+import { useForm } from "@mantine/form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 
 import { authClient } from "@/lib/auth/client";
-import { useAppForm } from "@/lib/form";
 
 export const Route = createFileRoute("/sign-up")({
   component: Component,
@@ -33,79 +34,89 @@ function Component() {
     },
   });
 
-  const form = useAppForm({
-    defaultValues: {
+  const form = useForm({
+    mode: "uncontrolled",
+    initialValues: {
       name: "",
       email: "",
       password: "",
       confirmPassword: "",
     },
-    validators: {
-      onChange: ({ value }) => {
-        const errors: any = { fields: {} };
-
-        if (!value.name?.trim()) {
-          errors.fields.name = "Name is required";
+    validate: {
+      name: (value) => (!value?.trim() ? "Name is required" : null),
+      email: (value) => {
+        if (!value) {
+          return "Email is required";
         }
-
-        if (!value.email) {
-          errors.fields.email = "Email is required";
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email)) {
-          errors.fields.email = "Please enter a valid email address";
+        return !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? "Please enter a valid email address" : null;
+      },
+      password: (value) => {
+        if (!value) {
+          return "Password is required";
         }
-
-        if (!value.password) {
-          errors.fields.password = "Password is required";
-        } else if (value.password.length < 8) {
-          errors.fields.password = "Password must be at least 8 characters";
+        return value.length < 8 ? "Password must be at least 8 characters" : null;
+      },
+      confirmPassword: (value, values) => {
+        if (!value) {
+          return "Please confirm your password";
         }
-
-        if (!value.confirmPassword) {
-          errors.fields.confirmPassword = "Please confirm your password";
-        } else if (value.password !== value.confirmPassword) {
-          errors.fields.confirmPassword = "Passwords do not match";
-        }
-
-        return Object.keys(errors.fields).length > 0 ? errors : undefined;
+        return value !== values.password ? "Passwords do not match" : null;
       },
     },
-    onSubmit: async ({ value }) => {
-      await signUpMutation.mutateAsync({
-        name: value.name,
-        email: value.email,
-        password: value.password,
-      });
-    },
   });
+
+  const handleSubmit = async (values: typeof form.values) => {
+    await signUpMutation.mutateAsync({
+      name: values.name,
+      email: values.email,
+      password: values.password,
+    });
+  };
 
   return (
     <div className="flex h-screen w-1/3 items-center justify-center flex-col">
       <form
         className="flex flex-col gap-2 w-full"
-        onSubmit={(e) => {
-          e.preventDefault();
-          form.handleSubmit();
-        }}
+        onSubmit={form.onSubmit(handleSubmit)}
       >
-        <form.AppField
-          name="name"
-          children={(field) => <field.TextField label="Full Name" required />}
+        <TextInput
+          withAsterisk
+          label="Full Name"
+          placeholder="Enter your full name"
+          key={form.key("name")}
+          {...form.getInputProps("name")}
         />
-        <form.AppField
-          name="email"
-          children={(field) => <field.TextField label="Email" required type="email" />}
+
+        <TextInput
+          withAsterisk
+          label="Email"
+          placeholder="your@email.com"
+          type="email"
+          key={form.key("email")}
+          {...form.getInputProps("email")}
         />
-        <form.AppField
-          name="password"
-          children={(field) => <field.TextField label="Password" required type="password" />}
+
+        <PasswordInput
+          withAsterisk
+          label="Password"
+          placeholder="Enter your password"
+          key={form.key("password")}
+          {...form.getInputProps("password")}
         />
-        <form.AppField
-          name="confirmPassword"
-          children={(field) => <field.TextField label="Confirm Password" required type="password" />}
+
+        <PasswordInput
+          withAsterisk
+          label="Confirm Password"
+          placeholder="Confirm your password"
+          key={form.key("confirmPassword")}
+          {...form.getInputProps("confirmPassword")}
         />
-        <form.AppForm>
-          <form.SubmitButton label="Sign Up" />
-        </form.AppForm>
+
+        <Group justify="flex-end" mt="md">
+          <Button type="submit" loading={signUpMutation.isPending}>
+            Sign Up
+          </Button>
+        </Group>
       </form>
 
       <small>
