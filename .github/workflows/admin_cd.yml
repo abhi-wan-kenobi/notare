@@ -51,13 +51,15 @@ jobs:
           timeout: 600000
 
       - id: scan
-        uses: anchore/scan-action@main
+        uses: anchore/scan-action@v6
         with:
           image: ${{ steps.meta.outputs.tags }}
           fail-build: false
-      - uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: ${{ steps.scan.outputs.sarif }}
+
+      # Invalid SARIF. JSON syntax error: Unexpected end of JSON input
+      # - uses: github/codeql-action/upload-sarif@v3
+      #   with:
+      #     sarif_file: ${{ steps.scan.outputs.sarif }}
 
       - uses: Warpbuilds/build-push-action@v6
         with:
