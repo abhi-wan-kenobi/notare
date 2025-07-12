@@ -81,6 +81,7 @@ function PasswordAdminSignUpForm({ adminEmail, orgSlug }: { adminEmail: string; 
         name: orgSlug,
         slug: orgSlug,
         userId: response?.user.id,
+        keepCurrentActiveOrganization: false,
       });
 
       if (orgError) {

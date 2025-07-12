@@ -6,18 +6,13 @@ import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import { authClient } from "@/lib/auth/client";
-import { getEnv } from "@/services/env.api";
 
 export const Route = createFileRoute("/app")({
   component: Component,
-  loader: async () => {
-    const slug = await getEnv({ data: { key: "ORG_SLUG" } }) ?? null as string | null;
-    return { slug };
-  },
 });
 
 function Component() {
-  const loaderData = Route.useLoaderData();
+  const { data: activeOrganization } = authClient.useActiveOrganization();
 
   const [opened, { toggle }] = useDisclosure();
 
@@ -60,7 +55,7 @@ function Component() {
               size="sm"
             />
             <Text size="xl" fw={700}>Hyprnote Admin</Text>
-            <Text size="md" c="dimmed" fw={500}>{loaderData?.slug}</Text>
+            <Text size="md" c="dimmed" fw={500}>{activeOrganization?.slug}</Text>
           </Group>
           <Button variant="light" size="sm" onClick={() => logout.mutate()}>
             Logout
