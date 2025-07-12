@@ -1,6 +1,8 @@
-import { AppShell, Button, Group, Text } from "@mantine/core";
+import { NavLink } from "@/components/NavLink";
+import { AppShell, Burger, Button, Group, Text } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import { useMutation } from "@tanstack/react-query";
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useMatch, useNavigate } from "@tanstack/react-router";
 
 import { authClient } from "@/lib/auth/client";
 import { getEnv } from "@/services/env.api";
@@ -15,6 +17,11 @@ export const Route = createFileRoute("/app")({
 
 function Component() {
   const loaderData = Route.useLoaderData();
+
+  const [opened, { toggle }] = useDisclosure();
+
+  const homeMatch = useMatch({ from: "/app/home", shouldThrow: false });
+  const providersMatch = useMatch({ from: "/app/providers", shouldThrow: false });
 
   const logout = useMutation({
     mutationFn: async () => {
@@ -38,11 +45,22 @@ function Component() {
   return (
     <AppShell
       header={{ height: 60 }}
+      navbar={{
+        width: 250,
+        breakpoint: "sm",
+        collapsed: { mobile: !opened },
+      }}
       padding="md"
     >
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between" align="center">
           <Group gap="sm" align="center">
+            <Burger
+              opened={opened}
+              onClick={toggle}
+              hiddenFrom="sm"
+              size="sm"
+            />
             <Text size="xl" fw={700}>Hyprnote Admin</Text>
             <Text size="md" c="dimmed" fw={500}>{loaderData?.slug}</Text>
           </Group>
@@ -51,6 +69,19 @@ function Component() {
           </Button>
         </Group>
       </AppShell.Header>
+
+      <AppShell.Navbar p="md">
+        <NavLink
+          label="Dashboard"
+          to="/app/home"
+          active={!!homeMatch}
+        />
+        <NavLink
+          label="Providers"
+          to="/app/providers"
+          active={!!providersMatch}
+        />
+      </AppShell.Navbar>
 
       <AppShell.Main>
         <Outlet />

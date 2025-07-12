@@ -15,6 +15,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppProvidersRouteImport } from './routes/app.providers'
+import { Route as AppHomeRouteImport } from './routes/app.home'
 import { ServerRoute as ChatCompletionServerRouteImport } from './routes/chat.completion'
 import { ServerRoute as ApiAuthSplatServerRouteImport } from './routes/api.auth.$'
 
@@ -40,6 +42,16 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProvidersRoute = AppProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHomeRoute = AppHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => AppRoute,
+} as any)
 const ChatCompletionServerRoute = ChatCompletionServerRouteImport.update({
   id: '/chat/completion',
   path: '/chat/completion',
@@ -55,11 +67,15 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/home': typeof AppHomeRoute
+  '/app/providers': typeof AppProvidersRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/app/home': typeof AppHomeRoute
+  '/app/providers': typeof AppProvidersRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -67,14 +83,23 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/home': typeof AppHomeRoute
+  '/app/providers': typeof AppProvidersRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/login' | '/app/'
+  fullPaths: '/' | '/app' | '/login' | '/app/home' | '/app/providers' | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/app'
-  id: '__root__' | '/' | '/app' | '/login' | '/app/'
+  to: '/' | '/login' | '/app/home' | '/app/providers' | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/login'
+    | '/app/home'
+    | '/app/providers'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -138,6 +163,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/providers': {
+      id: '/app/providers'
+      path: '/providers'
+      fullPath: '/app/providers'
+      preLoaderRoute: typeof AppProvidersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/home': {
+      id: '/app/home'
+      path: '/home'
+      fullPath: '/app/home'
+      preLoaderRoute: typeof AppHomeRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 declare module '@tanstack/react-start/server' {
@@ -160,10 +199,14 @@ declare module '@tanstack/react-start/server' {
 }
 
 interface AppRouteChildren {
+  AppHomeRoute: typeof AppHomeRoute
+  AppProvidersRoute: typeof AppProvidersRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppHomeRoute: AppHomeRoute,
+  AppProvidersRoute: AppProvidersRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
