@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { useHypr } from "@/contexts";
 import { extractTextFromHtml } from "@/utils/parse";
+import { TemplateService } from "@/utils/template-service";
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as connectorCommands } from "@hypr/plugin-connector";
 import { commands as dbCommands } from "@hypr/plugin-db";
@@ -98,7 +99,7 @@ export default function EditorArea({
 
   const templatesQuery = useQuery({
     queryKey: ["templates"],
-    queryFn: () => dbCommands.listTemplates(),
+    queryFn: () => TemplateService.getAllTemplates(),
     refetchOnWindowFocus: true,
   });
 
@@ -312,11 +313,7 @@ export function useEnhanceMutation({
         ? templateId
         : config.general?.selected_template_id;
 
-      let selectedTemplate = null;
-      if (effectiveTemplateId) {
-        const templates = await dbCommands.listTemplates();
-        selectedTemplate = templates.find(t => t.id === effectiveTemplateId) || null;
-      }
+      const selectedTemplate = await TemplateService.getTemplate(effectiveTemplateId ?? "");
 
       const participants = await dbCommands.sessionListParticipants(sessionId);
 
