@@ -3,7 +3,6 @@ import {
   Alert,
   Button,
   Code,
-  Container,
   CopyButton,
   Group,
   Paper,
@@ -174,21 +173,19 @@ function Component() {
   ];
 
   return (
-    <Container size="lg" py="xl">
-      <Stack gap="xl">
-        <div>
-          <Title order={1} mb="xs">
-            Settings
-          </Title>
-          <Text c="dimmed" size="sm">
-            Manage your application configuration and API access
-          </Text>
-        </div>
+    <Stack gap="xl">
+      <div>
+        <Title order={1} mb="xs">
+          Settings
+        </Title>
+        <Text c="dimmed" size="sm">
+          Manage your application configuration and API access
+        </Text>
+      </div>
 
-        <Accordion defaultValue={null} variant="separated">
-          {settingsSections.map((section) => <SettingsSection key={section.key} config={section} />)}
-        </Accordion>
-      </Stack>
-    </Container>
+      <Accordion defaultValue={null} variant="separated">
+        {settingsSections.map((section) => <SettingsSection key={section.key} config={section} />)}
+      </Accordion>
+    </Stack>
   );
 }
