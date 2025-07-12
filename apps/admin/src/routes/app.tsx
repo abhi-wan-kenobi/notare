@@ -1,8 +1,9 @@
 import { NavLink } from "@/components/NavLink";
 import { AppShell, Burger, Button, Group, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { IconHome, IconMist, IconSettings } from "@tabler/icons-react";
 import { useMutation } from "@tanstack/react-query";
-import { createFileRoute, Outlet, useMatch, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import { authClient } from "@/lib/auth/client";
 import { getEnv } from "@/services/env.api";
@@ -19,9 +20,6 @@ function Component() {
   const loaderData = Route.useLoaderData();
 
   const [opened, { toggle }] = useDisclosure();
-
-  const homeMatch = useMatch({ from: "/app/home", shouldThrow: false });
-  const providersMatch = useMatch({ from: "/app/providers", shouldThrow: false });
 
   const logout = useMutation({
     mutationFn: async () => {
@@ -72,14 +70,19 @@ function Component() {
 
       <AppShell.Navbar p="md">
         <NavLink
-          label="Dashboard"
+          label="Home"
           to="/app/home"
-          active={!!homeMatch}
+          leftSection={<IconHome size={16} stroke={1.5} />}
         />
         <NavLink
           label="Providers"
           to="/app/providers"
-          active={!!providersMatch}
+          leftSection={<IconMist size={16} stroke={1.5} />}
+        />
+        <NavLink
+          label="Settings"
+          to="/app/settings"
+          leftSection={<IconSettings size={16} stroke={1.5} />}
         />
       </AppShell.Navbar>
 

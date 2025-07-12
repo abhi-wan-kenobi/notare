@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppProvidersRouteImport } from './routes/app.providers'
 import { Route as AppHomeRouteImport } from './routes/app.home'
 import { ServerRoute as ChatCompletionServerRouteImport } from './routes/chat.completion'
@@ -40,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
 const AppProvidersRoute = AppProvidersRouteImport.update({
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/app/home': typeof AppHomeRoute
   '/app/providers': typeof AppProvidersRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/app/home': typeof AppHomeRoute
   '/app/providers': typeof AppProvidersRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -85,13 +93,21 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/app/home': typeof AppHomeRoute
   '/app/providers': typeof AppProvidersRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/login' | '/app/home' | '/app/providers' | '/app/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/login'
+    | '/app/home'
+    | '/app/providers'
+    | '/app/settings'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/app/home' | '/app/providers' | '/app'
+  to: '/' | '/login' | '/app/home' | '/app/providers' | '/app/settings' | '/app'
   id:
     | '__root__'
     | '/'
@@ -99,6 +115,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/app/home'
     | '/app/providers'
+    | '/app/settings'
     | '/app/'
   fileRoutesById: FileRoutesById
 }
@@ -163,6 +180,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/providers': {
       id: '/app/providers'
       path: '/providers'
@@ -201,12 +225,14 @@ declare module '@tanstack/react-start/server' {
 interface AppRouteChildren {
   AppHomeRoute: typeof AppHomeRoute
   AppProvidersRoute: typeof AppProvidersRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppHomeRoute: AppHomeRoute,
   AppProvidersRoute: AppProvidersRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
