@@ -18,6 +18,7 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppProvidersRouteImport } from './routes/app.providers'
 import { Route as AppHomeRouteImport } from './routes/app.home'
+import { ServerRoute as HealthServerRouteImport } from './routes/health'
 import { ServerRoute as ChatCompletionServerRouteImport } from './routes/chat.completion'
 import { ServerRoute as ApiAuthSplatServerRouteImport } from './routes/api.auth.$'
 
@@ -57,6 +58,11 @@ const AppHomeRoute = AppHomeRouteImport.update({
   id: '/home',
   path: '/home',
   getParentRoute: () => AppRoute,
+} as any)
+const HealthServerRoute = HealthServerRouteImport.update({
+  id: '/health',
+  path: '/health',
+  getParentRoute: () => rootServerRouteImport,
 } as any)
 const ChatCompletionServerRoute = ChatCompletionServerRouteImport.update({
   id: '/chat/completion',
@@ -125,27 +131,31 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
 }
 export interface FileServerRoutesByFullPath {
+  '/health': typeof HealthServerRoute
   '/chat/completion': typeof ChatCompletionServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
 }
 export interface FileServerRoutesByTo {
+  '/health': typeof HealthServerRoute
   '/chat/completion': typeof ChatCompletionServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
 }
 export interface FileServerRoutesById {
   __root__: typeof rootServerRouteImport
+  '/health': typeof HealthServerRoute
   '/chat/completion': typeof ChatCompletionServerRoute
   '/api/auth/$': typeof ApiAuthSplatServerRoute
 }
 export interface FileServerRouteTypes {
   fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/chat/completion' | '/api/auth/$'
+  fullPaths: '/health' | '/chat/completion' | '/api/auth/$'
   fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/chat/completion' | '/api/auth/$'
-  id: '__root__' | '/chat/completion' | '/api/auth/$'
+  to: '/health' | '/chat/completion' | '/api/auth/$'
+  id: '__root__' | '/health' | '/chat/completion' | '/api/auth/$'
   fileServerRoutesById: FileServerRoutesById
 }
 export interface RootServerRouteChildren {
+  HealthServerRoute: typeof HealthServerRoute
   ChatCompletionServerRoute: typeof ChatCompletionServerRoute
   ApiAuthSplatServerRoute: typeof ApiAuthSplatServerRoute
 }
@@ -205,6 +215,13 @@ declare module '@tanstack/react-router' {
 }
 declare module '@tanstack/react-start/server' {
   interface ServerFileRoutesByPath {
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
     '/chat/completion': {
       id: '/chat/completion'
       path: '/chat/completion'
@@ -247,6 +264,7 @@ export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 const rootServerRouteChildren: RootServerRouteChildren = {
+  HealthServerRoute: HealthServerRoute,
   ChatCompletionServerRoute: ChatCompletionServerRoute,
   ApiAuthSplatServerRoute: ApiAuthSplatServerRoute,
 }
