@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   Center,
-  Container,
   Group,
   LoadingOverlay,
   Modal,
@@ -32,20 +31,18 @@ export const Route = createFileRoute("/app/providers")({
 
 function Component() {
   return (
-    <Container size="xl" py="md">
-      <Stack gap="lg">
-        <div>
-          <Title order={2} mb="xs">
-            Providers
-          </Title>
-          <Text size="sm" c="dimmed">
-            Manage your AI providers and their configurations
-          </Text>
-        </div>
+    <Stack gap="xl">
+      <div>
+        <Title order={1}>
+          Providers
+        </Title>
+        <Text c="dimmed" size="sm">
+          Manage your AI providers and their configurations
+        </Text>
+      </div>
 
-        <ProvidersSection />
-      </Stack>
-    </Container>
+      <ProvidersSection />
+    </Stack>
   );
 }
 
