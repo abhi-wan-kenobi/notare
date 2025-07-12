@@ -3,6 +3,7 @@ on:
     inputs:
       tag:
         required: false
+        description: "Tag to use for the release"
         default: "latest"
   release:
     types:
@@ -11,7 +12,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: hyprnote/admin
+  IMAGE_NAME: fastrepl/hyprnote/admin
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
