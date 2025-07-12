@@ -26,7 +26,6 @@ WORKDIR /app
 RUN mkdir -p /app/data
 
 COPY --from=build /app/apps/admin/.output ./.output
-COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/node_modules ./.output/server/node_modules
 COPY --from=prod-deps /app/apps/admin/package.json ./package.json
 

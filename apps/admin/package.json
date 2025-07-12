@@ -43,6 +43,12 @@
     "tailwind-preset-mantine": "^2.1.0",
     "zod": "^3.25.76"
   },
+  "optionalDependencies": {
+    "@libsql/darwin-arm64": "^0.3.19",
+    "@libsql/darwin-x64": "^0.3.19",
+    "@libsql/linux-arm64-gnu": "^0.3.19",
+    "@libsql/linux-x64-gnu": "^0.3.19"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.11",
     "@types/node": "^22.16.3",

@@ -1,3 +1,4 @@
+# https://docs.github.com/en/actions/publishing-packages/publishing-docker-images#publishing-images-to-github-packages
 on:
   workflow_dispatch:
     inputs:
@@ -8,7 +9,6 @@ on:
   release:
     types:
       - published
-      - prereleased
 
 env:
   REGISTRY: ghcr.io
@@ -33,12 +33,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - id: meta
+        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+
       - uses: docker/build-push-action@v4
         with:
           context: .
           file: apps/admin/Dockerfile
           platforms: linux/amd64
           tags: localbuild/${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag || 'latest' }}
+          labels: ${{ steps.meta.outputs.labels }}
           push: false
           load: true
 
@@ -54,4 +60,5 @@ jobs:
           file: apps/admin/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag || 'latest' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
