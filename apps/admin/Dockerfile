@@ -19,33 +19,23 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 RUN pnpm fetch
 COPY . .
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter="@hypr/admin" run auth:migrate
 RUN pnpm --filter="@hypr/admin" run build
-
-FROM base AS prod-deps
-WORKDIR /app
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-RUN pnpm fetch --prod
-COPY . .
-RUN pnpm install --frozen-lockfile --prod
-RUN pnpm rebuild
 
 FROM base AS runtime
 WORKDIR /app
 
 RUN mkdir -p /app/data
 
-RUN corepack enable && pnpm add -g drizzle-kit
-
 COPY --from=build /app/apps/admin/.output ./.output
-COPY --from=prod-deps /app/node_modules ./.output/server/node_modules
-COPY --from=prod-deps /app/apps/admin/package.json ./package.json
 
 RUN cd ./.output/server && pnpm rebuild
 
 COPY --from=build /app/apps/admin/src/lib/db/migrations ./src/lib/db/migrations
 COPY --from=build /app/apps/admin/drizzle.config.ts ./drizzle.config.ts
 COPY --from=build /app/apps/admin/src/lib/db/schema ./src/lib/db/schema
+
+RUN mkdir -p /app/scripts
+COPY apps/admin/scripts/package.json /app/scripts/package.json
 
 ENV DATABASE_URL="file:/app/data/db.sqlite"
 EXPOSE 8000
