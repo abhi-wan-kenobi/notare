@@ -5,6 +5,9 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
     ca-certificates \
+    python3 \
+    make \
+    g++ \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -32,9 +35,13 @@ WORKDIR /app
 
 RUN mkdir -p /app/data
 
+RUN corepack enable && pnpm add -g drizzle-kit
+
 COPY --from=build /app/apps/admin/.output ./.output
 COPY --from=prod-deps /app/node_modules ./.output/server/node_modules
 COPY --from=prod-deps /app/apps/admin/package.json ./package.json
+
+RUN cd ./.output/server && pnpm rebuild
 
 COPY --from=build /app/apps/admin/src/lib/db/migrations ./src/lib/db/migrations
 COPY --from=build /app/apps/admin/drizzle.config.ts ./drizzle.config.ts
