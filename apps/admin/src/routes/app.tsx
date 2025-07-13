@@ -55,7 +55,7 @@ function Component() {
               size="sm"
             />
             <Text size="xl" fw={700}>Hyprnote Admin</Text>
-            <Text size="md" c="dimmed" fw={500}>{activeOrganization?.slug}</Text>
+            <Text size="md" c="dimmed" fw={500}>{activeOrganization?.slug ?? "Unknown"}</Text>
           </Group>
           <Button variant="light" size="sm" onClick={() => logout.mutate()}>
             Logout

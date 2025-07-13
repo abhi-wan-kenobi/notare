@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
@@ -20,6 +20,19 @@ export const listLlmProvider = createServerFn()
     const rows = await db.select().from(llmProvider).where(
       eq(llmProvider.organizationId, activeOrganizationId),
     );
+    return rows;
+  });
+
+export const deleteLlmProvider = createServerFn()
+  .validator(z.object({ id: z.string() }))
+  .middleware([userRequiredMiddlewareForFunction, activeOrgRequiredMiddlewareForFunction])
+  .handler(async ({ data, context: { activeOrganizationId } }) => {
+    const rows = await db.delete(llmProvider).where(
+      and(
+        eq(llmProvider.organizationId, activeOrganizationId),
+        eq(llmProvider.id, data.id),
+      ),
+    ).returning();
     return rows;
   });
 

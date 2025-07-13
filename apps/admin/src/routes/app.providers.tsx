@@ -8,22 +8,24 @@ import {
   LoadingOverlay,
   Modal,
   Paper,
+  PasswordInput,
   Stack,
   Table,
   Text,
   TextInput,
   Title,
   Tooltip,
+  Transition,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
-import { IconPlus, IconRobot, IconTrash } from "@tabler/icons-react";
+import { IconCheck, IconPlus, IconRobot, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodResolver } from "mantine-form-zod-resolver";
 import { z } from "zod";
 
-import { insertLlmProvider, listLlmProvider } from "@/services/provider.api";
+import { deleteLlmProvider, insertLlmProvider, listLlmProvider } from "@/services/provider.api";
 
 export const Route = createFileRoute("/app/providers")({
   component: Component,
@@ -52,23 +54,35 @@ function ProvidersSection() {
       <Group justify="space-between" mb="md">
         <Group gap="xs">
           <IconRobot size={20} />
-          <Title order={3}>LLM Providers</Title>
+          <Title order={4}>LLM Providers</Title>
         </Group>
         <NewProviderModal />
       </Group>
-
       <ProvidersTable />
     </Paper>
   );
 }
 
 function ProvidersTable() {
+  const queryClient = useQueryClient();
+
   const { data: providers, isLoading } = useQuery({
     queryKey: ["providers"],
     queryFn: async () => {
       const rows = await listLlmProvider();
       return rows;
     },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const rows = await deleteLlmProvider({ data: { id } });
+      return rows;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["providers"] });
+    },
+    onError: console.error,
   });
 
   return (
@@ -88,7 +102,7 @@ function ProvidersTable() {
                   Get started by adding your first LLM provider to enable AI features
                 </Text>
               </Stack>
-              <NewProviderModal variant="filled" />
+              <NewProviderModal />
             </Stack>
           </Center>
         )
@@ -134,9 +148,7 @@ function ProvidersTable() {
                           variant="subtle"
                           color="red"
                           size="sm"
-                          onClick={() => {
-                            console.log("Delete provider:", provider.id);
-                          }}
+                          onClick={() => deleteMutation.mutate(provider.id)}
                         >
                           <IconTrash size={16} />
                         </ActionIcon>
@@ -152,15 +164,15 @@ function ProvidersTable() {
   );
 }
 
-function NewProviderModal({ variant = "default" }: { variant?: string }) {
+function NewProviderModal() {
   const [opened, { open, close }] = useDisclosure(false);
   const queryClient = useQueryClient();
 
   const schema = z.object({
     name: z.string().min(1, "Name is required").max(20, "Name too long"),
     model: z.string().min(1, "Model is required").max(100, "Model name too long"),
-    baseUrl: z.string().min(1, "Base URL is required").max(255, "URL too long"),
-    apiKey: z.string().min(1, "API Key is required").max(500, "API Key too long"),
+    baseUrl: z.string().url("Invalid URL"),
+    apiKey: z.string().min(1, "API Key is required"),
   });
 
   type FormData = z.infer<typeof schema>;
@@ -168,23 +180,27 @@ function NewProviderModal({ variant = "default" }: { variant?: string }) {
   const form = useForm<FormData>({
     mode: "uncontrolled",
     validate: zodResolver(schema),
-    initialValues: {
-      name: "",
-      model: "",
-      baseUrl: "",
-      apiKey: "",
-    },
   });
 
   const insertMutation = useMutation({
-    mutationFn: async (data: FormData) => {
-      const rows = await insertLlmProvider({ data });
+    mutationFn: async (values: FormData) => {
+      // Simulate validation (replace with actual validation logic)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const rows = await insertLlmProvider({ data: values });
       return rows;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["providers"] });
-      form.reset();
-      close();
+    onMutate: () => {
+      return { startedAt: Date.now() };
+    },
+    onSuccess: (data, variables, { startedAt }) => {
+      const duration = Math.min(2000, Math.max(1000, 3000 - (Date.now() - startedAt)));
+
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["providers"] });
+        form.reset();
+        close();
+      }, duration);
     },
     onError: (error) => {
       console.error("Failed to add provider:", error);
@@ -208,26 +224,29 @@ function NewProviderModal({ variant = "default" }: { variant?: string }) {
           <Stack gap="md">
             <TextInput
               label="Provider Name"
-              placeholder="e.g., OpenAI GPT-4"
+              placeholder="e.g., bedrock_openai"
+              description="Unique identifier for this provider (e.g., 'bedrock_openai', 'openai_gpt4')"
               required
               {...form.getInputProps("name")}
             />
             <TextInput
               label="Model"
               placeholder="e.g., gpt-4-turbo"
+              description="The specific model to use (e.g., 'gpt-4-turbo', 'claude-3-opus')"
               required
               {...form.getInputProps("model")}
             />
             <TextInput
               label="Base URL"
               placeholder="e.g., https://api.openai.com/v1"
+              description="The API endpoint for the provider (e.g., 'https://api.openai.com/v1' for OpenAI)"
               required
               {...form.getInputProps("baseUrl")}
             />
-            <TextInput
+            <PasswordInput
               label="API Key"
               placeholder="Your API key"
-              type="password"
+              description="The authentication key for the provider's API"
               required
               {...form.getInputProps("apiKey")}
             />
@@ -239,9 +258,18 @@ function NewProviderModal({ variant = "default" }: { variant?: string }) {
               <Button
                 type="submit"
                 loading={insertMutation.isPending}
-                leftSection={<IconPlus size={16} />}
+                disabled={insertMutation.isPending || insertMutation.isSuccess}
+                leftSection={
+                  <Transition mounted={insertMutation.isSuccess} transition="scale" duration={400}>
+                    {(styles) => (
+                      <Box style={styles}>
+                        <IconCheck size={16} />
+                      </Box>
+                    )}
+                  </Transition>
+                }
               >
-                Add Provider
+                {insertMutation.isSuccess ? "Success!" : insertMutation.isPending ? "Validating..." : "Add Provider"}
               </Button>
             </Group>
           </Stack>
@@ -249,11 +277,11 @@ function NewProviderModal({ variant = "default" }: { variant?: string }) {
       </Modal>
 
       <Button
-        variant={variant as any}
-        leftSection={<IconPlus size={16} />}
+        variant="default"
+        disabled={insertMutation.isPending}
         onClick={open}
       >
-        Add Provider
+        <IconPlus size={16} />
       </Button>
     </>
   );
