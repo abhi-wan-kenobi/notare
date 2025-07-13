@@ -8,9 +8,8 @@ pnpm install --prod
 cd /app
 
 echo "Running database migrations..."
-cd /app/scripts
-npx drizzle-kit migrate --config=../drizzle.config.ts
 cd /app
+/app/scripts/node_modules/.bin/drizzle-kit migrate
 
 echo "Starting server..."
 exec node .output/server/index.mjs

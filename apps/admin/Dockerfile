@@ -30,9 +30,9 @@ COPY --from=build /app/apps/admin/.output ./.output
 
 RUN cd ./.output/server && pnpm rebuild
 
-COPY --from=build /app/apps/admin/src/lib/db/migrations ./src/lib/db/migrations
 COPY --from=build /app/apps/admin/drizzle.config.ts ./drizzle.config.ts
-COPY --from=build /app/apps/admin/src/lib/db/schema ./src/lib/db/schema
+COPY --from=build /app/apps/admin/src/lib/db/migrations/ ./src/lib/db/migrations/
+COPY --from=build /app/apps/admin/src/lib/db/schema/ ./src/lib/db/schema/
 
 RUN mkdir -p /app/scripts
 COPY apps/admin/scripts/package.json /app/scripts/package.json
