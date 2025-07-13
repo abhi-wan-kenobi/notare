@@ -5,6 +5,8 @@ echo "Installing migration dependencies..."
 cd /app/scripts
 pnpm config set store-dir ~/.pnpm-store
 pnpm install --prod
+echo "Rebuilding native dependencies for target architecture..."
+pnpm rebuild
 cd /app
 
 echo "Running database migrations..."
