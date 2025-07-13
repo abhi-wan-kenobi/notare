@@ -11,9 +11,9 @@ on:
           - "stable"
           - "nightly"
       runner:
-        description: "Runner to use. Defaults to 'warp', can use 'github' if 'warp' cause trouble"
+        description: "Type of runner to use."
         required: false
-        default: "warp"
+        default: "github"
         type: choice
         options:
           - "warp"
