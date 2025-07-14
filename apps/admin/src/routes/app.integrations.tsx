@@ -88,17 +88,17 @@ function Component() {
           </Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="personal" className="mt-6">
-          <PersonalSettings />
+          <SettingsSection type="personal" />
         </Tabs.Panel>
         <Tabs.Panel value="organization" className="mt-6">
-          <OrganizationSettings />
+          <SettingsSection type="organization" />
         </Tabs.Panel>
       </Tabs>
     </Stack>
   );
 }
 
-function PersonalSettings() {
+function SettingsSection({ type }: { type: "personal" | "organization" }) {
   return (
     <Paper withBorder p="lg" radius="md">
       <Group justify="space-between" mb="md">
@@ -106,29 +106,14 @@ function PersonalSettings() {
           <IconRobot size={20} />
           <Title order={4}>Integrations</Title>
         </Group>
-        <NewProviderModal type="personal" />
+        <NewProviderModal type={type} />
       </Group>
-      <ProvidersTable />
+      <ProvidersTable type={type} />
     </Paper>
   );
 }
 
-function OrganizationSettings() {
-  return (
-    <Paper withBorder p="lg" radius="md">
-      <Group justify="space-between" mb="md">
-        <Group gap="xs">
-          <IconRobot size={20} />
-          <Title order={4}>Integrations</Title>
-        </Group>
-        <NewProviderModal type="organization" />
-      </Group>
-      <ProvidersTable />
-    </Paper>
-  );
-}
-
-function ProvidersTable() {
+function ProvidersTable({ type }: { type: "personal" | "organization" }) {
   const queryClient = useQueryClient();
 
   const { data: providers, isLoading } = useQuery({

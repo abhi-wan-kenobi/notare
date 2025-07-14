@@ -1,4 +1,3 @@
-import { getUserRole } from "@/services/auth.api";
 import {
   ActionIcon,
   Alert,
@@ -27,8 +26,13 @@ import {
   IconSettings,
   IconUser,
 } from "@tabler/icons-react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { ReactNode } from "react";
 import { z } from "zod";
+
+import { getUserRole } from "@/services/auth.api";
+import { getOrganizationConfig } from "@/services/config.api";
 
 export const Route = createFileRoute("/app/settings")({
   validateSearch: z.object({
@@ -95,7 +99,7 @@ function Component() {
           </Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="personal" className="mt-6">
-          <PersonalSettings email={email} baseUrl="http://localhost:3000" apiKey="123" />
+          <PersonalSettings email={email} />
         </Tabs.Panel>
         <Tabs.Panel value="organization" className="mt-6">
           <OrganizationSettings />
@@ -105,81 +109,82 @@ function Component() {
   );
 }
 
-function PersonalSettings({ email, baseUrl, apiKey }: { email: string | undefined; baseUrl: string; apiKey: string }) {
+function PersonalSettings({ email }: { email: string | undefined }) {
+  const baseUrl = useQuery({
+    queryKey: ["organizationConfig", "baseUrl"],
+    queryFn: async () => {
+      const config = await getOrganizationConfig();
+      return config?.baseUrl;
+    },
+  });
+
+  const apiKey = "";
+
   return (
     <Stack gap="lg">
-      <Card withBorder>
-        <Stack gap="lg">
-          <Title order={3} className="flex items-center gap-2 mb-4">
-            <IconSettings size={20} />
-            General
-          </Title>
-          <Stack gap="md">
-            <TextInput disabled label="Email Address" value={email} />
-          </Stack>
+      <SettingsSection
+        icon={<IconSettings size={20} />}
+        title="General"
+      >
+        <Stack gap="md">
+          <TextInput disabled label="Email Address" value={email} />
         </Stack>
-      </Card>
+      </SettingsSection>
 
-      <Card withBorder>
-        <Stack gap="lg">
-          <Group gap="xs" align="center">
-            <Title order={3} className="flex items-center gap-2 mb-4">
-              <IconDeviceIpadHorizontalPin size={20} />
-              Client Connection
-            </Title>
-            <Tooltip label="How to connect your apps">
-              <ClientConnectionHelperModal baseUrl={baseUrl} apiKey={apiKey} />
-            </Tooltip>
-          </Group>
+      <SettingsSection
+        icon={<IconDeviceIpadHorizontalPin size={20} />}
+        title="Client Connection"
+        helper={<ClientConnectionHelperModal baseUrl={baseUrl.data ?? ""} apiKey={apiKey} />}
+        helperTooltip="How to connect your apps"
+      >
+        <TextInput
+          disabled
+          label="Base URL"
+          placeholder="Admin should configure this in Organization Settings"
+          value={baseUrl.data ?? ""}
+          flex={1}
+        />
 
+        <Group gap="md" align="end">
           <TextInput
             disabled
-            label="Base URL"
-            value={baseUrl}
+            label="API Key"
+            value={apiKey}
             flex={1}
           />
 
-          <Group gap="md" align="end">
-            <TextInput
-              disabled
-              label="API Key"
-              value={apiKey}
-              flex={1}
-            />
+          <Group gap="xs">
+            <CopyButton value={apiKey}>
+              {({ copied, copy }) => (
+                <Tooltip label={copied ? "Copied!" : "Copy API key"}>
+                  <Button
+                    variant={copied ? "filled" : "light"}
+                    color="blue"
+                    onClick={copy}
+                    size="sm"
+                    radius="md"
+                    style={{ alignSelf: "end" }}
+                  >
+                    {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                  </Button>
+                </Tooltip>
+              )}
+            </CopyButton>
 
-            <Group gap="xs">
-              <CopyButton value={apiKey}>
-                {({ copied, copy }) => (
-                  <Tooltip label={copied ? "Copied!" : "Copy API key"}>
-                    <Button
-                      variant={copied ? "filled" : "light"}
-                      color="blue"
-                      onClick={copy}
-                      size="sm"
-                      radius="md"
-                      style={{ alignSelf: "end" }}
-                    >
-                      {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-                    </Button>
-                  </Tooltip>
-                )}
-              </CopyButton>
-
-              <Tooltip label="Regenerate API key">
-                <Button
-                  variant="light"
-                  color="gray"
-                  size="sm"
-                  radius="md"
-                  style={{ alignSelf: "end" }}
-                >
-                  <IconRefresh size={16} />
-                </Button>
-              </Tooltip>
-            </Group>
+            <Tooltip label="Regenerate API key">
+              <Button
+                variant="light"
+                color="gray"
+                size="sm"
+                radius="md"
+                style={{ alignSelf: "end" }}
+              >
+                <IconRefresh size={16} />
+              </Button>
+            </Tooltip>
           </Group>
-        </Stack>
-      </Card>
+        </Group>
+      </SettingsSection>
     </Stack>
   );
 }
@@ -290,31 +295,27 @@ function ClientConnectionHelperModal({ baseUrl, apiKey }: { baseUrl: string; api
 function OrganizationSettings() {
   return (
     <Stack gap="lg">
-      <Card withBorder>
-        <Stack gap="lg">
-          <Title order={3} className="flex items-center gap-2 mb-4">
-            <IconSettings size={20} />
-            General
-          </Title>
-          <Stack gap="md">
-            <TextInput
-              label="Organization Slug"
-              placeholder="e.g. hyprnote"
-            />
+      <SettingsSection
+        icon={<IconSettings size={20} />}
+        title="General"
+      >
+        <Stack gap="md">
+          <TextInput
+            label="Organization Slug"
+            placeholder="e.g. hyprnote"
+          />
 
-            <TextInput
-              label="Base URL"
-              placeholder="e.g. https://hyprnote.yourdomain.com"
-            />
-          </Stack>
+          <TextInput
+            label="Base URL"
+            placeholder="e.g. https://hyprnote.yourdomain.com"
+          />
         </Stack>
-      </Card>
+      </SettingsSection>
 
-      <Card withBorder>
-        <Title order={3} className="flex items-center gap-2 mb-4">
-          <IconKey size={20} />
-          License
-        </Title>
+      <SettingsSection
+        icon={<IconKey size={20} />}
+        title="License"
+      >
         <Stack gap="md">
           <TextInput
             label="Hyprnote Admin Server License"
@@ -324,12 +325,53 @@ function OrganizationSettings() {
             Update License
           </Button>
         </Stack>
-      </Card>
+      </SettingsSection>
     </Stack>
   );
 }
 
-// TODO: should use betterauth builtin
-function generateToken() {
-  return `hyprnote_${Math.random().toString(36).substring(2, 15)}_${Math.random().toString(36).substring(2, 15)}`;
+function SettingsSection({
+  icon,
+  title,
+  children,
+  helper,
+  helperTooltip,
+  gap = "lg",
+}: {
+  icon: ReactNode;
+  title: string;
+  children: ReactNode;
+  helper?: ReactNode;
+  helperTooltip?: string;
+  gap?: "xs" | "sm" | "md" | "lg" | "xl";
+}) {
+  return (
+    <Card withBorder>
+      <Stack gap={gap}>
+        {helper
+          ? (
+            <Group gap="xs" align="center">
+              <Title order={3} className="flex items-center gap-2 mb-4">
+                {icon}
+                {title}
+              </Title>
+              {helperTooltip
+                ? (
+                  <Tooltip label={helperTooltip}>
+                    {helper}
+                  </Tooltip>
+                )
+                : helper}
+            </Group>
+          )
+          : (
+            <Title order={3} className="flex items-center gap-2 mb-4">
+              {icon}
+              {title}
+            </Title>
+          )}
+        {children}
+      </Stack>
+    </Card>
+  );
 }
