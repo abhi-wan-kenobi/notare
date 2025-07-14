@@ -135,7 +135,6 @@ function PersonalSettings({ email }: { email: string | undefined }) {
         icon={<IconDeviceIpadHorizontalPin size={20} />}
         title="Client Connection"
         helper={<ClientConnectionHelperModal baseUrl={baseUrl.data ?? ""} apiKey={apiKey} />}
-        helperTooltip="How to connect your apps"
       >
         <TextInput
           disabled
@@ -302,7 +301,7 @@ function OrganizationSettings() {
         <Stack gap="md">
           <TextInput
             label="Organization Slug"
-            placeholder="e.g. hyprnote"
+            disabled
           />
 
           <TextInput
@@ -315,18 +314,59 @@ function OrganizationSettings() {
       <SettingsSection
         icon={<IconKey size={20} />}
         title="License"
+        helper={<LicenseHelperModal />}
       >
         <Stack gap="md">
           <TextInput
             label="Hyprnote Admin Server License"
-            placeholder="Enter your license key"
+            placeholder="Not available at the moment"
+            disabled
           />
-          <Button variant="light" className="self-start">
-            Update License
-          </Button>
         </Stack>
       </SettingsSection>
     </Stack>
+  );
+}
+
+function LicenseHelperModal() {
+  const [opened, { open, close }] = useDisclosure(false);
+
+  return (
+    <>
+      <ActionIcon
+        variant="subtle"
+        color="blue"
+        size="sm"
+        onClick={open}
+      >
+        <IconHelp size={16} />
+      </ActionIcon>
+      <Modal
+        centered
+        opened={opened}
+        onClose={close}
+        title="License Helper"
+        size="md"
+      >
+        <Stack gap="lg">
+          <Text size="sm">
+            Some features of Hyprnote Admin Server are only available with an <b>enterprise license</b>.
+          </Text>
+
+          <Text size="sm">
+            Nothing is gated <b>at the moment</b> since we're still in beta.
+          </Text>
+
+          <Button
+            variant="light"
+            size="sm"
+            onClick={() => window.open("https://docs.hyprnote.com/hyprnote-admin-server/overview", "_blank")}
+          >
+            Read Documentation
+          </Button>
+        </Stack>
+      </Modal>
+    </>
   );
 }
 
@@ -335,14 +375,12 @@ function SettingsSection({
   title,
   children,
   helper,
-  helperTooltip,
   gap = "lg",
 }: {
   icon: ReactNode;
   title: string;
   children: ReactNode;
   helper?: ReactNode;
-  helperTooltip?: string;
   gap?: "xs" | "sm" | "md" | "lg" | "xl";
 }) {
   return (
@@ -355,13 +393,7 @@ function SettingsSection({
                 {icon}
                 {title}
               </Title>
-              {helperTooltip
-                ? (
-                  <Tooltip label={helperTooltip}>
-                    {helper}
-                  </Tooltip>
-                )
-                : helper}
+              {helper}
             </Group>
           )
           : (

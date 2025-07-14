@@ -14,11 +14,7 @@ export * from "./client";
 export const auth = betterAuth({
   baseURL: "http://localhost:3000",
   basePath: "/api/auth",
-  secret: "TODO",
-  database: drizzleAdapter(db, {
-    provider: "sqlite",
-    schema,
-  }),
+  database: drizzleAdapter(db, { provider: "sqlite", schema }),
   plugins: [
     apiKey({
       customAPIKeyGetter(ctx) {

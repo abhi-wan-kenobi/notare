@@ -79,7 +79,7 @@ function Component() {
 
 function PersonalConfigurationAlert() {
   return (
-    <Alert title="Hyprnote client not connected" color="blue">
+    <Alert title="Hyprnote client not connected" color="red">
       Go to{" "}
       <Link
         className="underline"
@@ -95,7 +95,7 @@ function PersonalConfigurationAlert() {
 
 function OrganizationConfigurationAlert() {
   return (
-    <Alert title="Base URL not configured" color="blue">
+    <Alert title="Base URL not configured" color="red">
       Go to{" "}
       <Link
         className="underline"

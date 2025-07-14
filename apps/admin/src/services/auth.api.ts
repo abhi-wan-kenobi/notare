@@ -20,6 +20,30 @@ export const getUserSession = createServerFn({ method: "GET" }).handler(
   },
 );
 
+export const getActiveOrganization = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const request = getWebRequest();
+
+    if (!request?.headers) {
+      return null;
+    }
+
+    const userSession = await auth.api.getSession({ headers: request.headers });
+    if (!userSession || !userSession.session.activeOrganizationId) {
+      return null;
+    }
+
+    const org = await auth.api.getFullOrganization({
+      headers: request.headers,
+      query: {
+        organizationId: userSession.session.activeOrganizationId,
+      },
+    });
+
+    return org;
+  },
+);
+
 export const getUserRole = createServerFn({ method: "GET" }).handler(
   async () => {
     const request = getWebRequest();
