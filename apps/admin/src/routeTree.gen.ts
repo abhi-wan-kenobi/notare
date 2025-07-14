@@ -16,9 +16,8 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
-import { Route as AppProvidersRouteImport } from './routes/app.providers'
+import { Route as AppIntegrationsRouteImport } from './routes/app.integrations'
 import { Route as AppHomeRouteImport } from './routes/app.home'
-import { Route as AppAdminRouteImport } from './routes/app.admin'
 import { ServerRoute as HealthServerRouteImport } from './routes/health'
 import { ServerRoute as V1ModelsServerRouteImport } from './routes/v1/models'
 import { ServerRoute as V1ChatCompletionServerRouteImport } from './routes/v1/chat.completion'
@@ -51,19 +50,14 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
-const AppProvidersRoute = AppProvidersRouteImport.update({
-  id: '/providers',
-  path: '/providers',
+const AppIntegrationsRoute = AppIntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
   getParentRoute: () => AppRoute,
 } as any)
 const AppHomeRoute = AppHomeRouteImport.update({
   id: '/home',
   path: '/home',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppAdminRoute = AppAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
 const HealthServerRoute = HealthServerRouteImport.update({
@@ -91,18 +85,16 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
-  '/app/admin': typeof AppAdminRoute
   '/app/home': typeof AppHomeRoute
-  '/app/providers': typeof AppProvidersRoute
+  '/app/integrations': typeof AppIntegrationsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/app/admin': typeof AppAdminRoute
   '/app/home': typeof AppHomeRoute
-  '/app/providers': typeof AppProvidersRoute
+  '/app/integrations': typeof AppIntegrationsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app': typeof AppIndexRoute
 }
@@ -111,9 +103,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
-  '/app/admin': typeof AppAdminRoute
   '/app/home': typeof AppHomeRoute
-  '/app/providers': typeof AppProvidersRoute
+  '/app/integrations': typeof AppIntegrationsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/': typeof AppIndexRoute
 }
@@ -123,18 +114,16 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
-    | '/app/admin'
     | '/app/home'
-    | '/app/providers'
+    | '/app/integrations'
     | '/app/settings'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
-    | '/app/admin'
     | '/app/home'
-    | '/app/providers'
+    | '/app/integrations'
     | '/app/settings'
     | '/app'
   id:
@@ -142,9 +131,8 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
-    | '/app/admin'
     | '/app/home'
-    | '/app/providers'
+    | '/app/integrations'
     | '/app/settings'
     | '/app/'
   fileRoutesById: FileRoutesById
@@ -230,11 +218,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/providers': {
-      id: '/app/providers'
-      path: '/providers'
-      fullPath: '/app/providers'
-      preLoaderRoute: typeof AppProvidersRouteImport
+    '/app/integrations': {
+      id: '/app/integrations'
+      path: '/integrations'
+      fullPath: '/app/integrations'
+      preLoaderRoute: typeof AppIntegrationsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/home': {
@@ -242,13 +230,6 @@ declare module '@tanstack/react-router' {
       path: '/home'
       fullPath: '/app/home'
       preLoaderRoute: typeof AppHomeRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/admin': {
-      id: '/app/admin'
-      path: '/admin'
-      fullPath: '/app/admin'
-      preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
   }
@@ -287,17 +268,15 @@ declare module '@tanstack/react-start/server' {
 }
 
 interface AppRouteChildren {
-  AppAdminRoute: typeof AppAdminRoute
   AppHomeRoute: typeof AppHomeRoute
-  AppProvidersRoute: typeof AppProvidersRoute
+  AppIntegrationsRoute: typeof AppIntegrationsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAdminRoute: AppAdminRoute,
   AppHomeRoute: AppHomeRoute,
-  AppProvidersRoute: AppProvidersRoute,
+  AppIntegrationsRoute: AppIntegrationsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
 }

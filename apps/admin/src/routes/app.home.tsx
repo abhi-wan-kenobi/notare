@@ -31,18 +31,10 @@ function Component() {
         </Text>
       </div>
 
-      {!apiKeys?.length && (
-        <Alert title="Hyprnote client not connected" color="blue">
-          Go to{" "}
-          <Link
-            className="underline"
-            to="/app/settings"
-          >
-            Settings
-          </Link>{" "}
-          to connect.
-        </Alert>
-      )}
+      <Stack gap="md">
+        {!apiKeys?.length && <PersonalConfigurationAlert />}
+        {!apiKeys?.length && <OrganizationConfigurationAlert />}
+      </Stack>
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 2 }} spacing="md">
         {dashboardCards.map((card, index) => (
@@ -82,6 +74,38 @@ function Component() {
         ))}
       </SimpleGrid>
     </Stack>
+  );
+}
+
+function PersonalConfigurationAlert() {
+  return (
+    <Alert title="Hyprnote client not connected" color="blue">
+      Go to{" "}
+      <Link
+        className="underline"
+        to="/app/settings"
+        search={{ tab: "personal" }}
+      >
+        Settings
+      </Link>{" "}
+      to connect.
+    </Alert>
+  );
+}
+
+function OrganizationConfigurationAlert() {
+  return (
+    <Alert title="Base URL not configured" color="blue">
+      Go to{" "}
+      <Link
+        className="underline"
+        to="/app/settings"
+        search={{ tab: "organization" }}
+      >
+        Settings
+      </Link>{" "}
+      to configure.
+    </Alert>
   );
 }
 

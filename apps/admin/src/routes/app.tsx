@@ -1,12 +1,11 @@
-import { NavLink } from "@/components/NavLink";
 import { AppShell, Burger, Button, Group, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconHome, IconLockAccess, IconMist, IconSettings } from "@tabler/icons-react";
+import { IconHome, IconMist, IconSettings } from "@tabler/icons-react";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
+import { NavLink } from "@/components/NavLink";
 import { authClient } from "@/lib/auth/client";
-import { getUserRole } from "@/services/auth.api";
 
 export const Route = createFileRoute("/app")({
   component: Component,
@@ -14,14 +13,10 @@ export const Route = createFileRoute("/app")({
     if (!userSession) {
       throw redirect({ to: "/login" });
     }
-
-    const role = await getUserRole();
-    return { role };
   },
 });
 
 function Component() {
-  const { role } = Route.useLoaderData();
   const { data: activeOrganization } = authClient.useActiveOrganization();
 
   const [opened, { toggle }] = useDisclosure();
@@ -80,17 +75,10 @@ function Component() {
           leftSection={<IconHome size={16} stroke={1.5} />}
         />
         <NavLink
-          label="Providers"
-          to="/app/providers"
+          label="Integrations"
+          to="/app/integrations"
           leftSection={<IconMist size={16} stroke={1.5} />}
         />
-        {role === "owner" && (
-          <NavLink
-            label="Admin"
-            to="/app/admin"
-            leftSection={<IconLockAccess size={16} stroke={1.5} />}
-          />
-        )}
         <NavLink
           label="Settings"
           to="/app/settings"

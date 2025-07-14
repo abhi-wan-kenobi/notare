@@ -11,6 +11,7 @@ import {
   PasswordInput,
   Stack,
   Table,
+  Tabs,
   Text,
   TextInput,
   Title,
@@ -19,44 +20,108 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
-import { IconCheck, IconPlus, IconRobot, IconTrash } from "@tabler/icons-react";
+import { IconBuilding, IconCheck, IconPlus, IconRobot, IconTrash, IconUser } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { zodResolver } from "mantine-form-zod-resolver";
 import { z } from "zod";
 
+import { getUserRole } from "@/services/auth.api";
 import { deleteLlmProvider, insertLlmProvider, listLlmProvider } from "@/services/provider.api";
 
-export const Route = createFileRoute("/app/providers")({
+export const Route = createFileRoute("/app/integrations")({
+  validateSearch: z.object({
+    tab: z.enum(["personal", "organization"]).default("personal"),
+  }),
+  loaderDeps: ({ search: { tab } }) => ({ tab }),
+  loader: async ({ deps: { tab } }) => {
+    const role = await getUserRole();
+    const isAdmin = role === "owner";
+
+    if (!isAdmin && tab === "organization") {
+      throw redirect({ to: "/app/settings", search: { tab: "personal" } });
+    }
+
+    return { tab, role, isAdmin };
+  },
   component: Component,
 });
 
 function Component() {
+  const { tab, isAdmin } = Route.useLoaderData();
+
+  const navigate = useNavigate();
+
+  const handleTabChange = (value: string | null) => {
+    if (value !== "personal" && value !== "organization") {
+      return;
+    }
+
+    navigate({
+      to: "/app/integrations",
+      search: { tab: value },
+    });
+  };
+
   return (
-    <Stack gap="xl">
+    <Stack gap="lg">
       <div>
         <Title order={1}>
-          Providers
+          Integrations
         </Title>
         <Text c="dimmed" size="sm">
           Manage your AI providers and their configurations
         </Text>
       </div>
 
-      <ProvidersSection />
+      <Tabs
+        defaultValue={tab ?? "personal"}
+        onChange={(value) => handleTabChange(value)}
+        className="mt-4"
+      >
+        <Tabs.List>
+          <Tabs.Tab value="personal" leftSection={<IconUser size={16} />}>
+            Personal
+          </Tabs.Tab>
+          <Tabs.Tab value="organization" leftSection={<IconBuilding size={16} />} disabled={!isAdmin}>
+            Organization
+          </Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="personal" className="mt-6">
+          <PersonalSettings />
+        </Tabs.Panel>
+        <Tabs.Panel value="organization" className="mt-6">
+          <OrganizationSettings />
+        </Tabs.Panel>
+      </Tabs>
     </Stack>
   );
 }
 
-function ProvidersSection() {
+function PersonalSettings() {
   return (
     <Paper withBorder p="lg" radius="md">
       <Group justify="space-between" mb="md">
         <Group gap="xs">
           <IconRobot size={20} />
-          <Title order={4}>LLM Providers</Title>
+          <Title order={4}>Integrations</Title>
         </Group>
-        <NewProviderModal />
+        <NewProviderModal type="personal" />
+      </Group>
+      <ProvidersTable />
+    </Paper>
+  );
+}
+
+function OrganizationSettings() {
+  return (
+    <Paper withBorder p="lg" radius="md">
+      <Group justify="space-between" mb="md">
+        <Group gap="xs">
+          <IconRobot size={20} />
+          <Title order={4}>Integrations</Title>
+        </Group>
+        <NewProviderModal type="organization" />
       </Group>
       <ProvidersTable />
     </Paper>
@@ -102,7 +167,7 @@ function ProvidersTable() {
                   Get started by adding your first LLM provider to enable AI features
                 </Text>
               </Stack>
-              <NewProviderModal />
+              <NewProviderModal type="personal" />
             </Stack>
           </Center>
         )
@@ -164,7 +229,7 @@ function ProvidersTable() {
   );
 }
 
-function NewProviderModal() {
+function NewProviderModal({ type }: { type: "personal" | "organization" }) {
   const [opened, { open, close }] = useDisclosure(false);
   const queryClient = useQueryClient();
 
