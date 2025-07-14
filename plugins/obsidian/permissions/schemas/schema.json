@@ -295,22 +295,142 @@
       "type": "string",
       "oneOf": [
         {
-          "description": "Enables the check command without any pre-configured scope.",
+          "description": "Enables the get_api_key command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-check",
-          "markdownDescription": "Enables the check command without any pre-configured scope."
+          "const": "allow-get-api-key",
+          "markdownDescription": "Enables the get_api_key command without any pre-configured scope."
         },
         {
-          "description": "Denies the check command without any pre-configured scope.",
+          "description": "Denies the get_api_key command without any pre-configured scope.",
           "type": "string",
-          "const": "deny-check",
-          "markdownDescription": "Denies the check command without any pre-configured scope."
+          "const": "deny-get-api-key",
+          "markdownDescription": "Denies the get_api_key command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-check`",
+          "description": "Enables the get_base_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-base-folder",
+          "markdownDescription": "Enables the get_base_folder command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_base_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-base-folder",
+          "markdownDescription": "Denies the get_base_folder command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_base_url command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-base-url",
+          "markdownDescription": "Enables the get_base_url command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_base_url command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-base-url",
+          "markdownDescription": "Denies the get_base_url command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_deep_link_url command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-deep-link-url",
+          "markdownDescription": "Enables the get_deep_link_url command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_deep_link_url command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-deep-link-url",
+          "markdownDescription": "Denies the get_deep_link_url command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_enabled command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-enabled",
+          "markdownDescription": "Enables the get_enabled command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_enabled command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-enabled",
+          "markdownDescription": "Denies the get_enabled command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_vault_name command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-vault-name",
+          "markdownDescription": "Enables the get_vault_name command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_vault_name command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-vault-name",
+          "markdownDescription": "Denies the get_vault_name command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the set_api_key command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-api-key",
+          "markdownDescription": "Enables the set_api_key command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_api_key command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-api-key",
+          "markdownDescription": "Denies the set_api_key command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the set_base_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-base-folder",
+          "markdownDescription": "Enables the set_base_folder command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_base_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-base-folder",
+          "markdownDescription": "Denies the set_base_folder command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the set_base_url command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-base-url",
+          "markdownDescription": "Enables the set_base_url command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_base_url command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-base-url",
+          "markdownDescription": "Denies the set_base_url command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the set_enabled command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-enabled",
+          "markdownDescription": "Enables the set_enabled command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_enabled command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-enabled",
+          "markdownDescription": "Denies the set_enabled command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the set_vault_name command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-vault-name",
+          "markdownDescription": "Enables the set_vault_name command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_vault_name command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-vault-name",
+          "markdownDescription": "Denies the set_vault_name command without any pre-configured scope."
+        },
+        {
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-get-api-key`\n- `allow-get-base-url`\n- `allow-get-vault-name`\n- `allow-set-api-key`\n- `allow-set-base-url`\n- `allow-set-vault-name`\n- `allow-get-enabled`\n- `allow-set-enabled`\n- `allow-get-deep-link-url`\n- `allow-get-base-folder`\n- `allow-set-base-folder`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-check`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-get-api-key`\n- `allow-get-base-url`\n- `allow-get-vault-name`\n- `allow-set-api-key`\n- `allow-set-base-url`\n- `allow-set-vault-name`\n- `allow-get-enabled`\n- `allow-set-enabled`\n- `allow-get-deep-link-url`\n- `allow-get-base-folder`\n- `allow-set-base-folder`"
         }
       ]
     }

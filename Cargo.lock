@@ -3687,6 +3687,7 @@ dependencies = [
  "tauri-plugin-membership",
  "tauri-plugin-misc",
  "tauri-plugin-notification",
+ "tauri-plugin-obsidian",
  "tauri-plugin-opener",
  "tauri-plugin-os",
  "tauri-plugin-prevent-default",
@@ -14260,6 +14261,24 @@ dependencies = [
  "tauri-plugin",
  "thiserror 1.0.69",
  "url",
+]
+
+[[package]]
+name = "tauri-plugin-obsidian"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "specta",
+ "specta-typescript",
+ "strum 0.26.3",
+ "tauri",
+ "tauri-plugin",
+ "tauri-plugin-store",
+ "tauri-plugin-store2",
+ "tauri-specta",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
