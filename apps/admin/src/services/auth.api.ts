@@ -20,6 +20,19 @@ export const getUserSession = createServerFn({ method: "GET" }).handler(
   },
 );
 
+export const getUserRole = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const request = getWebRequest();
+
+    if (!request?.headers) {
+      return null;
+    }
+
+    const response = await auth.api.getActiveMember({ headers: request.headers });
+    return response?.role;
+  },
+);
+
 export const adminCreated = createServerFn({ method: "POST" }).handler(
   async () => {
     const organizations = await db.select().from(organization).where(eq(organization.slug, envServerSchema.ORG_SLUG));

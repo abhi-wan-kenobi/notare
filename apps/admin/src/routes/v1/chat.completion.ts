@@ -6,11 +6,13 @@ import { generateText, streamText } from "ai";
 import { userRequiredMiddlewareForRequest } from "@/services/auth.api";
 import { findLlmProvider } from "@/services/provider.api";
 
-export const ServerRoute = createServerFileRoute("/chat/completion")
+// https://platform.openai.com/docs/api-reference/chat
+export const ServerRoute = createServerFileRoute("/v1/chat/completion")
   .methods((api) => ({
     POST: api.middleware([userRequiredMiddlewareForRequest]).handler(async ({ request, context }) => {
-      const { model, messages, stream = false } = await request.json();
-      const provider = await findLlmProvider(model);
+      const { model: id, messages, stream = false } = await request.json();
+      const [name, model] = id.split("/") as [string, string];
+      const provider = await findLlmProvider({ data: { name, model } });
 
       if (!provider) {
         return json({ error: "no_provider" }, { status: 400 });
@@ -24,7 +26,7 @@ export const ServerRoute = createServerFileRoute("/chat/completion")
 
       if (!stream) {
         const result = await generateText({
-          model: openai(provider.model),
+          model: openai(model),
           messages,
         });
 

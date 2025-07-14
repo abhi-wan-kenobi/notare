@@ -1,17 +1,27 @@
 import { NavLink } from "@/components/NavLink";
 import { AppShell, Burger, Button, Group, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconHome, IconMist, IconSettings } from "@tabler/icons-react";
+import { IconHome, IconLockAccess, IconMist, IconSettings } from "@tabler/icons-react";
 import { useMutation } from "@tanstack/react-query";
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import { authClient } from "@/lib/auth/client";
+import { getUserRole } from "@/services/auth.api";
 
 export const Route = createFileRoute("/app")({
   component: Component,
+  loader: async ({ context: { userSession } }) => {
+    if (!userSession) {
+      throw redirect({ to: "/login" });
+    }
+
+    const role = await getUserRole();
+    return { role };
+  },
 });
 
 function Component() {
+  const { role } = Route.useLoaderData();
   const { data: activeOrganization } = authClient.useActiveOrganization();
 
   const [opened, { toggle }] = useDisclosure();
@@ -54,7 +64,7 @@ function Component() {
               hiddenFrom="sm"
               size="sm"
             />
-            <Text size="xl" fw={700}>Hyprnote Admin</Text>
+            <Text size="xl" fw={700}>Hyprnote</Text>
             <Text size="md" c="dimmed" fw={500}>{activeOrganization?.slug ?? "Unknown"}</Text>
           </Group>
           <Button variant="light" size="sm" onClick={() => logout.mutate()}>
@@ -74,6 +84,13 @@ function Component() {
           to="/app/providers"
           leftSection={<IconMist size={16} stroke={1.5} />}
         />
+        {role === "owner" && (
+          <NavLink
+            label="Admin"
+            to="/app/admin"
+            leftSection={<IconLockAccess size={16} stroke={1.5} />}
+          />
+        )}
         <NavLink
           label="Settings"
           to="/app/settings"

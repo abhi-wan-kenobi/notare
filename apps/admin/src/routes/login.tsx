@@ -56,7 +56,7 @@ function Component() {
       </Container>
     )
     : (
-      <Container title="Sign Up" description="Sign up to create an account">
+      <Container title="Admin Sign Up" description="Admin can invite other members to join">
         <PasswordAdminSignUpForm adminEmail={adminEmail} orgSlug={orgSlug} />
       </Container>
     );
@@ -109,7 +109,7 @@ function PasswordAdminSignUpForm({ adminEmail, orgSlug }: { adminEmail: string; 
       path: ["passwordConfirm"],
     })
     .refine((data) => data.email === adminEmail, {
-      message: "Email must be " + adminEmail,
+      message: "This is different from admin email",
       path: ["email"],
     });
 

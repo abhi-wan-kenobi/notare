@@ -119,6 +119,15 @@ CREATE TABLE `verification` (
 	`updated_at` integer
 );
 --> statement-breakpoint
+CREATE TABLE `organization_config` (
+	`id` text PRIMARY KEY NOT NULL,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL,
+	`organization_id` text NOT NULL,
+	`base_url` text,
+	FOREIGN KEY (`organization_id`) REFERENCES `organization`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
 CREATE TABLE `llm_provider` (
 	`id` text PRIMARY KEY NOT NULL,
 	`created_at` integer NOT NULL,
