@@ -8,7 +8,7 @@ const envServerSchema = z.object({
 });
 
 const envClientSchema = z.object({
-  VITE_BASE_URL: z.string().default("http://localhost:3000"),
+  BASE_URL: z.string().default("http://localhost:3000"),
 });
 
 type EnvServerType = z.infer<typeof envServerSchema>;
@@ -21,7 +21,7 @@ declare global {
 }
 
 const envServerParsed = envServerSchema.safeParse({
-  BASE_URL: import.meta.env.VITE_BASE_URL,
+  BASE_URL: process.env.VITE_BASE_URL,
   ADMIN_EMAIL: process.env.ADMIN_EMAIL,
   ORG_SLUG: process.env.ORG_SLUG,
   TELEMETRY: process.env.TELEMETRY,

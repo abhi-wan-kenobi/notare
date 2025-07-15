@@ -5,7 +5,7 @@ import { createAuthClient } from "better-auth/react";
 import { envClientData } from "@/env";
 
 export const authClient = createAuthClient({
-  baseURL: envClientData.VITE_BASE_URL,
+  baseURL: envClientData.BASE_URL,
   basePath: "/api/auth",
   plugins: [
     ssoClient(),
