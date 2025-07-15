@@ -128,6 +128,7 @@ CREATE TABLE `organization_config` (
 	FOREIGN KEY (`organization_id`) REFERENCES `organization`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `organization_config_organization_id_unique` ON `organization_config` (`organization_id`);--> statement-breakpoint
 CREATE TABLE `llm_provider` (
 	`id` text PRIMARY KEY NOT NULL,
 	`created_at` integer NOT NULL,

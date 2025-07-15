@@ -1,7 +1,6 @@
 import {
   Button,
   Center,
-  Divider,
   LoadingOverlay,
   Paper,
   PasswordInput,

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "97bae7cc-8dbc-4569-b4a8-9acee304d033",
+  "id": "9baf04e9-f42a-4d13-b83d-03220c62678c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -855,7 +855,15 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "organization_config_organization_id_unique": {
+          "name": "organization_config_organization_id_unique",
+          "columns": [
+            "organization_id"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "organization_config_organization_id_organization_id_fk": {
           "name": "organization_config_organization_id_organization_id_fk",

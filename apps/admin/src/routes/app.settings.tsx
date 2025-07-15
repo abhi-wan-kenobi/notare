@@ -14,6 +14,7 @@ import {
   Title,
   Tooltip,
 } from "@mantine/core";
+import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconAlertCircle,
@@ -29,11 +30,12 @@ import {
 } from "@tabler/icons-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { ReactNode } from "react";
+import { zodResolver } from "mantine-form-zod-resolver";
+import { ReactNode, useEffect } from "react";
 import { z } from "zod";
 
-import { getUserRole } from "@/services/auth.api";
-import { getOrganizationConfig } from "@/services/config.api";
+import { getActiveOrganizationFull, getUserRole } from "@/services/auth.api";
+import { getOrganizationConfig, upsertOrganizationConfig } from "@/services/config.api";
 import { createApiKey, deleteApiKeys, listApiKey } from "@/services/key.api";
 
 export const Route = createFileRoute("/app/settings")({
@@ -43,7 +45,15 @@ export const Route = createFileRoute("/app/settings")({
   component: Component,
   loaderDeps: ({ search: { tab } }) => ({ tab }),
   loader: async ({ context: { userSession }, deps: { tab } }) => {
-    const role = await getUserRole();
+    const [org, role] = await Promise.all([
+      getActiveOrganizationFull(),
+      getUserRole(),
+    ]);
+
+    if (!org) {
+      throw redirect({ to: "/login" });
+    }
+
     const isAdmin = role === "owner";
 
     if (!isAdmin && tab === "organization") {
@@ -51,12 +61,12 @@ export const Route = createFileRoute("/app/settings")({
     }
 
     const email = userSession?.user.email;
-    return { email, role, isAdmin };
+    return { email, role, isAdmin, slug: org.slug };
   },
 });
 
 function Component() {
-  const { email, isAdmin } = Route.useLoaderData();
+  const { email, isAdmin, slug } = Route.useLoaderData();
   const { tab } = Route.useSearch();
 
   const navigate = useNavigate();
@@ -104,7 +114,7 @@ function Component() {
           <PersonalSettings email={email} />
         </Tabs.Panel>
         <Tabs.Panel value="organization" className="mt-6">
-          <OrganizationSettings />
+          <OrganizationSettings slug={slug} />
         </Tabs.Panel>
       </Tabs>
     </Stack>
@@ -164,7 +174,21 @@ function PersonalSettings({ email }: { email: string | undefined }) {
         icon={<IconDeviceIpadHorizontalPin size={20} />}
         title="Client Connection"
       >
-        {existingApiKeys.isPending
+        {baseUrl.isPending
+          ? <LoadingOverlay visible />
+          : !baseUrl.data
+          ? (
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              color="red"
+              variant="light"
+            >
+              <Text size="sm">
+                Base URL is not set.
+              </Text>
+            </Alert>
+          )
+          : existingApiKeys.isPending
           ? <LoadingOverlay visible />
           : existingApiKeys.data?.length
           ? (
@@ -310,24 +334,83 @@ function ClientConnectionHelperModal({
   );
 }
 
-function OrganizationSettings() {
+function OrganizationSettings({ slug }: { slug: string }) {
+  const existingConfigQuery = useQuery({
+    queryKey: ["organizationConfig", "baseUrl"],
+    queryFn: async () => {
+      const config = await getOrganizationConfig();
+      return config?.baseUrl ?? "";
+    },
+  });
+
+  const upsertConfigMutation = useMutation({
+    mutationFn: async (data: { baseUrl: string }) => {
+      const config = await upsertOrganizationConfig({ data });
+      return config;
+    },
+    onSuccess: () => {
+      existingConfigQuery.refetch();
+    },
+  });
+
+  const schema = z.object({
+    baseUrl: z.string().url(),
+  });
+
+  type FormData = z.infer<typeof schema>;
+
+  const form = useForm<FormData>({
+    mode: "uncontrolled",
+    validate: zodResolver(schema),
+    initialValues: {
+      baseUrl: "",
+    },
+    onValuesChange: (values) => {
+      const validation = form.validate();
+      if (validation.hasErrors === false) {
+        handleSubmit(values);
+      }
+    },
+  });
+
+  const handleSubmit = (values: FormData) => {
+    upsertConfigMutation.mutate(values);
+  };
+
+  useEffect(() => {
+    if (!existingConfigQuery.data) {
+      return;
+    }
+
+    form.initialize({ baseUrl: existingConfigQuery.data });
+  }, [existingConfigQuery.data]);
+
   return (
     <Stack gap="lg">
       <SettingsSection
         icon={<IconSettings size={20} />}
         title="General"
       >
-        <Stack gap="md">
-          <TextInput
-            label="Organization Slug"
-            disabled
-          />
+        {existingConfigQuery.isPending
+          ? <LoadingOverlay visible />
+          : (
+            <form onSubmit={form.onSubmit(handleSubmit)}>
+              <Stack gap="md">
+                <TextInput
+                  label="Organization Slug"
+                  value={slug}
+                  disabled
+                />
 
-          <TextInput
-            label="Base URL"
-            placeholder="e.g. https://hyprnote.yourdomain.com"
-          />
-        </Stack>
+                <TextInput
+                  label="Base URL"
+                  placeholder="e.g. https://hyprnote.yourdomain.com"
+                  key={form.key("baseUrl")}
+                  {...form.getInputProps("baseUrl")}
+                />
+              </Stack>
+            </form>
+          )}
       </SettingsSection>
 
       <SettingsSection
