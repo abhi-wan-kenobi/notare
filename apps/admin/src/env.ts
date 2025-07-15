@@ -9,12 +9,14 @@ declare global {
 }
 
 const envSchema = z.object({
+  BASE_URL: z.string().default("http://localhost:3000"),
   ADMIN_EMAIL: z.string().email().default("yujonglee@hyprnote.com"),
   ORG_SLUG: z.string().default("hyprnote"),
   TELEMETRY: z.coerce.boolean().default(true),
 });
 
 const envServer = envSchema.safeParse({
+  BASE_URL: process.env.BASE_URL,
   ADMIN_EMAIL: process.env.ADMIN_EMAIL,
   ORG_SLUG: process.env.ORG_SLUG,
   TELEMETRY: process.env.TELEMETRY,

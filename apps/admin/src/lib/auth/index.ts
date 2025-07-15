@@ -12,9 +12,9 @@ import * as schema from "@/lib/db/schema";
 export * from "./client";
 
 export const auth = betterAuth({
-  baseURL: "http://localhost:3000",
+  baseURL: envServerSchema.BASE_URL,
   basePath: "/api/auth",
-  trustedOrigins: ["http://localhost:3000"],
+  trustedOrigins: [envServerSchema.BASE_URL],
   database: drizzleAdapter(db, { provider: "sqlite", schema }),
   plugins: [
     apiKey({
