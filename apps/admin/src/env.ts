@@ -1,30 +1,48 @@
 import { z } from "zod";
 
-type EnvSchemaType = z.infer<typeof envSchema>;
-
-declare global {
-  namespace NodeJS {
-    interface ProcessEnv extends EnvSchemaType {}
-  }
-}
-
-const envSchema = z.object({
+const envServerSchema = z.object({
   BASE_URL: z.string().default("http://localhost:3000"),
   ADMIN_EMAIL: z.string().email().default("yujonglee@hyprnote.com"),
   ORG_SLUG: z.string().default("hyprnote"),
   TELEMETRY: z.coerce.boolean().default(true),
 });
 
-const envServer = envSchema.safeParse({
-  BASE_URL: process.env.BASE_URL,
+const envClientSchema = z.object({
+  VITE_BASE_URL: z.string().default("http://localhost:3000"),
+});
+
+type EnvServerType = z.infer<typeof envServerSchema>;
+type EnvClientType = z.infer<typeof envClientSchema>;
+
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv extends EnvServerType {}
+  }
+}
+
+const envServerParsed = envServerSchema.safeParse({
+  BASE_URL: import.meta.env.VITE_BASE_URL,
   ADMIN_EMAIL: process.env.ADMIN_EMAIL,
   ORG_SLUG: process.env.ORG_SLUG,
   TELEMETRY: process.env.TELEMETRY,
 });
 
-if (!envServer.success) {
-  throw new Error(`There is an error with the server environment variables: ${JSON.stringify(envServer.error.issues)}`);
+if (!envServerParsed.success) {
+  throw new Error(
+    `There is an error with the server environment variables: ${JSON.stringify(envServerParsed.error.issues)}`,
+  );
 }
 
-export const ENV_KEYS = Object.keys(envSchema.shape) as [keyof EnvSchemaType, ...(keyof EnvSchemaType)[]];
-export const envServerSchema = envServer.data;
+const envClientParsed = envClientSchema.safeParse({
+  BASE_URL: import.meta.env.VITE_BASE_URL,
+});
+
+if (!envClientParsed.success) {
+  throw new Error(
+    `There is an error with the client environment variables: ${JSON.stringify(envClientParsed.error.issues)}`,
+  );
+}
+
+export const ENV_KEYS_SERVER = Object.keys(envServerSchema.shape) as [keyof EnvServerType, ...(keyof EnvServerType)[]];
+export const envServerData = envServerParsed.data;
+export const envClientData = envClientParsed.data;

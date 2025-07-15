@@ -1,9 +1,9 @@
 import posthog from "posthog-js";
 
-import { envServerSchema } from "@/env";
+import { envServerData } from "@/env";
 
 export const init = () => {
-  if (!envServerSchema.TELEMETRY) {
+  if (!envServerData.TELEMETRY) {
     return;
   }
 
@@ -17,7 +17,7 @@ export const capture = (
   properties?: Parameters<typeof posthog.capture>[1],
   options?: Parameters<typeof posthog.capture>[2],
 ) => {
-  if (!envServerSchema.TELEMETRY) {
+  if (!envServerData.TELEMETRY) {
     return;
   }
 

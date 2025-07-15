@@ -5,16 +5,15 @@ import { apiKey, organization } from "better-auth/plugins";
 import { sso } from "better-auth/plugins/sso";
 import { reactStartCookies } from "better-auth/react-start";
 
-import { envServerSchema } from "@/env";
+import { envServerData } from "@/env";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 
 export * from "./client";
 
 export const auth = betterAuth({
-  baseURL: envServerSchema.BASE_URL,
+  baseURL: envServerData.BASE_URL,
   basePath: "/api/auth",
-  trustedOrigins: [envServerSchema.BASE_URL],
   database: drizzleAdapter(db, { provider: "sqlite", schema }),
   plugins: [
     apiKey({
@@ -35,7 +34,7 @@ export const auth = betterAuth({
     sso(),
     organization({
       allowUserToCreateOrganization: async (user) => {
-        return user.email === envServerSchema.ADMIN_EMAIL;
+        return user.email === envServerData.ADMIN_EMAIL;
       },
     }),
     reactStartCookies(),
