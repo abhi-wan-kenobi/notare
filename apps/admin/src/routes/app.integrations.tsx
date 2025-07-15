@@ -347,7 +347,7 @@ function NewProviderModal({ type, variant }: { type: "personal" | "organization"
                   </Transition>
                 }
               >
-                {insertMutation.isSuccess ? "Success!" : insertMutation.isPending ? "Validating..." : "Add Provider"}
+                {insertMutation.isSuccess ? "Success!" : insertMutation.isPending ? "Validating..." : "Add Integration"}
               </Button>
             </Group>
           </Stack>

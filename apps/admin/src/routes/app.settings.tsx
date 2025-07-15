@@ -5,6 +5,7 @@ import {
   Card,
   CopyButton,
   Group,
+  LoadingOverlay,
   Modal,
   Stack,
   Tabs,
@@ -15,6 +16,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
+  IconAlertCircle,
   IconBuilding,
   IconCheck,
   IconCopy,
@@ -22,17 +24,17 @@ import {
   IconHelp,
   IconInfoCircle,
   IconKey,
-  IconRefresh,
   IconSettings,
   IconUser,
 } from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { ReactNode } from "react";
 import { z } from "zod";
 
 import { getUserRole } from "@/services/auth.api";
 import { getOrganizationConfig } from "@/services/config.api";
+import { createApiKey, deleteApiKeys, listApiKey } from "@/services/key.api";
 
 export const Route = createFileRoute("/app/settings")({
   validateSearch: z.object({
@@ -110,6 +112,8 @@ function Component() {
 }
 
 function PersonalSettings({ email }: { email: string | undefined }) {
+  const [opened, handler] = useDisclosure(false);
+
   const baseUrl = useQuery({
     queryKey: ["organizationConfig", "baseUrl"],
     queryFn: async () => {
@@ -118,7 +122,32 @@ function PersonalSettings({ email }: { email: string | undefined }) {
     },
   });
 
-  const apiKey = "";
+  const existingApiKeys = useQuery({
+    queryKey: ["apiKey"],
+    queryFn: async () => {
+      const keys = await listApiKey();
+      if (!keys?.length) {
+        return null;
+      }
+      return keys.map((key) => key.id);
+    },
+  });
+
+  const createApiKeyMutation = useMutation({
+    mutationFn: async () => {
+      console.log("createApiKeyMutation");
+      const apiKey = await createApiKey();
+      return apiKey?.key;
+    },
+    onSuccess: async () => {
+      const ids = existingApiKeys.data;
+      if (ids?.length) {
+        await deleteApiKeys({ data: { ids } });
+      }
+
+      handler.open();
+    },
+  });
 
   return (
     <Stack gap="lg">
@@ -134,25 +163,116 @@ function PersonalSettings({ email }: { email: string | undefined }) {
       <SettingsSection
         icon={<IconDeviceIpadHorizontalPin size={20} />}
         title="Client Connection"
-        helper={<ClientConnectionHelperModal baseUrl={baseUrl.data ?? ""} apiKey={apiKey} />}
       >
-        <TextInput
-          disabled
-          label="Base URL"
-          placeholder="Admin should configure this in Organization Settings"
-          value={baseUrl.data ?? ""}
-          flex={1}
-        />
-
-        <Group gap="md" align="end">
-          <TextInput
-            disabled
-            label="API Key"
-            value={apiKey}
-            flex={1}
+        {existingApiKeys.isPending
+          ? <LoadingOverlay visible />
+          : existingApiKeys.data?.length
+          ? (
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              color="red"
+              variant="light"
+            >
+              <Text size="sm">
+                Starting connection helper will invalidate the existing API key.
+              </Text>
+            </Alert>
+          )
+          : (
+            <Alert
+              icon={<IconInfoCircle size={16} />}
+              color="blue"
+              variant="light"
+            >
+              <Text size="sm">
+                Start connection helper to create an API key.
+              </Text>
+            </Alert>
+          )}
+        <Button
+          onClick={() => createApiKeyMutation.mutate()}
+          variant="light"
+          size="md"
+        >
+          Start Connection Helper
+        </Button>
+        {(createApiKeyMutation.data) && (
+          <ClientConnectionHelperModal
+            opened={opened}
+            handler={handler}
+            baseUrl={baseUrl.data ?? ""}
+            apiKey={createApiKeyMutation.data}
           />
+        )}
+      </SettingsSection>
+    </Stack>
+  );
+}
 
-          <Group gap="xs">
+function ClientConnectionHelperModal({
+  opened,
+  handler,
+  baseUrl,
+  apiKey,
+}: {
+  opened: boolean;
+  handler: { open: () => void; close: () => void };
+  baseUrl: string;
+  apiKey: string;
+}) {
+  return (
+    <Modal
+      centered
+      opened={opened}
+      onClose={handler.close}
+      title="Client Connection Help"
+      size="md"
+    >
+      <Stack gap="lg">
+        <Stack gap="sm">
+          <Text size="md" fw={500}>
+            Method 1. Auto-Connect using deep-link
+          </Text>
+          <Button
+            onClick={() => {
+              window.open(`hypr://register?baseUrl=${baseUrl}&apiKey=${apiKey}`, "_blank");
+            }}
+            size="sm"
+            radius="md"
+          >
+            Click here to auto-connect
+          </Button>
+        </Stack>
+
+        <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+          <Text size="sm">
+            Try Method 1 first. If it doesn't work, try Method 2.
+          </Text>
+        </Alert>
+
+        <Stack gap="sm">
+          <Text size="md" fw={500}>
+            Method 2. Manual connect
+          </Text>
+
+          <Group gap="md" grow>
+            <CopyButton value={baseUrl}>
+              {({ copied, copy }) => (
+                <Tooltip label={copied ? "Copied!" : "Copy Base URL"}>
+                  <Button
+                    variant={copied ? "filled" : "light"}
+                    color="blue"
+                    onClick={copy}
+                    leftSection={<p>Base URL</p>}
+                    size="sm"
+                    radius="md"
+                    flex={1}
+                  >
+                    {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                  </Button>
+                </Tooltip>
+              )}
+            </CopyButton>
             <CopyButton value={apiKey}>
               {({ copied, copy }) => (
                 <Tooltip label={copied ? "Copied!" : "Copy API key"}>
@@ -160,134 +280,33 @@ function PersonalSettings({ email }: { email: string | undefined }) {
                     variant={copied ? "filled" : "light"}
                     color="blue"
                     onClick={copy}
+                    leftSection={<p>API Key</p>}
                     size="sm"
                     radius="md"
-                    style={{ alignSelf: "end" }}
+                    flex={1}
                   >
                     {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
                   </Button>
                 </Tooltip>
               )}
             </CopyButton>
-
-            <Tooltip label="Regenerate API key">
-              <Button
-                variant="light"
-                color="gray"
-                size="sm"
-                radius="md"
-                style={{ alignSelf: "end" }}
-              >
-                <IconRefresh size={16} />
-              </Button>
-            </Tooltip>
           </Group>
-        </Group>
-      </SettingsSection>
-    </Stack>
-  );
-}
 
-function ClientConnectionHelperModal({ baseUrl, apiKey }: { baseUrl: string; apiKey: string }) {
-  const [opened, { open, close }] = useDisclosure(false);
-
-  return (
-    <>
-      <ActionIcon
-        variant="subtle"
-        color="blue"
-        size="sm"
-        onClick={open}
-      >
-        <IconHelp size={16} />
-      </ActionIcon>
-      <Modal
-        centered
-        opened={opened}
-        onClose={close}
-        title="Client Connection Help"
-        size="md"
-      >
-        <Stack gap="lg">
-          <Stack gap="sm">
-            <Text size="md" fw={500}>
-              Method 1. Auto-Connect using deep-link
-            </Text>
-            <Button
-              onClick={() => {
-                window.open(`hypr://register?baseUrl=${baseUrl}&apiKey=${apiKey}`, "_blank");
-              }}
-              size="sm"
-              radius="md"
-            >
-              Click here to auto-connect
-            </Button>
-          </Stack>
-
-          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+          <Stack gap="xs" pl="sm">
+            <Text fw={500} size="sm">Desktop App Setup:</Text>
             <Text size="sm">
-              Try Method 1 first. If it doesn't work, try Method 2.
+              1. Open the Hyprnote desktop app
             </Text>
-          </Alert>
-
-          <Stack gap="sm">
-            <Text size="md" fw={500}>
-              Method 2. Manual connect
+            <Text size="sm">
+              2. Go to Settings → Account
             </Text>
-
-            <Group gap="md" grow>
-              <CopyButton value={baseUrl}>
-                {({ copied, copy }) => (
-                  <Tooltip label={copied ? "Copied!" : "Copy Base URL"}>
-                    <Button
-                      variant={copied ? "filled" : "light"}
-                      color="blue"
-                      onClick={copy}
-                      leftSection={<p>Base URL</p>}
-                      size="sm"
-                      radius="md"
-                      flex={1}
-                    >
-                      {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-                    </Button>
-                  </Tooltip>
-                )}
-              </CopyButton>
-              <CopyButton value={apiKey}>
-                {({ copied, copy }) => (
-                  <Tooltip label={copied ? "Copied!" : "Copy API key"}>
-                    <Button
-                      variant={copied ? "filled" : "light"}
-                      color="blue"
-                      onClick={copy}
-                      leftSection={<p>API Key</p>}
-                      size="sm"
-                      radius="md"
-                      flex={1}
-                    >
-                      {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-                    </Button>
-                  </Tooltip>
-                )}
-              </CopyButton>
-            </Group>
-
-            <Stack gap="xs" pl="sm">
-              <Text fw={500} size="sm">Desktop App Setup:</Text>
-              <Text size="sm">
-                1. Open the Hyprnote desktop app
-              </Text>
-              <Text size="sm">
-                2. Go to Settings → Account
-              </Text>
-              <Text size="sm">
-                3. Paste your Base URL and API key
-              </Text>
-            </Stack>
+            <Text size="sm">
+              3. Paste your Base URL and API key
+            </Text>
           </Stack>
         </Stack>
-      </Modal>
-    </>
+      </Stack>
+    </Modal>
   );
 }
 
