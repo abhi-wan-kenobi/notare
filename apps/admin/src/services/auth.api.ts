@@ -20,7 +20,7 @@ export const getUserSession = createServerFn({ method: "GET" }).handler(
   },
 );
 
-export const getActiveOrganization = createServerFn({ method: "GET" }).handler(
+export const getActiveOrganizationFull = createServerFn({ method: "GET" }).handler(
   async () => {
     const request = getWebRequest();
 

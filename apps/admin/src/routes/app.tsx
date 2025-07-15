@@ -6,18 +6,26 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import { NavLink } from "@/components/NavLink";
 import { authClient } from "@/lib/auth/client";
+import { getActiveOrganizationFull } from "@/services/auth.api";
 
 export const Route = createFileRoute("/app")({
   component: Component,
   loader: async ({ context: { userSession } }) => {
-    if (!userSession) {
+    if (!userSession || !userSession.session.activeOrganizationId) {
       throw redirect({ to: "/login" });
     }
+
+    const org = await getActiveOrganizationFull();
+    if (!org?.slug) {
+      throw redirect({ to: "/login" });
+    }
+
+    return { slug: org.slug };
   },
 });
 
 function Component() {
-  const { data: activeOrganization } = authClient.useActiveOrganization();
+  const { slug } = Route.useLoaderData();
 
   const [opened, { toggle }] = useDisclosure();
 
@@ -60,7 +68,7 @@ function Component() {
               size="sm"
             />
             <Text size="xl" fw={700}>Hyprnote</Text>
-            <Text size="md" c="dimmed" fw={500}>{activeOrganization?.slug ?? "Unknown"}</Text>
+            <Text size="md" c="dimmed" fw={500}>{slug}</Text>
           </Group>
           <Button variant="light" size="sm" onClick={() => logout.mutate()}>
             Logout

@@ -114,7 +114,7 @@ function PersonalSettings({ email }: { email: string | undefined }) {
     queryKey: ["organizationConfig", "baseUrl"],
     queryFn: async () => {
       const config = await getOrganizationConfig();
-      return config?.baseUrl;
+      return config?.baseUrl ?? "";
     },
   });
 

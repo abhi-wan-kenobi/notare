@@ -9,6 +9,7 @@ import {
   Modal,
   Paper,
   PasswordInput,
+  Select,
   Stack,
   Table,
   Tabs,
@@ -20,7 +21,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
-import { IconBuilding, IconCheck, IconPlus, IconRobot, IconTrash, IconUser } from "@tabler/icons-react";
+import { IconBuilding, IconCheck, IconMist, IconPlus, IconTrash, IconUser } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { zodResolver } from "mantine-form-zod-resolver";
@@ -103,10 +104,10 @@ function SettingsSection({ type }: { type: "personal" | "organization" }) {
     <Paper withBorder p="lg" radius="md">
       <Group justify="space-between" mb="md">
         <Group gap="xs">
-          <IconRobot size={20} />
+          <IconMist size={20} />
           <Title order={4}>Integrations</Title>
         </Group>
-        <NewProviderModal type={type} />
+        <NewProviderModal type={type} variant="default" />
       </Group>
       <ProvidersTable type={type} />
     </Paper>
@@ -143,16 +144,16 @@ function ProvidersTable({ type }: { type: "personal" | "organization" }) {
         ? (
           <Center py="xl">
             <Stack align="center" gap="md">
-              <IconRobot size={48} color="var(--mantine-color-gray-5)" />
+              <IconMist size={48} color="var(--mantine-color-gray-5)" />
               <Stack align="center" gap="xs">
                 <Text size="lg" fw={500}>
-                  No LLM providers configured
+                  No integrations configured
                 </Text>
                 <Text size="sm" c="dimmed" ta="center">
-                  Get started by adding your first LLM provider to enable AI features
+                  Get started by adding your first integration
                 </Text>
               </Stack>
-              <NewProviderModal type="personal" />
+              <NewProviderModal type="personal" variant="default" />
             </Stack>
           </Center>
         )
@@ -214,11 +215,12 @@ function ProvidersTable({ type }: { type: "personal" | "organization" }) {
   );
 }
 
-function NewProviderModal({ type }: { type: "personal" | "organization" }) {
+function NewProviderModal({ type, variant }: { type: "personal" | "organization"; variant: "default" | "light" }) {
   const [opened, { open, close }] = useDisclosure(false);
   const queryClient = useQueryClient();
 
   const schema = z.object({
+    type: z.enum(["llm", "stt", "salesforce"]),
     name: z.string().min(1, "Name is required").max(20, "Name too long"),
     model: z.string().min(1, "Model is required").max(100, "Model name too long"),
     baseUrl: z.string().url("Invalid URL"),
@@ -230,6 +232,13 @@ function NewProviderModal({ type }: { type: "personal" | "organization" }) {
   const form = useForm<FormData>({
     mode: "uncontrolled",
     validate: zodResolver(schema),
+    initialValues: {
+      type: "llm" as const,
+      name: "",
+      model: "",
+      baseUrl: "",
+      apiKey: "",
+    },
   });
 
   const insertMutation = useMutation({
@@ -263,33 +272,52 @@ function NewProviderModal({ type }: { type: "personal" | "organization" }) {
 
   return (
     <>
+      <Button
+        variant={variant}
+        disabled={insertMutation.isPending}
+        onClick={open}
+      >
+        <IconPlus size={16} />
+      </Button>
       <Modal
         opened={opened}
         onClose={close}
-        title="Add New LLM Provider"
+        title="Add new integration"
         centered
         size="md"
       >
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack gap="md">
+            <Select
+              label="Type"
+              placeholder="Select integration type"
+              description="Choose the type of integration"
+              required
+              data={[
+                { value: "llm", label: "LLM (OpenAI compatible)" },
+                { value: "stt", label: "STT (Speech-to-Text) - Coming Soon", disabled: true },
+                { value: "salesforce", label: "Salesforce - Coming Soon", disabled: true },
+              ]}
+              {...form.getInputProps("type")}
+            />
             <TextInput
               label="Provider Name"
-              placeholder="e.g., bedrock_openai"
-              description="Unique identifier for this provider (e.g., 'bedrock_openai', 'openai_gpt4')"
+              placeholder="bedrock_openai"
+              description="Unique identifier for this integration"
               required
               {...form.getInputProps("name")}
             />
             <TextInput
               label="Model"
-              placeholder="e.g., gpt-4-turbo"
-              description="The specific model to use (e.g., 'gpt-4-turbo', 'claude-3-opus')"
+              placeholder="gpt-4o"
+              description="The specific model to use (e.g., 'gpt-4o', 'claude-4-sonnet')"
               required
               {...form.getInputProps("model")}
             />
             <TextInput
               label="Base URL"
-              placeholder="e.g., https://api.openai.com/v1"
-              description="The API endpoint for the provider (e.g., 'https://api.openai.com/v1' for OpenAI)"
+              placeholder="https://api.openai.com/v1"
+              description="OpenAI compatible API endpoint"
               required
               {...form.getInputProps("baseUrl")}
             />
@@ -325,14 +353,6 @@ function NewProviderModal({ type }: { type: "personal" | "organization" }) {
           </Stack>
         </form>
       </Modal>
-
-      <Button
-        variant="default"
-        disabled={insertMutation.isPending}
-        onClick={open}
-      >
-        <IconPlus size={16} />
-      </Button>
     </>
   );
 }
