@@ -2,6 +2,7 @@ import { Alert, Button, Card, Group, SimpleGrid, Stack, Text, Title } from "@man
 import { IconBook, IconBrandGithub, IconExternalLink, IconMessageCircle, IconUsers } from "@tabler/icons-react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 
+import { getOrganizationConfig } from "@/services/config.api";
 import { listApiKey } from "@/services/key.api";
 
 export const Route = createFileRoute("/app/home")({
@@ -13,12 +14,13 @@ export const Route = createFileRoute("/app/home")({
   },
   loader: async () => {
     const apiKeys = await listApiKey();
-    return { apiKeys };
+    const config = await getOrganizationConfig();
+    return { apiKeys, baseUrl: config?.baseUrl };
   },
 });
 
 function Component() {
-  const { apiKeys } = Route.useLoaderData();
+  const { apiKeys, baseUrl } = Route.useLoaderData();
 
   return (
     <Stack gap="xl">
@@ -32,8 +34,8 @@ function Component() {
       </div>
 
       <Stack gap="md">
-        {!apiKeys?.length && <PersonalConfigurationAlert />}
-        {!apiKeys?.length && <OrganizationConfigurationAlert />}
+        {(baseUrl && !apiKeys?.length) && <PersonalConfigurationAlert />}
+        {!baseUrl && <OrganizationConfigurationAlert />}
       </Stack>
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 2 }} spacing="md">
