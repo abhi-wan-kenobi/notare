@@ -2,7 +2,7 @@ import { createMiddleware, createServerFn, json } from "@tanstack/react-start";
 import { getWebRequest } from "@tanstack/react-start/server";
 import { eq } from "drizzle-orm";
 
-import { envServerData } from "@/env";
+import { envServerSchema } from "@/envServer";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { organization } from "@/lib/db/schema";
@@ -59,7 +59,7 @@ export const getUserRole = createServerFn({ method: "GET" }).handler(
 
 export const adminCreated = createServerFn({ method: "POST" }).handler(
   async () => {
-    const organizations = await db.select().from(organization).where(eq(organization.slug, envServerData.ORG_SLUG));
+    const organizations = await db.select().from(organization).where(eq(organization.slug, envServerSchema.ORG_SLUG));
     return organizations.length > 0;
   },
 );

@@ -31,7 +31,7 @@ export const Route = createFileRoute("/login")({
   },
   loader: async () => {
     const [baseUrl, adminEmail, orgSlug] = await Promise.all([
-      getEnv({ data: { key: "BASE_URL" } }),
+      getEnv({ data: { key: "VITE_BASE_URL" } }),
       getEnv({ data: { key: "ADMIN_EMAIL" } }),
       getEnv({ data: { key: "ORG_SLUG" } }),
     ]) as [string, string, string];
