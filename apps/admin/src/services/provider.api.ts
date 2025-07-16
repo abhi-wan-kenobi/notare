@@ -8,9 +8,9 @@ import { activeOrgRequiredMiddlewareForFunction, userRequiredMiddlewareForFuncti
 
 export const findLlmProvider = createServerFn()
   .validator(z.object({ name: z.string(), model: z.string() }))
-  .middleware([userRequiredMiddlewareForFunction])
-  .handler(async ({ data, context: { userSession } }) => {
-    const rows = await db.select().from(llmProvider).where(eq(llmProvider.organizationId, userSession.user.id));
+  .middleware([userRequiredMiddlewareForFunction, activeOrgRequiredMiddlewareForFunction])
+  .handler(async ({ data, context: { activeOrganizationId } }) => {
+    const rows = await db.select().from(llmProvider).where(eq(llmProvider.organizationId, activeOrganizationId));
     return rows.find((row) => row.name === data.name && row.model === data.model);
   });
 

@@ -15,19 +15,18 @@ export const auth = betterAuth({
   basePath: "/api/auth",
   database: drizzleAdapter(db, { provider: "sqlite", schema }),
   plugins: [
+    // 'customAPIKeyGetter' not work
     apiKey({
-      customAPIKeyGetter(ctx) {
-        const has = ctx.request?.headers?.has("authorization");
-        if (!has) {
+      customAPIKeyGetter: (req) => {
+        if (!req.headers) {
+          return null;
+        }
+        const bearerToken = req.headers.get("Authorization");
+        if (!bearerToken) {
           return null;
         }
 
-        const authorization = ctx.request?.headers?.get("authorization");
-        if (!authorization?.startsWith("Bearer ")) {
-          return null;
-        }
-
-        return authorization?.slice(7) ?? null;
+        return bearerToken.replace("Bearer ", "");
       },
     }),
     sso(),
