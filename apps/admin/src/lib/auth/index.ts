@@ -12,7 +12,6 @@ import * as schema from "@/lib/db/schema";
 export * from "./client";
 
 export const auth = betterAuth({
-  baseURL: envServerSchema.VITE_BASE_URL,
   basePath: "/api/auth",
   database: drizzleAdapter(db, { provider: "sqlite", schema }),
   plugins: [
