@@ -244,6 +244,9 @@ function ClientConnectionHelperModal({
   baseUrl: string;
   apiKey: string;
 }) {
+  // should match with deeplink.rs
+  const deeplink = `hypr://hyprnote.com/register?baseUrl=${baseUrl}&apiKey=${apiKey}`;
+
   return (
     <Modal
       centered
@@ -258,9 +261,7 @@ function ClientConnectionHelperModal({
             Method 1. Auto-Connect using deep-link
           </Text>
           <Button
-            onClick={() => {
-              window.open(`hypr://register?baseUrl=${baseUrl}&apiKey=${apiKey}`, "_blank");
-            }}
+            onClick={() => window.open(deeplink, "_blank")}
             size="sm"
             radius="md"
           >
