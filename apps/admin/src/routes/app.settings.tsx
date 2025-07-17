@@ -405,7 +405,7 @@ function OrganizationSettings({ slug }: { slug: string }) {
 
                 <TextInput
                   label="Base URL"
-                  placeholder="e.g. https://hyprnote.yourdomain.com"
+                  placeholder={`e.g. ${window.location.origin}`}
                   {...form.getInputProps("baseUrl")}
                 />
               </Stack>

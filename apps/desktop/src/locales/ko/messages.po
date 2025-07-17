@@ -578,11 +578,11 @@ msgstr ""
 
 #: src/components/settings/views/integrations.tsx:147
 msgid "Enable Integration"
-msgstr "<<<<<<< HEAD"
+msgstr "Enable Integration"
 
 #: src/components/settings/views/ai.tsx:434
 msgid "Enhancing"
-msgstr ""
+msgstr "Enhancing"
 
 #: src/components/settings/components/template-sections.tsx:144
 msgid "Enter a section title"
