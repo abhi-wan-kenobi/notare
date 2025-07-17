@@ -22,14 +22,15 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
-import { IconBuilding, IconCheck, IconMist, IconPlus, IconTrash, IconUser } from "@tabler/icons-react";
+import { IconBuilding, IconCheck, IconMist, IconPencil, IconPlus, IconTrash, IconUser } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { zodResolver } from "mantine-form-zod-resolver";
+import { useState } from "react";
 import { z } from "zod";
 
 import { getUserRole } from "@/services/auth.api";
-import { deleteLlmProvider, insertLlmProvider, listLlmProvider } from "@/services/provider.api";
+import { deleteLlmProvider, insertLlmProvider, listLlmProvider, updateLlmProvider } from "@/services/provider.api";
 
 export const Route = createFileRoute("/app/integrations")({
   validateSearch: z.object({
@@ -119,13 +120,11 @@ function SettingsSection({ type }: { type: "personal" | "organization" }) {
 
 function ProvidersTable({ type }: { type: "personal" | "organization" }) {
   const queryClient = useQueryClient();
+  const [editingProvider, setEditingProvider] = useState<any>(null);
 
   const { data: providers, isLoading } = useQuery({
     queryKey: ["providers"],
-    queryFn: async () => {
-      const rows = await listLlmProvider();
-      return rows;
-    },
+    queryFn: () => listLlmProvider(),
   });
 
   const deleteMutation = useMutation({
@@ -197,7 +196,7 @@ function ProvidersTable({ type }: { type: "personal" | "organization" }) {
                   </Table.Td>
                   <Table.Td>
                     <Group gap="xs">
-                      <Tooltip label="Delete provider">
+                      <Tooltip label="Delete integration">
                         <ActionIcon
                           variant="subtle"
                           color="red"
@@ -207,6 +206,16 @@ function ProvidersTable({ type }: { type: "personal" | "organization" }) {
                           <IconTrash size={16} />
                         </ActionIcon>
                       </Tooltip>
+                      <Tooltip label="Edit integration">
+                        <ActionIcon
+                          variant="subtle"
+                          color="orange"
+                          size="sm"
+                          onClick={() => setEditingProvider(provider)}
+                        >
+                          <IconPencil size={16} />
+                        </ActionIcon>
+                      </Tooltip>
                     </Group>
                   </Table.Td>
                 </Table.Tr>
@@ -214,11 +223,27 @@ function ProvidersTable({ type }: { type: "personal" | "organization" }) {
             </Table.Tbody>
           </Table>
         )}
+      {editingProvider && (
+        <EditProviderModal
+          provider={editingProvider}
+          onClose={() => setEditingProvider(null)}
+        />
+      )}
     </Box>
   );
 }
 
-function NewProviderModal({ type, variant }: { type: "personal" | "organization"; variant: "default" | "light" }) {
+function ProviderModal({
+  mode,
+  provider,
+  onClose,
+  variant = "default",
+}: {
+  mode: "create" | "edit";
+  provider?: any;
+  onClose: () => void;
+  variant?: "default" | "light";
+}) {
   const [opened, { open, close }] = useDisclosure(false);
   const queryClient = useQueryClient();
 
@@ -237,20 +262,23 @@ function NewProviderModal({ type, variant }: { type: "personal" | "organization"
     validate: zodResolver(schema),
     initialValues: {
       type: "llm" as const,
-      name: "",
-      model: "",
-      baseUrl: "",
-      apiKey: "",
+      name: mode === "edit" ? (provider?.name || "") : "",
+      model: mode === "edit" ? (provider?.model || "") : "",
+      baseUrl: mode === "edit" ? (provider?.baseUrl || "") : "",
+      apiKey: mode === "edit" ? (provider?.apiKey || "") : "",
     },
   });
 
-  const insertMutation = useMutation({
+  const mutation = useMutation({
     mutationFn: async (values: FormData) => {
       // Simulate validation (replace with actual validation logic)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const rows = await insertLlmProvider({ data: values });
-      return rows;
+      if (mode === "create") {
+        return await insertLlmProvider({ data: values });
+      } else {
+        return await updateLlmProvider({ data: { id: provider.id, ...values } });
+      }
     },
     onMutate: () => {
       return { startedAt: Date.now() };
@@ -260,8 +288,12 @@ function NewProviderModal({ type, variant }: { type: "personal" | "organization"
 
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["providers"] });
-        form.reset();
-        close();
+        if (mode === "create") {
+          form.reset();
+          close();
+        } else {
+          onClose();
+        }
       }, duration);
     },
     onError: (error) => {
@@ -272,22 +304,37 @@ function NewProviderModal({ type, variant }: { type: "personal" | "organization"
   });
 
   const handleSubmit = (values: FormData) => {
-    insertMutation.mutate(values);
+    mutation.mutate(values);
   };
+
+  const handleClose = () => {
+    if (mode === "create") {
+      close();
+    } else {
+      onClose();
+    }
+  };
+
+  const isModalOpened = mode === "edit" ? true : opened;
+  const modalTitle = mode === "create" ? "Add new integration" : "Edit integration";
+  const buttonText = mode === "create" ? "Add Integration" : "Update Integration";
+  const loadingText = mode === "create" ? "Validating..." : "Updating...";
 
   return (
     <>
-      <Button
-        variant={variant}
-        disabled={insertMutation.isPending}
-        onClick={open}
-      >
-        <IconPlus size={16} />
-      </Button>
+      {mode === "create" && (
+        <Button
+          variant={variant}
+          disabled={mutation.isPending}
+          onClick={open}
+        >
+          <IconPlus size={16} />
+        </Button>
+      )}
       <Modal
-        opened={opened}
-        onClose={close}
-        title="Add new integration"
+        opened={isModalOpened}
+        onClose={handleClose}
+        title={modalTitle}
         centered
         size="md"
       >
@@ -335,15 +382,15 @@ function NewProviderModal({ type, variant }: { type: "personal" | "organization"
             />
 
             <Group justify="flex-end" mt="md">
-              <Button variant="subtle" onClick={close}>
+              <Button variant="subtle" onClick={handleClose}>
                 Cancel
               </Button>
               <Button
                 type="submit"
-                loading={insertMutation.isPending}
-                disabled={insertMutation.isPending || insertMutation.isSuccess}
+                loading={mutation.isPending}
+                disabled={mutation.isPending || mutation.isSuccess}
                 leftSection={
-                  <Transition mounted={insertMutation.isSuccess} transition="scale" duration={400}>
+                  <Transition mounted={mutation.isSuccess} transition="scale" duration={400}>
                     {(styles) => (
                       <Box style={styles}>
                         <IconCheck size={16} />
@@ -352,12 +399,32 @@ function NewProviderModal({ type, variant }: { type: "personal" | "organization"
                   </Transition>
                 }
               >
-                {insertMutation.isSuccess ? "Success!" : insertMutation.isPending ? "Validating..." : "Add Integration"}
+                {mutation.isSuccess ? "Success!" : mutation.isPending ? loadingText : buttonText}
               </Button>
             </Group>
           </Stack>
         </form>
       </Modal>
     </>
+  );
+}
+
+function NewProviderModal({ type, variant }: { type: "personal" | "organization"; variant: "default" | "light" }) {
+  return (
+    <ProviderModal
+      mode="create"
+      variant={variant}
+      onClose={() => {}}
+    />
+  );
+}
+
+function EditProviderModal({ provider, onClose }: { provider: any; onClose: () => void }) {
+  return (
+    <ProviderModal
+      mode="edit"
+      provider={provider}
+      onClose={onClose}
+    />
   );
 }

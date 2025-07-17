@@ -46,3 +46,20 @@ export const insertLlmProvider = createServerFn()
     }).returning();
     return rows;
   });
+
+export const updateLlmProvider = createServerFn()
+  .validator(z.object({ id: z.string(), name: z.string(), model: z.string(), baseUrl: z.string(), apiKey: z.string() }))
+  .middleware([userRequiredMiddlewareForFunction, activeOrgRequiredMiddlewareForFunction])
+  .handler(async ({ data, context: { activeOrganizationId } }) => {
+    const { id, ...updateData } = data;
+    const rows = await db.update(llmProvider)
+      .set(updateData)
+      .where(
+        and(
+          eq(llmProvider.organizationId, activeOrganizationId),
+          eq(llmProvider.id, id),
+        ),
+      )
+      .returning();
+    return rows;
+  });

@@ -1,5 +1,6 @@
 use tauri_plugin_windows::HyprWindow;
 
+#[derive(Debug)]
 pub struct Destination {
     pub window: HyprWindow,
     pub url: String,
@@ -22,11 +23,14 @@ pub fn parse(url: String) -> Vec<Destination> {
         }
     };
 
-    match parsed_url.path() {
+    let dests = match parsed_url.path() {
         "/notification" => parse_notification_query(&parsed_url),
         "/register" => parse_register_query(&parsed_url),
         _ => vec![Destination::default()],
-    }
+    };
+
+    tracing::info!("deeplink: {:?}", dests);
+    dests
 }
 
 fn parse_notification_query(parsed_url: &url::Url) -> Vec<Destination> {
