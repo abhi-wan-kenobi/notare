@@ -26,7 +26,7 @@ import { IconBuilding, IconCheck, IconMist, IconPencil, IconPlus, IconTrash, Ico
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { zodResolver } from "mantine-form-zod-resolver";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 
 import { getUserRole } from "@/services/auth.api";
@@ -163,6 +163,7 @@ function ProvidersTable({ type }: { type: "personal" | "organization" }) {
           <Table striped highlightOnHover withTableBorder>
             <Table.Thead>
               <Table.Tr>
+                <Table.Th>Type</Table.Th>
                 <Table.Th>Name</Table.Th>
                 <Table.Th>Model</Table.Th>
                 <Table.Th>Base URL</Table.Th>
@@ -174,12 +175,12 @@ function ProvidersTable({ type }: { type: "personal" | "organization" }) {
               {providers?.map((provider) => (
                 <Table.Tr key={provider.id}>
                   <Table.Td>
-                    <Group gap="xs">
-                      <Text fw={500}>{provider.name}</Text>
-                      <Badge size="xs" variant="light" color="blue">
-                        LLM
-                      </Badge>
-                    </Group>
+                    <Badge size="xs" variant="light" color="blue">
+                      LLM
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text fw={500}>{provider.name}</Text>
                   </Table.Td>
                   <Table.Td>
                     <Text size="sm">{provider.model}</Text>
@@ -246,6 +247,19 @@ function ProviderModal({
 }) {
   const [opened, { open, close }] = useDisclosure(false);
   const queryClient = useQueryClient();
+
+  // Focus on the first field when modal opens
+  useEffect(() => {
+    if (opened || mode === "edit") {
+      // Small delay to ensure modal is fully rendered
+      setTimeout(() => {
+        const firstInput = document.querySelector("[data-autofocus=\"true\"]") as HTMLInputElement;
+        if (firstInput) {
+          firstInput.focus();
+        }
+      }, 100);
+    }
+  }, [opened, mode]);
 
   const schema = z.object({
     type: z.enum(["llm", "stt", "salesforce"]),
@@ -357,6 +371,7 @@ function ProviderModal({
               placeholder="bedrock_openai"
               description="Unique identifier for this integration"
               required
+              data-autofocus="true"
               {...form.getInputProps("name")}
             />
             <TextInput
@@ -371,6 +386,7 @@ function ProviderModal({
               placeholder="https://api.openai.com/v1"
               description="OpenAI compatible API endpoint"
               required
+              autoComplete="off"
               {...form.getInputProps("baseUrl")}
             />
             <PasswordInput
