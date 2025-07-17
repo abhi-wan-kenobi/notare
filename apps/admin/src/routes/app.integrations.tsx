@@ -262,7 +262,9 @@ function NewProviderModal({ type, variant }: { type: "personal" | "organization"
       }, duration);
     },
     onError: (error) => {
-      console.error("Failed to add provider:", error);
+      if (error.message) {
+        form.setFieldError("name", error.message);
+      }
     },
   });
 
