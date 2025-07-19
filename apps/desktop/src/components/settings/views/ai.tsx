@@ -1,15 +1,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { openPath } from "@tauri-apps/plugin-opener";
 import { DownloadIcon, FolderIcon, InfoIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { showLlmModelDownloadToast, showSttModelDownloadToast } from "../../toast/shared";
 
 import { commands as connectorCommands, type Connection } from "@hypr/plugin-connector";
 import { commands as localLlmCommands, SupportedModel } from "@hypr/plugin-local-llm";
-
+import { commands as localSttCommands } from "@hypr/plugin-local-stt";
 import { Button } from "@hypr/ui/components/ui/button";
 import {
   Form,
@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from "@hypr/ui/components/ui/form";
 import { Input } from "@hypr/ui/components/ui/input";
+import { showLlmModelDownloadToast, showSttModelDownloadToast } from "../../toast/shared";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hypr/ui/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@hypr/ui/components/ui/tooltip";
@@ -169,8 +170,9 @@ export default function LocalAI() {
     }, queryClient);
   };
 
-  const handleShowFileLocation = async (modelKey: string) => {
-    // TODO: Implement opening models in finder functionality
+  const handleShowFileLocation = async (modelType: "stt" | "llm") => {
+    const path = await (modelType === "stt" ? localSttCommands.modelsDir() : localLlmCommands.modelsDir());
+    await openPath(path);
   };
 
   const customLLMEnabled = useQuery({
@@ -388,7 +390,7 @@ export default function LocalAI() {
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleShowFileLocation(model.key);
+                          handleShowFileLocation("stt");
                         }}
                         className="text-xs h-7 px-2 flex items-center gap-1"
                       >
@@ -492,7 +494,7 @@ export default function LocalAI() {
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleShowFileLocation(model.key);
+                          handleShowFileLocation("llm");
                         }}
                         className="text-xs h-7 px-2 flex items-center gap-1"
                       >
