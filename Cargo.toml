@@ -185,7 +185,7 @@ specta = "2.0.0-rc.21"
 specta-typescript = "0.0.9"
 tauri-specta = "2.0.0-rc.21"
 
-cidre = { git = "https://github.com/yury/cidre", rev = "c5b0022" }
+cidre = { git = "https://github.com/yury/cidre", rev = "6f9d1f4" }
 cpal = "0.15.3"
 dasp = "0.11.0"
 flume = "0.11.1"

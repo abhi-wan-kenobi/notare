@@ -2462,18 +2462,20 @@ dependencies = [
 
 [[package]]
 name = "cidre"
-version = "0.7.0"
-source = "git+https://github.com/yury/cidre?rev=c5b0022#c5b00229708a03cd074de201199fd7ecf1de9051"
+version = "0.10.1"
+source = "git+https://github.com/yury/cidre?rev=6f9d1f4#6f9d1f41260bc4ab9c1e12e5fc5ba4b48aee931e"
 dependencies = [
  "cidre-macros",
+ "half",
  "parking_lot 0.12.4",
  "tokio",
 ]
 
 [[package]]
 name = "cidre-macros"
-version = "0.1.0"
-source = "git+https://github.com/yury/cidre?rev=c5b0022#c5b00229708a03cd074de201199fd7ecf1de9051"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f07a383a232853874a9b0b3e80e6eefe9bea73495b8ab4bdd960bc7c1db4c6d"
 
 [[package]]
 name = "cipher"
