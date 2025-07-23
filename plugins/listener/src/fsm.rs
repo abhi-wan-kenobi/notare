@@ -248,7 +248,9 @@ impl Session {
             .chunks(hypr_aec::BLOCK_SIZE);
 
         // https://github.com/fastrepl/hyprnote/commit/7c8cf1c
-        tokio::time::sleep(Duration::from_millis(200)).await;
+        tokio::time::sleep(Duration::from_millis(65)).await;
+        // We need some delay here for Airpod transition.
+        // But if the delay is too long, AEC will not work.
 
         let speaker_sample_stream = hypr_audio::AudioInput::from_speaker(None).stream();
         let speaker_stream = speaker_sample_stream
@@ -335,7 +337,7 @@ impl Session {
                     }
 
                     if let Some(ref tx) = save_mic_raw_tx {
-                        let _ = tx.send_async(mic_chunk.clone()).await;
+                        let _ = tx.send_async(mic_chunk_raw.clone()).await;
                     }
                     if let Some(ref tx) = save_speaker_raw_tx {
                         let _ = tx.send_async(speaker_chunk.clone()).await;
