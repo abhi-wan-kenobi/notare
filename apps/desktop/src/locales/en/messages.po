@@ -283,16 +283,16 @@ msgid "<0>Create Note</0>"
 msgstr "<0>Create Note</0>"
 
 #: src/components/settings/views/feedback.tsx:19
-msgid "🐛 Small Bug"
-msgstr "🐛 Small Bug"
+#~ msgid "🐛 Small Bug"
+#~ msgstr "🐛 Small Bug"
 
 #: src/components/settings/views/feedback.tsx:18
-msgid "💡 Idea"
-msgstr "💡 Idea"
+#~ msgid "💡 Idea"
+#~ msgstr "💡 Idea"
 
 #: src/components/settings/views/feedback.tsx:20
-msgid "🚨 Urgent Bug"
-msgstr "🚨 Urgent Bug"
+#~ msgid "🚨 Urgent Bug"
+#~ msgstr "🚨 Urgent Bug"
 
 #: src/components/settings/components/calendar/apple-calendar-integration-details.tsx:71
 #: src/components/settings/components/calendar/apple-calendar-integration-details.tsx:113
@@ -320,8 +320,7 @@ msgstr "Add participant"
 msgid "Admin"
 msgstr "Admin"
 
-#: src/routes/app.settings.tsx:64
-#: src/routes/app.settings.tsx:118
+#: src/routes/app.settings.tsx:67
 msgid "AI"
 msgstr "AI"
 
@@ -385,8 +384,8 @@ msgid "Base URL"
 msgstr "Base URL"
 
 #: src/routes/app.settings.tsx:76
-msgid "Billing"
-msgstr "Billing"
+#~ msgid "Billing"
+#~ msgstr "Billing"
 
 #: src/components/settings/views/billing.tsx:104
 msgid "Billing features are currently under development and will be available in a future update."
@@ -397,8 +396,7 @@ msgstr "Billing features are currently under development and will be available i
 msgid "Built-in Templates"
 msgstr "Built-in Templates"
 
-#: src/routes/app.settings.tsx:66
-#: src/routes/app.settings.tsx:112
+#: src/routes/app.settings.tsx:69
 msgid "Calendar"
 msgstr "Calendar"
 
@@ -556,8 +554,8 @@ msgid "Describe the content and purpose of this section"
 msgstr "Describe the content and purpose of this section"
 
 #: src/components/settings/views/feedback.tsx:78
-msgid "Describe the issue"
-msgstr "Describe the issue"
+#~ msgid "Describe the issue"
+#~ msgstr "Describe the issue"
 
 #: src/components/settings/views/template.tsx:227
 msgid "Description"
@@ -577,8 +575,8 @@ msgid "Duplicate"
 msgstr "Duplicate"
 
 #: src/components/settings/views/feedback.tsx:91
-msgid "Email (Optional)"
-msgstr "Email (Optional)"
+#~ msgid "Email (Optional)"
+#~ msgstr "Email (Optional)"
 
 #: src/components/settings/views/team.tsx:201
 msgid "Email addresses"
@@ -637,14 +635,15 @@ msgstr "Enter the base URL for your custom LLM endpoint"
 #~ msgstr "Enter the exact model name required by your endpoint (if applicable)."
 
 #: src/routes/app.settings.tsx:72
-msgid "Extensions"
-msgstr "Extensions"
+#~ msgid "Extensions"
+#~ msgstr "Extensions"
 
 #: src/components/right-panel/components/chat/empty-chat-state.tsx:73
 msgid "Extract action items"
 msgstr "Extract action items"
 
-#: src/routes/app.settings.tsx:122
+#: src/routes/app.settings.tsx:77
+#: src/routes/app.settings.tsx:110
 msgid "Feedback"
 msgstr "Feedback"
 
@@ -676,8 +675,7 @@ msgstr "Free Trial"
 msgid "Full name"
 msgstr "Full name"
 
-#: src/routes/app.settings.tsx:60
-#: src/routes/app.settings.tsx:110
+#: src/routes/app.settings.tsx:65
 msgid "General"
 msgstr "General"
 
@@ -699,8 +697,8 @@ msgid "Help us improve Hyprnote by sharing anonymous usage data"
 msgstr "Help us improve Hyprnote by sharing anonymous usage data"
 
 #: src/components/settings/views/feedback.tsx:52
-msgid "Help us improve the Hyprnote experience by providing feedback."
-msgstr "Help us improve the Hyprnote experience by providing feedback."
+#~ msgid "Help us improve the Hyprnote experience by providing feedback."
+#~ msgstr "Help us improve the Hyprnote experience by providing feedback."
 
 #: src/components/individualization-modal/role-view.tsx:24
 #: src/components/individualization-modal/org-size-view.tsx:24
@@ -714,8 +712,8 @@ msgstr "Help us tailor your Hyprnote experience"
 #~ msgstr "Hide Event"
 
 #: src/components/settings/views/feedback.tsx:19
-msgid "Hmm... this is off..."
-msgstr "Hmm... this is off..."
+#~ msgid "Hmm... this is off..."
+#~ msgstr "Hmm... this is off..."
 
 #: src/components/right-panel/components/chat/empty-chat-state.tsx:24
 #~ msgid "How can I help you today?"
@@ -729,8 +727,7 @@ msgstr "How did you hear about Hyprnote?"
 msgid "Integration with other apps like Notion and Google Calendar"
 msgstr "Integration with other apps like Notion and Google Calendar"
 
-#: src/routes/app.settings.tsx:78
-#: src/routes/app.settings.tsx:126
+#: src/routes/app.settings.tsx:75
 #: src/components/settings/views/integrations.tsx:118
 msgid "Integrations"
 msgstr "Integrations"
@@ -760,8 +757,8 @@ msgid "Key decisions"
 msgstr "Key decisions"
 
 #: src/routes/app.settings.tsx:120
-msgid "Lab"
-msgstr "Lab"
+#~ msgid "Lab"
+#~ msgstr "Lab"
 
 #: src/components/settings/views/general.tsx:227
 msgid "Language"
@@ -910,8 +907,7 @@ msgstr "No upcoming events for this organization"
 msgid "No upcoming events with this contact"
 msgstr "No upcoming events with this contact"
 
-#: src/routes/app.settings.tsx:68
-#: src/routes/app.settings.tsx:114
+#: src/routes/app.settings.tsx:71
 msgid "Notifications"
 msgstr "Notifications"
 
@@ -924,8 +920,8 @@ msgid "Official Templates"
 msgstr "Official Templates"
 
 #: src/components/settings/views/feedback.tsx:18
-msgid "Ooh! Suggestion!"
-msgstr "Ooh! Suggestion!"
+#~ msgid "Ooh! Suggestion!"
+#~ msgstr "Ooh! Suggestion!"
 
 #: src/components/left-sidebar/top-area/calendar-button.tsx:26
 msgid "Open calendar view"
@@ -980,8 +976,8 @@ msgid "Pro"
 msgstr "Pro"
 
 #: src/routes/app.settings.tsx:62
-msgid "Profile"
-msgstr "Profile"
+#~ msgid "Profile"
+#~ msgstr "Profile"
 
 #: src/components/share-and-permission/publish.tsx:15
 msgid "Publish your note"
@@ -1102,8 +1098,8 @@ msgid "Single sign-on for all users"
 msgstr "Single sign-on for all users"
 
 #: src/routes/app.settings.tsx:116
-msgid "Sound"
-msgstr "Sound"
+#~ msgid "Sound"
+#~ msgstr "Sound"
 
 #: src/components/settings/views/billing.tsx:76
 msgid "Start Annual Plan"
@@ -1122,8 +1118,8 @@ msgid "Stop"
 msgstr "Stop"
 
 #: src/components/settings/views/feedback.tsx:107
-msgid "Submit Feedback"
-msgstr "Submit Feedback"
+#~ msgid "Submit Feedback"
+#~ msgstr "Submit Feedback"
 
 #: src/components/right-panel/components/chat/empty-chat-state.tsx:61
 msgid "Summarize meeting"
@@ -1141,7 +1137,6 @@ msgstr "System Audio Access"
 msgid "Talk to Founders"
 msgstr "Talk to Founders"
 
-#: src/routes/app.settings.tsx:74
 #: src/components/settings/views/billing.tsx:46
 msgid "Team"
 msgstr "Team"
@@ -1154,8 +1149,7 @@ msgstr "Team management features are currently under development and will be ava
 msgid "Teamspace"
 msgstr "Teamspace"
 
-#: src/routes/app.settings.tsx:70
-#: src/routes/app.settings.tsx:124
+#: src/routes/app.settings.tsx:73
 msgid "Templates"
 msgstr "Templates"
 
@@ -1216,8 +1210,8 @@ msgid "Type to search..."
 msgstr "Type to search..."
 
 #: src/components/settings/views/feedback.tsx:20
-msgid "Ugh! Can't use it!"
-msgstr "Ugh! Can't use it!"
+#~ msgid "Ugh! Can't use it!"
+#~ msgstr "Ugh! Can't use it!"
 
 #: src/components/editor-area/note-header/title-input.tsx:32
 msgid "Untitled"
@@ -1277,8 +1271,8 @@ msgid "We think different."
 msgstr "We think different."
 
 #: src/components/settings/views/feedback.tsx:102
-msgid "We'll only use this to follow up if needed."
-msgstr "We'll only use this to follow up if needed."
+#~ msgid "We'll only use this to follow up if needed."
+#~ msgstr "We'll only use this to follow up if needed."
 
 #: src/components/settings/views/integrations.tsx:275
 msgid "We're working on adding more tools and services to connect with your workflow"
