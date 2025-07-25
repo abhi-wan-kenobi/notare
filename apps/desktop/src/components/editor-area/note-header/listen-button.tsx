@@ -412,11 +412,6 @@ function MicrophoneSelector({
     });
   };
 
-  useEffect(() => {
-    console.log("currentDeviceQuery.data", currentDeviceQuery.data);
-    console.log("allDevicesQuery.data", allDevicesQuery.data);
-  }, [currentDeviceQuery.data, allDevicesQuery.data]);
-
   const Icon = isMuted ? MicOffIcon : MicIcon;
 
   return (
@@ -425,27 +420,32 @@ function MicrophoneSelector({
         <div className="flex -space-x-px">
           <Button
             variant="outline"
-            className="rounded-r-none flex-1 min-w-0 h-10"
+            className="rounded-r-none flex-1 min-w-0 h-10 flex items-center justify-center gap-2 transition-all hover:border-neutral-300"
             disabled={disabled}
             onClick={onToggleMuted}
           >
             <Icon
               className={cn(
-                "w-4 h-4 flex-shrink-0",
-                isMuted ? "text-neutral-500" : "",
-                disabled && "text-neutral-300",
+                "flex-shrink-0 transition-colors",
+                isMuted ? "text-neutral-400" : "text-neutral-700",
+                disabled && "text-neutral-300 opacity-50",
               )}
+              size={18}
             />
-            {!disabled && <SoundIndicator input="mic" size="long" />}
+            {!disabled && (
+              <div className="flex-1 flex items-center justify-center">
+                <SoundIndicator input="mic" size="long" />
+              </div>
+            )}
           </Button>
 
           <PopoverTrigger asChild>
             <Button
               variant="outline"
-              className="rounded-l-none px-0.5 flex-shrink-0"
+              className="rounded-l-none px-1.5 flex-shrink-0 h-10 transition-all hover:border-neutral-300 hover:bg-neutral-50"
               disabled={disabled}
             >
-              <ChevronDownIcon className="w-4 h-4" />
+              <ChevronDownIcon className="w-4 h-4 text-neutral-600" />
             </Button>
           </PopoverTrigger>
         </div>
@@ -486,9 +486,9 @@ function MicrophoneSelector({
                           setIsOpen(false);
                         }}
                       >
-                        <Icon className="w-3 h-3 mr-2 flex-shrink-0" />
+                        <Icon className="w-4 h-4 mr-2 flex-shrink-0 text-neutral-600" />
                         <span className="text-sm truncate flex-1">{device}</span>
-                        {isSelected && <CheckIcon className="w-3 h-3 ml-auto flex-shrink-0 text-green-600" />}
+                        {isSelected && <CheckIcon className="w-4 h-4 ml-auto flex-shrink-0 text-green-600" />}
                       </Button>
                     );
                   })}
@@ -517,14 +517,22 @@ function SpeakerButton({
       <Button
         variant="outline"
         onClick={onClick}
-        className="w-full h-10"
+        className="w-full h-10 flex items-center justify-center gap-2 transition-all hover:border-neutral-300"
         disabled={disabled}
       >
         <Icon
-          className={cn("flex-shrink-0", isMuted ? "text-neutral-500" : "", disabled && "text-neutral-300")}
-          size={16}
+          className={cn(
+            "flex-shrink-0 transition-colors",
+            isMuted ? "text-neutral-400" : "text-neutral-700",
+            disabled && "text-neutral-300 opacity-50",
+          )}
+          size={18}
         />
-        {!disabled && <SoundIndicator input="speaker" size="long" />}
+        {!disabled && (
+          <div className="flex-1 flex items-center justify-center">
+            <SoundIndicator input="speaker" size="long" />
+          </div>
+        )}
       </Button>
     </div>
   );
