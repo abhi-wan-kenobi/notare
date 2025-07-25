@@ -14354,6 +14354,7 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "tauri-plugin-listener",
+ "tauri-plugin-shell",
  "tauri-plugin-store",
  "tauri-plugin-store2",
  "tauri-plugin-task",
