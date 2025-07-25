@@ -169,6 +169,7 @@ impl AudioChannels {
 pub struct Session {
     app: tauri::AppHandle,
     session_id: Option<String>,
+    mic_device_name: Option<String>,
     mic_muted_tx: Option<tokio::sync::watch::Sender<bool>>,
     mic_muted_rx: Option<tokio::sync::watch::Receiver<bool>>,
     speaker_muted_tx: Option<tokio::sync::watch::Sender<bool>>,
@@ -180,9 +181,12 @@ pub struct Session {
 
 impl Session {
     pub fn new(app: tauri::AppHandle) -> Self {
+        let mic_device_name = hypr_audio::AudioInput::get_default_mic_device_name();
+
         Self {
             app,
             session_id: None,
+            mic_device_name: Some(mic_device_name),
             mic_muted_tx: None,
             mic_muted_rx: None,
             speaker_muted_tx: None,
@@ -197,8 +201,8 @@ impl Session {
     async fn setup_resources(&mut self, id: impl Into<String>) -> Result<(), crate::Error> {
         use tauri_plugin_db::DatabasePluginExt;
 
-        let user_id = self.app.db_user_id().await?.unwrap();
         let session_id = id.into();
+        let user_id = self.app.db_user_id().await?.unwrap();
         self.session_id = Some(session_id.clone());
 
         let (record, language, jargons) = {
@@ -240,7 +244,12 @@ impl Session {
         let listen_client = setup_listen_client(&self.app, language, jargons).await?;
 
         let mic_sample_stream = {
-            let mut input = hypr_audio::AudioInput::from_mic();
+            let mut input = match &self.mic_device_name {
+                Some(device_name) => {
+                    hypr_audio::AudioInput::from_mic_with_device_name(device_name.clone())
+                }
+                None => hypr_audio::AudioInput::from_mic(),
+            };
             input.stream()
         };
         let mic_stream = mic_sample_stream
@@ -520,6 +529,14 @@ impl Session {
             None => false,
         }
     }
+
+    pub fn get_available_mic_devices() -> Vec<String> {
+        hypr_audio::AudioInput::list_mic_devices()
+    }
+
+    pub fn get_current_mic_device(&self) -> Option<String> {
+        self.mic_device_name.clone()
+    }
 }
 
 async fn setup_listen_client<R: tauri::Runtime>(
@@ -589,6 +606,7 @@ pub enum StateEvent {
     Resume,
     MicMuted(bool),
     SpeakerMuted(bool),
+    MicChange(Option<String>),
 }
 
 #[state_machine(
@@ -612,6 +630,18 @@ impl Session {
                     let _ = tx.send(*muted);
                     let _ = SessionEvent::SpeakerMuted { value: *muted }.emit(&self.app);
                 }
+                Handled
+            }
+            StateEvent::MicChange(device_name) => {
+                self.mic_device_name = device_name.clone();
+
+                if self.session_id.is_some() && self.tasks.is_some() {
+                    if let Some(session_id) = self.session_id.clone() {
+                        self.teardown_resources().await;
+                        self.setup_resources(&session_id).await.unwrap();
+                    }
+                }
+
                 Handled
             }
             _ => Super,
