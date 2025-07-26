@@ -22,7 +22,7 @@ Hyprnote is designed to do the following:
 
 Optional capabilities (configurable by the user):
 
-* Connect to third-party APIs (e.g., OpenAI GPT API) for improved summary quality
+* Connect to custom model providers (e.g., Ollama, OpenAI) for improved summary quality
 * Integrate with productivity tools (e.g., Obsidian export)
 
 ## 3. System Requirements
