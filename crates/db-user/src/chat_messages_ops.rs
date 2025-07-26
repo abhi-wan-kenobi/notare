@@ -54,4 +54,17 @@ impl UserDatabase {
         }
         Ok(items)
     }
+
+    pub async fn delete_chat_messages(
+        &self,
+        group_id: impl Into<String>,
+    ) -> Result<(), crate::Error> {
+        let conn = self.conn()?;
+        conn.execute(
+            "DELETE FROM chat_messages WHERE group_id = ?",
+            vec![group_id.into()],
+        )
+        .await?;
+        Ok(())
+    }
 }
