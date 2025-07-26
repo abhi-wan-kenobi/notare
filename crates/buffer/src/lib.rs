@@ -87,14 +87,14 @@ fn md_to_html(text: &str) -> Result<String, Error> {
 fn transform_mentions_in_markdown(markdown: &str) -> String {
     // @[label](type:id)
     let re = regex::Regex::new(r"@\[([^\]]+)\]\(([^:]+):([^)]+)\)").unwrap();
-    
+
     re.replace_all(markdown, |caps: &regex::Captures| {
         let label = &caps[1];
         let mention_type = &caps[2];
         let id = &caps[3];
 
         let app_url = format!("/app/{}/{}", mention_type, id);
-        
+
         format!(
             r#"<a class="mention" data-mention="true" data-id="{}" data-type="{}" data-label="{}" href="javascript:void(0)" onclick="event.preventDefault(); if (window.__HYPR_NAVIGATE__) window.__HYPR_NAVIGATE__('{}');">@{}</a>"#,
             id, mention_type, label, app_url, label
@@ -456,11 +456,12 @@ mod tests {
 
     #[test]
     fn test_mention_transformation() {
-        let input = r#"Hello @[John Doe](user:john-doe) and @[Jane Smith](workspace:jane-workspace)!"#;
-        
+        let input =
+            r#"Hello @[John Doe](user:john-doe) and @[Jane Smith](workspace:jane-workspace)!"#;
+
         let html = opinionated_md_to_html(input).unwrap();
         println!("HTML output: {}", html);
-        
+
         assert!(html.contains(r#"data-mention="true""#));
         assert!(html.contains(r#"data-id="john-doe""#));
         assert!(html.contains(r#"data-type="user""#));
