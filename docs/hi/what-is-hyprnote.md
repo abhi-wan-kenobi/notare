@@ -17,7 +17,7 @@ Hyprnote is awesome because...
 
 ## How does Hyprnote work?
 
-Using Hyprnote is basically having a&#x20;
+Using Hyprnote is basically having a personal assistant just for your meetings but in a very private manner. Hyprnote will never betray you and hand over data to others.
 
 &#x20;![](../.gitbook/assets/cut01.jpg)    ![](<../.gitbook/assets/cut02 (2).jpg>)
 
