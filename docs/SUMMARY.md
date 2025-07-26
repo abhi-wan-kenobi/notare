@@ -32,3 +32,4 @@
 
 * [Privacy Policy](docs/privacy-policy.md)
 * [Terms and Condition](docs/terms-and-condition.md)
+* [Product Description & System Requirements](docs/product-description-and-system-requirements.md)
