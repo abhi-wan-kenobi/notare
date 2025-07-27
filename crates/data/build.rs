@@ -33,4 +33,5 @@ fn main() {
     run("english_3");
     run("english_4");
     run("english_5");
+    run("english_7");
 }

@@ -97,7 +97,7 @@ function Component() {
 }
 
 function OnboardingSupport({ session }: { session: Session }) {
-  const video = "wGZpAB6610200nRG2uRG2t9bS1008y009RUWUJTnSlevpPc";
+  const video = "3WwgXvuhjU5ZkVvJrWqQKahoxvKc1JA5Eg2IqMSj8oM";
 
   const navigate = useNavigate();
 

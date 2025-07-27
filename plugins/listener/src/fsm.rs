@@ -322,9 +322,15 @@ impl Session {
                             _ => break,
                         };
 
-                    let mic_chunk = aec
-                        .process_streaming(&mic_chunk_raw, &speaker_chunk)
-                        .unwrap();
+                    let maybe_mic_chunk = aec.process_streaming(&mic_chunk_raw, &speaker_chunk);
+
+                    let mic_chunk = match maybe_mic_chunk {
+                        Ok(mic_chunk) => mic_chunk,
+                        Err(e) => {
+                            tracing::error!("aec_error: {:?}", e);
+                            mic_chunk_raw.clone()
+                        }
+                    };
 
                     if matches!(*session_state_rx.borrow(), State::RunningPaused {}) {
                         let mut rx = session_state_rx.clone();

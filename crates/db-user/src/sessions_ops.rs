@@ -34,7 +34,7 @@ impl UserDatabase {
         &self,
     ) -> Result<Vec<hypr_listener_interface::Word>, crate::Error> {
         let words: Vec<hypr_listener_interface::Word> =
-            serde_json::from_str(hypr_data::english_4::WORDS_JSON).unwrap();
+            serde_json::from_str(hypr_data::english_7::WORDS_JSON).unwrap();
         Ok(words)
     }
 
