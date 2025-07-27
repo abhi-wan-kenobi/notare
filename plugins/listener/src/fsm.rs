@@ -252,12 +252,7 @@ impl Session {
         .await?;
 
         let mic_sample_stream = {
-            let mut input = match &self.mic_device_name {
-                Some(device_name) => {
-                    hypr_audio::AudioInput::from_mic_with_device_name(device_name.clone())
-                }
-                None => hypr_audio::AudioInput::from_mic(),
-            };
+            let mut input = hypr_audio::AudioInput::from_mic(self.mic_device_name.clone());
             input.stream()
         };
         let mic_stream = mic_sample_stream
