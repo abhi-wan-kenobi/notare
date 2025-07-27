@@ -92,7 +92,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
 
     #[tracing::instrument(skip_all)]
     async fn check_system_audio_access(&self) -> Result<bool, crate::Error> {
-        Ok(true)
+        Ok(hypr_tcc::audio_capture_permission_granted())
     }
 
     #[tracing::instrument(skip_all)]
