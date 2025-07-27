@@ -85,9 +85,9 @@ pub async fn run_server(state: ServerState) -> Result<ServerHandle, crate::Error
 
 async fn health(AxumState(state): AxumState<ServerState>) -> impl IntoResponse {
     match state.model_manager.get_model().await {
-        Ok(_) => StatusCode::OK,
-        Err(_) => StatusCode::SERVICE_UNAVAILABLE,
-    };
+        Ok(_) => (StatusCode::OK, "OK".to_string()),
+        Err(e) => (StatusCode::SERVICE_UNAVAILABLE, e.to_string()),
+    }
 }
 
 async fn chat_completions(

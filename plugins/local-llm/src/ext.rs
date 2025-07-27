@@ -165,10 +165,6 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
     async fn start_server(&self) -> Result<String, crate::Error> {
         let current_model = self.get_current_model()?;
 
-        if !self.is_model_downloaded(&current_model).await? {
-            return Err(crate::Error::ModelNotDownloaded);
-        }
-
         let model_path = self.models_dir().join(current_model.file_name());
         let model_manager = crate::ModelManager::new(model_path);
         let state = self.state::<crate::SharedState>();
