@@ -173,7 +173,8 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
         let model_manager = crate::ModelManager::new(model_path);
         let state = self.state::<crate::SharedState>();
 
-        let server = crate::server::run_server(model_manager).await?;
+        let server_state = crate::ServerState::new(model_manager);
+        let server = crate::server::run_server(server_state).await?;
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
         let api_base = format!("http://{}", &server.addr);
