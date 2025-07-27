@@ -18,6 +18,7 @@ import {
   RightPanelProvider,
   SearchProvider,
   SettingsProvider,
+  useHypr,
   useLeftSidebar,
   useRightPanel,
 } from "@/contexts";
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/app")({
 
 function Component() {
   const router = useRouter();
+  const { onboardingSessionId } = useHypr();
   const { sessionsStore, ongoingSessionStore, isOnboardingNeeded, isIndividualizationNeeded } = Route.useLoaderData();
 
   const [onboardingCompletedThisSession, setOnboardingCompletedThisSession] = useState(false);
@@ -87,6 +89,12 @@ function Component() {
                         onClose={() => {
                           commands.setOnboardingNeeded(false);
                           setOnboardingCompletedThisSession(true);
+
+                          // Navigate to thank you session if it exists
+                          if (onboardingSessionId) {
+                            router.navigate({ to: `/app/note/${onboardingSessionId}` });
+                          }
+
                           router.invalidate();
                         }}
                       />
