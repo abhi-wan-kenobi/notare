@@ -20,23 +20,23 @@ pub fn audio_capture_permission_granted() -> bool {
     true
 }
 
+#[cfg(target_os = "macos")]
 pub fn reset_audio_capture_permission(bundle_id: impl Into<SRString>) -> bool {
-    #[cfg(target_os = "macos")]
-    unsafe {
-        _reset_audio_capture_permission(bundle_id.into())
-    }
+    unsafe { _reset_audio_capture_permission(bundle_id.into()) }
+}
 
-    #[cfg(not(target_os = "macos"))]
+#[cfg(not(target_os = "macos"))]
+pub fn reset_audio_capture_permission(bundle_id: impl Into<String>) -> bool {
     true
 }
 
+#[cfg(target_os = "macos")]
 pub fn reset_microphone_permission(bundle_id: impl Into<SRString>) -> bool {
-    #[cfg(target_os = "macos")]
-    unsafe {
-        _reset_microphone_permission(bundle_id.into())
-    }
+    unsafe { _reset_microphone_permission(bundle_id.into()) }
+}
 
-    #[cfg(not(target_os = "macos"))]
+#[cfg(not(target_os = "macos"))]
+pub fn reset_microphone_permission(bundle_id: impl Into<String>) -> bool {
     true
 }
 
