@@ -330,7 +330,7 @@ function RecordingControls({
     if (sessionId === onboardingSessionId) {
       listenerCommands.setMicMuted(true);
     }
-  }, []);
+  }, [ongoingSessionMuted.micMuted]);
 
   const handleStopWithTemplate = () => {
     const actualTemplateId = selectedTemplate === "auto" ? null : selectedTemplate;
