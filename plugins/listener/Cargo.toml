@@ -33,6 +33,7 @@ hypr-ws = { workspace = true }
 tauri-plugin-auth = { workspace = true }
 tauri-plugin-connector = { workspace = true }
 tauri-plugin-db = { workspace = true }
+tauri-plugin-shell = { workspace = true }
 tauri-plugin-tray = { workspace = true }
 tauri-plugin-windows = { workspace = true }
 

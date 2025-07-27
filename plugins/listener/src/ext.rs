@@ -98,8 +98,20 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
     #[tracing::instrument(skip_all)]
     async fn request_microphone_access(&self) -> Result<(), crate::Error> {
         #[cfg(target_os = "macos")]
-        // https://github.com/ayangweb/tauri-plugin-macos-permissions/blob/c025ab4/src/commands.rs#L184
         {
+            {
+                use tauri_plugin_shell::ShellExt;
+
+                let bundle_id = self.config().identifier.clone();
+                self.app_handle()
+                    .shell()
+                    .command("tccutil")
+                    .args(["reset", "Microphone", &bundle_id])
+                    .spawn()
+                    .ok();
+            }
+
+            // https://github.com/ayangweb/tauri-plugin-macos-permissions/blob/c025ab4/src/commands.rs#L184
             unsafe {
                 let av_media_type = NSString::from_str("soun");
                 type CompletionBlock = Option<extern "C" fn(Bool)>;
@@ -123,6 +135,18 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ListenerPluginExt<R> for T {
 
     #[tracing::instrument(skip_all)]
     async fn request_system_audio_access(&self) -> Result<(), crate::Error> {
+        {
+            use tauri_plugin_shell::ShellExt;
+
+            let bundle_id = self.config().identifier.clone();
+            self.app_handle()
+                .shell()
+                .command("tccutil")
+                .args(["reset", "AudioCapture", &bundle_id])
+                .spawn()
+                .ok();
+        }
+
         let stop = hypr_audio::AudioOutput::silence();
 
         let mut speaker_sample_stream = hypr_audio::AudioInput::from_speaker(None).stream();
