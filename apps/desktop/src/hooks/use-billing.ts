@@ -38,7 +38,8 @@ export function useBilling({
       return data as { url: string };
     },
     onError: (error) => {
-      message(JSON.stringify(error), {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      message(errorMessage, {
         kind: "error",
         title: "Failed to start checkout",
       });
@@ -72,7 +73,8 @@ export function useBilling({
       window.open(url, "_blank");
     },
     onError: (error) => {
-      message(JSON.stringify(error), {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      message(errorMessage, {
         kind: "error",
         title: "Failed to open billing portal",
       });
