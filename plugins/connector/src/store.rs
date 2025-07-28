@@ -8,6 +8,9 @@ pub enum StoreKey {
     CustomModel,
     AdminApiBase,
     AdminApiKey,
+    OpenaiApiKey,
+    OpenrouterApiKey,
+    GeminiApiKey,
 }
 
 impl ScopedStoreKey for StoreKey {}

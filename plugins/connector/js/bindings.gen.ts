@@ -36,6 +36,9 @@ async getLlmConnection() : Promise<ConnectionLLM> {
 },
 async getSttConnection() : Promise<ConnectionSTT> {
     return await TAURI_INVOKE("plugin:connector|get_stt_connection");
+},
+async getOpenaiApiKey() : Promise<string> {
+    return await TAURI_INVOKE("plugin:connector|get_openai_api_key");
 }
 }
 

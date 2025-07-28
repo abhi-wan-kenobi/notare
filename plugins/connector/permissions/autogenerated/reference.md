@@ -157,6 +157,32 @@ Denies the get_local_llm_connection command without any pre-configured scope.
 <tr>
 <td>
 
+`connector:allow-get-openai-api-key`
+
+</td>
+<td>
+
+Enables the get_openai_api_key command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`connector:deny-get-openai-api-key`
+
+</td>
+<td>
+
+Denies the get_openai_api_key command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `connector:allow-get-stt-connection`
 
 </td>

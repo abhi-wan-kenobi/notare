@@ -25,6 +25,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::get_local_llm_connection::<tauri::Wry>,
             commands::get_llm_connection::<tauri::Wry>,
             commands::get_stt_connection::<tauri::Wry>,
+            commands::get_openai_api_key::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

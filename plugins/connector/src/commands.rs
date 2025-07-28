@@ -1,4 +1,4 @@
-use crate::{Connection, ConnectionLLM, ConnectionSTT, ConnectorPluginExt};
+use crate::{Connection, ConnectionLLM, ConnectionSTT, ConnectorPluginExt, StoreKey};
 
 #[tauri::command]
 #[specta::specta]
@@ -87,4 +87,16 @@ pub async fn get_stt_connection<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<ConnectionSTT, String> {
     app.get_stt_connection().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_openai_api_key<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<String, String> {
+    let store = app.connector_store();
+    let v = store
+        .get::<String>(StoreKey::OpenaiApiKey)
+        .map_err(|e| e.to_string())?;
+    Ok(v.unwrap_or_default())
 }
