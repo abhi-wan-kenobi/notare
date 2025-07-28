@@ -16,7 +16,7 @@ export function useLicense() {
       }
       return null;
     },
-    refetchInterval: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60 * 1,
     // This is important for immediate refresh
     refetchIntervalInBackground: true,
   });
@@ -37,7 +37,10 @@ export function useLicense() {
 
       return license;
     },
-    onError: console.error,
+    onError: (e) => {
+      console.error(e);
+      queryClient.setQueryData(LICENSE_QUERY_KEY, null);
+    },
     onSuccess: (license) => {
       queryClient.setQueryData(LICENSE_QUERY_KEY, license);
     },
@@ -68,7 +71,6 @@ export function useLicense() {
         ttlSeconds: 60 * 60 * 24 * 7, // 7 days
         ttlForever: false,
       });
-      console.log("Activated license", license);
       return license;
     },
     onError: console.error,
@@ -87,7 +89,7 @@ export function useLicense() {
     },
     onError: console.error,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: LICENSE_QUERY_KEY });
+      queryClient.setQueryData(LICENSE_QUERY_KEY, null);
     },
   });
 

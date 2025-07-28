@@ -41,6 +41,12 @@ export function broadcastQueryClient(queryClient: QueryClient) {
 
       const keys = event.payload.queryKey as string[];
 
+      if (keys.some((key) => key?.includes("license"))) {
+        queryClient.invalidateQueries({
+          predicate: (query) => query.queryKey.some((key) => typeof key === "string" && key.includes("license")),
+        });
+      }
+
       if (keys.some((key) => key?.includes("flags"))) {
         queryClient.invalidateQueries({
           predicate: (query) => query.queryKey.some((key) => typeof key === "string" && key.includes("flags")),

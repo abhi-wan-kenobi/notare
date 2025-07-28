@@ -14,6 +14,7 @@ Default permissions for the plugin
 - `allow-get-local-llm-connection`
 - `allow-get-llm-connection`
 - `allow-get-stt-connection`
+- `allow-get-openai-api-key`
 
 ## Permission Table
 
