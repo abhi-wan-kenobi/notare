@@ -1,6 +1,8 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { message } from "@tauri-apps/plugin-dialog";
 
+import { fetch } from "@hypr/utils";
+
 const SERVER_BASE_URL = import.meta.env.DEV
   ? "http://localhost:8082"
   : "https://server.hyprnote.com";
