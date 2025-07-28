@@ -9,6 +9,7 @@ import { z } from "zod";
 import { TabIcon } from "@/components/settings/components/tab-icon";
 import { type Tab, TABS } from "@/components/settings/components/types";
 import {
+  Billing,
   Calendar,
   General,
   Integrations,
@@ -75,6 +76,8 @@ function Component() {
         return t`Integrations`;
       case "feedback":
         return t`Feedback`;
+      case "billing":
+        return t`License`;
       default:
         return tab;
     }
@@ -141,6 +144,7 @@ function Component() {
               {search.tab === "ai" && <LocalAI />}
               {search.tab === "templates" && <TemplatesView />}
               {search.tab === "integrations" && <Integrations />}
+              {search.tab === "billing" && <Billing />}
             </div>
           </div>
         </div>
