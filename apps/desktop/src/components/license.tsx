@@ -10,10 +10,9 @@ export function LicenseRefreshProvider({ children }: { children: React.ReactNode
       return;
     }
 
-    refreshLicense.mutate();
-
     const checkAndRefresh = () => {
       if (shouldRefresh() && !refreshLicense.isPending) {
+        refreshLicense.mutate();
       }
     };
 
