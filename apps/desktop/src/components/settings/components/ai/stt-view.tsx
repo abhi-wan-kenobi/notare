@@ -165,6 +165,21 @@ export function STTView({
     }
   }, [sttModelDownloadStatus.data, setSttModels]);
 
+  const defaultModelKeys = ["QuantizedTiny", "QuantizedSmall", "QuantizedLargeTurbo"];
+  const otherModelKeys = ["QuantizedTinyEn", "QuantizedBase", "QuantizedBaseEn", "QuantizedSmallEn"];
+
+  const modelsToShow = sttModels.filter(model => {
+    if (defaultModelKeys.includes(model.key)) {
+      return true;
+    }
+
+    if (otherModelKeys.includes(model.key) && model.downloaded) {
+      return true;
+    }
+
+    return false;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -185,7 +200,7 @@ export function STTView({
 
       <div className="max-w-2xl">
         <div className="space-y-2">
-          {sttModels.map((model) => (
+          {modelsToShow.map((model) => (
             <div
               key={model.key}
               className={cn(
