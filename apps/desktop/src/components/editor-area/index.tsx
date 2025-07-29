@@ -338,7 +338,7 @@ export function useEnhanceMutation({
         setProgress(0);
       }
 
-      const wordsThreshold = import.meta.env.DEV ? 5 : 50;
+      const wordsThreshold = import.meta.env.DEV ? 5 : 100;
       if (!words.length || words.length < wordsThreshold) {
         toast({
           id: "short-timeline",
