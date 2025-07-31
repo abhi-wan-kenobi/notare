@@ -14,6 +14,9 @@ import { Input } from "@hypr/ui/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@hypr/ui/components/ui/select";
 import { cn } from "@hypr/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+import useDebouncedCallback from "beautiful-react-hooks/useDebouncedCallback";
+import { useState } from "react";
 import { SharedCustomEndpointProps } from "./shared";
 
 const openaiModels = [
@@ -35,6 +38,7 @@ const openrouterModels = [
   "openai/gpt-4o-mini",
   "openai/gpt-4o",
   "openai/gpt-4.1-nano",
+  "openai/chatgpt-4o-latest",
   "anthropic/claude-sonnet-4",
   "moonshotai/kimi-k2",
   "mistralai/mistral-small-3.2-24b-instruct",
@@ -50,7 +54,6 @@ export function LLMCustomView({
   setOpenAccordion,
   customLLMConnection,
   getCustomLLMModel,
-  availableLLMModels,
   openaiForm,
   geminiForm,
   openrouterForm,
@@ -146,14 +149,37 @@ export function LLMCustomView({
   };
 
   // temporary fix for fetching models smoothly
+  const [debouncedApiBase, setDebouncedApiBase] = useState("");
+  const [debouncedApiKey, setDebouncedApiKey] = useState("");
+
+  const updateDebouncedValues = useDebouncedCallback(
+    (apiBase: string, apiKey: string) => {
+      setDebouncedApiBase(apiBase);
+      setDebouncedApiKey(apiKey);
+    },
+    [],
+    2000,
+  );
+
+  // Watch for form changes
+  useEffect(() => {
+    const apiBase = customForm.watch("api_base");
+    const apiKey = customForm.watch("api_key");
+
+    updateDebouncedValues(apiBase || "", apiKey || "");
+  }, [customForm.watch("api_base"), customForm.watch("api_key"), updateDebouncedValues]);
+
   const othersModels = useQuery({
-    queryKey: ["others-direct-models", customForm.watch("api_base"), customForm.watch("api_key")?.slice(0, 8)],
+    queryKey: ["others-direct-models", debouncedApiBase, debouncedApiKey?.slice(0, 8)],
     queryFn: async (): Promise<string[]> => {
-      const apiBase = customForm.getValues("api_base");
-      const apiKey = customForm.getValues("api_key");
+      const apiBase = debouncedApiBase;
+      const apiKey = debouncedApiKey;
 
       const url = new URL(apiBase);
-      url.pathname = "/v1/models";
+      url.pathname += url.pathname.endsWith("/") ? "models" : "/models";
+
+      console.log("onquery");
+      console.log(url.toString());
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -163,7 +189,7 @@ export function LLMCustomView({
         headers["Authorization"] = `Bearer ${apiKey}`;
       }
 
-      const response = await fetch(url.toString(), {
+      const response = await tauriFetch(url.toString(), {
         method: "GET",
         headers,
       });
@@ -181,23 +207,17 @@ export function LLMCustomView({
       const models = data.data
         .map((model: any) => model.id)
         .filter((id: string) => {
-          const excludeKeywords = ["dall-e"];
+          const excludeKeywords = ["dall-e", "codex", "whisper"];
           return !excludeKeywords.some(keyword => id.includes(keyword));
         });
 
       return models;
     },
     enabled: (() => {
-      const apiBase = customForm.watch("api_base");
-      const apiKey = customForm.watch("api_key");
-      const isLocal = apiBase?.includes("localhost") || apiBase?.includes("127.0.0.1");
+      const isLocal = debouncedApiBase?.includes("localhost") || debouncedApiBase?.includes("127.0.0.1");
 
       try {
-        // Only enable if URL looks complete (ends with common patterns)
-        const validEndings = ["/v1", "/v1/", ":11434/v1", ":8080/v1"];
-        const looksComplete = validEndings.some(ending => apiBase?.endsWith(ending));
-
-        return Boolean(apiBase && new URL(apiBase) && looksComplete && (isLocal || apiKey));
+        return Boolean(debouncedApiBase && new URL(debouncedApiBase) && (isLocal || debouncedApiKey));
       } catch {
         return false;
       }
