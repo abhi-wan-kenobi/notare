@@ -1,5 +1,4 @@
 use axum::Router;
-use hypr_aws_transcribe::TranscribeService;
 
 async fn health() -> &'static str {
     "OK2"
@@ -7,11 +6,17 @@ async fn health() -> &'static str {
 
 #[tokio::main]
 async fn main() {
-    let transcribe_service = TranscribeService::mock();
+    let aws_service = hypr_transcribe_aws::TranscribeService::new(
+        hypr_transcribe_aws::TranscribeConfig::default(),
+    )
+    .await
+    .unwrap();
+
+    let stt_router = Router::new().route_service("/aws", aws_service);
 
     let app = Router::new()
-        .route_service("/", transcribe_service)
-        .route("/health", axum::routing::get(health));
+        .route("/health", axum::routing::get(health))
+        .merge(stt_router);
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", 1234))
         .await

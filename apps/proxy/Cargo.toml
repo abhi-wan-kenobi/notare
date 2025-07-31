@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-hypr-aws-transcribe = { workspace = true }
+hypr-transcribe-aws = { workspace = true }
+hypr-transcribe-azure = { workspace = true }
+hypr-transcribe-gcp = { workspace = true }
 
 axum = { workspace = true }
 serde = { workspace = true }
