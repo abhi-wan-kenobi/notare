@@ -18,7 +18,9 @@ pub struct MicInput {
 
 impl MicInput {
     pub fn device_name(&self) -> String {
-        self.device.name().unwrap_or_default()
+        self.device
+            .name()
+            .unwrap_or("Unknown Microphone".to_string())
     }
 
     pub fn new(device_name: Option<String>) -> Result<Self, crate::Error> {

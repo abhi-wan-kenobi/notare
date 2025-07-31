@@ -50,7 +50,7 @@ impl SpeakerInput {
         let output_uid = output_device.uid()?;
 
         tracing::info!(
-            name = ?output_device.name().unwrap().to_string(),
+            name = ?output_device.name().unwrap_or("Unknown Speaker".into()),
             nominal_sample_rate = ?output_device.nominal_sample_rate().unwrap(),
             actual_sample_rate = ?output_device.actual_sample_rate().unwrap(),
             "speaker_output_device"
