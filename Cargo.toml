@@ -10,10 +10,10 @@ debug = false
 [workspace]
 resolver = "2"
 members = [
-  "admin/proxy",
   "apps/app/server",
   "apps/desktop/src-tauri",
   "crates/*",
+  "owhisper",
   "plugins/*",
 ]
 
