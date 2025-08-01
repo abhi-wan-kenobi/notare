@@ -10,7 +10,6 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    if: ${{ startsWith(github.event.release.tag_name, 'owhisper_') }}
     permissions:
       contents: write
     strategy:
