@@ -120,13 +120,12 @@ mod test {
     // cargo test test_local_stt -p tauri-plugin-local-stt -- --ignored --nocapture
     async fn test_local_stt() {
         use futures_util::StreamExt;
-        use tauri_plugin_listener::ListenClientBuilder;
 
         let app = create_app(tauri::test::mock_builder());
         app.start_server().await.unwrap();
         let api_base = app.api_base().await.unwrap();
 
-        let listen_client = ListenClientBuilder::default()
+        let listen_client = owhisper_client::ListenClient::builder()
             .api_base(api_base)
             .api_key("NONE")
             .params(owhisper_interface::ListenParams {

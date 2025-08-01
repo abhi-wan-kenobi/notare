@@ -39,7 +39,7 @@ fn bench_english_1() -> CustomBenchmarkResult {
 
         let api_base = format!("http://{}", &server.addr);
 
-        let client = tauri_plugin_listener::ListenClient::builder()
+        let client = owhisper_client::ListenClient::builder()
             .api_base(api_base)
             .api_key("")
             .params(owhisper_interface::ListenParams::default())

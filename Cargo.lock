@@ -10168,8 +10168,17 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 name = "owhisper-client"
 version = "0.0.1"
 dependencies = [
+ "audio",
+ "audio-utils",
+ "bytes",
+ "data",
+ "futures-util",
+ "language",
  "owhisper-interface",
- "reqwest 0.12.22",
+ "rodio",
+ "serde_json",
+ "tokio",
+ "url",
  "ws",
 ]
 
@@ -14485,6 +14494,7 @@ dependencies = [
  "language",
  "objc2 0.6.1",
  "objc2-foundation 0.3.1",
+ "owhisper-client",
  "owhisper-interface",
  "rodio",
  "serde",
@@ -14509,7 +14519,6 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
- "ws",
 ]
 
 [[package]]
@@ -14557,6 +14566,7 @@ dependencies = [
  "futures-util",
  "inventory",
  "language",
+ "owhisper-client",
  "owhisper-interface",
  "reqwest 0.12.22",
  "rodio",
@@ -14578,6 +14588,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.26.2",
  "tokio-util",
+ "tower 0.5.2",
  "tower-http 0.6.6",
  "tracing",
  "transcribe-whisper-local",

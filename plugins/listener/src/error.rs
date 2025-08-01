@@ -11,8 +11,6 @@ pub enum Error {
     #[error(transparent)]
     CpalDevicesError(#[from] hypr_audio::cpal::DevicesError),
     #[error(transparent)]
-    ListenClientError(#[from] hypr_ws::Error),
-    #[error(transparent)]
     DatabaseError(#[from] tauri_plugin_db::Error),
     #[error(transparent)]
     ConnectorError(#[from] tauri_plugin_connector::Error),

@@ -466,15 +466,17 @@ impl Session {
             .into_stream()
             .map(hypr_audio_utils::f32_to_i16_bytes);
 
-        let listen_stream = listen_client
-            .from_realtime_audio(mic_audio_stream, speaker_audio_stream)
-            .await?;
-
         tasks.spawn({
             let app = self.app.clone();
             let stop_tx = stop_tx.clone();
+            let session = session.clone();
 
             async move {
+                let listen_stream = listen_client
+                    .from_realtime_audio(mic_audio_stream, speaker_audio_stream)
+                    .await
+                    .unwrap();
+
                 futures_util::pin_mut!(listen_stream);
 
                 while let Some(result) = listen_stream.next().await {
@@ -561,7 +563,7 @@ async fn setup_listen_client<R: tauri::Runtime>(
     _jargons: Vec<String>,
     is_onboarding: bool,
     redemption_time_ms: u32,
-) -> Result<crate::client::ListenClientDual, crate::Error> {
+) -> Result<owhisper_client::ListenClientDual, crate::Error> {
     let api_base = {
         use tauri_plugin_connector::{Connection, ConnectorPluginExt};
         let conn: Connection = app.get_stt_connection().await?.into();
@@ -580,7 +582,7 @@ async fn setup_listen_client<R: tauri::Runtime>(
     // Disabled static prompt since it seems to degrade transcription quality.
     let static_prompt = "".to_string();
 
-    Ok(crate::client::ListenClient::builder()
+    Ok(owhisper_client::ListenClient::builder()
         .api_base(api_base)
         .api_key(api_key)
         .params(owhisper_interface::ListenParams {
