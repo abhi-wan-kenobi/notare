@@ -1,28 +1,38 @@
 FROM rust:1 AS chef
+RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 RUN cargo install cargo-chef
 WORKDIR /app
 
 FROM chef AS planner
 COPY . .
-RUN cargo chef prepare --recipe-path recipe.json --bin proxy
+RUN cd owhisper/owhisper-server && cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
-COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
-
+COPY --from=planner /app/owhisper/owhisper-server/recipe.json owhisper/owhisper-server/recipe.json
 COPY . .
-RUN cargo build --release --bin proxy
+RUN cd owhisper/owhisper-server && cargo chef cook --release --recipe-path recipe.json
+
+RUN cargo build --release --bin owhisper-server
 
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/proxy /usr/local/bin/proxy
+COPY --from=builder /app/target/release/owhisper-server /usr/local/bin/owhisper-server
 
 RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
 USER appuser
 
+RUN mkdir -p /app/config /app/models
+
 EXPOSE 8080
 
-ENTRYPOINT ["/usr/local/bin/proxy"]
+ENV CONFIG_PATH=/app/config/config.yaml
+ENV PORT=8080
+
+ENTRYPOINT ["/usr/local/bin/owhisper-server"]
+CMD ["serve", "--config-path", "${CONFIG_PATH}", "--port", "${PORT}"]
