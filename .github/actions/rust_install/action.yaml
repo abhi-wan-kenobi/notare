@@ -24,7 +24,7 @@ runs:
         cargo install trusted-signing-cli
       shell: bash
     - if: inputs.platform == 'linux'
-      run: rustup target add linux-gnu linux-musl
+      run: rustup target add x86_64-unknown-linux-gnu x86_64-unknown-linux-musl
       shell: bash
     - uses: Swatinem/rust-cache@v2
       with:

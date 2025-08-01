@@ -43,4 +43,4 @@ jobs:
       - uses: ./.github/actions/rust_install
         with:
           platform: ${{ matrix.platform }}
-      - run: cargo build --release --bin owhisper-cli --target ${{ matrix.target }}
+      - run: cargo build --release --bin owhisper-server --target ${{ matrix.target }}

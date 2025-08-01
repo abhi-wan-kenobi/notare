@@ -1,5 +1,5 @@
 [package]
-name = "owhisper-cli"
+name = "owhisper-server"
 version = "0.0.1"
 edition = "2024"
 
@@ -9,6 +9,7 @@ schemars = { workspace = true }
 serde_json = { workspace = true }
 
 [dependencies]
+owhisper-client = { path = "../owhisper-client" }
 owhisper-config = { path = "../owhisper-config" }
 
 hypr-transcribe-aws = { workspace = true }

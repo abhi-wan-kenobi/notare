@@ -16,27 +16,27 @@ impl Config {
 }
 
 #[derive(serde::Deserialize, schemars::JsonSchema, Default)]
-struct ServeConfig {
+pub struct ServeConfig {
     pub aws: Option<ServeAwsConfig>,
     pub azure: Option<ServeAzureConfig>,
     pub whisper_cpp: Option<ServeWhisperCppConfig>,
 }
 
 #[derive(serde::Deserialize, schemars::JsonSchema)]
-struct ServeAwsConfig {
+pub struct ServeAwsConfig {
     pub region: String,
     pub access_key_id: String,
     pub secret_access_key: String,
 }
 
 #[derive(serde::Deserialize, schemars::JsonSchema)]
-struct ServeAzureConfig {
+pub struct ServeAzureConfig {
     pub region: String,
     pub access_key_id: String,
     pub secret_access_key: String,
 }
 
 #[derive(serde::Deserialize, schemars::JsonSchema)]
-struct ServeWhisperCppConfig {
+pub struct ServeWhisperCppConfig {
     pub model_path: String,
 }

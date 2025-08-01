@@ -1,0 +1,8 @@
+[package]
+name = "owhisper-client"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+hypr-ws = { workspace = true }
+reqwest = { workspace = true }

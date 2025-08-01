@@ -10128,7 +10128,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
-name = "owhisper-cli"
+name = "owhisper-client"
+version = "0.0.1"
+dependencies = [
+ "reqwest 0.12.22",
+ "ws",
+]
+
+[[package]]
+name = "owhisper-config"
+version = "0.0.1"
+dependencies = [
+ "config",
+ "schemars 0.8.22",
+ "serde",
+]
+
+[[package]]
+name = "owhisper-server"
 version = "0.0.1"
 dependencies = [
  "anyhow",
@@ -10138,6 +10155,7 @@ dependencies = [
  "colored",
  "indicatif 0.18.0",
  "open",
+ "owhisper-client",
  "owhisper-config",
  "rubato",
  "schemars 0.8.22",
@@ -10149,15 +10167,6 @@ dependencies = [
  "transcribe-azure",
  "transcribe-gcp",
  "transcribe-whisper-local",
-]
-
-[[package]]
-name = "owhisper-config"
-version = "0.0.1"
-dependencies = [
- "config",
- "schemars 0.8.22",
- "serde",
 ]
 
 [[package]]

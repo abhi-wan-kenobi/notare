@@ -7,7 +7,7 @@ pub struct ServeArgs {
 }
 
 pub async fn handle_serve(args: ServeArgs) -> anyhow::Result<()> {
-    let _config = owhisper_config::Config::new(&args.config_path);
+    let config = owhisper_config::Config::new(&args.config_path);
 
     let aws_service = hypr_transcribe_aws::TranscribeService::new(
         hypr_transcribe_aws::TranscribeConfig::default(),
@@ -15,7 +15,13 @@ pub async fn handle_serve(args: ServeArgs) -> anyhow::Result<()> {
     .await
     .unwrap();
 
-    let stt_router = axum::Router::new().route_service("/aws", aws_service);
+    let whisper_cpp_service = hypr_transcribe_whisper_local::WhisperStreamingService::builder()
+        .model_path(config.serve.unwrap().whisper_cpp.unwrap().model_path.into())
+        .build();
+
+    let stt_router = axum::Router::new()
+        .route_service("/aws", aws_service)
+        .route_service("/whisper-cpp", whisper_cpp_service);
 
     let app = axum::Router::new()
         .route("/health", axum::routing::get(health))
