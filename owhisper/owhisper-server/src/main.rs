@@ -2,6 +2,7 @@ use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 use clap_autocomplete::{add_subcommand, test_subcommand};
 
 mod commands;
+mod error;
 
 #[derive(Parser)]
 #[command(name = "owhisper")]

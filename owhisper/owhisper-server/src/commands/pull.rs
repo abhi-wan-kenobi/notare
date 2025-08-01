@@ -58,6 +58,6 @@ pub struct PullArgs {
     pub model: String,
 }
 
-pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
+pub async fn handle_pull(_args: PullArgs) -> anyhow::Result<()> {
     Ok(())
 }

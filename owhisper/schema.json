@@ -3,6 +3,16 @@
   "title": "Config",
   "type": "object",
   "properties": {
+    "general": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/GeneralConfig"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "serve": {
       "anyOf": [
         {
@@ -15,6 +25,55 @@
     }
   },
   "definitions": {
+    "GeneralConfig": {
+      "type": "object",
+      "properties": {
+        "api_key": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "ServeAwsConfig": {
+      "type": "object",
+      "required": [
+        "access_key_id",
+        "region",
+        "secret_access_key"
+      ],
+      "properties": {
+        "access_key_id": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "secret_access_key": {
+          "type": "string"
+        }
+      }
+    },
+    "ServeAzureConfig": {
+      "type": "object",
+      "required": [
+        "access_key_id",
+        "region",
+        "secret_access_key"
+      ],
+      "properties": {
+        "access_key_id": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "secret_access_key": {
+          "type": "string"
+        }
+      }
+    },
     "ServeConfig": {
       "type": "object",
       "properties": {
@@ -47,44 +106,6 @@
               "type": "null"
             }
           ]
-        }
-      }
-    },
-    "ServeAwsConfig": {
-      "type": "object",
-      "required": [
-        "access_key_id",
-        "region",
-        "secret_access_key"
-      ],
-      "properties": {
-        "region": {
-          "type": "string"
-        },
-        "access_key_id": {
-          "type": "string"
-        },
-        "secret_access_key": {
-          "type": "string"
-        }
-      }
-    },
-    "ServeAzureConfig": {
-      "type": "object",
-      "required": [
-        "access_key_id",
-        "region",
-        "secret_access_key"
-      ],
-      "properties": {
-        "region": {
-          "type": "string"
-        },
-        "access_key_id": {
-          "type": "string"
-        },
-        "secret_access_key": {
-          "type": "string"
         }
       }
     },

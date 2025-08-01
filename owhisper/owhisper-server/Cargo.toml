@@ -18,16 +18,19 @@ hypr-transcribe-gcp = { workspace = true }
 hypr-transcribe-whisper-local = { workspace = true }
 
 axum = { workspace = true }
+axum-extra = { workspace = true, features = ["typed-header"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tower = { workspace = true }
 tracing = { workspace = true }
 
 clap = { version = "4", features = ["derive", "env"] }
+clap_autocomplete = "0.4.2"
 colored = "3.0.0"
 indicatif = "0.18.0"
 
 anyhow = { workspace = true }
-clap_autocomplete = "0.4.2"
+schemars = { workspace = true }
+thiserror = { workspace = true }
+
 open = "5.3.2"
 rubato = "0.16.2"
-schemars = { workspace = true }

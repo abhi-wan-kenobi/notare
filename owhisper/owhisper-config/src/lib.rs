@@ -1,5 +1,6 @@
 #[derive(serde::Deserialize, schemars::JsonSchema, Default)]
 pub struct Config {
+    pub general: Option<GeneralConfig>,
     pub serve: Option<ServeConfig>,
 }
 
@@ -13,6 +14,11 @@ impl Config {
 
         settings.try_deserialize::<Config>().unwrap()
     }
+}
+
+#[derive(serde::Deserialize, schemars::JsonSchema, Default)]
+pub struct GeneralConfig {
+    pub api_key: Option<String>,
 }
 
 #[derive(serde::Deserialize, schemars::JsonSchema, Default)]
