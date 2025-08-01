@@ -14,7 +14,7 @@ pub use error::*;
 pub use events::*;
 pub use ext::ListenerPluginExt;
 
-pub use hypr_listener_interface::*;
+pub use owhisper_interface::*;
 
 const PLUGIN_NAME: &str = "listener";
 

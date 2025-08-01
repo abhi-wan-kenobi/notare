@@ -6,3 +6,5 @@ edition = "2024"
 [dependencies]
 hypr-ws = { workspace = true }
 reqwest = { workspace = true }
+
+owhisper-interface = { workspace = true }

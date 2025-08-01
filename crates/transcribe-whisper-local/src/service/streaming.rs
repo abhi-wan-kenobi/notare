@@ -18,7 +18,7 @@ use futures_util::{SinkExt, StreamExt};
 use tower::Service;
 
 use hypr_chunker::VadExt;
-use hypr_listener_interface::{ListenOutputChunk, ListenParams, Word};
+use owhisper_interface::{ListenOutputChunk, ListenParams, Word};
 
 use crate::manager::{ConnectionGuard, ConnectionManager};
 
@@ -123,7 +123,7 @@ async fn handle_websocket_connection(
     let (ws_sender, ws_receiver) = socket.split();
 
     match params.audio_mode {
-        hypr_listener_interface::AudioMode::Single => {
+        owhisper_interface::AudioMode::Single => {
             handle_single_channel(
                 ws_sender,
                 ws_receiver,
@@ -133,7 +133,7 @@ async fn handle_websocket_connection(
             )
             .await;
         }
-        hypr_listener_interface::AudioMode::Dual => {
+        owhisper_interface::AudioMode::Dual => {
             handle_dual_channel(
                 ws_sender,
                 ws_receiver,
@@ -219,8 +219,8 @@ async fn process_transcription_stream(
                         .map(|s| s.to_string())
                 );
                 let speaker = match source {
-                    Some(s) if s == "mic" => Some(hypr_listener_interface::SpeakerIdentity::Unassigned { index: 0 }),
-                    Some(s) if s == "speaker" => Some(hypr_listener_interface::SpeakerIdentity::Unassigned { index: 1 }),
+                    Some(s) if s == "mic" => Some(owhisper_interface::SpeakerIdentity::Unassigned { index: 0 }),
+                    Some(s) if s == "speaker" => Some(owhisper_interface::SpeakerIdentity::Unassigned { index: 1 }),
                     _ => None,
                 };
 

@@ -18,11 +18,11 @@ load-dynamic = ["hypr-pyannote-local/load-dynamic"]
 [dependencies]
 hypr-audio-utils = { workspace = true }
 hypr-chunker = { workspace = true }
-hypr-listener-interface = { workspace = true }
 hypr-pyannote-local = { workspace = true }
 hypr-whisper = { workspace = true }
 hypr-whisper-local = { workspace = true }
 hypr-ws-utils = { workspace = true }
+owhisper-interface = { workspace = true }
 
 serde_json = { workspace = true }
 serde_qs = { workspace = true }

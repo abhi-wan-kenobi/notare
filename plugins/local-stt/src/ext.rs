@@ -5,7 +5,7 @@ use tauri_plugin_shell::ShellExt;
 use tauri_plugin_store2::StorePluginExt;
 
 use hypr_file::{download_file_with_callback, DownloadProgress};
-use hypr_listener_interface::Word;
+use owhisper_interface::Word;
 
 use crate::events::RecordedProcessingEvent;
 

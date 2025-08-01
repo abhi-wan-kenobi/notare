@@ -129,7 +129,7 @@ mod test {
         let listen_client = ListenClientBuilder::default()
             .api_base(api_base)
             .api_key("NONE")
-            .params(hypr_listener_interface::ListenParams {
+            .params(owhisper_interface::ListenParams {
                 languages: vec![hypr_language::ISO639::En.into()],
                 ..Default::default()
             })

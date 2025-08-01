@@ -583,7 +583,7 @@ async fn setup_listen_client<R: tauri::Runtime>(
     Ok(crate::client::ListenClient::builder()
         .api_base(api_base)
         .api_key(api_key)
-        .params(hypr_listener_interface::ListenParams {
+        .params(owhisper_interface::ListenParams {
             languages,
             static_prompt,
             redemption_time_ms: if is_onboarding {
@@ -599,8 +599,8 @@ async fn setup_listen_client<R: tauri::Runtime>(
 async fn update_session<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     session_id: impl Into<String>,
-    words: Vec<hypr_listener_interface::Word>,
-) -> Result<Vec<hypr_listener_interface::Word>, crate::Error> {
+    words: Vec<owhisper_interface::Word>,
+) -> Result<Vec<owhisper_interface::Word>, crate::Error> {
     use tauri_plugin_db::DatabasePluginExt;
 
     // TODO: not ideal. We might want to only do "update" everywhere instead of upserts.

@@ -7,7 +7,7 @@ mod deepgram;
 mod whisper;
 
 use crate::deepgram::DeepgramClient;
-use hypr_listener_interface::ListenOutputChunk;
+use owhisper_interface::ListenOutputChunk;
 
 #[allow(dead_code)]
 pub trait RealtimeSpeechToText<S, E> {
@@ -203,7 +203,7 @@ mod tests {
 
         let mut transcript_stream = client.transcribe(audio_stream).await.unwrap();
 
-        let mut acc: Vec<hypr_listener_interface::Word> = vec![];
+        let mut acc: Vec<owhisper_interface::Word> = vec![];
         while let Some(result) = transcript_stream.next().await {
             let data = result.unwrap();
             println!("{:?}", data);
@@ -232,7 +232,7 @@ mod tests {
 
         let mut transcript_stream = client.transcribe(audio_stream).await.unwrap();
 
-        let mut acc: Vec<hypr_listener_interface::Word> = vec![];
+        let mut acc: Vec<owhisper_interface::Word> = vec![];
         while let Some(result) = transcript_stream.next().await {
             let data = result.unwrap();
             println!("{:?}", data);

@@ -1,4 +1,4 @@
-use hypr_listener_interface::Word;
+use owhisper_interface::Word;
 
 pub fn process_recorded(
     model_path: impl AsRef<std::path::Path>,

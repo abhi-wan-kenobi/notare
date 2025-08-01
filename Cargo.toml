@@ -25,6 +25,7 @@ hypr-aec = { path = "crates/aec", package = "aec" }
 hypr-analytics = { path = "crates/analytics", package = "analytics" }
 hypr-audio = { path = "crates/audio", package = "audio" }
 hypr-audio-utils = { path = "crates/audio-utils", package = "audio-utils" }
+hypr-auth-interface = { path = "plugins/auth-interface", package = "auth-interface" }
 hypr-buffer = { path = "crates/buffer", package = "buffer" }
 hypr-calendar-apple = { path = "crates/calendar-apple", package = "calendar-apple" }
 hypr-calendar-google = { path = "crates/calendar-google", package = "calendar-google" }
@@ -72,8 +73,8 @@ hypr-whisper-local = { path = "crates/whisper-local", package = "whisper-local" 
 hypr-ws = { path = "crates/ws", package = "ws" }
 hypr-ws-utils = { path = "crates/ws-utils", package = "ws-utils" }
 
-hypr-auth-interface = { path = "plugins/auth-interface", package = "auth-interface" }
-hypr-listener-interface = { path = "plugins/listener-interface", package = "listener-interface" }
+owhisper-client = { path = "owhisper/owhisper-client", package = "owhisper-client" }
+owhisper-interface = { path = "owhisper/owhisper-interface", package = "owhisper-interface" }
 
 tauri = "2.7"
 tauri-build = "2.3"

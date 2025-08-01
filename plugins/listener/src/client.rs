@@ -10,7 +10,7 @@ use crate::{ListenInputChunk, ListenOutputChunk};
 pub struct ListenClientBuilder {
     api_base: Option<String>,
     api_key: Option<String>,
-    params: Option<hypr_listener_interface::ListenParams>,
+    params: Option<owhisper_interface::ListenParams>,
 }
 
 impl ListenClientBuilder {
@@ -24,15 +24,15 @@ impl ListenClientBuilder {
         self
     }
 
-    pub fn params(mut self, params: hypr_listener_interface::ListenParams) -> Self {
+    pub fn params(mut self, params: owhisper_interface::ListenParams) -> Self {
         self.params = Some(params);
         self
     }
 
-    fn build_uri(&self, audio_mode: hypr_listener_interface::AudioMode) -> String {
+    fn build_uri(&self, audio_mode: owhisper_interface::AudioMode) -> String {
         let mut url: url::Url = self.api_base.as_ref().unwrap().parse().unwrap();
 
-        let params = hypr_listener_interface::ListenParams {
+        let params = owhisper_interface::ListenParams {
             audio_mode,
             ..self.params.clone().unwrap_or_default()
         };
@@ -65,7 +65,7 @@ impl ListenClientBuilder {
 
     pub fn build_single(self) -> ListenClient {
         let uri = self
-            .build_uri(hypr_listener_interface::AudioMode::Single)
+            .build_uri(owhisper_interface::AudioMode::Single)
             .parse()
             .unwrap();
 
@@ -80,7 +80,7 @@ impl ListenClientBuilder {
 
     pub fn build_dual(self) -> ListenClientDual {
         let uri = self
-            .build_uri(hypr_listener_interface::AudioMode::Dual)
+            .build_uri(owhisper_interface::AudioMode::Dual)
             .parse()
             .unwrap();
 
@@ -194,7 +194,7 @@ mod tests {
         let client = ListenClient::builder()
             .api_base("http://127.0.0.1:1234")
             .api_key("".to_string())
-            .params(hypr_listener_interface::ListenParams {
+            .params(owhisper_interface::ListenParams {
                 languages: vec![hypr_language::ISO639::En.into()],
                 ..Default::default()
             })
