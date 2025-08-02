@@ -39,6 +39,7 @@ pub async fn handle_serve(args: ServeArgs) -> anyhow::Result<()> {
         ))
         .into_make_service();
 
+    println!("Server started on port {}", args.port);
     axum::serve(listener, app).await?;
     Ok(())
 }

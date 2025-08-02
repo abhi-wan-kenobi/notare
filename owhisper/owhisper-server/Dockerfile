@@ -33,12 +33,12 @@ COPY --from=builder /app/target/release/owhisper-server /usr/local/bin/owhisper-
 RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
 USER appuser
 
-RUN mkdir -p /app/config /app/models
+RUN mkdir -p /app/assets
 
 EXPOSE 8080
 
-ENV CONFIG_PATH=/app/config/config.yaml
+ENV CONFIG_PATH=/app/assets/config.yaml
 ENV PORT=8080
 
 ENTRYPOINT ["/usr/local/bin/owhisper-server"]
-CMD ["serve", "--config-path", "${CONFIG_PATH}", "--port", "${PORT}"]
+CMD ["serve", "--config-path", "/app/assets/config.yaml", "--port", "8080"]
