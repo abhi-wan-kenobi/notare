@@ -9,26 +9,35 @@
 ```bash
 # install owhisper CLI
 brew tap fastrepl/hyprnote && brew install owhisper
+```
 
+```bash
 # download example config
-curl -O ./config.json https://raw.githubusercontent.com/fastrepl/hyprnote/refs/heads/main/owhisper/owhisper-config/examples/cli.json
+curl -L -o ./config.json https://raw.githubusercontent.com/fastrepl/hyprnote/refs/heads/main/owhisper/owhisper-config/examples/cli.json
+```
 
+```bash
 # serve it with owhisper
 owhisper serve --config ./config.json --port 8080
 ```
 
 ### Docker
+
 ```bash
 # download model for whisper.cpp
-curl -O ./ggml-base.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin?download=true
+curl -L -o ./ggml-base.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
+```
 
+```bash
 # download example config
-curl -O ./config.json https://raw.githubusercontent.com/fastrepl/hyprnote/refs/heads/main/owhisper/owhisper-config/examples/docker.json
+curl -L -o ./config.json https://raw.githubusercontent.com/fastrepl/hyprnote/refs/heads/main/owhisper/owhisper-config/examples/docker.json
+```
 
+```bash
 # serve it with owhisper
-docker run -p 8888:8888 \
+docker run --rm -it -p 8080:8080 \
   -v $(pwd)/config.json:/app/assets/config.json:ro \
   -v $(pwd)/ggml-base.bin:/app/assets/ggml-base.bin:ro \
   ghcr.io/fastrepl/owhisper:latest \
-  serve --config /app/assets/config.json --port 8888
+  serve --config /app/assets/config.json --port 8080
 ```

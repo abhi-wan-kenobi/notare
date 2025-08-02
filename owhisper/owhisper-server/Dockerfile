@@ -26,6 +26,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
+    libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/owhisper-server /usr/local/bin/owhisper-server
