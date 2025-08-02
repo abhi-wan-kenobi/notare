@@ -41,7 +41,7 @@ pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
     progress.set_message(format!("Downloading {}", args.model));
 
     // Download the file with progress tracking
-    hypr_file::download_file_with_callback(url, output_path, |progress_update| {
+    hypr_file::download_file_parallel(url, output_path, |progress_update| {
         match progress_update {
             hypr_file::DownloadProgress::Started => {
                 progress.set_position(0);
