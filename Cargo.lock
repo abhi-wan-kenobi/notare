@@ -285,6 +285,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "aide"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d34f0f6ce85b460bf2f9e7eea6612f217ba700ae14e9e476805d2413480f64b"
+dependencies = [
+ "axum 0.8.4",
+ "bytes",
+ "cfg-if",
+ "http 1.3.1",
+ "indexmap 2.10.0",
+ "schemars 0.9.0",
+ "serde",
+ "serde_json",
+ "serde_qs 0.14.0",
+ "thiserror 2.0.12",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+]
+
+[[package]]
 name = "aide-macros"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -487,7 +508,7 @@ dependencies = [
 name = "app"
 version = "0.1.0"
 dependencies = [
- "aide",
+ "aide 0.14.2",
  "analytics",
  "anyhow",
  "apalis",
@@ -960,6 +981,18 @@ dependencies = [
  "tokio",
  "tracing",
  "wasapi",
+]
+
+[[package]]
+name = "audio-input"
+version = "0.1.0"
+dependencies = [
+ "cpal",
+ "dasp",
+ "futures-channel",
+ "futures-util",
+ "thiserror 2.0.12",
+ "tracing",
 ]
 
 [[package]]
@@ -2567,18 +2600,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "clap_autocomplete"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa0feedf32abe0cd9be69fe63d884d5105276476f7d1ad3e318adde3a92bfb47"
-dependencies = [
- "clap",
- "clap_complete",
- "query-shell",
- "xdg",
-]
-
-[[package]]
 name = "clap_builder"
 version = "4.5.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2588,15 +2609,6 @@ dependencies = [
  "anstyle",
  "clap_lex",
  "strsim",
-]
-
-[[package]]
-name = "clap_complete"
-version = "4.5.55"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5abde44486daf70c5be8b8f8f1b66c49f86236edf6fa2abadb4d961c4c6229a"
-dependencies = [
- "clap",
 ]
 
 [[package]]
@@ -6964,7 +6976,7 @@ name = "host"
 version = "0.1.0"
 dependencies = [
  "mac_address2",
- "sysinfo 0.33.1",
+ "sysinfo",
 ]
 
 [[package]]
@@ -10210,12 +10222,15 @@ dependencies = [
 name = "owhisper-server"
 version = "0.0.1"
 dependencies = [
+ "aide 0.15.0",
  "anyhow",
+ "audio-input",
  "axum 0.8.4",
  "axum-extra",
  "clap",
- "clap_autocomplete",
- "colored",
+ "cpal",
+ "dirs 6.0.0",
+ "file",
  "indicatif 0.18.0",
  "open",
  "owhisper-client",
@@ -10223,7 +10238,6 @@ dependencies = [
  "rubato",
  "schemars 0.8.22",
  "serde_json",
- "thiserror 2.0.12",
  "tokio",
  "tower 0.5.2",
  "tracing",
@@ -11090,16 +11104,6 @@ dependencies = [
  "simsimd",
  "specta",
  "thiserror 2.0.12",
-]
-
-[[package]]
-name = "query-shell"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "300d1c86e9638eceb24568649d5ad0f31b949ff11ff1ffbacbe3e382a4dfee25"
-dependencies = [
- "sysinfo 0.27.8",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -12282,7 +12286,7 @@ dependencies = [
  "dyn-clone",
  "indexmap 1.9.3",
  "indexmap 2.10.0",
- "schemars_derive",
+ "schemars_derive 0.8.22",
  "serde",
  "serde_json",
  "url",
@@ -12296,7 +12300,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4cd191f9397d57d581cddd31014772520aa448f65ef991055d7f61582c65165f"
 dependencies = [
  "dyn-clone",
+ "indexmap 2.10.0",
  "ref-cast",
+ "schemars_derive 0.9.0",
  "serde",
  "serde_json",
 ]
@@ -12318,6 +12324,18 @@ name = "schemars_derive"
 version = "0.8.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32e265784ad618884abaea0600a9adf15393368d840e0222d101a072f3f7534d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "serde_derive_internals",
+ "syn 2.0.104",
+]
+
+[[package]]
+name = "schemars_derive"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5016d94c77c6d32f0b8e08b781f7dc8a90c2007d4e77472cc2807bc10a8438fe"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -13892,20 +13910,6 @@ dependencies = [
  "libc",
  "thiserror 1.0.69",
  "walkdir",
-]
-
-[[package]]
-name = "sysinfo"
-version = "0.27.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a902e9050fca0a5d6877550b769abd2bd1ce8c04634b941dbe2809735e1a1e33"
-dependencies = [
- "cfg-if",
- "core-foundation-sys",
- "libc",
- "ntapi",
- "once_cell",
- "winapi",
 ]
 
 [[package]]
@@ -18099,12 +18103,6 @@ dependencies = [
  "libc",
  "rustix 1.0.8",
 ]
-
-[[package]]
-name = "xdg"
-version = "2.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "213b7324336b53d2414b2db8537e56544d981803139155afa84f76eeebb7a546"
 
 [[package]]
 name = "xdg-home"

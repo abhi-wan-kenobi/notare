@@ -4,19 +4,24 @@ version = "0.0.1"
 edition = "2024"
 
 [build-dependencies]
-owhisper-config = { path = "../owhisper-config" }
+owhisper-config = { workspace = true }
+
 schemars = { workspace = true }
 serde_json = { workspace = true }
 
 [dependencies]
-owhisper-client = { path = "../owhisper-client" }
-owhisper-config = { path = "../owhisper-config" }
+owhisper-client = { workspace = true }
+owhisper-config = { workspace = true }
+
+hypr-audio-input = { workspace = true }
+hypr-file = { workspace = true }
 
 hypr-transcribe-aws = { workspace = true }
 hypr-transcribe-azure = { workspace = true }
 hypr-transcribe-gcp = { workspace = true }
 hypr-transcribe-whisper-local = { workspace = true }
 
+aide = { version = "0.15.0", features = ["axum"] }
 axum = { workspace = true }
 axum-extra = { workspace = true, features = ["typed-header"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
@@ -24,13 +29,14 @@ tower = { workspace = true }
 tracing = { workspace = true }
 
 clap = { version = "4", features = ["derive", "env"] }
-clap_autocomplete = "0.4.2"
-colored = "3.0.0"
 indicatif = "0.18.0"
+
+cpal = { workspace = true }
+rubato = "0.16.2"
 
 anyhow = { workspace = true }
 schemars = { workspace = true }
-thiserror = { workspace = true }
+serde_json = { workspace = true }
 
-open = "5.3.2"
-rubato = "0.16.2"
+dirs = { workspace = true }
+open = "5"

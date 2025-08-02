@@ -24,6 +24,7 @@ rust-version = "1.88.0"
 hypr-aec = { path = "crates/aec", package = "aec" }
 hypr-analytics = { path = "crates/analytics", package = "analytics" }
 hypr-audio = { path = "crates/audio", package = "audio" }
+hypr-audio-input = { path = "crates/audio-input", package = "audio-input" }
 hypr-audio-utils = { path = "crates/audio-utils", package = "audio-utils" }
 hypr-auth-interface = { path = "plugins/auth-interface", package = "auth-interface" }
 hypr-buffer = { path = "crates/buffer", package = "buffer" }
