@@ -16091,6 +16091,8 @@ dependencies = [
  "data",
  "deepgram 0.7.0",
  "futures-util",
+ "owhisper-config",
+ "owhisper-interface",
  "serde",
  "serde_json",
  "thiserror 2.0.12",

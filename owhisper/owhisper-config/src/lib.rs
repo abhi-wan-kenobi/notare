@@ -43,6 +43,12 @@ pub struct ServeAzureConfig {
 }
 
 #[derive(serde::Deserialize, schemars::JsonSchema)]
+pub struct ServeDeepgramConfig {
+    pub api_key: String,
+    pub base_url: Option<String>,
+}
+
+#[derive(serde::Deserialize, schemars::JsonSchema)]
 pub struct ServeWhisperCppConfig {
     pub model_path: String,
 }

@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     libasound2-dev \
     clang \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 RUN cargo install cargo-chef
 WORKDIR /app
