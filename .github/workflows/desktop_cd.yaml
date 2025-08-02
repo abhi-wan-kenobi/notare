@@ -85,7 +85,7 @@ jobs:
           target: ${{ matrix.platform }}
       - uses: ./.github/actions/rust_install
         with:
-          target: ${{ matrix.platform }}
+          platform: ${{ matrix.platform }}
       - uses: ./.github/actions/pnpm_install
       - uses: ./.github/actions/poetry_install
       - run: poetry run python scripts/pre_build.py
