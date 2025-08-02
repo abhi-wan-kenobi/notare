@@ -37,8 +37,5 @@ RUN mkdir -p /app/assets
 
 EXPOSE 8080
 
-ENV CONFIG_PATH=/app/assets/config.yaml
-ENV PORT=8080
-
 ENTRYPOINT ["/usr/local/bin/owhisper-server"]
-CMD ["serve", "--config-path", "/app/assets/config.yaml", "--port", "8080"]
+CMD ["serve", "--config", "/app/assets/config.json", "--port", "8080"]

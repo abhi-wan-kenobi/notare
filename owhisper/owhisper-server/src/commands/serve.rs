@@ -11,7 +11,7 @@ use axum_extra::{headers::authorization::Bearer, headers::Authorization, TypedHe
 #[derive(clap::Args)]
 pub struct ServeArgs {
     #[arg(short, long)]
-    pub config_path: String,
+    pub config: String,
     #[arg(short, long)]
     pub port: u16,
 }
@@ -22,7 +22,7 @@ struct AppState {
 }
 
 pub async fn handle_serve(args: ServeArgs) -> anyhow::Result<()> {
-    let config = owhisper_config::Config::new(&args.config_path);
+    let config = owhisper_config::Config::new(&args.config);
 
     let api_key = config.general.as_ref().and_then(|g| g.api_key.clone());
     let app_state = Arc::new(AppState { api_key });

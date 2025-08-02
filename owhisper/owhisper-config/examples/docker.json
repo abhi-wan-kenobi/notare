@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/fastrepl/hyprnote/refs/heads/main/owhisper/schema.json",
   "serve": {
     "whisper_cpp": {
-      "model_path": "/app/assets/tiny-en.gguf"
+      "model_path": "/app/assets/ggml-base.bin"
     }
   }
 }
