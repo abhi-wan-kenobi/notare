@@ -2,13 +2,11 @@ mod errors;
 mod mic;
 mod norm;
 mod speaker;
-mod stream;
 
 pub use errors::*;
 pub use mic::*;
 pub use norm::*;
 pub use speaker::*;
-pub use stream::*;
 
 pub use cpal;
 use cpal::traits::{DeviceTrait, HostTrait};
