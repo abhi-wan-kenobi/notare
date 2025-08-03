@@ -12,8 +12,12 @@ serde_json = { workspace = true }
 [dependencies]
 owhisper-client = { workspace = true }
 owhisper-config = { workspace = true }
+owhisper-interface = { workspace = true }
 
+bytes = { workspace = true }
+futures-util = { workspace = true }
 hypr-audio-input = { workspace = true }
+hypr-audio-utils = { workspace = true }
 hypr-file = { workspace = true }
 hypr-whisper-local-model = { workspace = true }
 
@@ -29,8 +33,12 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tower = { workspace = true }
 tracing = { workspace = true }
 
+chrono = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
+colored = "3"
+env_logger = { workspace = true }
 indicatif = "0.18.0"
+log = { workspace = true }
 
 cpal = { workspace = true }
 rubato = "0.16.2"

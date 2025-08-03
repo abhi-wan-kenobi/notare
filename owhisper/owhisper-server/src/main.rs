@@ -1,7 +1,10 @@
 use clap::{Parser, Subcommand};
 
 mod commands;
+mod misc;
 mod server;
+
+use server::*;
 
 #[derive(Parser)]
 #[command(name = "owhisper")]
@@ -21,6 +24,8 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    misc::set_logger();
+
     let args = Args::parse();
 
     match args.cmd {

@@ -1,5 +1,4 @@
-use std::net::Ipv4Addr;
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 
 use axum::{
@@ -53,13 +52,41 @@ impl Server {
         })
         .await?;
 
-        println!(
+        log::info!(
             "Server started on port {}",
             listener.local_addr().unwrap().port()
         );
 
         axum::serve(listener, router.into_make_service()).await?;
         Ok(())
+    }
+
+    pub async fn run_with_shutdown(
+        self,
+        shutdown_signal: impl std::future::Future<Output = ()> + Send + 'static,
+    ) -> anyhow::Result<SocketAddr> {
+        let router = self.build_router().await?;
+
+        let listener = tokio::net::TcpListener::bind(if let Some(port) = self.port {
+            SocketAddr::from((Ipv4Addr::LOCALHOST, port))
+        } else {
+            SocketAddr::from((Ipv4Addr::LOCALHOST, 0))
+        })
+        .await?;
+
+        let addr = listener.local_addr()?;
+        println!("Server started on {}", addr);
+
+        let server = axum::serve(listener, router.into_make_service())
+            .with_graceful_shutdown(shutdown_signal);
+
+        tokio::spawn(async move {
+            if let Err(e) = server.await {
+                eprintln!("Server error: {}", e);
+            }
+        });
+
+        Ok(addr)
     }
 
     async fn build_stt_router(&self) -> anyhow::Result<Router> {
