@@ -338,6 +338,7 @@ impl Language {
             ISO639::Uk => Ok(String::from("стенограма")),
             ISO639::Vi => Ok(String::from("bản ghi")),
             ISO639::Zh => Ok(String::from("文字记录")),
+            ISO639::He => Ok(String::from("טקסט מוצג")),
             _ => Err(Error::NotSupportedLanguage(self.to_string())),
         }
     }
