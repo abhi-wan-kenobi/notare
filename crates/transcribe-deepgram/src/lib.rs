@@ -27,7 +27,7 @@ use deepgram::{
     Deepgram,
 };
 
-use owhisper_interface::Word;
+use owhisper_interface::Word2;
 
 mod error;
 pub use error::*;
