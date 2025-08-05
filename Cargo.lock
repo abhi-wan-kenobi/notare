@@ -9811,6 +9811,7 @@ dependencies = [
  "transcribe-azure",
  "transcribe-deepgram",
  "transcribe-gcp",
+ "transcribe-moonshine",
  "transcribe-whisper-local",
  "whisper-local-model",
 ]
