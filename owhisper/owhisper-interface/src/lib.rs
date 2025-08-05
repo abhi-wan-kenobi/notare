@@ -104,6 +104,8 @@ impl Default for AudioMode {
 common_derives! {
     #[derive(Default)]
     pub struct ListenParams {
+        #[serde(default)]
+        pub model: Option<String>,
         pub audio_mode: AudioMode,
         // https://docs.rs/axum-extra/0.10.1/axum_extra/extract/struct.Query.html#example-1
         #[serde(default)]
