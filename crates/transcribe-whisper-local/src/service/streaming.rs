@@ -23,31 +23,31 @@ use owhisper_interface::{ListenOutputChunk, ListenParams, Word2};
 use crate::manager::{ConnectionGuard, ConnectionManager};
 
 #[derive(Clone)]
-pub struct WhisperStreamingService {
+pub struct TranscribeService {
     model_path: PathBuf,
     connection_manager: ConnectionManager,
 }
 
-impl WhisperStreamingService {
-    pub fn builder() -> WhisperStreamingServiceBuilder {
-        WhisperStreamingServiceBuilder::default()
+impl TranscribeService {
+    pub fn builder() -> TranscribeServiceBuilder {
+        TranscribeServiceBuilder::default()
     }
 }
 
 #[derive(Default)]
-pub struct WhisperStreamingServiceBuilder {
+pub struct TranscribeServiceBuilder {
     model_path: Option<PathBuf>,
     connection_manager: Option<ConnectionManager>,
 }
 
-impl WhisperStreamingServiceBuilder {
+impl TranscribeServiceBuilder {
     pub fn model_path(mut self, model_path: PathBuf) -> Self {
         self.model_path = Some(model_path);
         self
     }
 
-    pub fn build(self) -> WhisperStreamingService {
-        WhisperStreamingService {
+    pub fn build(self) -> TranscribeService {
+        TranscribeService {
             model_path: self.model_path.unwrap(),
             connection_manager: self
                 .connection_manager
@@ -56,7 +56,7 @@ impl WhisperStreamingServiceBuilder {
     }
 }
 
-impl<B> Service<Request<B>> for WhisperStreamingService
+impl<B> Service<Request<B>> for TranscribeService
 where
     B: Send + 'static,
 {

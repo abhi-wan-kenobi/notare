@@ -82,7 +82,7 @@ pub async fn run_server(state: ServerState) -> Result<ServerHandle, crate::Error
 fn make_service_router(state: ServerState) -> Router {
     let model_path = state.model_cache_dir.join(state.model_type.file_name());
 
-    let whisper_service = hypr_transcribe_whisper_local::WhisperStreamingService::builder()
+    let whisper_service = hypr_transcribe_whisper_local::TranscribeService::builder()
         .model_path(model_path)
         .build();
 

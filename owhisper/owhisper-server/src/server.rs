@@ -22,7 +22,7 @@ pub struct AppState {
 pub enum TranscriptionService {
     Aws(hypr_transcribe_aws::TranscribeService),
     Deepgram(hypr_transcribe_deepgram::TranscribeService),
-    WhisperCpp(hypr_transcribe_whisper_local::WhisperStreamingService),
+    WhisperCpp(hypr_transcribe_whisper_local::TranscribeService),
 }
 
 pub struct Server {
@@ -123,12 +123,10 @@ async fn build_aws_service(
 
 fn build_whisper_cpp_service(
     config: &owhisper_config::WhisperCppModelConfig,
-) -> anyhow::Result<hypr_transcribe_whisper_local::WhisperStreamingService> {
-    Ok(
-        hypr_transcribe_whisper_local::WhisperStreamingService::builder()
-            .model_path(config.model_path.clone().into())
-            .build(),
-    )
+) -> anyhow::Result<hypr_transcribe_whisper_local::TranscribeService> {
+    Ok(hypr_transcribe_whisper_local::TranscribeService::builder()
+        .model_path(config.model_path.clone().into())
+        .build())
 }
 
 async fn build_deepgram_service(

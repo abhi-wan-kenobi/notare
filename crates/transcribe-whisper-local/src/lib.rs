@@ -6,6 +6,7 @@ pub use error::*;
 pub use service::*;
 
 #[cfg(test)]
+// cargo test -p transcribe-whisper-local test_service -- --nocapture
 mod tests {
     use super::*;
     use futures_util::StreamExt;
@@ -17,9 +18,7 @@ mod tests {
             .join("com.hyprnote.dev")
             .join("stt/ggml-small-q8_0.bin");
 
-        let service = WhisperStreamingService::builder()
-            .model_path(model_path)
-            .build();
+        let service = TranscribeService::builder().model_path(model_path).build();
 
         let app = axum::Router::new().route_service("/v1/listen", service);
 
