@@ -264,6 +264,27 @@ impl UserDatabase {
         Ok(items)
     }
 
+    pub async fn session_list_deleted_participant_ids(
+        &self,
+        session_id: impl Into<String>,
+    ) -> Result<Vec<String>, crate::Error> {
+        let conn = self.conn()?;
+
+        let mut rows = conn.query(
+            "SELECT sp.human_id FROM session_participants sp WHERE sp.session_id = ? AND sp.deleted = TRUE", 
+            vec![session_id.into()],
+        )
+        .await?;
+
+        let mut ids = Vec::new();
+        while let Some(row) = rows.next().await? {
+            if let Ok(id) = row.get::<String>(0) {
+                ids.push(id);
+            }
+        }
+        Ok(ids)
+    }
+
     pub async fn upsert_session(&self, session: Session) -> Result<Session, crate::Error> {
         let conn = self.conn()?;
 
@@ -363,7 +384,7 @@ impl UserDatabase {
         let conn = self.conn()?;
 
         conn.execute(
-            "INSERT OR REPLACE INTO session_participants (session_id, human_id) VALUES (?, ?)",
+            "INSERT OR REPLACE INTO session_participants (session_id, human_id, deleted) VALUES (?, ?, FALSE)",
             vec![session_id.into(), human_id.into()],
         )
         .await?;
@@ -378,7 +399,7 @@ impl UserDatabase {
         let conn = self.conn()?;
 
         conn.execute(
-            "DELETE FROM session_participants WHERE session_id = ? AND human_id = ?",
+            "UPDATE session_participants SET deleted = TRUE WHERE session_id = ? AND human_id = ?",
             vec![session_id.into(), human_id.into()],
         )
         .await?;
@@ -395,7 +416,7 @@ impl UserDatabase {
             .query(
                 "SELECT h.* FROM humans h
                 JOIN session_participants sp ON h.id = sp.human_id
-                WHERE sp.session_id = ?",
+                WHERE sp.session_id = ? AND (sp.deleted = FALSE OR sp.deleted IS NULL)",
                 vec![session_id.into()],
             )
             .await?;
