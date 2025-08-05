@@ -24,19 +24,6 @@ user_common_derives! {
     }
 }
 
-impl Event {
-    pub fn get_participants(&self) -> Vec<EventParticipant> {
-        self.participants
-            .as_ref()
-            .and_then(|p| serde_json::from_str(p).ok())
-            .unwrap_or_default()
-    }
-
-    pub fn set_participants(&mut self, participants: Vec<EventParticipant>) {
-        self.participants = Some(serde_json::to_string(&participants).unwrap());
-    }
-}
-
 user_common_derives! {
     pub struct ListEventFilter {
         #[serde(flatten)]
