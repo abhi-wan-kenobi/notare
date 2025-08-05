@@ -1,4 +1,7 @@
-use crate::{misc::print_logo, server::Server};
+use crate::{
+    misc::{print_logo, shutdown_signal},
+    server::Server,
+};
 
 #[derive(clap::Args)]
 pub struct ServeArgs {

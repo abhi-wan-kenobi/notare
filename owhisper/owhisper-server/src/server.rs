@@ -301,9 +301,7 @@ mod tests {
         futures_util::pin_mut!(stream);
 
         while let Some(result) = stream.next().await {
-            if let owhisper_interface::StreamResponse::TranscriptResponse { channel, .. } = result {
-                println!("{:?}", channel.alternatives.first().unwrap().transcript);
-            }
+            println!("{:?}", result);
         }
     }
 

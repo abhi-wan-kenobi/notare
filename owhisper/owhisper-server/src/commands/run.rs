@@ -1,12 +1,12 @@
 use bytes::Bytes;
 use futures_util::{Stream, StreamExt};
-use tokio::signal;
 
 use crate::{misc::shutdown_signal, Server};
-use hypr_audio_input::MicInput;
 
 #[derive(clap::Parser)]
 pub struct RunArgs {
+    #[arg(short, long)]
+    pub config: Option<String>,
     #[arg(short, long)]
     pub model: String,
 }
