@@ -64,6 +64,7 @@ hypr-transcribe-aws = { path = "crates/transcribe-aws", package = "transcribe-aw
 hypr-transcribe-azure = { path = "crates/transcribe-azure", package = "transcribe-azure" }
 hypr-transcribe-deepgram = { path = "crates/transcribe-deepgram", package = "transcribe-deepgram" }
 hypr-transcribe-gcp = { path = "crates/transcribe-gcp", package = "transcribe-gcp" }
+hypr-transcribe-moonlight = { path = "crates/transcribe-moonlight", package = "transcribe-moonlight" }
 hypr-transcribe-whisper-local = { path = "crates/transcribe-whisper-local", package = "transcribe-whisper-local" }
 hypr-turso = { path = "crates/turso", package = "turso" }
 hypr-whisper = { path = "crates/whisper", package = "whisper" }

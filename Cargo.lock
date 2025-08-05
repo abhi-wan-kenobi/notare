@@ -3429,16 +3429,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "denoise"
-version = "0.1.0"
-dependencies = [
- "onnx",
- "realfft",
- "serde",
- "thiserror 2.0.12",
-]
-
-[[package]]
 name = "der"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9537,6 +9527,7 @@ version = "0.1.0"
 dependencies = [
  "ndarray",
  "ort",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -15489,6 +15480,26 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.12",
+]
+
+[[package]]
+name = "transcribe-moonshine"
+version = "0.1.0"
+dependencies = [
+ "async-stream",
+ "axum 0.8.4",
+ "bytes",
+ "data",
+ "futures-util",
+ "onnx",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-stream",
+ "tokio-tungstenite 0.26.2",
+ "tower 0.5.2",
+ "tracing",
 ]
 
 [[package]]
