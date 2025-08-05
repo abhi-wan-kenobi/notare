@@ -234,33 +234,17 @@ mod tests {
     async fn start() -> SocketAddr {
         let server = Server::new(
             owhisper_config::Config {
-                models: vec![
-                    owhisper_config::ModelConfig::WhisperCpp(
-                        owhisper_config::WhisperCppModelConfig {
-                            id: "whisper_cpp".to_string(),
-                            model_path: dirs::data_dir()
-                                .unwrap()
-                                .join("com.hyprnote.dev/stt/ggml-small-q8_0.bin")
-                                .to_str()
-                                .unwrap()
-                                .to_string(),
-                        },
-                    ),
-                    owhisper_config::ModelConfig::Deepgram(owhisper_config::DeepgramModelConfig {
-                        id: "deepgram".to_string(),
-                        api_key: Some(std::env::var("DEEPGRAM_API_KEY").expect("DEEPGRAM_API_KEY")),
-                        ..Default::default()
-                    }),
-                    owhisper_config::ModelConfig::Aws(owhisper_config::AwsModelConfig {
-                        id: "aws".to_string(),
-                        region: std::env::var("AWS_REGION").expect("AWS_REGION"),
-                        access_key_id: std::env::var("AWS_ACCESS_KEY_ID")
-                            .expect("AWS_ACCESS_KEY_ID"),
-                        secret_access_key: std::env::var("AWS_SECRET_ACCESS_KEY")
-                            .expect("AWS_SECRET_ACCESS_KEY"),
-                        ..Default::default()
-                    }),
-                ],
+                models: vec![owhisper_config::ModelConfig::WhisperCpp(
+                    owhisper_config::WhisperCppModelConfig {
+                        id: "whisper_cpp".to_string(),
+                        model_path: dirs::data_dir()
+                            .unwrap()
+                            .join("com.hyprnote.dev/stt/ggml-small-q8_0.bin")
+                            .to_str()
+                            .unwrap()
+                            .to_string(),
+                    },
+                )],
                 ..Default::default()
             },
             None,
@@ -288,58 +272,6 @@ mod tests {
             .api_base(format!("http://{}", addr))
             .params(ListenParams {
                 model: Some("whisper_cpp".to_string()),
-                ..Default::default()
-            })
-            .build_single();
-
-        let audio = rodio::Decoder::new(std::io::BufReader::new(
-            std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
-        ))
-        .unwrap();
-
-        let stream = client.from_realtime_audio(audio).await.unwrap();
-        futures_util::pin_mut!(stream);
-
-        while let Some(result) = stream.next().await {
-            println!("{:?}", result);
-        }
-    }
-
-    #[tokio::test]
-    // cargo test -p owhisper-server test_deepgram -- --nocapture
-    async fn test_deepgram() {
-        let addr = start().await;
-
-        let client = ListenClient::builder()
-            .api_base(format!("http://{}", addr))
-            .params(ListenParams {
-                model: Some("deepgram".to_string()),
-                ..Default::default()
-            })
-            .build_single();
-
-        let audio = rodio::Decoder::new(std::io::BufReader::new(
-            std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
-        ))
-        .unwrap();
-
-        let stream = client.from_realtime_audio(audio).await.unwrap();
-        futures_util::pin_mut!(stream);
-
-        while let Some(result) = stream.next().await {
-            println!("{:?}", result);
-        }
-    }
-
-    #[tokio::test]
-    // cargo test -p owhisper-server test_aws -- --nocapture
-    async fn test_aws() {
-        let addr = start().await;
-
-        let client = ListenClient::builder()
-            .api_base(format!("http://{}", addr))
-            .params(ListenParams {
-                model: Some("aws".to_string()),
                 ..Default::default()
             })
             .build_single();

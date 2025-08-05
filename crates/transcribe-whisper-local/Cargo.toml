@@ -15,6 +15,12 @@ vulkan = ["hypr-whisper-local/vulkan"]
 openmp = ["hypr-whisper-local/openmp"]
 load-dynamic = ["hypr-pyannote-local/load-dynamic"]
 
+[dev-dependencies]
+dirs = { workspace = true }
+futures-util = { workspace = true }
+hypr-data = { workspace = true }
+owhisper-client = { workspace = true }
+
 [dependencies]
 hypr-audio-utils = { workspace = true }
 hypr-chunker = { workspace = true }
