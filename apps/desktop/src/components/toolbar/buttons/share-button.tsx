@@ -465,7 +465,7 @@ const exportHandlers = {
 
     // Update frontmatter
     const targets = [
-      { target: "date", value: new Date().toISOString() },
+      { target: "date", value: session?.created_at ?? new Date().toISOString() },
       ...(sessionTags && sessionTags.length > 0
         ? [{
           target: "tags",
