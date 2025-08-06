@@ -48,7 +48,7 @@ func resolveExecutablePath(_ executable: String) -> String? {
 
 // Resolve the executable path
 guard let resolvedPath = resolveExecutablePath(executableToRun) else {
-    fputs("Error running command '\(executableToRun)': Error Domain=NSCocoaErrorDomain Code=4 \"The file "\(executableToRun)" doesn't exist.\" UserInfo={NSFilePath=\(executableToRun)}\n", stderr)
+    fputs("Error running command '\(executableToRun)': Error Domain=NSCocoaErrorDomain Code=4 \"The file \\\"\(executableToRun)\\\" doesn't exist.\" UserInfo={NSFilePath=\(executableToRun)}\n", stderr)
     exit(1)
 }
 
