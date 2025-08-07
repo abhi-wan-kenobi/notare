@@ -99,6 +99,7 @@ jobs:
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
       - if: ${{ matrix.target == 'aarch64-apple-darwin' }}
         run: |
+          mkdir -p apps/desktop/src-tauri/binaries
           echo "placeholder" > apps/desktop/src-tauri/binaries/stt-${{ matrix.target }}
           chmod +x apps/desktop/src-tauri/binaries/stt-${{ matrix.target }}
           ./scripts/sidecar.sh "apps/desktop/${{ env.TAURI_CONF_PATH }}" "binaries/stt"
