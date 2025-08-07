@@ -74,11 +74,8 @@ impl ListenClientBuilder {
         url.to_string()
     }
 
-    fn build_request(self) -> ClientRequestBuilder {
-        let uri = self
-            .build_uri(owhisper_interface::AudioMode::Single)
-            .parse()
-            .unwrap();
+    fn build_request(self, audio_mode: owhisper_interface::AudioMode) -> ClientRequestBuilder {
+        let uri = self.build_uri(audio_mode).parse().unwrap();
 
         let request = match self.api_key {
             // https://github.com/deepgram/deepgram-rust-sdk/blob/d2f2723/src/lib.rs#L114-L115
@@ -92,12 +89,12 @@ impl ListenClientBuilder {
     }
 
     pub fn build_single(self) -> ListenClient {
-        let request = self.build_request();
+        let request = self.build_request(owhisper_interface::AudioMode::Single);
         ListenClient { request }
     }
 
     pub fn build_dual(self) -> ListenClientDual {
-        let request = self.build_request();
+        let request = self.build_request(owhisper_interface::AudioMode::Dual);
         ListenClientDual { request }
     }
 }
