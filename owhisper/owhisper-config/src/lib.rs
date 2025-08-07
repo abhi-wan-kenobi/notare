@@ -68,6 +68,7 @@ common_derives! {
 }
 
 common_derives! {
+    #[derive(Default)]
     pub struct DeepgramModelConfig {
         pub id: String,
         pub api_key: Option<String>,

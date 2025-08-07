@@ -91,12 +91,14 @@ pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
             global_config.models.push(new_model);
         }
 
-        let file = std::fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(&config_path)?;
-        serde_json::to_writer_pretty(file, &global_config)?;
+        serde_json::to_writer_pretty(
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(&config_path)?,
+            &global_config,
+        )?;
     }
 
     log::info!("Try running 'owhisper run {}' to get started", args.model);

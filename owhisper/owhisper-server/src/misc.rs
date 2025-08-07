@@ -57,6 +57,7 @@ pub fn set_logger() {
         builder.filter_level(log::LevelFilter::Info);
     }
 
+    builder.filter_module("ort", log::LevelFilter::Warn);
     builder.init();
 }
 
