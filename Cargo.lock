@@ -3656,7 +3656,7 @@ dependencies = [
 
 [[package]]
 name = "desktop"
-version = "0.0.62"
+version = "0.0.63"
 dependencies = [
  "anyhow",
  "bytes",
