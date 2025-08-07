@@ -11,6 +11,8 @@ use axum::{
 };
 use axum_extra::{headers::authorization::Bearer, headers::Authorization, TypedHeader};
 use tower::Service;
+use tower_http::trace::{self, TraceLayer};
+use tracing::Level;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -71,7 +73,16 @@ impl Server {
             .layer(middleware::from_fn_with_state(
                 app_state.clone(),
                 auth_middleware,
-            ));
+            ))
+            .layer(
+                TraceLayer::new_for_http()
+                    .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+                    .on_request(trace::DefaultOnRequest::new().level(Level::INFO))
+                    .on_response(trace::DefaultOnResponse::new().level(Level::INFO))
+                    .on_body_chunk(())
+                    .on_eos(())
+                    .on_failure(trace::DefaultOnFailure::new().level(Level::ERROR)),
+            );
 
         Ok(app)
     }

@@ -12,8 +12,15 @@ pub struct RunArgs {
 
 pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
     let config = owhisper_config::Config::new(args.config)?;
+    let api_key = config.general.as_ref().and_then(|g| g.api_key.clone());
     let server = Server::new(config, None);
-    let addr = server.run_with_shutdown(shutdown_signal()).await?;
+
+    let port = 1234;
+    let addr = format!("127.0.0.1:{}", port);
+
+    // Spawn the server in a background task
+    let server_handle =
+        tokio::spawn(async move { server.run_with_shutdown(shutdown_signal()).await });
 
     // Wait a moment for server to be ready
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -21,21 +28,19 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
     let input_devices: Vec<String> = hypr_audio_input::MicInput::list_devices();
     log::info!("Input devices: {:#?}", input_devices);
 
-    // Create mic input stream - convert to proper format
-    // We need to create a wrapper that implements AsyncSource
+    // Create mic input stream
     // let audio_stream = create_audio_stream()?;
 
     // Create client with server address
-    // let api_base = format!("ws://{}/whisper-cpp", server_addr);
-    // let api_key = config.general.as_ref().and_then(|g| g.api_key.clone());
+    let api_base = format!("ws://{}/whisper-cpp", addr);
 
-    // let client = owhisper_client::ListenClient::builder()
-    //     .api_base(&api_base)
-    //     .api_key(api_key.as_deref().unwrap_or(""))
-    //     .params(owhisper_interface::ListenParams {
-    //         ..Default::default()
-    //     })
-    //     .build_single();
+    let client = owhisper_client::ListenClient::builder()
+        .api_base(&api_base)
+        .api_key(api_key.as_deref().unwrap_or(""))
+        .params(owhisper_interface::ListenParams {
+            ..Default::default()
+        })
+        .build_single();
 
     println!("Starting audio streaming from microphone...");
     println!("Press Ctrl+C to stop.\n");

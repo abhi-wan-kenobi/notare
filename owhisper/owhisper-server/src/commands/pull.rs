@@ -26,29 +26,35 @@ pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
         }
     }
 
-    let progress = indicatif::ProgressBar::new(0);
-    progress.set_style(
-        indicatif::ProgressStyle::default_bar()
-            .template("{msg} [{bar:40.cyan/blue}] {percent:>3}% {bytes}/{total_bytes}")
-            .unwrap()
-            .progress_chars("━━╸"),
-    );
+    {
+        let progress = indicatif::ProgressBar::new(0);
+        progress.set_style(
+            indicatif::ProgressStyle::default_bar()
+                .template("{msg} [{bar:40.cyan/blue}] {percent:>3}% {bytes}/{total_bytes}")
+                .unwrap()
+                .progress_chars("━━╸"),
+        );
 
-    hypr_file::download_file_parallel(url, &model_path, |progress_update| match progress_update {
-        hypr_file::DownloadProgress::Started => {
-            progress.set_position(0);
-        }
-        hypr_file::DownloadProgress::Progress(downloaded, total) => {
-            if progress.length().unwrap_or(0) != total {
-                progress.set_length(total);
-            }
-            progress.set_position(downloaded);
-        }
-        hypr_file::DownloadProgress::Finished => {
-            progress.finish_and_clear();
-        }
-    })
-    .await?;
+        hypr_file::download_file_parallel(
+            url,
+            &model_path,
+            |progress_update| match progress_update {
+                hypr_file::DownloadProgress::Started => {
+                    progress.set_position(0);
+                }
+                hypr_file::DownloadProgress::Progress(downloaded, total) => {
+                    if progress.length().unwrap_or(0) != total {
+                        progress.set_length(total);
+                    }
+                    progress.set_position(downloaded);
+                }
+                hypr_file::DownloadProgress::Finished => {
+                    progress.finish_and_clear();
+                }
+            },
+        )
+        .await?;
+    }
 
     {
         let config_path = owhisper_config::Config::global_config_path();
