@@ -36,6 +36,7 @@ hypr-transcribe-azure = { workspace = true }
 hypr-transcribe-deepgram = { workspace = true }
 hypr-transcribe-gcp = { workspace = true }
 hypr-transcribe-moonshine = { workspace = true }
+hypr-transcribe-openai = { workspace = true }
 hypr-transcribe-whisper-local = { workspace = true }
 
 aide = { version = "0.15.0", features = ["axum"] }
