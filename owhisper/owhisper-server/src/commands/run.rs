@@ -1,5 +1,5 @@
 use futures_util::StreamExt;
-use hypr_audio_utils::AudioFormatExt;
+use hypr_audio::AsyncSource;
 
 use crate::{misc::shutdown_signal, Server};
 
@@ -45,11 +45,11 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
         tokio::spawn(async move { server.run_with_shutdown(shutdown_signal()).await });
     log::info!("server_handle");
 
-    let input_devices: Vec<String> = hypr_audio::MicInput::list_devices();
+    let input_devices: Vec<String> = hypr_audio::AudioInput::list_mic_devices();
     log::info!("input_devices: {:#?}", input_devices);
 
-    let input_device = hypr_audio::MicInput::new(args.device).unwrap();
-    log::info!("input_device: {}", input_device.device_name());
+    let mut audio_input = hypr_audio::AudioInput::from_mic(args.device)?;
+    log::info!("input_device: {:?}", audio_input.device_name());
 
     let api_base = format!("ws://127.0.0.1:{}", port);
 
@@ -62,8 +62,13 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
         })
         .build_single();
 
-    let audio_stream = input_device.stream().to_i16_le_chunks(16000, 1024);
-    let response_stream = client.from_realtime_audio(audio_stream).await?;
+    let mic_sample_stream = audio_input.stream();
+    let mic_stream = mic_sample_stream
+        .resample(16000)
+        .chunks(512)
+        .map(hypr_audio_utils::f32_to_i16_bytes);
+
+    let response_stream = client.from_realtime_audio(mic_stream).await?;
     futures_util::pin_mut!(response_stream);
 
     loop {
@@ -121,7 +126,7 @@ fn print_input_devices() {
         .remove_horizontal()
         .remove_vertical();
 
-    let table = tabled::Table::new(hypr_audio::MicInput::list_devices())
+    let table = tabled::Table::new(hypr_audio::AudioInput::list_mic_devices())
         .with(style)
         .to_string();
 
