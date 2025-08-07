@@ -5,10 +5,9 @@ use crate::{misc::shutdown_signal, Server};
 
 #[derive(clap::Parser)]
 pub struct RunArgs {
+    pub model: String,
     #[arg(short, long)]
     pub config: Option<String>,
-    #[arg(short, long)]
-    pub model: String,
 }
 
 pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {

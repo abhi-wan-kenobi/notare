@@ -8,15 +8,43 @@ pub fn print_logo() {
 }
 
 pub fn set_logger() {
+    use env_logger::fmt::style;
+
     let mut builder = env_logger::Builder::new();
 
     builder.format(|buf, record| {
         use std::io::Write;
+
+        let (style_begin, style_end) = match record.level() {
+            log::Level::Trace => (
+                style::AnsiColor::White.on_default().render(),
+                style::AnsiColor::White.on_default().render_reset(),
+            ),
+            log::Level::Debug => (
+                style::AnsiColor::Blue.on_default().render(),
+                style::AnsiColor::Blue.on_default().render_reset(),
+            ),
+            log::Level::Info => (
+                style::AnsiColor::Green.on_default().render(),
+                style::AnsiColor::Green.on_default().render_reset(),
+            ),
+            log::Level::Warn => (
+                style::AnsiColor::Yellow.on_default().render(),
+                style::AnsiColor::Yellow.on_default().render_reset(),
+            ),
+            log::Level::Error => (
+                style::AnsiColor::Red.on_default().render(),
+                style::AnsiColor::Red.on_default().render_reset(),
+            ),
+        };
+
         writeln!(
             buf,
-            "[{}] {} {}",
+            "[{}] {}{}{} {}",
             chrono::Local::now().format("%H:%M:%S"),
+            style_begin,
             record.level(),
+            style_end,
             record.args()
         )
     });
