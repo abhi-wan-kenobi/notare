@@ -3,6 +3,14 @@ name = "owhisper-server"
 version = "0.0.1"
 edition = "2024"
 
+[features]
+macos-default = ["coreml", "metal"]
+linux-default = []
+
+cuda = ["hypr-transcribe-whisper-local/cuda"]
+coreml = ["hypr-transcribe-whisper-local/coreml"]
+metal = ["hypr-transcribe-whisper-local/metal"]
+
 [build-dependencies]
 owhisper-config = { workspace = true }
 
@@ -50,6 +58,7 @@ cpal = { workspace = true }
 rubato = "0.16.2"
 
 anyhow = { workspace = true }
+directories = "6.0.0"
 dirs = { workspace = true }
 open = "5"
 schemars = { workspace = true }

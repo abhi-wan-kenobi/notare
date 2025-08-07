@@ -53,35 +53,49 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
     futures_util::pin_mut!(response_stream);
     log::info!("response_stream");
 
-    while let Some(chunk) = response_stream.next().await {
-        log::info!("chunk: {:#?}", chunk);
+    loop {
+        tokio::select! {
+            _ = shutdown_signal() => {
+                break;
+            }
+            chunk = response_stream.next() => {
+                match chunk {
+                    Some(chunk) => {
+                        if !chunk.words.is_empty() {
+                            let text = chunk
+                                .words
+                                .iter()
+                                .map(|w| w.text.as_str())
+                                .collect::<Vec<_>>()
+                                .join(" ");
 
-        if !chunk.words.is_empty() {
-            let text = chunk
-                .words
-                .iter()
-                .map(|w| w.text.as_str())
-                .collect::<Vec<_>>()
-                .join(" ");
-
-            // Check if this is a final transcript based on metadata
-            if let Some(meta) = &chunk.meta {
-                if let Some(is_final) = meta.get("is_final").and_then(|v| v.as_bool()) {
-                    if is_final {
-                        println!("\n[FINAL] {}", text);
-                    } else {
-                        print!("\r[PARTIAL] {}", text);
-                        use std::io::Write;
-                        std::io::stdout().flush()?;
+                            // Check if this is a final transcript based on metadata
+                            if let Some(meta) = &chunk.meta {
+                                if let Some(is_final) = meta.get("is_final").and_then(|v| v.as_bool()) {
+                                    if is_final {
+                                        println!("\n[FINAL] {}", text);
+                                    } else {
+                                        print!("\r[PARTIAL] {}", text);
+                                        use std::io::Write;
+                                        std::io::stdout().flush()?;
+                                    }
+                                } else {
+                                    println!("{}", text);
+                                }
+                            } else {
+                                println!("{}", text);
+                            }
+                        }
                     }
-                } else {
-                    println!("{}", text);
+                    None => {
+                        break;
+                    }
                 }
-            } else {
-                println!("{}", text);
             }
         }
     }
+
+    server_handle.abort();
 
     Ok(())
 }
