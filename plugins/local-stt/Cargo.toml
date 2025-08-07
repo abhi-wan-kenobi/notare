@@ -7,10 +7,6 @@ exclude = ["/js", "/node_modules"]
 links = "tauri-plugin-local-stt"
 description = ""
 
-[[bench]]
-name = "simple"
-harness = false
-
 [features]
 default = []
 coreml = ["hypr-transcribe-whisper-local/coreml"]
@@ -27,6 +23,7 @@ load-dynamic = ["hypr-transcribe-whisper-local/load-dynamic"]
 tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
+hypr-audio-utils = { workspace = true }
 hypr-data = { workspace = true }
 hypr-language = { workspace = true, features = ["whisper"] }
 

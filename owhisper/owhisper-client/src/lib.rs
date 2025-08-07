@@ -166,11 +166,10 @@ impl ListenClient {
 
     pub async fn from_realtime_audio(
         &self,
-        audio_stream: impl AsyncSource + Send + Unpin + 'static,
+        audio_stream: impl Stream<Item = bytes::Bytes> + Send + Unpin + 'static,
     ) -> Result<impl Stream<Item = ListenOutputChunk>, hypr_ws::Error> {
-        let input_stream = audio_stream.to_i16_le_chunks(16 * 1000, 1024);
         let ws = WebSocketClient::new(self.request.clone());
-        ws.from_audio::<Self>(input_stream).await
+        ws.from_audio::<Self>(audio_stream).await
     }
 }
 
@@ -197,7 +196,8 @@ mod tests {
         let audio = rodio::Decoder::new(std::io::BufReader::new(
             std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
         ))
-        .unwrap();
+        .unwrap()
+        .to_i16_le_chunks(16000, 512);
 
         let client = ListenClient::builder()
             .api_base("https://api.deepgram.com")
@@ -222,7 +222,8 @@ mod tests {
         let audio = rodio::Decoder::new(std::io::BufReader::new(
             std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
         ))
-        .unwrap();
+        .unwrap()
+        .to_i16_le_chunks(16000, 512);
 
         let client = ListenClient::builder()
             .api_base("ws://127.0.0.1:1234/v1/realtime")

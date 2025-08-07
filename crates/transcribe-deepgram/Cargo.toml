@@ -4,9 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dev-dependencies]
-dirs = { workspace = true }
+hypr-audio-utils = { workspace = true }
 hypr-data = { workspace = true }
 owhisper-client = { workspace = true }
+
+dirs = { workspace = true }
 rodio = { workspace = true }
 
 [dependencies]

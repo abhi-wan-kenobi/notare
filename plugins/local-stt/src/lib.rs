@@ -88,6 +88,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use hypr_audio_utils::AudioFormatExt;
 
     #[test]
     fn export_types() {
@@ -135,7 +136,8 @@ mod test {
         let audio_source = rodio::Decoder::new(std::io::BufReader::new(
             std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
         ))
-        .unwrap();
+        .unwrap()
+        .to_i16_le_chunks(16000, 512);
 
         let listen_stream = listen_client
             .from_realtime_audio(audio_source)

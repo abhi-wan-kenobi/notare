@@ -1,4 +1,5 @@
 use futures_util::StreamExt;
+use hypr_audio_utils::AudioFormatExt;
 
 use crate::{misc::shutdown_signal, Server};
 
@@ -19,9 +20,23 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
+    let config = owhisper_config::Config::new(args.config)?;
+
+    if config
+        .models
+        .iter()
+        .find(|m| m.id() == args.model)
+        .is_none()
+    {
+        return Err(anyhow::anyhow!(format!(
+            "'{}' not found in '{}'",
+            args.model,
+            owhisper_config::Config::global_config_path().display()
+        )));
+    }
+
     let port = 1234;
 
-    let config = owhisper_config::Config::new(args.config)?;
     let api_key = config.general.as_ref().and_then(|g| g.api_key.clone());
     let server = Server::new(config, Some(port));
 
@@ -35,7 +50,6 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
 
     let input_device = hypr_audio::MicInput::new(args.device).unwrap();
     log::info!("input_device: {}", input_device.device_name());
-    let audio_stream = input_device.stream();
 
     let api_base = format!("ws://127.0.0.1:{}", port);
 
@@ -43,15 +57,14 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
         .api_base(&api_base)
         .api_key(api_key.as_deref().unwrap_or(""))
         .params(owhisper_interface::ListenParams {
-            model: Some("QuantizedTiny".to_string()),
+            model: Some(args.model),
             ..Default::default()
         })
         .build_single();
 
-    log::info!("client");
+    let audio_stream = input_device.stream().to_i16_le_chunks(16000, 1024);
     let response_stream = client.from_realtime_audio(audio_stream).await?;
     futures_util::pin_mut!(response_stream);
-    log::info!("response_stream");
 
     loop {
         tokio::select! {
@@ -69,7 +82,6 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
                                 .collect::<Vec<_>>()
                                 .join(" ");
 
-                            // Check if this is a final transcript based on metadata
                             if let Some(meta) = &chunk.meta {
                                 if let Some(is_final) = meta.get("is_final").and_then(|v| v.as_bool()) {
                                     if is_final {

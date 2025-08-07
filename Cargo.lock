@@ -15738,6 +15738,7 @@ name = "transcribe-deepgram"
 version = "0.1.0"
 dependencies = [
  "async-stream",
+ "audio-utils",
  "axum 0.8.4",
  "bytes",
  "data",

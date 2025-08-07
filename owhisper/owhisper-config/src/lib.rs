@@ -29,6 +29,16 @@ common_derives! {
     }
 }
 
+impl ModelConfig {
+    pub fn id(&self) -> &str {
+        match self {
+            ModelConfig::Aws(config) => &config.id,
+            ModelConfig::Deepgram(config) => &config.id,
+            ModelConfig::WhisperCpp(config) => &config.id,
+        }
+    }
+}
+
 impl Config {
     pub fn new(path: Option<String>) -> Result<Self, crate::Error> {
         let settings = config::Config::builder()

@@ -98,6 +98,12 @@ impl Whisper {
     }
 
     pub fn transcribe(&mut self, audio: &[f32]) -> Result<Vec<Segment>, super::Error> {
+        let input_audio_length_sec = audio.len() as f32 / 16000.0;
+        if input_audio_length_sec < 0.1 {
+            tracing::warn!(input_audio_length_sec = ?input_audio_length_sec, "transcribe_skipped");
+            return Ok(vec![]);
+        }
+
         let token_beg = self.token_beg;
         let language = self.get_language(audio)?;
 
@@ -108,7 +114,7 @@ impl Whisper {
             let joined = parts.join("\n");
             let initial_prompt = joined.trim();
 
-            tracing::info!(initial_prompt = ?initial_prompt, "transcribe");
+            tracing::info!(input_audio_length_sec = ?input_audio_length_sec, "transcribe_started");
 
             p.set_translate(false);
             p.set_detect_language(false);

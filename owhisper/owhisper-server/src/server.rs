@@ -214,10 +214,7 @@ async fn auth_middleware(
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    log::info!("Auth middleware");
-
     if state.api_key.is_none() {
-        log::warn!("API key is not set");
         return Ok(next.run(req).await);
     }
 
@@ -226,31 +223,22 @@ async fn auth_middleware(
         .as_ref()
         .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    log::info!("Expected token: {}", expected_token);
-
-    // Check Token format first (what the client sends)
     if let Some(TypedHeader(Authorization(token))) = token_header {
-        log::info!("Token authorization: {}", token.token());
         if token.token() == expected_token {
             return Ok(next.run(req).await);
         } else {
-            log::info!("Token mismatch");
             return Err(StatusCode::UNAUTHORIZED);
         }
     }
 
-    // Check Bearer format as fallback
     if let Some(TypedHeader(Authorization(bearer))) = bearer_header {
-        log::info!("Bearer authorization: {}", bearer.token());
         if bearer.token() == expected_token {
             return Ok(next.run(req).await);
         } else {
-            log::info!("Bearer token mismatch");
             return Err(StatusCode::UNAUTHORIZED);
         }
     }
 
-    log::info!("No valid authorization header found");
     Err(StatusCode::UNAUTHORIZED)
 }
 
@@ -289,6 +277,7 @@ mod tests {
 
     use futures_util::StreamExt;
 
+    use hypr_audio_utils::AudioFormatExt;
     use owhisper_client::ListenClient;
     use owhisper_interface::ListenParams;
 
@@ -340,7 +329,8 @@ mod tests {
         let audio = rodio::Decoder::new(std::io::BufReader::new(
             std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
         ))
-        .unwrap();
+        .unwrap()
+        .to_i16_le_chunks(16000, 512);
 
         let stream = client.from_realtime_audio(audio).await.unwrap();
         futures_util::pin_mut!(stream);
