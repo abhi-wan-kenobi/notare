@@ -25,11 +25,11 @@ rodio = { workspace = true }
 owhisper-client = { workspace = true }
 owhisper-config = { workspace = true }
 owhisper-interface = { workspace = true }
+owhisper-model = { workspace = true }
 
 hypr-audio = { workspace = true }
 hypr-audio-utils = { workspace = true }
 hypr-file = { workspace = true }
-hypr-whisper-local-model = { workspace = true }
 
 hypr-transcribe-aws = { workspace = true }
 hypr-transcribe-azure = { workspace = true }
@@ -48,6 +48,7 @@ tower = { workspace = true }
 tower-http = { workspace = true, features = ["trace"] }
 tracing = { workspace = true }
 
+bat = "0.25.0"
 bytes = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
@@ -55,7 +56,7 @@ env_logger = { workspace = true }
 indicatif = "0.18.0"
 log = { workspace = true }
 ratatui = "0.29.0"
-tabled = "0.20.0"
+similar = { workspace = true }
 
 cpal = { workspace = true }
 rubato = "0.16.2"

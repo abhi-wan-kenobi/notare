@@ -66,6 +66,15 @@ pub fn bytes_to_f32_samples(data: &[u8]) -> Vec<f32> {
         .collect()
 }
 
+pub fn source_from_path(
+    path: impl AsRef<std::path::Path>,
+) -> Result<rodio::Decoder<std::io::BufReader<std::fs::File>>, crate::Error> {
+    let decoder = rodio::Decoder::new(std::io::BufReader::new(
+        std::fs::File::open(path.as_ref()).unwrap(),
+    ))?;
+    Ok(decoder)
+}
+
 pub fn resample_audio<S, T>(source: S, to_rate: u32) -> Result<Vec<f32>, crate::Error>
 where
     S: rodio::Source<Item = T> + Iterator<Item = T>,

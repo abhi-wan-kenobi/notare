@@ -4,12 +4,8 @@ use std::time::Duration;
 use objc2::msg_send;
 
 use block2::RcBlock;
-use objc2::{
-    rc::Retained,
-    runtime::{Bool, ProtocolObject},
-    ClassType,
-};
-use objc2_contacts::{CNAuthorizationStatus, CNContactStore, CNEntityType, CNKeyDescriptor};
+use objc2::{rc::Retained, runtime::Bool, ClassType};
+use objc2_contacts::{CNAuthorizationStatus, CNContactStore, CNEntityType};
 use objc2_event_kit::{
     EKAuthorizationStatus, EKCalendar, EKEntityType, EKEvent, EKEventStore, EKParticipant,
 };

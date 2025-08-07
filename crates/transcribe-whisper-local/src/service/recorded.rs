@@ -4,22 +4,20 @@ pub fn process_recorded(
     model_path: impl AsRef<std::path::Path>,
     audio_path: impl AsRef<std::path::Path>,
 ) -> Result<Vec<Word2>, crate::Error> {
-    use rodio::Source;
+    let samples = {
+        use rodio::Source;
 
-    let decoder = rodio::Decoder::new(std::io::BufReader::new(
-        std::fs::File::open(audio_path.as_ref()).unwrap(),
-    ))
-    .unwrap();
+        let source = hypr_audio_utils::source_from_path(audio_path.as_ref()).unwrap();
+        let original_sample_rate = source.sample_rate();
 
-    let original_sample_rate = decoder.sample_rate();
+        let resampled_samples = if original_sample_rate != 16000 {
+            hypr_audio_utils::resample_audio(source, 16000).unwrap()
+        } else {
+            source.convert_samples().collect()
+        };
 
-    let resampled_samples = if original_sample_rate != 16000 {
-        hypr_audio_utils::resample_audio(decoder, 16000).unwrap()
-    } else {
-        decoder.convert_samples().collect()
+        hypr_audio_utils::f32_to_i16_samples(&resampled_samples)
     };
-
-    let samples_i16 = hypr_audio_utils::f32_to_i16_samples(&resampled_samples);
 
     let mut model = hypr_whisper_local::Whisper::builder()
         .model_path(model_path.as_ref().to_str().unwrap())
@@ -29,7 +27,7 @@ pub fn process_recorded(
         .build();
 
     let mut segmenter = hypr_pyannote_local::segmentation::Segmenter::new(16000).unwrap();
-    let segments = segmenter.process(&samples_i16, 16000).unwrap();
+    let segments = segmenter.process(&samples, 16000).unwrap();
 
     let mut words = Vec::new();
 

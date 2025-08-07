@@ -4,7 +4,6 @@
     Hash,
     PartialEq,
     Clone,
-    clap::ValueEnum,
     strum::EnumString,
     strum::Display,
     serde::Serialize,
@@ -69,6 +68,19 @@ impl WhisperModel {
             WhisperModel::QuantizedSmall => 264464607,
             WhisperModel::QuantizedSmallEn => 264477561,
             WhisperModel::QuantizedLargeTurbo => 874188075,
+        }
+    }
+
+    // TODO
+    pub fn checksum(&self) -> &str {
+        match self {
+            WhisperModel::QuantizedTiny => "",
+            WhisperModel::QuantizedTinyEn => "",
+            WhisperModel::QuantizedBase => "",
+            WhisperModel::QuantizedBaseEn => "",
+            WhisperModel::QuantizedSmall => "",
+            WhisperModel::QuantizedSmallEn => "",
+            WhisperModel::QuantizedLargeTurbo => "",
         }
     }
 }

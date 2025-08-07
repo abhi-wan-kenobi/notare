@@ -1,18 +1,20 @@
 use clap::Parser;
 
-use hypr_whisper_local_model::WhisperModel;
+use owhisper_model::Model;
 
 #[derive(Parser)]
 pub struct PullArgs {
-    /// The Whisper model to download
+    /// The model to download
     #[arg(value_enum)]
-    pub model: WhisperModel,
+    pub model: Model,
 }
 
 pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
-    let url = args.model.model_url();
-    let expected_size = args.model.model_size();
-    let filename = args.model.file_name();
+    let assets = args.model.assets();
+    let asset = assets.first().unwrap();
+    let url = asset.url.clone();
+    let expected_size = asset.size;
+    let filename = asset.name.clone();
 
     let model_path = owhisper_config::Config::base()
         .join("models")
