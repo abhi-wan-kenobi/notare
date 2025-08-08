@@ -3,20 +3,28 @@ use hypr_whisper_local_model::WhisperModel as HyprWhisper;
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, strum::Display, clap::ValueEnum)]
 pub enum Model {
     #[serde(rename = "whisper-cpp-base-q8")]
+    #[strum(serialize = "whisper-cpp-base-q8")]
     WhisperCppBaseQ8,
     #[serde(rename = "whisper-cpp-base-q8-en")]
+    #[strum(serialize = "whisper-cpp-base-q8-en")]
     WhisperCppBaseQ8En,
     #[serde(rename = "whisper-cpp-tiny-q8")]
+    #[strum(serialize = "whisper-cpp-tiny-q8")]
     WhisperCppTinyQ8,
     #[serde(rename = "whisper-cpp-tiny-q8-en")]
+    #[strum(serialize = "whisper-cpp-tiny-q8-en")]
     WhisperCppTinyQ8En,
     #[serde(rename = "whisper-cpp-small-q8")]
+    #[strum(serialize = "whisper-cpp-small-q8")]
     WhisperCppSmallQ8,
     #[serde(rename = "whisper-cpp-small-q8-en")]
+    #[strum(serialize = "whisper-cpp-small-q8-en")]
     WhisperCppSmallQ8En,
     #[serde(rename = "whisper-cpp-large-turbo-q8")]
+    #[strum(serialize = "whisper-cpp-large-turbo-q8")]
     WhisperCppLargeTurboQ8,
     #[serde(rename = "kyutai-stt-1b-en-fr")]
+    #[strum(serialize = "kyutai-stt-1b-en-fr")]
     KyutaiStt1bEnFr,
 }
 

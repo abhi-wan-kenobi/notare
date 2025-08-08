@@ -1,7 +1,6 @@
 use std::path::Path;
 
 use anyhow::Result;
-use bat::PrettyPrinter;
 use similar::{ChangeTag, TextDiff};
 
 pub async fn update_config_with_diff<F>(config_path: &Path, update_fn: F) -> Result<()>
@@ -65,11 +64,12 @@ fn show_config_diff(original: &str, updated: &str, config_path: &str) -> Result<
     }
 
     if has_changes {
-        PrettyPrinter::new()
+        bat::PrettyPrinter::new()
             .input_from_bytes(diff_output.as_bytes())
+            .grid(true)
+            .header(false)
             .language("diff")
-            .print()
-            .unwrap();
+            .print()?;
     }
 
     Ok(())
