@@ -10,6 +10,7 @@ coreml = ["hypr-onnx/coreml"]
 directml = ["hypr-onnx/directml"]
 
 [dev-dependencies]
+dirs = { workspace = true }
 hypr-data = { workspace = true }
 rodio = { workspace = true }
 

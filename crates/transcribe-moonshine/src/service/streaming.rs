@@ -247,50 +247,11 @@ where
                 match chunk_result {
                     Err(_) => None,
                     Ok(chunk) => {
-                        // Convert samples to the format expected by the model
-                        let samples = chunk.samples;
-
-                        // Create audio array for the model [1, num_samples]
-                        let audio_array = match hypr_onnx::ndarray::Array2::from_shape_vec(
-                            (1, samples.len()),
-                            samples,
-                        ) {
-                            Ok(arr) => arr,
-                            Err(e) => {
-                                tracing::error!("Failed to create audio array: {}", e);
-                                return None;
-                            }
-                        };
-
-                        // Run transcription
-                        let (tokens, confidence) = {
-                            let mut model_guard = model.lock().unwrap();
-                            match model_guard.generate(audio_array, None) {
-                                Ok(tokens) => {
-                                    // Calculate confidence (simplified - you may want to improve this)
-                                    let confidence = if tokens.len() > 1 { 0.9 } else { 0.5 };
-                                    (tokens, confidence)
-                                }
-                                Err(e) => {
-                                    tracing::error!("Transcription error: {}", e);
-                                    return None;
-                                }
-                            }
-                        };
-
-                        // Decode tokens to text
                         let text = {
-                            let model_guard = model.lock().unwrap();
-                            match model_guard.decode(&tokens) {
-                                Ok(text) => text,
-                                Err(e) => {
-                                    tracing::error!("Decode error: {}", e);
-                                    return None;
-                                }
-                            }
+                            let mut model_guard = model.lock().unwrap();
+                            model_guard.transcribe(chunk.samples).unwrap()
                         };
 
-                        // Determine speaker based on source
                         let speaker = match source_name.as_str() {
                             "mic" => {
                                 Some(owhisper_interface::SpeakerIdentity::Unassigned { index: 0 })
@@ -301,7 +262,6 @@ where
                             _ => None,
                         };
 
-                        // Create output chunk with words
                         let data = ListenOutputChunk {
                             meta: None,
                             words: text
@@ -310,9 +270,9 @@ where
                                 .map(|w| Word2 {
                                     text: w.trim().to_string(),
                                     speaker: speaker.clone(),
-                                    start_ms: None, // Moonshine doesn't provide timestamps
+                                    start_ms: None,
                                     end_ms: None,
-                                    confidence: Some(confidence),
+                                    confidence: None,
                                 })
                                 .collect(),
                         };

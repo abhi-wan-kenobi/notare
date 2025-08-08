@@ -88,13 +88,13 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
         .resample(16000)
         .chunks(512)
         .map(move |chunk| {
-            let rms = calculate_rms(&chunk);
+            let amplified: Vec<f32> = chunk.iter().map(|&s| (s * 3.0).clamp(-1.0, 1.0)).collect();
 
             if let Ok(mut data) = amplitude_clone.lock() {
+                let rms = calculate_rms(&amplified);
                 data.update(rms);
             }
 
-            let amplified: Vec<f32> = chunk.iter().map(|&s| (s * 3.0).clamp(-1.0, 1.0)).collect();
             hypr_audio_utils::f32_to_i16_bytes(amplified)
         });
 
