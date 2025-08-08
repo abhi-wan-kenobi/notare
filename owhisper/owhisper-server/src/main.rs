@@ -4,8 +4,10 @@ mod commands;
 mod meter;
 mod misc;
 mod server;
+mod utils;
 
 use server::*;
+use utils::*;
 
 #[derive(Parser)]
 #[command(version, name = "OWhisper", bin_name = "owhisper")]
