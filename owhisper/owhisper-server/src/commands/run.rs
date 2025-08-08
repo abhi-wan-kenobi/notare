@@ -18,7 +18,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{
         Block, Borders, Gauge, List, ListItem, ListState, Padding, Paragraph, Scrollbar,
-        ScrollbarOrientation, ScrollbarState, Sparkline, StatefulWidget, Widget,
+        ScrollbarOrientation, ScrollbarState, Sparkline,
     },
     Frame, Terminal,
 };
@@ -94,14 +94,13 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
                 data.update(rms);
             }
 
-            let amplified: Vec<f32> = chunk.iter().map(|&s| (s * 1.5).clamp(-1.0, 1.0)).collect();
+            let amplified: Vec<f32> = chunk.iter().map(|&s| (s * 3.0).clamp(-1.0, 1.0)).collect();
             hypr_audio_utils::f32_to_i16_bytes(amplified)
         });
 
     let response_stream = client.from_realtime_audio(mic_stream).await?;
     futures_util::pin_mut!(response_stream);
 
-    // Run TUI
     let result = run_tui(
         response_stream,
         &args.model,
@@ -111,7 +110,6 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
     )
     .await;
 
-    // Cleanup
     server_handle.abort();
     result
 }

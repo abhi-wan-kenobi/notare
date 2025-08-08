@@ -16112,14 +16112,20 @@ name = "transcribe-moonshine"
 version = "0.1.0"
 dependencies = [
  "async-stream",
+ "audio-utils",
  "axum 0.8.4",
  "bytes",
+ "chunker",
  "data",
  "futures-util",
+ "kalosm-sound",
  "onnx",
+ "owhisper-config",
+ "owhisper-interface",
  "rodio",
  "serde",
  "serde_json",
+ "serde_qs 1.0.0-rc.3",
  "thiserror 2.0.12",
  "tokenizers",
  "tokio",
@@ -16127,6 +16133,7 @@ dependencies = [
  "tokio-tungstenite 0.26.2",
  "tower 0.5.2",
  "tracing",
+ "ws-utils",
 ]
 
 [[package]]

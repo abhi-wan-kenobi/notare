@@ -107,20 +107,38 @@ pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
 
         crate::update_config_with_diff(&config_path, |config| {
             let model_id = args.model.to_string();
-            let model_type = args.model.model_type();
-
             let assets_dir = model_dir.to_str().unwrap().to_string();
 
-            let new_model = match model_type {
-                owhisper_model::ModelType::WhisperCpp => owhisper_config::ModelConfig::WhisperCpp(
-                    owhisper_config::WhisperCppModelConfig {
-                        id: model_id.clone(),
-                        assets_dir,
-                    },
-                ),
-                owhisper_model::ModelType::Moonshine => {
+            let new_model = match args.model {
+                owhisper_model::Model::WhisperCppBaseQ8
+                | owhisper_model::Model::WhisperCppBaseQ8En
+                | owhisper_model::Model::WhisperCppTinyQ8
+                | owhisper_model::Model::WhisperCppTinyQ8En
+                | owhisper_model::Model::WhisperCppSmallQ8
+                | owhisper_model::Model::WhisperCppSmallQ8En
+                | owhisper_model::Model::WhisperCppLargeTurboQ8 => {
+                    owhisper_config::ModelConfig::WhisperCpp(
+                        owhisper_config::WhisperCppModelConfig {
+                            id: model_id.clone(),
+                            assets_dir,
+                        },
+                    )
+                }
+                owhisper_model::Model::MoonshineOnnxTiny
+                | owhisper_model::Model::MoonshineOnnxTinyQ4
+                | owhisper_model::Model::MoonshineOnnxTinyQ8 => {
                     owhisper_config::ModelConfig::Moonshine(owhisper_config::MoonshineModelConfig {
                         id: model_id.clone(),
+                        size: owhisper_config::MoonshineModelSize::Tiny,
+                        assets_dir,
+                    })
+                }
+                owhisper_model::Model::MoonshineOnnxBase
+                | owhisper_model::Model::MoonshineOnnxBaseQ4
+                | owhisper_model::Model::MoonshineOnnxBaseQ8 => {
+                    owhisper_config::ModelConfig::Moonshine(owhisper_config::MoonshineModelConfig {
+                        id: model_id.clone(),
+                        size: owhisper_config::MoonshineModelSize::Base,
                         assets_dir,
                     })
                 }

@@ -9,6 +9,7 @@ use hypr_onnx::{
 };
 
 use crate::Error;
+use owhisper_config::MoonshineModelSize;
 
 pub struct MoonshineOnnxModel {
     encoder: Session,
@@ -22,11 +23,6 @@ pub struct MoonshineOnnxModel {
 
     decoder_start_token_id: i64,
     eos_token_id: i64,
-}
-
-pub enum MoonshineModelSize {
-    Tiny,
-    Base,
 }
 
 impl MoonshineOnnxModel {

@@ -107,6 +107,16 @@ common_derives! {
 common_derives! {
     pub struct MoonshineModelConfig {
         pub id: String,
+        pub size: MoonshineModelSize,
         pub assets_dir: String,
+    }
+}
+
+common_derives! {
+    pub enum MoonshineModelSize {
+        #[serde(rename = "tiny")]
+        Tiny,
+        #[serde(rename = "base")]
+        Base,
     }
 }

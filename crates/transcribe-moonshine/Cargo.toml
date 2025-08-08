@@ -14,11 +14,20 @@ hypr-data = { workspace = true }
 rodio = { workspace = true }
 
 [dependencies]
+owhisper-config = { workspace = true }
+owhisper-interface = { workspace = true }
+
+hypr-audio-utils = { workspace = true }
+hypr-chunker = { workspace = true }
 hypr-onnx = { workspace = true }
+hypr-ws-utils = { workspace = true }
+
+kalosm-sound = { workspace = true }
 tokenizers = { workspace = true }
 
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+serde_qs = { workspace = true }
 thiserror = { workspace = true }
 
 async-stream = { workspace = true }

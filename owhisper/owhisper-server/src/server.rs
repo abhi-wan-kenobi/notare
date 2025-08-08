@@ -178,10 +178,11 @@ fn build_moonshine_service(
         .ok_or(anyhow::anyhow!("decoder_model_merged.onnx not found"))??;
 
     Ok(hypr_transcribe_moonshine::TranscribeService::builder()
+        .model_size(config.size.clone())
         .tokenizer_path(tokenizer.path().to_str().unwrap().to_string())
         .encoder_path(encoder.path().to_str().unwrap().to_string())
         .decoder_path(decoder.path().to_str().unwrap().to_string())
-        .build()?)
+        .build())
 }
 
 async fn handle_transcription(

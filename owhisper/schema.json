@@ -124,6 +124,7 @@
           "required": [
             "assets_dir",
             "id",
+            "size",
             "type"
           ],
           "properties": {
@@ -133,6 +134,9 @@
             "id": {
               "type": "string"
             },
+            "size": {
+              "$ref": "#/definitions/MoonshineModelSize"
+            },
             "type": {
               "type": "string",
               "enum": [
@@ -141,6 +145,13 @@
             }
           }
         }
+      ]
+    },
+    "MoonshineModelSize": {
+      "type": "string",
+      "enum": [
+        "tiny",
+        "base"
       ]
     }
   }
