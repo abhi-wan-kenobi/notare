@@ -4,11 +4,30 @@ on:
     types:
       - published
       - prereleased
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  CN_APPLICATION: "fastrepl/owhisper"
+
 jobs:
-  cli:
+  cli_draft:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'owhisper_v')) }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/cn_release
+        with:
+          cmd: draft
+          app: ${{ env.CN_APPLICATION }}
+          key: ${{ secrets.CN_API_KEY }}
+          channel: ${{ env.RELEASE_CHANNEL }}
+          working-directory: ./owhisper/owhisper-server
+
+  cli_build:
+    needs: cli_draft
     permissions:
       contents: write
     strategy:
@@ -54,10 +73,24 @@ jobs:
         uses: ./.github/actions/cn_release
         with:
           raw: >-
-            release upload "hyprnote/owhisper" "${{ github.event.release.tag_name }}"
+            release upload "${{ env.CN_APPLICATION }}" "${{ github.event.release.tag_name }}"
             --public-platform ${{ matrix.target == 'aarch64-apple-darwin' && 'macos-aarch64' || matrix.target == 'x86_64-apple-darwin' && 'macos-x86_64' || 'linux-x86_64' }}
             --file artifacts/owhisper-server-${{ matrix.target }}
           key: ${{ secrets.CN_API_KEY }}
+
+  publish:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'owhisper_v') }}
+    needs: cli_build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/cn_release
+        with:
+          cmd: cli_build
+          app: ${{ env.CN_APPLICATION }}
+          key: ${{ secrets.CN_API_KEY }}
+          channel: ${{ env.RELEASE_CHANNEL }}
+          working-directory: ./owhisper/owhisper-server
 
   docker:
     runs-on: ubuntu-latest
