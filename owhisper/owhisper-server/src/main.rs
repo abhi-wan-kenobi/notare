@@ -21,6 +21,8 @@ enum Commands {
     Readme(commands::ReadmeArgs),
     #[command(about = "Print out the global config")]
     Config(commands::ConfigArgs),
+    #[command(about = "Print out downloaded models")]
+    Models(commands::ModelsArgs),
     #[command(about = "Download the model")]
     Pull(commands::PullArgs),
     #[command(about = "Run the server")]
@@ -38,6 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = match args.cmd {
         Commands::Readme(args) => commands::handle_readme(args).await,
         Commands::Config(args) => commands::handle_config(args).await,
+        Commands::Models(args) => commands::handle_models(args).await,
         Commands::Pull(args) => commands::handle_pull(args).await,
         Commands::Run(args) => commands::handle_run(args).await,
         Commands::Serve(args) => commands::handle_serve(args).await,
