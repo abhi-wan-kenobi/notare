@@ -71,16 +71,15 @@ impl WhisperModel {
         }
     }
 
-    // TODO
-    pub fn checksum(&self) -> &str {
+    pub fn checksum(&self) -> u32 {
         match self {
-            WhisperModel::QuantizedTiny => "",
-            WhisperModel::QuantizedTinyEn => "",
-            WhisperModel::QuantizedBase => "",
-            WhisperModel::QuantizedBaseEn => "",
-            WhisperModel::QuantizedSmall => "",
-            WhisperModel::QuantizedSmallEn => "",
-            WhisperModel::QuantizedLargeTurbo => "",
+            WhisperModel::QuantizedTiny => 1235175537,
+            WhisperModel::QuantizedTinyEn => 230334082,
+            WhisperModel::QuantizedBase => 4019564439,
+            WhisperModel::QuantizedBaseEn => 2554759952,
+            WhisperModel::QuantizedSmall => 3764849512,
+            WhisperModel::QuantizedSmallEn => 3958576310,
+            WhisperModel::QuantizedLargeTurbo => 3055274469,
         }
     }
 }
