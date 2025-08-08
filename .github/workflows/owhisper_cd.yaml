@@ -78,11 +78,21 @@ jobs:
           path: artifacts/*
           retention-days: 7
 
+      - id: get_version
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#owhisper_v}"
+          else
+            VERSION=$(grep '^version' ./owhisper/owhisper-server/Cargo.toml | head -1 | cut -d'"' -f2)
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'owhisper_v')) }}
         uses: ./.github/actions/cn_release
         with:
           raw: >-
-            release upload "${{ env.CN_APPLICATION }}" "${{ github.event.release.tag_name }}"
+            release upload "${{ env.CN_APPLICATION }}" "${{ steps.get_version.outputs.version }}"
             --public-platform ${{ matrix.target == 'aarch64-apple-darwin' && 'macos-aarch64' || matrix.target == 'x86_64-apple-darwin' && 'macos-x86_64' || 'linux-x86_64' }}
             --file artifacts/owhisper-server-${{ matrix.target }}
           key: ${{ secrets.CN_API_KEY }}
