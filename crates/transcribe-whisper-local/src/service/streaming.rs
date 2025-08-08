@@ -75,18 +75,19 @@ where
         Box::pin(async move {
             let uri = req.uri();
             let query_string = uri.query().unwrap_or("");
+
             let params: ListenParams = match serde_qs::from_str(query_string) {
                 Ok(p) => p,
-                Err(_) => {
-                    return Ok(StatusCode::BAD_REQUEST.into_response());
+                Err(e) => {
+                    return Ok((StatusCode::BAD_REQUEST, e.to_string()).into_response());
                 }
             };
 
             let (mut parts, _body) = req.into_parts();
             let ws_upgrade = match WebSocketUpgrade::from_request_parts(&mut parts, &()).await {
                 Ok(ws) => ws,
-                Err(_) => {
-                    return Ok(StatusCode::BAD_REQUEST.into_response());
+                Err(e) => {
+                    return Ok((StatusCode::BAD_REQUEST, e.to_string()).into_response());
                 }
             };
 
@@ -122,26 +123,17 @@ async fn handle_websocket_connection(
 
     let (ws_sender, ws_receiver) = socket.split();
 
+    let redemption_time = Duration::from_millis(std::cmp::min(
+        std::cmp::max(params.redemption_time_ms, 100),
+        1200,
+    ));
+
     match params.audio_mode {
         owhisper_interface::AudioMode::Single => {
-            handle_single_channel(
-                ws_sender,
-                ws_receiver,
-                model,
-                guard,
-                Duration::from_millis(params.redemption_time_ms),
-            )
-            .await;
+            handle_single_channel(ws_sender, ws_receiver, model, guard, redemption_time).await;
         }
         owhisper_interface::AudioMode::Dual => {
-            handle_dual_channel(
-                ws_sender,
-                ws_receiver,
-                model,
-                guard,
-                Duration::from_millis(params.redemption_time_ms),
-            )
-            .await;
+            handle_dual_channel(ws_sender, ws_receiver, model, guard, redemption_time).await;
         }
     }
 }

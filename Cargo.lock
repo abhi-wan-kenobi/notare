@@ -10212,6 +10212,7 @@ dependencies = [
  "file",
  "futures-util",
  "indicatif 0.18.0",
+ "language",
  "log",
  "open",
  "owhisper-client",

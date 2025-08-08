@@ -1,9 +1,6 @@
 use futures_util::{Stream, StreamExt};
 
-use hypr_audio::AsyncSource;
-use hypr_audio_utils::AudioFormatExt;
 use hypr_ws::client::{ClientRequestBuilder, Message, WebSocketClient, WebSocketIO};
-
 use owhisper_interface::{ListenInputChunk, ListenOutputChunk};
 
 #[derive(Default)]
@@ -49,8 +46,8 @@ impl ListenClientBuilder {
         {
             let mut query_pairs = url.query_pairs_mut();
 
-            for lang in &params.languages {
-                query_pairs.append_pair("languages", lang.iso639().code());
+            for (i, lang) in params.languages.iter().enumerate() {
+                query_pairs.append_pair(&format!("languages[{}]", i), lang.iso639().code());
             }
             query_pairs
                 // https://developers.deepgram.com/reference/speech-to-text-api/listen-streaming#handshake
@@ -185,7 +182,9 @@ impl ListenClientDual {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use futures_util::StreamExt;
+    use hypr_audio_utils::AudioFormatExt;
 
     #[tokio::test]
     #[ignore]

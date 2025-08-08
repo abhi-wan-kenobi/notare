@@ -47,23 +47,22 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
         ));
     }
 
-    // Start server
     let port = 1234;
     let api_key = config.general.as_ref().and_then(|g| g.api_key.clone());
     let server = Server::new(config, Some(port));
     let server_handle =
         tokio::spawn(async move { server.run_with_shutdown(shutdown_signal()).await });
 
-    // Setup audio input
     let mut audio_input = hypr_audio::AudioInput::from_mic(args.device.clone())?;
     let device_name = audio_input.device_name().to_string();
 
-    // Create whisper client
     let client = owhisper_client::ListenClient::builder()
         .api_base(&format!("ws://127.0.0.1:{}", port))
         .api_key(api_key.as_deref().unwrap_or(""))
         .params(owhisper_interface::ListenParams {
             model: Some(args.model.clone()),
+            languages: vec![hypr_language::ISO639::En.into()],
+            redemption_time_ms: 500,
             ..Default::default()
         })
         .build_single();
@@ -71,8 +70,11 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
     let mic_stream = audio_input
         .stream()
         .resample(16000)
-        .chunks(1024)
-        .map(hypr_audio_utils::f32_to_i16_bytes);
+        .chunks(512)
+        .map(move |chunk| {
+            let amplified: Vec<f32> = chunk.iter().map(|&s| (s * 1.5).clamp(-1.0, 1.0)).collect();
+            hypr_audio_utils::f32_to_i16_bytes(amplified)
+        });
 
     let response_stream = client.from_realtime_audio(mic_stream).await?;
     futures_util::pin_mut!(response_stream);
