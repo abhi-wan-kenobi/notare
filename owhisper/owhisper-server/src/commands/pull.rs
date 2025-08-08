@@ -14,19 +14,19 @@ pub struct PullArgs {
 
 pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
     let assets = args.model.assets();
-    let models_dir = owhisper_config::Config::base().join("models");
-    std::fs::create_dir_all(&models_dir)?;
+    let model_dir = owhisper_config::models_dir().join(args.model.to_string());
+    std::fs::create_dir_all(&model_dir)?;
 
     let mut to_download = Vec::new();
     for asset in &assets {
-        let model_path = models_dir.join(&asset.name);
-        if model_path.exists() {
-            let metadata = std::fs::metadata(&model_path)?;
+        let asset_path = model_dir.join(&asset.name);
+        if asset_path.exists() {
+            let metadata = std::fs::metadata(&asset_path)?;
             if metadata.len() == asset.size {
                 continue;
             }
         }
-        to_download.push((asset.clone(), model_path));
+        to_download.push((asset.clone(), asset_path));
     }
 
     if to_download.is_empty() {
@@ -44,7 +44,7 @@ pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
 
     let mut tasks = JoinSet::new();
 
-    for (asset, model_path) in to_download {
+    for (asset, asset_path) in to_download {
         let pb = multi_progress.add(ProgressBar::new(0));
         pb.set_style(style.clone());
         pb.set_message(asset.name.clone());
@@ -53,7 +53,7 @@ pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
         tasks.spawn(async move {
             let result = hypr_file::download_file_parallel(
                 asset.url.clone(),
-                &model_path,
+                &asset_path,
                 |progress_update| match progress_update {
                     hypr_file::DownloadProgress::Started => {
                         pb.set_position(0);
@@ -77,7 +77,7 @@ pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
                     .ok();
             }
 
-            result.map(|_| (asset.name, model_path))
+            result.map(|_| (asset.name, asset_path))
         });
     }
 
@@ -93,16 +93,17 @@ pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
     multi_progress.clear().ok();
 
     if !downloaded_assets.is_empty() {
-        let config_path = owhisper_config::Config::global_config_path();
+        let config_path = owhisper_config::global_config_path();
 
         crate::update_config_with_diff(&config_path, |config| {
-            for (_name, path) in downloaded_assets {
-                let model_id = args.model.to_string();
-                let model_exists = config.models.iter().position(|m| match m {
-                    owhisper_config::ModelConfig::WhisperCpp(wc_config) => wc_config.id == model_id,
-                    _ => false,
-                });
+            let model_id = args.model.to_string();
+            let model_exists = config.models.iter().position(|m| match m {
+                owhisper_config::ModelConfig::WhisperCpp(wc_config) => wc_config.id == model_id,
+                _ => false,
+            });
 
+            // TODO: this only works for whisper.cpp
+            if let Some((_, path)) = downloaded_assets.first() {
                 let new_model = owhisper_config::ModelConfig::WhisperCpp(
                     owhisper_config::WhisperCppModelConfig {
                         id: model_id.clone(),

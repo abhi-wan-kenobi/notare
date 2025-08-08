@@ -62,7 +62,6 @@ cpal = { workspace = true }
 rubato = "0.16.2"
 
 anyhow = { workspace = true }
-directories = "6.0.0"
 dirs = { workspace = true }
 open = "5"
 schemars = { workspace = true }

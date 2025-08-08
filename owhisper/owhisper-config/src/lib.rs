@@ -39,25 +39,33 @@ impl ModelConfig {
     }
 }
 
+pub fn models_dir() -> std::path::PathBuf {
+    dirs::cache_dir().unwrap().join("com.fastrepl.owhisper")
+}
+
+pub fn data_dir() -> std::path::PathBuf {
+    dirs::data_dir().unwrap().join("com.fastrepl.owhisper")
+}
+
+pub fn config_dir() -> std::path::PathBuf {
+    dirs::config_dir().unwrap().join("com.fastrepl.owhisper")
+}
+
+pub fn global_config_path() -> std::path::PathBuf {
+    config_dir().join("config.json")
+}
+
 impl Config {
     pub fn new(path: Option<String>) -> Result<Self, crate::Error> {
         let settings = config::Config::builder()
             .add_source(config::File::with_name(&path.unwrap_or_else(|| {
-                Config::base().join("config").to_str().unwrap().to_string()
+                config_dir().join("config").to_str().unwrap().to_string()
             })))
             .add_source(config::Environment::with_prefix("OWHISPER"))
             .build()?;
 
         let config = settings.try_deserialize::<Config>()?;
         Ok(config)
-    }
-
-    pub fn global_config_path() -> std::path::PathBuf {
-        Config::base().join("config.json")
-    }
-
-    pub fn base() -> std::path::PathBuf {
-        dirs::home_dir().unwrap().join(".owhisper")
     }
 }
 

@@ -41,9 +41,9 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
     let config = owhisper_config::Config::new(args.config)?;
     if !config.models.iter().any(|m| m.id() == args.model) {
         return Err(anyhow::anyhow!(
-            "'{}' not found in '{}'",
+            "'{}' not found in '{:?}'",
             args.model,
-            owhisper_config::Config::global_config_path().display()
+            owhisper_config::global_config_path()
         ));
     }
 
