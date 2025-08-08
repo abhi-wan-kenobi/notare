@@ -5,6 +5,7 @@ edition = "2021"
 
 [features]
 default = []
+cuda = ["ort/cuda"]
 coreml = ["ort/coreml"]
 directml = ["ort/directml"]
 load-dynamic = ["ort/load-dynamic"]

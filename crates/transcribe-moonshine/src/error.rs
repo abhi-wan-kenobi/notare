@@ -9,6 +9,9 @@ pub enum Error {
     #[error("shape error: {0}")]
     Shape(String),
 
+    #[error("tokenizer load error: {0}")]
+    TokenizerLoad(String),
+
     #[error("other: {0}")]
     Other(String),
 }

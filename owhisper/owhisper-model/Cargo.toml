@@ -9,3 +9,4 @@ hypr-whisper-local-model = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 serde = { workspace = true, features = ["derive"] }
 strum = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }

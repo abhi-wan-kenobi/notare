@@ -226,6 +226,8 @@ objc2-core-foundation = "0.3"
 objc2-foundation = "0.3"
 objc2-user-notifications = "0.3"
 
+tokenizers = "0.21.4"
+
 [patch.crates-io]
 cpal = { git = "https://github.com/RustAudio/cpal", rev = "51c3b43" }
 esaxx-rs = { git = "https://github.com/thewh1teagle/esaxx-rs.git", branch = "feat/dynamic-msvc-link" }

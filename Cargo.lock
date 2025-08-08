@@ -10188,6 +10188,7 @@ dependencies = [
  "clap",
  "serde",
  "strum 0.26.3",
+ "thiserror 2.0.12",
  "whisper-local-model",
 ]
 
@@ -16109,9 +16110,11 @@ dependencies = [
  "data",
  "futures-util",
  "onnx",
+ "rodio",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
+ "tokenizers",
  "tokio",
  "tokio-stream",
  "tokio-tungstenite 0.26.2",

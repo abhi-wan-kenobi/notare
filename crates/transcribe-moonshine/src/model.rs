@@ -1,15 +1,19 @@
-use hypr_onnx::ndarray::{self, Array, Array1, Array2, ArrayD, IxDyn};
-use hypr_onnx::ort::{
-    session::{Session, SessionInputValue, SessionInputs},
-    value::Value,
-};
 use std::collections::HashMap;
+
+use hypr_onnx::{
+    ndarray::{self, Array1, Array2, ArrayD, IxDyn},
+    ort::{
+        session::{Session, SessionInputValue, SessionInputs},
+        value::Value,
+    },
+};
 
 use crate::Error;
 
 pub struct MoonshineOnnxModel {
     encoder: Session,
     decoder: Session,
+    tokenizer: tokenizers::Tokenizer,
 
     // model hyperparams derived from model name
     num_layers: usize,
@@ -21,15 +25,19 @@ pub struct MoonshineOnnxModel {
 }
 
 impl MoonshineOnnxModel {
-    pub fn from_paths(
+    pub fn new(
         encoder_path: impl AsRef<std::path::Path>,
         decoder_path: impl AsRef<std::path::Path>,
+        tokenizer_path: impl AsRef<std::path::Path>,
         model_name: &str,
     ) -> Result<Self, Error> {
         let encoder_bytes = std::fs::read(encoder_path).unwrap();
         let decoder_bytes = std::fs::read(decoder_path).unwrap();
         let encoder = hypr_onnx::load_model_from_bytes(encoder_bytes.as_ref()).unwrap();
         let decoder = hypr_onnx::load_model_from_bytes(decoder_bytes.as_ref()).unwrap();
+
+        let tokenizer = tokenizers::Tokenizer::from_file(tokenizer_path)
+            .map_err(|e| Error::TokenizerLoad(e.to_string()))?;
 
         let (num_layers, num_key_value_heads, head_dim) = match model_name {
             name if name.contains("tiny") => (6, 8, 36),
@@ -40,6 +48,7 @@ impl MoonshineOnnxModel {
         Ok(Self {
             encoder,
             decoder,
+            tokenizer,
             num_layers,
             num_key_value_heads,
             head_dim,
@@ -90,11 +99,25 @@ impl MoonshineOnnxModel {
                 shape_vec
             )));
         }
+        println!("Encoder output shape: {:?}", shape_vec);
         let last_hidden_state = ndarray::Array3::from_shape_vec(
             (shape_vec[0], shape_vec[1], shape_vec[2]),
             data.to_vec(),
         )
         .map_err(|e| Error::Shape(format!("failed to create array3: {e}")))?;
+
+        // Check encoder output values
+        let mean_val = last_hidden_state.mean().unwrap_or(0.0);
+        let max_val = last_hidden_state
+            .iter()
+            .fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+        let min_val = last_hidden_state
+            .iter()
+            .fold(f32::INFINITY, |a, &b| a.min(b));
+        println!(
+            "Encoder output stats - mean: {:.4}, min: {:.4}, max: {:.4}",
+            mean_val, min_val, max_val
+        );
 
         // Build initial past_key_values with zeros: shape (0, num_heads, 1, head_dim)
         let mut past: HashMap<String, Value> = HashMap::new();
@@ -118,6 +141,8 @@ impl MoonshineOnnxModel {
             ndarray::Array2::from_shape_vec((1, 1), vec![self.decoder_start_token_id])
                 .map_err(|e| Error::Shape(format!("input_ids init: {e}")))?;
 
+        println!("Starting generation loop, max_len: {}", max_len);
+
         for i in 0..max_len {
             let use_cache_branch = i > 0;
 
@@ -134,8 +159,8 @@ impl MoonshineOnnxModel {
                 SessionInputValue::from(Value::from_array(last_hidden_state.clone())?),
             ));
 
-            // use_cache_branch as boolean array
-            let ucb = Array1::from_vec(vec![if use_cache_branch { 1_i64 } else { 0_i64 }]);
+            // use_cache_branch as boolean array (needs to be a list in Python/ONNX style)
+            let ucb = Array1::from_vec(vec![use_cache_branch]);
             dec_input_vec.push((
                 "use_cache_branch",
                 SessionInputValue::from(Value::from_array(ucb)?),
@@ -161,11 +186,28 @@ impl MoonshineOnnxModel {
             }
 
             let dec_inputs = SessionInputs::from(dec_input_vec);
+
+            // Debug first iteration inputs
+            if i == 0 {
+                println!("First decoder iteration inputs:");
+                println!("  input_ids shape: {:?}", input_ids.shape());
+                println!(
+                    "  encoder_hidden_states shape: {:?}",
+                    last_hidden_state.shape()
+                );
+                println!("  use_cache_branch: {:?}", use_cache_branch);
+            }
+
             let outputs = self.decoder.run(dec_inputs)?;
 
             // Get decoder outputs
             let mut dec_outputs = outputs;
             let output_names: Vec<String> = dec_outputs.keys().map(|k| k.to_string()).collect();
+
+            if i == 0 {
+                println!("Decoder output names: {:?}", output_names);
+                println!("Number of outputs: {}", output_names.len());
+            }
             if output_names.is_empty() {
                 return Err(Error::Shape("decoder produced no outputs".into()));
             }
@@ -194,8 +236,26 @@ impl MoonshineOnnxModel {
 
             // argmax over vocab at last position
             let last_pos = logits.shape()[1] - 1;
-            let next = argmax_1d(logits.slice(ndarray::s![0, last_pos, ..]).to_owned());
+            let logit_slice = logits.slice(ndarray::s![0, last_pos, ..]).to_owned();
+
+            if i < 3 {
+                println!("Iteration {}: logits shape: {:?}", i, logits.shape());
+                // Show top 5 tokens by probability
+                let mut indexed_logits: Vec<(usize, f32)> = logit_slice
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, &val)| (idx, val))
+                    .collect();
+                indexed_logits.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+                println!(
+                    "Top 5 tokens: {:?}",
+                    &indexed_logits[..5.min(indexed_logits.len())]
+                );
+            }
+
+            let next = argmax_1d(logit_slice);
             tokens.push(next);
+
             if next == self.eos_token_id {
                 break;
             }
@@ -205,22 +265,42 @@ impl MoonshineOnnxModel {
                 .map_err(|e| Error::Shape(format!("input_ids next: {e}")))?;
 
             // Update past key values from outputs
-            // The remaining outputs are the present_key_values
+            // Map past_key_values.{i}.{a}.{b} to present.{i}.{a}.{b}
             let past_keys: Vec<String> = past.keys().cloned().collect();
-            for (idx, k) in past_keys.iter().enumerate() {
-                if idx + 1 < output_names.len() {
-                    let present_key = &output_names[idx + 1]; // +1 because first output is logits
-                    if let Some(present) = dec_outputs.remove(present_key) {
-                        let should_update = !use_cache_branch || k.contains(".decoder.");
-                        if should_update {
-                            past.insert(k.clone(), present.into_dyn());
-                        }
+            for past_key in past_keys {
+                // Convert past_key_values.X.Y.Z to present.X.Y.Z
+                let present_key = past_key.replace("past_key_values.", "present.");
+
+                if let Some(present_value) = dec_outputs.remove(&present_key) {
+                    let should_update = !use_cache_branch || past_key.contains(".decoder.");
+                    if should_update {
+                        past.insert(past_key, present_value.into_dyn());
                     }
                 }
             }
         }
 
         Ok(tokens)
+    }
+
+    pub fn decode(&self, tokens: &[i64]) -> Result<String, Error> {
+        // Skip the decoder_start_token_id (first token) if present
+        let tokens_to_decode = if !tokens.is_empty() && tokens[0] == self.decoder_start_token_id {
+            &tokens[1..]
+        } else {
+            tokens
+        };
+
+        // Convert i64 to u32 for tokenizers crate
+        let token_ids: Vec<u32> = tokens_to_decode
+            .iter()
+            .filter(|&&t| t != self.eos_token_id) // Skip EOS token
+            .map(|&t| t as u32)
+            .collect();
+
+        self.tokenizer
+            .decode(&token_ids, true)
+            .map_err(|e| Error::Other(format!("Decode error: {}", e)))
     }
 }
 
@@ -234,4 +314,39 @@ fn argmax_1d(v: Array1<f32>) -> i64 {
         }
     }
     max_idx as i64
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rodio::Source;
+
+    #[test]
+    fn test_transcribe() {
+        let mut model = MoonshineOnnxModel::new(
+            "/Users/yujonglee/dev/hyprnote/crates/transcribe-moonshine/assets/encoder_model.onnx",
+            "/Users/yujonglee/dev/hyprnote/crates/transcribe-moonshine/assets/decoder_model_merged.onnx",
+            "/Users/yujonglee/dev/hyprnote/crates/transcribe-moonshine/assets/tokenizer.json",
+            "tiny",
+        )
+        .unwrap();
+
+        let decoder = rodio::Decoder::new(std::io::BufReader::new(
+            std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
+        ))
+        .unwrap();
+
+        let samples: Vec<f32> = decoder.convert_samples::<f32>().collect();
+
+        let start_idx = 50000; // Skip first ~3 seconds
+        let segment_len = 16000 * 30; // 30 seconds
+        let end_idx = (start_idx + segment_len).min(samples.len());
+        let segment = samples[start_idx..end_idx].to_vec();
+
+        let audio = Array2::from_shape_vec((1, segment.len()), segment).unwrap();
+
+        let out = model.generate(audio, Some(3000)).unwrap();
+        let text = model.decode(&out).unwrap();
+        println!("Transcription: {}", text);
+    }
 }

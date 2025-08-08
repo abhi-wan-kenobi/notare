@@ -17,8 +17,8 @@ use ratatui::{
     symbols,
     text::{Line, Span},
     widgets::{
-        Block, Borders, Gauge, List, ListItem, Padding, Paragraph, Scrollbar, ScrollbarOrientation,
-        ScrollbarState, Sparkline,
+        Block, Borders, Gauge, List, ListItem, ListState, Padding, Paragraph, Scrollbar,
+        ScrollbarOrientation, ScrollbarState, Sparkline, StatefulWidget, Widget,
     },
     Frame, Terminal,
 };
@@ -59,7 +59,14 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
     let server_handle =
         tokio::spawn(async move { server.run_with_shutdown(shutdown_signal()).await });
 
-    let mut audio_input = hypr_audio::AudioInput::from_mic(args.device.clone())?;
+    let available_devices = hypr_audio::AudioInput::list_mic_devices();
+    let initial_device = args
+        .device
+        .clone()
+        .or_else(|| available_devices.first().cloned())
+        .ok_or_else(|| anyhow::anyhow!("No audio devices found"))?;
+
+    let mut audio_input = hypr_audio::AudioInput::from_mic(Some(initial_device.clone()))?;
     let device_name = audio_input.device_name().to_string();
 
     let client = owhisper_client::ListenClient::builder()
@@ -73,7 +80,6 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
         })
         .build_single();
 
-    // Shared amplitude data for visualization
     let amplitude_data = Arc::new(Mutex::new(AmplitudeData::new()));
     let amplitude_clone = amplitude_data.clone();
 
@@ -82,10 +88,8 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
         .resample(16000)
         .chunks(512)
         .map(move |chunk| {
-            // Calculate RMS amplitude for visualization
             let rms = calculate_rms(&chunk);
 
-            // Update amplitude data
             if let Ok(mut data) = amplitude_clone.lock() {
                 data.update(rms);
             }
@@ -98,7 +102,14 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
     futures_util::pin_mut!(response_stream);
 
     // Run TUI
-    let result = run_tui(response_stream, &args.model, &device_name, amplitude_data).await;
+    let result = run_tui(
+        response_stream,
+        &args.model,
+        device_name,
+        available_devices,
+        amplitude_data,
+    )
+    .await;
 
     // Cleanup
     server_handle.abort();
@@ -175,11 +186,12 @@ impl AmplitudeData {
 async fn run_tui(
     mut stream: impl futures_util::Stream<Item = owhisper_interface::ListenOutputChunk> + Unpin,
     model: &str,
-    device: &str,
+    current_device: String,
+    available_devices: Vec<String>,
     amplitude_data: Arc<Mutex<AmplitudeData>>,
 ) -> anyhow::Result<()> {
     let mut term = TerminalGuard::new()?;
-    let mut state = AppState::new();
+    let mut state = AppState::new(current_device, available_devices);
     let tick_rate = Duration::from_millis(50);
     let mut last_tick = Instant::now();
 
@@ -189,7 +201,7 @@ async fn run_tui(
 
         // Draw UI
         term.terminal
-            .draw(|f| draw_ui(f, &mut state, model, device, &amp_data))?;
+            .draw(|f| draw_ui(f, &mut state, model, &amp_data))?;
 
         // Process transcription stream (non-blocking)
         while let Ok(Some(chunk)) =
@@ -202,9 +214,40 @@ async fn run_tui(
         if event::poll(Duration::from_millis(0))? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => break,
-                    KeyCode::Down | KeyCode::Char('j') => state.scroll_down(),
-                    KeyCode::Up | KeyCode::Char('k') => state.scroll_up(),
+                    KeyCode::Char('q') | KeyCode::Esc => {
+                        if state.show_device_selector {
+                            state.show_device_selector = false;
+                        } else {
+                            break;
+                        }
+                    }
+                    KeyCode::Char('d') => {
+                        state.show_device_selector = !state.show_device_selector;
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        if state.show_device_selector {
+                            state.device_list_state.select_next();
+                        } else {
+                            state.scroll_down();
+                        }
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        if state.show_device_selector {
+                            state.device_list_state.select_previous();
+                        } else {
+                            state.scroll_up();
+                        }
+                    }
+                    KeyCode::Enter => {
+                        if state.show_device_selector {
+                            if let Some(selected) = state.device_list_state.selected() {
+                                state.current_device = state.available_devices[selected].clone();
+                                state.show_device_selector = false;
+                                // TODO: Actually switch the audio device here
+                                // This would require restructuring the audio stream setup
+                            }
+                        }
+                    }
                     KeyCode::Char('c') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
                         state.clear_transcripts();
                     }
@@ -263,6 +306,11 @@ struct AppState {
     scroll_position: usize,
     processing: bool,
     last_activity: Instant,
+    // Device selection state
+    current_device: String,
+    available_devices: Vec<String>,
+    device_list_state: ListState,
+    show_device_selector: bool,
 }
 
 #[derive(Clone)]
@@ -272,7 +320,14 @@ struct TranscriptEntry {
 }
 
 impl AppState {
-    fn new() -> Self {
+    fn new(current_device: String, available_devices: Vec<String>) -> Self {
+        let mut device_list_state = ListState::default();
+
+        // Select the current device in the list
+        if let Some(index) = available_devices.iter().position(|d| d == &current_device) {
+            device_list_state.select(Some(index));
+        }
+
         Self {
             transcripts: Vec::new(),
             start_time: Instant::now(),
@@ -280,6 +335,10 @@ impl AppState {
             scroll_position: 0,
             processing: false,
             last_activity: Instant::now(),
+            current_device,
+            available_devices,
+            device_list_state,
+            show_device_selector: false,
         }
     }
 
@@ -346,13 +405,7 @@ impl AppState {
     }
 }
 
-fn draw_ui(
-    frame: &mut Frame,
-    state: &mut AppState,
-    model: &str,
-    device: &str,
-    amplitude_data: &AmplitudeData,
-) {
+fn draw_ui(frame: &mut Frame, state: &mut AppState, model: &str, amplitude_data: &AmplitudeData) {
     // Main layout
     let chunks = Layout::vertical([
         Constraint::Length(3), // Header
@@ -370,13 +423,18 @@ fn draw_ui(
     draw_audio_visualizer(frame, chunks[1], amplitude_data);
 
     // Status bar
-    draw_status_bar(frame, chunks[2], state, device);
+    draw_status_bar(frame, chunks[2], state);
 
     // Transcripts with scrollbar
     draw_transcripts(frame, chunks[3], state);
 
     // Help
-    draw_help(frame, chunks[4]);
+    draw_help(frame, chunks[4], state);
+
+    // Draw device selector popup if active
+    if state.show_device_selector {
+        draw_device_selector(frame, state);
+    }
 }
 
 fn draw_header(frame: &mut Frame, area: Rect, model: &str) {
@@ -477,7 +535,7 @@ fn draw_audio_visualizer(frame: &mut Frame, area: Rect, amplitude_data: &Amplitu
     frame.render_widget(sparkline, audio_layout[2]);
 }
 
-fn draw_status_bar(frame: &mut Frame, area: Rect, state: &AppState, device: &str) {
+fn draw_status_bar(frame: &mut Frame, area: Rect, state: &AppState) {
     let elapsed = state.elapsed();
 
     // Activity indicator
@@ -490,7 +548,10 @@ fn draw_status_bar(frame: &mut Frame, area: Rect, state: &AppState, device: &str
     let status_items = vec![
         activity,
         Span::styled("Device: ", Style::default().fg(tailwind::SLATE.c500)),
-        Span::styled(device, Style::default().fg(tailwind::BLUE.c400)),
+        Span::styled(
+            &state.current_device,
+            Style::default().fg(tailwind::BLUE.c400),
+        ),
         Span::styled(" │ ", Style::default().fg(tailwind::SLATE.c700)),
         Span::styled("Time: ", Style::default().fg(tailwind::SLATE.c500)),
         Span::styled(
@@ -590,44 +651,147 @@ fn draw_transcripts(frame: &mut Frame, area: Rect, state: &mut AppState) {
     }
 }
 
-fn draw_help(frame: &mut Frame, area: Rect) {
-    let help_items = vec![
-        Span::styled(
-            "q",
+fn draw_device_selector(frame: &mut Frame, state: &mut AppState) {
+    // Create a popup in the center of the screen
+    let area = frame.area();
+    let popup_width = 60.min(area.width - 4);
+    let popup_height = (state.available_devices.len() as u16 + 4).min(area.height - 4);
+
+    let popup_area = Rect {
+        x: (area.width - popup_width) / 2,
+        y: (area.height - popup_height) / 2,
+        width: popup_width,
+        height: popup_height,
+    };
+
+    // Clear the popup area
+    frame.render_widget(
+        Block::default().style(Style::default().bg(tailwind::SLATE.c900)),
+        popup_area,
+    );
+
+    // Create the device list items
+    let items: Vec<ListItem> = state
+        .available_devices
+        .iter()
+        .enumerate()
+        .map(|(i, device)| {
+            let is_current = device == &state.current_device;
+            let prefix = if is_current {
+                Span::styled("✓ ", Style::default().fg(tailwind::GREEN.c400))
+            } else {
+                Span::raw("  ")
+            };
+
+            let style = if is_current {
+                Style::default()
+                    .fg(tailwind::CYAN.c300)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(tailwind::SLATE.c300)
+            };
+
+            ListItem::new(Line::from(vec![prefix, Span::styled(device, style)]))
+        })
+        .collect();
+
+    let list = List::new(items)
+        .block(
+            Block::default()
+                .title(" Select Audio Device ")
+                .title_alignment(Alignment::Center)
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(tailwind::CYAN.c600))
+                .style(Style::default().bg(tailwind::SLATE.c950)),
+        )
+        .highlight_style(
             Style::default()
-                .fg(tailwind::CYAN.c400)
+                .bg(tailwind::SLATE.c800)
                 .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled("/", Style::default().fg(tailwind::SLATE.c600)),
-        Span::styled(
-            "ESC",
-            Style::default()
-                .fg(tailwind::CYAN.c400)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" quit  ", Style::default().fg(tailwind::SLATE.c500)),
-        Span::styled(
-            "↑↓",
-            Style::default()
-                .fg(tailwind::CYAN.c400)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled("/", Style::default().fg(tailwind::SLATE.c600)),
-        Span::styled(
-            "jk",
-            Style::default()
-                .fg(tailwind::CYAN.c400)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" scroll  ", Style::default().fg(tailwind::SLATE.c500)),
-        Span::styled(
-            "Ctrl+C",
-            Style::default()
-                .fg(tailwind::CYAN.c400)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" clear", Style::default().fg(tailwind::SLATE.c500)),
-    ];
+        )
+        .highlight_symbol("→ ");
+
+    frame.render_stateful_widget(list, popup_area, &mut state.device_list_state);
+}
+
+fn draw_help(frame: &mut Frame, area: Rect, state: &AppState) {
+    let help_items = if state.show_device_selector {
+        vec![
+            Span::styled(
+                "↑↓",
+                Style::default()
+                    .fg(tailwind::CYAN.c400)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("/", Style::default().fg(tailwind::SLATE.c600)),
+            Span::styled(
+                "jk",
+                Style::default()
+                    .fg(tailwind::CYAN.c400)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" navigate  ", Style::default().fg(tailwind::SLATE.c500)),
+            Span::styled(
+                "Enter",
+                Style::default()
+                    .fg(tailwind::CYAN.c400)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" select  ", Style::default().fg(tailwind::SLATE.c500)),
+            Span::styled(
+                "ESC",
+                Style::default()
+                    .fg(tailwind::CYAN.c400)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" cancel", Style::default().fg(tailwind::SLATE.c500)),
+        ]
+    } else {
+        vec![
+            Span::styled(
+                "q",
+                Style::default()
+                    .fg(tailwind::CYAN.c400)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("/", Style::default().fg(tailwind::SLATE.c600)),
+            Span::styled(
+                "ESC",
+                Style::default()
+                    .fg(tailwind::CYAN.c400)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" quit  ", Style::default().fg(tailwind::SLATE.c500)),
+            Span::styled(
+                "↑↓",
+                Style::default()
+                    .fg(tailwind::CYAN.c400)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("/", Style::default().fg(tailwind::SLATE.c600)),
+            Span::styled(
+                "jk",
+                Style::default()
+                    .fg(tailwind::CYAN.c400)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" scroll  ", Style::default().fg(tailwind::SLATE.c500)),
+            Span::styled(
+                "d",
+                Style::default()
+                    .fg(tailwind::CYAN.c400)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" devices  ", Style::default().fg(tailwind::SLATE.c500)),
+            Span::styled(
+                "Ctrl+C",
+                Style::default()
+                    .fg(tailwind::CYAN.c400)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(" clear", Style::default().fg(tailwind::SLATE.c500)),
+        ]
+    };
 
     let help = Paragraph::new(Line::from(help_items))
         .alignment(Alignment::Center)

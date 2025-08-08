@@ -1,3 +1,6 @@
+mod error;
+pub use error::*;
+
 use hypr_whisper_local_model::WhisperModel as HyprWhisper;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, strum::Display, clap::ValueEnum)]
@@ -23,13 +26,28 @@ pub enum Model {
     #[serde(rename = "whisper-cpp-large-turbo-q8")]
     #[strum(serialize = "whisper-cpp-large-turbo-q8")]
     WhisperCppLargeTurboQ8,
-    #[serde(rename = "kyutai-stt-1b-en-fr")]
-    #[strum(serialize = "kyutai-stt-1b-en-fr")]
-    KyutaiStt1bEnFr,
+    #[serde(rename = "moonshine-onnx-tiny")]
+    #[strum(serialize = "moonshine-onnx-tiny")]
+    MoonshineOnnxTiny,
+    #[serde(rename = "moonshine-onnx-tiny-q4")]
+    #[strum(serialize = "moonshine-onnx-tiny-q4")]
+    MoonshineOnnxTinyQ4,
+    #[serde(rename = "moonshine-onnx-tiny-q8")]
+    #[strum(serialize = "moonshine-onnx-tiny-q8")]
+    MoonshineOnnxTinyQ8,
+    #[serde(rename = "moonshine-onnx-base")]
+    #[strum(serialize = "moonshine-onnx-base")]
+    MoonshineOnnxBase,
+    #[serde(rename = "moonshine-onnx-base-q4")]
+    #[strum(serialize = "moonshine-onnx-base-q4")]
+    MoonshineOnnxBaseQ4,
+    #[serde(rename = "moonshine-onnx-base-q8")]
+    #[strum(serialize = "moonshine-onnx-base-q8")]
+    MoonshineOnnxBaseQ8,
 }
 
 impl TryFrom<Model> for HyprWhisper {
-    type Error = String;
+    type Error = crate::Error;
 
     fn try_from(model: Model) -> Result<Self, Self::Error> {
         match model {
@@ -40,7 +58,12 @@ impl TryFrom<Model> for HyprWhisper {
             Model::WhisperCppSmallQ8 => Ok(HyprWhisper::QuantizedSmall),
             Model::WhisperCppSmallQ8En => Ok(HyprWhisper::QuantizedSmallEn),
             Model::WhisperCppLargeTurboQ8 => Ok(HyprWhisper::QuantizedLargeTurbo),
-            Model::KyutaiStt1bEnFr => Err("not_supported".to_string()),
+            Model::MoonshineOnnxTiny => Err(Error::NotSupported),
+            Model::MoonshineOnnxTinyQ4 => Err(Error::NotSupported),
+            Model::MoonshineOnnxTinyQ8 => Err(Error::NotSupported),
+            Model::MoonshineOnnxBase => Err(Error::NotSupported),
+            Model::MoonshineOnnxBaseQ4 => Err(Error::NotSupported),
+            Model::MoonshineOnnxBaseQ8 => Err(Error::NotSupported),
         }
     }
 }
@@ -72,7 +95,13 @@ impl Model {
                     checksum: hypr_model.checksum().to_string(),
                 }]
             }
-            Model::KyutaiStt1bEnFr => {
+
+            Model::MoonshineOnnxBase
+            | Model::MoonshineOnnxBaseQ8
+            | Model::MoonshineOnnxBaseQ4
+            | Model::MoonshineOnnxTiny
+            | Model::MoonshineOnnxTinyQ4
+            | Model::MoonshineOnnxTinyQ8 => {
                 vec![]
             }
         }

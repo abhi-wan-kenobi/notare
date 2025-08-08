@@ -16,9 +16,11 @@ impl TranscribeService {
     pub async fn new(
         encoder_path: impl AsRef<std::path::Path>,
         decoder_path: impl AsRef<std::path::Path>,
+        tokenizer_path: impl AsRef<std::path::Path>,
         model_name: &str,
     ) -> Result<Self, crate::Error> {
-        let model = MoonshineOnnxModel::from_paths(encoder_path, decoder_path, model_name)?;
+        let model =
+            MoonshineOnnxModel::new(encoder_path, decoder_path, tokenizer_path, model_name)?;
         Ok(Self {
             model: Arc::new(Mutex::new(model)),
         })
