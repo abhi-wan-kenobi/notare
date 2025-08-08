@@ -24,25 +24,29 @@ pub struct MoonshineOnnxModel {
     eos_token_id: i64,
 }
 
+pub enum MoonshineModelSize {
+    Tiny,
+    Base,
+}
+
 impl MoonshineOnnxModel {
     pub fn new(
         encoder_path: impl AsRef<std::path::Path>,
         decoder_path: impl AsRef<std::path::Path>,
         tokenizer_path: impl AsRef<std::path::Path>,
-        model_name: &str,
+        model_size: MoonshineModelSize,
     ) -> Result<Self, Error> {
-        let encoder_bytes = std::fs::read(encoder_path).unwrap();
-        let decoder_bytes = std::fs::read(decoder_path).unwrap();
-        let encoder = hypr_onnx::load_model_from_bytes(encoder_bytes.as_ref()).unwrap();
-        let decoder = hypr_onnx::load_model_from_bytes(decoder_bytes.as_ref()).unwrap();
+        let encoder_bytes = std::fs::read(encoder_path)?;
+        let decoder_bytes = std::fs::read(decoder_path)?;
+        let encoder = hypr_onnx::load_model_from_bytes(encoder_bytes.as_ref())?;
+        let decoder = hypr_onnx::load_model_from_bytes(decoder_bytes.as_ref())?;
 
         let tokenizer = tokenizers::Tokenizer::from_file(tokenizer_path)
             .map_err(|e| Error::TokenizerLoad(e.to_string()))?;
 
-        let (num_layers, num_key_value_heads, head_dim) = match model_name {
-            name if name.contains("tiny") => (6, 8, 36),
-            name if name.contains("base") => (8, 8, 52),
-            other => return Err(Error::InvalidModelName(other.to_string())),
+        let (num_layers, num_key_value_heads, head_dim) = match model_size {
+            MoonshineModelSize::Tiny => (6, 8, 36),
+            MoonshineModelSize::Base => (8, 8, 52),
         };
 
         Ok(Self {
@@ -57,7 +61,6 @@ impl MoonshineOnnxModel {
         })
     }
 
-    // audio shape: [1, num_audio_samples], 16kHz
     pub fn generate(
         &mut self,
         audio: Array2<f32>,
@@ -327,7 +330,7 @@ mod tests {
             "/Users/yujonglee/dev/hyprnote/crates/transcribe-moonshine/assets/encoder_model.onnx",
             "/Users/yujonglee/dev/hyprnote/crates/transcribe-moonshine/assets/decoder_model_merged.onnx",
             "/Users/yujonglee/dev/hyprnote/crates/transcribe-moonshine/assets/tokenizer.json",
-            "tiny",
+            MoonshineModelSize::Tiny,
         )
         .unwrap();
 

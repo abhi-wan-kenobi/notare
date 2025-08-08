@@ -35,10 +35,20 @@ pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
     }
 
     let multi_progress = Arc::new(MultiProgress::new());
+
+    let max_name_len = to_download
+        .iter()
+        .map(|(asset, _)| asset.name.len())
+        .max()
+        .unwrap_or(20)
+        .max(20);
+
+    let template = format!(
+        "{{msg:{max_name_len}}} [{{bar:40.cyan/blue}}] {{percent:>3}}% {{bytes}}/{{total_bytes}} {{bytes_per_sec}}"
+    );
+
     let style = ProgressStyle::default_bar()
-        .template(
-            "{msg:20} [{bar:40.cyan/blue}] {percent:>3}% {bytes}/{total_bytes} {bytes_per_sec}",
-        )
+        .template(&template)
         .unwrap()
         .progress_chars("━━╸");
 
@@ -97,26 +107,33 @@ pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
 
         crate::update_config_with_diff(&config_path, |config| {
             let model_id = args.model.to_string();
-            let model_exists = config.models.iter().position(|m| match m {
-                owhisper_config::ModelConfig::WhisperCpp(wc_config) => wc_config.id == model_id,
-                _ => false,
-            });
+            let model_type = args.model.model_type();
 
-            // TODO: this only works for whisper.cpp
-            if let Some((_, path)) = downloaded_assets.first() {
-                let new_model = owhisper_config::ModelConfig::WhisperCpp(
+            let assets_dir = model_dir.to_str().unwrap().to_string();
+
+            let new_model = match model_type {
+                owhisper_model::ModelType::WhisperCpp => owhisper_config::ModelConfig::WhisperCpp(
                     owhisper_config::WhisperCppModelConfig {
                         id: model_id.clone(),
-                        model_path: path.to_str().unwrap().to_string(),
+                        assets_dir,
                     },
-                );
-
-                if let Some(index) = model_exists {
-                    config.models[index] = new_model;
-                } else {
-                    config.models.push(new_model);
+                ),
+                owhisper_model::ModelType::Moonshine => {
+                    owhisper_config::ModelConfig::Moonshine(owhisper_config::MoonshineModelConfig {
+                        id: model_id.clone(),
+                        assets_dir,
+                    })
                 }
+            };
+
+            let model_exists = config.models.iter().position(|m| m.id() == model_id);
+
+            if let Some(index) = model_exists {
+                config.models[index] = new_model;
+            } else {
+                config.models.push(new_model);
             }
+
             Ok(())
         })
         .await?;

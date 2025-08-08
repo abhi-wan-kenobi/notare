@@ -31,6 +31,7 @@ pub enum TranscriptionService {
     Aws(hypr_transcribe_aws::TranscribeService),
     Deepgram(hypr_transcribe_deepgram::TranscribeService),
     WhisperCpp(hypr_transcribe_whisper_local::TranscribeService),
+    Moonshine(hypr_transcribe_moonshine::TranscribeService),
 }
 
 pub struct Server {
@@ -58,12 +59,16 @@ impl Server {
                 owhisper_config::ModelConfig::WhisperCpp(config) => {
                     TranscriptionService::WhisperCpp(build_whisper_cpp_service(config)?)
                 }
+                owhisper_config::ModelConfig::Moonshine(config) => {
+                    TranscriptionService::Moonshine(build_moonshine_service(config)?)
+                }
             };
 
             let id = match model {
                 owhisper_config::ModelConfig::Aws(c) => &c.id,
                 owhisper_config::ModelConfig::Deepgram(c) => &c.id,
                 owhisper_config::ModelConfig::WhisperCpp(c) => &c.id,
+                owhisper_config::ModelConfig::Moonshine(c) => &c.id,
             };
 
             services.insert(id.clone(), service);
@@ -136,20 +141,47 @@ async fn build_aws_service(
         .map_err(|e| anyhow::anyhow!("Failed to create AWS service: {}", e))
 }
 
-fn build_whisper_cpp_service(
-    config: &owhisper_config::WhisperCppModelConfig,
-) -> anyhow::Result<hypr_transcribe_whisper_local::TranscribeService> {
-    Ok(hypr_transcribe_whisper_local::TranscribeService::builder()
-        .model_path(config.model_path.clone().into())
-        .build())
-}
-
 async fn build_deepgram_service(
     config: &owhisper_config::DeepgramModelConfig,
 ) -> anyhow::Result<hypr_transcribe_deepgram::TranscribeService> {
     hypr_transcribe_deepgram::TranscribeService::new(config.clone())
         .await
         .map_err(|e| anyhow::anyhow!("Failed to create Deepgram service: {}", e))
+}
+
+fn build_whisper_cpp_service(
+    config: &owhisper_config::WhisperCppModelConfig,
+) -> anyhow::Result<hypr_transcribe_whisper_local::TranscribeService> {
+    let mut files = std::fs::read_dir(&config.assets_dir)?;
+    let model = files
+        .find(|f| f.is_ok() && f.as_ref().unwrap().file_name() == "model.ggml")
+        .ok_or(anyhow::anyhow!("model.ggml not found"))??;
+
+    Ok(hypr_transcribe_whisper_local::TranscribeService::builder()
+        .model_path(model.path())
+        .build())
+}
+
+fn build_moonshine_service(
+    config: &owhisper_config::MoonshineModelConfig,
+) -> anyhow::Result<hypr_transcribe_moonshine::TranscribeService> {
+    let mut files = std::fs::read_dir(&config.assets_dir)?;
+
+    let tokenizer = files
+        .find(|f| f.is_ok() && f.as_ref().unwrap().file_name() == "tokenizer.json")
+        .ok_or(anyhow::anyhow!("tokenizer.json not found"))??;
+    let encoder = files
+        .find(|f| f.is_ok() && f.as_ref().unwrap().file_name() == "encoder_model.onnx")
+        .ok_or(anyhow::anyhow!("encoder_model.onnx not found"))??;
+    let decoder = files
+        .find(|f| f.is_ok() && f.as_ref().unwrap().file_name() == "decoder_model_merged.onnx")
+        .ok_or(anyhow::anyhow!("decoder_model_merged.onnx not found"))??;
+
+    Ok(hypr_transcribe_moonshine::TranscribeService::builder()
+        .tokenizer_path(tokenizer.path().to_str().unwrap().to_string())
+        .encoder_path(encoder.path().to_str().unwrap().to_string())
+        .decoder_path(decoder.path().to_str().unwrap().to_string())
+        .build()?)
 }
 
 async fn handle_transcription(
@@ -197,6 +229,15 @@ async fn handle_transcription(
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "whisper_cpp_server_error".to_string(),
+                )
+            })
+        }
+        TranscriptionService::Moonshine(svc) => {
+            let mut svc_clone = svc.clone();
+            svc_clone.call(req).await.map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "moonshine_server_error".to_string(),
                 )
             })
         }
@@ -287,7 +328,7 @@ mod tests {
                 models: vec![owhisper_config::ModelConfig::WhisperCpp(
                     owhisper_config::WhisperCppModelConfig {
                         id: "whisper_cpp".to_string(),
-                        model_path: dirs::data_dir()
+                        assets_dir: dirs::data_dir()
                             .unwrap()
                             .join("com.hyprnote.dev/stt/ggml-small-q8_0.bin")
                             .to_str()

@@ -100,21 +100,43 @@
         {
           "type": "object",
           "required": [
+            "assets_dir",
             "id",
-            "model_path",
             "type"
           ],
           "properties": {
-            "id": {
+            "assets_dir": {
               "type": "string"
             },
-            "model_path": {
+            "id": {
               "type": "string"
             },
             "type": {
               "type": "string",
               "enum": [
                 "whisper-cpp"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "assets_dir",
+            "id",
+            "type"
+          ],
+          "properties": {
+            "assets_dir": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "moonshine"
               ]
             }
           }

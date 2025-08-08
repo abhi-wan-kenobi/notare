@@ -3,8 +3,8 @@
   "models": [
     {
       "type": "whisper-cpp",
-      "id": "whisper-1",
-      "model_path": "/app/assets/ggml-base.bin"
+      "id": "whisper-tiny",
+      "assets_dir": "/app/assets/whisper-cpp-tiny"
     }
   ]
 }

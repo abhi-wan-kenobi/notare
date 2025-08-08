@@ -89,7 +89,7 @@ impl Model {
                 let hypr_model: HyprWhisper = self.clone().try_into().unwrap();
 
                 vec![Asset {
-                    name: hypr_model.file_name().to_string(),
+                    name: "model.ggml".to_string(),
                     url: hypr_model.model_url().to_string(),
                     size: hypr_model.model_size(),
                     checksum: hypr_model.checksum(),
@@ -230,4 +230,29 @@ impl Model {
             }
         }
     }
+
+    pub fn model_type(&self) -> ModelType {
+        match self {
+            Model::WhisperCppTinyQ8
+            | Model::WhisperCppTinyQ8En
+            | Model::WhisperCppBaseQ8
+            | Model::WhisperCppBaseQ8En
+            | Model::WhisperCppSmallQ8
+            | Model::WhisperCppSmallQ8En
+            | Model::WhisperCppLargeTurboQ8 => ModelType::WhisperCpp,
+
+            Model::MoonshineOnnxTiny
+            | Model::MoonshineOnnxTinyQ4
+            | Model::MoonshineOnnxTinyQ8
+            | Model::MoonshineOnnxBase
+            | Model::MoonshineOnnxBaseQ4
+            | Model::MoonshineOnnxBaseQ8 => ModelType::Moonshine,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ModelType {
+    WhisperCpp,
+    Moonshine,
 }

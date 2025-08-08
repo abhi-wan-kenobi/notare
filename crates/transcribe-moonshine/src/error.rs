@@ -1,6 +1,12 @@
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
+    Io(#[from] std::io::Error),
+
+    #[error(transparent)]
+    HyprOnnx(#[from] hypr_onnx::Error),
+
+    #[error(transparent)]
     Ort(#[from] hypr_onnx::ort::Error),
 
     #[error("invalid model name: {0}")]
