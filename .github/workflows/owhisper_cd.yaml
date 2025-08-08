@@ -18,12 +18,21 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - id: get_version
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#owhisper_v}"
+          else
+            VERSION=$(grep '^version' ./owhisper/owhisper-server/Cargo.toml | head -1 | cut -d'"' -f2)
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       - uses: ./.github/actions/cn_release
         with:
           cmd: draft
           app: ${{ env.CN_APPLICATION }}
           key: ${{ secrets.CN_API_KEY }}
-          channel: ${{ env.RELEASE_CHANNEL }}
+          version: ${{ steps.get_version.outputs.version }}
           working-directory: ./owhisper/owhisper-server
 
   cli_build:
@@ -84,12 +93,21 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - id: get_version
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#owhisper_v}"
+          else
+            VERSION=$(grep '^version' ./owhisper/owhisper-server/Cargo.toml | head -1 | cut -d'"' -f2)
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       - uses: ./.github/actions/cn_release
         with:
           cmd: publish
           app: ${{ env.CN_APPLICATION }}
           key: ${{ secrets.CN_API_KEY }}
-          channel: ${{ env.RELEASE_CHANNEL }}
+          version: ${{ steps.get_version.outputs.version }}
           working-directory: ./owhisper/owhisper-server
 
   docker:

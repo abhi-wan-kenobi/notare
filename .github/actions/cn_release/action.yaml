@@ -22,6 +22,10 @@ inputs:
     description: "framework"
     required: false
     default: ""
+  version:
+    description: "version"
+    required: false
+    default: ""
 
 outputs:
   raw:
@@ -38,9 +42,17 @@ runs:
         command: ${{ inputs.raw }}
         api-key: ${{ inputs.key }}
     - uses: crabnebula-dev/cloud-release@v0
-      if: inputs.raw == ''
+      if: inputs.raw == '' && inputs.framework == 'tauri'
       with:
         command: >-
-          release ${{ inputs.cmd }} ${{ inputs.app }}${{ inputs.framework != '' && format(' --framework {0}', inputs.framework) || '' }}${{ inputs.channel != '' && format(' --channel {0}', inputs.channel) || '' }}
+          release ${{ inputs.cmd }} ${{ inputs.app }}
+          --framework tauri${{ inputs.channel != '' && format(' --channel {0}', inputs.channel) || '' }}
+        api-key: ${{ inputs.key }}
+        working-directory: ${{ inputs.working-directory }}
+    - uses: crabnebula-dev/cloud-release@v0
+      if: inputs.raw == '' && inputs.framework != 'tauri'
+      with:
+        command: >-
+          release ${{ inputs.cmd }} ${{ inputs.app }} ${{ inputs.version }}${{ inputs.channel != '' && format(' --channel {0}', inputs.channel) || '' }}
         api-key: ${{ inputs.key }}
         working-directory: ${{ inputs.working-directory }}
