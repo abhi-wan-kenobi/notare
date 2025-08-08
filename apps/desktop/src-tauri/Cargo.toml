@@ -1,6 +1,6 @@
 [package]
 name = "desktop"
-version = "0.0.63"
+version = "0.0.64"
 authors = ["you"]
 edition = "2021"
 description = "Hyprnote Desktop App"
