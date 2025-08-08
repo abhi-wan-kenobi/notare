@@ -83,19 +83,25 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
     let amplitude_data = Arc::new(Mutex::new(AmplitudeData::new()));
     let amplitude_clone = amplitude_data.clone();
 
+    let mut agc = hypr_agc::Agc::default();
+
     let mic_stream = audio_input
         .stream()
         .resample(16000)
         .chunks(512)
         .map(move |chunk| {
-            let amplified: Vec<f32> = chunk.iter().map(|&s| (s * 3.0).clamp(-1.0, 1.0)).collect();
+            let samples: Vec<f32> = {
+                let mut samples: Vec<f32> = chunk.to_vec();
+                agc.process(&mut samples);
+                samples
+            };
 
             if let Ok(mut data) = amplitude_clone.lock() {
-                let rms = calculate_rms(&amplified);
+                let rms = calculate_rms(&samples);
                 data.update(rms);
             }
 
-            hypr_audio_utils::f32_to_i16_bytes(amplified)
+            hypr_audio_utils::f32_to_i16_bytes(samples)
         });
 
     let response_stream = client.from_realtime_audio(mic_stream).await?;

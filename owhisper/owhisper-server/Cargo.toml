@@ -27,6 +27,7 @@ owhisper-config = { workspace = true }
 owhisper-interface = { workspace = true }
 owhisper-model = { workspace = true }
 
+hypr-agc = { workspace = true }
 hypr-audio = { workspace = true }
 hypr-audio-utils = { workspace = true }
 hypr-file = { workspace = true }

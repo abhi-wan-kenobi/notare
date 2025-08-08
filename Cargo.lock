@@ -88,6 +88,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "agc"
+version = "0.1.0"
+dependencies = [
+ "dagc",
+ "data",
+ "hound",
+ "rodio",
+]
+
+[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3290,6 +3300,12 @@ dependencies = [
  "quote",
  "syn 2.0.104",
 ]
+
+[[package]]
+name = "dagc"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b391a0dc2723958e71bff67bc8f4c1fa14f8734e0b0e4d65f96fd25f4fdd057"
 
 [[package]]
 name = "darling"
@@ -10203,6 +10219,7 @@ dependencies = [
 name = "owhisper-server"
 version = "0.0.1"
 dependencies = [
+ "agc",
  "aide",
  "anyhow",
  "audio",
@@ -14509,6 +14526,7 @@ name = "tauri-plugin-listener"
 version = "0.1.0"
 dependencies = [
  "aec",
+ "agc",
  "audio",
  "audio-utils",
  "bytes",

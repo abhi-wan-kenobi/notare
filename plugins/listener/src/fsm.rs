@@ -312,23 +312,19 @@ impl Session {
 
             async move {
                 let mut aec = hypr_aec::AEC::new().unwrap();
+                let mut mic_agc = hypr_agc::Agc::default();
+                let mut speaker_agc = hypr_agc::Agc::default();
                 let mut last_broadcast = Instant::now();
 
-                // TODO: AGC might be needed.
-                const PRE_MIC_GAIN: f32 = 1.0;
-                const PRE_SPEAKER_GAIN: f32 = 0.8;
-                const POST_MIC_GAIN: f32 = 1.5;
-                const POST_SPEAKER_GAIN: f32 = 1.0;
-
                 loop {
-                    let (mic_chunk_raw, speaker_chunk): (Vec<f32>, Vec<f32>) =
+                    let (mut mic_chunk_raw, mut speaker_chunk): (Vec<f32>, Vec<f32>) =
                         match tokio::join!(mic_rx.recv_async(), speaker_rx.recv_async()) {
-                            (Ok(mic), Ok(speaker)) => (
-                                mic.iter().map(|x| *x * PRE_MIC_GAIN).collect(),
-                                speaker.iter().map(|x| *x * PRE_SPEAKER_GAIN).collect(),
-                            ),
+                            (Ok(mic), Ok(speaker)) => (mic, speaker),
                             _ => break,
                         };
+
+                    mic_agc.process(&mut mic_chunk_raw);
+                    speaker_agc.process(&mut speaker_chunk);
 
                     let maybe_mic_chunk = aec.process_streaming(&mic_chunk_raw, &speaker_chunk);
 
@@ -346,12 +342,8 @@ impl Session {
                         continue;
                     }
 
-                    let processed_mic: Vec<f32> =
-                        mic_chunk.iter().map(|x| x * POST_MIC_GAIN).collect();
-                    let processed_speaker: Vec<f32> = speaker_chunk
-                        .iter()
-                        .map(|x| x * POST_SPEAKER_GAIN)
-                        .collect();
+                    let processed_mic = mic_chunk.clone();
+                    let processed_speaker = speaker_chunk.clone();
 
                     let now = Instant::now();
                     if now.duration_since(last_broadcast) >= AUDIO_AMPLITUDE_THROTTLE {
@@ -382,9 +374,7 @@ impl Session {
                         let mixed: Vec<f32> = mic_chunk
                             .iter()
                             .zip(speaker_chunk.iter())
-                            .map(|(mic, speaker)| {
-                                (mic * POST_MIC_GAIN + speaker * POST_SPEAKER_GAIN).clamp(-1.0, 1.0)
-                            })
+                            .map(|(mic, speaker)| (mic + speaker).clamp(-1.0, 1.0))
                             .collect();
                         if save_mixed_tx.send_async(mixed).await.is_err() {
                             tracing::error!("save_mixed_tx_send_error");
