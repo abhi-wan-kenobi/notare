@@ -51,12 +51,13 @@ jobs:
           retention-days: 7
 
       - if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'owhisper_v') && contains(github.event.release.tag_name, '.')
-        uses: softprops/action-gh-release@v1
+        uses: ./.github/actions/cn_release
         with:
-          files: artifacts/*
-          fail_on_unmatched_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          raw: >-
+            release upload "hyprnote/owhisper" "${{ github.event.release.tag_name }}"
+            --public-platform ${{ matrix.target == 'aarch64-apple-darwin' && 'macos-aarch64' || matrix.target == 'x86_64-apple-darwin' && 'macos-x86_64' || 'linux-x86_64' }}
+            --file artifacts/owhisper-server-${{ matrix.target }}
+          key: ${{ secrets.CN_API_KEY }}
 
   docker:
     runs-on: ubuntu-latest
