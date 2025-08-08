@@ -41,6 +41,7 @@ jobs:
           app: ${{ env.CN_APPLICATION }}
           key: ${{ secrets.CN_API_KEY }}
           channel: ${{ env.RELEASE_CHANNEL }}
+          framework: tauri
           working-directory: ./apps/desktop
   build:
     if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'desktop_') }}
@@ -136,6 +137,7 @@ jobs:
           app: ${{ env.CN_APPLICATION }}
           key: ${{ secrets.CN_API_KEY }}
           channel: ${{ env.RELEASE_CHANNEL }}
+          framework: tauri
           working-directory: ./apps/desktop
   publish:
     if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'desktop_') }}
@@ -149,4 +151,5 @@ jobs:
           app: ${{ env.CN_APPLICATION }}
           key: ${{ secrets.CN_API_KEY }}
           channel: ${{ env.RELEASE_CHANNEL }}
+          framework: tauri
           working-directory: ./apps/desktop

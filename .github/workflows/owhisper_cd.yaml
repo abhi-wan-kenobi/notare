@@ -86,7 +86,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cn_release
         with:
-          cmd: cli_build
+          cmd: publish
           app: ${{ env.CN_APPLICATION }}
           key: ${{ secrets.CN_API_KEY }}
           channel: ${{ env.RELEASE_CHANNEL }}

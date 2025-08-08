@@ -1,22 +1,31 @@
 inputs:
   raw:
-    type: string
+    description: "raw"
     required: false
     default: ""
   key:
+    description: "key"
     required: true
   cmd:
+    description: "cmd"
     required: false
-    type: string
   app:
+    description: "app"
     required: false
   channel:
+    description: "channel"
     required: false
   working-directory:
+    description: "working-directory"
     required: false
+  framework:
+    description: "framework"
+    required: false
+    default: ""
 
 outputs:
   raw:
+    description: "Output from raw command"
     value: ${{ steps.raw.outputs.stdout }}
 
 runs:
@@ -32,7 +41,6 @@ runs:
       if: inputs.raw == ''
       with:
         command: >-
-          release ${{ inputs.cmd }} ${{ inputs.app }}
-          --framework tauri${{ inputs.channel != '' && format(' --channel {0}', inputs.channel) || '' }}
+          release ${{ inputs.cmd }} ${{ inputs.app }}${{ inputs.framework != '' && format(' --framework {0}', inputs.framework) || '' }}${{ inputs.channel != '' && format(' --channel {0}', inputs.channel) || '' }}
         api-key: ${{ inputs.key }}
         working-directory: ${{ inputs.working-directory }}
