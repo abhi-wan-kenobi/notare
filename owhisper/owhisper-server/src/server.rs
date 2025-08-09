@@ -44,7 +44,7 @@ impl Server {
         Self { config, port }
     }
 
-    pub async fn build_router(&self) -> anyhow::Result<Router> {
+    pub async fn build_router(&self) -> anyhow::Result<Router<()>> {
         let api_key = self.config.general.as_ref().and_then(|g| g.api_key.clone());
 
         let mut services = HashMap::new();
@@ -77,9 +77,13 @@ impl Server {
         let app_state = Arc::new(AppState { api_key, services });
 
         let stt_router = self.build_stt_router(app_state.clone()).await;
-
-        let app = Router::new()
+        let other_router = Router::new()
             .route("/health", axum::routing::get(health))
+            .route("/models", axum::routing::get(list_models))
+            .route("/v1/models", axum::routing::get(list_models))
+            .with_state(app_state.clone());
+
+        let app = other_router
             .merge(stt_router)
             // .layer(middleware::from_fn_with_state(
             //     app_state.clone(),
@@ -125,7 +129,7 @@ impl Server {
         Ok(addr.port())
     }
 
-    async fn build_stt_router(&self, app_state: Arc<AppState>) -> Router {
+    async fn build_stt_router(&self, app_state: Arc<AppState>) -> Router<()> {
         Router::new()
             .route("/listen", axum::routing::any(handle_transcription))
             .route("/v1/listen", axum::routing::any(handle_transcription))
@@ -247,6 +251,34 @@ async fn handle_transcription(
 
 async fn health() -> &'static str {
     "OK"
+}
+
+#[derive(serde::Serialize)]
+struct ModelInfo {
+    id: String,
+    object: String,
+}
+
+#[derive(serde::Serialize)]
+struct ModelsResponse {
+    object: String,
+    data: Vec<ModelInfo>,
+}
+
+async fn list_models(State(state): State<Arc<AppState>>) -> axum::Json<ModelsResponse> {
+    let models: Vec<ModelInfo> = state
+        .services
+        .keys()
+        .map(|id| ModelInfo {
+            id: id.clone(),
+            object: "model".to_string(),
+        })
+        .collect();
+
+    axum::Json(ModelsResponse {
+        object: "list".to_string(),
+        data: models,
+    })
 }
 
 async fn auth_middleware(

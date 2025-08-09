@@ -16,6 +16,8 @@ use crate::{misc::shutdown_signal, Server};
 
 #[derive(clap::Parser)]
 pub struct RunArgs {
+    /// Model ID from the config file
+    #[arg(value_parser = validate_model_from_config)]
     pub model: String,
 
     /// Audio file path, '-' for stdin, or omit for microphone
@@ -32,13 +34,6 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
     log::set_max_level(log::LevelFilter::Off);
 
     let config = owhisper_config::Config::new(args.config.clone())?;
-    if !config.models.iter().any(|m| m.id() == args.model) {
-        return Err(anyhow::anyhow!(
-            "'{}' not found in '{:?}'",
-            args.model,
-            owhisper_config::global_config_path()
-        ));
-    }
 
     let api_key = config.general.as_ref().and_then(|g| g.api_key.clone());
     let server = Server::new(config, None);
@@ -82,6 +77,29 @@ pub async fn handle_run(args: RunArgs) -> anyhow::Result<()> {
 
     server_handle.abort();
     Ok(())
+}
+
+fn validate_model_from_config(s: &str) -> Result<String, String> {
+    let config =
+        owhisper_config::Config::new(None).map_err(|e| format!("Failed to load config: {}", e))?;
+
+    let model_ids: Vec<String> = config.models.iter().map(|m| m.id().to_string()).collect();
+
+    if model_ids.contains(&s.to_string()) {
+        Ok(s.to_string())
+    } else {
+        let available = if model_ids.is_empty() {
+            "No models found in config".to_string()
+        } else {
+            format!("Available models: {}", model_ids.join(", "))
+        };
+        Err(format!(
+            "'{}' not found in config at '{:?}'. {}",
+            s,
+            owhisper_config::global_config_path(),
+            available
+        ))
+    }
 }
 
 enum InputMode {
