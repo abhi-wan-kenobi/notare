@@ -18,9 +18,8 @@ use futures_util::{SinkExt, StreamExt};
 use tower::Service;
 
 use hypr_chunker::VadExt;
+use hypr_ws_utils::{ConnectionGuard, ConnectionManager};
 use owhisper_interface::{ListenOutputChunk, ListenParams, Word2};
-
-use crate::manager::{ConnectionGuard, ConnectionManager};
 
 #[derive(Clone)]
 pub struct TranscribeService {

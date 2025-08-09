@@ -1,5 +1,4 @@
 mod error;
-mod manager;
 mod service;
 
 pub use error::*;
