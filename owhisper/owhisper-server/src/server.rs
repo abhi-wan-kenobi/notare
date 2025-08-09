@@ -101,7 +101,7 @@ impl Server {
     pub async fn run_with_shutdown(
         self,
         shutdown_signal: impl std::future::Future<Output = ()> + Send + 'static,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<u16> {
         let router = self.build_router().await?;
 
         let listener = tokio::net::TcpListener::bind(if let Some(port) = self.port {
@@ -122,7 +122,7 @@ impl Server {
             return Err(anyhow::anyhow!(e));
         }
 
-        Ok(())
+        Ok(addr.port())
     }
 
     async fn build_stt_router(&self, app_state: Arc<AppState>) -> Router {
@@ -200,10 +200,10 @@ async fn handle_transcription(
             .clone(),
     };
 
-    let service = state
-        .services
-        .get(&model_id)
-        .ok_or((StatusCode::NOT_FOUND, "no_model_match".to_string()))?;
+    let service = state.services.get(&model_id).ok_or((
+        StatusCode::NOT_FOUND,
+        format!("no_model_match: {}", model_id),
+    ))?;
 
     match service {
         TranscriptionService::Aws(svc) => {

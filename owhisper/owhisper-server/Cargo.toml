@@ -62,7 +62,6 @@ similar = { workspace = true }
 termtree = "0.5.1"
 
 cpal = { workspace = true }
-rubato = "0.16.2"
 
 anyhow = { workspace = true }
 dirs = { workspace = true }

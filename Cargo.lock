@@ -10246,7 +10246,6 @@ dependencies = [
  "owhisper-model",
  "ratatui",
  "rodio",
- "rubato",
  "schemars 0.8.22",
  "serde_json",
  "similar",
