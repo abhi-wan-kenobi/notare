@@ -1,9 +1,9 @@
 use std::time::{Duration, Instant};
 
+use super::event::TuiEventSender;
 use ratatui::widgets::{ListState, ScrollbarState};
 
-#[derive(Clone)]
-pub struct UIstate {
+pub struct RunState {
     pub transcripts: Vec<TranscriptEntry>,
     pub start_time: Instant,
     pub scroll_state: ScrollbarState,
@@ -14,6 +14,7 @@ pub struct UIstate {
     pub available_devices: Vec<String>,
     pub device_list_state: ListState,
     pub show_device_selector: bool,
+    pub event_sender: Option<TuiEventSender>,
 }
 
 #[derive(Clone)]
@@ -22,7 +23,7 @@ pub struct TranscriptEntry {
     pub timestamp: Instant,
 }
 
-impl UIstate {
+impl RunState {
     pub fn new(current_device: String, available_devices: Vec<String>) -> Self {
         let mut device_list_state = ListState::default();
 
@@ -42,7 +43,12 @@ impl UIstate {
             available_devices,
             device_list_state,
             show_device_selector: false,
+            event_sender: None,
         }
+    }
+
+    pub fn set_event_sender(&mut self, sender: TuiEventSender) {
+        self.event_sender = Some(sender);
     }
 
     pub fn process_chunk(&mut self, chunk: owhisper_interface::ListenOutputChunk) {
@@ -62,22 +68,10 @@ impl UIstate {
             timestamp: Instant::now(),
         });
 
-        // Keep only last 100 transcripts
-        if self.transcripts.len() > 100 {
-            self.transcripts.remove(0);
-        }
-
         self.processing = true;
         self.last_activity = Instant::now();
 
-        // Auto-scroll to bottom on new transcript
         self.scroll_position = self.transcripts.len().saturating_sub(1);
-        self.update_scroll_state();
-    }
-
-    pub fn clear_transcripts(&mut self) {
-        self.transcripts.clear();
-        self.scroll_position = 0;
         self.update_scroll_state();
     }
 

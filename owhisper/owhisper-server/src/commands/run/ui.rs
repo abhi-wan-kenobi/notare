@@ -1,11 +1,9 @@
 use std::{
     collections::VecDeque,
-    sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 
 use ratatui::{
-    crossterm::event::{self, Event, KeyCode},
     layout::{Alignment, Constraint, Layout, Margin, Rect},
     style::{palette::tailwind, Modifier, Style},
     symbols,
@@ -17,8 +15,7 @@ use ratatui::{
     Frame,
 };
 
-use super::{TerminalGuard, UIstate};
-use futures_util::StreamExt;
+use super::RunState;
 
 pub fn calculate_rms(samples: &[f32]) -> f32 {
     if samples.is_empty() {
@@ -86,85 +83,7 @@ impl AmplitudeData {
     }
 }
 
-pub async fn run_tui(
-    mut stream: impl futures_util::Stream<Item = owhisper_interface::ListenOutputChunk> + Unpin,
-    current_device: String,
-    available_devices: Vec<String>,
-    amplitude_data: Arc<Mutex<AmplitudeData>>,
-) -> anyhow::Result<()> {
-    let mut term = TerminalGuard::new()?;
-    let mut state = UIstate::new(current_device, available_devices);
-    let tick_rate = Duration::from_millis(50);
-    let mut last_tick = Instant::now();
-
-    loop {
-        let amp_data = amplitude_data.lock().unwrap().clone();
-        term.draw(|f| draw_ui(f, &mut state, &amp_data))?;
-
-        while let Ok(Some(chunk)) =
-            tokio::time::timeout(Duration::from_millis(1), stream.next()).await
-        {
-            state.process_chunk(chunk);
-        }
-
-        // Handle keyboard input
-        if event::poll(Duration::from_millis(0))? {
-            if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => {
-                        if state.show_device_selector {
-                            state.show_device_selector = false;
-                        } else {
-                            break;
-                        }
-                    }
-                    KeyCode::Char('d') => {
-                        state.show_device_selector = !state.show_device_selector;
-                    }
-                    KeyCode::Down | KeyCode::Char('j') => {
-                        if state.show_device_selector {
-                            state.device_list_state.select_next();
-                        } else {
-                            state.scroll_down();
-                        }
-                    }
-                    KeyCode::Up | KeyCode::Char('k') => {
-                        if state.show_device_selector {
-                            state.device_list_state.select_previous();
-                        } else {
-                            state.scroll_up();
-                        }
-                    }
-                    KeyCode::Enter => {
-                        if state.show_device_selector {
-                            if let Some(selected) = state.device_list_state.selected() {
-                                state.current_device = state.available_devices[selected].clone();
-                                state.show_device_selector = false;
-                                // TODO: Actually switch the audio device here
-                                // This would require restructuring the audio stream setup
-                            }
-                        }
-                    }
-                    KeyCode::Char('c') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
-                        state.clear_transcripts();
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        // Update tick
-        if last_tick.elapsed() >= tick_rate {
-            last_tick = Instant::now();
-        }
-
-        tokio::time::sleep(Duration::from_millis(10)).await;
-    }
-
-    Ok(())
-}
-
-fn draw_ui(frame: &mut Frame, state: &mut UIstate, amplitude_data: &AmplitudeData) {
+pub fn draw_ui(frame: &mut Frame, state: &mut RunState, amplitude_data: &AmplitudeData) {
     let chunks = Layout::vertical([
         Constraint::Length(3),
         Constraint::Min(8),
@@ -172,7 +91,7 @@ fn draw_ui(frame: &mut Frame, state: &mut UIstate, amplitude_data: &AmplitudeDat
     ])
     .split(frame.area());
 
-    draw_combined_header(frame, chunks[0], state, amplitude_data);
+    draw_header(frame, chunks[0], state, amplitude_data);
     draw_transcripts(frame, chunks[1], state);
     draw_help(frame, chunks[2], state);
 
@@ -181,12 +100,7 @@ fn draw_ui(frame: &mut Frame, state: &mut UIstate, amplitude_data: &AmplitudeDat
     }
 }
 
-fn draw_combined_header(
-    frame: &mut Frame,
-    area: Rect,
-    state: &UIstate,
-    amplitude_data: &AmplitudeData,
-) {
+fn draw_header(frame: &mut Frame, area: Rect, state: &RunState, amplitude_data: &AmplitudeData) {
     let elapsed = state.elapsed();
     let level = amplitude_data.get_normalized_level();
 
@@ -255,7 +169,7 @@ fn draw_combined_header(
     frame.render_widget(border, area);
 }
 
-fn draw_transcripts(frame: &mut Frame, area: Rect, state: &mut UIstate) {
+fn draw_transcripts(frame: &mut Frame, area: Rect, state: &mut RunState) {
     let block = Block::default()
         .title(vec![
             Span::styled(" Transcripts ", Style::default().fg(tailwind::SLATE.c400)),
@@ -324,7 +238,7 @@ fn draw_transcripts(frame: &mut Frame, area: Rect, state: &mut UIstate) {
     }
 }
 
-fn draw_device_selector(frame: &mut Frame, state: &mut UIstate) {
+fn draw_device_selector(frame: &mut Frame, state: &mut RunState) {
     let area = frame.area();
     let popup_width = 60.min(area.width - 4);
     let popup_height = (state.available_devices.len() as u16 + 4).min(area.height - 4);
@@ -385,7 +299,7 @@ fn draw_device_selector(frame: &mut Frame, state: &mut UIstate) {
     frame.render_stateful_widget(list, popup_area, &mut state.device_list_state);
 }
 
-fn draw_help(frame: &mut Frame, area: Rect, state: &UIstate) {
+fn draw_help(frame: &mut Frame, area: Rect, state: &RunState) {
     let help_items = if state.show_device_selector {
         vec![
             Span::styled(
@@ -460,7 +374,6 @@ fn draw_help(frame: &mut Frame, area: Rect, state: &UIstate) {
                     .fg(tailwind::CYAN.c400)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled(" clear", Style::default().fg(tailwind::SLATE.c500)),
         ]
     };
 

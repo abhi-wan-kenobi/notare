@@ -2,8 +2,12 @@ use std::ops::{Deref, DerefMut};
 
 use ratatui::{
     crossterm::{
+        cursor::Hide,
         execute,
-        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+        terminal::{
+            disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
+            LeaveAlternateScreen,
+        },
     },
     prelude::CrosstermBackend,
     Terminal,
@@ -31,9 +35,10 @@ impl TerminalGuard {
     pub fn new() -> anyhow::Result<Self> {
         enable_raw_mode()?;
         let mut stdout = std::io::stdout();
-        execute!(stdout, EnterAlternateScreen)?;
+        execute!(stdout, EnterAlternateScreen, Hide, Clear(ClearType::All))?;
         let backend = CrosstermBackend::new(stdout);
-        let terminal = Terminal::new(backend)?;
+        let mut terminal = Terminal::new(backend)?;
+        terminal.clear()?;
         Ok(Self { terminal })
     }
 }
