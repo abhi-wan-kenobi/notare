@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use super::event::TuiEventSender;
 use ratatui::widgets::{ListState, ScrollbarState};
@@ -6,9 +6,9 @@ use ratatui::widgets::{ListState, ScrollbarState};
 pub struct RunState {
     pub transcripts: Vec<TranscriptEntry>,
     pub start_time: Instant,
+    pub session_timestamp: u64,
     pub scroll_state: ScrollbarState,
     pub scroll_position: usize,
-    pub processing: bool,
     pub last_activity: Instant,
     pub current_device: String,
     pub available_devices: Vec<String>,
@@ -17,9 +17,10 @@ pub struct RunState {
     pub event_sender: Option<TuiEventSender>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct TranscriptEntry {
     pub text: String,
+    #[serde(skip, default = "Instant::now")]
     pub timestamp: Instant,
 }
 
@@ -27,17 +28,21 @@ impl RunState {
     pub fn new(current_device: String, available_devices: Vec<String>) -> Self {
         let mut device_list_state = ListState::default();
 
-        // Select the current device in the list
         if let Some(index) = available_devices.iter().position(|d| d == &current_device) {
             device_list_state.select(Some(index));
         }
 
+        let session_timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
         Self {
             transcripts: Vec::new(),
             start_time: Instant::now(),
+            session_timestamp,
             scroll_state: ScrollbarState::default(),
             scroll_position: 0,
-            processing: false,
             last_activity: Instant::now(),
             current_device,
             available_devices,
@@ -68,7 +73,6 @@ impl RunState {
             timestamp: Instant::now(),
         });
 
-        self.processing = true;
         self.last_activity = Instant::now();
 
         self.scroll_position = self.transcripts.len().saturating_sub(1);
@@ -99,5 +103,24 @@ impl RunState {
 
     pub fn is_active(&self) -> bool {
         self.last_activity.elapsed() < Duration::from_secs(2)
+    }
+}
+
+impl Drop for RunState {
+    fn drop(&mut self) {
+        if self.transcripts.is_empty() {
+            return;
+        }
+
+        let data_dir = owhisper_config::data_dir();
+        let session_dir = data_dir.join(self.session_timestamp.to_string());
+
+        if let Err(_) = std::fs::create_dir_all(&session_dir) {
+            return;
+        }
+
+        let transcript_path = session_dir.join("transcript.json");
+        let contents = serde_json::to_string_pretty(&self.transcripts).unwrap();
+        std::fs::write(transcript_path, contents).unwrap();
     }
 }

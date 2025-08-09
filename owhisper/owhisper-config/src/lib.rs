@@ -12,6 +12,9 @@ macro_rules! common_derives {
 common_derives! {
     #[derive(Default)]
     pub struct Config {
+        #[serde(rename = "$schema", skip_serializing_if = "Option::is_none")]
+        #[schemars(skip)]
+        pub schema: Option<String>,
         pub general: Option<GeneralConfig>,
         pub models: Vec<ModelConfig>,
     }

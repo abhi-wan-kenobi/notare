@@ -45,6 +45,7 @@ aide = { version = "0.15.0", features = ["axum"] }
 axum = { workspace = true }
 axum-extra = { workspace = true, features = ["typed-header"] }
 futures-util = { workspace = true }
+rustls = { version = "0.23.31", features = ["ring"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tower = { workspace = true }
 tower-http = { workspace = true, features = ["trace"] }
@@ -67,4 +68,5 @@ anyhow = { workspace = true }
 dirs = { workspace = true }
 open = "5"
 schemars = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

@@ -19,6 +19,9 @@ where
 
     let original_json = serde_json::to_string_pretty(&config)?;
     update_fn(&mut config)?;
+    config.schema =
+        Some("https://raw.githubusercontent.com/fastrepl/owhisper/main/schema.json".to_string());
+
     let updated_json = serde_json::to_string_pretty(&config)?;
 
     if original_json != updated_json {

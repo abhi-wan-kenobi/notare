@@ -134,9 +134,9 @@ impl Server {
 }
 
 async fn build_aws_service(
-    _config: &owhisper_config::AwsModelConfig,
+    config: &owhisper_config::AwsModelConfig,
 ) -> anyhow::Result<hypr_transcribe_aws::TranscribeService> {
-    hypr_transcribe_aws::TranscribeService::new(hypr_transcribe_aws::TranscribeConfig::default())
+    hypr_transcribe_aws::TranscribeService::new(config.clone())
         .await
         .map_err(|e| anyhow::anyhow!("Failed to create AWS service: {}", e))
 }

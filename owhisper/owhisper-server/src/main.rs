@@ -33,6 +33,10 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .unwrap();
+
     misc::set_logger();
 
     let args = Args::parse();

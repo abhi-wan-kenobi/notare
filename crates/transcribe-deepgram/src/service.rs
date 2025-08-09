@@ -20,7 +20,7 @@ use deepgram::{
     Deepgram,
 };
 
-use owhisper_interface::ListenParams;
+use owhisper_interface::{ListenInputChunk, ListenOutputChunk, ListenParams, Word2};
 
 #[derive(Clone)]
 pub struct TranscribeService {
@@ -60,9 +60,26 @@ impl TranscribeService {
         let audio_task = tokio::spawn(async move {
             while let Some(Ok(msg)) = receiver.next().await {
                 match msg {
-                    Message::Binary(data) => {
-                        if audio_tx.send(Ok(data.into())).await.is_err() {
-                            break;
+                    Message::Text(data) => {
+                        if let Ok(chunk) = serde_json::from_str::<ListenInputChunk>(&data) {
+                            match chunk {
+                                ListenInputChunk::Audio { data } => {
+                                    if !data.is_empty() {
+                                        if audio_tx.send(Ok(data.into())).await.is_err() {
+                                            break;
+                                        }
+                                    }
+                                }
+                                ListenInputChunk::DualAudio { mic, speaker } => {
+                                    let mixed = mix_audio(mic, speaker);
+                                    if !mixed.is_empty() {
+                                        if audio_tx.send(Ok(mixed.into())).await.is_err() {
+                                            break;
+                                        }
+                                    }
+                                }
+                                ListenInputChunk::End => break,
+                            }
                         }
                     }
                     Message::Close(_) => break,
@@ -93,9 +110,49 @@ impl TranscribeService {
         {
             Ok(mut deepgram_stream) => {
                 while let Some(result) = deepgram_stream.next().await {
-                    if let Ok(json) = serde_json::to_string(&result.unwrap()) {
-                        if sender.send(Message::Text(json.into())).await.is_err() {
-                            break;
+                    if let Ok(response) = result {
+                        match response {
+                            deepgram::common::stream_response::StreamResponse::TranscriptResponse {
+                                channel,
+                                ..
+                            } => {
+                                if let Some(first_alt) = channel.alternatives.first() {
+                                    let mut words = Vec::new();
+
+                                    if !first_alt.words.is_empty() {
+                                        for word in &first_alt.words {
+                                            words.push(Word2 {
+                                                text: word.word.clone(),
+                                                speaker: None,
+                                                confidence: Some(word.confidence as f32),
+                                                start_ms: Some((word.start * 1000.0) as u64),
+                                                end_ms: Some((word.end * 1000.0) as u64),
+                                            });
+                                        }
+                                    } else if !first_alt.transcript.is_empty() {
+                                        for text in first_alt.transcript.split_whitespace() {
+                                            words.push(Word2 {
+                                                text: text.to_string(),
+                                                speaker: None,
+                                                confidence: Some(first_alt.confidence as f32),
+                                                start_ms: None,
+                                                end_ms: None,
+                                            });
+                                        }
+                                    }
+
+                                    if !words.is_empty() {
+                                        let output_chunk = ListenOutputChunk { meta: None, words };
+
+                                        if let Ok(json) = serde_json::to_string(&output_chunk) {
+                                            if sender.send(Message::Text(json.into())).await.is_err() {
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -142,4 +199,30 @@ impl Service<Request<Body>> for TranscribeService {
             }
         })
     }
+}
+
+fn mix_audio(mic: Vec<u8>, speaker: Vec<u8>) -> Vec<u8> {
+    let len = mic.len().max(speaker.len());
+    let mut mixed = Vec::with_capacity(len);
+
+    for i in (0..len).step_by(2) {
+        let mic_sample = if i + 1 < mic.len() {
+            i16::from_le_bytes([mic[i], mic[i + 1]])
+        } else {
+            0
+        };
+
+        let speaker_sample = if i + 1 < speaker.len() {
+            i16::from_le_bytes([speaker[i], speaker[i + 1]])
+        } else {
+            0
+        };
+
+        let mixed_sample = ((mic_sample as i32 + speaker_sample as i32) / 2) as i16;
+        let bytes = mixed_sample.to_le_bytes();
+        mixed.push(bytes[0]);
+        mixed.push(bytes[1]);
+    }
+
+    mixed
 }
