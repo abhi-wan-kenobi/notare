@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "version": "0.0.64",
+  "version": "0.0.65",
   "productName": "Hyprnote Dev",
   "mainBinaryName": "Hyprnote Dev",
   "identifier": "com.hyprnote.dev",
