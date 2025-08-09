@@ -1,0 +1,23 @@
+name: R2 S3 Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create test file
+        run: echo "This is a test file for R2 verification" > test-file.txt
+      
+      - name: Copy file to R2
+        uses: prewk/s3-cp-action@v2
+        with:
+          aws_access_key_id: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          source: test-file.txt
+          dest: s3://hyprnote-cache2/test-file.txt
+          aws_s3_endpoint: https://3db5267cdeb5f79263ede3ec58090fe0.r2.cloudflarestorage.com
+          aws_region: auto
