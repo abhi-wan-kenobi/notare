@@ -209,7 +209,7 @@ async fn handle_transcription(
         format!("no_model_match: {}", model_id),
     ))?;
 
-    match service {
+    let response = match service {
         TranscriptionService::Aws(svc) => {
             let mut svc_clone = svc.clone();
             svc_clone.call(req).await.map_err(|_| {
@@ -246,7 +246,16 @@ async fn handle_transcription(
                 )
             })
         }
-    }
+    }?;
+
+    let (mut parts, body) = response.into_parts();
+    let request_id = uuid::Uuid::new_v4().to_string();
+    parts.headers.insert(
+        "dg-request-id",
+        axum::http::HeaderValue::from_str(&request_id).unwrap(),
+    );
+
+    Ok(Response::from_parts(parts, body))
 }
 
 async fn health() -> &'static str {

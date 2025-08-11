@@ -113,19 +113,19 @@ where
                 }
             };
 
-            let response = ws_upgrade.on_upgrade(move |socket| async move {
-                handle_websocket_connection(
-                    socket,
-                    params,
-                    model_size,
-                    tokenizer_path,
-                    encoder_path,
-                    decoder_path,
-                )
-                .await
-            });
-
-            Ok(response.into_response())
+            Ok(ws_upgrade
+                .on_upgrade(move |socket| async move {
+                    handle_websocket_connection(
+                        socket,
+                        params,
+                        model_size,
+                        tokenizer_path,
+                        encoder_path,
+                        decoder_path,
+                    )
+                    .await
+                })
+                .into_response())
         })
     }
 }
@@ -138,7 +138,6 @@ async fn handle_websocket_connection(
     encoder_path: String,
     decoder_path: String,
 ) {
-    // Create the model - wrapped in Arc<Mutex> for thread safety
     let model =
         match MoonshineOnnxModel::new(encoder_path, decoder_path, tokenizer_path, model_size) {
             Ok(m) => Arc::new(Mutex::new(m)),
@@ -150,16 +149,13 @@ async fn handle_websocket_connection(
 
     let (ws_sender, ws_receiver) = socket.split();
 
-    let redemption_time = Duration::from_millis(std::cmp::min(
-        std::cmp::max(params.redemption_time_ms, 100),
-        1200,
-    ));
+    let redemption_time = Duration::from_millis(500);
 
-    match params.audio_mode {
-        owhisper_interface::AudioMode::Single => {
+    match params.channels {
+        1 => {
             handle_single_channel(ws_sender, ws_receiver, model, redemption_time).await;
         }
-        owhisper_interface::AudioMode::Dual => {
+        _ => {
             handle_dual_channel(ws_sender, ws_receiver, model, redemption_time).await;
         }
     }

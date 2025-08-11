@@ -10323,6 +10323,7 @@ dependencies = [
  "transcribe-moonshine",
  "transcribe-openai",
  "transcribe-whisper-local",
+ "uuid",
 ]
 
 [[package]]

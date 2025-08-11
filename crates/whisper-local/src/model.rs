@@ -18,8 +18,6 @@ lazy_static! {
 pub struct WhisperBuilder {
     model_path: Option<String>,
     languages: Option<Vec<Language>>,
-    static_prompt: Option<String>,
-    dynamic_prompt: Option<String>,
 }
 
 impl WhisperBuilder {
@@ -30,16 +28,6 @@ impl WhisperBuilder {
 
     pub fn languages(mut self, languages: Vec<Language>) -> Self {
         self.languages = Some(languages);
-        self
-    }
-
-    pub fn static_prompt(mut self, static_prompt: impl Into<String>) -> Self {
-        self.static_prompt = Some(static_prompt.into());
-        self
-    }
-
-    pub fn dynamic_prompt(mut self, dynamic_prompt: impl Into<String>) -> Self {
-        self.dynamic_prompt = Some(dynamic_prompt.into());
         self
     }
 
@@ -64,8 +52,7 @@ impl WhisperBuilder {
 
         Whisper {
             languages: self.languages.unwrap_or_default(),
-            static_prompt: self.static_prompt.unwrap_or_default(),
-            dynamic_prompt: self.dynamic_prompt.unwrap_or_default(),
+            dynamic_prompt: "".to_string(),
             state,
             token_eot,
             token_beg,
@@ -85,7 +72,6 @@ impl WhisperBuilder {
 
 pub struct Whisper {
     languages: Vec<Language>,
-    static_prompt: String,
     dynamic_prompt: String,
     state: WhisperState,
     token_eot: WhisperToken,
@@ -110,7 +96,7 @@ impl Whisper {
         let params = {
             let mut p = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
 
-            let parts = [self.static_prompt.trim(), self.dynamic_prompt.trim()];
+            let parts = [self.dynamic_prompt.trim()];
             let joined = parts.join("\n");
             let initial_prompt = joined.trim();
 

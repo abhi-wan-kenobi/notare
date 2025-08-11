@@ -22,8 +22,6 @@ pub fn process_recorded(
     let mut model = hypr_whisper_local::Whisper::builder()
         .model_path(model_path.as_ref().to_str().unwrap())
         .languages(vec![])
-        .static_prompt("")
-        .dynamic_prompt("")
         .build();
 
     let mut segmenter = hypr_pyannote_local::segmentation::Segmenter::new(16000).unwrap();

@@ -49,11 +49,11 @@ impl ListenClientBuilder {
         self
     }
 
-    fn build_uri(&self, audio_mode: owhisper_interface::AudioMode) -> String {
+    fn build_uri(&self, channels: u8) -> String {
         let mut url: url::Url = self.api_base.as_ref().unwrap().parse().unwrap();
 
         let params = owhisper_interface::ListenParams {
-            audio_mode,
+            channels,
             ..self.params.clone().unwrap_or_default()
         };
 
@@ -73,22 +73,13 @@ impl ListenClientBuilder {
                 query_pairs.append_pair(&format!("languages[{}]", i), lang.iso639().code());
             }
 
-            let channels = match params.audio_mode {
-                owhisper_interface::AudioMode::Single => "1",
-                owhisper_interface::AudioMode::Dual => "2",
-            };
-
             query_pairs
                 // https://developers.deepgram.com/reference/speech-to-text-api/listen-streaming#handshake
                 .append_pair("model", &params.model.unwrap_or("hypr-whisper".to_string()))
                 .append_pair("interim_results", "true")
                 .append_pair("sample_rate", "16000")
                 .append_pair("encoding", "linear16")
-                .append_pair("channels", channels)
-                .append_pair("audio_mode", params.audio_mode.as_ref())
-                .append_pair("static_prompt", &params.static_prompt)
-                .append_pair("dynamic_prompt", &params.dynamic_prompt)
-                .append_pair("redemption_time_ms", &params.redemption_time_ms.to_string());
+                .append_pair("channels", &channels.to_string());
         }
 
         let host = url.host_str().unwrap();
@@ -102,8 +93,8 @@ impl ListenClientBuilder {
         url.to_string()
     }
 
-    fn build_request(self, audio_mode: owhisper_interface::AudioMode) -> ClientRequestBuilder {
-        let uri = self.build_uri(audio_mode).parse().unwrap();
+    fn build_request(self, channels: u8) -> ClientRequestBuilder {
+        let uri = self.build_uri(channels).parse().unwrap();
 
         let request = match self.api_key {
             // https://github.com/deepgram/deepgram-rust-sdk/blob/d2f2723/src/lib.rs#L114-L115
@@ -117,12 +108,12 @@ impl ListenClientBuilder {
     }
 
     pub fn build_single(self) -> ListenClient {
-        let request = self.build_request(owhisper_interface::AudioMode::Single);
+        let request = self.build_request(1);
         ListenClient { request }
     }
 
     pub fn build_dual(self) -> ListenClientDual {
-        let request = self.build_request(owhisper_interface::AudioMode::Dual);
+        let request = self.build_request(2);
         ListenClientDual { request }
     }
 }
@@ -250,7 +241,7 @@ mod tests {
         .to_i16_le_chunks(16000, 512);
 
         let client = ListenClient::builder()
-            .api_base("ws://127.0.0.1:59039")
+            .api_base("ws://127.0.0.1:52693")
             .api_key("".to_string())
             .params(owhisper_interface::ListenParams {
                 model: Some("whisper-cpp-small-q8".to_string()),
@@ -277,16 +268,23 @@ mod tests {
         .to_i16_le_chunks(16000, 512)
         .map(Ok::<_, std::io::Error>);
 
-        let stream = deepgram::Deepgram::with_base_url_and_api_key("ws://127.0.0.1:59039", "TODO")
-            .unwrap()
-            .transcription()
-            .stream_request()
-            .channels(1)
-            .encoding(deepgram::common::options::Encoding::Linear16)
-            .sample_rate(16000)
-            .stream(audio)
-            .await
-            .unwrap();
+        let mut stream =
+            deepgram::Deepgram::with_base_url_and_api_key("ws://127.0.0.1:52978", "TODO")
+                .unwrap()
+                .transcription()
+                .stream_request_with_options(
+                    deepgram::common::options::Options::builder()
+                        .model(deepgram::common::options::Model::CustomId(
+                            "whisper-cpp-small-q8".to_string(),
+                        ))
+                        .build(),
+                )
+                .channels(1)
+                .encoding(deepgram::common::options::Encoding::Linear16)
+                .sample_rate(16000)
+                .stream(audio)
+                .await
+                .unwrap();
 
         while let Some(result) = stream.next().await {
             println!("{:?}", result);

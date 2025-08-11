@@ -593,16 +593,11 @@ async fn setup_listen_client<R: tauri::Runtime>(
 
     tracing::info!(api_base = ?api_base, api_key = ?api_key, languages = ?languages, "listen_client");
 
-    // Disabled static prompt since it seems to degrade transcription quality.
-    let static_prompt = "".to_string();
-
     Ok(owhisper_client::ListenClient::builder()
         .api_base(api_base)
         .api_key(api_key)
         .params(owhisper_interface::ListenParams {
             languages,
-            static_prompt,
-            redemption_time_ms: if is_onboarding { 70 } else { 500 },
             ..Default::default()
         })
         .build_dual())

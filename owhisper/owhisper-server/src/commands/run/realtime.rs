@@ -158,7 +158,6 @@ async fn run_audio_stream_with_stop(
         .params(owhisper_interface::ListenParams {
             model: Some(model),
             languages: vec![hypr_language::ISO639::En.into()],
-            redemption_time_ms: 500,
             ..Default::default()
         })
         .build_single();

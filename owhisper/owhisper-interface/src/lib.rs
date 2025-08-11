@@ -101,17 +101,23 @@ impl Default for AudioMode {
 }
 
 common_derives! {
-    #[derive(Default)]
     pub struct ListenParams {
         #[serde(default)]
         pub model: Option<String>,
-        pub audio_mode: AudioMode,
+        pub channels: u8,
         // https://docs.rs/axum-extra/0.10.1/axum_extra/extract/struct.Query.html#example-1
         #[serde(default)]
         pub languages: Vec<hypr_language::Language>,
-        pub static_prompt: String,
-        pub dynamic_prompt: String,
-        pub redemption_time_ms: u64,
+    }
+}
+
+impl Default for ListenParams {
+    fn default() -> Self {
+        ListenParams {
+            model: None,
+            channels: 1,
+            languages: vec![],
+        }
     }
 }
 
