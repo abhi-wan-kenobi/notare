@@ -46,6 +46,30 @@ pub enum Model {
     MoonshineOnnxBaseQ8,
 }
 
+impl Model {
+    pub fn verify(&self, assets_dir: &std::path::Path) -> Result<(), crate::Error> {
+        for asset in self.assets() {
+            let asset_path = assets_dir.join(&asset.name);
+
+            if !asset_path.exists() {
+                return Err(crate::Error::FileNotFound(asset_path));
+            }
+
+            let metadata = std::fs::metadata(&asset_path)?;
+            if metadata.len() != asset.size {
+                return Err(crate::Error::FileSizeMismatch(asset_path));
+            }
+
+            let checksum = hypr_file::calculate_file_checksum(&asset_path)?;
+            if checksum != asset.checksum {
+                return Err(crate::Error::FileChecksumMismatch(asset_path));
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl TryFrom<Model> for HyprWhisper {
     type Error = crate::Error;
 

@@ -30,8 +30,14 @@ pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
     }
 
     if to_download.is_empty() {
-        log::info!("Model {} already downloaded", args.model);
-        return Ok(());
+        if let Err(e) = args.model.verify(&model_dir) {
+            std::fs::remove_dir_all(&model_dir).ok();
+            log::error!("Model {} already downloaded, but corrupted", args.model);
+            return Err(e.into());
+        } else {
+            log::info!("Model {} already downloaded", args.model);
+            return Ok(());
+        }
     }
 
     let multi_progress = Arc::new(MultiProgress::new());
@@ -101,6 +107,12 @@ pub async fn handle_pull(args: PullArgs) -> anyhow::Result<()> {
     }
 
     multi_progress.clear().ok();
+
+    if let Err(e) = args.model.verify(&model_dir) {
+        log::warn!("Failed to verify model {}", args.model);
+        std::fs::remove_dir_all(&model_dir).ok();
+        return Err(e.into());
+    }
 
     if !downloaded_assets.is_empty() {
         let config_path = owhisper_config::global_config_path();
