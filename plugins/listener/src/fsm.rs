@@ -439,14 +439,12 @@ impl Session {
         let mic_audio_stream = channels
             .process_mic_rx
             .into_stream()
-            .chunks(2)
-            .map(|chunk| hypr_audio_utils::f32_to_i16_bytes(chunk.into_iter().flatten()));
+            .map(|v| hypr_audio_utils::f32_to_i16_bytes(v.into_iter()));
 
         let speaker_audio_stream = channels
             .process_speaker_rx
             .into_stream()
-            .chunks(2)
-            .map(|chunk| hypr_audio_utils::f32_to_i16_bytes(chunk.into_iter().flatten()));
+            .map(|v| hypr_audio_utils::f32_to_i16_bytes(v.into_iter()));
 
         tasks.spawn({
             let app = self.app.clone();
