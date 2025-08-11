@@ -241,6 +241,59 @@ mod tests {
     }
 
     #[tokio::test]
+    // cargo test -p owhisper-client test_owhisper_with_owhisper -- --nocapture
+    async fn test_owhisper_with_owhisper() {
+        let audio = rodio::Decoder::new(std::io::BufReader::new(
+            std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
+        ))
+        .unwrap()
+        .to_i16_le_chunks(16000, 512);
+
+        let client = ListenClient::builder()
+            .api_base("ws://127.0.0.1:59039")
+            .api_key("".to_string())
+            .params(owhisper_interface::ListenParams {
+                model: Some("whisper-cpp-small-q8".to_string()),
+                languages: vec![hypr_language::ISO639::En.into()],
+                ..Default::default()
+            })
+            .build_single();
+
+        let stream = client.from_realtime_audio(audio).await.unwrap();
+        futures_util::pin_mut!(stream);
+
+        while let Some(result) = stream.next().await {
+            println!("{:?}", result);
+        }
+    }
+
+    #[tokio::test]
+    // cargo test -p owhisper-client test_owhisper_with_deepgram -- --nocapture
+    async fn test_owhisper_with_deepgram() {
+        let audio = rodio::Decoder::new(std::io::BufReader::new(
+            std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
+        ))
+        .unwrap()
+        .to_i16_le_chunks(16000, 512)
+        .map(Ok::<_, std::io::Error>);
+
+        let stream = deepgram::Deepgram::with_base_url_and_api_key("ws://127.0.0.1:59039", "TODO")
+            .unwrap()
+            .transcription()
+            .stream_request()
+            .channels(1)
+            .encoding(deepgram::common::options::Encoding::Linear16)
+            .sample_rate(16000)
+            .stream(audio)
+            .await
+            .unwrap();
+
+        while let Some(result) = stream.next().await {
+            println!("{:?}", result);
+        }
+    }
+
+    #[tokio::test]
     // cargo test -p owhisper-client test_client_ag -- --nocapture
     async fn test_client_ag() {
         let audio_1 = rodio::Decoder::new(std::io::BufReader::new(
@@ -266,33 +319,6 @@ mod tests {
             .build_dual();
 
         let stream = client.from_realtime_audio(audio_1, audio_2).await.unwrap();
-        futures_util::pin_mut!(stream);
-
-        while let Some(result) = stream.next().await {
-            println!("{:?}", result);
-        }
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_client_owhisper() {
-        let audio = rodio::Decoder::new(std::io::BufReader::new(
-            std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
-        ))
-        .unwrap()
-        .to_i16_le_chunks(16000, 512);
-
-        let client = ListenClient::builder()
-            .api_base("ws://127.0.0.1:1234/v1/realtime")
-            .api_key("".to_string())
-            .params(owhisper_interface::ListenParams {
-                model: Some("whisper-cpp".to_string()),
-                languages: vec![hypr_language::ISO639::En.into()],
-                ..Default::default()
-            })
-            .build_single();
-
-        let stream = client.from_realtime_audio(audio).await.unwrap();
         futures_util::pin_mut!(stream);
 
         while let Some(result) = stream.next().await {

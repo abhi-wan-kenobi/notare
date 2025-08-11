@@ -17,6 +17,7 @@ serde_json = { workspace = true }
 url = { workspace = true }
 
 [dev-dependencies]
+deepgram = { workspace = true, features = ["listen"] }
 hypr-data = { workspace = true }
 rodio = { workspace = true }
 tokio = { workspace = true }

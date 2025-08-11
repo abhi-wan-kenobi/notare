@@ -226,6 +226,12 @@ impl Session {
             (record, languages, jargons)
         };
 
+        let session = self
+            .app
+            .db_get_session(&session_id)
+            .await?
+            .ok_or(crate::Error::NoneSession)?;
+
         let (mic_muted_tx, mic_muted_rx_main) = tokio::sync::watch::channel(false);
         let (speaker_muted_tx, speaker_muted_rx_main) = tokio::sync::watch::channel(false);
         let (session_state_tx, session_state_rx) =
@@ -465,25 +471,31 @@ impl Session {
                         Ok(Some(response)) => {
                             let diff = manager.append(response.clone());
 
+                            let partial_words = diff
+                                .partial_words
+                                .iter()
+                                .map(|w| owhisper_interface::Word2::from(w.clone()))
+                                .collect::<Vec<_>>();
+
                             SessionEvent::PartialWords {
-                                words: diff
-                                    .partial_words
-                                    .iter()
-                                    .map(|w| owhisper_interface::Word2::from(w.clone()))
-                                    .collect::<Vec<_>>(),
+                                words: partial_words,
                             }
                             .emit(&app)
                             .unwrap();
 
-                            SessionEvent::FinalWords {
-                                words: diff
-                                    .final_words
-                                    .iter()
-                                    .map(|w| owhisper_interface::Word2::from(w.clone()))
-                                    .collect::<Vec<_>>(),
-                            }
-                            .emit(&app)
-                            .unwrap();
+                            let final_words = diff
+                                .final_words
+                                .iter()
+                                .map(|w| owhisper_interface::Word2::from(w.clone()))
+                                .collect::<Vec<_>>();
+
+                            update_session(&app, &session.id, final_words.clone())
+                                .await
+                                .unwrap();
+
+                            SessionEvent::FinalWords { words: final_words }
+                                .emit(&app)
+                                .unwrap();
                         }
                         Ok(None) => {
                             tracing::info!("listen_stream_ended");
@@ -594,6 +606,26 @@ async fn setup_listen_client<R: tauri::Runtime>(
             ..Default::default()
         })
         .build_dual())
+}
+
+async fn update_session<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    session_id: impl Into<String>,
+    words: Vec<owhisper_interface::Word2>,
+) -> Result<Vec<owhisper_interface::Word2>, crate::Error> {
+    use tauri_plugin_db::DatabasePluginExt;
+
+    // TODO: not ideal. We might want to only do "update" everywhere instead of upserts.
+    // We do this because it is highly likely that the session fetched in the listener is stale (session can be updated on the React side).
+    let mut session = app
+        .db_get_session(session_id)
+        .await?
+        .ok_or(crate::Error::NoneSession)?;
+
+    session.words.extend(words);
+    app.db_upsert_session(session.clone()).await.unwrap();
+
+    Ok(session.words)
 }
 
 pub enum StateEvent {
