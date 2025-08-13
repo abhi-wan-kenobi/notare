@@ -188,12 +188,19 @@ dependencies = [
 name = "am"
 version = "0.1.0"
 dependencies = [
+ "dirs 6.0.0",
+ "download-interface",
+ "file",
+ "hf-hub 0.4.3",
  "reqwest 0.12.22",
  "serde",
  "serde_json",
  "specta",
+ "strum 0.26.3",
+ "tar",
  "thiserror 2.0.12",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -4082,6 +4089,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 
 [[package]]
+name = "download-interface"
+version = "0.1.0"
+dependencies = [
+ "dirs 6.0.0",
+ "serde",
+]
+
+[[package]]
 name = "dpi"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4533,6 +4548,7 @@ dependencies = [
  "base64 0.22.1",
  "crc32fast",
  "dirs 6.0.0",
+ "download-interface",
  "futures-util",
  "reqwest 0.12.22",
  "s3",
@@ -10225,6 +10241,7 @@ dependencies = [
  "rodio",
  "serde_json",
  "tokio",
+ "tracing",
  "url",
  "ws",
 ]
@@ -10294,6 +10311,7 @@ dependencies = [
  "cpal",
  "data",
  "dirs 6.0.0",
+ "download-interface",
  "env_logger",
  "file",
  "futures-util",
@@ -14598,6 +14616,7 @@ dependencies = [
  "data",
  "db-core",
  "db-user",
+ "dirs 6.0.0",
  "flume",
  "futures-util",
  "hound",
@@ -14642,6 +14661,7 @@ dependencies = [
  "async-stream",
  "axum 0.8.4",
  "dirs 6.0.0",
+ "download-interface",
  "file",
  "futures-util",
  "gbnf",
@@ -14676,6 +14696,7 @@ dependencies = [
  "axum-extra",
  "data",
  "dirs 6.0.0",
+ "download-interface",
  "file",
  "futures-util",
  "inventory",

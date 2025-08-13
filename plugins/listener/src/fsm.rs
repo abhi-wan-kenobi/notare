@@ -243,7 +243,6 @@ impl Session {
 
         let listen_client =
             setup_listen_client(&self.app, languages, session_id == onboarding_session_id).await?;
-
         let mic_sample_stream = {
             let mut input = hypr_audio::AudioInput::from_mic(self.mic_device_name.clone())?;
             input.stream()
@@ -570,9 +569,9 @@ async fn setup_listen_client<R: tauri::Runtime>(
     is_onboarding: bool,
 ) -> Result<owhisper_client::ListenClientDual, crate::Error> {
     let api_base = {
-        use tauri_plugin_connector::{Connection, ConnectorPluginExt};
-        let conn: Connection = app.get_stt_connection().await?.into();
-        conn.api_base
+        use tauri_plugin_local_stt::LocalSttPluginExt;
+        let conn = app.get_connection().await?;
+        conn.base_url
     };
 
     let api_key = {
