@@ -7,7 +7,6 @@ pub use remote::*;
 pub use types::*;
 
 use {
-    crate::Error::OtherError,
     futures_util::{stream::FuturesUnordered, StreamExt, TryStreamExt},
     hypr_download_interface::DownloadProgress,
     reqwest::StatusCode,
@@ -212,12 +211,14 @@ pub async fn download_file_parallel<F: Fn(DownloadProgress) + Send + Sync>(
                 .send()
                 .await?;
 
-            if response.status() != StatusCode::PARTIAL_CONTENT {
-                return Err(OtherError(format!(
-                    "Something went wrong. Please try again. (status: {})",
-                    response.status()
-                )));
-            }
+            // https://community.cloudflare.com/t/public-r2-bucket-doesnt-handle-range-requests-well/434221/4
+            // if response.status() != StatusCode::PARTIAL_CONTENT {
+            //     return Err(OtherError(format!(
+            //         "Something went wrong. Please try again. (status: {})",
+            //         response.status()
+            //     )));
+            // }
+
             let mut bytes = Vec::new();
             let mut stream = response.bytes_stream();
 

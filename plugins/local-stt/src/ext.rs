@@ -244,9 +244,13 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
 
                     #[cfg(not(debug_assertions))]
                     self.shell()
-                        .sidecar("stt")?
+                        .command(
+                            tauri::utils::platform::current_exe()?
+                                .parent()
+                                .unwrap()
+                                .join("stt"),
+                        )
                         .current_dir(dirs::home_dir().unwrap())
-                        .env("LSUIElement", "1")
                         .args(["serve", "-v"])
                 };
 

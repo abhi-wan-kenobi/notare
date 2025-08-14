@@ -44,6 +44,8 @@ pub async fn run_server(
     am_key: String,
 ) -> Result<ServerHandle, crate::Error> {
     let port = 6942;
+    let _ = port_killer::kill(port);
+
     let (mut rx, child) = cmd.args(["--port", &port.to_string()]).spawn()?;
 
     let base_url = format!("http://localhost:{}", port);
