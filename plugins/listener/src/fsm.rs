@@ -568,24 +568,14 @@ async fn setup_listen_client<R: tauri::Runtime>(
     languages: Vec<hypr_language::Language>,
     is_onboarding: bool,
 ) -> Result<owhisper_client::ListenClientDual, crate::Error> {
-    let api_base = {
+    let conn = {
         use tauri_plugin_local_stt::LocalSttPluginExt;
-        let conn = app.get_connection().await?;
-        conn.base_url
+        app.get_connection().await?
     };
-
-    let api_key = {
-        use tauri_plugin_auth::AuthPluginExt;
-        app.get_from_vault(tauri_plugin_auth::VaultKey::RemoteServer)
-            .unwrap_or_default()
-            .unwrap_or_default()
-    };
-
-    tracing::info!(api_base = ?api_base, api_key = ?api_key, languages = ?languages, "listen_client");
 
     Ok(owhisper_client::ListenClient::builder()
-        .api_base(api_base)
-        .api_key(api_key)
+        .api_base(conn.base_url)
+        .api_key(conn.api_key.unwrap_or_default())
         .params(owhisper_interface::ListenParams {
             languages,
             redemption_time_ms: Some(if is_onboarding { 70 } else { 500 }),

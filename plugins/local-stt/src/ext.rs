@@ -68,6 +68,12 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
     async fn get_connection(&self) -> Result<Connection, crate::Error> {
         let model = self.get_current_model()?;
 
+        let am_key = {
+            let state = self.state::<crate::SharedState>();
+            let key = state.lock().await.am_api_key.clone();
+            key.clone().ok_or(crate::Error::AmApiKeyNotSet)?
+        };
+
         match model {
             SupportedSttModel::Am(_) => {
                 let existing_api_base = {
@@ -77,10 +83,16 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                 };
 
                 let conn = match existing_api_base {
-                    Some(api_base) => Connection { base_url: api_base },
+                    Some(api_base) => Connection {
+                        base_url: api_base,
+                        api_key: Some(am_key),
+                    },
                     None => {
                         let api_base = self.start_server(Some(model)).await?;
-                        Connection { base_url: api_base }
+                        Connection {
+                            base_url: api_base,
+                            api_key: Some(am_key),
+                        }
                     }
                 };
                 Ok(conn)
@@ -93,10 +105,16 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                 };
 
                 let conn = match existing_api_base {
-                    Some(api_base) => Connection { base_url: api_base },
+                    Some(api_base) => Connection {
+                        base_url: api_base,
+                        api_key: None,
+                    },
                     None => {
                         let api_base = self.start_server(Some(model)).await?;
-                        Connection { base_url: api_base }
+                        Connection {
+                            base_url: api_base,
+                            api_key: None,
+                        }
                     }
                 };
                 Ok(conn)
@@ -221,14 +239,15 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                             .command(passthrough_path)
                             .current_dir(dirs::home_dir().unwrap())
                             .arg(stt_path)
-                            .args(["serve", "--any-token", "-v", "-d"])
+                            .args(["serve", "-v", "-d"])
                     }
 
                     #[cfg(not(debug_assertions))]
                     self.shell()
                         .sidecar("stt")?
                         .current_dir(dirs::home_dir().unwrap())
-                        .args(["serve"])
+                        .env("LSUIElement", "1")
+                        .args(["serve", "-v"])
                 };
 
                 let server = external::run_server(cmd, am_key).await?;

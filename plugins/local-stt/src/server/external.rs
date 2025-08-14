@@ -1,6 +1,6 @@
 pub struct ServerHandle {
     pub base_url: String,
-    api_key: String,
+    api_key: Option<String>,
     shutdown: tokio::sync::watch::Sender<()>,
     child: tauri_plugin_shell::process::CommandChild,
     client: hypr_am::Client,
@@ -29,7 +29,10 @@ impl ServerHandle {
     ) -> Result<hypr_am::InitResponse, crate::Error> {
         let r = self
             .client
-            .init(hypr_am::InitRequest::new(self.api_key.clone()).with_model(model, models_dir))
+            .init(
+                hypr_am::InitRequest::new(self.api_key.clone().unwrap())
+                    .with_model(model, models_dir),
+            )
             .await?;
 
         Ok(r)
@@ -81,7 +84,7 @@ pub async fn run_server(
     });
 
     Ok(ServerHandle {
-        api_key: am_key,
+        api_key: Some(am_key),
         base_url,
         shutdown: shutdown_tx,
         child,
