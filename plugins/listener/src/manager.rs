@@ -39,7 +39,9 @@ impl TranscriptManager {
             is_final, channel, ..
         } = response
         {
-            let words = &channel.alternatives[0]
+            let data = &channel.alternatives[0];
+
+            let words = data
                 .words
                 .clone()
                 .into_iter()
@@ -55,7 +57,7 @@ impl TranscriptManager {
 
             if is_final {
                 let last_final_word_end = words.last().unwrap().end;
-                let partial_words = self
+                self.partial_words = self
                     .partial_words
                     .iter()
                     .filter(|w| w.start > last_final_word_end)
@@ -64,19 +66,34 @@ impl TranscriptManager {
 
                 return Diff {
                     final_words: words.clone(),
-                    partial_words,
+                    partial_words: self.partial_words.clone(),
                 };
-            } else {
-                self.partial_words = words.clone();
+            } else if data.confidence > 0.6 {
+                self.partial_words = {
+                    let mut merged = Vec::new();
+                    if let Some(first_start) = words.first().map(|w| w.start) {
+                        merged.extend(
+                            self.partial_words
+                                .iter()
+                                .filter(|w| w.end <= first_start)
+                                .cloned(),
+                        );
+                    }
+                    merged.extend(words.clone());
+                    merged
+                };
 
                 return Diff {
                     final_words: vec![],
-                    partial_words: words.clone(),
+                    partial_words: self.partial_words.clone(),
                 };
             }
         }
 
-        Diff::default()
+        Diff {
+            final_words: vec![],
+            partial_words: self.partial_words.clone(),
+        }
     }
 
     fn log(id: uuid::Uuid, response: &owhisper_interface::StreamResponse) {

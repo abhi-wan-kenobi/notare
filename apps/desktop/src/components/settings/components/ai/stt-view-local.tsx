@@ -211,11 +211,11 @@ function ProModelsManagement(
       <div className="max-w-2xl">
         <div className="flex flex-col mb-3">
           <div className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-            <h3>Pro Models</h3>
+            <h3>Pro Models (Preview)</h3>
             <span className={cn(["w-2 h-2 rounded-full", on ? "bg-blue-300 animate-pulse" : "bg-gray-100"])} />
           </div>
           <p className="text-xs text-gray-500">
-            Latency and resource optimized. Only for pro plan users. (Experimental)
+            Latency and resource optimized. Only for pro plan users.
           </p>
         </div>
 

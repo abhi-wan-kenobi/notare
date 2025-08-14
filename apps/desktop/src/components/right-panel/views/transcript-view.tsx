@@ -241,7 +241,6 @@ function RenderEmpty({ sessionId, panelWidth }: {
           <Button
             size="sm"
             onClick={handleStartRecording}
-            disabled={ongoingSession.loading}
             className={isUltraCompact ? "px-3" : ""}
             title={isUltraCompact ? (ongoingSession.loading ? "Starting..." : "Start recording") : undefined}
           >
