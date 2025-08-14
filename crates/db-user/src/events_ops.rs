@@ -241,6 +241,7 @@ mod tests {
             end_date: chrono::Utc::now(),
             google_event_url: None,
             participants: None,
+            is_recurring: false,
         };
 
         let event = db.upsert_event(event).await.unwrap();
