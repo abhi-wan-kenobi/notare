@@ -129,11 +129,13 @@ async fn _sync_events(
     let mut handled_system_event_ids = std::collections::HashSet::<String>::new();
 
     // Collect all system events for rescheduled event detection
+    /*
     let all_system_events: Vec<&hypr_calendar_interface::Event> =
         system_events_per_selected_calendar
             .values()
             .flatten()
             .collect();
+    */
 
     // Process existing events:
     for (db_event, session) in &db_events_with_session {
@@ -141,6 +143,8 @@ async fn _sync_events(
             .iter()
             .any(|c| c.id == db_event.calendar_id.clone().unwrap_or_default());
 
+        // if the event is not from a selected calendar and has no session, delete it
+        // applies to both recurring and non-recurring events
         if !is_selected_cal && session.as_ref().map_or(true, |s| s.is_empty()) {
             state.to_delete.push(db_event.clone());
             continue;
@@ -149,10 +153,17 @@ async fn _sync_events(
         if let Some(ref calendar_id) = db_event.calendar_id {
             if let Some(events) = system_events_per_selected_calendar.get(calendar_id) {
                 // Check if event exists with same tracking_id
-                if let Some(matching_event) = events.iter().find(|e| e.id == db_event.tracking_id) {
+                if let Some(matching_event) = events.iter().find(|e| {
+                    let system_composite_id = if e.is_recurring {
+                        format!("{}__HYPR__{}", e.id, e.start_date.format("%Y%m%d%H%M%S"))
+                    } else {
+                        e.id.clone()
+                    };
+                    system_composite_id == db_event.tracking_id
+                }) {
                     let updated_event = hypr_db_user::Event {
                         id: db_event.id.clone(),
-                        tracking_id: matching_event.id.clone(),
+                        tracking_id: db_event.tracking_id.clone(),
                         user_id: user_id.clone(),
                         calendar_id: Some(calendar_id.clone()),
                         name: matching_event.name.clone(),
@@ -164,20 +175,37 @@ async fn _sync_events(
                             serde_json::to_string(&matching_event.participants)
                                 .unwrap_or_else(|_| "[]".to_string()),
                         ),
+                        is_recurring: matching_event.is_recurring,
                     };
                     state.to_update.push(updated_event);
 
+                    let composite_id = if matching_event.is_recurring {
+                        format!(
+                            "{}__HYPR__{}",
+                            matching_event.id,
+                            matching_event.start_date.format("%Y%m%d%H%M%S")
+                        )
+                    } else {
+                        matching_event.id.clone()
+                    };
                     // Mark this system event as handled
-                    handled_system_event_ids.insert(matching_event.id.clone());
+                    handled_system_event_ids.insert(composite_id);
                     continue;
                 }
 
+                /*
                 // Check for rescheduled events
                 if let Some(rescheduled_event) = find_potentially_rescheduled_event(
                     &db_event,
                     &all_system_events,
                     &db_selected_calendars,
                 ) {
+                    //temporary prevention
+                    if rescheduled_event.is_recurring {
+                        //tracing::info!("Skipping recurring event: {}", rescheduled_event.id);
+                        continue;
+                    }
+
                     let updated_event = hypr_db_user::Event {
                         id: db_event.id.clone(),
                         tracking_id: rescheduled_event.id.clone(),
@@ -199,6 +227,7 @@ async fn _sync_events(
                     handled_system_event_ids.insert(rescheduled_event.id.clone());
                     continue;
                 }
+                */
 
                 state.to_delete.push(db_event.clone());
             } else {
@@ -213,11 +242,21 @@ async fn _sync_events(
     for db_calendar in db_selected_calendars {
         if let Some(fresh_events) = system_events_per_selected_calendar.get(&db_calendar.id) {
             for system_event in fresh_events {
+                let composite_tracking_id = if system_event.is_recurring {
+                    format!(
+                        "{}__HYPR__{}",
+                        system_event.id,
+                        system_event.start_date.format("%Y%m%d%H%M%S")
+                    )
+                } else {
+                    system_event.id.clone()
+                };
+
                 // Skip if this event was already handled as an update
                 let already_handled = state
                     .to_update
                     .iter()
-                    .any(|e| e.tracking_id == system_event.id);
+                    .any(|e| e.tracking_id == composite_tracking_id);
                 if already_handled {
                     continue;
                 }
@@ -225,7 +264,7 @@ async fn _sync_events(
                 // Skip if this event already exists in the database with the same tracking_id
                 let already_exists = db_events_with_session
                     .iter()
-                    .any(|(db_event, _)| db_event.tracking_id == system_event.id);
+                    .any(|(db_event, _)| db_event.tracking_id == composite_tracking_id);
                 if already_exists {
                     continue;
                 }
@@ -233,7 +272,7 @@ async fn _sync_events(
                 // This is a genuinely new event
                 let new_event = hypr_db_user::Event {
                     id: uuid::Uuid::new_v4().to_string(),
-                    tracking_id: system_event.id.clone(),
+                    tracking_id: composite_tracking_id,
                     user_id: user_id.clone(),
                     calendar_id: Some(db_calendar.id.clone()),
                     name: system_event.name.clone(),
@@ -245,6 +284,7 @@ async fn _sync_events(
                         serde_json::to_string(&system_event.participants)
                             .unwrap_or_else(|_| "[]".to_string()),
                     ),
+                    is_recurring: system_event.is_recurring,
                 };
                 state.to_upsert.push(new_event);
             }
@@ -254,6 +294,7 @@ async fn _sync_events(
     Ok(state)
 }
 
+/*
 fn find_potentially_rescheduled_event<'a>(
     db_event: &hypr_db_user::Event,
     system_events: &'a [&hypr_calendar_interface::Event],
@@ -270,6 +311,8 @@ fn find_potentially_rescheduled_event<'a>(
     system_events
         .iter()
         .find(|sys_event| {
+            //temporary prevention
+            !sys_event.is_recurring &&
             // Must have the same name
             sys_event.name == db_event.name &&
             // Must belong to the same calendar (compare tracking IDs)
@@ -281,6 +324,7 @@ fn find_potentially_rescheduled_event<'a>(
         })
         .copied()
 }
+*/
 
 async fn list_system_calendars() -> Vec<hypr_calendar_interface::Calendar> {
     tauri::async_runtime::spawn_blocking(|| {
@@ -340,9 +384,12 @@ async fn list_system_events_for_calendars(
 
             for event in &events {
                 tracing::info!(
-                    "System event: '{}' | participants: {:?}",
+                    "System event: '{}' | participants: {:?} | is_recurring: {} | start_date: {} | tracking_id: {}",
                     event.name,
-                    event.participants
+                    event.participants,
+                    event.is_recurring,
+                    event.start_date,
+                    event.id,
                 );
             }
 
