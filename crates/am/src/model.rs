@@ -36,7 +36,7 @@ impl AmModel {
     pub fn display_name(&self) -> &str {
         match self {
             AmModel::ParakeetV2 => "Parakeet V2 (English)",
-            AmModel::WhisperLargeV3 => "Whisper Large V3 (Multilingual)",
+            AmModel::WhisperLargeV3 => "Whisper Large V3 (English)",
         }
     }
 

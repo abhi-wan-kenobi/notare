@@ -5,7 +5,7 @@ import { DownloadIcon, FolderIcon } from "lucide-react";
 import { useEffect, useMemo } from "react";
 
 import { useLicense } from "@/hooks/use-license";
-import { commands as localSttCommands, type WhisperModel } from "@hypr/plugin-local-stt";
+import { commands as localSttCommands, SupportedSttModel, type WhisperModel } from "@hypr/plugin-local-stt";
 import { Button } from "@hypr/ui/components/ui/button";
 import { cn } from "@hypr/ui/lib/utils";
 import { SharedSTTProps, STTModel } from "./shared";
@@ -53,6 +53,8 @@ export function STTViewLocal({
         localSttCommands.isModelDownloaded("QuantizedSmall"),
         localSttCommands.isModelDownloaded("QuantizedSmallEn"),
         localSttCommands.isModelDownloaded("QuantizedLargeTurbo"),
+        localSttCommands.isModelDownloaded("am-parakeet-v2"),
+        localSttCommands.isModelDownloaded("am-whisper-large-v3"),
       ]);
       return {
         "QuantizedTiny": statusChecks[0],
@@ -62,7 +64,7 @@ export function STTViewLocal({
         "QuantizedSmall": statusChecks[4],
         "QuantizedSmallEn": statusChecks[5],
         "QuantizedLargeTurbo": statusChecks[6],
-      } as Record<string, boolean>;
+      } as Record<SupportedSttModel, boolean>;
     },
     refetchInterval: 3000,
   });
@@ -72,7 +74,7 @@ export function STTViewLocal({
       setSttModels(prev =>
         prev.map(model => ({
           ...model,
-          downloaded: sttModelDownloadStatus.data[model.key] || false,
+          downloaded: sttModelDownloadStatus.data[model.key as SupportedSttModel] || false,
         }))
       );
     }
@@ -201,6 +203,7 @@ function ProModelsManagement(
         fileName: "",
       }));
     },
+    refetchInterval: 3000,
   });
 
   return (
