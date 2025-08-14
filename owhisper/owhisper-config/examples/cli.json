@@ -4,7 +4,7 @@
     {
       "type": "whisper-cpp",
       "id": "whisper-tiny",
-      "assets_dir": "./whisper-cpp-tiny"
+      "assets_dir": "./whisper-tiny"
     }
   ]
 }
