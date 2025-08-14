@@ -98,6 +98,27 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
             Ok(())
         })
+        .on_event(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                let state = app.state::<SharedState>();
+
+                tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        let mut guard = state.lock().await;
+
+                        if let Some(server) = guard.internal_server.take() {
+                            let _ = server.terminate();
+                        }
+                        if let Some(server) = guard.external_server.take() {
+                            let _ = server.terminate();
+                        }
+                        for (_, task) in guard.download_task.drain() {
+                            task.abort();
+                        }
+                    });
+                });
+            }
+        })
         .build()
 }
 
