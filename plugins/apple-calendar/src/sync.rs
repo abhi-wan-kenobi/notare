@@ -269,21 +269,6 @@ async fn _sync_events(
                     continue;
                 }
 
-                // don't create a new recurring event if it already exists in the database with the same start date, tracking_id, name and is_recurring
-                // only for backward compatibility with the old database structure
-                let already_exists_in_db_recurring =
-                    db_events_with_session.iter().any(|(db_event, session)| {
-                        (db_event.start_date == system_event.start_date)
-                            && (db_event.tracking_id == system_event.id)
-                            && (system_event.is_recurring)
-                            && (db_event.name == system_event.name)
-                            && (db_event.is_recurring == false)
-                            && session.as_ref().map_or(false, |s| !s.is_empty())
-                    });
-                if already_exists_in_db_recurring {
-                    continue;
-                }
-
                 // This is a genuinely new event
                 let new_event = hypr_db_user::Event {
                     id: uuid::Uuid::new_v4().to_string(),
