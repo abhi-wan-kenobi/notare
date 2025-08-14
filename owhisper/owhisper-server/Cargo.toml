@@ -44,7 +44,7 @@ hypr-transcribe-whisper-local = { workspace = true }
 
 aide = { version = "0.15.0", features = ["axum"] }
 axum = { workspace = true }
-axum-extra = { workspace = true, features = ["typed-header"] }
+axum-extra = { workspace = true, features = ["typed-header", "query"] }
 futures-util = { workspace = true }
 rustls = { version = "0.23.31", features = ["ring"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
