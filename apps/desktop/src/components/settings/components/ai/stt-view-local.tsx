@@ -215,7 +215,7 @@ function ProModelsManagement(
             <span className={cn(["w-2 h-2 rounded-full", on ? "bg-blue-300 animate-pulse" : "bg-gray-100"])} />
           </div>
           <p className="text-xs text-gray-500">
-            Latency and resource optimized. Only for pro plan users.
+            Latency and resource optimized. Only for pro plan users. (Experimental)
           </p>
         </div>
 
