@@ -171,7 +171,9 @@ fn build_whisper_cpp_service(
 fn build_moonshine_service(
     config: &owhisper_config::MoonshineModelConfig,
 ) -> anyhow::Result<hypr_transcribe_moonshine::TranscribeService> {
-    let files: Vec<_> = std::fs::read_dir(&config.assets_dir)?.filter_map(Result::ok).collect();
+    let files: Vec<_> = std::fs::read_dir(&config.assets_dir)?
+        .filter_map(Result::ok)
+        .collect();
 
     let tokenizer = files
         .iter()
