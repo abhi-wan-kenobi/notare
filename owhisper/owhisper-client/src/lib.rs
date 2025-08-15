@@ -200,7 +200,13 @@ impl ListenClient {
     pub async fn from_realtime_audio(
         &self,
         audio_stream: impl Stream<Item = ListenClientInput> + Send + Unpin + 'static,
-    ) -> Result<impl Stream<Item = StreamResponse>, hypr_ws::Error> {
+    ) -> Result<
+        (
+            impl Stream<Item = StreamResponse>,
+            hypr_ws::client::WebSocketHandle,
+        ),
+        hypr_ws::Error,
+    > {
         let ws = WebSocketClient::new(self.request.clone());
         ws.from_audio::<Self>(audio_stream).await
     }
@@ -210,7 +216,13 @@ impl ListenClientDual {
     pub async fn from_realtime_audio(
         &self,
         stream: impl Stream<Item = ListenClientDualInput> + Send + Unpin + 'static,
-    ) -> Result<impl Stream<Item = StreamResponse>, hypr_ws::Error> {
+    ) -> Result<
+        (
+            impl Stream<Item = StreamResponse>,
+            hypr_ws::client::WebSocketHandle,
+        ),
+        hypr_ws::Error,
+    > {
         let ws = WebSocketClient::new(self.request.clone());
         ws.from_audio::<Self>(stream).await
     }
@@ -243,7 +255,7 @@ mod tests {
             })
             .build_single();
 
-        let stream = client.from_realtime_audio(input).await.unwrap();
+        let (stream, _) = client.from_realtime_audio(input).await.unwrap();
         futures_util::pin_mut!(stream);
 
         while let Some(result) = stream.next().await {
@@ -271,7 +283,7 @@ mod tests {
             })
             .build_single();
 
-        let stream = client.from_realtime_audio(input).await.unwrap();
+        let (stream, _) = client.from_realtime_audio(input).await.unwrap();
         futures_util::pin_mut!(stream);
 
         while let Some(result) = stream.next().await {
@@ -341,7 +353,7 @@ mod tests {
             })
             .build_dual();
 
-        let stream = client.from_realtime_audio(input).await.unwrap();
+        let (stream, _) = client.from_realtime_audio(input).await.unwrap();
         futures_util::pin_mut!(stream);
 
         while let Some(result) = stream.next().await {

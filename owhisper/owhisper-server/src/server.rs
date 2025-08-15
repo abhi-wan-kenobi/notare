@@ -418,7 +418,7 @@ mod tests {
         .to_i16_le_chunks(16000, 512);
         let input = audio.map(|chunk| owhisper_interface::MixedMessage::Audio(chunk));
 
-        let stream = client.from_realtime_audio(input).await.unwrap();
+        let (stream, _) = client.from_realtime_audio(input).await.unwrap();
         futures_util::pin_mut!(stream);
 
         while let Some(result) = stream.next().await {

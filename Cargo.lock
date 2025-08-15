@@ -14629,6 +14629,7 @@ dependencies = [
  "audio-utils",
  "bytes",
  "chrono",
+ "chunker",
  "codes-iso-639",
  "data",
  "db-core",
@@ -17469,26 +17470,6 @@ name = "whisper"
 version = "0.1.0"
 dependencies = [
  "strum 0.26.3",
-]
-
-[[package]]
-name = "whisper-cloud"
-version = "0.1.0"
-dependencies = [
- "audio-utils",
- "bytes",
- "data",
- "dirs 6.0.0",
- "futures-util",
- "kalosm-sound",
- "llama",
- "rodio",
- "serde",
- "serde_json",
- "tokio",
- "url",
- "whisper",
- "ws",
 ]
 
 [[package]]

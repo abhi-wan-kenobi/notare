@@ -2,9 +2,30 @@ use serde::de::DeserializeOwned;
 
 use backon::{ConstantBuilder, Retryable};
 use futures_util::{SinkExt, Stream, StreamExt};
-use tokio_tungstenite::{connect_async, tungstenite::client::IntoClientRequest};
+use tokio_tungstenite::{
+    connect_async,
+    tungstenite::{client::IntoClientRequest, Utf8Bytes},
+};
 
 pub use tokio_tungstenite::tungstenite::{protocol::Message, ClientRequestBuilder};
+
+#[derive(Debug)]
+enum ControlCommand {
+    Finalize(Option<Message>),
+}
+
+#[derive(Clone)]
+pub struct WebSocketHandle {
+    control_tx: tokio::sync::mpsc::UnboundedSender<ControlCommand>,
+}
+
+impl WebSocketHandle {
+    pub async fn finalize_with_text(&self, text: Utf8Bytes) {
+        let _ = self
+            .control_tx
+            .send(ControlCommand::Finalize(Some(Message::Text(text))));
+    }
+}
 
 pub trait WebSocketIO: Send + 'static {
     type Data: Send;
@@ -28,7 +49,7 @@ impl WebSocketClient {
     pub async fn from_audio<T: WebSocketIO>(
         &self,
         mut audio_stream: impl Stream<Item = T::Data> + Send + Unpin + 'static,
-    ) -> Result<impl Stream<Item = T::Output>, crate::Error> {
+    ) -> Result<(impl Stream<Item = T::Output>, WebSocketHandle), crate::Error> {
         let ws_stream = (|| self.try_connect(self.request.clone()))
             .retry(
                 ConstantBuilder::default()
@@ -55,14 +76,35 @@ impl WebSocketClient {
 
         let (mut ws_sender, mut ws_receiver) = ws_stream.split();
 
-        let _send_task = tokio::spawn(async move {
-            while let Some(data) = audio_stream.next().await {
-                let input = T::to_input(data);
-                let msg = T::to_message(input);
+        // Create control channel for sending commands to the WebSocket
+        let (control_tx, mut control_rx) = tokio::sync::mpsc::unbounded_channel();
+        let handle = WebSocketHandle { control_tx };
 
-                if let Err(e) = ws_sender.send(msg).await {
-                    tracing::error!("ws_send_failed: {:?}", e);
-                    break;
+        let _send_task = tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    Some(data) = audio_stream.next() => {
+                        let input = T::to_input(data);
+                        let msg = T::to_message(input);
+
+                        if let Err(e) = ws_sender.send(msg).await {
+                            tracing::error!("ws_send_failed: {:?}", e);
+                            break;
+                        }
+                    }
+                    Some(cmd) = control_rx.recv() => {
+                        match cmd {
+                            ControlCommand::Finalize(maybe_msg) => {
+                                if let Some(msg) = maybe_msg {
+                                    if let Err(e) = ws_sender.send(msg).await {
+                                        tracing::error!("ws_finalize_failed: {:?}", e);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else => break,
                 }
             }
 
@@ -98,7 +140,7 @@ impl WebSocketClient {
             }
         };
 
-        Ok(output_stream)
+        Ok((output_stream, handle))
     }
 
     async fn try_connect(

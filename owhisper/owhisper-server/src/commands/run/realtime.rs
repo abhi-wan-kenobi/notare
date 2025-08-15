@@ -164,7 +164,7 @@ async fn run_audio_stream_with_stop(
         })
         .build_single();
 
-    let response_stream = client.from_realtime_audio(mic_stream).await?;
+    let (response_stream, _) = client.from_realtime_audio(mic_stream).await?;
     futures_util::pin_mut!(response_stream);
 
     while let Some(chunk) = response_stream.next().await {

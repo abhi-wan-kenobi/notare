@@ -22,6 +22,7 @@ hypr-aec = { workspace = true }
 hypr-agc = { workspace = true }
 hypr-audio = { workspace = true }
 hypr-audio-utils = { workspace = true }
+hypr-chunker = { workspace = true }
 hypr-data = { workspace = true }
 hypr-db-core = { workspace = true }
 hypr-db-user = { workspace = true }
