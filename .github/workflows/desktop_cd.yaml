@@ -93,6 +93,7 @@ jobs:
       - run: pnpm -F desktop lingui:compile
       - run: pnpm -F ui build
       - uses: ./.github/actions/apple_cert
+        id: apple-cert
         if: ${{ matrix.platform == 'macos' }}
         with:
           apple-certificate: ${{ secrets.APPLE_CERTIFICATE }}
@@ -113,8 +114,9 @@ jobs:
         run: |
           chmod +x ./apps/desktop/src-tauri/binaries/stt-${{ matrix.target }}
           chmod +x ./apps/desktop/src-tauri/binaries/passthrough-${{ matrix.target }}
+          codesign -s "${{ steps.apple-cert.outputs.cert-id }}" ./apps/desktop/src-tauri/binaries/stt-${{ matrix.target }}
+          codesign -dv ./apps/desktop/src-tauri/binaries/stt-${{ matrix.target }}
           ./scripts/sidecar.sh "./apps/desktop/src-tauri/tauri.conf.${{ env.RELEASE_CHANNEL }}.json" "binaries/stt"
-          ./scripts/sidecar.sh "./apps/desktop/src-tauri/tauri.conf.${{ env.RELEASE_CHANNEL }}.json" "binaries/passthrough"
       - run: pnpm -F desktop tauri build --target ${{ matrix.target }} --config ${{ env.TAURI_CONF_PATH }} --verbose
         env:
           # https://github.com/tauri-apps/tauri-action/issues/740
