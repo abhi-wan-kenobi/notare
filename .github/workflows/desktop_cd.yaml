@@ -114,8 +114,8 @@ jobs:
         run: |
           chmod +x ./apps/desktop/src-tauri/binaries/stt-${{ matrix.target }}
           chmod +x ./apps/desktop/src-tauri/binaries/passthrough-${{ matrix.target }}
-          codesign --force --options runtime --info-plist ./apps/desktop/src-tauri/Info.stt.plist -s "${{ steps.apple-cert.outputs.cert-id }}" ./apps/desktop/src-tauri/binaries/stt-${{ matrix.target }}
-          codesign -dv --verbose=4 ./apps/desktop/src-tauri/binaries/stt-${{ matrix.target }}
+          codesign --force --options runtime -s "${{ steps.apple-cert.outputs.cert-id }}" ./apps/desktop/src-tauri/binaries/stt-${{ matrix.target }}
+          codesign -dv ./apps/desktop/src-tauri/binaries/stt-${{ matrix.target }}
           ./scripts/sidecar.sh "./apps/desktop/src-tauri/tauri.conf.${{ env.RELEASE_CHANNEL }}.json" "binaries/stt"
       - run: pnpm -F desktop tauri build --target ${{ matrix.target }} --config ${{ env.TAURI_CONF_PATH }} --verbose
         env:
