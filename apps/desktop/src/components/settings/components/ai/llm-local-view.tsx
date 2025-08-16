@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { CloudIcon, DownloadIcon, FolderIcon } from "lucide-react";
+import { CloudIcon, DownloadIcon, FolderIcon, HelpCircleIcon } from "lucide-react";
 import { useEffect } from "react";
 
 import { useLicense } from "@/hooks/use-license";
@@ -58,7 +58,7 @@ export function LLMLocalView({
     setCustomLLMEnabledMutation.mutate(true);
     configureCustomEndpoint({
       provider: "hyprcloud",
-      api_base: "https://pro.hyprnote.com",
+      api_base: "https://pro.hyprnote.com/v1",
       api_key: "",
       model: "",
     });
@@ -74,32 +74,47 @@ export function LLMLocalView({
       <div className="max-w-2xl">
         <div className="space-y-2">
           {/* HyprCloud Option */}
-          <button
-            onClick={handleHyprCloudSelection}
-            disabled={!isPro}
+          <div
             className={cn(
-              buttonResetClass,
-              (isPro ? "" : "opacity-50 cursor-not-allowed")
-                + "group relative p-3 rounded-lg border-2 transition-all flex items-center justify-between cursor-pointer",
+              "group relative p-3 rounded-lg border-2 transition-all",
+              isPro ? "" : "opacity-50",
               isHyprCloudSelected
                 ? "border-solid border-blue-500 bg-blue-50"
                 : "border-dashed border-gray-300 hover:border-gray-400 bg-white",
             )}
           >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-4">
-                <div className="min-w-0">
-                  <h3 className="font-semibold text-base text-gray-900 flex items-center gap-2">
-                    <CloudIcon className="w-4 h-4" />
-                    HyprCloud
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Use HyprCloud's managed AI models with automatic configuration
-                  </p>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={handleHyprCloudSelection}
+                disabled={!isPro}
+                className={cn(
+                  buttonResetClass,
+                  isPro ? "cursor-pointer" : "cursor-not-allowed",
+                  "flex-1 min-w-0 block",
+                )}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-base text-gray-900 flex items-center gap-2">
+                      <CloudIcon className="w-4 h-4" />
+                      HyprCloud
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Managed LLM endpoint for Pro users. Click blue button to learn more.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              </button>
+              <a
+                href="https://docs.hyprnote.com/pro/cloud"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 transition-colors relative z-10 ml-2"
+              >
+                <HelpCircleIcon className="w-4 h-4" />
+              </a>
             </div>
-          </button>
+          </div>
 
           {/* Separator */}
           <div className="relative py-2">
