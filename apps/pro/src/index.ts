@@ -15,27 +15,26 @@ const app = new Hono();
 
 app.use(logger());
 app.use(contextCache());
-app.use(
-  rateLimiter({
-    windowMs: 15 * 60 * 1000,
-    limit: 100,
-    standardHeaders: "draft-6",
-    keyGenerator: (c) => {
-      const id = c.req.header("Authorization");
-      if (id) {
-        return id;
-      }
 
-      return getConnInfo(c).remote.address ?? crypto.randomUUID();
-    },
-  }),
-);
+const apiRateLimit = rateLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  standardHeaders: "draft-6",
+  keyGenerator: (c) => {
+    const id = c.req.header("Authorization");
+    if (id) {
+      return id;
+    }
+
+    return getConnInfo(c).remote.address ?? crypto.randomUUID();
+  },
+});
 
 app.get("/health", (c) => {
   return c.text("OK");
 });
 
-app.post("/chat/completions", keygenAuth(), async (c) => {
+app.post("/chat/completions", apiRateLimit, keygenAuth(), async (c) => {
   const data = await c.req.json();
   const res = await proxy(
     `${env.OPENAI_BASE_URL}/chat/completions`,
@@ -54,7 +53,7 @@ app.post("/chat/completions", keygenAuth(), async (c) => {
   return res;
 });
 
-app.all("/mcp", keygenAuth(), async (c) => {
+app.all("/mcp", apiRateLimit, keygenAuth(), async (c) => {
   const transport = new StreamableHTTPTransport();
   await mcpServer.connect(transport);
   return transport.handleRequest(c);

@@ -1,8 +1,8 @@
-"on":
+on:
   push:
     branches:
       - main
-name: Deploy to hyprnote-pro
+
 jobs:
   porter-deploy:
     runs-on: ubuntu-latest
