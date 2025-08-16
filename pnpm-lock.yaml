@@ -536,6 +536,9 @@ importers:
       '@t3-oss/env-core':
         specifier: ^0.13.8
         version: 0.13.8(typescript@5.9.2)(zod@3.25.76)
+      dotenv:
+        specifier: ^17.2.1
+        version: 17.2.1
       exa-js:
         specifier: ^1.8.27
         version: 1.8.27(ws@8.18.3)
@@ -552,9 +555,6 @@ importers:
       '@types/node':
         specifier: ^20.11.17
         version: 20.19.9
-      dotenv:
-        specifier: ^17.2.1
-        version: 17.2.1
       tsx:
         specifier: ^4.7.1
         version: 4.20.3
