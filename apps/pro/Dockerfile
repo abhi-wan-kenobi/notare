@@ -25,8 +25,9 @@ ENV NODE_ENV=production
 COPY --from=build /app/apps/pro/dist ./dist
 COPY --from=build /app/apps/pro/package.json ./package.json
 COPY --from=build /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=build /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod --no-frozen-lockfile
 
 EXPOSE 3000
 
