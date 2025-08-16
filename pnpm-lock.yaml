@@ -882,6 +882,9 @@ importers:
       react:
         specifier: ^18.3.1
         version: 18.3.1
+      tauri-plugin-keygen-api:
+        specifier: github:bagindo/tauri-plugin-keygen#v2
+        version: https://codeload.github.com/bagindo/tauri-plugin-keygen/tar.gz/e0de03a76a5c82c36adb347e43e4bff4f78c87de
       zustand:
         specifier: ^5.0.7
         version: 5.0.7(@types/react@18.3.23)(react@18.3.1)(use-sync-external-store@1.5.0(react@18.3.1))

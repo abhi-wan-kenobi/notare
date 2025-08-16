@@ -1,12 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { DownloadIcon, FolderIcon } from "lucide-react";
+import { CloudIcon, DownloadIcon, FolderIcon } from "lucide-react";
 import { useEffect } from "react";
 
+import { useLicense } from "@/hooks/use-license";
 import { commands as localLlmCommands, type SupportedModel } from "@hypr/plugin-local-llm";
 import { Button } from "@hypr/ui/components/ui/button";
 import { cn } from "@hypr/ui/lib/utils";
 import { type LLMModel, SharedLLMProps } from "./shared";
+
+interface ExtendedSharedLLMProps extends SharedLLMProps {
+  setOpenAccordion: (accordion: "others" | "openai" | "gemini" | "openrouter" | null) => void;
+}
 
 export function LLMLocalView({
   customLLMEnabled,
@@ -16,7 +21,12 @@ export function LLMLocalView({
   downloadingModels,
   llmModelsState,
   handleModelDownload,
-}: SharedLLMProps) {
+  configureCustomEndpoint,
+  setOpenAccordion,
+}: ExtendedSharedLLMProps) {
+  const { getLicense } = useLicense();
+  const isPro = !!getLicense.data?.valid;
+
   const currentLLMModel = useQuery({
     queryKey: ["current-llm-model"],
     queryFn: () => localLlmCommands.getCurrentModel(),
@@ -38,19 +48,77 @@ export function LLMLocalView({
       localLlmCommands.setCurrentModel(model.key as SupportedModel);
       // CRITICAL: Disable custom LLM when local model is selected
       setCustomLLMEnabledMutation.mutate(false);
+      setOpenAccordion(null);
       localLlmCommands.restartServer();
     }
   };
+
+  const handleHyprCloudSelection = () => {
+    setSelectedLLMModel("hyprcloud");
+    setCustomLLMEnabledMutation.mutate(true);
+    configureCustomEndpoint({
+      provider: "hyprcloud",
+      api_base: "https://pro.hyprnote.com",
+      api_key: "",
+      model: "",
+    });
+  };
+
+  const isHyprCloudSelected = selectedLLMModel === "hyprcloud" && customLLMEnabled.data;
+
+  // Base button class to remove default styling
+  const buttonResetClass = "appearance-none border-0 outline-0 bg-transparent p-0 m-0 font-inherit text-left w-full";
 
   return (
     <div className="space-y-6">
       <div className="max-w-2xl">
         <div className="space-y-2">
+          {/* HyprCloud Option */}
+          <button
+            onClick={handleHyprCloudSelection}
+            disabled={!isPro}
+            className={cn(
+              buttonResetClass,
+              (isPro ? "" : "opacity-50 cursor-not-allowed")
+                + "group relative p-3 rounded-lg border-2 transition-all flex items-center justify-between cursor-pointer",
+              isHyprCloudSelected
+                ? "border-solid border-blue-500 bg-blue-50"
+                : "border-dashed border-gray-300 hover:border-gray-400 bg-white",
+            )}
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-4">
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-base text-gray-900 flex items-center gap-2">
+                    <CloudIcon className="w-4 h-4" />
+                    HyprCloud
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Use HyprCloud's managed AI models with automatic configuration
+                  </p>
+                </div>
+              </div>
+            </div>
+          </button>
+
+          {/* Separator */}
+          <div className="relative py-2">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="px-2 bg-gray-50 text-gray-500">or use local models</span>
+            </div>
+          </div>
+
+          {/* Local Models */}
           {llmModelsState.map((model) => (
-            <div
+            <button
               key={model.key}
               onClick={() => handleLocalModelSelection(model)}
+              disabled={!model.available || !model.downloaded}
               className={cn(
+                buttonResetClass,
                 "group relative p-3 rounded-lg border-2 transition-all flex items-center justify-between",
                 selectedLLMModel === model.key && model.available && model.downloaded && !customLLMEnabled.data
                   ? "border-solid border-blue-500 bg-blue-50 cursor-pointer"
@@ -127,7 +195,7 @@ export function LLMLocalView({
                     </Button>
                   )}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>

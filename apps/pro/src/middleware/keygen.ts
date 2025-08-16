@@ -7,14 +7,10 @@ interface KeygenAuthOptions {
   ttlMs?: number;
 }
 
+export const HEADER_KEYGEN = "x-hyprnote-license-key";
+
 const extractCredentials = (c: any) => {
-  const authHeader = c.req.header("authorization");
-  if (!authHeader?.startsWith("License ")) {
-    return null;
-  }
-
-  const licenseKey = authHeader.substring(8);
-
+  const licenseKey = c.req.header(HEADER_KEYGEN);
   if (!licenseKey) {
     return null;
   }

@@ -9,7 +9,7 @@ import { proxy } from "hono/proxy";
 import { contextCache } from "./context.js";
 import { env } from "./env.js";
 import { mcpServer } from "./mcp.js";
-import { keygenAuth } from "./middleware/keygen.js";
+import { HEADER_KEYGEN, keygenAuth } from "./middleware/keygen.js";
 
 const app = new Hono();
 
@@ -21,7 +21,7 @@ const apiRateLimit = rateLimiter({
   limit: 100,
   standardHeaders: "draft-6",
   keyGenerator: (c) => {
-    const id = c.req.header("Authorization");
+    const id = c.req.header(HEADER_KEYGEN);
     if (id) {
       return id;
     }
