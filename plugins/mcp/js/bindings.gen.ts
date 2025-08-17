@@ -7,8 +7,11 @@
 
 
 export const commands = {
-async listServers() : Promise<McpServer[]> {
-    return await TAURI_INVOKE("plugin:mcp|list_servers");
+async getServers() : Promise<McpServer[]> {
+    return await TAURI_INVOKE("plugin:mcp|get_servers");
+},
+async setServers(servers: McpServer[]) : Promise<null> {
+    return await TAURI_INVOKE("plugin:mcp|set_servers", { servers });
 }
 }
 
@@ -22,7 +25,7 @@ async listServers() : Promise<McpServer[]> {
 
 /** user-defined types **/
 
-export type McpServer = { type: string; enabled: boolean; url: string }
+export type McpServer = { type: string; enabled: boolean; url: string; headerKey: string | null; headerValue: string | null }
 
 /** tauri-specta globals **/
 
