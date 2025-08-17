@@ -54,7 +54,7 @@ pub mod tests {
         let all_audio_from_vad = vad
             .filter_map(|item| async move {
                 match item {
-                    Ok(AudioChunk { samples }) => Some(samples),
+                    Ok(AudioChunk { samples, .. }) => Some(samples),
                     _ => None,
                 }
             })
