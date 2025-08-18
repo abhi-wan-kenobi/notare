@@ -59,6 +59,7 @@ export function ChatView() {
 
   const {
     isGenerating,
+    isStreamingText,
     handleSubmit,
     handleQuickAction,
     handleApplyMarkdown,
@@ -170,6 +171,8 @@ export function ChatView() {
             sessionTitle={sessionData.data?.title || "Untitled"}
             hasEnhancedNote={!!(sessionData.data?.enhancedContent)}
             onApplyMarkdown={handleApplyMarkdown}
+            isGenerating={isGenerating}
+            isStreamingText={isStreamingText}
           />
         )}
 

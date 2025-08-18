@@ -1,5 +1,6 @@
 import { commands as miscCommands } from "@hypr/plugin-misc";
 import Renderer from "@hypr/tiptap/renderer";
+import { PencilRuler } from "lucide-react";
 import { useEffect, useState } from "react";
 import { MarkdownCard } from "./markdown-card";
 import { Message } from "./types";
@@ -122,32 +123,87 @@ function MarkdownText({ content }: { content: string }) {
 }
 
 export function MessageContent({ message, sessionTitle, hasEnhancedNote, onApplyMarkdown }: MessageContentProps) {
-  if (message.content === "Generating...") {
+  if (message.type === "tool-start") {
     return (
-      <>
-        <style>
-          {`
-            @keyframes thinking-dots {
-              0%, 20% { opacity: 0; }
-              50% { opacity: 1; }
-              100% { opacity: 0; }
-            }
-            .thinking-dot:nth-child(1) { animation-delay: 0s; }
-            .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
-            .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
-            .thinking-dot {
-              animation: thinking-dots 1.2s infinite;
-              display: inline-block;
-            }
-          `}
-        </style>
-        <div style={{ color: "rgb(115 115 115)", fontSize: "0.875rem", padding: "4px 0" }}>
-          Thinking
-          <span className="thinking-dot">.</span>
-          <span className="thinking-dot">.</span>
-          <span className="thinking-dot">.</span>
+      <div
+        style={{
+          backgroundColor: "rgb(250 250 250)",
+          border: "1px solid rgb(229 229 229)",
+          borderRadius: "6px",
+          padding: "12px 16px",
+        }}
+      >
+        <div
+          style={{
+            color: "rgb(115 115 115)",
+            fontSize: "0.875rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <PencilRuler size={16} color="rgb(115 115 115)" />
+          <span style={{ fontWeight: "400" }}>
+            Called tool: {message.content}
+          </span>
         </div>
-      </>
+      </div>
+    );
+  }
+
+  if (message.type === "tool-result") {
+    return (
+      <div
+        style={{
+          backgroundColor: "rgb(248 248 248)",
+          border: "1px solid rgb(224 224 224)",
+          borderRadius: "6px",
+          padding: "12px 16px",
+        }}
+      >
+        <div
+          style={{
+            color: "rgb(115 115 115)",
+            fontSize: "0.875rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <PencilRuler size={16} color="rgb(115 115 115)" />
+          <span style={{ fontWeight: "400" }}>
+            {message.content}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (message.type === "tool-error") {
+    return (
+      <div
+        style={{
+          backgroundColor: "rgb(252 252 252)",
+          border: "1px solid rgb(229 229 229)",
+          borderRadius: "6px",
+          padding: "12px 16px",
+        }}
+      >
+        <div
+          style={{
+            color: "rgb(115 115 115)",
+            fontSize: "0.875rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <PencilRuler size={16} color="rgb(115 115 115)" />
+          <span style={{ fontWeight: "400" }}>
+            Tool Error: {message.content}
+          </span>
+        </div>
+      </div>
     );
   }
 

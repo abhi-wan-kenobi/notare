@@ -78,14 +78,13 @@ export function useChatQueries({
         return [];
       }
 
-      console.log("🔍 DEBUG: Loading messages for chat group =", currentChatGroupId);
-
       const dbMessages = await dbCommands.listChatMessages(currentChatGroupId);
       return dbMessages.map(msg => ({
         id: msg.id,
         content: msg.content,
         isUser: msg.role === "User",
         timestamp: new Date(msg.created_at),
+        type: msg.type || "text-delta",
         parts: msg.role === "Assistant" ? parseMarkdownBlocks(msg.content) : undefined,
       }));
     },
@@ -97,9 +96,15 @@ export function useChatQueries({
       prevIsGenerating.current = isGenerating || false;
     }
 
-    if (chatMessagesQuery.data && !isGenerating && !justFinishedGenerating) {
-      setMessages(chatMessagesQuery.data);
-      setHasChatStarted(chatMessagesQuery.data.length > 0);
+    if (chatMessagesQuery.data) {
+      if (!isGenerating && !justFinishedGenerating) {
+        // Safe to sync from database
+        setMessages(chatMessagesQuery.data);
+        setHasChatStarted(chatMessagesQuery.data.length > 0);
+      } else {
+        // Currently generating - DON'T override local state
+        console.log("Skipping DB sync - currently generating");
+      }
     }
   }, [chatMessagesQuery.data, isGenerating, setMessages, setHasChatStarted, prevIsGenerating]);
 
