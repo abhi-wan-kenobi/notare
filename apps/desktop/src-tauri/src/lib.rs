@@ -149,6 +149,7 @@ pub async fn main() {
             let handler = specta_builder.invoke_handler();
             move |invoke| handler(invoke)
         })
+        .on_window_event(tauri_plugin_windows::on_window_event)
         .setup(move |app| {
             let app = app.handle().clone();
 
