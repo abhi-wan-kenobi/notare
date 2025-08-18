@@ -1,51 +1,21 @@
 # https://docs.crabnebula.dev/cloud/ci/tauri-v2-workflow/
 on:
   workflow_dispatch:
-    inputs:
-      channel:
-        description: "Release channel to use. Defaults to 'stable' for manual runs, 'nightly' for automated releases"
-        required: false
-        default: "stable"
-        type: choice
-        options:
-          - "stable"
-          - "nightly"
-      runner:
-        description: "Type of runner to use."
-        required: false
-        default: "github"
-        type: choice
-        options:
-          - "warp"
-          - "github"
   release:
     types:
       - published
-      - prereleased
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 env:
   CN_APPLICATION: "fastrepl/hyprnote"
-  RELEASE_CHANNEL: ${{ github.event_name == 'workflow_dispatch' && inputs.channel || 'nightly' }}
-  TAURI_CONF_PATH: ${{ (github.event_name == 'workflow_dispatch' && inputs.channel == 'stable') && './src-tauri/tauri.conf.stable.json' || './src-tauri/tauri.conf.nightly.json' }}
+  RELEASE_CHANNEL: ${{ (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/')) && 'nightly' || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')) && 'stable' || 'staging' }}
+  TAURI_CONF_PATH: ${{ (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/')) && './src-tauri/tauri.conf.nightly.json' || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')) && './src-tauri/tauri.conf.stable.json' || './src-tauri/tauri.conf.staging.json' }}
+
 jobs:
-  draft:
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'desktop_') }}
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/cn_release
-        with:
-          cmd: draft
-          app: ${{ env.CN_APPLICATION }}
-          key: ${{ secrets.CN_API_KEY }}
-          channel: ${{ env.RELEASE_CHANNEL }}
-          framework: tauri
-          working-directory: ./apps/desktop
   build:
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'desktop_') }}
-    needs: draft
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'desktop_')) }}
     permissions:
       contents: write
     strategy:
@@ -60,7 +30,7 @@ jobs:
             runner: "macos-latest"
           # - platform: "windows"
           #   target: "x86_64-pc-windows-msvc"
-          #   runner: "${{ inputs.runner == 'warp' && 'warp-windows-latest-x64-4x' || 'windows-latest' }}"
+          #   runner: "windows-latest"
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
@@ -78,6 +48,15 @@ jobs:
             fi
           fi
         shell: bash
+      - if: ${{ env.RELEASE_CHANNEL != 'staging' }}
+        uses: ./.github/actions/cn_release
+        with:
+          cmd: draft
+          app: ${{ env.CN_APPLICATION }}
+          key: ${{ secrets.CN_API_KEY }}
+          channel: ${{ env.RELEASE_CHANNEL }}
+          framework: tauri
+          working-directory: ./apps/desktop
       - uses: ./.github/actions/setup_protoc
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -116,7 +95,7 @@ jobs:
           chmod +x ./apps/desktop/src-tauri/binaries/passthrough-${{ matrix.target }}
           codesign --force --options runtime -s "${{ steps.apple-cert.outputs.cert-id }}" ./apps/desktop/src-tauri/binaries/stt-${{ matrix.target }}
           codesign -dv ./apps/desktop/src-tauri/binaries/stt-${{ matrix.target }}
-          ./scripts/sidecar.sh "./apps/desktop/src-tauri/tauri.conf.${{ env.RELEASE_CHANNEL }}.json" "binaries/stt"
+          ./scripts/sidecar.sh "./apps/desktop/${{ env.TAURI_CONF_PATH }}" "binaries/stt"
       - run: pnpm -F desktop tauri build --target ${{ matrix.target }} --config ${{ env.TAURI_CONF_PATH }} --verbose
         env:
           # https://github.com/tauri-apps/tauri-action/issues/740
@@ -145,7 +124,8 @@ jobs:
           fi
         shell: bash
         working-directory: ./apps/desktop/src-tauri
-      - uses: ./.github/actions/cn_release
+      - if: ${{ env.RELEASE_CHANNEL != 'staging' }}
+        uses: ./.github/actions/cn_release
         with:
           cmd: upload
           app: ${{ env.CN_APPLICATION }}
@@ -153,8 +133,14 @@ jobs:
           channel: ${{ env.RELEASE_CHANNEL }}
           framework: tauri
           working-directory: ./apps/desktop
+      - if: ${{ env.RELEASE_CHANNEL == 'staging' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyprnote-staging-${{ matrix.target }}
+          path: apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+          retention-days: 3
   publish:
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'desktop_') }}
+    if: ${{ ((github.event_name == 'workflow_dispatch') || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'desktop_'))) && ((github.event_name == 'release' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/'))) && env.RELEASE_CHANNEL != 'staging' }}
     needs: build
     runs-on: ubuntu-24.04
     steps:
