@@ -14,6 +14,7 @@ Default permissions for the plugin
 - `allow-get-current-model`
 - `allow-set-current-model`
 - `allow-list-supported-models`
+- `allow-list-supported-languages`
 
 ## Permission Table
 
@@ -280,6 +281,32 @@ Enables the list_pro_models command without any pre-configured scope.
 <td>
 
 Denies the list_pro_models command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-stt:allow-list-supported-languages`
+
+</td>
+<td>
+
+Enables the list_supported_languages command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`local-stt:deny-list-supported-languages`
+
+</td>
+<td>
+
+Denies the list_supported_languages command without any pre-configured scope.
 
 </td>
 </tr>

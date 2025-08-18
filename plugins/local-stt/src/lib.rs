@@ -44,6 +44,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::start_server::<Wry>,
             commands::stop_server::<Wry>,
             commands::list_supported_models,
+            commands::list_supported_languages,
         ])
         .typ::<hypr_whisper_local_model::WhisperModel>()
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)

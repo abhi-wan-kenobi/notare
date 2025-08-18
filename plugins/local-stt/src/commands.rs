@@ -103,3 +103,9 @@ pub async fn get_servers<R: tauri::Runtime>(
 ) -> Result<HashMap<ServerType, Option<String>>, String> {
     app.get_servers().await.map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+#[specta::specta]
+pub fn list_supported_languages(model: SupportedSttModel) -> Vec<hypr_language::Language> {
+    model.supported_languages()
+}
