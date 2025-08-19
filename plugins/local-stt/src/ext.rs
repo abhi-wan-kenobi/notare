@@ -343,6 +343,19 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
         model: SupportedSttModel,
         channel: Channel<i8>,
     ) -> Result<(), crate::Error> {
+        {
+            let existing = {
+                let state = self.state::<crate::SharedState>();
+                let mut s = state.lock().await;
+                s.download_task.remove(&model)
+            };
+
+            if let Some(existing_task) = existing {
+                existing_task.abort();
+                let _ = existing_task.await;
+            }
+        }
+
         let create_progress_callback = |channel: Channel<i8>| {
             move |progress: DownloadProgress| match progress {
                 DownloadProgress::Started => {
@@ -381,10 +394,6 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                 {
                     let state = self.state::<crate::SharedState>();
                     let mut s = state.lock().await;
-
-                    if let Some(existing_task) = s.download_task.remove(&model) {
-                        existing_task.abort();
-                    }
                     s.download_task.insert(model.clone(), task);
                 }
 
@@ -407,6 +416,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
 
                     if checksum != m.checksum() {
                         tracing::error!("model_download_error: checksum mismatch");
+                        std::fs::remove_file(&model_path).unwrap();
                         let _ = channel.send(-1);
                     }
                 });
@@ -414,10 +424,6 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                 {
                     let state = self.state::<crate::SharedState>();
                     let mut s = state.lock().await;
-
-                    if let Some(existing_task) = s.download_task.remove(&model) {
-                        existing_task.abort();
-                    }
                     s.download_task.insert(model.clone(), task);
                 }
 
