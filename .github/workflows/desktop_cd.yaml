@@ -1,6 +1,17 @@
 # https://docs.crabnebula.dev/cloud/ci/tauri-v2-workflow/
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: "Platform to build"
+        type: choice
+        required: false
+        default: "all"
+        options:
+          - all
+          - macos-arm64
+          - macos-x64
+          - windows-x64
   release:
     types:
       - published
@@ -28,9 +39,21 @@ jobs:
           - platform: "macos"
             target: "x86_64-apple-darwin"
             runner: "macos-latest"
-          # - platform: "windows"
-          #   target: "x86_64-pc-windows-msvc"
-          #   runner: "windows-latest"
+          - platform: "windows"
+            target: "x86_64-pc-windows-msvc"
+            runner: "windows-latest"
+        exclude:
+          # When platform is macos-x64, only run macos-x64
+          - target: ${{ github.event.inputs.platform == 'macos-x64' && 'aarch64-apple-darwin' || '' }}
+          - target: ${{ github.event.inputs.platform == 'macos-x64' && 'x86_64-pc-windows-msvc' || '' }}
+          # When platform is macos-arm64, only run macos-arm64
+          - target: ${{ github.event.inputs.platform == 'macos-arm64' && 'x86_64-apple-darwin' || '' }}
+          - target: ${{ github.event.inputs.platform == 'macos-arm64' && 'x86_64-pc-windows-msvc' || '' }}
+          # When platform is windows-x64, only run windows-x64
+          - target: ${{ github.event.inputs.platform == 'windows-x64' && 'aarch64-apple-darwin' || '' }}
+          - target: ${{ github.event.inputs.platform == 'windows-x64' && 'x86_64-apple-darwin' || '' }}
+          # When releasing, or when platform is not windows-x64 and not all, do not run windows
+          - target: ${{ (github.event_name == 'release' || (github.event.inputs.platform != 'windows-x64' && github.event.inputs.platform != 'all')) && 'x86_64-pc-windows-msvc' || '' }}
     runs-on: ${{ matrix.runner }}
     defaults:
       run:

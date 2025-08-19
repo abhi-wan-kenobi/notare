@@ -69,6 +69,8 @@ impl ListenClientBuilder {
         {
             let mut query_pairs = url.query_pairs_mut();
 
+            // TODO
+            // https://developers.deepgram.com/docs/language-detection#restricting-the-detectable-languages
             for lang in &params.languages {
                 query_pairs.append_pair("languages", lang.iso639().code());
             }
@@ -307,6 +309,7 @@ mod tests {
                 .transcription()
                 .stream_request_with_options(
                     deepgram::common::options::Options::builder()
+                        .language(deepgram::common::options::Language::en)
                         .model(deepgram::common::options::Model::CustomId(
                             "whisper-cpp-small-q8".to_string(),
                         ))
