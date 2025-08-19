@@ -62,7 +62,7 @@ jobs:
           echo "should-build-windows-x64=$should_build_windows_x64" >> $GITHUB_OUTPUT
 
   build:
-    if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'desktop_'))) && ((matrix.target == 'aarch64-apple-darwin' && needs.check-build.outputs.should-build-macos-arm64 == 'true') || (matrix.target == 'x86_64-apple-darwin' && needs.check-build.outputs.should-build-macos-x64 == 'true') || (matrix.target == 'x86_64-pc-windows-msvc' && needs.check-build.outputs.should-build-windows-x64 == 'true')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'desktop_')) }}
     needs: check-build
     permissions:
       contents: write
@@ -73,12 +73,17 @@ jobs:
           - platform: "macos"
             target: "aarch64-apple-darwin"
             runner: "macos-latest"
+            should-build: ${{ needs.check-build.outputs.should-build-macos-arm64 }}
           - platform: "macos"
             target: "x86_64-apple-darwin"
             runner: "macos-latest"
+            should-build: ${{ needs.check-build.outputs.should-build-macos-x64 }}
           - platform: "windows"
             target: "x86_64-pc-windows-msvc"
             runner: "windows-latest"
+            should-build: ${{ needs.check-build.outputs.should-build-windows-x64 }}
+        exclude:
+          - should-build: 'false'
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
