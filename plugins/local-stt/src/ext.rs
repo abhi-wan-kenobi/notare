@@ -5,8 +5,9 @@ use tauri_plugin_shell::ShellExt;
 use tauri_plugin_store2::StorePluginExt;
 
 use hypr_download_interface::DownloadProgress;
-use hypr_file::download_file_parallel;
+use hypr_file::download_file_parallel_cancellable;
 use hypr_whisper_local_model::WhisperModel;
+use tokio_util::sync::CancellationToken;
 
 use crate::{
     model::SupportedSttModel,
@@ -350,8 +351,9 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                 s.download_task.remove(&model)
             };
 
-            if let Some(existing_task) = existing {
-                existing_task.abort();
+            if let Some((existing_task, existing_token)) = existing {
+                // Cancel the download and wait for task to finish
+                existing_token.cancel();
                 let _ = existing_task.await;
             }
         }
@@ -375,13 +377,24 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
             SupportedSttModel::Am(m) => {
                 let tar_path = self.models_dir().join(format!("{}.tar", m.model_dir()));
                 let final_path = self.models_dir();
+                let cancellation_token = CancellationToken::new();
+                let token_clone = cancellation_token.clone();
 
                 let task = tokio::spawn(async move {
                     let callback = create_progress_callback(channel.clone());
 
-                    if let Err(e) = download_file_parallel(m.tar_url(), &tar_path, callback).await {
-                        tracing::error!("model_download_error: {}", e);
-                        let _ = channel.send(-1);
+                    if let Err(e) = download_file_parallel_cancellable(
+                        m.tar_url(),
+                        &tar_path,
+                        callback,
+                        Some(token_clone),
+                    )
+                    .await
+                    {
+                        if !matches!(e, hypr_file::Error::Cancelled) {
+                            tracing::error!("model_download_error: {}", e);
+                            let _ = channel.send(-1);
+                        }
                         return;
                     }
 
@@ -394,22 +407,33 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                 {
                     let state = self.state::<crate::SharedState>();
                     let mut s = state.lock().await;
-                    s.download_task.insert(model.clone(), task);
+                    s.download_task
+                        .insert(model.clone(), (task, cancellation_token));
                 }
 
                 Ok(())
             }
             SupportedSttModel::Whisper(m) => {
                 let model_path = self.models_dir().join(m.file_name());
+                let cancellation_token = CancellationToken::new();
+                let token_clone = cancellation_token.clone();
 
                 let task = tokio::spawn(async move {
                     let callback = create_progress_callback(channel.clone());
 
-                    if let Err(e) =
-                        download_file_parallel(m.model_url(), &model_path, callback).await
+                    if let Err(e) = download_file_parallel_cancellable(
+                        m.model_url(),
+                        &model_path,
+                        callback,
+                        Some(token_clone),
+                    )
+                    .await
                     {
-                        tracing::error!("model_download_error: {}", e);
-                        let _ = channel.send(-1);
+                        if !matches!(e, hypr_file::Error::Cancelled) {
+                            tracing::error!("model_download_error: {}", e);
+                            let _ = channel.send(-1);
+                        }
+                        return;
                     }
 
                     let checksum = hypr_file::calculate_file_checksum(&model_path).unwrap();
@@ -424,7 +448,8 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                 {
                     let state = self.state::<crate::SharedState>();
                     let mut s = state.lock().await;
-                    s.download_task.insert(model.clone(), task);
+                    s.download_task
+                        .insert(model.clone(), (task, cancellation_token));
                 }
 
                 Ok(())
