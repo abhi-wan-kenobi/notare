@@ -73,17 +73,17 @@ jobs:
           - platform: "macos"
             target: "aarch64-apple-darwin"
             runner: "macos-latest"
-            should-build: ${{ needs.check-build.outputs.should-build-macos-arm64 }}
+            should_build: ${{ needs.check-build.outputs.should-build-macos-arm64 }}
           - platform: "macos"
             target: "x86_64-apple-darwin"
             runner: "macos-latest"
-            should-build: ${{ needs.check-build.outputs.should-build-macos-x64 }}
+            should_build: ${{ needs.check-build.outputs.should-build-macos-x64 }}
           - platform: "windows"
             target: "x86_64-pc-windows-msvc"
             runner: "windows-latest"
-            should-build: ${{ needs.check-build.outputs.should-build-windows-x64 }}
+            should_build: ${{ needs.check-build.outputs.should-build-windows-x64 }}
         exclude:
-          - should-build: 'false'
+          - should_build: "false"
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
