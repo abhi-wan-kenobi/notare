@@ -5,7 +5,7 @@ use llama_cpp_2::{
     context::params::LlamaContextParams,
     llama_backend::LlamaBackend,
     llama_batch::LlamaBatch,
-    model::{params::LlamaModelParams, AddBos, LlamaChatTemplate, LlamaModel, Special},
+    model::{params::LlamaModelParams, AddBos, LlamaModel, Special},
     sampling::LlamaSampler,
     send_logs_to_tracing, LogOptions,
 };
@@ -111,7 +111,7 @@ impl Llama {
     fn process_prefill<'a>(
         model: &'a LlamaModel,
         backend: &LlamaBackend,
-        tpl: &LlamaChatTemplate,
+        template: &str,
         request: &LlamaRequest,
         callback: Box<dyn FnMut(f64) + Send + 'static>,
         cancellation_token: CancellationToken,
@@ -124,9 +124,22 @@ impl Llama {
         ),
         crate::Error,
     > {
-        let prompt = model
-            .apply_chat_template(tpl, &request.messages, true)
-            .unwrap();
+        let prompt = {
+            let mut env = minijinja::Environment::new();
+            env.set_unknown_method_callback(minijinja_contrib::pycompat::unknown_method_callback);
+
+            env.add_template("chat", template).unwrap();
+            env.get_template("chat")
+                .unwrap()
+                // https://huggingface.co/unsloth/Qwen3-1.7B/blob/main/chat_template.jinja
+                .render(serde_json::json!({
+                    "messages": request.messages,
+                    "tools": request.tools,
+                    "add_generation_prompt": true,
+                    "enable_thinking": true
+                }))
+                .unwrap()
+        };
 
         let mut tokens_list = model.str_to_token(&prompt, AddBos::Always).unwrap();
         tokens_list.truncate(DEFAULT_MAX_INPUT_TOKENS as usize);
@@ -287,8 +300,7 @@ impl Llama {
     pub fn new(model_path: impl AsRef<std::path::Path>) -> Result<Self, crate::Error> {
         Self::setup_log();
 
-        let fmt = model_path.gguf_chat_format()?.unwrap();
-        let tpl = LlamaChatTemplate::new(fmt.as_ref()).unwrap();
+        let template = model_path.gguf_chat_format()?.unwrap();
 
         let backend = Self::get_backend();
         let model = Self::load_model(model_path)?;
@@ -313,7 +325,7 @@ impl Llama {
                             match Self::process_prefill(
                                 &model,
                                 &backend,
-                                &tpl,
+                                template.as_ref(),
                                 &request,
                                 callback,
                                 cancellation_token.clone(),
@@ -417,14 +429,16 @@ mod tests {
         LlamaRequest {
             grammar: Some(hypr_gbnf::Grammar::Enhance { sections: None }.build()),
             messages: vec![
-                LlamaChatMessage::new(
-                    "system".into(),
-                    "Summarize the text the user gives you.".into(),
-                )
-                .unwrap(),
-                LlamaChatMessage::new("user".into(), hypr_data::english_3::WORDS_JSON.repeat(1))
-                    .unwrap(),
+                LlamaMessage {
+                    role: "system".into(),
+                    content: "Summarize the text the user gives you.".into(),
+                },
+                LlamaMessage {
+                    role: "user".into(),
+                    content: hypr_data::english_3::WORDS_JSON.repeat(1),
+                },
             ],
+            tools: None,
         }
     }
 
@@ -434,12 +448,18 @@ mod tests {
     async fn test_simple() {
         let llama = get_model();
         let request = LlamaRequest {
-            grammar: Some(hypr_gbnf::Grammar::Enhance { sections: None }.build()),
+            grammar: None,
             messages: vec![
-                LlamaChatMessage::new("system".into(), "You are helpful assistamt.".into())
-                    .unwrap(),
-                LlamaChatMessage::new("user".into(), "hello".into()).unwrap(),
+                LlamaMessage {
+                    role: "system".into(),
+                    content: "You are helpful assistamt.".into(),
+                },
+                LlamaMessage {
+                    role: "user".into(),
+                    content: "hello".into(),
+                },
             ],
+            tools: None,
         };
 
         run(&llama, request).await;
