@@ -1,17 +1,6 @@
 # https://docs.crabnebula.dev/cloud/ci/tauri-v2-workflow/
 on:
   workflow_dispatch:
-    inputs:
-      platform:
-        description: "Platform to build"
-        type: choice
-        required: false
-        default: "all"
-        options:
-          - all
-          - macos-arm64
-          - macos-x64
-          - windows-x64
   release:
     types:
       - published
@@ -25,45 +14,8 @@ env:
   TAURI_CONF_PATH: ${{ (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/')) && './src-tauri/tauri.conf.nightly.json' || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/')) && './src-tauri/tauri.conf.stable.json' || './src-tauri/tauri.conf.staging.json' }}
 
 jobs:
-  check-build:
-    runs-on: ubuntu-latest
-    outputs:
-      should-build-macos-arm64: ${{ steps.check.outputs.should-build-macos-arm64 }}
-      should-build-macos-x64: ${{ steps.check.outputs.should-build-macos-x64 }}
-      should-build-windows-x64: ${{ steps.check.outputs.should-build-windows-x64 }}
-    steps:
-      - name: Check what to build
-        id: check
-        run: |
-          # Default to false
-          should_build_macos_arm64="false"
-          should_build_macos_x64="false"
-          should_build_windows_x64="false"
-
-          # On release, build macOS only (exclude Windows)
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            should_build_macos_arm64="true"
-            should_build_macos_x64="true"
-          # On workflow_dispatch, check platform input
-          elif [[ "${{ github.event.inputs.platform }}" == "all" ]]; then
-            should_build_macos_arm64="true"
-            should_build_macos_x64="true"
-            should_build_windows_x64="true"
-          elif [[ "${{ github.event.inputs.platform }}" == "macos-arm64" ]]; then
-            should_build_macos_arm64="true"
-          elif [[ "${{ github.event.inputs.platform }}" == "macos-x64" ]]; then
-            should_build_macos_x64="true"
-          elif [[ "${{ github.event.inputs.platform }}" == "windows-x64" ]]; then
-            should_build_windows_x64="true"
-          fi
-
-          echo "should-build-macos-arm64=$should_build_macos_arm64" >> $GITHUB_OUTPUT
-          echo "should-build-macos-x64=$should_build_macos_x64" >> $GITHUB_OUTPUT
-          echo "should-build-windows-x64=$should_build_windows_x64" >> $GITHUB_OUTPUT
-
   build:
-    if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'desktop_'))) && (matrix.should_build == 'true') }}
-    needs: check-build
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'desktop_')) }}
     permissions:
       contents: write
     strategy:
@@ -73,15 +25,12 @@ jobs:
           - platform: "macos"
             target: "aarch64-apple-darwin"
             runner: "macos-latest"
-            should_build: ${{ needs.check-build.outputs.should-build-macos-arm64 }}
           - platform: "macos"
             target: "x86_64-apple-darwin"
             runner: "macos-latest"
-            should_build: ${{ needs.check-build.outputs.should-build-macos-x64 }}
           - platform: "windows"
             target: "x86_64-pc-windows-msvc"
             runner: "windows-latest"
-            should_build: ${{ needs.check-build.outputs.should-build-windows-x64 }}
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
