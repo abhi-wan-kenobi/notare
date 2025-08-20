@@ -128,10 +128,15 @@ jobs:
           framework: tauri
           working-directory: ./apps/desktop
       - if: ${{ env.RELEASE_CHANNEL == 'staging' }}
+        run: |
+          cd apps/desktop/src-tauri/target/${{ matrix.target }}/release
+          tar -czf hyprnote-staging-${{ matrix.target }}.tar.gz bundle/
+        shell: bash
+      - if: ${{ env.RELEASE_CHANNEL == 'staging' }}
         uses: actions/upload-artifact@v4
         with:
           name: hyprnote-staging-${{ matrix.target }}
-          path: apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+          path: apps/desktop/src-tauri/target/${{ matrix.target }}/release/hyprnote-staging-${{ matrix.target }}.tar.gz
           retention-days: 3
   publish:
     if: ${{ ((github.event_name == 'workflow_dispatch') || (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'desktop_'))) && ((github.event_name == 'release' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/'))) }}
