@@ -428,6 +428,23 @@ mod tests {
         }
     }
 
+    // cargo test test_simple -p llama -- --nocapture --ignored
+    #[ignore]
+    #[tokio::test]
+    async fn test_simple() {
+        let llama = get_model();
+        let request = LlamaRequest {
+            grammar: Some(hypr_gbnf::Grammar::Enhance { sections: None }.build()),
+            messages: vec![
+                LlamaChatMessage::new("system".into(), "You are helpful assistamt.".into())
+                    .unwrap(),
+                LlamaChatMessage::new("user".into(), "hello".into()).unwrap(),
+            ],
+        };
+
+        run(&llama, request).await;
+    }
+
     // cargo test test_english_3 -p llama -- --nocapture --ignored
     #[ignore]
     #[tokio::test]
