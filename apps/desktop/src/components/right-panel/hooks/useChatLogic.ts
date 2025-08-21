@@ -1,5 +1,5 @@
 import { message } from "@tauri-apps/plugin-dialog";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useLicense } from "@/hooks/use-license";
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
@@ -56,9 +56,24 @@ export function useChatLogic({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isStreamingText, setIsStreamingText] = useState(false);
   const isGeneratingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const sessions = useSessions((state) => state.sessions);
   const { getLicense } = useLicense();
   const queryClient = useQueryClient();
+
+  // Reset generation state and abort ongoing streams when session changes
+  useEffect(() => {
+    // Abort any ongoing generation when session changes
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    // Reset generation state for new session
+    setIsGenerating(false);
+    setIsStreamingText(false);
+    isGeneratingRef.current = false;
+  }, [sessionId]);
 
   const handleApplyMarkdown = async (markdownContent: string) => {
     if (!sessionId) {
@@ -92,14 +107,14 @@ export function useChatLogic({
 
     const userMessageCount = messages.filter(msg => msg.isUser).length;
 
-    if (userMessageCount >= 3 && !getLicense.data?.valid) {
+    if (userMessageCount >= 4 && !getLicense.data?.valid) {
       if (userId) {
         await analyticsCommands.event({
           event: "pro_license_required_chat",
           distinct_id: userId,
         });
       }
-      await message("3 messages are allowed per conversation for free users.", {
+      await message("4 messages are allowed per conversation for free users.", {
         title: "Pro License Required",
         kind: "info",
       });
@@ -266,6 +281,9 @@ export function useChatLogic({
         },
       });
 
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
       const { fullStream } = streamText({
         model,
         messages: await prepareMessageHistory(
@@ -295,6 +313,7 @@ export function useChatLogic({
             client.close();
           }
         },
+        abortSignal: abortController.signal,
       });
 
       let aiResponse = "";
@@ -456,29 +475,42 @@ export function useChatLogic({
       setIsGenerating(false);
       setIsStreamingText(false);
       isGeneratingRef.current = false;
+      abortControllerRef.current = null; // Clear the abort controller on successful completion
     } catch (error) {
-      console.error("AI error:", error);
+      console.error(error);
 
-      const errorMsg = (error as any)?.error || "Unknown error";
+      let errorMsg = "Unknown error";
+      if (typeof error === "string") {
+        errorMsg = error;
+      } else if (error instanceof Error) {
+        errorMsg = error.message || error.name || "Unknown error";
+      } else if ((error as any)?.error) {
+        errorMsg = (error as any).error;
+      } else if ((error as any)?.message) {
+        errorMsg = (error as any).message;
+      }
 
-      let finalErrorMesage = "";
+      let finalErrorMessage = "";
 
       if (String(errorMsg).includes("too large")) {
-        finalErrorMesage =
+        finalErrorMessage =
           "Sorry, I encountered an error. Please try again. Your transcript or meeting notes might be too large. Please try again with a smaller transcript or meeting notes."
           + "\n\n" + errorMsg;
+      } else if (String(errorMsg).includes("Request cancelled") || String(errorMsg).includes("Request canceled")) {
+        finalErrorMessage = "Request was cancelled mid-stream. Try again with a different message.";
       } else {
-        finalErrorMesage = "Sorry, I encountered an error. Please try again. " + "\n\n" + errorMsg;
+        finalErrorMessage = "Sorry, I encountered an error. Please try again. " + "\n\n" + errorMsg;
       }
 
       setIsGenerating(false);
       setIsStreamingText(false);
       isGeneratingRef.current = false;
+      abortControllerRef.current = null; // Clear the abort controller on error
 
       // Create error message
       const errorMessage: Message = {
         id: aiMessageId,
-        content: finalErrorMesage,
+        content: finalErrorMessage,
         isUser: false,
         timestamp: new Date(),
         type: "text-delta",
@@ -491,7 +523,7 @@ export function useChatLogic({
         group_id: groupId,
         created_at: new Date().toISOString(),
         role: "Assistant",
-        content: finalErrorMesage,
+        content: finalErrorMessage,
         type: "text-delta",
       });
     }
@@ -516,6 +548,13 @@ export function useChatLogic({
     }
   };
 
+  const handleStop = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
+
   return {
     isGenerating,
     isStreamingText,
@@ -523,5 +562,6 @@ export function useChatLogic({
     handleQuickAction,
     handleApplyMarkdown,
     handleKeyDown,
+    handleStop,
   };
 }
