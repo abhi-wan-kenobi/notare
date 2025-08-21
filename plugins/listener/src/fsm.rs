@@ -490,7 +490,6 @@ impl Session {
                                 .iter()
                                 .map(|w| owhisper_interface::Word2::from(w.clone()))
                                 .collect::<Vec<_>>();
-                            println!("final_words: {:#?}", final_words);
                             final_words.sort_by(|a, b| {
                                 a.start_ms
                                     .partial_cmp(&b.start_ms)

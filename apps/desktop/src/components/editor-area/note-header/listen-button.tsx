@@ -77,7 +77,7 @@ export default function ListenButton({ sessionId, isCompact = false }: { session
       const currentModel = await localSttCommands.getCurrentModel();
       const isDownloaded = await localSttCommands.isModelDownloaded(currentModel);
       const servers = await localSttCommands.getServers();
-      const isServerAvailable = servers.external || servers.internal;
+      const isServerAvailable = (servers.external === "ready") || (servers.internal === "ready");
       return isDownloaded && isServerAvailable;
     },
   });
