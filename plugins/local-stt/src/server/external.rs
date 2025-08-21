@@ -4,8 +4,14 @@ pub struct ServerHandle {
     pub base_url: String,
     api_key: Option<String>,
     shutdown: tokio::sync::watch::Sender<()>,
-    child: tauri_plugin_shell::process::CommandChild,
     client: hypr_am::Client,
+}
+
+impl Drop for ServerHandle {
+    fn drop(&mut self) {
+        tracing::info!("stopping");
+        let _ = self.shutdown.send(());
+    }
 }
 
 impl ServerHandle {
@@ -27,13 +33,6 @@ impl ServerHandle {
         }
 
         ServerHealth::Unreachable
-    }
-
-    pub fn terminate(self) -> Result<(), crate::Error> {
-        let _ = self.shutdown.send(());
-        std::thread::sleep(std::time::Duration::from_millis(250));
-        self.child.kill().map_err(|e| crate::Error::ShellError(e))?;
-        Ok(())
     }
 
     pub async fn init(
@@ -113,30 +112,18 @@ pub async fn run_server(
                 }
             }
         }
+
+        if let Err(e) = child.kill() {
+            tracing::error!("{:?}", e);
+        }
     });
 
-    // Wait a bit for server to start up before returning
-    // The server needs time to bind to the port and initialize
-    tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
-
-    // Verify the server started successfully by checking if we can connect
-    // But don't check status as it may require initialization first
-    match client.status().await {
-        Ok(_) => {
-            tracing::info!("Server is ready and responding");
-        }
-        Err(e) => {
-            // Server may need initialization, which happens after this function returns
-            // Just log the status check result
-            tracing::info!("Server status check: {:?} (may need initialization)", e);
-        }
-    }
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
     Ok(ServerHandle {
         api_key: Some(am_key),
         base_url,
         shutdown: shutdown_tx,
-        child,
         client,
     })
 }

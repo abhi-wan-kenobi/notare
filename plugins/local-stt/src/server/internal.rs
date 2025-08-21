@@ -53,6 +53,13 @@ pub struct ServerHandle {
     shutdown: tokio::sync::watch::Sender<()>,
 }
 
+impl Drop for ServerHandle {
+    fn drop(&mut self) {
+        tracing::info!("stopping");
+        let _ = self.shutdown.send(());
+    }
+}
+
 impl ServerHandle {
     pub async fn health(&self) -> ServerHealth {
         let client = reqwest::Client::new();
@@ -71,11 +78,6 @@ impl ServerHandle {
                 ServerHealth::Unreachable
             }
         }
-    }
-
-    pub fn terminate(self) -> Result<(), crate::Error> {
-        let _ = self.shutdown.send(());
-        Ok(())
     }
 }
 

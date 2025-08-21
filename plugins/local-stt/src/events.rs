@@ -27,12 +27,10 @@ pub fn on_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, event: &tauri::Run
                     tokio::runtime::Handle::current().block_on(async {
                         let mut guard = state.lock().await;
 
-                        if let Some(server) = guard.internal_server.take() {
-                            let _ = server.terminate();
+                        if let Some(_) = guard.internal_server.take() {
                             guard.internal_server = None;
                         }
-                        if let Some(server) = guard.external_server.take() {
-                            let _ = server.terminate();
+                        if let Some(_) = guard.external_server.take() {
                             guard.external_server = None;
                         }
                         for (_, (task, token)) in guard.download_task.drain() {

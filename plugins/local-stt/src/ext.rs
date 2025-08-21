@@ -274,24 +274,20 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
         let mut stopped = false;
         match server_type {
             Some(ServerType::External) => {
-                if let Some(server) = s.external_server.take() {
-                    let _ = server.terminate();
+                if let Some(_) = s.external_server.take() {
                     stopped = true;
                 }
             }
             Some(ServerType::Internal) => {
-                if let Some(server) = s.internal_server.take() {
-                    let _ = server.terminate();
+                if let Some(_) = s.internal_server.take() {
                     stopped = true;
                 }
             }
             None => {
-                if let Some(server) = s.external_server.take() {
-                    let _ = server.terminate();
+                if let Some(_) = s.external_server.take() {
                     stopped = true;
                 }
-                if let Some(server) = s.internal_server.take() {
-                    let _ = server.terminate();
+                if let Some(_) = s.internal_server.take() {
                     stopped = true;
                 }
             }
