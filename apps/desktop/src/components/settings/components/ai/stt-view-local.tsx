@@ -240,7 +240,7 @@ function ProModelsSection({
   return (
     <section className="max-w-2xl">
       <SectionHeader
-        title="Pro Models"
+        title="Pro Models (Beta)"
         description="Latency and resource optimized inference engine."
         status={status}
         docsUrl="https://docs.hyprnote.com/models"
@@ -281,6 +281,11 @@ function SectionHeader({
   status?: ServerHealth;
   docsUrl?: string;
 }) {
+  const handleClick = () => {
+    localSttCommands.stopServer(null);
+    localSttCommands.startServer(null);
+  };
+
   return (
     <header className="mb-3">
       <div className="flex items-center gap-2 mb-1">
@@ -289,6 +294,7 @@ function SectionHeader({
           {subtitle && <span className="font-normal text-gray-500 ml-1">{subtitle}</span>}
         </h3>
         <span
+          onClick={handleClick}
           className={cn(
             "w-2 h-2 rounded-full",
             (status === "ready")
