@@ -55,12 +55,21 @@ pub struct ServerHandle {
 
 impl ServerHandle {
     pub async fn health(&self) -> ServerHealth {
-        let response = reqwest::get(format!("{}/health", self.base_url)).await;
-        if response.is_err() {
-            tracing::error!("{:?}", response);
-            ServerHealth::Unreachable
-        } else {
-            ServerHealth::Ready
+        let client = reqwest::Client::new();
+        let url = format!("{}/health", self.base_url);
+
+        match client
+            .get(&url)
+            .timeout(std::time::Duration::from_secs(2))
+            .send()
+            .await
+        {
+            Ok(res) if res.status().is_success() => ServerHealth::Ready,
+            Ok(_res) => ServerHealth::Unreachable,
+            Err(e) => {
+                tracing::error!("{:?}", e);
+                ServerHealth::Unreachable
+            }
         }
     }
 

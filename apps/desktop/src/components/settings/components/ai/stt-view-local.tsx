@@ -5,12 +5,7 @@ import { DownloadIcon, FolderIcon, InfoIcon } from "lucide-react";
 import { useEffect, useMemo } from "react";
 
 import { useLicense } from "@/hooks/use-license";
-import {
-  commands as localSttCommands,
-  ServerHealth,
-  SupportedSttModel,
-  type WhisperModel,
-} from "@hypr/plugin-local-stt";
+import { commands as localSttCommands, ServerHealth, type SupportedSttModel } from "@hypr/plugin-local-stt";
 import { Button } from "@hypr/ui/components/ui/button";
 import { cn } from "@hypr/ui/lib/utils";
 import { SharedSTTProps, STTModel } from "./shared";
@@ -343,8 +338,8 @@ function ModelEntry({
 
   const handleClick = () => {
     if (isSelectable) {
-      setSelectedSTTModel(model.key as WhisperModel);
-      localSttCommands.setCurrentModel(model.key as WhisperModel);
+      setSelectedSTTModel(model.key as SupportedSttModel);
+      localSttCommands.setCurrentModel(model.key as SupportedSttModel);
       localSttCommands.stopServer(null);
       localSttCommands.startServer(null);
     }

@@ -72,7 +72,7 @@ export default function ListenButton({ sessionId, isCompact = false }: { session
   const modelDownloaded = useQuery({
     queryKey: ["check-stt-model-downloaded"],
     refetchInterval: 1500,
-    enabled: ongoingSessionStatus === "inactive",
+    enabled: ongoingSessionStatus !== "running_active",
     queryFn: async () => {
       const currentModel = await localSttCommands.getCurrentModel();
       const isDownloaded = await localSttCommands.isModelDownloaded(currentModel);
