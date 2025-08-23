@@ -83,7 +83,7 @@ pub async fn run_server(
                         Some(tauri_plugin_shell::process::CommandEvent::Stdout(bytes)) => {
                             if let Ok(text) = String::from_utf8(bytes) {
                                 let text = text.trim();
-                                if !text.is_empty() {
+                                if !text.is_empty() && !text.contains("[TranscriptionHandler]") && !text.contains("[WebSocket]") && !text.contains("Sent interim") {
                                     tracing::info!("{}", text);
                                 }
                             }
@@ -91,7 +91,7 @@ pub async fn run_server(
                         Some(tauri_plugin_shell::process::CommandEvent::Stderr(bytes)) => {
                             if let Ok(text) = String::from_utf8(bytes) {
                                 let text = text.trim();
-                                if !text.is_empty() {
+                                if !text.is_empty() && !text.contains("[TranscriptionHandler]") && !text.contains("[WebSocket]") && !text.contains("Sent interim") {
                                     tracing::info!("{}", text);
                                 }
                             }
