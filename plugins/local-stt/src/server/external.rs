@@ -56,6 +56,8 @@ pub async fn run_server(
     cmd: tauri_plugin_shell::process::Command,
     am_key: String,
 ) -> Result<ServerHandle, crate::Error> {
+    tracing::info!("starting");
+
     let port = 50060;
 
     if port_killer::kill(port).is_ok() {

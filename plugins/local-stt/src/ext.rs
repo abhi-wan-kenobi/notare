@@ -220,8 +220,13 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
 
                 let am_key = {
                     let state = self.state::<crate::SharedState>();
+
                     let key = state.lock().await.am_api_key.clone();
-                    key.clone().ok_or(crate::Error::AmApiKeyNotSet)?
+                    if key.clone().is_none() || key.clone().unwrap().is_empty() {
+                        return Err(crate::Error::AmApiKeyNotSet);
+                    }
+
+                    key.clone().unwrap()
                 };
 
                 let cmd: tauri_plugin_shell::process::Command = {
