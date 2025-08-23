@@ -1,3 +1,5 @@
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { message } from "@tauri-apps/plugin-dialog";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -7,6 +9,7 @@ import { commands as connectorCommands } from "@hypr/plugin-connector";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as mcpCommands } from "@hypr/plugin-mcp";
 import { commands as miscCommands } from "@hypr/plugin-misc";
+import { fetch as tauriFetch } from "@hypr/utils";
 import {
   dynamicTool,
   experimental_createMCPClient,
@@ -17,10 +20,12 @@ import {
 } from "@hypr/utils/ai";
 import { useSessions } from "@hypr/utils/contexts";
 import { useQueryClient } from "@tanstack/react-query";
+import { getLicenseKey } from "tauri-plugin-keygen-api";
 import { z } from "zod";
 import type { ActiveEntityInfo, Message } from "../types/chat-types";
 import { prepareMessageHistory } from "../utils/chat-utils";
 import { parseMarkdownBlocks } from "../utils/markdown-parser";
+import { buildVercelToolsFromMcp } from "../utils/mcp-http-wrapper";
 
 interface UseChatLogicProps {
   sessionId: string | null;
@@ -171,8 +176,10 @@ export function useChatLogic({
       const apiBase = llmConnection.connection?.api_base;
 
       let newMcpTools: Record<string, any> = {};
+      let hyprMcpTools: Record<string, any> = {};
       let mcpToolsArray: any[] = [];
       const allMcpClients: any[] = [];
+      let hyprMcpClient: Client | null = null;
 
       const shouldUseTools = type !== "HyprLocal"
         && (model.modelId === "gpt-4.1" || model.modelId === "openai/gpt-4.1"
@@ -183,6 +190,34 @@ export function useChatLogic({
       if (shouldUseTools) {
         const mcpServers = await mcpCommands.getServers();
         const enabledSevers = mcpServers.filter((server) => server.enabled);
+
+        if (apiBase?.includes("pro.hyprnote.com") && getLicense.data?.valid) {
+          try {
+            const licenseKey = await getLicenseKey();
+
+            const transport = new StreamableHTTPClientTransport(
+              new URL("https://pro.hyprnote.com/mcp"),
+              {
+                fetch: tauriFetch,
+                requestInit: {
+                  headers: {
+                    "x-hyprnote-license-key": licenseKey || "",
+                  },
+                },
+              },
+            );
+            hyprMcpClient = new Client({
+              name: "hyprmcp",
+              version: "0.1.0",
+            });
+
+            await hyprMcpClient.connect(transport);
+
+            hyprMcpTools = await buildVercelToolsFromMcp(hyprMcpClient);
+          } catch (error) {
+            console.error("Error creating and adding hyprmcp client:", error);
+          }
+        }
 
         for (const server of enabledSevers) {
           try {
@@ -225,6 +260,14 @@ export function useChatLogic({
             inputSchema: tool.inputSchema || "No input schema provided",
           }))
           : [];
+
+        for (const [toolKey, tool] of Object.entries(hyprMcpTools)) {
+          mcpToolsArray.push({
+            name: toolKey,
+            description: tool.description || `Tool: ${tool.name}`,
+            inputSchema: tool.inputSchema || "No input schema provided",
+          });
+        }
       }
 
       const searchTool = tool({
@@ -300,7 +343,7 @@ export function useChatLogic({
         stopWhen: stepCountIs(3),
         tools: {
           ...(type === "HyprLocal" && { update_progress: tool({ inputSchema: z.any() }) }),
-          ...(shouldUseTools && { ...newMcpTools, search_sessions_multi_keywords: searchTool }),
+          ...(shouldUseTools && { ...newMcpTools, search_sessions_multi_keywords: searchTool, ...hyprMcpTools }),
         },
         onError: (error) => {
           console.error("On Error Catch:", error);
@@ -312,6 +355,8 @@ export function useChatLogic({
           for (const client of allMcpClients) {
             client.close();
           }
+          // close hyprmcp client
+          hyprMcpClient?.close();
         },
         abortSignal: abortController.signal,
       });
