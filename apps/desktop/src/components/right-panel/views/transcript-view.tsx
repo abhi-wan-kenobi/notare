@@ -1,16 +1,18 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMatch } from "@tanstack/react-router";
 import { writeText as writeTextToClipboard } from "@tauri-apps/plugin-clipboard-manager";
+import clsx from "clsx";
 import {
   AudioLinesIcon,
   CheckIcon,
+  ChevronDownIcon,
   ClipboardIcon,
   CopyIcon,
   PencilIcon,
   TextSearchIcon,
   UploadIcon,
 } from "lucide-react";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ParticipantsChipInner } from "@/components/editor-area/note-header/chips/participants-chip";
 import { useHypr } from "@/contexts";
@@ -29,7 +31,6 @@ import { Button } from "@hypr/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { Spinner } from "@hypr/ui/components/ui/spinner";
 import { useOngoingSession } from "@hypr/utils/contexts";
-import { ListeningIndicator } from "../components/listening-indicator";
 import { SearchHeader } from "../components/search-header";
 import { useTranscript } from "../hooks/useTranscript";
 import { useTranscriptWidget } from "../hooks/useTranscriptWidget";
@@ -64,10 +65,9 @@ function useContainerWidth(ref: React.RefObject<HTMLElement>) {
 export function TranscriptView() {
   const queryClient = useQueryClient();
 
-  // Search state
+  const [editable, setEditable] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
 
-  // Single container ref and panel width for the entire component
   const containerRef = useRef<HTMLDivElement>(null);
   const panelWidth = useContainerWidth(containerRef);
 
@@ -94,7 +94,6 @@ export function TranscriptView() {
     }
   }, [words, isLive]);
 
-  // Add Ctrl+F keyboard shortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {
@@ -131,10 +130,16 @@ export function TranscriptView() {
     }
   }, [sessionId]);
 
-  const handleFocusEditor = useCallback(() => {
-    if (editorRef.current?.editor) {
-      editorRef.current.editor.commands.focus();
-    }
+  const handeToggleEdit = useCallback(() => {
+    setEditable((v) => {
+      const nextEditable = !v;
+
+      if (!nextEditable && editorRef.current?.editor) {
+        editorRef.current.editor.commands.blur();
+      }
+
+      return nextEditable;
+    });
   }, []);
 
   const handleUpdate = (words: Word2[]) => {
@@ -155,7 +160,6 @@ export function TranscriptView() {
 
   return (
     <div className="w-full h-full flex flex-col" ref={containerRef}>
-      {/* Conditional Header Rendering */}
       {isSearchActive
         ? (
           <SearchHeader
@@ -165,19 +169,14 @@ export function TranscriptView() {
         )
         : (
           <header
-            className={`flex items-center justify-between w-full px-4 py-1 my-1 ${
-              !showEmptyMessage ? "border-b border-neutral-100" : ""
-            }`}
+            className={clsx(
+              "flex items-center justify-between w-full px-4 py-1 my-1",
+              showEmptyMessage && "border-b border-neutral-100",
+            )}
           >
-            {!showEmptyMessage && (
+            {(!showEmptyMessage && !isLive) && (
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-semibold text-neutral-900">Transcript</h2>
-                {isLive && (
-                  <div className="relative h-1.5 w-1.5">
-                    <div className="absolute inset-0 rounded-full bg-red-500/30"></div>
-                    <div className="absolute inset-0 rounded-full bg-red-500 animate-ping"></div>
-                  </div>
-                )}
               </div>
             )}
             <div className="not-draggable flex items-center ">
@@ -186,9 +185,11 @@ export function TranscriptView() {
                   className="w-8 h-8"
                   variant="ghost"
                   size="icon"
-                  onClick={handleFocusEditor}
+                  onClick={handeToggleEdit}
                 >
-                  <PencilIcon size={12} className="text-neutral-600" />
+                  {editable
+                    ? <CheckIcon size={12} className="text-neutral-600" />
+                    : <PencilIcon size={12} className="text-neutral-600" />}
                 </Button>
               )}
               {showActions && (
@@ -218,19 +219,115 @@ export function TranscriptView() {
       <div className="flex-1 overflow-hidden flex flex-col">
         {showEmptyMessage
           ? <RenderEmpty sessionId={sessionId} panelWidth={panelWidth} />
+          : isLive
+          ? <RenderInMeeting words={words} />
           : (
-            <>
-              <TranscriptEditor
-                ref={editorRef}
-                initialWords={words}
-                editable={ongoingSession.isInactive}
-                onUpdate={handleUpdate}
-                c={SpeakerSelector}
-              />
-              {isLive && <ListeningIndicator />}
-            </>
+            <TranscriptEditor
+              ref={editorRef}
+              initialWords={words}
+              editable={ongoingSession.isInactive && editable}
+              onUpdate={handleUpdate}
+              c={SpeakerSelector}
+            />
           )}
       </div>
+    </div>
+  );
+}
+
+function RenderInMeeting({ words }: { words: Word2[] }) {
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const speakerChunks = useMemo(() => {
+    return words.reduce((acc, word) => {
+      const currentSpeaker = word.speaker?.type === "unassigned"
+        ? word.speaker.value.index
+        : word.speaker?.type === "assigned"
+        ? word.speaker.value.id
+        : null;
+      const lastChunk = acc[acc.length - 1];
+
+      if (acc.length === 0 || lastChunk.speaker !== currentSpeaker) {
+        acc.push({ speaker: currentSpeaker, words: [word] });
+      } else {
+        lastChunk.words.push(word);
+      }
+      return acc;
+    }, [] as { speaker: number | string | null; words: Word2[] }[]);
+  }, [words]);
+
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const threshold = 100;
+    const atBottom = scrollHeight - scrollTop - clientHeight <= threshold;
+    setIsAtBottom(atBottom);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: "smooth",
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isAtBottom) {
+      scrollToBottom();
+    }
+  }, [words, isAtBottom, scrollToBottom]);
+
+  return (
+    <div className="flex-1 relative">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto px-4 py-6 space-y-2 absolute inset-0"
+        onScroll={handleScroll}
+      >
+        {speakerChunks.map((chunk, index) => {
+          return (
+            <div
+              key={index}
+              className={clsx(
+                [
+                  "p-3 rounded-lg bg-gray-100 border-gray-200",
+                  chunk.speaker === 0
+                    ? "border-r-4 ml-8"
+                    : chunk.speaker === 1
+                    ? "border-l-4 mr-8"
+                    : "",
+                ],
+              )}
+            >
+              <div className="text-sm text-gray-800">
+                {chunk.words.map(word => word.text).join(" ")}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {!isAtBottom && (
+        <Button
+          onClick={scrollToBottom}
+          size="sm"
+          className="absolute bottom-4 left-1/2 transform -translate-x-1/2 rounded-full shadow-lg bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 z-10 flex items-center gap-1"
+          variant="outline"
+        >
+          <ChevronDownIcon size={14} />
+          <span className="text-xs">Go to bottom</span>
+        </Button>
+      )}
     </div>
   );
 }
