@@ -15381,6 +15381,7 @@ dependencies = [
  "owhisper-interface",
  "serde",
  "serde_json",
+ "specta",
  "strum 0.26.3",
  "thiserror 2.0.12",
 ]

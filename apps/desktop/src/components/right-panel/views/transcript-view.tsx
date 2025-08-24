@@ -8,9 +8,12 @@ import {
   ChevronDownIcon,
   ClipboardIcon,
   CopyIcon,
+  HeadphonesIcon,
+  MicIcon,
   PencilIcon,
   TextSearchIcon,
   UploadIcon,
+  UserCircleIcon,
 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -291,30 +294,30 @@ function RenderInMeeting({ words }: { words: Word2[] }) {
     <div className="flex-1 relative">
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto px-4 pt-2 pb-6 space-y-2 absolute inset-0"
+        className="flex-1 overflow-y-auto px-2 pt-2 pb-6 space-y-4 absolute inset-0"
         onScroll={handleScroll}
       >
-        {speakerChunks.map((chunk, index) => {
-          return (
-            <div
-              key={index}
-              className={clsx(
-                [
-                  "p-3 rounded-lg bg-gray-100 border-gray-200",
-                  chunk.speaker === 0
-                    ? "border-r-4 ml-8"
-                    : chunk.speaker === 1
-                    ? "border-l-4 mr-8"
-                    : "",
-                ],
+        {speakerChunks.map((chunk, index) => (
+          <div key={index} className="space-y-1">
+            <div className="inline-flex items-center bg-white border border-gray-200 rounded-lg px-1 py-1">
+              <span className="text-gray-600 flex-shrink-0">
+                {chunk.speaker === 0
+                  ? <MicIcon size={13} color="black" />
+                  : chunk.speaker === 1
+                  ? <HeadphonesIcon size={12} color="black" />
+                  : <UserCircleIcon size={12} color="black" />}
+              </span>
+              {typeof chunk.speaker !== "number" && (
+                <span className="text-xs font-medium text-gray-700">
+                  {chunk.speaker}
+                </span>
               )}
-            >
-              <div className="text-sm text-gray-800">
-                {chunk.words.map(word => word.text).join(" ")}
-              </div>
             </div>
-          );
-        })}
+            <div className="text-[15px] text-gray-800 leading-relaxed pl-1">
+              {chunk.words.map(word => word.text).join(" ")}
+            </div>
+          </div>
+        ))}
       </div>
 
       {!isAtBottom && (
