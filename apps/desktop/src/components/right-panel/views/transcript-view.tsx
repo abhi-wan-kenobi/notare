@@ -291,7 +291,7 @@ function RenderInMeeting({ words }: { words: Word2[] }) {
     <div className="flex-1 relative">
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto px-4 py-6 space-y-2 absolute inset-0"
+        className="flex-1 overflow-y-auto px-4 pt-2 pb-6 space-y-2 absolute inset-0"
         onScroll={handleScroll}
       >
         {speakerChunks.map((chunk, index) => {
