@@ -461,7 +461,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
     fn get_current_model(&self) -> Result<SupportedSttModel, crate::Error> {
         let store = self.local_stt_store();
         let model = store.get(crate::StoreKey::DefaultModel)?;
-        Ok(model.unwrap_or(SupportedSttModel::Whisper(WhisperModel::QuantizedBase)))
+        Ok(model.unwrap_or(SupportedSttModel::Whisper(WhisperModel::QuantizedSmall)))
     }
 
     #[tracing::instrument(skip_all)]
