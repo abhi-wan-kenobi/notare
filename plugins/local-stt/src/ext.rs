@@ -282,6 +282,7 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                 if let Some(_) = s.external_server.take() {
                     stopped = true;
                 }
+                crate::kill_processes_by_name("stt-aarch64-apple-darwin");
             }
             Some(ServerType::Internal) => {
                 if let Some(_) = s.internal_server.take() {
