@@ -69,9 +69,11 @@ fn build_enhance_other_grammar(s: &Option<Vec<String>>) -> String {
 
 fn build_title_grammar() -> String {
     vec![
-        r##"lowercase ::= [a-z0-9]"##,
+        r##"lowercase ::= [a-z]"##,
         r##"uppercase ::= [A-Z]"##,
-        r##"word ::= uppercase lowercase*"##,
+        r##"number ::= [0-9]"##,
+        r##"acronym ::= uppercase{2,}"##,
+        r##"word ::= acronym | (uppercase | number) (lowercase | number)*"##,
         r##"root ::= word (" " word)*"##,
     ]
     .join("\n")
@@ -80,8 +82,8 @@ fn build_title_grammar() -> String {
 fn build_tags_grammar() -> String {
     vec![
         r##"root ::= "[" ws string ("," ws string)* ws "]""##,
-        r##"string ::= "\"" char+ "\"""##,
-        r##"char ::= [^"\\\x7F\x00-\x1F] | [\\] (["\\bfnrt] | "u" [0-9a-fA-F]{4})"##,
+        r##"string ::= "\"" tag "\"""##,
+        r##"tag ::= [a-zA-Z] ([a-zA-Z0-9_-])*"##,
         r##"ws ::= [ \t\n\r]*"##,
     ]
     .join("\n")
@@ -98,13 +100,10 @@ mod tests {
 
         for (input, expected) in vec![
             ("Meeting Summary", true),
-            ("Product Review Discussion", true),
-            ("A", true),
-            ("Planning Session", true),
-            ("Q1 Planning Session", true),
-            ("meeting summary", false),
-            ("Meeting-Summary", false),
+            ("2024 Budget Review", true),
+            ("API Design Meeting", true),
             ("", false),
+            ("   ", false),
         ] {
             let result = gbnf.validate(&build_title_grammar(), input).unwrap();
             assert_eq!(result, expected, "failed: {}", input);
@@ -116,10 +115,20 @@ mod tests {
         let gbnf = gbnf_validator::Validator::new().unwrap();
 
         for (input, expected) in vec![
-            ("[\"meeting\", \"summary\"]", true),
-            ("[\"meeting\", \"summary\", \"\"]", false),
+            (
+                serde_json::to_string(&vec!["meeting", "summary"]).unwrap(),
+                true,
+            ),
+            (
+                serde_json::to_string(&vec!["meeting", "summary", ""]).unwrap(),
+                false,
+            ),
+            (
+                serde_json::to_string(&vec!["@meeting", "#summary"]).unwrap(),
+                false,
+            ),
         ] {
-            let result = gbnf.validate(&build_tags_grammar(), input).unwrap();
+            let result = gbnf.validate(&build_tags_grammar(), &input).unwrap();
             assert_eq!(result, expected, "failed: {}", input);
         }
     }

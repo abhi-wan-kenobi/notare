@@ -4887,6 +4887,7 @@ dependencies = [
  "indoc",
  "insta",
  "serde",
+ "serde_json",
  "specta",
  "tracing",
 ]
