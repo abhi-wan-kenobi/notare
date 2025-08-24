@@ -1,3 +1,5 @@
+// https://github.com/ggml-org/llama.cpp/blob/master/grammars/README.md
+
 #[derive(specta::Type, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "task")]
 pub enum Grammar {
@@ -17,17 +19,6 @@ impl Grammar {
             Grammar::Tags => build_tags_grammar(),
         }
     }
-}
-
-#[allow(dead_code)]
-fn build_enhance_hypr_grammar(_s: &Option<Vec<String>>) -> String {
-    vec![
-        r##"root ::= think content"##,
-        r##"line ::= "- " [A-Z] [^*.\n[(]+ ".\n""##,
-        r##"think ::= "<think>\n" line line? line? line? "</think>""##,
-        r##"content ::= .*"##,
-    ]
-    .join("\n")
 }
 
 fn build_known_sections_grammar(sections: &[String]) -> String {
@@ -58,15 +49,13 @@ fn build_known_sections_grammar(sections: &[String]) -> String {
 
 fn build_enhance_other_grammar(s: &Option<Vec<String>>) -> String {
     let auto = vec![
-        r##"root ::= thinking sectionf section section section? section?"##,
-        r##"sectionf ::= "# Objective\n\n" line line? line? "\n""##,
+        r##"root ::= thinking section section section section? section?"##,
         r##"section ::= header "\n\n" bline bline bline? bline? bline? "\n""##,
-        r##"header ::= "# " [^*.\n]+"##,
+        r##"header ::= "# " [A-Z][^*.\n]+"##,
         r##"line ::= "- " [A-Z] [^*.\n[(]+ ".\n""##,
         r##"bline ::= "- **" [A-Z] [^*\n:]+ "**: " ([^*;,[.\n] | link)+ ".\n""##,
-        r##"hsf ::= "- Objective\n""##,
         r##"hd ::= "- " [A-Z] [^[(*\n]+ "\n""##,
-        r##"thinking ::= "<thinking>\n" hsf hd hd? hd? hd? "</thinking>""##,
+        r##"thinking ::= "<thinking>\n" hd hd hd? hd? hd? "</thinking>""##,
         r##"link ::= "[" [^\]]+ "]" "(" [^)]+ ")""##,
     ]
     .join("\n");

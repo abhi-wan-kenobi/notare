@@ -4888,6 +4888,7 @@ dependencies = [
  "insta",
  "serde",
  "specta",
+ "tracing",
 ]
 
 [[package]]
