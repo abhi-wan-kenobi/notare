@@ -166,14 +166,17 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                     return Err(crate::Error::ModelNotDownloaded);
                 }
 
-                if self
-                    .state::<crate::SharedState>()
-                    .lock()
-                    .await
-                    .internal_server
-                    .is_some()
                 {
-                    return Err(crate::Error::ServerAlreadyRunning);
+                    let state = self.state::<crate::SharedState>();
+                    let mut guard = state.lock().await;
+                    if let Some(server) = &guard.internal_server {
+                        let h = server.health().await;
+                        if !matches!(h, ServerHealth::Unreachable) {
+                            return Ok(server.base_url.clone());
+                        } else {
+                            guard.internal_server = None;
+                        }
+                    }
                 }
 
                 let whisper_model = match model {
@@ -201,14 +204,18 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                 Ok(base_url)
             }
             ServerType::External => {
-                if self
-                    .state::<crate::SharedState>()
-                    .lock()
-                    .await
-                    .external_server
-                    .is_some()
                 {
-                    return Err(crate::Error::ServerAlreadyRunning);
+                    let state = self.state::<crate::SharedState>();
+                    let mut guard = state.lock().await;
+                    if let Some(server) = &guard.external_server {
+                        let h = server.health().await;
+                        if !matches!(h, ServerHealth::Unreachable) {
+                            return Ok(server.base_url.clone());
+                        } else {
+                            guard.external_server = None;
+                            crate::kill_processes_by_name("stt-aarch64-apple-darwin");
+                        }
+                    }
                 }
 
                 let am_model = match model {
@@ -279,10 +286,10 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
         let mut stopped = false;
         match server_type {
             Some(ServerType::External) => {
+                crate::kill_processes_by_name("stt-aarch64-apple-darwin");
                 if let Some(_) = s.external_server.take() {
                     stopped = true;
                 }
-                crate::kill_processes_by_name("stt-aarch64-apple-darwin");
             }
             Some(ServerType::Internal) => {
                 if let Some(_) = s.internal_server.take() {
