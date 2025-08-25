@@ -213,7 +213,6 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                             return Ok(server.base_url.clone());
                         } else {
                             guard.external_server = None;
-                            crate::kill_processes_by_name("stt-aarch64-apple-darwin");
                         }
                     }
                 }
