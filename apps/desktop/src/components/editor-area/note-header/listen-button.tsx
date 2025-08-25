@@ -82,19 +82,6 @@ export default function ListenButton({ sessionId, isCompact = false }: { session
     },
   });
 
-  const anySttModelExists = useQuery({
-    queryKey: ["check-any-stt-model-downloaded"],
-    refetchInterval: 3000,
-    queryFn: async () => {
-      const supportedModels = await localSttCommands.listSupportedModels();
-      const sttDownloadStatuses = await Promise.all(
-        supportedModels.map((model) => localSttCommands.isModelDownloaded(model.key as SupportedSttModel)),
-      );
-      return sttDownloadStatuses.some(Boolean);
-    },
-    enabled: isOnboarding,
-  });
-
   const sessionWords = useSession(sessionId, (s) => s.session.words);
 
   // don't show consent notification if the session already has transcript
@@ -157,7 +144,7 @@ export default function ListenButton({ sessionId, isCompact = false }: { session
   if (ongoingSessionStatus === "inactive") {
     const buttonProps = {
       disabled: isOnboarding
-        ? !anySttModelExists.data || (meetingEnded && isEnhancePending)
+        ? !modelDownloaded.data || (meetingEnded && isEnhancePending)
         : !modelDownloaded.data || (meetingEnded && isEnhancePending),
       onClick: handleStartSession,
     };
