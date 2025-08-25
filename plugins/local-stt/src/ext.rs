@@ -211,8 +211,6 @@ impl<R: Runtime, T: Manager<R>> LocalSttPluginExt<R> for T {
                     return Err(crate::Error::ServerAlreadyRunning);
                 }
 
-                crate::kill_processes_by_name("stt-aarch64-apple-darwin");
-
                 let am_model = match model {
                     SupportedSttModel::Am(m) => m,
                     SupportedSttModel::Whisper(_) => {

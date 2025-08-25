@@ -16,6 +16,9 @@ pub fn on_window_event(window: &tauri::Window<tauri::Wry>, event: &tauri::Window
                         if window.hide().is_ok() {
                             api.prevent_close();
 
+                            #[cfg(target_os = "macos")]
+                            let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
                             if let Err(e) = app.handle_main_window_visibility(false) {
                                 tracing::error!("failed_to_handle_main_window_visibility: {:?}", e);
                             }
@@ -37,11 +40,13 @@ pub fn on_window_event(window: &tauri::Window<tauri::Wry>, event: &tauri::Window
                         guard.windows.remove(&w);
                     }
 
-                    let event = WindowDestroyed { window: w };
-                    let _ = event.emit(app);
+                    if w == HyprWindow::Main {
+                        let event = WindowDestroyed { window: w };
+                        let _ = event.emit(app);
 
-                    if let Err(e) = app.handle_main_window_visibility(false) {
-                        tracing::error!("failed_to_handle_main_window_visibility: {:?}", e);
+                        if let Err(e) = app.handle_main_window_visibility(false) {
+                            tracing::error!("failed_to_handle_main_window_visibility: {:?}", e);
+                        }
                     }
                 }
             }
