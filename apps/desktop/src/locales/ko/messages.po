@@ -267,10 +267,10 @@ msgstr ""
 #. placeholder {0}: disabled ? "Wait..." : "Play again"
 #. placeholder {0}: disabled ? "Wait..." : "Play video"
 #. placeholder {0}: disabled ? "Wait..." : isHovered ? (isCompact ? "Resume" : "Resume") : (isCompact ? "Ended" : "Ended")
-#: src/components/editor-area/note-header/listen-button.tsx:153
-#: src/components/editor-area/note-header/listen-button.tsx:231
-#: src/components/editor-area/note-header/listen-button.tsx:255
-#: src/components/editor-area/note-header/listen-button.tsx:275
+#: src/components/editor-area/note-header/listen-button.tsx:152
+#: src/components/editor-area/note-header/listen-button.tsx:230
+#: src/components/editor-area/note-header/listen-button.tsx:254
+#: src/components/editor-area/note-header/listen-button.tsx:274
 #: src/components/settings/views/templates.tsx:217
 msgid "{0}"
 msgstr ""
@@ -1139,7 +1139,7 @@ msgstr ""
 #~ msgid "No Template"
 #~ msgstr ""
 
-#: src/components/editor-area/note-header/listen-button.tsx:530
+#: src/components/editor-area/note-header/listen-button.tsx:529
 msgid "No Template (Default)"
 msgstr ""
 
@@ -1223,7 +1223,7 @@ msgstr ""
 msgid "Owner"
 msgstr ""
 
-#: src/components/editor-area/note-header/listen-button.tsx:376
+#: src/components/editor-area/note-header/listen-button.tsx:375
 msgid "Pause"
 msgstr ""
 
@@ -1319,7 +1319,7 @@ msgstr ""
 #~ msgid "Save and close"
 #~ msgstr ""
 
-#: src/components/editor-area/note-header/listen-button.tsx:500
+#: src/components/editor-area/note-header/listen-button.tsx:499
 msgid "Save current recording"
 msgstr ""
 
@@ -1460,11 +1460,11 @@ msgstr ""
 #~ msgid "Start Monthly Plan"
 #~ msgstr ""
 
-#: src/components/editor-area/note-header/listen-button.tsx:202
+#: src/components/editor-area/note-header/listen-button.tsx:201
 msgid "Start recording"
 msgstr ""
 
-#: src/components/editor-area/note-header/listen-button.tsx:477
+#: src/components/editor-area/note-header/listen-button.tsx:476
 msgid "Stop"
 msgstr ""
 
@@ -1513,7 +1513,7 @@ msgstr ""
 msgid "Teamspace"
 msgstr ""
 
-#: src/components/editor-area/note-header/listen-button.tsx:521
+#: src/components/editor-area/note-header/listen-button.tsx:520
 msgid "Template"
 msgstr ""
 
