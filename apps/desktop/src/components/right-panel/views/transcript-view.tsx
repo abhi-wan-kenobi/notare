@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMatch } from "@tanstack/react-router";
 import { writeText as writeTextToClipboard } from "@tauri-apps/plugin-clipboard-manager";
 import clsx from "clsx";
+
 import {
   AudioLinesIcon,
   CheckIcon,
@@ -19,6 +20,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ParticipantsChipInner } from "@/components/editor-area/note-header/chips/participants-chip";
 import { useHypr } from "@/contexts";
+import { useContainerWidth } from "@/hooks/use-container-width";
 import { commands as dbCommands, Human, Word2 } from "@hypr/plugin-db";
 import { commands as miscCommands } from "@hypr/plugin-misc";
 import TranscriptEditor, {
@@ -36,204 +38,28 @@ import { Spinner } from "@hypr/ui/components/ui/spinner";
 import { useOngoingSession } from "@hypr/utils/contexts";
 import { SearchHeader } from "../components/search-header";
 import { useTranscript } from "../hooks/useTranscript";
-import { useTranscriptWidget } from "../hooks/useTranscriptWidget";
-
-function useContainerWidth(ref: React.RefObject<HTMLElement>) {
-  const [width, setWidth] = useState(0);
-
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) {
-      return;
-    }
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setWidth(entry.contentRect.width);
-      }
-    });
-
-    resizeObserver.observe(element);
-    // Set initial width
-    setWidth(element.getBoundingClientRect().width);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [ref]);
-
-  return width;
-}
 
 export function TranscriptView() {
-  const queryClient = useQueryClient();
-
-  const [editable, setEditable] = useState(false);
-  const [isSearchActive, setIsSearchActive] = useState(false);
-
   const containerRef = useRef<HTMLDivElement>(null);
   const panelWidth = useContainerWidth(containerRef);
 
   const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: true });
   const sessionId = noteMatch.params.id;
 
-  const ongoingSession = useOngoingSession((s) => ({
-    start: s.start,
-    status: s.status,
-    loading: s.loading,
-    isInactive: s.status === "inactive",
-  }));
-  const { showEmptyMessage, hasTranscript } = useTranscriptWidget(sessionId);
-  const { isLive, words } = useTranscript(sessionId);
-
-  const editorRef = useRef<TranscriptEditorRef | null>(null);
-
-  useEffect(() => {
-    if (words && words.length > 0) {
-      editorRef.current?.setWords(words);
-      if (editorRef.current?.isNearBottom()) {
-        editorRef.current?.scrollToBottom();
-      }
-    }
-  }, [words, isLive]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
-        const currentShowActions = hasTranscript && sessionId && ongoingSession.isInactive;
-        if (currentShowActions) {
-          setIsSearchActive(true);
-        }
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [hasTranscript, sessionId, ongoingSession.isInactive]);
-
-  const audioExist = useQuery(
-    {
-      refetchInterval: 2500,
-      enabled: !!sessionId,
-      queryKey: ["audio", sessionId, "exist"],
-      queryFn: () => miscCommands.audioExist(sessionId!),
-    },
-    queryClient,
-  );
-
-  const handleCopyAll = useCallback(async () => {
-    if (editorRef.current?.editor) {
-      const text = editorRef.current.toText();
-      await writeTextToClipboard(text);
-    }
-  }, [editorRef]);
-
-  const handleOpenSession = useCallback(() => {
-    if (sessionId) {
-      miscCommands.audioOpen(sessionId);
-    }
-  }, [sessionId]);
-
-  const handeToggleEdit = useCallback(() => {
-    setEditable((v) => {
-      const nextEditable = !v;
-
-      if (!nextEditable && editorRef.current?.editor) {
-        editorRef.current.editor.commands.blur();
-      }
-
-      return nextEditable;
-    });
-  }, []);
-
-  const handleUpdate = (words: Word2[]) => {
-    if (!isLive) {
-      dbCommands.getSession({ id: sessionId! }).then((session) => {
-        if (session) {
-          dbCommands.upsertSession({ ...session, words });
-        }
-      });
-    }
-  };
+  const { words, isLive } = useTranscript(sessionId);
+  const showEmptyMessage = sessionId && words.length <= 0 && !isLive;
 
   if (!sessionId) {
     return null;
   }
 
-  const showActions = hasTranscript && sessionId && ongoingSession.isInactive;
-
   return (
     <div className="w-full h-full flex flex-col" ref={containerRef}>
-      {isSearchActive
-        ? (
-          <SearchHeader
-            editorRef={editorRef}
-            onClose={() => setIsSearchActive(false)}
-          />
-        )
-        : (
-          <header
-            className={clsx(
-              "flex items-center justify-between w-full px-4 py-1 my-1",
-              showEmptyMessage && "border-b border-neutral-100",
-            )}
-          >
-            {(!showEmptyMessage && !isLive) && (
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-neutral-900">Transcript</h2>
-              </div>
-            )}
-            <div className="not-draggable flex items-center ">
-              {showActions && (
-                <Button
-                  className="w-8 h-8"
-                  variant="ghost"
-                  size="icon"
-                  onClick={handeToggleEdit}
-                >
-                  {editable
-                    ? <CheckIcon size={12} className="text-neutral-600" />
-                    : <PencilIcon size={12} className="text-neutral-600" />}
-                </Button>
-              )}
-              {showActions && (
-                <Button
-                  className="w-8 h-8"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsSearchActive(true)}
-                >
-                  <TextSearchIcon size={14} className="text-neutral-600" />
-                </Button>
-              )}
-              {(audioExist.data && showActions) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleOpenSession}
-                >
-                  <AudioLinesIcon size={14} className="text-neutral-600" />
-                </Button>
-              )}
-              {showActions && <CopyButton onCopy={handleCopyAll} />}
-            </div>
-          </header>
-        )}
-
-      <div className="flex-1 overflow-hidden flex flex-col">
-        {showEmptyMessage
-          ? <RenderEmpty sessionId={sessionId} panelWidth={panelWidth} />
-          : isLive
-          ? <RenderInMeeting words={words} />
-          : (
-            <TranscriptEditor
-              ref={editorRef}
-              initialWords={words}
-              editable={ongoingSession.isInactive && editable}
-              onUpdate={handleUpdate}
-              c={SpeakerSelector}
-            />
-          )}
-      </div>
+      {showEmptyMessage
+        ? <RenderNotInMeetingEmpty sessionId={sessionId} panelWidth={panelWidth} />
+        : isLive
+        ? <RenderInMeeting words={words} />
+        : <RenderNotInMeeting sessionId={sessionId} words={words} />}
     </div>
   );
 }
@@ -335,10 +161,149 @@ function RenderInMeeting({ words }: { words: Word2[] }) {
   );
 }
 
-function RenderEmpty({ sessionId, panelWidth }: {
-  sessionId: string;
-  panelWidth: number;
-}) {
+function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Word2[] }) {
+  const queryClient = useQueryClient();
+
+  const [editable, setEditable] = useState(false);
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const editorRef = useRef<TranscriptEditorRef | null>(null);
+
+  const ongoingSession = useOngoingSession((s) => ({
+    isInactive: s.status === "inactive",
+  }));
+
+  useEffect(() => {
+    if (words && words.length > 0) {
+      editorRef.current?.setWords(words);
+      if (editorRef.current?.isNearBottom()) {
+        editorRef.current?.scrollToBottom();
+      }
+    }
+  }, [words]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        if (ongoingSession.isInactive) {
+          setIsSearchActive(true);
+        }
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [ongoingSession.isInactive]);
+
+  const audioExist = useQuery(
+    {
+      refetchInterval: 2500,
+      enabled: !!sessionId,
+      queryKey: ["audio", sessionId, "exist"],
+      queryFn: () => miscCommands.audioExist(sessionId),
+    },
+    queryClient,
+  );
+
+  const handleCopyAll = useCallback(async () => {
+    if (editorRef.current?.editor) {
+      const text = editorRef.current.toText();
+      await writeTextToClipboard(text);
+    }
+  }, [editorRef]);
+
+  const handleOpenSession = useCallback(() => {
+    miscCommands.audioOpen(sessionId);
+  }, [sessionId]);
+
+  const handeToggleEdit = useCallback(() => {
+    setEditable((v) => {
+      const nextEditable = !v;
+      if (!nextEditable && editorRef.current?.editor) {
+        editorRef.current.editor.commands.blur();
+      }
+      return nextEditable;
+    });
+  }, []);
+
+  const handleUpdate = (words: Word2[]) => {
+    dbCommands.getSession({ id: sessionId }).then((session) => {
+      if (session) {
+        dbCommands.upsertSession({ ...session, words });
+      }
+    });
+  };
+
+  if (isSearchActive) {
+    return (
+      <>
+        <SearchHeader
+          editorRef={editorRef}
+          onClose={() => setIsSearchActive(false)}
+        />
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <TranscriptEditor
+            ref={editorRef}
+            initialWords={words}
+            editable={ongoingSession.isInactive && editable}
+            onUpdate={handleUpdate}
+            c={SpeakerSelector}
+          />
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <header className="flex items-center justify-between w-full px-4 py-1 my-1">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-neutral-900">Transcript</h2>
+        </div>
+        <div className="not-draggable flex items-center">
+          <Button
+            className="w-8 h-8"
+            variant="ghost"
+            size="icon"
+            onClick={handeToggleEdit}
+          >
+            {editable
+              ? <CheckIcon size={12} className="text-neutral-600" />
+              : <PencilIcon size={12} className="text-neutral-600" />}
+          </Button>
+          <Button
+            className="w-8 h-8"
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSearchActive(true)}
+          >
+            <TextSearchIcon size={14} className="text-neutral-600" />
+          </Button>
+          {audioExist.data && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenSession}
+            >
+              <AudioLinesIcon size={14} className="text-neutral-600" />
+            </Button>
+          )}
+          <CopyButton onCopy={handleCopyAll} />
+        </div>
+      </header>
+
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <TranscriptEditor
+          ref={editorRef}
+          initialWords={words}
+          editable={ongoingSession.isInactive && editable}
+          onUpdate={handleUpdate}
+          c={SpeakerSelector}
+        />
+      </div>
+    </>
+  );
+}
+
+function RenderNotInMeetingEmpty({ sessionId, panelWidth }: { sessionId: string; panelWidth: number }) {
   const ongoingSession = useOngoingSession((s) => ({
     start: s.start,
     status: s.status,
@@ -357,7 +322,7 @@ function RenderEmpty({ sessionId, panelWidth }: {
   const showFullText = panelWidth >= 400;
 
   return (
-    <div className="h-full flex items-center justify-center">
+    <div className="flex-1 flex items-center justify-center">
       <div className="text-neutral-500 font-medium text-center">
         <div
           className={`mb-6 text-neutral-600 flex ${isNarrow ? "flex-col" : "flex-row"} items-center ${
@@ -385,7 +350,12 @@ function RenderEmpty({ sessionId, panelWidth }: {
           {showFullText && <span className="text-sm">to see live transcript</span>}
         </div>
 
-        <div className={`flex items-center justify-center mb-4 ${isUltraCompact ? "w-full" : "w-full max-w-[240px]"}`}>
+        <div
+          className={clsx([
+            "flex items-center justify-center mb-4",
+            isUltraCompact ? "w-full" : "w-full max-w-[240px]",
+          ])}
+        >
           <div className="h-px bg-neutral-200 flex-grow"></div>
           <span className="px-3 text-xs text-neutral-400 font-medium">or</span>
           <div className="h-px bg-neutral-200 flex-grow"></div>

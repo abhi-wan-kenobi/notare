@@ -118,7 +118,6 @@ export default function ListenButton({ sessionId, isCompact = false }: { session
     if (ongoingSessionStatus === "inactive") {
       ongoingSessionStore.start(sessionId);
 
-      // Set mic muted after starting if it's onboarding
       if (isOnboarding) {
         listenerCommands.setMicMuted(true);
       }

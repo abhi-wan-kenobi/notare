@@ -59,9 +59,11 @@ export function useTranscript(sessionId: string | null) {
 
     listenerEvents.sessionEvent.listen(({ payload }) => {
       if (payload.type === "finalWords") {
-        setFinalWords((existing) => [...existing, ...payload.words]);
+        const words = Object.values(payload.words).flat().filter((v) => !!v);
+        setFinalWords((existing) => [...existing, ...words]);
       } else if (payload.type === "partialWords") {
-        setPartialWords((payload.words as Word[]).map(w => ({ ...w, confidence: -1 })));
+        const words = Object.values(payload.words).flat().filter((v) => !!v);
+        setPartialWords(words);
       }
     }).then((fn) => {
       unlisten = fn;

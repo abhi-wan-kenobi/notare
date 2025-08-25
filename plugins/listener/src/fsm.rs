@@ -1,4 +1,6 @@
 use statig::prelude::*;
+
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use tauri::Manager;
@@ -252,7 +254,7 @@ impl Session {
             .chunks(hypr_aec::BLOCK_SIZE);
 
         // https://github.com/fastrepl/hyprnote/commit/7c8cf1c
-        tokio::time::sleep(Duration::from_millis(65)).await;
+        // tokio::time::sleep(Duration::from_millis(65)).await;
         // We need some delay here for Airpod transition.
         // But if the delay is too long, AEC will not work.
 
@@ -468,41 +470,63 @@ impl Session {
                         Ok(Some(response)) => {
                             let diff = manager.append(response.clone());
 
-                            let mut partial_words = diff
+                            let partial_words_by_channel: HashMap<
+                                usize,
+                                Vec<owhisper_interface::Word2>,
+                            > = diff
                                 .partial_words
                                 .iter()
-                                .map(|w| owhisper_interface::Word2::from(w.clone()))
-                                .collect::<Vec<_>>();
-                            partial_words.sort_by(|a, b| {
-                                a.start_ms
-                                    .partial_cmp(&b.start_ms)
-                                    .unwrap_or(std::cmp::Ordering::Equal)
-                            });
-
+                                .map(|(channel_idx, words)| {
+                                    (
+                                        *channel_idx,
+                                        words
+                                            .iter()
+                                            .map(|w| owhisper_interface::Word2::from(w.clone()))
+                                            .collect::<Vec<_>>(),
+                                    )
+                                })
+                                .collect();
                             SessionEvent::PartialWords {
-                                words: partial_words,
+                                words: partial_words_by_channel,
                             }
                             .emit(&app)
                             .unwrap();
 
-                            let mut final_words = diff
+                            let final_words_by_channel: HashMap<
+                                usize,
+                                Vec<owhisper_interface::Word2>,
+                            > = diff
                                 .final_words
                                 .iter()
-                                .map(|w| owhisper_interface::Word2::from(w.clone()))
-                                .collect::<Vec<_>>();
-                            final_words.sort_by(|a, b| {
-                                a.start_ms
-                                    .partial_cmp(&b.start_ms)
-                                    .unwrap_or(std::cmp::Ordering::Equal)
-                            });
+                                .map(|(channel_idx, words)| {
+                                    (
+                                        *channel_idx,
+                                        words
+                                            .iter()
+                                            .map(|w| owhisper_interface::Word2::from(w.clone()))
+                                            .collect::<Vec<_>>(),
+                                    )
+                                })
+                                .collect();
 
-                            update_session(&app, &session.id, final_words.clone())
-                                .await
-                                .unwrap();
+                            update_session(
+                                &app,
+                                &session.id,
+                                final_words_by_channel
+                                    .clone()
+                                    .values()
+                                    .flatten()
+                                    .cloned()
+                                    .collect(),
+                            )
+                            .await
+                            .unwrap();
 
-                            SessionEvent::FinalWords { words: final_words }
-                                .emit(&app)
-                                .unwrap();
+                            SessionEvent::FinalWords {
+                                words: final_words_by_channel,
+                            }
+                            .emit(&app)
+                            .unwrap();
                         }
                         Ok(None) => {
                             tracing::info!("listen_stream_ended");
