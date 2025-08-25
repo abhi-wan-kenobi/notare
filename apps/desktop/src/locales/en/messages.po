@@ -267,10 +267,10 @@ msgstr "(Optional)"
 #. placeholder {0}: disabled ? "Wait..." : "Play again"
 #. placeholder {0}: disabled ? "Wait..." : "Play video"
 #. placeholder {0}: disabled ? "Wait..." : isHovered ? (isCompact ? "Resume" : "Resume") : (isCompact ? "Ended" : "Ended")
-#: src/components/editor-area/note-header/listen-button.tsx:152
-#: src/components/editor-area/note-header/listen-button.tsx:230
-#: src/components/editor-area/note-header/listen-button.tsx:254
-#: src/components/editor-area/note-header/listen-button.tsx:274
+#: src/components/editor-area/note-header/listen-button.tsx:139
+#: src/components/editor-area/note-header/listen-button.tsx:217
+#: src/components/editor-area/note-header/listen-button.tsx:241
+#: src/components/editor-area/note-header/listen-button.tsx:261
 #: src/components/settings/views/templates.tsx:217
 msgid "{0}"
 msgstr "{0}"
@@ -1139,7 +1139,7 @@ msgstr "No recent notes with this organization"
 #~ msgid "No Template"
 #~ msgstr "No Template"
 
-#: src/components/editor-area/note-header/listen-button.tsx:529
+#: src/components/editor-area/note-header/listen-button.tsx:516
 msgid "No Template (Default)"
 msgstr "No Template (Default)"
 
@@ -1223,7 +1223,7 @@ msgstr "Others"
 msgid "Owner"
 msgstr "Owner"
 
-#: src/components/editor-area/note-header/listen-button.tsx:375
+#: src/components/editor-area/note-header/listen-button.tsx:362
 msgid "Pause"
 msgstr "Pause"
 
@@ -1319,7 +1319,7 @@ msgstr "Role"
 #~ msgid "Save and close"
 #~ msgstr "Save and close"
 
-#: src/components/editor-area/note-header/listen-button.tsx:499
+#: src/components/editor-area/note-header/listen-button.tsx:486
 msgid "Save current recording"
 msgstr "Save current recording"
 
@@ -1460,11 +1460,11 @@ msgstr "Spoken languages"
 #~ msgid "Start Monthly Plan"
 #~ msgstr "Start Monthly Plan"
 
-#: src/components/editor-area/note-header/listen-button.tsx:201
+#: src/components/editor-area/note-header/listen-button.tsx:188
 msgid "Start recording"
 msgstr "Start recording"
 
-#: src/components/editor-area/note-header/listen-button.tsx:476
+#: src/components/editor-area/note-header/listen-button.tsx:463
 msgid "Stop"
 msgstr "Stop"
 
@@ -1513,7 +1513,7 @@ msgstr "Team management features are currently under development and will be ava
 msgid "Teamspace"
 msgstr "Teamspace"
 
-#: src/components/editor-area/note-header/listen-button.tsx:520
+#: src/components/editor-area/note-header/listen-button.tsx:507
 msgid "Template"
 msgstr "Template"
 
