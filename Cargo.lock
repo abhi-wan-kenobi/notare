@@ -3809,7 +3809,7 @@ dependencies = [
 
 [[package]]
 name = "desktop"
-version = "0.0.70"
+version = "0.0.71"
 dependencies = [
  "anyhow",
  "bytes",
