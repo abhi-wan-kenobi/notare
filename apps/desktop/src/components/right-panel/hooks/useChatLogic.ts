@@ -461,6 +461,12 @@ export function useChatLogic({
             type: "tool-start",
             tool_details: JSON.stringify(chunk.input),
           });
+
+          // log if user is using tools in chat
+          analyticsCommands.event({
+            event: "chat_tool_call",
+            distinct_id: userId || "",
+          });
         }
 
         if (chunk.type === "tool-result" && !(chunk.toolName === "update_progress" && type === "HyprLocal")) {
