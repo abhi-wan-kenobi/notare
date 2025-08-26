@@ -247,9 +247,6 @@ impl HyprWindow {
 
     pub fn show(&self, app: &AppHandle<tauri::Wry>) -> Result<WebviewWindow, crate::Error> {
         if self == &Self::Main {
-            #[cfg(target_os = "macos")]
-            let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
-
             use tauri_plugin_analytics::{hypr_analytics::AnalyticsPayload, AnalyticsPluginExt};
             use tauri_plugin_auth::{AuthPluginExt, StoreKey};
 
