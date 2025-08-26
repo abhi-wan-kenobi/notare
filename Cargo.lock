@@ -3898,6 +3898,7 @@ dependencies = [
  "regex",
  "thiserror 2.0.12",
  "tokio",
+ "tracing",
  "url",
 ]
 
@@ -14829,9 +14830,9 @@ name = "tauri-plugin-misc"
 version = "0.1.0"
 dependencies = [
  "buffer",
- "detect",
  "host",
  "indoc",
+ "lazy_static",
  "regex",
  "specta",
  "specta-typescript",
