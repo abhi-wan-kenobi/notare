@@ -2,7 +2,6 @@ import AVFoundation
 import Cocoa
 import SwiftRs
 
-// MARK: - Notification Instance
 class NotificationInstance {
   let id = UUID()
   let panel: NSPanel
@@ -44,7 +43,6 @@ class NotificationInstance {
   }
 }
 
-// MARK: - Custom UI Components
 class ClickableView: NSView {
   var trackingArea: NSTrackingArea?
   var isHovering = false
@@ -166,17 +164,15 @@ class CloseButton: NSButton {
     imagePosition = .imageOnly
     imageScaling = .scaleProportionallyDown
 
-    // Small SF Symbol for the “x”
     if #available(macOS 11.0, *) {
       let cfg = NSImage.SymbolConfiguration(pointSize: Self.symbolPointSize, weight: .semibold)
       image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close")?
         .withSymbolConfiguration(cfg)
     } else {
-      image = NSImage(named: NSImage.stopProgressTemplateName)  // fallback
+      image = NSImage(named: NSImage.stopProgressTemplateName)
     }
     contentTintColor = NSColor.white.withAlphaComponent(0.95)
 
-    // Subtle circular pill
     layer?.cornerRadius = Self.buttonSize / 2
     layer?.backgroundColor = NSColor.white.withAlphaComponent(0.16).cgColor
     layer?.borderColor = NSColor.white.withAlphaComponent(0.18).cgColor
@@ -221,8 +217,6 @@ class CloseButton: NSButton {
     layer?.backgroundColor = NSColor.white.withAlphaComponent(0.16).cgColor
   }
 }
-
-// Small subclass so we can associate the NotificationInstance to the button
 
 class ActionButton: NSButton {
   weak var notification: NotificationInstance?
@@ -318,7 +312,6 @@ class NotificationManager {
     stopGlobalMouseMonitorIfNeeded()
   }
 
-  // MARK: - Private Methods
   private func setupApplicationIfNeeded() {
     let app = NSApplication.shared
     if app.delegate == nil {
@@ -468,15 +461,14 @@ class NotificationManager {
     url: String?,
     notification: NotificationInstance
   ) {
-    let hasUrl = (url != nil)
     let descriptionText = makeDescription(from: url)
+    let hasUrl = (url != nil && !url!.isEmpty)
 
     let contentView = createNotificationView(
       description: descriptionText,
       title: title,
       body: message,
       buttonTitle: hasUrl ? "Open" : nil,
-      hasUrl: hasUrl,
       notification: notification
     )
     contentView.translatesAutoresizingMaskIntoConstraints = false
@@ -492,21 +484,20 @@ class NotificationManager {
     let closeButton = createCloseButton(effectView: effectView, notification: notification)
     setupCloseButtonHover(clickableView: notification.clickableView, closeButton: closeButton)
   }
+
   private func createNotificationView(
     description: String,
     title: String,
     body: String,
     buttonTitle: String? = nil,
-    hasUrl: Bool,
     notification: NotificationInstance
   ) -> NSView {
     let container = NSStackView()
     container.orientation = .horizontal
     container.alignment = .centerY
     container.distribution = .fill
-    container.spacing = 10  // base spacing for most gaps
+    container.spacing = 10
 
-    // Left: app icon (36 / 24)
     let iconContainer = NSView()
     iconContainer.wantsLayer = true
     iconContainer.layer?.cornerRadius = 9
@@ -730,17 +721,17 @@ public func _showNotification(
   title: SRString,
   message: SRString,
   url: SRString,
-  hasUrl: Bool,
   timeoutSeconds: Double
 ) -> Bool {
   let titleStr = title.toString()
   let messageStr = message.toString()
-  let urlStr = hasUrl ? url.toString() : nil
+  let urlStr = url.toString()
+  let finalUrl = urlStr.isEmpty ? nil : urlStr
 
   NotificationManager.shared.show(
     title: titleStr,
     message: messageStr,
-    url: urlStr,
+    url: finalUrl,
     timeoutSeconds: timeoutSeconds
   )
 
