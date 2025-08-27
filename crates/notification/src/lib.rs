@@ -9,7 +9,7 @@ static RECENT_NOTIFICATIONS: OnceLock<Mutex<HashMap<String, Instant>>> = OnceLoc
 const DEDUPE_WINDOW: Duration = Duration::from_secs(60 * 5);
 
 #[cfg(target_os = "macos")]
-pub fn show(notification: &hypr_notification_macos::Notification) {
+pub fn show(notification: &hypr_notification_interface::Notification) {
     let Some(key) = &notification.key else {
         hypr_notification_macos::show(notification);
         return;
@@ -35,3 +35,6 @@ pub fn show(notification: &hypr_notification_macos::Notification) {
 
     hypr_notification_macos::show(notification);
 }
+
+#[cfg(not(target_os = "macos"))]
+pub fn show(notification: &hypr_notification_interface::Notification) {}
