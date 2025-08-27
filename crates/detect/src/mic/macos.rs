@@ -1,7 +1,7 @@
 use cidre::{core_audio as ca, os};
 use std::time::{Duration, Instant};
 
-use crate::BackgroundTask;
+use crate::{BackgroundTask, DetectEvent};
 
 pub struct Detector {
     background: BackgroundTask,
@@ -99,11 +99,11 @@ impl crate::Observer for Detector {
                                         if state_guard.should_trigger(mic_in_use) {
                                             if mic_in_use {
                                                 if let Ok(guard) = callback.lock() {
-                                                    (*guard)("mic_started".to_string());
+                                                    (*guard)(DetectEvent::MicStarted);
                                                 }
                                             } else {
                                                 if let Ok(guard) = callback.lock() {
-                                                    (*guard)("mic_stopped".to_string());
+                                                    (*guard)(DetectEvent::MicStopped);
                                                 }
                                             }
                                         }
@@ -172,9 +172,7 @@ impl crate::Observer for Detector {
                                             if state_guard.should_trigger(mic_in_use) {
                                                 if mic_in_use {
                                                     if let Ok(callback_guard) = data.0.lock() {
-                                                        (*callback_guard)(
-                                                            "mic_started".to_string(),
-                                                        );
+                                                        (*callback_guard)(DetectEvent::MicStarted);
                                                     }
                                                 }
                                             }
@@ -239,7 +237,7 @@ impl crate::Observer for Detector {
                             state_guard.last_state = mic_in_use;
                             if mic_in_use {
                                 if let Ok(callback_guard) = callback.lock() {
-                                    (*callback_guard)("microphone_in_use".to_string());
+                                    (*callback_guard)(DetectEvent::MicStarted);
                                 }
                             }
                         }
@@ -288,7 +286,7 @@ mod tests {
     async fn test_detector() {
         let mut detector = Detector::default();
         detector.start(new_callback(|v| {
-            println!("{}", v);
+            println!("{:?}", v);
         }));
 
         tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;

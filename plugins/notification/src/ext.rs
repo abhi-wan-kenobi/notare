@@ -38,7 +38,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> NotificationPluginExt<R> for T {
         store
             .get(crate::StoreKey::EventNotification)
             .map_err(Error::Store)
-            .map(|v| v.unwrap_or(false))
+            .map(|v| v.unwrap_or(true))
     }
 
     #[tracing::instrument(skip(self))]
@@ -55,7 +55,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> NotificationPluginExt<R> for T {
         store
             .get(crate::StoreKey::DetectNotification)
             .map_err(Error::Store)
-            .map(|v| v.unwrap_or(false))
+            .map(|v| v.unwrap_or(true))
     }
 
     #[tracing::instrument(skip(self))]
@@ -101,20 +101,26 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> NotificationPluginExt<R> for T {
 
     #[tracing::instrument(skip(self))]
     fn start_detect_notification(&self) -> Result<(), Error> {
-        let cb = hypr_detect::new_callback(move |bundle_id| {
-            // let notif = hypr_notification2::Notification {
-            //     title: "Meeting detected".to_string(),
-            //     message: "Click here to start writing a note".to_string(),
-            //     url: Some("hypr://hyprnote.com/notification".to_string()),
-            //     timeout: Some(std::time::Duration::from_secs(10)),
-            // };
-
-            hypr_notification::show(&hypr_notification::Notification {
-                title: "Hello".to_string(),
-                message: "Hello".to_string(),
-                url: None,
-                timeout: Some(std::time::Duration::from_secs(10)),
-            });
+        let cb = hypr_detect::new_callback(|event| match event {
+            hypr_detect::DetectEvent::MicStarted => {
+                let notif = hypr_notification::Notification {
+                    title: "Meeting detected".to_string(),
+                    message: "Click here to start writing a note".to_string(),
+                    url: Some("hypr://hyprnote.com/notification".to_string()),
+                    timeout: Some(std::time::Duration::from_secs(10)),
+                };
+                hypr_notification::show(&notif);
+            }
+            hypr_detect::DetectEvent::MicStopped => {
+                let notif = hypr_notification::Notification {
+                    title: "Meeting stopped".to_string(),
+                    message: "Click here to start writing a note".to_string(),
+                    url: Some("hypr://hyprnote.com/notification".to_string()),
+                    timeout: Some(std::time::Duration::from_secs(10)),
+                };
+                hypr_notification::show(&notif);
+            }
+            _ => {}
         });
 
         let state = self.state::<crate::SharedState>();

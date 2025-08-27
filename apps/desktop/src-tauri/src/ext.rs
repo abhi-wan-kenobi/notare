@@ -1,9 +1,7 @@
 use std::future::Future;
 
-use hypr_whisper_local_model::WhisperModel;
 use tauri::Manager;
 use tauri_plugin_db::DatabasePluginExt;
-use tauri_plugin_local_stt::SupportedSttModel;
 use tauri_plugin_store2::{ScopedStore, StorePluginExt};
 
 pub trait AppExt<R: tauri::Runtime> {
