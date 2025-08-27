@@ -9231,6 +9231,7 @@ dependencies = [
 name = "notification"
 version = "0.1.0"
 dependencies = [
+ "notification-interface",
  "notification-macos",
  "serde",
 ]

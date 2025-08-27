@@ -41,12 +41,13 @@ fn main() {
     std::thread::spawn(|| {
         std::thread::sleep(Duration::from_millis(200));
 
-        let notification = Notification {
-            title: "Test Notification".into(),
-            message: "Hover/click should now react".into(),
-            url: Some("https://example.com".into()),
-            timeout: Some(Duration::from_secs(20)),
-        };
+        let notification = Notification::builder()
+            .key("test_notification")
+            .title("Test Notification")
+            .message("Hover/click should now react")
+            .url("https://example.com")
+            .timeout(Duration::from_secs(20))
+            .build();
 
         show(&notification);
         std::thread::sleep(Duration::from_secs(5));

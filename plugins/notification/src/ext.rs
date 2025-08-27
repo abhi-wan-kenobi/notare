@@ -103,21 +103,21 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> NotificationPluginExt<R> for T {
     fn start_detect_notification(&self) -> Result<(), Error> {
         let cb = hypr_detect::new_callback(|event| match event {
             hypr_detect::DetectEvent::MicStarted => {
-                let notif = hypr_notification::Notification {
-                    title: "Meeting detected".to_string(),
-                    message: "Click here to start writing a note".to_string(),
-                    url: Some("hypr://hyprnote.com/notification".to_string()),
-                    timeout: Some(std::time::Duration::from_secs(10)),
-                };
+                let notif = hypr_notification::Notification::builder()
+                    .title("Meeting detected")
+                    .message("Click here to start writing a note")
+                    .url("hypr://hyprnote.com/notification")
+                    .timeout(std::time::Duration::from_secs(10))
+                    .build();
                 hypr_notification::show(&notif);
             }
             hypr_detect::DetectEvent::MicStopped => {
-                let notif = hypr_notification::Notification {
-                    title: "Meeting stopped".to_string(),
-                    message: "Click here to start writing a note".to_string(),
-                    url: Some("hypr://hyprnote.com/notification".to_string()),
-                    timeout: Some(std::time::Duration::from_secs(10)),
-                };
+                let notif = hypr_notification::Notification::builder()
+                    .title("Meeting stopped")
+                    .message("Click here to start writing a note")
+                    .url("hypr://hyprnote.com/notification")
+                    .timeout(std::time::Duration::from_secs(10))
+                    .build();
                 hypr_notification::show(&notif);
             }
             _ => {}

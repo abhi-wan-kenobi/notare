@@ -33,12 +33,12 @@ mod tests {
 
     #[test]
     fn test_notification() {
-        let notification = hypr_notification_interface::Notification {
-            title: "Test Title".to_string(),
-            message: "Test message content".to_string(),
-            url: Some("https://example.com".to_string()),
-            timeout: Some(std::time::Duration::from_secs(3)),
-        };
+        let notification = hypr_notification_interface::Notification::builder()
+            .title("Test Title")
+            .message("Test message content")
+            .url("https://example.com")
+            .timeout(std::time::Duration::from_secs(3))
+            .build();
 
         show(&notification);
     }
