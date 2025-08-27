@@ -8,7 +8,6 @@ swift!(fn _show_notification(
     title: &SRString,
     message: &SRString,
     url: &SRString,
-    has_url: Bool,
     timeout_seconds: f64
 ) -> Bool);
 
@@ -22,10 +21,9 @@ pub fn show(notification: &hypr_notification_interface::Notification) {
             .as_ref()
             .map(|u| SRString::from(u.as_str()))
             .unwrap_or_else(|| SRString::from(""));
-        let has_url = notification.url.is_some();
         let timeout_seconds = notification.timeout.map(|d| d.as_secs_f64()).unwrap_or(5.0);
 
-        _show_notification(&title, &message, &url, has_url, timeout_seconds);
+        _show_notification(&title, &message, &url, timeout_seconds);
     }
 }
 

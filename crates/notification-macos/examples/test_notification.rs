@@ -1,44 +1,57 @@
 use notification_macos::*;
+
 use std::time::Duration;
 
-#[cfg(target_os = "macos")]
-#[link(name = "AppKit", kind = "framework")]
-#[link(name = "Foundation", kind = "framework")]
-extern "C" {
-    fn NSApplicationLoad() -> bool;
-    fn CFRunLoopRun();
-    fn CFRunLoopStop(rl: *const std::ffi::c_void);
-    fn CFRunLoopGetMain() -> *const std::ffi::c_void;
+use objc2::rc::Retained;
+use objc2::runtime::ProtocolObject;
+use objc2::{define_class, msg_send, MainThreadOnly};
+use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationDelegate};
+use objc2_foundation::{MainThreadMarker, NSObject, NSObjectProtocol};
+
+#[derive(Debug, Default)]
+struct AppDelegateIvars {}
+
+define_class! {
+    #[unsafe(super = NSObject)]
+    #[thread_kind = MainThreadOnly]
+    #[name = "AppDelegate"]
+    #[ivars = AppDelegateIvars]
+    struct AppDelegate;
+
+    unsafe impl NSObjectProtocol for AppDelegate {}
+    unsafe impl NSApplicationDelegate for AppDelegate {}
+}
+
+impl AppDelegate {
+    fn new(mtm: MainThreadMarker) -> Retained<Self> {
+        let this = Self::alloc(mtm).set_ivars(AppDelegateIvars::default());
+        unsafe { msg_send![super(this), init] }
+    }
 }
 
 fn main() {
-    #[cfg(target_os = "macos")]
-    {
-        unsafe {
-            NSApplicationLoad();
-        }
+    let mtm = MainThreadMarker::new().unwrap();
 
-        std::thread::spawn(|| {
-            std::thread::sleep(Duration::from_millis(100));
+    let app = NSApplication::sharedApplication(mtm);
+    app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
 
-            let notification = Notification {
-                title: "Test Notification".to_string(),
-                message: "This is a test message from Rust".to_string(),
-                url: Some("https://example.com".to_string()),
-                timeout: Some(Duration::from_secs(3)),
-            };
+    let delegate = AppDelegate::new(mtm);
+    app.setDelegate(Some(&ProtocolObject::from_ref(&*delegate)));
 
-            show(&notification);
+    std::thread::spawn(|| {
+        std::thread::sleep(Duration::from_millis(200));
 
-            std::thread::sleep(Duration::from_secs(5));
-            unsafe {
-                let main_loop = CFRunLoopGetMain();
-                CFRunLoopStop(main_loop);
-            }
-        });
+        let notification = Notification {
+            title: "Test Notification".into(),
+            message: "Hover/click should now react".into(),
+            url: Some("https://example.com".into()),
+            timeout: Some(Duration::from_secs(20)),
+        };
 
-        unsafe {
-            CFRunLoopRun();
-        }
-    }
+        show(&notification);
+        std::thread::sleep(Duration::from_secs(5));
+        std::process::exit(0);
+    });
+
+    app.run();
 }
