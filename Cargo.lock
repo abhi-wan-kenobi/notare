@@ -3829,6 +3829,7 @@ dependencies = [
  "db-user",
  "futures-util",
  "hound",
+ "intercept",
  "reqwest 0.12.23",
  "serde",
  "serde_json",
@@ -7693,6 +7694,13 @@ dependencies = [
  "js-sys",
  "wasm-bindgen",
  "web-sys",
+]
+
+[[package]]
+name = "intercept"
+version = "0.1.0"
+dependencies = [
+ "swift-rs 1.0.7 (git+https://github.com/Brendonovich/swift-rs?rev=01980f9)",
 ]
 
 [[package]]
