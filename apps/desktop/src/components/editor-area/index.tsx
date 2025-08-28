@@ -22,6 +22,7 @@ import { toast } from "@hypr/ui/components/ui/toast";
 import { cn } from "@hypr/ui/lib/utils";
 import { generateText, localProviderName, modelProvider, smoothStream, streamText, tool } from "@hypr/utils/ai";
 import { useOngoingSession, useSession, useSessions } from "@hypr/utils/contexts";
+import { globalEditorRef } from "../../shared/editor-ref";
 import { enhanceFailedToast } from "../toast/shared";
 import { AnnotationBox } from "./annotation-box";
 import { FloatingButton } from "./floating-button";
@@ -128,6 +129,19 @@ export default function EditorArea({
   }));
 
   const editorRef = useRef<{ editor: TiptapEditor | null }>(null);
+
+  // Assign editor to global ref for access by other components (like chat tools)
+  useEffect(() => {
+    if (editorRef.current?.editor) {
+      globalEditorRef.current = editorRef.current.editor;
+    }
+    // Clear on unmount
+    return () => {
+      if (globalEditorRef.current === editorRef.current?.editor) {
+        globalEditorRef.current = null;
+      }
+    };
+  }, [editorRef.current?.editor]);
   const editorKey = useMemo(
     () => `session-${sessionId}-${showRaw ? "raw" : "enhanced"}`,
     [sessionId, showRaw],
@@ -287,6 +301,8 @@ export default function EditorArea({
           isEnhancedNote={isEnhancedNote}
           onAnnotate={handleAnnotate}
           isAnnotationBoxOpen={!!annotationBox}
+          sessionId={sessionId}
+          editorRef={editorRef}
         />
       )}
 

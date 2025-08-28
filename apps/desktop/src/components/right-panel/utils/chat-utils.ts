@@ -1,3 +1,4 @@
+import type { SelectionData } from "@/contexts/right-panel";
 import { commands as connectorCommands } from "@hypr/plugin-connector";
 import { commands as dbCommands } from "@hypr/plugin-db";
 import { commands as templateCommands } from "@hypr/plugin-template";
@@ -42,6 +43,7 @@ export const prepareMessageHistory = async (
   sessionId?: string | null,
   userId?: string | null,
   apiBase?: string | null,
+  selectionData?: SelectionData, // Add selectionData parameter
 ) => {
   const refetchResult = await sessionData?.refetch();
   let freshSessionData = refetchResult?.data;
@@ -199,6 +201,15 @@ export const prepareMessageHistory = async (
     const userContent = await templateCommands.render("chat.user", {
       message: currentUserMessage,
       mentionedContent: processedMentions,
+      selectionData: selectionData
+        ? {
+          text: selectionData.text,
+          startOffset: selectionData.startOffset,
+          endOffset: selectionData.endOffset,
+          sessionId: selectionData.sessionId,
+          timestamp: selectionData.timestamp,
+        }
+        : undefined, // Convert to plain object for JsonValue compatibility
     });
 
     conversationHistory.push({

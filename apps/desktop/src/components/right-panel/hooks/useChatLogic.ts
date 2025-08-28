@@ -3,6 +3,8 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { SelectionData } from "@/contexts/right-panel";
+
 import { useLicense } from "@/hooks/use-license";
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as connectorCommands } from "@hypr/plugin-connector";
@@ -26,6 +28,9 @@ import type { ActiveEntityInfo, Message } from "../types/chat-types";
 import { prepareMessageHistory } from "../utils/chat-utils";
 import { parseMarkdownBlocks } from "../utils/markdown-parser";
 import { buildVercelToolsFromMcp } from "../utils/mcp-http-wrapper";
+import { createEditEnhancedNoteTool } from "../utils/tools/edit_enhanced_note";
+import { createSearchSessionDateRangeTool } from "../utils/tools/search_session_date_range";
+import { createSearchSessionTool } from "../utils/tools/search_session_multi_keywords";
 
 interface UseChatLogicProps {
   sessionId: string | null;
@@ -117,6 +122,8 @@ export function useChatLogic({
     content: string,
     analyticsEvent: string,
     mentionedContent?: Array<{ id: string; type: string; label: string }>,
+    selectionData?: SelectionData,
+    htmlContent?: string,
   ) => {
     if (!content.trim() || isGenerating) {
       return;
@@ -151,12 +158,19 @@ export function useChatLogic({
 
     const groupId = await getChatGroupId();
 
+    // Prepare toolDetails before creating the message
+    let toolDetails = null;
+    if (htmlContent && (mentionedContent?.length || selectionData)) {
+      toolDetails = { htmlContent };
+    }
+
     const userMessage: Message = {
       id: crypto.randomUUID(),
       content: content,
       isUser: true,
       timestamp: new Date(),
       type: "text-delta",
+      toolDetails: toolDetails, // Include toolDetails in the message object
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -169,7 +183,7 @@ export function useChatLogic({
       role: "User",
       content: userMessage.content.trim(),
       type: "text-delta",
-      tool_details: null,
+      tool_details: toolDetails ? JSON.stringify(toolDetails) : null,
     });
 
     const aiMessageId = crypto.randomUUID();
@@ -280,60 +294,14 @@ export function useChatLogic({
         }
       }
 
-      const searchTool = tool({
-        description:
-          "Search for sessions (meeting notes) with multiple keywords. The keywords should be the most important things that the user is talking about. This could be either topics, people, or company names.",
-        inputSchema: z.object({
-          keywords: z.array(z.string()).min(3).max(5).describe(
-            "List of 3-5 keywords to search for, each keyword should be concise",
-          ),
-        }),
-        execute: async ({ keywords }) => {
-          const searchPromises = keywords.map(keyword =>
-            dbCommands.listSessions({
-              type: "search",
-              query: keyword,
-              user_id: userId || "",
-              limit: 3,
-            })
-          );
-
-          const searchResults = await Promise.all(searchPromises);
-
-          const combinedResults = new Map();
-
-          searchResults.forEach((sessions, index) => {
-            const keyword = keywords[index];
-            sessions.forEach(session => {
-              if (combinedResults.has(session.id)) {
-                combinedResults.get(session.id).matchedKeywords.push(keyword);
-              } else {
-                combinedResults.set(session.id, {
-                  ...session,
-                  matchedKeywords: [keyword],
-                });
-              }
-            });
-          });
-
-          const finalResults = Array.from(combinedResults.values())
-            .sort((a, b) => b.matchedKeywords.length - a.matchedKeywords.length);
-
-          return {
-            results: finalResults,
-            summary: {
-              totalSessions: finalResults.length,
-              keywordsSearched: keywords,
-              sessionsByKeywordCount: finalResults.reduce((acc, session) => {
-                const count = session.matchedKeywords.length;
-                acc[count] = (acc[count] || 0) + 1;
-                return acc;
-              }, {} as Record<number, number>),
-            },
-          };
-        },
+      // Create tools using the refactored tool factories
+      const searchTool = createSearchSessionTool(userId);
+      const editEnhancedNoteTool = createEditEnhancedNoteTool({
+        sessionId,
+        sessions,
+        selectionData,
       });
-
+      const searchSessionDateRangeTool = createSearchSessionDateRangeTool(userId);
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
 
@@ -349,11 +317,19 @@ export function useChatLogic({
           sessionId,
           userId,
           apiBase,
+          selectionData, // Pass selectionData to prepareMessageHistory
         ),
         stopWhen: stepCountIs(5),
         tools: {
           ...(type === "HyprLocal" && { update_progress: tool({ inputSchema: z.any() }) }),
-          ...(shouldUseTools && { ...newMcpTools, search_sessions_multi_keywords: searchTool, ...hyprMcpTools }),
+          ...(shouldUseTools && {
+            ...newMcpTools,
+            search_sessions_multi_keywords: searchTool,
+            ...hyprMcpTools,
+            // Add the edit tool when there's selection data
+            ...(selectionData && { edit_enhanced_note: editEnhancedNoteTool }),
+            search_sessions_date_range: searchSessionDateRangeTool,
+          }),
         },
         onError: (error) => {
           console.error("On Error Catch:", error);
@@ -481,6 +457,8 @@ export function useChatLogic({
         if (chunk.type === "tool-result" && !(chunk.toolName === "update_progress" && type === "HyprLocal")) {
           didInitializeAiResponse = false;
 
+          console.log("tool result: ", chunk);
+
           const toolResultMessage: Message = {
             id: crypto.randomUUID(),
             content: `Tool finished: ${chunk.toolName}`,
@@ -597,12 +575,16 @@ export function useChatLogic({
     }
   };
 
-  const handleSubmit = async (mentionedContent?: Array<{ id: string; type: string; label: string }>) => {
-    await processUserMessage(inputValue, "chat_message_sent", mentionedContent);
+  const handleSubmit = async (
+    mentionedContent?: Array<{ id: string; type: string; label: string }>,
+    selectionData?: SelectionData,
+    htmlContent?: string,
+  ) => {
+    await processUserMessage(inputValue, "chat_message_sent", mentionedContent, selectionData, htmlContent);
   };
 
   const handleQuickAction = async (prompt: string) => {
-    await processUserMessage(prompt, "chat_quickaction_sent");
+    await processUserMessage(prompt, "chat_quickaction_sent", undefined, undefined);
 
     if (chatInputRef.current) {
       chatInputRef.current.focus();
