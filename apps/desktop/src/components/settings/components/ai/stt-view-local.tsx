@@ -28,6 +28,8 @@ const REFETCH_INTERVALS = {
 interface STTViewProps extends SharedSTTProps {
   isWerModalOpen: boolean;
   setIsWerModalOpen: (open: boolean) => void;
+  provider: "Local" | "Custom";
+  setProviderToLocal: () => void;
 }
 
 interface ModelSectionProps {
@@ -37,6 +39,8 @@ interface ModelSectionProps {
   setSelectedSTTModel: (model: string) => void;
   downloadingModels: Set<string>;
   handleModelDownload: (model: string) => void;
+  provider: "Local" | "Custom";
+  setProviderToLocal: () => void;
 }
 
 export function STTViewLocal({
@@ -46,22 +50,20 @@ export function STTViewLocal({
   setSttModels,
   downloadingModels,
   handleModelDownload,
+  provider,
+  setProviderToLocal,
 }: STTViewProps) {
   const amAvailable = useMemo(() => platform() === "macos" && arch() === "aarch64", []);
 
   const servers = useQuery({
     queryKey: ["local-stt-servers"],
-    queryFn: async () => {
-      const servers = await localSttCommands.getServers();
-      console.log(servers);
-      return servers;
-    },
+    queryFn: async () => localSttCommands.getServers(),
     refetchInterval: REFETCH_INTERVALS.servers,
   });
 
   const currentSTTModel = useQuery({
     queryKey: ["current-stt-model"],
-    queryFn: () => localSttCommands.getCurrentModel(),
+    queryFn: () => localSttCommands.getLocalModel(),
   });
 
   const sttModelDownloadStatus = useQuery({
@@ -133,6 +135,8 @@ export function STTViewLocal({
         setSelectedSTTModel={setSelectedSTTModel}
         downloadingModels={downloadingModels}
         handleModelDownload={handleModelDownload}
+        provider={provider}
+        setProviderToLocal={setProviderToLocal}
       />
 
       {/* Divider - only show if pro models available */}
@@ -147,6 +151,8 @@ export function STTViewLocal({
             setSelectedSTTModel={setSelectedSTTModel}
             downloadingModels={downloadingModels}
             handleModelDownload={handleModelDownload}
+            provider={provider}
+            setProviderToLocal={setProviderToLocal}
           />
         </>
       )}
@@ -164,6 +170,8 @@ function BasicModelsSection({
   setSelectedSTTModel,
   downloadingModels,
   handleModelDownload,
+  provider,
+  setProviderToLocal,
 }: ModelSectionProps) {
   const handleShowFileLocation = async () => {
     const path = await localSttCommands.modelsDir();
@@ -191,6 +199,8 @@ function BasicModelsSection({
             downloadingModels={downloadingModels}
             handleModelDownload={handleModelDownload}
             handleShowFileLocation={handleShowFileLocation}
+            provider={provider}
+            setProviderToLocal={setProviderToLocal}
           />
         ))}
       </div>
@@ -207,6 +217,8 @@ function ProModelsSection({
   setSelectedSTTModel,
   downloadingModels,
   handleModelDownload,
+  provider,
+  setProviderToLocal,
 }: Omit<ModelSectionProps, "modelsToShow">) {
   const { getLicense } = useLicense();
 
@@ -258,6 +270,8 @@ function ProModelsSection({
             downloadingModels={downloadingModels}
             handleModelDownload={handleModelDownload}
             handleShowFileLocation={handleShowFileLocation}
+            provider={provider}
+            setProviderToLocal={setProviderToLocal}
           />
         ))}
       </div>
@@ -328,6 +342,8 @@ function ModelEntry({
   downloadingModels,
   handleModelDownload,
   handleShowFileLocation,
+  provider,
+  setProviderToLocal,
   disabled = false,
 }: {
   model: STTModel;
@@ -336,16 +352,20 @@ function ModelEntry({
   downloadingModels: Set<string>;
   handleModelDownload: (model: string) => void;
   handleShowFileLocation: () => void;
+  provider: "Local" | "Custom";
+  setProviderToLocal: () => void;
   disabled?: boolean;
 }) {
-  const isSelected = selectedSTTModel === model.key && model.downloaded;
+  // only highlight if provider is Local and this is the selected model
+  const isSelected = provider === "Local" && selectedSTTModel === model.key && model.downloaded;
   const isSelectable = model.downloaded && !disabled;
   const isDownloading = downloadingModels.has(model.key);
 
   const handleClick = () => {
     if (isSelectable) {
       setSelectedSTTModel(model.key as SupportedSttModel);
-      localSttCommands.setCurrentModel(model.key as SupportedSttModel);
+      localSttCommands.setLocalModel(model.key as SupportedSttModel);
+      setProviderToLocal();
       localSttCommands.stopServer(null);
       localSttCommands.startServer(null);
     }
