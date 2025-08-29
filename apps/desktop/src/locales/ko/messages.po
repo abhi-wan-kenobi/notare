@@ -14,7 +14,7 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. js-lingui-explicit-id
-#: src/components/settings/views/general.tsx:430
+#: src/components/settings/views/general.tsx:434
 msgid "Type terms separated by commas (e.g., Blitz Meeting, PaC Squad)"
 msgstr ""
 
@@ -271,7 +271,7 @@ msgstr ""
 #: src/components/editor-area/note-header/listen-button.tsx:217
 #: src/components/editor-area/note-header/listen-button.tsx:241
 #: src/components/editor-area/note-header/listen-button.tsx:261
-#: src/components/settings/views/templates.tsx:214
+#: src/components/settings/views/templates.tsx:252
 msgid "{0}"
 msgstr ""
 
@@ -332,7 +332,7 @@ msgstr ""
 #~ msgid "Add a description..."
 #~ msgstr ""
 
-#: src/components/settings/views/template.tsx:236
+#: src/components/settings/views/template.tsx:221
 msgid "Add a system instruction..."
 msgstr ""
 
@@ -356,7 +356,7 @@ msgstr ""
 msgid "Add participant"
 msgstr ""
 
-#: src/components/settings/views/general.tsx:421
+#: src/components/settings/views/general.tsx:425
 msgid "Add specific terms or jargon for improved transcription accuracy"
 msgstr ""
 
@@ -465,7 +465,7 @@ msgstr ""
 #~ msgstr ""
 
 #: src/components/settings/components/templates-sidebar.tsx:68
-#: src/components/settings/views/templates.tsx:316
+#: src/components/settings/views/templates.tsx:355
 msgid "Built-in Templates"
 msgstr ""
 
@@ -647,7 +647,7 @@ msgstr ""
 msgid "Create Note"
 msgstr ""
 
-#: src/components/settings/views/templates.tsx:306
+#: src/components/settings/views/templates.tsx:345
 msgid "Create your first template to get started"
 msgstr ""
 
@@ -672,7 +672,7 @@ msgstr ""
 #~ msgid "Custom Endpoints"
 #~ msgstr ""
 
-#: src/components/settings/views/general.tsx:418
+#: src/components/settings/views/general.tsx:422
 msgid "Custom Vocabulary"
 msgstr ""
 
@@ -687,7 +687,7 @@ msgstr ""
 
 #: src/components/left-sidebar/notes-list.tsx:336
 #: src/components/settings/views/team.tsx:165
-#: src/components/settings/views/template.tsx:218
+#: src/components/settings/views/template.tsx:205
 msgid "Delete"
 msgstr ""
 
@@ -707,7 +707,7 @@ msgstr ""
 #~ msgid "Did you get consent from everyone in the meeting?"
 #~ msgstr ""
 
-#: src/components/settings/views/general.tsx:308
+#: src/components/settings/views/general.tsx:312
 msgid "Display language"
 msgstr ""
 
@@ -727,7 +727,7 @@ msgstr ""
 msgid "Draft follow up"
 msgstr ""
 
-#: src/components/settings/views/template.tsx:206
+#: src/components/settings/views/template.tsx:195
 msgid "Duplicate"
 msgstr ""
 
@@ -743,7 +743,7 @@ msgstr ""
 msgid "Email separated by commas"
 msgstr ""
 
-#: src/components/settings/views/template.tsx:168
+#: src/components/settings/views/template.tsx:162
 msgid "Emoji"
 msgstr ""
 
@@ -949,7 +949,7 @@ msgstr ""
 #~ msgid "Language"
 #~ msgstr ""
 
-#: src/components/settings/views/general.tsx:275
+#: src/components/settings/views/general.tsx:279
 msgid "Language for AI-generated summaries"
 msgstr ""
 
@@ -965,7 +965,7 @@ msgstr ""
 #~ msgid "Learn more about our pricing plans"
 #~ msgstr ""
 
-#: src/components/settings/views/templates.tsx:266
+#: src/components/settings/views/templates.tsx:305
 msgid "Learn more about templates"
 msgstr ""
 
@@ -1001,7 +1001,7 @@ msgstr ""
 msgid "Loading models..."
 msgstr ""
 
-#: src/components/settings/views/templates.tsx:237
+#: src/components/settings/views/templates.tsx:276
 msgid "Loading templates..."
 msgstr ""
 
@@ -1143,7 +1143,7 @@ msgstr ""
 msgid "No Template (Default)"
 msgstr ""
 
-#: src/components/settings/views/templates.tsx:303
+#: src/components/settings/views/templates.tsx:342
 msgid "No templates yet"
 msgstr ""
 
@@ -1171,7 +1171,7 @@ msgstr ""
 msgid "Official Templates"
 msgstr ""
 
-#: src/components/settings/views/general.tsx:195
+#: src/components/settings/views/general.tsx:199
 msgid "Only starts at the background for notification purposes."
 msgstr ""
 
@@ -1247,7 +1247,7 @@ msgstr ""
 #~ msgid "Play video"
 #~ msgstr ""
 
-#: src/components/settings/views/general.tsx:311
+#: src/components/settings/views/general.tsx:315
 msgid "Primary language for the interface"
 msgstr ""
 
@@ -1323,7 +1323,7 @@ msgstr ""
 #~ msgid "Save and close"
 #~ msgstr ""
 
-#: src/components/settings/views/general.tsx:221
+#: src/components/settings/views/general.tsx:225
 msgid "Save audio recording locally alongside the transcript."
 msgstr ""
 
@@ -1335,7 +1335,7 @@ msgstr ""
 msgid "Save Date"
 msgstr ""
 
-#: src/components/settings/views/general.tsx:218
+#: src/components/settings/views/general.tsx:222
 msgid "Save recordings"
 msgstr ""
 
@@ -1364,7 +1364,7 @@ msgstr ""
 #~ msgid "Searching..."
 #~ msgstr ""
 
-#: src/components/settings/views/template.tsx:243
+#: src/components/settings/views/template.tsx:228
 msgid "Sections"
 msgstr ""
 
@@ -1376,7 +1376,7 @@ msgstr ""
 msgid "Select a provider above to configure"
 msgstr ""
 
-#: src/components/settings/views/templates.tsx:271
+#: src/components/settings/views/templates.tsx:310
 msgid "Select a template to enhance your meeting notes"
 msgstr ""
 
@@ -1404,7 +1404,7 @@ msgstr ""
 msgid "Select how you want to process your meeting notes"
 msgstr ""
 
-#: src/components/settings/views/general.tsx:340
+#: src/components/settings/views/general.tsx:344
 msgid "Select languages you speak for better transcription"
 msgstr ""
 
@@ -1428,7 +1428,7 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
-#: src/components/settings/views/general.tsx:242
+#: src/components/settings/views/general.tsx:246
 msgid "Share usage data"
 msgstr ""
 
@@ -1460,7 +1460,7 @@ msgstr ""
 #~ msgid "Speech to Text Model"
 #~ msgstr ""
 
-#: src/components/settings/views/general.tsx:337
+#: src/components/settings/views/general.tsx:341
 msgid "Spoken languages"
 msgstr ""
 
@@ -1468,7 +1468,7 @@ msgstr ""
 #~ msgid "Start Annual Plan"
 #~ msgstr ""
 
-#: src/components/settings/views/general.tsx:192
+#: src/components/settings/views/general.tsx:196
 msgid "Start automatically at login"
 msgstr ""
 
@@ -1496,7 +1496,7 @@ msgstr ""
 #~ msgid "Summarize meeting"
 #~ msgstr ""
 
-#: src/components/settings/views/general.tsx:272
+#: src/components/settings/views/general.tsx:276
 msgid "Summary language"
 msgstr ""
 
@@ -1509,7 +1509,7 @@ msgstr ""
 msgid "System Audio Access"
 msgstr ""
 
-#: src/components/settings/views/template.tsx:230
+#: src/components/settings/views/template.tsx:215
 msgid "System Instruction"
 msgstr ""
 
@@ -1621,7 +1621,7 @@ msgstr ""
 msgid "Untitled"
 msgstr ""
 
-#: src/components/settings/views/template.tsx:192
+#: src/components/settings/views/template.tsx:186
 msgid "Untitled Template"
 msgstr ""
 
@@ -1743,6 +1743,6 @@ msgid "Your Name"
 msgstr ""
 
 #: src/components/settings/components/templates-sidebar.tsx:45
-#: src/components/settings/views/templates.tsx:252
+#: src/components/settings/views/templates.tsx:291
 msgid "Your Templates"
 msgstr ""
