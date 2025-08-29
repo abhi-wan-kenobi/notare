@@ -70,7 +70,7 @@ impl NotificationHandler {
                             .title("Meeting detected")
                             .message("Based on your microphone activity")
                             .url("hypr://hyprnote.com/app/new?record=true")
-                            .timeout(std::time::Duration::from_secs(60))
+                            .timeout(std::time::Duration::from_secs(300))
                             .build(),
                     );
                 }
@@ -116,7 +116,7 @@ impl NotificationHandler {
                             "hypr://hyprnote.com/app/new?calendar_event_id={}",
                             trigger.event_id
                         ))
-                        .timeout(std::time::Duration::from_secs(10))
+                        .timeout(std::time::Duration::from_secs(300))
                         .build(),
                 );
             })) {
