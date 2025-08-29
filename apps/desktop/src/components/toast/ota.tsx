@@ -100,7 +100,7 @@ export default function OtaNotification() {
       ],
       dismissible: true,
     });
-  }, [checkForUpdate.data?.available]);
+  }, [checkForUpdate.data]);
 
   return null;
 }
