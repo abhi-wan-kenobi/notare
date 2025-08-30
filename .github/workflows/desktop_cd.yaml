@@ -24,7 +24,7 @@ jobs:
         include:
           - platform: "macos"
             target: "aarch64-apple-darwin"
-            runner: "macos-latest"
+            runner: "warp-macos-15-arm64-6x"
           - platform: "macos"
             target: "x86_64-apple-darwin"
             runner: "macos-latest"
