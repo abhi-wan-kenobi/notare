@@ -9,7 +9,7 @@ use utils::*;
 
 #[derive(Debug, Clone)]
 pub enum DetectEvent {
-    MicStarted,
+    MicStarted(Vec<String>),
     MicStopped,
     MeetingAppStarted(String),
 }

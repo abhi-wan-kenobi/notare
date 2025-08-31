@@ -63,7 +63,7 @@ impl NotificationHandler {
             .unwrap_or(false);
 
         match trigger.event {
-            hypr_detect::DetectEvent::MicStarted => {
+            hypr_detect::DetectEvent::MicStarted(_app) => {
                 if !window_visible {
                     hypr_notification::show(
                         &hypr_notification::Notification::builder()
