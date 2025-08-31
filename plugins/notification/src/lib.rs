@@ -75,9 +75,31 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 if app.get_event_notification().unwrap_or(false) {
                     let app_clone = app.clone();
                     tokio::spawn(async move {
-                        match app_clone.start_event_notification().await {
-                            Ok(_) => tracing::info!("event_notification_start_success"),
-                            Err(_) => tracing::error!("event_notification_start_failed"),
+                        let mut retries = 0;
+                        const MAX_RETRIES: u32 = 10;
+
+                        loop {
+                            let db_state = app_clone.state::<tauri_plugin_db::ManagedState>();
+                            let is_ready = {
+                                let guard = db_state.lock().await;
+                                guard.db.is_some() && guard.user_id.is_some()
+                            };
+
+                            if is_ready {
+                                match app_clone.start_event_notification().await {
+                                    Ok(_) => tracing::info!("event_notification_start_success"),
+                                    Err(e) => tracing::error!("event_notification_start_failed: {}", e),
+                                }
+                                break;
+                            }
+
+                            retries += 1;
+                            if retries >= MAX_RETRIES {
+                                tracing::error!("event_notification_start_failed: database not ready after {} seconds", MAX_RETRIES);
+                                break;
+                            }
+
+                            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                         }
                     });
                 }
