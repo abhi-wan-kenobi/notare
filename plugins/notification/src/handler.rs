@@ -12,6 +12,7 @@ pub enum NotificationTrigger {
 #[derive(Debug, Clone)]
 pub struct NotificationTriggerDetect {
     pub event: hypr_detect::DetectEvent,
+    pub timestamp: std::time::SystemTime,
 }
 
 #[derive(Debug, Clone)]
@@ -65,9 +66,18 @@ impl NotificationHandler {
         match trigger.event {
             hypr_detect::DetectEvent::MicStarted(_app) => {
                 if !window_visible {
+                    let timestamp_secs = trigger
+                        .timestamp
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or(std::time::Duration::from_secs(0))
+                        .as_secs();
+                    let window_key = timestamp_secs / 10;
+                    let key = format!("mic-detection-{}", window_key);
+
                     hypr_notification::show(
                         &hypr_notification::Notification::builder()
                             .title("Meeting detected")
+                            .key(key)
                             .message("Based on your microphone activity")
                             .url("hypr://hyprnote.com/app/new?record=true")
                             .timeout(std::time::Duration::from_secs(300))

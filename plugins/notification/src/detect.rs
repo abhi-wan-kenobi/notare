@@ -26,6 +26,7 @@ impl DetectState {
                 if let Err(e) =
                     notification_tx.send(NotificationTrigger::Detect(NotificationTriggerDetect {
                         event,
+                        timestamp: std::time::SystemTime::now(),
                     }))
                 {
                     tracing::error!("{}", e);
