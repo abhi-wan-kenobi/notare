@@ -13,7 +13,7 @@ pub(crate) async fn event<R: tauri::Runtime>(
 #[specta::specta]
 pub(crate) async fn set_properties<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
-    payload: hypr_analytics::PersonPropertiesPayload,
+    payload: hypr_analytics::PropertiesPayload,
 ) -> Result<(), String> {
     app.set_properties(payload).await.map_err(|e| e.to_string())
 }

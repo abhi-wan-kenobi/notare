@@ -98,32 +98,6 @@ Denies the set_disabled command without any pre-configured scope.
 <tr>
 <td>
 
-`analytics:allow-set-person-properties`
-
-</td>
-<td>
-
-Enables the set_properties command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`analytics:deny-set-person-properties`
-
-</td>
-<td>
-
-Denies the set_properties command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
 `analytics:allow-set-properties`
 
 </td>

@@ -333,18 +333,6 @@
         {
           "description": "Enables the set_properties command without any pre-configured scope.",
           "type": "string",
-          "const": "allow-set-person-properties",
-          "markdownDescription": "Enables the set_properties command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the set_properties command without any pre-configured scope.",
-          "type": "string",
-          "const": "deny-set-person-properties",
-          "markdownDescription": "Denies the set_properties command without any pre-configured scope."
-        },
-        {
-          "description": "Enables the set_properties command without any pre-configured scope.",
-          "type": "string",
           "const": "allow-set-properties",
           "markdownDescription": "Enables the set_properties command without any pre-configured scope."
         },

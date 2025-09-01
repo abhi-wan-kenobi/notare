@@ -10,7 +10,7 @@ export const commands = {
 async event(payload: AnalyticsPayload) : Promise<null> {
     return await TAURI_INVOKE("plugin:analytics|event", { payload });
 },
-async setProperties(payload: PersonPropertiesPayload) : Promise<null> {
+async setProperties(payload: PropertiesPayload) : Promise<null> {
     return await TAURI_INVOKE("plugin:analytics|set_properties", { payload });
 },
 async setDisabled(disabled: boolean) : Promise<null> {
@@ -33,7 +33,7 @@ async isDisabled() : Promise<boolean> {
 
 export type AnalyticsPayload = (Partial<{ [key in string]: null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }> }>) & { event: string; distinct_id: string }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
-export type PersonPropertiesPayload = { distinct_id: string; set?: Partial<{ [key in string]: JsonValue }>; set_once?: Partial<{ [key in string]: JsonValue }> }
+export type PropertiesPayload = { distinct_id: string; set?: Partial<{ [key in string]: JsonValue }>; set_once?: Partial<{ [key in string]: JsonValue }> }
 
 /** tauri-specta globals **/
 

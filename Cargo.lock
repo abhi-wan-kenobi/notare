@@ -14790,6 +14790,7 @@ dependencies = [
  "strum 0.26.3",
  "tauri",
  "tauri-plugin",
+ "tauri-plugin-analytics",
  "tauri-plugin-db",
  "tauri-plugin-dialog",
  "tauri-plugin-listener",

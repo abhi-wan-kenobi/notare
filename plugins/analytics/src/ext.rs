@@ -12,7 +12,7 @@ pub trait AnalyticsPluginExt<R: tauri::Runtime> {
     ) -> impl Future<Output = Result<(), crate::Error>>;
     fn set_properties(
         &self,
-        payload: hypr_analytics::PersonPropertiesPayload,
+        payload: hypr_analytics::PropertiesPayload,
     ) -> impl Future<Output = Result<(), crate::Error>>;
 }
 
@@ -73,7 +73,7 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> crate::AnalyticsPluginExt<R> for T
 
     async fn set_properties(
         &self,
-        payload: hypr_analytics::PersonPropertiesPayload,
+        payload: hypr_analytics::PropertiesPayload,
     ) -> Result<(), crate::Error> {
         if !self.is_disabled()? {
             let client = self.state::<hypr_analytics::AnalyticsClient>();

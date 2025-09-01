@@ -9,7 +9,7 @@ pub use error::{Error, Result};
 pub use ext::*;
 use store::*;
 
-pub use hypr_analytics;
+pub use hypr_analytics::*;
 
 const PLUGIN_NAME: &str = "analytics";
 

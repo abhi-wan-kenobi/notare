@@ -48,7 +48,7 @@ impl AnalyticsClient {
         Ok(())
     }
 
-    pub async fn set_properties(&self, payload: PersonPropertiesPayload) -> Result<(), Error> {
+    pub async fn set_properties(&self, payload: PropertiesPayload) -> Result<(), Error> {
         if !hypr_network::is_online().await {
             return Ok(());
         }
@@ -111,7 +111,7 @@ pub struct AnalyticsPayload {
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, specta::Type)]
-pub struct PersonPropertiesPayload {
+pub struct PropertiesPayload {
     pub distinct_id: String,
     #[serde(default)]
     pub set: HashMap<String, serde_json::Value>,
