@@ -3830,7 +3830,6 @@ dependencies = [
  "futures-util",
  "host",
  "hound",
- "intercept",
  "reqwest 0.12.23",
  "serde",
  "serde_json",
@@ -8528,8 +8527,8 @@ dependencies = [
 
 [[package]]
 name = "llama-cpp-2"
-version = "0.1.118"
-source = "git+https://github.com/utilityai/llama-cpp-rs?branch=update-llama-cpp-2025-08-16#51a6b46dcab8ef971255a8ffc0a16995f68d74ac"
+version = "0.1.119"
+source = "git+https://github.com/utilityai/llama-cpp-rs?branch=update-llama-cpp-2025-08-21#8e11bbbeba1a6e1653e169e3bfcc0c84afd4c97f"
 dependencies = [
  "enumflags2",
  "llama-cpp-sys-2",
@@ -8540,8 +8539,8 @@ dependencies = [
 
 [[package]]
 name = "llama-cpp-sys-2"
-version = "0.1.118"
-source = "git+https://github.com/utilityai/llama-cpp-rs?branch=update-llama-cpp-2025-08-16#51a6b46dcab8ef971255a8ffc0a16995f68d74ac"
+version = "0.1.119"
+source = "git+https://github.com/utilityai/llama-cpp-rs?branch=update-llama-cpp-2025-08-21#8e11bbbeba1a6e1653e169e3bfcc0c84afd4c97f"
 dependencies = [
  "bindgen 0.72.0",
  "cc",
@@ -14782,6 +14781,8 @@ dependencies = [
  "chrono",
  "db-user",
  "detect",
+ "host",
+ "intercept",
  "notification",
  "serde",
  "specta",
@@ -14790,6 +14791,7 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "tauri-plugin-db",
+ "tauri-plugin-dialog",
  "tauri-plugin-listener",
  "tauri-plugin-store",
  "tauri-plugin-store2",

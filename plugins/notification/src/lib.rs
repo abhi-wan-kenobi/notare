@@ -7,10 +7,12 @@ mod error;
 mod event;
 mod ext;
 mod handler;
+mod quit;
 mod store;
 
 pub use error::*;
 pub use ext::*;
+pub use quit::*;
 pub use store::*;
 
 const PLUGIN_NAME: &str = "notification";
@@ -63,6 +65,13 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
         .invoke_handler(specta_builder.invoke_handler())
         .setup(|app, _api| {
             let state = State::new(app.clone());
+
+            #[cfg(target_os = "macos")]
+            if app.get_detect_notification().unwrap_or(false) || app.get_event_notification().unwrap_or(false) {
+                let app = app.clone();
+                let _ = hypr_intercept::setup_quit_handler(crate::create_quit_handler(app));
+            }
+
             app.manage(Mutex::new(state));
             Ok(())
         })

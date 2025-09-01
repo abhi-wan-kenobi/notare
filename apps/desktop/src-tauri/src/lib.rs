@@ -174,12 +174,6 @@ pub async fn main() {
 
             specta_builder.mount_events(&app);
 
-            #[cfg(target_os = "macos")]
-            {
-                let app_handle = app.clone();
-                hypr_intercept::setup_quit_handler(create_quit_handler(app_handle));
-            }
-
             {
                 use tauri_plugin_global_shortcut::GlobalShortcutExt;
                 app.global_shortcut().register(ctrl_n_shortcut)?;
@@ -274,10 +268,6 @@ pub async fn main() {
 
     if !is_background_launch {
         let app_handle = app.handle().clone();
-
-        #[cfg(target_os = "macos")]
-        let _ = app_handle.set_activation_policy(tauri::ActivationPolicy::Accessory);
-
         HyprWindow::Main.show(&app_handle).unwrap();
     }
 
@@ -287,53 +277,6 @@ pub async fn main() {
             HyprWindow::Main.show(app).unwrap();
         }
     });
-}
-
-#[cfg(target_os = "macos")]
-fn create_quit_handler(app_handle: tauri::AppHandle) -> impl Fn() -> bool {
-    use tauri::Manager;
-    use tauri_plugin_dialog::DialogExt;
-    use tauri_plugin_listener::ListenerPluginExt;
-
-    move || {
-        let mut is_exit_intent = false;
-
-        if let Some(shared_state) = app_handle.try_state::<tauri_plugin_listener::SharedState>() {
-            if let Ok(guard) = shared_state.try_lock() {
-                let state = guard.get_state();
-                if !matches!(
-                    state,
-                    tauri_plugin_listener::fsm::State::RunningActive { .. }
-                ) {
-                    is_exit_intent = true;
-                } else {
-                    is_exit_intent = app_handle
-                        .dialog()
-                        .message("Hyprnote is currently recording.")
-                        .title("Do you really want to quit?")
-                        .buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancelCustom(
-                            "Quit".to_string(),
-                            "Cancel".to_string(),
-                        ))
-                        .kind(tauri_plugin_dialog::MessageDialogKind::Info)
-                        .blocking_show()
-                }
-            }
-        }
-
-        if is_exit_intent {
-            let _ = app_handle.close_all_windows();
-            let _ = app_handle.set_activation_policy(tauri::ActivationPolicy::Accessory);
-            hypr_host::kill_processes_by_matcher(hypr_host::ProcessMatcher::Sidecar);
-
-            let app_handle_clone = app_handle.clone();
-            tokio::spawn(async move {
-                let _ = app_handle_clone.stop_session().await;
-            });
-        }
-
-        false
-    }
 }
 
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {

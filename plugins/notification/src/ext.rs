@@ -56,8 +56,23 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> NotificationPluginExt<R> for T {
     #[tracing::instrument(skip(self))]
     fn set_event_notification(&self, enabled: bool) -> Result<(), Error> {
         let store = self.notification_store();
+
         store
             .set(crate::StoreKey::EventNotification, enabled)
+            .and_then(|v| {
+                if enabled {
+                    #[cfg(target_os = "macos")]
+                    {
+                        let app = self.app_handle().clone();
+                        let _ = hypr_intercept::setup_quit_handler(crate::create_quit_handler(app));
+                    }
+                } else if self.get_detect_notification().unwrap_or(false) {
+                    #[cfg(target_os = "macos")]
+                    let _ = hypr_intercept::reset_quit_handler();
+                }
+
+                Ok(v)
+            })
             .map_err(Error::Store)
     }
 
@@ -75,6 +90,20 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> NotificationPluginExt<R> for T {
         let store = self.notification_store();
         store
             .set(crate::StoreKey::DetectNotification, enabled)
+            .and_then(|v| {
+                if enabled {
+                    #[cfg(target_os = "macos")]
+                    {
+                        let app = self.app_handle().clone();
+                        let _ = hypr_intercept::setup_quit_handler(crate::create_quit_handler(app));
+                    }
+                } else if self.get_event_notification().unwrap_or(false) {
+                    #[cfg(target_os = "macos")]
+                    let _ = hypr_intercept::reset_quit_handler();
+                }
+
+                Ok(v)
+            })
             .map_err(Error::Store)
     }
 
