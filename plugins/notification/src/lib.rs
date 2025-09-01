@@ -40,6 +40,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
+            commands::list_applications::<tauri::Wry>,
             commands::show_notification::<tauri::Wry>,
             commands::get_event_notification::<tauri::Wry>,
             commands::set_event_notification::<tauri::Wry>,
@@ -49,6 +50,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::stop_detect_notification::<tauri::Wry>,
             commands::start_event_notification::<tauri::Wry>,
             commands::stop_event_notification::<tauri::Wry>,
+            commands::get_ignored_platforms::<tauri::Wry>,
+            commands::set_ignored_platforms::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
 }

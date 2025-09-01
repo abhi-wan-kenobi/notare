@@ -75,6 +75,15 @@ fn get_mic_using_apps_coreaudio() -> Vec<String> {
             continue;
         }
 
+        if let Ok(pid) = p.pid() {
+            if let Some(running_app) = cidre::ns::RunningApp::with_pid(pid) {
+                if let Some(localized_name) = running_app.localized_name() {
+                    out.push(localized_name.to_string());
+                    continue;
+                }
+            }
+        }
+
         if let Some(name) = p.bundle_id().ok().map(|s| s.to_string()) {
             out.push(name);
         };

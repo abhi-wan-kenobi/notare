@@ -1,8 +1,10 @@
 mod app;
+mod list;
 mod mic;
 mod utils;
 
 pub use app::*;
+pub use list::*;
 pub use mic::*;
 
 use utils::*;
@@ -58,6 +60,14 @@ impl Detector {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[ignore]
+    #[cfg(target_os = "macos")]
+    fn test_list_installed_apps() {
+        let apps = list_installed_apps();
+        println!("{:?}", apps);
+    }
 
     #[test]
     #[ignore]

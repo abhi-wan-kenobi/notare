@@ -3905,7 +3905,10 @@ dependencies = [
  "objc2-application-services",
  "objc2-core-foundation",
  "objc2-foundation 0.3.1",
+ "plist",
  "regex",
+ "serde",
+ "specta",
  "thiserror 2.0.16",
  "tokio",
  "tracing",
@@ -9233,6 +9236,7 @@ dependencies = [
  "notification-interface",
  "notification-macos",
  "serde",
+ "tracing",
 ]
 
 [[package]]
