@@ -21,7 +21,7 @@ pub struct NotificationTriggerDetect {
 pub struct NotificationTriggerEvent {
     pub event_id: String,
     pub event_name: String,
-    pub minutes_until_start: i64,
+    pub seconds_until_start: i64,
 }
 
 pub struct NotificationHandler {
@@ -138,29 +138,20 @@ impl NotificationHandler {
             return;
         }
 
-        if trigger.minutes_until_start < 3 {
+        if trigger.seconds_until_start < 180 {
             if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 hypr_notification::show(
                     &hypr_notification::Notification::builder()
-                        .key(&format!(
-                            "event_{}_{}",
-                            trigger.event_id,
-                            trigger.minutes_until_start < 3
-                        ))
+                        .key(&format!("event_{}", trigger.event_id,))
                         .title(trigger.event_name.clone())
-                        .message(format!(
-                            "Meeting starting in {} minutes",
-                            if trigger.minutes_until_start < 3 {
-                                1
-                            } else {
-                                trigger.minutes_until_start
-                            }
-                        ))
+                        .message("Meeting starting soon!")
                         .url(format!(
                             "hypr://hyprnote.com/app/new?calendar_event_id={}",
                             trigger.event_id
                         ))
-                        .timeout(std::time::Duration::from_secs(300))
+                        .timeout(std::time::Duration::from_secs(
+                            trigger.seconds_until_start as u64,
+                        ))
                         .build(),
                 );
             })) {
