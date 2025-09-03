@@ -352,7 +352,7 @@ msgstr ""
 msgid "Add more quotes"
 msgstr ""
 
-#: src/components/editor-area/note-header/chips/participants-chip.tsx:340
+#: src/components/editor-area/note-header/chips/participants-chip.tsx:350
 msgid "Add participant"
 msgstr ""
 
@@ -650,7 +650,7 @@ msgstr ""
 #~ msgid "Control how creative the AI enhancement should be"
 #~ msgstr ""
 
-#: src/components/editor-area/note-header/chips/participants-chip.tsx:518
+#: src/components/editor-area/note-header/chips/participants-chip.tsx:528
 #: src/routes/app.human.$id.tsx:535
 msgid "Create"
 msgstr ""
@@ -743,7 +743,7 @@ msgstr ""
 msgid "Display language"
 msgstr ""
 
-#: src/components/settings/views/help-feedback.tsx:43
+#: src/components/settings/views/help-support.tsx:43
 msgid "Documentation"
 msgstr ""
 
@@ -847,7 +847,7 @@ msgstr ""
 msgid "Extract action items"
 msgstr ""
 
-#: src/components/settings/views/help-feedback.tsx:62
+#: src/components/settings/views/help-support.tsx:62
 msgid "Feature Requests"
 msgstr ""
 
@@ -905,6 +905,10 @@ msgstr ""
 msgid "Google Gemini"
 msgstr ""
 
+#: src/components/settings/views/help-support.tsx:103
+msgid "Got an error? Send your logs file to us at founders@hyprnote.com"
+msgstr ""
+
 #: src/components/settings/components/calendar/apple-calendar-integration-details.tsx:83
 #: src/components/settings/components/calendar/apple-calendar-integration-details.tsx:125
 msgid "Grant Access"
@@ -920,14 +924,16 @@ msgstr ""
 
 #: src/routes/app.settings.tsx:62
 #: src/routes/app.settings.tsx:116
-msgid "Help & Feedback"
-msgstr ""
+#~ msgid "Help & Feedback"
+#~ msgstr ""
 
-#: src/components/settings/views/help-feedback.tsx:30
+#: src/components/settings/views/help-support.tsx:30
+#: src/routes/app.settings.tsx:62
+#: src/routes/app.settings.tsx:116
 msgid "Help & Support"
 msgstr ""
 
-#: src/components/settings/views/help-feedback.tsx:84
+#: src/components/settings/views/help-support.tsx:84
 msgid "Help us improve by reporting issues"
 msgstr ""
 
@@ -1025,7 +1031,7 @@ msgstr ""
 #~ msgid "Language Model"
 #~ msgstr ""
 
-#: src/components/settings/views/help-feedback.tsx:46
+#: src/components/settings/views/help-support.tsx:46
 msgid "Learn how to use Hyprnote"
 msgstr ""
 
@@ -1094,7 +1100,7 @@ msgstr ""
 #~ msgid "Local Models"
 #~ msgstr ""
 
-#: src/components/settings/views/help-feedback.tsx:100
+#: src/components/settings/views/help-support.tsx:100
 msgid "Logs"
 msgstr ""
 
@@ -1371,7 +1377,7 @@ msgstr ""
 #~ msgid "Remove {0} from list"
 #~ msgstr ""
 
-#: src/components/settings/views/help-feedback.tsx:81
+#: src/components/settings/views/help-support.tsx:81
 msgid "Report a Bug"
 msgstr ""
 
@@ -1572,7 +1578,7 @@ msgstr ""
 #~ msgid "Submit Feedback"
 #~ msgstr ""
 
-#: src/components/settings/views/help-feedback.tsx:65
+#: src/components/settings/views/help-support.tsx:65
 msgid "Suggest new features and improvements"
 msgstr ""
 
@@ -1773,8 +1779,8 @@ msgid "View in calendar"
 msgstr ""
 
 #: src/components/settings/views/help-feedback.tsx:103
-msgid "View logs"
-msgstr ""
+#~ msgid "View logs"
+#~ msgstr ""
 
 #: src/components/organization-profile/recent-notes.tsx:59
 msgid "View Note"
