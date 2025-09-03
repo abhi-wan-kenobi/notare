@@ -61,14 +61,14 @@ impl NotificationHandler {
     }
 
     fn handle_detect_event(app_handle: &AppHandle<tauri::Wry>, trigger: NotificationTriggerDetect) {
-        let main_window_visible = app_handle
-            .window_is_visible(HyprWindow::Main)
+        let main_window_focused = app_handle
+            .window_is_focused(HyprWindow::Main)
             .unwrap_or(false);
 
         let respect_do_not_disturb = app_handle.get_respect_do_not_disturb().unwrap_or(false);
 
-        if main_window_visible {
-            tracing::info!(reason = "main_window_visible", "skip_handle_detect_event");
+        if main_window_focused {
+            tracing::info!(reason = "main_window_focused", "skip_handle_detect_event");
             return;
         }
 
@@ -122,14 +122,14 @@ impl NotificationHandler {
         app_handle: &AppHandle<tauri::Wry>,
         trigger: NotificationTriggerEvent,
     ) {
-        let main_window_visible = app_handle
-            .window_is_visible(HyprWindow::Main)
+        let main_window_focused = app_handle
+            .window_is_focused(HyprWindow::Main)
             .unwrap_or(false);
 
         let respect_do_not_disturb = app_handle.get_respect_do_not_disturb().unwrap_or(false);
 
-        if main_window_visible {
-            tracing::info!(reason = "main_window_visible", "handle_calendar_event");
+        if main_window_focused {
+            tracing::info!(reason = "main_window_focused", "handle_calendar_event");
             return;
         }
 
