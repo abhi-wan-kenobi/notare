@@ -374,11 +374,12 @@ class NotificationManager {
 
   private func repositionNotifications() {
     guard let screen = NSScreen.main else { return }
+    let screenRect = screen.visibleFrame
+    let topPosition = screenRect.maxY - Config.notificationHeight - Config.topMargin
+
     let sorted = activeNotifications.values.sorted { $0.panel.frame.minY > $1.panel.frame.minY }
     for (index, notification) in sorted.enumerated() {
-      let newY =
-        calculateYPosition(screen: screen) + CGFloat(index)
-        * (Config.notificationHeight + notificationSpacing)
+      let newY = topPosition - CGFloat(index) * (Config.notificationHeight + notificationSpacing)
       let f = notification.panel.frame
       let newFrame = NSRect(x: f.minX, y: newY, width: f.width, height: f.height)
       NSAnimationContext.runAnimationGroup { context in
