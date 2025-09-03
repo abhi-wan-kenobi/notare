@@ -146,7 +146,7 @@ impl NotificationHandler {
                         .title(trigger.event_name.clone())
                         .message("Meeting starting soon!")
                         .url(format!(
-                            "hypr://hyprnote.com/app/new?calendar_event_id={}",
+                            "hypr://hyprnote.com/app/new?calendarEventId={}&record=true",
                             trigger.event_id
                         ))
                         .timeout(std::time::Duration::from_secs(
