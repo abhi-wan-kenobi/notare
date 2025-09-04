@@ -19,7 +19,6 @@ import {
   smoothStream,
   stepCountIs,
   streamText,
-  tool,
 } from "@hypr/utils/ai";
 import { useSessions } from "@hypr/utils/contexts";
 import { useQueryClient } from "@tanstack/react-query";
@@ -330,7 +329,6 @@ export function useChatLogic({
         ),
         stopWhen: stepCountIs(5),
         tools: {
-          ...(type === "HyprLocal" && { update_progress: tool({ inputSchema: z.any() }) }),
           ...(shouldUseTools && { ...hyprMcpTools, ...newMcpTools }),
           ...(shouldUseTools && baseTools),
         },
@@ -349,7 +347,7 @@ export function useChatLogic({
         },
         abortSignal: abortController.signal,
         experimental_transform: smoothStream({
-          delayInMs: 70,
+          delayInMs: 30,
           chunking: "word",
         }),
       });
