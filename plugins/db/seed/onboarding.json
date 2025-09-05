@@ -73,7 +73,7 @@
   ],
   "sessions": [
     {
-      "id": "68e2602a-9023-442a-96df-2dce2f8a5961",
+      "id": "df1d8c52-6d9d-4471-aff1-5dbd35899cbe",
       "title": "Welcome to Hyprnote",
       "raw_memo_html": "ONBOARDING_RAW_HTML_CONTENT",
       "enhanced_memo_html": null,
@@ -87,9 +87,9 @@
       "pre_meeting_memo_html": null
     },
     {
-      "id": "6e012c95-1f7f-4ce5-b737-36f0454f8680",
+      "id": "872cf207-6a28-4229-bd66-492d0dce43c0",
       "title": "Thank you",
-      "raw_memo_html": "THANK_YOU_MD_TO_HTML_CONTENT",
+      "raw_memo_html": "",
       "enhanced_memo_html": null,
       "words": [],
       "created_at": "1970-01-01T00:00:00Z",

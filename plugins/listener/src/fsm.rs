@@ -203,10 +203,10 @@ impl Session {
 
     #[tracing::instrument(skip_all)]
     async fn setup_resources(&mut self, id: impl Into<String>) -> Result<(), crate::Error> {
-        use tauri_plugin_db::DatabasePluginExt;
+        use tauri_plugin_db::{DatabasePluginExt, UserDatabase};
 
         let session_id = id.into();
-        let onboarding_session_id = self.app.db_onboarding_session_id().await?;
+        let onboarding_session_id = UserDatabase::onboarding_session_id();
 
         let user_id = self.app.db_user_id().await?.unwrap();
         self.session_id = Some(session_id.clone());
