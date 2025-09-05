@@ -210,8 +210,7 @@ export function useChatLogic({
         || model.modelId === "openai/gpt-4o"
         || model.modelId === "gpt-4o"
         || apiBase?.includes("pro.hyprnote.com")
-        || model.modelId === "openai/gpt-5"
-        || type === "HyprLocal";
+        || model.modelId === "openai/gpt-5";
 
       if (shouldUseTools) {
         const mcpServers = await mcpCommands.getServers();
