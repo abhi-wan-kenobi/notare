@@ -19,6 +19,7 @@ import {
   smoothStream,
   stepCountIs,
   streamText,
+  tool,
 } from "@hypr/utils/ai";
 import { useSessions } from "@hypr/utils/contexts";
 import { useQueryClient } from "@tanstack/react-query";
@@ -330,6 +331,7 @@ export function useChatLogic({
         tools: {
           ...(shouldUseTools && { ...hyprMcpTools, ...newMcpTools }),
           ...(shouldUseTools && baseTools),
+          ...(type === "HyprLocal" && { progress_update: tool({ inputSchema: z.any() }) }),
         },
         onError: (error) => {
           console.error("On Error Catch:", error);
@@ -408,6 +410,7 @@ export function useChatLogic({
 
         if (chunk.type === "tool-call" && !(chunk.toolName === "progress_update" && type === "HyprLocal")) {
           // Save accumulated AI text before processing tool
+
           if (currentAiTextMessageId && aiResponse.trim()) {
             const saveAiText = async () => {
               try {
