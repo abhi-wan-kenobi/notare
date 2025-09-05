@@ -133,7 +133,7 @@ async fn chat_completions(
                     let mut cloned_am = am.clone();
                     let filtered_tool_calls = cloned_am.tool_calls.as_ref().map(|tc| {
                         tc.iter()
-                            .filter(|c| c.function.name != "update_progress")
+                            .filter(|c| c.function.name != "progress_update")
                             .cloned()
                             .collect::<Vec<_>>()
                     });
@@ -148,7 +148,7 @@ async fn chat_completions(
                     Some(ChatCompletionRequestMessage::Assistant(cloned_am))
                 }
                 ChatCompletionRequestMessage::Tool(tm) => {
-                    if tm.tool_call_id == "update_progress" {
+                    if tm.tool_call_id == "progress_update" {
                         None
                     } else {
                         Some(m.clone())
@@ -157,6 +157,7 @@ async fn chat_completions(
                 _ => Some(m.clone()),
             })
             .collect();
+
         r
     };
 
@@ -242,7 +243,7 @@ impl LocalProvider {
             .map(|tools| {
                 tools
                     .iter()
-                    .filter(|tool| tool.function.name != "update_progress")
+                    .filter(|tool| tool.function.name != "progress_update")
                     .cloned()
                     .collect::<Vec<_>>()
             })
@@ -518,7 +519,7 @@ async fn build_chat_completion_response(
                                                 id: Some("progress_update".to_string()),
                                                 r#type: Some(ChatCompletionToolType::Function),
                                                 function: Some(FunctionCallStream {
-                                                    name: Some("update_progress".to_string()),
+                                                    name: Some("progress_update".to_string()),
                                                     arguments: Some(
                                                         serde_json::to_string(&serde_json::json!({
                                                             "progress": progress

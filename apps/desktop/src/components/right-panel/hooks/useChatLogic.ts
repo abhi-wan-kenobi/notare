@@ -406,7 +406,7 @@ export function useChatLogic({
           });
         }
 
-        if (chunk.type === "tool-call" && !(chunk.toolName === "update_progress" && type === "HyprLocal")) {
+        if (chunk.type === "tool-call" && !(chunk.toolName === "progress_update" && type === "HyprLocal")) {
           // Save accumulated AI text before processing tool
           if (currentAiTextMessageId && aiResponse.trim()) {
             const saveAiText = async () => {
@@ -458,7 +458,7 @@ export function useChatLogic({
           });
         }
 
-        if (chunk.type === "tool-result" && !(chunk.toolName === "update_progress" && type === "HyprLocal")) {
+        if (chunk.type === "tool-result" && !(chunk.toolName === "progress_update" && type === "HyprLocal")) {
           didInitializeAiResponse = false;
 
           const toolResultMessage: Message = {
@@ -482,7 +482,7 @@ export function useChatLogic({
           });
         }
 
-        if (chunk.type === "tool-error" && !(chunk.toolName === "update_progress" && type === "HyprLocal")) {
+        if (chunk.type === "tool-error" && !(chunk.toolName === "progress_update" && type === "HyprLocal")) {
           didInitializeAiResponse = false;
           const toolErrorMessage: Message = {
             id: crypto.randomUUID(),
