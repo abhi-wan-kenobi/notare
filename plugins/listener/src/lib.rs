@@ -73,7 +73,7 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
                 let app_handle = handle.clone();
                 std::thread::spawn(move || {
                     while let Ok(event) = event_rx.recv() {
-                        if let hypr_audio::DeviceEvent::DefaultInputChanged = event {
+                        if let hypr_audio::DeviceEvent::DefaultInputChanged { .. } = event {
                             let new_device = hypr_audio::AudioInput::get_default_mic_device_name();
 
                             let app_handle_clone = app_handle.clone();
