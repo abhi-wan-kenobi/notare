@@ -13,7 +13,7 @@ import {
   TextSearchIcon,
   UploadIcon,
 } from "lucide-react";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ParticipantsChipInner } from "@/components/editor-area/note-header/chips/participants-chip";
 import { useHypr } from "@/contexts";
@@ -28,6 +28,7 @@ import TranscriptEditor, {
   type SpeakerChangeRange,
   type SpeakerViewInnerProps,
   type TranscriptEditorRef,
+  wordsToSpeakerChunks,
 } from "@hypr/tiptap/transcript";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
@@ -62,38 +63,7 @@ export function TranscriptView() {
 }
 
 function RenderInMeeting({ words }: { words: Word2[] }) {
-  const [isAtBottom, setIsAtBottom] = useState(true);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const handleScroll = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) {
-      return;
-    }
-
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    const threshold = 100;
-    const atBottom = scrollHeight - scrollTop - clientHeight <= threshold;
-    setIsAtBottom(atBottom);
-  }, []);
-
-  const scrollToBottom = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) {
-      return;
-    }
-
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: "smooth",
-    });
-  }, []);
-
-  useEffect(() => {
-    if (isAtBottom) {
-      scrollToBottom();
-    }
-  }, [words, isAtBottom, scrollToBottom]);
+  const { isAtBottom, scrollContainerRef, handleScroll, scrollToBottom } = useScrollToBottom([words]);
 
   return (
     <div className="flex-1 relative">
@@ -105,30 +75,6 @@ function RenderInMeeting({ words }: { words: Word2[] }) {
         <div className="text-[15px] text-gray-800 leading-relaxed pl-1">
           {words.map(word => word.text).join(" ")}
         </div>
-
-        {
-          /* {speakerChunks.map((chunk, index) => (
-          <div key={index} className="space-y-1">
-            <div className="inline-flex items-center bg-white border border-gray-200 rounded-lg px-1 py-1">
-              <span className="text-gray-600 flex-shrink-0">
-                {chunk.speaker === 0
-                  ? <MicIcon size={13} color="black" />
-                  : chunk.speaker === 1
-                  ? <HeadphonesIcon size={12} color="black" />
-                  : <UserCircleIcon size={12} color="black" />}
-              </span>
-              {typeof chunk.speaker !== "number" && (
-                <span className="text-xs font-medium text-gray-700">
-                  {chunk.speaker}
-                </span>
-              )}
-            </div>
-            <div className="text-[15px] text-gray-800 leading-relaxed pl-1">
-              {chunk.words.map(word => word.text).join(" ")}
-            </div>
-          </div>
-        ))} */
-        }
       </div>
 
       {!isAtBottom && (
@@ -151,7 +97,10 @@ function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Wo
 
   const [editable, setEditable] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
+  const speakerChunks = useMemo(() => wordsToSpeakerChunks(words), [words]);
+
   const editorRef = useRef<TranscriptEditorRef | null>(null);
+  const { isAtBottom, scrollContainerRef, handleScroll, scrollToBottom } = useScrollToBottom([speakerChunks]);
 
   const ongoingSession = useOngoingSession((s) => ({
     isInactive: s.status === "inactive",
@@ -237,6 +186,18 @@ function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Wo
     );
   }
 
+  function getSpeakerDisplayName(chunk: any) {
+    if (!chunk.speaker?.type) {
+      return "Unknown";
+    }
+
+    if (chunk.speaker.type === "assigned") {
+      return chunk.speaker.value.label;
+    }
+
+    return `Speaker ${chunk.speaker.value.index}`;
+  }
+
   return (
     <>
       <header className="flex items-center justify-between w-full px-4 py-1 my-1">
@@ -275,15 +236,50 @@ function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Wo
         </div>
       </header>
 
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <TranscriptEditor
-          ref={editorRef}
-          initialWords={words}
-          editable={ongoingSession.isInactive && editable}
-          onUpdate={handleUpdate}
-          c={SpeakerSelector}
-        />
-      </div>
+      {editable
+        ? (
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <TranscriptEditor
+              ref={editorRef}
+              initialWords={words}
+              editable={ongoingSession.isInactive && editable}
+              onUpdate={handleUpdate}
+              c={SpeakerSelector}
+            />
+          </div>
+        )
+        : (
+          <div className="flex-1 relative">
+            <div
+              ref={scrollContainerRef}
+              className="flex-1 overflow-y-auto px-2 pt-2 pb-6 space-y-4 absolute inset-0"
+              onScroll={handleScroll}
+            >
+              {speakerChunks.map((chunk, index) => (
+                <div key={index} className="space-y-1">
+                  <span className="text-xs font-medium text-gray-700 p-1 rounded-md bg-white border border-gray-200">
+                    {getSpeakerDisplayName(chunk)}
+                  </span>
+                  <div className="text-[15px] text-gray-800 leading-relaxed pl-1">
+                    {chunk.words.map(word => word.text).join(" ")}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {!isAtBottom && (
+              <Button
+                onClick={scrollToBottom}
+                size="sm"
+                className="absolute bottom-4 left-1/2 transform -translate-x-1/2 rounded-full shadow-lg bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 z-10 flex items-center gap-1"
+                variant="outline"
+              >
+                <ChevronDownIcon size={14} />
+                <span className="text-xs">Go to bottom</span>
+              </Button>
+            )}
+          </div>
+        )}
     </>
   );
 }
@@ -461,7 +457,7 @@ const MemoizedSpeakerSelector = memo(({
   };
 
   return (
-    <div className="mt-4 sticky top-0 z-10 bg-neutral-50">
+    <div className="mt-2 sticky top-0 z-10 bg-neutral-50">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -557,4 +553,46 @@ function CopyButton({ onCopy }: { onCopy: () => void }) {
         : <CopyIcon size={14} className="text-neutral-600" />}
     </Button>
   );
+}
+
+function useScrollToBottom(dependencies: any[] = []) {
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const threshold = 100;
+    const atBottom = scrollHeight - scrollTop - clientHeight <= threshold;
+    setIsAtBottom(atBottom);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: "smooth",
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isAtBottom) {
+      scrollToBottom();
+    }
+  }, [...dependencies, isAtBottom, scrollToBottom]);
+
+  return {
+    isAtBottom,
+    scrollContainerRef,
+    handleScroll,
+    scrollToBottom,
+  };
 }
