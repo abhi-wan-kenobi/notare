@@ -353,8 +353,8 @@ msgid "Add more quotes"
 msgstr "Add more quotes"
 
 #: src/components/editor-area/note-header/chips/participants-chip.tsx:350
-msgid "Add participant"
-msgstr "Add participant"
+#~ msgid "Add participant"
+#~ msgstr "Add participant"
 
 #: src/components/settings/views/general.tsx:428
 msgid "Add specific terms or jargon for improved transcription accuracy"
@@ -855,6 +855,10 @@ msgstr "Feature Requests"
 #: src/routes/app.settings.tsx:106
 #~ msgid "Feedback"
 #~ msgstr "Feedback"
+
+#: src/components/editor-area/note-header/chips/participants-chip.tsx:350
+msgid "Find person"
+msgstr "Find person"
 
 #: src/components/welcome-modal/language-selection-view.tsx:180
 msgid "Finish Onboarding"

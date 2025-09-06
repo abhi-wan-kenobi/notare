@@ -347,14 +347,14 @@ function ParticipantAddControl({ sessionId }: { sessionId: string }) {
             value={newParticipantInput}
             onChange={(e) => setNewParticipantInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={t`Add participant`}
+            placeholder={t`Find person`}
             className="w-full bg-transparent text-sm focus:outline-none placeholder:text-neutral-400"
           />
           {newParticipantInput.trim() && (
             <button
               type="submit"
               className="text-neutral-500 hover:text-neutral-700 transition-colors flex-shrink-0"
-              aria-label="Add participant"
+              aria-label="Find person"
             >
               <RiCornerDownLeftLine className="size-4" />
             </button>

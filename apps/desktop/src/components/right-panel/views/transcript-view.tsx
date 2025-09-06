@@ -33,6 +33,7 @@ import TranscriptEditor, {
 import { Button } from "@hypr/ui/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@hypr/ui/components/ui/popover";
 import { Spinner } from "@hypr/ui/components/ui/spinner";
+import { cn } from "@hypr/ui/lib/utils";
 import { useOngoingSession } from "@hypr/utils/contexts";
 import { SearchHeader } from "../components/search-header";
 import { useTranscript } from "../hooks/useTranscript";
@@ -149,13 +150,7 @@ function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Wo
   }, [sessionId]);
 
   const handeToggleEdit = useCallback(() => {
-    setEditable((v) => {
-      const nextEditable = !v;
-      if (!nextEditable && editorRef.current?.editor) {
-        editorRef.current.editor.commands.blur();
-      }
-      return nextEditable;
-    });
+    setEditable((v) => !v);
   }, []);
 
   const handleUpdate = (words: Word2[]) => {
@@ -198,23 +193,29 @@ function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Wo
     return `Speaker ${chunk.speaker.value.index}`;
   }
 
+  const EditToggle = () => {
+    return (
+      <Button
+        className="w-6 h-6"
+        variant="ghost"
+        size="icon"
+        onClick={handeToggleEdit}
+      >
+        {editable
+          ? <CheckIcon size={12} className="text-neutral-600" />
+          : <PencilIcon size={12} className="text-neutral-600" />}
+      </Button>
+    );
+  };
+
   return (
     <>
-      <header className="flex items-center justify-between w-full px-4 py-1 my-1">
-        <div className="flex items-center gap-2">
+      <header className="flex items-center justify-between w-full px-4 py-1 my-1 border-b">
+        <div className="flex items-center">
           <h2 className="text-sm font-semibold text-neutral-900">Transcript</h2>
+          <EditToggle />
         </div>
         <div className="not-draggable flex items-center">
-          <Button
-            className="w-8 h-8"
-            variant="ghost"
-            size="icon"
-            onClick={handeToggleEdit}
-          >
-            {editable
-              ? <CheckIcon size={12} className="text-neutral-600" />
-              : <PencilIcon size={12} className="text-neutral-600" />}
-          </Button>
           <Button
             className="w-8 h-8"
             variant="ghost"
@@ -252,7 +253,7 @@ function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Wo
           <div className="flex-1 relative">
             <div
               ref={scrollContainerRef}
-              className="flex-1 overflow-y-auto px-2 pt-2 pb-6 space-y-4 absolute inset-0"
+              className="flex-1 overflow-y-auto px-2 pt-4 pb-6 space-y-4 absolute inset-0"
               onScroll={handleScroll}
             >
               {speakerChunks.map((chunk, index) => (
@@ -271,7 +272,10 @@ function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Wo
               <Button
                 onClick={scrollToBottom}
                 size="sm"
-                className="absolute bottom-4 left-1/2 transform -translate-x-1/2 rounded-full shadow-lg bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 z-10 flex items-center gap-1"
+                className={cn([
+                  "absolute bottom-6 left-1/2 transform -translate-x-1/2 rounded-full shadow-xl",
+                  "bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 z-10 flex items-center gap-1",
+                ])}
                 variant="outline"
               >
                 <ChevronDownIcon size={14} />
@@ -457,7 +461,7 @@ const MemoizedSpeakerSelector = memo(({
   };
 
   return (
-    <div className="mt-2 sticky top-0 z-10 bg-neutral-50">
+    <div className="mt-4 sticky top-0 z-10 bg-neutral-50">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -502,7 +506,6 @@ function SpeakerRangeSelector({ value, onChange }: SpeakerRangeSelectorProps) {
 
   return (
     <div className="space-y-1.5">
-      <p className="text-sm font-medium text-neutral-700">Apply speaker change to:</p>
       <div className="flex rounded-md border border-neutral-200 p-0.5 bg-neutral-50">
         {options.map((option) => (
           <label
