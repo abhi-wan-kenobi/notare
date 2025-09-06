@@ -8392,8 +8392,8 @@ dependencies = [
 
 [[package]]
 name = "llama-cpp-2"
-version = "0.1.119"
-source = "git+https://github.com/utilityai/llama-cpp-rs?branch=update-llama-cpp-2025-08-21#8e11bbbeba1a6e1653e169e3bfcc0c84afd4c97f"
+version = "0.1.121"
+source = "git+https://github.com/utilityai/llama-cpp-rs?tag=0.1.121#1ff8410d2609dce9cdb50aa81b9d0d3dcc05f289"
 dependencies = [
  "enumflags2",
  "llama-cpp-sys-2",
@@ -8404,8 +8404,8 @@ dependencies = [
 
 [[package]]
 name = "llama-cpp-sys-2"
-version = "0.1.119"
-source = "git+https://github.com/utilityai/llama-cpp-rs?branch=update-llama-cpp-2025-08-21#8e11bbbeba1a6e1653e169e3bfcc0c84afd4c97f"
+version = "0.1.121"
+source = "git+https://github.com/utilityai/llama-cpp-rs?tag=0.1.121#1ff8410d2609dce9cdb50aa81b9d0d3dcc05f289"
 dependencies = [
  "bindgen 0.72.1",
  "cc",
@@ -17223,7 +17223,7 @@ dependencies = [
 [[package]]
 name = "whisper-rs"
 version = "0.15.0"
-source = "git+https://github.com/fastrepl/whisper-rs?rev=de11c2d#de11c2d1e16011f6b9be9f1a114694805e5fce85"
+source = "git+https://codeberg.org/tazz4843/whisper-rs?rev=5f054c9#5f054c94b73346747b76c4062f47d4fe999bd105"
 dependencies = [
  "libc",
  "tracing",
@@ -17233,7 +17233,7 @@ dependencies = [
 [[package]]
 name = "whisper-rs-sys"
 version = "0.14.0"
-source = "git+https://github.com/fastrepl/whisper-rs?rev=de11c2d#de11c2d1e16011f6b9be9f1a114694805e5fce85"
+source = "git+https://codeberg.org/tazz4843/whisper-rs?rev=5f054c9#5f054c94b73346747b76c4062f47d4fe999bd105"
 dependencies = [
  "bindgen 0.71.1",
  "cfg-if",
