@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ParticipantsChipInner } from "@/components/editor-area/note-header/chips/participants-chip";
+import { ParticipantList } from "@/components/editor-area/note-header/chips/participants-chip";
 import { useHypr } from "@/contexts";
 import { useContainerWidth } from "@/hooks/use-container-width";
 import { commands as dbCommands, Human, Word2 } from "@hypr/plugin-db";
@@ -99,6 +99,7 @@ function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Wo
   const [editable, setEditable] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
   const speakerChunks = useMemo(() => wordsToSpeakerChunks(words), [words]);
+  const [editorWords, setEditorWords] = useState<Word2[]>([]);
 
   const editorRef = useRef<TranscriptEditorRef | null>(null);
   const { isAtBottom, scrollContainerRef, handleScroll, scrollToBottom } = useScrollToBottom([speakerChunks]);
@@ -115,6 +116,20 @@ function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Wo
       }
     }
   }, [words]);
+
+  useEffect(() => {
+    if (!editable) {
+      dbCommands.getSession({ id: sessionId }).then((session) => {
+        if (session) {
+          dbCommands.upsertSession({ ...session, words: editorWords }).then(() => {
+            queryClient.invalidateQueries({
+              queryKey: ["session", "words", sessionId],
+            });
+          });
+        }
+      });
+    }
+  }, [editable]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -154,11 +169,7 @@ function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Wo
   }, []);
 
   const handleUpdate = (words: Word2[]) => {
-    dbCommands.getSession({ id: sessionId }).then((session) => {
-      if (session) {
-        dbCommands.upsertSession({ ...session, words });
-      }
-    });
+    setEditorWords(words);
   };
 
   if (isSearchActive) {
@@ -405,6 +416,7 @@ const MemoizedSpeakerSelector = memo(({
   const [speakerRange, setSpeakerRange] = useState<SpeakerChangeRange>("current");
   const inactive = useOngoingSession(s => s.status === "inactive");
   const [human, setHuman] = useState<Human | null>(null);
+  const [candidate, setCandidate] = useState<Human | null>(null);
 
   const noteMatch = useMatch({ from: "/app/note/$id", shouldThrow: false });
   const sessionId = noteMatch?.params.id;
@@ -429,9 +441,12 @@ const MemoizedSpeakerSelector = memo(({
     }
   }, [participants, speakerId]);
 
+  useEffect(() => {
+    setCandidate(null);
+  }, [isOpen]);
+
   const handleClickHuman = (human: Human) => {
-    setHuman(human);
-    setIsOpen(false);
+    setCandidate(human);
   };
 
   if (!sessionId) {
@@ -477,14 +492,30 @@ const MemoizedSpeakerSelector = memo(({
         </PopoverTrigger>
         <PopoverContent align="start" side="bottom">
           <div className="space-y-4">
-            <div className="border-b border-neutral-100 pb-3">
-              <SpeakerRangeSelector
-                value={speakerRange}
-                onChange={setSpeakerRange}
-              />
-            </div>
-
-            <ParticipantsChipInner sessionId={sessionId} handleClickHuman={handleClickHuman} />
+            <ParticipantList
+              selectedHuman={candidate}
+              allowMutate={false}
+              sessionId={sessionId}
+              handleClickHuman={handleClickHuman}
+            />
+            {candidate && (
+              <div className="flex flex-col gap-2">
+                <hr className="mb-2" />
+                <SpeakerRangeSelector
+                  value={speakerRange}
+                  onChange={setSpeakerRange}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    onSpeakerChange(candidate, speakerRange);
+                    setIsOpen(false);
+                  }}
+                >
+                  Apply Speaker Change
+                </Button>
+              </div>
+            )}
           </div>
         </PopoverContent>
       </Popover>
@@ -499,15 +530,15 @@ interface SpeakerRangeSelectorProps {
 
 function SpeakerRangeSelector({ value, onChange }: SpeakerRangeSelectorProps) {
   const options = [
-    { value: "current" as const, label: "Just this" },
-    { value: "all" as const, label: "Replace all" },
+    { value: "current" as const, label: "Only this" },
     { value: "fromHere" as const, label: "From here" },
+    { value: "all" as const, label: "All" },
   ];
 
   return (
     <div className="space-y-1.5">
-      <div className="flex rounded-md border border-neutral-200 p-0.5 bg-neutral-50">
-        {options.map((option) => (
+      <div className="flex rounded-md border border-neutral-200 bg-white">
+        {options.map((option, index) => (
           <label
             key={option.value}
             className="flex-1 cursor-pointer"
@@ -521,11 +552,14 @@ function SpeakerRangeSelector({ value, onChange }: SpeakerRangeSelectorProps) {
               onChange={() => onChange(option.value)}
             />
             <div
-              className={`px-2 py-1 text-xs font-medium text-center rounded transition-colors ${
+              className={clsx(
+                "px-2 py-1.5 text-xs font-medium text-center transition-colors border-neutral-200",
+                index === 0 && "border-r rounded-l-md",
+                index === options.length - 1 && "border-l rounded-r-md",
                 value === option.value
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-600 hover:text-neutral-900 hover:bg-white/50"
-              }`}
+                  ? "bg-gray-100 text-neutral-900"
+                  : "hover:bg-gray-50 text-neutral-500",
+              )}
             >
               {option.label}
             </div>
