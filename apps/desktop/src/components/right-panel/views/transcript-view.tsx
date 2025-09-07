@@ -99,7 +99,7 @@ function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Wo
   const [editable, setEditable] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
   const speakerChunks = useMemo(() => wordsToSpeakerChunks(words), [words]);
-  const [editorWords, setEditorWords] = useState<Word2[]>([]);
+  const [editorWords, setEditorWords] = useState<Word2[]>(words);
 
   const editorRef = useRef<TranscriptEditorRef | null>(null);
   const { isAtBottom, scrollContainerRef, handleScroll, scrollToBottom } = useScrollToBottom([speakerChunks]);
@@ -116,20 +116,6 @@ function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Wo
       }
     }
   }, [words]);
-
-  useEffect(() => {
-    if (!editable) {
-      dbCommands.getSession({ id: sessionId }).then((session) => {
-        if (session) {
-          dbCommands.upsertSession({ ...session, words: editorWords }).then(() => {
-            queryClient.invalidateQueries({
-              queryKey: ["session", "words", sessionId],
-            });
-          });
-        }
-      });
-    }
-  }, [editable]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -165,8 +151,22 @@ function RenderNotInMeeting({ sessionId, words }: { sessionId: string; words: Wo
   }, [sessionId]);
 
   const handeToggleEdit = useCallback(() => {
-    setEditable((v) => !v);
-  }, []);
+    setEditable((v) => {
+      if (v) {
+        dbCommands.getSession({ id: sessionId }).then((session) => {
+          if (session) {
+            dbCommands.upsertSession({ ...session, words: editorWords }).then(() => {
+              queryClient.invalidateQueries({
+                queryKey: ["session", "words", sessionId],
+              });
+            });
+          }
+        });
+      }
+
+      return !v;
+    });
+  }, [editorWords]);
 
   const handleUpdate = (words: Word2[]) => {
     setEditorWords(words);
