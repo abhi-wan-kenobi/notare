@@ -452,6 +452,10 @@ export function useEnhanceMutation({
 
       // Print context tags if they exist
       if (selectedTemplate?.context_option) {
+        analyticsCommands.event({
+          event: "enhance_with_context",
+          distinct_id: userId,
+        });
         try {
           const contextConfig = JSON.parse(selectedTemplate.context_option);
           if (contextConfig.type === "tags" && contextConfig.selections?.length > 0) {
