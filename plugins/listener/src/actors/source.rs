@@ -38,6 +38,7 @@ pub struct SrcState {
     token: CancellationToken,
     muted: Arc<AtomicBool>,
     run_task: Option<tokio::task::JoinHandle<()>>,
+    stream_cancel_token: Option<CancellationToken>,
     _device_monitor_handle: Option<DeviceMonitorHandle>,
     _silence_stream_tx: Option<std::sync::mpsc::Sender<()>>,
 }
@@ -93,6 +94,7 @@ impl Actor for SourceActor {
             token: args.token,
             muted: Arc::new(AtomicBool::new(false)),
             run_task: None,
+            stream_cancel_token: None,
             _device_monitor_handle: device_monitor_handle,
             _silence_stream_tx: silence_stream_tx,
         };
@@ -127,6 +129,11 @@ impl Actor for SourceActor {
             }
             (SrcCtrl::SetDevice(dev), SrcWhich::Mic { device }) => {
                 *device = dev;
+
+                if let Some(cancel_token) = st.stream_cancel_token.take() {
+                    cancel_token.cancel();
+                }
+
                 if let Some(t) = st.run_task.take() {
                     t.abort();
                 }
@@ -143,6 +150,10 @@ impl Actor for SourceActor {
         _myself: ActorRef<Self::Msg>,
         st: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
+        if let Some(cancel_token) = st.stream_cancel_token.take() {
+            cancel_token.cancel();
+        }
+
         if let Some(task) = st.run_task.take() {
             task.abort();
         }
@@ -164,6 +175,9 @@ async fn start_source_loop(
     let which = st.which.clone();
     let muted = st.muted.clone();
 
+    let stream_cancel_token = CancellationToken::new();
+    st.stream_cancel_token = Some(stream_cancel_token.clone());
+
     let handle = tokio::spawn(async move {
         loop {
             let stream = match &which {
@@ -182,7 +196,15 @@ async fn start_source_loop(
 
             loop {
                 tokio::select! {
-                    _ = token.cancelled() => { myself2.stop(None); return (); }
+                    _ = token.cancelled() => {
+                        drop(stream);
+                        myself2.stop(None);
+                        return ();
+                    }
+                    _ = stream_cancel_token.cancelled() => {
+                        drop(stream);
+                        return ();
+                    }
                     next = stream.next() => {
                         if let Some(data) = next {
                             let output_data = if muted.load(Ordering::Relaxed) {
@@ -202,7 +224,6 @@ async fn start_source_loop(
                     }
                 }
             }
-            tokio::time::sleep(Duration::from_millis(200)).await;
         }
     });
 
