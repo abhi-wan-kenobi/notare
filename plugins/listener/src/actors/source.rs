@@ -78,8 +78,17 @@ impl Actor for SourceActor {
             None
         };
 
+        let which = if matches!(args.which, SrcWhich::Mic { .. }) {
+            let device = AudioInput::get_default_mic_device_name();
+            SrcWhich::Mic {
+                device: Some(device),
+            }
+        } else {
+            args.which
+        };
+
         let mut st = SrcState {
-            which: args.which,
+            which,
             proc: args.proc,
             token: args.token,
             muted: Arc::new(AtomicBool::new(false)),
