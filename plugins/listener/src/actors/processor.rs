@@ -101,21 +101,21 @@ impl Actor for AudioProcessor {
 
 async fn process_ready(st: &mut ProcState) {
     while let Some((mic, spk)) = st.joiner.pop_pair() {
-        let mic_out = st
+        let mic = st
             .aec
             .process_streaming(&mic, &spk)
             .unwrap_or_else(|_| mic.to_vec());
 
         {
             if let Some(mic_rec) = &st.mic_recorder {
-                mic_rec.cast(RecMsg::Audio(mic_out.clone())).ok();
+                mic_rec.cast(RecMsg::Audio(mic.clone())).ok();
             }
             if let Some(spk_rec) = &st.speaker_recorder {
                 spk_rec.cast(RecMsg::Audio(spk.to_vec())).ok();
             }
 
             if let Some(rec) = &st.recorder {
-                let mixed: Vec<f32> = mic_out
+                let mixed: Vec<f32> = mic
                     .iter()
                     .zip(spk.iter())
                     .map(|(m, s)| (m + s).clamp(-1.0, 1.0))
@@ -125,7 +125,7 @@ async fn process_ready(st: &mut ProcState) {
         }
 
         if let Some(actor) = &st.listen {
-            let mic_bytes = hypr_audio_utils::f32_to_i16_bytes(mic_out.into_iter());
+            let mic_bytes = hypr_audio_utils::f32_to_i16_bytes(mic.into_iter());
             let spk_bytes = hypr_audio_utils::f32_to_i16_bytes(spk.iter().copied());
 
             actor
