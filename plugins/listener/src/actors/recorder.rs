@@ -9,6 +9,7 @@ pub enum RecMsg {
 pub struct RecArgs {
     pub app_dir: PathBuf,
     pub session_id: String,
+    pub file_suffix: Option<String>,
 }
 
 pub struct RecState {
@@ -28,7 +29,14 @@ impl Actor for Recorder {
     ) -> Result<Self::State, ActorProcessingErr> {
         let dir = args.app_dir.join(&args.session_id);
         std::fs::create_dir_all(&dir)?;
-        let path = dir.join("audio.wav");
+
+        let filename = if let Some(suffix) = args.file_suffix {
+            format!("audio{}.wav", suffix)
+        } else {
+            "audio.wav".to_string()
+        };
+
+        let path = dir.join(filename);
         let spec = hound::WavSpec {
             channels: 1,
             sample_rate: 16000,

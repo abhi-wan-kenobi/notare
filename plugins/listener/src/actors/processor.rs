@@ -17,28 +17,29 @@ const AUDIO_AMPLITUDE_THROTTLE: Duration = Duration::from_millis(100);
 pub enum ProcMsg {
     Mic(AudioChunk),
     Spk(AudioChunk),
-    AttachRecorder(ActorRef<RecMsg>),
     AttachListen(ActorRef<ListenMsg>),
+    AttachRecorder(ActorRef<RecMsg>),
+    AttachMicRecorder(ActorRef<RecMsg>),
+    AttachSpeakerRecorder(ActorRef<RecMsg>),
 }
 
 pub struct ProcArgs {
     pub app: tauri::AppHandle,
-    pub mixed_to: Option<ActorRef<RecMsg>>,
-    pub rec_to: Option<ActorRef<RecMsg>>,
-    pub listen_tx: Option<ActorRef<ListenMsg>>,
 }
 
 pub struct ProcState {
     app: tauri::AppHandle,
-    joiner: Joiner,
     aec: hypr_aec::AEC,
     agc_m: hypr_agc::Agc,
     agc_s: hypr_agc::Agc,
-    last_amp: Instant,
-    recorder: Option<ActorRef<RecMsg>>,
-    listen: Option<ActorRef<ListenMsg>>,
+    joiner: Joiner,
     last_mic: Option<Arc<[f32]>>,
     last_spk: Option<Arc<[f32]>>,
+    last_amp: Instant,
+    listen: Option<ActorRef<ListenMsg>>,
+    recorder: Option<ActorRef<RecMsg>>,
+    mic_recorder: Option<ActorRef<RecMsg>>,
+    speaker_recorder: Option<ActorRef<RecMsg>>,
 }
 
 pub struct AudioProcessor {}
@@ -58,11 +59,13 @@ impl Actor for AudioProcessor {
             aec: hypr_aec::AEC::new().unwrap(),
             agc_m: hypr_agc::Agc::default(),
             agc_s: hypr_agc::Agc::default(),
-            last_amp: Instant::now(),
-            recorder: args.mixed_to.or(args.rec_to),
-            listen: args.listen_tx,
             last_mic: None,
             last_spk: None,
+            last_amp: Instant::now(),
+            listen: None,
+            recorder: None,
+            mic_recorder: None,
+            speaker_recorder: None,
         })
     }
 
@@ -73,8 +76,10 @@ impl Actor for AudioProcessor {
         st: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match msg {
-            ProcMsg::AttachRecorder(r) => st.recorder = Some(r),
-            ProcMsg::AttachListen(l) => st.listen = Some(l),
+            ProcMsg::AttachListen(actor) => st.listen = Some(actor),
+            ProcMsg::AttachRecorder(actor) => st.recorder = Some(actor),
+            ProcMsg::AttachMicRecorder(actor) => st.mic_recorder = Some(actor),
+            ProcMsg::AttachSpeakerRecorder(actor) => st.speaker_recorder = Some(actor),
             ProcMsg::Mic(mut c) => {
                 st.agc_m.process(&mut c.data);
                 let arc = Arc::<[f32]>::from(c.data);
@@ -101,19 +106,30 @@ async fn process_ready(st: &mut ProcState) {
             .process_streaming(&mic, &spk)
             .unwrap_or_else(|_| mic.to_vec());
 
-        if let Some(rec) = &st.recorder {
-            let mixed: Vec<f32> = mic_out
-                .iter()
-                .zip(spk.iter())
-                .map(|(m, s)| (m + s).clamp(-1.0, 1.0))
-                .collect();
-            rec.cast(RecMsg::Audio(mixed)).ok();
+        {
+            if let Some(mic_rec) = &st.mic_recorder {
+                mic_rec.cast(RecMsg::Audio(mic_out.clone())).ok();
+            }
+            if let Some(spk_rec) = &st.speaker_recorder {
+                spk_rec.cast(RecMsg::Audio(spk.to_vec())).ok();
+            }
+
+            if let Some(rec) = &st.recorder {
+                let mixed: Vec<f32> = mic_out
+                    .iter()
+                    .zip(spk.iter())
+                    .map(|(m, s)| (m + s).clamp(-1.0, 1.0))
+                    .collect();
+                rec.cast(RecMsg::Audio(mixed)).ok();
+            }
         }
 
-        if let Some(list) = &st.listen {
+        if let Some(actor) = &st.listen {
             let mic_bytes = hypr_audio_utils::f32_to_i16_bytes(mic_out.into_iter());
             let spk_bytes = hypr_audio_utils::f32_to_i16_bytes(spk.iter().copied());
-            list.cast(ListenMsg::Audio(mic_bytes.into(), spk_bytes.into()))
+
+            actor
+                .cast(ListenMsg::Audio(mic_bytes.into(), spk_bytes.into()))
                 .ok();
         }
     }
@@ -122,9 +138,8 @@ async fn process_ready(st: &mut ProcState) {
         if let (Some(mic_data), Some(spk_data)) = (&st.last_mic, &st.last_spk) {
             if let Err(e) = SessionEvent::from((mic_data.as_ref(), spk_data.as_ref())).emit(&st.app)
             {
-                tracing::error!("Failed to emit AudioAmplitude event: {:?}", e);
+                tracing::error!("{:?}", e);
             }
-
             st.last_amp = Instant::now();
         }
     }

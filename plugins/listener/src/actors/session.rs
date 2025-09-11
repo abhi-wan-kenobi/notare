@@ -43,6 +43,11 @@ pub struct SessionState {
     recorder: Option<ActorRef<RecMsg>>,
     listen: Option<ActorRef<ListenMsg>>,
 
+    #[cfg(debug_assertions)]
+    mic_recorder: Option<ActorRef<RecMsg>>,
+    #[cfg(debug_assertions)]
+    speaker_recorder: Option<ActorRef<RecMsg>>,
+
     record_enabled: bool,
     languages: Vec<hypr_language::Language>,
     onboarding: bool,
@@ -72,6 +77,10 @@ impl Actor for SessionSupervisor {
             processor: None,
             recorder: None,
             listen: None,
+            #[cfg(debug_assertions)]
+            mic_recorder: None,
+            #[cfg(debug_assertions)]
+            speaker_recorder: None,
             record_enabled: true,
             languages: vec![],
             onboarding: false,
@@ -253,9 +262,6 @@ impl SessionSupervisor {
             AudioProcessor {},
             ProcArgs {
                 app: state.app.clone(),
-                mixed_to: None,
-                rec_to: None,
-                listen_tx: None,
             },
             supervisor.clone(),
         )
@@ -294,14 +300,46 @@ impl SessionSupervisor {
                 Some("recorder".to_string()),
                 Recorder,
                 RecArgs {
-                    app_dir,
+                    app_dir: app_dir.clone(),
                     session_id: session_id.clone(),
+                    file_suffix: None,
                 },
                 supervisor.clone(),
             )
             .await?;
             state.recorder = Some(rec_ref.clone());
             processor_ref.cast(ProcMsg::AttachRecorder(rec_ref))?;
+
+            #[cfg(debug_assertions)]
+            {
+                let (mic_rec_ref, _) = Actor::spawn_linked(
+                    Some("mic_recorder".to_string()),
+                    Recorder,
+                    RecArgs {
+                        app_dir: app_dir.clone(),
+                        session_id: session_id.clone(),
+                        file_suffix: Some("_mic".to_string()),
+                    },
+                    supervisor.clone(),
+                )
+                .await?;
+                state.mic_recorder = Some(mic_rec_ref.clone());
+                processor_ref.cast(ProcMsg::AttachMicRecorder(mic_rec_ref))?;
+
+                let (spk_rec_ref, _) = Actor::spawn_linked(
+                    Some("speaker_recorder".to_string()),
+                    Recorder,
+                    RecArgs {
+                        app_dir,
+                        session_id: session_id.clone(),
+                        file_suffix: Some("_speaker".to_string()),
+                    },
+                    supervisor.clone(),
+                )
+                .await?;
+                state.speaker_recorder = Some(spk_rec_ref.clone());
+                processor_ref.cast(ProcMsg::AttachSpeakerRecorder(spk_rec_ref))?;
+            }
         }
 
         let (listen_ref, _) = Actor::spawn_linked(
@@ -350,6 +388,17 @@ impl SessionSupervisor {
         if let Some(rec) = state.recorder.take() {
             rec.stop(None);
         }
+
+        #[cfg(debug_assertions)]
+        {
+            if let Some(mic_rec) = state.mic_recorder.take() {
+                mic_rec.stop(None);
+            }
+            if let Some(spk_rec) = state.speaker_recorder.take() {
+                spk_rec.stop(None);
+            }
+        }
+
         if let Some(listen) = state.listen.take() {
             listen.stop(None);
         }
