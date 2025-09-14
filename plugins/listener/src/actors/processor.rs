@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use ractor::{Actor, ActorProcessingErr, ActorRef};
+use ractor::{Actor, ActorName, ActorProcessingErr, ActorRef};
 use tauri_specta::Event;
 
 use crate::{
@@ -19,8 +19,6 @@ pub enum ProcMsg {
     Spk(AudioChunk),
     AttachListen(ActorRef<ListenMsg>),
     AttachRecorder(ActorRef<RecMsg>),
-    AttachMicRecorder(ActorRef<RecMsg>),
-    AttachSpeakerRecorder(ActorRef<RecMsg>),
 }
 
 pub struct ProcArgs {
@@ -43,6 +41,13 @@ pub struct ProcState {
 }
 
 pub struct AudioProcessor {}
+
+impl AudioProcessor {
+    pub fn name() -> ActorName {
+        "audio_processor".into()
+    }
+}
+
 impl Actor for AudioProcessor {
     type Msg = ProcMsg;
     type State = ProcState;
@@ -78,8 +83,6 @@ impl Actor for AudioProcessor {
         match msg {
             ProcMsg::AttachListen(actor) => st.listen = Some(actor),
             ProcMsg::AttachRecorder(actor) => st.recorder = Some(actor),
-            ProcMsg::AttachMicRecorder(actor) => st.mic_recorder = Some(actor),
-            ProcMsg::AttachSpeakerRecorder(actor) => st.speaker_recorder = Some(actor),
             ProcMsg::Mic(mut c) => {
                 st.agc_m.process(&mut c.data);
                 let arc = Arc::<[f32]>::from(c.data);

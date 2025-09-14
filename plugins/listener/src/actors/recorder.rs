@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use ractor::{Actor, ActorProcessingErr, ActorRef};
+use ractor::{Actor, ActorName, ActorProcessingErr, ActorRef};
 
 pub enum RecMsg {
     Audio(Vec<f32>),
@@ -17,6 +17,13 @@ pub struct RecState {
 }
 
 pub struct Recorder;
+
+impl Recorder {
+    pub fn name() -> ActorName {
+        "recorder".into()
+    }
+}
+
 impl Actor for Recorder {
     type Msg = RecMsg;
     type State = RecState;

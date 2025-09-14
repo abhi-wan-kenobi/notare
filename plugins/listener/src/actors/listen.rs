@@ -5,7 +5,7 @@ use bytes::Bytes;
 use futures_util::StreamExt;
 
 use owhisper_interface::{ControlMessage, MixedMessage, Word2};
-use ractor::{Actor, ActorProcessingErr, ActorRef};
+use ractor::{Actor, ActorName, ActorProcessingErr, ActorRef};
 use tauri_specta::Event;
 
 use crate::{manager::TranscriptManager, SessionEvent};
@@ -30,6 +30,13 @@ pub struct ListenState {
 }
 
 pub struct ListenBridge;
+
+impl ListenBridge {
+    pub fn name() -> ActorName {
+        "listen_bridge".into()
+    }
+}
+
 impl Actor for ListenBridge {
     type Msg = ListenMsg;
     type State = ListenState;
