@@ -12,41 +12,45 @@ use hypr_audio::{
 
 const SAMPLE_RATE: u32 = 16000;
 
-pub enum MicCtrl {
-    SetMute(bool),
-    GetMute(RpcReplyPort<bool>),
-    SetDevice(Option<String>),
-    GetDevice(RpcReplyPort<Option<String>>),
+pub enum SourceCtrl {
+    SetMicMute(bool),
+    GetMicMute(RpcReplyPort<bool>),
+    SetSpkMute(bool),
+    GetSpkMute(RpcReplyPort<bool>),
+    SetMicDevice(Option<String>),
+    GetMicDevice(RpcReplyPort<Option<String>>),
 }
 
-pub struct MicArgs {
+pub struct SourceArgs {
     pub device: Option<String>,
     pub proc: ActorRef<ProcMsg>,
     pub token: CancellationToken,
 }
 
-pub struct MicState {
+pub struct SourceState {
     device: Option<String>,
     proc: ActorRef<ProcMsg>,
     token: CancellationToken,
-    muted: Arc<AtomicBool>,
+    mic_muted: Arc<AtomicBool>,
+    spk_muted: Arc<AtomicBool>,
     run_task: Option<tokio::task::JoinHandle<()>>,
     stream_cancel_token: Option<CancellationToken>,
     _device_monitor_handle: Option<DeviceMonitorHandle>,
+    _silence_stream_tx: Option<std::sync::mpsc::Sender<()>>,
 }
 
-pub struct MicSourceActor;
+pub struct SourceActor;
 
-impl MicSourceActor {
+impl SourceActor {
     pub fn name() -> ActorName {
-        "source_mic".into()
+        "source".into()
     }
 }
 
-impl Actor for MicSourceActor {
-    type Msg = MicCtrl;
-    type State = MicState;
-    type Arguments = MicArgs;
+impl Actor for SourceActor {
+    type Msg = SourceCtrl;
+    type State = SourceState;
+    type Arguments = SourceArgs;
 
     async fn pre_start(
         &self,
@@ -61,24 +65,27 @@ impl Actor for MicSourceActor {
             while let Ok(event) = event_rx.recv() {
                 if let DeviceEvent::DefaultInputChanged { .. } = event {
                     let new_device = AudioInput::get_default_mic_device_name();
-                    let _ = myself_clone.cast(MicCtrl::SetDevice(Some(new_device)));
+                    let _ = myself_clone.cast(SourceCtrl::SetMicDevice(Some(new_device)));
                 }
             }
         });
 
         let device = AudioInput::get_default_mic_device_name();
+        let silence_stream_tx = Some(hypr_audio::AudioOutput::silence());
 
-        let mut st = MicState {
+        let mut st = SourceState {
             device: Some(device),
             proc: args.proc,
             token: args.token,
-            muted: Arc::new(AtomicBool::new(false)),
+            mic_muted: Arc::new(AtomicBool::new(false)),
+            spk_muted: Arc::new(AtomicBool::new(false)),
             run_task: None,
             stream_cancel_token: None,
             _device_monitor_handle: Some(device_monitor_handle),
+            _silence_stream_tx: silence_stream_tx,
         };
 
-        start_mic_loop(&myself, &mut st).await?;
+        start_source_loop(&myself, &mut st).await?;
         Ok(st)
     }
 
@@ -89,20 +96,28 @@ impl Actor for MicSourceActor {
         st: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match msg {
-            MicCtrl::SetMute(muted) => {
-                st.muted.store(muted, Ordering::Relaxed);
+            SourceCtrl::SetMicMute(muted) => {
+                st.mic_muted.store(muted, Ordering::Relaxed);
             }
-            MicCtrl::GetMute(reply) => {
+            SourceCtrl::GetMicMute(reply) => {
                 if !reply.is_closed() {
-                    let _ = reply.send(st.muted.load(Ordering::Relaxed));
+                    let _ = reply.send(st.mic_muted.load(Ordering::Relaxed));
                 }
             }
-            MicCtrl::GetDevice(reply) => {
+            SourceCtrl::SetSpkMute(muted) => {
+                st.spk_muted.store(muted, Ordering::Relaxed);
+            }
+            SourceCtrl::GetSpkMute(reply) => {
+                if !reply.is_closed() {
+                    let _ = reply.send(st.spk_muted.load(Ordering::Relaxed));
+                }
+            }
+            SourceCtrl::GetMicDevice(reply) => {
                 if !reply.is_closed() {
                     let _ = reply.send(st.device.clone());
                 }
             }
-            MicCtrl::SetDevice(dev) => {
+            SourceCtrl::SetMicDevice(dev) => {
                 st.device = dev;
 
                 if let Some(cancel_token) = st.stream_cancel_token.take() {
@@ -112,7 +127,7 @@ impl Actor for MicSourceActor {
                 if let Some(t) = st.run_task.take() {
                     t.abort();
                 }
-                start_mic_loop(&myself, st).await?;
+                start_source_loop(&myself, st).await?;
             }
         }
 
@@ -132,50 +147,73 @@ impl Actor for MicSourceActor {
             task.abort();
         }
 
+        st._silence_stream_tx = None;
+
         Ok(())
     }
 }
 
-async fn start_mic_loop(
-    myself: &ActorRef<MicCtrl>,
-    st: &mut MicState,
+async fn start_source_loop(
+    myself: &ActorRef<SourceCtrl>,
+    st: &mut SourceState,
 ) -> Result<(), ActorProcessingErr> {
     let myself2 = myself.clone();
 
     let proc = st.proc.clone();
     let token = st.token.clone();
-    let muted = st.muted.clone();
+    let mic_muted = st.mic_muted.clone();
+    let spk_muted = st.spk_muted.clone();
 
     let stream_cancel_token = CancellationToken::new();
     st.stream_cancel_token = Some(stream_cancel_token.clone());
 
-    let mut input = hypr_audio::AudioInput::from_mic(st.device.clone()).unwrap();
-    let stream =
-        ResampledAsyncSource::new(input.stream(), SAMPLE_RATE).chunks(hypr_aec::BLOCK_SIZE);
+    let mut mic_input = hypr_audio::AudioInput::from_mic(st.device.clone()).unwrap();
+    let mic_stream =
+        ResampledAsyncSource::new(mic_input.stream(), SAMPLE_RATE).chunks(hypr_aec::BLOCK_SIZE);
+
+    let spk_input = hypr_audio::AudioInput::from_speaker().stream();
+    let spk_stream = ResampledAsyncSource::new(spk_input, SAMPLE_RATE).chunks(hypr_aec::BLOCK_SIZE);
 
     let handle = tokio::spawn(async move {
-        tokio::pin!(stream);
+        tokio::pin!(mic_stream);
+        tokio::pin!(spk_stream);
 
         loop {
             tokio::select! {
                 _ = token.cancelled() => {
-                    drop(stream);
+                    drop(mic_stream);
+                    drop(spk_stream);
                     myself2.stop(None);
                     return ();
                 }
                 _ = stream_cancel_token.cancelled() => {
-                    drop(stream);
+                    drop(mic_stream);
+                    drop(spk_stream);
                     return ();
                 }
-                next = stream.next() => {
-                    if let Some(data) = next {
-                        let output_data = if muted.load(Ordering::Relaxed) {
+                mic_next = mic_stream.next() => {
+                    if let Some(data) = mic_next {
+                        let output_data = if mic_muted.load(Ordering::Relaxed) {
                             vec![0.0; data.len()]
                         } else {
                             data
                         };
 
                         let msg = ProcMsg::Mic(AudioChunk{ data: output_data });
+                        let _ = proc.cast(msg);
+                    } else {
+                        break;
+                    }
+                }
+                spk_next = spk_stream.next() => {
+                    if let Some(data) = spk_next {
+                        let output_data = if spk_muted.load(Ordering::Relaxed) {
+                            vec![0.0; data.len()]
+                        } else {
+                            data
+                        };
+
+                        let msg = ProcMsg::Spk(AudioChunk{ data: output_data });
                         let _ = proc.cast(msg);
                     } else {
                         break;

@@ -8,8 +8,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     actors::{
-        AudioProcessor, ListenArgs, ListenBridge, ListenMsg, MicArgs, MicCtrl, MicSourceActor,
-        ProcArgs, ProcMsg, RecArgs, RecMsg, Recorder, SpeakerSourceActor, SpkArgs, SpkCtrl,
+        AudioProcessor, ListenArgs, ListenBridge, ListenMsg, ProcArgs, ProcMsg, RecArgs, RecMsg,
+        Recorder, SourceActor, SourceArgs, SourceCtrl,
     },
     fsm::State,
     SessionEvent,
@@ -38,8 +38,7 @@ pub struct SessionState {
     session_id: Option<String>,
     session_start_ts_ms: Option<u64>,
 
-    mic_source: Option<ActorRef<MicCtrl>>,
-    speaker_source: Option<ActorRef<SpkCtrl>>,
+    source: Option<ActorRef<SourceCtrl>>,
     processor: Option<ActorRef<ProcMsg>>,
     recorder: Option<ActorRef<RecMsg>>,
     listen: Option<ActorRef<ListenMsg>>,
@@ -74,8 +73,7 @@ impl Actor for SessionSupervisor {
             state: State::Inactive,
             session_id: None,
             session_start_ts_ms: None,
-            mic_source: None,
-            speaker_source: None,
+            source: None,
             processor: None,
             recorder: None,
             listen: None,
@@ -113,23 +111,23 @@ impl Actor for SessionSupervisor {
             }
 
             SessionMsg::SetMicMute(muted) => {
-                if let Some(mic) = &state.mic_source {
-                    mic.cast(MicCtrl::SetMute(muted))?;
+                if let Some(source) = &state.source {
+                    source.cast(SourceCtrl::SetMicMute(muted))?;
                 }
                 SessionEvent::MicMuted { value: muted }.emit(&state.app)?;
             }
 
             SessionMsg::SetSpeakerMute(muted) => {
-                if let Some(spk) = &state.speaker_source {
-                    spk.cast(SpkCtrl::SetMute(muted))?;
+                if let Some(source) = &state.source {
+                    source.cast(SourceCtrl::SetSpkMute(muted))?;
                 }
                 SessionEvent::SpeakerMuted { value: muted }.emit(&state.app)?;
             }
 
             SessionMsg::GetMicDeviceName(reply) => {
                 if !reply.is_closed() {
-                    let device_name = if let Some(mic) = &state.mic_source {
-                        call_t!(mic, MicCtrl::GetDevice, 100).unwrap_or(None)
+                    let device_name = if let Some(source) = &state.source {
+                        call_t!(source, SourceCtrl::GetMicDevice, 100).unwrap_or(None)
                     } else {
                         None
                     };
@@ -139,8 +137,8 @@ impl Actor for SessionSupervisor {
             }
 
             SessionMsg::GetMicMute(reply) => {
-                let muted = if let Some(mic) = &state.mic_source {
-                    call_t!(mic, MicCtrl::GetMute, 100)?
+                let muted = if let Some(source) = &state.source {
+                    call_t!(source, SourceCtrl::GetMicMute, 100)?
                 } else {
                     false
                 };
@@ -151,8 +149,8 @@ impl Actor for SessionSupervisor {
             }
 
             SessionMsg::GetSpeakerMute(reply) => {
-                let muted = if let Some(spk) = &state.speaker_source {
-                    call_t!(spk, SpkCtrl::GetMute, 100)?
+                let muted = if let Some(source) = &state.source {
+                    call_t!(source, SourceCtrl::GetSpkMute, 100)?
                 } else {
                     false
                 };
@@ -163,8 +161,8 @@ impl Actor for SessionSupervisor {
             }
 
             SessionMsg::ChangeMicDevice(device) => {
-                if let Some(mic) = &state.mic_source {
-                    mic.cast(MicCtrl::SetDevice(device))?;
+                if let Some(source) = &state.source {
+                    source.cast(SourceCtrl::SetMicDevice(device))?;
                 }
             }
 
@@ -186,11 +184,6 @@ impl Actor for SessionSupervisor {
     ) -> Result<(), ActorProcessingErr> {
         match event {
             SupervisionEvent::ActorStarted(actor) => {
-                if matches!(
-                    actor.get_name(),
-                    Some(name) if name == MicSourceActor::name() || name == SpeakerSourceActor::name()
-                ) {}
-
                 tracing::info!("{:?}_actor_started", actor.get_name());
             }
 
@@ -274,10 +267,10 @@ impl SessionSupervisor {
         .await?;
         state.processor = Some(processor_ref.clone());
 
-        let (mic_ref, _) = Actor::spawn_linked(
-            Some(MicSourceActor::name()),
-            MicSourceActor,
-            MicArgs {
+        let (source_ref, _) = Actor::spawn_linked(
+            Some(SourceActor::name()),
+            SourceActor,
+            SourceArgs {
                 proc: processor_ref.clone(),
                 token: state.token.clone(),
                 device: None,
@@ -285,19 +278,7 @@ impl SessionSupervisor {
             supervisor.clone(),
         )
         .await?;
-        state.mic_source = Some(mic_ref.clone());
-
-        let (spk_ref, _) = Actor::spawn_linked(
-            Some(SpeakerSourceActor::name()),
-            SpeakerSourceActor,
-            SpkArgs {
-                proc: processor_ref.clone(),
-                token: state.token.clone(),
-            },
-            supervisor.clone(),
-        )
-        .await?;
-        state.speaker_source = Some(spk_ref);
+        state.source = Some(source_ref.clone());
 
         if state.record_enabled {
             let app_dir = state.app.path().app_data_dir().unwrap();
@@ -350,11 +331,8 @@ impl SessionSupervisor {
 
         state.token.cancel();
 
-        if let Some(mic) = state.mic_source.take() {
-            mic.stop(None);
-        }
-        if let Some(spk) = state.speaker_source.take() {
-            spk.stop(None);
+        if let Some(source) = state.source.take() {
+            source.stop(None);
         }
         if let Some(proc) = state.processor.take() {
             proc.stop(None);
