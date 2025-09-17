@@ -1,5 +1,6 @@
 use anyhow::Result;
 use futures_util::Stream;
+use std::task::Poll;
 
 pub struct MixedInput {}
 
@@ -8,8 +9,8 @@ impl MixedInput {
         Ok(Self {})
     }
 
-    pub fn stream(self) -> Result<MixedStream> {
-        Ok(MixedStream {})
+    pub fn stream(self) -> MixedStream {
+        MixedStream {}
     }
 }
 
