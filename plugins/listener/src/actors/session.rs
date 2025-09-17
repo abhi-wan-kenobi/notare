@@ -283,7 +283,7 @@ impl SessionSupervisor {
         if state.record_enabled {
             let app_dir = state.app.path().app_data_dir().unwrap();
             let (rec_ref, _) = Actor::spawn_linked(
-                Some("recorder".to_string()),
+                Some(Recorder::name()),
                 Recorder,
                 RecArgs {
                     app_dir: app_dir.clone(),
@@ -311,7 +311,7 @@ impl SessionSupervisor {
         )
         .await?;
         state.listen = Some(listen_ref.clone());
-        processor_ref.cast(ProcMsg::AttachListen(listen_ref))?;
+        processor_ref.cast(ProcMsg::AttachListener(listen_ref))?;
 
         {
             use tauri_plugin_tray::TrayPluginExt;
