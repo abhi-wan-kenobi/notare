@@ -180,44 +180,50 @@ async fn start_source_loop(
 
     let handle = if use_mixed {
         #[cfg(target_os = "macos")]
-        tokio::spawn(async move {
-            let mixed_stream = {
-                let mut mixed_input = AudioInput::from_mixed().unwrap();
-                ResampledAsyncSource::new(mixed_input.stream(), SAMPLE_RATE)
-                    .chunks(hypr_aec::BLOCK_SIZE)
-            };
+        {
+            tokio::spawn(async move {
+                let mixed_stream = {
+                    let mut mixed_input = AudioInput::from_mixed().unwrap();
+                    ResampledAsyncSource::new(mixed_input.stream(), SAMPLE_RATE)
+                        .chunks(hypr_aec::BLOCK_SIZE)
+                };
 
-            tokio::pin!(mixed_stream);
+                tokio::pin!(mixed_stream);
 
-            loop {
-                tokio::select! {
-                    _ = token.cancelled() => {
-                        drop(mixed_stream);
-                        myself2.stop(None);
-                        return;
-                    }
-                    _ = stream_cancel_token.cancelled() => {
-                        drop(mixed_stream);
-                        return;
-                    }
-                    mixed_next = mixed_stream.next() => {
-                        if let Some(data) = mixed_next {
-                            // TODO: should be able to mute each stream
-                            let output_data = if mic_muted.load(Ordering::Relaxed) && spk_muted.load(Ordering::Relaxed) {
-                                vec![0.0; data.len()]
+                loop {
+                    tokio::select! {
+                        _ = token.cancelled() => {
+                            drop(mixed_stream);
+                            myself2.stop(None);
+                            return;
+                        }
+                        _ = stream_cancel_token.cancelled() => {
+                            drop(mixed_stream);
+                            return;
+                        }
+                        mixed_next = mixed_stream.next() => {
+                            if let Some(data) = mixed_next {
+                                // TODO: should be able to mute each stream
+                                let output_data = if mic_muted.load(Ordering::Relaxed) && spk_muted.load(Ordering::Relaxed) {
+                                    vec![0.0; data.len()]
+                                } else {
+                                    data
+                                };
+
+                                let msg = ProcMsg::Mixed(AudioChunk{ data: output_data });
+                                let _ = proc.cast(msg);
                             } else {
-                                data
-                            };
-
-                            let msg = ProcMsg::Mixed(AudioChunk{ data: output_data });
-                            let _ = proc.cast(msg);
-                        } else {
-                            break;
+                                break;
+                            }
                         }
                     }
                 }
-            }
-        })
+            })
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            tokio::spawn(async move {})
+        }
     } else {
         tokio::spawn(async move {
             let mic_stream = {
