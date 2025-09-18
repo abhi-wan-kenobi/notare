@@ -68,10 +68,7 @@ pub async fn audio_open<R: tauri::Runtime>(
     let session_dir = data_dir.join(session_id);
 
     app.opener()
-        .reveal_items_in_dir(vec![
-            session_dir.join("audio.wav"),
-            session_dir.join("audio.ogg"),
-        ])
+        .open_path(session_dir.to_string_lossy(), None::<&str>)
         .map_err(|e| e.to_string())?;
 
     Ok(())
