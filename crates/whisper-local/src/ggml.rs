@@ -7,7 +7,7 @@ pub struct GgmlBackend {
     pub free_memory_mb: usize,
 }
 
-#[cfg(any(feature = "actual", debug_assertions))]
+#[cfg(not(all(feature = "actual", not(debug_assertions))))]
 pub fn list_ggml_backends() -> Vec<GgmlBackend> {
     vec![]
 }
