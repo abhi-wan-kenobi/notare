@@ -28,7 +28,6 @@ pub struct ProcArgs {
 
 pub struct ProcState {
     app: tauri::AppHandle,
-    aec: hypr_aec::AEC,
     agc_m: hypr_agc::Agc,
     agc_s: hypr_agc::Agc,
     joiner: Joiner,
@@ -62,7 +61,6 @@ impl Actor for AudioProcessor {
         Ok(ProcState {
             app: args.app.clone(),
             joiner: Joiner::new(),
-            aec: hypr_aec::AEC::new().unwrap(),
             agc_m: hypr_agc::Agc::default(),
             agc_s: hypr_agc::Agc::default(),
             last_mic: None,
@@ -117,14 +115,9 @@ impl Actor for AudioProcessor {
 
 async fn process_ready(st: &mut ProcState) {
     while let Some((mic, spk)) = st.joiner.pop_pair() {
-        let mic = st
-            .aec
-            .process_streaming(&mic, &spk)
-            .unwrap_or_else(|_| mic.to_vec());
-
         {
             if let Some(mic_rec) = &st.mic_recorder {
-                mic_rec.cast(RecMsg::Audio(mic.clone())).ok();
+                mic_rec.cast(RecMsg::Audio(mic.to_vec())).ok();
             }
             if let Some(spk_rec) = &st.speaker_recorder {
                 spk_rec.cast(RecMsg::Audio(spk.to_vec())).ok();
@@ -141,7 +134,7 @@ async fn process_ready(st: &mut ProcState) {
         }
 
         if let Some(actor) = &st.listen {
-            let mic_bytes = hypr_audio_utils::f32_to_i16_bytes(mic.into_iter());
+            let mic_bytes = hypr_audio_utils::f32_to_i16_bytes(mic.iter().copied());
             let spk_bytes = hypr_audio_utils::f32_to_i16_bytes(spk.iter().copied());
 
             actor
