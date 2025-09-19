@@ -3758,7 +3758,7 @@ dependencies = [
 
 [[package]]
 name = "desktop"
-version = "0.0.79"
+version = "0.0.80"
 dependencies = [
  "anyhow",
  "bytes",
@@ -9109,16 +9109,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df9761775871bdef83bee530e60050f7e54b1105350d6884eb0fb4f46c2f9405"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "notch"
-version = "0.1.0"
-dependencies = [
- "objc2 0.6.2",
- "objc2-app-kit 0.3.1",
- "objc2-foundation 0.3.1",
- "swift-rs 1.0.7 (git+https://github.com/Brendonovich/swift-rs?rev=01980f9)",
 ]
 
 [[package]]
