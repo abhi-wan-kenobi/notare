@@ -8,7 +8,7 @@ use ractor::{Actor, ActorName, ActorProcessingErr, ActorRef};
 use tauri_specta::Event;
 
 use crate::{
-    actors::{AudioChunk, ListenMsg, RecMsg},
+    actors::{AudioChunk, ListenerMsg, RecMsg},
     SessionEvent,
 };
 
@@ -18,7 +18,7 @@ pub enum ProcMsg {
     Mic(AudioChunk),
     Speaker(AudioChunk),
     Mixed(AudioChunk),
-    AttachListener(ActorRef<ListenMsg>),
+    AttachListener(ActorRef<ListenerMsg>),
     AttachRecorder(ActorRef<RecMsg>),
 }
 
@@ -34,7 +34,7 @@ pub struct ProcState {
     last_mic: Option<Arc<[f32]>>,
     last_spk: Option<Arc<[f32]>>,
     last_amp: Instant,
-    listen: Option<ActorRef<ListenMsg>>,
+    listen: Option<ActorRef<ListenerMsg>>,
     recorder: Option<ActorRef<RecMsg>>,
     mic_recorder: Option<ActorRef<RecMsg>>,
     speaker_recorder: Option<ActorRef<RecMsg>>,
@@ -138,7 +138,7 @@ async fn process_ready(st: &mut ProcState) {
             let spk_bytes = hypr_audio_utils::f32_to_i16_bytes(spk.iter().copied());
 
             actor
-                .cast(ListenMsg::Audio(mic_bytes.into(), spk_bytes.into()))
+                .cast(ListenerMsg::Audio(mic_bytes.into(), spk_bytes.into()))
                 .ok();
         }
     }

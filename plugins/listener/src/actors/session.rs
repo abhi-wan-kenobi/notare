@@ -13,7 +13,7 @@ const MAX_RESTART_ATTEMPTS: u32 = 3;
 
 use crate::{
     actors::{
-        AudioProcessor, ListenArgs, ListenBridge, ListenMsg, ProcArgs, ProcMsg, RecArgs, RecMsg,
+        AudioProcessor, Listener, ListenerArgs, ListenerMsg, ProcArgs, ProcMsg, RecArgs, RecMsg,
         Recorder, SourceActor, SourceArgs, SourceCtrl,
     },
     fsm::State,
@@ -42,7 +42,7 @@ pub struct ActorRefs {
     source: Option<ActorRef<SourceCtrl>>,
     processor: Option<ActorRef<ProcMsg>>,
     recorder: Option<ActorRef<RecMsg>>,
-    listen: Option<ActorRef<ListenMsg>>,
+    listen: Option<ActorRef<ListenerMsg>>,
 }
 
 impl ActorRefs {
@@ -419,11 +419,11 @@ impl SessionSupervisor {
         state: &SessionState,
         session_id: &str,
         supervisor: ActorCell,
-    ) -> Result<ActorRef<ListenMsg>, ActorProcessingErr> {
+    ) -> Result<ActorRef<ListenerMsg>, ActorProcessingErr> {
         let (listen_ref, _) = Actor::spawn_linked(
-            Some(ListenBridge::name()),
-            ListenBridge,
-            ListenArgs {
+            Some(Listener::name()),
+            Listener,
+            ListenerArgs {
                 app: state.app.clone(),
                 session_id: session_id.to_string(),
                 languages: state.languages.clone(),
@@ -456,7 +456,7 @@ impl SessionSupervisor {
             name if name == Recorder::name() => {
                 Self::restart_recorder_actor(state, supervisor).await?;
             }
-            name if name == ListenBridge::name() => {
+            name if name == Listener::name() => {
                 Self::restart_listener_actor(state, supervisor).await?;
             }
             _ => {}

@@ -12,11 +12,11 @@ use crate::{manager::TranscriptManager, SessionEvent};
 
 const LISTEN_STREAM_TIMEOUT: Duration = Duration::from_secs(60 * 15);
 
-pub enum ListenMsg {
+pub enum ListenerMsg {
     Audio(Bytes, Bytes),
 }
 
-pub struct ListenArgs {
+pub struct ListenerArgs {
     pub app: tauri::AppHandle,
     pub session_id: String,
     pub languages: Vec<hypr_language::Language>,
@@ -24,23 +24,23 @@ pub struct ListenArgs {
     pub session_start_ts_ms: u64,
 }
 
-pub struct ListenState {
+pub struct ListenerState {
     tx: tokio::sync::mpsc::Sender<MixedMessage<(Bytes, Bytes), ControlMessage>>,
     rx_task: tokio::task::JoinHandle<()>,
 }
 
-pub struct ListenBridge;
+pub struct Listener;
 
-impl ListenBridge {
+impl Listener {
     pub fn name() -> ActorName {
         "listen_bridge".into()
     }
 }
 
-impl Actor for ListenBridge {
-    type Msg = ListenMsg;
-    type State = ListenState;
-    type Arguments = ListenArgs;
+impl Actor for Listener {
+    type Msg = ListenerMsg;
+    type State = ListenerState;
+    type Arguments = ListenerArgs;
 
     async fn pre_start(
         &self,
@@ -48,7 +48,7 @@ impl Actor for ListenBridge {
         args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
         let (tx, rx_task) = spawn_rx_task(args, myself).await.unwrap();
-        Ok(ListenState { tx, rx_task })
+        Ok(ListenerState { tx, rx_task })
     }
 
     async fn handle(
@@ -58,7 +58,7 @@ impl Actor for ListenBridge {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
-            ListenMsg::Audio(mic, spk) => {
+            ListenerMsg::Audio(mic, spk) => {
                 let _ = state.tx.try_send(MixedMessage::Audio((mic, spk)));
             }
         }
@@ -76,8 +76,8 @@ impl Actor for ListenBridge {
 }
 
 async fn spawn_rx_task(
-    args: ListenArgs,
-    myself: ActorRef<ListenMsg>,
+    args: ListenerArgs,
+    myself: ActorRef<ListenerMsg>,
 ) -> Result<
     (
         tokio::sync::mpsc::Sender<MixedMessage<(Bytes, Bytes), ControlMessage>>,
