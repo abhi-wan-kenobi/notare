@@ -13,7 +13,6 @@ pub enum RecMsg {
 pub struct RecArgs {
     pub app_dir: PathBuf,
     pub session_id: String,
-    pub file_suffix: Option<String>,
 }
 
 pub struct RecState {
@@ -59,17 +58,9 @@ impl Recorder {
         let wav_reader = hound::WavReader::open(wav_path)?;
         let spec = wav_reader.spec();
 
-        let samples: Vec<f32> = if spec.sample_format == hound::SampleFormat::Float {
-            wav_reader
-                .into_samples::<f32>()
-                .collect::<Result<Vec<_>, _>>()?
-        } else {
-            let max_val = ((1 << (spec.bits_per_sample - 1)) - 1) as f32;
-            wav_reader
-                .into_samples::<i32>()
-                .map(|s| s.map(|v| v as f32 / max_val))
-                .collect::<Result<Vec<_>, _>>()?
-        };
+        let samples = wav_reader
+            .into_samples::<f32>()
+            .collect::<Result<Vec<_>, _>>()?;
 
         let mut ogg_buffer = Vec::new();
         let mut encoder = VorbisEncoderBuilder::new(
@@ -111,12 +102,7 @@ impl Actor for Recorder {
         let dir = args.app_dir.join(&args.session_id);
         std::fs::create_dir_all(&dir)?;
 
-        let filename_base = if let Some(suffix) = args.file_suffix {
-            format!("audio{}", suffix)
-        } else {
-            "audio".to_string()
-        };
-
+        let filename_base = "audio".to_string();
         let wav_path = dir.join(format!("{}.wav", filename_base));
         let ogg_path = dir.join(format!("{}.ogg", filename_base));
 

@@ -10,6 +10,8 @@ use hypr_audio::{
     AudioInput, DeviceEvent, DeviceMonitor, DeviceMonitorHandle, ResampledAsyncSource,
 };
 
+// We previously used AEC; it has been removed.  Keep this constant to preserve chunking size.
+const AEC_BLOCK_SIZE: usize = 512;
 const SAMPLE_RATE: u32 = 16000;
 
 pub enum SourceCtrl {
@@ -185,7 +187,7 @@ async fn start_source_loop(
                 let mixed_stream = {
                     let mut mixed_input = AudioInput::from_mixed().unwrap();
                     ResampledAsyncSource::new(mixed_input.stream(), SAMPLE_RATE)
-                        .chunks(hypr_aec::BLOCK_SIZE)
+                        .chunks(AEC_BLOCK_SIZE)
                 };
 
                 tokio::pin!(mixed_stream);
@@ -228,14 +230,12 @@ async fn start_source_loop(
         tokio::spawn(async move {
             let mic_stream = {
                 let mut mic_input = hypr_audio::AudioInput::from_mic(mic_device).unwrap();
-                ResampledAsyncSource::new(mic_input.stream(), SAMPLE_RATE)
-                    .chunks(hypr_aec::BLOCK_SIZE)
+                ResampledAsyncSource::new(mic_input.stream(), SAMPLE_RATE).chunks(AEC_BLOCK_SIZE)
             };
 
             let spk_stream = {
                 let mut spk_input = hypr_audio::AudioInput::from_speaker();
-                ResampledAsyncSource::new(spk_input.stream(), SAMPLE_RATE)
-                    .chunks(hypr_aec::BLOCK_SIZE)
+                ResampledAsyncSource::new(spk_input.stream(), SAMPLE_RATE).chunks(AEC_BLOCK_SIZE)
             };
 
             tokio::pin!(mic_stream);

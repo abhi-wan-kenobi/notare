@@ -408,7 +408,6 @@ impl SessionSupervisor {
             RecArgs {
                 app_dir,
                 session_id: session_id.to_string(),
-                file_suffix: None,
             },
             supervisor,
         )
