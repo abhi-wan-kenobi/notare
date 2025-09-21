@@ -14531,6 +14531,7 @@ dependencies = [
  "tauri-plugin",
  "tauri-plugin-store",
  "tauri-plugin-store2",
+ "tauri-plugin-template",
  "tauri-plugin-windows",
  "tauri-specta",
  "thiserror 2.0.16",

@@ -51,6 +51,12 @@ async getCurrentModelSelection() : Promise<ModelSelection> {
 },
 async setCurrentModelSelection(model: ModelSelection) : Promise<null> {
     return await TAURI_INVOKE("plugin:local-llm|set_current_model_selection", { model });
+},
+async generateTitle(ctx: Partial<{ [key in string]: JsonValue }>) : Promise<string> {
+    return await TAURI_INVOKE("plugin:local-llm|generate_title", { ctx });
+},
+async generateTags(ctx: Partial<{ [key in string]: JsonValue }>) : Promise<string[]> {
+    return await TAURI_INVOKE("plugin:local-llm|generate_tags", { ctx });
 }
 }
 
@@ -65,6 +71,7 @@ async setCurrentModelSelection(model: ModelSelection) : Promise<null> {
 /** user-defined types **/
 
 export type CustomModelInfo = { path: string; name: string }
+export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 export type ModelInfo = { key: SupportedModel; name: string; description: string; size_bytes: number }
 export type ModelSelection = { type: "Predefined"; content: { key: SupportedModel } } | { type: "Custom"; content: { path: string } }
 export type SupportedModel = "Llama3p2_3bQ4" | "Gemma3_4bQ4" | "HyprLLM"
