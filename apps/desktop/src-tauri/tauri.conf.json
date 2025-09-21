@@ -64,7 +64,10 @@
           "HyprnoteRegistryEntries"
         ]
       }
-    }
+    },
+    "resources": [
+      "../../../resources/llm.gguf"
+    ]
   },
   "plugins": {
     "deep-link": {
