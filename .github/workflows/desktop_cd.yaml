@@ -32,6 +32,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - if: ${{ env.RELEASE_CHANNEL != 'staging' }}
         run: |
           VERSION=$(jq -r '.version' ./apps/desktop/src-tauri/tauri.conf.json)
