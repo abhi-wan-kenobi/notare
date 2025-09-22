@@ -152,7 +152,7 @@ pub async fn main() {
         builder = builder.plugin(tauri_plugin_apple_calendar::init())
     }
 
-    #[cfg(not(debug_assertions))]
+    #[cfg(all(not(debug_assertions), not(feature = "devtools")))]
     {
         let plugin = tauri_plugin_prevent_default::init();
         builder = builder.plugin(plugin);
