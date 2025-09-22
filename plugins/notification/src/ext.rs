@@ -216,53 +216,55 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> NotificationPluginExt<R> for T {
     }
 
     fn start_notification_analytics(&self, user_id: String) -> Result<(), Error> {
+        use hypr_notification::NotificationMutation;
+        use tauri_plugin_analytics::{AnalyticsPayload, AnalyticsPluginExt};
+
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<NotificationMutation>();
+        let app_handle = self.app_handle().clone();
+
+        let confirm_tx = tx.clone();
+        hypr_notification::setup_notification_confirm_handler(move |_id| {
+            let _ = confirm_tx.send(NotificationMutation::Confirm);
+        });
+
+        let dismiss_tx = tx.clone();
+        hypr_notification::setup_notification_dismiss_handler(move |_id| {
+            let _ = dismiss_tx.send(NotificationMutation::Dismiss);
+        });
+
+        let analytics_task = tokio::spawn(async move {
+            while let Some(event) = rx.recv().await {
+                match event {
+                    NotificationMutation::Confirm => {
+                        let _ = app_handle
+                            .event(
+                                AnalyticsPayload::for_user(&user_id)
+                                    .event("notification_confirm")
+                                    .build(),
+                            )
+                            .await;
+                    }
+                    NotificationMutation::Dismiss => {
+                        let _ = app_handle
+                            .event(
+                                AnalyticsPayload::for_user(&user_id)
+                                    .event("notification_dismiss")
+                                    .build(),
+                            )
+                            .await;
+                    }
+                }
+            }
+        });
+
         let state = self.state::<crate::SharedState>();
         let mut guard = state.lock().unwrap();
 
-        let analytics_task = {
-            use hypr_notification::NotificationMutation;
-            use tauri_plugin_analytics::{AnalyticsPayload, AnalyticsPluginExt};
-
-            let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<NotificationMutation>();
-            let app_handle = self.app_handle().clone();
-
-            let confirm_tx = tx.clone();
-            hypr_notification::setup_notification_confirm_handler(move |_id| {
-                confirm_tx.send(NotificationMutation::Confirm).unwrap();
-            });
-
-            let dismiss_tx = tx.clone();
-            hypr_notification::setup_notification_dismiss_handler(move |_id| {
-                dismiss_tx.send(NotificationMutation::Dismiss).unwrap();
-            });
-
-            tokio::spawn(async move {
-                while let Some(event) = rx.recv().await {
-                    match event {
-                        NotificationMutation::Confirm => {
-                            let _ = app_handle
-                                .event(
-                                    AnalyticsPayload::for_user(user_id.clone())
-                                        .event("notification_confirm")
-                                        .build(),
-                                )
-                                .await;
-                        }
-                        NotificationMutation::Dismiss => {
-                            let _ = app_handle
-                                .event(
-                                    AnalyticsPayload::for_user(user_id.clone())
-                                        .event("notification_dismiss")
-                                        .build(),
-                                )
-                                .await;
-                        }
-                    }
-                }
-            })
-        };
-
+        if let Some(h) = guard.analytics_task.take() {
+            h.abort();
+        }
         guard.analytics_task = Some(analytics_task);
+
         Ok(())
     }
 
@@ -271,7 +273,10 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> NotificationPluginExt<R> for T {
         let state = self.state::<crate::SharedState>();
         let mut guard = state.lock().unwrap();
 
-        guard.analytics_task.take().unwrap().abort();
+        if let Some(h) = guard.analytics_task.take() {
+            h.abort();
+        }
+
         Ok(())
     }
 }
