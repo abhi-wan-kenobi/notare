@@ -7,7 +7,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::actors::{AudioChunk, ProcMsg, ProcessorActor};
 use hypr_audio::{
-    AudioInput, DeviceEvent, DeviceMonitor, DeviceMonitorHandle, ResampledAsyncSource,
+    is_using_headphone, AudioInput, DeviceEvent, DeviceMonitor, DeviceMonitorHandle,
+    ResampledAsyncSource,
 };
 
 // We previously used AEC; it has been removed.  Keep this constant to preserve chunking size.
@@ -37,6 +38,7 @@ pub struct SourceState {
     stream_cancel_token: Option<CancellationToken>,
     _device_monitor_handle: Option<DeviceMonitorHandle>,
     _silence_stream_tx: Option<std::sync::mpsc::Sender<()>>,
+    _device_event_thread: Option<std::thread::JoinHandle<()>>,
 }
 
 pub struct SourceActor;
@@ -61,14 +63,41 @@ impl Actor for SourceActor {
         let device_monitor_handle = DeviceMonitor::spawn(event_tx);
 
         let myself_clone = myself.clone();
-        std::thread::spawn(move || {
-            while let Ok(event) = event_rx.recv() {
-                match event {
-                    DeviceEvent::DefaultInputChanged { .. }
-                    | DeviceEvent::DefaultOutputChanged { .. } => {
-                        let new_device = AudioInput::get_default_mic_name();
-                        let _ = myself_clone.cast(SourceMsg::SetMicDevice(Some(new_device)));
-                    }
+
+        let device_event_thread = std::thread::spawn(move || {
+            use std::sync::mpsc::RecvTimeoutError;
+            use std::time::Duration;
+
+            let debounce_duration = Duration::from_millis(1000);
+
+            loop {
+                match event_rx.recv() {
+                    Ok(event) => match event {
+                        DeviceEvent::DefaultInputChanged { .. }
+                        | DeviceEvent::DefaultOutputChanged { .. } => {
+                            tracing::info!(event = ?event, "device_event_outer");
+
+                            loop {
+                                let event = event_rx.recv_timeout(debounce_duration);
+                                tracing::info!(event = ?event, "device_event_inner");
+
+                                match event {
+                                    Ok(DeviceEvent::DefaultInputChanged { .. })
+                                    | Ok(DeviceEvent::DefaultOutputChanged { .. }) => {
+                                        continue;
+                                    }
+                                    Err(RecvTimeoutError::Timeout) => {
+                                        let new_device = AudioInput::get_default_device_name();
+                                        let _ = myself_clone
+                                            .cast(SourceMsg::SetMicDevice(Some(new_device)));
+                                        break;
+                                    }
+                                    Err(RecvTimeoutError::Disconnected) => return,
+                                }
+                            }
+                        }
+                    },
+                    Err(_) => break,
                 }
             }
         });
@@ -76,7 +105,7 @@ impl Actor for SourceActor {
         let silence_stream_tx = Some(hypr_audio::AudioOutput::silence());
         let mic_device = args
             .device
-            .or_else(|| Some(AudioInput::get_default_mic_name()));
+            .or_else(|| Some(AudioInput::get_default_device_name()));
         tracing::info!(mic_device = ?mic_device);
 
         let mut st = SourceState {
@@ -88,6 +117,7 @@ impl Actor for SourceActor {
             stream_cancel_token: None,
             _device_monitor_handle: Some(device_monitor_handle),
             _silence_stream_tx: silence_stream_tx,
+            _device_event_thread: Some(device_event_thread),
         };
 
         start_source_loop(&myself, &mut st).await?;
@@ -147,12 +177,9 @@ impl Actor for SourceActor {
         if let Some(cancel_token) = st.stream_cancel_token.take() {
             cancel_token.cancel();
         }
-
         if let Some(task) = st.run_task.take() {
             task.abort();
         }
-
-        st._silence_stream_tx = None;
 
         Ok(())
     }
@@ -172,7 +199,7 @@ async fn start_source_loop(
     st.stream_cancel_token = Some(stream_cancel_token.clone());
 
     #[cfg(target_os = "macos")]
-    let use_mixed = !AudioInput::is_using_headphone();
+    let use_mixed = !is_using_headphone();
 
     #[cfg(not(target_os = "macos"))]
     let use_mixed = false;
@@ -239,7 +266,7 @@ async fn start_source_loop(
                 let mut mic_input = hypr_audio::AudioInput::from_mic(mic_device).unwrap();
                 ResampledAsyncSource::new(mic_input.stream(), SAMPLE_RATE).chunks(AEC_BLOCK_SIZE)
             };
-            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
             let spk_stream = {
                 let mut spk_input = hypr_audio::AudioInput::from_speaker();
                 ResampledAsyncSource::new(spk_input.stream(), SAMPLE_RATE).chunks(AEC_BLOCK_SIZE)
@@ -249,7 +276,7 @@ async fn start_source_loop(
 
             loop {
                 let Some(cell) = registry::where_is(ProcessorActor::name()) else {
-                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    tracing::warn!("processor_actor_not_found");
                     continue;
                 };
                 let proc: ActorRef<ProcMsg> = cell.into();
