@@ -3758,7 +3758,7 @@ dependencies = [
 
 [[package]]
 name = "desktop"
-version = "0.0.80"
+version = "0.0.81"
 dependencies = [
  "anyhow",
  "bytes",
