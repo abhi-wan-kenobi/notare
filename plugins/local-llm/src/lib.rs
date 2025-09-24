@@ -87,14 +87,18 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             }
 
             {
+                let model_path = if cfg!(debug_assertions) {
+                    app.path()
+                        .resolve("resources/llm.gguf", BaseDirectory::Resource)?
+                } else {
+                    app.path().resolve("llm.gguf", BaseDirectory::Resource)?
+                };
+
                 let state = State {
                     api_base: None,
                     server: None,
                     download_task: HashMap::new(),
-                    builtin_model: crate::ModelManager::new(
-                        app.path()
-                            .resolve("resources/llm.gguf", BaseDirectory::Resource)?,
-                    ),
+                    builtin_model: crate::ModelManager::new(model_path),
                 };
                 app.manage(Arc::new(Mutex::new(state)));
             }
