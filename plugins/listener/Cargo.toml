@@ -25,6 +25,7 @@ hypr-data = { workspace = true }
 hypr-db-core = { workspace = true }
 hypr-db-user = { workspace = true }
 hypr-language = { workspace = true }
+hypr-llm = { workspace = true }
 hypr-tcc = { workspace = true }
 hypr-vad = { workspace = true }
 

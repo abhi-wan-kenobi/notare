@@ -1,11 +1,60 @@
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
+
 use tokio::sync::{watch, Mutex};
+
+#[derive(Default)]
+pub struct ModelManagerBuilder {
+    model_path: Option<PathBuf>,
+    activity_check_interval: Option<Duration>,
+    inactivity_threshold: Option<Duration>,
+}
+
+impl ModelManagerBuilder {
+    pub fn model_path(mut self, v: impl Into<PathBuf>) -> Self {
+        self.model_path = Some(v.into());
+        self
+    }
+
+    pub fn activity_check_interval(mut self, v: Duration) -> Self {
+        self.activity_check_interval = Some(v);
+        self
+    }
+
+    pub fn inactivity_threshold(mut self, v: Duration) -> Self {
+        self.inactivity_threshold = Some(v);
+        self
+    }
+
+    pub fn build(self) -> ModelManager {
+        let (shutdown_tx, shutdown_rx) = watch::channel(());
+
+        let manager = ModelManager {
+            model_path: self.model_path.unwrap(),
+            model: Arc::new(tokio::sync::Mutex::new(None)),
+            last_activity: Arc::new(tokio::sync::Mutex::new(None)),
+            activity_check_interval: self
+                .activity_check_interval
+                .unwrap_or(Duration::from_secs(3)),
+            inactivity_threshold: self
+                .inactivity_threshold
+                .unwrap_or(Duration::from_secs(150)),
+            _drop_guard: Arc::new(DropGuard { shutdown_tx }),
+        };
+
+        manager.monitor(shutdown_rx);
+        manager
+    }
+}
 
 #[derive(Clone)]
 pub struct ModelManager {
-    model_path: std::path::PathBuf,
+    model_path: PathBuf,
     model: Arc<Mutex<Option<Arc<hypr_llama::Llama>>>>,
     last_activity: Arc<Mutex<Option<tokio::time::Instant>>>,
+    activity_check_interval: Duration,
+    inactivity_threshold: Duration,
     _drop_guard: Arc<DropGuard>,
 }
 
@@ -20,25 +69,15 @@ impl Drop for DropGuard {
 }
 
 impl ModelManager {
-    pub fn new(model_path: impl Into<std::path::PathBuf>) -> Self {
-        let (shutdown_tx, shutdown_rx) = watch::channel(());
-
-        let manager = Self {
-            model_path: model_path.into(),
-            model: Arc::new(tokio::sync::Mutex::new(None)),
-            last_activity: Arc::new(tokio::sync::Mutex::new(None)),
-            _drop_guard: Arc::new(DropGuard { shutdown_tx }),
-        };
-
-        manager.monitor(shutdown_rx);
-        manager
+    pub fn builder() -> ModelManagerBuilder {
+        ModelManagerBuilder::default()
     }
 
     pub async fn update_activity(&self) {
         *self.last_activity.lock().await = Some(tokio::time::Instant::now());
     }
 
-    pub async fn get_model(&self) -> Result<std::sync::Arc<hypr_llama::Llama>, crate::Error> {
+    pub async fn get_model(&self) -> Result<Arc<hypr_llama::Llama>, crate::Error> {
         self.update_activity().await;
 
         let mut guard = self.model.lock().await;
@@ -58,8 +97,8 @@ impl ModelManager {
     }
 
     fn monitor(&self, shutdown_rx: watch::Receiver<()>) {
-        let activity_check_interval = std::time::Duration::from_secs(3);
-        let inactivity_threshold = std::time::Duration::from_secs(150);
+        let activity_check_interval = self.activity_check_interval;
+        let inactivity_threshold = self.inactivity_threshold;
 
         let model = self.model.clone();
         let last_activity = self.last_activity.clone();

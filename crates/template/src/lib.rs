@@ -42,6 +42,12 @@ pub enum Template {
     #[strum(serialize = "auto_generate_tags.user")]
     #[serde(rename = "auto_generate_tags.user")]
     AutoGenerateTagsUser,
+    #[strum(serialize = "postprocess_transcript.system")]
+    #[serde(rename = "postprocess_transcript.system")]
+    PostprocessTranscriptSystem,
+    #[strum(serialize = "postprocess_transcript.user")]
+    #[serde(rename = "postprocess_transcript.user")]
+    PostprocessTranscriptUser,
 }
 
 pub const ENHANCE_SYSTEM_TPL: &str = include_str!("../assets/enhance.system.jinja");
@@ -56,6 +62,10 @@ pub const AUTO_GENERATE_TAGS_USER_TPL: &str =
     include_str!("../assets/auto_generate_tags.user.jinja");
 pub const CHAT_SYSTEM_TPL: &str = include_str!("../assets/chat.system.jinja");
 pub const CHAT_USER_TPL: &str = include_str!("../assets/chat.user.jinja");
+pub const POSTPROCESS_TRANSCRIPT_SYSTEM_TPL: &str =
+    include_str!("../assets/postprocess_transcript.system.jinja");
+pub const POSTPROCESS_TRANSCRIPT_USER_TPL: &str =
+    include_str!("../assets/postprocess_transcript.user.jinja");
 
 pub fn init(env: &mut minijinja::Environment) {
     env.set_unknown_method_callback(minijinja_contrib::pycompat::unknown_method_callback);
@@ -91,6 +101,16 @@ pub fn init(env: &mut minijinja::Environment) {
         env.add_template(
             Template::AutoGenerateTagsUser.as_ref(),
             AUTO_GENERATE_TAGS_USER_TPL,
+        )
+        .unwrap();
+        env.add_template(
+            Template::PostprocessTranscriptSystem.as_ref(),
+            POSTPROCESS_TRANSCRIPT_SYSTEM_TPL,
+        )
+        .unwrap();
+        env.add_template(
+            Template::PostprocessTranscriptUser.as_ref(),
+            POSTPROCESS_TRANSCRIPT_USER_TPL,
         )
         .unwrap();
     }

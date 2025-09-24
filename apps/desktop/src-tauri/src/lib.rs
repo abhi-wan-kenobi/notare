@@ -193,8 +193,9 @@ pub async fn main() {
                         return;
                     };
 
-                    let actions = deeplink::parse(url);
+                    let actions = deeplink::parse(&url);
                     tracing::info!(url = url, actions = ?actions, "deeplink");
+
                     for action in actions {
                         match action {
                             deeplink::DeeplinkAction::OpenInternal(window, url) => {

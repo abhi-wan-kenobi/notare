@@ -14,6 +14,11 @@ pub trait LocalLlmTaskExt<R: Runtime> {
         &self,
         ctx: serde_json::Map<String, serde_json::Value>,
     ) -> impl Future<Output = Result<Vec<String>, crate::Error>>;
+
+    fn postprocess_transcript(
+        &self,
+        ctx: serde_json::Map<String, serde_json::Value>,
+    ) -> impl Future<Output = Result<String, crate::Error>>;
 }
 
 impl<R: Runtime, T: Manager<R>> LocalLlmTaskExt<R> for T {
@@ -97,5 +102,47 @@ impl<R: Runtime, T: Manager<R>> LocalLlmTaskExt<R> for T {
         let text = items.join("");
         let tags = serde_json::from_str::<Vec<String>>(&text).unwrap_or_default();
         Ok(tags)
+    }
+
+    async fn postprocess_transcript(
+        &self,
+        ctx: serde_json::Map<String, serde_json::Value>,
+    ) -> Result<String, crate::Error> {
+        let model = {
+            let state = self.state::<crate::SharedState>();
+            let s = state.lock().await;
+            s.builtin_model.get_model().await?
+        };
+
+        let stream = model.generate_stream(hypr_llama::LlamaRequest {
+            messages: vec![
+                hypr_llama::LlamaMessage {
+                    role: "system".into(),
+                    content: self
+                        .render(Template::PostprocessTranscriptSystem, ctx.clone())
+                        .unwrap(),
+                },
+                hypr_llama::LlamaMessage {
+                    role: "user".into(),
+                    content: self
+                        .render(Template::PostprocessTranscriptUser, ctx)
+                        .unwrap(),
+                },
+            ],
+            grammar: None,
+            tools: None,
+        })?;
+
+        let items = stream
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .filter_map(|r| match r {
+                hypr_llama::Response::TextDelta(content) => Some(content.clone()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let text = items.join("");
+        Ok(text)
     }
 }

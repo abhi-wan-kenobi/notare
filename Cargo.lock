@@ -8470,6 +8470,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "llm"
+version = "0.1.0"
+dependencies = [
+ "llama",
+ "serde",
+ "thiserror 2.0.16",
+ "tokio",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -14471,6 +14481,7 @@ dependencies = [
  "hound",
  "insta",
  "language",
+ "llm",
  "objc2 0.6.2",
  "objc2-foundation 0.3.1",
  "ordered-float 5.0.0",
@@ -14520,6 +14531,7 @@ dependencies = [
  "gbnf",
  "gguf",
  "llama",
+ "llm",
  "reqwest 0.12.23",
  "reqwest-streams",
  "serde",
