@@ -56,7 +56,7 @@ pub fn on_window_event(window: &tauri::Window<tauri::Wry>, event: &tauri::Window
 macro_rules! common_event_derives {
     ($item:item) => {
         #[derive(
-            serde::Serialize, serde::Deserialize, Clone, specta::Type, tauri_specta::Event,
+            Debug, serde::Serialize, serde::Deserialize, Clone, specta::Type, tauri_specta::Event,
         )]
         $item
     };
