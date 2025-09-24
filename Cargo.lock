@@ -8473,6 +8473,21 @@ dependencies = [
 name = "llm"
 version = "0.1.0"
 dependencies = [
+ "futures-util",
+ "gbnf",
+ "llama",
+ "llm-interface",
+ "serde",
+ "serde_json",
+ "template",
+ "thiserror 2.0.16",
+ "tokio",
+]
+
+[[package]]
+name = "llm-interface"
+version = "0.1.0"
+dependencies = [
  "llama",
  "serde",
  "thiserror 2.0.16",
@@ -14532,6 +14547,7 @@ dependencies = [
  "gguf",
  "llama",
  "llm",
+ "llm-interface",
  "reqwest 0.12.23",
  "reqwest-streams",
  "serde",
@@ -14543,7 +14559,6 @@ dependencies = [
  "tauri-plugin",
  "tauri-plugin-store",
  "tauri-plugin-store2",
- "tauri-plugin-template",
  "tauri-plugin-windows",
  "tauri-specta",
  "thiserror 2.0.16",

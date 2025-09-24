@@ -1,5 +1,7 @@
 mod error;
-mod manager;
-
 pub use error::*;
-pub use manager::*;
+
+mod task;
+pub use task::*;
+
+pub use hypr_llm_interface::ModelManager;

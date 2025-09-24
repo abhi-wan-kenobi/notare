@@ -73,10 +73,6 @@ impl ModelManager {
         ModelManagerBuilder::default()
     }
 
-    pub async fn update_activity(&self) {
-        *self.last_activity.lock().await = Some(tokio::time::Instant::now());
-    }
-
     pub async fn get_model(&self) -> Result<Arc<hypr_llama::Llama>, crate::Error> {
         self.update_activity().await;
 
@@ -94,6 +90,10 @@ impl ModelManager {
                 Ok(model)
             }
         }
+    }
+
+    pub async fn update_activity(&self) {
+        *self.last_activity.lock().await = Some(tokio::time::Instant::now());
     }
 
     fn monitor(&self, shutdown_rx: watch::Receiver<()>) {

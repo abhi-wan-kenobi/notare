@@ -8,8 +8,6 @@ pub enum Error {
     IoError(#[from] std::io::Error),
     #[error(transparent)]
     HyprLlamaError(#[from] hypr_llama::Error),
-    #[error(transparent)]
-    HyprLlmInterfaceError(#[from] hypr_llm_interface::Error),
     #[error("Model not downloaded")]
     ModelNotDownloaded,
 }
