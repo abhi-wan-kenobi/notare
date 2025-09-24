@@ -27,7 +27,7 @@ hypr-db-user = { workspace = true }
 hypr-language = { workspace = true }
 hypr-llm = { workspace = true }
 hypr-tcc = { workspace = true }
-hypr-vad = { workspace = true }
+hypr-vad2 = { workspace = true }
 
 owhisper-client = { workspace = true }
 owhisper-interface = { workspace = true }

@@ -14499,7 +14499,7 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
- "vad",
+ "vad2",
  "vorbis_rs",
 ]
 
@@ -15201,6 +15201,20 @@ dependencies = [
  "serde_json",
  "specta",
  "strum 0.26.3",
+ "thiserror 2.0.16",
+]
+
+[[package]]
+name = "ten-vad-rs"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2cd081e2be8ae77e8f2a69bfa5c34d1931de1c79a32879ba02d93c55e084a5f"
+dependencies = [
+ "log",
+ "ndarray",
+ "ort",
+ "rubato",
+ "rustfft",
  "thiserror 2.0.16",
 ]
 
@@ -16761,6 +16775,15 @@ dependencies = [
  "thiserror 2.0.16",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "vad2"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "ten-vad-rs",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
