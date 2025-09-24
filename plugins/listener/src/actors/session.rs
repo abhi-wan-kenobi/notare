@@ -314,7 +314,8 @@ impl SessionActor {
             SourceActor,
             SourceArgs {
                 token: state.token.clone(),
-                device: None,
+                mic_device: None,
+                onboarding: state.onboarding,
             },
             supervisor,
         )

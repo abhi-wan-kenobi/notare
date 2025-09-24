@@ -25,13 +25,15 @@ pub enum SourceMsg {
 }
 
 pub struct SourceArgs {
-    pub device: Option<String>,
+    pub mic_device: Option<String>,
     pub token: CancellationToken,
+    pub onboarding: bool,
 }
 
 pub struct SourceState {
     mic_device: Option<String>,
     token: CancellationToken,
+    onboarding: bool,
     mic_muted: Arc<AtomicBool>,
     spk_muted: Arc<AtomicBool>,
     run_task: Option<tokio::task::JoinHandle<()>>,
@@ -104,13 +106,14 @@ impl Actor for SourceActor {
 
         let silence_stream_tx = Some(hypr_audio::AudioOutput::silence());
         let mic_device = args
-            .device
+            .mic_device
             .or_else(|| Some(AudioInput::get_default_device_name()));
         tracing::info!(mic_device = ?mic_device);
 
         let mut st = SourceState {
             mic_device,
             token: args.token,
+            onboarding: args.onboarding,
             mic_muted: Arc::new(AtomicBool::new(false)),
             spk_muted: Arc::new(AtomicBool::new(false)),
             run_task: None,
@@ -199,7 +202,7 @@ async fn start_source_loop(
     st.stream_cancel_token = Some(stream_cancel_token.clone());
 
     #[cfg(target_os = "macos")]
-    let use_mixed = !is_using_headphone();
+    let use_mixed = !st.onboarding && !is_using_headphone();
 
     #[cfg(not(target_os = "macos"))]
     let use_mixed = false;
