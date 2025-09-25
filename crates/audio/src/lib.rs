@@ -53,7 +53,7 @@ impl AudioOutput {
 
         std::thread::spawn(move || {
             if let Ok((_, stream)) = OutputStream::try_default() {
-                let silence = Zero::<f32>::new(1, 16000)
+                let silence = Zero::<f32>::new(2, 48_000)
                     .take_duration(std::time::Duration::from_secs(1))
                     .repeat_infinite();
 
