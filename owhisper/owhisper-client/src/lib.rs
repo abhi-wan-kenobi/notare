@@ -81,11 +81,17 @@ impl ListenClientBuilder {
                     query_pairs.append_pair("languages", code);
                 }
                 _ => {
+                    // https://developers.deepgram.com/docs/multilingual-code-switching
+                    query_pairs.append_pair("language", "multi");
+
                     for lang in &params.languages {
                         let code = lang.iso639().code();
 
                         query_pairs.append_pair("languages", code);
-                        query_pairs.append_pair("detect_language", code);
+
+                        // Not supported for streaming
+                        // https://developers.deepgram.com/docs/language-detection
+                        // query_pairs.append_pair("detect_language", code);
                     }
                 }
             }
@@ -229,7 +235,7 @@ impl ListenClient {
         audio_stream: impl Stream<Item = ListenClientInput> + Send + Unpin + 'static,
     ) -> Result<
         (
-            impl Stream<Item = StreamResponse>,
+            impl Stream<Item = Result<StreamResponse, hypr_ws::Error>>,
             hypr_ws::client::WebSocketHandle,
         ),
         hypr_ws::Error,
@@ -245,7 +251,7 @@ impl ListenClientDual {
         stream: impl Stream<Item = ListenClientDualInput> + Send + Unpin + 'static,
     ) -> Result<
         (
-            impl Stream<Item = StreamResponse>,
+            impl Stream<Item = Result<StreamResponse, hypr_ws::Error>>,
             hypr_ws::client::WebSocketHandle,
         ),
         hypr_ws::Error,
@@ -265,19 +271,28 @@ mod tests {
     #[tokio::test]
     // cargo test -p owhisper-client test_client_deepgram -- --nocapture
     async fn test_client_deepgram() {
+        let _ = tracing_subscriber::fmt::try_init();
+
         let audio = rodio::Decoder::new(std::io::BufReader::new(
             std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
         ))
         .unwrap()
         .to_i16_le_chunks(16000, 512);
-        let input = audio.map(|chunk| ListenClientInput::Audio(chunk));
+
+        let input = Box::pin(tokio_stream::StreamExt::throttle(
+            audio.map(|chunk| ListenClientInput::Audio(chunk)),
+            std::time::Duration::from_millis(20),
+        ));
 
         let client = ListenClient::builder()
             .api_base("https://api.deepgram.com")
             .api_key(std::env::var("DEEPGRAM_API_KEY").unwrap())
             .params(owhisper_interface::ListenParams {
-                model: Some("nova-2".to_string()),
-                languages: vec![hypr_language::ISO639::En.into()],
+                model: Some("nova-3".to_string()),
+                languages: vec![
+                    hypr_language::ISO639::En.into(),
+                    hypr_language::ISO639::Es.into(),
+                ],
                 ..Default::default()
             })
             .build_single();
@@ -286,7 +301,15 @@ mod tests {
         futures_util::pin_mut!(stream);
 
         while let Some(result) = stream.next().await {
-            println!("{:?}", result);
+            match result {
+                Ok(response) => match response {
+                    StreamResponse::TranscriptResponse { channel, .. } => {
+                        println!("{:?}", channel.alternatives.first().unwrap().transcript);
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
         }
     }
 
