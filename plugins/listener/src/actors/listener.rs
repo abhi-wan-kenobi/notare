@@ -10,7 +10,7 @@ use tauri_specta::Event;
 
 use crate::{manager::TranscriptManager, SessionEvent};
 
-const LISTEN_STREAM_TIMEOUT: Duration = Duration::from_secs(60 * 15);
+const LISTEN_STREAM_TIMEOUT: Duration = Duration::from_secs(15);
 
 pub enum ListenerMsg {
     Audio(Bytes, Bytes),
@@ -166,7 +166,7 @@ async fn spawn_rx_task(
                 }
                 result = tokio::time::timeout(LISTEN_STREAM_TIMEOUT, listen_stream.next()) => {
                     match result {
-                        Ok(Some(response)) => {
+                        Ok(Some(Ok(response))) => {
                             let diff = manager.append(response.clone());
 
                             let partial_words_by_channel: HashMap<usize, Vec<Word2>> = diff
@@ -222,10 +222,17 @@ async fn spawn_rx_task(
                             .emit(&app)
                             .unwrap();
                         }
+                        // Something went wrong while sending or receiving a websocket message. Should restart.
+                        Ok(Some(Err(e))) => {
+                            tracing::info!("listen_stream_error: {:?}", e);
+                            break;
+                        }
+                        // Stream ended gracefully. Safe to stop the whole session.
                         Ok(None) => {
                             tracing::info!("listen_stream_ended");
                             break;
                         }
+                        // We're not hearing back any transcript. Better to stop the whole session.
                         Err(_) => {
                             tracing::info!("listen_stream_timeout");
                             break;
