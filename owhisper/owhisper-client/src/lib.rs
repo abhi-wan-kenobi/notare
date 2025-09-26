@@ -81,8 +81,6 @@ impl ListenClientBuilder {
                     query_pairs.append_pair("languages", code);
                 }
                 _ => {
-                    query_pairs.append_pair("language", params.languages[0].iso639().code());
-
                     for lang in &params.languages {
                         let code = lang.iso639().code();
 

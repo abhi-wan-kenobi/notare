@@ -165,61 +165,61 @@ async fn spawn_rx_task(
                 result = tokio::time::timeout(LISTEN_STREAM_TIMEOUT, listen_stream.next()) => {
                     match result {
                         Ok(Some(response)) => {
-                    let diff = manager.append(response.clone());
+                            let diff = manager.append(response.clone());
 
-                    let partial_words_by_channel: HashMap<usize, Vec<Word2>> = diff
-                        .partial_words
-                        .iter()
-                        .map(|(channel_idx, words)| {
-                            (
-                                *channel_idx,
-                                words
-                                    .iter()
-                                    .map(|w| Word2::from(w.clone()))
-                                    .collect::<Vec<_>>(),
+                            let partial_words_by_channel: HashMap<usize, Vec<Word2>> = diff
+                                .partial_words
+                                .iter()
+                                .map(|(channel_idx, words)| {
+                                    (
+                                        *channel_idx,
+                                        words
+                                            .iter()
+                                            .map(|w| Word2::from(w.clone()))
+                                            .collect::<Vec<_>>(),
+                                    )
+                                })
+                                .collect();
+
+                            SessionEvent::PartialWords {
+                                words: partial_words_by_channel,
+                            }
+                            .emit(&app)
+                            .unwrap();
+
+                            let final_words_by_channel: HashMap<usize, Vec<Word2>> = diff
+                                .final_words
+                                .iter()
+                                .map(|(channel_idx, words)| {
+                                    (
+                                        *channel_idx,
+                                        words
+                                            .iter()
+                                            .map(|w| Word2::from(w.clone()))
+                                            .collect::<Vec<_>>(),
+                                    )
+                                })
+                                .collect();
+
+                            update_session(
+                                &app,
+                                &session_id,
+                                final_words_by_channel
+                                    .clone()
+                                    .values()
+                                    .flatten()
+                                    .cloned()
+                                    .collect(),
                             )
-                        })
-                        .collect();
+                            .await
+                            .unwrap();
 
-                    SessionEvent::PartialWords {
-                        words: partial_words_by_channel,
-                    }
-                    .emit(&app)
-                    .unwrap();
-
-                    let final_words_by_channel: HashMap<usize, Vec<Word2>> = diff
-                        .final_words
-                        .iter()
-                        .map(|(channel_idx, words)| {
-                            (
-                                *channel_idx,
-                                words
-                                    .iter()
-                                    .map(|w| Word2::from(w.clone()))
-                                    .collect::<Vec<_>>(),
-                            )
-                        })
-                        .collect();
-
-                    update_session(
-                        &app,
-                        &session_id,
-                        final_words_by_channel
-                            .clone()
-                            .values()
-                            .flatten()
-                            .cloned()
-                            .collect(),
-                    )
-                    .await
-                    .unwrap();
-
-                    SessionEvent::FinalWords {
-                        words: final_words_by_channel,
-                    }
-                    .emit(&app)
-                    .unwrap();
-                }
+                            SessionEvent::FinalWords {
+                                words: final_words_by_channel,
+                            }
+                            .emit(&app)
+                            .unwrap();
+                        }
                         Ok(None) => {
                             tracing::info!("listen_stream_ended");
                             break;
