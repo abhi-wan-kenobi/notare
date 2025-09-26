@@ -154,7 +154,9 @@ async fn spawn_rx_task(
         };
         futures_util::pin_mut!(listen_stream);
 
-        let mut manager = TranscriptManager::with_unix_timestamp(session_start_ts_ms);
+        let mut manager = TranscriptManager::builder()
+            .with_unix_timestamp(session_start_ts_ms)
+            .build();
 
         loop {
             tokio::select! {
