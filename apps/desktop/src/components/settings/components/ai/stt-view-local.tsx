@@ -261,7 +261,7 @@ function ProModelsSection({
   return (
     <section className="max-w-2xl">
       <SectionHeader
-        title="Pro Models (Beta)"
+        title="Pro Models"
         description="Resource and latency optimized. Only for pro users."
         status={status}
         docsUrl="https://docs.hyprnote.com/models"
