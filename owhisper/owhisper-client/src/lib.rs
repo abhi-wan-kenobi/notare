@@ -95,6 +95,8 @@ impl ListenClientBuilder {
             query_pairs
                 // https://developers.deepgram.com/reference/speech-to-text-api/listen-streaming#request.query
                 .append_pair("model", &params.model.unwrap_or("hypr-whisper".to_string()))
+                .append_pair("channels", &channels.to_string())
+                .append_pair("filler_words", "false")
                 .append_pair("interim_results", "true")
                 .append_pair("mip_opt_out", "true")
                 .append_pair("sample_rate", "16000")
@@ -104,7 +106,7 @@ impl ListenClientBuilder {
                 .append_pair("punctuate", "true")
                 .append_pair("smart_format", "true")
                 .append_pair("vad_events", "false")
-                .append_pair("channels", &channels.to_string());
+                .append_pair("numerals", "true");
 
             query_pairs.append_pair(
                 "redemption_time_ms",
