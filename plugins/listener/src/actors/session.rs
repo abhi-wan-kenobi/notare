@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use tauri::{Listener, Manager};
+use tauri::Manager;
 use tauri_specta::Event;
 
 use ractor::{
@@ -99,7 +97,6 @@ impl Actor for SessionActor {
             languages,
             onboarding,
             token: cancellation_token,
-            restart_attempts: HashMap::new(),
             record_enabled,
         };
 
@@ -205,6 +202,8 @@ impl Actor for SessionActor {
 
                 if actor_name == ListenerActor::name() {
                     Self::start_listener(myself.get_cell(), state).await?;
+                } else {
+                    let _ = myself.stop_and_wait(None, None).await;
                 }
             }
 
@@ -269,16 +268,6 @@ impl SessionActor {
         Self::stop_source().await;
         Self::stop_listener().await;
         Self::stop_recorder().await;
-    }
-
-    async fn restart_all_actors(
-        supervisor: ActorCell,
-        state: &SessionState,
-    ) -> Result<(), ActorProcessingErr> {
-        Self::stop_all_actors().await;
-        tokio::time::sleep(tokio::time::Duration::from_millis(250)).await;
-        Self::start_all_actors(supervisor, state).await?;
-        Ok(())
     }
 
     async fn start_source(

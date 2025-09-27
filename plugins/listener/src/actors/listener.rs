@@ -10,7 +10,8 @@ use tauri_specta::Event;
 
 use crate::{manager::TranscriptManager, SessionEvent};
 
-const LISTEN_STREAM_TIMEOUT: Duration = Duration::from_secs(15);
+// Not too short to support non-realtime pipelines like whisper.cpp
+const LISTEN_STREAM_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 
 pub enum ListenerMsg {
     Audio(Bytes, Bytes),
