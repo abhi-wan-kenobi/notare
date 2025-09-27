@@ -50,7 +50,8 @@ impl Actor for ListenerActor {
     ) -> Result<Self::State, ActorProcessingErr> {
         {
             use tauri_plugin_local_stt::LocalSttPluginExt;
-            let _ = args.app.start_server(None).await;
+            let r = args.app.start_server(None).await;
+            tracing::info!("{:?}", r);
         }
 
         let (tx, rx_task, shutdown_tx) = spawn_rx_task(args, myself).await.unwrap();
