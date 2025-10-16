@@ -5,7 +5,7 @@ import { convertToModelMessages, smoothStream, stepCountIs, streamText } from "a
 import { ToolRegistry } from "../contexts/tool";
 import type { HyprUIMessage } from "./types";
 
-const modelName = "google/gemini-2.5-flash-lite";
+const modelName = "qwen/qwen3-vl-8b-thinking";
 const provider = createOpenAICompatible({
   name: "openrouter",
   baseURL: "https://openrouter.ai/api/v1",
