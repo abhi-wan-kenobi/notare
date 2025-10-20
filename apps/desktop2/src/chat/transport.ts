@@ -1,19 +1,11 @@
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { ChatRequestOptions, ChatTransport, UIMessageChunk } from "ai";
+import type { ChatRequestOptions, ChatTransport, LanguageModel, UIMessageChunk } from "ai";
 import { convertToModelMessages, smoothStream, stepCountIs, streamText } from "ai";
 
 import { ToolRegistry } from "../contexts/tool";
 import type { HyprUIMessage } from "./types";
 
-const modelName = "qwen/qwen3-vl-8b-thinking";
-const provider = createOpenAICompatible({
-  name: "openrouter",
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: "***REMOVED-UPSTREAM-OPENROUTER-KEY***",
-});
-
 export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
-  constructor(private registry: ToolRegistry) {}
+  constructor(private registry: ToolRegistry, private model: LanguageModel) {}
 
   async sendMessages(
     options:
@@ -25,11 +17,10 @@ export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
       & { trigger: "submit-message" | "regenerate-message"; messageId: string | undefined }
       & ChatRequestOptions,
   ): Promise<ReadableStream<UIMessageChunk>> {
-    const model = provider.chatModel(modelName);
     const tools = this.registry.getForTransport();
 
     const result = streamText({
-      model,
+      model: this.model,
       messages: convertToModelMessages(options.messages),
       experimental_transform: smoothStream({ chunking: "word" }),
       tools,
