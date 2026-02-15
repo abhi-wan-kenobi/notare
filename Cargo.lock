@@ -18961,7 +18961,6 @@ dependencies = [
  "insta",
  "intercept",
  "language",
- "llm",
  "mac 0.1.0",
  "ordered-float",
  "owhisper-client",

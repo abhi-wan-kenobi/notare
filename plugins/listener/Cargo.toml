@@ -29,7 +29,6 @@ hypr-device-monitor = { workspace = true }
 hypr-host = { workspace = true }
 hypr-intercept = { workspace = true }
 hypr-language = { workspace = true }
-hypr-llm = { workspace = true }
 hypr-mac = { workspace = true }
 hypr-vad-ext = { workspace = true }
 hypr-vad2 = { workspace = true }
