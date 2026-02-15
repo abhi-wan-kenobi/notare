@@ -152,75 +152,31 @@ pub(super) async fn transcribe_with_provider(
     let api_base = provider.default_api_base();
     let api_key = selected.api_key();
 
+    macro_rules! batch_transcribe {
+        ($adapter:ty) => {
+            BatchClient::<$adapter>::builder()
+                .api_base(api_base)
+                .api_key(api_key)
+                .params(params)
+                .build()
+                .transcribe_file(file_path)
+                .await
+        };
+    }
+
     let result = match provider {
-        Provider::Deepgram => {
-            BatchClient::<DeepgramAdapter>::builder()
-                .api_base(api_base)
-                .api_key(api_key)
-                .params(params)
-                .build()
-                .transcribe_file(file_path)
-                .await
-        }
-        Provider::AssemblyAI => {
-            BatchClient::<AssemblyAIAdapter>::builder()
-                .api_base(api_base)
-                .api_key(api_key)
-                .params(params)
-                .build()
-                .transcribe_file(file_path)
-                .await
-        }
-        Provider::Soniox => {
-            BatchClient::<SonioxAdapter>::builder()
-                .api_base(api_base)
-                .api_key(api_key)
-                .params(params)
-                .build()
-                .transcribe_file(file_path)
-                .await
-        }
-        Provider::OpenAI => {
-            BatchClient::<OpenAIAdapter>::builder()
-                .api_base(api_base)
-                .api_key(api_key)
-                .params(params)
-                .build()
-                .transcribe_file(file_path)
-                .await
-        }
-        Provider::Gladia => {
-            BatchClient::<GladiaAdapter>::builder()
-                .api_base(api_base)
-                .api_key(api_key)
-                .params(params)
-                .build()
-                .transcribe_file(file_path)
-                .await
-        }
-        Provider::ElevenLabs => {
-            BatchClient::<ElevenLabsAdapter>::builder()
-                .api_base(api_base)
-                .api_key(api_key)
-                .params(params)
-                .build()
-                .transcribe_file(file_path)
-                .await
-        }
+        Provider::Deepgram => batch_transcribe!(DeepgramAdapter),
+        Provider::AssemblyAI => batch_transcribe!(AssemblyAIAdapter),
+        Provider::Soniox => batch_transcribe!(SonioxAdapter),
+        Provider::OpenAI => batch_transcribe!(OpenAIAdapter),
+        Provider::Gladia => batch_transcribe!(GladiaAdapter),
+        Provider::ElevenLabs => batch_transcribe!(ElevenLabsAdapter),
+        Provider::Mistral => batch_transcribe!(MistralAdapter),
         Provider::Fireworks | Provider::DashScope => {
             return Err(format!(
                 "{:?} does not support batch transcription",
                 provider
             ));
-        }
-        Provider::Mistral => {
-            BatchClient::<MistralAdapter>::builder()
-                .api_base(api_base)
-                .api_key(api_key)
-                .params(params)
-                .build()
-                .transcribe_file(file_path)
-                .await
         }
     };
 

@@ -12956,7 +12956,6 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "specta",
- "strum 0.27.2",
  "utoipa",
  "uuid",
 ]

@@ -60,33 +60,16 @@ impl MistralAdapter {
     }
 
     pub(crate) fn build_ws_url_from_base(api_base: &str) -> (url::Url, Vec<(String, String)>) {
-        if api_base.is_empty() {
-            return (
-                Provider::Mistral
-                    .default_ws_url()
-                    .parse()
-                    .expect("invalid_default_ws_url"),
-                vec![],
-            );
-        }
-
-        if let Some(proxy_result) = super::build_proxy_ws_url(api_base) {
-            return proxy_result;
-        }
-
-        let parsed: url::Url = api_base.parse().expect("invalid_api_base");
-        let existing_params = super::extract_query_params(&parsed);
-
-        let host = parsed
-            .host_str()
-            .unwrap_or(Provider::Mistral.default_ws_host());
-        let mut url: url::Url = format!("wss://{}{}", host, Provider::Mistral.ws_path())
-            .parse()
-            .expect("invalid_ws_url");
-
-        super::set_scheme_from_host(&mut url);
-
-        (url, existing_params)
+        super::build_ws_url_from_base_with(Provider::Mistral, api_base, |parsed| {
+            let host = parsed
+                .host_str()
+                .unwrap_or(Provider::Mistral.default_ws_host());
+            let mut url: url::Url = format!("wss://{}{}", host, Provider::Mistral.ws_path())
+                .parse()
+                .expect("invalid_ws_url");
+            super::set_scheme_from_host(&mut url);
+            url
+        })
     }
 }
 

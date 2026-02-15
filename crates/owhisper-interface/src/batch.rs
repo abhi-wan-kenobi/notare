@@ -70,11 +70,11 @@ impl From<stream::Word> for Word {
 }
 
 impl From<stream::Alternatives> for Alternatives {
-    fn from(mut alternatives: stream::Alternatives) -> Self {
+    fn from(alternatives: stream::Alternatives) -> Self {
         let transcript = alternatives.transcript.trim().to_string();
         let words = alternatives
             .words
-            .drain(..)
+            .into_iter()
             .map(Word::from)
             .collect::<Vec<_>>();
 
@@ -87,10 +87,10 @@ impl From<stream::Alternatives> for Alternatives {
 }
 
 impl From<stream::Channel> for Channel {
-    fn from(mut channel: stream::Channel) -> Self {
+    fn from(channel: stream::Channel) -> Self {
         let alternatives = channel
             .alternatives
-            .drain(..)
+            .into_iter()
             .map(Alternatives::from)
             .collect::<Vec<_>>();
 

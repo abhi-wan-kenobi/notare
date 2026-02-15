@@ -1,7 +1,5 @@
 mod argmax;
 pub(crate) mod assemblyai;
-#[cfg(feature = "argmax")]
-pub mod audio;
 mod dashscope;
 pub mod deepgram;
 mod deepgram_compat;
@@ -167,6 +165,29 @@ pub trait CallbackSttAdapter: Clone + Default + Send + Sync + 'static {
     ) -> CallbackProcessFuture<'a>;
 }
 
+pub(crate) fn build_url_with_scheme(
+    parsed: &url::Url,
+    default_host: &str,
+    path: &str,
+    use_ws: bool,
+) -> url::Url {
+    let host = parsed.host_str().unwrap_or(default_host);
+    let is_local = is_local_host(host);
+    let scheme = match (use_ws, is_local) {
+        (true, true) => "ws",
+        (true, false) => "wss",
+        (false, true) => "http",
+        (false, false) => "https",
+    };
+    let host_with_port = match parsed.port() {
+        Some(port) => format!("{host}:{port}"),
+        None => host.to_string(),
+    };
+    format!("{scheme}://{host_with_port}{path}")
+        .parse()
+        .expect("invalid_url")
+}
+
 pub fn set_scheme_from_host(url: &mut url::Url) {
     if let Some(host) = url.host_str() {
         if is_local_host(host) {
@@ -241,6 +262,37 @@ pub fn normalize_languages(languages: &[hypr_language::Language]) -> Vec<hypr_la
 
 fn is_local_argmax(base_url: &str) -> bool {
     host_matches(base_url, is_local_host) && !is_hyprnote_local_proxy(base_url)
+}
+
+pub(crate) fn build_ws_url_from_base_with(
+    provider: crate::providers::Provider,
+    api_base: &str,
+    make_url: impl FnOnce(&url::Url) -> url::Url,
+) -> (url::Url, Vec<(String, String)>) {
+    let default_url = || -> (url::Url, Vec<(String, String)>) {
+        (
+            provider
+                .default_ws_url()
+                .parse()
+                .expect("invalid_default_ws_url"),
+            Vec::new(),
+        )
+    };
+
+    if api_base.is_empty() {
+        return default_url();
+    }
+
+    if let Some(proxy_result) = build_proxy_ws_url(api_base) {
+        return proxy_result;
+    }
+
+    let parsed: url::Url = match api_base.parse() {
+        Ok(u) => u,
+        Err(_) => return default_url(),
+    };
+    let existing_params = extract_query_params(&parsed);
+    (make_url(&parsed), existing_params)
 }
 
 pub fn build_proxy_ws_url(api_base: &str) -> Option<(url::Url, Vec<(String, String)>)> {

@@ -153,7 +153,7 @@ impl StreamResponse {
     pub fn text(&self) -> Option<&str> {
         match self {
             StreamResponse::TranscriptResponse { channel, .. } => {
-                Some(&channel.alternatives[0].transcript)
+                channel.alternatives.first().map(|a| a.transcript.as_str())
             }
             _ => None,
         }
