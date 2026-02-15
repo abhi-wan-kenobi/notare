@@ -3,8 +3,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Play } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { sttStart, sttStatus } from "@hypr/api-client";
-import type { PipelineStatus, SttStatusResponse } from "@hypr/api-client";
+import { sttListenBatch, sttStatus } from "@hypr/api-client";
+import type {
+  ListenCallbackResponse,
+  PipelineStatus,
+  SttStatusResponse,
+} from "@hypr/api-client";
 import { createClient } from "@hypr/api-client/client";
 import NoteEditor, { type JSONContent } from "@hypr/tiptap/editor";
 import { EMPTY_TIPTAP_DOC } from "@hypr/tiptap/shared";
@@ -90,14 +94,16 @@ function Component() {
     mutationFn: async (fileId: string) => {
       const token = await getAccessToken();
       const client = createAuthClient(token);
-      const { data, error } = await sttStart({
+      const { data, error } = await sttListenBatch({
         client,
-        body: { fileId },
+        body: { url: fileId },
+        query: { callback: "true", provider: "deepgram" },
       });
-      if (error) {
-        throw new Error("Failed to start pipeline");
+      if (error || !data) {
+        throw new Error("Failed to start transcription");
       }
-      return data!.id;
+      // callback mode returns ListenCallbackResponse, not BatchResponse
+      return (data as unknown as ListenCallbackResponse).request_id;
     },
     onSuccess: (newPipelineId) => {
       setPipelineId(newPipelineId);

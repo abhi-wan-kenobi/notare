@@ -1,7 +1,6 @@
-mod batch;
+pub mod batch;
 pub mod callback;
 mod error;
-pub mod start;
 pub mod status;
 pub mod streaming;
 
@@ -167,7 +166,6 @@ pub fn router(config: SttProxyConfig) -> Router {
             .route("/", post(batch::handler))
             .route("/listen", get(streaming::handler))
             .route("/listen", post(batch::handler))
-            .route("/start", post(start::handler))
             .route("/status/{pipeline_id}", get(status::handler))
             .with_state(state),
     )

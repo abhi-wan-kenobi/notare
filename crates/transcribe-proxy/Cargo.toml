@@ -9,7 +9,7 @@ hypr-api-auth = { workspace = true }
 hypr-language = { workspace = true }
 hypr-supabase-storage = { workspace = true }
 owhisper-client = { workspace = true }
-owhisper-interface = { workspace = true }
+owhisper-interface = { workspace = true, features = ["openapi"] }
 
 axum = { workspace = true, features = ["ws"] }
 futures-util = { workspace = true }
@@ -38,7 +38,7 @@ utoipa = { workspace = true }
 hypr-audio-utils = { workspace = true }
 hypr-data = { workspace = true }
 hypr-language = { workspace = true }
-owhisper-interface = { workspace = true }
+owhisper-interface = { workspace = true, features = ["openapi"] }
 
 rodio = { workspace = true }
 tokio-stream = { workspace = true }

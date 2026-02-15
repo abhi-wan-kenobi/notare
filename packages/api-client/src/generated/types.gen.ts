@@ -4,6 +4,36 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
+export type BatchAlternatives = {
+    confidence: number;
+    transcript: string;
+    words?: Array<BatchWord>;
+};
+
+export type BatchChannel = {
+    alternatives: Array<BatchAlternatives>;
+};
+
+export type BatchResponse = {
+    metadata: {
+        [key: string]: unknown;
+    };
+    results: BatchResults;
+};
+
+export type BatchResults = {
+    channels: Array<BatchChannel>;
+};
+
+export type BatchWord = {
+    confidence: number;
+    end: number;
+    punctuated_word?: string | null;
+    speaker?: number | null;
+    start: number;
+    word: string;
+};
+
 export type CanStartTrialReason = 'eligible' | 'not_eligible' | 'error';
 
 export type CanStartTrialResponse = {
@@ -93,22 +123,88 @@ export type ListEventsResponse = {
     next_page_token?: string | null;
 };
 
+export type ListenCallbackRequest = {
+    url: string;
+};
+
+export type ListenCallbackResponse = {
+    request_id: string;
+};
+
 export type PipelineStatus = 'processing' | 'done' | 'error';
-
-export type StartRequest = {
-    fileId: string;
-    provider?: string;
-};
-
-export type StartResponse = {
-    id: string;
-};
 
 export type StartTrialReason = 'started' | 'not_eligible' | 'error';
 
 export type StartTrialResponse = {
     reason?: null | StartTrialReason;
     started: boolean;
+};
+
+export type StreamAlternatives = {
+    confidence: number;
+    languages?: Array<string>;
+    transcript: string;
+    words: Array<StreamWord>;
+};
+
+export type StreamChannel = {
+    alternatives: Array<StreamAlternatives>;
+};
+
+export type StreamMetadata = {
+    extra?: {
+        [key: string]: unknown;
+    } | null;
+    model_info: StreamModelInfo;
+    model_uuid: string;
+    request_id: string;
+};
+
+export type StreamModelInfo = {
+    arch: string;
+    name: string;
+    version: string;
+};
+
+export type StreamResponse = {
+    channel: StreamChannel;
+    channel_index: Array<number>;
+    duration: number;
+    from_finalize: boolean;
+    is_final: boolean;
+    metadata: StreamMetadata;
+    speech_final: boolean;
+    start: number;
+    type: 'Results';
+} | {
+    channels: number;
+    created: string;
+    duration: number;
+    request_id: string;
+    type: 'Metadata';
+} | {
+    channel: Array<number>;
+    timestamp: number;
+    type: 'SpeechStarted';
+} | {
+    channel: Array<number>;
+    last_word_end: number;
+    type: 'UtteranceEnd';
+} | {
+    error_code?: number | null;
+    error_message: string;
+    provider: string;
+    type: 'Error';
+};
+
+export type StreamWord = {
+    confidence: number;
+    end: number;
+    language?: string | null;
+    punctuated_word?: string | null;
+    speaker?: number | null;
+    start: number;
+    word: string;
 };
 
 export type SttStatusResponse = {
@@ -288,32 +384,109 @@ export type NangoWebhookResponses = {
 
 export type NangoWebhookResponse = NangoWebhookResponses[keyof NangoWebhookResponses];
 
-export type SttStartData = {
-    body: StartRequest;
+export type SttListenStreamData = {
+    body?: never;
     path?: never;
-    query?: never;
-    url: '/stt/start';
+    query?: {
+        /**
+         * STT provider. Use 'hyprnote' for automatic routing (default), or specify:
+         * deepgram, soniox, assemblyai, gladia, elevenlabs, fireworks, openai, dashscope, mistral
+         */
+        provider?: string;
+        /**
+         * Model to use for transcription (provider-specific, e.g. 'nova-3')
+         */
+        model?: string;
+        /**
+         * BCP-47 language hint (e.g. 'en', 'ko', 'ja'). Multiple values or comma-separated supported
+         */
+        language?: string;
+        /**
+         * Keyword boosting. Comma-separated or repeated query params
+         */
+        keywords?: string;
+        /**
+         * Audio sample rate in Hz (default: 16000)
+         */
+        sample_rate?: number;
+        /**
+         * Number of audio channels (default: 1)
+         */
+        channels?: number;
+        /**
+         * Audio encoding: linear16, flac, mulaw, opus, ogg-opus, etc.
+         */
+        encoding?: string;
+    };
+    url: '/stt/listen';
 };
 
-export type SttStartErrors = {
+export type SttListenStreamErrors = {
+    /**
+     * Bad request (invalid provider, missing params, etc.)
+     */
+    400: unknown;
+    /**
+     * Upstream provider connection failed
+     */
+    502: unknown;
+};
+
+export type SttListenBatchData = {
+    /**
+     * Raw audio bytes (sync mode) or JSON `{ "url": "<file_id>" }` (callback mode)
+     */
+    body: ListenCallbackRequest;
+    path?: never;
+    query?: {
+        /**
+         * STT provider. Use 'hyprnote' for automatic routing (default), or specify:
+         * deepgram, soniox, assemblyai, gladia, elevenlabs, fireworks, openai, dashscope, mistral
+         */
+        provider?: string;
+        /**
+         * Model to use for transcription (provider-specific, e.g. 'nova-3')
+         */
+        model?: string;
+        /**
+         * BCP-47 language hint (e.g. 'en', 'ko', 'ja'). Multiple values or comma-separated supported
+         */
+        language?: string;
+        /**
+         * Keyword boosting. Comma-separated or repeated query params
+         */
+        keywords?: string;
+        /**
+         * When set, enables async callback mode. Body should be JSON with a `url` field instead of raw audio
+         */
+        callback?: string;
+    };
+    url: '/stt/listen';
+};
+
+export type SttListenBatchErrors = {
+    /**
+     * Bad request (empty body, invalid provider, etc.)
+     */
+    400: unknown;
     /**
      * Unauthorized
      */
     401: unknown;
     /**
-     * Internal error
+     * All upstream providers failed
      */
-    500: unknown;
+    502: unknown;
 };
 
-export type SttStartResponses = {
+export type SttListenBatchResponses = {
     /**
-     * Pipeline started
+     * Transcription result (sync) or ListenCallbackResponse (callback)
      */
-    200: StartResponse;
+    200: BatchResponse;
 };
 
-export type SttStartResponse = SttStartResponses[keyof SttStartResponses];
+export type SttListenBatchResponse = SttListenBatchResponses[keyof SttListenBatchResponses];
 
 export type SttStatusData = {
     body?: never;
