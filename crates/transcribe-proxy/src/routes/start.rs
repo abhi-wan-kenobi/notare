@@ -28,6 +28,7 @@ pub struct StartResponse {
 #[utoipa::path(
     post,
     path = "/stt/start",
+    operation_id = "stt_start",
     request_body = StartRequest,
     responses(
         (status = 200, description = "Pipeline started", body = StartResponse),
@@ -47,6 +48,7 @@ pub async fn handler(
 
     let api_base_url = state
         .config
+        .callback
         .api_base_url
         .as_deref()
         .ok_or(RouteError::MissingConfig("api_base_url not configured"))?
@@ -72,7 +74,8 @@ pub async fn handler(
 
     let callback_secret = state
         .config
-        .callback_secret
+        .callback
+        .secret
         .as_deref()
         .ok_or(RouteError::MissingConfig("callback_secret not configured"))?;
 

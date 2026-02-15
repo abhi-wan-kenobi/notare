@@ -24,7 +24,8 @@ pub async fn handler(
 ) -> Result<StatusCode, RouteError> {
     let expected_secret = state
         .config
-        .callback_secret
+        .callback
+        .secret
         .as_deref()
         .ok_or(RouteError::MissingConfig("callback_secret not configured"))?;
 

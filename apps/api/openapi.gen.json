@@ -239,17 +239,53 @@
         }
       }
     },
+    "/stt/start": {
+      "post": {
+        "tags": [
+          "stt"
+        ],
+        "operationId": "stt_start",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Pipeline started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal error"
+          }
+        }
+      }
+    },
     "/stt/status/{pipeline_id}": {
       "get": {
         "tags": [
           "stt"
         ],
-        "operationId": "handler",
+        "operationId": "stt_status",
         "parameters": [
           {
             "name": "pipeline_id",
             "in": "path",
-            "description": "Pipeline ID (Restate workflow key)",
+            "description": "Pipeline ID",
             "required": true,
             "schema": {
               "type": "string"
@@ -267,8 +303,11 @@
               }
             }
           },
-          "502": {
-            "description": "Restate service unavailable"
+          "404": {
+            "description": "Job not found"
+          },
+          "500": {
+            "description": "Internal error"
           }
         }
       }
@@ -690,11 +729,35 @@
       "PipelineStatus": {
         "type": "string",
         "enum": [
-          "QUEUED",
-          "TRANSCRIBING",
-          "DONE",
-          "ERROR"
+          "processing",
+          "done",
+          "error"
         ]
+      },
+      "StartRequest": {
+        "type": "object",
+        "required": [
+          "fileId"
+        ],
+        "properties": {
+          "fileId": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          }
+        }
+      },
+      "StartResponse": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        }
       },
       "StartTrialReason": {
         "type": "string",
@@ -738,54 +801,20 @@
               "null"
             ]
           },
-          "status": {
-            "$ref": "#/components/schemas/PipelineStatus"
-          },
-          "tokens": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/TranscriptToken"
-            }
-          },
-          "transcript": {
+          "provider": {
             "type": [
               "string",
               "null"
             ]
-          }
-        }
-      },
-      "TranscriptToken": {
-        "type": "object",
-        "required": [
-          "text",
-          "startMs",
-          "endMs"
-        ],
-        "properties": {
-          "endMs": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 0
           },
-          "speaker": {
+          "rawResult": {
             "type": [
-              "integer",
+              "object",
               "null"
-            ],
-            "format": "int32",
-            "minimum": 0
+            ]
           },
-          "startMs": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 0
-          },
-          "text": {
-            "type": "string"
+          "status": {
+            "$ref": "#/components/schemas/PipelineStatus"
           }
         }
       },

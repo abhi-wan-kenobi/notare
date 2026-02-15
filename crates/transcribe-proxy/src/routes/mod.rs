@@ -43,10 +43,11 @@ impl FromRequestParts<AppState> for SupabaseClient {
             client: state.client.clone(),
             url: state
                 .config
-                .supabase_url
+                .supabase
+                .url
                 .clone()
                 .ok_or(RouteError::MissingConfig("supabase_url not configured"))?,
-            service_role_key: state.config.supabase_service_role_key.clone().ok_or(
+            service_role_key: state.config.supabase.service_role_key.clone().ok_or(
                 RouteError::MissingConfig("supabase_service_role_key not configured"),
             )?,
         })

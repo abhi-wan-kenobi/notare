@@ -12,6 +12,18 @@ use crate::provider_selector::ProviderSelector;
 pub const DEFAULT_CONNECT_TIMEOUT_MS: u64 = 7 * 1000;
 
 #[derive(Clone)]
+pub struct SupabaseConfig {
+    pub url: Option<String>,
+    pub service_role_key: Option<String>,
+}
+
+#[derive(Clone)]
+pub struct CallbackConfig {
+    pub api_base_url: Option<String>,
+    pub secret: Option<String>,
+}
+
+#[derive(Clone)]
 pub struct SttProxyConfig {
     pub api_keys: HashMap<Provider, String>,
     pub default_provider: Provider,
@@ -19,10 +31,8 @@ pub struct SttProxyConfig {
     pub analytics: Option<Arc<dyn SttAnalyticsReporter>>,
     pub upstream_urls: HashMap<Provider, String>,
     pub hyprnote_routing: Option<HyprnoteRoutingConfig>,
-    pub supabase_url: Option<String>,
-    pub supabase_service_role_key: Option<String>,
-    pub api_base_url: Option<String>,
-    pub callback_secret: Option<String>,
+    pub supabase: SupabaseConfig,
+    pub callback: CallbackConfig,
 }
 
 impl SttProxyConfig {
@@ -34,10 +44,14 @@ impl SttProxyConfig {
             analytics: None,
             upstream_urls: HashMap::new(),
             hyprnote_routing: None,
-            supabase_url: env.supabase.supabase_url.clone(),
-            supabase_service_role_key: env.supabase.supabase_service_role_key.clone(),
-            api_base_url: env.callback.api_base_url.clone(),
-            callback_secret: env.callback.callback_secret.clone(),
+            supabase: SupabaseConfig {
+                url: env.supabase.supabase_url.clone(),
+                service_role_key: env.supabase.supabase_service_role_key.clone(),
+            },
+            callback: CallbackConfig {
+                api_base_url: env.callback.api_base_url.clone(),
+                secret: env.callback.callback_secret.clone(),
+            },
         }
     }
 

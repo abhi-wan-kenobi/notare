@@ -20,6 +20,7 @@ pub struct SttStatusResponse {
 #[utoipa::path(
     get,
     path = "/stt/status/{pipeline_id}",
+    operation_id = "stt_status",
     params(
         ("pipeline_id" = String, Path, description = "Pipeline ID")
     ),

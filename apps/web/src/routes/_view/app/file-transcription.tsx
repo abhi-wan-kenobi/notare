@@ -3,7 +3,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Play } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import type { SttStatusResponse } from "@hypr/api-client";
+import { sttStart, sttStatus } from "@hypr/api-client";
+import type { PipelineStatus, SttStatusResponse } from "@hypr/api-client";
+import { createClient } from "@hypr/api-client/client";
 import NoteEditor, { type JSONContent } from "@hypr/tiptap/editor";
 import { EMPTY_TIPTAP_DOC } from "@hypr/tiptap/shared";
 import "@hypr/tiptap/styles.css";
@@ -18,49 +20,41 @@ import { env } from "@/env";
 import { getSupabaseBrowserClient } from "@/functions/supabase";
 import { useAudioUppy } from "@/hooks/use-audio-uppy";
 
-const API_URL = env.VITE_API_URL;
-
-async function startPipeline(
-  fileId: string,
-  accessToken: string,
-): Promise<string> {
-  const resp = await fetch(`${API_URL}/stt/start`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ fileId }),
+function createAuthClient(accessToken: string) {
+  return createClient({
+    baseUrl: env.VITE_API_URL,
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
-
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(text || `Failed to start pipeline (${resp.status})`);
-  }
-
-  const data: { id: string } = await resp.json();
-  return data.id;
 }
 
-async function fetchPipelineStatus(
-  pipelineId: string,
-  accessToken: string,
-): Promise<SttStatusResponse> {
-  const resp = await fetch(
-    `${API_URL}/stt/status/${encodeURIComponent(pipelineId)}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
-  );
+async function getAccessToken(): Promise<string> {
+  const supabase = getSupabaseBrowserClient();
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+  return token;
+}
 
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(text || `Failed to get status (${resp.status})`);
+function extractTranscript(response: SttStatusResponse): string | null {
+  if (response.status !== "done" || !response.rawResult) return null;
+
+  // Soniox: { text: "...", tokens: [...] }
+  if (typeof response.rawResult.text === "string") {
+    return response.rawResult.text;
   }
 
-  return resp.json();
+  // Deepgram: { results: { channels: [{ alternatives: [{ transcript: "..." }] }] } }
+  const results = response.rawResult.results as
+    | { channels?: Array<{ alternatives?: Array<{ transcript?: string }> }> }
+    | undefined;
+  const transcript = results?.channels?.[0]?.alternatives?.[0]?.transcript;
+  if (typeof transcript === "string") {
+    return transcript;
+  }
+
+  return null;
 }
 
 export const Route = createFileRoute("/_view/app/file-transcription")({
@@ -92,20 +86,18 @@ function Component() {
     setIsMounted(true);
   }, []);
 
-  const getAccessToken = async () => {
-    const supabase = getSupabaseBrowserClient();
-    const { data: sessionData } = await supabase.auth.getSession();
-    const session = sessionData?.session;
-    if (!session) {
-      throw new Error("Not authenticated");
-    }
-    return session;
-  };
-
   const startPipelineMutation = useMutation({
-    mutationFn: async (fileIdArg: string) => {
-      const session = await getAccessToken();
-      return startPipeline(fileIdArg, session.access_token);
+    mutationFn: async (fileId: string) => {
+      const token = await getAccessToken();
+      const client = createAuthClient(token);
+      const { data, error } = await sttStart({
+        client,
+        body: { fileId },
+      });
+      if (error) {
+        throw new Error("Failed to start pipeline");
+      }
+      return data!.id;
     },
     onSuccess: (newPipelineId) => {
       setPipelineId(newPipelineId);
@@ -121,43 +113,50 @@ function Component() {
       if (!pipelineId) {
         throw new Error("Missing pipelineId");
       }
-      const session = await getAccessToken();
-      return fetchPipelineStatus(pipelineId, session.access_token);
+      const token = await getAccessToken();
+      const client = createAuthClient(token);
+      const { data, error } = await sttStatus({
+        client,
+        path: { pipeline_id: pipelineId },
+      });
+      if (error) {
+        throw new Error("Failed to get status");
+      }
+      return data!;
     },
     enabled: !!pipelineId,
     refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      const isTerminal = status === "DONE" || status === "ERROR";
-      return isTerminal ? false : 2000;
+      const s = query.state.data?.status;
+      return s === "done" || s === "error" ? false : 2000;
     },
   });
 
   useEffect(() => {
     const data = pipelineStatusQuery.data;
-    if (data?.status === "DONE" && data.transcript) {
-      setTranscript(data.transcript);
+    if (data) {
+      const text = extractTranscript(data);
+      if (text) {
+        setTranscript(text);
+      }
     }
   }, [pipelineStatusQuery.data]);
 
   const isProcessing =
     (!!pipelineId &&
-      !["DONE", "ERROR"].includes(pipelineStatusQuery.data?.status ?? "")) ||
+      !satisfies(pipelineStatusQuery.data?.status, ["done", "error"])) ||
     startPipelineMutation.isPending;
 
   const pipelineStatus = pipelineStatusQuery.data?.status;
 
   const status = (() => {
-    if (pipelineStatusQuery.data?.status === "ERROR") {
+    if (pipelineStatus === "error") {
       return "error" as const;
     }
-    if (pipelineStatusQuery.data?.status === "DONE" || transcript) {
+    if (pipelineStatus === "done" || transcript) {
       return "done" as const;
     }
-    if (pipelineStatus === "TRANSCRIBING") {
+    if (pipelineStatus === "processing" || pipelineId) {
       return "transcribing" as const;
-    }
-    if (pipelineStatus === "QUEUED" || pipelineId) {
-      return "queued" as const;
     }
     if (uppyStatus === "uploading") {
       return "uploading" as const;
@@ -179,8 +178,8 @@ function Component() {
     (pipelineStatusQuery.isError && pipelineStatusQuery.error instanceof Error
       ? pipelineStatusQuery.error.message
       : null) ??
-    (pipelineStatusQuery.data?.status === "ERROR"
-      ? (pipelineStatusQuery.data.error ?? null)
+    (pipelineStatus === "error"
+      ? (pipelineStatusQuery.data?.error ?? null)
       : null);
 
   const handleFileSelect = (selectedFile: File) => {
@@ -346,4 +345,11 @@ function Component() {
       </div>
     </div>
   );
+}
+
+function satisfies(
+  value: PipelineStatus | undefined,
+  targets: PipelineStatus[],
+): boolean {
+  return value != null && targets.includes(value);
 }

@@ -93,7 +93,16 @@ export type ListEventsResponse = {
     next_page_token?: string | null;
 };
 
-export type PipelineStatus = 'QUEUED' | 'TRANSCRIBING' | 'DONE' | 'ERROR';
+export type PipelineStatus = 'processing' | 'done' | 'error';
+
+export type StartRequest = {
+    fileId: string;
+    provider?: string;
+};
+
+export type StartResponse = {
+    id: string;
+};
 
 export type StartTrialReason = 'started' | 'not_eligible' | 'error';
 
@@ -104,16 +113,11 @@ export type StartTrialResponse = {
 
 export type SttStatusResponse = {
     error?: string | null;
+    provider?: string | null;
+    rawResult?: {
+        [key: string]: unknown;
+    } | null;
     status: PipelineStatus;
-    tokens?: Array<TranscriptToken> | null;
-    transcript?: string | null;
-};
-
-export type TranscriptToken = {
-    endMs: number;
-    speaker?: number | null;
-    startMs: number;
-    text: string;
 };
 
 export type WebhookResponse = {
@@ -284,11 +288,38 @@ export type NangoWebhookResponses = {
 
 export type NangoWebhookResponse = NangoWebhookResponses[keyof NangoWebhookResponses];
 
-export type HandlerData = {
+export type SttStartData = {
+    body: StartRequest;
+    path?: never;
+    query?: never;
+    url: '/stt/start';
+};
+
+export type SttStartErrors = {
+    /**
+     * Unauthorized
+     */
+    401: unknown;
+    /**
+     * Internal error
+     */
+    500: unknown;
+};
+
+export type SttStartResponses = {
+    /**
+     * Pipeline started
+     */
+    200: StartResponse;
+};
+
+export type SttStartResponse = SttStartResponses[keyof SttStartResponses];
+
+export type SttStatusData = {
     body?: never;
     path: {
         /**
-         * Pipeline ID (Restate workflow key)
+         * Pipeline ID
          */
         pipeline_id: string;
     };
@@ -296,21 +327,25 @@ export type HandlerData = {
     url: '/stt/status/{pipeline_id}';
 };
 
-export type HandlerErrors = {
+export type SttStatusErrors = {
     /**
-     * Restate service unavailable
+     * Job not found
      */
-    502: unknown;
+    404: unknown;
+    /**
+     * Internal error
+     */
+    500: unknown;
 };
 
-export type HandlerResponses = {
+export type SttStatusResponses = {
     /**
      * Pipeline status
      */
     200: SttStatusResponse;
 };
 
-export type HandlerResponse = HandlerResponses[keyof HandlerResponses];
+export type SttStatusResponse2 = SttStatusResponses[keyof SttStatusResponses];
 
 export type CanStartTrialData = {
     body?: never;
