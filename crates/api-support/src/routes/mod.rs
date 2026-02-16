@@ -1,7 +1,10 @@
 pub(crate) mod chatwoot;
 pub(crate) mod feedback;
 
-use axum::{Router, routing::post};
+use axum::{
+    Router,
+    routing::{get, post},
+};
 
 use crate::config::SupportConfig;
 use crate::mcp::mcp_service;
@@ -33,6 +36,10 @@ pub async fn router(config: SupportConfig) -> Router {
         .route(
             "/conversations/{conversation_id}/messages",
             post(chatwoot::send_message).get(chatwoot::get_messages),
+        )
+        .route(
+            "/conversations/{conversation_id}/events",
+            get(chatwoot::conversation_events),
         );
 
     Router::new()

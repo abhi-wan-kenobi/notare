@@ -1,3 +1,4 @@
+mod chatwoot;
 mod config;
 mod env;
 mod error;
