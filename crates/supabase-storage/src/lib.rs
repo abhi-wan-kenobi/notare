@@ -42,7 +42,11 @@ impl SupabaseStorage {
         object_path: &str,
         expires_in_seconds: u64,
     ) -> Result<String, Error> {
-        let encoded = urlencoding::encode(object_path);
+        let encoded = object_path
+            .split('/')
+            .map(|s| urlencoding::encode(s))
+            .collect::<Vec<_>>()
+            .join("/");
 
         let response = self
             .auth_headers(self.client.post(format!(
@@ -74,7 +78,11 @@ impl SupabaseStorage {
     }
 
     pub async fn delete_file(&self, bucket: &str, object_path: &str) -> Result<(), Error> {
-        let encoded = urlencoding::encode(object_path);
+        let encoded = object_path
+            .split('/')
+            .map(|s| urlencoding::encode(s))
+            .collect::<Vec<_>>()
+            .join("/");
 
         let response = self
             .auth_headers(self.client.delete(format!(

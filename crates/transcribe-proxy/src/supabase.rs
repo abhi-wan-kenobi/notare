@@ -39,7 +39,6 @@ pub struct JobUpdate {
     pub raw_result: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
-    pub updated_at: String,
 }
 
 #[derive(Clone)]

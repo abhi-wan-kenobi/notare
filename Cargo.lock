@@ -17324,6 +17324,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.18",
+ "tokio",
  "urlencoding",
 ]
 
@@ -20728,12 +20729,12 @@ version = "0.1.0"
 dependencies = [
  "analytics",
  "api-auth",
+ "api-env",
  "audio-utils",
  "axum 0.8.8",
  "backon",
  "base64 0.22.1",
  "bytes",
- "chrono",
  "data",
  "futures-util",
  "language",
@@ -20756,6 +20757,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+ "urlencoding",
  "utoipa",
  "uuid",
 ]

@@ -38,7 +38,8 @@ async fn app() -> Router {
 
     let llm_config =
         hypr_llm_proxy::LlmProxyConfig::new(&env.llm).with_analytics(analytics.clone());
-    let stt_config = hypr_transcribe_proxy::SttProxyConfig::new(&env.stt).with_analytics(analytics);
+    let stt_config = hypr_transcribe_proxy::SttProxyConfig::new(&env.stt, &env.supabase)
+        .with_analytics(analytics);
 
     let stt_rate_limit = rate_limit::RateLimitState::builder()
         .pro(
@@ -49,7 +50,7 @@ async fn app() -> Router {
         .free(
             governor::Quota::with_period(Duration::from_hours(24))
                 .unwrap()
-                .allow_burst(NonZeroU32::new(1).unwrap()),
+                .allow_burst(NonZeroU32::new(3).unwrap()),
         )
         .build();
     let llm_rate_limit = rate_limit::RateLimitState::builder()
@@ -61,7 +62,7 @@ async fn app() -> Router {
         .free(
             governor::Quota::with_period(Duration::from_hours(12))
                 .unwrap()
-                .allow_burst(NonZeroU32::new(2).unwrap()),
+                .allow_burst(NonZeroU32::new(5).unwrap()),
         )
         .build();
 

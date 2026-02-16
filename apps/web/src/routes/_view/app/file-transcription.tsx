@@ -161,7 +161,11 @@ function Component() {
     if (pipelineStatus === "done" || transcript) {
       return "done" as const;
     }
-    if (pipelineStatus === "processing" || pipelineId) {
+    if (
+      pipelineStatus === "processing" ||
+      pipelineId ||
+      startPipelineMutation.isPending
+    ) {
       return "transcribing" as const;
     }
     if (uppyStatus === "uploading") {

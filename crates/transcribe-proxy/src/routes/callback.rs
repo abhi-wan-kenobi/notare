@@ -71,13 +71,11 @@ pub async fn handler(
             status: PipelineStatus::Done,
             raw_result: Some(raw_result.clone()),
             error: None,
-            updated_at: chrono::Utc::now().to_rfc3339(),
         },
         CallbackResult::ProviderError(message) => JobUpdate {
             status: PipelineStatus::Error,
             raw_result: None,
             error: Some(message.clone()),
-            updated_at: chrono::Utc::now().to_rfc3339(),
         },
     };
 
