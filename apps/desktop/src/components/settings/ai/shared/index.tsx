@@ -105,6 +105,7 @@ export function NonHyprProviderCard({
 
   const form = useForm({
     onSubmit: ({ value }) => {
+      setProvider(value);
       void analyticsCommands.event({
         event: "ai_provider_configured",
         provider: value.type,
@@ -114,7 +115,6 @@ export function NonHyprProviderCard({
           has_configured_ai: true,
         },
       });
-      setProvider(value);
     },
     defaultValues:
       provider ??
