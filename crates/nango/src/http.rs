@@ -21,9 +21,9 @@ impl<'a> hypr_http::HttpClient for NangoHttpClient<'a> {
         &self,
         path: &str,
         body: Vec<u8>,
+        content_type: &str,
     ) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
-        let json_value: serde_json::Value = serde_json::from_slice(&body)?;
-        let response = self.proxy.post(path, &json_value)?.send().await?;
+        let response = self.proxy.post(path, body, content_type)?.send().await?;
         let bytes = response.error_for_status()?.bytes().await?;
         Ok(bytes.to_vec())
     }
@@ -82,9 +82,9 @@ impl hypr_http::HttpClient for OwnedNangoHttpClient {
         &self,
         path: &str,
         body: Vec<u8>,
+        content_type: &str,
     ) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
-        let json_value: serde_json::Value = serde_json::from_slice(&body)?;
-        let response = self.proxy.post(path, &json_value)?.send().await?;
+        let response = self.proxy.post(path, body, content_type)?.send().await?;
         let bytes = response.error_for_status()?.bytes().await?;
         Ok(bytes.to_vec())
     }

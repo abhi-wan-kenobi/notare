@@ -114,7 +114,11 @@ impl<C: HttpClient> GoogleCalendarClient<C> {
         let path = format!("/calendar/v3/calendars/{calendar_id}/events");
 
         let body = serde_json::to_vec(&req.event)?;
-        let bytes = self.http.post(&path, body).await.map_err(Error::Http)?;
+        let bytes = self
+            .http
+            .post(&path, body, "application/json")
+            .await
+            .map_err(Error::Http)?;
         let event: Event = serde_json::from_slice(&bytes)?;
         Ok(event)
     }

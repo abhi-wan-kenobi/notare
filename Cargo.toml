@@ -92,7 +92,7 @@ hypr-posthog = { path = "crates/posthog", package = "posthog" }
 hypr-pyannote-cloud = { path = "crates/pyannote-cloud", package = "pyannote-cloud" }
 hypr-pyannote-local = { path = "crates/pyannote-local", package = "pyannote-local" }
 hypr-s3 = { path = "crates/s3", package = "s3" }
-hypr-slack = { path = "crates/slack", package = "slack" }
+hypr-slack-web = { path = "crates/slack-web", package = "slack-web" }
 hypr-supabase-auth = { path = "crates/supabase-auth", package = "supabase-auth" }
 hypr-supabase-storage = { path = "crates/supabase-storage", package = "supabase-storage" }
 hypr-tcc = { path = "crates/tcc", package = "tcc" }

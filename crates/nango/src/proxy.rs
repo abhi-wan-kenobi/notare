@@ -68,18 +68,19 @@ impl<'a> NangoProxy<'a> {
         Ok(self.apply_headers(self.nango.client.get(url)))
     }
 
-    pub fn post<T: serde::Serialize + ?Sized>(
+    pub fn post(
         &self,
         path: impl std::fmt::Display,
-        data: &T,
+        body: Vec<u8>,
+        content_type: &str,
     ) -> Result<reqwest::RequestBuilder, crate::Error> {
         let url = make_proxy_url(&self.nango.api_base, path)?;
         Ok(self.apply_headers(
             self.nango
                 .client
                 .post(url)
-                .header("Content-Type", "application/json")
-                .json(data),
+                .header("Content-Type", content_type)
+                .body(body),
         ))
     }
 
@@ -168,17 +169,18 @@ impl OwnedNangoProxy {
         Ok(self.apply_headers(self.client.get(url)))
     }
 
-    pub fn post<T: serde::Serialize + ?Sized>(
+    pub fn post(
         &self,
         path: impl std::fmt::Display,
-        data: &T,
+        body: Vec<u8>,
+        content_type: &str,
     ) -> Result<reqwest::RequestBuilder, crate::Error> {
         let url = make_proxy_url(&self.api_base, path)?;
         Ok(self.apply_headers(
             self.client
                 .post(url)
-                .header("Content-Type", "application/json")
-                .json(data),
+                .header("Content-Type", content_type)
+                .body(body),
         ))
     }
 
