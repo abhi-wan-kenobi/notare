@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import {
   Select,
@@ -89,6 +89,45 @@ export function SelectProviderAndModel() {
       }
     },
   });
+
+  useEffect(() => {
+    if (!current_llm_provider) return;
+
+    const currentStatus = configuredProviders[current_llm_provider];
+    const currentLocalStatus =
+      current_llm_provider === "ollama"
+        ? ollamaStatus
+        : current_llm_provider === "lmstudio"
+          ? lmStudioStatus
+          : null;
+    const currentUsable =
+      !!currentStatus?.listModels &&
+      (currentLocalStatus === null || currentLocalStatus === "connected");
+    if (currentUsable) return;
+
+    const fallback = PROVIDERS.find((p) => {
+      if (p.id === current_llm_provider) return false;
+      if (!configuredProviders[p.id]?.listModels) return false;
+      const localStatus =
+        p.id === "ollama"
+          ? ollamaStatus
+          : p.id === "lmstudio"
+            ? lmStudioStatus
+            : null;
+      if (localStatus !== null && localStatus !== "connected") return false;
+      return true;
+    });
+
+    if (fallback) {
+      form.setFieldValue("provider", fallback.id);
+    }
+  }, [
+    configuredProviders,
+    current_llm_provider,
+    form,
+    ollamaStatus,
+    lmStudioStatus,
+  ]);
 
   return (
     <div className="flex flex-col gap-3">
