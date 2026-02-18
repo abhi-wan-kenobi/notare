@@ -177,7 +177,7 @@ export function AccountSettings() {
               </span>
               <div className="flex-1 border-t border-neutral-200" />
             </div>
-            <div className="flex gap-2 w-full">
+            <div className="flex items-center gap-2 w-full">
               <Input
                 type="text"
                 className="flex-1 text-xs font-mono"
@@ -188,7 +188,6 @@ export function AccountSettings() {
               <Button
                 onClick={() => auth?.handleAuthCallback(callbackUrl)}
                 disabled={!callbackUrl}
-                size="sm"
               >
                 Submit
               </Button>
