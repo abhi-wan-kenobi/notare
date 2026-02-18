@@ -45,6 +45,10 @@ const formatIgnoreReason = (reason: ModelIgnoreReason): string => {
   switch (reason) {
     case "common_keyword":
       return "Contains common ignore keyword";
+    case "old_model":
+      return "Old or deprecated model";
+    case "date_snapshot":
+      return "Date-specific snapshot";
     case "no_tool":
       return "No tool support";
     case "no_text_input":
@@ -53,6 +57,8 @@ const formatIgnoreReason = (reason: ModelIgnoreReason): string => {
       return "No completion support";
     case "not_llm":
       return "Not an LLM type";
+    case "not_chat_model":
+      return "Not a chat model";
     case "context_too_small":
       return "Context length too small";
   }
