@@ -307,7 +307,7 @@ macos-accessibility-client = "0.0.1"
 realfft = "3.5.0"
 ringbuf = "0.4.8"
 rodio = "0.21"
-silero-rs = { git = "https://github.com/emotechlab/silero-rs", rev = "26a6460", package = "silero" }
+silero-rs = { git = "https://github.com/emotechlab/silero-rs", rev = "9866921", package = "silero" }
 vorbis_rs = "0.5.5"
 
 deepgram = { version = "0.7", default-features = false }
@@ -337,6 +337,3 @@ rmcp = "0.14"
 rustls = { version = "0.23", default-features = false }
 sqlx = { version = "0.8", default-features = false }
 sysinfo = "0.38"
-
-[patch.crates-io]
-esaxx-rs = { git = "https://github.com/thewh1teagle/esaxx-rs.git", branch = "feat/dynamic-msvc-link" }
