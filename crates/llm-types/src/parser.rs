@@ -3,7 +3,7 @@ use nom::{
     bytes::complete::{tag, take_until},
     character::complete::multispace0,
     combinator::map,
-    sequence::{delimited, terminated},
+    sequence::delimited,
 };
 use std::collections::HashMap;
 
@@ -96,10 +96,7 @@ impl StreamingParser {
 
 fn parse_think_block(input: &str) -> IResult<&str, String> {
     let mut parser = map(
-        terminated(
-            delimited(tag("<think>"), take_until("</think>"), tag("</think>")),
-            multispace0,
-        ),
+        delimited(tag("<think>"), take_until("</think>"), tag("</think>")),
         |content: &str| content.trim().to_string(),
     );
     parser.parse(input)
@@ -167,7 +164,7 @@ mod tests {
             items,
             [
                 Response::Reasoning("I need to process this request.".to_string()),
-                Response::TextDelta("Here's my ".to_string()),
+                Response::TextDelta("\nHere's my ".to_string()),
                 Response::TextDelta("response.".to_string())
             ]
         );
@@ -220,6 +217,7 @@ mod tests {
             items,
             [
                 Response::Reasoning("I need to process this request.".to_string()),
+                Response::TextDelta("\n".to_string()),
                 Response::ToolCall {
                     name: "greet".to_string(),
                     arguments: HashMap::from([(
@@ -327,7 +325,7 @@ Hyprnote is an AI-powered notepad designed for private meetings with complete on
                 .map(|item| match item {
                     Response::TextDelta(text) => text.clone(),
                     Response::Reasoning(reasoning) => {
-                        format!("<think>\n{}\n</think>\n", reasoning)
+                        format!("<think>\n{}\n</think>", reasoning)
                     }
                     _ => "".to_string(),
                 })
