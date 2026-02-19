@@ -309,11 +309,17 @@ fn e2e_streaming() {
         model_path.display()
     );
 
+    let model = std::sync::Arc::new(hypr_cactus::Model::new(&model_path).unwrap());
     let options = hypr_cactus::TranscribeOptions::default();
     let chunk_size_ms = 300u32;
 
-    let (audio_tx, mut event_stream, _cancel, _worker_handle) =
-        hypr_cactus::transcribe_stream(model_path.clone(), options, chunk_size_ms, SAMPLE_RATE);
+    let (audio_tx, mut event_stream, _cancel, _worker_handle) = hypr_cactus::transcribe_stream(
+        model,
+        options,
+        hypr_cactus::CloudConfig::default(),
+        chunk_size_ms,
+        SAMPLE_RATE,
+    );
 
     let samples = bytes_to_f32_samples(hypr_data::english_1::AUDIO);
     let chunk_size = 8_000;

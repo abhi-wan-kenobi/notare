@@ -5,7 +5,7 @@ mod transcriber;
 
 pub use result::TranscriptionResult;
 pub use stream::{TranscribeEvent, transcribe_stream};
-pub use transcriber::{StreamResult, Transcriber};
+pub use transcriber::{CloudConfig, StreamResult, Transcriber};
 
 use hypr_language::Language;
 
@@ -38,8 +38,4 @@ pub struct TranscribeOptions {
     /// Fuzzy-match ratio to confirm a segment (0.0–1.0). C++ default: 0.99. Streaming only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub confirmation_threshold: Option<f64>,
-    /// Max per-token entropy norm above which cloud handoff is triggered.
-    /// C++ model defaults: Whisper=0.4, Moonshine=0.35. 0.0 disables handoff.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cloud_handoff_threshold: Option<f32>,
 }

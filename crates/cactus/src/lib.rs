@@ -10,8 +10,8 @@ pub use hypr_language::Language;
 pub use llm::{CompleteOptions, CompletionResult, Message, complete_stream};
 pub use model::{Model, ModelBuilder};
 pub use stt::{
-    StreamResult, TranscribeEvent, TranscribeOptions, Transcriber, TranscriptionResult,
-    constrain_to, transcribe_stream,
+    CloudConfig, StreamResult, TranscribeEvent, TranscribeOptions, Transcriber,
+    TranscriptionResult, constrain_to, transcribe_stream,
 };
 pub use vad::{VadOptions, VadResult, VadSegment};
 

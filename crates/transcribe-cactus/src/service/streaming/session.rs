@@ -73,8 +73,13 @@ pub(super) async fn handle_websocket(
                 return;
             }
         };
-        let (audio_tx, event_rx, cancel_token, handle) =
-            hypr_cactus::transcribe_stream(model, options.clone(), chunk_size_ms, SAMPLE_RATE);
+        let (audio_tx, event_rx, cancel_token, handle) = hypr_cactus::transcribe_stream(
+            model,
+            options.clone(),
+            hypr_cactus::CloudConfig::default(),
+            chunk_size_ms,
+            SAMPLE_RATE,
+        );
         audio_txs.push(audio_tx);
         cancel_tokens.push(cancel_token);
         worker_handles.push(handle);

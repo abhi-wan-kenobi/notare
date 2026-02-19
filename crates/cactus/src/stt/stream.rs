@@ -7,7 +7,7 @@ use crate::error::Result;
 use crate::model::Model;
 
 use super::TranscribeOptions;
-use super::transcriber::{StreamResult, Transcriber};
+use super::transcriber::{CloudConfig, StreamResult, Transcriber};
 
 #[derive(Debug, Clone)]
 pub struct TranscribeEvent {
@@ -18,6 +18,7 @@ pub struct TranscribeEvent {
 pub fn transcribe_stream(
     model: Arc<Model>,
     options: TranscribeOptions,
+    cloud: CloudConfig,
     chunk_size_ms: u32,
     sample_rate: u32,
 ) -> (
@@ -35,6 +36,7 @@ pub fn transcribe_stream(
         run_transcribe_worker(
             model,
             options,
+            cloud,
             chunk_size_ms,
             sample_rate,
             audio_rx,
@@ -50,13 +52,14 @@ pub fn transcribe_stream(
 fn run_transcribe_worker(
     model: Arc<Model>,
     options: TranscribeOptions,
+    cloud: CloudConfig,
     chunk_size_ms: u32,
     sample_rate: u32,
     mut audio_rx: tokio::sync::mpsc::Receiver<Vec<f32>>,
     event_tx: tokio::sync::mpsc::Sender<Result<TranscribeEvent>>,
     cancellation_token: CancellationToken,
 ) {
-    let mut transcriber = match Transcriber::new(&model, &options) {
+    let mut transcriber = match Transcriber::new(&model, &options, cloud) {
         Ok(t) => t,
         Err(e) => {
             let _ = event_tx.blocking_send(Err(e));

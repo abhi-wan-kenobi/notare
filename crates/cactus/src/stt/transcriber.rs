@@ -7,9 +7,46 @@ use crate::model::Model;
 
 use super::TranscribeOptions;
 
+/// Cloud handoff configuration for streaming STT.
+///
+/// `api_key` enables real cloud transcription requests (sent via
+/// `CACTUS_CLOUD_API_KEY`) when local confidence is low.
+///
+/// `threshold` is the per-token entropy norm above which cloud handoff is
+/// triggered. C++ model defaults: Whisper = 0.4, Moonshine = 0.35.
+/// `None` leaves the model default intact; `Some(0.0)` disables handoff.
+#[derive(Debug, Clone, Default)]
+pub struct CloudConfig {
+    pub api_key: Option<String>,
+    pub threshold: Option<f32>,
+}
+
+impl CloudConfig {
+    /// Set `CACTUS_CLOUD_API_KEY` in the process environment. Must be called
+    /// while holding the model's `inference_lock` so the env write and the FFI
+    /// read are atomic with respect to this model's call sequence.
+    pub(super) fn prepare_env(&self) {
+        if let Some(key) = &self.api_key {
+            // SAFETY: called under inference_lock; the C++ engine reads the env
+            // var synchronously inside the same locked FFI call, so no other
+            // thread can observe a partially-written value through this model.
+            unsafe { std::env::set_var("CACTUS_CLOUD_API_KEY", key) };
+        }
+    }
+}
+
+fn serialize_stream_options(options: &TranscribeOptions, cloud: &CloudConfig) -> Result<CString> {
+    let mut v = serde_json::to_value(options)?;
+    if let (Some(map), Some(t)) = (v.as_object_mut(), cloud.threshold) {
+        map.insert("cloud_handoff_threshold".into(), t.into());
+    }
+    Ok(CString::new(serde_json::to_string(&v)?)?)
+}
+
 pub struct Transcriber<'a> {
     pub(super) handle: Option<NonNull<std::ffi::c_void>>,
     pub(super) model: &'a Model,
+    cloud: CloudConfig,
 }
 
 // SAFETY: The C stream handle has no thread-affinity requirements.
@@ -58,9 +95,9 @@ impl std::str::FromStr for StreamResult {
 }
 
 impl<'a> Transcriber<'a> {
-    pub fn new(model: &'a Model, options: &TranscribeOptions) -> Result<Self> {
+    pub fn new(model: &'a Model, options: &TranscribeOptions, cloud: CloudConfig) -> Result<Self> {
         let _guard = model.lock_inference();
-        let options_c = CString::new(serde_json::to_string(options)?)?;
+        let options_c = serialize_stream_options(options, &cloud)?;
 
         let raw = unsafe {
             cactus_sys::cactus_stream_transcribe_start(model.raw_handle(), options_c.as_ptr())
@@ -73,12 +110,13 @@ impl<'a> Transcriber<'a> {
         Ok(Self {
             handle: Some(handle),
             model,
+            cloud,
         })
     }
 
     pub fn process(&mut self, pcm: &[u8]) -> Result<StreamResult> {
         let _guard = self.model.lock_inference();
-        self.model.prepare_cloud_env();
+        self.cloud.prepare_env();
         let mut buf = vec![0u8; RESPONSE_BUF_SIZE];
 
         let rc = unsafe {
@@ -121,7 +159,7 @@ impl<'a> Transcriber<'a> {
 
     fn call_stop(&self) -> Result<StreamResult> {
         let _guard = self.model.lock_inference();
-        self.model.prepare_cloud_env();
+        self.cloud.prepare_env();
         let mut buf = vec![0u8; RESPONSE_BUF_SIZE];
 
         let rc = unsafe {

@@ -1,4 +1,4 @@
-use cactus::{Model, TranscribeOptions, Transcriber};
+use cactus::{CloudConfig, Model, TranscribeOptions, Transcriber};
 
 fn stt_model() -> Model {
     let path = std::env::var("CACTUS_STT_MODEL")
@@ -62,7 +62,7 @@ fn test_stream_transcriber() {
     let pcm = data::english_1::AUDIO;
     let options = TranscribeOptions::default();
 
-    let mut transcriber = Transcriber::new(&model, &options).unwrap();
+    let mut transcriber = Transcriber::new(&model, &options, CloudConfig::default()).unwrap();
 
     let chunk_size = 32000; // 1 second at 16kHz 16-bit mono
     let mut had_confirmed = false;
@@ -89,7 +89,7 @@ fn test_stream_transcriber_drop() {
     let options = TranscribeOptions::default();
 
     {
-        let mut transcriber = Transcriber::new(&model, &options).unwrap();
+        let mut transcriber = Transcriber::new(&model, &options, CloudConfig::default()).unwrap();
         let silence = vec![0u8; 32000];
         let _ = transcriber.process(&silence);
     }
@@ -101,7 +101,7 @@ fn test_stream_transcriber_drop() {
 fn test_stream_transcriber_process_samples() {
     let model = stt_model();
     let options = TranscribeOptions::default();
-    let mut transcriber = Transcriber::new(&model, &options).unwrap();
+    let mut transcriber = Transcriber::new(&model, &options, CloudConfig::default()).unwrap();
 
     let samples = vec![0i16; 16000];
     let r = transcriber.process_samples(&samples).unwrap();
@@ -119,7 +119,7 @@ fn test_stream_transcriber_process_samples() {
 fn test_stream_transcriber_process_f32() {
     let model = stt_model();
     let options = TranscribeOptions::default();
-    let mut transcriber = Transcriber::new(&model, &options).unwrap();
+    let mut transcriber = Transcriber::new(&model, &options, CloudConfig::default()).unwrap();
 
     let samples = vec![0.0f32; 16000];
     let r = transcriber.process_f32(&samples).unwrap();
