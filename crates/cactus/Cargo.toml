@@ -2,9 +2,11 @@
 name = "cactus"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
 
 [dependencies]
 cactus-sys = { path = "../cactus-sys" }
+
 hypr-language = { workspace = true }
 hypr-llm-types = { workspace = true }
 
