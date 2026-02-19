@@ -70,7 +70,9 @@ const issueSchema = z.object({
       .number()
       .describe("Score from 1 to 10: Statements or announcements?"),
     rhythm: z.number().describe("Score from 1 to 10: Varied or metronomic?"),
-    trust: z.number().describe("Score from 1 to 10: Respects reader intelligence?"),
+    trust: z
+      .number()
+      .describe("Score from 1 to 10: Respects reader intelligence?"),
     authenticity: z.number().describe("Score from 1 to 10: Sounds human?"),
     density: z.number().describe("Score from 1 to 10: Anything cuttable?"),
   }),
