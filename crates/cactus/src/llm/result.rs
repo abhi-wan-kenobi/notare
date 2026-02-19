@@ -3,6 +3,8 @@ pub struct CompletionResult {
     #[serde(default, rename = "response")]
     pub text: String,
     #[serde(default)]
+    pub cloud_handoff: bool,
+    #[serde(default)]
     pub confidence: f32,
     #[serde(default)]
     pub time_to_first_token_ms: f64,

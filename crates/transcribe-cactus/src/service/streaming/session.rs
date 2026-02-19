@@ -66,12 +66,15 @@ pub(super) async fn handle_websocket(
     let mut worker_handles = Vec::with_capacity(total_channels);
 
     for ch_idx in 0..total_channels {
-        let (audio_tx, event_rx, cancel_token, handle) = hypr_cactus::transcribe_stream(
-            model_path.clone(),
-            options.clone(),
-            chunk_size_ms,
-            SAMPLE_RATE,
-        );
+        let model = match hypr_cactus::Model::builder(&model_path).build() {
+            Ok(m) => std::sync::Arc::new(m),
+            Err(e) => {
+                tracing::error!(error = %e, "failed to load model for channel {ch_idx}");
+                return;
+            }
+        };
+        let (audio_tx, event_rx, cancel_token, handle) =
+            hypr_cactus::transcribe_stream(model, options.clone(), chunk_size_ms, SAMPLE_RATE);
         audio_txs.push(audio_tx);
         cancel_tokens.push(cancel_token);
         worker_handles.push(handle);

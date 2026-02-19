@@ -8,7 +8,7 @@ mod vad;
 pub use error::Error;
 pub use hypr_language::Language;
 pub use llm::{CompleteOptions, CompletionResult, Message, complete_stream};
-pub use model::Model;
+pub use model::{Model, ModelBuilder};
 pub use stt::{
     StreamResult, TranscribeEvent, TranscribeOptions, Transcriber, TranscriptionResult,
     constrain_to, transcribe_stream,

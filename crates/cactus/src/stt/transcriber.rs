@@ -26,6 +26,20 @@ pub struct StreamResult {
     #[serde(default)]
     pub language: Option<String>,
     #[serde(default)]
+    pub cloud_handoff: bool,
+    /// Non-zero when a cloud job was dispatched this chunk.
+    #[serde(default)]
+    pub cloud_job_id: u64,
+    /// Non-zero when a previously dispatched cloud job completed this chunk.
+    #[serde(default)]
+    pub cloud_result_job_id: u64,
+    /// Cloud transcript for the completed job (empty when `cloud_result_job_id` is 0).
+    #[serde(default)]
+    pub cloud_result: String,
+    /// PCM duration of the confirmed segment in milliseconds.
+    #[serde(default)]
+    pub buffer_duration_ms: f64,
+    #[serde(default)]
     pub confidence: f32,
 }
 
@@ -64,6 +78,7 @@ impl<'a> Transcriber<'a> {
 
     pub fn process(&mut self, pcm: &[u8]) -> Result<StreamResult> {
         let _guard = self.model.lock_inference();
+        self.model.prepare_cloud_env();
         let mut buf = vec![0u8; RESPONSE_BUF_SIZE];
 
         let rc = unsafe {
@@ -106,6 +121,7 @@ impl<'a> Transcriber<'a> {
 
     fn call_stop(&self) -> Result<StreamResult> {
         let _guard = self.model.lock_inference();
+        self.model.prepare_cloud_env();
         let mut buf = vec![0u8; RESPONSE_BUF_SIZE];
 
         let rc = unsafe {

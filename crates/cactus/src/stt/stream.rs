@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::sync::Arc;
 
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_util::sync::CancellationToken;
@@ -16,7 +16,7 @@ pub struct TranscribeEvent {
 }
 
 pub fn transcribe_stream(
-    model_path: PathBuf,
+    model: Arc<Model>,
     options: TranscribeOptions,
     chunk_size_ms: u32,
     sample_rate: u32,
@@ -33,7 +33,7 @@ pub fn transcribe_stream(
 
     let handle = std::thread::spawn(move || {
         run_transcribe_worker(
-            model_path,
+            model,
             options,
             chunk_size_ms,
             sample_rate,
@@ -48,7 +48,7 @@ pub fn transcribe_stream(
 }
 
 fn run_transcribe_worker(
-    model_path: PathBuf,
+    model: Arc<Model>,
     options: TranscribeOptions,
     chunk_size_ms: u32,
     sample_rate: u32,
@@ -56,14 +56,6 @@ fn run_transcribe_worker(
     event_tx: tokio::sync::mpsc::Sender<Result<TranscribeEvent>>,
     cancellation_token: CancellationToken,
 ) {
-    let model = match Model::new(&model_path) {
-        Ok(m) => m,
-        Err(e) => {
-            let _ = event_tx.blocking_send(Err(e));
-            return;
-        }
-    };
-
     let mut transcriber = match Transcriber::new(&model, &options) {
         Ok(t) => t,
         Err(e) => {
