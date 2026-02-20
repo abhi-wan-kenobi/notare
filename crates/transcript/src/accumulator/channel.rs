@@ -29,6 +29,14 @@ impl ChannelState {
         self.partials.iter()
     }
 
+    pub(super) fn held(&self) -> Option<&RawWord> {
+        self.held.as_ref()
+    }
+
+    pub(super) fn watermark(&self) -> i64 {
+        self.watermark
+    }
+
     /// Process a confirmed final batch.
     ///
     /// Two things happen in order:

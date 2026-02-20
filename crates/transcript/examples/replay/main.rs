@@ -9,6 +9,8 @@ use owhisper_interface::stream::StreamResponse;
 use ratatui::DefaultTerminal;
 use transcript::FlushMode;
 use transcript::input::TranscriptInput;
+use transcript::postprocess::PostProcessUpdate;
+use transcript::types::TranscriptWord;
 use transcript::view::TranscriptView;
 
 #[derive(clap::Parser)]
@@ -21,13 +23,23 @@ struct Args {
     speed: u64,
 }
 
-struct App {
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum LastEvent {
+    Final,
+    Partial,
+    Skipped,
+}
+
+pub struct App {
     responses: Vec<StreamResponse>,
-    position: usize,
-    paused: bool,
-    speed_ms: u64,
-    view: TranscriptView,
-    fixture_name: String,
+    pub position: usize,
+    pub paused: bool,
+    pub speed_ms: u64,
+    pub view: TranscriptView,
+    pub fixture_name: String,
+    pub last_event: LastEvent,
+    pub flush_mode: FlushMode,
+    pub last_postprocess: Option<PostProcessUpdate>,
 }
 
 impl App {
@@ -39,22 +51,37 @@ impl App {
             speed_ms,
             view: TranscriptView::new(),
             fixture_name,
+            last_event: LastEvent::Skipped,
+            flush_mode: FlushMode::DrainAll,
+            last_postprocess: None,
         }
     }
 
-    fn total(&self) -> usize {
+    pub fn total(&self) -> usize {
         self.responses.len()
     }
 
     fn seek_to(&mut self, target: usize) {
         let target = target.min(self.total());
         self.view = TranscriptView::new();
+        self.last_postprocess = None;
         self.position = 0;
+        let mut last_event = LastEvent::Skipped;
         for i in 0..target {
-            if let Some(input) = TranscriptInput::from_stream_response(&self.responses[i]) {
-                self.view.process(input);
+            match TranscriptInput::from_stream_response(&self.responses[i]) {
+                Some(input) => {
+                    last_event = match &input {
+                        TranscriptInput::Final { .. } => LastEvent::Final,
+                        TranscriptInput::Partial { .. } => LastEvent::Partial,
+                    };
+                    self.view.process(input);
+                }
+                None => {
+                    last_event = LastEvent::Skipped;
+                }
             }
         }
+        self.last_event = last_event;
         self.position = target;
     }
 
@@ -62,15 +89,64 @@ impl App {
         if self.position >= self.total() {
             return false;
         }
-        if let Some(input) = TranscriptInput::from_stream_response(&self.responses[self.position]) {
-            self.view.process(input);
+        match TranscriptInput::from_stream_response(&self.responses[self.position]) {
+            Some(input) => {
+                self.last_event = match &input {
+                    TranscriptInput::Final { .. } => LastEvent::Final,
+                    TranscriptInput::Partial { .. } => LastEvent::Partial,
+                };
+                self.view.process(input);
+            }
+            None => {
+                self.last_event = LastEvent::Skipped;
+            }
         }
         self.position += 1;
         true
     }
 
-    fn is_done(&self) -> bool {
+    pub fn is_done(&self) -> bool {
         self.position >= self.total()
+    }
+
+    fn toggle_flush_mode(&mut self) {
+        self.flush_mode = match self.flush_mode {
+            FlushMode::DrainAll => FlushMode::PromotableOnly,
+            FlushMode::PromotableOnly => FlushMode::DrainAll,
+        };
+    }
+
+    fn simulate_postprocess(&mut self) {
+        let finals = self.view.frame().final_words;
+        if finals.is_empty() {
+            return;
+        }
+        let transformed: Vec<TranscriptWord> = finals
+            .into_iter()
+            .map(|w| {
+                let new_text = title_case_word(&w.text);
+                TranscriptWord {
+                    text: new_text,
+                    ..w
+                }
+            })
+            .collect();
+        let update = self.view.apply_postprocess(transformed);
+        self.last_postprocess = Some(update);
+    }
+}
+
+/// Title-case a word that may have a leading space (e.g. " hello" -> " Hello").
+fn title_case_word(s: &str) -> String {
+    let trimmed = s.trim_start_matches(' ');
+    let leading_spaces = &s[..s.len() - trimmed.len()];
+    let mut chars = trimmed.chars();
+    match chars.next() {
+        None => s.to_string(),
+        Some(first) => {
+            let upper: String = first.to_uppercase().collect();
+            format!("{leading_spaces}{upper}{}", chars.as_str())
+        }
     }
 }
 
@@ -149,7 +225,14 @@ fn run(
                     KeyCode::End => {
                         let total = app.total();
                         app.seek_to(total);
-                        app.view.flush(FlushMode::DrainAll);
+                        let mode = app.flush_mode;
+                        app.view.flush(mode);
+                    }
+                    KeyCode::Char('f') => {
+                        app.toggle_flush_mode();
+                    }
+                    KeyCode::Char('p') => {
+                        app.simulate_postprocess();
                     }
                     _ => {}
                 }
@@ -160,7 +243,8 @@ fn run(
                 last_tick = Instant::now();
 
                 if app.is_done() {
-                    app.view.flush(FlushMode::DrainAll);
+                    let mode = app.flush_mode;
+                    app.view.flush(mode);
                     terminal.draw(|frame| renderer::render(frame, &app))?;
                     app.paused = true;
                 }

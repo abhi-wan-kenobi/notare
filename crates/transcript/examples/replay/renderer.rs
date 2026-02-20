@@ -5,10 +5,12 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Gauge, Paragraph, Wrap},
 };
+use transcript::FlushMode;
 
 use crate::App;
+use crate::LastEvent;
 
-const DEBUG_PANEL_WIDTH: u16 = 32;
+const DEBUG_PANEL_WIDTH: u16 = 36;
 
 pub fn render(frame: &mut Frame, app: &App) {
     let [header_area, body_area, timeline_area, hint_area] = Layout::vertical([
@@ -36,9 +38,13 @@ fn render_header(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         "▶ PLAYING"
     };
+    let flush_label = match app.flush_mode {
+        FlushMode::DrainAll => "drain-all",
+        FlushMode::PromotableOnly => "promotable-only",
+    };
     let text = format!(
-        " {} | {} | {}ms/event ",
-        app.fixture_name, status, app.speed_ms
+        " {} | {} | {}ms/event | flush: {} ",
+        app.fixture_name, status, app.speed_ms, flush_label
     );
     frame.render_widget(
         Paragraph::new(text).style(Style::default().fg(Color::DarkGray)),
@@ -82,9 +88,6 @@ fn render_transcript(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_debug(frame: &mut Frame, app: &App, area: Rect) {
-    let dbg = app.view.pipeline_debug();
-    let frame_data = app.view.frame();
-
     let block = Block::default()
         .borders(Borders::LEFT)
         .border_style(Style::default().fg(Color::DarkGray))
@@ -96,34 +99,92 @@ fn render_debug(frame: &mut Frame, app: &App, area: Rect) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let [promotion_area, postprocess_area] =
-        Layout::vertical([Constraint::Fill(1), Constraint::Length(4)]).areas(inner);
+    // Sections from top to bottom: event, pipeline internals, counts, postprocess
+    let [event_area, pipeline_area, counts_area, postprocess_area] = Layout::vertical([
+        Constraint::Length(3),
+        Constraint::Fill(1),
+        Constraint::Length(5),
+        Constraint::Length(5),
+    ])
+    .areas(inner);
 
-    render_promotion_section(frame, &dbg.partial_stability, &frame_data, promotion_area);
-    render_postprocess_section(frame, dbg.postprocess_applied, postprocess_area);
+    render_event_section(frame, app, event_area);
+    render_pipeline_section(frame, app, pipeline_area);
+    render_counts_section(frame, app, counts_area);
+    render_postprocess_section(frame, app, postprocess_area);
 }
 
-fn render_promotion_section(
-    frame: &mut Frame,
-    stability: &[(String, u32)],
-    frame_data: &transcript::types::TranscriptFrame,
-    area: Rect,
-) {
-    let mut lines = vec![Line::from(Span::styled(
-        "promotion",
-        Style::default()
-            .fg(Color::DarkGray)
-            .add_modifier(Modifier::UNDERLINED),
-    ))];
+fn render_event_section(frame: &mut Frame, app: &App, area: Rect) {
+    let (label, color) = match app.last_event {
+        LastEvent::Final => ("FINAL", Color::Green),
+        LastEvent::Partial => ("PARTIAL", Color::Yellow),
+        LastEvent::Skipped => ("SKIPPED", Color::DarkGray),
+    };
 
-    if stability.is_empty() {
-        lines.push(Line::from(Span::styled(
-            "no partials",
-            Style::default().fg(Color::DarkGray),
-        )));
+    let lines = vec![
+        section_header("event"),
+        Line::from(vec![
+            Span::styled(
+                label,
+                Style::default().fg(color).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!("  {}/{}", app.position, app.total()),
+                Style::default().fg(Color::DarkGray),
+            ),
+        ]),
+    ];
+
+    frame.render_widget(Paragraph::new(lines), area);
+}
+
+fn render_pipeline_section(frame: &mut Frame, app: &App, area: Rect) {
+    let dbg = app.view.pipeline_debug();
+    let mut lines = vec![section_header("pipeline")];
+
+    // Held word(s)
+    if dbg.held_words.is_empty() {
+        lines.push(dim_line("held  —"));
     } else {
-        for (text, seen) in stability {
-            let bar_width = area.width.saturating_sub(6) as usize;
+        for (ch, text) in &dbg.held_words {
+            lines.push(Line::from(vec![
+                Span::styled("held  ", Style::default().fg(Color::DarkGray)),
+                Span::styled(format!("[ch{}] ", ch), Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    truncate(text.trim(), (area.width.saturating_sub(8)) as usize),
+                    Style::default().fg(Color::Cyan),
+                ),
+            ]));
+        }
+    }
+
+    // Watermarks
+    if dbg.watermarks.is_empty() {
+        lines.push(dim_line("wmark —"));
+    } else {
+        for (ch, wm) in &dbg.watermarks {
+            lines.push(Line::from(vec![
+                Span::styled("wmark ", Style::default().fg(Color::DarkGray)),
+                Span::styled(format!("[ch{}] ", ch), Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    format!("{}ms", wm),
+                    Style::default().fg(if *wm > 0 {
+                        Color::White
+                    } else {
+                        Color::DarkGray
+                    }),
+                ),
+            ]));
+        }
+    }
+
+    // Partial stability
+    lines.push(Line::raw(""));
+    if dbg.partial_stability.is_empty() {
+        lines.push(dim_line("no partials"));
+    } else {
+        let bar_width = area.width.saturating_sub(6) as usize;
+        for (text, seen) in &dbg.partial_stability {
             let word_display = truncate(text.trim(), bar_width);
             lines.push(Line::from(vec![
                 Span::styled(
@@ -145,43 +206,78 @@ fn render_promotion_section(
         }
     }
 
-    lines.push(Line::raw(""));
-    lines.push(Line::from(vec![
-        Span::styled("finals ", Style::default().fg(Color::DarkGray)),
-        Span::raw(frame_data.final_words.len().to_string()),
-        Span::styled("  partials ", Style::default().fg(Color::DarkGray)),
-        Span::raw(frame_data.partial_words.len().to_string()),
-    ]));
+    frame.render_widget(Paragraph::new(lines), area);
+}
 
-    if !frame_data.speaker_hints.is_empty() {
-        lines.push(Line::from(vec![
+fn render_counts_section(frame: &mut Frame, app: &App, area: Rect) {
+    let frame_data = app.view.frame();
+    let flush_label = match app.flush_mode {
+        FlushMode::DrainAll => "drain-all",
+        FlushMode::PromotableOnly => "promotable",
+    };
+
+    let lines = vec![
+        section_header("counts"),
+        Line::from(vec![
+            Span::styled("finals   ", Style::default().fg(Color::DarkGray)),
+            Span::raw(frame_data.final_words.len().to_string()),
+        ]),
+        Line::from(vec![
+            Span::styled("partials ", Style::default().fg(Color::DarkGray)),
+            Span::raw(frame_data.partial_words.len().to_string()),
+        ]),
+        Line::from(vec![
             Span::styled("speakers ", Style::default().fg(Color::DarkGray)),
             Span::raw(frame_data.speaker_hints.len().to_string()),
-        ]));
-    }
+        ]),
+        Line::from(vec![
+            Span::styled("flush    ", Style::default().fg(Color::DarkGray)),
+            Span::styled(flush_label, Style::default().fg(Color::White)),
+        ]),
+    ];
 
     frame.render_widget(Paragraph::new(lines), area);
 }
 
-fn render_postprocess_section(frame: &mut Frame, postprocess_applied: usize, area: Rect) {
-    let status_style = if postprocess_applied > 0 {
-        Style::default().fg(Color::Yellow)
-    } else {
-        Style::default().fg(Color::DarkGray)
-    };
+fn render_postprocess_section(frame: &mut Frame, app: &App, area: Rect) {
+    let dbg = app.view.pipeline_debug();
 
-    let lines = vec![
-        Line::from(Span::styled(
-            "postprocess",
-            Style::default()
-                .fg(Color::DarkGray)
-                .add_modifier(Modifier::UNDERLINED),
-        )),
-        Line::from(vec![
-            Span::styled("batches ", Style::default().fg(Color::DarkGray)),
-            Span::styled(postprocess_applied.to_string(), status_style),
-        ]),
-    ];
+    let mut lines = vec![section_header("postprocess")];
+    lines.push(Line::from(vec![
+        Span::styled("batches  ", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            dbg.postprocess_applied.to_string(),
+            Style::default().fg(if dbg.postprocess_applied > 0 {
+                Color::Yellow
+            } else {
+                Color::DarkGray
+            }),
+        ),
+    ]));
+
+    match &app.last_postprocess {
+        None => {
+            lines.push(dim_line("no run yet  [p]"));
+        }
+        Some(update) => {
+            lines.push(Line::from(vec![
+                Span::styled("replaced ", Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    update.updated.len().to_string(),
+                    Style::default().fg(Color::Yellow),
+                ),
+                Span::styled(" words", Style::default().fg(Color::DarkGray)),
+            ]));
+            if let Some(sample) = update.updated.first() {
+                let sample_text =
+                    truncate(sample.text.trim(), (area.width.saturating_sub(2)) as usize);
+                lines.push(Line::from(Span::styled(
+                    format!("↳ {sample_text}"),
+                    Style::default().fg(Color::DarkGray),
+                )));
+            }
+        }
+    }
 
     frame.render_widget(Paragraph::new(lines), area);
 }
@@ -204,11 +300,27 @@ fn render_timeline(frame: &mut Frame, app: &App, area: Rect) {
 fn render_hints(frame: &mut Frame, area: Rect) {
     frame.render_widget(
         Paragraph::new(
-            " [Space] pause/resume  [←/→] seek  [↑/↓] speed  [Home/End] jump  [q] quit ",
+            " [Space] pause  [←/→] seek  [↑/↓] speed  [Home/End] jump  [f] flush  [p] postprocess  [q] quit",
         )
         .style(Style::default().fg(Color::DarkGray)),
         area,
     );
+}
+
+fn section_header(title: &str) -> Line<'static> {
+    Line::from(Span::styled(
+        title.to_string(),
+        Style::default()
+            .fg(Color::DarkGray)
+            .add_modifier(Modifier::UNDERLINED),
+    ))
+}
+
+fn dim_line(text: &str) -> Line<'static> {
+    Line::from(Span::styled(
+        text.to_string(),
+        Style::default().fg(Color::DarkGray),
+    ))
 }
 
 fn truncate(s: &str, max_chars: usize) -> &str {

@@ -115,6 +115,20 @@ impl TranscriptAccumulator {
         }
     }
 
+    pub(crate) fn held_words(&self) -> Vec<(i32, String)> {
+        self.channels
+            .iter()
+            .filter_map(|(ch, state)| state.held().map(|w| (*ch, w.text.clone())))
+            .collect()
+    }
+
+    pub(crate) fn watermarks(&self) -> Vec<(i32, i64)> {
+        self.channels
+            .iter()
+            .map(|(ch, state)| (*ch, state.watermark()))
+            .collect()
+    }
+
     pub(crate) fn partial_stability(&self) -> Vec<(String, u32)> {
         self.channels
             .values()

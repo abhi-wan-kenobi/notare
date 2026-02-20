@@ -15,6 +15,12 @@ pub struct PipelineDebugFrame {
     /// Number of postprocess batches applied via [`TranscriptView::apply_postprocess`]
     /// since this view was created (or last reset).
     pub postprocess_applied: usize,
+    /// The word currently held by the stitch stage, per channel.
+    /// Format: (channel_index, word_text).
+    pub held_words: Vec<(i32, String)>,
+    /// The dedup watermark (end_ms of the last finalized word) per channel.
+    /// Format: (channel_index, watermark_ms).
+    pub watermarks: Vec<(i32, i64)>,
 }
 
 /// Stateful driver that accumulates responses and exposes a complete
@@ -87,6 +93,8 @@ impl TranscriptView {
         PipelineDebugFrame {
             partial_stability: self.acc.partial_stability(),
             postprocess_applied: self.postprocess_applied,
+            held_words: self.acc.held_words(),
+            watermarks: self.acc.watermarks(),
         }
     }
 
