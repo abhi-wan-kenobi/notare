@@ -1,76 +1,22 @@
 use owhisper_interface::stream::Word;
-use uuid::Uuid;
 
-// ── Public output types ─────────────────────────────────────────────────────
+use crate::id::IdGenerator;
+use crate::types::{PartialWord, RawWord, SpeakerHint, TranscriptWord};
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
-pub struct TranscriptWord {
-    pub id: String,
-    pub text: String,
-    pub start_ms: i64,
-    pub end_ms: i64,
-    pub channel: i32,
-}
+// ── Partial stability tracking ────────────────────────────────────────────────
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
-pub struct PartialWord {
-    pub text: String,
-    pub start_ms: i64,
-    pub end_ms: i64,
-    pub channel: i32,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
-pub struct SpeakerHint {
-    pub word_id: String,
-    pub speaker_index: i32,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
-pub struct TranscriptUpdate {
-    pub new_final_words: Vec<TranscriptWord>,
-    pub speaker_hints: Vec<SpeakerHint>,
-    pub partial_words: Vec<PartialWord>,
-}
-
-// ── Internal pipeline type ──────────────────────────────────────────────────
-
+/// A partial word together with how many consecutive partial responses have
+/// confirmed it at the same start time and with the same text.
+///
+/// The `consecutive_seen` counter is the primary input to
+/// [`crate::promotion::PromotionPolicy::should_promote`].
 #[derive(Debug, Clone)]
-pub(super) struct RawWord {
-    pub(super) text: String,
-    pub(super) start_ms: i64,
-    pub(super) end_ms: i64,
-    pub(super) channel: i32,
-    pub(super) speaker: Option<i32>,
+pub(crate) struct PartialEntry {
+    pub(crate) word: RawWord,
+    pub(crate) consecutive_seen: u32,
 }
 
-impl RawWord {
-    pub(super) fn to_final(self, id: String) -> (TranscriptWord, Option<SpeakerHint>) {
-        let hint = self.speaker.map(|speaker_index| SpeakerHint {
-            word_id: id.clone(),
-            speaker_index,
-        });
-        let word = TranscriptWord {
-            id,
-            text: self.text,
-            start_ms: self.start_ms,
-            end_ms: self.end_ms,
-            channel: self.channel,
-        };
-        (word, hint)
-    }
-
-    pub(super) fn to_partial(&self) -> PartialWord {
-        PartialWord {
-            text: self.text.clone(),
-            start_ms: self.start_ms,
-            end_ms: self.end_ms,
-            channel: self.channel,
-        }
-    }
-}
-
-// ── Assembly ─────────────────────────────────────────────────────────────────
+// ── Assembly ──────────────────────────────────────────────────────────────────
 
 /// Assemble raw ASR tokens into merged `RawWord`s.
 ///
@@ -79,7 +25,7 @@ impl RawWord {
 /// transcript; a space prefix means "new word", no space means "same word."
 /// Adjacent tokens without a space prefix are unconditionally merged —
 /// no timing heuristics.
-pub(super) fn assemble(raw: &[Word], transcript: &str, channel: i32) -> Vec<RawWord> {
+pub(crate) fn assemble(raw: &[Word], transcript: &str, channel: i32) -> Vec<RawWord> {
     let spaced = spacing_from_transcript(raw, transcript);
     let mut result: Vec<RawWord> = Vec::new();
 
@@ -148,7 +94,7 @@ fn spacing_from_transcript(raw: &[Word], transcript: &str) -> Vec<String> {
     result
 }
 
-// ── Pipeline stages ──────────────────────────────────────────────────────────
+// ── Pipeline stages ───────────────────────────────────────────────────────────
 
 /// Drop words already covered by the watermark (deduplication).
 pub(super) fn dedup(words: Vec<RawWord>, watermark: i64) -> Vec<RawWord> {
@@ -185,6 +131,10 @@ pub(super) fn stitch(
 }
 
 /// Replace the time range covered by `incoming` within `existing`.
+///
+/// Kept as a standalone tested function; production code uses
+/// [`splice_partials`] which adds stability-counter tracking.
+#[allow(dead_code)]
 pub(super) fn splice(existing: &[RawWord], incoming: Vec<RawWord>) -> Vec<RawWord> {
     let first_start = incoming.first().map_or(0, |w| w.start_ms);
     let last_end = incoming.last().map_or(0, |w| w.end_ms);
@@ -199,6 +149,10 @@ pub(super) fn splice(existing: &[RawWord], incoming: Vec<RawWord>) -> Vec<RawWor
 }
 
 /// Remove partials that overlap with the finalized time range.
+///
+/// Kept as a standalone tested function; production code uses
+/// [`strip_overlap_entries`] which operates on [`PartialEntry`].
+#[allow(dead_code)]
 pub(super) fn strip_overlap(partials: Vec<RawWord>, final_end: i64) -> Vec<RawWord> {
     partials
         .into_iter()
@@ -206,7 +160,58 @@ pub(super) fn strip_overlap(partials: Vec<RawWord>, final_end: i64) -> Vec<RawWo
         .collect()
 }
 
-// ── Word-level transforms ────────────────────────────────────────────────────
+/// Splice incoming words into the partial entries list, updating stability
+/// counters for unchanged words and resetting them for new/changed words.
+///
+/// A partial is "the same" if its `start_ms` and `text` match an existing
+/// entry; in that case the `consecutive_seen` counter is incremented.
+/// New or changed words start at 1.
+pub(super) fn splice_partials(
+    existing: &[PartialEntry],
+    incoming: Vec<RawWord>,
+) -> Vec<PartialEntry> {
+    if incoming.is_empty() {
+        return existing.to_vec();
+    }
+
+    let first_start = incoming.first().map_or(0, |w| w.start_ms);
+    let last_end = incoming.last().map_or(0, |w| w.end_ms);
+
+    let before = existing
+        .iter()
+        .filter(|e| e.word.end_ms <= first_start)
+        .cloned();
+    let after = existing
+        .iter()
+        .filter(|e| e.word.start_ms >= last_end)
+        .cloned();
+
+    let middle = incoming.into_iter().map(|word| {
+        let consecutive_seen = existing
+            .iter()
+            .find(|e| e.word.start_ms == word.start_ms && e.word.text == word.text)
+            .map_or(1, |e| e.consecutive_seen + 1);
+        PartialEntry {
+            word,
+            consecutive_seen,
+        }
+    });
+
+    before.chain(middle).chain(after).collect()
+}
+
+/// Remove partial entries whose start time falls within the finalized range.
+pub(super) fn strip_overlap_entries(
+    entries: Vec<PartialEntry>,
+    final_end: i64,
+) -> Vec<PartialEntry> {
+    entries
+        .into_iter()
+        .filter(|e| e.word.start_ms > final_end)
+        .collect()
+}
+
+// ── Word-level transforms ─────────────────────────────────────────────────────
 
 pub(super) fn ensure_space_prefix_raw(w: &mut RawWord) {
     if !w.text.starts_with(' ') {
@@ -214,7 +219,7 @@ pub(super) fn ensure_space_prefix_raw(w: &mut RawWord) {
     }
 }
 
-pub(super) fn ensure_space_prefix_partial(w: &mut PartialWord) {
+pub(crate) fn ensure_space_prefix_partial(w: &mut PartialWord) {
     if !w.text.starts_with(' ') {
         w.text.insert(0, ' ');
     }
@@ -233,16 +238,21 @@ fn merge_words(mut left: RawWord, right: RawWord) -> RawWord {
     left
 }
 
-/// Convert a list of RawWords into finalized TranscriptWords + SpeakerHints.
-/// Assigns UUIDs, ensures space prefixes, and extracts speaker data.
-pub(super) fn finalize_words(mut words: Vec<RawWord>) -> (Vec<TranscriptWord>, Vec<SpeakerHint>) {
+/// Convert finalized `RawWord`s into `TranscriptWord`s and `SpeakerHint`s.
+///
+/// IDs are generated by `id_gen`, ensuring space prefixes, and extracting
+/// speaker associations.
+pub(super) fn finalize_words(
+    mut words: Vec<RawWord>,
+    id_gen: &mut dyn IdGenerator,
+) -> (Vec<TranscriptWord>, Vec<SpeakerHint>) {
     words.iter_mut().for_each(ensure_space_prefix_raw);
 
     let mut final_words = Vec::with_capacity(words.len());
     let mut hints = Vec::new();
 
     for w in words {
-        let id = Uuid::new_v4().to_string();
+        let id = id_gen.next_id();
         let (word, hint) = w.to_final(id);
         final_words.push(word);
         if let Some(h) = hint {
@@ -256,6 +266,7 @@ pub(super) fn finalize_words(mut words: Vec<RawWord>) -> (Vec<TranscriptWord>, V
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::id::SequentialIdGen;
 
     fn raw_word(text: &str, start: f64, end: f64) -> Word {
         Word {
@@ -276,6 +287,13 @@ mod tests {
             end_ms,
             channel: 0,
             speaker: None,
+        }
+    }
+
+    fn entry(text: &str, start_ms: i64, end_ms: i64, seen: u32) -> PartialEntry {
+        PartialEntry {
+            word: word(text, start_ms, end_ms),
+            consecutive_seen: seen,
         }
     }
 
@@ -507,5 +525,74 @@ mod tests {
         let partials = vec![word(" a", 300, 400), word(" b", 400, 500)];
         let result = strip_overlap(partials, 200);
         assert_eq!(result.len(), 2);
+    }
+
+    // ── splice_partials ──────────────────────────────────────────────────
+
+    #[test]
+    fn splice_partials_increments_counter_for_stable_word() {
+        let existing = vec![entry(" Hello", 0, 500, 2)];
+        let incoming = vec![word(" Hello", 0, 500)];
+        let result = splice_partials(&existing, incoming);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].consecutive_seen, 3);
+    }
+
+    #[test]
+    fn splice_partials_resets_counter_for_changed_text() {
+        let existing = vec![entry(" Helo", 0, 500, 5)];
+        let incoming = vec![word(" Hello", 0, 500)];
+        let result = splice_partials(&existing, incoming);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].consecutive_seen, 1);
+    }
+
+    #[test]
+    fn splice_partials_starts_at_one_for_new_word() {
+        let incoming = vec![word(" new", 0, 500)];
+        let result = splice_partials(&[], incoming);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].consecutive_seen, 1);
+    }
+
+    #[test]
+    fn splice_partials_preserves_before_and_after() {
+        let existing = vec![entry(" a", 0, 100, 3), entry(" c", 300, 400, 2)];
+        let incoming = vec![word(" b", 100, 300)];
+        let result = splice_partials(&existing, incoming);
+        assert_eq!(
+            result
+                .iter()
+                .map(|e| e.word.text.as_str())
+                .collect::<Vec<_>>(),
+            [" a", " b", " c"]
+        );
+        assert_eq!(result[0].consecutive_seen, 3);
+        assert_eq!(result[1].consecutive_seen, 1);
+        assert_eq!(result[2].consecutive_seen, 2);
+    }
+
+    // ── finalize_words ───────────────────────────────────────────────────
+
+    #[test]
+    fn finalize_words_assigns_ids_and_space_prefix() {
+        let words = vec![word("hello", 0, 500), word(" world", 500, 1000)];
+        let mut id_gen = SequentialIdGen::new();
+        let (final_words, hints): (Vec<TranscriptWord>, Vec<SpeakerHint>) =
+            finalize_words(words, &mut id_gen);
+        assert_eq!(final_words.len(), 2);
+        assert!(final_words.iter().all(|w| !w.id.is_empty()));
+        assert!(final_words.iter().all(|w| w.text.starts_with(' ')));
+        assert!(hints.is_empty());
+    }
+
+    #[test]
+    fn finalize_words_uses_sequential_ids() {
+        let words = vec![word(" a", 0, 100), word(" b", 100, 200)];
+        let mut id_gen = SequentialIdGen::new();
+        let (final_words, _): (Vec<TranscriptWord>, Vec<SpeakerHint>) =
+            finalize_words(words, &mut id_gen);
+        assert_eq!(final_words[0].id, "0");
+        assert_eq!(final_words[1].id, "1");
     }
 }
