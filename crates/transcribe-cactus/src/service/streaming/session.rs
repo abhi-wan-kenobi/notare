@@ -26,6 +26,8 @@ struct ChannelState {
     pending_text: String,
     pending_language: Option<String>,
     pending_confidence: f64,
+    pending_cloud_job_id: u64,
+    cloud_handoff_segment_start: f64,
 }
 
 enum LoopAction {
@@ -183,6 +185,51 @@ async fn handle_transcribe_event(
             state.pending_language = result.language.clone();
             state.pending_confidence = confidence;
 
+            if result.cloud_handoff && result.cloud_job_id != 0 {
+                state.pending_cloud_job_id = result.cloud_job_id;
+                state.cloud_handoff_segment_start = state.segment_start;
+            }
+
+            if result.cloud_result_job_id != 0 && !result.cloud_result.is_empty() {
+                let cloud_text = result.cloud_result.trim();
+                let job_id = result.cloud_result_job_id;
+                let seg_start = state.cloud_handoff_segment_start;
+                let seg_duration = state.audio_offset - seg_start;
+                let mut keys = std::collections::HashMap::new();
+                keys.insert("cloud_corrected".to_string(), serde_json::Value::Bool(true));
+                keys.insert(
+                    "cloud_job_id".to_string(),
+                    serde_json::Value::Number(job_id.into()),
+                );
+                tracing::info!(
+                    text = cloud_text,
+                    job_id,
+                    ch = ch_idx,
+                    "cactus_cloud_correction"
+                );
+                if !send_ws(
+                    ws_sender,
+                    &build_transcript_response(
+                        cloud_text,
+                        seg_start,
+                        seg_duration,
+                        confidence,
+                        result.language.as_deref(),
+                        true,
+                        true,
+                        false,
+                        metadata,
+                        &channel_index,
+                        Some(keys),
+                    ),
+                )
+                .await
+                {
+                    return LoopAction::Break;
+                }
+                state.pending_cloud_job_id = 0;
+            }
+
             if !confirmed_text.is_empty() && confirmed_text != state.last_confirmed_sent {
                 if !state.speech_started {
                     if !send_ws(
@@ -198,6 +245,18 @@ async fn handle_transcribe_event(
                     }
                 }
 
+                let handoff_extra = if result.cloud_handoff && result.cloud_job_id != 0 {
+                    let mut keys = std::collections::HashMap::new();
+                    keys.insert("cloud_handoff".to_string(), serde_json::Value::Bool(true));
+                    keys.insert(
+                        "cloud_job_id".to_string(),
+                        serde_json::Value::Number(result.cloud_job_id.into()),
+                    );
+                    Some(keys)
+                } else {
+                    None
+                };
+
                 tracing::info!(text = confirmed_text, ch = ch_idx, "cactus_confirmed_text");
                 if !send_ws(
                     ws_sender,
@@ -212,6 +271,7 @@ async fn handle_transcribe_event(
                         false,
                         metadata,
                         &channel_index,
+                        handoff_extra,
                     ),
                 )
                 .await
@@ -261,6 +321,18 @@ async fn handle_transcribe_event(
                 }
             }
 
+            let pending_handoff_extra = if result.cloud_handoff && result.cloud_job_id != 0 {
+                let mut keys = std::collections::HashMap::new();
+                keys.insert("cloud_handoff".to_string(), serde_json::Value::Bool(true));
+                keys.insert(
+                    "cloud_job_id".to_string(),
+                    serde_json::Value::Number(result.cloud_job_id.into()),
+                );
+                Some(keys)
+            } else {
+                None
+            };
+
             if !send_ws(
                 ws_sender,
                 &build_transcript_response(
@@ -274,6 +346,7 @@ async fn handle_transcribe_event(
                     false,
                     metadata,
                     &channel_index,
+                    pending_handoff_extra,
                 ),
             )
             .await
@@ -374,6 +447,7 @@ async fn handle_finalize(
                     true,
                     metadata,
                     &channel_index,
+                    None,
                 ),
             )
             .await

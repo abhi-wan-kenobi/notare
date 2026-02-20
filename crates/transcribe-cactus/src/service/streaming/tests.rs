@@ -142,6 +142,7 @@ fn transcript_response_serializes_as_results() {
         false,
         &meta,
         &[0, 1],
+        None,
     );
 
     let json = serde_json::to_string(&resp).unwrap();
@@ -187,6 +188,7 @@ fn transcript_response_from_finalize_flag() {
         true,
         &meta,
         &[0, 2],
+        None,
     );
 
     let json = serde_json::to_string(&resp).unwrap();
@@ -209,6 +211,7 @@ fn transcript_response_channel_1_of_2() {
         false,
         &meta,
         &[1, 2],
+        None,
     );
 
     let json = serde_json::to_string(&resp).unwrap();

@@ -61,6 +61,7 @@ pub(super) fn build_transcript_response(
     from_finalize: bool,
     metadata: &Metadata,
     channel_index: &[i32],
+    extra_keys: Option<std::collections::HashMap<String, serde_json::Value>>,
 ) -> StreamResponse {
     let languages = language.map(|l| vec![l.to_string()]).unwrap_or_default();
 
@@ -78,6 +79,14 @@ pub(super) fn build_transcript_response(
         })
         .collect();
 
+    let mut meta = metadata.clone();
+    if let Some(keys) = extra_keys {
+        match &mut meta.extra {
+            Some(existing) => existing.extend(keys),
+            slot => *slot = Some(keys),
+        }
+    }
+
     StreamResponse::TranscriptResponse {
         start,
         duration,
@@ -92,7 +101,7 @@ pub(super) fn build_transcript_response(
                 confidence,
             }],
         },
-        metadata: metadata.clone(),
+        metadata: meta,
         channel_index: channel_index.to_vec(),
     }
 }
