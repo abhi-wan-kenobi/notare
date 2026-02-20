@@ -1,5 +1,4 @@
 use crate::id::IdGenerator;
-use crate::promotion::PromotionPolicy;
 use crate::types::{RawWord, SpeakerHint, TranscriptWord};
 
 use super::FlushMode;
@@ -30,68 +29,67 @@ impl ChannelState {
         self.partials.iter()
     }
 
+    /// Process a confirmed final batch.
+    ///
+    /// Two things happen in order:
+    ///
+    /// 1. Any partial words whose time range ends *before* this batch starts
+    ///    are promoted to final. The provider is confirming words after them,
+    ///    so those partials are guaranteed not to change anymore.
+    ///
+    /// 2. The final words themselves are processed (dedup, stitch, emit).
     pub(super) fn apply_final(
         &mut self,
         words: Vec<RawWord>,
         id_gen: &mut dyn IdGenerator,
     ) -> (Vec<TranscriptWord>, Vec<SpeakerHint>) {
-        let response_end = words.last().map_or(0, |w| w.end_ms);
         let new_words = dedup(words, self.watermark);
-
         if new_words.is_empty() {
             return (vec![], vec![]);
         }
 
-        self.watermark = response_end;
-        self.partials = strip_overlap_entries(std::mem::take(&mut self.partials), response_end);
+        let final_start = new_words.first().map_or(0, |w| w.start_ms);
+        let final_end = new_words.last().map_or(0, |w| w.end_ms);
+
+        // Promote partials that come before this final batch.
+        let (pre_final, rest): (Vec<_>, Vec<_>) = std::mem::take(&mut self.partials)
+            .into_iter()
+            .partition(|e| e.word.end_ms <= final_start);
+
+        // Drop partials that overlap the final range; keep those after it.
+        self.partials = strip_overlap_entries(rest, final_end);
+
+        self.watermark = final_end;
+
+        let mut to_finalize: Vec<RawWord> = pre_final.into_iter().map(|e| e.word).collect();
 
         let (emitted, held) = stitch(self.held.take(), new_words);
         self.held = held;
-        finalize_words(emitted, id_gen)
+        to_finalize.extend(emitted);
+
+        finalize_words(to_finalize, id_gen)
     }
 
-    /// Update partials and run the promotion policy.
-    ///
-    /// Returns any words that the policy promoted to final this cycle.
-    /// For [`crate::promotion::NeverPromote`] (the default) this is always
-    /// empty — partials are only finalized via `apply_final` or `drain`.
-    pub(super) fn apply_partial(
-        &mut self,
-        words: Vec<RawWord>,
-        policy: &dyn PromotionPolicy,
-        id_gen: &mut dyn IdGenerator,
-    ) -> (Vec<TranscriptWord>, Vec<SpeakerHint>) {
+    /// Update the partial buffer. No promotion happens here — partials are
+    /// promoted either by an incoming final (see `apply_final`) or at flush.
+    pub(super) fn apply_partial(&mut self, words: Vec<RawWord>) {
+        // Filter words already covered by the watermark so that words
+        // finalized mid-session cannot re-enter the partial buffer.
+        let words = dedup(words, self.watermark);
+        if words.is_empty() {
+            return;
+        }
         self.partials = splice_partials(&self.partials, words);
-
-        let (promoted_entries, remaining): (Vec<_>, Vec<_>) = std::mem::take(&mut self.partials)
-            .into_iter()
-            .partition(|e| policy.should_promote(&e.word, e.consecutive_seen));
-
-        self.partials = remaining;
-
-        let promoted: Vec<RawWord> = promoted_entries.into_iter().map(|e| e.word).collect();
-        if promoted.is_empty() {
-            return (vec![], vec![]);
-        }
-
-        if let Some(last) = promoted.last() {
-            self.watermark = self.watermark.max(last.end_ms);
-        }
-
-        finalize_words(promoted, id_gen)
     }
 
     /// Drain remaining state at session end.
     ///
-    /// - [`FlushMode::DrainAll`]: promotes the held word and all partials,
-    ///   regardless of stability. Use at hard session end.
-    /// - [`FlushMode::PromotableOnly`]: promotes the held word (it was already
-    ///   confirmed by an `is_final` response) and only those partials that
-    ///   satisfy the promotion policy. Remaining partials are silently dropped.
+    /// - [`FlushMode::DrainAll`]: promotes the held word and all partials.
+    /// - [`FlushMode::PromotableOnly`]: promotes only the held word (already
+    ///   ASR-confirmed). Remaining partials are silently dropped.
     pub(super) fn drain(
         &mut self,
         mode: FlushMode,
-        policy: &dyn PromotionPolicy,
         id_gen: &mut dyn IdGenerator,
     ) -> (Vec<TranscriptWord>, Vec<SpeakerHint>) {
         let mut raw: Vec<RawWord> = self.held.take().into_iter().collect();
@@ -105,12 +103,7 @@ impl ChannelState {
                 );
             }
             FlushMode::PromotableOnly => {
-                raw.extend(
-                    std::mem::take(&mut self.partials)
-                        .into_iter()
-                        .filter(|e| policy.should_promote(&e.word, e.consecutive_seen))
-                        .map(|e| e.word),
-                );
+                self.partials.clear();
             }
         }
 

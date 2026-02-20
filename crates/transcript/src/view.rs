@@ -2,7 +2,6 @@ use crate::accumulator::{FlushMode, TranscriptAccumulator};
 use crate::id::{IdGenerator, UuidIdGen};
 use crate::input::TranscriptInput;
 use crate::postprocess::PostProcessUpdate;
-use crate::promotion::{NeverPromote, PromotionPolicy};
 use crate::types::{SpeakerHint, TranscriptFrame, TranscriptWord};
 
 /// Debug snapshot of the accumulator pipeline state, intended for tooling and
@@ -34,15 +33,12 @@ pub struct TranscriptView {
 
 impl TranscriptView {
     pub fn new() -> Self {
-        Self::with_config(UuidIdGen, NeverPromote)
+        Self::with_config(UuidIdGen)
     }
 
-    pub fn with_config(
-        id_gen: impl IdGenerator + 'static,
-        promotion: impl PromotionPolicy + 'static,
-    ) -> Self {
+    pub fn with_config(id_gen: impl IdGenerator + 'static) -> Self {
         Self {
-            acc: TranscriptAccumulator::with_config(id_gen, promotion),
+            acc: TranscriptAccumulator::with_config(id_gen),
             final_words: Vec::new(),
             speaker_hints: Vec::new(),
             postprocess_applied: 0,
@@ -272,9 +268,7 @@ mod tests {
     #[test]
     fn apply_postprocess_patches_existing_words() {
         use crate::id::SequentialIdGen;
-        use crate::promotion::NeverPromote;
-
-        let mut view = TranscriptView::with_config(SequentialIdGen::new(), NeverPromote);
+        let mut view = TranscriptView::with_config(SequentialIdGen::new());
 
         process_sr(
             &mut view,
@@ -314,7 +308,7 @@ mod tests {
             end_ms: 100,
             channel: 0,
         }]);
-        assert!(update.corrected.is_empty());
+        assert!(update.updated.is_empty());
         assert!(update.replaced_ids.is_empty());
     }
 }

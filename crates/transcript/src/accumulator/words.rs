@@ -9,7 +9,7 @@ use crate::types::{PartialWord, RawWord, SpeakerHint, TranscriptWord};
 /// confirmed it at the same start time and with the same text.
 ///
 /// The `consecutive_seen` counter is the primary input to
-/// [`crate::promotion::PromotionPolicy::should_promote`].
+/// Used by `channel::ChannelState` to track stability of partial words.
 #[derive(Debug, Clone)]
 pub(crate) struct PartialEntry {
     pub(crate) word: RawWord,
