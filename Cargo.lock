@@ -639,6 +639,7 @@ dependencies = [
 name = "api-subscription"
 version = "0.1.0"
 dependencies = [
+ "analytics",
  "api-auth",
  "api-env",
  "async-stripe",
@@ -4546,6 +4547,7 @@ version = "0.0.0"
 dependencies = [
  "host",
  "intercept",
+ "pico-args",
  "ractor",
  "sentry",
  "serde",
