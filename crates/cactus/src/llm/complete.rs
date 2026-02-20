@@ -135,7 +135,7 @@ impl Model {
             &messages_c,
             &options_c,
             Some(token_trampoline::<F>),
-            (&state as *const CallbackState<F> as *mut std::ffi::c_void),
+            &state as *const CallbackState<F> as *mut std::ffi::c_void,
         );
 
         if rc < 0 && !state.stopped.get() {
