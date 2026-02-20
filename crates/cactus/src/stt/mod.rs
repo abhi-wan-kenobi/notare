@@ -2,6 +2,7 @@ mod batch;
 mod result;
 mod stream;
 mod transcriber;
+mod whisper;
 
 pub use result::TranscriptionResult;
 pub use stream::{TranscribeEvent, transcribe_stream};

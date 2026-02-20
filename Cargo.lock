@@ -2716,6 +2716,7 @@ dependencies = [
  "criterion",
  "data",
  "futures-util",
+ "insta",
  "language",
  "llm-types",
  "serde",

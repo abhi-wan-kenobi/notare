@@ -5,25 +5,12 @@ use crate::error::{Error, Result};
 use crate::ffi_utils::{RESPONSE_BUF_SIZE, parse_buf};
 use crate::model::Model;
 
+use super::whisper::build_whisper_prompt;
 use super::{TranscribeOptions, TranscriptionResult};
 
 enum TranscribeInput<'a> {
     File(&'a CString),
     Pcm(&'a [u8]),
-}
-
-fn build_whisper_prompt(options: &TranscribeOptions) -> String {
-    let lang_token = options
-        .language
-        .as_ref()
-        .map(|l| format!("<|{}|>", l.iso639_code()))
-        .unwrap_or_default();
-    match &options.initial_prompt {
-        Some(p) => format!(
-            "<|startofprev|>{p}<|startoftranscript|>{lang_token}<|transcribe|><|notimestamps|>"
-        ),
-        None => format!("<|startoftranscript|>{lang_token}<|transcribe|><|notimestamps|>"),
-    }
 }
 
 impl Model {
