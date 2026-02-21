@@ -90,14 +90,14 @@ export const CONFIG_REGISTRY = {
       const provider = getConfig("current_stt_provider") as string | undefined;
       const model = getConfig("current_stt_model") as string | undefined;
 
-      if (
-        provider === "hyprnote" &&
-        model &&
-        model !== "cloud" &&
-        (model.startsWith("am-") || model.startsWith("Quantized"))
-      ) {
-        await localSttCommands.startServer(model as SupportedSttModel);
+      const isHyprnoteLocal =
+        provider === "hyprnote" && model && model !== "cloud";
+
+      if (!isHyprnoteLocal) {
+        return;
       }
+
+      await localSttCommands.startServer(model as SupportedSttModel);
     },
   },
 
@@ -108,16 +108,15 @@ export const CONFIG_REGISTRY = {
       const provider = getConfig("current_stt_provider") as string | undefined;
       const model = getConfig("current_stt_model") as string | undefined;
 
-      if (
-        provider === "hyprnote" &&
-        model &&
-        model !== "cloud" &&
-        (model.startsWith("am-") || model.startsWith("Quantized"))
-      ) {
-        await localSttCommands.startServer(model as SupportedSttModel);
-      } else {
+      const isHyprnoteLocal =
+        provider === "hyprnote" && model && model !== "cloud";
+
+      if (!isHyprnoteLocal) {
         await localSttCommands.stopServer(null);
+        return;
       }
+
+      await localSttCommands.startServer(model as SupportedSttModel);
     },
   },
 
