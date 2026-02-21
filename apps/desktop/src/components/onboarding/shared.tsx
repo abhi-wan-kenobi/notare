@@ -48,7 +48,7 @@ export function OnboardingSection({
               {title}
             </h2>
             {isCompleted && (
-              <CheckIcon className="size-3.5 text-neutral-400" aria-hidden />
+              <CheckIcon className="size-3.5 text-neutral-900" aria-hidden />
             )}
             {import.meta.env.DEV && isActive && (onBack || onNext) && (
               <div className="flex items-center gap-2">
@@ -73,7 +73,7 @@ export function OnboardingSection({
               </div>
             )}
           </div>
-          {description && (
+          {isActive && description && (
             <p className="text-sm text-neutral-500">{description}</p>
           )}
         </div>
