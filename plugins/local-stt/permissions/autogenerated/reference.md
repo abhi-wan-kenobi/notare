@@ -12,9 +12,11 @@ Default permissions for the plugin
 - `allow-delete-model`
 - `allow-start-server`
 - `allow-stop-server`
+- `allow-get-server-for-model`
 - `allow-get-servers`
 - `allow-list-supported-models`
 - `allow-list-supported-languages`
+- `allow-cactus-models-dir`
 
 ## Permission Table
 

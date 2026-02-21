@@ -10,15 +10,27 @@
     strum::EnumString,
     strum::Display,
 )]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
 pub enum CactusSttModel {
+    #[serde(rename = "cactus-whisper-small-int4")]
+    #[strum(serialize = "cactus-whisper-small-int4")]
     WhisperSmallInt4,
+    #[serde(rename = "cactus-whisper-small-int8")]
+    #[strum(serialize = "cactus-whisper-small-int8")]
     WhisperSmallInt8,
+    #[serde(rename = "cactus-whisper-small-int8-apple")]
+    #[strum(serialize = "cactus-whisper-small-int8-apple")]
     WhisperSmallInt8Apple,
+    #[serde(rename = "cactus-whisper-medium-int4")]
+    #[strum(serialize = "cactus-whisper-medium-int4")]
     WhisperMediumInt4,
+    #[serde(rename = "cactus-whisper-medium-int4-apple")]
+    #[strum(serialize = "cactus-whisper-medium-int4-apple")]
     WhisperMediumInt4Apple,
+    #[serde(rename = "cactus-whisper-medium-int8")]
+    #[strum(serialize = "cactus-whisper-medium-int8")]
     WhisperMediumInt8,
+    #[serde(rename = "cactus-whisper-medium-int8-apple")]
+    #[strum(serialize = "cactus-whisper-medium-int8-apple")]
     WhisperMediumInt8Apple,
 }
 
@@ -128,17 +140,33 @@ impl CactusSttModel {
     strum::EnumString,
     strum::Display,
 )]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
 pub enum CactusLlmModel {
+    #[serde(rename = "cactus-gemma3-270m")]
+    #[strum(serialize = "cactus-gemma3-270m")]
     Gemma3_270m,
+    #[serde(rename = "cactus-lfm2-350m")]
+    #[strum(serialize = "cactus-lfm2-350m")]
     Lfm2_350m,
+    #[serde(rename = "cactus-qwen3-0.6b")]
+    #[strum(serialize = "cactus-qwen3-0.6b")]
     Qwen3_0_6b,
+    #[serde(rename = "cactus-lfm2-700m")]
+    #[strum(serialize = "cactus-lfm2-700m")]
     Lfm2_700m,
+    #[serde(rename = "cactus-gemma3-1b")]
+    #[strum(serialize = "cactus-gemma3-1b")]
     Gemma3_1b,
+    #[serde(rename = "cactus-lfm2.5-1.2b-instruct")]
+    #[strum(serialize = "cactus-lfm2.5-1.2b-instruct")]
     Lfm2_5_1_2bInstruct,
+    #[serde(rename = "cactus-qwen3-1.7b")]
+    #[strum(serialize = "cactus-qwen3-1.7b")]
     Qwen3_1_7b,
+    #[serde(rename = "cactus-lfm2-vl-450m-apple")]
+    #[strum(serialize = "cactus-lfm2-vl-450m-apple")]
     Lfm2Vl450mApple,
+    #[serde(rename = "cactus-lfm2.5-vl-1.6b-apple")]
+    #[strum(serialize = "cactus-lfm2.5-vl-1.6b-apple")]
     Lfm2_5Vl1_6bApple,
 }
 

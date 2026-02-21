@@ -115,7 +115,7 @@ downloadProgressPayload: "plugin:local-stt:download-progress-payload"
 /** user-defined types **/
 
 export type AmModel = "am-parakeet-v2" | "am-parakeet-v3" | "am-whisper-large-v3"
-export type CactusSttModel = "whisper-small-int-4" | "whisper-small-int-8" | "whisper-small-int-8-apple" | "whisper-medium-int-4" | "whisper-medium-int-4-apple" | "whisper-medium-int-8" | "whisper-medium-int-8-apple"
+export type CactusSttModel = "cactus-whisper-small-int4" | "cactus-whisper-small-int8" | "cactus-whisper-small-int8-apple" | "cactus-whisper-medium-int4" | "cactus-whisper-medium-int4-apple" | "cactus-whisper-medium-int8" | "cactus-whisper-medium-int8-apple"
 export type DownloadProgressPayload = { model: SupportedSttModel; progress: number }
 export type ServerInfo = { url: string | null; status: ServerStatus; model: SupportedSttModel | null }
 export type ServerStatus = "unreachable" | "loading" | "ready"

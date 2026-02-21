@@ -44,7 +44,7 @@ pub enum SupportedSttModel {
 impl std::fmt::Display for SupportedSttModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SupportedSttModel::Cactus(model) => write!(f, "cactus-{}", model.dir_name()),
+            SupportedSttModel::Cactus(model) => write!(f, "{}", model),
             SupportedSttModel::Whisper(model) => write!(f, "whisper-{}", model),
             SupportedSttModel::Am(model) => write!(f, "am-{}", model),
         }
