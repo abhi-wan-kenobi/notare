@@ -5,6 +5,7 @@ pub struct Theme {
     pub transcript_final: Style,
     pub transcript_partial: Style,
     pub transcript_cursor: Style,
+    pub transcript_pending_correction: Style,
     pub debug_border: Style,
     pub section_header: Style,
     pub dim: Style,
@@ -29,6 +30,7 @@ pub const THEME: Theme = Theme {
         .fg(Color::DarkGray)
         .add_modifier(Modifier::ITALIC),
     transcript_cursor: Style::new().fg(Color::DarkGray),
+    transcript_pending_correction: Style::new().fg(Color::Red),
     debug_border: Style::new().fg(Color::DarkGray),
     section_header: Style::new()
         .fg(Color::DarkGray)

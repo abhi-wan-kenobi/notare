@@ -1,6 +1,6 @@
 use crossterm::event::{KeyCode, MouseButton, MouseEvent, MouseEventKind};
 use owhisper_interface::stream::StreamResponse;
-use ratatui::layout::Rect;
+use ratatui::style::Style;
 use transcript::FlushMode;
 use transcript::SequentialIdGen;
 use transcript::input::TranscriptInput;
@@ -8,8 +8,32 @@ use transcript::postprocess::PostProcessUpdate;
 use transcript::types::{PartialWord, SpeakerHint, TranscriptWord};
 use transcript::view::{ProcessOutcome, TranscriptView};
 
+use crate::feed::TranscriptFeed;
+use crate::renderer::debug::DebugSection;
 use crate::renderer::{LayoutInfo, WordRegion};
-use crate::source::{CactusMetrics, Source};
+use crate::viewport::ViewportState;
+
+fn lookup_word(region: &WordRegion, view: &TranscriptView) -> Option<SelectedWord> {
+    let frame = view.frame();
+    let dbg = view.pipeline_debug();
+    if region.is_final {
+        let word = frame.final_words.get(region.index)?.clone();
+        let speaker = frame
+            .speaker_hints
+            .iter()
+            .find(|h| h.word_id == word.id)
+            .cloned();
+        Some(SelectedWord::Final { word, speaker })
+    } else {
+        let word = frame.partial_words.get(region.index)?.clone();
+        let stability = dbg
+            .partial_stability
+            .iter()
+            .find(|(text, _)| *text == word.text)
+            .map(|(_, count)| *count);
+        Some(SelectedWord::Partial { word, stability })
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum LastEvent {
@@ -36,7 +60,8 @@ pub enum SelectedWord {
 }
 
 pub struct App {
-    source: Source,
+    source: Box<dyn TranscriptFeed>,
+    source_debug: Vec<DebugSection>,
     pub position: usize,
     pub paused: bool,
     pub speed_ms: u64,
@@ -45,37 +70,42 @@ pub struct App {
     pub last_event: LastEvent,
     pub flush_mode: FlushMode,
     pub last_postprocess: Option<PostProcessUpdate>,
-    pub cactus_metrics: Option<CactusMetrics>,
-    pub transcript_scroll: u16,
-    pub auto_scroll: bool,
-    pub transcript_lines: u16,
-    pub transcript_area_height: u16,
+    pub viewport: ViewportState,
     pub selected_word: Option<SelectedWord>,
-    pub word_regions: Vec<WordRegion>,
-    pub transcript_area: Rect,
 }
 
 impl App {
-    pub fn new(source: Source, speed_ms: u64, source_name: String) -> Self {
+    pub fn new(
+        source: Box<dyn TranscriptFeed>,
+        source_debug: Vec<DebugSection>,
+        speed_ms: u64,
+        source_name: String,
+    ) -> Self {
+        let paused = !source.is_live();
         Self {
             source,
+            source_debug,
             position: 0,
-            paused: false,
+            paused,
             speed_ms,
             view: TranscriptView::with_config(SequentialIdGen::new()),
             source_name,
             last_event: LastEvent::Skipped,
             flush_mode: FlushMode::DrainAll,
             last_postprocess: None,
-            cactus_metrics: None,
-            transcript_scroll: 0,
-            auto_scroll: true,
-            transcript_lines: 0,
-            transcript_area_height: 0,
+            viewport: ViewportState::new(),
             selected_word: None,
-            word_regions: Vec::new(),
-            transcript_area: Rect::default(),
         }
+    }
+
+    pub fn source_debug_sections(&self) -> Vec<DebugSection> {
+        let mut sections = self.source_debug.clone();
+        sections.extend(self.source.debug_sections());
+        sections
+    }
+
+    pub fn source_word_style(&self, channel: i32, start_ms: i64, end_ms: i64) -> Option<Style> {
+        self.source.word_style(channel, start_ms, end_ms)
     }
 
     pub fn total(&self) -> usize {
@@ -115,151 +145,88 @@ impl App {
 
     pub fn handle_key(&mut self, code: KeyCode) -> KeyAction {
         match code {
-            KeyCode::Char('q') => KeyAction::Quit,
-            KeyCode::Esc => {
-                if self.selected_word.is_some() {
-                    self.selected_word = None;
-                    return KeyAction::Continue { reset_tick: false };
-                }
-                KeyAction::Quit
+            KeyCode::Char('q') => return KeyAction::Quit,
+            KeyCode::Esc if self.selected_word.is_some() => {
+                self.selected_word = None;
             }
+            KeyCode::Esc => return KeyAction::Quit,
             KeyCode::Char(' ') => {
                 self.paused = !self.paused;
                 if !self.paused {
-                    self.auto_scroll = true;
+                    self.viewport.auto_scroll = true;
                 }
-                KeyAction::Continue { reset_tick: true }
+                return KeyAction::Continue { reset_tick: true };
             }
             KeyCode::Right if !self.source.is_live() => {
                 self.seek_to(self.position + 1);
-                KeyAction::Continue { reset_tick: false }
             }
             KeyCode::Left if !self.source.is_live() => {
                 self.seek_to(self.position.saturating_sub(1));
-                KeyAction::Continue { reset_tick: false }
             }
             KeyCode::Up => {
                 self.speed_ms = self.speed_ms.saturating_sub(10).max(5);
-                KeyAction::Continue { reset_tick: false }
             }
             KeyCode::Down => {
                 self.speed_ms += 10;
-                KeyAction::Continue { reset_tick: false }
             }
             KeyCode::Home if !self.source.is_live() => {
                 self.seek_to(0);
-                KeyAction::Continue { reset_tick: false }
             }
             KeyCode::End if !self.source.is_live() => {
                 let total = self.total();
                 self.seek_to(total);
                 let mode = self.flush_mode;
                 self.view.flush(mode);
-                self.auto_scroll = true;
-                KeyAction::Continue { reset_tick: false }
+                self.viewport.auto_scroll = true;
             }
             KeyCode::PageUp => {
-                let current = self.current_scroll_offset();
-                self.auto_scroll = false;
-                self.transcript_scroll = current.saturating_sub(5);
-                KeyAction::Continue { reset_tick: false }
+                self.viewport.scroll_up(5);
             }
             KeyCode::PageDown => {
-                let max = self
-                    .transcript_lines
-                    .saturating_sub(self.transcript_area_height);
-                let current = self.current_scroll_offset();
-                let next = (current + 5).min(max);
-                if next >= max {
-                    self.auto_scroll = true;
-                }
-                self.transcript_scroll = next;
-                KeyAction::Continue { reset_tick: false }
+                self.viewport.scroll_down(5);
             }
             KeyCode::Char('f') => {
                 self.toggle_flush_mode();
-                KeyAction::Continue { reset_tick: false }
             }
             KeyCode::Char('p') => {
                 self.simulate_postprocess();
-                KeyAction::Continue { reset_tick: false }
             }
-            _ => KeyAction::Continue { reset_tick: false },
+            _ => {}
         }
+        KeyAction::Continue { reset_tick: false }
     }
 
     pub fn update_layout(&mut self, layout: LayoutInfo) {
-        self.transcript_lines = layout.transcript_lines;
-        self.transcript_area_height = layout.transcript_area_height;
-        self.word_regions = layout.word_regions;
-        self.transcript_area = layout.transcript_area;
+        self.viewport.update(layout);
     }
 
     pub fn handle_mouse(&mut self, event: MouseEvent) {
         if event.kind != MouseEventKind::Down(MouseButton::Left) {
             return;
         }
+
+        let area = self.viewport.area;
         let col = event.column;
         let row = event.row;
-
-        let area = self.transcript_area;
         if col < area.x || col >= area.x + area.width || row < area.y || row >= area.y + area.height
         {
             return;
         }
 
-        let scroll_offset = self.current_scroll_offset();
-
+        let scroll_offset = self.viewport.current_scroll_offset();
         let logical_col = col - area.x;
         let logical_row = (row - area.y) + scroll_offset;
 
-        let hit = self.word_regions.iter().find(|r| {
+        let hit = self.viewport.word_regions.iter().find(|r| {
             r.row == logical_row && logical_col >= r.col_start && logical_col < r.col_end
         });
 
-        let Some(region) = hit else {
-            return;
-        };
-
-        let frame = self.view.frame();
-        let dbg = self.view.pipeline_debug();
-
-        if region.is_final {
-            let Some(word) = frame.final_words.get(region.index).cloned() else {
-                return;
-            };
-            let speaker = frame
-                .speaker_hints
-                .iter()
-                .find(|h| h.word_id == word.id)
-                .cloned();
-            self.selected_word = Some(SelectedWord::Final { word, speaker });
-        } else {
-            let Some(word) = frame.partial_words.get(region.index).cloned() else {
-                return;
-            };
-            let stability = dbg
-                .partial_stability
-                .iter()
-                .find(|(text, _)| *text == word.text)
-                .map(|(_, count)| *count);
-            self.selected_word = Some(SelectedWord::Partial { word, stability });
-        }
-    }
-
-    fn current_scroll_offset(&self) -> u16 {
-        if self.auto_scroll {
-            self.transcript_lines
-                .saturating_sub(self.transcript_area_height)
-        } else {
-            self.transcript_scroll
+        if let Some(region) = hit {
+            self.selected_word = lookup_word(region, &self.view);
         }
     }
 
     fn process_one(&mut self, sr: &StreamResponse) {
-        if let Some(m) = CactusMetrics::from_stream_response(sr) {
-            self.cactus_metrics = Some(m);
-        }
         match TranscriptInput::from_stream_response(sr) {
             Some(input) => {
                 self.last_event = match &input {
@@ -281,10 +248,9 @@ impl App {
         let target = target.min(self.total());
         self.view = TranscriptView::with_config(SequentialIdGen::new());
         self.last_postprocess = None;
-        self.cactus_metrics = None;
         self.selected_word = None;
+        self.viewport.reset();
         self.position = 0;
-        self.auto_scroll = true;
         for i in 0..target {
             if let Some(sr) = self.source.get(i).cloned() {
                 self.process_one(&sr);
@@ -305,27 +271,22 @@ impl App {
         if finals.is_empty() {
             return;
         }
-        let transformed: Vec<TranscriptWord> = finals
+        let title_case = |s: &str| -> String {
+            let trimmed = s.trim_start_matches(' ');
+            let leading = &s[..s.len() - trimmed.len()];
+            let mut chars = trimmed.chars();
+            match chars.next() {
+                None => s.to_string(),
+                Some(first) => format!("{leading}{}{}", first.to_uppercase(), chars.as_str()),
+            }
+        };
+        let transformed = finals
             .into_iter()
             .map(|w| TranscriptWord {
-                text: title_case_word(&w.text),
+                text: title_case(&w.text),
                 ..w
             })
             .collect();
-        let update = self.view.apply_postprocess(transformed);
-        self.last_postprocess = Some(update);
-    }
-}
-
-fn title_case_word(s: &str) -> String {
-    let trimmed = s.trim_start_matches(' ');
-    let leading_spaces = &s[..s.len() - trimmed.len()];
-    let mut chars = trimmed.chars();
-    match chars.next() {
-        None => s.to_string(),
-        Some(first) => {
-            let upper: String = first.to_uppercase().collect();
-            format!("{leading_spaces}{upper}{}", chars.as_str())
-        }
+        self.last_postprocess = Some(self.view.apply_postprocess(transformed));
     }
 }

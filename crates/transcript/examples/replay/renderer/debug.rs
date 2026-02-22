@@ -11,12 +11,43 @@ use transcript::FlushMode;
 use transcript::types::TranscriptFrame;
 
 use crate::app::{App, SelectedWord};
-use crate::source::CactusMetrics;
 use crate::theme::THEME;
 
-use super::utils::{dim_line, kv, section_header, truncate};
+const LABEL_WIDTH: usize = 9;
 
-pub(super) fn render_debug(frame: &mut Frame, app: &App, area: Rect) {
+fn kv(label: &str, value: impl Into<String>, style: Style) -> Line<'static> {
+    Line::from(vec![
+        Span::styled(format!("{:<LABEL_WIDTH$}", label), THEME.dim),
+        Span::styled(value.into(), style),
+    ])
+}
+
+fn section_header(title: &str) -> Line<'static> {
+    Line::from(Span::styled(title.to_string(), THEME.section_header))
+}
+
+fn dim_line(text: &str) -> Line<'static> {
+    Line::from(Span::styled(text.to_string(), THEME.dim))
+}
+
+fn truncate(s: &str, max_chars: usize) -> &str {
+    if s.chars().count() <= max_chars {
+        return s;
+    }
+    let mut end = 0;
+    for (i, _) in s.char_indices().take(max_chars) {
+        end = i;
+    }
+    &s[..end]
+}
+
+#[derive(Clone)]
+pub struct DebugSection {
+    pub title: &'static str,
+    pub entries: Vec<(&'static str, String)>,
+}
+
+pub(super) fn render_debug(frame: &mut Frame, app: &App, area: Rect, frame_data: &TranscriptFrame) {
     if let Some(selected) = &app.selected_word {
         let block = Block::default()
             .borders(Borders::LEFT)
@@ -28,8 +59,6 @@ pub(super) fn render_debug(frame: &mut Frame, app: &App, area: Rect) {
         return;
     }
 
-    let frame_data = app.view.frame();
-
     let block = Block::default()
         .borders(Borders::LEFT)
         .border_style(THEME.debug_border)
@@ -38,29 +67,30 @@ pub(super) fn render_debug(frame: &mut Frame, app: &App, area: Rect) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let metrics_height = if app.cactus_metrics.is_some() { 6 } else { 0 };
+    let source_lines = render_debug_sections(app.source_debug_sections(), inner.width);
+    let source_height = source_lines.len() as u16;
 
     let [
         event_area,
         pipeline_area,
         counts_area,
         postprocess_area,
-        metrics_area,
+        source_area,
     ] = Layout::vertical([
         Constraint::Length(3),
         Constraint::Fill(1),
         Constraint::Length(5),
         Constraint::Length(5),
-        Constraint::Length(metrics_height),
+        Constraint::Length(source_height),
     ])
     .areas(inner);
 
     render_event_section(frame, app, event_area);
-    render_pipeline_section(frame, app, pipeline_area, &frame_data);
-    render_counts_section(frame, app, counts_area, &frame_data);
+    render_pipeline_section(frame, app, pipeline_area, frame_data);
+    render_counts_section(frame, app, counts_area, frame_data);
     render_postprocess_section(frame, app, postprocess_area);
-    if let Some(metrics) = &app.cactus_metrics {
-        render_metrics_section(frame, metrics, metrics_area);
+    if source_height > 0 {
+        frame.render_widget(Paragraph::new(source_lines), source_area);
     }
 }
 
@@ -71,12 +101,12 @@ fn render_word_detail(frame: &mut Frame, selected: &SelectedWord, area: Rect, wi
                 truncate(word.id.as_str(), (width.saturating_sub(2)) as usize).to_string();
             let extra = if let Some(hint) = speaker {
                 kv(
-                    "speaker  ",
+                    "speaker",
                     hint.speaker_index.to_string(),
                     THEME.highlight_cyan,
                 )
             } else {
-                kv("speaker  ", "—", THEME.dim)
+                kv("speaker", "—", THEME.dim)
             };
             let mut lines = word_timing_lines(
                 "final word",
@@ -86,14 +116,14 @@ fn render_word_detail(frame: &mut Frame, selected: &SelectedWord, area: Rect, wi
                 word.end_ms,
                 word.channel,
             );
-            lines.insert(2, kv("id       ", id_display, THEME.dim));
+            lines.insert(2, kv("id", id_display, THEME.dim));
             lines.push(extra);
             lines
         }
         SelectedWord::Partial { word, stability } => {
             let extra = if let Some(count) = stability {
                 kv(
-                    "seen     ",
+                    "seen",
                     format!("×{count}"),
                     if *count >= 3 {
                         THEME.highlight_yellow
@@ -102,7 +132,7 @@ fn render_word_detail(frame: &mut Frame, selected: &SelectedWord, area: Rect, wi
                     },
                 )
             } else {
-                kv("seen     ", "—", THEME.dim)
+                kv("seen", "—", THEME.dim)
             };
             let mut lines = word_timing_lines(
                 "partial word",
@@ -129,15 +159,15 @@ fn word_timing_lines(
 ) -> Vec<Line<'static>> {
     vec![
         section_header(title),
-        kv("text     ", text, text_style),
-        kv("start    ", format!("{}ms", start_ms), THEME.highlight_cyan),
-        kv("end      ", format!("{}ms", end_ms), THEME.highlight_cyan),
+        kv("text", text, text_style),
+        kv("start", format!("{}ms", start_ms), THEME.highlight_cyan),
+        kv("end", format!("{}ms", end_ms), THEME.highlight_cyan),
         kv(
-            "duration ",
+            "duration",
             format!("{}ms", end_ms - start_ms),
             THEME.watermark_active,
         ),
-        kv("channel  ", channel.to_string(), Style::default()),
+        kv("channel", channel.to_string(), Style::default()),
     ]
 }
 
@@ -162,36 +192,43 @@ fn render_event_section(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(Paragraph::new(lines), area);
 }
 
+fn list_or_placeholder(
+    lines: &mut Vec<Line<'static>>,
+    items: Vec<Line<'static>>,
+    placeholder: &str,
+) {
+    if items.is_empty() {
+        lines.push(dim_line(placeholder));
+    } else {
+        lines.extend(items);
+    }
+}
+
 fn render_pipeline_section(frame: &mut Frame, app: &App, area: Rect, frame_data: &TranscriptFrame) {
     let dbg = app.view.pipeline_debug();
     let mut lines = vec![section_header("pipeline")];
 
-    let timing_map: HashMap<&str, (i64, i64)> = frame_data
-        .partial_words
+    let held: Vec<Line> = dbg
+        .held_words
         .iter()
-        .map(|w| (w.text.as_str(), (w.start_ms, w.end_ms)))
-        .collect();
-
-    if dbg.held_words.is_empty() {
-        lines.push(dim_line("held  —"));
-    } else {
-        for (ch, text) in &dbg.held_words {
-            lines.push(Line::from(vec![
+        .map(|(ch, text)| {
+            Line::from(vec![
                 Span::styled("held  ", THEME.dim),
                 Span::styled(format!("[ch{}] ", ch), THEME.dim),
                 Span::styled(
-                    truncate(text.trim(), (area.width.saturating_sub(8)) as usize).to_string(),
+                    truncate(text.trim(), area.width.saturating_sub(8) as usize).to_string(),
                     THEME.highlight_cyan,
                 ),
-            ]));
-        }
-    }
+            ])
+        })
+        .collect();
+    list_or_placeholder(&mut lines, held, "held  —");
 
-    if dbg.watermarks.is_empty() {
-        lines.push(dim_line("wmark —"));
-    } else {
-        for (ch, wm) in &dbg.watermarks {
-            lines.push(Line::from(vec![
+    let watermarks: Vec<Line> = dbg
+        .watermarks
+        .iter()
+        .map(|(ch, wm)| {
+            Line::from(vec![
                 Span::styled("wmark ", THEME.dim),
                 Span::styled(format!("[ch{}] ", ch), THEME.dim),
                 Span::styled(
@@ -202,25 +239,31 @@ fn render_pipeline_section(frame: &mut Frame, app: &App, area: Rect, frame_data:
                         THEME.dim
                     },
                 ),
-            ]));
-        }
-    }
+            ])
+        })
+        .collect();
+    list_or_placeholder(&mut lines, watermarks, "wmark —");
 
     lines.push(Line::raw(""));
 
-    if dbg.partial_stability.is_empty() {
-        lines.push(dim_line("no partials"));
-    } else {
-        let text_width = area.width.saturating_sub(14) as usize;
-        for (text, seen) in &dbg.partial_stability {
+    let timing_map: HashMap<&str, (i64, i64)> = frame_data
+        .partial_words
+        .iter()
+        .map(|w| (w.text.as_str(), (w.start_ms, w.end_ms)))
+        .collect();
+    let text_width = area.width.saturating_sub(14) as usize;
+    let partials: Vec<Line> = dbg
+        .partial_stability
+        .iter()
+        .map(|(text, seen)| {
             let word_display = truncate(text.trim(), text_width).to_string();
             let timing_suffix = timing_map
                 .get(text.as_str())
                 .map(|(s, e)| format!(" {s}–{e}ms"))
                 .unwrap_or_default();
-            lines.push(Line::from(vec![
+            Line::from(vec![
                 Span::styled(
-                    format!("{:<width$}", word_display, width = text_width),
+                    format!("{:<text_width$}", word_display),
                     THEME.transcript_partial,
                 ),
                 Span::styled(
@@ -232,9 +275,10 @@ fn render_pipeline_section(frame: &mut Frame, app: &App, area: Rect, frame_data:
                     },
                 ),
                 Span::styled(timing_suffix, THEME.dim),
-            ]));
-        }
-    }
+            ])
+        })
+        .collect();
+    list_or_placeholder(&mut lines, partials, "no partials");
 
     frame.render_widget(Paragraph::new(lines), area);
 }
@@ -248,40 +292,49 @@ fn render_counts_section(frame: &mut Frame, app: &App, area: Rect, frame_data: &
     let lines = vec![
         section_header("counts"),
         kv(
-            "finals   ",
+            "finals",
             frame_data.final_words.len().to_string(),
             Style::default(),
         ),
         kv(
-            "partials ",
+            "partials",
             frame_data.partial_words.len().to_string(),
             Style::default(),
         ),
         kv(
-            "speakers ",
+            "speakers",
             frame_data.speaker_hints.len().to_string(),
             Style::default(),
         ),
-        kv("flush    ", flush_label, THEME.watermark_active),
+        kv("flush", flush_label, THEME.watermark_active),
     ];
 
     frame.render_widget(Paragraph::new(lines), area);
 }
 
+fn render_debug_sections(sections: Vec<DebugSection>, width: u16) -> Vec<Line<'static>> {
+    let mut lines = Vec::new();
+    for section in sections {
+        lines.push(section_header(section.title));
+        for (label, value) in section.entries {
+            let value = truncate(&value, width.saturating_sub(10) as usize).to_string();
+            lines.push(kv(label, value, THEME.metric_value));
+        }
+    }
+    lines
+}
+
 fn render_postprocess_section(frame: &mut Frame, app: &App, area: Rect) {
     let dbg = app.view.pipeline_debug();
 
+    let batch_style = if dbg.postprocess_applied > 0 {
+        THEME.highlight_yellow
+    } else {
+        THEME.dim
+    };
     let mut lines = vec![
         section_header("postprocess"),
-        kv(
-            "batches  ",
-            dbg.postprocess_applied.to_string(),
-            if dbg.postprocess_applied > 0 {
-                THEME.highlight_yellow
-            } else {
-                THEME.dim
-            },
-        ),
+        kv("batches", dbg.postprocess_applied.to_string(), batch_style),
     ];
 
     match &app.last_postprocess {
@@ -305,32 +358,5 @@ fn render_postprocess_section(frame: &mut Frame, app: &App, area: Rect) {
         }
     }
 
-    frame.render_widget(Paragraph::new(lines), area);
-}
-
-fn render_metrics_section(frame: &mut Frame, m: &CactusMetrics, area: Rect) {
-    let lines = vec![
-        section_header("cactus"),
-        kv(
-            "decode   ",
-            format!("{:.0} tok/s", m.decode_tps),
-            THEME.metric_value,
-        ),
-        kv(
-            "prefill  ",
-            format!("{:.0} tok/s", m.prefill_tps),
-            THEME.metric_value,
-        ),
-        kv(
-            "ttft     ",
-            format!("{:.0}ms", m.time_to_first_token_ms),
-            Style::default(),
-        ),
-        kv(
-            "total    ",
-            format!("{:.0}ms", m.total_time_ms),
-            Style::default(),
-        ),
-    ];
     frame.render_widget(Paragraph::new(lines), area);
 }

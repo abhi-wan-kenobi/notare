@@ -1,6 +1,5 @@
-mod debug;
+pub mod debug;
 mod transcript;
-mod utils;
 
 use ::transcript::FlushMode;
 use ratatui::{
@@ -23,6 +22,7 @@ pub struct WordRegion {
     pub col_end: u16,
 }
 
+#[derive(Default)]
 pub struct LayoutInfo {
     pub transcript_lines: u16,
     pub transcript_area_height: u16,
@@ -43,9 +43,11 @@ pub fn render(frame: &mut Frame, app: &App) -> LayoutInfo {
         Layout::horizontal([Constraint::Fill(1), Constraint::Length(DEBUG_PANEL_WIDTH)])
             .areas(body_area);
 
+    let transcript_frame = app.view.frame();
+
     render_header(frame, app, header_area);
-    let layout = transcript::render_transcript(frame, app, transcript_area);
-    debug::render_debug(frame, app, debug_area);
+    let layout = transcript::render_transcript(frame, app, transcript_area, &transcript_frame);
+    debug::render_debug(frame, app, debug_area, &transcript_frame);
     render_timeline(frame, app, timeline_area);
     render_hints(frame, app, hint_area);
     layout
