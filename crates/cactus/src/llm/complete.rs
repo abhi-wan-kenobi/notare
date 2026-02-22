@@ -25,9 +25,6 @@ unsafe extern "C" fn token_trampoline<F: FnMut(&str) -> bool>(
         return;
     }
 
-    // SAFETY: We only create a shared reference to CallbackState. Interior
-    // mutability (Cell/UnsafeCell) handles mutation. The `in_callback` guard
-    // prevents re-entrant access to the UnsafeCell contents.
     let state = unsafe { &*(user_data as *const CallbackState<F>) };
     if state.stopped.get() || state.in_callback.get() {
         return;
@@ -36,7 +33,6 @@ unsafe extern "C" fn token_trampoline<F: FnMut(&str) -> bool>(
 
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let chunk = unsafe { CStr::from_ptr(token) }.to_string_lossy();
-        // SAFETY: The `in_callback` flag ensures exclusive access to the closure.
         let on_token = unsafe { &mut *state.on_token.get() };
         if !on_token(&chunk) {
             state.stopped.set(true);
@@ -127,9 +123,6 @@ impl Model {
             in_callback: Cell::new(false),
         };
 
-        // SAFETY: `state` is stack-allocated and lives for the duration of the
-        // FFI call. The C++ side must not retain this pointer beyond the return
-        // of `cactus_complete`.
         let (rc, buf) = self.call_complete(
             &guard,
             &messages_c,

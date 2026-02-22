@@ -12,10 +12,8 @@ pub struct Model {
 }
 
 unsafe impl Send for Model {}
-// SAFETY: All FFI methods that touch model state are serialized by `inference_lock`,
-// which is enforced at compile time via `InferenceGuard` — the model's raw handle is
-// only accessible through the guard returned by `lock_inference()`.
-// The sole exception is `stop()`, which only sets a `std::atomic<bool>` on the C++ side.
+// SAFETY: FFI calls are serialized by `inference_lock` via `InferenceGuard`.
+// `stop()` only sets a C++ `std::atomic<bool>` and needs no lock.
 unsafe impl Sync for Model {}
 
 pub(crate) struct InferenceGuard<'a> {
@@ -69,8 +67,6 @@ impl Model {
         self.is_moonshine
     }
 
-    /// Cancel an in-progress inference. Safe to call concurrently — only sets an
-    /// atomic flag on the C++ side.
     pub fn stop(&self) {
         unsafe {
             cactus_sys::cactus_stop(self.handle.as_ptr());

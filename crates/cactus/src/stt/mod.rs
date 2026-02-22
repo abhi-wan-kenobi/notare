@@ -32,11 +32,8 @@ pub struct TranscribeOptions {
     pub temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub initial_prompt: Option<String>,
-    /// Larger = less frequent Whisper inference = lower CPU, higher latency.
-    /// C++ default: 32000 (2 s at 16 kHz). Streaming only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub min_chunk_size: Option<u32>,
-    /// Fuzzy-match ratio to confirm a segment (0.0–1.0). C++ default: 0.99. Streaming only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub confirmation_threshold: Option<f64>,
 }

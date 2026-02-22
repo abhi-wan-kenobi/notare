@@ -35,15 +35,11 @@ impl StreamWorker {
         }
     }
 
-    fn should_continue(&self) -> bool {
+    fn on_token(&mut self, chunk: &str) -> bool {
         if self.cancellation_token.is_cancelled() || self.tx.is_closed() {
             self.model.stop();
             return false;
         }
-        true
-    }
-
-    fn emit_chunk_responses(&mut self, chunk: &str) -> bool {
         for response in self.parser.process_chunk(chunk) {
             if self.tx.send(response).is_err() {
                 self.model.stop();
@@ -53,39 +49,15 @@ impl StreamWorker {
         true
     }
 
-    fn handle_chunk(&mut self, chunk: &str) -> bool {
-        if !self.should_continue() {
-            return false;
-        }
-
-        self.emit_chunk_responses(chunk)
-    }
-
     fn run(&mut self, messages: &[Message], options: &CompleteOptions) {
         let model = Arc::clone(&self.model);
-        let _ = model.complete_streaming(messages, options, |chunk| self.handle_chunk(chunk));
+        let _ = model.complete_streaming(messages, options, |chunk| self.on_token(chunk));
         if let Some(response) = self.parser.flush() {
             let _ = self.tx.send(response);
         }
     }
 }
 
-fn run_stream_worker(
-    model: Arc<Model>,
-    messages: Vec<Message>,
-    options: CompleteOptions,
-    worker_cancellation_token: CancellationToken,
-    tx: UnboundedSender<Response>,
-) {
-    let mut worker = StreamWorker::new(model, worker_cancellation_token, tx);
-    worker.run(&messages, &options);
-}
-
-/// A streaming LLM completion session.
-///
-/// Implements [`Stream`] yielding [`Response`] items. Cancelling the stream
-/// (via [`CompletionStream::cancel`] or by dropping) stops the underlying
-/// inference and joins the worker thread.
 pub struct CompletionStream {
     inner: UnboundedReceiverStream<Response>,
     cancellation_token: CancellationToken,
@@ -93,13 +65,10 @@ pub struct CompletionStream {
 }
 
 impl CompletionStream {
-    /// Returns a reference to the cancellation token for external use
-    /// (e.g. attaching a `drop_guard`).
     pub fn cancellation_token(&self) -> &CancellationToken {
         &self.cancellation_token
     }
 
-    /// Signal the worker to stop generating tokens.
     pub fn cancel(&self) {
         self.cancellation_token.cancel();
     }
@@ -117,8 +86,6 @@ impl Drop for CompletionStream {
     fn drop(&mut self) {
         self.cancellation_token.cancel();
         if let Some(handle) = self.handle.take() {
-            // Detach: don't block the (possibly async) caller.
-            // Spawn a background thread to join so we still log panics.
             std::thread::spawn(move || {
                 if let Err(panic) = handle.join() {
                     tracing::error!(?panic, "cactus_completion_worker_panicked");
@@ -137,10 +104,11 @@ pub fn complete_stream(
     let cancellation_token = CancellationToken::new();
 
     let model = Arc::clone(model);
-    let worker_cancellation_token = cancellation_token.clone();
+    let worker_token = cancellation_token.clone();
 
     let handle = std::thread::spawn(move || {
-        run_stream_worker(model, messages, options, worker_cancellation_token, tx);
+        let mut worker = StreamWorker::new(model, worker_token, tx);
+        worker.run(&messages, &options);
     });
 
     let inner = UnboundedReceiverStream::new(rx);

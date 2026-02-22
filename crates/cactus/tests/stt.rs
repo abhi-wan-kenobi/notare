@@ -6,12 +6,19 @@ fn stt_model() -> Model {
     Model::new(&path).unwrap()
 }
 
+fn en_options() -> TranscribeOptions {
+    TranscribeOptions {
+        language: Some("en".parse().unwrap()),
+        ..Default::default()
+    }
+}
+
 // cargo test -p cactus --test stt test_transcribe_file -- --ignored --nocapture
 #[ignore]
 #[test]
 fn test_transcribe_file() {
     let model = stt_model();
-    let options = TranscribeOptions::default();
+    let options = en_options();
 
     let r = model
         .transcribe_file(hypr_data::english_1::AUDIO_PATH, &options)
@@ -26,7 +33,7 @@ fn test_transcribe_file() {
 #[test]
 fn test_transcribe_pcm() {
     let model = stt_model();
-    let options = TranscribeOptions::default();
+    let options = en_options();
 
     let r = model
         .transcribe_pcm(hypr_data::english_1::AUDIO, &options)
@@ -60,7 +67,7 @@ fn test_transcribe_with_language() {
 fn test_stream_transcriber() {
     let model = stt_model();
     let pcm = hypr_data::english_1::AUDIO;
-    let options = TranscribeOptions::default();
+    let options = en_options();
 
     let mut transcriber = Transcriber::new(&model, &options, CloudConfig::default()).unwrap();
 
@@ -86,7 +93,7 @@ fn test_stream_transcriber() {
 #[test]
 fn test_stream_transcriber_drop() {
     let model = stt_model();
-    let options = TranscribeOptions::default();
+    let options = en_options();
 
     {
         let mut transcriber = Transcriber::new(&model, &options, CloudConfig::default()).unwrap();
@@ -100,7 +107,7 @@ fn test_stream_transcriber_drop() {
 #[test]
 fn test_stream_transcriber_process_samples() {
     let model = stt_model();
-    let options = TranscribeOptions::default();
+    let options = en_options();
     let mut transcriber = Transcriber::new(&model, &options, CloudConfig::default()).unwrap();
 
     let samples = vec![0i16; 16000];
@@ -118,7 +125,7 @@ fn test_stream_transcriber_process_samples() {
 #[test]
 fn test_stream_transcriber_process_f32() {
     let model = stt_model();
-    let options = TranscribeOptions::default();
+    let options = en_options();
     let mut transcriber = Transcriber::new(&model, &options, CloudConfig::default()).unwrap();
 
     let samples = vec![0.0f32; 16000];

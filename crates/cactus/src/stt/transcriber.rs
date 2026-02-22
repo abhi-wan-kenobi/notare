@@ -9,10 +9,6 @@ use crate::model::Model;
 
 use super::TranscribeOptions;
 
-/// Deserialise a JSON number that may arrive as either an integer or a float
-/// (the C++ side stores token counts as `double` and serialises via
-/// `operator<<`, which *usually* omits the decimal point for whole values but
-/// is not guaranteed to).
 fn deserialize_number_as_u64<'de, D>(deserializer: D) -> std::result::Result<u64, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -27,14 +23,6 @@ where
     }
 }
 
-/// Cloud handoff configuration for streaming STT.
-///
-/// `api_key` enables real cloud transcription requests (sent via
-/// `CACTUS_CLOUD_API_KEY`) when local confidence is low.
-///
-/// `threshold` is the per-token entropy norm above which cloud handoff is
-/// triggered. C++ model defaults: Whisper = 0.4, Moonshine = 0.35.
-/// `None` leaves the model default intact; `Some(0.0)` disables handoff.
 #[derive(Debug, Clone, Default)]
 pub struct CloudConfig {
     pub api_key: Option<String>,
@@ -42,14 +30,9 @@ pub struct CloudConfig {
 }
 
 impl CloudConfig {
-    /// Set `CACTUS_CLOUD_API_KEY` in the process environment. Must be called
-    /// while holding the model's `inference_lock` so the env write and the FFI
-    /// read are atomic with respect to this model's call sequence.
     pub(super) fn prepare_env(&self) {
         if let Some(key) = &self.api_key {
-            // SAFETY: called under inference_lock; the C++ engine reads the env
-            // var synchronously inside the same locked FFI call, so no other
-            // thread can observe a partially-written value through this model.
+            // SAFETY: called under inference_lock, matching the C++ read.
             unsafe { std::env::set_var("CACTUS_CLOUD_API_KEY", key) };
         }
     }
@@ -69,9 +52,7 @@ pub struct Transcriber<'a> {
     cloud: CloudConfig,
 }
 
-// SAFETY: The C stream handle has no thread-affinity requirements.
-// All model-state access during process/stop is serialized through
-// the parent Model's inference_lock.
+// SAFETY: FFI calls are serialized through Model's inference_lock.
 unsafe impl Send for Transcriber<'_> {}
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
@@ -84,16 +65,12 @@ pub struct StreamResult {
     pub language: Option<String>,
     #[serde(default)]
     pub cloud_handoff: bool,
-    /// Non-zero when a cloud job was dispatched this chunk.
     #[serde(default)]
     pub cloud_job_id: u64,
-    /// Non-zero when a previously dispatched cloud job completed this chunk.
     #[serde(default)]
     pub cloud_result_job_id: u64,
-    /// Cloud transcript for the completed job (empty when `cloud_result_job_id` is 0).
     #[serde(default)]
     pub cloud_result: String,
-    /// PCM duration of the confirmed segment in milliseconds.
     #[serde(default)]
     pub buffer_duration_ms: f64,
     #[serde(default)]
@@ -239,6 +216,6 @@ impl Drop for Transcriber<'_> {
     }
 }
 
-pub fn parse_stream_result(buf: &[u8]) -> StreamResult {
+fn parse_stream_result(buf: &[u8]) -> StreamResult {
     read_cstr_from_buf(buf).parse().unwrap()
 }

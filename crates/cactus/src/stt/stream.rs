@@ -18,11 +18,6 @@ pub struct TranscribeEvent {
     pub chunk_duration_secs: f64,
 }
 
-/// A live transcription session.
-///
-/// Feed audio via [`TranscriptionSession::audio_tx`] and consume
-/// [`TranscribeEvent`]s by polling the session as a [`Stream`].
-/// Dropping the session cancels the worker and joins its thread.
 pub struct TranscriptionSession {
     audio_tx: tokio::sync::mpsc::Sender<Vec<f32>>,
     inner: ReceiverStream<Result<TranscribeEvent>>,
@@ -31,17 +26,14 @@ pub struct TranscriptionSession {
 }
 
 impl TranscriptionSession {
-    /// Channel for sending audio samples to the transcription worker.
     pub fn audio_tx(&self) -> &tokio::sync::mpsc::Sender<Vec<f32>> {
         &self.audio_tx
     }
 
-    /// Returns a reference to the cancellation token.
     pub fn cancellation_token(&self) -> &CancellationToken {
         &self.cancellation_token
     }
 
-    /// Signal the worker to stop transcribing.
     pub fn cancel(&self) {
         self.cancellation_token.cancel();
     }
@@ -59,8 +51,6 @@ impl Drop for TranscriptionSession {
     fn drop(&mut self) {
         self.cancellation_token.cancel();
         if let Some(handle) = self.handle.take() {
-            // Detach: don't block the (possibly async) caller.
-            // Spawn a background thread to join so we still log panics.
             std::thread::spawn(move || {
                 if let Err(panic) = handle.join() {
                     tracing::error!(?panic, "cactus_transcribe_worker_panicked");
