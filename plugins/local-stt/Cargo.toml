@@ -18,8 +18,6 @@ openblas = ["whisper-cpp", "hypr-transcribe-whisper-local/openblas"]
 metal = ["whisper-cpp", "hypr-transcribe-whisper-local/metal"]
 vulkan = ["whisper-cpp", "hypr-transcribe-whisper-local/vulkan"]
 openmp = ["whisper-cpp", "hypr-transcribe-whisper-local/openmp"]
-load-dynamic = ["whisper-cpp", "hypr-transcribe-whisper-local/load-dynamic"]
-
 [build-dependencies]
 tauri-plugin = { workspace = true, features = ["build"] }
 

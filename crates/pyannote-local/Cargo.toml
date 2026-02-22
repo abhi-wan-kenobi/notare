@@ -7,8 +7,6 @@ edition = "2024"
 default = []
 coreml = ["hypr-onnx/coreml"]
 directml = ["hypr-onnx/directml"]
-load-dynamic = ["hypr-onnx/load-dynamic"]
-
 [dependencies]
 hypr-onnx = { workspace = true }
 
