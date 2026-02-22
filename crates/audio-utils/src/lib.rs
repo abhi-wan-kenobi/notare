@@ -141,6 +141,8 @@ pub fn mix_audio_pcm16le(mic: &[u8], speaker: &[u8]) -> Vec<u8> {
     mixed
 }
 
+pub use hypr_audio_mime::content_type_to_extension;
+
 pub fn source_from_path(
     path: impl AsRef<std::path::Path>,
 ) -> Result<rodio::Decoder<std::io::BufReader<std::fs::File>>, crate::Error> {
