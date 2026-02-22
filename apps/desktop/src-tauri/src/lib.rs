@@ -119,7 +119,6 @@ pub async fn main() {
         .plugin(tauri_plugin_windows::init())
         .plugin(tauri_plugin_js::init())
         .plugin(tauri_plugin_flag::init())
-        .plugin(tauri_plugin_relay::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_listener::init())
         .plugin(tauri_plugin_listener2::init())
@@ -147,6 +146,11 @@ pub async fn main() {
 
     if let Some(client) = sentry_client.as_ref() {
         builder = builder.plugin(tauri_plugin_sentry::init_with_no_injection(client));
+    }
+
+    #[cfg(any(debug_assertions, feature = "devtools"))]
+    {
+        builder = builder.plugin(tauri_plugin_relay::init());
     }
 
     #[cfg(all(not(debug_assertions), not(feature = "devtools")))]
