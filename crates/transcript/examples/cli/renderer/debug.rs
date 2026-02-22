@@ -7,10 +7,10 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
 };
-use transcript::FlushMode;
 use transcript::types::TranscriptFrame;
 
 use crate::app::{App, SelectedWord};
+use crate::logger::LogBuffer;
 use crate::theme::THEME;
 
 const LABEL_WIDTH: usize = 9;
@@ -70,18 +70,23 @@ pub(super) fn render_debug(frame: &mut Frame, app: &App, area: Rect, frame_data:
     let source_lines = render_debug_sections(app.source_debug_sections(), inner.width);
     let source_height = source_lines.len() as u16;
 
+    let log_lines = render_log_lines(&app.log_buffer, inner.width);
+    let log_height = log_lines.len() as u16;
+
     let [
         event_area,
         pipeline_area,
         counts_area,
         postprocess_area,
         source_area,
+        log_area,
     ] = Layout::vertical([
         Constraint::Length(3),
         Constraint::Fill(1),
         Constraint::Length(5),
         Constraint::Length(5),
         Constraint::Length(source_height),
+        Constraint::Length(log_height),
     ])
     .areas(inner);
 
@@ -91,6 +96,9 @@ pub(super) fn render_debug(frame: &mut Frame, app: &App, area: Rect, frame_data:
     render_postprocess_section(frame, app, postprocess_area);
     if source_height > 0 {
         frame.render_widget(Paragraph::new(source_lines), source_area);
+    }
+    if log_height > 0 {
+        frame.render_widget(Paragraph::new(log_lines), log_area);
     }
 }
 
@@ -283,12 +291,7 @@ fn render_pipeline_section(frame: &mut Frame, app: &App, area: Rect, frame_data:
     frame.render_widget(Paragraph::new(lines), area);
 }
 
-fn render_counts_section(frame: &mut Frame, app: &App, area: Rect, frame_data: &TranscriptFrame) {
-    let flush_label = match app.flush_mode {
-        FlushMode::DrainAll => "drain-all",
-        FlushMode::PromotableOnly => "promotable",
-    };
-
+fn render_counts_section(frame: &mut Frame, _app: &App, area: Rect, frame_data: &TranscriptFrame) {
     let lines = vec![
         section_header("counts"),
         kv(
@@ -306,7 +309,6 @@ fn render_counts_section(frame: &mut Frame, app: &App, area: Rect, frame_data: &
             frame_data.speaker_hints.len().to_string(),
             Style::default(),
         ),
-        kv("flush", flush_label, THEME.watermark_active),
     ];
 
     frame.render_widget(Paragraph::new(lines), area);
@@ -320,6 +322,27 @@ fn render_debug_sections(sections: Vec<DebugSection>, width: u16) -> Vec<Line<'s
             let value = truncate(&value, width.saturating_sub(10) as usize).to_string();
             lines.push(kv(label, value, THEME.metric_value));
         }
+    }
+    lines
+}
+
+fn render_log_lines(buffer: &LogBuffer, width: u16) -> Vec<Line<'static>> {
+    let buf = buffer.lock().unwrap();
+    if buf.is_empty() {
+        return vec![];
+    }
+    let max_chars = width.saturating_sub(1) as usize;
+    let mut lines = vec![section_header("stderr")];
+    for raw in buf
+        .iter()
+        .rev()
+        .take(4)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+    {
+        let display = truncate(raw, max_chars).to_string();
+        lines.push(Line::from(Span::styled(display, THEME.dim)));
     }
     lines
 }

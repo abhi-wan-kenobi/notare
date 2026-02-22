@@ -5,7 +5,7 @@ pub mod postprocess;
 pub mod types;
 pub mod view;
 
-pub use accumulator::{FlushMode, TranscriptAccumulator};
+pub use accumulator::TranscriptAccumulator;
 pub use id::{IdGenerator, SequentialIdGen, UuidIdGen};
 pub use input::TranscriptInput;
 pub use postprocess::{BoxFuture, PostProcessError, PostProcessUpdate, PostProcessor};

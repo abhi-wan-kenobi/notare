@@ -1,6 +1,7 @@
 mod app;
 mod feed;
 mod fixture;
+mod logger;
 mod provider;
 mod renderer;
 mod source;
@@ -137,6 +138,8 @@ fn main() {
         }
     };
 
+    let log_buffer = logger::setup();
+
     let mut terminal = ratatui::init();
     execute!(std::io::stdout(), EnableMouseCapture).ok();
     let result = run(
@@ -145,6 +148,7 @@ fn main() {
         source_debug,
         speed_ms,
         source_name.clone(),
+        log_buffer,
     );
     execute!(std::io::stdout(), DisableMouseCapture).ok();
     ratatui::restore();
@@ -171,8 +175,9 @@ fn run(
     source_debug: Vec<DebugSection>,
     speed_ms: u64,
     source_name: String,
+    log_buffer: logger::LogBuffer,
 ) -> std::io::Result<App> {
-    let mut app = App::new(source, source_debug, speed_ms, source_name);
+    let mut app = App::new(source, source_debug, speed_ms, source_name, log_buffer);
     let mut last_tick = Instant::now();
 
     loop {
@@ -212,8 +217,7 @@ fn run(
                 last_tick = Instant::now();
 
                 if app.is_done() {
-                    let mode = app.flush_mode;
-                    app.view.flush(mode);
+                    app.view.flush();
                     terminal.draw(|frame| {
                         renderer::render(frame, &app);
                     })?;

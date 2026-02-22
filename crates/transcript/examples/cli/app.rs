@@ -1,7 +1,6 @@
 use crossterm::event::{KeyCode, MouseButton, MouseEvent, MouseEventKind};
 use owhisper_interface::stream::StreamResponse;
 use ratatui::style::Style;
-use transcript::FlushMode;
 use transcript::SequentialIdGen;
 use transcript::input::TranscriptInput;
 use transcript::postprocess::PostProcessUpdate;
@@ -9,6 +8,7 @@ use transcript::types::{PartialWord, SpeakerHint, TranscriptWord};
 use transcript::view::{ProcessOutcome, TranscriptView};
 
 use crate::feed::TranscriptFeed;
+use crate::logger::LogBuffer;
 use crate::renderer::debug::DebugSection;
 use crate::renderer::{LayoutInfo, WordRegion};
 use crate::viewport::ViewportState;
@@ -68,10 +68,10 @@ pub struct App {
     pub view: TranscriptView,
     pub source_name: String,
     pub last_event: LastEvent,
-    pub flush_mode: FlushMode,
     pub last_postprocess: Option<PostProcessUpdate>,
     pub viewport: ViewportState,
     pub selected_word: Option<SelectedWord>,
+    pub log_buffer: LogBuffer,
 }
 
 impl App {
@@ -80,6 +80,7 @@ impl App {
         source_debug: Vec<DebugSection>,
         speed_ms: u64,
         source_name: String,
+        log_buffer: LogBuffer,
     ) -> Self {
         let paused = !source.is_live();
         Self {
@@ -91,10 +92,10 @@ impl App {
             view: TranscriptView::with_config(SequentialIdGen::new()),
             source_name,
             last_event: LastEvent::Skipped,
-            flush_mode: FlushMode::DrainAll,
             last_postprocess: None,
             viewport: ViewportState::new(),
             selected_word: None,
+            log_buffer,
         }
     }
 
@@ -175,8 +176,7 @@ impl App {
             KeyCode::End if !self.source.is_live() => {
                 let total = self.total();
                 self.seek_to(total);
-                let mode = self.flush_mode;
-                self.view.flush(mode);
+                self.view.flush();
                 self.viewport.auto_scroll = true;
             }
             KeyCode::PageUp => {
@@ -184,9 +184,6 @@ impl App {
             }
             KeyCode::PageDown => {
                 self.viewport.scroll_down(5);
-            }
-            KeyCode::Char('f') => {
-                self.toggle_flush_mode();
             }
             KeyCode::Char('p') => {
                 self.simulate_postprocess();
@@ -257,13 +254,6 @@ impl App {
             }
         }
         self.position = target;
-    }
-
-    fn toggle_flush_mode(&mut self) {
-        self.flush_mode = match self.flush_mode {
-            FlushMode::DrainAll => FlushMode::PromotableOnly,
-            FlushMode::PromotableOnly => FlushMode::DrainAll,
-        };
     }
 
     fn simulate_postprocess(&mut self) {

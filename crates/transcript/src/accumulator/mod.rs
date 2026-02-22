@@ -27,18 +27,6 @@ use crate::types::{PartialWord, TranscriptUpdate};
 use channel::ChannelState;
 use words::ensure_space_prefix_partial;
 
-/// Controls what `flush` does with non-final content still in the pipeline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FlushMode {
-    /// Promote the held word and **all** partials to final status.
-    /// Use at hard session end when every word matters.
-    DrainAll,
-    /// Promote only the held word (already ASR-confirmed). Remaining partials
-    /// are silently dropped. Use for graceful shutdown when noisy tails are
-    /// unwanted.
-    PromotableOnly,
-}
-
 /// Accumulates streaming ASR responses into clean, deduplicated transcript data.
 ///
 /// Each [`TranscriptAccumulator::process`] call returns a [`TranscriptUpdate`]
@@ -99,12 +87,12 @@ impl TranscriptAccumulator {
         })
     }
 
-    pub fn flush(&mut self, mode: FlushMode) -> TranscriptUpdate {
+    pub fn flush(&mut self) -> TranscriptUpdate {
         let mut new_final_words = Vec::new();
         let mut speaker_hints = Vec::new();
 
         for state in self.channels.values_mut() {
-            let (words, hints) = state.drain(mode, &mut *self.id_gen);
+            let (words, hints) = state.drain(&mut *self.id_gen);
             new_final_words.extend(words);
             speaker_hints.extend(hints);
         }
@@ -265,7 +253,7 @@ mod tests {
             }
         }
 
-        words.extend(acc.flush(FlushMode::DrainAll).new_final_words);
+        words.extend(acc.flush().new_final_words);
         words
     }
 
@@ -391,7 +379,7 @@ mod tests {
         assert_eq!(update.new_final_words[0].text, " Hello");
         assert!(update.partial_words.is_empty());
 
-        let flushed = acc.flush(FlushMode::DrainAll);
+        let flushed = acc.flush();
         assert_eq!(flushed.new_final_words.len(), 1);
         assert_eq!(flushed.new_final_words[0].text, " world");
     }
@@ -456,7 +444,7 @@ mod tests {
 
         assert!(update.new_final_words.iter().all(|w| !w.id.is_empty()));
 
-        let flushed = acc.flush(FlushMode::DrainAll);
+        let flushed = acc.flush();
         assert!(flushed.new_final_words.iter().all(|w| !w.id.is_empty()));
     }
 
@@ -472,7 +460,7 @@ mod tests {
             ),
         );
 
-        let flushed = acc.flush(FlushMode::DrainAll);
+        let flushed = acc.flush();
 
         assert_eq!(flushed.new_final_words.len(), 1);
         assert_eq!(flushed.new_final_words[0].text, " world");
@@ -493,7 +481,7 @@ mod tests {
             ),
         );
 
-        let flushed = acc.flush(FlushMode::DrainAll);
+        let flushed = acc.flush();
 
         let texts: Vec<_> = flushed.new_final_words.iter().map(|w| &w.text).collect();
         assert!(
@@ -506,27 +494,39 @@ mod tests {
     #[test]
     fn flush_on_empty_accumulator_is_empty() {
         let mut acc = TranscriptAccumulator::new();
-        let flushed = acc.flush(FlushMode::DrainAll);
+        let flushed = acc.flush();
         assert!(flushed.new_final_words.is_empty());
         assert!(flushed.partial_words.is_empty());
         assert!(flushed.speaker_hints.is_empty());
     }
 
     #[test]
-    fn flush_promotable_only_drops_unstable_partials() {
+    fn flush_drops_single_shot_partials() {
         let mut acc = TranscriptAccumulator::new();
 
         process_response(&mut acc, &partial(&[(" maybe", 0.0, 0.5)], " maybe"));
 
-        let flushed = acc.flush(FlushMode::PromotableOnly);
+        let flushed = acc.flush();
         assert!(
             flushed.new_final_words.is_empty(),
-            "partial must be dropped with PromotableOnly"
+            "partial seen only once must be dropped as noise"
         );
     }
 
     #[test]
-    fn flush_promotable_only_keeps_held_word() {
+    fn flush_promotes_stable_partials() {
+        let mut acc = TranscriptAccumulator::new();
+
+        process_response(&mut acc, &partial(&[(" stable", 0.0, 0.5)], " stable"));
+        process_response(&mut acc, &partial(&[(" stable", 0.0, 0.5)], " stable"));
+
+        let flushed = acc.flush();
+        assert_eq!(flushed.new_final_words.len(), 1);
+        assert_eq!(flushed.new_final_words[0].text, " stable");
+    }
+
+    #[test]
+    fn flush_promotes_held_word() {
         let mut acc = TranscriptAccumulator::new();
 
         process_response(
@@ -537,7 +537,7 @@ mod tests {
             ),
         );
 
-        let flushed = acc.flush(FlushMode::PromotableOnly);
+        let flushed = acc.flush();
         assert_eq!(flushed.new_final_words.len(), 1);
         assert_eq!(flushed.new_final_words[0].text, " world");
     }
@@ -579,7 +579,7 @@ mod tests {
             update.new_final_words[0].id
         );
 
-        let flushed = acc.flush(FlushMode::DrainAll);
+        let flushed = acc.flush();
         assert_eq!(flushed.new_final_words.len(), 1);
         assert_eq!(flushed.speaker_hints.len(), 1);
         assert_eq!(flushed.speaker_hints[0].speaker_index, 1);
@@ -616,7 +616,7 @@ mod tests {
 
         assert_eq!(update.new_final_words[0].id, "0");
 
-        let flushed = acc.flush(FlushMode::DrainAll);
+        let flushed = acc.flush();
         assert_eq!(flushed.new_final_words[0].id, "1");
     }
 
@@ -675,63 +675,61 @@ mod tests {
         hypr_data::korean_1::SONIOX_JSON
     );
 
-    /// Pre-final promotion means all mid-session partials are captured
-    /// by apply_final. PromotableOnly and DrainAll should produce identical
-    /// word counts for providers that send finals for everything.
-    #[test]
-    fn pre_final_promotion_matches_drain_all_on_english_fixtures() {
-        fn word_count(json: &str, mode: FlushMode) -> usize {
-            let responses: Vec<owhisper_interface::stream::StreamResponse> =
-                serde_json::from_str(json).unwrap();
-            let mut acc = TranscriptAccumulator::new();
-            let mut count = 0;
-            for r in &responses {
-                if let Some(input) = TranscriptInput::from_stream_response(r) {
-                    if let Some(update) = acc.process(input) {
-                        count += update.new_final_words.len();
-                    }
+    fn word_count_from_fixture(json: &str) -> usize {
+        let responses: Vec<owhisper_interface::stream::StreamResponse> =
+            serde_json::from_str(json).unwrap();
+        let mut acc = TranscriptAccumulator::new();
+        let mut count = 0;
+        for r in &responses {
+            if let Some(input) = TranscriptInput::from_stream_response(r) {
+                if let Some(update) = acc.process(input) {
+                    count += update.new_final_words.len();
                 }
             }
-            count += acc.flush(mode).new_final_words.len();
-            count
+        }
+        count += acc.flush().new_final_words.len();
+        count
+    }
+
+    /// Stability-based flush recovers Korean tail words that never get a
+    /// subsequent final, because they are seen in multiple consecutive partial
+    /// frames (consecutive_seen >= 2).
+    #[test]
+    fn stability_flush_recovers_soniox_korean_tail_words() {
+        let responses: Vec<owhisper_interface::stream::StreamResponse> =
+            serde_json::from_str(hypr_data::korean_1::SONIOX_JSON).unwrap();
+        let mut acc = TranscriptAccumulator::new();
+        for r in &responses {
+            if let Some(input) = TranscriptInput::from_stream_response(r) {
+                acc.process(input);
+            }
         }
 
+        let tail_partials = acc.partial_stability();
+        assert!(
+            !tail_partials.is_empty(),
+            "Korean fixture must have tail partials"
+        );
+        assert!(
+            tail_partials.iter().all(|(_, seen)| *seen >= 2),
+            "all Korean tail partials must be stable (seen >= 2): {:?}",
+            tail_partials
+        );
+
+        let total = word_count_from_fixture(hypr_data::korean_1::SONIOX_JSON);
+        assert!(total > 0, "stability flush must recover Korean words");
+    }
+
+    #[test]
+    fn english_fixtures_produce_complete_output() {
         for (label, json) in [
             ("Deepgram English", hypr_data::english_1::DEEPGRAM_JSON),
             ("Soniox English", hypr_data::english_1::SONIOX_JSON),
         ] {
-            assert_eq!(
-                word_count(json, FlushMode::PromotableOnly),
-                word_count(json, FlushMode::DrainAll),
-                "{label}: pre-final promotion should close the gap for mid-session words",
+            assert!(
+                word_count_from_fixture(json) > 0,
+                "{label}: must produce words"
             );
         }
-    }
-
-    /// Soniox Korean has words that only appear in the final partial window —
-    /// no subsequent final arrives to trigger pre-final promotion, so DrainAll
-    /// is still required to recover them.
-    #[test]
-    fn soniox_korean_tail_words_require_drain_all() {
-        fn word_count(mode: FlushMode) -> usize {
-            let responses: Vec<owhisper_interface::stream::StreamResponse> =
-                serde_json::from_str(hypr_data::korean_1::SONIOX_JSON).unwrap();
-            let mut acc = TranscriptAccumulator::new();
-            let mut count = 0;
-            for r in &responses {
-                if let Some(input) = TranscriptInput::from_stream_response(r) {
-                    if let Some(update) = acc.process(input) {
-                        count += update.new_final_words.len();
-                    }
-                }
-            }
-            count += acc.flush(mode).new_final_words.len();
-            count
-        }
-
-        assert!(
-            word_count(FlushMode::DrainAll) > word_count(FlushMode::PromotableOnly),
-            "DrainAll must recover more words than PromotableOnly for Soniox Korean",
-        );
     }
 }

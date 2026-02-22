@@ -1,7 +1,6 @@
 pub mod debug;
 mod transcript;
 
-use ::transcript::FlushMode;
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
@@ -59,13 +58,9 @@ fn render_header(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         "▶ PLAYING"
     };
-    let flush_label = match app.flush_mode {
-        FlushMode::DrainAll => "drain-all",
-        FlushMode::PromotableOnly => "promotable-only",
-    };
     let text = format!(
-        " {} | {} | {}ms/event | flush: {} ",
-        app.source_name, status, app.speed_ms, flush_label
+        " {} | {} | {}ms/event ",
+        app.source_name, status, app.speed_ms
     );
     frame.render_widget(Paragraph::new(text).style(THEME.header), area);
 }
@@ -95,7 +90,6 @@ fn render_hints(frame: &mut Frame, app: &App, area: Rect) {
             ("←/→", "seek"),
             ("↑/↓", "speed"),
             ("PgUp/Dn", "scroll"),
-            ("f", "flush"),
             ("p", "postprocess"),
             ("q", "quit"),
         ])

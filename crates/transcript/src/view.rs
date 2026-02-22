@@ -1,4 +1,4 @@
-use crate::accumulator::{FlushMode, TranscriptAccumulator};
+use crate::accumulator::TranscriptAccumulator;
 use crate::id::{IdGenerator, UuidIdGen};
 use crate::input::TranscriptInput;
 use crate::postprocess::PostProcessUpdate;
@@ -152,13 +152,10 @@ impl TranscriptView {
 
     /// Drain any held or partial words at session end.
     ///
-    /// - [`FlushMode::DrainAll`]: promotes everything, including transient
-    ///   partials. Suitable for hard session end.
-    /// - [`FlushMode::PromotableOnly`]: drops partials that do not satisfy
-    ///   the promotion policy; held words (already ASR-confirmed) are always
-    ///   promoted. Suitable for graceful close when noisy tails are unwanted.
-    pub fn flush(&mut self, mode: FlushMode) {
-        let update = self.acc.flush(mode);
+    /// The held word is always promoted. Partials stable across multiple
+    /// consecutive frames are promoted; single-shot partials are dropped as noise.
+    pub fn flush(&mut self) {
+        let update = self.acc.flush();
         self.final_words.extend(update.new_final_words);
         self.speaker_hints.extend(update.speaker_hints);
     }
@@ -238,7 +235,7 @@ impl TranscriptFrame {
 
 impl From<TranscriptView> for TranscriptFrame {
     fn from(mut view: TranscriptView) -> Self {
-        view.flush(FlushMode::DrainAll);
+        view.flush();
         view.frame()
     }
 }
@@ -339,7 +336,7 @@ mod tests {
         );
 
         // accumulator holds last word of each batch; flush drains them
-        view.flush(FlushMode::DrainAll);
+        view.flush();
         let flushed = view.frame();
         assert_eq!(flushed.final_words.len(), 4);
         assert!(flushed.partial_words.is_empty());
@@ -373,7 +370,7 @@ mod tests {
                 true,
             ),
         );
-        view.flush(FlushMode::DrainAll);
+        view.flush();
 
         let frame = view.frame();
         assert_eq!(frame.final_words.len(), 2);
@@ -480,7 +477,7 @@ mod tests {
                 true,
             ),
         );
-        view.flush(FlushMode::DrainAll);
+        view.flush();
         assert_eq!(view.frame().final_words.len(), 2);
 
         let correction = TranscriptInput::Correction {
@@ -522,7 +519,7 @@ mod tests {
                 true,
             ),
         );
-        view.flush(FlushMode::DrainAll);
+        view.flush();
 
         let correction = TranscriptInput::Correction {
             words: vec![crate::types::RawWord {
@@ -551,7 +548,7 @@ mod tests {
                 true,
             ),
         );
-        view.flush(FlushMode::DrainAll);
+        view.flush();
         assert_eq!(view.frame().final_words.len(), 2);
 
         let correction = TranscriptInput::Correction {

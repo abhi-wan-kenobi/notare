@@ -1,10 +1,12 @@
 use crate::id::IdGenerator;
 use crate::types::{RawWord, SpeakerHint, TranscriptWord};
 
-use super::FlushMode;
 use super::words::{
     PartialEntry, dedup, finalize_words, splice_partials, stitch, strip_overlap_entries,
 };
+
+/// Partials seen in fewer than this many consecutive frames are noise; drop them at flush.
+const MIN_STABLE_FRAMES: u32 = 2;
 
 pub(super) struct ChannelState {
     watermark: i64,
@@ -92,28 +94,22 @@ impl ChannelState {
 
     /// Drain remaining state at session end.
     ///
-    /// - [`FlushMode::DrainAll`]: promotes the held word and all partials.
-    /// - [`FlushMode::PromotableOnly`]: promotes only the held word (already
-    ///   ASR-confirmed). Remaining partials are silently dropped.
+    /// The held word (ASR-confirmed, withheld for cross-batch stitching) is
+    /// always promoted. Partials stable across at least [`MIN_STABLE_FRAMES`]
+    /// consecutive frames are promoted; single-shot partials are dropped as
+    /// noise.
     pub(super) fn drain(
         &mut self,
-        mode: FlushMode,
         id_gen: &mut dyn IdGenerator,
     ) -> (Vec<TranscriptWord>, Vec<SpeakerHint>) {
         let mut raw: Vec<RawWord> = self.held.take().into_iter().collect();
 
-        match mode {
-            FlushMode::DrainAll => {
-                raw.extend(
-                    std::mem::take(&mut self.partials)
-                        .into_iter()
-                        .map(|e| e.word),
-                );
-            }
-            FlushMode::PromotableOnly => {
-                self.partials.clear();
-            }
-        }
+        raw.extend(
+            std::mem::take(&mut self.partials)
+                .into_iter()
+                .filter(|e| e.consecutive_seen >= MIN_STABLE_FRAMES)
+                .map(|e| e.word),
+        );
 
         finalize_words(raw, id_gen)
     }
