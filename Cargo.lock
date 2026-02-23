@@ -8433,6 +8433,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "hooks"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "serde",
+ "serde_json",
+ "shellexpand",
+ "specta",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
 name = "host"
 version = "0.1.0"
 dependencies = [
@@ -17969,18 +17982,15 @@ dependencies = [
 name = "tauri-plugin-hooks"
 version = "0.1.0"
 dependencies = [
- "dirs 6.0.0",
  "docs",
- "futures-util",
+ "hooks",
  "serde",
  "serde_json",
  "serde_yaml",
- "shellexpand",
  "specta",
  "specta-typescript",
  "tauri",
  "tauri-plugin",
- "tauri-plugin-path2",
  "tauri-plugin-settings",
  "tauri-specta",
  "thiserror 2.0.18",
@@ -19949,6 +19959,7 @@ version = "0.1.0"
 dependencies = [
  "owhisper-interface",
  "serde",
+ "serde_json",
  "specta",
  "uuid",
 ]

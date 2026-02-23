@@ -1,4 +1,4 @@
-pub(crate) fn cli_flag(field_name: &str) -> String {
+pub fn cli_flag(field_name: &str) -> String {
     let mut flag = String::with_capacity(field_name.len() + 2);
     flag.push_str("--");
 

@@ -1,7 +1,8 @@
 use std::ffi::OsString;
 use std::time::Duration;
 
-use crate::{config::HooksConfig, event::HookEvent};
+use crate::config::HooksConfig;
+use crate::event::HookEvent;
 
 const HOOK_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -14,16 +15,12 @@ pub struct HookResult {
     pub stderr: String,
 }
 
-pub async fn run_hooks_for_event<R: tauri::Runtime>(
-    app: &impl tauri::Manager<R>,
-    event: HookEvent,
-) -> crate::Result<Vec<HookResult>> {
-    let config = HooksConfig::load(app).await?;
+pub async fn run_hooks_for_event(config: &HooksConfig, event: HookEvent) -> Vec<HookResult> {
     let condition_key = event.condition_key();
     let cli_args = event.cli_args();
 
     let Some(hooks) = config.on.get(condition_key) else {
-        return Ok(vec![]);
+        return vec![];
     };
 
     let futures: Vec<_> = hooks
@@ -35,8 +32,7 @@ pub async fn run_hooks_for_event<R: tauri::Runtime>(
         })
         .collect();
 
-    let results = futures_util::future::join_all(futures).await;
-    Ok(results)
+    futures_util::future::join_all(futures).await
 }
 
 async fn execute_hook(command: &str, args: &[OsString]) -> HookResult {

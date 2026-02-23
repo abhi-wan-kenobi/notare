@@ -68,6 +68,7 @@ hypr-google-calendar = { path = "crates/google-calendar", package = "google-cale
 hypr-google-drive = { path = "crates/google-drive", package = "google-drive" }
 hypr-granola = { path = "crates/granola", package = "granola" }
 hypr-hf = { path = "crates/hf", package = "hf" }
+hypr-hooks = { path = "crates/hooks", package = "hooks" }
 hypr-host = { path = "crates/host", package = "host" }
 hypr-http = { path = "crates/http", package = "hypr-http-utils" }
 hypr-importer-core = { path = "crates/importer-core", package = "importer-core" }

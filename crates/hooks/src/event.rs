@@ -1,5 +1,6 @@
-use crate::naming::cli_flag;
 use std::ffi::OsString;
+
+use crate::naming::cli_flag;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 pub enum HookEvent {
@@ -37,13 +38,9 @@ fn push_cli_arg(args: &mut Vec<OsString>, field_name: &str, value: &str) {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
-/// Arguments passed to hooks triggered after listening stops.
 pub struct AfterListeningStoppedArgs {
-    /// Path to the resource directory.
     pub resource_dir: String,
-    /// Application-specific Char data.
     pub app_hyprnote: String,
-    /// Optional meeting-specific data.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub app_meeting: Option<String>,
 }
@@ -63,13 +60,9 @@ impl HookArgs for AfterListeningStoppedArgs {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
-/// Arguments passed to hooks triggered before listening starts.
 pub struct BeforeListeningStartedArgs {
-    /// Path to the resource directory.
     pub resource_dir: String,
-    /// Application-specific Char data.
     pub app_hyprnote: String,
-    /// Optional meeting-specific data.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub app_meeting: Option<String>,
 }
