@@ -174,7 +174,16 @@ async fn handle_transcribe_event(
 
             state.audio_offset += chunk_duration_secs;
 
-            let duration = state.audio_offset - state.segment_start;
+            // Prefer cactus's own buffer duration over raw chunk accounting: it
+            // excludes silence that accumulated before speech started in this
+            // segment, giving a tighter start/duration pair.
+            let seg_dur = if result.buffer_duration_ms > 0.0 {
+                result.buffer_duration_ms / 1000.0
+            } else {
+                state.audio_offset - state.segment_start
+            };
+            let seg_start = (state.audio_offset - seg_dur).max(state.segment_start);
+
             let confidence = result.confidence as f64;
             let confirmed_text = result.confirmed.trim();
 
@@ -235,7 +244,7 @@ async fn handle_transcribe_event(
                         ws_sender,
                         &StreamResponse::SpeechStartedResponse {
                             channel: channel_u8.clone(),
-                            timestamp: state.segment_start,
+                            timestamp: seg_start,
                         },
                     )
                     .await
@@ -261,8 +270,8 @@ async fn handle_transcribe_event(
                     ws_sender,
                     &build_transcript_response(
                         confirmed_text,
-                        state.segment_start,
-                        duration,
+                        seg_start,
+                        seg_dur,
                         confidence,
                         result.language.as_deref(),
                         true,
@@ -281,7 +290,7 @@ async fn handle_transcribe_event(
                     ws_sender,
                     &StreamResponse::UtteranceEndResponse {
                         channel: channel_u8,
-                        last_word_end: state.segment_start + duration,
+                        last_word_end: state.audio_offset,
                     },
                 )
                 .await
@@ -311,7 +320,7 @@ async fn handle_transcribe_event(
                     ws_sender,
                     &StreamResponse::SpeechStartedResponse {
                         channel: channel_u8.clone(),
-                        timestamp: state.segment_start,
+                        timestamp: seg_start,
                     },
                 )
                 .await
@@ -336,8 +345,8 @@ async fn handle_transcribe_event(
                 ws_sender,
                 &build_transcript_response(
                     pending_text,
-                    state.segment_start,
-                    duration,
+                    seg_start,
+                    seg_dur,
                     confidence,
                     result.language.as_deref(),
                     false,

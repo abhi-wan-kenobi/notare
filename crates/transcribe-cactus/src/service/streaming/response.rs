@@ -65,17 +65,30 @@ pub(super) fn build_transcript_response(
 ) -> StreamResponse {
     let languages = language.map(|l| vec![l.to_string()]).unwrap_or_default();
 
-    let words: Vec<Word> = text
-        .split_whitespace()
-        .filter(|w| !w.is_empty())
-        .map(|w| Word {
-            word: w.to_string(),
-            start,
-            end: start + duration,
-            confidence,
-            speaker: None,
-            punctuated_word: None,
-            language: None,
+    let word_strs: Vec<&str> = text.split_whitespace().filter(|w| !w.is_empty()).collect();
+    let n = word_strs.len();
+    let words: Vec<Word> = word_strs
+        .into_iter()
+        .enumerate()
+        .map(|(i, w)| {
+            let word_start = start + (i as f64 / n as f64) * duration;
+            let word_end = if i + 1 == n {
+                // Ensure the last word ends >50ms before the segment boundary so
+                // the stitch heuristic in crates/transcript doesn't merge it with
+                // the first word of the next segment (gap <= STITCH_MAX_GAP_MS=50ms).
+                (start + duration - 0.1_f64).max(word_start + 0.05_f64)
+            } else {
+                start + ((i + 1) as f64 / n as f64) * duration
+            };
+            Word {
+                word: w.to_string(),
+                start: word_start,
+                end: word_end,
+                confidence,
+                speaker: None,
+                punctuated_word: None,
+                language: None,
+            }
         })
         .collect();
 
@@ -330,5 +343,81 @@ mod tests {
             serde_json::from_str(&serde_json::to_string(&resp).unwrap()).unwrap();
         assert_eq!(v["type"], "UtteranceEnd");
         assert_eq!(v["last_word_end"], 5.67);
+    }
+
+    #[test]
+    fn word_timestamps_are_distributed_across_segment() {
+        let meta = build_session_metadata(Path::new("/models/test"));
+        let resp = build_transcript_response(
+            "one two three",
+            10.0,
+            6.0,
+            0.9,
+            None,
+            true,
+            true,
+            false,
+            &meta,
+            &[0, 1],
+            None,
+        );
+
+        let v: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&resp).unwrap()).unwrap();
+        let words = v["channel"]["alternatives"][0]["words"].as_array().unwrap();
+        assert_eq!(words.len(), 3);
+
+        let starts: Vec<f64> = words.iter().map(|w| w["start"].as_f64().unwrap()).collect();
+        let ends: Vec<f64> = words.iter().map(|w| w["end"].as_f64().unwrap()).collect();
+
+        assert!(
+            starts[0] < starts[1],
+            "words must have ascending start times"
+        );
+        assert!(
+            starts[1] < starts[2],
+            "words must have ascending start times"
+        );
+
+        assert!(ends[0] < ends[2], "end times must increase");
+
+        let segment_end = 10.0 + 6.0;
+        let last_end = ends[2];
+        assert!(
+            segment_end - last_end > 0.05,
+            "last word must end >50ms before segment boundary (gap={:.3}s)",
+            segment_end - last_end
+        );
+    }
+
+    #[test]
+    fn single_word_has_gap_before_segment_end() {
+        let meta = build_session_metadata(Path::new("/models/test"));
+        let resp = build_transcript_response(
+            "hello",
+            5.0,
+            3.0,
+            0.9,
+            None,
+            true,
+            true,
+            false,
+            &meta,
+            &[0, 1],
+            None,
+        );
+
+        let v: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&resp).unwrap()).unwrap();
+        let words = v["channel"]["alternatives"][0]["words"].as_array().unwrap();
+        assert_eq!(words.len(), 1);
+
+        let word_end = words[0]["end"].as_f64().unwrap();
+        let segment_end = 5.0 + 3.0;
+        assert!(
+            segment_end - word_end > 0.05,
+            "single word must end >50ms before segment boundary (gap={:.3}s)",
+            segment_end - word_end
+        );
     }
 }
