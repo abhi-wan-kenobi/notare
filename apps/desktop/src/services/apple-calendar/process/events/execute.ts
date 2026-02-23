@@ -8,24 +8,15 @@ import {
 } from "../../../../utils/session-event";
 import type { Ctx } from "../../ctx";
 import type { IncomingEvent } from "../../fetch/types";
-import { getEventKey } from "./sync";
 import type { EventsSyncOutput } from "./types";
 
-export type EventsSyncResult = {
-  eventKeyToEventId: Map<string, string>;
-};
-
-export function executeForEventsSync(
-  ctx: Ctx,
-  out: EventsSyncOutput,
-): EventsSyncResult {
+export function executeForEventsSync(ctx: Ctx, out: EventsSyncOutput): void {
   const userId = ctx.store.getValue("user_id");
   if (!userId) {
     throw new Error("user_id is not set");
   }
 
   const now = new Date().toISOString();
-  const eventKeyToEventId = new Map<string, string>();
 
   ctx.store.transaction(() => {
     for (const eventId of out.toDelete) {
@@ -45,50 +36,44 @@ export function executeForEventsSync(
         recurrence_series_id: event.recurrence_series_id,
         has_recurrence_rules: event.has_recurrence_rules,
         is_all_day: event.is_all_day,
+        participants_json:
+          event.participants.length > 0
+            ? JSON.stringify(event.participants)
+            : undefined,
       });
-      const key = getEventKey(
-        event.tracking_id_event!,
-        event.started_at,
-        event.has_recurrence_rules ?? false,
-      );
-      eventKeyToEventId.set(key, event.id);
     }
 
-    for (const incomingEvent of out.toAdd) {
+    for (const eventToAdd of out.toAdd) {
       const calendarId = ctx.calendarTrackingIdToId.get(
-        incomingEvent.tracking_id_calendar,
+        eventToAdd.tracking_id_calendar,
       );
       if (!calendarId) {
         continue;
       }
 
       const eventId = id();
-      const key = getEventKey(
-        incomingEvent.tracking_id_event,
-        incomingEvent.started_at,
-        incomingEvent.has_recurrence_rules,
-      );
-      eventKeyToEventId.set(key, eventId);
 
       ctx.store.setRow("events", eventId, {
         user_id: userId,
         created_at: now,
-        tracking_id_event: incomingEvent.tracking_id_event,
+        tracking_id_event: eventToAdd.tracking_id_event,
         calendar_id: calendarId,
-        title: incomingEvent.title ?? "",
-        started_at: incomingEvent.started_at ?? "",
-        ended_at: incomingEvent.ended_at ?? "",
-        location: incomingEvent.location,
-        meeting_link: incomingEvent.meeting_link,
-        description: incomingEvent.description,
-        recurrence_series_id: incomingEvent.recurrence_series_id,
-        has_recurrence_rules: incomingEvent.has_recurrence_rules,
-        is_all_day: incomingEvent.is_all_day,
+        title: eventToAdd.title ?? "",
+        started_at: eventToAdd.started_at ?? "",
+        ended_at: eventToAdd.ended_at ?? "",
+        location: eventToAdd.location,
+        meeting_link: eventToAdd.meeting_link,
+        description: eventToAdd.description,
+        recurrence_series_id: eventToAdd.recurrence_series_id,
+        has_recurrence_rules: eventToAdd.has_recurrence_rules,
+        is_all_day: eventToAdd.is_all_day,
+        participants_json:
+          eventToAdd.participants.length > 0
+            ? JSON.stringify(eventToAdd.participants)
+            : undefined,
       } satisfies EventStorage);
     }
   });
-
-  return { eventKeyToEventId };
 }
 
 export function syncSessionEmbeddedEvents(

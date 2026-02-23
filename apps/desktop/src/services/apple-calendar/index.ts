@@ -12,8 +12,8 @@ import {
   executeForEventsSync,
   executeForParticipantsSync,
   syncEvents,
-  syncParticipants,
   syncSessionEmbeddedEvents,
+  syncSessionParticipants,
 } from "./process";
 
 export const CALENDAR_SYNC_TASK_ID = "calendarSync";
@@ -45,7 +45,7 @@ async function run(
   let incomingParticipants;
 
   try {
-    const result = await fetchIncomingEvents(ctx);
+    const result = await fetchIncomingEvents(ctx, timezone);
     incoming = result.events;
     incomingParticipants = result.participants;
   } catch (error) {
@@ -60,14 +60,17 @@ async function run(
 
   const existing = fetchExistingEvents(ctx);
 
-  const eventsOut = syncEvents(ctx, { incoming, existing });
-  const { eventKeyToEventId } = executeForEventsSync(ctx, eventsOut);
-
+  const eventsOut = syncEvents(ctx, {
+    incoming,
+    existing,
+    incomingParticipants,
+    timezone,
+  });
+  executeForEventsSync(ctx, eventsOut);
   syncSessionEmbeddedEvents(ctx, incoming, timezone);
 
-  const participantsOut = syncParticipants(ctx, {
+  const participantsOut = syncSessionParticipants(ctx, {
     incomingParticipants,
-    eventKeyToEventId,
     timezone,
   });
   executeForParticipantsSync(ctx, participantsOut);
