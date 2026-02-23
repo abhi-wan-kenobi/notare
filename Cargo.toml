@@ -11,6 +11,7 @@ debug = false
 resolver = "2"
 members = [
   "apps/api",
+  "apps/cli",
   "apps/desktop/src-tauri",
   "apps/eval-cli",
   "apps/granola",
@@ -109,7 +110,6 @@ hypr-transcribe-cactus = { path = "crates/transcribe-cactus", package = "transcr
 hypr-transcribe-proxy = { path = "crates/transcribe-proxy", package = "transcribe-proxy" }
 hypr-transcribe-whisper-local = { path = "crates/transcribe-whisper-local", package = "transcribe-whisper-local" }
 hypr-transcript = { path = "crates/transcript", package = "transcript" }
-hypr-turso = { path = "crates/turso", package = "turso" }
 hypr-vad = { path = "crates/vad", package = "vad" }
 hypr-vad-ext = { path = "crates/vad-ext", package = "vad-ext" }
 hypr-version = { path = "crates/version", package = "version" }
@@ -301,11 +301,13 @@ tauri-specta = "2.0.0-rc.21"
 
 cidre = "0.14"
 cpal = "0.17"
+crossterm = { version = "0.29", features = ["event-stream"] }
 dasp = { version = "0.11.0", features = ["interpolate", "interpolate-linear"] }
 earshot = "0.1.0"
 hound = "3.5.1"
 htmd = "0.5.0"
 macos-accessibility-client = "0.0.1"
+ratatui = "0.30"
 realfft = "3.5.0"
 ringbuf = "0.4.8"
 rodio = "0.21"
