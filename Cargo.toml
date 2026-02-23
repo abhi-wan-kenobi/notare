@@ -14,8 +14,6 @@ members = [
   "apps/cli",
   "apps/desktop/src-tauri",
   "apps/eval-cli",
-  "apps/granola",
-  "apps/tools",
   "crates/*",
   "plugins/*",
 ]
