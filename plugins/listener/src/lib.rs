@@ -1,28 +1,23 @@
+use std::sync::Arc;
+
 use ractor::Actor;
 use tauri::Manager;
 
-mod actors;
 mod commands;
 mod error;
 mod events;
 mod ext;
+mod runtime;
 
 pub use error::{DegradedError, Error, Result};
 pub use events::*;
 pub use ext::*;
+pub use hypr_listener_core::State;
 
-use actors::{RootActor, RootArgs};
+use hypr_listener_core::actors::{RootActor, RootArgs};
+use runtime::TauriRuntime;
 
 const PLUGIN_NAME: &str = "listener";
-
-#[derive(Debug, Clone, PartialEq, Eq, specta::Type, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum State {
-    Active,
-    Inactive,
-    // Transitioning from Active to Inactive. For ex, waiting for `from_finalize=true` from upstream provider.
-    Finalizing,
-}
 
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
@@ -58,15 +53,15 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
 
             let app_handle = app.app_handle().clone();
 
+            let runtime = Arc::new(TauriRuntime {
+                app: app_handle.clone(),
+            });
+
             tauri::async_runtime::spawn(async move {
-                Actor::spawn(
-                    Some(RootActor::name()),
-                    RootActor,
-                    RootArgs { app: app_handle },
-                )
-                .await
-                .map(|_| tracing::info!("root_actor_spawned"))
-                .map_err(|e| tracing::error!(?e, "failed_to_spawn_root_actor"))
+                Actor::spawn(Some(RootActor::name()), RootActor, RootArgs { runtime })
+                    .await
+                    .map(|_| tracing::info!("root_actor_spawned"))
+                    .map_err(|e| tracing::error!(?e, "failed_to_spawn_root_actor"))
             });
 
             Ok(())

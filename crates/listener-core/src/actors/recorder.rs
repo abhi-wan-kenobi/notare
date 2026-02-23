@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::BufWriter;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -9,7 +9,6 @@ use hypr_audio_utils::{
     ogg_has_identical_channels,
 };
 use ractor::{Actor, ActorName, ActorProcessingErr, ActorRef};
-use tauri_plugin_fs_sync::find_session_dir;
 
 const FLUSH_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1000);
 
@@ -185,13 +184,46 @@ impl Actor for RecorderActor {
     }
 }
 
+// Duplicated from plugins/fs-sync/src/session.rs to avoid Tauri plugin dependency.
+pub fn find_session_dir(sessions_base: &Path, session_id: &str) -> PathBuf {
+    if let Some(found) = find_session_dir_recursive(sessions_base, session_id) {
+        return found;
+    }
+    sessions_base.join(session_id)
+}
+
+fn find_session_dir_recursive(dir: &Path, session_id: &str) -> Option<PathBuf> {
+    let entries = std::fs::read_dir(dir).ok()?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+
+        let name = path.file_name()?.to_str()?;
+
+        if name == session_id {
+            return Some(path);
+        }
+
+        if uuid::Uuid::try_parse(name).is_err()
+            && let Some(found) = find_session_dir_recursive(&path, session_id)
+        {
+            return Some(found);
+        }
+    }
+
+    None
+}
+
 fn into_actor_err(err: hypr_audio_utils::Error) -> ActorProcessingErr {
     Box::new(err)
 }
 
 fn is_debug_mode() -> bool {
     cfg!(debug_assertions)
-        || std::env::var("HYPRNOTE_DEBUG")
+        || std::env::var("LISTENER_DEBUG")
             .map(|v| !v.is_empty() && v != "0" && v != "false")
             .unwrap_or(false)
 }
