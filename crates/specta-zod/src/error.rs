@@ -1,32 +1,15 @@
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    Io(std::io::Error),
-    Fmt(fmt::Error),
-    UnsupportedType(String),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Format error: {0}")]
+    Fmt(#[from] fmt::Error),
+    #[error(
+        "BigInt type is forbidden by current config. Configure BigIntExportBehavior to handle i64/u64/i128/u128."
+    )]
+    BigIntForbidden,
+    #[error("Invalid type name: '{0}'")]
+    InvalidTypeName(String),
 }
-
-impl From<std::io::Error> for Error {
-    fn from(e: std::io::Error) -> Self {
-        Self::Io(e)
-    }
-}
-
-impl From<fmt::Error> for Error {
-    fn from(e: fmt::Error) -> Self {
-        Self::Fmt(e)
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Error::Io(e) => write!(f, "IO error: {}", e),
-            Error::Fmt(e) => write!(f, "Format error: {}", e),
-            Error::UnsupportedType(t) => write!(f, "Unsupported type: {}", t),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
