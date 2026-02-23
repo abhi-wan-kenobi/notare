@@ -11977,6 +11977,7 @@ name = "openrouter"
 version = "0.1.0"
 dependencies = [
  "async-stream",
+ "base64 0.22.1",
  "bytes",
  "futures-util",
  "reqwest 0.13.2",
