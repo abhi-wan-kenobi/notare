@@ -14,8 +14,6 @@ use ractor::{Actor, ActorName, ActorProcessingErr, ActorRef, SpawnErr};
 use tokio_stream::{self as tokio_stream, StreamExt as TokioStreamExt};
 use tracing::Instrument;
 
-use hypr_transcript::{TranscriptDelta, TranscriptProcessor};
-
 use crate::{BatchEvent, BatchRuntime};
 
 const BATCH_STREAM_TIMEOUT_SECS: u64 = 30;
@@ -108,15 +106,9 @@ async fn run_batch_simple<A: BatchSttAdapter>(
         let response = client.transcribe_file(&params.file_path).await?;
         tracing::info!("batch transcription completed");
 
-        let delta = TranscriptProcessor::process_batch_response(&response);
-        runtime.emit(BatchEvent::BatchProgress {
+        runtime.emit(BatchEvent::BatchResponse {
             session_id: params.session_id.clone(),
-            delta,
-            percentage: 1.0,
-        });
-
-        runtime.emit(BatchEvent::BatchEnded {
-            session_id: params.session_id.clone(),
+            response,
         });
 
         Ok(())
@@ -255,35 +247,21 @@ struct BatchState {
     session_id: String,
     rx_task: tokio::task::JoinHandle<()>,
     shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
-    processor: TranscriptProcessor,
 }
 
 impl BatchState {
-    fn emit_progress(&self, delta: TranscriptDelta, percentage: f64) {
-        self.runtime.emit(BatchEvent::BatchProgress {
+    fn emit_streamed(&self, response: StreamResponse, percentage: f64) {
+        self.runtime.emit(BatchEvent::BatchResponseStreamed {
             session_id: self.session_id.clone(),
-            delta,
+            response,
             percentage,
         });
-    }
-
-    fn flush_and_emit(&mut self) {
-        let delta = self.processor.flush();
-        if !delta.is_empty() {
-            self.emit_progress(delta, 1.0);
-        }
     }
 
     fn emit_failure(&self, error: String) {
         self.runtime.emit(BatchEvent::BatchFailed {
             session_id: self.session_id.clone(),
             error,
-        });
-    }
-
-    fn emit_ended(&self) {
-        self.runtime.emit(BatchEvent::BatchEnded {
-            session_id: self.session_id.clone(),
         });
     }
 }
@@ -319,7 +297,6 @@ impl Actor for BatchActor {
             session_id: args.session_id,
             rx_task,
             shutdown_tx: Some(shutdown_tx),
-            processor: TranscriptProcessor::new(),
         };
 
         Ok(state)
@@ -333,11 +310,6 @@ impl Actor for BatchActor {
         if let Some(shutdown_tx) = state.shutdown_tx.take() {
             let _ = shutdown_tx.send(());
             let _ = (&mut state.rx_task).await;
-        }
-
-        let delta = state.processor.flush();
-        if !delta.is_empty() {
-            state.emit_progress(delta, 1.0);
         }
 
         Ok(())
@@ -355,11 +327,7 @@ impl Actor for BatchActor {
                 percentage,
             } => {
                 tracing::info!("batch stream response received");
-                if let Some(delta) = state.processor.process(&response) {
-                    if !delta.is_empty() {
-                        state.emit_progress(delta, percentage);
-                    }
-                }
+                state.emit_streamed(*response, percentage);
             }
 
             BatchMsg::StreamStartFailed(error) => {
@@ -370,15 +338,12 @@ impl Actor for BatchActor {
 
             BatchMsg::StreamError(error) => {
                 tracing::info!("batch_stream_error: {}", error);
-                state.flush_and_emit();
                 state.emit_failure(error.clone());
                 myself.stop(None);
             }
 
             BatchMsg::StreamEnded => {
                 tracing::info!("batch_stream_ended");
-                state.flush_and_emit();
-                state.emit_ended();
                 myself.stop(None);
             }
         }

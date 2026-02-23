@@ -20,13 +20,13 @@ specta-typescript = { workspace = true }
 uuid = { workspace = true }
 
 [dependencies]
+hypr-audio = { workspace = true }
+hypr-language = { workspace = true }
 hypr-listener-core = { workspace = true, features = ["specta"] }
 hypr-transcript = { workspace = true }
 
-hypr-audio = { workspace = true }
-hypr-language = { workspace = true }
-
 owhisper-client = { workspace = true }
+owhisper-interface = { workspace = true }
 
 tauri-plugin-hooks = { workspace = true }
 tauri-plugin-local-stt = { workspace = true }

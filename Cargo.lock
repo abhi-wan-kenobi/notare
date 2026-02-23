@@ -10020,7 +10020,6 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
- "transcript",
 ]
 
 [[package]]
@@ -17702,6 +17701,7 @@ dependencies = [
  "language",
  "listener-core",
  "owhisper-client",
+ "owhisper-interface",
  "quickcheck",
  "quickcheck_macros",
  "ractor",
@@ -17729,6 +17729,7 @@ version = "0.1.0"
 dependencies = [
  "language",
  "listener2-core",
+ "owhisper-interface",
  "serde",
  "specta",
  "specta-typescript",
@@ -17737,7 +17738,6 @@ dependencies = [
  "tauri-plugin-settings",
  "tauri-specta",
  "tokio",
- "transcript",
 ]
 
 [[package]]
@@ -19605,10 +19605,8 @@ dependencies = [
 name = "transcript"
 version = "0.1.0"
 dependencies = [
- "data",
  "owhisper-interface",
  "serde",
- "serde_json",
  "specta",
  "uuid",
 ]

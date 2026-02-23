@@ -396,13 +396,13 @@ const hooks = defineCollection({
   exclude: "AGENTS.md",
   schema: z.object({
     name: z.string(),
-    description: z.string(),
+    description: z.string().nullable(),
     args: z
       .array(
         z.object({
           name: z.string(),
           type_name: z.string(),
-          description: z.string(),
+          description: z.string().nullable(),
           optional: z.boolean().default(false),
         }),
       )

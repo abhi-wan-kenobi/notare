@@ -1,5 +1,4 @@
 use hypr_listener2_core as core;
-use hypr_transcript::TranscriptDelta;
 
 #[macro_export]
 macro_rules! common_event_derives {
@@ -14,14 +13,17 @@ common_event_derives! {
     pub enum BatchEvent {
         #[serde(rename = "batchStarted")]
         BatchStarted { session_id: String },
-        #[serde(rename = "batchProgress")]
-        BatchProgress {
+        #[serde(rename = "batchResponse")]
+        BatchResponse {
             session_id: String,
-            delta: TranscriptDelta,
+            response: owhisper_interface::batch::Response,
+        },
+        #[serde(rename = "batchProgress")]
+        BatchResponseStreamed {
+            session_id: String,
+            response: owhisper_interface::stream::StreamResponse,
             percentage: f64,
         },
-        #[serde(rename = "batchEnded")]
-        BatchEnded { session_id: String },
         #[serde(rename = "batchFailed")]
         BatchFailed { session_id: String, error: String },
     }
@@ -33,16 +35,22 @@ impl From<core::BatchEvent> for BatchEvent {
             core::BatchEvent::BatchStarted { session_id } => {
                 BatchEvent::BatchStarted { session_id }
             }
-            core::BatchEvent::BatchProgress {
+            core::BatchEvent::BatchResponse {
                 session_id,
-                delta,
+                response,
+            } => BatchEvent::BatchResponse {
+                session_id,
+                response,
+            },
+            core::BatchEvent::BatchResponseStreamed {
+                session_id,
+                response,
                 percentage,
-            } => BatchEvent::BatchProgress {
+            } => BatchEvent::BatchResponseStreamed {
                 session_id,
-                delta,
+                response,
                 percentage,
             },
-            core::BatchEvent::BatchEnded { session_id } => BatchEvent::BatchEnded { session_id },
             core::BatchEvent::BatchFailed { session_id, error } => {
                 BatchEvent::BatchFailed { session_id, error }
             }

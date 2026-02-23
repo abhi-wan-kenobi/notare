@@ -541,28 +541,27 @@ export const createGeneralSlice = <
             return;
           }
 
+          if (payload.type === "batchResponse") {
+            try {
+              get().handleBatchResponse(sessionId, payload.response);
+              cleanup();
+              resolve();
+            } catch (error) {
+              console.error("[runBatch] error handling batch response", error);
+              const errorMessage =
+                error instanceof Error ? error.message : String(error);
+              get().handleBatchFailed(sessionId, errorMessage);
+              cleanup(false);
+              reject(error);
+            }
+            return;
+          }
+
           if (payload.type === "batchFailed") {
             get().handleBatchFailed(sessionId, payload.error);
             cleanup(false);
             reject(payload.error);
             return;
-          }
-
-          if (payload.type !== "batchResponse") {
-            return;
-          }
-
-          try {
-            get().handleBatchResponse(sessionId, payload.response);
-            cleanup();
-            resolve();
-          } catch (error) {
-            console.error("[runBatch] error handling batch response", error);
-            const errorMessage =
-              error instanceof Error ? error.message : String(error);
-            get().handleBatchFailed(sessionId, errorMessage);
-            cleanup(false);
-            reject(error);
           }
         })
         .then((fn) => {
