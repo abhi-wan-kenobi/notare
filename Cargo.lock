@@ -3065,6 +3065,7 @@ dependencies = [
  "crossterm",
  "language",
  "listener-core",
+ "open",
  "ractor",
  "ratatui",
  "serde_json",
