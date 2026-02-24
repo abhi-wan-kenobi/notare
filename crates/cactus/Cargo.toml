@@ -5,7 +5,7 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
-cactus-sys = { git = "https://github.com/cactus-compute/cactus", package = "cactus-sys", rev = "a31f1a2" }
+cactus-sys = { git = "https://github.com/cactus-compute/cactus", package = "cactus-sys", rev = "b1c378b" }
 
 hypr-language = { workspace = true }
 hypr-llm-types = { workspace = true }
