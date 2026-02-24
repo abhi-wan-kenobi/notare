@@ -34,7 +34,7 @@ fn bench_earshot(c: &mut Criterion) {
         // EarshotVad::new() is a trivial stack alloc, but kept in setup for symmetry
         b.iter_batched(
             EarshotVad::new,
-            |mut detector| {
+            |mut detector: EarshotVad| {
                 let mut speech_count = 0usize;
                 for frame in black_box(&samples).chunks(frame_size) {
                     if frame.len() == frame_size {
@@ -52,16 +52,18 @@ fn bench_earshot(c: &mut Criterion) {
 
 fn bench_silero(c: &mut Criterion) {
     let pcm_bytes = hypr_data::english_1::AUDIO;
-    let samples_f32: Vec<f32> = pcm_bytes_to_i16(pcm_bytes)
-        .into_iter()
-        .map(|s| s as f32 / 32768.0)
-        .collect();
 
     c.bench_function("silero english_1", |b| {
-        // Session creation (ONNX Runtime init + embedded model load) is excluded from timing
         b.iter_batched(
-            || VadSession::new(VadConfig::default()).unwrap(),
-            |mut session| {
+            || {
+                let session = VadSession::new(VadConfig::default()).unwrap();
+                let samples_f32: Vec<f32> = pcm_bytes_to_i16(pcm_bytes)
+                    .into_iter()
+                    .map(|s| s as f32 / 32768.0)
+                    .collect();
+                (session, samples_f32)
+            },
+            |(mut session, samples_f32): (VadSession, Vec<f32>)| {
                 let mut transitions = Vec::new();
                 for chunk in black_box(&samples_f32).chunks(CHUNK_30MS_16KHZ) {
                     if chunk.len() == CHUNK_30MS_16KHZ {
@@ -81,7 +83,11 @@ fn bench_cactus(c: &mut Criterion) {
     let pcm = hypr_data::english_1::AUDIO;
 
     c.bench_function("cactus english_1", |b| {
-        b.iter(|| model.vad_pcm(black_box(pcm), black_box(&options)).unwrap())
+        b.iter_batched(
+            || (),
+            |_| model.vad_pcm(black_box(pcm), black_box(&options)).unwrap(),
+            BatchSize::SmallInput,
+        )
     });
 }
 
