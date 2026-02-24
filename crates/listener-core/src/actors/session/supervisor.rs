@@ -6,7 +6,8 @@ use tracing::Instrument;
 use crate::actors::session::lifecycle;
 use crate::actors::session::types::{SessionContext, session_span, session_supervisor_name};
 use crate::actors::{
-    ChannelMode, ListenerActor, ListenerArgs, RecArgs, RecorderActor, SourceActor, SourceArgs,
+    ChannelMode, ListenerActor, ListenerArgs, RecArgs, RecMsg, RecorderActor, SourceActor,
+    SourceArgs,
 };
 use crate::{DegradedError, SessionLifecycleEvent};
 
@@ -74,9 +75,9 @@ impl Actor for SessionActor {
             .await?;
 
             let recorder_cell = if ctx.params.record_enabled {
-                let (recorder_ref, _) = Actor::spawn_linked(
+                let (recorder_ref, _): (ActorRef<RecMsg>, _) = Actor::spawn_linked(
                     Some(RecorderActor::name()),
-                    RecorderActor,
+                    RecorderActor::new(),
                     RecArgs {
                         app_dir: ctx.app_dir.clone(),
                         session_id: ctx.params.session_id.clone(),
@@ -367,9 +368,9 @@ async fn try_restart_recorder(supervisor_cell: ActorCell, state: &mut SessionSta
         let app_dir = app_dir.clone();
         let session_id = session_id.clone();
         async move {
-            let (r, _) = Actor::spawn_linked(
+            let (r, _): (ActorRef<RecMsg>, _) = Actor::spawn_linked(
                 Some(RecorderActor::name()),
-                RecorderActor,
+                RecorderActor::new(),
                 RecArgs {
                     app_dir,
                     session_id,

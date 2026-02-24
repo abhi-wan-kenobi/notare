@@ -1,3 +1,8 @@
+mod codec;
+
+pub use codec::AudioCodec;
+pub use codec::Mp3Codec;
+
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
@@ -31,16 +36,28 @@ pub struct RecState {
     is_stereo: bool,
 }
 
-pub struct RecorderActor;
+pub struct RecorderActor<E: AudioCodec = Mp3Codec> {
+    codec: E,
+}
 
 impl RecorderActor {
+    pub fn new() -> Self {
+        Self { codec: Mp3Codec }
+    }
+
     pub fn name() -> ActorName {
         "recorder_actor".into()
     }
 }
 
+impl<E: AudioCodec> RecorderActor<E> {
+    pub fn with_codec(codec: E) -> Self {
+        Self { codec }
+    }
+}
+
 #[ractor::async_trait]
-impl Actor for RecorderActor {
+impl<E: AudioCodec> Actor for RecorderActor<E> {
     type Msg = RecMsg;
     type State = RecState;
     type Arguments = RecArgs;
@@ -56,22 +73,10 @@ impl Actor for RecorderActor {
         let filename_base = "audio".to_string();
         let wav_path = dir.join(format!("{}.wav", filename_base));
         let ogg_path = dir.join(format!("{}.ogg", filename_base));
+        let encoded_path = dir.join(format!("{}.{}", filename_base, self.codec.extension()));
 
-        let is_stereo = if ogg_path.exists() {
-            let has_identical = ogg_has_identical_channels(&ogg_path).map_err(into_actor_err)?;
-            if has_identical {
-                decode_vorbis_to_mono_wav_file(&ogg_path, &wav_path).map_err(into_actor_err)?;
-            } else {
-                decode_vorbis_to_wav_file(&ogg_path, &wav_path).map_err(into_actor_err)?;
-            }
-            std::fs::remove_file(&ogg_path)?;
-            !has_identical
-        } else if wav_path.exists() {
-            let reader = hound::WavReader::open(&wav_path)?;
-            reader.spec().channels == 2
-        } else {
-            true
-        };
+        let is_stereo =
+            prepare_existing_audio_state(&self.codec, &encoded_path, &ogg_path, &wav_path)?;
 
         let stereo_spec = hound::WavSpec {
             channels: 2,
@@ -176,15 +181,30 @@ impl Actor for RecorderActor {
         finalize_writer(&mut st.writer_spk, None)?;
 
         if st.wav_path.exists() {
-            sync_file(&st.wav_path);
-            sync_dir(&st.wav_path);
+            let encoded_path = st.wav_path.with_extension(self.codec.extension());
+            match self.codec.encode(&st.wav_path, &encoded_path) {
+                Ok(()) => {
+                    sync_file(&encoded_path);
+                    sync_dir(&encoded_path);
+                    std::fs::remove_file(&st.wav_path)?;
+                    sync_dir(&st.wav_path);
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "Encoding to {} failed, keeping WAV: {}",
+                        self.codec.extension(),
+                        e
+                    );
+                    sync_file(&st.wav_path);
+                    sync_dir(&st.wav_path);
+                }
+            }
         }
 
         Ok(())
     }
 }
 
-// Duplicated from plugins/fs-sync/src/session.rs to avoid Tauri plugin dependency.
 pub fn find_session_dir(sessions_base: &Path, session_id: &str) -> PathBuf {
     if let Some(found) = find_session_dir_recursive(sessions_base, session_id) {
         return found;
@@ -219,6 +239,43 @@ fn find_session_dir_recursive(dir: &Path, session_id: &str) -> Option<PathBuf> {
 
 fn into_actor_err(err: hypr_audio_utils::Error) -> ActorProcessingErr {
     Box::new(err)
+}
+
+fn prepare_existing_audio_state<E: AudioCodec>(
+    codec: &E,
+    encoded_path: &Path,
+    ogg_path: &Path,
+    wav_path: &Path,
+) -> Result<bool, ActorProcessingErr> {
+    if encoded_path.exists() && !wav_path.exists() {
+        codec
+            .decode(encoded_path, wav_path)
+            .map_err(|e| -> ActorProcessingErr {
+                Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    e.to_string(),
+                ))
+            })?;
+        std::fs::remove_file(encoded_path)?;
+    }
+
+    if ogg_path.exists() {
+        let has_identical = ogg_has_identical_channels(ogg_path).map_err(into_actor_err)?;
+        if has_identical {
+            decode_vorbis_to_mono_wav_file(ogg_path, wav_path).map_err(into_actor_err)?;
+        } else {
+            decode_vorbis_to_wav_file(ogg_path, wav_path).map_err(into_actor_err)?;
+        }
+        std::fs::remove_file(ogg_path)?;
+        return Ok(!has_identical);
+    }
+
+    if wav_path.exists() {
+        let reader = hound::WavReader::open(wav_path)?;
+        return Ok(reader.spec().channels == 2);
+    }
+
+    Ok(true)
 }
 
 fn is_debug_mode() -> bool {
