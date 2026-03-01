@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { useBilling } from "@/hooks/use-billing";
 
+import { IntegrationPageLayout } from "./-integration-ui";
 import { ConnectFlow } from "./-integrations-connect-flow";
 import { DisconnectFlow } from "./-integrations-disconnect-flow";
 import { UpgradePrompt } from "./-integrations-upgrade-prompt";
@@ -55,11 +56,9 @@ function Component() {
 
   if (!billing.isReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-linear-to-b from-white via-stone-50/20 to-white p-6">
-        <div className="w-full max-w-md text-center">
-          <p className="text-neutral-500">Loading...</p>
-        </div>
-      </div>
+      <IntegrationPageLayout>
+        <p className="text-neutral-500">Loading...</p>
+      </IntegrationPageLayout>
     );
   }
 
