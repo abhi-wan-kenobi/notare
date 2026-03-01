@@ -14,7 +14,7 @@ function decodeUserId(token: string): string {
   return payload.sub;
 }
 
-export function useConnections() {
+export function useConnections(enabled = true) {
   const authQuery = useQuery({
     queryKey: ["integration-status", "auth"],
     queryFn: async () => {
@@ -25,11 +25,12 @@ export function useConnections() {
       };
     },
     retry: false,
+    enabled,
   });
 
   return useQuery({
     queryKey: ["integration-status", authQuery.data?.userId],
-    enabled: !!authQuery.data?.userId,
+    enabled: enabled && !!authQuery.data?.userId,
     queryFn: async () => {
       const client = createClient({
         baseUrl: env.VITE_API_URL,

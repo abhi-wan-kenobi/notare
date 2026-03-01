@@ -11,8 +11,8 @@ const INTEGRATIONS = [
 
 export function IntegrationsSettingsCard() {
   const navigate = useNavigate();
-  const billing = useBilling();
-  const { data: connections, isLoading, isError } = useConnections();
+  const { isPro } = useBilling();
+  const { data: connections, isLoading, isError } = useConnections(isPro);
 
   const getConnectionStatus = (integrationId: string) => {
     return connections?.find((c) => c.integration_id === integrationId);
@@ -38,7 +38,7 @@ export function IntegrationsSettingsCard() {
           >
             <div className="flex items-center gap-3">
               <div className="text-sm font-medium">{integration.name}</div>
-              {!billing.isPro && (
+              {!isPro && (
                 <span className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
                   Pro
                 </span>
@@ -55,7 +55,7 @@ export function IntegrationsSettingsCard() {
                 </span>
               ) : null}
             </div>
-            {!billing.isPro && !isConnected ? (
+            {!isPro && !isConnected ? (
               <Link
                 to="/app/checkout/"
                 search={{ period: "monthly" }}
