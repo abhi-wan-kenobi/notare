@@ -5,6 +5,8 @@ use clap::{Subcommand, ValueEnum};
 use hypr_local_model::{LocalModel, LocalModelKind};
 use hypr_model_downloader::{DownloadableModel, ModelDownloadManager};
 
+use crate::error::{CliError, CliResult};
+
 mod runtime;
 mod settings;
 
@@ -32,7 +34,7 @@ pub enum ModelKind {
     Llm,
 }
 
-pub async fn run(command: ModelCommands) {
+pub async fn run(command: ModelCommands) -> CliResult<()> {
     let paths = settings::resolve_paths();
     let models_base = paths.models_base.clone();
 
@@ -42,6 +44,7 @@ pub async fn run(command: ModelCommands) {
             println!("vault_base={}", paths.vault_base.display());
             println!("settings_path={}", paths.settings_path.display());
             println!("models_base={}", models_base.display());
+            Ok(())
         }
         ModelCommands::Current => {
             println!("settings_path={}", paths.settings_path.display());
@@ -49,7 +52,7 @@ pub async fn run(command: ModelCommands) {
             let Some(current) = settings::load_settings(&paths.settings_path) else {
                 println!("stt\tprovider=unset\tmodel=unset\tconfig=unavailable");
                 println!("llm\tprovider=unset\tmodel=unset\tconfig=unavailable");
-                return;
+                return Ok(());
             };
 
             let stt_provider = current.current_stt_provider.as_deref().unwrap_or("unset");
@@ -78,6 +81,7 @@ pub async fn run(command: ModelCommands) {
                 llm_model,
                 format_provider_config_status(llm_config)
             );
+            Ok(())
         }
         ModelCommands::List { kind } => {
             let runtime = Arc::new(CliModelRuntime {
@@ -131,6 +135,7 @@ pub async fn run(command: ModelCommands) {
                     );
                 }
             }
+            Ok(())
         }
         ModelCommands::Download { name } => {
             let runtime = Arc::new(CliModelRuntime {
@@ -139,9 +144,10 @@ pub async fn run(command: ModelCommands) {
             let manager = ModelDownloadManager::new(runtime);
 
             let Some(model) = find_model(&name) else {
-                eprintln!("Unknown model: {name}");
-                eprintln!("Run `char model list` to see available models.");
-                std::process::exit(1);
+                return Err(CliError::not_found(
+                    format!("model '{name}'"),
+                    Some("Run `char model list` to see available models.".to_string()),
+                ));
             };
 
             if manager.is_downloaded(&model).await.unwrap_or(false) {
@@ -150,12 +156,14 @@ pub async fn run(command: ModelCommands) {
                     model.display_name(),
                     model.install_path(&models_base).display()
                 );
-                return;
+                return Ok(());
             }
 
             if let Err(e) = manager.download(&model).await {
-                eprintln!("Failed to start download for {}: {e}", model.cli_name());
-                std::process::exit(1);
+                return Err(CliError::operation_failed(
+                    "start model download",
+                    format!("{}: {e}", model.cli_name()),
+                ));
             }
 
             while manager.is_downloading(&model).await {
@@ -168,9 +176,12 @@ pub async fn run(command: ModelCommands) {
                     model.display_name(),
                     model.install_path(&models_base).display()
                 );
+                Ok(())
             } else {
-                eprintln!("Download failed for {}", model.cli_name());
-                std::process::exit(1);
+                Err(CliError::operation_failed(
+                    "download model",
+                    model.cli_name().to_string(),
+                ))
             }
         }
         ModelCommands::Delete { name } => {
@@ -180,17 +191,21 @@ pub async fn run(command: ModelCommands) {
             let manager = ModelDownloadManager::new(runtime);
 
             let Some(model) = find_model(&name) else {
-                eprintln!("Unknown model: {name}");
-                eprintln!("Run `char model list` to see available models.");
-                std::process::exit(1);
+                return Err(CliError::not_found(
+                    format!("model '{name}'"),
+                    Some("Run `char model list` to see available models.".to_string()),
+                ));
             };
 
             if let Err(e) = manager.delete(&model).await {
-                eprintln!("Failed to delete {}: {e}", model.cli_name());
-                std::process::exit(1);
+                return Err(CliError::operation_failed(
+                    "delete model",
+                    format!("{}: {e}", model.cli_name()),
+                ));
             }
 
             println!("Deleted {}", model.display_name());
+            Ok(())
         }
     }
 }

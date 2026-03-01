@@ -1,8 +1,9 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui_image::{picker::Picker, protocol::StatefulProtocol};
-use tui_textarea::{Input, Key, TextArea};
+use tui_textarea::TextArea;
 
 use crate::frame::FrameRequester;
+use crate::textarea_input::textarea_input_from_key_event;
 
 const LOGO_PNG_BYTES: &[u8] = include_bytes!("../assets/char.png");
 
@@ -139,7 +140,7 @@ pub struct EntryApp {
 }
 
 impl EntryApp {
-    pub fn new(frame_requester: FrameRequester) -> Self {
+    pub fn new(frame_requester: FrameRequester, status_message: Option<String>) -> Self {
         let mut app = Self {
             should_quit: false,
             action: None,
@@ -148,7 +149,7 @@ impl EntryApp {
             selected_index: 0,
             popup_visible: false,
             sessions_overlay: None,
-            status_message: None,
+            status_message,
             frame_requester,
             logo_protocol: load_logo_protocol(),
         };
@@ -268,7 +269,7 @@ impl EntryApp {
             return;
         }
 
-        if let Some(input) = textarea_input_from_key_event(key) {
+        if let Some(input) = textarea_input_from_key_event(key, false) {
             self.input.input(input);
             self.normalize_single_line();
             self.status_message = None;
@@ -327,19 +328,24 @@ impl EntryApp {
                 self.should_quit = true;
             }
             "auth" => {
-                crate::commands::auth::run();
-                self.status_message = Some("Opened auth page in browser".into());
+                self.status_message = match crate::commands::auth::run() {
+                    Ok(()) => Some("Opened auth page in browser".into()),
+                    Err(error) => Some(error.to_string()),
+                };
                 self.input = TextArea::default();
                 self.recompute_popup();
             }
             "desktop" => {
                 let message = match crate::commands::desktop::run() {
-                    crate::commands::desktop::DesktopAction::OpenedApp => "Opened desktop app",
-                    crate::commands::desktop::DesktopAction::OpenedDownloadPage => {
-                        "Desktop app not found. Opened download page"
+                    Ok(crate::commands::desktop::DesktopAction::OpenedApp) => {
+                        "Opened desktop app".to_string()
                     }
+                    Ok(crate::commands::desktop::DesktopAction::OpenedDownloadPage) => {
+                        "Desktop app not found. Opened download page".to_string()
+                    }
+                    Err(error) => error.to_string(),
                 };
-                self.status_message = Some(message.into());
+                self.status_message = Some(message);
                 self.input = TextArea::default();
                 self.recompute_popup();
             }
@@ -427,7 +433,7 @@ impl EntryApp {
             return;
         }
 
-        if let Some(input) = textarea_input_from_key_event(key) {
+        if let Some(input) = textarea_input_from_key_event(key, false) {
             overlay.search.input(input);
             overlay.normalize_search_single_line();
             overlay.status_message = None;
@@ -625,31 +631,6 @@ fn demo_sessions() -> Vec<SessionEntry> {
             transcript: "This makes focused border and muted styles consistent across screens.".into(),
         },
     ]
-}
-
-fn textarea_input_from_key_event(key_event: KeyEvent) -> Option<Input> {
-    let key = match key_event.code {
-        KeyCode::Backspace => Key::Backspace,
-        KeyCode::Left => Key::Left,
-        KeyCode::Right => Key::Right,
-        KeyCode::Up => Key::Up,
-        KeyCode::Down => Key::Down,
-        KeyCode::Home => Key::Home,
-        KeyCode::End => Key::End,
-        KeyCode::PageUp => Key::PageUp,
-        KeyCode::PageDown => Key::PageDown,
-        KeyCode::Tab => Key::Tab,
-        KeyCode::Delete => Key::Delete,
-        KeyCode::Char(c) => Key::Char(c),
-        _ => return None,
-    };
-
-    Some(Input {
-        key,
-        ctrl: key_event.modifiers.contains(KeyModifiers::CONTROL),
-        alt: key_event.modifiers.contains(KeyModifiers::ALT),
-        shift: key_event.modifiers.contains(KeyModifiers::SHIFT),
-    })
 }
 
 pub fn command_highlight_indices(query: &str, command: &str) -> Vec<usize> {

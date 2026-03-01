@@ -284,13 +284,18 @@ fn draw_transcript(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) 
     }
 
     if spans.is_empty() {
-        spans.push(Span::styled("Waiting for speech...", theme.placeholder));
-        transcript_text.push_str("Waiting for speech...");
+        let empty_message = if app.can_accept_audio_drop() {
+            "Drop an audio file to transcribe..."
+        } else {
+            "Waiting for speech..."
+        };
+        spans.push(Span::styled(empty_message, theme.placeholder));
+        transcript_text.push_str(empty_message);
     }
 
     let text = vec![Line::from(spans)];
 
-    let border_style = if app.transcript_focused && !app.memo_focused {
+    let border_style = if app.transcript_focused() {
         theme.border_focused
     } else {
         theme.border
@@ -334,7 +339,7 @@ fn draw_notepad(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
         return;
     }
 
-    let border_style = if app.memo_focused {
+    let border_style = if app.memo_focused() {
         theme.border_focused
     } else {
         theme.border
@@ -350,7 +355,7 @@ fn draw_notepad(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
         area.width.saturating_sub(2) as usize,
     );
 
-    let lines = if app.memo_is_empty() && !app.memo_focused {
+    let lines = if app.memo_is_empty() && !app.memo_focused() {
         vec![Line::from(vec![Span::styled(
             "press [m] to start writing notes...",
             theme.placeholder,
@@ -361,7 +366,7 @@ fn draw_notepad(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
 
     frame.render_widget(Paragraph::new(lines).block(block), area);
 
-    if app.memo_focused {
+    if app.memo_focused() {
         let inner_max_x = area.x + area.width.saturating_sub(2);
         let inner_max_y = area.y + area.height.saturating_sub(2);
         let x = (area.x + 1 + view.cursor_col).min(inner_max_x);
@@ -373,7 +378,7 @@ fn draw_notepad(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
 fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let word_count = app.words.len();
 
-    let line = if app.memo_focused {
+    let line = if app.memo_focused() {
         Line::from(vec![
             Span::styled(" [esc]", theme.shortcut_key),
             Span::raw(" transcript  "),

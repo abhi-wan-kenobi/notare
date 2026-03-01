@@ -16,12 +16,6 @@ const APP_VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
 
 pub fn draw(frame: &mut Frame, app: &mut EntryApp) {
     let theme = Theme::default();
-
-    if let Some(overlay) = app.sessions_overlay() {
-        draw_sessions_overlay(frame, frame.area(), overlay, &theme);
-        return;
-    }
-
     let popup_height = if app.popup_visible() {
         app.popup_height()
     } else {
@@ -63,6 +57,10 @@ pub fn draw(frame: &mut Frame, app: &mut EntryApp) {
     draw_input(frame, input_area, app, &theme);
     draw_hints(frame, hint_area, app, &theme);
     draw_status(frame, status_area, app, &theme);
+
+    if let Some(overlay) = app.sessions_overlay() {
+        draw_sessions_overlay(frame, main_area, overlay, &theme);
+    }
 }
 
 fn draw_logo(frame: &mut Frame, area: Rect, app: &mut EntryApp) {
@@ -219,6 +217,10 @@ fn draw_status(frame: &mut Frame, area: ratatui::layout::Rect, app: &EntryApp, t
 }
 
 fn draw_hints(frame: &mut Frame, area: ratatui::layout::Rect, app: &EntryApp, theme: &Theme) {
+    if app.sessions_overlay().is_some() {
+        return;
+    }
+
     let command_preview = app
         .selected_command()
         .map(|command| format!("{} {}", command.name, command.description))

@@ -1,3 +1,5 @@
+use crate::error::{CliError, CliResult};
+
 const DOWNLOAD_URL: &str = "https://char.com/download";
 const DESKTOP_DEEPLINKS: &[&str] = &[
     "hyprnote://focus",
@@ -11,18 +13,19 @@ pub enum DesktopAction {
     OpenedDownloadPage,
 }
 
-pub fn run() -> DesktopAction {
+pub fn run() -> CliResult<DesktopAction> {
     for deeplink in DESKTOP_DEEPLINKS {
         if open::that(deeplink).is_ok() {
-            return DesktopAction::OpenedApp;
+            return Ok(DesktopAction::OpenedApp);
         }
     }
 
     if let Err(e) = open::that(DOWNLOAD_URL) {
-        eprintln!("Failed to open desktop app or browser: {e}");
-        eprintln!("Please visit: {DOWNLOAD_URL}");
-        std::process::exit(1);
+        return Err(CliError::external_action_failed(
+            "open desktop app or download page",
+            format!("{e}\nPlease visit: {DOWNLOAD_URL}"),
+        ));
     }
 
-    DesktopAction::OpenedDownloadPage
+    Ok(DesktopAction::OpenedDownloadPage)
 }

@@ -5,13 +5,22 @@ use hypr_listener_core::{
     DegradedError, SessionDataEvent, SessionErrorEvent, SessionLifecycleEvent,
     SessionProgressEvent, State,
 };
-use hypr_transcript::{FinalizedWord, PartialWord, TranscriptProcessor};
-use tui_textarea::{Input, Key, TextArea};
+use hypr_listener2_core::BatchEvent;
+use hypr_transcript::{FinalizedWord, PartialWord, TranscriptDelta, TranscriptProcessor};
+use tui_textarea::TextArea;
 
+use crate::audio_drop::{AudioDropRequest, looks_like_audio_file, normalize_pasted_path};
 use crate::frame::FrameRequester;
 use crate::runtime::ListenerEvent;
+use crate::textarea_input::textarea_input_from_key_event;
 
 const AUDIO_HISTORY_CAP: usize = 64;
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Focus {
+    Transcript,
+    Memo,
+}
 
 pub struct MemoView {
     pub lines: Vec<String>,
@@ -37,11 +46,11 @@ pub struct App {
     pub scroll_offset: u16,
     frame_requester: FrameRequester,
 
-    pub memo_focused: bool,
-    pub transcript_focused: bool,
+    focus: Focus,
     notepad_width_percent: u16,
     transcript_max_scroll: u16,
     memo: TextArea<'static>,
+    batch_running: bool,
 }
 
 impl App {
@@ -68,11 +77,11 @@ impl App {
             scroll_offset: 0,
             frame_requester,
 
-            memo_focused: false,
-            transcript_focused: true,
+            focus: Focus::Transcript,
             notepad_width_percent: 67,
             transcript_max_scroll: 0,
             memo: Self::init_memo(),
+            batch_running: false,
         }
     }
 
@@ -104,20 +113,21 @@ impl App {
             return;
         }
 
-        if self.memo_focused {
+        if self.memo_focused() {
             self.handle_memo_key(key);
         } else {
             self.handle_global_key(key);
         }
     }
 
-    pub fn handle_paste(&mut self, pasted: String) {
-        if !self.memo_focused {
-            return;
+    pub fn handle_paste(&mut self, pasted: String) -> Option<AudioDropRequest> {
+        if !self.memo_focused() {
+            return self.handle_transcript_paste(pasted);
         }
         let pasted = pasted.replace("\r\n", "\n").replace('\r', "\n");
         self.memo.insert_str(&pasted);
         self.frame_requester.schedule_frame();
+        None
     }
 
     pub fn handle_listener_event(&mut self, event: ListenerEvent) {
@@ -128,6 +138,60 @@ impl App {
             ListenerEvent::Data(e) => self.handle_data(e),
         }
         self.frame_requester.schedule_frame();
+    }
+
+    pub fn handle_batch_event(&mut self, event: BatchEvent) {
+        match event {
+            BatchEvent::BatchStarted { .. } => {
+                self.batch_running = true;
+                self.status = "Transcribing dropped audio...".into();
+            }
+            BatchEvent::BatchResponseStreamed {
+                response,
+                percentage,
+                ..
+            } => {
+                if let Some(delta) = self.transcript.process(&response) {
+                    self.apply_transcript_delta(delta);
+                }
+
+                self.status = format!("Transcribing dropped audio... {:.0}%", percentage * 100.0);
+
+                if percentage >= 1.0 {
+                    self.batch_running = false;
+                    self.status = "Dropped audio transcription completed".into();
+                }
+            }
+            BatchEvent::BatchResponse { response, .. } => {
+                let delta = TranscriptProcessor::process_batch_response(&response);
+                self.apply_transcript_delta(delta);
+                self.batch_running = false;
+                self.status = "Dropped audio transcription completed".into();
+            }
+            BatchEvent::BatchFailed { error, .. } => {
+                self.batch_running = false;
+                self.errors.push(format!("Batch: {error}"));
+                self.status = format!("Dropped audio transcription failed: {error}");
+            }
+        }
+
+        self.frame_requester.schedule_frame();
+    }
+
+    pub fn can_accept_audio_drop(&self) -> bool {
+        self.transcript_focused()
+            && self.state == State::Inactive
+            && !self.batch_running
+            && self.words.is_empty()
+            && self.partials.is_empty()
+    }
+
+    pub fn memo_focused(&self) -> bool {
+        self.focus == Focus::Memo
+    }
+
+    pub fn transcript_focused(&self) -> bool {
+        self.focus == Focus::Transcript
     }
 
     pub fn memo_view(&self, max_rows: usize, max_cols: usize) -> MemoView {
@@ -189,8 +253,7 @@ impl App {
         match key.code {
             KeyCode::Char('q') => self.should_quit = true,
             KeyCode::Char('m') => {
-                self.memo_focused = true;
-                self.transcript_focused = false;
+                self.focus = Focus::Memo;
                 self.frame_requester.schedule_frame();
             }
             KeyCode::Char('j') | KeyCode::Down => {
@@ -210,8 +273,7 @@ impl App {
 
     fn handle_memo_key(&mut self, key: KeyEvent) {
         if key.code == KeyCode::Esc {
-            self.memo_focused = false;
-            self.transcript_focused = true;
+            self.focus = Focus::Transcript;
             self.frame_requester.schedule_frame();
             return;
         }
@@ -222,7 +284,7 @@ impl App {
             return;
         }
 
-        if let Some(input) = textarea_input_from_key_event(key) {
+        if let Some(input) = textarea_input_from_key_event(key, true) {
             self.memo.input(input);
         }
 
@@ -230,13 +292,10 @@ impl App {
     }
 
     fn toggle_focus(&mut self) {
-        if self.memo_focused {
-            self.memo_focused = false;
-            self.transcript_focused = true;
-        } else {
-            self.memo_focused = true;
-            self.transcript_focused = false;
-        }
+        self.focus = match self.focus {
+            Focus::Memo => Focus::Transcript,
+            Focus::Transcript => Focus::Memo,
+        };
     }
 
     fn adjust_notepad_width(&mut self, delta: i16) {
@@ -329,14 +388,47 @@ impl App {
             }
             SessionDataEvent::StreamResponse { response, .. } => {
                 if let Some(delta) = self.transcript.process(response.as_ref()) {
-                    if !delta.replaced_ids.is_empty() {
-                        self.words.retain(|w| !delta.replaced_ids.contains(&w.id));
-                    }
-                    self.words.extend(delta.new_words);
-                    self.partials = delta.partials;
+                    self.apply_transcript_delta(delta);
                 }
             }
         }
+    }
+
+    fn apply_transcript_delta(&mut self, delta: TranscriptDelta) {
+        if !delta.replaced_ids.is_empty() {
+            self.words.retain(|w| !delta.replaced_ids.contains(&w.id));
+        }
+        self.words.extend(delta.new_words);
+        self.partials = delta.partials;
+    }
+
+    fn handle_transcript_paste(&mut self, pasted: String) -> Option<AudioDropRequest> {
+        if !self.can_accept_audio_drop() {
+            return None;
+        }
+
+        let Some(path) = normalize_pasted_path(&pasted) else {
+            return None;
+        };
+
+        if !looks_like_audio_file(&path) {
+            return None;
+        }
+
+        if !path.is_file() {
+            self.errors
+                .push(format!("Dropped path is not a file: {}", path.display()));
+            self.frame_requester.schedule_frame();
+            return None;
+        }
+
+        self.batch_running = true;
+        self.status = format!("Transcribing dropped audio: {}", path.display());
+        self.frame_requester.schedule_frame();
+
+        Some(AudioDropRequest {
+            file_path: path.to_string_lossy().to_string(),
+        })
     }
 }
 
@@ -360,30 +452,4 @@ fn substring_by_char_range(s: &str, start: usize, end: usize) -> String {
 
 fn current_line_len(lines: &[String], row: usize) -> usize {
     lines.get(row).map(|line| line.chars().count()).unwrap_or(0)
-}
-
-fn textarea_input_from_key_event(key_event: KeyEvent) -> Option<Input> {
-    let key = match key_event.code {
-        KeyCode::Backspace => Key::Backspace,
-        KeyCode::Enter => Key::Enter,
-        KeyCode::Left => Key::Left,
-        KeyCode::Right => Key::Right,
-        KeyCode::Up => Key::Up,
-        KeyCode::Down => Key::Down,
-        KeyCode::Home => Key::Home,
-        KeyCode::End => Key::End,
-        KeyCode::PageUp => Key::PageUp,
-        KeyCode::PageDown => Key::PageDown,
-        KeyCode::Tab => Key::Tab,
-        KeyCode::Delete => Key::Delete,
-        KeyCode::Char(c) => Key::Char(c),
-        _ => return None,
-    };
-
-    Some(Input {
-        key,
-        ctrl: key_event.modifiers.contains(KeyModifiers::CONTROL),
-        alt: key_event.modifiers.contains(KeyModifiers::ALT),
-        shift: key_event.modifiers.contains(KeyModifiers::SHIFT),
-    })
 }
