@@ -24,8 +24,11 @@ hypr-transcript = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 crossterm = { workspace = true }
 dirs = { workspace = true }
+image = { version = "0.25", default-features = false, features = ["png"] }
 ratatui = { workspace = true }
+ratatui-image = { version = "10.0.6", default-features = false, features = ["crossterm", "image-defaults"] }
 tempfile = { workspace = true }
+tui-textarea = { workspace = true }
 
 open = { workspace = true }
 ractor = { workspace = true, features = ["async-trait"] }

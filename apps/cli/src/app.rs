@@ -6,6 +6,7 @@ use hypr_listener_core::{
     SessionProgressEvent, State,
 };
 use hypr_transcript::{FinalizedWord, PartialWord, TranscriptProcessor};
+use tui_textarea::{Input, Key, TextArea};
 
 use crate::frame::FrameRequester;
 use crate::runtime::ListenerEvent;
@@ -39,12 +40,15 @@ pub struct App {
     pub memo_focused: bool,
     pub transcript_focused: bool,
     notepad_width_percent: u16,
-    memo_lines: Vec<String>,
-    memo_cursor_row: usize,
-    memo_cursor_col: usize,
+    transcript_max_scroll: u16,
+    memo: TextArea<'static>,
 }
 
 impl App {
+    fn init_memo() -> TextArea<'static> {
+        TextArea::default()
+    }
+
     pub fn new(frame_requester: FrameRequester) -> Self {
         Self {
             should_quit: false,
@@ -67,9 +71,8 @@ impl App {
             memo_focused: false,
             transcript_focused: true,
             notepad_width_percent: 67,
-            memo_lines: vec![String::new()],
-            memo_cursor_row: 0,
-            memo_cursor_col: 0,
+            transcript_max_scroll: 0,
+            memo: Self::init_memo(),
         }
     }
 
@@ -113,8 +116,7 @@ impl App {
             return;
         }
         let pasted = pasted.replace("\r\n", "\n").replace('\r', "\n");
-        self.memo_insert_str(&pasted);
-        self.clamp_cursor();
+        self.memo.insert_str(&pasted);
         self.frame_requester.schedule_frame();
     }
 
@@ -137,10 +139,10 @@ impl App {
             };
         }
 
-        let cursor_row = self
-            .memo_cursor_row
-            .min(self.memo_lines.len().saturating_sub(1));
-        let cursor_col = self.memo_cursor_col.min(self.current_line_len());
+        let lines = self.memo.lines();
+        let (memo_cursor_row, memo_cursor_col) = self.memo.cursor();
+        let cursor_row = memo_cursor_row.min(lines.len().saturating_sub(1));
+        let cursor_col = memo_cursor_col.min(current_line_len(lines, cursor_row));
 
         let row_start = if cursor_row + 1 > max_rows {
             cursor_row + 1 - max_rows
@@ -154,8 +156,8 @@ impl App {
             0
         };
 
-        let row_end = (row_start + max_rows).min(self.memo_lines.len());
-        let lines = self.memo_lines[row_start..row_end]
+        let row_end = (row_start + max_rows).min(lines.len());
+        let lines = lines[row_start..row_end]
             .iter()
             .map(|line| {
                 let end = (col_start + max_cols).min(line.chars().count());
@@ -171,7 +173,12 @@ impl App {
     }
 
     pub fn memo_is_empty(&self) -> bool {
-        self.memo_lines.iter().all(String::is_empty)
+        self.memo.is_empty()
+    }
+
+    pub fn update_transcript_max_scroll(&mut self, max_scroll: u16) {
+        self.transcript_max_scroll = max_scroll;
+        self.scroll_offset = self.scroll_offset.min(max_scroll);
     }
 
     pub fn notepad_width_percent(&self) -> u16 {
@@ -184,12 +191,13 @@ impl App {
             KeyCode::Char('m') => {
                 self.memo_focused = true;
                 self.transcript_focused = false;
-                self.memo_cursor_row = self.memo_lines.len().saturating_sub(1);
-                self.memo_cursor_col = self.current_line_len();
                 self.frame_requester.schedule_frame();
             }
             KeyCode::Char('j') | KeyCode::Down => {
-                self.scroll_offset = self.scroll_offset.saturating_add(1);
+                self.scroll_offset = self
+                    .scroll_offset
+                    .saturating_add(1)
+                    .min(self.transcript_max_scroll);
                 self.frame_requester.schedule_frame();
             }
             KeyCode::Char('k') | KeyCode::Up => {
@@ -201,71 +209,23 @@ impl App {
     }
 
     fn handle_memo_key(&mut self, key: KeyEvent) {
-        match key.code {
-            KeyCode::Esc => {
-                self.memo_focused = false;
-                self.transcript_focused = true;
-            }
-            KeyCode::Left => {
-                if self.memo_cursor_col > 0 {
-                    self.memo_cursor_col = self.memo_cursor_col.saturating_sub(1);
-                } else if self.memo_cursor_row > 0 {
-                    self.memo_cursor_row = self.memo_cursor_row.saturating_sub(1);
-                    self.memo_cursor_col = self.current_line_len();
-                }
-            }
-            KeyCode::Right => {
-                let line_len = self.current_line_len();
-                if self.memo_cursor_col < line_len {
-                    self.memo_cursor_col += 1;
-                } else if self.memo_cursor_row + 1 < self.memo_lines.len() {
-                    self.memo_cursor_row += 1;
-                    self.memo_cursor_col = 0;
-                }
-            }
-            KeyCode::Up => {
-                if self.memo_cursor_row > 0 {
-                    self.memo_cursor_row = self.memo_cursor_row.saturating_sub(1);
-                    self.memo_cursor_col = self.memo_cursor_col.min(self.current_line_len());
-                }
-            }
-            KeyCode::Down => {
-                if self.memo_cursor_row + 1 < self.memo_lines.len() {
-                    self.memo_cursor_row += 1;
-                    self.memo_cursor_col = self.memo_cursor_col.min(self.current_line_len());
-                }
-            }
-            KeyCode::Home => {
-                self.memo_cursor_col = 0;
-            }
-            KeyCode::End => {
-                self.memo_cursor_col = self.current_line_len();
-            }
-            KeyCode::Backspace => {
-                self.memo_backspace();
-            }
-            KeyCode::Delete => {
-                self.memo_delete();
-            }
-            KeyCode::Enter => {
-                self.memo_insert_newline();
-            }
-            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                self.memo_lines.clear();
-                self.memo_lines.push(String::new());
-                self.memo_cursor_row = 0;
-                self.memo_cursor_col = 0;
-            }
-            KeyCode::Char(ch)
-                if !key.modifiers.contains(KeyModifiers::CONTROL)
-                    && !key.modifiers.contains(KeyModifiers::ALT) =>
-            {
-                self.memo_insert_char(ch);
-            }
-            _ => {}
+        if key.code == KeyCode::Esc {
+            self.memo_focused = false;
+            self.transcript_focused = true;
+            self.frame_requester.schedule_frame();
+            return;
         }
 
-        self.clamp_cursor();
+        if key.code == KeyCode::Char('u') && key.modifiers.contains(KeyModifiers::CONTROL) {
+            self.memo = Self::init_memo();
+            self.frame_requester.schedule_frame();
+            return;
+        }
+
+        if let Some(input) = textarea_input_from_key_event(key) {
+            self.memo.input(input);
+        }
+
         self.frame_requester.schedule_frame();
     }
 
@@ -288,107 +248,6 @@ impl App {
             MAX_NOTEPAD_WIDTH_PERCENT as i16,
         ) as u16;
         self.notepad_width_percent = next;
-    }
-
-    fn line_byte_index_for_char(line: &str, char_index: usize) -> usize {
-        if char_index == 0 {
-            return 0;
-        }
-        line.char_indices()
-            .nth(char_index)
-            .map(|(i, _)| i)
-            .unwrap_or(line.len())
-    }
-
-    fn current_line_len(&self) -> usize {
-        self.memo_lines
-            .get(self.memo_cursor_row)
-            .map(|line| line.chars().count())
-            .unwrap_or(0)
-    }
-
-    fn clamp_cursor(&mut self) {
-        if self.memo_lines.is_empty() {
-            self.memo_lines.push(String::new());
-        }
-        self.memo_cursor_row = self
-            .memo_cursor_row
-            .min(self.memo_lines.len().saturating_sub(1));
-        self.memo_cursor_col = self.memo_cursor_col.min(self.current_line_len());
-    }
-
-    fn memo_insert_char(&mut self, ch: char) {
-        if ch == '\n' {
-            self.memo_insert_newline();
-            return;
-        }
-
-        if let Some(line) = self.memo_lines.get_mut(self.memo_cursor_row) {
-            let byte_index = Self::line_byte_index_for_char(line, self.memo_cursor_col);
-            line.insert(byte_index, ch);
-            self.memo_cursor_col += 1;
-        }
-    }
-
-    fn memo_insert_str(&mut self, s: &str) {
-        for ch in s.chars() {
-            self.memo_insert_char(ch);
-        }
-    }
-
-    fn memo_insert_newline(&mut self) {
-        if let Some(line) = self.memo_lines.get_mut(self.memo_cursor_row) {
-            let byte_index = Self::line_byte_index_for_char(line, self.memo_cursor_col);
-            let tail = line.split_off(byte_index);
-            self.memo_cursor_row += 1;
-            self.memo_cursor_col = 0;
-            self.memo_lines.insert(self.memo_cursor_row, tail);
-        }
-    }
-
-    fn memo_backspace(&mut self) {
-        if self.memo_cursor_col > 0 {
-            if let Some(line) = self.memo_lines.get_mut(self.memo_cursor_row) {
-                let start =
-                    Self::line_byte_index_for_char(line, self.memo_cursor_col.saturating_sub(1));
-                let end = Self::line_byte_index_for_char(line, self.memo_cursor_col);
-                line.replace_range(start..end, "");
-                self.memo_cursor_col = self.memo_cursor_col.saturating_sub(1);
-            }
-            return;
-        }
-
-        if self.memo_cursor_row == 0 {
-            return;
-        }
-
-        let current_line = self.memo_lines.remove(self.memo_cursor_row);
-        self.memo_cursor_row = self.memo_cursor_row.saturating_sub(1);
-        if let Some(prev_line) = self.memo_lines.get_mut(self.memo_cursor_row) {
-            self.memo_cursor_col = prev_line.chars().count();
-            prev_line.push_str(&current_line);
-        }
-    }
-
-    fn memo_delete(&mut self) {
-        let line_len = self.current_line_len();
-        if self.memo_cursor_col < line_len {
-            if let Some(line) = self.memo_lines.get_mut(self.memo_cursor_row) {
-                let start = Self::line_byte_index_for_char(line, self.memo_cursor_col);
-                let end = Self::line_byte_index_for_char(line, self.memo_cursor_col + 1);
-                line.replace_range(start..end, "");
-            }
-            return;
-        }
-
-        if self.memo_cursor_row + 1 >= self.memo_lines.len() {
-            return;
-        }
-
-        let next_line = self.memo_lines.remove(self.memo_cursor_row + 1);
-        if let Some(line) = self.memo_lines.get_mut(self.memo_cursor_row) {
-            line.push_str(&next_line);
-        }
     }
 
     fn handle_lifecycle(&mut self, event: SessionLifecycleEvent) {
@@ -497,4 +356,34 @@ fn substring_by_char_range(s: &str, start: usize, end: usize) -> String {
         .map(|(i, _)| i)
         .unwrap_or_else(|| s.len());
     s.get(start_byte..end_byte).unwrap_or("").to_string()
+}
+
+fn current_line_len(lines: &[String], row: usize) -> usize {
+    lines.get(row).map(|line| line.chars().count()).unwrap_or(0)
+}
+
+fn textarea_input_from_key_event(key_event: KeyEvent) -> Option<Input> {
+    let key = match key_event.code {
+        KeyCode::Backspace => Key::Backspace,
+        KeyCode::Enter => Key::Enter,
+        KeyCode::Left => Key::Left,
+        KeyCode::Right => Key::Right,
+        KeyCode::Up => Key::Up,
+        KeyCode::Down => Key::Down,
+        KeyCode::Home => Key::Home,
+        KeyCode::End => Key::End,
+        KeyCode::PageUp => Key::PageUp,
+        KeyCode::PageDown => Key::PageDown,
+        KeyCode::Tab => Key::Tab,
+        KeyCode::Delete => Key::Delete,
+        KeyCode::Char(c) => Key::Char(c),
+        _ => return None,
+    };
+
+    Some(Input {
+        key,
+        ctrl: key_event.modifiers.contains(KeyModifiers::CONTROL),
+        alt: key_event.modifiers.contains(KeyModifiers::ALT),
+        shift: key_event.modifiers.contains(KeyModifiers::SHIFT),
+    })
 }

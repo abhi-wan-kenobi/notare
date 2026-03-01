@@ -1,5 +1,7 @@
 mod app;
 mod commands;
+mod entry;
+mod entry_ui;
 mod event;
 mod frame;
 mod runtime;
@@ -56,6 +58,7 @@ fn required_base_url(base_url: Option<String>) -> String {
 enum Commands {
     Listen,
     Auth,
+    Desktop,
     Batch {
         #[arg(long)]
         file: String,
@@ -74,6 +77,9 @@ async fn main() {
 
     match cli.command {
         Some(Commands::Auth) => commands::auth::run(),
+        Some(Commands::Desktop) => {
+            commands::desktop::run();
+        }
         Some(Commands::Listen) => {
             let base_url = required_base_url(cli.base_url);
 
@@ -112,17 +118,20 @@ async fn main() {
         Some(Commands::Model { command }) => {
             commands::model::run(command).await;
         }
-        None => {
-            let base_url = required_base_url(cli.base_url);
+        None => match commands::entry::run().await {
+            entry::EntryAction::Listen => {
+                let base_url = required_base_url(cli.base_url);
 
-            commands::tui::run(commands::tui::Args {
-                base_url,
-                api_key: cli.api_key,
-                model: cli.model,
-                language: cli.language,
-                record: cli.record,
-            })
-            .await;
-        }
+                commands::tui::run(commands::tui::Args {
+                    base_url,
+                    api_key: cli.api_key,
+                    model: cli.model,
+                    language: cli.language,
+                    record: cli.record,
+                })
+                .await;
+            }
+            entry::EntryAction::Quit => {}
+        },
     }
 }

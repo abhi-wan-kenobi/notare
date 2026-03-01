@@ -2,14 +2,16 @@ use hypr_listener_core::State;
 use hypr_transcript::WordState;
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout, Position, Rect},
+    layout::{Constraint, Layout, Margin, Position, Rect},
     text::{Line, Span},
-    widgets::{Block, Borders, Padding, Paragraph, Wrap},
+    widgets::{
+        Block, Borders, Padding, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
+    },
 };
 
 use crate::{app::App, theme::Theme};
 
-pub fn draw(frame: &mut Frame, app: &App) {
+pub fn draw(frame: &mut Frame, app: &mut App) {
     let theme = Theme::default();
     let [content_area, status_area] =
         Layout::vertical([Constraint::Min(8), Constraint::Length(1)]).areas(frame.area());
@@ -25,7 +27,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
     draw_status_bar(frame, app, status_area, &theme);
 }
 
-fn draw_sidebar(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
+fn draw_sidebar(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     let [metadata_area, meters_area, transcript_area] = Layout::vertical([
         Constraint::Length(8),
         Constraint::Length(5),
@@ -257,27 +259,33 @@ fn level_char(level: u8) -> char {
     }
 }
 
-fn draw_transcript(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
+fn draw_transcript(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     let mut spans: Vec<Span> = Vec::new();
+    let mut transcript_text = String::new();
 
     for word in &app.words {
         let style = match word.state {
             WordState::Final => theme.transcript_final,
             WordState::Pending => theme.transcript_pending,
         };
-        spans.push(Span::styled(&word.text, style));
+        spans.push(Span::styled(word.text.clone(), style));
         spans.push(Span::raw(" "));
+        transcript_text.push_str(&word.text);
+        transcript_text.push(' ');
     }
 
     if !app.partials.is_empty() {
         for partial in &app.partials {
-            spans.push(Span::styled(&partial.text, theme.transcript_partial));
+            spans.push(Span::styled(partial.text.clone(), theme.transcript_partial));
             spans.push(Span::raw(" "));
+            transcript_text.push_str(&partial.text);
+            transcript_text.push(' ');
         }
     }
 
     if spans.is_empty() {
         spans.push(Span::styled("Waiting for speech...", theme.placeholder));
+        transcript_text.push_str("Waiting for speech...");
     }
 
     let text = vec![Line::from(spans)];
@@ -294,15 +302,34 @@ fn draw_transcript(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
         .title(" Transcript ")
         .padding(Padding::new(1, 1, 0, 0));
 
-    let paragraph = Paragraph::new(text)
-        .block(block)
-        .wrap(Wrap { trim: false })
-        .scroll((app.scroll_offset, 0));
+    let paragraph = Paragraph::new(text).block(block).wrap(Wrap { trim: false });
+
+    let visible_lines = area.height.saturating_sub(2) as usize;
+    let content_width = area.width.saturating_sub(4) as usize;
+    let line_count = wrapped_line_count(&transcript_text, content_width);
+    let max_scroll = line_count
+        .saturating_sub(visible_lines)
+        .min(u16::MAX as usize) as u16;
+    app.update_transcript_max_scroll(max_scroll);
+
+    let paragraph = paragraph.scroll((app.scroll_offset, 0));
 
     frame.render_widget(paragraph, area);
+
+    let mut scrollbar_state =
+        ScrollbarState::new(line_count.max(1)).position(app.scroll_offset as usize);
+    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight);
+    frame.render_stateful_widget(
+        scrollbar,
+        area.inner(Margin {
+            vertical: 1,
+            horizontal: 0,
+        }),
+        &mut scrollbar_state,
+    );
 }
 
-fn draw_notepad(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
+fn draw_notepad(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     if area.width < 3 || area.height < 3 {
         return;
     }
@@ -318,9 +345,10 @@ fn draw_notepad(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
         .border_style(border_style)
         .title(" Notepad ");
 
-    let inner_width = area.width.saturating_sub(2) as usize;
-    let inner_height = area.height.saturating_sub(2) as usize;
-    let view = app.memo_view(inner_height, inner_width);
+    let view = app.memo_view(
+        area.height.saturating_sub(2) as usize,
+        area.width.saturating_sub(2) as usize,
+    );
 
     let lines = if app.memo_is_empty() && !app.memo_focused {
         vec![Line::from(vec![Span::styled(
@@ -354,7 +382,7 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
             Span::styled("[ctrl+left/right]", theme.shortcut_key),
             Span::raw(" panes  "),
             Span::styled("[ctrl+u]", theme.shortcut_key),
-            Span::raw(" clear  "),
+            Span::raw(" clear note  "),
             Span::styled("[ctrl+c]", theme.shortcut_key),
             Span::raw(" quit  "),
         ])
@@ -375,4 +403,18 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     };
 
     frame.render_widget(Paragraph::new(line), area);
+}
+
+fn wrapped_line_count(text: &str, width: usize) -> usize {
+    if width == 0 {
+        return 0;
+    }
+
+    let mut lines = 0usize;
+    for line in text.split('\n') {
+        let chars = line.chars().count().max(1);
+        lines += chars.div_ceil(width);
+    }
+
+    lines.max(1)
 }

@@ -34,6 +34,7 @@ pub async fn run(args: Args) {
     ];
 
     let session_id = uuid::Uuid::new_v4().to_string();
+    let session_label = session_id.clone();
     let vault_base = std::env::temp_dir().join("char-cli");
 
     let (listener_tx, mut listener_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -85,7 +86,7 @@ pub async fn run(args: Args) {
                     TuiEvent::Key(key) => app.handle_key(key),
                     TuiEvent::Paste(pasted) => app.handle_paste(pasted),
                     TuiEvent::Draw => {
-                        terminal.draw(|frame| crate::ui::draw(frame, &app)).ok();
+                        terminal.draw(|frame| crate::ui::draw(frame, &mut app)).ok();
                         frame_requester.schedule_frame_in(std::time::Duration::from_secs(1));
                     }
                 }
@@ -101,9 +102,30 @@ pub async fn run(args: Args) {
         }
     }
 
+    let elapsed = app.elapsed();
+    let word_count = app.words.len();
+
     events.pause_events();
     ratatui::restore();
 
+    print_exit_summary(&session_label, elapsed, word_count);
+
     let _ = ractor::call!(root_ref, RootMsg::StopSession);
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+}
+
+fn print_exit_summary(session_id: &str, elapsed: std::time::Duration, word_count: usize) {
+    let secs = elapsed.as_secs();
+    let duration = format!(
+        "{:02}:{:02}:{:02}",
+        secs / 3600,
+        (secs % 3600) / 60,
+        secs % 60
+    );
+
+    println!();
+    println!("\x1b[2mSession\x1b[0m   {session_id}");
+    println!("\x1b[2mDuration\x1b[0m  {duration}");
+    println!("\x1b[2mWords\x1b[0m     {word_count}");
+    println!();
 }
