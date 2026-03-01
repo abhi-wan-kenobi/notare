@@ -65,6 +65,21 @@ export function CalendarSelection({
     );
   }
 
+  if (groups.length === 1) {
+    return (
+      <div className={cn(["flex flex-col gap-1 px-2", className])}>
+        {groups[0].calendars.map((cal) => (
+          <CalendarToggleRow
+            key={cal.id}
+            calendar={cal}
+            enabled={cal.enabled}
+            onToggle={(enabled) => onToggle(cal, enabled)}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <Accordion
       type="multiple"
@@ -139,7 +154,7 @@ function CalendarToggleRow({
         style={
           enabled
             ? { backgroundColor: color, borderColor: color }
-            : { borderColor: "#d4d4d4" }
+            : { borderColor: color }
         }
       >
         {enabled && <CheckIcon className="size-3 text-white" strokeWidth={3} />}

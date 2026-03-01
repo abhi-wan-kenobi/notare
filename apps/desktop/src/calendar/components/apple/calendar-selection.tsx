@@ -10,7 +10,7 @@ import { Button } from "@hypr/ui/components/ui/button";
 import { cn } from "@hypr/utils";
 
 import { useSync } from "./context";
-import { SyncIndicator } from "./sync";
+import { SyncIndicator } from "./status";
 
 import {
   type CalendarGroup,
@@ -20,38 +20,18 @@ import {
 import { findCalendarByTrackingId } from "~/calendar/utils";
 import * as main from "~/store/tinybase/store/main";
 
-export function Section({
-  title,
-  action,
-  children,
-}: {
-  title: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-2 border-t border-neutral-200 pt-4">
-      <div className="flex items-center justify-between">
-        <h4 className="text-xs font-medium tracking-wide text-neutral-400 uppercase">
-          {title}
-        </h4>
-        {action}
-      </div>
-      {children}
-    </div>
-  );
-}
-
 export function AppleCalendarSelection({
   calendarClassName,
-}: { calendarClassName?: string } = {}) {
+  leftAction,
+}: { calendarClassName?: string; leftAction?: React.ReactNode } = {}) {
   const { groups, handleToggle, handleRefresh, isLoading } =
     useAppleCalendarSelection();
 
   return (
-    <Section
-      title="Calendars"
-      action={
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <div>{leftAction}</div>
+
         <div className="flex items-center gap-2">
           <SyncIndicator />
 
@@ -67,15 +47,14 @@ export function AppleCalendarSelection({
             />
           </Button>
         </div>
-      }
-    >
-      <div className="pt-0.5"></div>
+      </div>
+
       <CalendarSelection
         groups={groups}
         onToggle={handleToggle}
         className={calendarClassName}
       />
-    </Section>
+    </div>
   );
 }
 

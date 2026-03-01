@@ -1,4 +1,9 @@
-import { AlertCircleIcon, ArrowRightIcon, CheckIcon } from "lucide-react";
+import {
+  AlertCircleIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  CheckIcon,
+} from "lucide-react";
 import { useState } from "react";
 
 import { type PermissionStatus } from "@hypr/plugin-permissions";
@@ -63,7 +68,6 @@ export function AccessPermissionRow({
   onRequest: () => void;
   onReset: () => void;
 }) {
-  const [showActions, setShowActions] = useState(false);
   const isAuthorized = status === "authorized";
   const isDenied = status === "denied";
 
@@ -87,32 +91,12 @@ export function AccessPermissionRow({
           {!isAuthorized && <AlertCircleIcon className="size-4" />}
           <h3 className="text-sm font-medium">{title}</h3>
         </div>
-        <div className="text-xs text-neutral-600">
-          {!showActions ? (
-            <button
-              type="button"
-              onClick={() => setShowActions(true)}
-              className="underline transition-colors hover:text-neutral-900"
-            >
-              Having trouble?
-            </button>
-          ) : (
-            <div>
-              You can{" "}
-              <ActionLink onClick={onRequest} disabled={isPending}>
-                Request,
-              </ActionLink>{" "}
-              <ActionLink onClick={onReset} disabled={isPending}>
-                Reset
-              </ActionLink>{" "}
-              or{" "}
-              <ActionLink onClick={onOpen} disabled={isPending}>
-                Open
-              </ActionLink>{" "}
-              permission panel.
-            </div>
-          )}
-        </div>
+        <TroubleShootingLink
+          onRequest={onRequest}
+          onReset={onReset}
+          onOpen={onOpen}
+          isPending={isPending}
+        />
       </div>
       <Button
         variant={isAuthorized ? "outline" : "default"}
@@ -135,6 +119,52 @@ export function AccessPermissionRow({
           <ArrowRightIcon className="size-5" />
         )}
       </Button>
+    </div>
+  );
+}
+
+export function TroubleShootingLink({
+  onRequest,
+  onReset,
+  onOpen,
+  isPending,
+}: {
+  onRequest: () => void;
+  onReset: () => void;
+  onOpen: () => void;
+  isPending: boolean;
+}) {
+  const [showActions, setShowActions] = useState(false);
+  return (
+    <div className="text-xs text-neutral-600">
+      {!showActions ? (
+        <button
+          type="button"
+          onClick={() => setShowActions(true)}
+          className="underline transition-colors hover:text-neutral-900"
+        >
+          Having trouble?
+        </button>
+      ) : (
+        <div>
+          You can{" "}
+          <ActionLink onClick={onRequest} disabled={isPending}>
+            Request,
+          </ActionLink>{" "}
+          <ActionLink onClick={onReset} disabled={isPending}>
+            Reset
+          </ActionLink>{" "}
+          or{" "}
+          <ActionLink onClick={onOpen} disabled={isPending}>
+            Open
+          </ActionLink>{" "}
+          permission panel.{" "}
+          <ActionLink onClick={() => setShowActions(false)}>
+            <ArrowLeftIcon className="inline-block size-3 underline" />
+            Back
+          </ActionLink>
+        </div>
+      )}
     </div>
   );
 }

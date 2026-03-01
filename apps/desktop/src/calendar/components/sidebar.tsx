@@ -9,7 +9,7 @@ import {
 
 import { AppleCalendarSelection } from "./apple/calendar-selection";
 import { SyncProvider } from "./apple/context";
-import { AccessPermissionRow } from "./apple/permission";
+import { AccessPermissionRow, TroubleShootingLink } from "./apple/permission";
 import { OAuthProviderContent } from "./oauth/provider-content";
 import { PROVIDERS } from "./shared";
 
@@ -18,7 +18,6 @@ import { usePermission } from "~/shared/hooks/usePermissions";
 export function CalendarSidebarContent() {
   const isMacos = platform() === "macos";
   const calendar = usePermission("calendar");
-  const contacts = usePermission("contacts");
 
   const visibleProviders = PROVIDERS.filter(
     (p) => p.platform === "all" || (p.platform === "macos" && isMacos),
@@ -62,34 +61,27 @@ export function CalendarSidebarContent() {
             <AccordionContent className="pb-2">
               {provider.id === "apple" && (
                 <div className="flex flex-col gap-3">
-                  {(calendar.status !== "authorized" ||
-                    contacts.status !== "authorized") && (
-                    <div className="flex flex-col gap-1">
-                      {calendar.status !== "authorized" && (
-                        <AccessPermissionRow
-                          title="Calendar"
-                          status={calendar.status}
-                          isPending={calendar.isPending}
-                          onOpen={calendar.open}
-                          onRequest={calendar.request}
-                          onReset={calendar.reset}
-                        />
-                      )}
-                      {contacts.status !== "authorized" && (
-                        <AccessPermissionRow
-                          title="Contacts"
-                          status={contacts.status}
-                          isPending={contacts.isPending}
-                          onOpen={contacts.open}
-                          onRequest={contacts.request}
-                          onReset={contacts.reset}
-                        />
-                      )}
-                    </div>
-                  )}
-                  {calendar.status === "authorized" && (
+                  {calendar.status !== "authorized" ? (
+                    <AccessPermissionRow
+                      title="Calendar"
+                      status={calendar.status}
+                      isPending={calendar.isPending}
+                      onOpen={calendar.open}
+                      onRequest={calendar.request}
+                      onReset={calendar.reset}
+                    />
+                  ) : (
                     <SyncProvider>
-                      <AppleCalendarSelection />
+                      <AppleCalendarSelection
+                        leftAction={
+                          <TroubleShootingLink
+                            isPending={calendar.isPending}
+                            onOpen={calendar.open}
+                            onRequest={calendar.request}
+                            onReset={calendar.reset}
+                          />
+                        }
+                      />
                     </SyncProvider>
                   )}
                 </div>
