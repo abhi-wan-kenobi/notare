@@ -65,7 +65,7 @@ pub struct SessionMetaParticipant {
     pub source: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionMetaData {
     pub id: String,
@@ -74,10 +74,41 @@ pub struct SessionMetaData {
     pub title: Option<String>,
     pub event: Option<serde_json::Value>,
     pub event_id: Option<String>,
-    #[serde(default)]
     pub participants: Vec<SessionMetaParticipant>,
-    #[serde(default)]
     pub tags: Vec<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SessionMetaDataSerde {
+    id: String,
+    user_id: String,
+    created_at: Option<String>,
+    title: Option<String>,
+    event: Option<serde_json::Value>,
+    event_id: Option<String>,
+    participants: Option<Vec<SessionMetaParticipant>>,
+    tags: Option<Vec<String>>,
+}
+
+impl<'de> Deserialize<'de> for SessionMetaData {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = SessionMetaDataSerde::deserialize(deserializer)?;
+
+        Ok(Self {
+            id: value.id,
+            user_id: value.user_id,
+            created_at: value.created_at,
+            title: value.title,
+            event: value.event,
+            event_id: value.event_id,
+            participants: value.participants.unwrap_or_default(),
+            tags: value.tags.unwrap_or_default(),
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]

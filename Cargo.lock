@@ -5878,6 +5878,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "fs-sync-core"
+version = "0.1.0"
+dependencies = [
+ "afconvert",
+ "assert_fs",
+ "audio-utils",
+ "chrono",
+ "data",
+ "frontmatter",
+ "glob",
+ "mp3",
+ "predicates",
+ "rayon",
+ "rodio",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "specta",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tiptap",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "fs4"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15283,6 +15309,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "segmentation"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "criterion",
+ "data",
+ "onnx",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "selectors"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -17931,20 +17970,10 @@ dependencies = [
 name = "tauri-plugin-fs-sync"
 version = "0.1.0"
 dependencies = [
- "afconvert",
- "assert_fs",
- "audio-utils",
- "chrono",
- "data",
- "frontmatter",
- "glob",
- "mp3",
- "predicates",
+ "fs-sync-core",
  "rayon",
- "rodio",
  "serde",
  "serde_json",
- "serde_yaml",
  "specta",
  "specta-typescript",
  "tauri",
@@ -17953,12 +17982,9 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-settings",
  "tauri-specta",
- "tempfile",
  "thiserror 2.0.18",
- "tiptap",
  "tokio",
  "tracing",
- "uuid",
 ]
 
 [[package]]
