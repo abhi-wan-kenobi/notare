@@ -25,7 +25,7 @@ import {
 import { convertStorageHintsToRuntime } from "~/stt/speaker-hints";
 import { parseTranscriptHints, parseTranscriptWords } from "~/stt/utils";
 
-type FileFormat = "pdf" | "txt" | "md";
+type FileFormat = "pdf" | "txt" | "md" | "org";
 
 function formatDate(isoString: string): string {
   const date = new Date(isoString);
@@ -63,6 +63,18 @@ function markdownToText(content: string): string {
     .replace(/_(.*?)_/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function markdownToOrg(content: string): string {
+  return content
+    .replace(/^(#{1,6})\s+/gm, (_match, hashes: string) => {
+      return `${"*".repeat(hashes.length)} `;
+    })
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "[[$2][$1]]")
+    .replace(/\*\*(.*?)\*\*/g, "*$1*")
+    .replace(/__(.*?)__/g, "*$1*")
+    .replace(/`([^`]+)`/g, "~$1~")
     .trim();
 }
 
@@ -340,6 +352,51 @@ export function ExportModal({
     return sections.join("\n");
   };
 
+  const buildOrgContent = (): string => {
+    const sections: string[] = [];
+    const title = sessionTitle || "Untitled";
+    sections.push(`#+TITLE: ${title}`);
+
+    if (sessionCreatedAt) {
+      sections.push(`#+DATE: ${formatDate(sessionCreatedAt)}`);
+    }
+
+    sections.push("");
+    sections.push("* Metadata");
+
+    if (sessionCreatedAt) {
+      sections.push(`- Created :: ${formatDate(sessionCreatedAt)}`);
+    }
+
+    if (participantNames.length > 0) {
+      sections.push(`- Participants :: ${participantNames.join(", ")}`);
+    }
+
+    if (transcriptDuration) {
+      sections.push(`- Duration :: ${transcriptDuration}`);
+    }
+
+    if (includeSummary) {
+      const summary = getSummaryMd();
+      if (summary) {
+        sections.push("");
+        sections.push("* Summary");
+        sections.push(markdownToOrg(summary));
+      }
+    }
+
+    if (includeTranscript) {
+      const transcript = getTranscriptText();
+      if (transcript) {
+        sections.push("");
+        sections.push("* Transcript");
+        sections.push(transcript);
+      }
+    }
+
+    return sections.join("\n");
+  };
+
   const buildPdfContent = (): {
     enhancedMd: string;
     transcript: { items: TranscriptItem[] } | null;
@@ -388,7 +445,11 @@ export function ExportModal({
         }
       } else {
         const textContent =
-          format === "md" ? buildMdContent() : buildTxtContent();
+          format === "md"
+            ? buildMdContent()
+            : format === "org"
+              ? buildOrgContent()
+              : buildTxtContent();
         const result = await fs2Commands.writeTextFile(path, textContent);
         if (result.status === "error") {
           throw new Error(result.error);
@@ -444,7 +505,7 @@ export function ExportModal({
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">File format</span>
               <div className="flex justify-center gap-4">
-                {(["pdf", "txt", "md"] as const).map((f) => (
+                {(["pdf", "txt", "md", "org"] as const).map((f) => (
                   <label
                     key={f}
                     className="flex cursor-pointer items-center gap-1.5 text-sm"
@@ -456,7 +517,11 @@ export function ExportModal({
                       onChange={() => setFormat(f)}
                       className="accent-stone-800"
                     />
-                    {f === "md" ? "Markdown" : f.toUpperCase()}
+                    {f === "md"
+                      ? "Markdown"
+                      : f === "org"
+                        ? "Org"
+                        : f.toUpperCase()}
                   </label>
                 ))}
               </div>
