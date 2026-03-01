@@ -62,6 +62,7 @@ hypr-detect = { path = "crates/detect", package = "detect" }
 hypr-device-monitor = { path = "crates/device-monitor", package = "device-monitor" }
 hypr-docs = { path = "crates/docs", package = "docs" }
 hypr-download-interface = { path = "crates/download-interface", package = "download-interface" }
+hypr-embedding = { path = "crates/embedding", package = "embedding" }
 hypr-eval = { path = "crates/eval", package = "eval" }
 hypr-exa = { path = "crates/exa", package = "exa" }
 hypr-file = { path = "crates/file", package = "file" }
@@ -108,6 +109,7 @@ hypr-pyannote-cloud = { path = "crates/pyannote-cloud", package = "pyannote-clou
 hypr-pyannote-local = { path = "crates/pyannote-local", package = "pyannote-local" }
 hypr-recall = { path = "crates/recall", package = "recall" }
 hypr-s3 = { path = "crates/s3", package = "s3" }
+hypr-segmentation = { path = "crates/segmentation", package = "segmentation" }
 hypr-slack-web = { path = "crates/slack-web", package = "slack-web" }
 hypr-storage = { path = "crates/storage", package = "storage" }
 hypr-supabase-auth = { path = "crates/supabase-auth", package = "supabase-auth" }

@@ -5141,6 +5141,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
 
 [[package]]
+name = "embedding"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "data",
+ "knf-rs",
+ "onnx",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "encode_unicode"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15315,6 +15328,7 @@ dependencies = [
  "approx",
  "criterion",
  "data",
+ "hound",
  "onnx",
  "serde",
  "serde_json",
@@ -20056,6 +20070,7 @@ dependencies = [
  "owhisper-interface",
  "pyannote-local",
  "rodio",
+ "segmentation",
  "serde_json",
  "serde_qs",
  "thiserror 2.0.18",
