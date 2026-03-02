@@ -21,9 +21,10 @@
   "devDependencies": {
     "@playwright/test": "^1.56.1",
     "@tailwindcss/vite": "^4.1.13",
-    "@wxt-dev/module-react": "^1.1.4",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
+    "@wxt-dev/module-react": "^1.1.4",
+    "happy-dom": "^20.7.0",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4",

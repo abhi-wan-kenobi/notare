@@ -1,16 +1,16 @@
 import "~/assets/tailwind.css";
 
+import {
+  getMuteState,
+  getParticipantNames,
+  isMeetPageActive,
+  type Participant,
+} from "./dom";
+
 const SEND_INTERVAL_MS = 2500;
 const MUTATION_DEBOUNCE_MS = 250;
 const BADGE_ANCHOR_SELECTOR =
   "[role='toolbar'], [aria-label*='Call controls' i], footer";
-const MAX_PARTICIPANTS = 30;
-const MAX_PARTICIPANT_NAME_LENGTH = 80;
-
-type Participant = {
-  name: string;
-  is_self: boolean;
-};
 
 type MeetingStateMessage = {
   type: "meeting_state";
@@ -30,146 +30,13 @@ type HostMessage = MeetingStateMessage | MeetingEndedMessage;
 
 let badgeElement: HTMLDivElement | null = null;
 
-function byTextPattern(value: string | null | undefined, patterns: string[]) {
-  const text = (value || "").toLowerCase();
-  return patterns.some((pattern) => text.includes(pattern));
-}
-
-function normalizeParticipantName(value: string | null | undefined) {
-  const name = (value || "").trim().replace(/\s+/g, " ");
-  if (!name || name.length > MAX_PARTICIPANT_NAME_LENGTH) {
-    return null;
-  }
-
-  if (byTextPattern(name, ["microphone", "camera", "pin", "present"])) {
-    return null;
-  }
-
-  return name;
-}
-
-function isSelfParticipant(name: string) {
-  const normalized = name.toLowerCase();
-  return (
-    normalized === "you" ||
-    normalized.endsWith("(you)") ||
-    normalized.includes(" (you)")
-  );
-}
-
-function getMuteState() {
-  const muteSelectors = [
-    "button[aria-label*='microphone' i]",
-    "button[aria-label*='mic' i]",
-    "button[data-is-muted]",
-  ];
-
-  for (const selector of muteSelectors) {
-    const button = document.querySelector(selector);
-    if (!button) {
-      continue;
-    }
-
-    const dataMuted = button.getAttribute("data-is-muted");
-    if (dataMuted === "true") {
-      return true;
-    }
-    if (dataMuted === "false") {
-      return false;
-    }
-
-    const ariaPressed = button.getAttribute("aria-pressed");
-    if (ariaPressed === "true") {
-      return true;
-    }
-    if (ariaPressed === "false") {
-      return false;
-    }
-
-    const label = button.getAttribute("aria-label") || "";
-    if (byTextPattern(label, ["turn on microphone", "unmute"])) {
-      return true;
-    }
-    if (byTextPattern(label, ["turn off microphone", "mute"])) {
-      return false;
-    }
-  }
-
-  return false;
-}
-
-function getParticipantNames() {
-  const names = new Map<string, Participant>();
-
-  const participantElements = document.querySelectorAll<HTMLElement>(
-    "[data-participant-id]",
-  );
-
-  for (const participant of participantElements) {
-    const participantId = participant
-      .getAttribute("data-participant-id")
-      ?.trim();
-
-    const selfNameElement =
-      participant.querySelector<HTMLElement>("[data-self-name]");
-    const labelElement = participant.querySelector<HTMLElement>(
-      "[aria-label], span[dir='auto'], span",
-    );
-
-    const rawName =
-      selfNameElement?.getAttribute("data-self-name") ||
-      labelElement?.getAttribute("aria-label") ||
-      labelElement?.textContent ||
-      participant.getAttribute("aria-label") ||
-      "";
-
-    const name = normalizeParticipantName(rawName);
-    if (!name) {
-      continue;
-    }
-
-    const isSelf = Boolean(selfNameElement) || isSelfParticipant(name);
-    const key = participantId || name.toLowerCase();
-    const existing = names.get(key);
-
-    if (existing) {
-      existing.is_self = existing.is_self || isSelf;
-      continue;
-    }
-
-    names.set(key, { name, is_self: isSelf });
-
-    if (names.size >= MAX_PARTICIPANTS) {
-      break;
-    }
-  }
-
-  return Array.from(names.values());
-}
-
-function isMeetPageActive() {
-  const inMeetDomain = window.location.hostname === "meet.google.com";
-  if (!inMeetDomain) {
-    return false;
-  }
-
-  const codePattern = /^\/[a-z]{3}-[a-z]{4}-[a-z]{3}/;
-  if (codePattern.test(window.location.pathname)) {
-    return true;
-  }
-
-  return Boolean(
-    document.querySelector("[role='toolbar'], [aria-label*='Call controls' i]"),
-  );
-}
-
 function buildMeetingStatePayload(): MeetingStateMessage {
   return {
     type: "meeting_state",
     url: window.location.href,
     is_active: true,
-    muted: getMuteState(),
-    participants: getParticipantNames(),
+    muted: getMuteState(document),
+    participants: getParticipantNames(document),
   };
 }
 
@@ -244,7 +111,7 @@ export default defineContentScript({
     let mutationTimeout: number | null = null;
 
     const maybeSendState = (force = false) => {
-      if (!isMeetPageActive()) {
+      if (!isMeetPageActive(window.location, document)) {
         if (force) {
           void sendPayload(buildMeetingEndedPayload());
         }
