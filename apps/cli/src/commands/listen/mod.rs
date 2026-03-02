@@ -1,19 +1,25 @@
 use std::sync::Arc;
 
 use hypr_listener_core::actors::{RootActor, RootArgs, RootMsg, SessionParams};
-use hypr_listener2_core::{BatchEvent, BatchParams, BatchProvider, BatchRuntime};
+use hypr_listener2_core::{BatchEvent, BatchParams, BatchProvider};
 use ractor::Actor;
 use tokio::sync::mpsc;
 
 use crate::error::{CliError, CliResult};
 use crate::{
-    app::App,
-    audio_drop::AudioDropRequest,
     event::{EventHandler, TuiEvent},
     frame::FrameRequester,
-    runtime::TuiRuntime,
     terminal::TerminalGuard,
 };
+
+mod app;
+mod audio_drop;
+mod runtime;
+mod ui;
+
+use app::App;
+use audio_drop::AudioDropRequest;
+use runtime::{ListenBatchRuntime, ListenRuntime};
 
 pub struct Args {
     pub base_url: String,
@@ -23,27 +29,18 @@ pub struct Args {
     pub record: bool,
 }
 
-struct TuiBatchRuntime {
-    tx: mpsc::UnboundedSender<BatchEvent>,
-}
-
-impl BatchRuntime for TuiBatchRuntime {
-    fn emit(&self, event: BatchEvent) {
-        let _ = self.tx.send(event);
-    }
-}
-
 fn spawn_batch_transcription(
     request: AudioDropRequest,
-    batch_runtime: Arc<TuiBatchRuntime>,
+    batch_runtime: Arc<ListenBatchRuntime>,
     batch_tx: mpsc::UnboundedSender<BatchEvent>,
     base_url: String,
     api_key: String,
     model: String,
     language: hypr_language::Language,
 ) {
+    let batch_session_id = uuid::Uuid::new_v4().to_string();
     let params = BatchParams {
-        session_id: uuid::Uuid::new_v4().to_string(),
+        session_id: batch_session_id.clone(),
         provider: BatchProvider::Am,
         file_path: request.file_path,
         model: if model.is_empty() { None } else { Some(model) },
@@ -56,7 +53,7 @@ fn spawn_batch_transcription(
     tokio::spawn(async move {
         if let Err(error) = hypr_listener2_core::run_batch(batch_runtime, params).await {
             let _ = batch_tx.send(BatchEvent::BatchFailed {
-                session_id: uuid::Uuid::new_v4().to_string(),
+                session_id: batch_session_id,
                 error: error.to_string(),
             });
         }
@@ -84,7 +81,7 @@ pub async fn run(args: Args) -> CliResult<()> {
     let vault_base = std::env::temp_dir().join("char-cli");
 
     let (listener_tx, mut listener_rx) = tokio::sync::mpsc::unbounded_channel();
-    let runtime = Arc::new(TuiRuntime::new(vault_base, listener_tx));
+    let runtime = Arc::new(ListenRuntime::new(vault_base, listener_tx));
 
     let (root_ref, _handle) = Actor::spawn(
         Some(RootActor::name()),
@@ -120,7 +117,7 @@ pub async fn run(args: Args) -> CliResult<()> {
     let mut terminal = TerminalGuard::new();
     let (draw_tx, draw_rx) = tokio::sync::broadcast::channel(16);
     let (batch_tx, mut batch_rx) = mpsc::unbounded_channel();
-    let batch_runtime = Arc::new(TuiBatchRuntime {
+    let batch_runtime = Arc::new(ListenBatchRuntime {
         tx: batch_tx.clone(),
     });
     let frame_requester = FrameRequester::new(draw_tx);
@@ -151,7 +148,7 @@ pub async fn run(args: Args) -> CliResult<()> {
                     TuiEvent::Draw => {
                         terminal
                             .terminal_mut()
-                            .draw(|frame| crate::ui::draw(frame, &mut app))
+                            .draw(|frame| ui::draw(frame, &mut app))
                             .ok();
                         frame_requester.schedule_frame_in(std::time::Duration::from_secs(1));
                     }

@@ -9,7 +9,8 @@ use ratatui::{
     },
 };
 
-use crate::{app::App, theme::Theme};
+use super::app::App;
+use crate::theme::Theme;
 
 pub fn draw(frame: &mut Frame, app: &mut App) {
     let theme = Theme::default();

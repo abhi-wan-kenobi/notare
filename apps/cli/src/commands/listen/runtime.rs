@@ -4,27 +4,28 @@ use hypr_listener_core::{
     ListenerRuntime, SessionDataEvent, SessionErrorEvent, SessionLifecycleEvent,
     SessionProgressEvent,
 };
+use hypr_listener2_core::{BatchEvent, BatchRuntime};
 use tokio::sync::mpsc;
 
-pub enum ListenerEvent {
+pub(super) enum ListenerEvent {
     Lifecycle(SessionLifecycleEvent),
     Progress(SessionProgressEvent),
     Error(SessionErrorEvent),
     Data(SessionDataEvent),
 }
 
-pub struct TuiRuntime {
+pub(super) struct ListenRuntime {
     vault_base: PathBuf,
     tx: mpsc::UnboundedSender<ListenerEvent>,
 }
 
-impl TuiRuntime {
+impl ListenRuntime {
     pub fn new(vault_base: PathBuf, tx: mpsc::UnboundedSender<ListenerEvent>) -> Self {
         Self { vault_base, tx }
     }
 }
 
-impl hypr_storage::StorageRuntime for TuiRuntime {
+impl hypr_storage::StorageRuntime for ListenRuntime {
     fn global_base(&self) -> Result<PathBuf, hypr_storage::Error> {
         Ok(self.vault_base.clone())
     }
@@ -34,7 +35,7 @@ impl hypr_storage::StorageRuntime for TuiRuntime {
     }
 }
 
-impl ListenerRuntime for TuiRuntime {
+impl ListenerRuntime for ListenRuntime {
     fn emit_lifecycle(&self, event: SessionLifecycleEvent) {
         let _ = self.tx.send(ListenerEvent::Lifecycle(event));
     }
@@ -49,5 +50,15 @@ impl ListenerRuntime for TuiRuntime {
 
     fn emit_data(&self, event: SessionDataEvent) {
         let _ = self.tx.send(ListenerEvent::Data(event));
+    }
+}
+
+pub(super) struct ListenBatchRuntime {
+    pub(super) tx: mpsc::UnboundedSender<BatchEvent>,
+}
+
+impl BatchRuntime for ListenBatchRuntime {
+    fn emit(&self, event: BatchEvent) {
+        let _ = self.tx.send(event);
     }
 }

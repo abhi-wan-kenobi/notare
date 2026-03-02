@@ -1,8 +1,12 @@
 use std::sync::Arc;
 
-use hypr_listener2_core::{BatchEvent, BatchParams, BatchProvider, BatchRuntime};
+use hypr_listener2_core::{BatchParams, BatchProvider};
 
 use crate::error::{CliError, CliResult};
+
+mod runtime;
+
+use runtime::CliBatchRuntime;
 
 pub struct Args {
     pub file: String,
@@ -12,33 +16,6 @@ pub struct Args {
     pub model: Option<String>,
     pub language: String,
     pub keywords: Vec<String>,
-}
-
-struct CliBatchRuntime;
-
-impl BatchRuntime for CliBatchRuntime {
-    fn emit(&self, event: BatchEvent) {
-        match &event {
-            BatchEvent::BatchStarted { .. } => {
-                eprintln!("Transcribing...");
-            }
-            BatchEvent::BatchResponseStreamed { percentage, .. } => {
-                eprintln!("Progress: {:.0}%", percentage * 100.0);
-            }
-            BatchEvent::BatchResponse { response, .. } => {
-                for channel in &response.results.channels {
-                    for alt in &channel.alternatives {
-                        if !alt.transcript.is_empty() {
-                            println!("{}", alt.transcript);
-                        }
-                    }
-                }
-            }
-            BatchEvent::BatchFailed { error, .. } => {
-                eprintln!("Error: {error}");
-            }
-        }
-    }
 }
 
 pub async fn run(args: Args) -> CliResult<()> {

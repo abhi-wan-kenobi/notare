@@ -5,7 +5,7 @@ use tui_textarea::TextArea;
 use crate::frame::FrameRequester;
 use crate::textarea_input::textarea_input_from_key_event;
 
-const LOGO_PNG_BYTES: &[u8] = include_bytes!("../assets/char.png");
+const LOGO_PNG_BYTES: &[u8] = include_bytes!("../../../assets/char.png");
 
 #[derive(Clone, Copy)]
 pub struct SlashCommand {

@@ -1,9 +1,15 @@
 use crate::{
-    entry::{EntryAction, EntryApp},
     event::{EventHandler, TuiEvent},
     frame::FrameRequester,
     terminal::TerminalGuard,
 };
+
+mod app;
+mod ui;
+
+pub use app::EntryAction;
+
+use app::EntryApp;
 
 pub struct Args {
     pub status_message: Option<String>,
@@ -28,7 +34,7 @@ pub async fn run(args: Args) -> EntryAction {
                     TuiEvent::Draw => {
                         terminal
                             .terminal_mut()
-                            .draw(|frame| crate::entry_ui::draw(frame, &mut app))
+                            .draw(|frame| ui::draw(frame, &mut app))
                             .ok();
                     }
                 }

@@ -9,9 +9,9 @@ use hypr_listener2_core::BatchEvent;
 use hypr_transcript::{FinalizedWord, PartialWord, TranscriptDelta, TranscriptProcessor};
 use tui_textarea::TextArea;
 
-use crate::audio_drop::{AudioDropRequest, looks_like_audio_file, normalize_pasted_path};
+use super::audio_drop::{AudioDropRequest, looks_like_audio_file, normalize_pasted_path};
+use super::runtime::ListenerEvent;
 use crate::frame::FrameRequester;
-use crate::runtime::ListenerEvent;
 use crate::textarea_input::textarea_input_from_key_event;
 
 const AUDIO_HISTORY_CAP: usize = 64;

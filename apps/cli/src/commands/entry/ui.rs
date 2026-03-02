@@ -7,10 +7,9 @@ use ratatui::{
 };
 use ratatui_image::{Resize, StatefulImage};
 
-use crate::{
-    entry::{COMMANDS, EntryApp, SessionEntry, SessionsOverlay, command_highlight_indices},
-    theme::Theme,
-};
+use crate::theme::Theme;
+
+use super::app::{COMMANDS, EntryApp, SessionEntry, SessionsOverlay, command_highlight_indices};
 
 const APP_VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
 

@@ -1,16 +1,10 @@
-mod app;
-mod audio_drop;
 mod commands;
-mod entry;
-mod entry_ui;
 mod error;
 mod event;
 mod frame;
-mod runtime;
 mod terminal;
 mod textarea_input;
 mod theme;
-mod ui;
 
 use clap::{Parser, Subcommand};
 
@@ -99,7 +93,7 @@ async fn run(cli: Cli) -> CliResult<()> {
         Some(Commands::Listen) => {
             let base_url = required_base_url(base_url)?;
 
-            commands::tui::run(commands::tui::Args {
+            commands::listen::run(commands::listen::Args {
                 base_url,
                 api_key,
                 model,
@@ -137,10 +131,10 @@ async fn run(cli: Cli) -> CliResult<()> {
         })
         .await
         {
-            entry::EntryAction::Listen => {
+            commands::entry::EntryAction::Listen => {
                 let base_url = required_base_url(base_url)?;
 
-                commands::tui::run(commands::tui::Args {
+                commands::listen::run(commands::listen::Args {
                     base_url,
                     api_key,
                     model,
@@ -150,7 +144,7 @@ async fn run(cli: Cli) -> CliResult<()> {
                 .await
                 .map(|_| ())
             }
-            entry::EntryAction::Quit => Ok(()),
+            commands::entry::EntryAction::Quit => Ok(()),
         },
     }
 }
