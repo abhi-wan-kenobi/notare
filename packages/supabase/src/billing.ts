@@ -18,7 +18,10 @@ export function deriveBillingInfo(
   const entitlements = payload?.entitlements ?? [];
   const subscriptionStatus = payload?.subscription_status ?? null;
   const isTrialing = subscriptionStatus === "trialing";
-  const isPro = entitlements.includes("hyprnote_pro") || isTrialing;
+  const isPro =
+    entitlements.includes("hyprnote_pro") ||
+    isTrialing ||
+    subscriptionStatus === "active";
   const trialEnd = payload?.trial_end
     ? new Date(payload.trial_end * 1000)
     : null;
