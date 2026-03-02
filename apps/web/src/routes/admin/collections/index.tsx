@@ -226,6 +226,7 @@ export const Route = createFileRoute("/admin/collections/")({
       throw redirect({
         to: "/auth/",
         search: {
+          flow: "web",
           provider: "github",
           redirect: "/admin/collections/",
           rra: true,

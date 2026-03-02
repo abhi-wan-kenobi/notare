@@ -70,6 +70,7 @@ export function IntegrationsSettingsCard() {
                     navigate({
                       to: "/app/integration/",
                       search: {
+                        flow: "web",
                         integration_id: integration.id,
                         action: "connect",
                         ...(connection
@@ -93,6 +94,7 @@ export function IntegrationsSettingsCard() {
                       navigate({
                         to: "/app/integration/",
                         search: {
+                          flow: "web",
                           action: "disconnect",
                           integration_id: integration.id,
                           connection_id: connection.connection_id,

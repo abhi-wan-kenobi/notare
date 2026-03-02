@@ -278,6 +278,7 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
         {plan.price ? (
           <Link
             to="/auth/"
+            search={{ flow: "web" }}
             className={cn([
               "mt-8 flex h-10 w-full cursor-pointer items-center justify-center text-sm font-medium transition-all",
               "rounded-full bg-linear-to-t from-stone-600 to-stone-500 text-white shadow-md hover:scale-[102%] hover:shadow-lg active:scale-[98%]",

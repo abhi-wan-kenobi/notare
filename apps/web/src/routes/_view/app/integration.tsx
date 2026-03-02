@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { desktopSchemeSchema } from "@/functions/desktop-flow";
+import { flowSearchSchema } from "@/functions/desktop-flow";
 import { useBilling } from "@/hooks/use-billing";
 
 import { IntegrationPageLayout } from "./-integration-ui";
@@ -9,14 +9,14 @@ import { ConnectFlow } from "./-integrations-connect-flow";
 import { DisconnectFlow } from "./-integrations-disconnect-flow";
 import { UpgradePrompt } from "./-integrations-upgrade-prompt";
 
-const validateSearch = z.object({
+const commonSearch = {
   integration_id: z.string().default("google-calendar"),
   connection_id: z.string().optional(),
   action: z.enum(["connect", "disconnect"]).default("connect"),
-  flow: z.enum(["desktop", "web"]).default("web"),
-  scheme: desktopSchemeSchema.catch("hyprnote"),
   return_to: z.string().optional(),
-});
+};
+
+const validateSearch = flowSearchSchema(commonSearch);
 
 export const INTEGRATION_DISPLAY: Record<
   string,
@@ -68,7 +68,7 @@ function Component() {
       <UpgradePrompt
         integrationId={search.integration_id}
         flow={search.flow}
-        scheme={search.scheme}
+        scheme={search.scheme ?? "hyprnote"}
       />
     );
   }

@@ -6,14 +6,16 @@ import { z } from "zod";
 
 import { cn } from "@hypr/utils";
 
-import { desktopSchemeSchema } from "@/functions/desktop-flow";
+import { flowSearchSchema } from "@/functions/desktop-flow";
 
-const validateSearch = z.object({
+const commonSearch = {
   integration_id: z.string(),
   status: z.string(),
-  flow: z.enum(["desktop", "web"]).default("desktop"),
-  scheme: desktopSchemeSchema.catch("hyprnote"),
   return_to: z.string().optional(),
+};
+
+const validateSearch = flowSearchSchema(commonSearch, {
+  defaultFlow: "desktop",
 });
 
 type IntegrationDeeplinkParams = {
@@ -46,12 +48,13 @@ function buildDeeplinkUrl(
 
 function Component() {
   const search = Route.useSearch();
+  const scheme = search.scheme ?? "hyprnote";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
 
   const getDeeplink = () => {
-    return buildDeeplinkUrl(search.scheme, {
+    return buildDeeplinkUrl(scheme, {
       integration_id: search.integration_id,
       status: search.status,
       return_to: search.return_to,
@@ -94,7 +97,7 @@ function Component() {
   }, [
     search.flow,
     search.status,
-    search.scheme,
+    scheme,
     search.integration_id,
     search.return_to,
   ]);

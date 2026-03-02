@@ -58,7 +58,10 @@ function Component() {
   const [noteContent, setNoteContent] = useState<JSONContent>(EMPTY_TIPTAP_DOC);
 
   const handleUploadClick = () => {
-    navigate({ to: "/auth/", search: { redirect: "/file-transcription/" } });
+    navigate({
+      to: "/auth/",
+      search: { flow: "web", redirect: "/file-transcription/" },
+    });
   };
 
   return (

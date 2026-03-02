@@ -121,6 +121,7 @@ function Component() {
 
         <Link
           to="/auth/"
+          search={{ flow: "web" }}
           className="mt-4 flex items-center justify-center gap-1 text-sm text-neutral-500 transition-colors hover:text-neutral-700"
         >
           <ArrowLeftIcon className="size-3.5" />

@@ -51,15 +51,24 @@ export function DisconnectFlow() {
     }
 
     setStatus("success");
+    const callbackSearch =
+      search.flow === "desktop"
+        ? {
+            integration_id: search.integration_id,
+            status: "success" as const,
+            flow: "desktop" as const,
+            scheme: search.scheme,
+            return_to: search.return_to,
+          }
+        : {
+            integration_id: search.integration_id,
+            status: "success" as const,
+            flow: "web" as const,
+            return_to: search.return_to,
+          };
     void navigate({
       to: "/callback/integration/",
-      search: {
-        integration_id: search.integration_id,
-        status: "success",
-        flow: search.flow,
-        scheme: search.scheme,
-        return_to: search.return_to,
-      },
+      search: callbackSearch,
     });
   };
 

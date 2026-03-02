@@ -16,18 +16,15 @@ import {
   doPasswordSignUp,
   fetchUser,
 } from "@/functions/auth";
-import {
-  type DesktopScheme,
-  desktopSchemeSchema,
-} from "@/functions/desktop-flow";
+import { type DesktopScheme, flowSearchSchema } from "@/functions/desktop-flow";
 
-const validateSearch = z.object({
-  flow: z.enum(["desktop", "web"]).default("web"),
-  scheme: desktopSchemeSchema.catch("hyprnote"),
+const commonSearch = {
   redirect: z.string().optional(),
   provider: z.enum(["github", "google"]).optional(),
   rra: z.boolean().optional(),
-});
+};
+
+const validateSearch = flowSearchSchema(commonSearch);
 
 export const Route = createFileRoute("/auth")({
   validateSearch,
@@ -53,7 +50,7 @@ export const Route = createFileRoute("/auth")({
             to: "/callback/auth/",
             search: {
               flow: "desktop",
-              scheme: search.scheme,
+              scheme: search.scheme ?? "hyprnote",
               access_token: result.access_token,
               refresh_token: result.refresh_token,
             },
@@ -77,7 +74,10 @@ function Component() {
     return (
       <Container>
         <Header />
-        <DesktopReauthView email={existingUser.email} scheme={scheme} />
+        <DesktopReauthView
+          email={existingUser.email}
+          scheme={scheme ?? "hyprnote"}
+        />
       </Container>
     );
   }

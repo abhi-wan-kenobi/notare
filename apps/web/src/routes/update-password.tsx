@@ -20,7 +20,7 @@ export const Route = createFileRoute("/update-password")({
   beforeLoad: async () => {
     const user = await fetchUser();
     if (!user) {
-      throw redirect({ to: "/auth/" });
+      throw redirect({ to: "/auth/", search: { flow: "web" } });
     }
   },
 });
@@ -41,7 +41,7 @@ function Component() {
         return;
       }
       if (result && "success" in result && result.success) {
-        navigate({ to: "/auth/" });
+        navigate({ to: "/auth/", search: { flow: "web" } });
       }
     },
   });
@@ -148,6 +148,7 @@ function Component() {
 
         <Link
           to="/auth/"
+          search={{ flow: "web" }}
           className="mt-4 flex items-center justify-center gap-1 text-sm text-neutral-500 transition-colors hover:text-neutral-700"
         >
           Back to sign in

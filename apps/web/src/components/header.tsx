@@ -880,6 +880,7 @@ function MobileMenuCTAs({
     <div className="sticky bottom-4 flex flex-row gap-3">
       <Link
         to="/auth/"
+        search={{ flow: "web" }}
         onClick={() => setIsMenuOpen(false)}
         className="block w-full rounded-lg border border-neutral-200 bg-white px-4 py-3 text-center text-sm text-neutral-700 transition-colors hover:bg-neutral-50"
       >

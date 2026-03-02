@@ -26,6 +26,7 @@ export const Route = createFileRoute("/admin")({
       throw redirect({
         to: "/auth/",
         search: {
+          flow: "web",
           provider: "github",
           redirect: location.pathname,
           rra: true,
