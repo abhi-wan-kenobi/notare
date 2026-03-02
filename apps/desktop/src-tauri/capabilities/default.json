@@ -71,6 +71,7 @@
     "fs2:default",
     "git:default",
     "google-calendar:default",
+    "outlook-calendar:default",
     "os:default",
     "opener2:default",
     "mcp:default",

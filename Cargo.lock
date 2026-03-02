@@ -4671,6 +4671,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-opener2",
  "tauri-plugin-os",
+ "tauri-plugin-outlook-calendar",
  "tauri-plugin-overlay",
  "tauri-plugin-path2",
  "tauri-plugin-pdf",
@@ -12279,6 +12280,7 @@ dependencies = [
  "hypr-http-utils",
  "serde",
  "serde_json",
+ "specta",
  "thiserror 2.0.18",
  "tokio",
  "urlencoding",
@@ -18430,6 +18432,28 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "tauri-plugin-outlook-calendar"
+version = "0.1.0"
+dependencies = [
+ "api-client",
+ "calendar-interface",
+ "chrono",
+ "outlook-calendar",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-plugin",
+ "tauri-plugin-auth",
+ "tauri-specta",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
