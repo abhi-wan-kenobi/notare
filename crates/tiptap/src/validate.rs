@@ -70,13 +70,13 @@ fn validate_node(node: &Value, path: &str, errors: &mut Vec<ValidationError>) {
             }
             for (i, child) in content.iter().enumerate() {
                 let child_path = format!("{path}.content[{i}]");
-                if let Some(ct) = node_type(child) {
-                    if !is_block_type(ct) {
-                        errors.push(ValidationError {
-                            path: child_path.clone(),
-                            message: format!("doc child must be a block node, got '{ct}'"),
-                        });
-                    }
+                if let Some(ct) = node_type(child)
+                    && !is_block_type(ct)
+                {
+                    errors.push(ValidationError {
+                        path: child_path.clone(),
+                        message: format!("doc child must be a block node, got '{ct}'"),
+                    });
                 }
                 validate_node(child, &child_path, errors);
             }
@@ -85,13 +85,13 @@ fn validate_node(node: &Value, path: &str, errors: &mut Vec<ValidationError>) {
         "paragraph" => {
             for (i, child) in content.iter().enumerate() {
                 let child_path = format!("{path}.content[{i}]");
-                if let Some(ct) = node_type(child) {
-                    if !is_inline_type(ct) {
-                        errors.push(ValidationError {
-                            path: child_path.clone(),
-                            message: format!("paragraph child must be an inline node, got '{ct}'"),
-                        });
-                    }
+                if let Some(ct) = node_type(child)
+                    && !is_inline_type(ct)
+                {
+                    errors.push(ValidationError {
+                        path: child_path.clone(),
+                        message: format!("paragraph child must be an inline node, got '{ct}'"),
+                    });
                 }
                 validate_node(child, &child_path, errors);
             }
@@ -100,13 +100,13 @@ fn validate_node(node: &Value, path: &str, errors: &mut Vec<ValidationError>) {
         "heading" => {
             for (i, child) in content.iter().enumerate() {
                 let child_path = format!("{path}.content[{i}]");
-                if let Some(ct) = node_type(child) {
-                    if !is_inline_type(ct) {
-                        errors.push(ValidationError {
-                            path: child_path.clone(),
-                            message: format!("heading child must be an inline node, got '{ct}'"),
-                        });
-                    }
+                if let Some(ct) = node_type(child)
+                    && !is_inline_type(ct)
+                {
+                    errors.push(ValidationError {
+                        path: child_path.clone(),
+                        message: format!("heading child must be an inline node, got '{ct}'"),
+                    });
                 }
                 validate_node(child, &child_path, errors);
             }
@@ -122,13 +122,13 @@ fn validate_node(node: &Value, path: &str, errors: &mut Vec<ValidationError>) {
             }
             for (i, child) in content.iter().enumerate() {
                 let child_path = format!("{path}.content[{i}]");
-                if let Some(ct) = node_type(child) {
-                    if ct != "listItem" {
-                        errors.push(ValidationError {
-                            path: child_path.clone(),
-                            message: format!("bulletList child must be 'listItem', got '{ct}'"),
-                        });
-                    }
+                if let Some(ct) = node_type(child)
+                    && ct != "listItem"
+                {
+                    errors.push(ValidationError {
+                        path: child_path.clone(),
+                        message: format!("bulletList child must be 'listItem', got '{ct}'"),
+                    });
                 }
                 validate_node(child, &child_path, errors);
             }
@@ -145,13 +145,13 @@ fn validate_node(node: &Value, path: &str, errors: &mut Vec<ValidationError>) {
             }
             for (i, child) in content.iter().enumerate() {
                 let child_path = format!("{path}.content[{i}]");
-                if let Some(ct) = node_type(child) {
-                    if ct != "listItem" {
-                        errors.push(ValidationError {
-                            path: child_path.clone(),
-                            message: format!("orderedList child must be 'listItem', got '{ct}'"),
-                        });
-                    }
+                if let Some(ct) = node_type(child)
+                    && ct != "listItem"
+                {
+                    errors.push(ValidationError {
+                        path: child_path.clone(),
+                        message: format!("orderedList child must be 'listItem', got '{ct}'"),
+                    });
                 }
                 validate_node(child, &child_path, errors);
             }
@@ -167,13 +167,13 @@ fn validate_node(node: &Value, path: &str, errors: &mut Vec<ValidationError>) {
             }
             for (i, child) in content.iter().enumerate() {
                 let child_path = format!("{path}.content[{i}]");
-                if let Some(ct) = node_type(child) {
-                    if ct != "taskItem" {
-                        errors.push(ValidationError {
-                            path: child_path.clone(),
-                            message: format!("taskList child must be 'taskItem', got '{ct}'"),
-                        });
-                    }
+                if let Some(ct) = node_type(child)
+                    && ct != "taskItem"
+                {
+                    errors.push(ValidationError {
+                        path: child_path.clone(),
+                        message: format!("taskList child must be 'taskItem', got '{ct}'"),
+                    });
                 }
                 validate_node(child, &child_path, errors);
             }
@@ -200,13 +200,13 @@ fn validate_node(node: &Value, path: &str, errors: &mut Vec<ValidationError>) {
                 }
                 for (i, child) in content.iter().enumerate() {
                     let child_path = format!("{path}.content[{i}]");
-                    if let Some(ct) = node_type(child) {
-                        if !is_block_type(ct) {
-                            errors.push(ValidationError {
-                                path: child_path.clone(),
-                                message: format!("{typ} child must be a block node, got '{ct}'"),
-                            });
-                        }
+                    if let Some(ct) = node_type(child)
+                        && !is_block_type(ct)
+                    {
+                        errors.push(ValidationError {
+                            path: child_path.clone(),
+                            message: format!("{typ} child must be a block node, got '{ct}'"),
+                        });
                     }
                     validate_node(child, &child_path, errors);
                 }
@@ -223,13 +223,13 @@ fn validate_node(node: &Value, path: &str, errors: &mut Vec<ValidationError>) {
             }
             for (i, child) in content.iter().enumerate() {
                 let child_path = format!("{path}.content[{i}]");
-                if let Some(ct) = node_type(child) {
-                    if !is_block_type(ct) {
-                        errors.push(ValidationError {
-                            path: child_path.clone(),
-                            message: format!("blockquote child must be a block node, got '{ct}'"),
-                        });
-                    }
+                if let Some(ct) = node_type(child)
+                    && !is_block_type(ct)
+                {
+                    errors.push(ValidationError {
+                        path: child_path.clone(),
+                        message: format!("blockquote child must be a block node, got '{ct}'"),
+                    });
                 }
                 validate_node(child, &child_path, errors);
             }
@@ -238,13 +238,13 @@ fn validate_node(node: &Value, path: &str, errors: &mut Vec<ValidationError>) {
         "codeBlock" => {
             for (i, child) in content.iter().enumerate() {
                 let child_path = format!("{path}.content[{i}]");
-                if let Some(ct) = node_type(child) {
-                    if ct != "text" {
-                        errors.push(ValidationError {
-                            path: child_path,
-                            message: format!("codeBlock child must be 'text', got '{ct}'"),
-                        });
-                    }
+                if let Some(ct) = node_type(child)
+                    && ct != "text"
+                {
+                    errors.push(ValidationError {
+                        path: child_path,
+                        message: format!("codeBlock child must be 'text', got '{ct}'"),
+                    });
                 }
             }
         }
