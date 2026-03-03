@@ -6,26 +6,22 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
 import { commands as templateCommands } from "@hypr/plugin-template";
 
-import { useChatContextPipeline } from "./use-chat-context-pipeline";
-import { useSessionContextEntity } from "./use-session-context-entity";
-
 import { useLanguageModel } from "~/ai/hooks";
 import type { ContextEntity, ContextRef } from "~/chat/context-item";
 import { useCreateChatMessage } from "~/chat/hooks/useCreateChatMessage";
+import { useChatContextPipeline } from "~/chat/hooks/use-chat-context-pipeline";
 import { hydrateSessionContextFromFs } from "~/chat/session-context-hydrator";
 import { CustomChatTransport } from "~/chat/transport";
 import type { HyprUIMessage } from "~/chat/types";
 import { useToolRegistry } from "~/contexts/tool";
 import { id } from "~/shared/utils";
 import * as main from "~/store/tinybase/store/main";
-import { useChatContext } from "~/store/zustand/chat-context";
-
-const EMPTY_CONTEXT_REFS: ContextRef[] = [];
 
 interface ChatSessionProps {
   sessionId: string;
@@ -46,10 +42,41 @@ interface ChatSessionProps {
     status: ChatStatus;
     error?: Error;
     contextEntities: ContextEntity[];
+    pendingRefs: ContextRef[];
     onRemoveContextEntity: (key: string) => void;
     onAddContextEntity: (ref: ContextRef) => void;
     isSystemPromptReady: boolean;
   }) => ReactNode;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function stripEphemeralToolContext(
+  parts: HyprUIMessage["parts"],
+): HyprUIMessage["parts"] {
+  let changed = false;
+  const sanitized = parts.map((part) => {
+    if (
+      !isRecord(part) ||
+      part.type !== "tool-search_sessions" ||
+      part.state !== "output-available" ||
+      !isRecord(part.output) ||
+      !("contextText" in part.output)
+    ) {
+      return part;
+    }
+
+    changed = true;
+    const { contextText: _contextText, ...restOutput } = part.output;
+    return {
+      ...part,
+      output: restOutput,
+    };
+  });
+
+  return changed ? sanitized : parts;
 }
 
 export function ChatSession({
@@ -61,23 +88,24 @@ export function ChatSession({
   systemPromptOverride,
   children,
 }: ChatSessionProps) {
-  const sessionEntity = useSessionContextEntity(currentSessionId);
   const store = main.UI.useStore(main.STORE_ID);
 
-  const persistContext = useChatContext((s) => s.persistContext);
-  const addRef = useChatContext((s) => s.addRef);
-  const persistedCtx = useChatContext((s) =>
-    chatGroupId ? s.contexts[chatGroupId] : undefined,
-  );
-  const persistedRefs = persistedCtx?.contextRefs ?? EMPTY_CONTEXT_REFS;
+  const [pendingManualRefs, setPendingManualRefs] = useState<ContextRef[]>([]);
 
-  const onAddContextEntity = useCallback(
-    (ref: ContextRef) => {
-      if (!chatGroupId) return;
-      addRef(chatGroupId, ref);
-    },
-    [chatGroupId, addRef],
-  );
+  const onAddContextEntity = useCallback((ref: ContextRef) => {
+    setPendingManualRefs((prev) =>
+      prev.some((r) => r.key === ref.key) ? prev : [...prev, ref],
+    );
+  }, []);
+
+  const onRemoveContextEntity = useCallback((key: string) => {
+    setPendingManualRefs((prev) => prev.filter((r) => r.key !== key));
+  }, []);
+
+  // Clear pending manual refs when the conversation changes.
+  useEffect(() => {
+    setPendingManualRefs([]);
+  }, [sessionId, chatGroupId]);
 
   const { transport, isSystemPromptReady } = useTransport(
     modelOverride,
@@ -162,7 +190,9 @@ export function ChatSession({
         if (store.hasRow("chat_messages", message.id)) {
           continue;
         }
-        const content = message.parts
+        const sanitizedParts = stripEphemeralToolContext(message.parts);
+
+        const content = sanitizedParts
           .filter(
             (p): p is Extract<typeof p, { type: "text" }> => p.type === "text",
           )
@@ -174,20 +204,55 @@ export function ChatSession({
           chat_group_id: chatGroupId,
           content,
           role: "assistant",
-          parts: message.parts,
+          parts: sanitizedParts,
           metadata: message.metadata,
         });
       }
     }
   }, [chatGroupId, messages, status, store, createChatMessage, messageIds]);
 
-  const { contextEntities, onRemoveContextEntity } = useChatContextPipeline({
-    sessionId,
-    chatGroupId,
+  useEffect(() => {
+    if (status !== "ready") {
+      return;
+    }
+
+    setMessages((prev) => {
+      let changed = false;
+      const next = prev.map((message) => {
+        if (message.role !== "assistant") {
+          return message;
+        }
+
+        const sanitizedParts = stripEphemeralToolContext(message.parts);
+        if (sanitizedParts === message.parts) {
+          return message;
+        }
+
+        changed = true;
+        return {
+          ...message,
+          parts: sanitizedParts,
+        };
+      });
+
+      return changed ? next : prev;
+    });
+  }, [status, setMessages]);
+
+  // Clear pending manual refs once a user message is committed to history.
+  const prevUserMsgCountRef = useRef(0);
+  useEffect(() => {
+    const count = messages.filter((m) => m.role === "user").length;
+    if (count > prevUserMsgCountRef.current) {
+      setPendingManualRefs([]);
+    }
+    prevUserMsgCountRef.current = count;
+  }, [messages]);
+
+  const { contextEntities, pendingRefs } = useChatContextPipeline({
     messages,
-    sessionEntity,
-    persistedRefs,
-    persistContext,
+    currentSessionId,
+    pendingManualRefs,
     store,
   });
 
@@ -203,6 +268,7 @@ export function ChatSession({
         status,
         error,
         contextEntities,
+        pendingRefs,
         onRemoveContextEntity,
         onAddContextEntity,
         isSystemPromptReady,

@@ -6,7 +6,10 @@ import { ChatBody } from "./body";
 import { ChatContent } from "./content";
 import { ChatHeader } from "./header";
 import { ChatSession } from "./session";
-import { useChatActions, useStableSessionId } from "./use-chat-actions";
+import {
+  useChatActions,
+  useStableSessionId,
+} from "~/chat/hooks/use-chat-actions";
 
 import { useLanguageModel } from "~/ai/hooks";
 import { useShell } from "~/contexts/shell";
@@ -67,7 +70,6 @@ export function ChatView() {
             {...sessionProps}
             model={model}
             handleSendMessage={handleSendMessage}
-            onAddContextEntity={sessionProps.onAddContextEntity}
           >
             <ChatBody
               messages={sessionProps.messages}

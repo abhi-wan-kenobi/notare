@@ -1,11 +1,11 @@
 import type { AccountInfo } from "@hypr/plugin-auth";
 import type { DeviceInfo } from "@hypr/plugin-misc";
-import type { SessionContext } from "@hypr/plugin-template";
 
 import type { HyprUIMessage } from "./types";
-import { isRecord } from "./utils";
 
-export const CURRENT_SESSION_CONTEXT_KEY = "session:current";
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 export type ContextEntitySource = "tool" | "manual" | "auto-current";
 
@@ -18,7 +18,8 @@ export type ContextRef = {
 
 export type ContextEntity =
   | (ContextRef & {
-      sessionContext?: SessionContext;
+      title?: string | null;
+      date?: string | null;
       removable?: boolean;
     })
   | ({
@@ -70,17 +71,12 @@ function parseSearchSessionsOutput(output: unknown): ContextEntity[] {
   }
 
   return output.results.flatMap((item): ContextEntity[] => {
-    if (!isRecord(item)) {
+    if (
+      !isRecord(item) ||
+      (typeof item.id !== "string" && typeof item.id !== "number")
+    ) {
       return [];
     }
-
-    if (typeof item.id !== "string" && typeof item.id !== "number") {
-      return [];
-    }
-
-    const parsedSessionContext = parseSessionContext(item.sessionContext);
-    const title = typeof item.title === "string" ? item.title : null;
-    const content = typeof item.excerpt === "string" ? item.excerpt : null;
 
     return [
       {
@@ -88,88 +84,10 @@ function parseSearchSessionsOutput(output: unknown): ContextEntity[] {
         key: `session:search:${item.id}`,
         source: "tool",
         sessionId: String(item.id),
-        sessionContext: parsedSessionContext ?? {
-          title,
-          date: null,
-          rawContent: content,
-          enhancedContent: null,
-          transcript: null,
-          participants: [],
-          event: null,
-        },
+        title: typeof item.title === "string" ? item.title : null,
       },
     ];
   });
-}
-
-function parseSessionContext(value: unknown): SessionContext | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const title = typeof value.title === "string" ? value.title : null;
-  const date = typeof value.date === "string" ? value.date : null;
-  const rawContent =
-    typeof value.rawContent === "string" ? value.rawContent : null;
-  const enhancedContent =
-    typeof value.enhancedContent === "string" ? value.enhancedContent : null;
-
-  const participants = Array.isArray(value.participants)
-    ? value.participants.flatMap((participant) => {
-        if (!isRecord(participant) || typeof participant.name !== "string") {
-          return [];
-        }
-        return [
-          {
-            name: participant.name,
-            jobTitle:
-              typeof participant.jobTitle === "string"
-                ? participant.jobTitle
-                : null,
-          },
-        ];
-      })
-    : [];
-
-  const event =
-    isRecord(value.event) && typeof value.event.name === "string"
-      ? { name: value.event.name }
-      : null;
-
-  const transcript = isRecord(value.transcript)
-    ? {
-        segments: Array.isArray(value.transcript.segments)
-          ? value.transcript.segments.flatMap((segment) => {
-              if (
-                !isRecord(segment) ||
-                typeof segment.speaker !== "string" ||
-                typeof segment.text !== "string"
-              ) {
-                return [];
-              }
-              return [{ speaker: segment.speaker, text: segment.text }];
-            })
-          : [],
-        startedAt:
-          typeof value.transcript.startedAt === "number"
-            ? value.transcript.startedAt
-            : null,
-        endedAt:
-          typeof value.transcript.endedAt === "number"
-            ? value.transcript.endedAt
-            : null,
-      }
-    : null;
-
-  return {
-    title,
-    date,
-    rawContent,
-    enhancedContent,
-    transcript,
-    participants,
-    event,
-  };
 }
 
 export type ToolContextExtractor = (output: unknown) => ContextEntity[];

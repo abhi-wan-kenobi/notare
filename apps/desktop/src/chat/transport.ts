@@ -14,7 +14,10 @@ import {
 
 import type { ContextRef } from "./context-item";
 import type { HyprUIMessage } from "./types";
-import { isRecord } from "./utils";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 const MAX_TOOL_STEPS = 5;
 const MESSAGE_WINDOW_THRESHOLD = 20;
@@ -43,6 +46,45 @@ function getContextRefs(metadata: unknown): ContextRef[] {
   );
 }
 
+function getSessionIdsFromSearchOutput(output: unknown): string[] {
+  if (!isRecord(output) || !Array.isArray(output.results)) {
+    return [];
+  }
+  return output.results.flatMap((item) => {
+    if (
+      !isRecord(item) ||
+      (typeof item.id !== "string" && typeof item.id !== "number")
+    ) {
+      return [];
+    }
+    return [String(item.id)];
+  });
+}
+
+type ToolOutputPart = {
+  type: `tool-${string}`;
+  state: "output-available";
+  output?: unknown;
+  [key: string]: unknown;
+};
+
+function isToolOutputPart(value: unknown): value is ToolOutputPart {
+  return (
+    isRecord(value) &&
+    typeof value.type === "string" &&
+    value.type.startsWith("tool-") &&
+    value.state === "output-available"
+  );
+}
+
+function hasContextText(output: unknown): boolean {
+  return (
+    isRecord(output) &&
+    typeof output.contextText === "string" &&
+    output.contextText.length > 0
+  );
+}
+
 export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
   constructor(
     private model: LanguageModel,
@@ -55,88 +97,181 @@ export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
 
   private async renderContextBlock(
     contextRefs: ContextRef[],
+    cache: Map<string, string | null>,
   ): Promise<string | null> {
     if (!this.resolveContextRef || contextRefs.length === 0) {
       return null;
     }
 
+    const cacheKey = JSON.stringify(contextRefs);
+    if (cache.has(cacheKey)) {
+      return cache.get(cacheKey) ?? null;
+    }
+
     const seen = new Set<string>();
     const contexts: SessionContext[] = [];
     for (const ref of contextRefs) {
-      if (seen.has(ref.key)) {
-        continue;
-      }
+      if (seen.has(ref.key)) continue;
       seen.add(ref.key);
-
       const context = await this.resolveContextRef(ref);
-      if (context) {
-        contexts.push(context);
-      }
+      if (context) contexts.push(context);
     }
 
     if (contexts.length === 0) {
+      cache.set(cacheKey, null);
       return null;
     }
 
     const rendered = await templateCommands.render({
       contextBlock: { contexts },
     });
-    return rendered.status === "ok" ? rendered.data : null;
+    const result = rendered.status === "ok" ? rendered.data : null;
+    cache.set(cacheKey, result);
+    return result;
+  }
+
+  private async expandSearchSessionsOutput(
+    part: ToolOutputPart,
+    cache: Map<string, string | null>,
+  ): Promise<ToolOutputPart> {
+    if (hasContextText(part.output)) {
+      return part;
+    }
+
+    const sessionIds = getSessionIdsFromSearchOutput(part.output);
+    if (sessionIds.length === 0) return part;
+
+    const refs: ContextRef[] = sessionIds.map((sessionId) => ({
+      kind: "session",
+      key: `session:search:${sessionId}`,
+      source: "tool",
+      sessionId,
+    }));
+
+    const contextText = await this.renderContextBlock(refs, cache);
+    if (!contextText) return part;
+
+    return {
+      ...part,
+      output: {
+        ...(isRecord(part.output) ? part.output : {}),
+        contextText,
+      },
+    };
+  }
+
+  private buildHydratingToolSet(cache: Map<string, string | null>): ToolSet {
+    const searchTool = this.tools.search_sessions;
+    if (!searchTool || typeof searchTool !== "object") {
+      return this.tools;
+    }
+
+    const execute = (
+      searchTool as {
+        execute?: (...args: unknown[]) => Promise<unknown>;
+      }
+    ).execute;
+    if (typeof execute !== "function") {
+      return this.tools;
+    }
+
+    return {
+      ...this.tools,
+      search_sessions: {
+        ...searchTool,
+        execute: async (...args: unknown[]) => {
+          const output = await execute(...args);
+          if (hasContextText(output)) {
+            return output;
+          }
+
+          const sessionIds = getSessionIdsFromSearchOutput(output);
+          if (sessionIds.length === 0) {
+            return output;
+          }
+
+          const refs: ContextRef[] = sessionIds.map((sessionId) => ({
+            kind: "session",
+            key: `session:search:${sessionId}`,
+            source: "tool",
+            sessionId,
+          }));
+
+          const contextText = await this.renderContextBlock(refs, cache);
+          if (!contextText) {
+            return output;
+          }
+
+          return {
+            ...(isRecord(output) ? output : {}),
+            contextText,
+          };
+        },
+      },
+    };
   }
 
   sendMessages: ChatTransport<HyprUIMessage>["sendMessages"] = async (
     options,
   ) => {
+    const cache = new Map<string, string | null>();
+    const tools = this.buildHydratingToolSet(cache);
+
     const agent = new ToolLoopAgent({
       model: this.model,
       instructions: this.systemPrompt,
-      tools: this.tools,
+      tools,
       stopWhen: stepCountIs(MAX_TOOL_STEPS),
       prepareStep: async ({ messages }) => {
         if (messages.length > MESSAGE_WINDOW_THRESHOLD) {
           return { messages: messages.slice(-MESSAGE_WINDOW_SIZE) };
         }
-
         return {};
       },
     });
 
-    const contextBlockCache = new Map<string, string | null>();
     const messagesWithContext: HyprUIMessage[] = [];
+
     for (const msg of options.messages) {
-      if (msg.role !== "user") {
+      if (msg.role === "user") {
+        const contextRefs = getContextRefs(msg.metadata);
+        if (contextRefs.length === 0) {
+          messagesWithContext.push(msg);
+          continue;
+        }
+
+        const contextBlock = await this.renderContextBlock(contextRefs, cache);
+        if (!contextBlock) {
+          messagesWithContext.push(msg);
+          continue;
+        }
+
+        messagesWithContext.push({
+          ...msg,
+          parts: [
+            { type: "text" as const, text: `${contextBlock}\n\n` },
+            ...msg.parts,
+          ],
+        });
+      } else if (msg.role === "assistant") {
+        const expandedParts = await Promise.all(
+          msg.parts.map((part) => {
+            if (
+              isToolOutputPart(part) &&
+              part.type === "tool-search_sessions"
+            ) {
+              return this.expandSearchSessionsOutput(part, cache);
+            }
+            return part;
+          }),
+        );
+        messagesWithContext.push({
+          ...msg,
+          parts: expandedParts as HyprUIMessage["parts"],
+        });
+      } else {
         messagesWithContext.push(msg);
-        continue;
       }
-
-      const contextRefs = getContextRefs(msg.metadata);
-      if (contextRefs.length === 0) {
-        messagesWithContext.push(msg);
-        continue;
-      }
-
-      const cacheKey = JSON.stringify(contextRefs);
-      let contextBlock = contextBlockCache.get(cacheKey);
-      if (contextBlock === undefined) {
-        contextBlock = await this.renderContextBlock(contextRefs);
-        contextBlockCache.set(cacheKey, contextBlock);
-      }
-
-      if (!contextBlock) {
-        messagesWithContext.push(msg);
-        continue;
-      }
-
-      messagesWithContext.push({
-        ...msg,
-        parts: [
-          {
-            type: "text" as const,
-            text: `${contextBlock}\n\n`,
-          },
-          ...msg.parts,
-        ],
-      });
     }
 
     const result = await agent.stream({

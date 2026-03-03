@@ -8,11 +8,8 @@ import { useAuth } from "~/auth";
 import { ChatBody } from "~/chat/components/body";
 import { ChatContent } from "~/chat/components/content";
 import { ChatSession } from "~/chat/components/session";
-import {
-  useChatActions,
-  useStableSessionId,
-} from "~/chat/components/use-chat-actions";
 import { type ContextEntity, dedupeByKey } from "~/chat/context-item";
+import { useChatActions, useStableSessionId } from "~/chat/hooks/use-chat-actions";
 import { useSupportMCP } from "~/chat/hooks/useSupportMCP";
 import type { HyprUIMessage } from "~/chat/types";
 import { ElicitationProvider } from "~/contexts/elicitation";
@@ -134,6 +131,7 @@ function SupportChatTabInner({
     status: "submitted" | "streaming" | "ready" | "error";
     error?: Error;
     contextEntities: ContextEntity[];
+    pendingRefs: import("~/chat/context-item").ContextRef[];
     onRemoveContextEntity: (key: string) => void;
     isSystemPromptReady: boolean;
   };
@@ -159,6 +157,7 @@ function SupportChatTabInner({
     status,
     error,
     contextEntities,
+    pendingRefs,
     onRemoveContextEntity,
     isSystemPromptReady,
   } = sessionProps;
@@ -213,6 +212,7 @@ function SupportChatTabInner({
       model={feedbackModel}
       handleSendMessage={handleSendMessage}
       contextEntities={mergedContextEntities}
+      pendingRefs={pendingRefs}
       onRemoveContextEntity={onRemoveContextEntity}
       isSystemPromptReady={isSystemPromptReady}
       mcpIndicator={{ type: "support" }}

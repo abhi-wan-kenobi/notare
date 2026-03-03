@@ -1,5 +1,4 @@
 import type { ChatStatus } from "ai";
-import { useMemo } from "react";
 
 import { ChatBody } from "./body";
 import { ContextBar } from "./context-bar";
@@ -8,14 +7,6 @@ import { ChatMessageInput, type McpIndicator } from "./input";
 import type { useLanguageModel } from "~/ai/hooks";
 import type { ContextEntity, ContextRef } from "~/chat/context-item";
 import type { HyprUIMessage } from "~/chat/types";
-
-function toContextRefs(entities: ContextEntity[]): ContextRef[] {
-  return entities.flatMap((e) =>
-    e.kind === "session"
-      ? [{ kind: e.kind, key: e.key, source: e.source, sessionId: e.sessionId }]
-      : [],
-  );
-}
 
 export function ChatContent({
   sessionId,
@@ -28,6 +19,7 @@ export function ChatContent({
   model,
   handleSendMessage,
   contextEntities,
+  pendingRefs,
   onRemoveContextEntity,
   onAddContextEntity,
   isSystemPromptReady,
@@ -49,17 +41,13 @@ export function ChatContent({
     contextRefs?: ContextRef[],
   ) => void;
   contextEntities: ContextEntity[];
+  pendingRefs: ContextRef[];
   onRemoveContextEntity?: (key: string) => void;
   onAddContextEntity?: (ref: ContextRef) => void;
   isSystemPromptReady: boolean;
   mcpIndicator?: McpIndicator;
   children?: React.ReactNode;
 }) {
-  const contextRefs = useMemo(
-    () => toContextRefs(contextEntities),
-    [contextEntities],
-  );
-
   const disabled =
     !model ||
     status !== "ready" ||
@@ -86,7 +74,7 @@ export function ChatContent({
         disabled={disabled}
         hasContextBar={contextEntities.length > 0}
         onSendMessage={(content, parts) => {
-          handleSendMessage(content, parts, sendMessage, contextRefs);
+          handleSendMessage(content, parts, sendMessage, pendingRefs);
         }}
         isStreaming={status === "streaming" || status === "submitted"}
         onStop={stop}

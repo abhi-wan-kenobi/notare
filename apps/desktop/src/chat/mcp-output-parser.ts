@@ -1,4 +1,6 @@
-import { isRecord } from "./utils";
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 export type McpTextContentOutput = {
   content: Array<{

@@ -12,9 +12,12 @@ import type {
   SubscriptionItem,
 } from "@hypr/plugin-mcp";
 
-import type { McpTextContentOutput } from "./mcp-utils";
-import { parseMcpToolOutput } from "./mcp-utils";
-import { isRecord } from "./utils";
+import type { McpTextContentOutput } from "./mcp-output-parser";
+import { parseMcpToolOutput } from "./mcp-output-parser";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 export type SupportMcpTools = {
   create_issue: { input: CreateIssueParams; output: McpTextContentOutput };

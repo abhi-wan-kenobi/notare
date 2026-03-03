@@ -26,60 +26,16 @@ type RendererMap = {
 const renderers: RendererMap = {
   session: {
     toChip: (entity) => {
-      const sc = entity.sessionContext;
-      if (!sc) {
-        return {
-          key: entity.key,
-          icon: CalendarIcon,
-          label: "Session",
-          tooltip: entity.sessionId,
-          removable: entity.removable,
-        };
-      }
-
-      const wordCount =
-        sc.transcript?.segments.reduce(
-          (sum, s) => sum + s.text.split(/\s+/).filter(Boolean).length,
-          0,
-        ) ?? 0;
-      const participantCount = sc.participants.length;
-      const eventTitle = sc.event?.name ?? null;
-
-      if (
-        !sc.title &&
-        !sc.date &&
-        !wordCount &&
-        !sc.rawContent &&
-        participantCount === 0 &&
-        !eventTitle
-      ) {
-        return null;
-      }
-      const lines: string[] = [];
-      if (sc.title) lines.push(sc.title);
-      if (sc.date) lines.push(sc.date);
-      if (wordCount > 0) {
-        lines.push(`Transcript: ${wordCount.toLocaleString()} words`);
-      }
-      if (participantCount > 0) {
-        lines.push(`Participants: ${participantCount}`);
-      }
-      if (eventTitle) {
-        lines.push(`Event: ${eventTitle}`);
-      }
-      if (sc.rawContent) {
-        const truncated =
-          sc.rawContent.length > 120
-            ? `${sc.rawContent.slice(0, 120)}...`
-            : sc.rawContent;
-        lines.push(`Raw note: ${truncated}`);
-      }
+      const label = entity.title || entity.date || "Session";
+      const tooltip =
+        [entity.title, entity.date].filter(Boolean).join("\n") ||
+        entity.sessionId;
       const isFromTool = entity.source === "tool";
       return {
         key: entity.key,
         icon: isFromTool ? SearchIcon : CalendarIcon,
-        label: sc.title || sc.date || "Session",
-        tooltip: lines.join("\n"),
+        label,
+        tooltip,
         removable: entity.removable,
       };
     },
