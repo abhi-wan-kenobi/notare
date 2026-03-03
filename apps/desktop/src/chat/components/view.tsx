@@ -57,7 +57,7 @@ export function ChatView() {
         handleClose={() => chat.sendEvent({ type: "CLOSE" })}
       />
       <div className="bg-sky-100 px-3 py-1.5 text-[11px] text-neutral-900">
-        Chat is Experimental and under active development
+        NOTE: Tools can read, but not write to your data.
       </div>
       <ChatSession
         key={stableSessionId}

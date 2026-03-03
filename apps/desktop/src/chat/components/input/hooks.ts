@@ -37,11 +37,13 @@ export function useSubmit({
   draftKey,
   editorRef,
   disabled,
+  isStreaming,
   onSendMessage,
 }: {
   draftKey: string;
   editorRef: React.RefObject<{ editor: TiptapEditor | null } | null>;
   disabled?: boolean;
+  isStreaming?: boolean;
   onSendMessage: (
     content: string,
     parts: Array<{ type: "text"; text: string }>,
@@ -51,7 +53,7 @@ export function useSubmit({
     const json = editorRef.current?.editor?.getJSON();
     const text = tiptapJsonToText(json).trim();
 
-    if (!text || disabled) {
+    if (!text || disabled || isStreaming) {
       return;
     }
 
@@ -59,7 +61,7 @@ export function useSubmit({
     onSendMessage(text, [{ type: "text", text }]);
     editorRef.current?.editor?.commands.clearContent();
     draftsByKey.delete(draftKey);
-  }, [draftKey, editorRef, disabled, onSendMessage]);
+  }, [draftKey, editorRef, disabled, isStreaming, onSendMessage]);
 }
 
 export function useAutoFocusEditor({

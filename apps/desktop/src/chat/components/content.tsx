@@ -48,10 +48,7 @@ export function ChatContent({
   mcpIndicator?: McpIndicator;
   children?: React.ReactNode;
 }) {
-  const disabled =
-    !model ||
-    status !== "ready" ||
-    (status === "ready" && !isSystemPromptReady);
+  const disabled = !model || !isSystemPromptReady;
 
   return (
     <>

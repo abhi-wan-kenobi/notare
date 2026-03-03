@@ -48,6 +48,7 @@ export function ChatMessageInput({
     draftKey,
     editorRef,
     disabled,
+    isStreaming,
     onSendMessage,
   });
   useAutoFocusEditor({ editorRef, disabled });
