@@ -13,7 +13,16 @@ import { useAnalytics } from "@/hooks/use-posthog";
 const validateSearch = z.object({
   code: z.string().optional(),
   token_hash: z.string().optional(),
-  type: z.enum(["email", "recovery"]).optional(),
+  type: z
+    .enum([
+      "email",
+      "recovery",
+      "magiclink",
+      "signup",
+      "invite",
+      "email_change",
+    ])
+    .optional(),
   flow: z.enum(["desktop", "web"]).default("desktop"),
   scheme: desktopSchemeSchema.catch("hyprnote"),
   redirect: z.string().optional(),

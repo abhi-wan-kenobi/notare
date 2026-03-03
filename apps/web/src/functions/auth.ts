@@ -332,7 +332,14 @@ export const exchangeOtpToken = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       token_hash: z.string(),
-      type: z.enum(["email", "recovery"]),
+      type: z.enum([
+        "email",
+        "recovery",
+        "magiclink",
+        "signup",
+        "invite",
+        "email_change",
+      ]),
       flow: z.enum(["desktop", "web"]).default("web"),
     }),
   )
@@ -347,8 +354,11 @@ export const exchangeOtpToken = createServerFn({ method: "POST" })
       return { success: false, error: error?.message || "Unknown error" };
     }
 
-    const flow: Flow =
-      data.flow === "desktop" && data.type === "email" ? "desktop" : "web";
+    const shouldMintDesktopSession =
+      data.flow === "desktop" &&
+      data.type !== "recovery" &&
+      data.type !== "email_change";
+    const flow: Flow = shouldMintDesktopSession ? "desktop" : "web";
     const tokens = await resolveTokensForFlow({
       flow,
       session: authData.session,
