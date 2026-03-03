@@ -1,78 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
-import { useStores } from "tinybase/ui-react";
+import { useCallback, useState } from "react";
 
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { cn } from "@hypr/utils";
 
 import { getLatestVersion } from "./changelog";
 
-import { type SeedDefinition, seeds } from "~/shared/devtool/seed/index";
-import {
-  type Store as MainStore,
-  STORE_ID as STORE_ID_PERSISTED,
-} from "~/store/tinybase/store/main";
 import { useTabs } from "~/store/zustand/tabs";
 
-declare global {
-  interface Window {
-    __dev?: {
-      seed: (id?: string) => void;
-      seeds: Array<{ id: string; label: string }>;
-    };
-  }
-}
-
 export function DevtoolView() {
-  const stores = useStores();
-  const persistedStore = stores[STORE_ID_PERSISTED] as unknown as
-    | MainStore
-    | undefined;
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    if (!persistedStore) {
-      return;
-    }
-
-    const api = {
-      seed: (id?: string) => {
-        const target = id ? seeds.find((item) => item.id === id) : seeds[0];
-        if (target) {
-          target.run(persistedStore);
-        }
-      },
-      seeds: seeds.map(({ id, label }) => ({ id, label })),
-    };
-    window.__dev = api;
-    return () => {
-      if (window.__dev === api) {
-        delete window.__dev;
-      }
-    };
-  }, [persistedStore]);
-
-  const handleSeed = useCallback(
-    (seed: SeedDefinition) => {
-      if (!persistedStore) {
-        return;
-      }
-
-      seed.run(persistedStore);
-    },
-    [persistedStore],
-  );
-
-  if (!persistedStore) {
-    return null;
-  }
-
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-1 py-2">
         <NavigationCard />
-        <SeedCard onSeed={handleSeed} />
         <ErrorTestCard />
       </div>
     </div>
@@ -109,31 +48,6 @@ function DevtoolCard({
         {children}
       </div>
     </div>
-  );
-}
-
-function SeedCard({ onSeed }: { onSeed: (seed: SeedDefinition) => void }) {
-  return (
-    <DevtoolCard title="Seeds" maxHeight="200px">
-      <div className="flex flex-col gap-1.5">
-        {seeds.map((seed) => (
-          <button
-            key={seed.id}
-            type="button"
-            onClick={() => onSeed(seed)}
-            className={cn([
-              "w-full rounded-md px-2 py-1.5",
-              "text-left text-xs font-medium",
-              "border border-neutral-200 text-neutral-700",
-              "cursor-pointer transition-colors",
-              "hover:border-neutral-300 hover:bg-neutral-50",
-            ])}
-          >
-            {seed.label}
-          </button>
-        ))}
-      </div>
-    </DevtoolCard>
   );
 }
 
