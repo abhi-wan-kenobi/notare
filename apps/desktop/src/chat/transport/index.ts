@@ -13,10 +13,10 @@ import {
 } from "@hypr/plugin-template";
 
 import type { ContextRef } from "../context/entities";
+import { extractContextRefsFromMessages } from "../context/refs";
 import { CONTEXT_TEXT_FIELD } from "../tools";
 import type { HyprUIMessage } from "../types";
 import {
-  getContextRefs,
   getSessionIdsFromSearchOutput,
   hasContextText,
   isRecord,
@@ -149,6 +149,22 @@ export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
     const cache = new Map<string, string | null>();
     const tools = this.buildHydratingToolSet(cache);
 
+    const effectiveContextRefs = extractContextRefsFromMessages(
+      options.messages,
+    );
+    const effectiveContextBlock = await this.renderContextBlock(
+      effectiveContextRefs,
+      cache,
+    );
+
+    let lastUserMessageIndex = -1;
+    for (let i = options.messages.length - 1; i >= 0; i -= 1) {
+      if (options.messages[i]?.role === "user") {
+        lastUserMessageIndex = i;
+        break;
+      }
+    }
+
     const agent = new ToolLoopAgent({
       model: this.model,
       instructions: this.systemPrompt,
@@ -164,16 +180,13 @@ export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
 
     const messagesWithContext: HyprUIMessage[] = [];
 
-    for (const msg of options.messages) {
+    for (const [index, msg] of options.messages.entries()) {
       if (msg.role === "user") {
-        const contextRefs = getContextRefs(msg.metadata);
-        if (contextRefs.length === 0) {
-          messagesWithContext.push(msg);
-          continue;
-        }
-
-        const contextBlock = await this.renderContextBlock(contextRefs, cache);
-        if (!contextBlock) {
+        if (
+          !effectiveContextBlock ||
+          lastUserMessageIndex === -1 ||
+          index !== lastUserMessageIndex
+        ) {
           messagesWithContext.push(msg);
           continue;
         }
@@ -181,7 +194,7 @@ export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
         messagesWithContext.push({
           ...msg,
           parts: [
-            { type: "text" as const, text: `${contextBlock}\n\n` },
+            { type: "text" as const, text: `${effectiveContextBlock}\n\n` },
             ...msg.parts,
           ],
         });

@@ -7,7 +7,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-export type ContextEntitySource = "tool" | "manual" | "auto-current";
+export const CONTEXT_ENTITY_SOURCES = [
+  "tool",
+  "manual",
+  "auto-current",
+] as const;
+export type ContextEntitySource = (typeof CONTEXT_ENTITY_SOURCES)[number];
 
 export type ContextRef = {
   kind: "session";

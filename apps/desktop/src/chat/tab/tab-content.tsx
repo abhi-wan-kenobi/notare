@@ -7,7 +7,7 @@ import { useFeedbackLanguageModel } from "~/ai/hooks";
 import { useAuth } from "~/auth";
 import { ChatBody } from "~/chat/components/body";
 import { ChatContent } from "~/chat/components/content";
-import { ChatSession } from "~/chat/components/session";
+import { ChatSession } from "~/chat/components/session-provider";
 import { type ContextEntity, dedupeByKey } from "~/chat/context/entities";
 import { useSupportMCP } from "~/chat/mcp/useSupportMCP";
 import {
@@ -133,7 +133,7 @@ function SupportChatTabInner({
     stop: () => void;
     status: "submitted" | "streaming" | "ready" | "error";
     error?: Error;
-    contextEntities: ContextEntity[];
+    contextEntities: import("~/chat/context/use-chat-context-pipeline").DisplayEntity[];
     pendingRefs: import("~/chat/context/entities").ContextRef[];
     onRemoveContextEntity: (key: string) => void;
     isSystemPromptReady: boolean;
@@ -200,7 +200,7 @@ function SupportChatTabInner({
 
   const mergedContextEntities = dedupeByKey([
     contextEntities,
-    supportContextEntities,
+    supportContextEntities.map((e) => ({ ...e, pending: false as const })),
   ]);
 
   return (

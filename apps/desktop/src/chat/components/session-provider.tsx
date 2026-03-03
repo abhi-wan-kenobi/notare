@@ -10,17 +10,15 @@ import {
   useState,
 } from "react";
 
-import { commands as templateCommands } from "@hypr/plugin-template";
-
-import { useLanguageModel } from "~/ai/hooks";
-import type { ContextEntity, ContextRef } from "~/chat/context/entities";
-import { hydrateSessionContextFromFs } from "~/chat/context/session-context-hydrator";
-import { useChatContextPipeline } from "~/chat/context/use-chat-context-pipeline";
+import type { ContextRef } from "~/chat/context/entities";
+import {
+  type DisplayEntity,
+  useChatContextPipeline,
+} from "~/chat/context/use-chat-context-pipeline";
 import { useCreateChatMessage } from "~/chat/store/useCreateChatMessage";
-import { CONTEXT_TEXT_FIELD } from "~/chat/tools";
-import { CustomChatTransport } from "~/chat/transport";
+import { stripEphemeralToolContext } from "~/chat/tools/strip-ephemeral-tool-context";
+import { useTransport } from "~/chat/transport/use-transport";
 import type { HyprUIMessage } from "~/chat/types";
-import { useToolRegistry } from "~/contexts/tool";
 import { id } from "~/shared/utils";
 import * as main from "~/store/tinybase/store/main";
 
@@ -42,42 +40,12 @@ interface ChatSessionProps {
     stop: () => void;
     status: ChatStatus;
     error?: Error;
-    contextEntities: ContextEntity[];
+    contextEntities: DisplayEntity[];
     pendingRefs: ContextRef[];
     onRemoveContextEntity: (key: string) => void;
     onAddContextEntity: (ref: ContextRef) => void;
     isSystemPromptReady: boolean;
   }) => ReactNode;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function stripEphemeralToolContext(
-  parts: HyprUIMessage["parts"],
-): HyprUIMessage["parts"] {
-  let changed = false;
-  const sanitized = parts.map((part) => {
-    if (
-      !isRecord(part) ||
-      part.type !== "tool-search_sessions" ||
-      part.state !== "output-available" ||
-      !isRecord(part.output) ||
-      !(CONTEXT_TEXT_FIELD in part.output)
-    ) {
-      return part;
-    }
-
-    changed = true;
-    const { contextText: _contextText, ...restOutput } = part.output;
-    return {
-      ...part,
-      output: restOutput,
-    };
-  });
-
-  return changed ? sanitized : parts;
 }
 
 export function ChatSession({
@@ -276,100 +244,4 @@ export function ChatSession({
       })}
     </div>
   );
-}
-
-function useTransport(
-  modelOverride?: LanguageModel,
-  extraTools?: ToolSet,
-  systemPromptOverride?: string,
-  store?: ReturnType<typeof main.UI.useStore>,
-) {
-  const registry = useToolRegistry();
-  const configuredModel = useLanguageModel("chat");
-  const model = modelOverride ?? configuredModel;
-  const language = main.UI.useValue("ai_language", main.STORE_ID) ?? "en";
-  const [systemPrompt, setSystemPrompt] = useState<string | undefined>();
-
-  useEffect(() => {
-    if (systemPromptOverride) {
-      setSystemPrompt(systemPromptOverride);
-      return;
-    }
-
-    let stale = false;
-
-    templateCommands
-      .render({
-        chatSystem: {
-          language,
-        },
-      })
-      .then((result) => {
-        if (stale) {
-          return;
-        }
-
-        if (result.status === "ok") {
-          setSystemPrompt(result.data);
-        } else {
-          setSystemPrompt("");
-        }
-      })
-      .catch((error) => {
-        console.error(error);
-        if (!stale) {
-          setSystemPrompt("");
-        }
-      });
-
-    return () => {
-      stale = true;
-    };
-  }, [language, systemPromptOverride]);
-
-  const effectiveSystemPrompt = systemPromptOverride ?? systemPrompt;
-  const isSystemPromptReady =
-    typeof systemPromptOverride === "string" || systemPrompt !== undefined;
-
-  const tools = useMemo(() => {
-    const localTools = registry.getTools("chat-general");
-
-    if (extraTools && import.meta.env.DEV) {
-      for (const key of Object.keys(extraTools)) {
-        if (key in localTools) {
-          console.warn(
-            `[ChatSession] Tool name collision: "${key}" exists in both local registry and extraTools. extraTools will take precedence.`,
-          );
-        }
-      }
-    }
-
-    return {
-      ...localTools,
-      ...extraTools,
-    };
-  }, [registry, extraTools]);
-
-  const transport = useMemo(() => {
-    if (!model) {
-      return null;
-    }
-
-    return new CustomChatTransport(
-      model,
-      tools,
-      effectiveSystemPrompt,
-      async (ref) => {
-        if (!store) {
-          return null;
-        }
-        return hydrateSessionContextFromFs(store, ref.sessionId);
-      },
-    );
-  }, [model, tools, effectiveSystemPrompt, store]);
-
-  return {
-    transport,
-    isSystemPromptReady,
-  };
 }

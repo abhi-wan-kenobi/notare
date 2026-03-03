@@ -4,7 +4,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 
 import { cn } from "@hypr/utils";
 
-import { ChatView } from "./view";
+import { ChatView } from "./chat-panel";
 
 import { useShell } from "~/contexts/shell";
 
@@ -96,8 +96,8 @@ export function PersistentChatPanel({
   return (
     <div
       className={cn([
-        "fixed z-[100]",
-        !isVisible && "!hidden",
+        "fixed z-100",
+        !isVisible && "hidden!",
         isPanel && "pointer-events-none",
       ])}
       style={

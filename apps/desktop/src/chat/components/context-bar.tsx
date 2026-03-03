@@ -13,8 +13,9 @@ import {
 } from "@hypr/ui/components/ui/tooltip";
 import { cn } from "@hypr/utils";
 
-import type { ContextEntity, ContextRef } from "~/chat/context/entities";
+import type { ContextRef } from "~/chat/context/entities";
 import { type ContextChipProps, renderChip } from "~/chat/context/registry";
+import type { DisplayEntity } from "~/chat/context/use-chat-context-pipeline";
 import { useSearchEngine } from "~/search/contexts/engine";
 import { useTabs } from "~/store/zustand/tabs";
 
@@ -60,9 +61,11 @@ function useOverflow(
 function ContextChip({
   chip,
   onRemove,
+  pending,
 }: {
   chip: ContextChipProps;
   onRemove?: (key: string) => void;
+  pending?: boolean;
 }) {
   const Icon = chip.icon;
   const openNew = useTabs((state) => state.openNew);
@@ -80,7 +83,10 @@ function ContextChip({
         <span
           onClick={handleClick}
           className={cn([
-            "group max-w-48 min-w-0 rounded-md bg-neutral-500/10 px-1.5 py-0.5 text-xs text-neutral-600",
+            "group max-w-48 min-w-0 rounded-md px-1.5 py-0.5 text-xs",
+            pending
+              ? "bg-neutral-500/5 text-neutral-400"
+              : "bg-white text-neutral-600 shadow-xs",
             "inline-flex shrink items-center gap-1",
             isClickable
               ? "cursor-pointer hover:bg-neutral-500/20"
@@ -182,13 +188,21 @@ export function ContextBar({
   onRemoveEntity,
   onAddEntity,
 }: {
-  entities: ContextEntity[];
+  entities: DisplayEntity[];
   onRemoveEntity?: (key: string) => void;
   onAddEntity?: (ref: ContextRef) => void;
 }) {
   const chips = useMemo(
     () =>
-      entities.map(renderChip).filter((c): c is ContextChipProps => c !== null),
+      entities
+        .map((entity) => ({
+          chip: renderChip(entity),
+          pending: entity.pending,
+        }))
+        .filter(
+          (c): c is { chip: ContextChipProps; pending: boolean } =>
+            c.chip !== null,
+        ),
     [entities],
   );
 
@@ -201,50 +215,59 @@ export function ContextBar({
     setExpanded(false);
   }, [chips.length]);
 
-  if (chips.length === 0 && !onAddEntity) return null;
+  if (chips.length === 0 && !onAddEntity) {
+    return null;
+  }
 
   return (
     <div className="mx-2 rounded-t-xl border-t border-r border-l border-neutral-200 bg-neutral-100">
-      <div className="flex items-start gap-1.5 px-2.5 py-2">
-        <div
-          ref={chipsRef}
-          className={cn([
-            "flex min-w-0 flex-1 flex-wrap items-center gap-1.5",
-            !expanded && "max-h-[22px] overflow-hidden",
-          ])}
-        >
-          {chips.map((chip) => (
-            <ContextChip key={chip.key} chip={chip} onRemove={onRemoveEntity} />
-          ))}
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1.5">
-          {(hasOverflow || expanded) && (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="inline-flex items-center gap-0.5 rounded-md bg-neutral-500/10 px-1 py-0.5 text-xs text-neutral-400 transition-colors hover:bg-neutral-500/20 hover:text-neutral-600"
-            >
-              {!expanded && hiddenCount > 0 && <span>+{hiddenCount}</span>}
-              <ChevronDownIcon
-                className={cn(["size-3.5", expanded && "rotate-180"])}
+      <div className="flex flex-col gap-1 px-2.5 py-2">
+        <div className="flex items-start gap-1.5">
+          <div
+            ref={chipsRef}
+            className={cn([
+              "flex min-w-0 flex-1 flex-wrap items-center gap-1.5",
+              !expanded && "max-h-[22px] overflow-hidden",
+            ])}
+          >
+            {chips.map(({ chip, pending }) => (
+              <ContextChip
+                key={chip.key}
+                chip={chip}
+                onRemove={onRemoveEntity}
+                pending={pending}
               />
-            </button>
-          )}
-          {onAddEntity && (
-            <AddSessionButton
-              onAdd={(sessionId) => {
-                onAddEntity({
-                  kind: "session",
-                  key: `session:manual:${sessionId}`,
-                  source: "manual",
-                  sessionId,
-                });
-              }}
-              open={pickerOpen}
-              onOpenChange={setPickerOpen}
-            />
-          )}
+            ))}
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5">
+            {(hasOverflow || expanded) && (
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                className="inline-flex items-center gap-0.5 rounded-md bg-neutral-500/10 px-1 py-0.5 text-xs text-neutral-400 transition-colors hover:bg-neutral-500/20 hover:text-neutral-600"
+              >
+                {!expanded && hiddenCount > 0 && <span>+{hiddenCount}</span>}
+                <ChevronDownIcon
+                  className={cn(["size-3.5", expanded && "rotate-180"])}
+                />
+              </button>
+            )}
+            {onAddEntity && (
+              <AddSessionButton
+                onAdd={(sessionId) => {
+                  onAddEntity({
+                    kind: "session",
+                    key: `session:manual:${sessionId}`,
+                    source: "manual",
+                    sessionId,
+                  });
+                }}
+                open={pickerOpen}
+                onOpenChange={setPickerOpen}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

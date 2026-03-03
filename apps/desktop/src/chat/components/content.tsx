@@ -5,7 +5,8 @@ import { ContextBar } from "./context-bar";
 import { ChatMessageInput, type McpIndicator } from "./input";
 
 import type { useLanguageModel } from "~/ai/hooks";
-import type { ContextEntity, ContextRef } from "~/chat/context/entities";
+import type { ContextRef } from "~/chat/context/entities";
+import type { DisplayEntity } from "~/chat/context/use-chat-context-pipeline";
 import type { HyprUIMessage } from "~/chat/types";
 
 export function ChatContent({
@@ -40,7 +41,7 @@ export function ChatContent({
     sendMessage: (message: HyprUIMessage) => void,
     contextRefs?: ContextRef[],
   ) => void;
-  contextEntities: ContextEntity[];
+  contextEntities: DisplayEntity[];
   pendingRefs: ContextRef[];
   onRemoveContextEntity?: (key: string) => void;
   onAddContextEntity?: (ref: ContextRef) => void;

@@ -27,7 +27,7 @@ import { useNewNote, useNewNoteAndListen } from "./useNewNote";
 
 import { TabContentAI, TabItemAI } from "~/ai";
 import { TabContentCalendar, TabItemCalendar } from "~/calendar";
-import { ChatFloatingButton } from "~/chat/components";
+import { ChatFloatingButton } from "~/chat/components/floating-button";
 import { TabContentChat } from "~/chat/tab/tab-content";
 import { TabItemChat } from "~/chat/tab/tab-item";
 import { TabContentChatShortcut, TabItemChatShortcut } from "~/chat_shortcuts";

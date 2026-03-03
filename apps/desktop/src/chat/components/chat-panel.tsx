@@ -5,7 +5,7 @@ import { cn } from "@hypr/utils";
 import { ChatBody } from "./body";
 import { ChatContent } from "./content";
 import { ChatHeader } from "./header";
-import { ChatSession } from "./session";
+import { ChatSession } from "./session-provider";
 
 import { useLanguageModel } from "~/ai/hooks";
 import {

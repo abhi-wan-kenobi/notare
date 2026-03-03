@@ -6,6 +6,7 @@ import {
   extractToolContextEntities,
   dedupeByKey,
 } from "./entities";
+import { extractContextRefsFromMessages } from "./refs";
 
 import type { HyprUIMessage } from "~/chat/types";
 import type * as main from "~/store/tinybase/store/main";
@@ -27,21 +28,6 @@ function getSessionDisplayData(
   };
 }
 
-function extractCommittedRefs(messages: HyprUIMessage[]): ContextRef[] {
-  const seen = new Set<string>();
-  const refs: ContextRef[] = [];
-  for (const msg of messages) {
-    if (msg.role !== "user") continue;
-    for (const ref of msg.metadata?.contextRefs ?? []) {
-      if (!seen.has(ref.key)) {
-        seen.add(ref.key);
-        refs.push(ref);
-      }
-    }
-  }
-  return refs;
-}
-
 type UseChatContextPipelineParams = {
   messages: HyprUIMessage[];
   currentSessionId?: string;
@@ -49,17 +35,19 @@ type UseChatContextPipelineParams = {
   store: ReturnType<typeof main.UI.useStore>;
 };
 
+export type DisplayEntity = ContextEntity & { pending: boolean };
+
 export function useChatContextPipeline({
   messages,
   currentSessionId,
   pendingManualRefs,
   store,
 }: UseChatContextPipelineParams): {
-  contextEntities: ContextEntity[];
+  contextEntities: DisplayEntity[];
   pendingRefs: ContextRef[];
 } {
   const committedRefs = useMemo(
-    () => extractCommittedRefs(messages),
+    () => extractContextRefsFromMessages(messages),
     [messages],
   );
 
@@ -83,22 +71,50 @@ export function useChatContextPipeline({
     return refs;
   }, [currentSessionId, pendingManualRefs]);
 
-  const contextEntities = useMemo(() => {
-    const committedEntities: ContextEntity[] = committedRefs.map((ref) => ({
-      ...ref,
-      ...getSessionDisplayData(store, ref.sessionId),
-      removable: false,
-    }));
+  const committedEntities = useMemo(
+    () =>
+      committedRefs.map((ref) => ({
+        ...ref,
+        ...getSessionDisplayData(store, ref.sessionId),
+        removable: false,
+      })),
+    [committedRefs, store],
+  );
 
-    // Pending manual refs are removable; pending auto-current is not.
-    const pendingEntities: ContextEntity[] = pendingRefs.map((ref) => ({
-      ...ref,
-      ...getSessionDisplayData(store, ref.sessionId),
-      removable: ref.source === "manual",
-    }));
+  // Pending manual refs are removable; pending auto-current is not.
+  const pendingEntities = useMemo(
+    () =>
+      pendingRefs.map((ref) => ({
+        ...ref,
+        ...getSessionDisplayData(store, ref.sessionId),
+        removable: ref.source === "manual",
+      })),
+    [pendingRefs, store],
+  );
 
-    return dedupeByKey([committedEntities, toolEntities, pendingEntities]);
-  }, [committedRefs, toolEntities, pendingRefs, store]);
+  const rawEntities = useMemo(
+    () => dedupeByKey([committedEntities, toolEntities, pendingEntities]),
+    [committedEntities, toolEntities, pendingEntities],
+  );
+
+  const committedKeys = useMemo(
+    () => new Set(committedRefs.map((ref) => ref.key)),
+    [committedRefs],
+  );
+
+  const pendingKeys = useMemo(
+    () => new Set(pendingRefs.map((ref) => ref.key)),
+    [pendingRefs],
+  );
+
+  const contextEntities: DisplayEntity[] = useMemo(
+    () =>
+      rawEntities.map((entity) => ({
+        ...entity,
+        pending: pendingKeys.has(entity.key) && !committedKeys.has(entity.key),
+      })),
+    [rawEntities, pendingKeys, committedKeys],
+  );
 
   return { contextEntities, pendingRefs };
 }
