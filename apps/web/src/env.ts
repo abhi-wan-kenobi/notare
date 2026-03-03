@@ -2,7 +2,7 @@ import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
 
 const isCI = process.env.CI === "true";
-const isDev = process.env.NODE_ENV === "development";
+const isDev = process.env.NODE_ENV !== "production";
 
 const requiredInProd = <T extends z.ZodTypeAny>(schema: T) =>
   isDev ? schema.optional() : schema;

@@ -1,18 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import { jwtDecode } from "jwt-decode";
 
 import { listConnections } from "@hypr/api-client";
 import { createClient } from "@hypr/api-client/client";
 
 import { env } from "@/env";
 import { getAccessToken } from "@/functions/access-token";
-
-function decodeUserId(token: string): string {
-  const payload = JSON.parse(atob(token.split(".")[1])) as { sub?: string };
-  if (!payload.sub) {
-    throw new Error("Missing user id in access token");
-  }
-  return payload.sub;
-}
 
 export function useConnections(enabled = true) {
   const authQuery = useQuery({
@@ -21,7 +14,7 @@ export function useConnections(enabled = true) {
       const token = await getAccessToken();
       return {
         token,
-        userId: decodeUserId(token),
+        userId: jwtDecode<{ sub: string }>(token).sub,
       };
     },
     retry: false,

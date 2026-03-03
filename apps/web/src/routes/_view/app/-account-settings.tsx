@@ -14,6 +14,7 @@ export function AccountSettingsCard() {
   const canTrialQuery = useQuery({
     queryKey: ["canStartTrial"],
     queryFn: () => canStartTrial(),
+    enabled: billing.isReady && billing.plan === "free",
   });
 
   const manageBillingMutation = useMutation({
@@ -34,7 +35,10 @@ export function AccountSettingsCard() {
   });
 
   const renderPlanButton = () => {
-    if (!billing.isReady || canTrialQuery.isLoading) {
+    if (
+      !billing.isReady ||
+      (billing.plan === "free" && canTrialQuery.isLoading)
+    ) {
       return (
         <div className="flex h-8 items-center px-4 text-sm text-neutral-400">
           Loading...

@@ -39,9 +39,13 @@ export function ProfileInfoSection({ email }: { email?: string }) {
   };
 
   return (
-    <section>
-      <h2 className="mb-4 font-serif text-lg font-medium">Profile info</h2>
-      <div className="flex flex-col gap-4">
+    <div className="rounded-xs border border-neutral-100">
+      <div className="p-4">
+        <h3 className="mb-2 font-serif text-lg font-semibold">Profile</h3>
+        <p className="text-sm text-neutral-600">Your personal information</p>
+      </div>
+
+      <div className="flex flex-col gap-4 border-t border-neutral-100 p-4">
         <div>
           <div className="mb-1 text-sm text-neutral-500">Email</div>
           {isEditing ? (
@@ -99,12 +103,13 @@ export function ProfileInfoSection({ email }: { email?: string }) {
             </div>
           )}
         </div>
+
         {successMessage && (
           <div className="rounded-md border border-green-200 bg-green-50 p-3">
             <p className="text-sm text-green-800">{successMessage}</p>
           </div>
         )}
       </div>
-    </section>
+    </div>
   );
 }

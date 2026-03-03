@@ -1,6 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { ChevronDown } from "lucide-react";
 
-import { cn } from "@hypr/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@hypr/ui/components/ui/dropdown-menu";
 
 import { useBilling } from "@/hooks/use-billing";
 import { useConnections } from "@/hooks/use-connections";
@@ -12,7 +18,7 @@ const INTEGRATIONS = [
 export function IntegrationsSettingsCard() {
   const navigate = useNavigate();
   const { isPro } = useBilling();
-  const { data: connections, isLoading, isError } = useConnections(isPro);
+  const { data: connections, isLoading } = useConnections(isPro);
 
   const getConnectionStatus = (integrationId: string) => {
     return connections?.find((c) => c.integration_id === integrationId);
@@ -38,24 +44,9 @@ export function IntegrationsSettingsCard() {
           >
             <div className="flex items-center gap-3">
               <div className="text-sm font-medium">{integration.name}</div>
-              {!isPro && (
-                <span className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                  Pro
-                </span>
-              )}
-              {isLoading ? (
-                <span className="text-xs text-neutral-400">Checking...</span>
-              ) : isError ? (
-                <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-600">
-                  Check failed
-                </span>
-              ) : isConnected ? (
-                <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-600">
-                  Connected
-                </span>
-              ) : null}
             </div>
-            {!isPro && !isConnected ? (
+
+            {!isPro ? (
               <Link
                 to="/app/checkout/"
                 search={{ period: "monthly" }}
@@ -63,33 +54,38 @@ export function IntegrationsSettingsCard() {
               >
                 Upgrade to Pro
               </Link>
-            ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() =>
-                    navigate({
-                      to: "/app/integration/",
-                      search: {
-                        flow: "web",
-                        integration_id: integration.id,
-                        action: "connect",
-                        ...(connection
-                          ? { connection_id: connection.connection_id }
-                          : {}),
-                      },
-                    })
-                  }
-                  className={cn([
-                    "flex h-8 cursor-pointer items-center rounded-full px-4 text-sm transition-all",
-                    isConnected
-                      ? "border border-neutral-300 bg-linear-to-b from-white to-stone-50 text-neutral-700 shadow-xs hover:scale-[102%] hover:shadow-md active:scale-[98%]"
-                      : "bg-linear-to-t from-stone-600 to-stone-500 text-white shadow-md hover:scale-[102%] hover:shadow-lg active:scale-[98%]",
-                  ])}
-                >
-                  {isConnected ? "Reconnect" : "Connect"}
-                </button>
-                {isConnected && connection && (
-                  <button
+            ) : isLoading ? (
+              <button
+                disabled
+                className="flex h-8 items-center rounded-full border border-neutral-300 bg-linear-to-b from-white to-stone-50 px-4 text-sm text-neutral-500 shadow-xs"
+              >
+                Loading...
+              </button>
+            ) : isConnected && connection ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex h-8 cursor-pointer items-center gap-1 rounded-full border border-neutral-300 bg-linear-to-b from-white to-stone-50 px-4 text-sm text-neutral-700 shadow-xs transition-all hover:scale-[102%] hover:shadow-md active:scale-[98%]">
+                    Connected
+                    <ChevronDown size={14} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem
+                    onClick={() =>
+                      navigate({
+                        to: "/app/integration/",
+                        search: {
+                          flow: "web",
+                          integration_id: integration.id,
+                          action: "connect",
+                          connection_id: connection.connection_id,
+                        },
+                      })
+                    }
+                  >
+                    Reconnect
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() =>
                       navigate({
                         to: "/app/integration/",
@@ -101,12 +97,28 @@ export function IntegrationsSettingsCard() {
                         },
                       })
                     }
-                    className="flex h-8 cursor-pointer items-center rounded-full bg-linear-to-t from-red-600 to-red-500 px-4 text-sm text-white shadow-md transition-all hover:scale-[102%] hover:shadow-lg active:scale-[98%]"
+                    className="text-red-600 focus:text-red-600"
                   >
                     Disconnect
-                  </button>
-                )}
-              </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <button
+                onClick={() =>
+                  navigate({
+                    to: "/app/integration/",
+                    search: {
+                      flow: "web",
+                      integration_id: integration.id,
+                      action: "connect",
+                    },
+                  })
+                }
+                className="flex h-8 cursor-pointer items-center rounded-full bg-linear-to-t from-stone-600 to-stone-500 px-4 text-sm text-white shadow-md transition-all hover:scale-[102%] hover:shadow-lg active:scale-[98%]"
+              >
+                Connect
+              </button>
             )}
           </div>
         );
