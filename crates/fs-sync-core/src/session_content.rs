@@ -12,6 +12,7 @@ pub fn load_session_content(session_id: &str, session_dir: &std::path::Path) -> 
         session_id: session_id.to_string(),
         meta: None,
         raw_memo_tiptap_json: None,
+        raw_memo_markdown: None,
         transcript: None,
         notes: vec![],
     };
@@ -83,12 +84,25 @@ pub fn load_session_content(session_id: &str, session_dir: &std::path::Path) -> 
 
         if name == SESSION_MEMO_FILE {
             content.raw_memo_tiptap_json = Some(tiptap_json);
+            let trimmed = parsed.content.trim();
+            if !trimmed.is_empty() {
+                content.raw_memo_markdown = Some(trimmed.to_string());
+            }
             continue;
         }
 
         if id.is_empty() {
             continue;
         }
+
+        let markdown = {
+            let trimmed = parsed.content.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        };
 
         content.notes.push(SessionNoteData {
             id,
@@ -103,6 +117,7 @@ pub fn load_session_content(session_id: &str, session_dir: &std::path::Path) -> 
                 .and_then(|v| v.as_str())
                 .map(|v| v.to_string()),
             tiptap_json,
+            markdown,
         });
     }
 

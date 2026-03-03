@@ -162,6 +162,7 @@ pub struct SessionNoteData {
     pub position: Option<i64>,
     pub title: Option<String>,
     pub tiptap_json: serde_json::Value,
+    pub markdown: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -170,6 +171,7 @@ pub struct SessionContentData {
     pub session_id: String,
     pub meta: Option<SessionMetaData>,
     pub raw_memo_tiptap_json: Option<serde_json::Value>,
+    pub raw_memo_markdown: Option<String>,
     pub transcript: Option<TranscriptData>,
     pub notes: Vec<SessionNoteData>,
 }

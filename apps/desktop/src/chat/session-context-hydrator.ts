@@ -2,7 +2,6 @@ import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
 import type { SessionContentData } from "@hypr/plugin-fs-sync";
 import type { SessionContext, Transcript } from "@hypr/plugin-template";
 import type { SpeakerHintStorage } from "@hypr/store";
-import { isValidTiptapContent, json2md } from "@hypr/tiptap/shared";
 
 import type * as main from "~/store/tinybase/store/main";
 import { buildSegments, SegmentKey, type WordLike } from "~/stt/segment";
@@ -11,19 +10,6 @@ import {
   SpeakerLabelManager,
 } from "~/stt/segment/shared";
 import { convertStorageHintsToRuntime } from "~/stt/speaker-hints";
-
-function toMarkdownFromTiptap(value: unknown): string | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-  if (!isValidTiptapContent(value)) {
-    return null;
-  }
-
-  const md = json2md(value);
-  const trimmed = md.trim();
-  return trimmed ? trimmed : null;
-}
 
 function extractEventName(event: unknown): string | null {
   if (!event || typeof event !== "object") {
@@ -162,24 +148,17 @@ export async function hydrateSessionContextFromFs(
   const enhancedContent = payload.notes
     .slice()
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-    .map((note) => toMarkdownFromTiptap(note.tiptapJson))
+    .map((note) => note.markdown ?? null)
     .filter((note): note is string => Boolean(note))
     .join("\n\n---\n\n");
 
   const transcript = buildTranscript(payload.transcript, store);
   const eventName = extractEventName(payload.meta?.event);
 
-  console.log("[hydrate-session]", sessionId, {
-    hasTranscriptData: !!payload.transcript,
-    transcriptCount: payload.transcript?.transcripts.length ?? 0,
-    wordCount: payload.transcript?.transcripts.reduce((n, t) => n + t.words.length, 0) ?? 0,
-    builtTranscriptSegments: transcript?.segments.length ?? 0,
-  });
-
   return {
     title: payload.meta?.title ?? null,
     date: payload.meta?.createdAt ?? null,
-    rawContent: toMarkdownFromTiptap(payload.rawMemoTiptapJson),
+    rawContent: payload.rawMemoMarkdown ?? null,
     enhancedContent: enhancedContent || null,
     transcript,
     participants,
