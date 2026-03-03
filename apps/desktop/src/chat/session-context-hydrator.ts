@@ -54,8 +54,8 @@ function buildTranscript(
       transcript.words.map((word) => ({
         id: word.id ?? null,
         text: word.text,
-        start_ms: word.startMs,
-        end_ms: word.endMs,
+        start_ms: word.start_ms,
+        end_ms: word.end_ms,
         channel: word.channel as WordLike["channel"],
       })),
     )
@@ -81,50 +81,20 @@ function buildTranscript(
 
   const storageHints: SpeakerHintStorage[] = transcriptData.transcripts.flatMap(
     (transcript) =>
-      transcript.speakerHints.flatMap((hint) => {
-        const start = wordIdToIndex.get(hint.startWordId);
-        const end = wordIdToIndex.get(hint.endWordId);
-        if (typeof start !== "number" || typeof end !== "number") {
+      (transcript.speaker_hints ?? []).flatMap((hint) => {
+        if (!hint.word_id) {
           return [];
         }
-
-        const from = Math.min(start, end);
-        const to = Math.max(start, end);
-
-        const speakerId = hint.speakerId;
-        const speakerIndex =
-          typeof speakerId === "string"
-            ? Number.parseInt(speakerId.replace(/[^\d-]/g, ""), 10)
-            : Number.NaN;
-
-        const isHumanAssignment =
-          !!store &&
-          typeof speakerId === "string" &&
-          Boolean(store.getRow("humans", speakerId));
-
-        const type = isHumanAssignment
-          ? "user_speaker_assignment"
-          : "provider_speaker_index";
-        const value = JSON.stringify(
-          isHumanAssignment
-            ? { human_id: speakerId }
-            : {
-                speaker_index: Number.isFinite(speakerIndex) ? speakerIndex : 0,
-              },
-        );
-
-        return indexedWords.slice(from, to + 1).flatMap((word) => {
-          if (typeof word.id !== "string" || !word.id) {
-            return [];
-          }
-          return [
-            {
-              word_id: word.id,
-              type,
-              value,
-            },
-          ];
-        });
+        return [
+          {
+            word_id: hint.word_id,
+            type: hint.type,
+            value:
+              typeof hint.value === "string"
+                ? JSON.parse(hint.value)
+                : (hint.value ?? {}),
+          },
+        ];
       }),
   );
 
@@ -138,10 +108,10 @@ function buildTranscript(
   const manager = SpeakerLabelManager.fromSegments(segments, ctx);
 
   const startedAtCandidates = transcriptData.transcripts
-    .map((t) => t.startedAt)
+    .map((t) => t.started_at)
     .filter((v): v is number => typeof v === "number");
   const endedAtCandidates = transcriptData.transcripts
-    .map((t) => t.endedAt)
+    .map((t) => t.ended_at)
     .filter((v): v is number => typeof v === "number");
 
   return {
@@ -198,6 +168,13 @@ export async function hydrateSessionContextFromFs(
 
   const transcript = buildTranscript(payload.transcript, store);
   const eventName = extractEventName(payload.meta?.event);
+
+  console.log("[hydrate-session]", sessionId, {
+    hasTranscriptData: !!payload.transcript,
+    transcriptCount: payload.transcript?.transcripts.length ?? 0,
+    wordCount: payload.transcript?.transcripts.reduce((n, t) => n + t.words.length, 0) ?? 0,
+    builtTranscriptSegments: transcript?.segments.length ?? 0,
+  });
 
   return {
     title: payload.meta?.title ?? null,

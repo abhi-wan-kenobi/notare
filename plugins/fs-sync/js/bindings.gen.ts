@@ -215,9 +215,9 @@ export type SessionMetaData = { id: string; userId: string; createdAt: string | 
 export type SessionMetaParticipant = { id: string; userId: string; sessionId: string; humanId: string; source: string }
 export type SessionNoteData = { id: string; sessionId: string; templateId: string | null; position: number | null; title: string | null; tiptapJson: JsonValue }
 export type TranscriptData = { transcripts: TranscriptEntry[] }
-export type TranscriptEntry = { id: string; userId: string | null; createdAt: string | null; sessionId: string; startedAt: number | null; endedAt: number | null; words: TranscriptWord[]; speakerHints: TranscriptSpeakerHint[] }
-export type TranscriptSpeakerHint = { id: string | null; speakerId: string | null; startWordId: string; endWordId: string }
-export type TranscriptWord = { id: string | null; text: string; startMs: number; endMs: number; channel: number }
+export type TranscriptEntry = { id: string; user_id?: string | null; created_at?: string | null; session_id: string; started_at?: number | null; ended_at?: number | null; words: TranscriptWord[]; speaker_hints?: TranscriptSpeakerHint[] }
+export type TranscriptSpeakerHint = { id?: string | null; word_id: string; type: string; value?: JsonValue }
+export type TranscriptWord = { id: string | null; text: string; start_ms: number; end_ms: number; channel: number }
 
 /** tauri-specta globals **/
 

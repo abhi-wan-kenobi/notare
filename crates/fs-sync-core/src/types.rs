@@ -112,7 +112,6 @@ impl<'de> Deserialize<'de> for SessionMetaData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
 pub struct TranscriptWord {
     pub id: Option<String>,
     pub text: String,
@@ -122,29 +121,34 @@ pub struct TranscriptWord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
 pub struct TranscriptSpeakerHint {
+    #[serde(default)]
     pub id: Option<String>,
-    pub speaker_id: Option<String>,
-    pub start_word_id: String,
-    pub end_word_id: String,
+    pub word_id: String,
+    #[serde(rename = "type")]
+    pub hint_type: String,
+    #[serde(default)]
+    pub value: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
 pub struct TranscriptEntry {
     pub id: String,
+    #[serde(default)]
     pub user_id: Option<String>,
+    #[serde(default)]
     pub created_at: Option<String>,
     pub session_id: String,
+    #[serde(default)]
     pub started_at: Option<i64>,
+    #[serde(default)]
     pub ended_at: Option<i64>,
     pub words: Vec<TranscriptWord>,
+    #[serde(default)]
     pub speaker_hints: Vec<TranscriptSpeakerHint>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
 pub struct TranscriptData {
     pub transcripts: Vec<TranscriptEntry>,
 }
