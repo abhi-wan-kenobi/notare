@@ -90,18 +90,12 @@ function parseSearchSessionsOutput(output: unknown): ContextEntity[] {
   });
 }
 
-export type ToolContextExtractor = (output: unknown) => ContextEntity[];
-
-const toolEntityExtractors: Record<string, ToolContextExtractor> = {
+const toolEntityExtractors: Record<
+  string,
+  (output: unknown) => ContextEntity[]
+> = {
   search_sessions: parseSearchSessionsOutput,
 };
-
-export function registerToolContextExtractor(
-  toolName: string,
-  extractor: ToolContextExtractor,
-): void {
-  toolEntityExtractors[toolName] = extractor;
-}
 
 export function extractToolContextEntities(
   messages: Array<Pick<HyprUIMessage, "parts">>,

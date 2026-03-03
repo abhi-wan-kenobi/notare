@@ -12,78 +12,20 @@ import {
   commands as templateCommands,
 } from "@hypr/plugin-template";
 
-import type { ContextRef } from "./context/entities";
-import type { HyprUIMessage } from "./types";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-const MAX_TOOL_STEPS = 5;
-const MESSAGE_WINDOW_THRESHOLD = 20;
-const MESSAGE_WINDOW_SIZE = 10;
-
-function isContextRef(value: unknown): value is ContextRef {
-  return (
-    isRecord(value) &&
-    value.kind === "session" &&
-    typeof value.key === "string" &&
-    typeof value.sessionId === "string" &&
-    (value.source === undefined ||
-      value.source === "tool" ||
-      value.source === "manual" ||
-      value.source === "auto-current")
-  );
-}
-
-function getContextRefs(metadata: unknown): ContextRef[] {
-  if (!isRecord(metadata) || !Array.isArray(metadata.contextRefs)) {
-    return [];
-  }
-
-  return metadata.contextRefs.filter((ref): ref is ContextRef =>
-    isContextRef(ref),
-  );
-}
-
-function getSessionIdsFromSearchOutput(output: unknown): string[] {
-  if (!isRecord(output) || !Array.isArray(output.results)) {
-    return [];
-  }
-  return output.results.flatMap((item) => {
-    if (
-      !isRecord(item) ||
-      (typeof item.id !== "string" && typeof item.id !== "number")
-    ) {
-      return [];
-    }
-    return [String(item.id)];
-  });
-}
-
-type ToolOutputPart = {
-  type: `tool-${string}`;
-  state: "output-available";
-  output?: unknown;
-  [key: string]: unknown;
-};
-
-function isToolOutputPart(value: unknown): value is ToolOutputPart {
-  return (
-    isRecord(value) &&
-    typeof value.type === "string" &&
-    value.type.startsWith("tool-") &&
-    value.state === "output-available"
-  );
-}
-
-function hasContextText(output: unknown): boolean {
-  return (
-    isRecord(output) &&
-    typeof output.contextText === "string" &&
-    output.contextText.length > 0
-  );
-}
+import type { ContextRef } from "../context/entities";
+import { CONTEXT_TEXT_FIELD } from "../tools";
+import type { HyprUIMessage } from "../types";
+import {
+  getContextRefs,
+  getSessionIdsFromSearchOutput,
+  hasContextText,
+  isRecord,
+  isToolOutputPart,
+  MAX_TOOL_STEPS,
+  MESSAGE_WINDOW_SIZE,
+  MESSAGE_WINDOW_THRESHOLD,
+  type ToolOutputPart,
+} from "./helpers";
 
 export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
   constructor(
@@ -122,12 +64,36 @@ export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
       return null;
     }
 
+    // Rendered by Rust-side template engine via Tauri plugin
     const rendered = await templateCommands.render({
       contextBlock: { contexts },
     });
     const result = rendered.status === "ok" ? rendered.data : null;
     cache.set(cacheKey, result);
     return result;
+  }
+
+  private async hydrateSearchOutput(
+    output: unknown,
+    cache: Map<string, string | null>,
+  ): Promise<unknown> {
+    const sessionIds = getSessionIdsFromSearchOutput(output);
+    if (sessionIds.length === 0) return output;
+
+    const refs: ContextRef[] = sessionIds.map((sessionId) => ({
+      kind: "session" as const,
+      key: `session:search:${sessionId}`,
+      source: "tool" as const,
+      sessionId,
+    }));
+
+    const contextText = await this.renderContextBlock(refs, cache);
+    if (!contextText) return output;
+
+    return {
+      ...(isRecord(output) ? output : {}),
+      [CONTEXT_TEXT_FIELD]: contextText,
+    };
   }
 
   private async expandSearchSessionsOutput(
@@ -138,25 +104,12 @@ export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
       return part;
     }
 
-    const sessionIds = getSessionIdsFromSearchOutput(part.output);
-    if (sessionIds.length === 0) return part;
-
-    const refs: ContextRef[] = sessionIds.map((sessionId) => ({
-      kind: "session",
-      key: `session:search:${sessionId}`,
-      source: "tool",
-      sessionId,
-    }));
-
-    const contextText = await this.renderContextBlock(refs, cache);
-    if (!contextText) return part;
+    const output = await this.hydrateSearchOutput(part.output, cache);
+    if (output === part.output) return part;
 
     return {
       ...part,
-      output: {
-        ...(isRecord(part.output) ? part.output : {}),
-        contextText,
-      },
+      output,
     };
   }
 
@@ -184,28 +137,7 @@ export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
           if (hasContextText(output)) {
             return output;
           }
-
-          const sessionIds = getSessionIdsFromSearchOutput(output);
-          if (sessionIds.length === 0) {
-            return output;
-          }
-
-          const refs: ContextRef[] = sessionIds.map((sessionId) => ({
-            kind: "session",
-            key: `session:search:${sessionId}`,
-            source: "tool",
-            sessionId,
-          }));
-
-          const contextText = await this.renderContextBlock(refs, cache);
-          if (!contextText) {
-            return output;
-          }
-
-          return {
-            ...(isRecord(output) ? output : {}),
-            contextText,
-          };
+          return this.hydrateSearchOutput(output, cache);
         },
       },
     };

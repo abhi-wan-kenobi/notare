@@ -14,9 +14,10 @@ import { commands as templateCommands } from "@hypr/plugin-template";
 
 import { useLanguageModel } from "~/ai/hooks";
 import type { ContextEntity, ContextRef } from "~/chat/context/entities";
+import { hydrateSessionContextFromFs } from "~/chat/context/session-context-hydrator";
 import { useChatContextPipeline } from "~/chat/context/use-chat-context-pipeline";
-import { hydrateSessionContextFromFs } from "~/chat/session-context-hydrator";
 import { useCreateChatMessage } from "~/chat/store/useCreateChatMessage";
+import { CONTEXT_TEXT_FIELD } from "~/chat/tools";
 import { CustomChatTransport } from "~/chat/transport";
 import type { HyprUIMessage } from "~/chat/types";
 import { useToolRegistry } from "~/contexts/tool";
@@ -63,7 +64,7 @@ function stripEphemeralToolContext(
       part.type !== "tool-search_sessions" ||
       part.state !== "output-available" ||
       !isRecord(part.output) ||
-      !("contextText" in part.output)
+      !(CONTEXT_TEXT_FIELD in part.output)
     ) {
       return part;
     }
@@ -359,7 +360,7 @@ function useTransport(
       tools,
       effectiveSystemPrompt,
       async (ref) => {
-        if (ref.kind !== "session" || !store) {
+        if (!store) {
           return null;
         }
         return hydrateSessionContextFromFs(store, ref.sessionId);

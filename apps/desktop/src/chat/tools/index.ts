@@ -12,6 +12,9 @@ import type { SearchFilters } from "~/search/contexts/engine/types";
 
 export type { ToolDependencies };
 
+// Ephemeral field: injected by transport during hydration, stripped before persistence.
+export const CONTEXT_TEXT_FIELD = "contextText" as const;
+
 export const buildChatTools = (deps: ToolDependencies) => ({
   search_sessions: buildSearchSessionsTool(deps),
   search_contacts: buildSearchContactsTool(deps),

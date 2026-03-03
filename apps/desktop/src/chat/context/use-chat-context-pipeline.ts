@@ -27,21 +27,12 @@ function getSessionDisplayData(
   };
 }
 
-// Normalize legacy "session:current" key to the per-session key format.
-function normalizeRef(ref: ContextRef): ContextRef {
-  if (ref.source === "auto-current" && ref.key === "session:current") {
-    return { ...ref, key: `session:auto:${ref.sessionId}` };
-  }
-  return ref;
-}
-
 function extractCommittedRefs(messages: HyprUIMessage[]): ContextRef[] {
   const seen = new Set<string>();
   const refs: ContextRef[] = [];
   for (const msg of messages) {
     if (msg.role !== "user") continue;
-    for (const raw of msg.metadata?.contextRefs ?? []) {
-      const ref = normalizeRef(raw);
+    for (const ref of msg.metadata?.contextRefs ?? []) {
       if (!seen.has(ref.key)) {
         seen.add(ref.key);
         refs.push(ref);
@@ -88,9 +79,7 @@ export function useChatContextPipeline({
         sessionId: currentSessionId,
       });
     }
-    for (const ref of pendingManualRefs) {
-      refs.push(ref);
-    }
+    refs.push(...pendingManualRefs);
     return refs;
   }, [currentSessionId, pendingManualRefs]);
 
