@@ -1,7 +1,5 @@
 import { faker } from "@faker-js/faker/locale/en";
 
-import type { AppleCalendar } from "@hypr/plugin-apple-calendar";
-
 import type { SeedDefinition } from "~/shared/devtool/seed/shared";
 import {
   buildCalendars,
@@ -21,7 +19,7 @@ import {
 } from "~/shared/devtool/seed/shared";
 import type { Store as MainStore } from "~/store/tinybase/store/main";
 
-const buildRandomData = (fixtureCalendars?: AppleCalendar[]) => {
+const buildRandomData = () => {
   faker.seed(123);
 
   const organizations = buildOrganizations(4);
@@ -33,7 +31,7 @@ const buildRandomData = (fixtureCalendars?: AppleCalendar[]) => {
   });
   const humanIds = Object.keys(humans);
 
-  const calendars = buildCalendars(3, fixtureCalendars);
+  const calendars = buildCalendars(3);
   const calendarIds = Object.keys(calendars);
 
   const { events, eventsByHuman } = buildEventsByHuman(humanIds, calendarIds, {
@@ -113,9 +111,8 @@ const buildRandomData = (fixtureCalendars?: AppleCalendar[]) => {
 export const randomSeed: SeedDefinition = {
   id: "random",
   label: "Random",
-  calendarFixtureBase: "default",
-  run: async (store: MainStore, fixtureCalendars?: AppleCalendar[]) => {
-    const data = buildRandomData(fixtureCalendars);
+  run: async (store: MainStore) => {
+    const data = buildRandomData();
     await new Promise((r) => setTimeout(r, 0));
     store.transaction(() => {
       store.delTables();

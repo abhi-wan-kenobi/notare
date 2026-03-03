@@ -175,9 +175,6 @@ importers:
       '@hypr/plugin-analytics':
         specifier: workspace:*
         version: link:../../plugins/analytics
-      '@hypr/plugin-apple-calendar':
-        specifier: workspace:*
-        version: link:../../plugins/apple-calendar
       '@hypr/plugin-apple-contact':
         specifier: workspace:*
         version: link:../../plugins/apple-contact
@@ -190,6 +187,9 @@ importers:
       '@hypr/plugin-bedrock':
         specifier: workspace:*
         version: link:../../plugins/bedrock
+      '@hypr/plugin-calendar':
+        specifier: workspace:*
+        version: link:../../plugins/calendar
       '@hypr/plugin-db2':
         specifier: workspace:*
         version: link:../../plugins/db2
@@ -214,9 +214,6 @@ importers:
       '@hypr/plugin-git':
         specifier: workspace:*
         version: link:../../plugins/git
-      '@hypr/plugin-google-calendar':
-        specifier: workspace:*
-        version: link:../../plugins/google-calendar
       '@hypr/plugin-hooks':
         specifier: workspace:*
         version: link:../../plugins/hooks
@@ -256,9 +253,6 @@ importers:
       '@hypr/plugin-opener2':
         specifier: workspace:*
         version: link:../../plugins/opener2
-      '@hypr/plugin-outlook-calendar':
-        specifier: workspace:*
-        version: link:../../plugins/outlook-calendar
       '@hypr/plugin-overlay':
         specifier: workspace:*
         version: link:../../plugins/overlay
@@ -1735,12 +1729,6 @@ importers:
         specifier: ^2.10.1
         version: 2.10.1
 
-  plugins/apple-calendar:
-    dependencies:
-      '@tauri-apps/api':
-        specifier: ^2.10.1
-        version: 2.10.1
-
   plugins/apple-contact:
     dependencies:
       '@tauri-apps/api':
@@ -1760,6 +1748,12 @@ importers:
         version: 2.10.1
 
   plugins/bedrock:
+    dependencies:
+      '@tauri-apps/api':
+        specifier: ^2.10.1
+        version: 2.10.1
+
+  plugins/calendar:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.10.1
@@ -1808,12 +1802,6 @@ importers:
         version: 2.10.1
 
   plugins/git:
-    dependencies:
-      '@tauri-apps/api':
-        specifier: ^2.10.1
-        version: 2.10.1
-
-  plugins/google-calendar:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.10.1
@@ -1898,12 +1886,6 @@ importers:
         version: 2.10.1
 
   plugins/opener2:
-    dependencies:
-      '@tauri-apps/api':
-        specifier: ^2.10.1
-        version: 2.10.1
-
-  plugins/outlook-calendar:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.10.1
