@@ -17,8 +17,6 @@ export function StreamingView({ enhancedNoteId }: { enhancedNoteId: string }) {
 
   const step = currentStep as TaskStepInfo<"enhance"> | undefined;
   const hasContent = streamedText.length > 0;
-  const showTip = useTimedFlag(isGenerating, 5_000);
-
   let statusText: string | null = null;
   if (isGenerating && !hasContent) {
     if (step?.type === "analyzing") {
@@ -49,7 +47,6 @@ export function StreamingView({ enhancedNoteId }: { enhancedNoteId: string }) {
           >
             {streamedText}
           </Streamdown>
-          {showTip && <RotatingTip />}
         </div>
       )}
     </div>
@@ -57,22 +54,6 @@ export function StreamingView({ enhancedNoteId }: { enhancedNoteId: string }) {
 }
 
 const TIPS = ["Char team love our users!"];
-
-function useTimedFlag(active: boolean, ms: number) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    if (!active) {
-      setVisible(false);
-      return;
-    }
-    setVisible(true);
-    const id = setTimeout(() => setVisible(false), ms);
-    return () => clearTimeout(id);
-  }, [active, ms]);
-
-  return visible;
-}
 
 function RotatingTip() {
   const [index, setIndex] = useState(() =>
