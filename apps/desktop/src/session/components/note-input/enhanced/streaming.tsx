@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
 
 import { streamdownComponents } from "@hypr/tiptap/shared";
@@ -16,6 +17,7 @@ export function StreamingView({ enhancedNoteId }: { enhancedNoteId: string }) {
 
   const step = currentStep as TaskStepInfo<"enhance"> | undefined;
   const hasContent = streamedText.length > 0;
+  const showTip = useTimedFlag(isGenerating, 5_000);
 
   let statusText: string | null = null;
   if (isGenerating && !hasContent) {
@@ -33,17 +35,56 @@ export function StreamingView({ enhancedNoteId }: { enhancedNoteId: string }) {
   return (
     <div className="pb-2">
       {statusText ? (
-        <p className="text-sm text-neutral-500">{statusText}</p>
+        <div className="flex flex-col gap-1">
+          <p className="text-sm text-neutral-500">{statusText}</p>
+          <RotatingTip />
+        </div>
       ) : (
-        <Streamdown
-          components={streamdownComponents}
-          className={cn(["flex flex-col"])}
-          caret="block"
-          isAnimating={isGenerating}
-        >
-          {streamedText}
-        </Streamdown>
+        <div className="flex flex-col gap-1">
+          <Streamdown
+            components={streamdownComponents}
+            className={cn(["flex flex-col"])}
+            caret="block"
+            isAnimating={isGenerating}
+          >
+            {streamedText}
+          </Streamdown>
+          {showTip && <RotatingTip />}
+        </div>
       )}
     </div>
   );
+}
+
+const TIPS = ["Char team love our users!"];
+
+function useTimedFlag(active: boolean, ms: number) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!active) {
+      setVisible(false);
+      return;
+    }
+    setVisible(true);
+    const id = setTimeout(() => setVisible(false), ms);
+    return () => clearTimeout(id);
+  }, [active, ms]);
+
+  return visible;
+}
+
+function RotatingTip() {
+  const [index, setIndex] = useState(() =>
+    Math.floor(Math.random() * TIPS.length),
+  );
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % TIPS.length);
+    }, 5_000);
+    return () => clearInterval(id);
+  }, []);
+
+  return <p className="pl-3 text-xs text-neutral-400">└ Tip: {TIPS[index]}</p>;
 }
