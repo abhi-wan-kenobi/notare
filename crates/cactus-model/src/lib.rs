@@ -35,9 +35,15 @@ pub enum CactusSttModel {
     #[serde(rename = "cactus-parakeet-ctc-0.6b-int4")]
     #[strum(serialize = "cactus-parakeet-ctc-0.6b-int4")]
     ParakeetCtc0_6bInt4,
+    #[serde(rename = "cactus-parakeet-ctc-0.6b-int4-apple")]
+    #[strum(serialize = "cactus-parakeet-ctc-0.6b-int4-apple")]
+    ParakeetCtc0_6bInt4Apple,
     #[serde(rename = "cactus-parakeet-ctc-0.6b-int8")]
     #[strum(serialize = "cactus-parakeet-ctc-0.6b-int8")]
     ParakeetCtc0_6bInt8,
+    #[serde(rename = "cactus-parakeet-ctc-0.6b-int8-apple")]
+    #[strum(serialize = "cactus-parakeet-ctc-0.6b-int8-apple")]
+    ParakeetCtc0_6bInt8Apple,
 }
 
 impl CactusSttModel {
@@ -51,7 +57,9 @@ impl CactusSttModel {
             CactusSttModel::WhisperMediumInt8,
             CactusSttModel::WhisperMediumInt8Apple,
             CactusSttModel::ParakeetCtc0_6bInt4,
+            CactusSttModel::ParakeetCtc0_6bInt4Apple,
             CactusSttModel::ParakeetCtc0_6bInt8,
+            CactusSttModel::ParakeetCtc0_6bInt8Apple,
         ]
     }
 
@@ -61,6 +69,8 @@ impl CactusSttModel {
             CactusSttModel::WhisperSmallInt8Apple
                 | CactusSttModel::WhisperMediumInt4Apple
                 | CactusSttModel::WhisperMediumInt8Apple
+                | CactusSttModel::ParakeetCtc0_6bInt4Apple
+                | CactusSttModel::ParakeetCtc0_6bInt8Apple
         )
     }
 
@@ -74,7 +84,9 @@ impl CactusSttModel {
             CactusSttModel::WhisperMediumInt8 => "cactus-whisper-medium-int8",
             CactusSttModel::WhisperMediumInt8Apple => "cactus-whisper-medium-int8-apple",
             CactusSttModel::ParakeetCtc0_6bInt4 => "cactus-parakeet-ctc-0.6b-int4",
+            CactusSttModel::ParakeetCtc0_6bInt4Apple => "cactus-parakeet-ctc-0.6b-int4-apple",
             CactusSttModel::ParakeetCtc0_6bInt8 => "cactus-parakeet-ctc-0.6b-int8",
+            CactusSttModel::ParakeetCtc0_6bInt8Apple => "cactus-parakeet-ctc-0.6b-int8-apple",
         }
     }
 
@@ -88,7 +100,9 @@ impl CactusSttModel {
             CactusSttModel::WhisperMediumInt8 => "whisper-medium-int8",
             CactusSttModel::WhisperMediumInt8Apple => "whisper-medium-int8-apple",
             CactusSttModel::ParakeetCtc0_6bInt4 => "parakeet-ctc-0.6b-int4",
+            CactusSttModel::ParakeetCtc0_6bInt4Apple => "parakeet-ctc-0.6b-int4-apple",
             CactusSttModel::ParakeetCtc0_6bInt8 => "parakeet-ctc-0.6b-int8",
+            CactusSttModel::ParakeetCtc0_6bInt8Apple => "parakeet-ctc-0.6b-int8-apple",
         }
     }
 
@@ -113,8 +127,14 @@ impl CactusSttModel {
             CactusSttModel::ParakeetCtc0_6bInt4 => Some(
                 "https://hyprnote.s3.us-east-1.amazonaws.com/v0/Cactus-Compute/weights/parakeet-ctc-0.6b-int4.zip",
             ),
+            CactusSttModel::ParakeetCtc0_6bInt4Apple => Some(
+                "https://hyprnote.s3.us-east-1.amazonaws.com/v0/Cactus-Compute/weights/parakeet-ctc-0.6b-int4-apple.zip",
+            ),
             CactusSttModel::ParakeetCtc0_6bInt8 => Some(
                 "https://hyprnote.s3.us-east-1.amazonaws.com/v0/Cactus-Compute/weights/parakeet-ctc-0.6b-int8.zip",
+            ),
+            CactusSttModel::ParakeetCtc0_6bInt8Apple => Some(
+                "https://hyprnote.s3.us-east-1.amazonaws.com/v0/Cactus-Compute/weights/parakeet-ctc-0.6b-int8-apple.zip",
             ),
             _ => None,
         }
@@ -126,8 +146,10 @@ impl CactusSttModel {
             CactusSttModel::WhisperSmallInt8Apple => Some(3401367684),
             CactusSttModel::WhisperMediumInt8 => Some(472491622),
             CactusSttModel::WhisperMediumInt8Apple => Some(3175773054),
-            CactusSttModel::ParakeetCtc0_6bInt4 => Some(188550159),
-            CactusSttModel::ParakeetCtc0_6bInt8 => Some(396300387),
+            CactusSttModel::ParakeetCtc0_6bInt4 => Some(110856526),
+            CactusSttModel::ParakeetCtc0_6bInt4Apple => Some(3331802527),
+            CactusSttModel::ParakeetCtc0_6bInt8 => Some(1392473619),
+            CactusSttModel::ParakeetCtc0_6bInt8Apple => Some(3465847421),
             _ => None,
         }
     }
@@ -136,7 +158,9 @@ impl CactusSttModel {
         match self {
             CactusSttModel::WhisperSmallInt8Apple
             | CactusSttModel::WhisperMediumInt4Apple
-            | CactusSttModel::WhisperMediumInt8Apple => "Apple Neural Engine",
+            | CactusSttModel::WhisperMediumInt8Apple
+            | CactusSttModel::ParakeetCtc0_6bInt4Apple
+            | CactusSttModel::ParakeetCtc0_6bInt8Apple => "Apple Neural Engine",
             _ => "",
         }
     }
@@ -151,13 +175,18 @@ impl CactusSttModel {
             CactusSttModel::WhisperMediumInt8 => "Whisper Medium (INT8)",
             CactusSttModel::WhisperMediumInt8Apple => "Whisper Medium (INT8, Apple NPU)",
             CactusSttModel::ParakeetCtc0_6bInt4 => "Parakeet CTC 0.6B (INT4)",
+            CactusSttModel::ParakeetCtc0_6bInt4Apple => "Parakeet CTC 0.6B (INT4, Apple NPU)",
             CactusSttModel::ParakeetCtc0_6bInt8 => "Parakeet CTC 0.6B (INT8)",
+            CactusSttModel::ParakeetCtc0_6bInt8Apple => "Parakeet CTC 0.6B (INT8, Apple NPU)",
         }
     }
 
     pub fn supported_languages(&self) -> Vec<hypr_language::Language> {
         match self {
-            CactusSttModel::ParakeetCtc0_6bInt4 | CactusSttModel::ParakeetCtc0_6bInt8 => {
+            CactusSttModel::ParakeetCtc0_6bInt4
+            | CactusSttModel::ParakeetCtc0_6bInt4Apple
+            | CactusSttModel::ParakeetCtc0_6bInt8
+            | CactusSttModel::ParakeetCtc0_6bInt8Apple => {
                 vec!["en".parse().unwrap()]
             }
             _ => hypr_language::whisper_multilingual(),
