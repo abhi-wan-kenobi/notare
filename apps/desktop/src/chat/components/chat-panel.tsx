@@ -6,6 +6,8 @@ import { ChatBody } from "./body";
 import { ChatContent } from "./content";
 import { ChatHeader } from "./header";
 import { ChatSession } from "./session-provider";
+import { useEditSummaryTools } from "./use-edit-summary-tools";
+import { useSessionTab } from "./use-session-tab";
 
 import { useLanguageModel } from "~/ai/hooks";
 import {
@@ -13,15 +15,13 @@ import {
   useStableSessionId,
 } from "~/chat/store/use-chat-actions";
 import { useShell } from "~/contexts/shell";
-import { useTabs } from "~/store/zustand/tabs";
 
 export function ChatView() {
   const { chat } = useShell();
   const { groupId, setGroupId } = chat;
-  const { currentTab } = useTabs();
 
-  const currentSessionId =
-    currentTab?.type === "sessions" ? currentTab.id : undefined;
+  const { currentSessionId, getSessionId, getEnhancedNoteId } = useSessionTab();
+  const { extraTools } = useEditSummaryTools(getSessionId, getEnhancedNoteId);
 
   const stableSessionId = useStableSessionId(groupId);
   const model = useLanguageModel("chat");
@@ -57,13 +57,14 @@ export function ChatView() {
         handleClose={() => chat.sendEvent({ type: "CLOSE" })}
       />
       <div className="bg-sky-100 px-3 py-1.5 text-[11px] text-neutral-900">
-        NOTE: Tools can read, but not write to your data.
+        NOTE: Chat is mostly READ ONLY. More editing updates coming soon.
       </div>
       <ChatSession
         key={stableSessionId}
         sessionId={stableSessionId}
         chatGroupId={groupId}
         currentSessionId={currentSessionId}
+        extraTools={extraTools}
       >
         {(sessionProps) => (
           <ChatContent

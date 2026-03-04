@@ -1,6 +1,7 @@
 import { ToolAddComment } from "./add-comment";
 import { ToolBillingPortal } from "./billing-portal";
 import { ToolCreateIssue } from "./create-issue";
+import { ToolEditSummary } from "./edit-summary";
 import { ToolGeneric } from "./generic";
 import { ToolListSubscriptions } from "./list-subscriptions";
 import { ToolSearchSessions } from "./search";
@@ -26,6 +27,9 @@ const toolRegistry: Record<string, (props: { part: Part }) => React.ReactNode> =
       part: Part;
     }) => React.ReactNode,
     "tool-create_billing_portal_session": ToolBillingPortal as (props: {
+      part: Part;
+    }) => React.ReactNode,
+    "tool-edit_summary": ToolEditSummary as (props: {
       part: Part;
     }) => React.ReactNode,
   };

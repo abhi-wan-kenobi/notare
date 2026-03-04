@@ -35,6 +35,7 @@ import { TabContentContact, TabItemContact } from "~/contacts";
 import { TabContentHuman, TabItemHuman } from "~/contacts/humans";
 import { useNotifications } from "~/contexts/notifications";
 import { useShell } from "~/contexts/shell";
+import { TabContentEdit, TabItemEdit } from "~/edit";
 import { TabContentFolder, TabItemFolder } from "~/folders";
 import { TabContentOnboarding, TabItemOnboarding } from "~/onboarding";
 import { TabContentPlugin, TabItemPlugin } from "~/plugins";
@@ -568,6 +569,20 @@ function TabItem({
       />
     );
   }
+  if (tab.type === "edit") {
+    return (
+      <TabItemEdit
+        tab={tab}
+        tabIndex={tabIndex}
+        handleCloseThis={handleClose}
+        handleSelectThis={handleSelect}
+        handleCloseOthers={handleCloseOthers}
+        handleCloseAll={handleCloseAll}
+        handlePinThis={handlePinThis}
+        handleUnpinThis={handleUnpinThis}
+      />
+    );
+  }
   return null;
 }
 
@@ -617,6 +632,9 @@ function ContentWrapper({ tab }: { tab: Tab }) {
   }
   if (tab.type === "onboarding") {
     return <TabContentOnboarding tab={tab} />;
+  }
+  if (tab.type === "edit") {
+    return <TabContentEdit tab={tab} />;
   }
   return null;
 }

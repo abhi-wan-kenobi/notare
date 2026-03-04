@@ -49,6 +49,19 @@ type LocalTools = {
       results: CalendarEventSearchResult[];
     };
   };
+  edit_summary: {
+    input: { sessionId?: string; enhancedNoteId?: string; content: string };
+    output: {
+      status: string;
+      message?: string;
+      candidates?: Array<{
+        enhancedNoteId: string;
+        title: string;
+        templateId?: string;
+        position?: number;
+      }>;
+    };
+  };
 };
 
 export type Tools = LocalTools & SupportMcpTools;
