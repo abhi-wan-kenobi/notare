@@ -6,10 +6,10 @@ edition = "2024"
 [features]
 default = ["async-source"]
 async-source = [
-    "dep:dasp",
-    "dep:futures-util",
-    "dep:hypr-audio-interface",
-    "dep:pin-project",
+  "dep:dasp",
+  "dep:futures-util",
+  "dep:hypr-audio-interface",
+  "dep:pin-project",
 ]
 
 [dependencies]
