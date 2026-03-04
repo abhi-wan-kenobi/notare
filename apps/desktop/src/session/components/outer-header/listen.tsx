@@ -148,7 +148,7 @@ function InMeetingIndicator({ sessionId }: { sessionId: string }) {
                 {muted && <MicOff size={14} />}
                 <DancingSticks
                   amplitude={Math.min(
-                    (amplitude.mic + amplitude.speaker) / 2000,
+                    Math.hypot(amplitude.mic, amplitude.speaker),
                     1,
                   )}
                   color="#ef4444"

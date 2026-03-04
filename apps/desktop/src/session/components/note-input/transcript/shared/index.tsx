@@ -255,7 +255,7 @@ function DegradedState({ error }: { error: DegradedError }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6">
       <DancingSticks
-        amplitude={Math.min((amplitude.mic + amplitude.speaker) / 2000, 1)}
+        amplitude={Math.min(Math.hypot(amplitude.mic, amplitude.speaker), 1)}
         color="#a3a3a3"
         height={40}
         width={80}

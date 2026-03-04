@@ -306,9 +306,11 @@ export const createGeneralSlice = <
       if (payload.type === "audio_amplitude") {
         set((state) =>
           mutate(state, (draft) => {
+            const mic = Math.max(0, Math.min(1, payload.mic / 1000));
+            const speaker = Math.max(0, Math.min(1, payload.speaker / 1000));
             draft.live.amplitude = {
-              mic: payload.mic,
-              speaker: payload.speaker,
+              mic,
+              speaker,
             };
           }),
         );
