@@ -3,8 +3,9 @@ use std::task::{Context, Poll};
 
 use futures_util::{Stream, pin_mut};
 use hypr_audio_interface::AsyncSource;
-use hypr_resampler::{Async, FixedAsync, PolynomialDegree, RubatoChunkResampler};
 use pin_project::pin_project;
+
+use crate::{Async, FixedAsync, PolynomialDegree, RubatoChunkResampler};
 
 pub trait ResampleExtDynamicNew: AsyncSource + Sized {
     fn resampled_chunks(

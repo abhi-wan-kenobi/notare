@@ -4,7 +4,8 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use hypr_audio_interface::AsyncSource;
-use hypr_resampler::{Async, FixedAsync, PolynomialDegree, RubatoChunkResampler};
+
+use crate::{Async, FixedAsync, PolynomialDegree, RubatoChunkResampler};
 
 pub trait AsyncSourceChunkResampleExt: AsyncSource + Sized {
     fn resampled_chunks(
@@ -105,7 +106,7 @@ where
             match me.driver.process_one_block() {
                 Ok(true) => continue,
                 Ok(false) => {}
-                Err(err) => return Poll::Ready(Some(Err(err.into()))),
+                Err(err) => return Poll::Ready(Some(Err(err))),
             }
 
             let sample_poll = {

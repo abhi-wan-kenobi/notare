@@ -10,11 +10,9 @@ futures-util = { workspace = true }
 hypr-audio-interface = { workspace = true }
 hypr-audio-mime = { workspace = true }
 hypr-resampler = { workspace = true }
-pin-project = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
-dasp = { workspace = true }
 hound = { workspace = true }
 rodio = { workspace = true, features = ["symphonia-all"] }
 rubato = "1.0.1"
@@ -22,4 +20,3 @@ vorbis_rs = { workspace = true }
 
 [dev-dependencies]
 hypr-data = { workspace = true }
-tokio = { workspace = true, features = ["full"] }

@@ -6,12 +6,10 @@ use hypr_audio_interface::AsyncSource;
 
 mod error;
 mod pcm;
-mod resampler;
 mod vorbis;
 
 pub use error::*;
 pub use pcm::*;
-pub use resampler::*;
 pub use vorbis::*;
 
 pub use rodio::Source;
@@ -35,7 +33,7 @@ pub trait AudioFormatExt: AsyncSource {
     where
         Self: Sized + Send + Unpin + 'static,
     {
-        ResamplerDynamicOld::new(self, sample_rate)
+        hypr_resampler::ResamplerDynamicOld::new(self, sample_rate)
             .chunks(chunk_size)
             .map(|chunk| {
                 let n = std::mem::size_of::<f32>() * chunk.len();
