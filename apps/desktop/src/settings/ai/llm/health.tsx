@@ -35,8 +35,6 @@ export function useConnectionHealth(): LlmHealthStatus {
         model: model!,
         system: "If user says hi, respond with hello, without any other text.",
         prompt: "Hi",
-        // openai expect it to be at least 16
-        maxOutputTokens: 16,
       });
       return result;
     },
