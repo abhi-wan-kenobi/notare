@@ -10,7 +10,7 @@ use owhisper_interface::ListenParams;
 use crate::config::SttProxyConfig;
 use crate::provider_selector::SelectedProvider;
 use crate::query_params::{QueryParams, QueryValue};
-use crate::relay::{ChannelSplitProxy, WebSocketProxy};
+use crate::relay::{ChannelSplitProxy, ClientMessageFilter, WebSocketProxy};
 use crate::routes::AppState;
 use crate::routes::model_resolution::resolve_model;
 
@@ -103,6 +103,16 @@ fn build_response_transformer(
     }
 }
 
+fn build_client_message_filter(provider: Provider) -> ClientMessageFilter {
+    Arc::new(move |text: String| {
+        let msg = match serde_json::from_str::<owhisper_interface::ControlMessage>(&text) {
+            Ok(msg) => msg,
+            Err(_) => return Some(text),
+        };
+        provider.translate_control_message(&msg)
+    })
+}
+
 pub enum StreamingProxy {
     Single(WebSocketProxy),
     ChannelSplit(ChannelSplitProxy),
@@ -146,11 +156,13 @@ fn build_proxy_with_adapter(
         channels,
     );
 
+    let filter = build_client_message_filter(provider);
     let mut builder = WebSocketProxy::builder()
         .upstream_url(upstream_url.as_str())
         .connect_timeout(config.connect_timeout)
         .control_message_types(provider.control_message_types())
         .response_transformer(build_response_transformer(provider))
+        .client_message_filter(filter)
         .apply_auth(selected);
 
     if let Some(msg) = initial_message {
@@ -192,13 +204,17 @@ fn build_channel_split_proxy(
         Some(Arc::new(build_response_transformer(provider)));
     let on_close = build_on_close_callback(config, provider, &analytics_ctx);
 
-    Ok(StreamingProxy::ChannelSplit(ChannelSplitProxy::new(
-        request,
-        initial_msg,
-        response_transformer,
-        config.connect_timeout,
-        on_close,
-    )))
+    let filter = build_client_message_filter(provider);
+    Ok(StreamingProxy::ChannelSplit(
+        ChannelSplitProxy::new(
+            request,
+            initial_msg,
+            response_transformer,
+            config.connect_timeout,
+            on_close,
+        )
+        .with_client_message_filter(filter),
+    ))
 }
 
 fn build_session_channel_split_proxy(
@@ -224,6 +240,7 @@ fn build_session_channel_split_proxy(
         Some(Arc::new(build_response_transformer(provider)));
     let on_close = build_on_close_callback(config, provider, &analytics_ctx);
 
+    let filter = build_client_message_filter(provider);
     Ok(StreamingProxy::ChannelSplit(
         ChannelSplitProxy::with_split_requests(
             mic_request,
@@ -232,7 +249,8 @@ fn build_session_channel_split_proxy(
             response_transformer,
             config.connect_timeout,
             on_close,
-        ),
+        )
+        .with_client_message_filter(filter),
     ))
 }
 
@@ -243,11 +261,13 @@ fn build_proxy_with_url_and_transformer(
     analytics_ctx: AnalyticsContext,
 ) -> Result<StreamingProxy, crate::ProxyError> {
     let provider = selected.provider();
+    let filter = build_client_message_filter(provider);
     let builder = WebSocketProxy::builder()
         .upstream_url(upstream_url)
         .connect_timeout(config.connect_timeout)
         .control_message_types(provider.control_message_types())
         .response_transformer(build_response_transformer(provider))
+        .client_message_filter(filter)
         .apply_auth(selected);
 
     let proxy = finalize_proxy_builder!(builder, provider, config, analytics_ctx)?;
@@ -488,6 +508,51 @@ mod tests {
 
         let result = transformer("{}");
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_client_message_filter_deepgram_identity() {
+        let filter = build_client_message_filter(Provider::Deepgram);
+        assert_eq!(
+            filter(r#"{"type":"KeepAlive"}"#.to_string()),
+            Some(r#"{"type":"KeepAlive"}"#.to_string())
+        );
+        assert_eq!(filter(r#"{"type":"CloseStream"}"#.to_string()), None);
+        assert_eq!(
+            filter(r#"{"type":"Finalize"}"#.to_string()),
+            Some(r#"{"type":"Finalize"}"#.to_string())
+        );
+    }
+
+    #[test]
+    fn test_client_message_filter_soniox_translates_control_messages() {
+        let filter = build_client_message_filter(Provider::Soniox);
+
+        assert_eq!(filter(r#"{"type":"CloseStream"}"#.to_string()), None);
+        assert_eq!(
+            filter(r#"{"type":"KeepAlive"}"#.to_string()),
+            Some(r#"{"type":"keepalive"}"#.to_string())
+        );
+        assert_eq!(
+            filter(r#"{"type":"Finalize"}"#.to_string()),
+            Some(r#"{"type":"finalize"}"#.to_string())
+        );
+    }
+
+    #[test]
+    fn test_client_message_filter_assemblyai_translates_finalize() {
+        let filter = build_client_message_filter(Provider::AssemblyAI);
+        assert_eq!(filter(r#"{"type":"KeepAlive"}"#.to_string()), None);
+        assert_eq!(
+            filter(r#"{"type":"Finalize"}"#.to_string()),
+            Some(r#"{"type":"Terminate"}"#.to_string())
+        );
+    }
+
+    #[test]
+    fn test_client_message_filter_non_json_passthrough() {
+        let filter = build_client_message_filter(Provider::Soniox);
+        assert_eq!(filter("not json".to_string()), Some("not json".to_string()));
     }
 
     #[test]

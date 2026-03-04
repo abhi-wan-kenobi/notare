@@ -357,6 +357,42 @@ impl Provider {
         }
     }
 
+    pub fn translate_control_message(
+        &self,
+        msg: &owhisper_interface::ControlMessage,
+    ) -> Option<String> {
+        use crate::adapter::RealtimeSttAdapter;
+        use hypr_ws_client::client::Message;
+        use owhisper_interface::ControlMessage;
+
+        fn extract_text(msg: Message) -> Option<String> {
+            match msg {
+                Message::Text(t) => Some(t.to_string()),
+                _ => None,
+            }
+        }
+
+        fn from_adapter(adapter: &impl RealtimeSttAdapter, msg: &ControlMessage) -> Option<String> {
+            match msg {
+                ControlMessage::KeepAlive => adapter.keep_alive_message().and_then(extract_text),
+                ControlMessage::Finalize => extract_text(adapter.finalize_message()),
+                ControlMessage::CloseStream => None,
+            }
+        }
+
+        match self {
+            Self::Deepgram => from_adapter(&crate::adapter::DeepgramAdapter, msg),
+            Self::AssemblyAI => from_adapter(&crate::adapter::AssemblyAIAdapter, msg),
+            Self::Soniox => from_adapter(&crate::adapter::SonioxAdapter, msg),
+            Self::Fireworks => from_adapter(&crate::adapter::FireworksAdapter, msg),
+            Self::OpenAI => from_adapter(&crate::adapter::OpenAIAdapter, msg),
+            Self::Gladia => from_adapter(&crate::adapter::GladiaAdapter, msg),
+            Self::ElevenLabs => from_adapter(&crate::adapter::ElevenLabsAdapter, msg),
+            Self::DashScope => from_adapter(&crate::adapter::DashScopeAdapter, msg),
+            Self::Mistral => from_adapter(&crate::adapter::MistralAdapter::default(), msg),
+        }
+    }
+
     pub fn detect_error(&self, data: &[u8]) -> Option<ProviderError> {
         match self {
             Self::Deepgram => deepgram::error::detect_error(data),
