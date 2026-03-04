@@ -1,0 +1,9 @@
+[package]
+name = "resampler"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+audioadapter-buffers = "2.0"
+rubato = "1.0.1"
+thiserror = { workspace = true }
