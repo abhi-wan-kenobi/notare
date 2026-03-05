@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use hypr_listener_core::actors::{RootActor, RootArgs, RootMsg, SessionParams};
-use hypr_listener2_core::{BatchEvent, BatchParams, BatchProvider};
+use hypr_listener2_core::{BatchParams, BatchProvider};
 use ractor::Actor;
 use tokio::sync::mpsc;
 
@@ -32,7 +32,6 @@ pub struct Args {
 fn spawn_batch_transcription(
     request: AudioDropRequest,
     batch_runtime: Arc<ListenBatchRuntime>,
-    batch_tx: mpsc::UnboundedSender<BatchEvent>,
     base_url: String,
     api_key: String,
     model: String,
@@ -51,12 +50,7 @@ fn spawn_batch_transcription(
     };
 
     tokio::spawn(async move {
-        if let Err(error) = hypr_listener2_core::run_batch(batch_runtime, params).await {
-            let _ = batch_tx.send(BatchEvent::BatchFailed {
-                session_id: batch_session_id,
-                error: error.to_string(),
-            });
-        }
+        let _ = hypr_listener2_core::run_batch(batch_runtime, params).await;
     });
 }
 
@@ -137,7 +131,6 @@ pub async fn run(args: Args) -> CliResult<()> {
                             spawn_batch_transcription(
                                 request,
                                 batch_runtime.clone(),
-                                batch_tx.clone(),
                                 base_url.clone(),
                                 api_key.clone(),
                                 model.clone(),
