@@ -2826,7 +2826,7 @@ dependencies = [
 [[package]]
 name = "cactus-sys"
 version = "0.1.0"
-source = "git+https://github.com/cactus-compute/cactus?rev=c6966ad#c6966adbd7cb166838326da204b95e5bf538f0f5"
+source = "git+https://github.com/cactus-compute/cactus?rev=da4c917#da4c917645f71dd1a1231017acb77259ea159695"
 dependencies = [
  "bindgen 0.72.1",
  "cmake",
@@ -3261,16 +3261,20 @@ name = "cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "comfy-table",
  "crossterm",
  "dirs 6.0.0",
  "file",
  "image",
+ "indicatif 0.17.11",
  "language",
  "listener-core",
  "listener2-core",
  "local-model",
+ "local-stt-core",
  "model-downloader",
  "open",
+ "owhisper-interface",
  "ractor",
  "ratatui 0.30.0",
  "ratatui-image",
@@ -9884,20 +9888,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf36173d4167ed999940f804952e6b08197cae5ad5d572eb4db150ce8ad5d58f"
 
 [[package]]
-name = "lago"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "reqwest 0.13.2",
- "serde",
- "serde_json",
- "specta",
- "strum 0.27.2",
- "tokio",
- "url",
-]
-
-[[package]]
 name = "language"
 version = "0.1.0"
 dependencies = [
@@ -10414,6 +10404,29 @@ dependencies = [
  "serde",
  "specta",
  "whisper-local-model",
+]
+
+[[package]]
+name = "local-stt-core"
+version = "0.1.0"
+dependencies = [
+ "local-model",
+ "serde",
+ "specta",
+]
+
+[[package]]
+name = "local-stt-server"
+version = "0.1.0"
+dependencies = [
+ "axum 0.8.8",
+ "serde",
+ "specta",
+ "tauri-specta",
+ "tokio",
+ "tower-http 0.6.8",
+ "tracing",
+ "transcribe-cactus",
 ]
 
 [[package]]

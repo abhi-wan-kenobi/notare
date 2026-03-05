@@ -90,6 +90,8 @@ hypr-llm-types = { path = "crates/llm-types", package = "llm-types" }
 hypr-lmstudio = { path = "crates/lmstudio", package = "lmstudio" }
 hypr-local-llm-core = { path = "crates/local-llm-core", package = "local-llm-core" }
 hypr-local-model = { path = "crates/local-model", package = "local-model" }
+hypr-local-stt-core = { path = "crates/local-stt-core", package = "local-stt-core" }
+hypr-local-stt-server = { path = "crates/local-stt-server", package = "local-stt-server" }
 hypr-loops = { path = "crates/loops", package = "loops" }
 hypr-mac = { path = "crates/mac", package = "mac" }
 hypr-mcp = { path = "crates/mcp", package = "mcp" }
