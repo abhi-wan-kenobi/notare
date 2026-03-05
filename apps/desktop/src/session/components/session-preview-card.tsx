@@ -1,6 +1,12 @@
 import { useMotionValue, useSpring, useTransform } from "motion/react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { Streamdown } from "streamdown";
 
+import {
+  isValidTiptapContent,
+  json2md,
+  streamdownComponents,
+} from "@hypr/tiptap/shared";
 import {
   HoverCard,
   HoverCardContent,
@@ -9,6 +15,10 @@ import {
 import { cn, format, safeParseDate } from "@hypr/utils";
 
 import { extractPlainText } from "~/search/contexts/engine/utils";
+import {
+  useEnhancedNote,
+  useEnhancedNotes,
+} from "~/session/hooks/useEnhancedNotes";
 import * as main from "~/store/tinybase/store/main";
 
 const MAX_PREVIEW_LENGTH = 200;
@@ -59,13 +69,40 @@ function useSessionPreviewData(sessionId: string) {
     main.STORE_ID,
   );
 
-  const previewText = useMemo(() => {
-    const text = extractPlainText(rawMd);
+  const enhancedNoteIds = useEnhancedNotes(sessionId);
+  const firstEnhancedNoteId = enhancedNoteIds?.[0];
+  const { content: enhancedContent } = useEnhancedNote(
+    firstEnhancedNoteId ?? "",
+  );
+
+  const hasEnhanced = !!firstEnhancedNoteId && !!enhancedContent;
+
+  const previewMarkdown = useMemo(() => {
+    const source = hasEnhanced ? (enhancedContent as string) : rawMd;
+    if (typeof source !== "string" || !source.trim()) return null;
+
+    const trimmed = source.trim();
+    if (trimmed.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (isValidTiptapContent(parsed)) {
+          const md = json2md(parsed).trim();
+          if (md) return md;
+        }
+      } catch {}
+    }
+    return null;
+  }, [hasEnhanced, enhancedContent, rawMd]);
+
+  const previewPlainText = useMemo(() => {
+    if (previewMarkdown) return "";
+    const source = hasEnhanced ? (enhancedContent as string) : rawMd;
+    const text = extractPlainText(source);
     if (!text) return "";
     return text.length > MAX_PREVIEW_LENGTH
       ? text.slice(0, MAX_PREVIEW_LENGTH) + "…"
       : text;
-  }, [rawMd]);
+  }, [previewMarkdown, hasEnhanced, enhancedContent, rawMd]);
 
   const dateDisplay = useMemo(() => {
     let timestamp = createdAt;
@@ -80,7 +117,13 @@ function useSessionPreviewData(sessionId: string) {
     return format(parsed, "MMM d, yyyy · h:mm a");
   }, [createdAt, eventJson]);
 
-  return { title, previewText, dateDisplay, participantMappingIds };
+  return {
+    title,
+    previewMarkdown,
+    previewPlainText,
+    dateDisplay,
+    participantMappingIds,
+  };
 }
 
 function useCursorFollow(axis: "x" | "y") {
@@ -164,8 +207,13 @@ export function SessionPreviewCard({
   children: React.ReactNode;
   enabled?: boolean;
 }) {
-  const { title, previewText, dateDisplay, participantMappingIds } =
-    useSessionPreviewData(sessionId);
+  const {
+    title,
+    previewMarkdown,
+    previewPlainText,
+    dateDisplay,
+    participantMappingIds,
+  } = useSessionPreviewData(sessionId);
 
   const followAxis = side === "right" ? "y" : "x";
   const { triggerRef, handleMouseMove, handleMouseLeave, style } =
@@ -224,9 +272,21 @@ export function SessionPreviewCard({
           <div className="text-sm font-medium">{title || "Untitled"}</div>
           <ParticipantsList mappingIds={participantMappingIds} />
 
-          {previewText && (
-            <div className="text-gradient-to-b line-clamp-4 from-neutral-700 to-transparent text-xs leading-relaxed">
-              {previewText}
+          {(previewMarkdown || previewPlainText) && (
+            <div className="mt-1 max-h-24 overflow-hidden mask-[linear-gradient(to_bottom,black_60%,transparent)] text-neutral-600">
+              {previewMarkdown ? (
+                <Streamdown
+                  components={streamdownComponents}
+                  className="flex flex-col text-xs"
+                  isAnimating={false}
+                >
+                  {previewMarkdown}
+                </Streamdown>
+              ) : (
+                <div className="text-xs leading-relaxed">
+                  {previewPlainText}
+                </div>
+              )}
             </div>
           )}
         </div>
