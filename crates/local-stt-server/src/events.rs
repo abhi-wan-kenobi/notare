@@ -14,4 +14,3 @@ pub enum LocalServerEvent {
     #[serde(rename = "error")]
     Error { error: String },
 }
-

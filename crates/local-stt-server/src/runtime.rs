@@ -10,4 +10,3 @@ pub struct NoopRuntime;
 impl LocalServerRuntime for NoopRuntime {
     fn emit(&self, _event: LocalServerEvent) {}
 }
-
