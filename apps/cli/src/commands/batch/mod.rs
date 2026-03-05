@@ -133,7 +133,7 @@ pub async fn run(args: Args) -> CliResult<()> {
 
     let mut last_progress_percent: i8 = -1;
     let mut response: Option<owhisper_interface::batch::Response> = None;
-    let mut last_streamed: Option<owhisper_interface::stream::StreamResponse> = None;
+    let mut streamed_segments: Vec<owhisper_interface::stream::StreamResponse> = Vec::new();
     let mut failure: Option<(BatchErrorCode, String)> = None;
 
     while let Some(event) = batch_rx.recv().await {
@@ -153,7 +153,7 @@ pub async fn run(args: Args) -> CliResult<()> {
                 response: streamed,
                 ..
             } => {
-                last_streamed = Some(streamed);
+                streamed_segments.push(streamed);
                 let Some(progress) = &progress else {
                     continue;
                 };
@@ -195,7 +195,7 @@ pub async fn run(args: Args) -> CliResult<()> {
     }
 
     let response = response
-        .or_else(|| batch_response_from_stream(last_streamed))
+        .or_else(|| batch_response_from_streams(streamed_segments))
         .ok_or_else(|| {
             CliError::operation_failed("batch transcription", "completed without a final response")
         })?;
@@ -207,6 +207,10 @@ pub async fn run(args: Args) -> CliResult<()> {
         OutputFormat::Text => {
             let transcript = extract_transcript(&response);
             write_text_response(output.as_deref(), transcript).await?;
+        }
+        OutputFormat::Pretty => {
+            let pretty = format_pretty(&response);
+            write_text_response(output.as_deref(), pretty).await?;
         }
     }
 
@@ -232,22 +236,67 @@ pub async fn run(args: Args) -> CliResult<()> {
     Ok(())
 }
 
-fn batch_response_from_stream(
-    last: Option<owhisper_interface::stream::StreamResponse>,
+fn batch_response_from_streams(
+    segments: Vec<owhisper_interface::stream::StreamResponse>,
 ) -> Option<owhisper_interface::batch::Response> {
+    use owhisper_interface::batch;
     use owhisper_interface::stream::StreamResponse;
 
-    let StreamResponse::TranscriptResponse {
-        channel, duration, ..
-    } = last?
-    else {
+    if segments.is_empty() {
         return None;
-    };
+    }
 
-    Some(owhisper_interface::batch::Response {
-        metadata: serde_json::json!({ "duration": duration }),
-        results: owhisper_interface::batch::Results {
-            channels: vec![channel.into()],
+    let mut all_words: Vec<batch::Word> = Vec::new();
+    let mut all_transcripts: Vec<String> = Vec::new();
+    let mut total_confidence = 0.0;
+    let mut max_end = 0.0_f64;
+    let mut count = 0usize;
+
+    for segment in segments {
+        let StreamResponse::TranscriptResponse {
+            channel,
+            start,
+            duration,
+            ..
+        } = segment
+        else {
+            continue;
+        };
+
+        let Some(alt) = channel.alternatives.into_iter().next() else {
+            continue;
+        };
+
+        let text = alt.transcript.trim().to_string();
+        if text.is_empty() {
+            continue;
+        }
+
+        let words: Vec<batch::Word> = alt.words.into_iter().map(batch::Word::from).collect();
+        all_words.extend(words);
+        all_transcripts.push(text);
+        total_confidence += alt.confidence;
+        max_end = max_end.max(start + duration);
+        count += 1;
+    }
+
+    if count == 0 {
+        return None;
+    }
+
+    let transcript = all_transcripts.join(" ");
+    let avg_confidence = total_confidence / count as f64;
+
+    Some(batch::Response {
+        metadata: serde_json::json!({ "duration": max_end }),
+        results: batch::Results {
+            channels: vec![batch::Channel {
+                alternatives: vec![batch::Alternatives {
+                    transcript,
+                    confidence: avg_confidence,
+                    words: all_words,
+                }],
+            }],
         },
     })
 }
@@ -269,6 +318,78 @@ fn validate_input_path(path: &Path) -> CliResult<()> {
     }
 
     Ok(())
+}
+
+fn format_timestamp(secs: f64) -> String {
+    let total_secs = secs as u64;
+    let mins = total_secs / 60;
+    let s = total_secs % 60;
+    let frac = ((secs - secs.floor()) * 10.0).round() as u64;
+    format!("{mins:02}:{s:02}.{frac}")
+}
+
+fn format_pretty(response: &owhisper_interface::batch::Response) -> String {
+    use owhisper_interface::batch::Word;
+
+    let words: Vec<&Word> = response
+        .results
+        .channels
+        .iter()
+        .filter_map(|c| c.alternatives.first())
+        .flat_map(|alt| &alt.words)
+        .collect();
+
+    if words.is_empty() {
+        return extract_transcript(response);
+    }
+
+    // Words from different VAD chunks will have gaps between them.
+    // Use a small threshold to detect segment boundaries.
+    let pause_threshold = 0.5;
+    let mut segments: Vec<(f64, f64, Vec<&str>)> = Vec::new();
+
+    for word in &words {
+        let text = word
+            .punctuated_word
+            .as_deref()
+            .unwrap_or(word.word.as_str());
+
+        let should_split = segments
+            .last()
+            .map(|(_, end, _)| word.start - *end > pause_threshold)
+            .unwrap_or(true);
+
+        if should_split {
+            segments.push((word.start, word.end, vec![text]));
+        } else {
+            let seg = segments.last_mut().unwrap();
+            seg.1 = word.end;
+            seg.2.push(text);
+        }
+    }
+
+    let term_width = textwrap::termwidth();
+
+    segments
+        .iter()
+        .map(|(start, end, words)| {
+            let prefix = format!(
+                "\x1b[2m[{} \u{2192} {}]\x1b[0m  ",
+                format_timestamp(*start),
+                format_timestamp(*end),
+            );
+            // "[00:00.0 → 00:00.0]  " = 22 visible chars
+            let prefix_visible_len = 22;
+            let indent = " ".repeat(prefix_visible_len);
+            let text = words.join(" ");
+
+            let opts = textwrap::Options::new(term_width)
+                .initial_indent(&prefix)
+                .subsequent_indent(&indent);
+            textwrap::fill(&text, opts)
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }
 
 fn extract_transcript(response: &owhisper_interface::batch::Response) -> String {

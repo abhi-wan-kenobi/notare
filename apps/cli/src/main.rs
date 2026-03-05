@@ -67,7 +67,7 @@ enum Commands {
         keyword: Vec<String>,
         #[arg(long, value_name = "PATH")]
         output: Option<std::path::PathBuf>,
-        #[arg(long, value_enum, default_value = "text")]
+        #[arg(long, value_enum, default_value = "pretty")]
         format: OutputFormat,
         #[arg(long, hide = true, conflicts_with = "format")]
         json: bool,
