@@ -5,9 +5,8 @@ mod bootstrap;
 use std::sync::Arc;
 
 use owhisper_client::{
-    ArgmaxAdapter, AssemblyAIAdapter, BatchSttAdapter, DashScopeAdapter, DeepgramAdapter,
-    ElevenLabsAdapter, FireworksAdapter, GladiaAdapter, MistralAdapter, OpenAIAdapter,
-    SonioxAdapter,
+    ArgmaxAdapter, AssemblyAIAdapter, BatchSttAdapter, DeepgramAdapter, ElevenLabsAdapter,
+    FireworksAdapter, GladiaAdapter, MistralAdapter, OpenAIAdapter, SonioxAdapter,
 };
 use tracing::Instrument;
 
@@ -164,9 +163,10 @@ async fn run_batch_inner(
         BatchProvider::ElevenLabs => {
             run_batch_simple::<ElevenLabsAdapter>(params, listen_params).await
         }
-        BatchProvider::DashScope => {
-            run_batch_simple::<DashScopeAdapter>(params, listen_params).await
+        BatchProvider::DashScope => Err(crate::BatchFailure::ProviderRequestFailed {
+            message: "DashScope does not support batch transcription".to_string(),
         }
+        .into()),
         BatchProvider::Mistral => run_batch_simple::<MistralAdapter>(params, listen_params).await,
     }
 }

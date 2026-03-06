@@ -38,6 +38,8 @@ impl Default for HyprnoteRoutingConfig {
                 Provider::ElevenLabs,
                 Provider::Fireworks,
                 Provider::OpenAI,
+                Provider::Mistral,
+                Provider::DashScope,
             ],
             retry_config: RetryConfig::default(),
         }
@@ -580,5 +582,13 @@ mod tests {
             router.select_provider_chain_with_mode(RoutingMode::Batch, &languages, &available),
             vec![Provider::AssemblyAI]
         );
+    }
+
+    #[test]
+    fn default_priorities_include_newer_live_providers() {
+        let config = HyprnoteRoutingConfig::default();
+
+        assert!(config.priorities.contains(&Provider::Mistral));
+        assert!(config.priorities.contains(&Provider::DashScope));
     }
 }
