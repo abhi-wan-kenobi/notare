@@ -12,7 +12,7 @@ use crate::provider_selector::SelectedProvider;
 use crate::query_params::{QueryParams, QueryValue};
 use crate::relay::{ChannelSplitProxy, ClientMessageFilter, WebSocketProxy};
 use crate::routes::AppState;
-use crate::routes::model_resolution::resolve_model;
+use crate::routes::model_resolution::resolve_model_live;
 
 use super::AnalyticsContext;
 use super::common::{
@@ -134,7 +134,7 @@ fn build_proxy_with_adapter(
         ));
     }
 
-    resolve_model(provider, &mut listen_params);
+    resolve_model_live(provider, &mut listen_params);
 
     if channels > 1 && !provider.supports_native_multichannel() {
         return build_channel_split_proxy(
@@ -564,7 +564,7 @@ mod tests {
             ..Default::default()
         };
 
-        resolve_model(Provider::Soniox, &mut params);
+        resolve_model_live(Provider::Soniox, &mut params);
         assert_eq!(params.model, None);
     }
 
@@ -577,7 +577,7 @@ mod tests {
             ..Default::default()
         };
 
-        resolve_model(Provider::Deepgram, &mut params);
+        resolve_model_live(Provider::Deepgram, &mut params);
         assert!(params.model.is_some());
         assert_ne!(params.model.as_deref(), Some("cloud"));
     }
@@ -591,7 +591,7 @@ mod tests {
             ..Default::default()
         };
 
-        resolve_model(Provider::Deepgram, &mut params);
+        resolve_model_live(Provider::Deepgram, &mut params);
         assert_eq!(params.model, Some("nova-3".to_string()));
     }
 
@@ -604,7 +604,7 @@ mod tests {
             ..Default::default()
         };
 
-        resolve_model(Provider::Deepgram, &mut params);
+        resolve_model_live(Provider::Deepgram, &mut params);
         assert!(params.model.is_some());
     }
 }

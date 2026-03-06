@@ -126,10 +126,14 @@ impl SonioxAdapter {
 }
 
 fn soniox_err(e: soniox::Error) -> Error {
-    Error::AudioProcessing(e.message)
+    Error::provider_failure(e.message, e.is_retryable)
 }
 
 impl BatchSttAdapter for SonioxAdapter {
+    fn provider_name(&self) -> &'static str {
+        "soniox"
+    }
+
     fn is_supported_languages(
         &self,
         languages: &[hypr_language::Language],

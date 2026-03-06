@@ -18,7 +18,7 @@ async fn submit(
 
     soniox::create_transcription(client, &body, api_key)
         .await
-        .map_err(|e| Error::AudioProcessing(e.message))
+        .map_err(|e| Error::provider_failure(e.message, e.is_retryable))
 }
 
 async fn process(
@@ -37,7 +37,7 @@ async fn process(
 
     let transcript = soniox::fetch_transcript_raw(client, &callback.id, api_key)
         .await
-        .map_err(|e| Error::AudioProcessing(e.message))?;
+        .map_err(|e| Error::provider_failure(e.message, e.is_retryable))?;
 
     if let Err(e) = soniox::delete_transcription(client, &callback.id, api_key).await {
         tracing::warn!(

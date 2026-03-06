@@ -33,6 +33,11 @@ const BATCH_PROVIDER_MAP: Record<string, BatchParams["provider"]> = {
   deepgram: "deepgram",
   soniox: "soniox",
   assemblyai: "assemblyai",
+  openai: "openai",
+  gladia: "gladia",
+  elevenlabs: "elevenlabs",
+  mistral: "mistral",
+  fireworks: "fireworks",
 };
 
 function getBatchProvider(
@@ -42,7 +47,7 @@ function getBatchProvider(
   if (provider === "hyprnote") {
     if (model.startsWith("am-")) return "am";
     if (model.startsWith("cactus-")) return "cactus";
-    return null;
+    return "hyprnote";
   }
   return BATCH_PROVIDER_MAP[provider] ?? null;
 }

@@ -171,7 +171,12 @@ async fn handle_sync_fallback(
         }
         Err(e) => {
             tracing::error!(error = %e, provider = %provider_str, "sync transcription failed");
-            Ok((PipelineStatus::Error, None, None, Some(e)))
+            Ok((
+                PipelineStatus::Error,
+                None,
+                None,
+                Some(e.message().to_string()),
+            ))
         }
     }
 }

@@ -73,16 +73,11 @@ impl AppState {
                 Err(_) => {
                     return Err((
                         StatusCode::BAD_REQUEST,
-                        format!("Invalid provider: {}. Supported providers: deepgram, soniox, assemblyai, gladia, elevenlabs, fireworks, openai", s)
+                        format!("Invalid provider: {}. Supported providers: hyprnote, deepgram, soniox, assemblyai, gladia, elevenlabs, fireworks, openai, mistral, dashscope", s)
                     ).into_response());
                 }
             },
-            None => {
-                return Err((
-                    StatusCode::BAD_REQUEST,
-                    "provider parameter is required. Use provider=hyprnote for hyprnote routing or provider=<provider_name> for a specific provider"
-                ).into_response());
-            }
+            None => None,
         };
 
         self.selector.select(requested).map_err(|e| {
@@ -197,4 +192,33 @@ pub fn callback_router(config: SttProxyConfig) -> Router {
     Router::new()
         .route("/callback/{provider}/{id}", post(callback::handler))
         .with_state(state)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::env::Env;
+
+    fn test_state() -> AppState {
+        let mut env = Env::default();
+        env.stt.deepgram_api_key = Some("deepgram-key".to_string());
+
+        let supabase = hypr_api_env::SupabaseEnv {
+            supabase_url: String::new(),
+            supabase_anon_key: String::new(),
+            supabase_service_role_key: String::new(),
+        };
+
+        make_state(SttProxyConfig::new(&env, &supabase))
+    }
+
+    #[test]
+    fn resolve_provider_defaults_when_query_param_is_missing() {
+        let state = test_state();
+        let mut params = QueryParams::default();
+
+        let selected = state.resolve_provider(&mut params).unwrap();
+
+        assert_eq!(selected.provider(), Provider::Deepgram);
+    }
 }

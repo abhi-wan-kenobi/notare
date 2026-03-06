@@ -83,7 +83,7 @@ pub async fn handler(
                 StatusCode::BAD_GATEWAY,
                 Json(serde_json::json!({
                     "error": "transcription_failed",
-                    "detail": e
+                    "detail": e.message()
                 })),
             )
                 .into_response()

@@ -12,6 +12,10 @@ use crate::adapter::{BatchFuture, BatchSttAdapter, ClientWithMiddleware};
 use crate::error::Error;
 
 impl BatchSttAdapter for ElevenLabsAdapter {
+    fn provider_name(&self) -> &'static str {
+        "elevenlabs"
+    }
+
     fn is_supported_languages(
         &self,
         languages: &[hypr_language::Language],
