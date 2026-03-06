@@ -154,19 +154,27 @@ export function TabContentFolder({ tab }: { tab: Tab }) {
 }
 
 function TabContentFolderTopLevel() {
-  const { topLevel: topLevelFolderIds } = useFolderTree();
-
   return (
-    <div className="flex flex-col gap-6">
-      <Section icon={<FolderIcon className="h-4 w-4" />} title="Folders">
-        {topLevelFolderIds.length > 0 && (
-          <div className="grid grid-cols-4 gap-4">
-            {topLevelFolderIds.map((folderId) => (
-              <FolderCard key={folderId} folderId={folderId} />
-            ))}
-          </div>
-        )}
-      </Section>
+    <div className="justify-left flex h-full items-start p-8">
+      <div className="flex flex-col items-start gap-4 text-left">
+        <div className="flex items-end gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <img
+              key={i}
+              src="/assets/folder placeholder.svg"
+              alt=""
+              className="size-16 opacity-60"
+            />
+          ))}
+        </div>
+        <h1 className="text-foreground text-lg font-semibold">
+          Folders will be there soon
+        </h1>
+        <p className="text-muted-foreground max-w-xs text-sm">
+          We're working on a way for you to organize your notes <br />
+          Stay tuned!
+        </p>
+      </div>
     </div>
   );
 }
