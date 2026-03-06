@@ -19,6 +19,7 @@ import {
 } from "@hypr/plugin-listener";
 import {
   type BatchParams,
+  type BatchRunOutput,
   commands as listener2Commands,
   events as listener2Events,
 } from "@hypr/plugin-listener2";
@@ -66,7 +67,7 @@ export type GeneralActions = {
   setMuted: (value: boolean) => void;
   runBatch: (
     params: BatchParams,
-    options?: { handlePersist?: HandlePersistCallback; sessionId?: string },
+    options?: { handlePersist?: HandlePersistCallback },
   ) => Promise<void>;
   getSessionMode: (sessionId: string) => SessionMode;
 };
@@ -474,10 +475,10 @@ export const createGeneralSlice = <
     );
   },
   runBatch: async (params, options) => {
-    const sessionId = options?.sessionId;
+    const sessionId = params.session_id;
 
     if (!sessionId) {
-      console.error("[listener] 'runBatch' requires a sessionId option");
+      console.error("[listener] 'runBatch' requires params.session_id");
       return;
     }
 
@@ -503,6 +504,7 @@ export const createGeneralSlice = <
     get().handleBatchStarted(sessionId);
 
     let unlisten: (() => void) | undefined;
+    let settled = false;
 
     const cleanup = (clearSession = true) => {
       if (unlisten) {
@@ -517,9 +519,58 @@ export const createGeneralSlice = <
       }
     };
 
+    const resolveSuccess = (output: BatchRunOutput, resolve: () => void) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+
+      if (output.mode === "direct") {
+        try {
+          get().handleBatchResponse(sessionId, output.response);
+          cleanup();
+        } catch (error) {
+          console.error("[runBatch] error handling batch response", error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          get().handleBatchFailed(sessionId, errorMessage);
+          cleanup(false);
+          throw error;
+        }
+      } else {
+        get().handleBatchCompleted(sessionId);
+        cleanup();
+      }
+
+      resolve();
+    };
+
+    const rejectFailure = (
+      error: unknown,
+      reject: (reason?: unknown) => void,
+      clearSession = false,
+    ) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      get().handleBatchFailed(sessionId, errorMessage);
+      cleanup(clearSession);
+      reject(error);
+    };
+
     await new Promise<void>((resolve, reject) => {
       listener2Events.batchEvent
         .listen(({ payload }) => {
+          if (settled) {
+            return;
+          }
+
           if (payload.session_id !== sessionId) {
             return;
           }
@@ -529,48 +580,17 @@ export const createGeneralSlice = <
             return;
           }
 
-          if (payload.type === "batchCompleted") {
-            get().handleBatchCompleted(payload.session_id);
-            cleanup();
-            resolve();
-            return;
-          }
-
           if (payload.type === "batchProgress") {
             get().handleBatchResponseStreamed(
               sessionId,
               payload.response,
               payload.percentage,
             );
-
-            const batchState = get().batch[sessionId];
-            if (batchState?.isComplete) {
-              cleanup();
-              resolve();
-            }
-            return;
-          }
-
-          if (payload.type === "batchResponse") {
-            try {
-              get().handleBatchResponse(sessionId, payload.response);
-              cleanup();
-              resolve();
-            } catch (error) {
-              console.error("[runBatch] error handling batch response", error);
-              const errorMessage =
-                error instanceof Error ? error.message : String(error);
-              get().handleBatchFailed(sessionId, errorMessage);
-              cleanup(false);
-              reject(error);
-            }
             return;
           }
 
           if (payload.type === "batchFailed") {
-            get().handleBatchFailed(sessionId, payload.error);
-            cleanup(false);
-            reject(payload.error);
+            rejectFailure(payload.error, reject);
             return;
           }
         })
@@ -580,29 +600,30 @@ export const createGeneralSlice = <
           listener2Commands
             .runBatch(params)
             .then((result) => {
+              if (settled) {
+                return;
+              }
+
               if (result.status === "error") {
                 console.error(result.error);
-                get().handleBatchFailed(sessionId, result.error);
-                cleanup(false);
-                reject(result.error);
+                rejectFailure(result.error, reject);
+                return;
+              }
+
+              try {
+                resolveSuccess(result.data, resolve);
+              } catch (error) {
+                reject(error);
               }
             })
             .catch((error) => {
               console.error(error);
-              const errorMessage =
-                error instanceof Error ? error.message : String(error);
-              get().handleBatchFailed(sessionId, errorMessage);
-              cleanup(false);
-              reject(error);
+              rejectFailure(error, reject);
             });
         })
         .catch((error) => {
           console.error(error);
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          get().handleBatchFailed(sessionId, errorMessage);
-          cleanup(false);
-          reject(error);
+          rejectFailure(error, reject);
         });
     });
   },

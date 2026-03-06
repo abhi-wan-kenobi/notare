@@ -6,7 +6,7 @@
 
 
 export const commands = {
-async runBatch(params: BatchParams) : Promise<Result<null, string>> {
+async runBatch(params: BatchParams) : Promise<Result<BatchRunOutput, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:listener2|run_batch", { params }) };
 } catch (e) {
@@ -84,11 +84,13 @@ denoiseEvent: "plugin:listener2:denoise-event"
 export type BatchAlternatives = { transcript: string; confidence: number; words?: BatchWord[] }
 export type BatchChannel = { alternatives: BatchAlternatives[] }
 export type BatchErrorCode = "unknown" | "audio_metadata_join_failed" | "audio_metadata_read_failed" | "provider_request_failed" | "actor_spawn_failed" | "stream_start_cancelled" | "stream_stopped_without_completion_signal" | "stream_finished_without_status" | "stream_start_failed" | "stream_error" | "stream_timeout"
-export type BatchEvent = { type: "batchStarted"; session_id: string } | { type: "batchCompleted"; session_id: string } | { type: "batchResponse"; session_id: string; response: BatchResponse } | { type: "batchProgress"; session_id: string; response: StreamResponse; percentage: number } | { type: "batchFailed"; session_id: string; code: BatchErrorCode; error: string }
+export type BatchEvent = { type: "batchStarted"; session_id: string } | { type: "batchCompleted"; session_id: string } | { type: "batchResponse"; session_id: string; response: BatchResponse; mode: BatchRunMode } | { type: "batchProgress"; session_id: string; response: StreamResponse; percentage: number } | { type: "batchFailed"; session_id: string; code: BatchErrorCode; error: string }
 export type BatchParams = { session_id: string; provider: BatchProvider; file_path: string; model?: string | null; base_url: string; api_key: string; languages?: string[]; keywords?: string[] }
 export type BatchProvider = "argmax" | "deepgram" | "soniox" | "assemblyai" | "fireworks" | "openai" | "gladia" | "elevenlabs" | "dashscope" | "mistral" | "am" | "cactus"
 export type BatchResponse = { metadata: JsonValue; results: BatchResults }
 export type BatchResults = { channels: BatchChannel[] }
+export type BatchRunMode = "direct" | "streamed"
+export type BatchRunOutput = { session_id: string; mode: BatchRunMode; response: BatchResponse }
 export type BatchWord = { word: string; start: number; end: number; confidence: number; speaker: number | null; punctuated_word: string | null }
 export type DenoiseEvent = { type: "denoiseStarted"; session_id: string } | { type: "denoiseProgress"; session_id: string; percentage: number } | { type: "denoiseCompleted"; session_id: string } | { type: "denoiseFailed"; session_id: string; error: string }
 export type DenoiseParams = { session_id: string; input_path: string; output_path: string }

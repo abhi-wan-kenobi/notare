@@ -184,7 +184,7 @@ export const useRunBatch = (sessionId: string) => {
         languages: options?.languages ?? languages ?? [],
       };
 
-      await runBatch(params, { handlePersist: persist, sessionId });
+      await runBatch(params, { handlePersist: persist });
     },
     [
       conn,

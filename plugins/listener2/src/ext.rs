@@ -9,7 +9,10 @@ pub struct Listener2<'a, R: tauri::Runtime, M: tauri::Manager<R>> {
 }
 
 impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Listener2<'a, R, M> {
-    pub async fn run_batch(&self, params: core::BatchParams) -> Result<(), core::Error> {
+    pub async fn run_batch(
+        &self,
+        params: core::BatchParams,
+    ) -> Result<core::BatchRunOutput, core::Error> {
         let state = self.manager.state::<crate::SharedState>();
         let guard = state.lock().await;
         let app = guard.app.clone();

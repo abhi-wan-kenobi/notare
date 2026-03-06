@@ -4,6 +4,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import { Toaster } from "@hypr/ui/components/ui/toast";
 
@@ -79,6 +80,16 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   notFoundComponent: NotFoundDocument,
 });
 
+function ReactGrabDev() {
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    import("react-grab").then(() => {
+      window.__REACT_GRAB__?.setToolbarState({ collapsed: true, edge: "right" });
+    });
+  }, []);
+  return null;
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -88,6 +99,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         {children}
         <Toaster position="bottom-right" />
+        <ReactGrabDev />
         <Scripts />
       </body>
     </html>

@@ -1,6 +1,8 @@
 use owhisper_interface::batch::Response as BatchResponse;
 use owhisper_interface::stream::StreamResponse;
 
+use crate::BatchRunMode;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
@@ -31,6 +33,7 @@ pub enum BatchEvent {
     BatchResponse {
         session_id: String,
         response: BatchResponse,
+        mode: BatchRunMode,
     },
     #[serde(rename = "batchProgress")]
     BatchResponseStreamed {
