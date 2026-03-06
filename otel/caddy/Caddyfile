@@ -43,7 +43,7 @@
 	handle @traces_allowed {
 		header Access-Control-Allow-Origin "{http.request.header.Origin}"
 		header Vary "Origin"
-		reverse_proxy http://otel-collector:4318
+		reverse_proxy http://{$OTEL_COLLECTOR_HOST}:4318
 	}
 
 	@traces_denied {
@@ -55,7 +55,7 @@
 	}
 
 	handle /healthz {
-		reverse_proxy http://otel-collector:13133
+		reverse_proxy http://{$OTEL_COLLECTOR_HOST}:13133
 	}
 
 	respond "not found" 404
