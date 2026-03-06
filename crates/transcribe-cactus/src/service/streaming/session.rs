@@ -77,7 +77,7 @@ pub(super) async fn handle_websocket(
     let model = match hypr_cactus::Model::builder(&model_path).build() {
         Ok(m) => std::sync::Arc::new(m),
         Err(e) => {
-            tracing::error!(error = %e, "failed to load model");
+            tracing::error!(error.message = %e, "failed_to_load_model");
             return;
         }
     };
@@ -217,9 +217,9 @@ async fn handle_transcribe_event(
                     serde_json::Value::Number(job_id.into()),
                 );
                 tracing::info!(
-                    text = cloud_text,
-                    job_id,
-                    ch = ch_idx,
+                    hyprnote.transcript.text = cloud_text,
+                    hyprnote.stt.job.id = job_id,
+                    hyprnote.audio.channel_index = ch_idx,
                     "cactus_cloud_correction"
                 );
                 if !send_ws(
@@ -272,7 +272,11 @@ async fn handle_transcribe_event(
                     Some(keys)
                 };
 
-                tracing::info!(text = confirmed_text, ch = ch_idx, "cactus_confirmed_text");
+                tracing::info!(
+                    hyprnote.transcript.text = confirmed_text,
+                    hyprnote.audio.channel_index = ch_idx,
+                    "cactus_confirmed_text"
+                );
                 if !send_ws(
                     ws_sender,
                     &build_transcript_response(

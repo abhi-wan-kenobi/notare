@@ -144,7 +144,7 @@ async fn start_session_impl(
         let app_dir = match state.runtime.vault_base() {
             Ok(base) => base.join("sessions"),
             Err(e) => {
-                tracing::error!(error = %e, "failed_to_resolve_sessions_dir");
+                tracing::error!(error.message = %e, "failed_to_resolve_sessions_dir");
                 clear_sentry_session_context();
                 return false;
             }
@@ -174,7 +174,7 @@ async fn start_session_impl(
                 true
             }
             Err(e) => {
-                tracing::error!(error = ?e, "failed_to_start_session");
+                tracing::error!(error.message = ?e, "failed_to_start_session");
                 clear_sentry_session_context();
                 false
             }

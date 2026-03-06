@@ -15,6 +15,12 @@ pub struct Env {
     pub sentry_dsn: Option<String>,
     #[serde(default, deserialize_with = "hypr_api_env::filter_empty")]
     pub posthog_api_key: Option<String>,
+    #[serde(default, deserialize_with = "hypr_api_env::filter_empty")]
+    pub otel_exporter_otlp_endpoint: Option<String>,
+    #[serde(default, deserialize_with = "hypr_api_env::filter_empty")]
+    pub otel_exporter_otlp_headers: Option<String>,
+    #[serde(default, deserialize_with = "hypr_api_env::filter_empty")]
+    pub otel_service_name: Option<String>,
 
     #[serde(flatten)]
     pub supabase: hypr_api_env::SupabaseEnv,

@@ -15,7 +15,11 @@ use hypr_audio_utils::content_type_to_extension;
 
 #[tracing::instrument(
     skip(audio_data, event_tx),
-    fields(audio_bytes = audio_data.len(), content_type, model_path = %model_path.display())
+    fields(
+        hyprnote.audio.size_bytes = audio_data.len(),
+        hyprnote.file.mime_type = content_type,
+        hyprnote.model.path = %model_path.display()
+    )
 )]
 pub(super) fn transcribe_batch(
     audio_data: &[u8],
@@ -54,7 +58,7 @@ pub(super) fn transcribe_batch(
     let model = match hypr_cactus::Model::new(model_path) {
         Ok(m) => m,
         Err(e) => {
-            tracing::error!(error = %e, "failed to load model");
+            tracing::error!(error.message = %e, "failed_to_load_model");
             return Err(e.into());
         }
     };

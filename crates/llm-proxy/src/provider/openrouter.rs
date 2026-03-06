@@ -149,24 +149,24 @@ impl Provider for OpenRouterProvider {
                 Ok(cost) => cost,
                 Err(OpenRouterError::Api { status, .. }) if status == 404 => {
                     tracing::debug!(
-                        http_status = %status,
-                        generation_id = %generation_id,
+                        http.response.status_code = %status,
+                        gen_ai.response.id = %generation_id,
                         "generation_metadata_unavailable"
                     );
                     None
                 }
                 Err(OpenRouterError::Api { status, .. }) => {
                     tracing::warn!(
-                        http_status = %status,
-                        generation_id = %generation_id,
+                        http.response.status_code = %status,
+                        gen_ai.response.id = %generation_id,
                         "generation_metadata_fetch_failed"
                     );
                     None
                 }
                 Err(err) => {
                     tracing::warn!(
-                        error = %err,
-                        generation_id = %generation_id,
+                        error.message = %err,
+                        gen_ai.response.id = %generation_id,
                         "generation_metadata_fetch_failed"
                     );
                     None

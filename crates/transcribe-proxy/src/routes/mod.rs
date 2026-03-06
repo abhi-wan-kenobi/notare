@@ -82,8 +82,8 @@ impl AppState {
 
         self.selector.select(requested).map_err(|e| {
             tracing::warn!(
-                error = %e,
-                requested_provider = ?requested,
+                error.message = %e,
+                hyprnote.stt.requested_provider = ?requested,
                 "provider_selection_failed"
             );
             (StatusCode::BAD_REQUEST, e.to_string()).into_response()
@@ -109,16 +109,16 @@ impl AppState {
         let routed_provider = router.select_provider(&languages, &available_providers);
 
         tracing::debug!(
-            languages = ?languages,
-            available_providers = ?available_providers,
-            routed_provider = ?routed_provider,
+            hyprnote.stt.language_codes = ?languages,
+            hyprnote.stt.available_providers = ?available_providers,
+            hyprnote.stt.provider.name = ?routed_provider,
             "hyprnote_routing"
         );
 
         self.selector.select(routed_provider).map_err(|e| {
             tracing::warn!(
-                error = %e,
-                languages = ?languages,
+                error.message = %e,
+                hyprnote.stt.language_codes = ?languages,
                 "hyprnote_routing_failed"
             );
             (StatusCode::BAD_REQUEST, e.to_string()).into_response()

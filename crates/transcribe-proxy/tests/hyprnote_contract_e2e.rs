@@ -9,7 +9,7 @@ use bytes::Bytes;
 use common::{
     Direction, MockUpstreamConfig, WsMessage, WsRecording, start_mock_server_with_config,
 };
-use owhisper_client::{HyprnoteAdapter, ListenClient, Provider};
+use owhisper_client::{BatchClient, DeepgramAdapter, HyprnoteAdapter, ListenClient, Provider};
 use owhisper_interface::{ControlMessage, ListenParams, MixedMessage};
 use tokio_tungstenite::connect_async;
 use transcribe_proxy::{HyprnoteRoutingConfig, SttProxyConfig};
@@ -39,6 +39,29 @@ async fn start_mock_ws() -> common::MockServerHandle {
 }
 
 async fn start_proxy(deepgram_upstream: Option<&str>, soniox_upstream: Option<&str>) -> SocketAddr {
+    start_proxy_with(
+        Provider::Deepgram,
+        false,
+        deepgram_upstream,
+        soniox_upstream,
+    )
+    .await
+}
+
+async fn start_proxy_under_stt(
+    default_provider: Provider,
+    deepgram_upstream: Option<&str>,
+    soniox_upstream: Option<&str>,
+) -> SocketAddr {
+    start_proxy_with(default_provider, true, deepgram_upstream, soniox_upstream).await
+}
+
+async fn start_proxy_with(
+    default_provider: Provider,
+    mount_under_stt: bool,
+    deepgram_upstream: Option<&str>,
+    soniox_upstream: Option<&str>,
+) -> SocketAddr {
     let mut env = transcribe_proxy::Env::default();
     if deepgram_upstream.is_some() {
         env.stt.deepgram_api_key = Some("test-key".to_string());
@@ -54,7 +77,7 @@ async fn start_proxy(deepgram_upstream: Option<&str>, soniox_upstream: Option<&s
     };
 
     let mut config = SttProxyConfig::new(&env, &supabase_env)
-        .with_default_provider(Provider::Deepgram)
+        .with_default_provider(default_provider)
         .with_hyprnote_routing(HyprnoteRoutingConfig::default());
 
     if let Some(url) = deepgram_upstream {
@@ -64,7 +87,19 @@ async fn start_proxy(deepgram_upstream: Option<&str>, soniox_upstream: Option<&s
         config = config.with_upstream_url(Provider::Soniox, url);
     }
 
-    common::start_server(config).await
+    let app = if mount_under_stt {
+        Router::new().nest("/stt", transcribe_proxy::router(config))
+    } else {
+        transcribe_proxy::router(config)
+    };
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    addr
 }
 
 async fn poll_first<T>(mut f: impl FnMut() -> Option<T>, timeout: Duration) -> T {
@@ -172,6 +207,44 @@ async fn send_batch(addr: SocketAddr, query: &str) {
         "batch request failed: {}",
         resp.status()
     );
+}
+
+async fn send_batch_via_hyprnote_client(
+    addr: SocketAddr,
+    model: &str,
+    languages: Vec<hypr_language::Language>,
+) -> owhisper_interface::batch::Response {
+    BatchClient::<HyprnoteAdapter>::builder()
+        .api_base(format!("http://{addr}/stt"))
+        .api_key("test-access-token")
+        .params(ListenParams {
+            model: Some(model.to_string()),
+            languages,
+            ..Default::default()
+        })
+        .build()
+        .transcribe_file(hypr_data::english_1::AUDIO_PATH)
+        .await
+        .expect("hyprnote batch request should succeed")
+}
+
+async fn send_batch_via_deepgram_client(
+    addr: SocketAddr,
+    model: &str,
+    languages: Vec<hypr_language::Language>,
+) -> owhisper_interface::batch::Response {
+    BatchClient::<DeepgramAdapter>::builder()
+        .api_base(format!("http://{addr}/stt"))
+        .api_key("test-access-token")
+        .params(ListenParams {
+            model: Some(model.to_string()),
+            languages,
+            ..Default::default()
+        })
+        .build()
+        .transcribe_file(hypr_data::english_1::AUDIO_PATH)
+        .await
+        .expect("deepgram passthrough batch request should succeed")
 }
 
 #[tokio::test]
@@ -295,5 +368,75 @@ async fn batch_explicit_model_preserved_for_deepgram() {
     assert!(
         query.contains("model=nova-3"),
         "explicit model should be preserved: {query}"
+    );
+}
+
+#[tokio::test]
+async fn batch_client_hyprnote_adapter_uses_proxy_sync_path_under_stt() {
+    let batch = start_mock_batch_upstream().await;
+    let proxy = start_proxy_under_stt(
+        Provider::Deepgram,
+        Some(&format!("http://{}/v1", batch.addr)),
+        None,
+    )
+    .await;
+
+    let response =
+        send_batch_via_hyprnote_client(proxy, "cloud", vec![hypr_language::ISO639::En.into()])
+            .await;
+    let query = poll_first(|| batch.queries.lock().ok()?.first().cloned(), TIMEOUT).await;
+
+    let transcript = response
+        .results
+        .channels
+        .first()
+        .and_then(|channel| channel.alternatives.first())
+        .map(|alt| alt.transcript.as_str())
+        .unwrap_or("");
+
+    assert_eq!(
+        transcript, "ok",
+        "proxy response should round-trip upstream batch payload"
+    );
+    assert!(
+        query.contains("model=nova-3"),
+        "hyprnote sync batch should resolve cloud -> nova-3 before upstream: {query}"
+    );
+    assert!(
+        !query.contains("model=cloud"),
+        "meta model should not leak upstream: {query}"
+    );
+}
+
+#[tokio::test]
+async fn batch_client_deepgram_adapter_passthrough_uses_provider_query_under_stt() {
+    let batch = start_mock_batch_upstream().await;
+    let proxy = start_proxy_under_stt(
+        Provider::Soniox,
+        Some(&format!("http://{}/v1", batch.addr)),
+        None,
+    )
+    .await;
+
+    let response =
+        send_batch_via_deepgram_client(proxy, "nova-2", vec![hypr_language::ISO639::En.into()])
+            .await;
+    let query = poll_first(|| batch.queries.lock().ok()?.first().cloned(), TIMEOUT).await;
+
+    let transcript = response
+        .results
+        .channels
+        .first()
+        .and_then(|channel| channel.alternatives.first())
+        .map(|alt| alt.transcript.as_str())
+        .unwrap_or("");
+
+    assert_eq!(
+        transcript, "ok",
+        "passthrough batch should return upstream response"
+    );
+    assert!(
+        query.contains("model=nova-2"),
+        "passthrough batch should preserve the direct-provider request shape: {query}"
     );
 }

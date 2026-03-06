@@ -40,7 +40,7 @@ impl Pipeline {
                 None
             } else {
                 AEC::new()
-                    .map_err(|e| tracing::warn!(error = ?e, "aec_init_failed"))
+                    .map_err(|e| tracing::warn!(error.message = ?e, "aec_init_failed"))
                     .ok()
             },
             joiner: Joiner::new(),
@@ -81,7 +81,7 @@ impl Pipeline {
             match aec.process_streaming(&mic, &spk) {
                 Ok(processed) => processed,
                 Err(e) => {
-                    tracing::warn!(error = ?e, "aec_failed");
+                    tracing::warn!(error.message = ?e, "aec_failed");
                     mic
                 }
             }
@@ -109,7 +109,7 @@ impl Pipeline {
                 )),
             };
             if let Err(e) = result {
-                tracing::error!(error = ?e, "failed_to_send_audio_to_recorder");
+                tracing::error!(error.message = ?e, "failed_to_send_audio_to_recorder");
             }
         }
 

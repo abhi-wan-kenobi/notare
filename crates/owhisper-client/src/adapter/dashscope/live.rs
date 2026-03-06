@@ -105,7 +105,7 @@ impl RealtimeSttAdapter for DashScopeAdapter {
         };
 
         let json = serde_json::to_string(&session_config).ok()?;
-        tracing::debug!(payload = %json, "dashscope_session_update_payload");
+        tracing::debug!(hyprnote.payload.raw = %json, "dashscope_session_update_payload");
         Some(Message::Text(json.into()))
     }
 
@@ -120,22 +120,35 @@ impl RealtimeSttAdapter for DashScopeAdapter {
         let event: DashScopeEvent = match serde_json::from_str(raw) {
             Ok(e) => e,
             Err(e) => {
-                tracing::warn!(error = ?e, raw = raw, "dashscope_json_parse_failed");
+                tracing::warn!(
+                    error.message = ?e,
+                    hyprnote.payload.raw = raw,
+                    "dashscope_json_parse_failed"
+                );
                 return vec![];
             }
         };
 
         match event {
             DashScopeEvent::SessionCreated { session } => {
-                tracing::debug!(session_id = %session.id, "dashscope_session_created");
+                tracing::debug!(
+                    hyprnote.stt.provider_session.id = %session.id,
+                    "dashscope_session_created"
+                );
                 vec![]
             }
             DashScopeEvent::SessionUpdated { session } => {
-                tracing::debug!(session_id = %session.id, "dashscope_session_updated");
+                tracing::debug!(
+                    hyprnote.stt.provider_session.id = %session.id,
+                    "dashscope_session_updated"
+                );
                 vec![]
             }
             DashScopeEvent::InputAudioBufferCommitted { item_id } => {
-                tracing::debug!(item_id = %item_id, "dashscope_audio_buffer_committed");
+                tracing::debug!(
+                    hyprnote.stt.item.id = %item_id,
+                    "dashscope_audio_buffer_committed"
+                );
                 vec![]
             }
             DashScopeEvent::InputAudioBufferCleared => {
@@ -143,11 +156,11 @@ impl RealtimeSttAdapter for DashScopeAdapter {
                 vec![]
             }
             DashScopeEvent::InputAudioBufferSpeechStarted { item_id } => {
-                tracing::debug!(item_id = %item_id, "dashscope_speech_started");
+                tracing::debug!(hyprnote.stt.item.id = %item_id, "dashscope_speech_started");
                 vec![]
             }
             DashScopeEvent::InputAudioBufferSpeechStopped { item_id } => {
-                tracing::debug!(item_id = %item_id, "dashscope_speech_stopped");
+                tracing::debug!(hyprnote.stt.item.id = %item_id, "dashscope_speech_stopped");
                 vec![]
             }
             DashScopeEvent::ConversationItemInputAudioTranscriptionCompleted {
@@ -156,8 +169,8 @@ impl RealtimeSttAdapter for DashScopeAdapter {
                 ..
             } => {
                 tracing::debug!(
-                    item_id = %item_id,
-                    transcript = %transcript,
+                    hyprnote.stt.item.id = %item_id,
+                    hyprnote.transcript.text = %transcript,
                     "dashscope_transcription_completed"
                 );
                 Self::build_transcript_response(&transcript, true, true)
@@ -166,8 +179,8 @@ impl RealtimeSttAdapter for DashScopeAdapter {
                 item_id, text, ..
             } => {
                 tracing::debug!(
-                    item_id = %item_id,
-                    text = %text,
+                    hyprnote.stt.item.id = %item_id,
+                    hyprnote.transcript.text = %text,
                     "dashscope_transcription_text"
                 );
                 Self::build_transcript_response(&text, false, false)
@@ -178,9 +191,9 @@ impl RealtimeSttAdapter for DashScopeAdapter {
                 ..
             } => {
                 tracing::error!(
-                    item_id = %item_id,
-                    error_type = %error.error_type,
-                    error_message = %error.message,
+                    hyprnote.stt.item.id = %item_id,
+                    error.type = %error.error_type,
+                    error.message = %error.message,
                     "dashscope_transcription_failed"
                 );
                 vec![StreamResponse::ErrorResponse {
@@ -191,8 +204,8 @@ impl RealtimeSttAdapter for DashScopeAdapter {
             }
             DashScopeEvent::Error { error } => {
                 tracing::error!(
-                    error_type = %error.error_type,
-                    error_message = %error.message,
+                    error.type = %error.error_type,
+                    error.message = %error.message,
                     "dashscope_error"
                 );
                 vec![StreamResponse::ErrorResponse {
@@ -202,7 +215,7 @@ impl RealtimeSttAdapter for DashScopeAdapter {
                 }]
             }
             DashScopeEvent::Unknown => {
-                tracing::debug!(raw = raw, "dashscope_unknown_event");
+                tracing::debug!(hyprnote.payload.raw = raw, "dashscope_unknown_event");
                 vec![]
             }
         }

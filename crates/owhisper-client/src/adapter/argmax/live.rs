@@ -60,8 +60,8 @@ impl RealtimeSttAdapter for ArgmaxAdapter {
             Err(_) => {
                 if let Ok(error) = serde_json::from_str::<ArgmaxError>(raw) {
                     tracing::error!(
-                        error_type = %error.error_type,
-                        error_message = %error.message,
+                        error.type = %error.error_type,
+                        error.message = %error.message,
                         "argmax_error"
                     );
                     vec![StreamResponse::ErrorResponse {
@@ -70,7 +70,7 @@ impl RealtimeSttAdapter for ArgmaxAdapter {
                         provider: "argmax".to_string(),
                     }]
                 } else {
-                    tracing::warn!(raw = raw, "argmax_unknown_message");
+                    tracing::warn!(hyprnote.payload.raw = raw, "argmax_unknown_message");
                     vec![]
                 }
             }

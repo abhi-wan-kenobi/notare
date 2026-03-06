@@ -34,7 +34,7 @@ where
                 return Some(cell);
             }
             Err(e) => {
-                tracing::warn!(attempt, error = ?e, "spawn_retry_failed");
+                tracing::warn!(attempt, error.message = ?e, "spawn_retry_failed");
             }
         }
     }

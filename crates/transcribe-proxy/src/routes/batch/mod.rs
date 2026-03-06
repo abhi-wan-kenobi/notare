@@ -65,9 +65,9 @@ pub async fn handler(
     };
 
     tracing::info!(
-        provider = ?selected.provider(),
-        content_type = %content_type,
-        body_size_bytes = %body.len(),
+        hyprnote.stt.provider.name = ?selected.provider(),
+        hyprnote.file.mime_type = %content_type,
+        hyprnote.payload.size_bytes = %body.len(),
         "batch_transcription_request_received"
     );
 
@@ -75,8 +75,8 @@ pub async fn handler(
         Ok(response) => Json(response).into_response(),
         Err(e) => {
             tracing::error!(
-                error = %e,
-                provider = ?selected.provider(),
+                error.message = %e,
+                hyprnote.stt.provider.name = ?selected.provider(),
                 "batch_transcription_failed"
             );
             (

@@ -122,10 +122,11 @@ impl ChannelSplitProxy {
         request: &ClientRequestBuilder,
         timeout: Duration,
     ) -> Result<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>, crate::ProxyError> {
-        let req = request
+        let mut req = request
             .clone()
             .into_client_request()
             .map_err(|e| crate::ProxyError::InvalidRequest(e.to_string()))?;
+        hypr_observability::inject_current_trace_context(req.headers_mut());
 
         let result = tokio::time::timeout(timeout, connect_async(req)).await;
         match result {
@@ -141,7 +142,7 @@ impl ChannelSplitProxy {
         ws.on_upgrade(move |socket| {
             async move {
                 if let Err(e) = proxy.handle(socket).await {
-                    tracing::error!(error = %e, "channel_split_proxy_error");
+                    tracing::error!(error.message = %e, "channel_split_proxy_error");
                 }
             }
             .bind_hub(sentry::Hub::new_from_top(hub))
@@ -174,7 +175,7 @@ impl ChannelSplitProxy {
         }
 
         tracing::info!(
-            duration_secs = %duration.as_secs_f64(),
+            hyprnote.duration_ms = %(duration.as_millis() as u64),
             "channel_split_proxy_closed"
         );
 

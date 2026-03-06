@@ -94,13 +94,21 @@ impl RealtimeSttAdapter for SonioxAdapter {
         let msg: soniox::StreamMessage = match serde_json::from_str(raw) {
             Ok(m) => m,
             Err(e) => {
-                tracing::warn!(error = ?e, raw = raw, "soniox_json_parse_failed");
+                tracing::warn!(
+                    error.message = ?e,
+                    hyprnote.payload.raw = raw,
+                    "soniox_json_parse_failed"
+                );
                 return vec![];
             }
         };
 
         if let Some(error_msg) = &msg.error_message {
-            tracing::error!(error_code = ?msg.error_code, error_message = %error_msg, "soniox_error");
+            tracing::error!(
+                error.code = ?msg.error_code,
+                error.message = %error_msg,
+                "soniox_error"
+            );
             return vec![StreamResponse::ErrorResponse {
                 error_code: msg.error_code,
                 error_message: error_msg.clone(),

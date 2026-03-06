@@ -26,7 +26,14 @@ import { commands as openerCommands } from "@hypr/plugin-opener2";
 import { supabase } from "./client";
 import { clearAuthStorage, isFatalSessionError } from "./errors";
 
-import { buildWebAppUrl, DEVICE_FINGERPRINT_HEADER } from "~/shared/utils";
+import {
+  buildWebAppUrl,
+  createTraceparent,
+  DEVICE_FINGERPRINT_HEADER,
+  REQUEST_ID_HEADER,
+  TRACEPARENT_HEADER,
+  id,
+} from "~/shared/utils";
 
 type AuthState = {
   supabase: SupabaseClient | null;
@@ -329,6 +336,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const headers: Record<string, string> = {
       Authorization: `${session.token_type} ${session.access_token}`,
+      [REQUEST_ID_HEADER]: id(),
+      [TRACEPARENT_HEADER]: createTraceparent(),
     };
 
     if (fingerprint) {

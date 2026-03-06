@@ -16,7 +16,7 @@ pub(crate) async fn wait_for_task_exit(
         _ = &mut warn_after_sleep => {
             tracing::warn!(
                 %context,
-                timeout_secs = warn_after.as_secs(),
+                hyprnote.timeout_s = warn_after.as_secs(),
                 "model_download_task_join_slow"
             );
             task.await
@@ -26,7 +26,7 @@ pub(crate) async fn wait_for_task_exit(
     match join_result {
         Ok(()) => {}
         Err(e) => {
-            tracing::warn!(%context, error = %e, "model_download_task_join_failed");
+            tracing::warn!(%context, error.message = %e, "model_download_task_join_failed");
         }
     }
 }

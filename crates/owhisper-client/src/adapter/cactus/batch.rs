@@ -18,7 +18,11 @@ impl CactusAdapter {
         file_path: impl AsRef<Path>,
     ) -> Result<StreamingBatchStream, Error> {
         let path = file_path.as_ref().to_path_buf();
-        tracing::info!(file_path = %path.display(), api_base, "starting cactus batch stream");
+        tracing::info!(
+            hyprnote.file.path = %path.display(),
+            url.full = %api_base,
+            "starting_cactus_batch_stream"
+        );
 
         let (audio_data, content_type, audio_duration_secs) =
             tokio::task::spawn_blocking(move || load_audio_file(path))
@@ -39,7 +43,11 @@ impl CactusAdapter {
         let status = response.status();
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
-            tracing::error!(status = %status, body = %body, "unexpected response status");
+            tracing::error!(
+                http.response.status_code = status.as_u16(),
+                hyprnote.http.response.body = %body,
+                "unexpected_response_status"
+            );
             return Err(Error::UnexpectedStatus { status, body });
         }
 

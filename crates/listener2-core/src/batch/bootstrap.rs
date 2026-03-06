@@ -78,9 +78,9 @@ async fn spawn_argmax_streaming_batch_task(
 
     let span = tracing::info_span!(
         "argmax_streaming_batch",
-        session_id = %args.session_id,
-        base_url = %args.base_url,
-        file_path = %args.file_path,
+        hyprnote.session.id = %args.session_id,
+        url.full = %args.base_url,
+        hyprnote.file.path = %args.file_path,
     );
 
     let rx_task = tokio::spawn(
@@ -134,9 +134,9 @@ async fn spawn_cactus_batch_task(
 
     let span = tracing::info_span!(
         "cactus_batch",
-        session_id = %args.session_id,
-        base_url = %args.base_url,
-        file_path = %args.file_path,
+        hyprnote.session.id = %args.session_id,
+        url.full = %args.base_url,
+        hyprnote.file.path = %args.file_path,
     );
 
     let rx_task = tokio::spawn(
@@ -185,9 +185,9 @@ async fn spawn_batch_task_with_adapter<A: RealtimeSttAdapter>(
 
     let span = tracing::info_span!(
         "realtime_batch",
-        session_id = %args.session_id,
-        base_url = %args.base_url,
-        file_path = %args.file_path,
+        hyprnote.session.id = %args.session_id,
+        url.full = %args.base_url,
+        hyprnote.file.path = %args.file_path,
     );
 
     let rx_task = tokio::spawn(

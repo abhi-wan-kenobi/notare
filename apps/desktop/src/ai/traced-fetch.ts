@@ -4,7 +4,14 @@ import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import type { CharTask } from "@hypr/api-client";
 import { commands as miscCommands } from "@hypr/plugin-misc";
 
-import { CHAR_TASK_HEADER, DEVICE_FINGERPRINT_HEADER } from "~/shared/utils";
+import {
+  CHAR_TASK_HEADER,
+  DEVICE_FINGERPRINT_HEADER,
+  REQUEST_ID_HEADER,
+  TRACEPARENT_HEADER,
+  id,
+  sentryTraceToTraceparent,
+} from "~/shared/utils";
 
 let cachedFingerprint: string | null = null;
 
@@ -36,11 +43,18 @@ export const tracedFetch: typeof fetch = async (input, init) => {
     },
     async (span) => {
       const headers = new Headers(init?.headers);
+      if (!headers.has(REQUEST_ID_HEADER)) {
+        headers.set(REQUEST_ID_HEADER, id());
+      }
 
       const traceHeader = Sentry.spanToTraceHeader(span);
       const baggageHeader = Sentry.spanToBaggageHeader(span);
+      const traceparent = sentryTraceToTraceparent(traceHeader);
 
       headers.set("sentry-trace", traceHeader);
+      if (traceparent && !headers.has(TRACEPARENT_HEADER)) {
+        headers.set(TRACEPARENT_HEADER, traceparent);
+      }
       if (baggageHeader) {
         headers.set("baggage", baggageHeader);
       }

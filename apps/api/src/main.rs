@@ -1,5 +1,6 @@
 mod auth;
 mod env;
+mod observability;
 mod openapi;
 mod rate_limit;
 
@@ -14,9 +15,9 @@ use tower::ServiceBuilder;
 use tower_http::{
     classify::ServerErrorsFailureClass,
     cors::{self, CorsLayer},
+    request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     trace::TraceLayer,
 };
-use tracing_subscriber::prelude::*;
 
 use auth::AuthState;
 use env::env;
@@ -24,6 +25,7 @@ use env::env;
 use crate::env::Env;
 
 pub const DEVICE_FINGERPRINT_HEADER: &str = "x-device-fingerprint";
+pub const REQUEST_ID_HEADER: &str = "x-request-id";
 
 async fn app() -> Router {
     let env = env();
@@ -168,10 +170,15 @@ async fn app() -> Router {
             CorsLayer::new()
                 .allow_origin(cors::Any)
                 .allow_methods(cors::Any)
-                .allow_headers(cors::Any),
+                .allow_headers(cors::Any)
+                .expose_headers([axum::http::header::HeaderName::from_static(
+                    REQUEST_ID_HEADER,
+                )]),
         )
         .layer(
             ServiceBuilder::new()
+                .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+                .layer(PropagateRequestIdLayer::x_request_id())
                 .layer(NewSentryLayer::<Request<Body>>::new_from_top())
                 .layer(SentryHttpLayer::new().enable_transaction())
                 .layer(
@@ -189,35 +196,60 @@ async fn app() -> Router {
                                 .get::<MatchedPath>()
                                 .map(MatchedPath::as_str)
                                 .unwrap_or(path);
-                            let (service, span_op) = match path {
+                            let span_op = match path {
                                 p if p.starts_with("/llm")
                                     || p.starts_with("/chat/completions") =>
                                 {
-                                    ("llm", "http.server.llm")
+                                    "http.server.llm"
                                 }
                                 p if p.starts_with("/stt") || p.starts_with("/listen") => {
-                                    ("stt", "http.server.stt")
+                                    "http.server.stt"
                                 }
-                                _ => ("unknown", "http.server"),
+                                _ => "http.server",
                             };
 
-                            tracing::info_span!(
+                            let span = tracing::info_span!(
                                 "http_request",
-                                method = %method,
+                                http.request.method = %method,
                                 http.route = %matched_path,
-                                service = %service,
+                                http.response.status_code = tracing::field::Empty,
+                                hyprnote.subsystem = "edge",
+                                enduser.id = tracing::field::Empty,
+                                enduser.pseudo.id = tracing::field::Empty,
+                                hyprnote.stt.provider.name = tracing::field::Empty,
+                                hyprnote.stt.routing_strategy = tracing::field::Empty,
+                                hyprnote.stt.model = tracing::field::Empty,
+                                hyprnote.stt.language_codes = tracing::field::Empty,
+                                hyprnote.audio.sample_rate_hz = tracing::field::Empty,
+                                hyprnote.audio.channel_count = tracing::field::Empty,
+                                gen_ai.provider.name = tracing::field::Empty,
+                                hyprnote.gen_ai.request.streaming = tracing::field::Empty,
+                                hyprnote.gen_ai.request.message_count = tracing::field::Empty,
+                                hyprnote.request.id = tracing::field::Empty,
+                                error.type = tracing::field::Empty,
+                                otel.kind = "server",
                                 otel.name = %format!("{} {}", method, matched_path),
                                 span.op = %span_op,
-                            )
+                            );
+                            hypr_observability::set_remote_parent(&span, request.headers());
+                            span
                         })
-                        .on_request(|request: &Request<Body>, _span: &tracing::Span| {
+                        .on_request(|request: &Request<Body>, span: &tracing::Span| {
                             // Skip logging for health checks
                             if request.uri().path() == "/health" {
                                 return;
                             }
+                            if let Some(request_id) = request
+                                .headers()
+                                .get(REQUEST_ID_HEADER)
+                                .and_then(|v| v.to_str().ok())
+                            {
+                                span.record("hyprnote.request.id", request_id);
+                            }
                             tracing::info!(
-                                method = %request.method(),
-                                path = %request.uri().path(),
+                                parent: span,
+                                http.request.method = %request.method(),
+                                url.path = %request.uri().path(),
                                 "http_request_started"
                             );
                         })
@@ -228,10 +260,14 @@ async fn app() -> Router {
                                 if span.is_disabled() {
                                     return;
                                 }
+                                span.record(
+                                    "http.response.status_code",
+                                    response.status().as_u16() as i64,
+                                );
                                 tracing::info!(
                                     parent: span,
-                                    http_status = %response.status().as_u16(),
-                                    latency_ms = %latency.as_millis(),
+                                    http.response.status_code = %response.status().as_u16(),
+                                    hyprnote.duration_ms = %latency.as_millis(),
                                     "http_request_finished"
                                 );
                             },
@@ -243,10 +279,12 @@ async fn app() -> Router {
                                 if span.is_disabled() {
                                     return;
                                 }
+                                let error_type = failure_class.to_string();
+                                span.record("error.type", error_type.as_str());
                                 tracing::error!(
                                     parent: span,
-                                    failure_class = ?failure_class,
-                                    latency_ms = %latency.as_millis(),
+                                    error.type = %error_type,
+                                    hyprnote.duration_ms = %latency.as_millis(),
                                     "http_request_failed"
                                 );
                             },
@@ -300,17 +338,11 @@ fn main() -> std::io::Result<()> {
     });
 
     sentry::configure_scope(|scope| {
-        scope.set_tag("service", "hyprnote-api");
+        scope.set_tag("service.namespace", "hyprnote");
+        scope.set_tag("service.name", "api");
     });
 
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,tower_http=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .with(sentry::integrations::tracing::layer())
-        .init();
+    let observability = observability::init("api", env);
 
     hypr_transcribe_proxy::ApiKeys::from(&env.stt.stt).log_configured_providers();
 
@@ -331,6 +363,7 @@ fn main() -> std::io::Result<()> {
     if let Some(client) = sentry::Hub::current().client() {
         client.close(Some(Duration::from_secs(2)));
     }
+    observability.shutdown();
 
     Ok(())
 }

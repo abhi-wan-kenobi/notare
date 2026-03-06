@@ -176,8 +176,8 @@ async fn spawn_rx_task_single_with_adapter<A: RealtimeSttAdapter>(
     let (listen_stream, handle) = match connect_result {
         Err(_elapsed) => {
             tracing::error!(
-                session_id = %args.session_id,
-                timeout_secs = LISTEN_CONNECT_TIMEOUT.as_secs_f32(),
+                hyprnote.session.id = %args.session_id,
+                hyprnote.timeout_s = LISTEN_CONNECT_TIMEOUT.as_secs_f32(),
                 "listen_ws_connect_timeout(single)"
             );
             args.runtime.emit_error(SessionErrorEvent::ConnectionError {
@@ -187,7 +187,11 @@ async fn spawn_rx_task_single_with_adapter<A: RealtimeSttAdapter>(
             return Err(actor_error("listen_ws_connect_timeout"));
         }
         Ok(Err(e)) => {
-            tracing::error!(session_id = %args.session_id, error = ?e, "listen_ws_connect_failed(single)");
+            tracing::error!(
+                hyprnote.session.id = %args.session_id,
+                error.message = ?e,
+                "listen_ws_connect_failed(single)"
+            );
             args.runtime.emit_error(SessionErrorEvent::ConnectionError {
                 session_id: args.session_id.clone(),
                 error: format!("listen_ws_connect_failed: {:?}", e),
@@ -246,8 +250,8 @@ async fn spawn_rx_task_dual_with_adapter<A: RealtimeSttAdapter>(
     let (listen_stream, handle) = match connect_result {
         Err(_elapsed) => {
             tracing::error!(
-                session_id = %args.session_id,
-                timeout_secs = LISTEN_CONNECT_TIMEOUT.as_secs_f32(),
+                hyprnote.session.id = %args.session_id,
+                hyprnote.timeout_s = LISTEN_CONNECT_TIMEOUT.as_secs_f32(),
                 "listen_ws_connect_timeout(dual)"
             );
             args.runtime.emit_error(SessionErrorEvent::ConnectionError {
@@ -257,7 +261,11 @@ async fn spawn_rx_task_dual_with_adapter<A: RealtimeSttAdapter>(
             return Err(actor_error("listen_ws_connect_timeout"));
         }
         Ok(Err(e)) => {
-            tracing::error!(session_id = %args.session_id, error = ?e, "listen_ws_connect_failed(dual)");
+            tracing::error!(
+                hyprnote.session.id = %args.session_id,
+                error.message = ?e,
+                "listen_ws_connect_failed(dual)"
+            );
             args.runtime.emit_error(SessionErrorEvent::ConnectionError {
                 session_id: args.session_id.clone(),
                 error: format!("listen_ws_connect_failed: {:?}", e),

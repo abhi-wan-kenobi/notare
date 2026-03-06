@@ -41,7 +41,9 @@ pub async fn main() {
             ));
 
             sentry::configure_scope(|scope| {
-                scope.set_tag("service", "hyprnote-desktop");
+                scope.set_tag("service.namespace", "hyprnote");
+                scope.set_tag("service.name", "desktop");
+                scope.set_tag("enduser.pseudo.id", hypr_host::fingerprint());
                 scope.set_user(Some(sentry::User {
                     id: Some(hypr_host::fingerprint()),
                     ..Default::default()

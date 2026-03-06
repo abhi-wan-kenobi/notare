@@ -33,7 +33,7 @@ pub async fn handler(
     }
 
     let payload: serde_json::Value = serde_json::from_slice(&body).map_err(|e| {
-        tracing::warn!(error = %e, "invalid callback payload");
+        tracing::warn!(error.message = %e, "invalid callback payload");
         RouteError::BadRequest("invalid JSON payload".into())
     })?;
 
@@ -62,7 +62,12 @@ pub async fn handler(
         _ => unreachable!(),
     }
     .map_err(|e| {
-        tracing::error!(id = %id, provider = %provider, error = %e, "callback processing failed");
+        tracing::error!(
+            hyprnote.stt.job.id = %id,
+            hyprnote.stt.provider.name = %provider,
+            error.message = %e,
+            "callback processing failed"
+        );
         RouteError::Internal(format!("callback processing failed: {e}"))
     })?;
 
@@ -94,7 +99,11 @@ async fn cleanup_audio(supabase: &SupabaseClient, job_id: &str) {
         Ok(Some(j)) => j,
         Ok(None) => return,
         Err(e) => {
-            tracing::warn!(job_id = %job_id, error = %e, "failed to fetch job for cleanup");
+            tracing::warn!(
+                hyprnote.stt.job.id = %job_id,
+                error.message = %e,
+                "failed to fetch job for cleanup"
+            );
             return;
         }
     };
@@ -105,9 +114,9 @@ async fn cleanup_audio(supabase: &SupabaseClient, job_id: &str) {
         .await
     {
         tracing::warn!(
-            job_id = %job_id,
-            file_id = %job.file_id,
-            error = %e,
+            hyprnote.stt.job.id = %job_id,
+            hyprnote.file.id = %job.file_id,
+            error.message = %e,
             "failed to delete audio file"
         );
     }
