@@ -7,7 +7,7 @@ use std::task::{Context, Poll};
 use axum::extract::ws::{Message, WebSocket};
 use futures_util::{Stream, StreamExt, stream::SplitStream};
 use pin_project::pin_project;
-use tokio::sync::mpsc::{Receiver, channel};
+use tokio::sync::mpsc::{Receiver, Sender, channel};
 
 use hypr_audio_utils::{bytes_to_f32_samples, deinterleave_stereo_bytes, mix_audio_f32};
 use owhisper_interface::{ControlMessage, ListenInputChunk};
@@ -213,30 +213,9 @@ pub fn split_dual_audio_sources(
 
     tokio::spawn(async move {
         while let Some(Ok(message)) = ws_receiver.next().await {
-            match parse_ws_message(&message, 2) {
-                ParsedWsMessage::AudioMono(samples) => {
-                    if mic_tx.try_send(samples.clone()).is_err() {
-                        tracing::warn!("mic_channel_full_dropping_audio");
-                    }
-                    if speaker_tx.try_send(samples).is_err() {
-                        tracing::warn!("speaker_channel_full_dropping_audio");
-                    }
-                }
-                ParsedWsMessage::AudioDual {
-                    ch0: mic,
-                    ch1: speaker,
-                } => {
-                    if mic_tx.try_send(mic).is_err() {
-                        tracing::warn!("mic_channel_full_dropping_audio");
-                    }
-                    if speaker_tx.try_send(speaker).is_err() {
-                        tracing::warn!("speaker_channel_full_dropping_audio");
-                    }
-                }
-                ParsedWsMessage::Control(ControlMessage::CloseStream) | ParsedWsMessage::End => {
-                    break;
-                }
-                ParsedWsMessage::Control(_) | ParsedWsMessage::Empty => continue,
+            let parsed = parse_ws_message(&message, 2);
+            if !forward_split_message(parsed, &mic_tx, &speaker_tx).await {
+                break;
             }
         }
     });
@@ -247,9 +226,46 @@ pub fn split_dual_audio_sources(
     )
 }
 
+async fn forward_split_message(
+    parsed: ParsedWsMessage,
+    mic_tx: &Sender<Vec<f32>>,
+    speaker_tx: &Sender<Vec<f32>>,
+) -> bool {
+    match parsed {
+        ParsedWsMessage::AudioMono(samples) => {
+            if mic_tx.send(samples.clone()).await.is_err() {
+                tracing::warn!("mic_channel_closed_stopping_audio_forward");
+                return false;
+            }
+            if speaker_tx.send(samples).await.is_err() {
+                tracing::warn!("speaker_channel_closed_stopping_audio_forward");
+                return false;
+            }
+            true
+        }
+        ParsedWsMessage::AudioDual {
+            ch0: mic,
+            ch1: speaker,
+        } => {
+            if mic_tx.send(mic).await.is_err() {
+                tracing::warn!("mic_channel_closed_stopping_audio_forward");
+                return false;
+            }
+            if speaker_tx.send(speaker).await.is_err() {
+                tracing::warn!("speaker_channel_closed_stopping_audio_forward");
+                return false;
+            }
+            true
+        }
+        ParsedWsMessage::Control(ControlMessage::CloseStream) | ParsedWsMessage::End => false,
+        ParsedWsMessage::Control(_) | ParsedWsMessage::Empty => true,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn parser_emits_control_messages() {
@@ -267,5 +283,62 @@ mod tests {
             parse_ws_message(&msg, 1),
             ParsedWsMessage::Control(ControlMessage::CloseStream)
         ));
+    }
+
+    #[tokio::test]
+    async fn split_forwarding_applies_backpressure_without_dropping() {
+        let (mic_tx, mut mic_rx) = channel::<Vec<f32>>(1);
+        let (speaker_tx, mut speaker_rx) = channel::<Vec<f32>>(1);
+
+        assert!(
+            forward_split_message(
+                ParsedWsMessage::AudioMono(vec![1.0, 2.0]),
+                &mic_tx,
+                &speaker_tx
+            )
+            .await
+        );
+
+        assert!(
+            tokio::time::timeout(
+                Duration::from_millis(20),
+                forward_split_message(
+                    ParsedWsMessage::AudioMono(vec![3.0, 4.0]),
+                    &mic_tx,
+                    &speaker_tx
+                )
+            )
+            .await
+            .is_err()
+        );
+
+        let Some(first_mic) = mic_rx.recv().await else {
+            panic!("missing first mic frame");
+        };
+        let Some(first_speaker) = speaker_rx.recv().await else {
+            panic!("missing first speaker frame");
+        };
+
+        assert_eq!(first_mic, vec![1.0, 2.0]);
+        assert_eq!(first_speaker, vec![1.0, 2.0]);
+
+        assert!(
+            forward_split_message(
+                ParsedWsMessage::AudioMono(vec![3.0, 4.0]),
+                &mic_tx,
+                &speaker_tx
+            )
+            .await
+        );
+
+        let Some(second_mic) = mic_rx.recv().await else {
+            panic!("missing second mic frame");
+        };
+        let Some(second_speaker) = speaker_rx.recv().await else {
+            panic!("missing second speaker frame");
+        };
+
+        assert_eq!(second_mic, vec![3.0, 4.0]);
+        assert_eq!(second_speaker, vec![3.0, 4.0]);
     }
 }
