@@ -168,6 +168,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.24",
     "postcss": "^8.5.6",
+    "react-grab": "^0.1.23",
     "stripe": "^20.3.1",
     "tailwindcss": "^4.1.18",
     "tsx": "^4.21.0",
