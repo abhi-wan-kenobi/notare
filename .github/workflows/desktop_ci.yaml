@@ -101,7 +101,6 @@ jobs:
             --exclude local-stt-server \
             --exclude tauri-plugin-analytics\
             --exclude tauri-plugin-apple-calendar \
-            --exclude tauri-plugin-apple-contact \
             --exclude tauri-plugin-audio-priority \
             --exclude tauri-plugin-auth \
             --exclude tauri-plugin-bedrock \

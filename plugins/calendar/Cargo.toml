@@ -32,7 +32,3 @@ tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
 specta-typescript = { workspace = true }
-
-[target.'cfg(target_os = "macos")'.dependencies]
-tauri-plugin-apple-contact = { workspace = true }
-objc2-foundation = { workspace = true, features = ["NSPredicate"] }

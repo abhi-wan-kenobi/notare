@@ -4652,7 +4652,6 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-analytics",
- "tauri-plugin-apple-contact",
  "tauri-plugin-audio-priority",
  "tauri-plugin-auth",
  "tauri-plugin-automation",
@@ -17775,24 +17774,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tauri-plugin-apple-contact"
-version = "0.1.0"
-dependencies = [
- "objc2",
- "objc2-contacts",
- "objc2-foundation",
- "schemars 1.2.1",
- "serde",
- "specta",
- "specta-typescript",
- "tauri",
- "tauri-plugin",
- "tauri-specta",
- "thiserror 2.0.18",
- "tokio",
-]
-
-[[package]]
 name = "tauri-plugin-audio-priority"
 version = "0.1.0"
 dependencies = [
@@ -17884,7 +17865,6 @@ dependencies = [
  "chrono",
  "chrono-tz 0.10.4",
  "google-calendar",
- "objc2-foundation",
  "outlook-calendar",
  "reqwest 0.13.2",
  "serde",
@@ -17893,7 +17873,6 @@ dependencies = [
  "specta-typescript",
  "tauri",
  "tauri-plugin",
- "tauri-plugin-apple-contact",
  "tauri-plugin-auth",
  "tauri-plugin-permissions",
  "tauri-specta",

@@ -181,9 +181,6 @@ importers:
       '@hypr/plugin-analytics':
         specifier: workspace:*
         version: link:../../plugins/analytics
-      '@hypr/plugin-apple-contact':
-        specifier: workspace:*
-        version: link:../../plugins/apple-contact
       '@hypr/plugin-audio-priority':
         specifier: workspace:*
         version: link:../../plugins/audio-priority
@@ -1751,12 +1748,6 @@ importers:
         version: 3.2.4(@types/debug@4.1.12)(@types/node@25.2.3)(happy-dom@20.7.0)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 
   plugins/analytics:
-    dependencies:
-      '@tauri-apps/api':
-        specifier: ^2.10.1
-        version: 2.10.1
-
-  plugins/apple-contact:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.10.1

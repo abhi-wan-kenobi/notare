@@ -30,35 +30,6 @@ pub fn available_providers() -> Vec<CalendarProviderType> {
     providers
 }
 
-#[cfg(target_os = "macos")]
-mod contact_bridge {
-    use hypr_apple_calendar::ContactFetcher;
-    use hypr_apple_calendar::types::ParticipantContact;
-
-    pub struct AppleContactFetcher;
-
-    impl ContactFetcher for AppleContactFetcher {
-        fn fetch_contact_with_predicate(
-            &self,
-            predicate: &objc2_foundation::NSPredicate,
-        ) -> Option<ParticipantContact> {
-            let contact = tauri_plugin_apple_contact::fetch_contact_with_predicate(predicate)?;
-            Some(ParticipantContact {
-                identifier: contact.identifier,
-                given_name: contact.given_name,
-                family_name: contact.family_name,
-                middle_name: contact.middle_name,
-                organization_name: contact.organization_name,
-                job_title: contact.job_title,
-                email_addresses: contact.email_addresses,
-                phone_numbers: contact.phone_numbers,
-                url_addresses: contact.url_addresses,
-                image_available: contact.image_available,
-            })
-        }
-    }
-}
-
 impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> CalendarExt<'a, R, M> {
     pub async fn list_calendars(
         &self,
@@ -235,9 +206,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> CalendarExt<'a, R, M> {
         &self,
         filter: EventFilter,
     ) -> Result<Vec<hypr_apple_calendar::types::AppleEvent>, Error> {
-        let handle = hypr_apple_calendar::Handle::with_contact_fetcher(Box::new(
-            contact_bridge::AppleContactFetcher,
-        ));
+        let handle = hypr_apple_calendar::Handle::new();
         let filter = hypr_apple_calendar::types::EventFilter {
             from: filter.from,
             to: filter.to,

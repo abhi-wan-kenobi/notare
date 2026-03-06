@@ -84,7 +84,6 @@ pub async fn main() {
         .plugin(tauri_plugin_bedrock::init())
         .plugin(tauri_plugin_importer::init())
         .plugin(tauri_plugin_calendar::init())
-        .plugin(tauri_plugin_apple_contact::init())
         .plugin(tauri_plugin_auth::init())
         .plugin(tauri_plugin_db2::init())
         .plugin(tauri_plugin_tracing::init())
@@ -243,7 +242,6 @@ pub async fn main() {
                 let _ = permissions.reset(Permission::SystemAudio).await;
                 let _ = permissions.reset(Permission::Accessibility).await;
                 let _ = permissions.reset(Permission::Calendar).await;
-                let _ = permissions.reset(Permission::Contacts).await;
             });
         }
     }
