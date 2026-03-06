@@ -34,6 +34,7 @@ pub(super) async fn handle_callback(
         .remove_first("provider")
         .unwrap_or_else(|| "deepgram".to_string());
     let provider = parse_async_provider(&provider_str)?;
+    let listen_params = super::build_listen_params(params);
 
     let id = uuid::Uuid::new_v4().to_string();
 
@@ -54,7 +55,15 @@ pub(super) async fn handle_callback(
         audio_url.starts_with("http://127.0.0.1") || audio_url.starts_with("http://localhost");
 
     let (status, provider_request_id, raw_result, error) = if is_local {
-        handle_sync_fallback(state, &provider_str, provider, &audio_url, &file_id).await?
+        handle_sync_fallback(
+            state,
+            &provider_str,
+            provider,
+            &listen_params,
+            &audio_url,
+            &file_id,
+        )
+        .await?
     } else {
         let provider_request_id =
             handle_remote_callback(state, &provider_str, provider, &audio_url, &id).await?;
@@ -89,6 +98,7 @@ async fn handle_sync_fallback(
     state: &AppState,
     provider_str: &str,
     provider: Provider,
+    listen_params: &ListenParams,
     audio_url: &str,
     file_id: &str,
 ) -> Result<
@@ -148,7 +158,7 @@ async fn handle_sync_fallback(
 
     match super::sync::transcribe_with_provider(
         &selected,
-        ListenParams::default(),
+        listen_params.clone(),
         audio_bytes,
         content_type,
     )

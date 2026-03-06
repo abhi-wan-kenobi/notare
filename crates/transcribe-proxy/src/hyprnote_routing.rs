@@ -49,6 +49,12 @@ pub struct HyprnoteRouter {
     retry_config: RetryConfig,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RoutingMode {
+    Live,
+    Batch,
+}
+
 impl HyprnoteRouter {
     pub fn new(config: HyprnoteRoutingConfig) -> Self {
         Self {
@@ -62,7 +68,7 @@ impl HyprnoteRouter {
         languages: &[Language],
         available_providers: &HashSet<Provider>,
     ) -> Option<Provider> {
-        self.select_provider_chain(languages, available_providers)
+        self.select_provider_chain_with_mode(RoutingMode::Live, languages, available_providers)
             .into_iter()
             .next()
     }
@@ -72,12 +78,21 @@ impl HyprnoteRouter {
         languages: &[Language],
         available_providers: &HashSet<Provider>,
     ) -> Vec<Provider> {
+        self.select_provider_chain_with_mode(RoutingMode::Live, languages, available_providers)
+    }
+
+    pub fn select_provider_chain_with_mode(
+        &self,
+        mode: RoutingMode,
+        languages: &[Language],
+        available_providers: &HashSet<Provider>,
+    ) -> Vec<Provider> {
         let mut candidates: Vec<_> = self
             .priorities
             .iter()
             .copied()
             .filter_map(|p| {
-                let support = self.get_language_support(&p, languages, available_providers);
+                let support = self.get_language_support(mode, &p, languages, available_providers);
                 if support.is_supported() {
                     Some((p, support))
                 } else {
@@ -112,6 +127,7 @@ impl HyprnoteRouter {
 
     fn get_language_support(
         &self,
+        mode: RoutingMode,
         provider: &Provider,
         languages: &[Language],
         available_providers: &HashSet<Provider>,
@@ -119,7 +135,14 @@ impl HyprnoteRouter {
         if !available_providers.contains(provider) {
             return LanguageSupport::NotSupported;
         }
-        AdapterKind::from(*provider).language_support_live(languages, None)
+        match mode {
+            RoutingMode::Live => {
+                AdapterKind::from(*provider).language_support_live(languages, None)
+            }
+            RoutingMode::Batch => {
+                AdapterKind::from(*provider).language_support_batch(languages, None)
+            }
+        }
     }
 
     pub fn retry_config(&self) -> &RetryConfig {
@@ -541,5 +564,21 @@ mod tests {
             return quickcheck::TestResult::discard();
         }
         quickcheck::TestResult::from_bool(chain.contains(&Provider::Soniox))
+    }
+
+    #[test]
+    fn batch_routing_uses_batch_language_support() {
+        let router = HyprnoteRouter::default();
+        let languages = langs(&[ISO639::Ja]);
+        let available: HashSet<Provider> = [Provider::AssemblyAI].into_iter().collect();
+
+        assert_eq!(
+            router.select_provider_chain_with_mode(RoutingMode::Live, &languages, &available),
+            Vec::<Provider>::new()
+        );
+        assert_eq!(
+            router.select_provider_chain_with_mode(RoutingMode::Batch, &languages, &available),
+            vec![Provider::AssemblyAI]
+        );
     }
 }

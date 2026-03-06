@@ -17,7 +17,7 @@ use axum::{
 use owhisper_client::Provider;
 
 use crate::config::SttProxyConfig;
-use crate::hyprnote_routing::{HyprnoteRouter, should_use_hyprnote_routing};
+use crate::hyprnote_routing::{HyprnoteRouter, RoutingMode, should_use_hyprnote_routing};
 use crate::provider_selector::{ProviderSelector, SelectedProvider};
 use crate::query_params::QueryParams;
 use crate::supabase::SupabaseClient;
@@ -130,7 +130,11 @@ impl AppState {
         })
     }
 
-    pub fn resolve_hyprnote_provider_chain(&self, params: &QueryParams) -> Vec<SelectedProvider> {
+    pub fn resolve_hyprnote_provider_chain_for_mode(
+        &self,
+        mode: RoutingMode,
+        params: &QueryParams,
+    ) -> Vec<SelectedProvider> {
         let Some(router) = self.router.as_ref() else {
             return vec![];
         };
@@ -139,7 +143,7 @@ impl AppState {
         let available_providers = self.selector.available_providers();
 
         router
-            .select_provider_chain(&languages, &available_providers)
+            .select_provider_chain_with_mode(mode, &languages, &available_providers)
             .into_iter()
             .filter_map(|p| self.selector.select(Some(p)).ok())
             .collect()

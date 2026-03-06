@@ -91,7 +91,7 @@ pub async fn handler(
     }
 }
 
-fn build_listen_params(params: &QueryParams) -> ListenParams {
+pub(super) fn build_listen_params(params: &QueryParams) -> ListenParams {
     ListenParams {
         model: params.get_first("model").map(|s| s.to_string()),
         languages: params.get_languages(),

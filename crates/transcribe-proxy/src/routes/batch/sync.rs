@@ -14,7 +14,7 @@ use owhisper_client::{
 use owhisper_interface::ListenParams;
 use owhisper_interface::batch::Response as BatchResponse;
 
-use crate::hyprnote_routing::{RetryConfig, is_retryable_error};
+use crate::hyprnote_routing::{RetryConfig, RoutingMode, is_retryable_error};
 use crate::provider_selector::SelectedProvider;
 use crate::query_params::QueryParams;
 
@@ -38,7 +38,7 @@ pub(super) async fn handle_hyprnote_batch(
     body: Bytes,
     content_type: &str,
 ) -> Response {
-    let provider_chain = state.resolve_hyprnote_provider_chain(params);
+    let provider_chain = state.resolve_hyprnote_provider_chain_for_mode(RoutingMode::Batch, params);
 
     if provider_chain.is_empty() {
         return (
