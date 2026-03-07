@@ -25,7 +25,7 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
-    cargo chef cook --release --recipe-path recipe.json -p api
+    CARGO_TARGET_DIR=/app/target-chef cargo chef cook --release --recipe-path recipe.json -p api
 COPY Cargo.toml Cargo.lock ./
 RUN sed -i '/^members = \[/,/^\]/c\members = ["apps/api", "crates/*"]' Cargo.toml
 COPY crates crates
