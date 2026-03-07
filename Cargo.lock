@@ -5910,6 +5910,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "specta",
 ]
 
 [[package]]
@@ -5922,6 +5923,7 @@ dependencies = [
  "chrono",
  "data",
  "frontmatter",
+ "fs-format",
  "glob",
  "mp3",
  "predicates",
@@ -20242,9 +20244,13 @@ dependencies = [
 name = "transcript"
 version = "0.1.0"
 dependencies = [
+ "json-patch 4.1.0",
  "owhisper-interface",
  "serde",
+ "serde_json",
  "specta",
+ "template-app",
+ "thiserror 2.0.18",
  "uuid",
 ]
 
