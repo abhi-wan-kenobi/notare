@@ -49,7 +49,6 @@ export function LeftSidebar() {
           "h-9 w-full py-1",
           isLinux ? "justify-between pl-3" : "justify-end pl-20",
           "shrink-0",
-          "rounded-xl bg-neutral-50",
         ])}
       >
         {isLinux && <TrafficLights />}
