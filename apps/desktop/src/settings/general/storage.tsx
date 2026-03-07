@@ -62,7 +62,7 @@ export function StorageSettingsView() {
               variant="outline"
               size="sm"
               onClick={() => setShowDialog(true)}
-              disabled={!contentBase}
+              disabled={true}
             >
               Customize
             </Button>
