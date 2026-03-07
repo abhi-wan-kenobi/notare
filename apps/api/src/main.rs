@@ -345,7 +345,7 @@ fn main() -> std::io::Result<()> {
         scope.set_tag("service.name", "api");
     });
 
-    let observability = observability::init("api", env);
+    let observability = observability::init("api", &env.observability);
 
     hypr_transcribe_proxy::ApiKeys::from(&env.stt.stt).log_configured_providers();
 
@@ -420,9 +420,10 @@ fn build_honeycomb_trace_url(
     trace_identifiers: &hypr_observability::TraceIdentifiers,
     request_started_at: SystemTime,
 ) -> Option<String> {
-    let team = env.honeycomb_ui_team.as_deref()?;
-    let environment = env.honeycomb_ui_environment.as_deref()?;
+    let team = env.observability.honeycomb_ui_team.as_deref()?;
+    let environment = env.observability.honeycomb_ui_environment.as_deref()?;
     let base_url = env
+        .observability
         .honeycomb_ui_base_url
         .as_deref()
         .unwrap_or("https://ui.honeycomb.io")
