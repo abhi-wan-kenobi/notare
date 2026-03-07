@@ -41,7 +41,6 @@ import { TabContentOnboarding, TabItemOnboarding } from "~/onboarding";
 import { TabContentPlugin, TabItemPlugin } from "~/plugins";
 import { loadPlugins } from "~/plugins/loader";
 import { TabContentSearch, TabItemSearch } from "~/search/advanced";
-import { Search } from "~/search/components/search";
 import { TabContentNote, TabItemNote } from "~/session";
 import { useCaretPosition } from "~/session/components/caret-position-context";
 import { TabContentSettings, TabItemSettings } from "~/settings";
@@ -151,8 +150,7 @@ function Header({ tabs }: { tabs: Tab[] }) {
       action: handleNewNoteAndListen,
     },
   ]);
-  const [isSearchManuallyExpanded, setIsSearchManuallyExpanded] =
-    useState(false);
+
   const scrollState = useScrollState(
     tabsScrollContainerRef,
     regularTabs.length,
@@ -302,27 +300,22 @@ function Header({ tabs }: { tabs: Tab[] }) {
         data-tauri-drag-region
         className="flex h-full flex-1 items-center justify-between"
       >
-        {!isSearchManuallyExpanded && (
-          <Button
-            onClick={isOnboarding ? undefined : handleNewEmptyTab}
-            onContextMenu={isOnboarding ? undefined : showNewTabMenu}
-            disabled={isOnboarding}
-            variant="ghost"
-            size="icon"
-            className={cn([
-              "text-neutral-600",
-              isOnboarding && "cursor-not-allowed opacity-40",
-            ])}
-          >
-            <PlusIcon size={16} />
-          </Button>
-        )}
+        <Button
+          onClick={isOnboarding ? undefined : handleNewEmptyTab}
+          onContextMenu={isOnboarding ? undefined : showNewTabMenu}
+          disabled={isOnboarding}
+          variant="ghost"
+          size="icon"
+          className={cn([
+            "text-neutral-600",
+            isOnboarding && "cursor-not-allowed opacity-40",
+          ])}
+        >
+          <PlusIcon size={16} />
+        </Button>
 
         <div className="ml-auto flex h-full items-center gap-1">
           <Update />
-          {!isOnboarding && (
-            <Search onManualExpandChange={setIsSearchManuallyExpanded} />
-          )}
         </div>
       </div>
     </div>
