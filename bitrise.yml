@@ -113,8 +113,10 @@ workflows:
     triggers:
       push:
         - branch: main
+          changed_files: "apps/mobile/.*|crates/mobile-bridge/.*|crates/uniffi-bindgen/.*|crates/xtask/.*|Cargo.toml|Cargo.lock|\\.cargo/config.toml|bitrise\\.yml"
       pull_request:
         - source_branch: "*"
+          changed_files: "apps/mobile/.*|crates/mobile-bridge/.*|crates/uniffi-bindgen/.*|crates/xtask/.*|Cargo.toml|Cargo.lock|\\.cargo/config.toml|bitrise\\.yml"
 
 meta:
   bitrise.io:
