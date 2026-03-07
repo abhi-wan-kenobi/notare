@@ -435,9 +435,12 @@ fn extract_finalize_text<A: RealtimeSttAdapter>(adapter: &A) -> Utf8Bytes {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use bytes::Bytes;
     use hypr_ws_client::client::Message;
 
+    use super::{ListenClientDualInput, TransformedInput, forward_dual_to_single};
     use crate::test_utils::{run_dual_test, run_single_test};
     use crate::{
         AssemblyAIAdapter, DeepgramAdapter, ListenClient, RealtimeSttAdapter, SonioxAdapter,
@@ -536,7 +539,7 @@ mod tests {
         assert_eq!(second_mic.as_ref(), b"mic-2");
         assert_eq!(second_spk.as_ref(), b"spk-2");
 
-        task.await.expect("forward task panicked");
+        let _: () = task.await.expect("forward task panicked");
     }
 
     #[tokio::test]
