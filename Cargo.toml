@@ -13,7 +13,6 @@ members = [
   "apps/api",
   "apps/cli",
   "apps/desktop/src-tauri",
-  "apps/eval-cli",
   "crates/*",
   "plugins/*",
 ]
@@ -69,7 +68,6 @@ hypr-device-monitor = { path = "crates/device-monitor", package = "device-monito
 hypr-docs = { path = "crates/docs", package = "docs" }
 hypr-download-interface = { path = "crates/download-interface", package = "download-interface" }
 hypr-embedding = { path = "crates/embedding", package = "embedding" }
-hypr-eval = { path = "crates/eval", package = "eval" }
 hypr-exa = { path = "crates/exa", package = "exa" }
 hypr-export-core = { path = "crates/export-core", package = "export-core" }
 hypr-file = { path = "crates/file", package = "file" }
