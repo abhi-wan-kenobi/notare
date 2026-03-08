@@ -6,7 +6,7 @@ import {
   type LucideIcon,
   Settings2Icon,
 } from "lucide-react";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { useState } from "react";
 
 import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
@@ -162,11 +162,16 @@ function ChangeContentPathDialog({
     },
   });
 
+  useEffect(() => {
+    if (isNewPathEmpty !== undefined) {
+      setCopyVault(isNewPathEmpty);
+    }
+  }, [isNewPathEmpty, setCopyVault]);
+
   const disabledReason = (() => {
     if (!selectedPath || selectedPath === currentPath)
       return "Select a different folder";
     if (isCheckingNewPath) return "Checking folder...";
-    if (isNewPathEmpty === false) return "Folder must be empty";
     return null;
   })();
 
@@ -220,15 +225,8 @@ function ChangeContentPathDialog({
                       : "Select a folder"}
                 </p>
                 {isNewPathChosen && isNewPathEmpty !== undefined && (
-                  <p
-                    className={cn([
-                      "mt-1 text-xs",
-                      isNewPathEmpty ? "text-neutral-400" : "text-amber-600",
-                    ])}
-                  >
-                    {isNewPathEmpty
-                      ? "Empty folder"
-                      : "Not empty — must be empty"}
+                  <p className="mt-1 text-xs text-neutral-400">
+                    {isNewPathEmpty ? "Empty folder" : "Not empty"}
                   </p>
                 )}
               </div>
@@ -244,44 +242,52 @@ function ChangeContentPathDialog({
           </div>
         </div>
 
-        {isNewPathChosen && !disabledReason && (
-          <label className="flex cursor-pointer items-center gap-2">
-            <Checkbox
-              checked={copyVault}
-              onCheckedChange={(v) => setCopyVault(v === true)}
-            />
-            <span className="text-sm text-neutral-600">
-              Copy existing sessions to new location
-            </span>
-          </label>
-        )}
-
         {error && <p className="text-sm text-red-500">{error.message}</p>}
 
-        <DialogFooter>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span
-                className={cn([
-                  disabledReason ? "cursor-not-allowed" : "cursor-pointer",
-                ])}
-              >
-                <Button
-                  onClick={apply}
-                  disabled={!!disabledReason || isPending}
-                  className={cn([disabledReason ? "pointer-events-none" : ""])}
-                >
-                  {isPending ? "Applying..." : "Apply and Restart"}
-                </Button>
-              </span>
-            </TooltipTrigger>
-            {disabledReason && (
-              <TooltipContent>
-                <p className="text-xs">{disabledReason}</p>
-              </TooltipContent>
+        {isNewPathChosen && (
+          <DialogFooter className="items-center">
+            {!disabledReason && (
+              <label className="mr-auto flex cursor-pointer items-center gap-2">
+                <Checkbox
+                  checked={copyVault}
+                  onCheckedChange={(v) => setCopyVault(v === true)}
+                />
+                <div className="flex flex-row gap-1">
+                  <span className="text-sm font-semibold text-neutral-600">
+                    Copy
+                  </span>
+                  <span className="text-sm text-neutral-600">
+                    existing data to new location
+                  </span>
+                </div>
+              </label>
             )}
-          </Tooltip>
-        </DialogFooter>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className={cn([
+                    disabledReason ? "cursor-not-allowed" : "cursor-pointer",
+                  ])}
+                >
+                  <Button
+                    onClick={apply}
+                    disabled={!!disabledReason || isPending}
+                    className={cn([
+                      disabledReason ? "pointer-events-none" : "",
+                    ])}
+                  >
+                    {isPending ? "Applying..." : "Apply and Restart"}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {disabledReason && (
+                <TooltipContent>
+                  <p className="text-xs">{disabledReason}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -341,7 +347,7 @@ function StoragePathRow({
       </Tooltip>
       <button
         onClick={() => path && openerCommands.openPath(path, null)}
-        className="min-w-0 flex-1 cursor-pointer truncate text-sm text-neutral-500 hover:underline"
+        className="min-w-0 flex-1 cursor-pointer truncate text-left text-sm text-neutral-500 hover:underline"
       >
         {path && home
           ? shortenPath(tildify(path, home))
