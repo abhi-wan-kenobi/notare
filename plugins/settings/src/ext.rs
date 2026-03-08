@@ -33,8 +33,8 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Settings<'a, R, M> {
     }
 
     pub fn vault_base(&self) -> Result<Utf8PathBuf, crate::Error> {
-        let state = self.manager.state::<crate::state::State>();
-        Utf8PathBuf::from_path_buf(state.vault_base().clone())
+        let snapshot = self.manager.state::<crate::state::StartupSnapshot>();
+        Utf8PathBuf::from_path_buf(snapshot.startup_vault_base().clone())
             .map_err(|_| hypr_storage::Error::PathNotValidUtf8.into())
     }
 
@@ -51,18 +51,18 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Settings<'a, R, M> {
     }
 
     pub async fn load(&self) -> crate::Result<serde_json::Value> {
-        let state = self.manager.state::<crate::state::State>();
-        state.load().await
+        let snapshot = self.manager.state::<crate::state::StartupSnapshot>();
+        snapshot.load().await
     }
 
     pub async fn save(&self, settings: serde_json::Value) -> crate::Result<()> {
-        let state = self.manager.state::<crate::state::State>();
-        state.save(settings).await
+        let snapshot = self.manager.state::<crate::state::StartupSnapshot>();
+        snapshot.save(settings).await
     }
 
     pub fn reset(&self) -> crate::Result<()> {
-        let state = self.manager.state::<crate::state::State>();
-        state.reset()
+        let snapshot = self.manager.state::<crate::state::StartupSnapshot>();
+        snapshot.reset()
     }
 }
 

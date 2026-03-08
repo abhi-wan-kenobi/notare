@@ -37,9 +37,9 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .setup(move |app, _api| {
             specta_builder.mount_events(app);
 
-            let vault_base = app.settings().resolve_startup_vault_base().unwrap();
-            let state = state::State::new(vault_base);
-            assert!(app.manage(state));
+            let startup_vault_base = app.settings().resolve_startup_vault_base().unwrap();
+            let snapshot = state::StartupSnapshot::new(startup_vault_base);
+            assert!(app.manage(snapshot));
             Ok(())
         })
         .build()
