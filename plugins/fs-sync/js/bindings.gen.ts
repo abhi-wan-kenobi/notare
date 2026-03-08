@@ -210,14 +210,14 @@ export type JsonValue = null | boolean | number | string | JsonValue[] | Partial
 export type ListFoldersResult = { folders: Partial<{ [key in string]: FolderInfo }>; session_folder_map: Partial<{ [key in string]: string }> }
 export type ParsedDocument = { frontmatter: Partial<{ [key in string]: JsonValue }>; content: string }
 export type ScanResult = { files: Partial<{ [key in string]: string }>; dirs: string[] }
-export type SessionContentData = { sessionId: string; meta: SessionMetaData | null; rawMemoTiptapJson: JsonValue | null; rawMemoMarkdown: string | null; transcript: TranscriptData | null; notes: SessionNoteData[] }
+export type SessionContentData = { sessionId: string; meta: SessionMetaData | null; rawMemoTiptapJson: JsonValue | null; rawMemoMarkdown: string | null; transcript: TranscriptJson | null; notes: SessionNoteData[] }
 export type SessionMetaData = { id: string; userId: string; createdAt: string | null; title: string | null; event: JsonValue | null; eventId: string | null; participants: SessionMetaParticipant[]; tags: string[] }
 export type SessionMetaParticipant = { id: string; userId: string; sessionId: string; humanId: string; source: string }
 export type SessionNoteData = { id: string; sessionId: string; templateId: string | null; position: number | null; title: string | null; tiptapJson: JsonValue; markdown: string | null }
-export type TranscriptData = { transcripts: TranscriptEntry[] }
-export type TranscriptEntry = { id: string; user_id?: string | null; created_at?: string | null; session_id: string; started_at?: number | null; ended_at?: number | null; words: TranscriptWord[]; speaker_hints?: TranscriptSpeakerHint[] }
+export type TranscriptJson = { transcripts?: TranscriptWithData[] }
 export type TranscriptSpeakerHint = { id?: string | null; word_id: string; type: string; value?: JsonValue }
-export type TranscriptWord = { id: string | null; text: string; start_ms: number; end_ms: number; channel: number }
+export type TranscriptWithData = { id: string; user_id?: string; created_at?: string; session_id: string; started_at?: number; ended_at?: number | null; memo_md?: string; words?: TranscriptWord[]; speaker_hints?: TranscriptSpeakerHint[] }
+export type TranscriptWord = { id?: string | null; text: string; start_ms: number; end_ms: number; channel: number; speaker?: string | null; metadata?: Partial<{ [key in string]: JsonValue }> | null }
 
 /** tauri-specta globals **/
 
