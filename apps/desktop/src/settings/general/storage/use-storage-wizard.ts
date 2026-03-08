@@ -50,12 +50,12 @@ export function useChangeContentPathWizard({
     },
   });
 
-  const chooseFolder = async () => {
+  const chooseFolder = async (defaultPath?: string) => {
     const selected = await selectFolder({
       title: "Choose content location",
       directory: true,
       multiple: false,
-      defaultPath: selectedPath ?? undefined,
+      defaultPath: defaultPath ?? selectedPath ?? undefined,
     });
 
     if (selected) {
@@ -65,6 +65,7 @@ export function useChangeContentPathWizard({
 
   return {
     selectedPath,
+    selectPath: setSelectedPath,
     copyVault,
     setCopyVault,
     chooseFolder,

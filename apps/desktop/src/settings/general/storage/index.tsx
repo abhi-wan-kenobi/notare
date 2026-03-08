@@ -29,20 +29,8 @@ import {
 } from "@hypr/ui/components/ui/tooltip";
 import { cn } from "@hypr/utils";
 
+import { displayPath, shortenPath } from "./path-utils";
 import { useChangeContentPathWizard } from "./use-storage-wizard";
-
-import * as main from "~/store/tinybase/store/main";
-
-function tildify(path: string, home: string) {
-  return path.startsWith(home + "/") ? "~" + path.slice(home.length) : path;
-}
-
-function shortenPath(path: string, maxLength = 48): string {
-  if (path.length <= maxLength) return path;
-  const short = path.slice(path.length - maxLength);
-  const slash = short.indexOf("/");
-  return "\u2026" + (slash > 0 ? short.slice(slash) : short);
-}
 
 export function StorageSettingsView() {
   const queryClient = useQueryClient();
@@ -129,6 +117,7 @@ function ChangeContentPathDialog({
 }) {
   const {
     selectedPath,
+    selectPath,
     copyVault,
     setCopyVault,
     chooseFolder,
@@ -137,10 +126,14 @@ function ChangeContentPathDialog({
     error,
   } = useChangeContentPathWizard({ open, currentPath, onSuccess });
 
-  const currentSessionCount = main.UI.useRowIds(
-    "sessions",
-    main.STORE_ID,
-  ).length;
+  const { data: obsidianVaults } = useQuery({
+    queryKey: ["obsidian-vaults"],
+    queryFn: async () => {
+      const result = await settingsCommands.obsidianVaults();
+      if (result.status === "error") return [];
+      return result.data;
+    },
+  });
 
   const isNewPathChosen = !!selectedPath && selectedPath !== currentPath;
 
@@ -191,42 +184,40 @@ function ChangeContentPathDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col">
-          <PathBox
-            label="Current"
-            path={
-              currentPath && home
-                ? tildify(currentPath, home)
-                : (currentPath ?? "Loading...")
-            }
-            sessionCount={currentSessionCount}
-          />
+        <div className="mb-4 flex flex-col">
+          <PathBox label="Current" path={displayPath(currentPath, home)} />
           <div className="flex justify-center py-2 text-neutral-400">
             <ArrowDownIcon className="size-4" />
           </div>
-          <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
-            <div className="flex items-center gap-3">
+          <div>
+            <p className="mb-1.5 text-xs font-medium tracking-wide text-neutral-500 uppercase">
+              New
+            </p>
+            <div
+              className={cn([
+                "flex items-center gap-3 rounded-lg border bg-neutral-50 px-3 py-2",
+                isNewPathChosen && isNewPathEmpty === false
+                  ? "border-yellow-400"
+                  : "border-neutral-200",
+              ])}
+            >
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium tracking-wide text-neutral-500 uppercase">
-                  New
-                </p>
                 <p
                   className={cn([
-                    "mt-1 text-sm",
+                    "text-sm",
                     selectedPath && selectedPath !== currentPath
                       ? "text-neutral-700"
                       : "text-neutral-400",
                   ])}
                 >
-                  {selectedPath && home
-                    ? shortenPath(tildify(selectedPath, home))
-                    : selectedPath
-                      ? shortenPath(selectedPath)
-                      : "Select a folder"}
+                  {selectedPath
+                    ? displayPath(selectedPath, home)
+                    : "Select a folder"}
                 </p>
-                {isNewPathChosen && isNewPathEmpty !== undefined && (
-                  <p className="mt-1 text-xs text-neutral-400">
-                    {isNewPathEmpty ? "Empty folder" : "Not empty"}
+                {isNewPathChosen && isNewPathEmpty === false && (
+                  <p className="mt-1 text-xs text-yellow-600">
+                    Folder is not empty. Consider creating a dedicated empty
+                    folder (e.g. "meetings") inside it instead.
                   </p>
                 )}
               </div>
@@ -234,11 +225,34 @@ function ChangeContentPathDialog({
                 variant="outline"
                 size="sm"
                 className="shrink-0"
-                onClick={chooseFolder}
+                onClick={() => chooseFolder()}
               >
-                Choose
+                Browse
               </Button>
             </div>
+            {obsidianVaults && obsidianVaults.length > 0 && (
+              <div className="mt-2 flex flex-col gap-1.5">
+                <span className="mt-1 text-xs">
+                  Want to use with your vault?
+                </span>
+                {obsidianVaults.map((vault) => (
+                  <button
+                    key={vault.path}
+                    onClick={() => selectPath(vault.path)}
+                    className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-left text-sm text-neutral-500 transition-colors hover:border-neutral-300 hover:bg-neutral-100"
+                  >
+                    <img
+                      src="/assets/obsidian-icon.svg"
+                      className="size-4 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0 flex-1 truncate">
+                      {displayPath(vault.path, home)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -293,26 +307,15 @@ function ChangeContentPathDialog({
   );
 }
 
-function PathBox({
-  label,
-  path,
-  sessionCount,
-}: {
-  label: string;
-  path: string;
-  sessionCount: number;
-}) {
+function PathBox({ label, path }: { label: string; path: string }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
-      <p className="text-xs font-medium tracking-wide text-neutral-500 uppercase">
+    <div>
+      <p className="mb-1.5 text-xs font-medium tracking-wide text-neutral-500 uppercase">
         {label}
       </p>
-      <p className="mt-1 text-sm text-neutral-700">{shortenPath(path)}</p>
-      <p className="mt-1 text-xs text-neutral-400">
-        {sessionCount === 0
-          ? "No sessions"
-          : `${sessionCount} session${sessionCount === 1 ? "" : "s"}`}
-      </p>
+      <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
+        <p className="text-sm text-neutral-700">{shortenPath(path)}</p>
+      </div>
     </div>
   );
 }
@@ -349,11 +352,7 @@ function StoragePathRow({
         onClick={() => path && openerCommands.openPath(path, null)}
         className="min-w-0 flex-1 cursor-pointer truncate text-left text-sm text-neutral-500 hover:underline"
       >
-        {path && home
-          ? shortenPath(tildify(path, home))
-          : path
-            ? shortenPath(path)
-            : "Loading..."}
+        {displayPath(path, home)}
       </button>
       {action && <div className="shrink-0">{action}</div>}
     </div>
