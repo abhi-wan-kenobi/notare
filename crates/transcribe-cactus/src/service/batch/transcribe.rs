@@ -55,7 +55,18 @@ pub(super) fn transcribe_batch(
             .block_on(chunk_mono_audio(&mono))?,
     };
 
-    let model = match hypr_cactus::Model::new(model_path) {
+    let (custom_vocabulary, vocabulary_boost) =
+        crate::service::deepgram_keywords_to_cactus_vocabulary(&params.keywords);
+
+    let mut model_builder = hypr_cactus::Model::builder(model_path);
+    if !custom_vocabulary.is_empty() {
+        model_builder = model_builder.custom_vocabulary(custom_vocabulary);
+    }
+    if let Some(vocabulary_boost) = vocabulary_boost {
+        model_builder = model_builder.vocabulary_boost(vocabulary_boost);
+    }
+
+    let model = match model_builder.build() {
         Ok(m) => m,
         Err(e) => {
             tracing::error!(error.message = %e, "failed_to_load_model");
@@ -63,15 +74,8 @@ pub(super) fn transcribe_batch(
         }
     };
 
-    let custom_vocabulary = if params.keywords.is_empty() {
-        None
-    } else {
-        Some(params.keywords.clone())
-    };
-
     let options = hypr_cactus::TranscribeOptions {
         language: hypr_cactus::constrain_to(&params.languages),
-        custom_vocabulary,
         ..Default::default()
     };
 

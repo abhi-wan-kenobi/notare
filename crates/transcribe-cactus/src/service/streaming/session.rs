@@ -53,16 +53,9 @@ pub(super) async fn handle_websocket(
     let total_channels = (params.channels as i32).max(1) as usize;
     let chunk_size_ms = 300;
 
-    let custom_vocabulary = if params.keywords.is_empty() {
-        None
-    } else {
-        Some(params.keywords.clone())
-    };
-
     let options = hypr_cactus::TranscribeOptions {
         language: hypr_cactus::constrain_to(&params.languages),
         min_chunk_size: Some((cactus_config.min_chunk_sec * SAMPLE_RATE as f32) as u32),
-        custom_vocabulary,
         ..Default::default()
     };
 
@@ -74,7 +67,18 @@ pub(super) async fn handle_websocket(
     let mut event_streams: futures_util::stream::SelectAll<TaggedStream> =
         futures_util::stream::SelectAll::new();
 
-    let model = match hypr_cactus::Model::builder(&model_path).build() {
+    let (custom_vocabulary, vocabulary_boost) =
+        crate::service::deepgram_keywords_to_cactus_vocabulary(&params.keywords);
+
+    let mut model_builder = hypr_cactus::Model::builder(&model_path);
+    if !custom_vocabulary.is_empty() {
+        model_builder = model_builder.custom_vocabulary(custom_vocabulary);
+    }
+    if let Some(vocabulary_boost) = vocabulary_boost {
+        model_builder = model_builder.vocabulary_boost(vocabulary_boost);
+    }
+
+    let model = match model_builder.build() {
         Ok(m) => std::sync::Arc::new(m),
         Err(e) => {
             tracing::error!(error.message = %e, "failed_to_load_model");

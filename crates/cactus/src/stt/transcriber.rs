@@ -122,7 +122,8 @@ impl std::str::FromStr for StreamResult {
 impl<'a> Transcriber<'a> {
     pub fn new(model: &'a Model, options: &TranscribeOptions, cloud: CloudConfig) -> Result<Self> {
         let guard = model.lock_inference();
-        let options_c = serialize_stream_options(options, &cloud)?;
+        let options = model.transcribe_options(options);
+        let options_c = serialize_stream_options(&options, &cloud)?;
 
         let raw = unsafe {
             cactus_sys::cactus_stream_transcribe_start(guard.raw_handle(), options_c.as_ptr())
