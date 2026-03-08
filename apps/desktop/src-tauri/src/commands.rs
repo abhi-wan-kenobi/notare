@@ -171,7 +171,7 @@ pub async fn list_plugins<R: tauri::Runtime>(
 ) -> Result<Vec<PluginManifestEntry>, String> {
     use tauri_plugin_settings::SettingsPluginExt;
 
-    let base = app.settings().global_base().map_err(|e| e.to_string())?;
+    let base = app.settings().vault_base().map_err(|e| e.to_string())?;
     let plugins_dir = base.join("plugins").into_std_path_buf();
 
     if !plugins_dir.exists() {
