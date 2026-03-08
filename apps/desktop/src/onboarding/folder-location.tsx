@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { homeDir } from "@tauri-apps/api/path";
 import { open as selectFolder } from "@tauri-apps/plugin-dialog";
 import { FolderIcon } from "lucide-react";
 
 import { commands as openerCommands } from "@hypr/plugin-opener2";
 import { commands as settingsCommands } from "@hypr/plugin-settings";
+
+import { relaunch } from "~/store/tinybase/store/save";
 
 export function FolderLocationSection({
   onContinue,
@@ -12,6 +15,7 @@ export function FolderLocationSection({
 }) {
   const queryClient = useQueryClient();
 
+  const { data: home } = useQuery({ queryKey: ["home-dir"], queryFn: homeDir });
   const { data: vaultBase } = useQuery({
     queryKey: ["vault-base-path"],
     queryFn: async () => {
@@ -35,8 +39,9 @@ export function FolderLocationSection({
         throw new Error(result.error);
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["vault-base-path"] });
+      await relaunch();
     },
   });
 
@@ -67,7 +72,11 @@ export function FolderLocationSection({
           onClick={handleOpenPath}
           className="min-w-0 flex-1 truncate text-left text-sm text-neutral-600 hover:underline"
         >
-          {vaultBase ?? "Loading..."}
+          {vaultBase && home
+            ? vaultBase.startsWith(home + "/")
+              ? "~" + vaultBase.slice(home.length)
+              : vaultBase
+            : (vaultBase ?? "Loading...")}
         </button>
         <button
           onClick={handleChange}

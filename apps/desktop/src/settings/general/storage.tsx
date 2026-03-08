@@ -1,11 +1,19 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { open as selectFolder } from "@tauri-apps/plugin-dialog";
-import { FolderIcon, type LucideIcon, Settings2Icon } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { homeDir } from "@tauri-apps/api/path";
+import {
+  ArrowDownIcon,
+  FolderIcon,
+  type LucideIcon,
+  Settings2Icon,
+} from "lucide-react";
+import { type ReactNode } from "react";
+import { useState } from "react";
 
+import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
 import { commands as settingsCommands } from "@hypr/plugin-settings";
 import { Button } from "@hypr/ui/components/ui/button";
+import { Checkbox } from "@hypr/ui/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -21,10 +29,24 @@ import {
 } from "@hypr/ui/components/ui/tooltip";
 import { cn } from "@hypr/utils";
 
-import { relaunch } from "~/store/tinybase/store/save";
+import { useChangeContentPathWizard } from "./use-storage-wizard";
+
+import * as main from "~/store/tinybase/store/main";
+
+function tildify(path: string, home: string) {
+  return path.startsWith(home + "/") ? "~" + path.slice(home.length) : path;
+}
+
+function shortenPath(path: string, maxLength = 48): string {
+  if (path.length <= maxLength) return path;
+  const short = path.slice(path.length - maxLength);
+  const slash = short.indexOf("/");
+  return "\u2026" + (slash > 0 ? short.slice(slash) : short);
+}
 
 export function StorageSettingsView() {
   const queryClient = useQueryClient();
+  const { data: home } = useQuery({ queryKey: ["home-dir"], queryFn: homeDir });
   const { data: othersBase } = useQuery({
     queryKey: ["others-base-path"],
     queryFn: async () => {
@@ -57,12 +79,13 @@ export function StorageSettingsView() {
           title="Content"
           description="Stores your notes, recordings, and session data"
           path={contentBase}
+          home={home}
           action={
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowDialog(true)}
-              disabled={true}
+              disabled={!contentBase}
             >
               Customize
             </Button>
@@ -73,11 +96,13 @@ export function StorageSettingsView() {
           title="Others"
           description="Stores app-wide settings and configurations"
           path={othersBase}
+          home={home}
         />
       </div>
       <ChangeContentPathDialog
         open={showDialog}
         currentPath={contentBase}
+        home={home}
         onOpenChange={setShowDialog}
         onSuccess={() => {
           void queryClient.invalidateQueries({
@@ -92,213 +117,197 @@ export function StorageSettingsView() {
 function ChangeContentPathDialog({
   open,
   currentPath,
+  home,
   onOpenChange,
   onSuccess,
 }: {
   open: boolean;
   currentPath: string | undefined;
+  home: string | undefined;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }) {
-  const [step, setStep] = useState<"path" | "copy">("path");
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [copyVault, setCopyVault] = useState(true);
+  const {
+    selectedPath,
+    copyVault,
+    setCopyVault,
+    chooseFolder,
+    apply,
+    isPending,
+    error,
+  } = useChangeContentPathWizard({ open, currentPath, onSuccess });
 
-  useEffect(() => {
-    if (!open) return;
-    setStep("path");
-    setSelectedPath(currentPath ?? null);
-    setCopyVault(true);
-  }, [currentPath, open]);
+  const currentSessionCount = main.UI.useRowIds(
+    "sessions",
+    main.STORE_ID,
+  ).length;
 
-  const applyMutation = useMutation({
-    mutationFn: async ({
-      newPath,
-      shouldCopy,
-    }: {
-      newPath: string;
-      shouldCopy: boolean;
-    }) => {
-      if (shouldCopy) {
-        const copyResult = await settingsCommands.copyVault(newPath);
-        if (copyResult.status === "error") {
-          throw new Error(copyResult.error);
-        }
-      }
+  const isNewPathChosen = !!selectedPath && selectedPath !== currentPath;
 
-      const setResult = await settingsCommands.setVaultBase(newPath);
-      if (setResult.status === "error") {
-        throw new Error(setResult.error);
-      }
-    },
-    onSuccess: async () => {
-      onSuccess();
-      await relaunch();
+  const { data: isNewPathEmpty, isLoading: isCheckingNewPath } = useQuery({
+    queryKey: ["path-empty-check", selectedPath],
+    enabled: isNewPathChosen,
+    queryFn: async () => {
+      const result = await fsSyncCommands.scanAndRead(
+        selectedPath!,
+        ["*"],
+        false,
+        null,
+      );
+      if (result.status === "error") return true; // dir doesn't exist yet → trivially empty, Rust will create it
+      return (
+        Object.keys(result.data.files).length === 0 &&
+        result.data.dirs.length === 0
+      );
     },
   });
 
-  const chooseFolder = async () => {
-    const selected = await selectFolder({
-      title: "Choose content location",
-      directory: true,
-      multiple: false,
-      defaultPath: selectedPath ?? currentPath ?? undefined,
-    });
-
-    if (selected) {
-      setSelectedPath(selected);
-    }
-  };
-
-  const canContinue =
-    !!selectedPath &&
-    !!currentPath &&
-    selectedPath !== currentPath &&
-    !applyMutation.isPending;
-
-  const apply = () => {
-    if (!selectedPath || !currentPath || selectedPath === currentPath) {
-      return;
-    }
-
-    applyMutation.mutate({
-      newPath: selectedPath,
-      shouldCopy: copyVault,
-    });
-  };
+  const disabledReason = (() => {
+    if (!selectedPath || selectedPath === currentPath)
+      return "Select a different folder";
+    if (isCheckingNewPath) return "Checking folder...";
+    if (isNewPathEmpty === false) return "Folder must be empty";
+    return null;
+  })();
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (applyMutation.isPending) {
-          return;
-        }
+        if (isPending) return;
         onOpenChange(nextOpen);
       }}
     >
       <DialogContent>
-        {step === "path" ? (
-          <>
-            <DialogHeader>
-              <DialogTitle>Change content location</DialogTitle>
-              <DialogDescription>
-                Choose where Char should store notes, recordings, and session
-                data after restart.
-              </DialogDescription>
-            </DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Change content location</DialogTitle>
+          <DialogDescription>
+            Choose where Char should store data. (notes, settings, etc)
+          </DialogDescription>
+        </DialogHeader>
 
-            <div className="flex flex-col gap-4">
-              <StoragePreview
-                label="Current"
-                path={currentPath ?? "Loading..."}
-              />
-              <StoragePreview
-                label="New"
-                path={selectedPath ?? "Select a folder"}
-              />
-              <div className="flex justify-end">
-                <Button variant="outline" onClick={chooseFolder}>
-                  Choose Folder
-                </Button>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => setStep("copy")} disabled={!canContinue}>
-                Continue
-              </Button>
-            </DialogFooter>
-          </>
-        ) : (
-          <>
-            <DialogHeader>
-              <DialogTitle>Move existing content?</DialogTitle>
-              <DialogDescription>
-                Choose whether Char should copy your current vault into the new
-                location before restarting.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="flex flex-col gap-3">
-              <CopyChoiceCard
-                title="Copy existing content"
-                description="Recommended. Notes, recordings, and session files will be copied to the new folder."
-                selected={copyVault}
-                onClick={() => setCopyVault(true)}
-              />
-              <CopyChoiceCard
-                title="Start with an empty folder"
-                description="Only the new location will be saved. Existing content stays where it is."
-                selected={!copyVault}
-                onClick={() => setCopyVault(false)}
-              />
-              <StoragePreview label="New location" path={selectedPath ?? ""} />
-              {applyMutation.error ? (
-                <p className="text-sm text-red-500">
-                  {applyMutation.error.message}
+        <div className="flex flex-col">
+          <PathBox
+            label="Current"
+            path={
+              currentPath && home
+                ? tildify(currentPath, home)
+                : (currentPath ?? "Loading...")
+            }
+            sessionCount={currentSessionCount}
+          />
+          <div className="flex justify-center py-2 text-neutral-400">
+            <ArrowDownIcon className="size-4" />
+          </div>
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium tracking-wide text-neutral-500 uppercase">
+                  New
                 </p>
-              ) : null}
-            </div>
-
-            <DialogFooter>
+                <p
+                  className={cn([
+                    "mt-1 text-sm",
+                    selectedPath && selectedPath !== currentPath
+                      ? "text-neutral-700"
+                      : "text-neutral-400",
+                  ])}
+                >
+                  {selectedPath && home
+                    ? shortenPath(tildify(selectedPath, home))
+                    : selectedPath
+                      ? shortenPath(selectedPath)
+                      : "Select a folder"}
+                </p>
+                {isNewPathChosen && isNewPathEmpty !== undefined && (
+                  <p
+                    className={cn([
+                      "mt-1 text-xs",
+                      isNewPathEmpty ? "text-neutral-400" : "text-amber-600",
+                    ])}
+                  >
+                    {isNewPathEmpty
+                      ? "Empty folder"
+                      : "Not empty — must be empty"}
+                  </p>
+                )}
+              </div>
               <Button
                 variant="outline"
-                onClick={() => setStep("path")}
-                disabled={applyMutation.isPending}
+                size="sm"
+                className="shrink-0"
+                onClick={chooseFolder}
               >
-                Back
+                Choose
               </Button>
-              <Button onClick={apply} disabled={!canContinue}>
-                {applyMutation.isPending ? "Applying..." : "Apply and Restart"}
-              </Button>
-            </DialogFooter>
-          </>
+            </div>
+          </div>
+        </div>
+
+        {isNewPathChosen && !disabledReason && (
+          <label className="flex cursor-pointer items-center gap-2">
+            <Checkbox
+              checked={copyVault}
+              onCheckedChange={(v) => setCopyVault(v === true)}
+            />
+            <span className="text-sm text-neutral-600">
+              Copy existing sessions to new location
+            </span>
+          </label>
         )}
+
+        {error && <p className="text-sm text-red-500">{error.message}</p>}
+
+        <DialogFooter>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className={cn([
+                  disabledReason ? "cursor-not-allowed" : "cursor-pointer",
+                ])}
+              >
+                <Button
+                  onClick={apply}
+                  disabled={!!disabledReason || isPending}
+                  className={cn([disabledReason ? "pointer-events-none" : ""])}
+                >
+                  {isPending ? "Applying..." : "Apply and Restart"}
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {disabledReason && (
+              <TooltipContent>
+                <p className="text-xs">{disabledReason}</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function StoragePreview({ label, path }: { label: string; path: string }) {
+function PathBox({
+  label,
+  path,
+  sessionCount,
+}: {
+  label: string;
+  path: string;
+  sessionCount: number;
+}) {
   return (
     <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
       <p className="text-xs font-medium tracking-wide text-neutral-500 uppercase">
         {label}
       </p>
-      <p className="mt-1 text-sm break-all text-neutral-700">{path}</p>
+      <p className="mt-1 text-sm text-neutral-700">{shortenPath(path)}</p>
+      <p className="mt-1 text-xs text-neutral-400">
+        {sessionCount === 0
+          ? "No sessions"
+          : `${sessionCount} session${sessionCount === 1 ? "" : "s"}`}
+      </p>
     </div>
-  );
-}
-
-function CopyChoiceCard({
-  title,
-  description,
-  selected,
-  onClick,
-}: {
-  title: string;
-  description: string;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn([
-        "rounded-lg border px-4 py-3 text-left transition-colors",
-        selected
-          ? "border-stone-400 bg-stone-50"
-          : "border-neutral-200 bg-white hover:border-neutral-300",
-      ])}
-    >
-      <p className="text-sm font-medium text-neutral-800">{title}</p>
-      <p className="mt-1 text-sm text-neutral-500">{description}</p>
-    </button>
   );
 }
 
@@ -307,20 +316,16 @@ function StoragePathRow({
   title,
   description,
   path,
+  home,
   action,
 }: {
   icon: LucideIcon;
   title: string;
   description: string;
   path: string | undefined;
+  home: string | undefined;
   action?: ReactNode;
 }) {
-  const handleOpenPath = () => {
-    if (path) {
-      openerCommands.openPath(path, null);
-    }
-  };
-
   return (
     <div className="flex items-center gap-3">
       <Tooltip delayDuration={0}>
@@ -335,10 +340,14 @@ function StoragePathRow({
         </TooltipContent>
       </Tooltip>
       <button
-        onClick={handleOpenPath}
-        className="min-w-0 flex-1 cursor-pointer truncate text-left text-sm text-neutral-500 hover:underline"
+        onClick={() => path && openerCommands.openPath(path, null)}
+        className="min-w-0 flex-1 cursor-pointer truncate text-sm text-neutral-500 hover:underline"
       >
-        {path ?? "Loading..."}
+        {path && home
+          ? shortenPath(tildify(path, home))
+          : path
+            ? shortenPath(path)
+            : "Loading..."}
       </button>
       {action && <div className="shrink-0">{action}</div>}
     </div>
