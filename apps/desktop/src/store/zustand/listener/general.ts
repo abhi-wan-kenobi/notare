@@ -526,21 +526,16 @@ export const createGeneralSlice = <
 
       settled = true;
 
-      if (output.mode === "direct") {
-        try {
-          get().handleBatchResponse(sessionId, output.response);
-          cleanup();
-        } catch (error) {
-          console.error("[runBatch] error handling batch response", error);
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          get().handleBatchFailed(sessionId, errorMessage);
-          cleanup(false);
-          throw error;
-        }
-      } else {
-        get().handleBatchCompleted(sessionId);
+      try {
+        get().handleBatchResponse(sessionId, output.response);
         cleanup();
+      } catch (error) {
+        console.error("[runBatch] error handling batch response", error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        get().handleBatchFailed(sessionId, errorMessage);
+        cleanup(false);
+        throw error;
       }
 
       resolve();

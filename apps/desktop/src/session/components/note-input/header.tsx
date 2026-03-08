@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircleIcon, PlusIcon, RefreshCwIcon, XIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import {
@@ -18,6 +18,11 @@ import {
   useScrollFade,
 } from "@hypr/ui/components/ui/scroll-fade";
 import { Spinner } from "@hypr/ui/components/ui/spinner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@hypr/ui/components/ui/tooltip";
 import { cn } from "@hypr/utils";
 
 import { EditingControls } from "./transcript/editing-controls";
@@ -66,6 +71,7 @@ function HeaderTabTranscript({
     sessionMode: state.getSessionMode(sessionId),
     progressRaw: state.batch[sessionId] ?? null,
   }));
+  const batchError = progressRaw?.error ?? null;
   const isBatchProcessing = sessionMode === "running_batch";
   const isSessionInactive =
     sessionMode !== "active" &&
@@ -136,37 +142,40 @@ function HeaderTabTranscript({
     [audioExists, isBatchProcessing, runBatch, sessionId, store],
   );
 
-  const progressLabel = useMemo(() => {
-    if (!progressRaw || progressRaw.percentage === 0) {
-      if (progressRaw?.phase === "importing") return "Importing...";
-      return "";
-    }
-    return `${Math.round(progressRaw.percentage * 100)}%`;
-  }, [progressRaw]);
-
   const showRefreshButton = audioExists && isActive && isSessionInactive;
   const showProgress = audioExists && isActive && isProcessing;
+  const refreshButton = (
+    <span
+      onClick={handleRefreshClick}
+      className={cn([
+        "inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-xs transition-colors",
+        batchError
+          ? [
+              "text-red-600 hover:bg-red-50 focus-visible:bg-red-50",
+              "hover:text-neutral-900 focus-visible:text-neutral-900",
+            ]
+          : ["hover:bg-neutral-200 focus-visible:bg-neutral-200"],
+      ])}
+    >
+      <RefreshCwIcon size={12} />
+    </span>
+  );
 
   return (
     <NoteTab isActive={isActive} onClick={onClick}>
       Transcript
-      {showRefreshButton && (
-        <span
-          onClick={handleRefreshClick}
-          className={cn([
-            "inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-xs transition-colors",
-            "hover:bg-neutral-200 focus-visible:bg-neutral-200",
-          ])}
-        >
-          <RefreshCwIcon size={12} />
-        </span>
-      )}
+      {showRefreshButton &&
+        (batchError ? (
+          <Tooltip>
+            <TooltipTrigger asChild>{refreshButton}</TooltipTrigger>
+            <TooltipContent>{batchError}</TooltipContent>
+          </Tooltip>
+        ) : (
+          refreshButton
+        ))}
       {showProgress && (
-        <span className="inline-flex items-center gap-1 text-neutral-500">
+        <span className="inline-flex items-center text-neutral-500">
           <Spinner size={12} />
-          {progressLabel && (
-            <span className="text-[10px] tabular-nums">{progressLabel}</span>
-          )}
         </span>
       )}
     </NoteTab>

@@ -182,6 +182,59 @@ mod tests {
     }
 
     #[test]
+    fn batch_response_multi_channel_shape() {
+        let meta = Metadata {
+            model_info: ModelInfo {
+                name: "test".to_string(),
+                version: "1.0".to_string(),
+                arch: "cactus".to_string(),
+            },
+            extra: Some(Extra::default().into()),
+            ..Default::default()
+        };
+
+        let mut metadata = serde_json::to_value(&meta).unwrap();
+        if let Some(obj) = metadata.as_object_mut() {
+            obj.insert("duration".to_string(), serde_json::json!(2.0));
+            obj.insert("channels".to_string(), serde_json::json!(2));
+        }
+
+        let response = batch::Response {
+            metadata,
+            results: batch::Results {
+                channels: vec![
+                    batch::Channel {
+                        alternatives: vec![batch::Alternatives {
+                            transcript: "left".to_string(),
+                            confidence: 0.9,
+                            words: build_batch_words("left", 1.0, 0.9),
+                        }],
+                    },
+                    batch::Channel {
+                        alternatives: vec![batch::Alternatives {
+                            transcript: "right".to_string(),
+                            confidence: 0.8,
+                            words: build_batch_words("right", 1.0, 0.8),
+                        }],
+                    },
+                ],
+            },
+        };
+
+        let v: serde_json::Value = serde_json::to_value(&response).unwrap();
+        assert_eq!(v["metadata"]["channels"], 2);
+        assert_eq!(v["results"]["channels"].as_array().unwrap().len(), 2);
+        assert_eq!(
+            v["results"]["channels"][0]["alternatives"][0]["transcript"],
+            "left"
+        );
+        assert_eq!(
+            v["results"]["channels"][1]["alternatives"][0]["transcript"],
+            "right"
+        );
+    }
+
+    #[test]
     fn segment_stream_response_ends_before_boundary() {
         let meta = Metadata {
             model_info: ModelInfo {

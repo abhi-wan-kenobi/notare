@@ -1,15 +1,12 @@
-use std::sync::Arc;
-
 use hypr_supervisor::{RestartBudget, RestartTracker, RetryStrategy, spawn_with_retry};
 use ractor::concurrency::Duration;
 use ractor::{Actor, ActorCell, ActorProcessingErr, ActorRef, SupervisionEvent};
 use tracing::Instrument;
 
-use crate::actors::session::lifecycle;
 use crate::actors::session::types::{SessionContext, session_span, session_supervisor_name};
 use crate::actors::{
     ChannelMode, ListenerActor, ListenerArgs, RecArgs, RecMsg, RecorderActor, SourceActor,
-    SourceArgs,
+    SourceArgs, SourceMsg,
 };
 use crate::{DegradedError, SessionLifecycleEvent};
 
@@ -31,14 +28,16 @@ const RETRY_STRATEGY: RetryStrategy = RetryStrategy {
     base_delay: Duration::from_millis(100),
 };
 
+const CHILD_STOP_TIMEOUT: Duration = Duration::from_secs(30);
+
 pub struct SessionState {
     ctx: SessionContext,
     source_cell: Option<ActorCell>,
     listener_cell: Option<ActorCell>,
     recorder_cell: Option<ActorCell>,
-    recorder_done: Option<tokio::sync::oneshot::Receiver<()>>,
     source_restarts: RestartTracker,
     recorder_restarts: RestartTracker,
+    listener_buffering_enabled: bool,
     shutting_down: bool,
 }
 
@@ -64,45 +63,33 @@ impl Actor for SessionActor {
         let span = session_span(&session_id);
 
         async {
-            let (source_ref, _) = Actor::spawn_linked(
-                Some(SourceActor::name()),
-                SourceActor,
-                SourceArgs {
-                    mic_device: None,
-                    onboarding: ctx.params.onboarding,
-                    runtime: ctx.runtime.clone(),
-                    session_id: ctx.params.session_id.clone(),
-                },
-                myself.get_cell(),
-            )
-            .await?;
-
-            let (recorder_cell, recorder_done) = if ctx.params.record_enabled {
-                let (done_tx, done_rx) = tokio::sync::oneshot::channel();
-                let (recorder_ref, _): (ActorRef<RecMsg>, _) = Actor::spawn_linked(
-                    Some(RecorderActor::name()),
-                    RecorderActor::new(),
-                    RecArgs {
-                        app_dir: ctx.app_dir.clone(),
-                        session_id: ctx.params.session_id.clone(),
-                        done_tx: Some(done_tx),
-                    },
-                    myself.get_cell(),
+            let recorder_cell = if ctx.params.record_enabled {
+                Some(
+                    spawn_recorder(myself.get_cell(), &ctx)
+                        .await
+                        .map_err(|e| -> ActorProcessingErr { Box::new(e) })?,
                 )
-                .await?;
-                (Some(recorder_ref.get_cell()), Some(done_rx))
             } else {
-                (None, None)
+                None
             };
+
+            let source_ref = spawn_source(
+                myself.get_cell(),
+                &ctx,
+                recorder_cell.as_ref().cloned(),
+                crate::actors::source::ListenerRouting::Buffering,
+            )
+            .await
+            .map_err(|e| -> ActorProcessingErr { Box::new(e) })?;
 
             Ok(SessionState {
                 ctx,
                 source_cell: Some(source_ref.get_cell()),
                 listener_cell: None,
                 recorder_cell,
-                recorder_done,
                 source_restarts: RestartTracker::new(),
                 recorder_restarts: RestartTracker::new(),
+                listener_buffering_enabled: true,
                 shutting_down: false,
             })
         }
@@ -143,20 +130,17 @@ impl Actor for SessionActor {
             {
                 Ok((listener_ref, _)) => {
                     state.listener_cell = Some(listener_ref.get_cell());
+                    attach_listener_to_source(state).await;
                 }
                 Err(e) => {
                     tracing::warn!(?e, "listener_spawn_failed_entering_degraded_mode");
-                    let base_url = &state.ctx.params.base_url;
-                    let degraded = DegradedError::UpstreamUnavailable {
-                        message: classify_connection_failure(base_url),
-                    };
-                    state
-                        .ctx
-                        .runtime
-                        .emit_lifecycle(SessionLifecycleEvent::Active {
-                            session_id: state.ctx.params.session_id.clone(),
-                            error: Some(degraded),
-                        });
+                    enter_degraded_mode(
+                        state,
+                        DegradedError::UpstreamUnavailable {
+                            message: classify_connection_failure(&state.ctx.params.base_url),
+                        },
+                    )
+                    .await;
                 }
             }
             Ok(())
@@ -174,20 +158,7 @@ impl Actor for SessionActor {
         match message {
             SessionMsg::Shutdown => {
                 state.shutting_down = true;
-
-                if let Some(cell) = state.recorder_cell.take() {
-                    let done = state.recorder_done.take();
-                    cell.stop(Some("session_stop".to_string()));
-                    wait_for_recorder_done(done).await;
-                }
-
-                if let Some(cell) = state.source_cell.take() {
-                    cell.stop(Some("session_stop".to_string()));
-                }
-                if let Some(cell) = state.listener_cell.take() {
-                    cell.stop(Some("session_stop".to_string()));
-                }
-
+                shutdown_children(state, "session_stop").await;
                 myself.stop(None);
             }
         }
@@ -217,16 +188,8 @@ impl Actor for SessionActor {
                 match identify_child(state, &cell) {
                     Some(ChildKind::Listener) => {
                         tracing::info!(?reason, "listener_terminated_entering_degraded_mode");
-                        let degraded = parse_degraded_reason(reason.as_ref());
                         state.listener_cell = None;
-
-                        state
-                            .ctx
-                            .runtime
-                            .emit_lifecycle(SessionLifecycleEvent::Active {
-                                session_id: state.ctx.params.session_id.clone(),
-                                error: Some(degraded),
-                            });
+                        enter_degraded_mode(state, parse_degraded_reason(reason.as_ref())).await;
                     }
                     Some(ChildKind::Source) => {
                         tracing::info!(?reason, "source_terminated_attempting_restart");
@@ -240,6 +203,7 @@ impl Actor for SessionActor {
                     Some(ChildKind::Recorder) => {
                         tracing::info!(?reason, "recorder_terminated_attempting_restart");
                         state.recorder_cell = None;
+                        sync_source_recorder(state).await;
                         if !try_restart_recorder(myself.get_cell(), state).await {
                             tracing::error!("recorder_restart_limit_exceeded_meltdown");
                             meltdown(myself, state).await;
@@ -254,18 +218,14 @@ impl Actor for SessionActor {
             SupervisionEvent::ActorFailed(cell, error) => match identify_child(state, &cell) {
                 Some(ChildKind::Listener) => {
                     tracing::info!(?error, "listener_failed_entering_degraded_mode");
-                    let degraded = DegradedError::StreamError {
-                        message: format!("{:?}", error),
-                    };
                     state.listener_cell = None;
-
-                    state
-                        .ctx
-                        .runtime
-                        .emit_lifecycle(SessionLifecycleEvent::Active {
-                            session_id: state.ctx.params.session_id.clone(),
-                            error: Some(degraded),
-                        });
+                    enter_degraded_mode(
+                        state,
+                        DegradedError::StreamError {
+                            message: format!("{:?}", error),
+                        },
+                    )
+                    .await;
                 }
                 Some(ChildKind::Source) => {
                     tracing::warn!(?error, "source_failed_attempting_restart");
@@ -278,6 +238,7 @@ impl Actor for SessionActor {
                 Some(ChildKind::Recorder) => {
                     tracing::warn!(?error, "recorder_failed_attempting_restart");
                     state.recorder_cell = None;
+                    sync_source_recorder(state).await;
                     if !try_restart_recorder(myself.get_cell(), state).await {
                         tracing::error!("recorder_restart_limit_exceeded_meltdown");
                         meltdown(myself, state).await;
@@ -327,27 +288,17 @@ async fn try_restart_source(
     }
 
     let sup = supervisor_cell;
-    let onboarding = state.ctx.params.onboarding;
-    let runtime = state.ctx.runtime.clone();
-    let session_id = state.ctx.params.session_id.clone();
+    let ctx = state.ctx.clone();
+    let recorder_cell = state.recorder_cell.as_ref().cloned();
+    let listener_routing = current_listener_routing(state);
 
     let cell = spawn_with_retry(&RETRY_STRATEGY, || {
         let sup = sup.clone();
-        let runtime = runtime.clone();
-        let session_id = session_id.clone();
+        let ctx = ctx.clone();
+        let recorder_cell = recorder_cell.clone();
+        let listener_routing = listener_routing.clone();
         async move {
-            let (r, _) = Actor::spawn_linked(
-                Some(SourceActor::name()),
-                SourceActor,
-                SourceArgs {
-                    mic_device: None,
-                    onboarding,
-                    runtime,
-                    session_id,
-                },
-                sup,
-            )
-            .await?;
+            let r = spawn_source(sup, &ctx, recorder_cell, listener_routing).await?;
             Ok(r.get_cell())
         }
     })
@@ -372,37 +323,19 @@ async fn try_restart_recorder(supervisor_cell: ActorCell, state: &mut SessionSta
     }
 
     let sup = supervisor_cell;
-    let app_dir = state.ctx.app_dir.clone();
-    let session_id = state.ctx.params.session_id.clone();
-    let (done_tx, done_rx) = tokio::sync::oneshot::channel();
-    let done_tx = Arc::new(std::sync::Mutex::new(Some(done_tx)));
+    let ctx = state.ctx.clone();
 
     let cell = spawn_with_retry(&RETRY_STRATEGY, || {
         let sup = sup.clone();
-        let app_dir = app_dir.clone();
-        let session_id = session_id.clone();
-        let done_tx = done_tx.lock().unwrap().take();
-        async move {
-            let (r, _): (ActorRef<RecMsg>, _) = Actor::spawn_linked(
-                Some(RecorderActor::name()),
-                RecorderActor::new(),
-                RecArgs {
-                    app_dir,
-                    session_id,
-                    done_tx,
-                },
-                sup,
-            )
-            .await?;
-            Ok(r.get_cell())
-        }
+        let ctx = ctx.clone();
+        async move { Ok(spawn_recorder(sup, &ctx).await?) }
     })
     .await;
 
     match cell {
         Some(c) => {
             state.recorder_cell = Some(c);
-            state.recorder_done = Some(done_rx);
+            sync_source_recorder(state).await;
             true
         }
         None => false,
@@ -411,30 +344,8 @@ async fn try_restart_recorder(supervisor_cell: ActorCell, state: &mut SessionSta
 
 async fn meltdown(myself: ActorRef<SessionMsg>, state: &mut SessionState) {
     state.shutting_down = true;
-
-    if let Some(cell) = state.source_cell.take() {
-        cell.stop(Some("meltdown".to_string()));
-    }
-    if let Some(cell) = state.listener_cell.take() {
-        cell.stop(Some("meltdown".to_string()));
-    }
-    if let Some(cell) = state.recorder_cell.take() {
-        let done = state.recorder_done.take();
-        cell.stop(Some("meltdown".to_string()));
-        wait_for_recorder_done(done).await;
-    }
+    shutdown_children(state, "meltdown").await;
     myself.stop(Some("restart_limit_exceeded".to_string()));
-}
-
-async fn wait_for_recorder_done(done: Option<tokio::sync::oneshot::Receiver<()>>) {
-    match done {
-        Some(rx) => {
-            tokio::time::timeout(Duration::from_secs(30), rx).await.ok();
-        }
-        None => {
-            lifecycle::wait_for_actor_shutdown(RecorderActor::name()).await;
-        }
-    }
 }
 
 fn classify_connection_failure(base_url: &str) -> String {
@@ -463,9 +374,194 @@ pub async fn spawn_session_supervisor(
     Ok((actor_ref.get_cell(), handle))
 }
 
+async fn spawn_source(
+    supervisor_cell: ActorCell,
+    ctx: &SessionContext,
+    recorder_cell: Option<ActorCell>,
+    listener_routing: crate::actors::source::ListenerRouting,
+) -> Result<ActorRef<SourceMsg>, ractor::SpawnErr> {
+    let recorder = recorder_cell.map(Into::into);
+    let (source_ref, _) = Actor::spawn_linked(
+        Some(SourceActor::name()),
+        SourceActor,
+        SourceArgs {
+            mic_device: None,
+            onboarding: ctx.params.onboarding,
+            runtime: ctx.runtime.clone(),
+            session_id: ctx.params.session_id.clone(),
+            listener_routing,
+            recorder,
+        },
+        supervisor_cell,
+    )
+    .await?;
+    Ok(source_ref)
+}
+
+async fn spawn_recorder(
+    supervisor_cell: ActorCell,
+    ctx: &SessionContext,
+) -> Result<ActorCell, ractor::SpawnErr> {
+    let (recorder_ref, _): (ActorRef<RecMsg>, _) = Actor::spawn_linked(
+        Some(RecorderActor::name()),
+        RecorderActor::new(),
+        RecArgs {
+            app_dir: ctx.app_dir.clone(),
+            session_id: ctx.params.session_id.clone(),
+        },
+        supervisor_cell,
+    )
+    .await?;
+    Ok(recorder_ref.get_cell())
+}
+
+fn current_listener_routing(state: &SessionState) -> crate::actors::source::ListenerRouting {
+    if let Some(cell) = &state.listener_cell {
+        crate::actors::source::ListenerRouting::Attached(cell.clone().into())
+    } else if state.listener_buffering_enabled {
+        crate::actors::source::ListenerRouting::Buffering
+    } else {
+        crate::actors::source::ListenerRouting::Dropped
+    }
+}
+
+async fn attach_listener_to_source(state: &SessionState) {
+    if let Some(source_cell) = &state.source_cell {
+        let source_ref: ActorRef<SourceMsg> = source_cell.clone().into();
+        if let Err(error) = source_ref.cast(SourceMsg::SetListenerRouting(
+            current_listener_routing(state),
+        )) {
+            tracing::warn!(?error, "failed_to_attach_listener_to_source");
+        }
+    }
+}
+
+async fn sync_source_recorder(state: &SessionState) {
+    if let Some(source_cell) = &state.source_cell {
+        let source_ref: ActorRef<SourceMsg> = source_cell.clone().into();
+        let recorder = state.recorder_cell.as_ref().map(|cell| cell.clone().into());
+        if let Err(error) = source_ref.cast(SourceMsg::SetRecorder(recorder)) {
+            tracing::warn!(?error, "failed_to_update_source_recorder");
+        }
+    }
+}
+
+async fn enter_degraded_mode(state: &mut SessionState, degraded: DegradedError) {
+    state.listener_buffering_enabled = false;
+    attach_listener_to_source(state).await;
+    state
+        .ctx
+        .runtime
+        .emit_lifecycle(SessionLifecycleEvent::Active {
+            session_id: state.ctx.params.session_id.clone(),
+            error: Some(degraded),
+        });
+}
+
+async fn shutdown_children(state: &mut SessionState, reason: &str) {
+    if let Some(cell) = state.source_cell.take() {
+        stop_child(&cell, reason, "source").await;
+    }
+    if let Some(cell) = state.listener_cell.take() {
+        stop_child(&cell, reason, "listener").await;
+    }
+    if let Some(cell) = state.recorder_cell.take() {
+        stop_child(&cell, reason, "recorder").await;
+    }
+}
+
+async fn stop_child(cell: &ActorCell, reason: &str, child: &str) {
+    if let Err(error) = cell
+        .stop_and_wait(Some(reason.to_string()), Some(CHILD_STOP_TIMEOUT))
+        .await
+    {
+        tracing::warn!(?error, %child, "child_stop_and_wait_failed");
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+    use std::sync::Arc;
+    use std::time::{Instant, SystemTime};
+
+    use ractor::ActorStatus;
+
     use super::*;
+    use crate::{
+        ListenerRuntime, SessionDataEvent, SessionErrorEvent, SessionProgressEvent,
+        actors::SessionParams,
+    };
+
+    struct TestRuntime;
+
+    impl hypr_storage::StorageRuntime for TestRuntime {
+        fn global_base(&self) -> Result<PathBuf, hypr_storage::Error> {
+            Ok(std::env::temp_dir())
+        }
+
+        fn vault_base(&self) -> Result<PathBuf, hypr_storage::Error> {
+            Ok(std::env::temp_dir())
+        }
+    }
+
+    impl ListenerRuntime for TestRuntime {
+        fn emit_lifecycle(&self, _event: SessionLifecycleEvent) {}
+
+        fn emit_progress(&self, _event: SessionProgressEvent) {}
+
+        fn emit_error(&self, _event: SessionErrorEvent) {}
+
+        fn emit_data(&self, _event: SessionDataEvent) {}
+    }
+
+    struct StopProbe {
+        label: &'static str,
+        tx: tokio::sync::mpsc::UnboundedSender<&'static str>,
+    }
+
+    #[ractor::async_trait]
+    impl Actor for StopProbe {
+        type Msg = ();
+        type State = ();
+        type Arguments = ();
+
+        async fn pre_start(
+            &self,
+            _myself: ActorRef<Self::Msg>,
+            _args: Self::Arguments,
+        ) -> Result<Self::State, ActorProcessingErr> {
+            Ok(())
+        }
+
+        async fn post_stop(
+            &self,
+            _myself: ActorRef<Self::Msg>,
+            _state: &mut Self::State,
+        ) -> Result<(), ActorProcessingErr> {
+            let _ = self.tx.send(self.label);
+            Ok(())
+        }
+    }
+
+    fn test_ctx() -> SessionContext {
+        SessionContext {
+            runtime: Arc::new(TestRuntime),
+            params: SessionParams {
+                session_id: "session".to_string(),
+                languages: vec![],
+                onboarding: false,
+                record_enabled: true,
+                model: "test-model".to_string(),
+                base_url: "http://localhost:1234".to_string(),
+                api_key: "test-key".to_string(),
+                keywords: vec![],
+            },
+            app_dir: std::env::temp_dir(),
+            started_at_instant: Instant::now(),
+            started_at_system: SystemTime::now(),
+        }
+    }
 
     #[test]
     fn parse_degraded_reason_uses_json_payload() {
@@ -485,5 +581,71 @@ mod tests {
         let reason = "not-json".to_string();
         let parsed = parse_degraded_reason(Some(&reason));
         assert!(matches!(parsed, DegradedError::StreamError { .. }));
+    }
+
+    #[tokio::test]
+    async fn shutdown_children_waits_in_source_listener_recorder_order() {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        let (source_ref, _) = Actor::spawn(
+            None,
+            StopProbe {
+                label: "source",
+                tx: tx.clone(),
+            },
+            (),
+        )
+        .await
+        .unwrap();
+        let (listener_ref, _) = Actor::spawn(
+            None,
+            StopProbe {
+                label: "listener",
+                tx: tx.clone(),
+            },
+            (),
+        )
+        .await
+        .unwrap();
+        let (recorder_ref, _) = Actor::spawn(
+            None,
+            StopProbe {
+                label: "recorder",
+                tx,
+            },
+            (),
+        )
+        .await
+        .unwrap();
+
+        let mut state = SessionState {
+            ctx: test_ctx(),
+            source_cell: Some(source_ref.get_cell()),
+            listener_cell: Some(listener_ref.get_cell()),
+            recorder_cell: Some(recorder_ref.get_cell()),
+            source_restarts: RestartTracker::new(),
+            recorder_restarts: RestartTracker::new(),
+            listener_buffering_enabled: false,
+            shutting_down: false,
+        };
+
+        shutdown_children(&mut state, "test_shutdown").await;
+
+        let first = tokio::time::timeout(std::time::Duration::from_secs(1), rx.recv())
+            .await
+            .unwrap()
+            .unwrap();
+        let second = tokio::time::timeout(std::time::Duration::from_secs(1), rx.recv())
+            .await
+            .unwrap()
+            .unwrap();
+        let third = tokio::time::timeout(std::time::Duration::from_secs(1), rx.recv())
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!([first, second, third], ["source", "listener", "recorder"]);
+        assert_eq!(source_ref.get_status(), ActorStatus::Stopped);
+        assert_eq!(listener_ref.get_status(), ActorStatus::Stopped);
+        assert_eq!(recorder_ref.get_status(), ActorStatus::Stopped);
     }
 }

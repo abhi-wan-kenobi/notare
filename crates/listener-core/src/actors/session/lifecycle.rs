@@ -73,12 +73,3 @@ pub(crate) fn emit_session_ended(
 
     clear_sentry_session_context();
 }
-
-pub(crate) async fn wait_for_actor_shutdown(actor_name: ractor::ActorName) {
-    for _ in 0..50 {
-        if ractor::registry::where_is(actor_name.clone()).is_none() {
-            break;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    }
-}

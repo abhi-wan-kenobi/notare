@@ -24,6 +24,23 @@ pub(crate) fn build_metadata(model_path: &Path) -> Metadata {
     }
 }
 
+pub(crate) fn build_model(
+    model_path: &Path,
+    keywords: &[String],
+) -> Result<hypr_cactus::Model, hypr_cactus::Error> {
+    let (custom_vocabulary, vocabulary_boost) = deepgram_keywords_to_cactus_vocabulary(keywords);
+
+    let mut model_builder = hypr_cactus::Model::builder(model_path);
+    if !custom_vocabulary.is_empty() {
+        model_builder = model_builder.custom_vocabulary(custom_vocabulary);
+    }
+    if let Some(vocabulary_boost) = vocabulary_boost {
+        model_builder = model_builder.vocabulary_boost(vocabulary_boost);
+    }
+
+    model_builder.build()
+}
+
 pub(crate) fn deepgram_keywords_to_cactus_vocabulary(
     keywords: &[String],
 ) -> (Vec<String>, Option<f32>) {

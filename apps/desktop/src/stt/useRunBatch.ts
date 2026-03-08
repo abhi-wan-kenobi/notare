@@ -96,21 +96,9 @@ export const useRunBatch = (sessionId: string) => {
         });
       }
 
-      const transcriptId = id();
       const createdAt = new Date().toISOString();
       const memoMd = store.getCell("sessions", sessionId, "raw_md");
-
-      const transcriptRow = {
-        session_id: sessionId,
-        user_id: user_id ?? "",
-        created_at: createdAt,
-        started_at: Date.now(),
-        words: "[]",
-        speaker_hints: "[]",
-        memo_md: typeof memoMd === "string" ? memoMd : "",
-      } satisfies TranscriptStorage;
-
-      store.setRow("transcripts", transcriptId, transcriptRow);
+      let transcriptId: string | null = null;
 
       const handlePersist: HandlePersistCallback | undefined =
         options?.handlePersist;
@@ -120,6 +108,22 @@ export const useRunBatch = (sessionId: string) => {
         ((words, hints) => {
           if (words.length === 0) {
             return;
+          }
+
+          if (!transcriptId) {
+            transcriptId = id();
+
+            const transcriptRow = {
+              session_id: sessionId,
+              user_id: user_id ?? "",
+              created_at: createdAt,
+              started_at: Date.now(),
+              words: "[]",
+              speaker_hints: "[]",
+              memo_md: typeof memoMd === "string" ? memoMd : "",
+            } satisfies TranscriptStorage;
+
+            store.setRow("transcripts", transcriptId, transcriptRow);
           }
 
           const existingWords = parseTranscriptWords(store, transcriptId);

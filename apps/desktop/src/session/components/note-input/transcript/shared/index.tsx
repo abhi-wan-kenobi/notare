@@ -2,7 +2,7 @@ import { type RefObject, useCallback, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import type { DegradedError } from "@hypr/plugin-listener";
-import type { RuntimeSpeakerHint } from "@hypr/transcript";
+import { type RuntimeSpeakerHint } from "@hypr/transcript";
 import { DancingSticks } from "@hypr/ui/components/ui/dancing-sticks";
 import { cn } from "@hypr/utils";
 
@@ -21,8 +21,6 @@ import { TranscriptEmptyState } from "~/session/components/note-input/transcript
 import * as main from "~/store/tinybase/store/main";
 import { useListener } from "~/stt/contexts";
 
-export { SegmentRenderer } from "./segment-renderer";
-
 export function TranscriptContainer({
   sessionId,
   operations,
@@ -39,6 +37,10 @@ export function TranscriptContainer({
   );
 
   const sessionMode = useListener((state) => state.getSessionMode(sessionId));
+  const batchError = useListener(
+    (state) => state.batch[sessionId]?.error ?? null,
+  );
+  const batchProgress = useListener((state) => state.batch[sessionId] ?? null);
   const degraded = useListener((state) => state.live.degraded);
   const currentActive =
     sessionMode === "active" || sessionMode === "finalizing";
@@ -132,19 +134,38 @@ export function TranscriptContainer({
   useAutoScroll(
     containerRef,
     [transcriptIds, partialWords, shouldAutoScroll],
-    shouldAutoScroll,
+    shouldAutoScroll || sessionMode === "running_batch",
   );
 
   const shouldShowButton = !isAtBottom && currentActive;
+
+  if (sessionMode === "running_batch") {
+    return (
+      <div className="relative h-full">
+        <div
+          ref={handleContainerRef}
+          data-transcript-container
+          className={cn([
+            "flex h-full flex-col gap-8 overflow-x-hidden overflow-y-auto",
+            "scrollbar-hide scroll-pb-32 pb-16",
+          ])}
+        >
+          <TranscriptEmptyState
+            isBatching
+            percentage={batchProgress?.percentage}
+            phase={batchProgress?.phase}
+          />
+        </div>
+      </div>
+    );
+  }
 
   // TOOD: this can't handle words=[]
   if (transcriptIds.length === 0) {
     if (currentActive && degraded) {
       return <DegradedState error={degraded} />;
     }
-    return (
-      <TranscriptEmptyState isBatching={sessionMode === "running_batch"} />
-    );
+    return <TranscriptEmptyState isBatching={false} error={batchError} />;
   }
 
   const handleSelectionAction = (action: string, selectedText: string) => {
@@ -221,6 +242,29 @@ export function TranscriptContainer({
   );
 }
 
+function DegradedState({ error }: { error: DegradedError }) {
+  const amplitude = useListener((state) => state.live.amplitude);
+
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-6">
+      <DancingSticks
+        amplitude={Math.min(Math.hypot(amplitude.mic, amplitude.speaker), 1)}
+        color="#a3a3a3"
+        height={40}
+        width={80}
+        stickWidth={3}
+        gap={3}
+      />
+      <div className="flex flex-col items-center gap-1.5 text-center">
+        <p className="text-sm font-medium text-neutral-600">
+          Recording continues
+        </p>
+        <p className="text-xs text-neutral-400">{degradedMessage(error)}</p>
+      </div>
+    </div>
+  );
+}
+
 function TranscriptSeparator() {
   return (
     <div
@@ -247,27 +291,4 @@ function degradedMessage(error: DegradedError): string {
     case "stream_error":
       return "Transcription stream error";
   }
-}
-
-function DegradedState({ error }: { error: DegradedError }) {
-  const amplitude = useListener((state) => state.live.amplitude);
-
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-6">
-      <DancingSticks
-        amplitude={Math.min(Math.hypot(amplitude.mic, amplitude.speaker), 1)}
-        color="#a3a3a3"
-        height={40}
-        width={80}
-        stickWidth={3}
-        gap={3}
-      />
-      <div className="flex flex-col items-center gap-1.5 text-center">
-        <p className="text-sm font-medium text-neutral-600">
-          Recording continues
-        </p>
-        <p className="text-xs text-neutral-400">{degradedMessage(error)}</p>
-      </div>
-    </div>
-  );
 }

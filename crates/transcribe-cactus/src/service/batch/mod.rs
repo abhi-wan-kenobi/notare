@@ -31,13 +31,15 @@ pub async fn handle_batch(
     let params = params.clone();
 
     let result = tokio::task::spawn_blocking(move || {
-        transcribe_batch(&body, &content_type, &params, &model_path, None)
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            transcribe_batch(&body, &content_type, &params, &model_path, None)
+        }))
     })
     .await;
 
     match result {
-        Ok(Ok(response)) => Json(response).into_response(),
-        Ok(Err(e)) => {
+        Ok(Ok(Ok(response))) => Json(response).into_response(),
+        Ok(Ok(Err(e))) => {
             tracing::error!(error.message = %e, "batch_transcription_failed");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -48,9 +50,16 @@ pub async fn handle_batch(
             )
                 .into_response()
         }
-        Err(e) => {
-            tracing::error!(error.message = %e, "batch_task_panicked");
-            (StatusCode::INTERNAL_SERVER_ERROR, "internal error").into_response()
+        Ok(Err(_)) | Err(_) => {
+            tracing::error!("batch_task_panicked");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "transcription_failed",
+                    "detail": "task panicked"
+                })),
+            )
+                .into_response()
         }
     }
 }
@@ -99,10 +108,15 @@ pub async fn handle_batch_sse(
 
     let events_stream = futures_util::stream::unfold(event_rx, |mut rx| async move {
         rx.recv().await.map(|message| {
-            let event = Event::default()
-                .event(EVENT_NAME)
-                .json_data(&message)
-                .unwrap();
+            let event = match Event::default().event(EVENT_NAME).json_data(&message) {
+                Ok(event) => event,
+                Err(error) => {
+                    tracing::warn!("failed to serialize batch SSE event: {error}");
+                    Event::default()
+                        .event(EVENT_NAME)
+                        .data(r#"{"error":"transcription_failed","detail":"failed to serialize SSE event"}"#)
+                }
+            };
             (Ok::<_, Infallible>(event), rx)
         })
     });
