@@ -22,7 +22,7 @@
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json,css,md}": "dprint fmt"
   },
-  "packageManager": "pnpm@10.30.0",
+  "packageManager": "pnpm@10.31.0",
   "engines": {
     "node": ">=22"
   }
