@@ -11,7 +11,10 @@ use crate::FsSyncPluginExt;
 use crate::frontmatter::ParsedDocument;
 use crate::session::find_session_dir;
 use crate::session_content::load_session_content as load_session_content_from_fs;
-use crate::types::{CleanupTarget, ListFoldersResult, ScanResult, SessionContentData};
+use crate::types::{
+    CleanupTarget, ListFoldersResult, MoveSessionResult, RenameFolderResult, ScanResult,
+    SessionContentData,
+};
 
 macro_rules! spawn_blocking {
     ($body:expr) => {
@@ -136,10 +139,11 @@ pub(crate) async fn list_folders<R: tauri::Runtime>(
 pub(crate) async fn move_session<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     session_id: String,
+    from_folder_path: String,
     target_folder_path: String,
-) -> Result<(), String> {
+) -> Result<MoveSessionResult, String> {
     app.fs_sync()
-        .move_session(&session_id, &target_folder_path)
+        .move_session(&session_id, &from_folder_path, &target_folder_path)
         .map_err(|e| e.to_string())
 }
 
@@ -160,7 +164,7 @@ pub(crate) async fn rename_folder<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     old_path: String,
     new_path: String,
-) -> Result<(), String> {
+) -> Result<RenameFolderResult, String> {
     app.fs_sync()
         .rename_folder(&old_path, &new_path)
         .map_err(|e| e.to_string())

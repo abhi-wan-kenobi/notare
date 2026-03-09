@@ -46,9 +46,9 @@ async listFolders() : Promise<Result<ListFoldersResult, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async moveSession(sessionId: string, targetFolderPath: string) : Promise<Result<null, string>> {
+async moveSession(sessionId: string, fromFolderPath: string, targetFolderPath: string) : Promise<Result<MoveSessionResult, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:fs-sync|move_session", { sessionId, targetFolderPath }) };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:fs-sync|move_session", { sessionId, fromFolderPath, targetFolderPath }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -62,7 +62,7 @@ async createFolder(folderPath: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async renameFolder(oldPath: string, newPath: string) : Promise<Result<null, string>> {
+async renameFolder(oldPath: string, newPath: string) : Promise<Result<RenameFolderResult, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:fs-sync|rename_folder", { oldPath, newPath }) };
 } catch (e) {
@@ -206,9 +206,12 @@ export type AttachmentInfo = { attachmentId: string; path: string; extension: st
 export type AttachmentSaveResult = { path: string; attachmentId: string }
 export type CleanupTarget = { type: "files"; subdir: string; extension: string } | { type: "dirs"; subdir: string; marker_file: string } | { type: "filesRecursive"; subdir: string; marker_file: string; extension: string }
 export type FolderInfo = { name: string; parent_folder_id: string | null }
+export type FolderSessionUpdate = { sessionId: string; folderId: string }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 export type ListFoldersResult = { folders: Partial<{ [key in string]: FolderInfo }>; session_folder_map: Partial<{ [key in string]: string }> }
+export type MoveSessionResult = { sessionId: string; folderId: string }
 export type ParsedDocument = { frontmatter: Partial<{ [key in string]: JsonValue }>; content: string }
+export type RenameFolderResult = { updates: FolderSessionUpdate[] }
 export type ScanResult = { files: Partial<{ [key in string]: string }>; dirs: string[] }
 export type SessionContentData = { sessionId: string; meta: SessionMetaData | null; rawMemoTiptapJson: JsonValue | null; rawMemoMarkdown: string | null; transcript: TranscriptJson | null; notes: SessionNoteData[] }
 export type SessionMetaData = { id: string; userId: string; createdAt: string | null; title: string | null; event: JsonValue | null; eventId: string | null; participants: SessionMetaParticipant[]; tags: string[] }

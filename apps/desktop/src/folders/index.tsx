@@ -186,6 +186,7 @@ function FolderCard({ folderId }: { folderId: string }) {
 
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(name);
+  const [renameError, setRenameError] = useState<string | null>(null);
 
   const childFolderIds = byParent[folderId] || [];
 
@@ -201,6 +202,7 @@ function FolderCard({ folderId }: { folderId: string }) {
     const trimmed = editValue.trim();
     if (!trimmed || trimmed === name) {
       setEditValue(name);
+      setRenameError(null);
       setIsEditing(false);
       return;
     }
@@ -212,6 +214,9 @@ function FolderCard({ folderId }: { folderId: string }) {
     const result = await sessionOps.renameFolder(folderId, newFolderId);
     if (result.status === "error") {
       setEditValue(name);
+      setRenameError(result.error);
+    } else {
+      setRenameError(null);
     }
     setIsEditing(false);
   }, [editValue, name, folderId]);
@@ -240,6 +245,7 @@ function FolderCard({ folderId }: { folderId: string }) {
               handleRename();
             } else if (e.key === "Escape") {
               setEditValue(name);
+              setRenameError(null);
               setIsEditing(false);
             }
           }}
@@ -266,6 +272,9 @@ function FolderCard({ folderId }: { folderId: string }) {
         <span className="text-muted-foreground text-xs">
           {childCount} items
         </span>
+      )}
+      {renameError && (
+        <span className="text-center text-xs text-red-500">{renameError}</span>
       )}
     </div>
   );
