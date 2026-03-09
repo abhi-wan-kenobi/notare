@@ -2,8 +2,12 @@ use std::net::SocketAddr;
 
 use super::{
     Direction, MockServerHandle, MockUpstreamConfig, WsMessage, WsRecording,
-    start_mock_server_group_with_config,
+    start_split_mock_server_with_config,
 };
+
+const STEREO_TEST_AUDIO_FRAME: [u8; 8] = [1, 0, 9, 0, 2, 0, 10, 0];
+const MIC_TEST_AUDIO: [u8; 4] = [1, 0, 2, 0];
+const SPK_TEST_AUDIO: [u8; 4] = [9, 0, 10, 0];
 
 #[derive(Debug)]
 pub struct TranscriptEvent {
@@ -27,12 +31,19 @@ impl TranscriptEvent {
 }
 
 pub async fn start_split_mock_ws(recordings: [WsRecording; 2]) -> MockServerHandle {
-    start_mock_server_group_with_config(
-        recordings.into_iter().collect(),
+    start_split_mock_server_with_config(
+        recordings[0].clone(),
+        recordings[1].clone(),
         MockUpstreamConfig::default().use_timing(true),
+        MIC_TEST_AUDIO.to_vec(),
+        SPK_TEST_AUDIO.to_vec(),
     )
     .await
     .expect("failed to start split mock ws server")
+}
+
+pub fn split_test_audio_frame() -> Vec<u8> {
+    STEREO_TEST_AUDIO_FRAME.to_vec()
 }
 
 pub fn soniox_finalize_message(text: &str) -> String {

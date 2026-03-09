@@ -7,9 +7,9 @@ use bytes::Bytes;
 use common::{
     CloseInfo, Direction, MessageKind, MockUpstreamConfig, TranscriptEvent, WsMessage, WsRecording,
     close_only_recording, connect_to_url, soniox_error_recording, soniox_finalize_message,
-    soniox_finalize_recording, soniox_partial_recording, start_mock_batch_upstream,
-    start_mock_server_with_config, start_proxy, start_proxy_under_stt, start_split_mock_ws,
-    stereo_listen_url, terminal_finalize_count, transcript_events, wait_for,
+    soniox_finalize_recording, soniox_partial_recording, split_test_audio_frame,
+    start_mock_batch_upstream, start_mock_server_with_config, start_proxy, start_proxy_under_stt,
+    start_split_mock_ws, stereo_listen_url, terminal_finalize_count, transcript_events, wait_for,
 };
 use futures_util::{SinkExt, StreamExt};
 use owhisper_client::{BatchClient, DeepgramAdapter, HyprnoteAdapter, ListenClient, Provider};
@@ -60,7 +60,7 @@ async fn send_streaming_dual(
     send_finalize: bool,
 ) -> (Vec<serde_json::Value>, CloseInfo) {
     let mut ws = connect_to_url(&stereo_listen_url(addr, query)).await;
-    ws.send(Message::Binary(vec![0u8, 0, 0, 0, 1, 0, 1, 0].into()))
+    ws.send(Message::Binary(split_test_audio_frame().into()))
         .await
         .expect("failed to send audio");
     if send_finalize {
@@ -855,7 +855,7 @@ async fn streaming_dual_client_close_propagates_to_both_upstreams() {
         "model=cloud&language=en&language=ko",
     ))
     .await;
-    ws.send(Message::Binary(vec![0u8, 0, 0, 0, 1, 0, 1, 0].into()))
+    ws.send(Message::Binary(split_test_audio_frame().into()))
         .await
         .expect("failed to send audio");
     ws.send(Message::Text(
