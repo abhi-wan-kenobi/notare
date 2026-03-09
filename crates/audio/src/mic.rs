@@ -168,7 +168,7 @@ impl MicInput {
                         }
                     },
                     move |err| {
-                        tracing::error!(error.message = %err, "mic_stream_error");
+                        tracing::error!(error = %err, "mic_stream_error");
                         alive_for_err.store(false, Ordering::Release);
                         waker_for_err.wake();
                     },

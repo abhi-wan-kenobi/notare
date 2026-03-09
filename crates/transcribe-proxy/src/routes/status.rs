@@ -41,7 +41,7 @@ pub async fn handler(
         .map_err(|e| {
             tracing::error!(
                 hyprnote.stt.job.id = %pipeline_id,
-                error.message = %e,
+                error = %e,
                 "failed_to_query_job"
             );
             RouteError::Internal(format!("failed to query job: {e}"))

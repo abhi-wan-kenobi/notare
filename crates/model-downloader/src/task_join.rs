@@ -26,7 +26,7 @@ pub(crate) async fn wait_for_task_exit(
     match join_result {
         Ok(()) => {}
         Err(e) => {
-            tracing::warn!(%context, error.message = %e, "model_download_task_join_failed");
+            tracing::warn!(%context, error = %e, "model_download_task_join_failed");
         }
     }
 }

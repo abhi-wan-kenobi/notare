@@ -86,7 +86,10 @@ impl RealtimeSttAdapter for MistralAdapter {
         };
 
         let json = serde_json::to_string(&session_update).ok()?;
-        tracing::debug!(hyprnote.payload.raw = %json, "mistral_session_update_payload");
+        tracing::debug!(
+            hyprnote.payload.size_bytes = json.len() as u64,
+            "mistral_session_update_payload"
+        );
         Some(Message::Text(json.into()))
     }
 
@@ -102,8 +105,8 @@ impl RealtimeSttAdapter for MistralAdapter {
             Ok(e) => e,
             Err(e) => {
                 tracing::warn!(
-                    error.message = ?e,
-                    hyprnote.payload.raw = raw,
+                    error = ?e,
+                    hyprnote.payload.size_bytes = raw.len() as u64,
                     "mistral_json_parse_failed"
                 );
                 return vec![];
@@ -128,14 +131,17 @@ impl RealtimeSttAdapter for MistralAdapter {
                 vec![]
             }
             MistralEvent::TranscriptionTextDelta { text } => {
-                tracing::debug!(hyprnote.transcript.text = %text, "mistral_transcription_text_delta");
+                tracing::debug!(
+                    hyprnote.transcript.char_count = text.chars().count() as u64,
+                    "mistral_transcription_text_delta"
+                );
                 self.build_delta_response(&text)
             }
             MistralEvent::TranscriptionSegment {
                 text, start, end, ..
             } => {
                 tracing::debug!(
-                    hyprnote.transcript.text = %text,
+                    hyprnote.transcript.char_count = text.chars().count() as u64,
                     hyprnote.segment.start_s = start,
                     hyprnote.segment.end_s = end,
                     "mistral_transcription_segment"
@@ -149,7 +155,7 @@ impl RealtimeSttAdapter for MistralAdapter {
             MistralEvent::Error { error } => {
                 tracing::error!(
                     error.code = error.code,
-                    error.message = %error.message,
+                    error = %error.message,
                     "mistral_error"
                 );
                 vec![StreamResponse::ErrorResponse {
@@ -159,7 +165,10 @@ impl RealtimeSttAdapter for MistralAdapter {
                 }]
             }
             MistralEvent::Unknown => {
-                tracing::debug!(hyprnote.payload.raw = raw, "mistral_unknown_event");
+                tracing::debug!(
+                    hyprnote.payload.size_bytes = raw.len() as u64,
+                    "mistral_unknown_event"
+                );
                 vec![]
             }
         }

@@ -23,6 +23,15 @@ use crate::config::LlmProxyConfig;
 use crate::model::{CharTask, ModelContext};
 use crate::types::{ChatCompletionRequest, ToolChoice, has_audio_content};
 
+fn provider_endpoint(base_url: &str) -> (Option<String>, Option<u16>) {
+    let Ok(url) = reqwest::Url::parse(base_url) else {
+        return (None, None);
+    };
+    let host = url.host_str().map(ToString::to_string);
+    let port = url.port_or_known_default();
+    (host, port)
+}
+
 async fn report_with_cost(
     analytics: &dyn AnalyticsReporter,
     provider: &dyn crate::provider::Provider,
@@ -67,8 +76,16 @@ impl IntoResponse for ProxyError {
                 let status_code = e.status().map(|s| s.as_u16());
                 let is_timeout = e.is_timeout();
                 let is_connect = e.is_connect();
+                let error_type = status_code
+                    .map(|code| code.to_string())
+                    .unwrap_or_else(|| "llm_upstream_request_failed".to_string());
+                hypr_observability::mark_current_span_as_error(&error_type);
+                if let Some(code) = status_code {
+                    tracing::Span::current().record("http.response.status_code", code as i64);
+                }
                 tracing::error!(
-                    error.message = %e,
+                    error.type = %error_type,
+                    error = %e,
                     hyprnote.upstream.status_code = ?status_code,
                     hyprnote.error.is_timeout = %is_timeout,
                     hyprnote.error.is_connect = %is_connect,
@@ -82,6 +99,7 @@ impl IntoResponse for ProxyError {
                 (StatusCode::BAD_GATEWAY, e.to_string())
             }
             Self::Timeout => {
+                hypr_observability::mark_current_span_as_error("llm_upstream_timeout");
                 tracing::error!("upstream_request_timeout");
                 sentry::configure_scope(|scope| {
                     scope.set_tag("error.type", "llm_upstream_timeout");
@@ -91,8 +109,10 @@ impl IntoResponse for ProxyError {
             Self::BodyRead(e) => {
                 let is_timeout = e.is_timeout();
                 let is_decode = e.is_decode();
+                hypr_observability::mark_current_span_as_error("response_body_read_failed");
                 tracing::error!(
-                    error.message = %e,
+                    error.type = "response_body_read_failed",
+                    error = %e,
                     hyprnote.error.is_timeout = %is_timeout,
                     hyprnote.error.is_decode = %is_decode,
                     "response_body_read_failed"
@@ -173,6 +193,8 @@ where
     skip(state, analytics_ctx, headers, request),
     fields(
         hyprnote.subsystem = "llm",
+        http.request.method = "POST",
+        http.response.status_code = tracing::field::Empty,
         gen_ai.operation.name = "chat",
         gen_ai.provider.name = tracing::field::Empty,
         gen_ai.request.model = tracing::field::Empty,
@@ -180,12 +202,18 @@ where
         gen_ai.response.id = tracing::field::Empty,
         gen_ai.usage.input_tokens = tracing::field::Empty,
         gen_ai.usage.output_tokens = tracing::field::Empty,
+        server.address = tracing::field::Empty,
+        server.port = tracing::field::Empty,
+        url.full = tracing::field::Empty,
         hyprnote.gen_ai.request.streaming = tracing::field::Empty,
         hyprnote.gen_ai.request.message_count = tracing::field::Empty,
         hyprnote.task.name = tracing::field::Empty,
-        http.response.status_code = tracing::field::Empty,
         enduser.id = tracing::field::Empty,
-        enduser.pseudo.id = tracing::field::Empty
+        enduser.pseudo.id = tracing::field::Empty,
+        error.type = tracing::field::Empty,
+        otel.kind = "client",
+        otel.name = tracing::field::Empty,
+        otel.status_code = tracing::field::Empty
     )
 )]
 async fn completions_handler(
@@ -217,6 +245,8 @@ async fn completions_handler(
 
     let stream = request.stream.unwrap_or(false);
     let provider_name = state.config.provider.name();
+    let provider_base_url = state.config.provider.base_url();
+    let (server_address, server_port) = provider_endpoint(provider_base_url);
 
     span.record("gen_ai.provider.name", provider_name);
     span.record("hyprnote.gen_ai.request.streaming", stream);
@@ -226,6 +256,9 @@ async fn completions_handler(
     );
     if let Some(model) = models.first() {
         span.record("gen_ai.request.model", model.as_str());
+        span.record("otel.name", format!("chat {model}").as_str());
+    } else {
+        span.record("otel.name", "chat");
     }
     if let Some(task_name) = task_name.as_deref() {
         span.record("hyprnote.task.name", task_name);
@@ -236,6 +269,13 @@ async fn completions_handler(
     if let Some(fingerprint) = analytics_ctx.fingerprint.as_deref() {
         span.record("enduser.pseudo.id", fingerprint);
     }
+    if let Some(server_address) = server_address.as_deref() {
+        span.record("server.address", server_address);
+    }
+    if let Some(server_port) = server_port {
+        span.record("server.port", server_port as i64);
+    }
+    span.record("url.full", provider_base_url);
 
     tracing::info!(
         hyprnote.gen_ai.request.streaming = %stream,
@@ -288,7 +328,12 @@ async fn completions_handler(
     let provider_request = match provider.build_request(&request, models, stream) {
         Ok(req) => req,
         Err(e) => {
-            tracing::error!(error.message = %e, "failed_to_build_provider_request");
+            hypr_observability::mark_current_span_as_error("provider_request_build_failed");
+            tracing::error!(
+                error.type = "provider_request_build_failed",
+                error = %e,
+                "failed_to_build_provider_request"
+            );
             return (StatusCode::INTERNAL_SERVER_ERROR, "Invalid request").into_response();
         }
     };
@@ -328,7 +373,7 @@ async fn completions_handler(
         .retry(backoff)
         .notify(|err, dur: Duration| {
             tracing::warn!(
-                error.message = %err,
+                error = %err,
                 hyprnote.retry.delay_ms = dur.as_millis(),
                 gen_ai.provider.name = %provider.name(),
                 "retrying_llm_request"
@@ -351,15 +396,21 @@ async fn completions_handler(
     let response = match result {
         Ok(Ok(resp)) => resp,
         Ok(Err(e)) => {
+            let error_type = e
+                .status()
+                .map(|status| status.as_u16().to_string())
+                .unwrap_or_else(|| "llm_upstream_request_failed".to_string());
+            hypr_observability::mark_current_span_as_error(&error_type);
             tracing::error!(
-                error.type = "llm_upstream_request_failed",
+                error.type = %error_type,
                 service.peer.name = %provider_name,
-                error.message = %e,
+                error = %e,
                 "llm_upstream_request_failed"
             );
             return ProxyError::UpstreamRequest(e).into_response();
         }
         Err(_) => {
+            hypr_observability::mark_current_span_as_error("llm_upstream_timeout");
             tracing::error!(
                 error.type = "llm_upstream_timeout",
                 service.peer.name = %provider_name,

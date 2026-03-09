@@ -64,8 +64,8 @@ impl RealtimeSttAdapter for FireworksAdapter {
             Ok(m) => m,
             Err(e) => {
                 tracing::warn!(
-                    error.message = ?e,
-                    hyprnote.payload.raw = raw,
+                    error = ?e,
+                    hyprnote.payload.size_bytes = raw.len() as u64,
                     "fireworks_json_parse_failed"
                 );
                 return vec![];
@@ -74,7 +74,7 @@ impl RealtimeSttAdapter for FireworksAdapter {
 
         if let Some(error) = msg.error {
             tracing::error!(
-                error.message = %error.message,
+                error = %error.message,
                 error.code = ?error.code,
                 "fireworks_error"
             );

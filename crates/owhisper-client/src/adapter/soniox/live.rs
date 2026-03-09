@@ -95,8 +95,8 @@ impl RealtimeSttAdapter for SonioxAdapter {
             Ok(m) => m,
             Err(e) => {
                 tracing::warn!(
-                    error.message = ?e,
-                    hyprnote.payload.raw = raw,
+                    error = ?e,
+                    hyprnote.payload.size_bytes = raw.len() as u64,
                     "soniox_json_parse_failed"
                 );
                 return vec![];
@@ -106,7 +106,7 @@ impl RealtimeSttAdapter for SonioxAdapter {
         if let Some(error_msg) = &msg.error_message {
             tracing::error!(
                 error.code = ?msg.error_code,
-                error.message = %error_msg,
+                error = %error_msg,
                 "soniox_error"
             );
             return vec![StreamResponse::ErrorResponse {

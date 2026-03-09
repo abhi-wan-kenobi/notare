@@ -105,7 +105,10 @@ impl RealtimeSttAdapter for DashScopeAdapter {
         };
 
         let json = serde_json::to_string(&session_config).ok()?;
-        tracing::debug!(hyprnote.payload.raw = %json, "dashscope_session_update_payload");
+        tracing::debug!(
+            hyprnote.payload.size_bytes = json.len() as u64,
+            "dashscope_session_update_payload"
+        );
         Some(Message::Text(json.into()))
     }
 
@@ -121,8 +124,8 @@ impl RealtimeSttAdapter for DashScopeAdapter {
             Ok(e) => e,
             Err(e) => {
                 tracing::warn!(
-                    error.message = ?e,
-                    hyprnote.payload.raw = raw,
+                    error = ?e,
+                    hyprnote.payload.size_bytes = raw.len() as u64,
                     "dashscope_json_parse_failed"
                 );
                 return vec![];
@@ -170,7 +173,7 @@ impl RealtimeSttAdapter for DashScopeAdapter {
             } => {
                 tracing::debug!(
                     hyprnote.stt.item.id = %item_id,
-                    hyprnote.transcript.text = %transcript,
+                    hyprnote.transcript.char_count = transcript.chars().count() as u64,
                     "dashscope_transcription_completed"
                 );
                 Self::build_transcript_response(&transcript, true, true)
@@ -180,7 +183,7 @@ impl RealtimeSttAdapter for DashScopeAdapter {
             } => {
                 tracing::debug!(
                     hyprnote.stt.item.id = %item_id,
-                    hyprnote.transcript.text = %text,
+                    hyprnote.transcript.char_count = text.chars().count() as u64,
                     "dashscope_transcription_text"
                 );
                 Self::build_transcript_response(&text, false, false)
@@ -193,7 +196,7 @@ impl RealtimeSttAdapter for DashScopeAdapter {
                 tracing::error!(
                     hyprnote.stt.item.id = %item_id,
                     error.type = %error.error_type,
-                    error.message = %error.message,
+                    error = %error.message,
                     "dashscope_transcription_failed"
                 );
                 vec![StreamResponse::ErrorResponse {
@@ -205,7 +208,7 @@ impl RealtimeSttAdapter for DashScopeAdapter {
             DashScopeEvent::Error { error } => {
                 tracing::error!(
                     error.type = %error.error_type,
-                    error.message = %error.message,
+                    error = %error.message,
                     "dashscope_error"
                 );
                 vec![StreamResponse::ErrorResponse {
@@ -215,7 +218,10 @@ impl RealtimeSttAdapter for DashScopeAdapter {
                 }]
             }
             DashScopeEvent::Unknown => {
-                tracing::debug!(hyprnote.payload.raw = raw, "dashscope_unknown_event");
+                tracing::debug!(
+                    hyprnote.payload.size_bytes = raw.len() as u64,
+                    "dashscope_unknown_event"
+                );
                 vec![]
             }
         }

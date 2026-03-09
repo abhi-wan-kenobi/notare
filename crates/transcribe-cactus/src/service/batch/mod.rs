@@ -40,7 +40,7 @@ pub async fn handle_batch(
     match result {
         Ok(Ok(Ok(response))) => Json(response).into_response(),
         Ok(Ok(Err(e))) => {
-            tracing::error!(error.message = %e, "batch_transcription_failed");
+            tracing::error!(error = %e, "batch_transcription_failed");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
@@ -88,7 +88,7 @@ pub async fn handle_batch_sse(
         })) {
             Ok(Ok(response)) => BatchSseMessage::Result { response },
             Ok(Err(e)) => {
-                tracing::error!(error.message = %e, "batch_sse transcription failed");
+                tracing::error!(error = %e, "batch_sse transcription failed");
                 BatchSseMessage::Error {
                     error: "transcription_failed".to_string(),
                     detail: e.to_string(),

@@ -58,7 +58,7 @@ impl PendingState {
                     Ok(s) => TungsteniteMessage::Text(s.into()),
                     Err(e) => {
                         tracing::warn!(
-                            error.message = ?e,
+                            error = ?e,
                             hyprnote.payload.invalid_bytes_len = %e.as_bytes().len(),
                             "invalid_utf8_in_text_message"
                         );

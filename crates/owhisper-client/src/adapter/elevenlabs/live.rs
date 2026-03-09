@@ -96,8 +96,8 @@ impl RealtimeSttAdapter for ElevenLabsAdapter {
             Ok(m) => m,
             Err(e) => {
                 tracing::warn!(
-                    error.message = ?e,
-                    hyprnote.payload.raw = raw,
+                    error = ?e,
+                    hyprnote.payload.size_bytes = raw.len() as u64,
                     "elevenlabs_json_parse_failed"
                 );
                 return vec![];
@@ -136,7 +136,7 @@ impl RealtimeSttAdapter for ElevenLabsAdapter {
             } => {
                 tracing::error!(
                     error.type = %error_type,
-                    error.message = %message,
+                    error = %message,
                     "elevenlabs_error"
                 );
                 vec![StreamResponse::ErrorResponse {
@@ -146,7 +146,10 @@ impl RealtimeSttAdapter for ElevenLabsAdapter {
                 }]
             }
             ElevenLabsMessage::Unknown => {
-                tracing::debug!(hyprnote.payload.raw = raw, "elevenlabs_unknown_message");
+                tracing::debug!(
+                    hyprnote.payload.size_bytes = raw.len() as u64,
+                    "elevenlabs_unknown_message"
+                );
                 vec![]
             }
         }

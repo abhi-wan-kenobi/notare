@@ -39,7 +39,7 @@ pub fn cleanup_files_in_dir(
         if let Err(e) = std::fs::remove_file(&path) {
             tracing::warn!(
                 hyprnote.file.path = %relative_path,
-                error.message = %e,
+                error = %e,
                 "failed_to_remove_orphan_file"
             );
         } else {
@@ -97,7 +97,7 @@ pub fn cleanup_dirs_recursive(
             if let Err(e) = std::fs::remove_dir_all(path) {
                 tracing::warn!(
                     hyprnote.file.path = %relative_path,
-                    error.message = %e,
+                    error = %e,
                     "failed_to_remove_orphan_directory"
                 );
             } else {

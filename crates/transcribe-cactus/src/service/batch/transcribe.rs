@@ -48,7 +48,7 @@ pub(super) fn transcribe_batch(
     let model = match crate::service::build_model(model_path, &params.keywords) {
         Ok(m) => m,
         Err(e) => {
-            tracing::error!(error.message = %e, "failed_to_load_model");
+            tracing::error!(error = %e, "failed_to_load_model");
             return Err(e.into());
         }
     };

@@ -87,7 +87,7 @@ impl WebSocketProxy {
             Ok(Err(e)) => {
                 tracing::error!(
                     error.type = "upstream_connect_failed",
-                    error.message = %e,
+                    error = %e,
                     hyprnote.duration_ms = connect_start.elapsed().as_millis() as u64,
                     "upstream_connect_failed"
                 );
@@ -129,7 +129,7 @@ impl WebSocketProxy {
             async move {
                 if let Err(e) = proxy.handle(socket).await {
                     tracing::error!(
-                        error.message = %e,
+                        error = %e,
                         "websocket_proxy_error: {}",
                         e
                     );
@@ -206,7 +206,7 @@ impl WebSocketProxy {
 
         if let Err(reason) = pending.enqueue(queued, is_control) {
             tracing::warn!(
-                error.message = %reason,
+                error = %reason,
                 hyprnote.payload.size_bytes = %size,
                 hyprnote.ws.is_control_message = %is_control,
                 "pending_queue_enqueue_failed"
@@ -222,7 +222,7 @@ impl WebSocketProxy {
             };
             tracing::error!(
                 error.type = %reason,
-                error.message = ?e,
+                error = ?e,
                 "pending_flush_failed"
             );
             let _ = shutdown_tx.send((DEFAULT_CLOSE_CODE, reason.to_string()));
@@ -249,7 +249,7 @@ impl WebSocketProxy {
                 .send(TungsteniteMessage::Text(msg.as_str().into()))
                 .await
             {
-                tracing::error!(error.message = ?e, "initial_message_send_failed");
+                tracing::error!(error = ?e, "initial_message_send_failed");
                 let _ =
                     shutdown_tx.send((DEFAULT_CLOSE_CODE, "initial_message_failed".to_string()));
                 return;
@@ -279,7 +279,7 @@ impl WebSocketProxy {
                         Err(e) => {
                             tracing::error!(
                                 error.type = "ws_client_receive_error",
-                                error.message = %e,
+                                error = %e,
                                 "client_receive_error: {}",
                                 e
                             );
@@ -326,7 +326,7 @@ impl WebSocketProxy {
                         Message::Ping(data) => {
                             if let Err(e) = upstream_sender.send(TungsteniteMessage::Ping(data.to_vec().into())).await {
                                 tracing::error!(
-                                    error.message = ?e,
+                                    error = ?e,
                                     "upstream_ping_failed"
                                 );
                             }
@@ -334,7 +334,7 @@ impl WebSocketProxy {
                         Message::Pong(data) => {
                             if let Err(e) = upstream_sender.send(TungsteniteMessage::Pong(data.to_vec().into())).await {
                                 tracing::error!(
-                                    error.message = ?e,
+                                    error = ?e,
                                     "upstream_pong_failed"
                                 );
                             }
@@ -387,7 +387,7 @@ impl WebSocketProxy {
                         Err(e) => {
                             tracing::error!(
                                 error.type = "ws_upstream_receive_error",
-                                error.message = %e,
+                                error = %e,
                                 "upstream_receive_error: {}",
                                 e
                             );
@@ -405,7 +405,7 @@ impl WebSocketProxy {
                                 tracing::warn!(
                                     http.response.status_code = upstream_err.http_code,
                                     hyprnote.stt.provider.error_code = ?upstream_err.provider_code,
-                                    error.message = %upstream_err.message,
+                                    error = %upstream_err.message,
                                     "upstream_error_detected"
                                 );
 
@@ -437,7 +437,7 @@ impl WebSocketProxy {
                         TungsteniteMessage::Ping(data) => {
                             if let Err(e) = client_sender.send(Message::Ping(data.to_vec().into())).await {
                                 tracing::error!(
-                                    error.message = ?e,
+                                    error = ?e,
                                     "client_ping_failed"
                                 );
                             }
@@ -445,7 +445,7 @@ impl WebSocketProxy {
                         TungsteniteMessage::Pong(data) => {
                             if let Err(e) = client_sender.send(Message::Pong(data.to_vec().into())).await {
                                 tracing::error!(
-                                    error.message = ?e,
+                                    error = ?e,
                                     "client_pong_failed"
                                 );
                             }

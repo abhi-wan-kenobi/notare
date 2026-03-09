@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::time::SystemTime;
 
-use axum::{Router, body::Body, extract::MatchedPath, http::Request, middleware};
+use axum::{Router, body::Body, extract::MatchedPath, http::HeaderMap, http::Request, middleware};
 use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
 use sentry::protocol::{Context, Value};
 use tower::ServiceBuilder;
@@ -28,6 +28,51 @@ use crate::env::Env;
 
 pub const DEVICE_FINGERPRINT_HEADER: &str = "x-device-fingerprint";
 pub const REQUEST_ID_HEADER: &str = "x-request-id";
+
+fn forwarded_header_value(headers: &HeaderMap, name: &str) -> Option<String> {
+    headers
+        .get(name)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(',').next())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToString::to_string)
+}
+
+fn request_scheme(request: &Request<Body>) -> String {
+    forwarded_header_value(request.headers(), "x-forwarded-proto")
+        .or_else(|| request.uri().scheme_str().map(ToString::to_string))
+        .unwrap_or_else(|| "http".to_string())
+}
+
+fn request_server_endpoint(request: &Request<Body>, scheme: &str) -> (Option<String>, Option<u16>) {
+    let authority = forwarded_header_value(request.headers(), "x-forwarded-host")
+        .or_else(|| {
+            request
+                .headers()
+                .get("host")
+                .and_then(|value| value.to_str().ok())
+                .map(ToString::to_string)
+        })
+        .or_else(|| request.uri().host().map(ToString::to_string));
+    let Some(authority) = authority else {
+        return (None, None);
+    };
+    let authority = authority.trim();
+    if authority.is_empty() {
+        return (None, None);
+    }
+    let Ok(url) = reqwest::Url::parse(&format!("{scheme}://{authority}")) else {
+        return (Some(authority.to_string()), None);
+    };
+    let host = url.host_str().map(ToString::to_string);
+    let port = url.port_or_known_default();
+    (host, port)
+}
+
+fn request_client_address(request: &Request<Body>) -> Option<String> {
+    forwarded_header_value(request.headers(), "x-forwarded-for")
+}
 
 async fn app() -> Router {
     let env = env();
@@ -198,6 +243,10 @@ async fn app() -> Router {
                                 .get::<MatchedPath>()
                                 .map(MatchedPath::as_str)
                                 .unwrap_or(path);
+                            let scheme = request_scheme(request);
+                            let (server_address, server_port) =
+                                request_server_endpoint(request, &scheme);
+                            let client_address = request_client_address(request);
                             let span_op = match path {
                                 p if p.starts_with("/llm")
                                     || p.starts_with("/chat/completions") =>
@@ -214,7 +263,12 @@ async fn app() -> Router {
                                 "http_request",
                                 http.request.method = %method,
                                 http.route = %matched_path,
+                                url.path = %path,
+                                url.scheme = %scheme,
                                 http.response.status_code = tracing::field::Empty,
+                                server.address = tracing::field::Empty,
+                                server.port = tracing::field::Empty,
+                                client.address = tracing::field::Empty,
                                 hyprnote.subsystem = "edge",
                                 enduser.id = tracing::field::Empty,
                                 enduser.pseudo.id = tracing::field::Empty,
@@ -229,10 +283,20 @@ async fn app() -> Router {
                                 hyprnote.gen_ai.request.message_count = tracing::field::Empty,
                                 hyprnote.request.id = tracing::field::Empty,
                                 error.type = tracing::field::Empty,
+                                otel.status_code = tracing::field::Empty,
                                 otel.kind = "server",
                                 otel.name = %format!("{} {}", method, matched_path),
                                 span.op = %span_op,
                             );
+                            if let Some(server_address) = server_address.as_deref() {
+                                span.record("server.address", server_address);
+                            }
+                            if let Some(server_port) = server_port {
+                                span.record("server.port", server_port as i64);
+                            }
+                            if let Some(client_address) = client_address.as_deref() {
+                                span.record("client.address", client_address);
+                            }
                             hypr_observability::set_remote_parent(&span, request.headers());
                             span
                         })
@@ -267,6 +331,12 @@ async fn app() -> Router {
                                     "http.response.status_code",
                                     response.status().as_u16() as i64,
                                 );
+                                if response.status().is_server_error() {
+                                    hypr_observability::mark_span_as_error(
+                                        span,
+                                        &response.status().as_u16().to_string(),
+                                    );
+                                }
                                 tracing::info!(
                                     parent: span,
                                     http.response.status_code = %response.status().as_u16(),
@@ -282,11 +352,19 @@ async fn app() -> Router {
                                 if span.is_disabled() {
                                     return;
                                 }
-                                let error_type = failure_class.to_string();
-                                span.record("error.type", error_type.as_str());
+                                let error_type = match &failure_class {
+                                    ServerErrorsFailureClass::StatusCode(status) => {
+                                        status.as_u16().to_string()
+                                    }
+                                    ServerErrorsFailureClass::Error(_) => {
+                                        "http_server_failure".to_string()
+                                    }
+                                };
+                                hypr_observability::mark_span_as_error(span, error_type.as_str());
                                 tracing::error!(
                                     parent: span,
                                     error.type = %error_type,
+                                    error = %failure_class,
                                     hyprnote.duration_ms = %latency.as_millis(),
                                     "http_request_failed"
                                 );

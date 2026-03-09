@@ -59,7 +59,7 @@ pub async fn delete_account(
     .inspect_err(|e| {
         tracing::warn!(
             enduser.id = %user_id,
-            error.message = %e,
+            error = %e,
             "storage_cleanup_failed"
         )
     });
@@ -85,7 +85,7 @@ pub async fn delete_account(
         Err(e) => {
             tracing::error!(
                 enduser.id = %user_id,
-                error.message = %e,
+                error = %e,
                 "account_deletion_failed"
             );
             sentry::capture_message(&e.to_string(), sentry::Level::Error);
@@ -115,7 +115,7 @@ async fn try_delete_stripe_customer(state: &AppState, user_id: &str) -> Result<(
         Err(e) => {
             tracing::warn!(
                 enduser.id = %user_id,
-                error.message = %e,
+                error = %e,
                 "failed_to_lookup_stripe_customer"
             );
             return Ok(());
@@ -139,7 +139,7 @@ async fn try_delete_stripe_customer(state: &AppState, user_id: &str) -> Result<(
             tracing::error!(
                 enduser.id = %user_id,
                 hyprnote.billing.customer.id = %customer_id,
-                error.message = %e,
+                error = %e,
                 "stripe_customer_deletion_failed"
             );
             sentry::capture_message(
@@ -172,7 +172,7 @@ async fn try_delete_loops_contact(state: &AppState, token: &str, user_id: &str) 
         Err(e) => {
             tracing::warn!(
                 enduser.id = %user_id,
-                error.message = %e,
+                error = %e,
                 "failed_to_get_email_for_loops"
             );
             return;
@@ -186,7 +186,7 @@ async fn try_delete_loops_contact(state: &AppState, token: &str, user_id: &str) 
         .inspect_err(|e| {
             tracing::warn!(
                 enduser.id = %user_id,
-                error.message = %e,
+                error = %e,
                 "loops_contact_deletion_failed"
             )
         });

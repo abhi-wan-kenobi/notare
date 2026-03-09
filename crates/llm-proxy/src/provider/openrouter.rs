@@ -165,7 +165,7 @@ impl Provider for OpenRouterProvider {
                 }
                 Err(err) => {
                     tracing::warn!(
-                        error.message = %err,
+                        error = %err,
                         gen_ai.response.id = %generation_id,
                         "generation_metadata_fetch_failed"
                     );

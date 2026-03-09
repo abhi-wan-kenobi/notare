@@ -91,8 +91,8 @@ impl RealtimeSttAdapter for AssemblyAIAdapter {
             Ok(m) => m,
             Err(e) => {
                 tracing::warn!(
-                    error.message = ?e,
-                    hyprnote.payload.raw = raw,
+                    error = ?e,
+                    hyprnote.payload.size_bytes = raw.len() as u64,
                     "assemblyai_json_parse_failed"
                 );
                 return vec![];
@@ -126,7 +126,7 @@ impl RealtimeSttAdapter for AssemblyAIAdapter {
                 }]
             }
             AssemblyAIMessage::Error { error } => {
-                tracing::error!(error.message = %error, "assemblyai_error");
+                tracing::error!(error = %error, "assemblyai_error");
                 vec![StreamResponse::ErrorResponse {
                     error_code: None,
                     error_message: error,
@@ -134,7 +134,10 @@ impl RealtimeSttAdapter for AssemblyAIAdapter {
                 }]
             }
             AssemblyAIMessage::Unknown => {
-                tracing::debug!(hyprnote.payload.raw = raw, "assemblyai_unknown_message");
+                tracing::debug!(
+                    hyprnote.payload.size_bytes = raw.len() as u64,
+                    "assemblyai_unknown_message"
+                );
                 vec![]
             }
         }

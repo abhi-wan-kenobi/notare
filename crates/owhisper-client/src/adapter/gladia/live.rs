@@ -164,7 +164,7 @@ impl RealtimeSttAdapter for GladiaAdapter {
                 .send()
                 .await
                 .map_err(|e| {
-                    tracing::error!(error.message = ?e, "gladia_init_request_failed");
+                    tracing::error!(error = ?e, "gladia_init_request_failed");
                 })
                 .ok()?;
 
@@ -172,7 +172,7 @@ impl RealtimeSttAdapter for GladiaAdapter {
                 .json()
                 .await
                 .map_err(|e| {
-                    tracing::error!(error.message = ?e, "gladia_init_parse_failed");
+                    tracing::error!(error = ?e, "gladia_init_parse_failed");
                 })
                 .ok()?;
 
@@ -183,7 +183,7 @@ impl RealtimeSttAdapter for GladiaAdapter {
                     validation_errors,
                 } => {
                     tracing::error!(
-                        error.message = %message,
+                        error = %message,
                         hyprnote.validation.errors = ?validation_errors,
                         "gladia_init_failed"
                     );
@@ -223,8 +223,8 @@ impl RealtimeSttAdapter for GladiaAdapter {
             Ok(m) => m,
             Err(e) => {
                 tracing::warn!(
-                    error.message = ?e,
-                    hyprnote.payload.raw = raw,
+                    error = ?e,
+                    hyprnote.payload.size_bytes = raw.len() as u64,
                     "gladia_json_parse_failed"
                 );
                 return vec![];
@@ -262,7 +262,7 @@ impl RealtimeSttAdapter for GladiaAdapter {
             GladiaMessage::StartRecording { .. } => vec![],
             GladiaMessage::EndRecording { .. } => vec![],
             GladiaMessage::Error { message, code } => {
-                tracing::error!(error.message = %message, error.code = ?code, "gladia_error");
+                tracing::error!(error = %message, error.code = ?code, "gladia_error");
                 vec![StreamResponse::ErrorResponse {
                     error_code: code,
                     error_message: message,
@@ -270,7 +270,10 @@ impl RealtimeSttAdapter for GladiaAdapter {
                 }]
             }
             GladiaMessage::Unknown => {
-                tracing::debug!(hyprnote.payload.raw = raw, "gladia_unknown_message");
+                tracing::debug!(
+                    hyprnote.payload.size_bytes = raw.len() as u64,
+                    "gladia_unknown_message"
+                );
                 vec![]
             }
         }

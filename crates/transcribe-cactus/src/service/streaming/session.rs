@@ -219,7 +219,7 @@ async fn handle_transcribe_event(
                     serde_json::Value::Number(job_id.into()),
                 );
                 tracing::info!(
-                    hyprnote.transcript.text = cloud_text,
+                    hyprnote.transcript.char_count = cloud_text.chars().count() as u64,
                     hyprnote.stt.job.id = job_id,
                     hyprnote.audio.channel_index = ch_idx,
                     "cactus_cloud_correction"
@@ -275,7 +275,7 @@ async fn handle_transcribe_event(
                 };
 
                 tracing::info!(
-                    hyprnote.transcript.text = confirmed_text,
+                    hyprnote.transcript.char_count = confirmed_text.chars().count() as u64,
                     hyprnote.audio.channel_index = ch_idx,
                     "cactus_confirmed_text"
                 );

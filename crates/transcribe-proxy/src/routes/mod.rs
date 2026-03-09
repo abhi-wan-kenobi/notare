@@ -82,7 +82,7 @@ impl AppState {
 
         self.selector.select(requested).map_err(|e| {
             tracing::warn!(
-                error.message = %e,
+                error = %e,
                 hyprnote.stt.requested_provider = ?requested,
                 "provider_selection_failed"
             );
@@ -117,7 +117,7 @@ impl AppState {
 
         self.selector.select(routed_provider).map_err(|e| {
             tracing::warn!(
-                error.message = %e,
+                error = %e,
                 hyprnote.stt.language_codes = ?languages,
                 "hyprnote_routing_failed"
             );

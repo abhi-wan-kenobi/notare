@@ -43,7 +43,7 @@ impl IntoResponse for SupportError {
             )
                 .into_response(),
             Self::Chatwoot(message) => {
-                tracing::error!(error.message = %message, "chatwoot_error");
+                tracing::error!(error = %message, "chatwoot_error");
                 sentry::capture_message(&message, sentry::Level::Error);
                 (
                     StatusCode::BAD_GATEWAY,
@@ -56,7 +56,7 @@ impl IntoResponse for SupportError {
                     .into_response()
             }
             Self::GitHub(message) => {
-                tracing::error!(error.message = %message, "github_error");
+                tracing::error!(error = %message, "github_error");
                 sentry::capture_message(&message, sentry::Level::Error);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -69,7 +69,7 @@ impl IntoResponse for SupportError {
                     .into_response()
             }
             Self::Internal(message) => {
-                tracing::error!(error.message = %message, "internal_error");
+                tracing::error!(error = %message, "internal_error");
                 sentry::capture_message(&message, sentry::Level::Error);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,

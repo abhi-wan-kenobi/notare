@@ -76,7 +76,7 @@ impl ObservabilityGuard {
         if let Some(provider) = self.otel_provider
             && let Err(e) = provider.shutdown()
         {
-            tracing::warn!(error.message = %e, "otel_tracer_shutdown_failed");
+            tracing::warn!(error = %e, "otel_tracer_shutdown_failed");
         }
     }
 }

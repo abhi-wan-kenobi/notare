@@ -96,7 +96,7 @@ impl Service<Request<Body>> for TranscribeService {
                 let model = match crate::service::build_model(&model_path, &params.keywords) {
                     Ok(model) => std::sync::Arc::new(model),
                     Err(error) => {
-                        tracing::error!(error.message = %error, "failed_to_load_model");
+                        tracing::error!(error = %error, "failed_to_load_model");
                         return Ok((
                             StatusCode::INTERNAL_SERVER_ERROR,
                             format!("failed to load model: {error}"),

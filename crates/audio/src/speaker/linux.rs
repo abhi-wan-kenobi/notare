@@ -71,7 +71,7 @@ impl SpeakerInput {
                 if let Err(e) =
                     capture_loop(producer, waker_state, current_sample_rate, stop_signal)
                 {
-                    tracing::error!(error.message = ?e, "pulseaudio_capture_thread_failed");
+                    tracing::error!(error = ?e, "pulseaudio_capture_thread_failed");
                 }
             })
         };

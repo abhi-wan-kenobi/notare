@@ -43,7 +43,7 @@ impl SonioxAdapter {
         if let Err(e) = soniox::delete_file(&client, &file_id, api_key).await {
             tracing::warn!(
                 hyprnote.file.id = %file_id,
-                error.message = %e,
+                error = %e,
                 "failed_to_delete_soniox_file"
             );
         }

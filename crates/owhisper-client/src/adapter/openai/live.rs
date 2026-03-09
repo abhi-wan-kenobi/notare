@@ -105,7 +105,10 @@ impl RealtimeSttAdapter for OpenAIAdapter {
         };
 
         let json = serde_json::to_string(&session_config).ok()?;
-        tracing::debug!(hyprnote.payload.raw = %json, "openai_session_update_payload");
+        tracing::debug!(
+            hyprnote.payload.size_bytes = json.len() as u64,
+            "openai_session_update_payload"
+        );
         Some(Message::Text(json.into()))
     }
 
@@ -121,8 +124,8 @@ impl RealtimeSttAdapter for OpenAIAdapter {
             Ok(e) => e,
             Err(e) => {
                 tracing::warn!(
-                    error.message = ?e,
-                    hyprnote.payload.raw = raw,
+                    error = ?e,
+                    hyprnote.payload.size_bytes = raw.len() as u64,
                     "openai_json_parse_failed"
                 );
                 return vec![];
@@ -168,7 +171,7 @@ impl RealtimeSttAdapter for OpenAIAdapter {
                 tracing::debug!(
                     hyprnote.stt.item.id = %item_id,
                     hyprnote.stt.content_index = content_index,
-                    hyprnote.transcript.text = %transcript,
+                    hyprnote.transcript.char_count = transcript.chars().count() as u64,
                     "openai_transcription_completed"
                 );
                 Self::build_transcript_response(&transcript, true, true)
@@ -181,7 +184,7 @@ impl RealtimeSttAdapter for OpenAIAdapter {
                 tracing::debug!(
                     hyprnote.stt.item.id = %item_id,
                     hyprnote.stt.content_index = content_index,
-                    hyprnote.transcript.text = %delta,
+                    hyprnote.transcript.char_count = delta.chars().count() as u64,
                     "openai_transcription_delta"
                 );
                 Self::build_transcript_response(&delta, false, false)
@@ -192,7 +195,7 @@ impl RealtimeSttAdapter for OpenAIAdapter {
                 tracing::error!(
                     hyprnote.stt.item.id = %item_id,
                     error.type = %error.error_type,
-                    error.message = %error.message,
+                    error = %error.message,
                     "openai_transcription_failed"
                 );
                 vec![StreamResponse::ErrorResponse {
@@ -204,7 +207,7 @@ impl RealtimeSttAdapter for OpenAIAdapter {
             OpenAIEvent::Error { error } => {
                 tracing::error!(
                     error.type = %error.error_type,
-                    error.message = %error.message,
+                    error = %error.message,
                     "openai_error"
                 );
                 vec![StreamResponse::ErrorResponse {
@@ -214,7 +217,10 @@ impl RealtimeSttAdapter for OpenAIAdapter {
                 }]
             }
             OpenAIEvent::Unknown => {
-                tracing::debug!(hyprnote.payload.raw = raw, "openai_unknown_event");
+                tracing::debug!(
+                    hyprnote.payload.size_bytes = raw.len() as u64,
+                    "openai_unknown_event"
+                );
                 vec![]
             }
         }

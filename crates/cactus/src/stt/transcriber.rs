@@ -107,8 +107,8 @@ impl std::str::FromStr for StreamResult {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         Ok(serde_json::from_str(s).unwrap_or_else(|e| {
             tracing::warn!(
-                error.message = %e,
-                hyprnote.payload.raw = s,
+                error = %e,
+                hyprnote.payload.size_bytes = s.len() as u64,
                 "cactus_stream_result_parse_failed"
             );
             Self {

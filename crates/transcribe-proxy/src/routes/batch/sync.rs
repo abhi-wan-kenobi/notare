@@ -182,7 +182,7 @@ pub(super) async fn handle_hyprnote_batch(
             Err((e, retries)) => {
                 tracing::warn!(
                     hyprnote.stt.provider.name = ?provider,
-                    error.message = %e,
+                    error = %e,
                     hyprnote.attempt.number = attempt + 1,
                     hyprnote.remaining_provider_count = provider_chain.len() - attempt - 1,
                     "provider_failed_trying_next"
@@ -232,7 +232,7 @@ async fn transcribe_with_retry(
     .notify(|err, dur| {
         tracing::warn!(
             hyprnote.stt.provider.name = ?selected.provider(),
-            error.message = %err,
+            error = %err,
             hyprnote.retry.delay_ms = dur.as_millis(),
             "retrying_transcription"
         );

@@ -142,7 +142,7 @@ impl ChannelSplitProxy {
         ws.on_upgrade(move |socket| {
             async move {
                 if let Err(e) = proxy.handle(socket).await {
-                    tracing::error!(error.message = %e, "channel_split_proxy_error");
+                    tracing::error!(error = %e, "channel_split_proxy_error");
                 }
             }
             .bind_hub(sentry::Hub::new_from_top(hub))

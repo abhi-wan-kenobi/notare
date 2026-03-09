@@ -26,7 +26,7 @@ pub async fn status_change(
             let message = event.data.status.message.as_deref().unwrap_or("unknown");
             tracing::error!(
                 hyprnote.bot.id = %bot_id,
-                error.message = %message,
+                error = %message,
                 "bot_fatal"
             );
             sentry::capture_message(
@@ -56,7 +56,7 @@ pub async fn transcript(Json(payload): Json<TranscriptWebhook>) -> Result<()> {
         hyprnote.bot.id = %payload.bot_id,
         hyprnote.transcript.speaker = %payload.transcript.speaker,
         hyprnote.transcript.is_final = payload.transcript.is_final,
-        hyprnote.transcript.text = %text,
+        hyprnote.transcript.char_count = text.chars().count() as u64,
         "transcript_received"
     );
 

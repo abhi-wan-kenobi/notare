@@ -75,7 +75,7 @@ pub async fn handler(
         Ok(response) => Json(response).into_response(),
         Err(e) => {
             tracing::error!(
-                error.message = %e,
+                error = %e,
                 hyprnote.stt.provider.name = ?selected.provider(),
                 "batch_transcription_failed"
             );

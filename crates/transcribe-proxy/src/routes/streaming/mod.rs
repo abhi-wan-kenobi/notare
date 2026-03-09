@@ -51,6 +51,7 @@ where
     skip(state, analytics_ctx, ws, params),
     fields(
         hyprnote.subsystem = "stt",
+        http.response.status_code = tracing::field::Empty,
         hyprnote.stt.provider.name = tracing::field::Empty,
         hyprnote.stt.routing_strategy = tracing::field::Empty,
         hyprnote.stt.model = tracing::field::Empty,
@@ -58,7 +59,9 @@ where
         hyprnote.audio.sample_rate_hz = tracing::field::Empty,
         hyprnote.audio.channel_count = tracing::field::Empty,
         enduser.id = tracing::field::Empty,
-        enduser.pseudo.id = tracing::field::Empty
+        enduser.pseudo.id = tracing::field::Empty,
+        error.type = tracing::field::Empty,
+        otel.status_code = tracing::field::Empty
     )
 )]
 pub async fn handler(
@@ -75,6 +78,8 @@ pub async fn handler(
     let selected = match state.resolve_provider(&mut params) {
         Ok(v) => v,
         Err(resp) => {
+            span.record("http.response.status_code", resp.status().as_u16() as i64);
+            hypr_observability::mark_span_as_error(&span, "provider_selection_failed");
             tracing::warn!(
                 parent: &span,
                 error.type = "provider_selection_failed",
@@ -176,10 +181,15 @@ pub async fn handler(
     let proxy = match proxy_result {
         Ok(p) => p,
         Err(ProxyBuildError::SessionInitFailed(e)) => {
+            span.record(
+                "http.response.status_code",
+                StatusCode::BAD_GATEWAY.as_u16() as i64,
+            );
+            hypr_observability::mark_span_as_error(&span, "session_init_failed");
             tracing::error!(
                 parent: &span,
                 error.type = "session_init_failed",
-                error.message = %e,
+                error = %e,
                 hyprnote.stt.provider.name = ?selected.provider(),
                 "session_init_failed"
             );
@@ -189,10 +199,15 @@ pub async fn handler(
             return (StatusCode::BAD_GATEWAY, e).into_response();
         }
         Err(ProxyBuildError::ProxyError(e)) => {
+            span.record(
+                "http.response.status_code",
+                StatusCode::BAD_REQUEST.as_u16() as i64,
+            );
+            hypr_observability::mark_span_as_error(&span, "proxy_build_failed");
             tracing::error!(
                 parent: &span,
                 error.type = "proxy_build_failed",
-                error.message = %e,
+                error = %e,
                 hyprnote.stt.provider.name = ?provider,
                 "proxy_build_failed"
             );

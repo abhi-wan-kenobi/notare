@@ -48,7 +48,7 @@ pub(crate) fn spawn_download_task<M: DownloadableModel>(
         if params.model.remove_destination_after_finalize() {
             let _ = tokio::fs::remove_file(&params.destination).await;
         } else if let Err(error) = steps::promote(&params).await {
-            tracing::error!(error.message = %error, "model_download_promote_error");
+            tracing::error!(error = %error, "model_download_promote_error");
             fail_task(&params, true).await;
             return;
         }
@@ -73,7 +73,7 @@ fn log_download_error(error: &hypr_file::Error) -> bool {
         return false;
     }
 
-    tracing::error!(error.message = %error, "model_download_error");
+    tracing::error!(error = %error, "model_download_error");
     true
 }
 
@@ -87,10 +87,10 @@ fn log_checksum_error(error: &ChecksumError) {
             );
         }
         ChecksumError::Calculate(error) => {
-            tracing::error!(error.message = %error, "model_download_checksum_error");
+            tracing::error!(error = %error, "model_download_checksum_error");
         }
         ChecksumError::Join(error) => {
-            tracing::error!(error.message = %error, "model_download_checksum_join_error");
+            tracing::error!(error = %error, "model_download_checksum_join_error");
         }
     }
 }
@@ -98,10 +98,10 @@ fn log_checksum_error(error: &ChecksumError) {
 fn log_finalize_error(error: &FinalizeError) {
     match error {
         FinalizeError::Finalize(error) => {
-            tracing::error!(error.message = %error, "model_finalize_error");
+            tracing::error!(error = %error, "model_finalize_error");
         }
         FinalizeError::Join(error) => {
-            tracing::error!(error.message = %error, "model_finalize_join_error");
+            tracing::error!(error = %error, "model_finalize_join_error");
         }
     }
 }

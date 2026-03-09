@@ -62,7 +62,7 @@ impl RealtimeSttAdapter for CactusAdapter {
                 if let Ok(error) = serde_json::from_str::<CactusError>(raw) {
                     tracing::error!(
                         error.type = %error.error_type,
-                        error.message = %error.message,
+                        error = %error.message,
                         "cactus_error"
                     );
                     vec![StreamResponse::ErrorResponse {
@@ -71,7 +71,10 @@ impl RealtimeSttAdapter for CactusAdapter {
                         provider: "cactus".to_string(),
                     }]
                 } else {
-                    tracing::warn!(hyprnote.payload.raw = raw, "cactus_unknown_message");
+                    tracing::warn!(
+                        hyprnote.payload.size_bytes = raw.len() as u64,
+                        "cactus_unknown_message"
+                    );
                     vec![]
                 }
             }

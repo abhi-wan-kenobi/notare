@@ -118,7 +118,7 @@ async fn run_batch_inner(
         Ok(result) => result,
         Err(err) => {
             let raw_error = format!("{err:?}");
-            tracing::error!(error.message = %raw_error, "audio_metadata_task_join_failed");
+            tracing::error!(error = %raw_error, "audio_metadata_task_join_failed");
             return Err(crate::BatchFailure::AudioMetadataJoinFailed.into());
         }
     };
@@ -129,7 +129,7 @@ async fn run_batch_inner(
             let raw_error = err.to_string();
             let message = format_user_friendly_error(&raw_error);
             tracing::error!(
-                error.message = %raw_error,
+                error = %raw_error,
                 hyprnote.error.user_message = %message,
                 "failed_to_read_audio_metadata"
             );
@@ -193,7 +193,7 @@ async fn run_batch_simple<A: BatchSttAdapter>(
                 let raw_error = format!("{err:?}");
                 let message = format_user_friendly_error(&raw_error);
                 tracing::error!(
-                    error.message = %raw_error,
+                    error = %raw_error,
                     hyprnote.error.user_message = %message,
                     "batch transcription failed"
                 );

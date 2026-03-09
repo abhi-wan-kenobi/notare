@@ -47,7 +47,7 @@ pub(super) async fn run_batch_streaming(
                 let raw_error = format!("{err:?}");
                 let message = format_user_friendly_error(&raw_error);
                 tracing::error!(
-                    error.message = %raw_error,
+                    error = %raw_error,
                     hyprnote.error.user_message = %message,
                     "batch supervisor spawn failed"
                 );
@@ -277,7 +277,7 @@ pub(super) fn report_stream_start_failure(
     };
 
     tracing::error!(
-        error.message = %raw_error,
+        error = %raw_error,
         hyprnote.error.user_message = %message,
         "{context}"
     );
@@ -374,7 +374,7 @@ async fn process_stream_loop<S, Item, E, F>(
                             tracing::error!(
                                 hyprnote.stt.provider.name = %provider,
                                 error.code = ?error_code,
-                                error.message = %error_message,
+                                error = %error_message,
                                 hyprnote.response.count = response_count,
                                 "{context} received provider error response"
                             );
@@ -402,7 +402,7 @@ async fn process_stream_loop<S, Item, E, F>(
                         let raw_error = format!("{err:?}");
                         let message = format_user_friendly_error(&raw_error);
                         tracing::error!(
-                            error.message = %raw_error,
+                            error = %raw_error,
                             hyprnote.error.user_message = %message,
                             hyprnote.response.count = response_count,
                             "{context} stream error"

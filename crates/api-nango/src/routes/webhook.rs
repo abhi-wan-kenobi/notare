@@ -94,7 +94,7 @@ pub async fn nango_webhook(
             .await
             .map_err(|e| {
                 tracing::error!(
-                    error.message = %e,
+                    error = %e,
                     "failed_to_persist_nango_refresh_failure_state"
                 );
                 NangoError::Internal(e.to_string())
@@ -104,7 +104,7 @@ pub async fn nango_webhook(
             hyprnote.connection.id = %payload.connection_id,
             hyprnote.integration.id = %payload.provider_config_key,
             error.type = error_type,
-            error.message = error_description,
+            error = error_description,
             "nango token refresh failed"
         );
     }
@@ -131,7 +131,7 @@ pub async fn nango_webhook(
             )
             .await
             .map_err(|e| {
-                tracing::error!(error.message = %e, "failed_to_upsert_nango_connection");
+                tracing::error!(error = %e, "failed_to_upsert_nango_connection");
                 NangoError::Internal(e.to_string())
             })?;
 
@@ -150,7 +150,7 @@ pub async fn nango_webhook(
             .delete_connection_by_connection(&payload.provider_config_key, &payload.connection_id)
             .await
             .map_err(|e| {
-                tracing::error!(error.message = %e, "failed_to_delete_nango_connection");
+                tracing::error!(error = %e, "failed_to_delete_nango_connection");
                 NangoError::Internal(e.to_string())
             })?;
 
