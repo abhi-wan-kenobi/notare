@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { cn } from "@hypr/utils";
 
@@ -10,11 +10,10 @@ import { useEditSummaryTools } from "./use-edit-summary-tools";
 import { useSessionTab } from "./use-session-tab";
 
 import { useLanguageModel } from "~/ai/hooks";
-import {
-  useChatActions,
-  useStableSessionId,
-} from "~/chat/store/use-chat-actions";
+import { useChatActions } from "~/chat/store/use-chat-actions";
 import { useShell } from "~/contexts/shell";
+import { id } from "~/shared/utils";
+import * as main from "~/store/tinybase/store/main";
 
 export function ChatView() {
   const { chat } = useShell();
@@ -23,21 +22,38 @@ export function ChatView() {
   const { currentSessionId, getSessionId, getEnhancedNoteId } = useSessionTab();
   const { extraTools } = useEditSummaryTools(getSessionId, getEnhancedNoteId);
 
-  const stableSessionId = useStableSessionId(groupId);
+  // sessionId drives the ChatSession key and useChat id.
+  // It is managed explicitly — not derived from groupId — so that we can distinguish:
+  //   handleNewChat:    new random ID → fresh useChat instance
+  //   handleSelectChat: set to groupId → forces ChatSession remount to load history
+  //   onGroupCreated:   groupId changes but sessionId stays stable → keeps useChat alive for the in-flight stream
+  const [sessionId, setSessionId] = useState<string>(() => groupId ?? id());
+
   const model = useLanguageModel("chat");
+  const { user_id } = main.UI.useValues(main.STORE_ID);
+
+  const handleGroupCreated = useCallback(
+    (newGroupId: string) => {
+      // Don't update sessionId — keep current one so useChat stays alive for the in-flight stream
+      setGroupId(newGroupId);
+    },
+    [setGroupId],
+  );
 
   const { handleSendMessage } = useChatActions({
     groupId,
-    onGroupCreated: setGroupId,
+    onGroupCreated: handleGroupCreated,
   });
 
   const handleNewChat = useCallback(() => {
     setGroupId(undefined);
+    setSessionId(id());
   }, [setGroupId]);
 
   const handleSelectChat = useCallback(
     (selectedGroupId: string) => {
       setGroupId(selectedGroupId);
+      setSessionId(selectedGroupId);
     },
     [setGroupId],
   );
@@ -56,37 +72,39 @@ export function ChatView() {
         onSelectChat={handleSelectChat}
         handleClose={() => chat.sendEvent({ type: "CLOSE" })}
       />
-      <ChatSession
-        key={stableSessionId}
-        sessionId={stableSessionId}
-        chatGroupId={groupId}
-        currentSessionId={currentSessionId}
-        extraTools={extraTools}
-      >
-        {(sessionProps) => (
-          <ChatContent
-            {...sessionProps}
-            model={model}
-            handleSendMessage={handleSendMessage}
-          >
-            <ChatBody
-              messages={sessionProps.messages}
-              status={sessionProps.status}
-              error={sessionProps.error}
-              onReload={sessionProps.regenerate}
-              isModelConfigured={!!model}
-              onSendMessage={(content, parts) => {
-                handleSendMessage(
-                  content,
-                  parts,
-                  sessionProps.sendMessage,
-                  sessionProps.pendingRefs,
-                );
-              }}
-            />
-          </ChatContent>
-        )}
-      </ChatSession>
+      {user_id && (
+        <ChatSession
+          key={sessionId}
+          sessionId={sessionId}
+          chatGroupId={groupId}
+          currentSessionId={currentSessionId}
+          extraTools={extraTools}
+        >
+          {(sessionProps) => (
+            <ChatContent
+              {...sessionProps}
+              model={model}
+              handleSendMessage={handleSendMessage}
+            >
+              <ChatBody
+                messages={sessionProps.messages}
+                status={sessionProps.status}
+                error={sessionProps.error}
+                onReload={sessionProps.regenerate}
+                isModelConfigured={!!model}
+                onSendMessage={(content, parts) => {
+                  handleSendMessage(
+                    content,
+                    parts,
+                    sessionProps.sendMessage,
+                    sessionProps.pendingRefs,
+                  );
+                }}
+              />
+            </ChatContent>
+          )}
+        </ChatSession>
+      )}
     </div>
   );
 }

@@ -131,6 +131,7 @@ export const tableSchemaForTinybase = {
     content: { type: "string" },
     metadata: { type: "string" },
     parts: { type: "string" },
+    status: { type: "string" },
   } as const satisfies InferTinyBaseSchema<typeof chatMessageSchema>,
   enhanced_notes: {
     user_id: { type: "string" },

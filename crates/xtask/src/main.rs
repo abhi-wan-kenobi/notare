@@ -60,36 +60,55 @@ fn supabase_patch() -> Result<()> {
     toml_ensure_table(&mut config, "auth.external.google");
     toml_ensure_table(&mut config, "auth.hook.custom_access_token");
 
-    if let (Ok(id), Ok(secret)) = (env::var("GITHUB_CLIENT_ID"), env::var("GITHUB_CLIENT_SECRET")) {
+    if let (Ok(id), Ok(secret)) = (
+        env::var("GITHUB_CLIENT_ID"),
+        env::var("GITHUB_CLIENT_SECRET"),
+    ) {
         toml_set_key(&mut config, "auth.external.github.enabled", true.into());
         toml_set_key(&mut config, "auth.external.github.client_id", id.into());
         toml_set_key(&mut config, "auth.external.github.secret", secret.into());
         toml_set_key(&mut config, "auth.external.github.redirect_uri", "".into());
     }
 
-    if let (Ok(id), Ok(secret)) = (env::var("GOOGLE_CLIENT_ID"), env::var("GOOGLE_CLIENT_SECRET")) {
+    if let (Ok(id), Ok(secret)) = (
+        env::var("GOOGLE_CLIENT_ID"),
+        env::var("GOOGLE_CLIENT_SECRET"),
+    ) {
         toml_set_key(&mut config, "auth.external.google.enabled", true.into());
         toml_set_key(&mut config, "auth.external.google.client_id", id.into());
         toml_set_key(&mut config, "auth.external.google.secret", secret.into());
-        toml_set_key(&mut config, "auth.external.google.skip_nonce_check", false.into());
+        toml_set_key(
+            &mut config,
+            "auth.external.google.skip_nonce_check",
+            false.into(),
+        );
     }
 
-    toml_set_key(&mut config, "auth.hook.custom_access_token.enabled", true.into());
+    toml_set_key(
+        &mut config,
+        "auth.hook.custom_access_token.enabled",
+        true.into(),
+    );
     toml_set_key(
         &mut config,
         "auth.hook.custom_access_token.uri",
         "pg-functions://postgres/public/custom_access_token_hook".into(),
     );
 
-    fs::write(&path, toml::to_string_pretty(&config).context("serialize TOML")?)
-        .context("write supabase/config.toml")
+    fs::write(
+        &path,
+        toml::to_string_pretty(&config).context("serialize TOML")?,
+    )
+    .context("write supabase/config.toml")
 }
 
 // General-purpose TOML setter.
 // Args: <file> <key> <toml-value> [<key> <toml-value> ...]
 // Values are inline TOML: true, 42, "string", ["a","b"], etc.
 fn toml_set(args: &[String]) -> Result<()> {
-    let (path_str, pairs) = args.split_first().context("usage: toml-set <file> <key> <value> ...")?;
+    let (path_str, pairs) = args
+        .split_first()
+        .context("usage: toml-set <file> <key> <value> ...")?;
     anyhow::ensure!(pairs.len() % 2 == 0, "key/value args must come in pairs");
 
     let path = Path::new(path_str);
@@ -108,8 +127,11 @@ fn toml_set(args: &[String]) -> Result<()> {
         toml_set_key(&mut config, key, value);
     }
 
-    fs::write(path, toml::to_string_pretty(&config).context("serialize TOML")?)
-        .with_context(|| format!("write {path_str}"))
+    fs::write(
+        path,
+        toml::to_string_pretty(&config).context("serialize TOML")?,
+    )
+    .with_context(|| format!("write {path_str}"))
 }
 
 fn toml_set_key(table: &mut TomlTable, key: &str, value: toml::Value) {

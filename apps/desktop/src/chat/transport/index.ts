@@ -222,6 +222,7 @@ export class CustomChatTransport implements ChatTransport<HyprUIMessage> {
 
     const result = await agent.stream({
       messages: await convertToModelMessages(messagesWithContext),
+      abortSignal: options.abortSignal,
       experimental_transform: smoothStream({
         chunking: "line",
         delayInMs: null,
