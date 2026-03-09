@@ -1,27 +1,76 @@
-mod common;
 mod hyprnote;
 mod passthrough;
 mod session;
 
 use std::collections::BTreeMap;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
 
 use axum::{
     extract::{FromRequestParts, State, WebSocketUpgrade},
     http::{StatusCode, request::Parts},
     response::{IntoResponse, Response},
 };
+use owhisper_client::Provider;
 
 use crate::hyprnote_routing::should_use_hyprnote_routing;
 use crate::query_params::{QueryParams, QueryValue};
+use crate::relay::OnCloseCallback;
 
 use super::AppState;
-use common::{ProxyBuildError, parse_param};
 
 use hypr_analytics::{AuthenticatedUserId, DeviceFingerprint};
+
+pub enum ProxyBuildError {
+    SessionInitFailed(String),
+    ProxyError(crate::ProxyError),
+}
+
+impl From<crate::ProxyError> for ProxyBuildError {
+    fn from(error: crate::ProxyError) -> Self {
+        Self::ProxyError(error)
+    }
+}
+
+pub fn parse_param<T: std::str::FromStr>(params: &QueryParams, key: &str, default: T) -> T {
+    params
+        .get_first(key)
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(default)
+}
 
 pub struct AnalyticsContext {
     pub fingerprint: Option<String>,
     pub user_id: Option<String>,
+}
+
+pub fn build_on_close_callback(
+    config: &crate::config::SttProxyConfig,
+    provider: Provider,
+    analytics_ctx: &AnalyticsContext,
+) -> Option<OnCloseCallback> {
+    let analytics = config.analytics.as_ref()?.clone();
+    let provider_name = format!("{:?}", provider).to_lowercase();
+    let fingerprint = analytics_ctx.fingerprint.clone();
+    let user_id = analytics_ctx.user_id.clone();
+
+    Some(Arc::new(move |duration| {
+        let analytics = analytics.clone();
+        let provider_name = provider_name.clone();
+        let fingerprint = fingerprint.clone();
+        let user_id = user_id.clone();
+        Box::pin(async move {
+            analytics
+                .report_stt(crate::analytics::SttEvent {
+                    fingerprint,
+                    user_id,
+                    provider: provider_name,
+                    duration,
+                })
+                .await;
+        }) as Pin<Box<dyn Future<Output = ()> + Send>>
+    }))
 }
 
 impl<S> FromRequestParts<S> for AnalyticsContext
@@ -175,7 +224,7 @@ pub async fn handler(
     } else {
         passthrough::build_proxy(&state, &selected, &params, analytics_ctx)
             .await
-            .map(hyprnote::StreamingProxy::Single)
+            .map(crate::relay::StreamingProxy::single)
     };
 
     let proxy = match proxy_result {
@@ -218,8 +267,5 @@ pub async fn handler(
         }
     };
 
-    match proxy {
-        hyprnote::StreamingProxy::Single(p) => p.handle_upgrade(ws).await.into_response(),
-        hyprnote::StreamingProxy::ChannelSplit(p) => p.handle_upgrade(ws).await.into_response(),
-    }
+    proxy.handle_upgrade(ws).await.into_response()
 }

@@ -4,7 +4,7 @@ use crate::provider_selector::SelectedProvider;
 use crate::query_params::QueryParams;
 use crate::routes::AppState;
 
-use super::common::parse_param;
+use super::parse_param;
 
 #[derive(serde::Deserialize)]
 pub struct InitResponse {
