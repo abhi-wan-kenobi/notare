@@ -63,7 +63,7 @@ impl Actor for SessionActor {
         let span = session_span(&session_id);
 
         async {
-            let recorder_cell = if ctx.params.record_enabled {
+            let recorder_cell = if ctx.params.audio_retention == crate::AudioRetention::Disk {
                 Some(
                     spawn_recorder(myself.get_cell(), &ctx)
                         .await
@@ -314,7 +314,7 @@ async fn try_restart_source(
 }
 
 async fn try_restart_recorder(supervisor_cell: ActorCell, state: &mut SessionState) -> bool {
-    if !state.ctx.params.record_enabled {
+    if state.ctx.params.audio_retention != crate::AudioRetention::Disk {
         return true;
     }
 
@@ -551,7 +551,7 @@ mod tests {
                 session_id: "session".to_string(),
                 languages: vec![],
                 onboarding: false,
-                record_enabled: true,
+                audio_retention: crate::AudioRetention::Disk,
                 model: "test-model".to_string(),
                 base_url: "http://localhost:1234".to_string(),
                 api_key: "test-key".to_string(),

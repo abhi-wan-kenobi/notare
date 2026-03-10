@@ -129,7 +129,7 @@ export function useStartListening(sessionId: string) {
         session_id: sessionId,
         languages,
         onboarding: false,
-        record_enabled,
+        audio_retention: record_enabled ? "disk" : "memory",
         model: conn.model,
         base_url: conn.baseUrl,
         api_key: conn.apiKey,

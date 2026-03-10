@@ -26,8 +26,8 @@ pub(crate) fn configure_sentry_session_context(params: &SessionParams) {
             params.model.clone().into(),
         );
         session_context.insert(
-            "hyprnote.session.recording_enabled".to_string(),
-            params.record_enabled.into(),
+            "hyprnote.session.audio_retention".to_string(),
+            format!("{:?}", params.audio_retention).into(),
         );
         session_context.insert(
             "hyprnote.session.onboarding".to_string(),

@@ -16,7 +16,7 @@ pub struct SessionParams {
     pub session_id: String,
     pub languages: Vec<hypr_language::Language>,
     pub onboarding: bool,
-    pub record_enabled: bool,
+    pub audio_retention: crate::AudioRetention,
     pub model: String,
     pub base_url: String,
     pub api_key: String,
