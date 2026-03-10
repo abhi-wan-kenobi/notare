@@ -23,6 +23,21 @@ pub enum AudioRetention {
     Disk,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "snake_case")]
+pub enum InMemoryAudioDisposition {
+    Discard,
+    Persist,
+}
+
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct StopSessionParams {
+    pub in_memory_audio: Option<InMemoryAudioDisposition>,
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(tag = "type")]
