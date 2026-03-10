@@ -59,7 +59,7 @@ export function ChatView() {
   return (
     <div
       className={cn([
-        "flex h-full min-h-0 flex-col overflow-hidden",
+        "flex h-full min-h-0 flex-col overflow-hidden bg-white",
         chat.mode === "RightPanelOpen" &&
           "overflow-hidden rounded-xl border border-neutral-200",
       ])}
@@ -89,6 +89,7 @@ export function ChatView() {
                 error={sessionProps.error}
                 onReload={sessionProps.regenerate}
                 isModelConfigured={!!model}
+                hasContext={sessionProps.contextEntities.length > 0}
                 onSendMessage={(content, parts) => {
                   handleSendMessage(
                     content,
