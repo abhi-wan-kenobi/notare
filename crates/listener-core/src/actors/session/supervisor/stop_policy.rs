@@ -19,6 +19,9 @@ pub(super) fn resolve_in_memory_recording_disposition(
 pub(super) fn default_in_memory_recording_disposition(
     current_transcription_mode: TranscriptionMode,
 ) -> InMemoryRecordingDisposition {
+    // Temporary hack: if live transcription degrades into batch-only recording,
+    // flush the in-memory audio to disk on stop so the session audio survives.
+    // Later we want a true in-memory flow that can finish without writing a file.
     if current_transcription_mode == TranscriptionMode::Batch {
         InMemoryRecordingDisposition::Persist
     } else {
@@ -43,6 +46,18 @@ mod tests {
         assert_eq!(
             default_in_memory_recording_disposition(TranscriptionMode::Batch),
             InMemoryRecordingDisposition::Persist
+        );
+    }
+
+    #[test]
+    fn disk_recordings_do_not_use_in_memory_stop_policy() {
+        assert_eq!(
+            resolve_in_memory_recording_disposition(
+                RecordingMode::Disk,
+                TranscriptionMode::Batch,
+                &StopSessionParams::default(),
+            ),
+            None
         );
     }
 

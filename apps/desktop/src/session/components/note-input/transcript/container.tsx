@@ -8,6 +8,7 @@ import { TranscriptEmptyState } from "./empty-state";
 import { LiveState } from "./live-state";
 import { Operations } from "./operations";
 
+import { useAudioPlayer } from "~/audio-player";
 import * as main from "~/store/tinybase/store/main";
 import { useListener } from "~/stt/contexts";
 import { parseTranscriptWords } from "~/stt/utils";
@@ -41,6 +42,7 @@ export function TranscriptContainer({
   const requestedTranscriptionMode = live.requestedTranscriptionMode;
   const currentTranscriptionMode = live.currentTranscriptionMode;
   const recordingMode = live.recordingMode;
+  const { audioExists } = useAudioPlayer();
 
   const partialWordsByChannel = useListener(
     (state) => state.partialWordsByChannel,
@@ -128,7 +130,13 @@ export function TranscriptContainer({
   }
 
   if (!hasTranscriptContent) {
-    return <TranscriptEmptyState isBatching={false} error={batchError} />;
+    return (
+      <TranscriptEmptyState
+        isBatching={false}
+        hasAudio={audioExists}
+        error={batchError}
+      />
+    );
   }
 
   return (

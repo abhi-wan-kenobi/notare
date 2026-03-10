@@ -13,8 +13,17 @@ export function BatchState({
   recordingMode: "memory" | "disk" | null;
 }) {
   const amplitude = useListener((state) => state.live.amplitude);
-  const storageLabel = recordingMode === "disk" ? "on disk" : "in memory";
   const isFallbackFromLive = requestedTranscriptionMode === "live";
+  const title =
+    recordingMode === "disk"
+      ? "on disk"
+      : isFallbackFromLive
+        ? "in memory"
+        : "in memory for now";
+  const continuation =
+    recordingMode === "disk"
+      ? "Recording continues on disk."
+      : "Recording continues in memory for now and will be saved to disk when you stop.";
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-8">
@@ -30,12 +39,12 @@ export function BatchState({
         <p className="text-base font-semibold text-neutral-700">
           {isFallbackFromLive
             ? "Live transcription stopped"
-            : `Recording continues ${storageLabel}`}
+            : `Recording continues ${title}`}
         </p>
         <p className="text-sm leading-relaxed text-neutral-400">
           {isFallbackFromLive
-            ? `${error ? degradedMessage(error) : "Live transcription is unavailable."} Recording continues ${storageLabel}.`
-            : `Transcript will be generated after you stop recording. We are keeping this session ${storageLabel}.`}
+            ? `${error ? degradedMessage(error) : "Live transcription is unavailable."} ${continuation}`
+            : `${continuation}`}
         </p>
       </div>
     </div>

@@ -56,7 +56,6 @@ export function OptionsMenu({
   const clearBatchSession = useListener((state) => state.clearBatchSession);
   const startBatchRecording = useStartListening(sessionId, {
     transcriptionMode: "batch",
-    recordingMode: "memory",
   });
 
   const store = main.UI.useStore(main.STORE_ID) as main.Store | undefined;

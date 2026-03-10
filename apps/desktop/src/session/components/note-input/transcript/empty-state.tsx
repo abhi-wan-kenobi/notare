@@ -4,11 +4,13 @@ import { Spinner } from "@hypr/ui/components/ui/spinner";
 
 export function TranscriptEmptyState({
   isBatching,
+  hasAudio,
   percentage,
   phase,
   error,
 }: {
   isBatching?: boolean;
+  hasAudio?: boolean;
   percentage?: number;
   phase?: "importing" | "transcribing";
   error?: string | null;
@@ -48,7 +50,17 @@ export function TranscriptEmptyState({
           </p>
         </div>
       ) : (
-        <p className="text-sm">No transcript available</p>
+        <div className="flex max-w-sm flex-col items-center gap-1 text-center">
+          <p className="text-sm text-neutral-500">
+            {hasAudio ? "Recording available" : "No transcript available"}
+          </p>
+          {hasAudio && (
+            <p className="text-xs text-neutral-400">
+              Use the refresh button above to generate a transcript from this
+              recording.
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
