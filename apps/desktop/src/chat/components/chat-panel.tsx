@@ -6,7 +6,6 @@ import { ChatBody } from "./body";
 import { ChatContent } from "./content";
 import { ChatHeader } from "./header";
 import { ChatSession } from "./session-provider";
-import { useEditSummaryTools } from "./use-edit-summary-tools";
 import { useSessionTab } from "./use-session-tab";
 
 import { useLanguageModel } from "~/ai/hooks";
@@ -19,8 +18,7 @@ export function ChatView() {
   const { chat } = useShell();
   const { groupId, setGroupId } = chat;
 
-  const { currentSessionId, getSessionId, getEnhancedNoteId } = useSessionTab();
-  const { extraTools } = useEditSummaryTools(getSessionId, getEnhancedNoteId);
+  const { currentSessionId } = useSessionTab();
 
   // sessionId drives the ChatSession key and useChat id.
   // It is managed explicitly — not derived from groupId — so that we can distinguish:
@@ -78,7 +76,6 @@ export function ChatView() {
           sessionId={sessionId}
           chatGroupId={groupId}
           currentSessionId={currentSessionId}
-          extraTools={extraTools}
         >
           {(sessionProps) => (
             <ChatContent

@@ -58,12 +58,35 @@ export function TabContentEdit({ tab }: { tab: EditTab }) {
   return (
     <StandardTabWrapper>
       <div className="flex h-full flex-col">
-        <div className="flex flex-col gap-0.5 border-b border-neutral-200 px-4 py-3">
-          <div className="text-[13px] font-medium text-neutral-900">
-            {sessionTitle ?? "Untitled session"}
+        <div className="flex items-start justify-between gap-3 border-b border-neutral-200 px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-medium text-neutral-900">
+              {sessionTitle ?? "Untitled session"}
+            </div>
+            <div className="text-[12px] text-neutral-500">
+              {summaryTitle ?? "Summary"}
+            </div>
           </div>
-          <div className="text-[12px] text-neutral-500">
-            {summaryTitle ?? "Summary"}
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              className="rounded-md border border-neutral-300 bg-white px-4 py-1.5 text-[13px] text-neutral-600 transition-colors hover:bg-neutral-50"
+              onClick={() => {
+                resolveEdit(tab.requestId, false);
+                useTabs.getState().close(tab);
+              }}
+            >
+              Decline
+            </button>
+            <button
+              className="rounded-md bg-neutral-800 px-4 py-1.5 text-[13px] text-white transition-colors hover:bg-neutral-700"
+              onClick={() => {
+                resolveEdit(tab.requestId, true);
+                useTabs.getState().close(tab);
+              }}
+              autoFocus
+            >
+              Approve
+            </button>
           </div>
         </div>
         <div className="flex-1 overflow-auto">
@@ -72,27 +95,6 @@ export function TabContentEdit({ tab }: { tab: EditTab }) {
             newFile={newFile!}
             options={{ diffStyle: "unified" }}
           />
-        </div>
-        <div className="flex items-center justify-end gap-2 border-t border-neutral-200 px-4 py-3">
-          <button
-            className="rounded-md border border-neutral-300 bg-white px-4 py-1.5 text-[13px] text-neutral-600 transition-colors hover:bg-neutral-50"
-            onClick={() => {
-              resolveEdit(tab.requestId, false);
-              useTabs.getState().close(tab);
-            }}
-          >
-            Decline
-          </button>
-          <button
-            className="rounded-md bg-neutral-800 px-4 py-1.5 text-[13px] text-white transition-colors hover:bg-neutral-700"
-            onClick={() => {
-              resolveEdit(tab.requestId, true);
-              useTabs.getState().close(tab);
-            }}
-            autoFocus
-          >
-            Approve
-          </button>
         </div>
       </div>
     </StandardTabWrapper>
