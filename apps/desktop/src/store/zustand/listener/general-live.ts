@@ -99,6 +99,8 @@ const createSessionEventHandlers = <T extends LiveStore>(
       if (currentLive.status === "active" && currentLive.intervalId) {
         setLiveState(set, (live) => {
           live.degraded = payload.error ?? null;
+          live.requestedTranscriptionMode = payload.requestedTranscriptionMode;
+          live.currentTranscriptionMode = payload.currentTranscriptionMode;
         });
         return;
       }
@@ -118,6 +120,8 @@ const createSessionEventHandlers = <T extends LiveStore>(
           live,
           targetSessionId,
           intervalId,
+          payload.requestedTranscriptionMode,
+          payload.currentTranscriptionMode,
           payload.error ?? null,
         );
       });
@@ -246,6 +250,8 @@ export const startLiveSession = <T extends LiveStore>(
       live.status = "active";
       live.loading = false;
       live.sessionId = targetSessionId;
+      live.requestedTranscriptionMode = params.transcription_mode;
+      live.currentTranscriptionMode = params.transcription_mode;
     });
   });
 

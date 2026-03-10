@@ -165,10 +165,14 @@ async fn start_session_impl(
                 state.session_id = Some(params.session_id.clone());
                 state.supervisor = Some(supervisor_cell);
 
-                state.runtime.emit_lifecycle(SessionLifecycleEvent::Active {
+                let evt = SessionLifecycleEvent::Active {
                     session_id: params.session_id,
+                    requested_transcription_mode: params.transcription_mode,
+                    current_transcription_mode: params.transcription_mode,
                     error: None,
-                });
+                };
+
+                state.runtime.emit_lifecycle(evt);
 
                 tracing::info!("session_started");
                 true

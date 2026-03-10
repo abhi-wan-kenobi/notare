@@ -3,8 +3,10 @@ import type { StoreApi } from "zustand";
 
 import type {
   DegradedError,
+  RecordingMode,
   SessionErrorEvent,
   SessionProgressEvent,
+  TranscriptionMode,
 } from "@hypr/plugin-listener";
 
 export type LiveSessionStatus = "inactive" | "active" | "finalizing";
@@ -31,6 +33,9 @@ export type GeneralState = {
     lastError: string | null;
     device: string | null;
     degraded: DegradedError | null;
+    requestedTranscriptionMode: TranscriptionMode | null;
+    currentTranscriptionMode: TranscriptionMode | null;
+    recordingMode: RecordingMode | null;
   };
 };
 
@@ -47,6 +52,9 @@ const initialLiveState: LiveState = {
   lastError: null,
   device: null,
   degraded: null,
+  requestedTranscriptionMode: null,
+  currentTranscriptionMode: null,
+  recordingMode: null,
 };
 
 export const initialGeneralState: GeneralState = {
@@ -64,15 +72,25 @@ export const setLiveState = <T extends GeneralState>(
   );
 };
 
-export const markLiveStartRequested = (live: LiveState, sessionId: string) => {
+export const markLiveStartRequested = (
+  live: LiveState,
+  sessionId: string,
+  requestedTranscriptionMode: TranscriptionMode,
+  recordingMode: RecordingMode,
+) => {
   live.loading = true;
   live.sessionId = sessionId;
+  live.requestedTranscriptionMode = requestedTranscriptionMode;
+  live.currentTranscriptionMode = requestedTranscriptionMode;
+  live.recordingMode = recordingMode;
 };
 
 export const markLiveActive = (
   live: LiveState,
   sessionId: string,
   intervalId: NodeJS.Timeout,
+  requestedTranscriptionMode: TranscriptionMode,
+  transcriptionMode: TranscriptionMode,
   degraded: DegradedError | null,
 ) => {
   live.status = "active";
@@ -82,6 +100,8 @@ export const markLiveActive = (
   live.intervalId = intervalId;
   live.sessionId = sessionId;
   live.degraded = degraded;
+  live.requestedTranscriptionMode = requestedTranscriptionMode;
+  live.currentTranscriptionMode = transcriptionMode;
 };
 
 export const markLiveFinalizing = (live: LiveState) => {
@@ -100,6 +120,9 @@ export const markLiveInactive = (live: LiveState, error: string | null) => {
   live.lastError = error;
   live.device = null;
   live.degraded = null;
+  live.requestedTranscriptionMode = null;
+  live.currentTranscriptionMode = null;
+  live.recordingMode = null;
   live.muted = initialLiveState.muted;
 };
 
@@ -116,6 +139,9 @@ export const markLiveStartFailed = (live: LiveState) => {
   live.lastError = null;
   live.device = null;
   live.degraded = null;
+  live.requestedTranscriptionMode = null;
+  live.currentTranscriptionMode = null;
+  live.recordingMode = null;
 };
 
 export const updateLiveProgress = (

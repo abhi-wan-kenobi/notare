@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
+import type { RecordingMode, TranscriptionMode } from "@hypr/plugin-listener";
 import type { TranscriptStorage } from "@hypr/store";
 
 import { useListener } from "./contexts";
@@ -20,7 +21,13 @@ import {
   updateTranscriptWords,
 } from "~/stt/utils";
 
-export function useStartListening(sessionId: string) {
+export function useStartListening(
+  sessionId: string,
+  options?: {
+    transcriptionMode?: TranscriptionMode;
+    recordingMode?: RecordingMode;
+  },
+) {
   const { user_id } = main.UI.useValues(main.STORE_ID);
   const store = main.UI.useStore(main.STORE_ID);
 
@@ -31,6 +38,9 @@ export function useStartListening(sessionId: string) {
   const { conn } = useSTTConnection();
 
   const keywords = useKeywords(sessionId);
+  const transcriptionMode = options?.transcriptionMode ?? "live";
+  const recordingMode =
+    options?.recordingMode ?? (record_enabled ? "disk" : "memory");
 
   const startListening = useCallback(() => {
     if (!conn || !store) {
@@ -129,7 +139,8 @@ export function useStartListening(sessionId: string) {
         session_id: sessionId,
         languages,
         onboarding: false,
-        audio_retention: record_enabled ? "disk" : "memory",
+        transcription_mode: transcriptionMode,
+        recording_mode: recordingMode,
         model: conn.model,
         base_url: conn.baseUrl,
         api_key: conn.apiKey,
@@ -146,8 +157,9 @@ export function useStartListening(sessionId: string) {
     start,
     keywords,
     user_id,
-    record_enabled,
     languages,
+    recordingMode,
+    transcriptionMode,
   ]);
 
   return startListening;

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Instant, SystemTime};
 
-use crate::ListenerRuntime;
+use crate::{ListenerRuntime, RecordingMode, TranscriptionMode};
 
 pub const SESSION_SUPERVISOR_PREFIX: &str = "session_supervisor_";
 
@@ -16,7 +16,8 @@ pub struct SessionParams {
     pub session_id: String,
     pub languages: Vec<hypr_language::Language>,
     pub onboarding: bool,
-    pub audio_retention: crate::AudioRetention,
+    pub transcription_mode: TranscriptionMode,
+    pub recording_mode: RecordingMode,
     pub model: String,
     pub base_url: String,
     pub api_key: String,

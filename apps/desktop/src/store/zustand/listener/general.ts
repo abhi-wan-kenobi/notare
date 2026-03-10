@@ -63,7 +63,12 @@ export const createGeneralSlice = <
     }
 
     setLiveState(set, (live) => {
-      markLiveStartRequested(live, targetSessionId);
+      markLiveStartRequested(
+        live,
+        targetSessionId,
+        params.transcription_mode,
+        params.recording_mode,
+      );
     });
 
     if (options?.handlePersist) {

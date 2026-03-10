@@ -7,23 +7,23 @@ use std::sync::Arc;
 use hypr_audio_utils::mix_audio_f32;
 use ractor::{Actor, ActorName, ActorProcessingErr, ActorRef, RpcReplyPort};
 
-use crate::InMemoryAudioDisposition;
+use crate::{InMemoryRecordingDisposition, RecordingMode};
 
 pub enum RecMsg {
     AudioSingle(Arc<[f32]>),
     AudioDual(Arc<[f32]>, Arc<[f32]>),
-    SetStopDispositionAndAck(InMemoryAudioDisposition, RpcReplyPort<()>),
+    SetStopDispositionAndAck(InMemoryRecordingDisposition, RpcReplyPort<()>),
 }
 
 pub struct RecArgs {
     pub app_dir: PathBuf,
     pub session_id: String,
-    pub audio_retention: crate::AudioRetention,
+    pub recording_mode: RecordingMode,
 }
 
 pub struct RecState {
     sink: RecorderSink,
-    stop_disposition: InMemoryAudioDisposition,
+    stop_disposition: InMemoryRecordingDisposition,
 }
 
 enum RecorderSink {
@@ -68,23 +68,16 @@ impl Actor for RecorderActor {
         let session_dir = find_session_dir(&args.app_dir, &args.session_id);
         std::fs::create_dir_all(&session_dir)?;
 
-        let sink = match args.audio_retention {
-            crate::AudioRetention::Memory => {
+        let sink = match args.recording_mode {
+            RecordingMode::Memory => {
                 RecorderSink::Memory(memory::create_memory_sink(&session_dir)?)
             }
-            crate::AudioRetention::Disk => {
-                RecorderSink::Disk(disk::create_disk_sink(&session_dir)?)
-            }
-            crate::AudioRetention::None => {
-                return Err(Box::new(std::io::Error::other(
-                    "recorder should not be spawned for audio retention none",
-                )));
-            }
+            RecordingMode::Disk => RecorderSink::Disk(disk::create_disk_sink(&session_dir)?),
         };
 
         Ok(RecState {
             sink,
-            stop_disposition: InMemoryAudioDisposition::Discard,
+            stop_disposition: InMemoryRecordingDisposition::Discard,
         })
     }
 
@@ -126,7 +119,7 @@ impl Actor for RecorderActor {
         match &mut st.sink {
             RecorderSink::Memory(sink) => {
                 sink.encoder.flush(&mut sink.data)?;
-                if st.stop_disposition == InMemoryAudioDisposition::Persist {
+                if st.stop_disposition == InMemoryRecordingDisposition::Persist {
                     memory::persist_memory_sink(sink)?;
                 }
             }

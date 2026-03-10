@@ -14,19 +14,26 @@ pub enum State {
     Finalizing,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub enum AudioRetention {
-    None,
+pub enum TranscriptionMode {
+    Live,
+    Batch,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub enum RecordingMode {
     Memory,
     Disk,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
-pub enum InMemoryAudioDisposition {
+pub enum InMemoryRecordingDisposition {
     Discard,
     Persist,
 }
@@ -35,7 +42,7 @@ pub enum InMemoryAudioDisposition {
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct StopSessionParams {
-    pub in_memory_audio: Option<InMemoryAudioDisposition>,
+    pub in_memory_recording: Option<InMemoryRecordingDisposition>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

@@ -7,7 +7,7 @@ import {
   useSegmentColor,
 } from "@hypr/transcript/ui";
 
-import { Operations } from "./operations";
+import { Operations } from "../operations";
 
 import * as main from "~/store/tinybase/store/main";
 import { SegmentKey } from "~/stt/segment";

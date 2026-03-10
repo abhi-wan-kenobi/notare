@@ -8,6 +8,7 @@ import type {
 } from "@hypr/transcript";
 import { cn } from "@hypr/utils";
 
+import { Operations } from "../operations";
 import {
   createSegmentKey,
   segmentsShallowEqual,
@@ -17,7 +18,6 @@ import {
   useStableSegments,
   useTranscriptOffset,
 } from "./hooks";
-import { Operations } from "./operations";
 import { SegmentRenderer } from "./segment-renderer";
 
 import * as main from "~/store/tinybase/store/main";

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use hypr_listener_core::actors::{RootActor, RootArgs, RootMsg, SessionParams};
-use hypr_listener_core::{AudioRetention, StopSessionParams};
+use hypr_listener_core::{RecordingMode, StopSessionParams, TranscriptionMode};
 use hypr_listener2_core::{BatchParams, BatchProvider};
 use ractor::Actor;
 use tokio::sync::mpsc;
@@ -110,10 +110,11 @@ pub async fn run(args: Args) -> CliResult<()> {
         session_id,
         languages,
         onboarding: false,
-        audio_retention: if record {
-            AudioRetention::Disk
+        transcription_mode: TranscriptionMode::Live,
+        recording_mode: if record {
+            RecordingMode::Disk
         } else {
-            AudioRetention::Memory
+            RecordingMode::Memory
         },
         model: model.clone(),
         base_url: base_url.clone(),
