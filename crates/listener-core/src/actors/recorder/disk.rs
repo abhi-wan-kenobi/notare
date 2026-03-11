@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::BufWriter;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -182,18 +183,34 @@ pub(super) fn finalize_disk_sink(sink: &mut DiskSink) -> Result<(), ActorProcess
     Ok(())
 }
 
-pub(super) fn persist_encoded_audio(
+pub(super) fn persist_encoded_audio_chunks<'a, I>(
     session_dir: &Path,
-    encoded_audio: &[u8],
-) -> Result<(), ActorProcessingErr> {
-    if encoded_audio.is_empty() {
-        return Ok(());
-    }
-
+    encoded_audio_chunks: I,
+) -> Result<(), ActorProcessingErr>
+where
+    I: IntoIterator<Item = &'a [u8]>,
+{
     let temp_mp3_path = session_dir.join("audio.in-memory.mp3");
     let temp_wav_path = session_dir.join("audio.in-memory.wav");
 
-    std::fs::write(&temp_mp3_path, encoded_audio)?;
+    let mut wrote_any = false;
+    {
+        let mut file = File::create(&temp_mp3_path)?;
+        for chunk in encoded_audio_chunks {
+            if chunk.is_empty() {
+                continue;
+            }
+
+            file.write_all(chunk)?;
+            wrote_any = true;
+        }
+        file.flush()?;
+    }
+
+    if !wrote_any {
+        let _ = std::fs::remove_file(&temp_mp3_path);
+        return Ok(());
+    }
 
     let result = (|| -> Result<(), ActorProcessingErr> {
         let mut sink = create_disk_sink(session_dir)?;

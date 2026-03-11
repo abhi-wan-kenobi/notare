@@ -95,10 +95,10 @@ impl Actor for RecorderActor {
                 }
             }
             (RecorderSink::Memory(sink), RecMsg::AudioSingle(samples)) => {
-                sink.encoder.encode_single(&samples, &mut sink.data)?;
+                sink.encode_single(&samples)?;
             }
             (RecorderSink::Memory(sink), RecMsg::AudioDual(mic, spk)) => {
-                sink.encoder.encode_dual(&mic, &spk, &mut sink.data)?;
+                sink.encode_dual(&mic, &spk)?;
             }
             (RecorderSink::Disk(sink), RecMsg::AudioSingle(samples)) => {
                 disk::write_single(sink, &samples)?;
@@ -118,7 +118,7 @@ impl Actor for RecorderActor {
     ) -> Result<(), ActorProcessingErr> {
         match &mut st.sink {
             RecorderSink::Memory(sink) => {
-                sink.encoder.flush(&mut sink.data)?;
+                sink.finalize()?;
                 if st.stop_disposition == InMemoryRecordingDisposition::Persist {
                     memory::persist_memory_sink(sink)?;
                 }
