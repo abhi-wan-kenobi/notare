@@ -221,10 +221,13 @@ mod tests {
 
     #[test]
     fn ignores_non_legacy_bundle_names() {
-        assert_eq!(
-            legacy_target_app_path(Path::new("/Applications/Char Nightly.app")),
-            None
-        );
+        for path in [
+            "/Applications/Char.app",
+            "/Applications/Char Nightly.app",
+            "/Applications/Char Staging.app",
+        ] {
+            assert_eq!(legacy_target_app_path(Path::new(path)), None);
+        }
     }
 
     #[test]
@@ -336,5 +339,27 @@ mod tests {
             "open -n '/Applications/Char Nightly.app' --args '--onboarding=123' '--updater2-skip-startup-migration=1'"
         ));
         assert_eq!(&args[2..], ["sh", "4242"]);
+    }
+
+    #[test]
+    fn rename_command_relaunches_stable_bundle_with_skip_flag() {
+        let relaunch_args = relaunch_args([OsString::from(
+            "/Applications/Hyprnote.app/Contents/MacOS/char",
+        )]);
+        let command = build_bundle_rename_command(
+            4242,
+            Path::new("/Applications/Hyprnote.app"),
+            Path::new("/Applications/Char.app"),
+            &relaunch_args,
+        );
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert!(args[1].contains("mv -f '/Applications/Hyprnote.app' '/Applications/Char.app'"));
+        assert!(args[1].contains(
+            "open -n '/Applications/Char.app' --args '--updater2-skip-startup-migration=1'"
+        ));
     }
 }
