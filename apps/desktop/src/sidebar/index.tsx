@@ -13,7 +13,7 @@ import {
 import { cn } from "@hypr/utils";
 
 import { ProfileSection } from "./profile";
-import { SidebarSearchInput } from "./search-input";
+import { SidebarSearchInput } from "./search";
 import { TimelineView } from "./timeline";
 import { ToastArea } from "./toast";
 

@@ -9,7 +9,7 @@ const getListenerStore = (): ListenerStoreSingleton => {
     return createListenerStore();
   }
 
-  const hotData = import.meta.hot.data as {
+  const hotData = (import.meta.hot.data ??= {}) as {
     [LISTENER_STORE_KEY]?: ListenerStoreSingleton;
   };
 

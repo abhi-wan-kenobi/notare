@@ -6,7 +6,7 @@ import { OptionsMenu } from "./floating/options-menu";
 import { ActionableTooltipContent, FloatingButton } from "./floating/shared";
 import { RecordingIcon, useListenButtonState } from "./shared";
 
-import { useEventCountdown } from "~/sidebar/useEventCountdown";
+import { useEventCountdown } from "~/session/hooks/useEventCountdown";
 import { useTabs } from "~/store/zustand/tabs";
 import { useListener } from "~/stt/contexts";
 import { useStartListening } from "~/stt/useStartListening";

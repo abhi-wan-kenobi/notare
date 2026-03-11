@@ -19,9 +19,9 @@ import { createToolRegistry } from "./contexts/tool-registry/core";
 import { env } from "./env";
 import { initPluginGlobals } from "./plugins/globals";
 import { routeTree } from "./routeTree.gen";
+import { EventListeners } from "./services/event-listeners";
 import { TaskManager } from "./services/task-manager";
 import { ErrorComponent, NotFoundComponent } from "./shared/control";
-import { EventListeners } from "./shared/event-listeners";
 import {
   type Store,
   STORE_ID,
