@@ -59,31 +59,60 @@ type Actions = BasicActions &
   ChatModeActions;
 type Store = State & Actions;
 
-export const useTabs = create<Store>()(
-  recentlyOpenedMiddleware(
-    pinnedPersistenceMiddleware(
-      restoreMiddleware(
-        lifecycleMiddleware(
-          navigationMiddleware((set, get) => ({
-            ...wrapSliceWithLogging("basic", createBasicSlice(set, get)),
-            ...wrapSliceWithLogging("state", createStateUpdaterSlice(set, get)),
-            ...wrapSliceWithLogging(
-              "navigation",
-              createNavigationSlice(set, get),
-            ),
-            ...wrapSliceWithLogging(
-              "lifecycle",
-              createLifecycleSlice(set, get),
-            ),
-            ...wrapSliceWithLogging("restore", createRestoreSlice(set, get)),
-            ...wrapSliceWithLogging(
-              "recentlyOpened",
-              createRecentlyOpenedSlice(set, get),
-            ),
-            ...wrapSliceWithLogging("chatMode", createChatModeSlice(set, get)),
-          })),
+type TabsStoreSingleton = ReturnType<typeof createTabsStore>;
+
+const TABS_STORE_KEY = "__hypr_tabs_store__" as const;
+
+const createTabsStore = () =>
+  create<Store>()(
+    recentlyOpenedMiddleware(
+      pinnedPersistenceMiddleware(
+        restoreMiddleware(
+          lifecycleMiddleware(
+            navigationMiddleware((set, get) => ({
+              ...wrapSliceWithLogging("basic", createBasicSlice(set, get)),
+              ...wrapSliceWithLogging(
+                "state",
+                createStateUpdaterSlice(set, get),
+              ),
+              ...wrapSliceWithLogging(
+                "navigation",
+                createNavigationSlice(set, get),
+              ),
+              ...wrapSliceWithLogging(
+                "lifecycle",
+                createLifecycleSlice(set, get),
+              ),
+              ...wrapSliceWithLogging("restore", createRestoreSlice(set, get)),
+              ...wrapSliceWithLogging(
+                "recentlyOpened",
+                createRecentlyOpenedSlice(set, get),
+              ),
+              ...wrapSliceWithLogging(
+                "chatMode",
+                createChatModeSlice(set, get),
+              ),
+            })),
+          ),
         ),
       ),
     ),
-  ),
-);
+  );
+
+const getTabsStore = (): TabsStoreSingleton => {
+  if (!import.meta.hot) {
+    return createTabsStore();
+  }
+
+  const hotData = import.meta.hot.data as {
+    [TABS_STORE_KEY]?: TabsStoreSingleton;
+  };
+
+  if (!hotData[TABS_STORE_KEY]) {
+    hotData[TABS_STORE_KEY] = createTabsStore();
+  }
+
+  return hotData[TABS_STORE_KEY];
+};
+
+export const useTabs = getTabsStore();

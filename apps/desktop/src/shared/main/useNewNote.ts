@@ -6,6 +6,7 @@ import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 
 import { id } from "~/shared/utils";
 import { useTabs } from "~/store/zustand/tabs";
+import { useListener } from "~/stt/contexts";
 
 export function useNewNote({
   behavior = "new",
@@ -58,8 +59,18 @@ export function useNewNoteAndListen({
       openCurrent: state.openCurrent,
     })),
   );
+  const { status, sessionId: liveSessionId } = useListener((state) => ({
+    status: state.live.status,
+    sessionId: state.live.sessionId,
+  }));
 
   const handler = useCallback(() => {
+    if ((status === "active" || status === "finalizing") && liveSessionId) {
+      const ff = behavior === "new" ? openNew : openCurrent;
+      ff({ type: "sessions", id: liveSessionId });
+      return;
+    }
+
     const user_id = internalStore?.getValue("user_id");
     const sessionId = id();
 
@@ -80,7 +91,15 @@ export function useNewNoteAndListen({
       id: sessionId,
       state: { view: null, autoStart: true },
     });
-  }, [persistedStore, internalStore, openNew, openCurrent, behavior]);
+  }, [
+    status,
+    liveSessionId,
+    persistedStore,
+    internalStore,
+    openNew,
+    openCurrent,
+    behavior,
+  ]);
 
   return handler;
 }
