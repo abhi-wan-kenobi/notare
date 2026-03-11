@@ -15,7 +15,7 @@ import {
   TooltipTrigger,
 } from "@hypr/ui/components/ui/tooltip";
 
-import { SearchableFolderSubmenuContent } from "~/session/components/outer-header/shared/folder";
+import { SearchableFolderSubmenuContent } from "~/session/components/outer-header/folder/searchable-dropdown";
 
 export function Copy() {
   return (
