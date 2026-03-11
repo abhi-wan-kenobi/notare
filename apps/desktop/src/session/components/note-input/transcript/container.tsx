@@ -5,6 +5,7 @@ import { cn } from "@hypr/utils";
 
 import { BatchState } from "./batch-state";
 import { TranscriptEmptyState } from "./empty-state";
+import { TranscriptListeningState } from "./listening-state";
 import { LiveState } from "./live-state";
 import { Operations } from "./operations";
 
@@ -126,6 +127,12 @@ export function TranscriptContainer({
         error={degraded}
         recordingMode={recordingMode}
       />
+    );
+  }
+
+  if (currentActive && !hasTranscriptContent) {
+    return (
+      <TranscriptListeningState isFinalizing={sessionMode === "finalizing"} />
     );
   }
 

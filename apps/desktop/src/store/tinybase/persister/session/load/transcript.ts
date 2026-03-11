@@ -70,7 +70,7 @@ export function processTranscriptFile(
   path: string,
   content: string,
   result: LoadedSessionData,
-): void {
+): boolean {
   try {
     const data = parseTranscriptJson(content);
 
@@ -96,7 +96,10 @@ export function processTranscriptFile(
         speaker_hints: JSON.stringify(speaker_hints ?? []),
       };
     }
+
+    return true;
   } catch (error) {
     console.error(`[${LABEL}] Failed to load transcript from ${path}:`, error);
+    return false;
   }
 }
