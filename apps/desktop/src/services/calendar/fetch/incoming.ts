@@ -29,11 +29,15 @@ export async function fetchIncomingEvents(ctx: Ctx): Promise<{
 
   const results = await Promise.all(
     trackingIds.map(async (trackingId) => {
-      const result = await calendarCommands.listEvents(ctx.provider, {
-        calendar_tracking_id: trackingId,
-        from: ctx.from.toISOString(),
-        to: ctx.to.toISOString(),
-      });
+      const result = await calendarCommands.listEvents(
+        ctx.provider,
+        ctx.connectionId,
+        {
+          calendar_tracking_id: trackingId,
+          from: ctx.from.toISOString(),
+          to: ctx.to.toISOString(),
+        },
+      );
 
       if (result.status === "error") {
         throw new CalendarFetchError(trackingId, result.error);
@@ -48,6 +52,14 @@ export async function fetchIncomingEvents(ctx: Ctx): Promise<{
   const participants: IncomingParticipants = new Map();
 
   for (const calendarEvent of calendarEvents) {
+    if (
+      calendarEvent.attendees.find(
+        (attendee) =>
+          attendee.is_current_user && attendee.status === "declined",
+      )
+    ) {
+      continue;
+    }
     const { event, eventParticipants } =
       await normalizeCalendarEvent(calendarEvent);
     events.push(event);
@@ -82,6 +94,7 @@ async function normalizeCalendarEvent(calendarEvent: CalendarEvent): Promise<{
   }
 
   for (const attendee of calendarEvent.attendees) {
+    if (attendee.role === "nonparticipant") continue;
     eventParticipants.push({
       name: attendee.name ?? undefined,
       email: attendee.email ?? undefined,

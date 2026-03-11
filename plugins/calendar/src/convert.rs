@@ -25,6 +25,13 @@ pub fn convert_google_calendars(calendars: Vec<GoogleCalendar>) -> Vec<CalendarL
                 .as_ref()
                 .map(|role| matches!(role, GoogleAccessRole::Writer | GoogleAccessRole::Owner));
             let raw = serde_json::to_string(&calendar).unwrap_or_default();
+            // for google calendars, data_owner is only set for secondary calendars
+            // calendar.id is the email for primary calendars
+            let source = if calendar.primary == Some(true) {
+                Some(calendar.id.clone())
+            } else {
+                calendar.data_owner
+            };
 
             CalendarListItem {
                 provider: CalendarProviderType::Google,
@@ -33,7 +40,7 @@ pub fn convert_google_calendars(calendars: Vec<GoogleCalendar>) -> Vec<CalendarL
                     .summary_override
                     .or(calendar.summary)
                     .unwrap_or_else(|| "Untitled".to_string()),
-                source: calendar.data_owner,
+                source,
                 color: calendar.background_color,
                 is_primary: calendar.primary,
                 can_edit,
@@ -322,7 +329,9 @@ fn convert_google_attendee(attendee: &GoogleAttendee) -> EventAttendee {
         email: attendee.email.clone(),
         is_current_user: attendee.is_self.unwrap_or(false),
         status: convert_google_attendee_status(&attendee.response_status),
-        role: if is_organizer {
+        role: if attendee.resource.unwrap_or(false) {
+            AttendeeRole::NonParticipant
+        } else if is_organizer {
             AttendeeRole::Chair
         } else if is_optional {
             AttendeeRole::Optional

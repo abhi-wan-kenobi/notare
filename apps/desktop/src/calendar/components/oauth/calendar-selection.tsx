@@ -1,20 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo } from "react";
-
-import { googleListCalendars } from "@hypr/api-client";
-import { createClient } from "@hypr/api-client/client";
+import { useCallback, useMemo } from "react";
 
 import { useSync } from "../context";
 
-import { useAuth } from "~/auth";
 import {
   type CalendarGroup,
   type CalendarItem,
   CalendarSelection,
 } from "~/calendar/components/calendar-selection";
 import type { CalendarProvider } from "~/calendar/components/shared";
-import { findCalendarByTrackingId } from "~/calendar/utils";
-import { env } from "~/env";
 import * as main from "~/store/tinybase/store/main";
 
 export function OAuthCalendarSelection({
@@ -36,79 +29,50 @@ export function OAuthCalendarSelection({
 }
 
 export function useOAuthCalendarSelection(config: CalendarProvider) {
-  const auth = useAuth();
   const store = main.UI.useStore(main.STORE_ID);
   const calendars = main.UI.useTable("calendars", main.STORE_ID);
-  const { user_id } = main.UI.useValues(main.STORE_ID);
   const { status, scheduleSync, scheduleDebouncedSync, cancelDebouncedSync } =
     useSync();
 
-  const {
-    data: incomingCalendars,
-    refetch,
-    isFetching,
-  } = useQuery({
-    queryKey: ["oauthCalendars", config.id],
-    queryFn: async () => {
-      const headers = auth?.getHeaders();
-      if (!headers) return [];
-      const client = createClient({ baseUrl: env.VITE_API_URL, headers });
-      const { data, error } = await googleListCalendars({ client });
-      if (error) throw new Error("Failed to fetch calendars");
-      return data?.items ?? [];
-    },
-    enabled: !!auth?.session,
-  });
-
-  useEffect(() => {
-    if (!incomingCalendars || !store || !user_id) return;
-
-    // The primary calendar's id is the Google account email per the Google Calendar API.
-    const primaryCalendarId = incomingCalendars.find((c) => c.primary)?.id;
-
-    store.transaction(() => {
-      for (const cal of incomingCalendars) {
-        const existingRowId = findCalendarByTrackingId(store, cal.id);
-        const rowId = existingRowId ?? crypto.randomUUID();
-        const existing = existingRowId
-          ? store.getRow("calendars", existingRowId)
-          : null;
-
-        store.setRow("calendars", rowId, {
-          user_id,
-          created_at: existing?.created_at || new Date().toISOString(),
-          tracking_id_calendar: cal.id,
-          name: cal.summary ?? "Untitled",
-          enabled: existing?.enabled ?? false,
-          provider: config.id,
-          source: primaryCalendarId ?? config.id,
-          color: cal.backgroundColor ?? "#4285f4",
-        });
-      }
-    });
-  }, [incomingCalendars, store, user_id, config.id]);
-
-  const groups = useMemo((): CalendarGroup[] => {
+  const { groups, connectionSourceMap } = useMemo(() => {
     const providerCalendars = Object.entries(calendars).filter(
       ([_, cal]) => cal.provider === config.id,
     );
 
     const grouped = new Map<string, CalendarItem[]>();
+    const sourceMap = new Map<string, string>();
+
+    // If there's only one non-null source (i.e. one connection),
+    // merge null-source calendars (Google-provided calendars) into the same group
+    const nonNullSources = new Set(
+      providerCalendars.map(([_, cal]) => cal.source).filter(Boolean),
+    );
+    const singleSource =
+      nonNullSources.size === 1 ? ([...nonNullSources][0] as string) : null;
+
     for (const [id, cal] of providerCalendars) {
-      const source = cal.source || config.id;
+      const source = cal.source || singleSource || config.displayName;
       if (!grouped.has(source)) grouped.set(source, []);
       grouped.get(source)!.push({
         id,
-        title: cal.name || "Untitled",
+        title: cal.name ?? "Untitled",
         color: cal.color ?? "#4285f4",
         enabled: cal.enabled ?? false,
       });
+
+      // HACK: derive connection_id → source mapping from calendar entries
+      if (cal.source && cal.connection_id) {
+        sourceMap.set(cal.connection_id as string, cal.source as string);
+      }
     }
 
-    return Array.from(grouped.entries()).map(([sourceName, calendars]) => ({
-      sourceName,
-      calendars,
-    }));
+    return {
+      groups: Array.from(grouped.entries()).map(([sourceName, calendars]) => ({
+        sourceName,
+        calendars,
+      })),
+      connectionSourceMap: sourceMap,
+    };
   }, [calendars, config.id]);
 
   const handleToggle = useCallback(
@@ -121,14 +85,14 @@ export function useOAuthCalendarSelection(config: CalendarProvider) {
 
   const handleRefresh = useCallback(async () => {
     cancelDebouncedSync();
-    await refetch();
     scheduleSync();
-  }, [refetch, scheduleSync, cancelDebouncedSync]);
+  }, [scheduleSync, cancelDebouncedSync]);
 
   return {
     groups,
+    connectionSourceMap,
     handleToggle,
     handleRefresh,
-    isLoading: isFetching || status === "syncing",
+    isLoading: status === "syncing",
   };
 }

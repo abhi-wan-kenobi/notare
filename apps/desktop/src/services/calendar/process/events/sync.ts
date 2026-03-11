@@ -2,7 +2,7 @@ import type { Ctx } from "../../ctx";
 import type { EventsSyncInput, EventsSyncOutput } from "./types";
 
 export function syncEvents(
-  ctx: Ctx,
+  _ctx: Ctx,
   { incoming, existing, incomingParticipants }: EventsSyncInput,
 ): EventsSyncOutput {
   const out: EventsSyncOutput = {
@@ -17,11 +17,6 @@ export function syncEvents(
   const handledTrackingIds = new Set<string>();
 
   for (const storeEvent of existing) {
-    if (!ctx.calendarIds.has(storeEvent.calendar_id!)) {
-      out.toDelete.push(storeEvent.id);
-      continue;
-    }
-
     const trackingId = storeEvent.tracking_id_event;
     const matchingIncomingEvent = trackingId
       ? incomingByTrackingId.get(trackingId)
