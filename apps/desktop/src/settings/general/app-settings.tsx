@@ -9,14 +9,12 @@ interface SettingItem {
 
 interface AppSettingsViewProps {
   autostart: SettingItem;
-  notificationDetect: SettingItem;
   saveRecordings: SettingItem;
   telemetryConsent: SettingItem;
 }
 
 export function AppSettingsView({
   autostart,
-  notificationDetect,
   saveRecordings,
   telemetryConsent,
 }: AppSettingsViewProps) {
@@ -29,12 +27,6 @@ export function AppSettingsView({
           description={autostart.description}
           checked={autostart.value}
           onChange={autostart.onChange}
-        />
-        <SettingRow
-          title={notificationDetect.title}
-          description={notificationDetect.description}
-          checked={notificationDetect.value}
-          onChange={notificationDetect.onChange}
         />
         <SettingRow
           title={saveRecordings.title}

@@ -130,47 +130,32 @@ export function SettingsApp() {
     <div className="flex flex-col gap-8 pt-3">
       <form.Field name="autostart">
         {(autostartField) => (
-          <form.Field name="notification_detect">
-            {(notificationDetectField) => (
-              <form.Field name="save_recordings">
-                {(saveRecordingsField) => (
-                  <form.Field name="telemetry_consent">
-                    {(telemetryConsentField) => (
-                      <AppSettingsView
-                        autostart={{
-                          title: "Start Char at login",
-                          description:
-                            "Always ready without manually launching.",
-                          value: autostartField.state.value,
-                          onChange: (val) => autostartField.handleChange(val),
-                        }}
-                        notificationDetect={{
-                          title: "Auto-detect meetings",
-                          description:
-                            "Automatically start and stop listening when a meeting is detected.",
-                          value: notificationDetectField.state.value,
-                          onChange: (val) =>
-                            notificationDetectField.handleChange(val),
-                        }}
-                        saveRecordings={{
-                          title: "Save recordings",
-                          description:
-                            "Keep audio files locally on your device.",
-                          value: saveRecordingsField.state.value,
-                          onChange: (val) =>
-                            saveRecordingsField.handleChange(val),
-                        }}
-                        telemetryConsent={{
-                          title: "Share usage data",
-                          description:
-                            "Send anonymous usage analytics to help improve Char.",
-                          value: telemetryConsentField.state.value,
-                          onChange: (val) =>
-                            telemetryConsentField.handleChange(val),
-                        }}
-                      />
-                    )}
-                  </form.Field>
+          <form.Field name="save_recordings">
+            {(saveRecordingsField) => (
+              <form.Field name="telemetry_consent">
+                {(telemetryConsentField) => (
+                  <AppSettingsView
+                    autostart={{
+                      title: "Start Char at login",
+                      description: "Always ready without manually launching.",
+                      value: autostartField.state.value,
+                      onChange: (val) => autostartField.handleChange(val),
+                    }}
+                    saveRecordings={{
+                      title: "Save recordings",
+                      description: "Keep audio files locally on your device.",
+                      value: saveRecordingsField.state.value,
+                      onChange: (val) => saveRecordingsField.handleChange(val),
+                    }}
+                    telemetryConsent={{
+                      title: "Share usage data",
+                      description:
+                        "Send anonymous usage analytics to help improve Char.",
+                      value: telemetryConsentField.state.value,
+                      onChange: (val) =>
+                        telemetryConsentField.handleChange(val),
+                    }}
+                  />
                 )}
               </form.Field>
             )}
