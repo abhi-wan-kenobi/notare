@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   buildTimelineBuckets,
   calculateTodayIndicatorPlacement,
+  filterTimelineTablesUpToTomorrow,
   getBucketInfo,
+  hasTimelineItemsAfterTomorrow,
   type TimelineEventsTable,
   type TimelineSessionsTable,
 } from ".";
@@ -97,6 +99,102 @@ describe("timeline utils", () => {
 
     const todayBucket = buckets.find((bucket) => bucket.label === "Today");
     expect(todayBucket).toBeUndefined();
+  });
+
+  test("filterTimelineTablesUpToTomorrow keeps tomorrow and removes later items", () => {
+    const filtered = filterTimelineTablesUpToTomorrow({
+      timelineEventsTable: {
+        tomorrow: {
+          title: "Tomorrow Event",
+          started_at: "2024-01-16T09:00:00.000Z",
+          ended_at: "2024-01-16T10:00:00.000Z",
+          calendar_id: "cal-1",
+          tracking_id_event: "event-tomorrow",
+          has_recurrence_rules: false,
+        },
+        later: {
+          title: "Later Event",
+          started_at: "2024-01-17T09:00:00.000Z",
+          ended_at: "2024-01-17T10:00:00.000Z",
+          calendar_id: "cal-1",
+          tracking_id_event: "event-later",
+          has_recurrence_rules: false,
+        },
+      },
+      timelineSessionsTable: {
+        tomorrow: {
+          title: "Tomorrow Session",
+          created_at: "2024-01-14T12:00:00.000Z",
+          event_json: JSON.stringify({
+            started_at: "2024-01-16T11:00:00.000Z",
+          }),
+        },
+        later: {
+          title: "Later Session",
+          created_at: "2024-01-14T12:00:00.000Z",
+          event_json: JSON.stringify({
+            started_at: "2024-01-17T11:00:00.000Z",
+          }),
+        },
+      },
+    });
+
+    expect(Object.keys(filtered.timelineEventsTable ?? {})).toEqual([
+      "tomorrow",
+    ]);
+    expect(Object.keys(filtered.timelineSessionsTable ?? {})).toEqual([
+      "tomorrow",
+    ]);
+  });
+
+  test("hasTimelineItemsAfterTomorrow only returns true for items after tomorrow", () => {
+    expect(
+      hasTimelineItemsAfterTomorrow({
+        timelineEventsTable: {
+          tomorrow: {
+            title: "Tomorrow Event",
+            started_at: "2024-01-16T09:00:00.000Z",
+            ended_at: "2024-01-16T10:00:00.000Z",
+            calendar_id: "cal-1",
+            tracking_id_event: "event-tomorrow",
+            has_recurrence_rules: false,
+          },
+          later: {
+            title: "Later Event",
+            started_at: "2024-01-17T09:00:00.000Z",
+            ended_at: "2024-01-17T10:00:00.000Z",
+            calendar_id: "cal-1",
+            tracking_id_event: "event-later",
+            has_recurrence_rules: false,
+          },
+        },
+        timelineSessionsTable: null,
+      }),
+    ).toBe(true);
+
+    expect(
+      hasTimelineItemsAfterTomorrow({
+        timelineEventsTable: {
+          tomorrow: {
+            title: "Tomorrow Event",
+            started_at: "2024-01-16T09:00:00.000Z",
+            ended_at: "2024-01-16T10:00:00.000Z",
+            calendar_id: "cal-1",
+            tracking_id_event: "event-tomorrow",
+            has_recurrence_rules: false,
+          },
+        },
+        timelineSessionsTable: {
+          tomorrow: {
+            title: "Tomorrow Session",
+            created_at: "2024-01-14T12:00:00.000Z",
+            event_json: JSON.stringify({
+              started_at: "2024-01-16T11:00:00.000Z",
+            }),
+          },
+        },
+      }),
+    ).toBe(false);
   });
 
   test("buildTimelineBuckets prioritizes sessions to events and avoid duplicate timeline items", () => {
