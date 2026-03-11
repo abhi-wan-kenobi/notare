@@ -104,7 +104,7 @@ const getTabsStore = (): TabsStoreSingleton => {
     return createTabsStore();
   }
 
-  const hotData = (import.meta.hot.data ??= {}) as {
+  const hotData = import.meta.hot.data as {
     [TABS_STORE_KEY]?: TabsStoreSingleton;
   };
 
