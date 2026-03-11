@@ -42,7 +42,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
             #[cfg(target_os = "macos")]
             match startup_migration::maybe_schedule_legacy_bundle_rename_on_launch(app) {
-                Ok(true) => {}
+                Ok(true) => std::process::exit(0),
                 Ok(false) => {}
                 Err(err) => tracing::error!("failed to schedule legacy bundle rename: {}", err),
             }
