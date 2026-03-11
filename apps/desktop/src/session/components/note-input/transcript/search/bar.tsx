@@ -17,7 +17,7 @@ import {
 } from "@hypr/ui/components/ui/tooltip";
 import { cn } from "@hypr/utils";
 
-import { useTranscriptSearch } from "./search-context";
+import { useTranscriptSearch } from "./context";
 
 function ToggleButton({
   active,

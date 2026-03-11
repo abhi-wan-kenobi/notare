@@ -25,7 +25,7 @@ import {
 } from "@hypr/ui/components/ui/tooltip";
 import { cn } from "@hypr/utils";
 
-import { EditingControls } from "./transcript/editing-controls";
+import { EditingControls } from "./transcript/editing/controls";
 
 import { useAITaskTask } from "~/ai/hooks";
 import { useLanguageModel, useLLMConnectionStatus } from "~/ai/hooks";
@@ -480,11 +480,7 @@ export function Header({
           {!atEnd && <ScrollFadeOverlay position="right" />}
         </div>
         {showEditingControls && (
-          <EditingControls
-            sessionId={sessionId}
-            isEditing={isEditing}
-            setIsEditing={setIsEditing}
-          />
+          <EditingControls isEditing={isEditing} setIsEditing={setIsEditing} />
         )}
       </div>
     </div>

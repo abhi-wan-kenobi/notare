@@ -2,22 +2,22 @@ import { type RefObject, useCallback, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import type { PartialWord, RuntimeSpeakerHint } from "@hypr/transcript";
+import type { Operations } from "@hypr/transcript";
 import { cn } from "@hypr/utils";
 
-import { Operations } from "../operations";
+import { SelectionMenu } from "./selection-menu";
+import { TranscriptSeparator } from "./separator";
+import { RenderTranscript } from "./transcript";
 import {
   useAutoScroll,
   usePlaybackAutoScroll,
   useScrollDetection,
-} from "./hooks";
-import { RenderTranscript } from "./render-transcript";
-import { SelectionMenu } from "./selection-menu";
-import { TranscriptSeparator } from "./transcript-separator";
+} from "./viewport-hooks";
 
 import { useAudioPlayer } from "~/audio-player";
 import { useAudioTime } from "~/audio-player/provider";
 
-export function LiveState({
+export function TranscriptViewer({
   transcriptIds,
   partialWords,
   partialHints,

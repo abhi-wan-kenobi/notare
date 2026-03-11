@@ -23,7 +23,7 @@ import { Enhanced } from "./enhanced";
 import { Header, useAttachments, useEditorTabs } from "./header";
 import { RawEditor } from "./raw";
 import { Transcript } from "./transcript";
-import { SearchBar } from "./transcript/search-bar";
+import { SearchBar } from "./transcript/search/bar";
 import { useSearchSync } from "./use-search-sync";
 
 import { useCaretNearBottom } from "~/session/components/caret-position-context";

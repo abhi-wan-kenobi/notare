@@ -1,6 +1,6 @@
 import type { TiptapEditor } from "@hypr/tiptap/editor";
 
-import type { SearchReplaceDetail } from "./transcript/search-context";
+import type { SearchReplaceDetail } from "./transcript/search/context";
 
 import * as main from "~/store/tinybase/store/main";
 import { parseTranscriptWords, updateTranscriptWords } from "~/stt/utils";

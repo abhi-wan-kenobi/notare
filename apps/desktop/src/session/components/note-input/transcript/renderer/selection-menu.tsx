@@ -298,33 +298,6 @@ function useSelectionListener({
   }, [containerRef, hide, show, isVisible]);
 }
 
-function useScrollUpdate({
-  containerRef,
-  isVisible,
-  update,
-}: {
-  containerRef: React.RefObject<HTMLElement | null>;
-  isVisible: boolean;
-  update: () => void;
-}) {
-  useEffect(() => {
-    if (!isVisible || !containerRef.current) {
-      return;
-    }
-
-    const container = containerRef.current;
-    const handleScroll = () => {
-      update();
-    };
-
-    container.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      container.removeEventListener("scroll", handleScroll);
-    };
-  }, [containerRef, isVisible, update]);
-}
-
 function useSelectionMenuState({
   containerRef,
 }: {
@@ -360,7 +333,19 @@ function useSelectionMenuState({
   }, []);
 
   useSelectionListener({ containerRef, show, hide, isVisible });
-  useScrollUpdate({ containerRef, isVisible, update });
+
+  useEffect(() => {
+    if (!isVisible || !containerRef.current) {
+      return;
+    }
+
+    const container = containerRef.current;
+    container.addEventListener("scroll", update, { passive: true });
+
+    return () => {
+      container.removeEventListener("scroll", update);
+    };
+  }, [containerRef, isVisible, update]);
 
   return { isVisible, selectedText, hide, refs, floatingStyles, storedRange };
 }

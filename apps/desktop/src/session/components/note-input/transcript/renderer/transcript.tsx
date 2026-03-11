@@ -6,19 +6,20 @@ import type {
   Segment,
   SegmentWord,
 } from "@hypr/transcript";
+import type { Operations } from "@hypr/transcript";
 import { cn } from "@hypr/utils";
 
-import { Operations } from "../operations";
+import {
+  useSessionSpeakerCount,
+  useTranscriptData,
+  useTranscriptOffset,
+} from "./data-hooks";
+import { SegmentRenderer } from "./segment";
 import {
   createSegmentKey,
   segmentsShallowEqual,
-  useFinalSpeakerHints,
-  useFinalWords,
-  useSessionSpeakers,
   useStableSegments,
-  useTranscriptOffset,
-} from "./hooks";
-import { SegmentRenderer } from "./segment-renderer";
+} from "./segment-hooks";
 
 import * as main from "~/store/tinybase/store/main";
 import {
@@ -53,8 +54,8 @@ export function RenderTranscript({
   startPlayback: () => void;
   audioExists: boolean;
 }) {
-  const finalWords = useFinalWords(transcriptId);
-  const finalSpeakerHints = useFinalSpeakerHints(transcriptId);
+  const { words: finalWords, speakerHints: finalSpeakerHints } =
+    useTranscriptData(transcriptId);
 
   const sessionId = main.UI.useCell(
     "transcripts",
@@ -62,7 +63,7 @@ export function RenderTranscript({
     "session_id",
     main.STORE_ID,
   ) as string | undefined;
-  const numSpeakers = useSessionSpeakers(sessionId);
+  const numSpeakers = useSessionSpeakerCount(sessionId);
 
   const allSpeakerHints = useMemo(() => {
     const finalWordsCount = finalWords.length;

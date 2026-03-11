@@ -1,13 +1,12 @@
 import { useMemo } from "react";
 
 import type { Segment } from "@hypr/transcript";
+import type { Operations } from "@hypr/transcript";
 import {
   getTimestampRange,
   SegmentHeader as SharedSegmentHeader,
   useSegmentColor,
 } from "@hypr/transcript/ui";
-
-import { Operations } from "../operations";
 
 import * as main from "~/store/tinybase/store/main";
 import { SegmentKey } from "~/stt/segment";

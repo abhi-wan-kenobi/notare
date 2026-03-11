@@ -6,7 +6,7 @@ import { handleEditorReplace, handleTranscriptReplace } from "./search-replace";
 import {
   type SearchReplaceDetail,
   useTranscriptSearch,
-} from "./transcript/search-context";
+} from "./transcript/search/context";
 
 import * as main from "~/store/tinybase/store/main";
 import { type EditorView } from "~/store/zustand/tabs/schema";
