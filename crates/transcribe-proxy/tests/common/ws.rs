@@ -58,3 +58,15 @@ pub async fn collect_text_messages(
     let _ = tokio::time::timeout(timeout, collect_future).await;
     (messages, close_info)
 }
+
+pub async fn collect_json_messages(
+    ws_stream: ProxyWsStream,
+    timeout: Duration,
+) -> (Vec<serde_json::Value>, CloseInfo) {
+    let (messages, close_info) = collect_text_messages(ws_stream, timeout).await;
+    let messages = messages
+        .into_iter()
+        .map(|message| serde_json::from_str(&message).expect("websocket returned invalid JSON"))
+        .collect();
+    (messages, close_info)
+}

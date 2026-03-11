@@ -38,6 +38,47 @@ async fn run_replay_case(
     }
 }
 
+fn assert_replay_messages(result: &ReplayResult, expected_fragments: &[&str], context: &str) {
+    assert!(
+        !result.messages.is_empty(),
+        "{context}: expected to receive messages"
+    );
+    for expected in expected_fragments {
+        assert!(
+            result
+                .messages
+                .iter()
+                .any(|message| message.contains(expected)),
+            "{context}: {:?}",
+            result.messages
+        );
+    }
+}
+
+fn assert_any_message_contains(messages: &[String], needles: &[&str], context: &str) {
+    assert!(
+        messages
+            .iter()
+            .any(|message| needles.iter().any(|needle| message.contains(needle))),
+        "{context}: {messages:?}"
+    );
+}
+
+fn assert_close_code(close_info: CloseInfo, expected: u16, context: &str) {
+    if let Some((code, _reason)) = close_info {
+        assert_eq!(code, expected, "{context}");
+    }
+}
+
+fn assert_close_code_in(close_info: CloseInfo, expected: &[u16], context: &str) {
+    if let Some((code, _reason)) = close_info {
+        assert!(
+            expected.contains(&code),
+            "{context}, got {code}, expected one of {expected:?}"
+        );
+    }
+}
+
 #[tokio::test]
 async fn test_deepgram_normal_transcription_replay() {
     let _ = tracing_subscriber::fmt::try_init();
@@ -50,22 +91,12 @@ async fn test_deepgram_normal_transcription_replay() {
     )
     .await;
 
-    assert!(!result.messages.is_empty(), "expected to receive messages");
-
-    let has_hello_world = result
-        .messages
-        .iter()
-        .any(|message| message.contains("Hello world"));
-    let has_test = result
-        .messages
-        .iter()
-        .any(|message| message.contains("This is a test"));
-    assert!(has_hello_world, "Expected 'Hello world' transcript");
-    assert!(has_test, "Expected 'This is a test' transcript");
-
-    if let Some((code, _reason)) = result.close_info {
-        assert_eq!(code, 1000, "Expected normal close code 1000");
-    }
+    assert_replay_messages(
+        &result,
+        &["Hello world", "This is a test"],
+        "expected deepgram transcripts",
+    );
+    assert_close_code(result.close_info, 1000, "expected normal close code 1000");
 }
 
 #[tokio::test]
@@ -84,19 +115,16 @@ async fn test_deepgram_auth_error_replay() {
         !result.messages.is_empty(),
         "expected to receive error message"
     );
-    let has_auth_error = result
-        .messages
-        .iter()
-        .any(|message| message.contains("INVALID_AUTH") || message.contains("Invalid credentials"));
-    assert!(has_auth_error, "Expected auth error message");
-
-    if let Some((code, _reason)) = result.close_info {
-        assert!(
-            code == 4401 || code == 1008,
-            "Expected close code 4401 or 1008, got {}",
-            code
-        );
-    }
+    assert_any_message_contains(
+        &result.messages,
+        &["INVALID_AUTH", "Invalid credentials"],
+        "expected auth error message",
+    );
+    assert_close_code_in(
+        result.close_info,
+        &[4401, 1008],
+        "expected close code 4401 or 1008",
+    );
 }
 
 #[tokio::test]
@@ -111,18 +139,16 @@ async fn test_deepgram_rate_limit_replay() {
     )
     .await;
 
-    let has_rate_limit = result.messages.iter().any(|message| {
-        message.contains("TOO_MANY_REQUESTS") || message.contains("Too many requests")
-    });
-    assert!(has_rate_limit, "Expected rate limit error message");
-
-    if let Some((code, _reason)) = result.close_info {
-        assert!(
-            code == 4429 || code == 1008,
-            "Expected close code 4429 or 1008, got {}",
-            code
-        );
-    }
+    assert_any_message_contains(
+        &result.messages,
+        &["TOO_MANY_REQUESTS", "Too many requests"],
+        "expected rate limit error message",
+    );
+    assert_close_code_in(
+        result.close_info,
+        &[4429, 1008],
+        "expected close code 4429 or 1008",
+    );
 }
 
 #[tokio::test]
@@ -137,22 +163,12 @@ async fn test_soniox_normal_transcription_replay() {
     )
     .await;
 
-    assert!(!result.messages.is_empty(), "expected to receive messages");
-
-    let has_hello_world = result
-        .messages
-        .iter()
-        .any(|message| message.contains("Hello world"));
-    let has_soniox = result
-        .messages
-        .iter()
-        .any(|message| message.contains("Soniox"));
-    assert!(has_hello_world, "Expected 'Hello world' transcript");
-    assert!(has_soniox, "Expected 'Soniox' transcript");
-
-    if let Some((code, _reason)) = result.close_info {
-        assert_eq!(code, 1000, "Expected normal close code 1000");
-    }
+    assert_replay_messages(
+        &result,
+        &["Hello world", "Soniox"],
+        "expected soniox transcripts",
+    );
+    assert_close_code(result.close_info, 1000, "expected normal close code 1000");
 }
 
 #[tokio::test]
@@ -167,18 +183,16 @@ async fn test_soniox_error_replay() {
     )
     .await;
 
-    let has_error = result.messages.iter().any(|message| {
-        message.contains("error_code") || message.contains("Cannot continue request")
-    });
-    assert!(has_error, "Expected error message");
-
-    if let Some((code, _reason)) = result.close_info {
-        assert!(
-            code == 4500 || code == 1011,
-            "Expected close code 4500 or 1011, got {}",
-            code
-        );
-    }
+    assert_any_message_contains(
+        &result.messages,
+        &["error_code", "Cannot continue request"],
+        "expected error message",
+    );
+    assert_close_code_in(
+        result.close_info,
+        &[4500, 1011],
+        "expected close code 4500 or 1011",
+    );
 }
 
 #[tokio::test]

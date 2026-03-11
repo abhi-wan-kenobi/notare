@@ -6,6 +6,8 @@ use axum::{Json, Router, extract::RawQuery, response::IntoResponse, routing::pos
 use owhisper_client::Provider;
 use transcribe_proxy::{HyprnoteRoutingConfig, SttProxyConfig};
 
+use super::MockServerHandle;
+
 pub struct MockBatchUpstream {
     pub addr: SocketAddr,
     queries: Arc<Mutex<Vec<String>>>,
@@ -70,6 +72,14 @@ pub async fn start_mock_batch_upstream() -> MockBatchUpstream {
 
     let addr = serve(app).await;
     MockBatchUpstream { addr, queries }
+}
+
+pub async fn wait_for_first_request(mock: &MockServerHandle, timeout: Duration) -> String {
+    wait_for(timeout, || mock.captured_requests().first().cloned()).await
+}
+
+pub async fn wait_for_first_batch_query(batch: &MockBatchUpstream, timeout: Duration) -> String {
+    wait_for(timeout, || batch.first_query()).await
 }
 
 pub async fn wait_for<T>(timeout: Duration, mut f: impl FnMut() -> Option<T>) -> T {
