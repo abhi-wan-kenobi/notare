@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "dotenvx run --ignore MISSING_ENV_FILE -f ../../.env.supabase -f ../../.env.stripe -f .env -- bun --hot src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
     "@hypr/supabase": "workspace:*",
