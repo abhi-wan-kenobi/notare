@@ -3,7 +3,7 @@ mod error;
 mod events;
 mod ext;
 #[cfg(target_os = "macos")]
-mod migration;
+mod startup_migration;
 mod store;
 
 pub use error::{Error, Result};
@@ -39,6 +39,13 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .invoke_handler(specta_builder.invoke_handler())
         .setup(move |app, _api| {
             specta_builder.mount_events(app);
+
+            #[cfg(target_os = "macos")]
+            match startup_migration::maybe_schedule_legacy_bundle_rename_on_launch(app) {
+                Ok(true) => {}
+                Ok(false) => {}
+                Err(err) => tracing::error!("failed to schedule legacy bundle rename: {}", err),
+            }
 
             let handle = app.clone();
             tauri::async_runtime::spawn(async move {

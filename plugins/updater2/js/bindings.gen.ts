@@ -64,7 +64,7 @@ updatedEvent: "plugin:updater2:updated-event"
 
 /** user-defined types **/
 
-export type InstallResult = { kind: "relaunch_current" } | { kind: "macos_bundle_update"; current_path: string; staged_path: string; target_path: string; backup_path: string; stage_dir: string }
+export type InstallResult = { kind: "relaunch_current" }
 export type UpdateDownloadFailedEvent = { version: string }
 export type UpdateDownloadingEvent = { version: string }
 export type UpdateReadyEvent = { version: string }
