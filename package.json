@@ -23,8 +23,8 @@
     "*.{ts,tsx,js,jsx,json,css,md}": "dprint fmt"
   },
   "pnpm": {
-    "overrides": {
-      "@tiptap/extension-paragraph": "3.17.1"
+    "patchedDependencies": {
+      "@tiptap/extension-paragraph@3.20.1": "patches/@tiptap__extension-paragraph@3.20.1.patch"
     }
   },
   "packageManager": "pnpm@10.31.0",
