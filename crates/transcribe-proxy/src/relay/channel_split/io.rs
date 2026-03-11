@@ -3,14 +3,16 @@ use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::tungstenite::Message as TungsteniteMessage;
 
 use super::super::types::{
-    ClientMessageFilter, ClientReceiver, ClientSender, DEFAULT_CLOSE_CODE, UpstreamReceiver,
-    UpstreamSender, convert,
+    ClientMessageFilter, ClientReceiver, ClientSender, DEFAULT_CLOSE_CODE, ShutdownSignal,
+    UpstreamReceiver, UpstreamSender, convert,
 };
 use super::coordinator::SplitEvent;
 use super::payload::RewrittenSplitResponse;
 
 const SAMPLE_BYTES: usize = 2;
 const FRAME_BYTES: usize = SAMPLE_BYTES * 2;
+const UPSTREAM_DISCONNECTED_REASON: &str = "upstream_disconnected";
+const UPSTREAM_SEND_FAILED_REASON: &str = "upstream_send_failed";
 
 fn proxy_debug_enabled() -> bool {
     std::env::var("LISTENER_DEBUG")
@@ -29,6 +31,27 @@ pub(super) fn deinterleave(interleaved: &[u8]) -> (Vec<u8>, Vec<u8>) {
     }
 
     (ch0, ch1)
+}
+
+fn upstream_disconnected_signal() -> ShutdownSignal {
+    ShutdownSignal::Close {
+        code: DEFAULT_CLOSE_CODE,
+        reason: UPSTREAM_DISCONNECTED_REASON.to_string(),
+    }
+}
+
+fn upstream_send_failed_signal() -> ShutdownSignal {
+    ShutdownSignal::Close {
+        code: DEFAULT_CLOSE_CODE,
+        reason: UPSTREAM_SEND_FAILED_REASON.to_string(),
+    }
+}
+
+fn upstream_receive_error_signal(error: &impl std::fmt::Display) -> ShutdownSignal {
+    ShutdownSignal::Close {
+        code: DEFAULT_CLOSE_CODE,
+        reason: format!("upstream_error: {error}"),
+    }
 }
 
 pub(super) async fn send_text(client_tx: &mut ClientSender, text: String) -> bool {
@@ -51,7 +74,7 @@ pub(super) async fn relay_client_to_upstreams(
     mut mic_tx: UpstreamSender,
     mut spk_tx: UpstreamSender,
     client_message_filter: Option<ClientMessageFilter>,
-    shutdown_tx: tokio::sync::broadcast::Sender<(u16, String)>,
+    shutdown_tx: tokio::sync::broadcast::Sender<ShutdownSignal>,
     event_tx: tokio::sync::mpsc::Sender<SplitEvent>,
 ) {
     let mut shutdown_rx = shutdown_tx.subscribe();
@@ -60,10 +83,12 @@ pub(super) async fn relay_client_to_upstreams(
         tokio::select! {
             biased;
             result = shutdown_rx.recv() => {
-                if let Ok((code, reason)) = result {
-                    let close = convert::to_tungstenite_close(code, reason);
-                    let _ = mic_tx.send(close.clone()).await;
-                    let _ = spk_tx.send(close).await;
+                if let Ok(signal) = result {
+                    if let ShutdownSignal::Close { code, reason } = signal {
+                        let close = convert::to_tungstenite_close(code, reason);
+                        let _ = mic_tx.send(close.clone()).await;
+                        let _ = spk_tx.send(close).await;
+                    }
                 }
                 break;
             },
@@ -89,10 +114,10 @@ pub(super) async fn relay_client_to_upstreams(
                                 "invalid_stereo_frame_alignment"
                             );
                             let _ = event_tx
-                                .send(SplitEvent::Fatal {
+                                .send(SplitEvent::Fatal(ShutdownSignal::Close {
                                     code: DEFAULT_CLOSE_CODE,
                                     reason: "invalid_stereo_frame_alignment".to_string(),
-                                })
+                                }))
                                 .await;
                             break;
                         }
@@ -108,10 +133,7 @@ pub(super) async fn relay_client_to_upstreams(
                                 .is_err()
                         {
                             let _ = event_tx
-                                .send(SplitEvent::Fatal {
-                                    code: DEFAULT_CLOSE_CODE,
-                                    reason: "upstream_send_failed".to_string(),
-                                })
+                                .send(SplitEvent::Fatal(upstream_send_failed_signal()))
                                 .await;
                             break;
                         }
@@ -140,10 +162,7 @@ pub(super) async fn relay_client_to_upstreams(
                         if mic_tx.send(tung.clone()).await.is_err() || spk_tx.send(tung).await.is_err()
                         {
                             let _ = event_tx
-                                .send(SplitEvent::Fatal {
-                                    code: DEFAULT_CLOSE_CODE,
-                                    reason: "upstream_send_failed".to_string(),
-                                })
+                                .send(SplitEvent::Fatal(upstream_send_failed_signal()))
                                 .await;
                             break;
                         }
@@ -167,7 +186,7 @@ pub(super) async fn relay_upstream_to_events(
     upstream_rx: &mut UpstreamReceiver,
     channel: usize,
     event_tx: tokio::sync::mpsc::Sender<SplitEvent>,
-    shutdown_tx: tokio::sync::broadcast::Sender<(u16, String)>,
+    shutdown_tx: tokio::sync::broadcast::Sender<ShutdownSignal>,
 ) {
     let mut shutdown_rx = shutdown_tx.subscribe();
 
@@ -178,10 +197,7 @@ pub(super) async fn relay_upstream_to_events(
             msg_opt = upstream_rx.next() => {
                 let Some(msg_result) = msg_opt else {
                     let _ = event_tx
-                        .send(SplitEvent::Fatal {
-                            code: DEFAULT_CLOSE_CODE,
-                            reason: "upstream_disconnected".to_string(),
-                        })
+                        .send(SplitEvent::Fatal(upstream_disconnected_signal()))
                         .await;
                     break;
                 };
@@ -190,10 +206,7 @@ pub(super) async fn relay_upstream_to_events(
                     Ok(msg) => msg,
                     Err(error) => {
                         let _ = event_tx
-                            .send(SplitEvent::Fatal {
-                                code: DEFAULT_CLOSE_CODE,
-                                reason: format!("upstream_error: {error}"),
-                            })
+                            .send(SplitEvent::Fatal(upstream_receive_error_signal(&error)))
                             .await;
                         break;
                     }
@@ -245,6 +258,7 @@ pub(super) async fn relay_upstream_to_events(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::relay::types::DEFAULT_CLOSE_CODE;
 
     #[test]
     fn deinterleave_basic() {
@@ -271,5 +285,34 @@ mod tests {
         let (ch0, ch1) = deinterleave(&[]);
         assert!(ch0.is_empty());
         assert!(ch1.is_empty());
+    }
+
+    #[test]
+    fn upstream_disconnects_map_to_structured_close_signal() {
+        assert!(matches!(
+            upstream_disconnected_signal(),
+            ShutdownSignal::Close { code, reason }
+                if code == DEFAULT_CLOSE_CODE && reason == "upstream_disconnected"
+        ));
+    }
+
+    #[test]
+    fn upstream_send_failures_map_to_structured_close_signal() {
+        assert!(matches!(
+            upstream_send_failed_signal(),
+            ShutdownSignal::Close { code, reason }
+                if code == DEFAULT_CLOSE_CODE && reason == "upstream_send_failed"
+        ));
+    }
+
+    #[test]
+    fn upstream_receive_errors_preserve_the_transport_error_string() {
+        let error = tokio_tungstenite::tungstenite::Error::ConnectionClosed;
+        let ShutdownSignal::Close { code, reason } = upstream_receive_error_signal(&error) else {
+            panic!("expected structured close signal");
+        };
+
+        assert_eq!(code, DEFAULT_CLOSE_CODE);
+        assert_eq!(reason, format!("upstream_error: {error}"));
     }
 }

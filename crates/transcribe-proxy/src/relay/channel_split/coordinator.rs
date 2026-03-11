@@ -1,3 +1,5 @@
+use crate::relay::types::ShutdownSignal;
+
 use super::payload::{FinalizeMode, RewrittenSplitResponse};
 
 #[derive(Debug)]
@@ -12,10 +14,7 @@ pub(super) enum SplitEvent {
         code: u16,
         reason: String,
     },
-    Fatal {
-        code: u16,
-        reason: String,
-    },
+    Fatal(ShutdownSignal),
     ClientClosed,
 }
 
@@ -23,7 +22,8 @@ pub(super) enum CoordinatorAction {
     ForwardText(String),
     ForwardRewritten(RewrittenSplitResponse),
     CloseDownstream { code: u16, reason: String },
-    ShutdownUpstreams { code: u16, reason: String },
+    AbortDownstream,
+    ShutdownUpstreams(ShutdownSignal),
 }
 
 #[derive(Clone, Copy, Default)]
@@ -99,7 +99,9 @@ impl SplitCoordinator {
                 code,
                 reason: reason.clone(),
             });
-            actions.push(CoordinatorAction::ShutdownUpstreams { code, reason });
+            actions.push(CoordinatorAction::ShutdownUpstreams(
+                ShutdownSignal::Close { code, reason },
+            ));
         }
 
         actions
@@ -120,7 +122,9 @@ impl SplitCoordinator {
                 code,
                 reason: reason.clone(),
             });
-            actions.push(CoordinatorAction::ShutdownUpstreams { code, reason });
+            actions.push(CoordinatorAction::ShutdownUpstreams(
+                ShutdownSignal::Close { code, reason },
+            ));
             return actions;
         }
 
@@ -135,20 +139,32 @@ impl SplitCoordinator {
                 code,
                 reason: reason.clone(),
             });
-            actions.push(CoordinatorAction::ShutdownUpstreams { code, reason });
+            actions.push(CoordinatorAction::ShutdownUpstreams(
+                ShutdownSignal::Close { code, reason },
+            ));
         }
 
         actions
     }
 
-    pub(super) fn handle_fatal(&mut self, code: u16, reason: String) -> Vec<CoordinatorAction> {
+    pub(super) fn handle_fatal(&mut self, signal: ShutdownSignal) -> Vec<CoordinatorAction> {
         let mut actions = Vec::new();
         self.flush_pending(&mut actions, FinalizeMode::NonTerminal);
-        actions.push(CoordinatorAction::CloseDownstream {
-            code,
-            reason: reason.clone(),
-        });
-        actions.push(CoordinatorAction::ShutdownUpstreams { code, reason });
+        match signal.clone() {
+            ShutdownSignal::Close { code, reason } => {
+                actions.push(CoordinatorAction::CloseDownstream {
+                    code,
+                    reason: reason.clone(),
+                });
+                actions.push(CoordinatorAction::ShutdownUpstreams(
+                    ShutdownSignal::Close { code, reason },
+                ));
+            }
+            ShutdownSignal::Abort => {
+                actions.push(CoordinatorAction::AbortDownstream);
+                actions.push(CoordinatorAction::ShutdownUpstreams(ShutdownSignal::Abort));
+            }
+        }
         actions
     }
 
@@ -157,7 +173,9 @@ impl SplitCoordinator {
         code: u16,
         reason: String,
     ) -> Vec<CoordinatorAction> {
-        vec![CoordinatorAction::ShutdownUpstreams { code, reason }]
+        vec![CoordinatorAction::ShutdownUpstreams(
+            ShutdownSignal::Close { code, reason },
+        )]
     }
 
     fn flush_pending(
@@ -206,6 +224,39 @@ mod tests {
 
     fn rewritten_for_channel(text: &str, channel: i32) -> RewrittenSplitResponse {
         rewrite_split_response(text, channel, 2, FinalizeMode::Preserve).unwrap()
+    }
+
+    fn assert_non_terminal_finalize(action: CoordinatorAction, transcript: &str) {
+        let CoordinatorAction::ForwardRewritten(rewritten) = action else {
+            panic!("expected pending finalize flush");
+        };
+        let parsed: serde_json::Value =
+            serde_json::from_str(&rewritten.into_text().unwrap()).unwrap();
+        assert_eq!(parsed["from_finalize"], serde_json::json!(false));
+        assert_eq!(
+            parsed["channel"]["alternatives"][0]["transcript"],
+            transcript
+        );
+    }
+
+    fn assert_close_downstream(action: CoordinatorAction, code: u16, reason: &str) {
+        match action {
+            CoordinatorAction::CloseDownstream {
+                code: actual_code,
+                reason: actual_reason,
+            } => assert_eq!((actual_code, actual_reason.as_str()), (code, reason)),
+            _ => panic!("expected downstream close"),
+        }
+    }
+
+    fn assert_shutdown_close(action: CoordinatorAction, code: u16, reason: &str) {
+        match action {
+            CoordinatorAction::ShutdownUpstreams(ShutdownSignal::Close {
+                code: actual_code,
+                reason: actual_reason,
+            }) => assert_eq!((actual_code, actual_reason.as_str()), (code, reason)),
+            _ => panic!("expected upstream shutdown close"),
+        }
     }
 
     #[test]
@@ -498,5 +549,68 @@ mod tests {
             parsed["channel"]["alternatives"][0]["transcript"],
             "last-utterance"
         );
+    }
+
+    #[test]
+    fn non_normal_upstream_close_flushes_pending_and_closes_downstream() {
+        let pending = rewritten(
+            r#"{"type":"Results","channel_index":[0,1],"duration":0.0,"start":0.0,"is_final":true,"speech_final":true,"from_finalize":true,"channel":{"alternatives":[{"transcript":"first","confidence":1.0,"words":[]}]},"metadata":{"request_id":"","model_info":{"name":"","version":"","arch":""},"model_uuid":""}}"#,
+        );
+
+        let mut coordinator = SplitCoordinator::default();
+        assert!(
+            coordinator
+                .handle_text(0, Some(pending), None, None)
+                .is_empty()
+        );
+
+        let actions = coordinator.handle_upstream_closed(1, 1011, "speaker_failed".to_string());
+        assert_eq!(actions.len(), 3);
+        let mut actions = actions.into_iter();
+
+        assert_non_terminal_finalize(actions.next().unwrap(), "first");
+        assert_close_downstream(actions.next().unwrap(), 1011, "speaker_failed");
+        assert_shutdown_close(actions.next().unwrap(), 1011, "speaker_failed");
+    }
+
+    #[test]
+    fn fatal_close_flushes_pending_and_preserves_structured_error_for_downstream() {
+        let pending = rewritten(
+            r#"{"type":"Results","channel_index":[0,1],"duration":0.0,"start":0.0,"is_final":true,"speech_final":true,"from_finalize":true,"channel":{"alternatives":[{"transcript":"first","confidence":1.0,"words":[]}]},"metadata":{"request_id":"","model_info":{"name":"","version":"","arch":""},"model_uuid":""}}"#,
+        );
+
+        let mut coordinator = SplitCoordinator::default();
+        assert!(
+            coordinator
+                .handle_text(0, Some(pending), None, None)
+                .is_empty()
+        );
+
+        let actions = coordinator.handle_fatal(ShutdownSignal::Close {
+            code: 1011,
+            reason: "upstream_disconnected".to_string(),
+        });
+        assert_eq!(actions.len(), 3);
+        let mut actions = actions.into_iter();
+
+        assert_non_terminal_finalize(actions.next().unwrap(), "first");
+        assert_close_downstream(actions.next().unwrap(), 1011, "upstream_disconnected");
+        assert_shutdown_close(actions.next().unwrap(), 1011, "upstream_disconnected");
+    }
+
+    #[test]
+    fn fatal_abort_still_aborts_when_no_structured_close_exists() {
+        let actions = SplitCoordinator::default().handle_fatal(ShutdownSignal::Abort);
+        assert_eq!(actions.len(), 2);
+        let mut actions = actions.into_iter();
+
+        assert!(matches!(
+            actions.next().unwrap(),
+            CoordinatorAction::AbortDownstream
+        ));
+        assert!(matches!(
+            actions.next().unwrap(),
+            CoordinatorAction::ShutdownUpstreams(ShutdownSignal::Abort)
+        ));
     }
 }

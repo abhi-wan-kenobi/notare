@@ -22,7 +22,7 @@ use self::io::{relay_client_to_upstreams, relay_upstream_to_events, send_rewritt
 use self::payload::{FinalizeMode, rewrite_split_response};
 use super::types::{
     ClientMessageFilter, DEFAULT_CLOSE_CODE, InitialMessage, OnCloseCallback, ResponseTransformer,
-    convert,
+    ShutdownSignal, convert,
 };
 
 fn proxy_debug_enabled() -> bool {
@@ -165,7 +165,7 @@ impl ChannelSplitProxy {
             }
         }
 
-        let (shutdown_tx, _) = tokio::sync::broadcast::channel::<(u16, String)>(1);
+        let (shutdown_tx, _) = tokio::sync::broadcast::channel::<ShutdownSignal>(1);
         let (event_tx, mut event_rx) = tokio::sync::mpsc::channel::<SplitEvent>(64);
 
         let client_to_upstreams = relay_client_to_upstreams(
@@ -255,9 +255,7 @@ impl ChannelSplitProxy {
                             code,
                             reason,
                         } => coordinator.handle_upstream_closed(channel, code, reason),
-                        SplitEvent::Fatal { code, reason } => {
-                            coordinator.handle_fatal(code, reason)
-                        }
+                        SplitEvent::Fatal(signal) => coordinator.handle_fatal(signal),
                         SplitEvent::ClientClosed => coordinator
                             .handle_client_closed(DEFAULT_CLOSE_CODE, "client_closed".to_string()),
                     };
@@ -267,20 +265,20 @@ impl ChannelSplitProxy {
                         match action {
                             CoordinatorAction::ForwardText(text) => {
                                 if !send_text(&mut client_tx, text).await {
-                                    let _ = shutdown_tx.send((
-                                        DEFAULT_CLOSE_CODE,
-                                        "client_send_failed".to_string(),
-                                    ));
+                                    let _ = shutdown_tx.send(ShutdownSignal::Close {
+                                        code: DEFAULT_CLOSE_CODE,
+                                        reason: "client_send_failed".to_string(),
+                                    });
                                     should_break = true;
                                     break;
                                 }
                             }
                             CoordinatorAction::ForwardRewritten(response) => {
                                 if !send_rewritten(&mut client_tx, response).await {
-                                    let _ = shutdown_tx.send((
-                                        DEFAULT_CLOSE_CODE,
-                                        "client_send_failed".to_string(),
-                                    ));
+                                    let _ = shutdown_tx.send(ShutdownSignal::Close {
+                                        code: DEFAULT_CLOSE_CODE,
+                                        reason: "client_send_failed".to_string(),
+                                    });
                                     should_break = true;
                                     break;
                                 }
@@ -288,8 +286,11 @@ impl ChannelSplitProxy {
                             CoordinatorAction::CloseDownstream { code, reason } => {
                                 let _ = client_tx.send(convert::to_axum_close(code, reason)).await;
                             }
-                            CoordinatorAction::ShutdownUpstreams { code, reason } => {
-                                let _ = shutdown_tx.send((code, reason));
+                            CoordinatorAction::AbortDownstream => {
+                                should_break = true;
+                            }
+                            CoordinatorAction::ShutdownUpstreams(signal) => {
+                                let _ = shutdown_tx.send(signal);
                                 should_break = true;
                                 break;
                             }

@@ -72,7 +72,7 @@ jobs:
             fi
           fi
 
-          json="$(printf '%s\n' "${providers[@]}" | jq -R . | jq -s 'unique')"
+          json="$(printf '%s\n' "${providers[@]}" | jq -Rsc 'split("\n")[:-1] | unique')"
           echo "providers=$json" >> "$GITHUB_OUTPUT"
 
   setup:
@@ -90,7 +90,7 @@ jobs:
             echo "providers=${{ needs.detect-changes.outputs.providers }}" >> $GITHUB_OUTPUT
           fi
 
-  batch:
+  direct-provider-batch-e2e:
     needs: setup
     if: needs.setup.outputs.providers != ''
     runs-on: depot-ubuntu-24.04-8
@@ -109,43 +109,28 @@ jobs:
             set -euo pipefail
 
             provider="${PROVIDER}"
-            input="${INPUT}"
 
             case "$provider" in
               deepgram)
                 : "${DEEPGRAM_API_KEY:?DEEPGRAM_API_KEY is required}"
-                export CHAR_BASE_URL="https://api.deepgram.com/v1"
-                export CHAR_API_KEY="${DEEPGRAM_API_KEY}"
                 ;;
               assemblyai)
                 : "${ASSEMBLYAI_API_KEY:?ASSEMBLYAI_API_KEY is required}"
-                export CHAR_BASE_URL="https://api.assemblyai.com/v2"
-                export CHAR_API_KEY="${ASSEMBLYAI_API_KEY}"
                 ;;
               soniox)
                 : "${SONIOX_API_KEY:?SONIOX_API_KEY is required}"
-                export CHAR_BASE_URL="https://api.soniox.com"
-                export CHAR_API_KEY="${SONIOX_API_KEY}"
                 ;;
               gladia)
                 : "${GLADIA_API_KEY:?GLADIA_API_KEY is required}"
-                export CHAR_BASE_URL="https://api.gladia.io/v2"
-                export CHAR_API_KEY="${GLADIA_API_KEY}"
                 ;;
               fireworks)
                 : "${FIREWORKS_API_KEY:?FIREWORKS_API_KEY is required}"
-                export CHAR_BASE_URL="https://api.fireworks.ai"
-                export CHAR_API_KEY="${FIREWORKS_API_KEY}"
                 ;;
               openai)
                 : "${OPENAI_API_KEY:?OPENAI_API_KEY is required}"
-                export CHAR_BASE_URL="https://api.openai.com/v1"
-                export CHAR_API_KEY="${OPENAI_API_KEY}"
                 ;;
               elevenlabs)
                 : "${ELEVENLABS_API_KEY:?ELEVENLABS_API_KEY is required}"
-                export CHAR_BASE_URL="https://api.elevenlabs.io"
-                export CHAR_API_KEY="${ELEVENLABS_API_KEY}"
                 ;;
               *)
                 echo "Unknown provider: $provider"
@@ -153,25 +138,15 @@ jobs:
                 ;;
             esac
 
-            echo "Provider: $provider"
-            echo "Base URL: $CHAR_BASE_URL"
-            echo "Input: $input"
-
-            transcript="$(cargo run -p cli -- batch --input "$input" --provider "$provider" --quiet)"
-            echo "$transcript"
-
-            if [ -z "$(echo "$transcript" | tr -d "[:space:]")" ]; then
-              echo "Empty transcript"
-              exit 1
-            fi
+            echo "Running direct provider batch e2e for $provider"
+            cargo test -p owhisper-client --test provider_batch_e2e "direct_batch::${provider}" -- --ignored --nocapture
           '
         env:
           PROVIDER: ${{ matrix.provider }}
-          INPUT: crates/data/src/english_1/audio.wav
           INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
           INFISICAL_PROJECT_ID: ${{ secrets.INFISICAL_PROJECT_ID }}
 
-  proxy-smoke:
+  proxy-provider-e2e:
     needs: setup
     if: needs.setup.outputs.providers != ''
     runs-on: depot-ubuntu-24.04-8
@@ -219,10 +194,10 @@ jobs:
                 ;;
             esac
 
-            echo "Running transcribe-proxy smoke tests for $provider"
+            echo "Running transcribe-proxy provider e2e tests for $provider"
 
             for suite in passthrough::live passthrough::batch hyprnote::live hyprnote::batch; do
-              cargo test -p transcribe-proxy --test proxy_e2e "${suite}::${provider}" -- --ignored --nocapture
+              cargo test -p transcribe-proxy --test proxy_provider_e2e "${suite}::${provider}" -- --ignored --nocapture
             done
           '
         env:

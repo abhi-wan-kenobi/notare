@@ -18,7 +18,7 @@ use super::builder::WebSocketProxyBuilder;
 use super::pending::{FlushError, PendingState, QueuedPayload};
 use super::types::{
     ClientMessageFilter, ClientReceiver, ClientSender, ControlMessageTypes, DEFAULT_CLOSE_CODE,
-    FirstMessageTransformer, InitialMessage, OnCloseCallback, ResponseTransformer,
+    FirstMessageTransformer, InitialMessage, OnCloseCallback, ResponseTransformer, ShutdownSignal,
     UpstreamReceiver, UpstreamSender, convert, is_control_message,
 };
 
@@ -155,7 +155,7 @@ impl WebSocketProxy {
         let (upstream_sender, upstream_receiver) = upstream_stream.split();
         let (client_sender, client_receiver) = client_socket.split();
 
-        let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel::<(u16, String)>(1);
+        let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel::<ShutdownSignal>(1);
         let shutdown_rx2 = shutdown_tx.subscribe();
 
         let client_to_upstream = Self::run_client_to_upstream(
@@ -195,7 +195,7 @@ impl WebSocketProxy {
         data: Vec<u8>,
         is_text: bool,
         control_types: &Option<ControlMessageTypes>,
-        shutdown_tx: &tokio::sync::broadcast::Sender<(u16, String)>,
+        shutdown_tx: &tokio::sync::broadcast::Sender<ShutdownSignal>,
         upstream_sender: &mut UpstreamSender,
     ) -> bool {
         let is_control = control_types
@@ -211,21 +211,35 @@ impl WebSocketProxy {
                 hyprnote.ws.is_control_message = %is_control,
                 "pending_queue_enqueue_failed"
             );
-            let _ = shutdown_tx.send((DEFAULT_CLOSE_CODE, reason.to_string()));
+            let _ = shutdown_tx.send(ShutdownSignal::Close {
+                code: DEFAULT_CLOSE_CODE,
+                reason: reason.to_string(),
+            });
             return true;
         }
 
         if let Err(e) = pending.flush_to(upstream_sender).await {
-            let reason = match e {
-                FlushError::SendFailed => "upstream_send_failed",
-                FlushError::InvalidUtf8 => "invalid_utf8_in_message",
-            };
-            tracing::error!(
-                error.type = %reason,
-                error = ?e,
-                "pending_flush_failed"
-            );
-            let _ = shutdown_tx.send((DEFAULT_CLOSE_CODE, reason.to_string()));
+            match e {
+                FlushError::SendFailed => {
+                    tracing::error!(
+                        error.type = "upstream_send_failed",
+                        error = ?e,
+                        "pending_flush_failed"
+                    );
+                    let _ = shutdown_tx.send(ShutdownSignal::Abort);
+                }
+                FlushError::InvalidUtf8 => {
+                    tracing::error!(
+                        error.type = "invalid_utf8_in_message",
+                        error = ?e,
+                        "pending_flush_failed"
+                    );
+                    let _ = shutdown_tx.send(ShutdownSignal::Close {
+                        code: DEFAULT_CLOSE_CODE,
+                        reason: "invalid_utf8_in_message".to_string(),
+                    });
+                }
+            }
             return true;
         }
 
@@ -235,8 +249,8 @@ impl WebSocketProxy {
     async fn run_client_to_upstream(
         mut client_receiver: ClientReceiver,
         mut upstream_sender: UpstreamSender,
-        shutdown_tx: tokio::sync::broadcast::Sender<(u16, String)>,
-        mut shutdown_rx: tokio::sync::broadcast::Receiver<(u16, String)>,
+        shutdown_tx: tokio::sync::broadcast::Sender<ShutdownSignal>,
+        mut shutdown_rx: tokio::sync::broadcast::Receiver<ShutdownSignal>,
         control_types: Option<ControlMessageTypes>,
         mut first_msg_transformer: Option<FirstMessageTransformer>,
         initial_message: Option<InitialMessage>,
@@ -250,8 +264,7 @@ impl WebSocketProxy {
                 .await
             {
                 tracing::error!(error = ?e, "initial_message_send_failed");
-                let _ =
-                    shutdown_tx.send((DEFAULT_CLOSE_CODE, "initial_message_failed".to_string()));
+                let _ = shutdown_tx.send(ShutdownSignal::Abort);
                 return;
             }
             tracing::debug!("initial_message_sent");
@@ -262,15 +275,20 @@ impl WebSocketProxy {
                 biased;
 
                 result = shutdown_rx.recv() => {
-                    if let Ok((code, reason)) = result {
-                        let _ = upstream_sender.send(convert::to_tungstenite_close(code, reason)).await;
+                    if let Ok(signal) = result {
+                        if let ShutdownSignal::Close { code, reason } = signal {
+                            let _ = upstream_sender.send(convert::to_tungstenite_close(code, reason)).await;
+                        }
                     }
                     break;
                 }
 
                 msg_opt = client_receiver.next() => {
                     let Some(msg_result) = msg_opt else {
-                        let _ = shutdown_tx.send((DEFAULT_CLOSE_CODE, "client_disconnected".to_string()));
+                        let _ = shutdown_tx.send(ShutdownSignal::Close {
+                            code: DEFAULT_CLOSE_CODE,
+                            reason: "client_disconnected".to_string(),
+                        });
                         break;
                     };
 
@@ -283,7 +301,10 @@ impl WebSocketProxy {
                                 "client_receive_error: {}",
                                 e
                             );
-                            let _ = shutdown_tx.send((DEFAULT_CLOSE_CODE, "client_error".to_string()));
+                            let _ = shutdown_tx.send(ShutdownSignal::Close {
+                                code: DEFAULT_CLOSE_CODE,
+                                reason: "client_error".to_string(),
+                            });
                             break;
                         }
                     };
@@ -346,7 +367,7 @@ impl WebSocketProxy {
                                 hyprnote.ws.close.reason = %reason,
                                 "ws_client_close_received"
                             );
-                            let _ = shutdown_tx.send((code, reason));
+                            let _ = shutdown_tx.send(ShutdownSignal::Close { code, reason });
                             break;
                         }
                     }
@@ -358,8 +379,8 @@ impl WebSocketProxy {
     async fn run_upstream_to_client(
         mut upstream_receiver: UpstreamReceiver,
         mut client_sender: ClientSender,
-        shutdown_tx: tokio::sync::broadcast::Sender<(u16, String)>,
-        mut shutdown_rx: tokio::sync::broadcast::Receiver<(u16, String)>,
+        shutdown_tx: tokio::sync::broadcast::Sender<ShutdownSignal>,
+        mut shutdown_rx: tokio::sync::broadcast::Receiver<ShutdownSignal>,
         response_transformer: Option<ResponseTransformer>,
     ) {
         let mut pending_error: Option<(u16, String)> = None;
@@ -369,16 +390,21 @@ impl WebSocketProxy {
                 biased;
 
                 result = shutdown_rx.recv() => {
-                    if let Ok((code, reason)) = result {
-                        let _ = client_sender.send(convert::to_axum_close(code, reason)).await;
+                    if let Ok(signal) = result {
+                        if let ShutdownSignal::Close { code, reason } = signal {
+                            let _ = client_sender.send(convert::to_axum_close(code, reason)).await;
+                        }
                     }
                     break;
                 }
 
                 msg_opt = upstream_receiver.next() => {
                     let Some(msg_result) = msg_opt else {
-                        let (code, reason) = pending_error.take().unwrap_or((DEFAULT_CLOSE_CODE, "upstream_disconnected".to_string()));
-                        let _ = shutdown_tx.send((code, reason));
+                        let signal = pending_error
+                            .take()
+                            .map(|(code, reason)| ShutdownSignal::Close { code, reason })
+                            .unwrap_or(ShutdownSignal::Abort);
+                        let _ = shutdown_tx.send(signal);
                         break;
                     };
 
@@ -391,7 +417,11 @@ impl WebSocketProxy {
                                 "upstream_receive_error: {}",
                                 e
                             );
-                            let _ = shutdown_tx.send((DEFAULT_CLOSE_CODE, format!("upstream_error: {}", e)));
+                            let signal = pending_error
+                                .take()
+                                .map(|(code, reason)| ShutdownSignal::Close { code, reason })
+                                .unwrap_or(ShutdownSignal::Abort);
+                            let _ = shutdown_tx.send(signal);
                             break;
                         }
                     };
@@ -424,13 +454,19 @@ impl WebSocketProxy {
                             };
 
                             if client_sender.send(Message::Text(output_text.into())).await.is_err() {
-                                let _ = shutdown_tx.send((DEFAULT_CLOSE_CODE, "client_send_failed".to_string()));
+                                let _ = shutdown_tx.send(ShutdownSignal::Close {
+                                    code: DEFAULT_CLOSE_CODE,
+                                    reason: "client_send_failed".to_string(),
+                                });
                                 break;
                             }
                         }
                         TungsteniteMessage::Binary(data) => {
                             if client_sender.send(Message::Binary(data.to_vec().into())).await.is_err() {
-                                let _ = shutdown_tx.send((DEFAULT_CLOSE_CODE, "client_send_failed".to_string()));
+                                let _ = shutdown_tx.send(ShutdownSignal::Close {
+                                    code: DEFAULT_CLOSE_CODE,
+                                    reason: "client_send_failed".to_string(),
+                                });
                                 break;
                             }
                         }
@@ -451,15 +487,32 @@ impl WebSocketProxy {
                             }
                         }
                         TungsteniteMessage::Close(frame) => {
-                            let (code, reason) = pending_error.take().unwrap_or_else(|| {
-                                convert::extract_tungstenite_close(frame, "upstream_closed")
-                            });
-                            tracing::info!(
-                                hyprnote.ws.close.code = code,
-                                hyprnote.ws.close.reason = %reason,
-                                "ws_upstream_close_received"
-                            );
-                            let _ = shutdown_tx.send((code, reason));
+                            let signal = if let Some((code, reason)) = pending_error.take() {
+                                ShutdownSignal::Close { code, reason }
+                            } else {
+                                let (code, reason) =
+                                    convert::extract_tungstenite_close(frame, "upstream_closed");
+                                if code == 1000 {
+                                    ShutdownSignal::Close { code, reason }
+                                } else {
+                                    tracing::warn!(
+                                        hyprnote.ws.close.code = code,
+                                        hyprnote.ws.close.reason = %reason,
+                                        "ws_upstream_abnormal_close"
+                                    );
+                                    ShutdownSignal::Abort
+                                }
+                            };
+
+                            if let ShutdownSignal::Close { code, reason } = &signal {
+                                tracing::info!(
+                                    hyprnote.ws.close.code = *code,
+                                    hyprnote.ws.close.reason = %reason,
+                                    "ws_upstream_close_received"
+                                );
+                            }
+
+                            let _ = shutdown_tx.send(signal);
                             break;
                         }
                         TungsteniteMessage::Frame(_) => {}
