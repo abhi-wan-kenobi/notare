@@ -37,3 +37,25 @@ done
 ```bash
 gh api repos/fastrepl/char/compare/<>...<>  --jq '.commits'
 ```
+
+# Custom Tags
+
+The desktop changelog renderer (Streamdown-based) supports custom HTML tags beyond standard markdown.
+
+## `<banner>`
+
+Use for announcements, important notices, or highlights.
+
+Attributes:
+- `title` (optional): Bold heading text at the top of the banner.
+- `variant` (optional): `"warning"` for amber/yellow style. Defaults to blue/info style.
+
+```mdx
+<banner title="Hyprnote is now Char!">
+We've renamed the app. All your data is safe and nothing changes on your end.
+</banner>
+
+<banner title="Breaking Change" variant="warning">
+The old plugin format is no longer supported. Please update your plugins.
+</banner>
+```

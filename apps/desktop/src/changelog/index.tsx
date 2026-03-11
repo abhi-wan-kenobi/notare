@@ -1,9 +1,8 @@
 import { CalendarIcon, ExternalLinkIcon, SparklesIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef } from "react";
+import { Streamdown } from "streamdown";
 
 import { commands as openerCommands } from "@hypr/plugin-opener2";
-import NoteEditor from "@hypr/tiptap/editor";
-import { md2json } from "@hypr/tiptap/shared";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,56 +17,14 @@ import {
 } from "@hypr/ui/components/ui/scroll-fade";
 import { safeFormat } from "@hypr/utils";
 
+import { changelogComponents } from "./components";
+import { useChangelogContent } from "./data";
+
 import { StandardTabWrapper } from "~/shared/main";
 import { type TabItem, TabItemBase } from "~/shared/tabs";
 import { type Tab } from "~/store/zustand/tabs";
 
-export const changelogFiles = import.meta.glob(
-  "../../../../../../web/content/changelog/*.mdx",
-  { query: "?raw", import: "default" },
-);
-
-export function getLatestVersion(): string | null {
-  const versions = Object.keys(changelogFiles)
-    .map((k) => {
-      const match = k.match(/\/([^/]+)\.mdx$/);
-      return match ? match[1] : null;
-    })
-    .filter((v): v is string => v !== null)
-    .filter((v) => !v.includes("nightly"))
-    .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
-
-  return versions[0] || null;
-}
-
-function parseFrontmatter(content: string): {
-  date: string | null;
-  body: string;
-} {
-  const trimmed = content.trim();
-  const frontmatterMatch = trimmed.match(
-    /^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/,
-  );
-
-  if (!frontmatterMatch) {
-    return { date: null, body: trimmed };
-  }
-
-  const frontmatterBlock = frontmatterMatch[1];
-  const body = frontmatterMatch[2];
-
-  const dateMatch = frontmatterBlock.match(/^date:\s*(.+)$/m);
-  const date = dateMatch ? dateMatch[1].trim() : null;
-
-  return { date, body };
-}
-
-function fixImageUrls(content: string): string {
-  return content.replace(
-    /!\[([^\]]*)\]\(\/api\/images\/([^)]+)\)/g,
-    "![$1](https://auth.hyprnote.com/storage/v1/object/public/public_images/$2)",
-  );
-}
+export { getLatestVersion } from "./data";
 
 export const TabItemChangelog: TabItem<Extract<Tab, { type: "changelog" }>> = ({
   tab,
@@ -105,15 +62,6 @@ export function TabContentChangelog({
   const scrollRef = useRef<HTMLDivElement>(null);
   const { atStart, atEnd } = useScrollFade(scrollRef);
 
-  const changelogExtensionOptions = useMemo(
-    () => ({
-      onLinkOpen: (url: string) => {
-        void openerCommands.openUrl(url, null);
-      },
-    }),
-    [],
-  );
-
   return (
     <StandardTabWrapper>
       <div className="flex h-full flex-col">
@@ -130,15 +78,18 @@ export function TabContentChangelog({
         <div className="relative mt-4 min-h-0 flex-1 overflow-hidden">
           {!atStart && <ScrollFadeOverlay position="top" />}
           {!atEnd && <ScrollFadeOverlay position="bottom" />}
-          <div ref={scrollRef} className="h-full overflow-y-auto px-3">
+          <div ref={scrollRef} className="h-full overflow-y-auto px-3 pb-4">
             {loading ? (
               <p className="text-neutral-500">Loading...</p>
             ) : content ? (
-              <NoteEditor
-                initialContent={content}
-                editable={false}
-                extensionOptions={changelogExtensionOptions}
-              />
+              <Streamdown
+                components={changelogComponents}
+                allowedTags={{ banner: ["title", "variant"] }}
+                isAnimating={false}
+                linkSafety={{ enabled: false }}
+              >
+                {content}
+              </Streamdown>
             ) : (
               <p className="text-neutral-500">
                 No changelog available for this version.
@@ -206,85 +157,4 @@ function ChangelogHeader({
       </div>
     </div>
   );
-}
-
-async function fetchChangelogFromGitHub(
-  version: string,
-): Promise<string | null> {
-  const url = `https://raw.githubusercontent.com/fastrepl/char/main/apps/web/content/changelog/${version}.mdx`;
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      return null;
-    }
-    return await response.text();
-  } catch {
-    return null;
-  }
-}
-
-function processChangelogContent(raw: string): {
-  content: ReturnType<typeof md2json>;
-  date: string | null;
-} {
-  const { date, body } = parseFrontmatter(raw);
-  const markdown = fixImageUrls(body);
-  const json = md2json(markdown);
-  return {
-    content: json,
-    date,
-  };
-}
-
-function useChangelogContent(version: string) {
-  const [content, setContent] = useState<ReturnType<typeof md2json> | null>(
-    null,
-  );
-  const [date, setDate] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadChangelog() {
-      const key = Object.keys(changelogFiles).find((k) =>
-        k.endsWith(`/${version}.mdx`),
-      );
-
-      if (key) {
-        try {
-          const raw = (await changelogFiles[key]()) as string;
-          if (cancelled) return;
-          const { content: parsed, date: parsedDate } =
-            processChangelogContent(raw);
-          setContent(parsed);
-          setDate(parsedDate);
-          setLoading(false);
-          return;
-        } catch {}
-      }
-
-      const raw = await fetchChangelogFromGitHub(version);
-      if (cancelled) return;
-
-      if (raw) {
-        const { content: parsed, date: parsedDate } =
-          processChangelogContent(raw);
-        setContent(parsed);
-        setDate(parsedDate);
-      } else {
-        setContent(null);
-        setDate(null);
-      }
-      setLoading(false);
-    }
-
-    loadChangelog();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [version]);
-
-  return { content, date, loading };
 }

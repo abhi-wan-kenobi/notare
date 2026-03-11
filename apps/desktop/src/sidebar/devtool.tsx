@@ -3,8 +3,7 @@ import { useCallback, useState } from "react";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { cn } from "@hypr/utils";
 
-import { getLatestVersion } from "./changelog";
-
+import { getLatestVersion } from "~/changelog";
 import * as main from "~/store/tinybase/store/main";
 import { useTabs } from "~/store/zustand/tabs";
 

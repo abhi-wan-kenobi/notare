@@ -28,6 +28,7 @@ import { useNewNoteAndListen } from "./useNewNote";
 
 import { TabContentAI, TabItemAI } from "~/ai";
 import { TabContentCalendar, TabItemCalendar } from "~/calendar";
+import { TabContentChangelog, TabItemChangelog } from "~/changelog";
 import { ChatFloatingButton } from "~/chat/components/floating-button";
 import { TabContentChat } from "~/chat/tab/tab-content";
 import { TabItemChat } from "~/chat/tab/tab-item";
@@ -48,7 +49,6 @@ import { TabContentSettings, TabItemSettings } from "~/settings";
 import { useNativeContextMenu } from "~/shared/hooks/useNativeContextMenu";
 import { NotificationBadge } from "~/shared/ui/notification-badge";
 import { TrafficLights } from "~/shared/ui/traffic-lights";
-import { TabContentChangelog, TabItemChangelog } from "~/sidebar/changelog";
 import { Update } from "~/sidebar/update";
 import { type Tab, uniqueIdfromTab, useTabs } from "~/store/zustand/tabs";
 import { useListener } from "~/stt/contexts";
