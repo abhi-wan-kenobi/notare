@@ -5,6 +5,7 @@ import { cn } from "@hypr/utils";
 
 import { getLatestVersion } from "./changelog";
 
+import * as main from "~/store/tinybase/store/main";
 import { useTabs } from "~/store/zustand/tabs";
 
 export function DevtoolView() {
@@ -12,6 +13,7 @@ export function DevtoolView() {
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-1 py-2">
         <NavigationCard />
+        <CountdownTestCard />
         <ErrorTestCard />
       </div>
     </div>
@@ -136,6 +138,103 @@ function NavigationCard() {
           ])}
         >
           Changelog
+        </button>
+      </div>
+    </DevtoolCard>
+  );
+}
+
+function CountdownTestCard() {
+  const store = main.UI.useStore(main.STORE_ID) as main.Store | undefined;
+  const { user_id } = main.UI.useValues(main.STORE_ID);
+  const openNew = useTabs((s) => s.openNew);
+
+  const createWithCountdown = useCallback(
+    (seconds: number, meetingLink?: string) => {
+      if (!store) return;
+      const sessionId = crypto.randomUUID();
+      const started_at = new Date(Date.now() + seconds * 1000).toISOString();
+      const event_json = JSON.stringify({
+        tracking_id: "devtool-test",
+        calendar_id: "devtool-test",
+        title: "Test Meeting",
+        started_at,
+        ended_at: new Date(
+          Date.now() + seconds * 1000 + 30 * 60 * 1000,
+        ).toISOString(),
+        is_all_day: false,
+        has_recurrence_rules: false,
+        ...(meetingLink && { meeting_link: meetingLink }),
+      });
+
+      store.setRow("sessions", sessionId, {
+        user_id: user_id ?? "",
+        created_at: new Date().toISOString(),
+        title: meetingLink ? "Countdown Test (Zoom)" : "Countdown Test",
+        event_json,
+      });
+
+      openNew({ type: "sessions", id: sessionId });
+    },
+    [store, user_id, openNew],
+  );
+
+  const btnClass = cn([
+    "w-full rounded-md px-2.5 py-1.5",
+    "text-left text-xs font-medium",
+    "border border-neutral-200 text-neutral-700",
+    "cursor-pointer transition-colors",
+    "hover:border-neutral-300 hover:bg-neutral-50",
+    "disabled:cursor-not-allowed disabled:opacity-40",
+  ]);
+
+  return (
+    <DevtoolCard title="Countdown">
+      <div className="flex flex-col gap-1.5">
+        <button
+          type="button"
+          disabled={!store}
+          onClick={() => createWithCountdown(20)}
+          className={btnClass}
+        >
+          +Note starting in 20s
+        </button>
+        <button
+          type="button"
+          disabled={!store}
+          onClick={() => createWithCountdown(60)}
+          className={btnClass}
+        >
+          +Note starting in 60s
+        </button>
+        <button
+          type="button"
+          disabled={!store}
+          onClick={() => createWithCountdown(290)}
+          className={btnClass}
+        >
+          +Note starting in ~5m
+        </button>
+        <hr className="border-neutral-100" />
+        <button
+          type="button"
+          disabled={!store}
+          onClick={() =>
+            createWithCountdown(20, "https://zoom.us/j/1234567890")
+          }
+          className={btnClass}
+        >
+          +Zoom in 20s
+        </button>
+        <button
+          type="button"
+          disabled={!store}
+          onClick={() =>
+            createWithCountdown(60, "https://zoom.us/j/1234567890")
+          }
+          className={btnClass}
+        >
+          +Zoom in 60s
         </button>
       </div>
     </DevtoolCard>

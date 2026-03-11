@@ -67,7 +67,13 @@ function SplitMeetingButtons({
   const { isDisabled, warningMessage } = useListenButtonState(tab.id);
   const startListening = useStartListening(tab.id);
   const openNew = useTabs((state) => state.openNew);
-  const countdown = useEventCountdown(tab.id);
+  const countdown = useEventCountdown(tab.id, {
+    onExpire: () => {
+      if (!isDisabled) {
+        startListening();
+      }
+    },
+  });
   const { leftsidebar } = useShell();
   const [isNarrow, setIsNarrow] = useState(false);
 
@@ -168,9 +174,9 @@ function SplitMeetingButtons({
           </span>
         </FloatingButton>
       </OptionsMenu>
-      {countdown && (
+      {countdown.label && (
         <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 text-xs whitespace-nowrap text-neutral-500">
-          {countdown}
+          <span>{countdown.label}</span>
         </div>
       )}
     </div>

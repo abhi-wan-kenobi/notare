@@ -73,9 +73,9 @@ export function ListenActionButton({ sessionId }: { sessionId: string }) {
           </span>
         </FloatingButton>
       </OptionsMenu>
-      {countdown && (
+      {countdown.label && (
         <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 text-xs whitespace-nowrap text-neutral-500">
-          {countdown}
+          <span>{countdown.label}</span>
         </div>
       )}
     </div>
