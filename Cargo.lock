@@ -2836,7 +2836,7 @@ dependencies = [
 [[package]]
 name = "cactus-sys"
 version = "0.1.0"
-source = "git+https://github.com/cactus-compute/cactus?rev=f8b714cc9782eafd4895d15fd66e9ffe141810bc#f8b714cc9782eafd4895d15fd66e9ffe141810bc"
+source = "git+https://github.com/cactus-compute/cactus?rev=a5acad3#a5acad3238643da779dabcd4597f1552348543b5"
 dependencies = [
  "bindgen 0.72.1",
  "cmake",
@@ -20135,14 +20135,18 @@ dependencies = [
 name = "transcribe-cactus"
 version = "0.1.0"
 dependencies = [
+ "audio",
  "audio-utils",
  "axum 0.8.8",
  "bytes",
  "cactus",
+ "clap",
+ "colored",
  "data",
  "dirs 6.0.0",
  "futures-util",
  "language",
+ "owhisper-client",
  "owhisper-interface",
  "reqwest 0.13.2",
  "rodio",
@@ -20158,6 +20162,27 @@ dependencies = [
  "uuid",
  "vad-chunking",
  "ws-utils",
+]
+
+[[package]]
+name = "transcribe-cli"
+version = "0.1.0"
+dependencies = [
+ "api-env",
+ "audio",
+ "audio-utils",
+ "axum 0.8.8",
+ "bytes",
+ "clap",
+ "colored",
+ "crossterm",
+ "futures-util",
+ "language",
+ "owhisper-client",
+ "owhisper-interface",
+ "tokio",
+ "transcribe-cactus",
+ "transcribe-proxy",
 ]
 
 [[package]]
