@@ -2,7 +2,6 @@ import { MDXContent } from "@content-collections/mdx/react";
 import { Icon } from "@iconify-icon/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Download } from "lucide-react";
-import semver from "semver";
 
 import { cn } from "@hypr/utils";
 
@@ -42,11 +41,9 @@ export const Route = createFileRoute("/_view/changelog/$slug")({
     if (!loaderData) return {};
 
     const { changelog } = loaderData;
-    const currentVersion = semver.parse(changelog.version);
-    const isNightly = currentVersion && currentVersion.prerelease.length > 0;
 
     const title = `Version ${changelog.version} - Char Changelog`;
-    const description = `Explore what's new in Char version ${changelog.version}${isNightly ? " (Nightly)" : ""}.`;
+    const description = `Explore what's new in Char version ${changelog.version}.`;
     const url = `https://char.com/changelog/${changelog.slug}`;
     const ogImageUrl = `https://char.com/og?type=changelog&version=${encodeURIComponent(changelog.version)}&v=1`;
 
@@ -76,11 +73,6 @@ export const Route = createFileRoute("/_view/changelog/$slug")({
 function Component() {
   const { changelog, allChangelogs, diffUrl } = Route.useLoaderData();
 
-  const currentVersion = semver.parse(changelog.version);
-  const isPrerelease = !!(
-    currentVersion && currentVersion.prerelease.length > 0
-  );
-
   return (
     <main
       className="min-h-screen flex-1 bg-linear-to-b from-white via-stone-50/20 to-white"
@@ -91,11 +83,7 @@ function Component() {
           <div className="hidden gap-12 md:flex md:flex-col md:items-center">
             <div className="flex flex-col items-center gap-6">
               <img
-                src={
-                  isPrerelease
-                    ? "/api/images/icons/nightly-icon.png"
-                    : "/api/images/icons/stable-icon.png"
-                }
+                src="/api/images/icons/stable-icon.png"
                 alt="Char"
                 className="size-32 rounded-2xl"
               />
@@ -122,11 +110,7 @@ function Component() {
           <div className="text-center md:hidden">
             <div className="mb-8 flex flex-col items-center gap-3">
               <img
-                src={
-                  isPrerelease
-                    ? "/api/images/icons/nightly-icon.png"
-                    : "/api/images/icons/stable-icon.png"
-                }
+                src="/api/images/icons/stable-icon.png"
                 alt="Char"
                 className="size-16 rounded-2xl"
               />
@@ -302,12 +286,6 @@ function RelatedReleases({
 
       <div className="flex gap-4 overflow-x-auto sm:grid sm:grid-cols-5 sm:overflow-visible">
         {relatedChangelogs.map((release) => {
-          const version = semver.parse(release.version);
-          const isPrerelease = version && version.prerelease.length > 0;
-          const nightlyNumber =
-            isPrerelease && version?.prerelease[0] === "nightly"
-              ? version.prerelease[1]
-              : null;
           const isCurrent = release.slug === currentSlug;
 
           return (
@@ -327,11 +305,7 @@ function RelatedReleases({
                 ])}
               >
                 <img
-                  src={
-                    isPrerelease
-                      ? "/api/images/icons/nightly-icon.png"
-                      : "/api/images/icons/stable-icon.png"
-                  }
+                  src="/api/images/icons/stable-icon.png"
                   alt="Char"
                   className={cn([
                     "size-12 rounded-xl transition-all duration-300",
@@ -339,23 +313,14 @@ function RelatedReleases({
                   ])}
                 />
 
-                <div className="flex items-center gap-1.5">
-                  <h3
-                    className={cn([
-                      "font-mono text-sm font-medium text-stone-700 transition-colors",
-                      !isCurrent && "group-hover:text-stone-800",
-                    ])}
-                  >
-                    {version
-                      ? `${version.major}.${version.minor}.${version.patch}`
-                      : release.version}
-                  </h3>
-                  {nightlyNumber !== null && (
-                    <span className="inline-flex items-center rounded-full bg-stone-200 px-1.5 py-0.5 text-xs font-medium text-stone-700">
-                      #{nightlyNumber}
-                    </span>
-                  )}
-                </div>
+                <h3
+                  className={cn([
+                    "font-mono text-sm font-medium text-stone-700 transition-colors",
+                    !isCurrent && "group-hover:text-stone-800",
+                  ])}
+                >
+                  {release.version}
+                </h3>
               </article>
             </Link>
           );

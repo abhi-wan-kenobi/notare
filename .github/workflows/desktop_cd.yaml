@@ -236,6 +236,10 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - run: git fetch --tags --force
       - if: ${{ needs.build-macos.result == 'success' }}
         uses: ./.github/actions/cn_download
         with:
@@ -274,9 +278,30 @@ jobs:
             ARTIFACTS="$ARTIFACTS,${{ steps.checksums.outputs.checksum_files }}"
           fi
           echo "list=$ARTIFACTS" >> $GITHUB_OUTPUT
+      - id: release-body
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          VERSION: ${{ needs.compute-version.outputs.version }}
+        run: |
+          if [[ "$CHANNEL" != "nightly" ]]; then
+            echo "value=https://char.com/changelog/$VERSION" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CURRENT_TAG="desktop_v$VERSION"
+          PREV_TAG=$(git tag -l 'desktop_v*-nightly.*' --sort=-v:refname | grep -Fxv "$CURRENT_TAG" | head -n1)
+          if [[ -z "$PREV_TAG" ]]; then
+            PREV_TAG=$(git tag -l 'desktop_v*' --sort=-v:refname | grep -Fxv "$CURRENT_TAG" | head -n1)
+          fi
+
+          if [[ -n "$PREV_TAG" ]]; then
+            echo "value=https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURRENT_TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=https://github.com/${{ github.repository }}/commits/${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
       - uses: ncipollo/release-action@v1
         with:
           tag: desktop_v${{ needs.compute-version.outputs.version }}
           name: desktop_v${{ needs.compute-version.outputs.version }}
-          body: "https://char.com/changelog/${{ needs.compute-version.outputs.version }}"
+          body: ${{ steps.release-body.outputs.value }}
           artifacts: ${{ steps.artifacts.outputs.list }}
