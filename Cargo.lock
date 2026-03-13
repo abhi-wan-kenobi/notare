@@ -618,6 +618,7 @@ dependencies = [
  "api-error",
  "axum 0.8.8",
  "chrono",
+ "futures-util",
  "nango",
  "reqwest 0.13.2",
  "sentry",
