@@ -1,7 +1,7 @@
 import { CalendarIcon, ExternalLinkIcon, SparklesIcon } from "lucide-react";
 import { useRef } from "react";
-import { Streamdown } from "streamdown";
 
+import { ChangelogContent } from "@hypr/changelog";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
 import {
   Breadcrumb,
@@ -17,7 +17,6 @@ import {
 } from "@hypr/ui/components/ui/scroll-fade";
 import { safeFormat } from "@hypr/utils";
 
-import { changelogComponents } from "./components";
 import { useChangelogContent } from "./data";
 
 import { StandardTabWrapper } from "~/shared/main";
@@ -82,14 +81,31 @@ export function TabContentChangelog({
             {loading ? (
               <p className="text-neutral-500">Loading...</p>
             ) : content ? (
-              <Streamdown
-                components={changelogComponents}
-                allowedTags={{ banner: ["title", "variant"] }}
-                isAnimating={false}
-                linkSafety={{ enabled: false }}
-              >
-                {content}
-              </Streamdown>
+              <ChangelogContent
+                content={content}
+                components={{
+                  a: ({
+                    href,
+                    children,
+                  }: {
+                    href?: string;
+                    children?: React.ReactNode;
+                  }) => (
+                    <a
+                      className="text-blue-600 underline hover:text-blue-800"
+                      href={href}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (href) {
+                          void openerCommands.openUrl(href, null);
+                        }
+                      }}
+                    >
+                      {children}
+                    </a>
+                  ),
+                }}
+              />
             ) : (
               <p className="text-neutral-500">
                 No changelog available for this version.

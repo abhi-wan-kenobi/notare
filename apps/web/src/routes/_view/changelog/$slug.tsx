@@ -1,8 +1,8 @@
-import { MDXContent } from "@content-collections/mdx/react";
 import { Icon } from "@iconify-icon/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Download } from "lucide-react";
 
+import { ChangelogContent, fixImageUrls } from "@hypr/changelog";
 import { cn } from "@hypr/utils";
 
 import {
@@ -10,7 +10,6 @@ import {
   getChangelogBySlug,
   getChangelogList,
 } from "@/changelog";
-import { defaultMDXComponents } from "@/components/mdx";
 import { NotFoundContent } from "@/components/not-found";
 import { getDownloadLinks, groupDownloadLinks } from "@/utils/download";
 
@@ -134,11 +133,8 @@ function Component() {
             <DownloadLinksHeroMobile version={changelog.version} />
           </div>
 
-          <article className="prose prose-stone prose-headings:font-serif prose-headings:font-semibold prose-h2:text-2xl prose-h2:mt-8 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-6 prose-h3:mb-3 prose-h4:text-lg prose-h4:mt-4 prose-h4:mb-2 prose-a:text-stone-700 prose-a:underline prose-a:decoration-dotted hover:prose-a:text-stone-800 prose-headings:no-underline prose-headings:decoration-transparent prose-code:bg-stone-50 prose-code:border prose-code:border-neutral-200 prose-code:rounded prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-mono prose-code:text-stone-700 prose-pre:bg-stone-50 prose-pre:border prose-pre:border-neutral-200 prose-pre:rounded-xs prose-pre:prose-code:bg-transparent prose-pre:prose-code:border-0 prose-pre:prose-code:p-0 prose-img:rounded-lg prose-img:border prose-img:border-neutral-200 prose-img:my-6 mt-12 max-w-none">
-            <MDXContent
-              code={changelog.mdx}
-              components={defaultMDXComponents}
-            />
+          <article className="mt-12 max-w-none [&_h2]:font-serif [&_h3]:font-serif">
+            <ChangelogContent content={fixImageUrls(changelog.content)} />
           </article>
         </div>
 

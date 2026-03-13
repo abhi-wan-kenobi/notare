@@ -1,12 +1,11 @@
-import { MDXContent } from "@content-collections/mdx/react";
 import { Icon } from "@iconify-icon/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Download } from "lucide-react";
 
+import { ChangelogContent, fixImageUrls } from "@hypr/changelog";
 import { cn } from "@hypr/utils";
 
 import { type ChangelogWithMeta, getChangelogList } from "@/changelog";
-import { defaultMDXComponents } from "@/components/mdx";
 import { getDownloadLinks, groupDownloadLinks } from "@/utils/download";
 
 export const Route = createFileRoute("/_view/changelog/")({
@@ -102,8 +101,8 @@ function ChangelogSection({ changelog }: { changelog: ChangelogWithMeta }) {
       </div>
 
       <div>
-        <article className="prose prose-stone prose-sm prose-headings:font-serif prose-headings:font-semibold prose-h2:text-lg prose-h2:mt-4 prose-h2:mb-2 prose-h3:text-base prose-h3:mt-3 prose-h3:mb-1 prose-ul:my-2 prose-li:my-0.5 prose-a:text-stone-600 prose-a:underline prose-a:decoration-dotted hover:prose-a:text-stone-800 prose-headings:no-underline prose-headings:decoration-transparent prose-code:bg-stone-50 prose-code:border prose-code:border-neutral-200 prose-code:rounded prose-code:px-1 prose-code:py-0.5 prose-code:text-xs prose-code:font-mono prose-code:text-stone-700 prose-img:rounded prose-img:border prose-img:border-neutral-200 prose-img:my-3 max-w-none">
-          <MDXContent code={changelog.mdx} components={defaultMDXComponents} />
+        <article className="max-w-none text-sm [&_h2]:font-serif [&_h3]:font-serif">
+          <ChangelogContent content={fixImageUrls(changelog.content)} />
         </article>
 
         <Link

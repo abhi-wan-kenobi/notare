@@ -8,7 +8,7 @@
 1. This will give you all changelogs that we have now.
 
 ```bash
-find apps/web/content/changelog -type f | while read f; do
+find packages/changelog/content -type f | while read f; do
   echo "============================================================"
   echo "FILE: $f"
   echo "------------------------------------------------------------"

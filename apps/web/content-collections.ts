@@ -202,30 +202,13 @@ const articles = defineCollection({
 
 const changelog = defineCollection({
   name: "changelog",
-  directory: "content/changelog",
-  include: "*.mdx",
-  exclude: "AGENTS.md",
+  directory: "../../packages/changelog/content",
+  include: "*.md",
   schema: z.object({
     date: z.string(),
   }),
-  transform: async (document, context) => {
-    const mdx = await compileMDX(context, document, {
-      remarkPlugins: [remarkGfm, mdxMermaid],
-      rehypePlugins: [
-        rehypeSlug,
-        [
-          rehypeAutolinkHeadings,
-          {
-            behavior: "wrap",
-            properties: {
-              className: ["anchor"],
-            },
-          },
-        ],
-      ],
-    });
-
-    const version = document._meta.path.replace(/\.mdx$/, "");
+  transform: async (document) => {
+    const version = document._meta.path.replace(/\.md$/, "");
     const baseUrl = `https://github.com/fastrepl/char/releases/download/desktop_v${version}`;
     const downloads: Record<VersionPlatform, string> = {
       "dmg-aarch64": `${baseUrl}/char-macos-aarch64.dmg`,
@@ -237,7 +220,6 @@ const changelog = defineCollection({
 
     return {
       ...document,
-      mdx,
       slug: version,
       version,
       downloads,
