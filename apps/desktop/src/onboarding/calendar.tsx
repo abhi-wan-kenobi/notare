@@ -1,15 +1,13 @@
 import { platform } from "@tauri-apps/plugin-os";
-import { CalendarIcon } from "lucide-react";
-
-import { Button } from "@hypr/ui/components/ui/button";
 
 import { OnboardingButton } from "./shared";
 
 import { useAppleCalendarSelection } from "~/calendar/components/apple/calendar-selection";
-import { ApplePermissions } from "~/calendar/components/apple/permission";
+import { TroubleShootingLink } from "~/calendar/components/apple/permission";
 import { CalendarSelection } from "~/calendar/components/calendar-selection";
 import { SyncProvider } from "~/calendar/components/context";
 import { usePermission } from "~/shared/hooks/usePermissions";
+import * as main from "~/store/tinybase/store/main";
 
 function AppleCalendarList() {
   const { groups, handleToggle, isLoading } = useAppleCalendarSelection();
@@ -18,29 +16,55 @@ function AppleCalendarList() {
       groups={groups}
       onToggle={handleToggle}
       isLoading={isLoading}
-      className="rounded-lg border"
+      disableHoverTone
+      className="rounded-xl border border-white/45 bg-white/28 shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_8px_24px_-20px_rgba(87,83,78,0.35)] backdrop-blur-md backdrop-saturate-150"
     />
   );
 }
 
-function RequestCalendarAccess({
-  onRequest,
+function AppleCalendarProvider({
+  isAuthorized,
   isPending,
+  onRequest,
+  onOpen,
+  onReset,
 }: {
-  onRequest: () => void;
+  isAuthorized: boolean;
   isPending: boolean;
+  onRequest: () => void;
+  onOpen: () => void;
+  onReset: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border px-4 py-6">
-      <CalendarIcon className="mb-2 size-6 text-neutral-300" />
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onRequest}
-        disabled={isPending}
-      >
-        Request Access to Calendar
-      </Button>
+    <div className="flex flex-col gap-3">
+      {isAuthorized ? (
+        <SyncProvider>
+          <AppleCalendarList />
+        </SyncProvider>
+      ) : (
+        <div className="flex items-center gap-3">
+          <OnboardingButton
+            onClick={onRequest}
+            disabled={isPending}
+            className="flex items-center gap-3 border border-neutral-200 bg-white text-stone-800 shadow-[0_2px_6px_rgba(87,83,78,0.08),0_10px_18px_-10px_rgba(87,83,78,0.22)] hover:bg-stone-50"
+          >
+            <img
+              src="/assets/apple-calendar.png"
+              alt=""
+              aria-hidden="true"
+              className="size-5 rounded-[4px] object-cover"
+            />
+            Connect Apple Calendar
+          </OnboardingButton>
+          <TroubleShootingLink
+            onRequest={onRequest}
+            onReset={onReset}
+            onOpen={onOpen}
+            isPending={isPending}
+            className="text-sm text-neutral-500"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -49,27 +73,36 @@ export function CalendarSection({ onContinue }: { onContinue: () => void }) {
   const isMacos = platform() === "macos";
   const calendar = usePermission("calendar");
   const isAuthorized = calendar.status === "authorized";
+  const enabledCalendars = main.UI.useResultTable(
+    main.QUERIES.enabledCalendars,
+    main.STORE_ID,
+  );
+  const hasConnectedCalendar =
+    isAuthorized && Object.keys(enabledCalendars ?? {}).length > 0;
 
   return (
     <div className="flex flex-col gap-4">
       {isMacos && (
-        <div className="flex flex-col gap-4">
-          <ApplePermissions />
-
-          {isAuthorized ? (
-            <SyncProvider>
-              <AppleCalendarList />
-            </SyncProvider>
-          ) : (
-            <RequestCalendarAccess
-              onRequest={calendar.request}
-              isPending={calendar.isPending}
-            />
-          )}
-        </div>
+        <AppleCalendarProvider
+          isAuthorized={isAuthorized}
+          isPending={calendar.isPending}
+          onRequest={calendar.request}
+          onOpen={calendar.open}
+          onReset={calendar.reset}
+        />
       )}
 
-      <OnboardingButton onClick={onContinue}>Continue</OnboardingButton>
+      {hasConnectedCalendar ? (
+        <OnboardingButton onClick={onContinue}>Continue</OnboardingButton>
+      ) : (
+        <button
+          type="button"
+          onClick={onContinue}
+          className="w-fit text-sm text-neutral-500/70 transition-colors hover:text-neutral-700"
+        >
+          Skip
+        </button>
+      )}
     </div>
   );
 }

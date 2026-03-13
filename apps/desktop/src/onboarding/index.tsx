@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { platform } from "@tauri-apps/plugin-os";
 import { Volume2Icon, VolumeXIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as sfxCommands } from "@hypr/plugin-sfx";
@@ -19,7 +19,6 @@ import { FolderLocationSection } from "./folder-location";
 import { PermissionsSection } from "./permissions";
 import { OnboardingSection } from "./shared";
 
-import { usePermissions } from "~/shared/hooks/usePermissions";
 import { StandardTabWrapper } from "~/shared/main";
 import { type TabItem, TabItemBase } from "~/shared/tabs";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
@@ -68,18 +67,7 @@ export function TabContentOnboarding({
   const currentTab = useTabs((state) => state.currentTab);
   const [isMuted, setIsMuted] = useState(false);
   const [currentStep, setCurrentStep] = useState(getInitialStep);
-
-  const { micPermissionStatus, systemAudioPermissionStatus } = usePermissions();
-
-  const allPermissionsGranted =
-    micPermissionStatus.data === "authorized" &&
-    systemAudioPermissionStatus.data === "authorized";
-
-  useEffect(() => {
-    if (currentStep === "permissions" && allPermissionsGranted) {
-      setCurrentStep("login");
-    }
-  }, [currentStep, allPermissionsGranted]);
+  const onboardingVideoRef = useRef<HTMLVideoElement>(null);
 
   const goNext = useCallback(() => {
     const next = getNextStep(currentStep);
@@ -113,6 +101,12 @@ export function TabContentOnboarding({
     sfxCommands.setVolume("BGM", isMuted ? 0 : 0.2).catch(console.error);
   }, [isMuted]);
 
+  useEffect(() => {
+    if (onboardingVideoRef.current) {
+      onboardingVideoRef.current.playbackRate = 0.65;
+    }
+  }, []);
+
   const handleFinish = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["onboarding-needed"] });
     if (currentTab) {
@@ -123,6 +117,25 @@ export function TabContentOnboarding({
   return (
     <StandardTabWrapper>
       <div className="relative flex h-full flex-col">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <video
+            ref={onboardingVideoRef}
+            className="absolute inset-0 h-full w-full object-cover object-bottom opacity-28"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            aria-hidden="true"
+          >
+            <source src="/assets/onboarding-video.mp4" type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-linear-to-t from-stone-50/8 via-stone-50/18 to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-[80%] [mask-image:linear-gradient(to_bottom,black,black_18%,rgba(0,0,0,0.9)_36%,rgba(0,0,0,0.6)_58%,transparent)] backdrop-blur-[32px]" />
+          <div className="absolute inset-x-0 top-0 h-[92%] [mask-image:linear-gradient(to_bottom,black,rgba(0,0,0,0.8)_34%,rgba(0,0,0,0.35)_62%,transparent)] backdrop-blur-[12px]" />
+          <div className="absolute inset-x-0 top-0 h-[84%] bg-linear-to-b from-stone-50 via-stone-50/82 via-stone-50/97 via-18% via-42% to-stone-50/0" />
+        </div>
+
         <div className="sticky top-0 z-10 flex items-center justify-between px-6 pt-4 pb-3">
           <h1 className="font-serif text-2xl font-semibold text-neutral-900">
             Welcome to Char
@@ -140,7 +153,7 @@ export function TabContentOnboarding({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="relative z-10 flex-1 overflow-y-auto">
           <div className="flex flex-col gap-3 px-6 pb-16">
             <OnboardingSection
               title="Permissions"
@@ -150,12 +163,12 @@ export function TabContentOnboarding({
               onBack={goBack}
               onNext={goNext}
             >
-              <PermissionsSection />
+              <PermissionsSection onContinue={goNext} />
             </OnboardingSection>
 
             <OnboardingSection
               title="Account"
-              description="Sign in to unlock Pro features"
+              description="Start using Char to focus on people, not note-taking"
               completedTitle="Signed up"
               status={getStepStatus("login", currentStep)}
               onBack={goBack}
@@ -166,8 +179,8 @@ export function TabContentOnboarding({
 
             <OnboardingSection
               title="Calendar"
-              description="Select calendars to sync"
-              completedTitle="Calendar connected"
+              description="Connect your calendar to get meeting reminders"
+              completedTitle="Apple Calendar connected"
               status={getStepStatus("calendar", currentStep)}
               onBack={goBack}
               onNext={goNext}
