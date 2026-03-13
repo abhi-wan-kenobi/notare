@@ -1364,6 +1364,7 @@ dependencies = [
  "aec",
  "anyhow",
  "audio-interface",
+ "audio-sync",
  "audio-utils",
  "bytes",
  "cidre",
@@ -1434,6 +1435,14 @@ dependencies = [
  "realfft",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "audio-sync"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "realfft",
 ]
 
 [[package]]
@@ -21430,6 +21439,7 @@ name = "vad-masking"
 version = "0.1.0"
 dependencies = [
  "audio-utils",
+ "clap",
  "data",
  "hound",
  "rodio",
