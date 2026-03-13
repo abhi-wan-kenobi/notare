@@ -204,6 +204,7 @@ const changelog = defineCollection({
   name: "changelog",
   directory: "../../packages/changelog/content",
   include: "*.md",
+  exclude: "AGENTS.md",
   schema: z.object({
     date: z.string(),
   }),
