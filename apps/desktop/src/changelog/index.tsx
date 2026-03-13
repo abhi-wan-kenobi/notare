@@ -1,5 +1,5 @@
 import { CalendarIcon, ExternalLinkIcon, SparklesIcon } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import { ChangelogContent } from "@hypr/changelog";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
@@ -19,6 +19,7 @@ import { safeFormat } from "@hypr/utils";
 
 import { useChangelogContent } from "./data";
 
+import { useShell } from "~/contexts/shell";
 import { StandardTabWrapper } from "~/shared/main";
 import { type TabItem, TabItemBase } from "~/shared/tabs";
 import { type Tab } from "~/store/zustand/tabs";
@@ -56,6 +57,14 @@ export function TabContentChangelog({
   tab: Extract<Tab, { type: "changelog" }>;
 }) {
   const { current } = tab.state;
+  const { leftsidebar, chat } = useShell();
+
+  useEffect(() => {
+    leftsidebar.setExpanded(false);
+    if (chat.mode === "RightPanelOpen" || chat.mode === "FloatingOpen") {
+      chat.sendEvent({ type: "CLOSE" });
+    }
+  }, []);
 
   const { content, date, loading } = useChangelogContent(current);
   const scrollRef = useRef<HTMLDivElement>(null);
