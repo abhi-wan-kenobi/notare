@@ -83,6 +83,7 @@ function ItemBase({
   showSpinner,
   selected,
   ignored,
+  muted,
   multiSelected,
   onClick,
   onCmdClick,
@@ -95,6 +96,7 @@ function ItemBase({
   showSpinner?: boolean;
   selected: boolean;
   ignored?: boolean;
+  muted?: boolean;
   multiSelected: boolean;
   onClick: () => void;
   onCmdClick: () => void;
@@ -105,16 +107,18 @@ function ItemBase({
 
   return (
     <InteractiveButton
-      onClick={onClick}
-      onCmdClick={onCmdClick}
-      onShiftClick={onShiftClick}
+      onClick={ignored ? undefined : onClick}
+      onCmdClick={ignored ? undefined : onCmdClick}
+      onShiftClick={ignored ? undefined : onShiftClick}
       contextMenu={hasSelection ? undefined : contextMenu}
       className={cn([
-        "w-full cursor-pointer rounded-lg px-3 py-2 text-left",
+        "w-full rounded-lg px-3 py-2 text-left",
+        ignored ? "cursor-default" : "cursor-pointer",
         multiSelected && "bg-neutral-200",
         !multiSelected && selected && "bg-neutral-200",
         !multiSelected && !selected && "hover:bg-neutral-200/50",
         ignored && "opacity-40",
+        !ignored && muted && "opacity-65",
       ])}
     >
       <div className="flex items-center gap-2">
@@ -233,39 +237,52 @@ const EventItem = memo(
       ignoreSeries(recurrenceSeriesId);
     }, [recurrenceSeriesId, ignoreSeries]);
 
+    const handleOpenNewTab = useCallback(() => {
+      openEvent(true);
+    }, [openEvent]);
+
     const contextMenu = useMemo(() => {
       if (ignored) {
         if (recurrenceSeriesId) {
           return [
             {
               id: "unignore",
-              text: "Unignore Only This Event",
+              text: "Show This Event",
               action: handleUnignore,
             },
             {
               id: "unignore-series",
-              text: "Unignore All Recurring Events",
+              text: "Show All Recurring Events",
               action: handleUnignoreSeries,
             },
           ];
         }
-        return [
-          { id: "unignore", text: "Unignore Event", action: handleUnignore },
-        ];
+        return [{ id: "unignore", text: "Show Event", action: handleUnignore }];
       }
-      const menu = [
-        { id: "ignore", text: "Ignore Event", action: handleIgnore },
+      const menu: MenuItemDef[] = [
+        {
+          id: "open-new-tab",
+          text: "Open in New Tab",
+          action: handleOpenNewTab,
+        },
+        { separator: true as const },
+        {
+          id: "ignore",
+          text: recurrenceSeriesId ? "Delete This Event" : "Delete Event",
+          action: handleIgnore,
+        },
       ];
       if (recurrenceSeriesId) {
         menu.push({
           id: "ignore-series",
-          text: "Ignore All Recurring Events",
+          text: "Delete All Recurring Events",
           action: handleIgnoreSeries,
         });
       }
       return menu;
     }, [
       ignored,
+      handleOpenNewTab,
       handleIgnore,
       handleUnignore,
       handleUnignoreSeries,
@@ -280,6 +297,7 @@ const EventItem = memo(
         calendarId={calendarId}
         selected={selected}
         ignored={ignored}
+        muted
         multiSelected={multiSelected}
         onClick={handleClick}
         onCmdClick={handleCmdClick}
@@ -312,6 +330,7 @@ const SessionItem = memo(
     const openNew = useTabs((state) => state.openNew);
     const invalidateResource = useTabs((state) => state.invalidateResource);
     const addDeletion = useUndoDelete((state) => state.addDeletion);
+    const { ignoreEvent } = useIgnoredEvents();
 
     const sessionId = item.id;
     const storeTitle = main.UI.useCell(
@@ -335,7 +354,6 @@ const SessionItem = memo(
     );
 
     const calendarId = sessionEvent?.calendar_id ?? null;
-    const hasEvent = !!item.data.event_json;
 
     const displayTime = useMemo(
       () =>
@@ -371,6 +389,10 @@ const SessionItem = memo(
         return;
       }
 
+      if (sessionEvent?.tracking_id) {
+        ignoreEvent(sessionEvent.tracking_id);
+      }
+
       const capturedData = captureSessionData(store, indexes, sessionId);
 
       invalidateResource("sessions", sessionId);
@@ -383,7 +405,15 @@ const SessionItem = memo(
           void fsSyncCommands.audioDelete(sessionId);
         });
       }
-    }, [store, indexes, sessionId, invalidateResource, addDeletion]);
+    }, [
+      store,
+      indexes,
+      sessionId,
+      sessionEvent,
+      ignoreEvent,
+      invalidateResource,
+      addDeletion,
+    ]);
 
     const handleShowInFinder = useCallback(async () => {
       const result = await fsSyncCommands.sessionDir(sessionId);
@@ -407,11 +437,11 @@ const SessionItem = memo(
         { separator: true as const },
         {
           id: "delete",
-          text: hasEvent ? "Delete Attached Note" : "Delete Note",
+          text: "Delete Note",
           action: handleDelete,
         },
       ],
-      [handleOpenNewTab, handleShowInFinder, handleDelete, hasEvent],
+      [handleOpenNewTab, handleShowInFinder, handleDelete],
     );
 
     return (

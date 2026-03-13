@@ -271,7 +271,7 @@ export function TimelineView() {
         : [
             {
               id: "toggle-ignored",
-              text: showIgnored ? "Hide Ignored Events" : "Show Ignored Events",
+              text: showIgnored ? "Hide Deleted Events" : "Show Deleted Events",
               action: toggleShowIgnored,
             },
           ],
