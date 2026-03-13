@@ -206,9 +206,17 @@ const changelog = defineCollection({
   include: "*.md",
   exclude: "AGENTS.md",
   schema: z.object({
-    date: z.string(),
+    date: z
+      .string()
+      .trim()
+      .transform((value) => (value === "" ? undefined : value))
+      .optional(),
   }),
-  transform: async (document) => {
+  transform: async (document, { skip }) => {
+    if (!document.date) {
+      return skip("missing changelog date");
+    }
+
     const version = document._meta.path.replace(/\.md$/, "");
     const baseUrl = `https://github.com/fastrepl/char/releases/download/desktop_v${version}`;
     const downloads: Record<VersionPlatform, string> = {

@@ -176,7 +176,10 @@ name = "aec"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "audacity",
  "audio-snapshot",
+ "audio-utils",
+ "clap",
  "criterion",
  "dasp",
  "hound",

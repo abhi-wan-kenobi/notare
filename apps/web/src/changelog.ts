@@ -1,7 +1,11 @@
 import { allChangelogs, type Changelog } from "content-collections";
 import semver from "semver";
 
-export type ChangelogWithMeta = Changelog & {
+type PublishedChangelog = Changelog & {
+  date: string;
+};
+
+export type ChangelogWithMeta = PublishedChangelog & {
   beforeVersion: string | null;
   newerSlug: string | null;
   olderSlug: string | null;
@@ -10,6 +14,10 @@ export type ChangelogWithMeta = Changelog & {
 function buildChangelogMeta(): ChangelogWithMeta[] {
   const parsed = allChangelogs
     .map((doc) => {
+      if (!doc.date) {
+        return null;
+      }
+
       const version = semver.parse(doc.version);
       if (!version) {
         return null;
@@ -21,7 +29,7 @@ function buildChangelogMeta(): ChangelogWithMeta[] {
       (
         entry,
       ): entry is {
-        doc: Changelog;
+        doc: PublishedChangelog;
         version: semver.SemVer;
       } => entry !== null,
     );

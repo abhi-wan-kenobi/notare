@@ -1,12 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import {
-  Brain,
-  Cloud,
-  ExternalLinkIcon,
-  Puzzle,
-  Sparkle,
-  Sparkles,
-} from "lucide-react";
+import { ExternalLinkIcon, Puzzle, Sparkle, Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 
@@ -40,26 +33,6 @@ const ACCOUNT_FEATURES = [
     accent: {
       icon: "text-blue-900",
       label: "text-blue-950",
-    },
-  },
-  {
-    label: "Cloud sync",
-    icon: Cloud,
-    comingSoon: true,
-    benefit: "Keep your notes available across devices with selective sync.",
-    accent: {
-      icon: "text-sky-700",
-      label: "text-sky-900",
-    },
-  },
-  {
-    label: "Memory",
-    icon: Brain,
-    comingSoon: true,
-    benefit: "Make Char more personal with saved preferences and context.",
-    accent: {
-      icon: "text-yellow-700",
-      label: "text-yellow-900",
     },
   },
   {
