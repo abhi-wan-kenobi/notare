@@ -93,8 +93,12 @@ async function normalizeCalendarEvent(calendarEvent: CalendarEvent): Promise<{
     });
   }
 
+  const organizerEmail = calendarEvent.organizer?.email?.toLowerCase();
+
   for (const attendee of calendarEvent.attendees) {
     if (attendee.role === "nonparticipant") continue;
+    if (organizerEmail && attendee.email?.toLowerCase() === organizerEmail)
+      continue;
     eventParticipants.push({
       name: attendee.name ?? undefined,
       email: attendee.email ?? undefined,
