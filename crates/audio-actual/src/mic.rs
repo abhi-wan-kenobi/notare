@@ -309,6 +309,7 @@ mod tests {
     use futures_util::StreamExt;
 
     #[tokio::test]
+    #[ignore = "requires audio hardware"]
     async fn test_mic() {
         let mic = MicInput::new(None).unwrap();
         let mut stream = mic.stream();
@@ -325,6 +326,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires audio hardware"]
     async fn test_mic_stream_with_resampling() {
         use hypr_audio_utils::chunk_size_for_stt;
         use hypr_resampler::ResampleExtDynamicNew;

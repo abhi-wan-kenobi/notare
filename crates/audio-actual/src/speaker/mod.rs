@@ -216,6 +216,7 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[tokio::test]
     #[serial]
+    #[ignore = "requires audio hardware"]
     async fn test_macos() {
         use crate::play_sine_for_sec;
 
@@ -277,6 +278,7 @@ mod tests {
     #[cfg(target_os = "linux")]
     #[tokio::test]
     #[serial]
+    #[ignore = "requires audio hardware"]
     async fn test_linux() {
         let input = match SpeakerInput::new() {
             Ok(input) => input,
