@@ -73,7 +73,7 @@ pub struct BatchArgs {
 pub async fn run(
     args: BatchArgs,
     base_url: Option<String>,
-    api_key: String,
+    api_key: Option<String>,
     model: Option<String>,
     language: String,
     quiet: bool,
@@ -90,6 +90,12 @@ pub async fn run(
     } else {
         _server = None;
         base_url.ok_or_else(|| CliError::required_argument("--base-url (or CHAR_BASE_URL)"))?
+    };
+
+    let api_key = if args.provider.is_local() {
+        api_key.unwrap_or_default()
+    } else {
+        api_key.ok_or_else(|| CliError::required_argument("--api-key (or CHAR_API_KEY)"))?
     };
 
     let file_path = args.input.path().to_str().ok_or_else(|| {

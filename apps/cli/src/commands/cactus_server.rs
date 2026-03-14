@@ -4,7 +4,7 @@ use hypr_local_model::{CactusSttModel, LocalModel};
 use hypr_local_stt_server::LocalSttServer;
 
 use crate::commands::model::settings;
-use crate::error::{CliError, CliResult};
+use crate::error::{CliError, CliResult, did_you_mean};
 
 fn default_cactus_model() -> CactusSttModel {
     if cfg!(target_arch = "aarch64") && cfg!(target_os = "macos") {
@@ -35,10 +35,22 @@ fn resolve_cactus_model(name: Option<&str>) -> CliResult<(CactusSttModel, PathBu
                     _ => None,
                 })
                 .ok_or_else(|| {
-                    CliError::not_found(
-                        format!("cactus model '{name}'"),
-                        Some("Run `char model cactus list` to see available models.".to_string()),
-                    )
+                    let names: Vec<&str> = LocalModel::all()
+                        .iter()
+                        .filter_map(|m| {
+                            if matches!(m, LocalModel::Cactus(_)) {
+                                Some(m.cli_name())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    let mut hint = String::new();
+                    if let Some(suggestion) = did_you_mean(name, &names) {
+                        hint.push_str(&format!("Did you mean '{suggestion}'?\n\n"));
+                    }
+                    hint.push_str("Run `char model cactus list` to see available models.");
+                    CliError::not_found(format!("cactus model '{name}'"), Some(hint))
                 })?
         }
         None => default_cactus_model(),

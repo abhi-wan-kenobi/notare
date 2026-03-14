@@ -10,7 +10,7 @@ use owhisper_client::RealtimeSttAdapter;
 
 use self::core::*;
 use crate::commands::model::settings;
-use crate::error::{CliError, CliResult};
+use crate::error::{CliError, CliResult, did_you_mean};
 
 #[derive(Clone, ValueEnum)]
 pub enum Provider {
@@ -48,10 +48,11 @@ pub struct TranscribeArgs {
 
 pub async fn run(args: TranscribeArgs) -> CliResult<()> {
     if args.model_path.is_some() && !args.provider.is_local() {
-        return Err(CliError::invalid_argument(
+        return Err(CliError::invalid_argument_with_hint(
             "--model-path",
             args.model_path.unwrap().display().to_string(),
             "only valid with local providers (cactus)",
+            "Use --provider cactus for local model files, or remove --model-path for cloud providers.",
         ));
     }
 
@@ -97,13 +98,7 @@ pub async fn run(args: TranscribeArgs) -> CliResult<()> {
         }
         Provider::ProxyDeepgram => {
             let api_key = require_key(args.deepgram_api_key, "DEEPGRAM_API_KEY")?;
-            run_proxy(
-                ProxyKind::Deepgram,
-                Some(api_key),
-                None,
-                args.audio.audio,
-            )
-            .await?;
+            run_proxy(ProxyKind::Deepgram, Some(api_key), None, args.audio.audio).await?;
         }
         Provider::ProxySoniox => {
             let api_key = require_key(args.soniox_api_key, "SONIOX_API_KEY")?;
@@ -127,10 +122,7 @@ fn require_model_name(model: Option<&str>, provider: &Provider) -> CliResult<Str
     Err(CliError::required_argument_with_hint("--model", hint))
 }
 
-fn resolve_local_model(
-    model_id: Option<&str>,
-    model_path: Option<PathBuf>,
-) -> CliResult<PathBuf> {
+fn resolve_local_model(model_id: Option<&str>, model_path: Option<PathBuf>) -> CliResult<PathBuf> {
     if let Some(path) = model_path {
         if !path.exists() {
             return Err(CliError::not_found(
@@ -168,10 +160,17 @@ fn resolve_cactus_model_path(name: &str) -> CliResult<PathBuf> {
                 && (m.cli_name() == name || m.cli_name() == canonical)
         })
         .ok_or_else(|| {
-            CliError::not_found(
-                format!("cactus model '{name}'"),
-                Some(suggest_cactus_models()),
-            )
+            let names: Vec<&str> = LocalModel::all()
+                .iter()
+                .filter(|m| matches!(m, LocalModel::Cactus(_)))
+                .map(|m| m.cli_name())
+                .collect();
+            let mut hint = String::new();
+            if let Some(suggestion) = did_you_mean(name, &names) {
+                hint.push_str(&format!("Did you mean '{suggestion}'?\n\n"));
+            }
+            hint.push_str(&suggest_cactus_models());
+            CliError::not_found(format!("cactus model '{name}'"), Some(hint))
         })?;
 
     let path = model.install_path(models_base);

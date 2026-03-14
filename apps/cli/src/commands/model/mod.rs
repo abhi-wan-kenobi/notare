@@ -11,7 +11,7 @@ use hypr_model_downloader::{DownloadableModel, ModelDownloadManager};
 use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::commands::OutputFormat;
-use crate::error::{CliError, CliResult};
+use crate::error::{CliError, CliResult, did_you_mean};
 
 mod runtime;
 pub(crate) mod settings;
@@ -149,10 +149,7 @@ pub async fn run(command: ModelCommands) -> CliResult<()> {
         }
         ModelCommands::Download { name } => {
             let Some(model) = find_model(&name) else {
-                return Err(CliError::not_found(
-                    format!("model '{name}'"),
-                    Some("Run `char model list` to see available models.".to_string()),
-                ));
+                return Err(not_found_model(&name));
             };
 
             let progress = make_download_progress_bar(&model);
@@ -213,10 +210,7 @@ pub async fn run(command: ModelCommands) -> CliResult<()> {
             let manager = ModelDownloadManager::new(runtime);
 
             let Some(model) = find_model(&name) else {
-                return Err(CliError::not_found(
-                    format!("model '{name}'"),
-                    Some("Run `char model list` to see available models.".to_string()),
-                ));
+                return Err(not_found_model(&name));
             };
 
             if let Err(e) = manager.delete(&model).await {
@@ -252,10 +246,7 @@ async fn run_cactus(
         }
         CactusCommands::Download { name } => {
             let Some(model) = find_cactus_model(&name) else {
-                return Err(CliError::not_found(
-                    format!("cactus model '{name}'"),
-                    Some("Run `char model cactus list` to see available models.".to_string()),
-                ));
+                return Err(not_found_cactus_model(&name));
             };
 
             let progress = make_download_progress_bar(&model);
@@ -316,10 +307,7 @@ async fn run_cactus(
             let manager = ModelDownloadManager::new(runtime);
 
             let Some(model) = find_cactus_model(&name) else {
-                return Err(CliError::not_found(
-                    format!("cactus model '{name}'"),
-                    Some("Run `char model cactus list` to see available models.".to_string()),
-                ));
+                return Err(not_found_cactus_model(&name));
             };
 
             if let Err(e) = manager.delete(&model).await {
@@ -534,6 +522,26 @@ fn format_provider_config_status(config: Option<&settings::ProviderConfig>) -> S
     let api_key = if config.has_api_key { "set" } else { "missing" };
 
     format!("config=base_url:{} api_key:{}", base_url, api_key)
+}
+
+fn not_found_model(name: &str) -> CliError {
+    let names: Vec<&str> = all_models(None).iter().map(|m| m.cli_name()).collect();
+    let mut hint = String::new();
+    if let Some(suggestion) = did_you_mean(name, &names) {
+        hint.push_str(&format!("Did you mean '{suggestion}'?\n\n"));
+    }
+    hint.push_str("Run `char model list` to see available models.");
+    CliError::not_found(format!("model '{name}'"), Some(hint))
+}
+
+fn not_found_cactus_model(name: &str) -> CliError {
+    let names: Vec<&str> = all_cactus_models().iter().map(|m| m.cli_name()).collect();
+    let mut hint = String::new();
+    if let Some(suggestion) = did_you_mean(name, &names) {
+        hint.push_str(&format!("Did you mean '{suggestion}'?\n\n"));
+    }
+    hint.push_str("Run `char model cactus list` to see available models.");
+    CliError::not_found(format!("cactus model '{name}'"), Some(hint))
 }
 
 fn is_current_model(model: &LocalModel, current: &settings::DesktopSettings) -> bool {

@@ -1,0 +1,24 @@
+{
+  "name": "@fastrepl/char",
+  "version": "0.0.0",
+  "description": "Live transcription and audio tools",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fastrepl/char"
+  },
+  "homepage": "https://char.com",
+  "bin": {
+    "char": "bin/run.js"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "files": [
+    "bin/",
+    "install.js"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

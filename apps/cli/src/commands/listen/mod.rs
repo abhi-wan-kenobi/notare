@@ -25,8 +25,8 @@ use runtime::{ListenBatchRuntime, ListenRuntime};
 
 pub struct Args {
     pub base_url: Option<String>,
-    pub api_key: String,
-    pub model: String,
+    pub api_key: Option<String>,
+    pub model: Option<String>,
     pub language: String,
     pub record: bool,
 }
@@ -72,14 +72,16 @@ pub async fn run(args: Args) -> CliResult<()> {
         })?;
     let languages = vec![language.clone()];
 
-    let is_cactus = model.starts_with("cactus-") || model == "cactus";
+    let is_cactus = model
+        .as_deref()
+        .is_some_and(|m| m.starts_with("cactus-") || m == "cactus");
 
     let _server;
     let base_url = if is_cactus {
-        let model_name = if model == "cactus" {
+        let model_name = if model.as_deref() == Some("cactus") {
             None
         } else {
-            Some(model.as_str())
+            model.as_deref()
         };
         let (server, url) = resolve_and_spawn_cactus(model_name).await?;
         _server = Some(server);
@@ -88,6 +90,14 @@ pub async fn run(args: Args) -> CliResult<()> {
         _server = None;
         base_url.ok_or_else(|| CliError::required_argument("--base-url (or CHAR_BASE_URL)"))?
     };
+
+    let api_key = if is_cactus {
+        api_key.unwrap_or_default()
+    } else {
+        api_key.ok_or_else(|| CliError::required_argument("--api-key (or CHAR_API_KEY)"))?
+    };
+
+    let model = model.unwrap_or_default();
 
     let session_id = uuid::Uuid::new_v4().to_string();
     let session_label = session_id.clone();

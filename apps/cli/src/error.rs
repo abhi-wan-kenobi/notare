@@ -20,6 +20,8 @@ pub enum CliError {
         name: &'static str,
         value: String,
         reason: String,
+        #[help]
+        hint: Option<String>,
     },
 
     #[error("{action} failed: {reason}")]
@@ -67,6 +69,21 @@ impl CliError {
             name,
             value: value.into(),
             reason: reason.into(),
+            hint: None,
+        }
+    }
+
+    pub fn invalid_argument_with_hint(
+        name: &'static str,
+        value: impl Into<String>,
+        reason: impl Into<String>,
+        hint: impl Into<String>,
+    ) -> Self {
+        Self::InvalidArgument {
+            name,
+            value: value.into(),
+            reason: reason.into(),
+            hint: Some(hint.into()),
         }
     }
 
@@ -90,6 +107,18 @@ impl CliError {
             hint,
         }
     }
+}
+
+/// Returns the closest match from `candidates` if one exceeds a 0.7 Jaro-Winkler threshold.
+pub fn did_you_mean<'a>(input: &str, candidates: &[&'a str]) -> Option<&'a str> {
+    candidates
+        .iter()
+        .filter_map(|c| {
+            let sim = strsim::jaro_winkler(input, c) as f64;
+            if sim > 0.7 { Some((*c, sim)) } else { None }
+        })
+        .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+        .map(|(c, _)| c)
 }
 
 impl From<String> for CliError {
@@ -117,6 +146,7 @@ mod tests {
                 name,
                 value,
                 reason,
+                ..
             } => {
                 assert_eq!(name, "--language");
                 assert_eq!(value, "xx");
@@ -124,6 +154,14 @@ mod tests {
             }
             _ => panic!("expected invalid argument variant"),
         }
+    }
+
+    #[test]
+    fn did_you_mean_finds_close_match() {
+        let candidates = &["deepgram", "soniox", "cactus"];
+        assert_eq!(did_you_mean("deepgran", candidates), Some("deepgram"));
+        assert_eq!(did_you_mean("sonix", candidates), Some("soniox"));
+        assert_eq!(did_you_mean("completely-wrong", candidates), None);
     }
 
     #[test]

@@ -122,8 +122,8 @@ async fn run(cli: Cli) -> CliResult<()> {
         Commands::Listen => {
             commands::listen::run(commands::listen::Args {
                 base_url: global.base_url,
-                api_key: global.api_key.unwrap_or_default(),
-                model: global.model.unwrap_or_default(),
+                api_key: global.api_key,
+                model: global.model,
                 language: global.language,
                 record: global.record,
             })
@@ -133,7 +133,7 @@ async fn run(cli: Cli) -> CliResult<()> {
             commands::batch::run(
                 args,
                 global.base_url,
-                global.api_key.unwrap_or_default(),
+                global.api_key,
                 global.model,
                 global.language,
                 verbose.is_silent(),

@@ -1,8 +1,16 @@
 on:
   workflow_dispatch:
+    inputs:
+      channel:
+        description: "Release channel"
+        required: true
+        type: choice
+        options:
+          - nightly
+          - stable
 
 concurrency:
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ inputs.channel }}
   cancel-in-progress: true
 
 jobs:
@@ -19,7 +27,16 @@ jobs:
       - uses: ./.github/actions/doxxer_install
       - id: version
         run: |
-          VERSION=$(doxxer --config doxxer.cli.toml next patch)
+          if [[ "${{ inputs.channel }}" == "nightly" ]]; then
+            LATEST_TAG=$(git tag -l 'cli_v*' --sort=-creatordate | head -n1)
+            if [[ "$LATEST_TAG" == *"-nightly"* ]]; then
+              VERSION=$(doxxer --config doxxer.cli.toml next prerelease)
+            else
+              VERSION=$(doxxer --config doxxer.cli.toml next pre-patch)
+            fi
+          else
+            VERSION=$(doxxer --config doxxer.cli.toml next patch)
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Computed version: $VERSION"
 
@@ -55,18 +72,18 @@ jobs:
         run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
       - run: cargo build --release -p cli --target ${{ matrix.target }}
       - run: |
-          BIN="target/${{ matrix.target }}/release/hypr-listener"
+          BIN="target/${{ matrix.target }}/release/char"
           if [[ "${{ runner.os }}" == "macOS" ]]; then
             strip -x "$BIN"
           else
             strip "$BIN"
           fi
-          ARCHIVE="hypr-listener-${{ needs.compute-version.outputs.version }}-${{ matrix.target }}.tar.xz"
-          tar -cJf "$ARCHIVE" -C "target/${{ matrix.target }}/release" hypr-listener
+          ARCHIVE="char-${{ needs.compute-version.outputs.version }}-${{ matrix.target }}.tar.xz"
+          tar -cJf "$ARCHIVE" -C "target/${{ matrix.target }}/release" char
           echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:
-          name: hypr-listener-${{ matrix.target }}
+          name: char-${{ matrix.target }}
           path: ${{ env.ARCHIVE }}
           retention-days: 3
 
@@ -98,9 +115,9 @@ jobs:
         uses: ./.github/actions/generate_checksums
         with:
           files: |
-            artifacts/hypr-listener-${{ needs.compute-version.outputs.version }}-aarch64-apple-darwin.tar.xz
-            artifacts/hypr-listener-${{ needs.compute-version.outputs.version }}-x86_64-unknown-linux-gnu.tar.xz
-            artifacts/hypr-listener-${{ needs.compute-version.outputs.version }}-aarch64-unknown-linux-gnu.tar.xz
+            artifacts/char-${{ needs.compute-version.outputs.version }}-aarch64-apple-darwin.tar.xz
+            artifacts/char-${{ needs.compute-version.outputs.version }}-x86_64-unknown-linux-gnu.tar.xz
+            artifacts/char-${{ needs.compute-version.outputs.version }}-aarch64-unknown-linux-gnu.tar.xz
       - id: artifacts
         run: |
           TARBALLS=$(ls artifacts/*.tar.xz | tr '\n' ',')
@@ -109,5 +126,29 @@ jobs:
       - uses: ncipollo/release-action@v1
         with:
           tag: cli_v${{ needs.compute-version.outputs.version }}
-          name: hypr-listener v${{ needs.compute-version.outputs.version }}
+          name: char v${{ needs.compute-version.outputs.version }}
+          prerelease: ${{ inputs.channel == 'nightly' }}
           artifacts: ${{ steps.artifacts.outputs.list }}
+
+  publish-npm:
+    needs: [compute-version, release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+      - run: |
+          cd apps/cli/npm
+          VERSION="${{ needs.compute-version.outputs.version }}"
+          NPM_TAG="${{ inputs.channel == 'nightly' && 'nightly' || 'latest' }}"
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '$VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          npm publish --access public --tag "$NPM_TAG"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
