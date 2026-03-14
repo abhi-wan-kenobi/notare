@@ -2,59 +2,17 @@ use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use clap::ValueEnum;
-use hypr_listener2_core::{BatchErrorCode, BatchEvent, BatchParams, BatchProvider};
+use hypr_listener2_core::{BatchErrorCode, BatchEvent, BatchParams};
 use indicatif::{ProgressBar, ProgressStyle};
 use tokio::sync::mpsc;
 
-use crate::commands::OutputFormat;
-use crate::commands::cactus_server::resolve_and_spawn_cactus;
+use crate::commands::{OutputFormat, Provider};
 use crate::error::{CliError, CliResult};
+use crate::runtime::stt::{ResolvedSttConfig, resolve_config};
 
 mod runtime;
 
 use runtime::BatchEventRuntime;
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum Provider {
-    Argmax,
-    Deepgram,
-    Soniox,
-    Assemblyai,
-    Fireworks,
-    Openai,
-    Gladia,
-    Elevenlabs,
-    Dashscope,
-    Mistral,
-    Am,
-    Cactus,
-}
-
-impl Provider {
-    fn is_local(&self) -> bool {
-        matches!(self, Provider::Cactus)
-    }
-}
-
-impl From<Provider> for BatchProvider {
-    fn from(value: Provider) -> Self {
-        match value {
-            Provider::Argmax => BatchProvider::Argmax,
-            Provider::Deepgram => BatchProvider::Deepgram,
-            Provider::Soniox => BatchProvider::Soniox,
-            Provider::Assemblyai => BatchProvider::AssemblyAI,
-            Provider::Fireworks => BatchProvider::Fireworks,
-            Provider::Openai => BatchProvider::OpenAI,
-            Provider::Gladia => BatchProvider::Gladia,
-            Provider::Elevenlabs => BatchProvider::ElevenLabs,
-            Provider::Dashscope => BatchProvider::DashScope,
-            Provider::Mistral => BatchProvider::Mistral,
-            Provider::Am => BatchProvider::Am,
-            Provider::Cactus => BatchProvider::Cactus,
-        }
-    }
-}
 
 #[derive(clap::Args)]
 pub struct BatchArgs {
@@ -78,25 +36,8 @@ pub async fn run(
     language: String,
     quiet: bool,
 ) -> CliResult<()> {
-    let language_parsed = language
-        .parse::<hypr_language::Language>()
-        .map_err(|e| CliError::invalid_argument("--language", language, e.to_string()))?;
-
-    let _server;
-    let base_url = if args.provider.is_local() {
-        let (server, url) = resolve_and_spawn_cactus(model.as_deref()).await?;
-        _server = Some(server);
-        url
-    } else {
-        _server = None;
-        base_url.ok_or_else(|| CliError::required_argument("--base-url (or CHAR_BASE_URL)"))?
-    };
-
-    let api_key = if args.provider.is_local() {
-        api_key.unwrap_or_default()
-    } else {
-        api_key.ok_or_else(|| CliError::required_argument("--api-key (or CHAR_API_KEY)"))?
-    };
+    let resolved = resolve_config(args.provider, base_url, api_key, model, language).await?;
+    let _ = resolved.server.as_ref();
 
     let file_path = args.input.path().to_str().ok_or_else(|| {
         CliError::invalid_argument(
@@ -110,16 +51,13 @@ pub async fn run(
     let (batch_tx, mut batch_rx) = mpsc::unbounded_channel::<BatchEvent>();
     let runtime = Arc::new(BatchEventRuntime { tx: batch_tx });
 
-    let params = BatchParams {
+    let params = build_batch_params(
         session_id,
-        provider: args.provider.into(),
-        file_path: file_path.to_string(),
-        model,
-        base_url,
-        api_key,
-        languages: vec![language_parsed],
-        keywords: args.keywords,
-    };
+        file_path.to_string(),
+        args.keywords,
+        &resolved,
+        resolved.language.clone(),
+    );
 
     let show_progress = !quiet && std::io::stderr().is_terminal();
     let format = args.format;
@@ -248,6 +186,25 @@ pub async fn run(
     Ok(())
 }
 
+fn build_batch_params(
+    session_id: String,
+    file_path: String,
+    keywords: Vec<String>,
+    resolved: &ResolvedSttConfig,
+    language: hypr_language::Language,
+) -> BatchParams {
+    BatchParams {
+        session_id,
+        provider: resolved.batch_provider(),
+        file_path,
+        model: resolved.model_option(),
+        base_url: resolved.base_url.clone(),
+        api_key: resolved.api_key.clone(),
+        languages: vec![language],
+        keywords,
+    }
+}
+
 fn batch_response_from_streams(
     segments: Vec<owhisper_interface::stream::StreamResponse>,
 ) -> Option<owhisper_interface::batch::Response> {
@@ -313,13 +270,7 @@ fn batch_response_from_streams(
     })
 }
 
-fn format_timestamp(secs: f64) -> String {
-    let total_secs = secs as u64;
-    let mins = total_secs / 60;
-    let s = total_secs % 60;
-    let frac = ((secs - secs.floor()) * 10.0).round() as u64;
-    format!("{mins:02}:{s:02}.{frac}")
-}
+use crate::fmt::format_timestamp_secs;
 
 fn format_pretty(response: &owhisper_interface::batch::Response) -> String {
     use owhisper_interface::batch::Word;
@@ -368,8 +319,8 @@ fn format_pretty(response: &owhisper_interface::batch::Response) -> String {
         .map(|(start, end, words)| {
             let prefix = format!(
                 "\x1b[2m[{} \u{2192} {}]\x1b[0m  ",
-                format_timestamp(*start),
-                format_timestamp(*end),
+                format_timestamp_secs(*start),
+                format_timestamp_secs(*end),
             );
             // "[00:00.0 → 00:00.0]  " = 22 visible chars
             let prefix_visible_len = 22;

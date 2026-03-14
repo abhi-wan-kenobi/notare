@@ -1,7 +1,9 @@
 mod commands;
 mod error;
 mod event;
+mod fmt;
 mod frame;
+mod runtime;
 mod terminal;
 mod textarea_input;
 mod theme;
@@ -64,8 +66,16 @@ fn parse_base_url(value: &str) -> Result<String, String> {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Interactive chat with an LLM
+    Chat {
+        #[arg(long)]
+        session: Option<String>,
+    },
     /// Start live transcription (TUI)
-    Listen,
+    Listen {
+        #[arg(long, value_enum)]
+        provider: commands::Provider,
+    },
     /// Authenticate with char.com
     Auth,
     /// Open the desktop app or download page
@@ -104,6 +114,14 @@ async fn run(cli: Cli) -> CliResult<()> {
     } = cli;
 
     match command {
+        Commands::Chat { session } => {
+            commands::chat::run(commands::chat::Args {
+                session,
+                api_key: global.api_key,
+                model: global.model,
+            })
+            .await
+        }
         Commands::Auth => {
             commands::auth::run()?;
             eprintln!("Opened auth page in browser");
@@ -119,8 +137,9 @@ async fn run(cli: Cli) -> CliResult<()> {
             }
             Ok(())
         }
-        Commands::Listen => {
+        Commands::Listen { provider } => {
             commands::listen::run(commands::listen::Args {
+                provider,
                 base_url: global.base_url,
                 api_key: global.api_key,
                 model: global.model,

@@ -349,7 +349,8 @@ ratatui = "0.30"
 realfft = "3.5.0"
 ringbuf = "0.4.8"
 rodio = "0.21"
-tui-textarea = { version = "0.7", default-features = false, features = ["no-backend"] }
+tachyonfx = "0.25"
+tui-textarea = { package = "tui-textarea-2", version = "0.10", default-features = false, features = ["no-backend"] }
 vorbis_rs = "0.5.5"
 
 deepgram = { version = "0.7", default-features = false }

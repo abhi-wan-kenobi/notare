@@ -10,7 +10,7 @@ pub enum CliError {
 
     #[error("{name} is required")]
     RequiredArgument {
-        name: &'static str,
+        name: String,
         #[help]
         hint: Option<String>,
     },
@@ -49,13 +49,16 @@ impl CliError {
         Self::Message(message.into())
     }
 
-    pub fn required_argument(name: &'static str) -> Self {
-        Self::RequiredArgument { name, hint: None }
+    pub fn required_argument(name: impl Into<String>) -> Self {
+        Self::RequiredArgument {
+            name: name.into(),
+            hint: None,
+        }
     }
 
-    pub fn required_argument_with_hint(name: &'static str, hint: impl Into<String>) -> Self {
+    pub fn required_argument_with_hint(name: impl Into<String>, hint: impl Into<String>) -> Self {
         Self::RequiredArgument {
-            name,
+            name: name.into(),
             hint: Some(hint.into()),
         }
     }

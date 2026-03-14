@@ -1,7 +1,9 @@
+mod transcribe;
+
 use clap::Subcommand;
 
-use super::transcribe::TranscribeArgs;
 use crate::error::CliResult;
+use transcribe::TranscribeArgs;
 
 #[derive(Subcommand)]
 pub enum DebugCommands {
@@ -14,6 +16,6 @@ pub enum DebugCommands {
 
 pub async fn run(command: DebugCommands) -> CliResult<()> {
     match command {
-        DebugCommands::Transcribe { args } => super::transcribe::run(args).await,
+        DebugCommands::Transcribe { args } => transcribe::run(args).await,
     }
 }

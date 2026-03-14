@@ -13,10 +13,11 @@ pub struct Theme {
     pub waveform_hot: Style,
     pub waveform_silent: Style,
     pub transcript_final: Style,
-    pub transcript_pending: Style,
     pub transcript_partial: Style,
     pub placeholder: Style,
     pub shortcut_key: Style,
+    pub speaker_label: Style,
+    pub timestamp: Style,
 }
 
 impl Default for Theme {
@@ -33,7 +34,6 @@ impl Default for Theme {
             waveform_hot: Style::new().fg(Color::LightRed),
             waveform_silent: Style::new().fg(Color::DarkGray),
             transcript_final: Style::new(),
-            transcript_pending: Style::new().fg(Color::Yellow),
             transcript_partial: Style::new()
                 .fg(Color::DarkGray)
                 .add_modifier(Modifier::ITALIC),
@@ -41,6 +41,8 @@ impl Default for Theme {
                 .fg(Color::DarkGray)
                 .add_modifier(Modifier::ITALIC),
             shortcut_key: Style::new().fg(Color::DarkGray),
+            speaker_label: Style::new().fg(Color::Cyan),
+            timestamp: Style::new().fg(Color::DarkGray),
         }
     }
 }

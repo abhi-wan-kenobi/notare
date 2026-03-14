@@ -1,4 +1,5 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
+use std::time::Instant;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use hypr_listener_core::{
@@ -6,7 +7,14 @@ use hypr_listener_core::{
     SessionProgressEvent, State,
 };
 use hypr_listener2_core::BatchEvent;
-use hypr_transcript::{FinalizedWord, PartialWord, TranscriptDelta, TranscriptProcessor};
+use hypr_transcript::{
+    FinalizedWord, PartialWord, RuntimeSpeakerHint, Segment, TranscriptDelta, TranscriptProcessor,
+    WordRef,
+};
+use ratatui::layout::Rect;
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::widgets::Block;
+use tachyonfx::{Effect, Interpolation, Motion, fx};
 use tui_textarea::TextArea;
 
 use super::audio_drop::{AudioDropRequest, looks_like_audio_file, normalize_pasted_path};
@@ -17,19 +25,15 @@ use crate::textarea_input::textarea_input_from_key_event;
 const AUDIO_HISTORY_CAP: usize = 64;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Focus {
-    Transcript,
-    Memo,
-}
-
-pub struct MemoView {
-    pub lines: Vec<String>,
-    pub cursor_row: u16,
-    pub cursor_col: u16,
+pub enum Mode {
+    Normal,
+    Insert,
+    Command,
 }
 
 pub struct App {
     pub should_quit: bool,
+    pub force_quit: bool,
     pub state: State,
     pub status: String,
     pub degraded: Option<DegradedError>,
@@ -41,26 +45,46 @@ pub struct App {
     pub mic_muted: bool,
     pub words: Vec<FinalizedWord>,
     pub partials: Vec<PartialWord>,
+    pub hints: Vec<RuntimeSpeakerHint>,
+    pub partial_hints: Vec<RuntimeSpeakerHint>,
     transcript: TranscriptProcessor,
     pub started_at: std::time::Instant,
     pub scroll_offset: u16,
     frame_requester: FrameRequester,
 
-    focus: Focus,
+    mode: Mode,
+    pub command_buffer: String,
     notepad_width_percent: u16,
     transcript_max_scroll: u16,
+    transcript_autoscroll: bool,
     memo: TextArea<'static>,
     batch_running: bool,
+
+    // Animation state
+    word_first_seen: HashMap<String, Instant>,
+    last_frame_time: Instant,
+    prev_segment_count: usize,
+    pub transcript_effects: Vec<Effect>,
 }
 
 impl App {
     fn init_memo() -> TextArea<'static> {
-        TextArea::default()
+        let mut memo = TextArea::default();
+        memo.set_placeholder_text("press [i] to start writing notes...");
+        memo.set_placeholder_style(
+            Style::new()
+                .fg(Color::DarkGray)
+                .add_modifier(Modifier::ITALIC),
+        );
+        memo.set_cursor_line_style(Style::new().add_modifier(Modifier::UNDERLINED));
+        memo
     }
 
     pub fn new(frame_requester: FrameRequester) -> Self {
+        let now = Instant::now();
         Self {
             should_quit: false,
+            force_quit: false,
             state: State::Inactive,
             status: "Starting...".into(),
             degraded: None,
@@ -72,16 +96,25 @@ impl App {
             mic_muted: false,
             words: Vec::new(),
             partials: Vec::new(),
+            hints: Vec::new(),
+            partial_hints: Vec::new(),
             transcript: TranscriptProcessor::new(),
-            started_at: std::time::Instant::now(),
+            started_at: now,
             scroll_offset: 0,
             frame_requester,
 
-            focus: Focus::Transcript,
-            notepad_width_percent: 67,
+            mode: Mode::Normal,
+            command_buffer: String::new(),
+            notepad_width_percent: 60,
             transcript_max_scroll: 0,
+            transcript_autoscroll: true,
             memo: Self::init_memo(),
             batch_running: false,
+
+            word_first_seen: HashMap::new(),
+            last_frame_time: now,
+            prev_segment_count: 0,
+            transcript_effects: Vec::new(),
         }
     }
 
@@ -95,33 +128,33 @@ impl App {
             return;
         }
 
-        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Left {
-            self.adjust_notepad_width(-2);
-            self.frame_requester.schedule_frame();
-            return;
+        if key.modifiers.contains(KeyModifiers::CONTROL)
+            && matches!(self.mode, Mode::Normal | Mode::Insert)
+        {
+            match key.code {
+                KeyCode::Left => {
+                    self.adjust_notepad_width(-2);
+                    self.frame_requester.schedule_frame();
+                    return;
+                }
+                KeyCode::Right => {
+                    self.adjust_notepad_width(2);
+                    self.frame_requester.schedule_frame();
+                    return;
+                }
+                _ => {}
+            }
         }
 
-        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Right {
-            self.adjust_notepad_width(2);
-            self.frame_requester.schedule_frame();
-            return;
-        }
-
-        if key.code == KeyCode::Tab {
-            self.toggle_focus();
-            self.frame_requester.schedule_frame();
-            return;
-        }
-
-        if self.memo_focused() {
-            self.handle_memo_key(key);
-        } else {
-            self.handle_global_key(key);
+        match self.mode {
+            Mode::Normal => self.handle_normal_key(key),
+            Mode::Insert => self.handle_insert_key(key),
+            Mode::Command => self.handle_command_key(key),
         }
     }
 
     pub fn handle_paste(&mut self, pasted: String) -> Option<AudioDropRequest> {
-        if !self.memo_focused() {
+        if self.mode != Mode::Insert {
             return self.handle_transcript_paste(pasted);
         }
         let pasted = pasted.replace("\r\n", "\n").replace('\r', "\n");
@@ -183,73 +216,59 @@ impl App {
     }
 
     pub fn can_accept_audio_drop(&self) -> bool {
-        self.transcript_focused()
+        self.mode == Mode::Normal
             && self.state == State::Inactive
             && !self.batch_running
             && self.words.is_empty()
             && self.partials.is_empty()
     }
 
+    pub fn mode(&self) -> Mode {
+        self.mode
+    }
+
     pub fn memo_focused(&self) -> bool {
-        self.focus == Focus::Memo
+        self.mode == Mode::Insert
     }
 
     pub fn transcript_focused(&self) -> bool {
-        self.focus == Focus::Transcript
+        self.mode == Mode::Normal
     }
 
-    pub fn memo_view(&self, max_rows: usize, max_cols: usize) -> MemoView {
-        if max_rows == 0 || max_cols == 0 {
-            return MemoView {
-                lines: Vec::new(),
-                cursor_row: 0,
-                cursor_col: 0,
-            };
-        }
-
-        let lines = self.memo.lines();
-        let (memo_cursor_row, memo_cursor_col) = self.memo.cursor();
-        let cursor_row = memo_cursor_row.min(lines.len().saturating_sub(1));
-        let cursor_col = memo_cursor_col.min(current_line_len(lines, cursor_row));
-
-        let row_start = (cursor_row + 1).saturating_sub(max_rows);
-
-        let col_start = (cursor_col + 1).saturating_sub(max_cols);
-
-        let row_end = (row_start + max_rows).min(lines.len());
-        let lines = lines[row_start..row_end]
-            .iter()
-            .map(|line| {
-                let end = (col_start + max_cols).min(line.chars().count());
-                substring_by_char_range(line, col_start, end)
-            })
-            .collect();
-
-        MemoView {
-            lines,
-            cursor_row: cursor_row.saturating_sub(row_start) as u16,
-            cursor_col: cursor_col.saturating_sub(col_start) as u16,
-        }
+    pub fn set_memo_block(&mut self, block: Block<'static>) {
+        self.memo.set_block(block);
     }
 
-    pub fn memo_is_empty(&self) -> bool {
-        self.memo.is_empty()
+    pub fn memo(&self) -> &TextArea<'static> {
+        &self.memo
     }
 
     pub fn update_transcript_max_scroll(&mut self, max_scroll: u16) {
         self.transcript_max_scroll = max_scroll;
-        self.scroll_offset = self.scroll_offset.min(max_scroll);
+        if self.transcript_autoscroll {
+            self.scroll_offset = max_scroll;
+        } else {
+            self.scroll_offset = self.scroll_offset.min(max_scroll);
+        }
     }
 
     pub fn notepad_width_percent(&self) -> u16 {
         self.notepad_width_percent
     }
 
-    fn handle_global_key(&mut self, key: KeyEvent) {
+    fn handle_normal_key(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::Char('q') => self.should_quit = true,
-            KeyCode::Char('m') => {
-                self.focus = Focus::Memo;
+            KeyCode::Char(':') => {
+                self.mode = Mode::Command;
+                self.command_buffer.clear();
+                self.frame_requester.schedule_frame();
+            }
+            KeyCode::Char('i') | KeyCode::Char('m') | KeyCode::Char('a') => {
+                self.mode = Mode::Insert;
+                self.frame_requester.schedule_frame();
+            }
+            KeyCode::Tab => {
+                self.mode = Mode::Insert;
                 self.frame_requester.schedule_frame();
             }
             KeyCode::Char('j') | KeyCode::Down => {
@@ -257,25 +276,55 @@ impl App {
                     .scroll_offset
                     .saturating_add(1)
                     .min(self.transcript_max_scroll);
+                self.transcript_autoscroll = self.scroll_offset >= self.transcript_max_scroll;
                 self.frame_requester.schedule_frame();
             }
             KeyCode::Char('k') | KeyCode::Up => {
                 self.scroll_offset = self.scroll_offset.saturating_sub(1);
+                self.transcript_autoscroll = false;
+                self.frame_requester.schedule_frame();
+            }
+            KeyCode::Char('G') => {
+                self.scroll_offset = self.transcript_max_scroll;
+                self.transcript_autoscroll = true;
+                self.frame_requester.schedule_frame();
+            }
+            KeyCode::Char('g') => {
+                self.scroll_offset = 0;
+                self.transcript_autoscroll = false;
                 self.frame_requester.schedule_frame();
             }
             _ => {}
         }
     }
 
-    fn handle_memo_key(&mut self, key: KeyEvent) {
+    fn handle_insert_key(&mut self, key: KeyEvent) {
         if key.code == KeyCode::Esc {
-            self.focus = Focus::Transcript;
+            self.mode = Mode::Normal;
+            self.frame_requester.schedule_frame();
+            return;
+        }
+
+        if key.code == KeyCode::Tab {
+            self.mode = Mode::Normal;
             self.frame_requester.schedule_frame();
             return;
         }
 
         if key.code == KeyCode::Char('u') && key.modifiers.contains(KeyModifiers::CONTROL) {
             self.memo = Self::init_memo();
+            self.frame_requester.schedule_frame();
+            return;
+        }
+
+        if key.code == KeyCode::Char('z') && key.modifiers.contains(KeyModifiers::CONTROL) {
+            self.memo.undo();
+            self.frame_requester.schedule_frame();
+            return;
+        }
+
+        if key.code == KeyCode::Char('y') && key.modifiers.contains(KeyModifiers::CONTROL) {
+            self.memo.redo();
             self.frame_requester.schedule_frame();
             return;
         }
@@ -287,16 +336,55 @@ impl App {
         self.frame_requester.schedule_frame();
     }
 
-    fn toggle_focus(&mut self) {
-        self.focus = match self.focus {
-            Focus::Memo => Focus::Transcript,
-            Focus::Transcript => Focus::Memo,
-        };
+    fn handle_command_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.mode = Mode::Normal;
+                self.command_buffer.clear();
+                self.frame_requester.schedule_frame();
+            }
+            KeyCode::Enter => {
+                self.execute_command();
+                self.frame_requester.schedule_frame();
+            }
+            KeyCode::Backspace => {
+                if self.command_buffer.is_empty() {
+                    self.mode = Mode::Normal;
+                } else {
+                    self.command_buffer.pop();
+                }
+                self.frame_requester.schedule_frame();
+            }
+            KeyCode::Char(c) => {
+                self.command_buffer.push(c);
+                self.frame_requester.schedule_frame();
+            }
+            _ => {}
+        }
+    }
+
+    fn execute_command(&mut self) {
+        let cmd = self.command_buffer.trim().to_string();
+        self.command_buffer.clear();
+        self.mode = Mode::Normal;
+
+        match cmd.as_str() {
+            "q" | "quit" => {
+                self.should_quit = true;
+            }
+            "q!" | "quit!" => {
+                self.force_quit = true;
+                self.should_quit = true;
+            }
+            _ => {
+                self.errors.push(format!("Unknown command: :{cmd}"));
+            }
+        }
     }
 
     fn adjust_notepad_width(&mut self, delta: i16) {
-        const MIN_NOTEPAD_WIDTH_PERCENT: u16 = 45;
-        const MAX_NOTEPAD_WIDTH_PERCENT: u16 = 80;
+        const MIN_NOTEPAD_WIDTH_PERCENT: u16 = 40;
+        const MAX_NOTEPAD_WIDTH_PERCENT: u16 = 75;
 
         let next = (self.notepad_width_percent as i16 + delta).clamp(
             MIN_NOTEPAD_WIDTH_PERCENT as i16,
@@ -393,9 +481,87 @@ impl App {
     fn apply_transcript_delta(&mut self, delta: TranscriptDelta) {
         if !delta.replaced_ids.is_empty() {
             self.words.retain(|w| !delta.replaced_ids.contains(&w.id));
+            self.hints.retain(|hint| match &hint.target {
+                WordRef::FinalWordId(word_id) => !delta.replaced_ids.contains(word_id),
+                WordRef::RuntimeIndex(_) => true,
+            });
+        }
+        let now = Instant::now();
+        for word in &delta.new_words {
+            self.word_first_seen.entry(word.id.clone()).or_insert(now);
         }
         self.words.extend(delta.new_words);
+        self.hints.extend(delta.hints);
         self.partials = delta.partials;
+        self.partial_hints = delta.partial_hints;
+    }
+
+    pub fn segments(&self) -> Vec<Segment> {
+        let opts = hypr_transcript::SegmentBuilderOptions {
+            max_gap_ms: Some(5000),
+            ..Default::default()
+        };
+        let mut all_hints = self.hints.clone();
+        let final_words_count = self.words.len();
+        all_hints.extend(self.partial_hints.iter().cloned().map(|mut hint| {
+            if let WordRef::RuntimeIndex(index) = &mut hint.target {
+                *index += final_words_count;
+            }
+            hint
+        }));
+        hypr_transcript::build_segments(&self.words, &self.partials, &all_hints, Some(&opts))
+    }
+
+    pub fn word_age_secs(&self, id: &str) -> f64 {
+        self.word_first_seen
+            .get(id)
+            .map(|t| t.elapsed().as_secs_f64())
+            .unwrap_or(f64::MAX)
+    }
+
+    pub fn frame_elapsed(&mut self) -> std::time::Duration {
+        let now = Instant::now();
+        let elapsed = now - self.last_frame_time;
+        self.last_frame_time = now;
+        elapsed
+    }
+
+    pub fn check_new_segments(&mut self, current_count: usize, transcript_area: Rect) {
+        if current_count > self.prev_segment_count && self.prev_segment_count > 0 {
+            let effect = fx::sweep_in(
+                Motion::LeftToRight,
+                8,
+                0,
+                Color::Rgb(0, 60, 80),
+                (350u32, Interpolation::CubicOut),
+            )
+            .with_area(transcript_area);
+            self.transcript_effects.push(effect);
+        }
+        self.prev_segment_count = current_count;
+    }
+
+    pub fn process_effects(
+        &mut self,
+        elapsed: std::time::Duration,
+        buf: &mut ratatui::buffer::Buffer,
+        area: Rect,
+    ) {
+        let elapsed: tachyonfx::Duration = elapsed.into();
+        self.transcript_effects.retain_mut(|effect| {
+            effect.process(elapsed, buf, area);
+            !effect.done()
+        });
+    }
+
+    pub fn has_active_animations(&self) -> bool {
+        if !self.transcript_effects.is_empty() {
+            return true;
+        }
+        let now = Instant::now();
+        self.word_first_seen
+            .values()
+            .any(|t| now.duration_since(*t).as_secs_f64() < 0.5)
     }
 
     fn handle_transcript_paste(&mut self, pasted: String) -> Option<AudioDropRequest> {
@@ -424,26 +590,4 @@ impl App {
             file_path: path.to_string_lossy().to_string(),
         })
     }
-}
-
-fn substring_by_char_range(s: &str, start: usize, end: usize) -> String {
-    if start >= end {
-        return String::new();
-    }
-
-    let start_byte = s
-        .char_indices()
-        .nth(start)
-        .map(|(i, _)| i)
-        .unwrap_or_else(|| s.len());
-    let end_byte = s
-        .char_indices()
-        .nth(end)
-        .map(|(i, _)| i)
-        .unwrap_or_else(|| s.len());
-    s.get(start_byte..end_byte).unwrap_or("").to_string()
-}
-
-fn current_line_len(lines: &[String], row: usize) -> usize {
-    lines.get(row).map(|line| line.chars().count()).unwrap_or(0)
 }

@@ -28,6 +28,9 @@ pub(crate) fn build_model(
     model_path: &Path,
     keywords: &[String],
 ) -> Result<hypr_cactus::Model, hypr_cactus::Error> {
+    static LOG_INIT: std::sync::Once = std::sync::Once::new();
+    LOG_INIT.call_once(hypr_cactus::log::init);
+
     let (custom_vocabulary, vocabulary_boost) = deepgram_keywords_to_cactus_vocabulary(keywords);
 
     let mut model_builder = hypr_cactus::Model::builder(model_path);

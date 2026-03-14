@@ -1,5 +1,5 @@
-use super::types::{FinalizedWord, PartialWord, RawWord, SpeakerHint, WordState};
-use super::words::{dedup, finalize_words, stitch, to_partial};
+use super::types::{FinalizedWord, PartialWord, RawWord, RuntimeSpeakerHint, WordState};
+use super::words::{dedup, finalize_words, stitch, to_partial, to_partial_hint};
 
 pub(super) struct ChannelState {
     watermark: i64,
@@ -24,7 +24,7 @@ impl ChannelState {
         &mut self,
         words: Vec<RawWord>,
         state: WordState,
-    ) -> (Vec<FinalizedWord>, Vec<SpeakerHint>) {
+    ) -> (Vec<FinalizedWord>, Vec<RuntimeSpeakerHint>) {
         let new_words = dedup(words, self.watermark);
         if new_words.is_empty() {
             return (vec![], vec![]);
@@ -79,7 +79,7 @@ impl ChannelState {
     ///
     /// The held word is always promoted. Remaining partials are promoted as
     /// final (they survived the session without being superseded).
-    pub(super) fn drain(&mut self) -> (Vec<FinalizedWord>, Vec<SpeakerHint>) {
+    pub(super) fn drain(&mut self) -> (Vec<FinalizedWord>, Vec<RuntimeSpeakerHint>) {
         let mut raw: Vec<RawWord> = self.held.take().into_iter().collect();
         raw.extend(std::mem::take(&mut self.partials));
         finalize_words(raw, WordState::Final)
@@ -87,5 +87,13 @@ impl ChannelState {
 
     pub(super) fn current_partials(&self) -> impl Iterator<Item = PartialWord> + '_ {
         self.partials.iter().chain(self.held.iter()).map(to_partial)
+    }
+
+    pub(super) fn current_partial_hints(&self) -> impl Iterator<Item = RuntimeSpeakerHint> + '_ {
+        self.partials
+            .iter()
+            .chain(self.held.iter())
+            .enumerate()
+            .filter_map(|(index, word)| to_partial_hint(word, index))
     }
 }

@@ -21,6 +21,7 @@ impl TerminalGuard {
 
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
+        let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::SetTitle(""));
         ratatui::restore();
     }
 }

@@ -1,9 +1,14 @@
 use std::collections::{BTreeMap, HashMap};
 
-use owhisper_interface::{batch::Response as BatchResponse, stream::StreamResponse};
+use owhisper_interface::{
+    batch::Response as BatchResponse,
+    stream::{StreamResponse, Word},
+};
 
 use super::accumulator::ChannelState;
-use super::types::{FinalizedWord, PartialWord, TranscriptDelta, WordState};
+use super::types::{
+    FinalizedWord, PartialWord, RuntimeSpeakerHint, TranscriptDelta, WordRef, WordState,
+};
 use super::words::{assemble, assemble_batch, finalize_words};
 
 /// Stateful processor that converts raw `StreamResponse`s into
@@ -32,6 +37,26 @@ pub struct TranscriptProcessor {
     next_job_id: u64,
 }
 
+struct ParsedStreamResponse<'a> {
+    is_final: bool,
+    channel: i32,
+    words: &'a [Word],
+    transcript: &'a str,
+    correction: CorrectionMetadata,
+}
+
+#[derive(Default)]
+struct CorrectionMetadata {
+    is_cloud_corrected: bool,
+    is_cloud_handoff: bool,
+    cloud_job_id: u64,
+}
+
+struct PartialSnapshot {
+    partials: Vec<PartialWord>,
+    partial_hints: Vec<RuntimeSpeakerHint>,
+}
+
 impl TranscriptProcessor {
     pub fn new() -> Self {
         Self {
@@ -48,50 +73,19 @@ impl TranscriptProcessor {
     /// handled inline: handoff words are emitted as `Pending`, corrections
     /// resolve the pending job and emit `replaced_ids`.
     pub fn process(&mut self, response: &StreamResponse) -> Option<TranscriptDelta> {
-        let (is_final, channel, channel_index, metadata) = match response {
-            StreamResponse::TranscriptResponse {
-                is_final,
-                channel,
-                channel_index,
-                metadata,
-                ..
-            } => (*is_final, channel, channel_index, metadata),
-            _ => return None,
-        };
-
-        let alt = channel.alternatives.first()?;
-        if alt.words.is_empty() && alt.transcript.is_empty() {
-            return None;
-        }
-
-        let ch = channel_index.first().copied().unwrap_or(0);
-        let raw_words = assemble(&alt.words, &alt.transcript, ch);
+        let parsed = ParsedStreamResponse::from_response(response)?;
+        let raw_words = assemble(parsed.words, parsed.transcript, parsed.channel);
         if raw_words.is_empty() {
             return None;
         }
 
-        let extra = metadata.extra.as_ref();
-        let get_bool = |key: &str| -> bool {
-            extra
-                .and_then(|e| e.get(key))
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false)
-        };
-        let get_u64 = |key: &str| -> u64 {
-            extra
-                .and_then(|e| e.get(key))
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0)
-        };
+        let channel_state = self
+            .channels
+            .entry(parsed.channel)
+            .or_insert_with(ChannelState::new);
 
-        let is_cloud_corrected = get_bool("cloud_corrected");
-        let is_cloud_handoff = get_bool("cloud_handoff");
-        let cloud_job_id = get_u64("cloud_job_id");
-
-        let channel_state = self.channels.entry(ch).or_insert_with(ChannelState::new);
-
-        if is_final {
-            let word_state = if is_cloud_handoff && cloud_job_id != 0 {
+        if parsed.is_final {
+            let word_state = if parsed.correction.is_handoff_job() {
                 WordState::Pending
             } else {
                 WordState::Final
@@ -99,38 +93,27 @@ impl TranscriptProcessor {
 
             let (new_words, hints) = channel_state.apply_final(raw_words, word_state);
 
-            let replaced_ids = if is_cloud_corrected && cloud_job_id != 0 {
-                self.resolve_job(cloud_job_id)
+            let replaced_ids = if parsed.correction.is_corrected_job() {
+                self.resolve_job(parsed.correction.cloud_job_id)
             } else {
                 vec![]
             };
 
-            if is_cloud_handoff && cloud_job_id != 0 {
+            if parsed.correction.is_handoff_job() {
                 let ids: Vec<String> = new_words.iter().map(|w| w.id.clone()).collect();
-                self.register_job(cloud_job_id, ids);
+                self.register_job(parsed.correction.cloud_job_id, ids);
             }
 
-            let partials = self.all_partials();
+            let snapshot = self.partial_snapshot();
 
             if new_words.is_empty() && replaced_ids.is_empty() {
                 return None;
             }
 
-            Some(TranscriptDelta {
-                new_words,
-                hints,
-                replaced_ids,
-                partials,
-            })
+            Some(snapshot.into_delta(new_words, hints, replaced_ids))
         } else {
             channel_state.apply_partial(raw_words);
-
-            Some(TranscriptDelta {
-                new_words: vec![],
-                hints: vec![],
-                replaced_ids: vec![],
-                partials: self.all_partials(),
-            })
+            Some(self.partial_snapshot().into_delta(vec![], vec![], vec![]))
         }
     }
 
@@ -158,12 +141,9 @@ impl TranscriptProcessor {
             })
             .collect();
 
-        let delta = TranscriptDelta {
-            new_words: pending_words,
-            hints: vec![],
-            replaced_ids,
-            partials: self.all_partials(),
-        };
+        let delta = self
+            .partial_snapshot()
+            .into_delta(pending_words, vec![], replaced_ids);
 
         (job_id, delta)
     }
@@ -180,12 +160,8 @@ impl TranscriptProcessor {
     ) -> TranscriptDelta {
         let replaced_ids = self.resolve_job(job_id);
 
-        TranscriptDelta {
-            new_words: corrected_words,
-            hints: vec![],
-            replaced_ids,
-            partials: self.all_partials(),
-        }
+        self.partial_snapshot()
+            .into_delta(corrected_words, vec![], replaced_ids)
     }
 
     /// Drain all remaining state at session end.
@@ -207,6 +183,7 @@ impl TranscriptProcessor {
             hints,
             replaced_ids: vec![],
             partials: vec![],
+            partial_hints: vec![],
         }
     }
 
@@ -238,6 +215,7 @@ impl TranscriptProcessor {
             hints,
             replaced_ids: vec![],
             partials: vec![],
+            partial_hints: vec![],
         }
     }
 
@@ -257,16 +235,171 @@ impl TranscriptProcessor {
         id
     }
 
-    fn all_partials(&self) -> Vec<PartialWord> {
-        self.channels
-            .values()
-            .flat_map(|s| s.current_partials())
-            .collect()
+    fn partial_snapshot(&self) -> PartialSnapshot {
+        PartialSnapshot::from_channels(self.channels.values())
     }
 }
 
 impl Default for TranscriptProcessor {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<'a> ParsedStreamResponse<'a> {
+    fn from_response(response: &'a StreamResponse) -> Option<Self> {
+        let StreamResponse::TranscriptResponse {
+            is_final,
+            channel,
+            channel_index,
+            metadata,
+            ..
+        } = response
+        else {
+            return None;
+        };
+
+        let alt = channel.alternatives.first()?;
+        if alt.words.is_empty() && alt.transcript.is_empty() {
+            return None;
+        }
+
+        Some(Self {
+            is_final: *is_final,
+            channel: channel_index.first().copied().unwrap_or(0),
+            words: &alt.words,
+            transcript: &alt.transcript,
+            correction: CorrectionMetadata::from_extra(metadata.extra.as_ref()),
+        })
+    }
+}
+
+impl CorrectionMetadata {
+    fn from_extra(extra: Option<&HashMap<String, serde_json::Value>>) -> Self {
+        let get_bool = |key: &str| -> bool {
+            extra
+                .and_then(|value| value.get(key))
+                .and_then(|value| value.as_bool())
+                .unwrap_or(false)
+        };
+        let get_u64 = |key: &str| -> u64 {
+            extra
+                .and_then(|value| value.get(key))
+                .and_then(|value| value.as_u64())
+                .unwrap_or(0)
+        };
+
+        Self {
+            is_cloud_corrected: get_bool("cloud_corrected"),
+            is_cloud_handoff: get_bool("cloud_handoff"),
+            cloud_job_id: get_u64("cloud_job_id"),
+        }
+    }
+
+    fn is_corrected_job(&self) -> bool {
+        self.is_cloud_corrected && self.cloud_job_id != 0
+    }
+
+    fn is_handoff_job(&self) -> bool {
+        self.is_cloud_handoff && self.cloud_job_id != 0
+    }
+}
+
+impl PartialSnapshot {
+    fn from_channels<'a>(states: impl Iterator<Item = &'a ChannelState>) -> Self {
+        let mut partials = Vec::new();
+        let mut partial_hints = Vec::new();
+        let mut offset = 0usize;
+
+        for state in states {
+            let channel_partials: Vec<_> = state.current_partials().collect();
+
+            for mut hint in state.current_partial_hints() {
+                if let WordRef::RuntimeIndex(index) = &mut hint.target {
+                    *index += offset;
+                }
+                partial_hints.push(hint);
+            }
+
+            offset += channel_partials.len();
+            partials.extend(channel_partials);
+        }
+
+        Self {
+            partials,
+            partial_hints,
+        }
+    }
+
+    fn into_delta(
+        self,
+        new_words: Vec<FinalizedWord>,
+        hints: Vec<RuntimeSpeakerHint>,
+        replaced_ids: Vec<String>,
+    ) -> TranscriptDelta {
+        TranscriptDelta {
+            new_words,
+            hints,
+            replaced_ids,
+            partials: self.partials,
+            partial_hints: self.partial_hints,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::RawWord;
+
+    #[test]
+    fn partial_snapshot_preserves_partial_hint_indices_across_channels() {
+        let mut processor = TranscriptProcessor::new();
+
+        let ch0 = processor
+            .channels
+            .entry(0)
+            .or_insert_with(ChannelState::new);
+        ch0.apply_partial(vec![
+            RawWord {
+                text: " hello".to_string(),
+                start_ms: 0,
+                end_ms: 100,
+                channel: 0,
+                speaker: Some(4),
+            },
+            RawWord {
+                text: " world".to_string(),
+                start_ms: 100,
+                end_ms: 200,
+                channel: 0,
+                speaker: None,
+            },
+        ]);
+
+        let ch1 = processor
+            .channels
+            .entry(1)
+            .or_insert_with(ChannelState::new);
+        ch1.apply_partial(vec![RawWord {
+            text: " remote".to_string(),
+            start_ms: 0,
+            end_ms: 100,
+            channel: 1,
+            speaker: Some(7),
+        }]);
+
+        let snapshot = processor.partial_snapshot();
+
+        assert_eq!(snapshot.partials.len(), 3);
+        assert_eq!(snapshot.partial_hints.len(), 2);
+        assert!(matches!(
+            snapshot.partial_hints[0].target,
+            WordRef::RuntimeIndex(0)
+        ));
+        assert!(matches!(
+            snapshot.partial_hints[1].target,
+            WordRef::RuntimeIndex(2)
+        ));
     }
 }

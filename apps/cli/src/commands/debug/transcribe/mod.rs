@@ -1,19 +1,23 @@
-pub mod core;
+pub mod audio;
+pub mod client;
+pub mod display;
+pub mod server;
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::ValueEnum;
-use hypr_local_model::LocalModel;
-use hypr_local_stt_server::LocalSttServer;
 use owhisper_client::RealtimeSttAdapter;
 
-use self::core::*;
-use crate::commands::model::settings;
-use crate::error::{CliError, CliResult, did_you_mean};
+use self::audio::*;
+use self::client::*;
+use self::server::spawn_router;
+use crate::commands::Provider as SharedProvider;
+use crate::error::{CliError, CliResult};
+use crate::runtime::stt::{ResolvedSttConfig, resolve_config, resolve_local_model_path};
 
 #[derive(Clone, ValueEnum)]
-pub enum Provider {
+pub enum DebugProvider {
     Deepgram,
     Soniox,
     Cactus,
@@ -22,16 +26,27 @@ pub enum Provider {
     ProxySoniox,
 }
 
-impl Provider {
+impl DebugProvider {
     fn is_local(&self) -> bool {
-        matches!(self, Provider::Cactus)
+        matches!(self, DebugProvider::Cactus)
+    }
+
+    fn shared_provider(&self) -> Option<SharedProvider> {
+        match self {
+            DebugProvider::Deepgram => Some(SharedProvider::Deepgram),
+            DebugProvider::Soniox => Some(SharedProvider::Soniox),
+            DebugProvider::Cactus => Some(SharedProvider::Cactus),
+            DebugProvider::ProxyHyprnote
+            | DebugProvider::ProxyDeepgram
+            | DebugProvider::ProxySoniox => None,
+        }
     }
 }
 
 #[derive(clap::Args)]
 pub struct TranscribeArgs {
     #[arg(long, value_enum)]
-    pub provider: Provider,
+    pub provider: DebugProvider,
     /// Model name (API model for cloud providers, model ID for local)
     #[arg(long, conflicts_with = "model_path")]
     pub model: Option<String>,
@@ -57,37 +72,35 @@ pub async fn run(args: TranscribeArgs) -> CliResult<()> {
     }
 
     match args.provider {
-        Provider::Deepgram => {
-            let api_key = require_key(args.deepgram_api_key, "DEEPGRAM_API_KEY")?;
+        DebugProvider::Deepgram => {
             let model = require_model_name(args.model.as_deref(), &args.provider)?;
-            let mut params = default_listen_params();
-            params.model = Some(model);
-            run_simple_provider::<owhisper_client::DeepgramAdapter>(
-                "https://api.deepgram.com/v1",
-                Some(api_key),
-                params,
-                args.audio.audio,
-            )
-            .await;
+            let resolved =
+                resolve_standard_provider(&args.provider, args.deepgram_api_key, Some(model))
+                    .await?;
+            run_resolved_provider::<owhisper_client::DeepgramAdapter>(&resolved, args.audio.audio)
+                .await?;
         }
-        Provider::Soniox => {
-            let api_key = require_key(args.soniox_api_key, "SONIOX_API_KEY")?;
+        DebugProvider::Soniox => {
             let model = require_model_name(args.model.as_deref(), &args.provider)?;
-            let mut params = default_listen_params();
-            params.model = Some(model);
-            run_simple_provider::<owhisper_client::SonioxAdapter>(
-                "https://api.soniox.com",
-                Some(api_key),
-                params,
-                args.audio.audio,
-            )
-            .await;
+            let resolved =
+                resolve_standard_provider(&args.provider, args.soniox_api_key, Some(model)).await?;
+            run_resolved_provider::<owhisper_client::SonioxAdapter>(&resolved, args.audio.audio)
+                .await?;
         }
-        Provider::Cactus => {
-            let model_path = resolve_local_model(args.model.as_deref(), args.model_path)?;
-            run_cactus_from_path(model_path, args.audio.audio).await?;
+        DebugProvider::Cactus => {
+            if args.model_path.is_some() {
+                let model_path = resolve_local_model_path(args.model.as_deref(), args.model_path)?;
+                run_cactus_from_path(model_path, args.audio.audio).await?;
+            } else {
+                let resolved = resolve_standard_provider(&args.provider, None, args.model).await?;
+                run_resolved_provider::<owhisper_client::CactusAdapter>(
+                    &resolved,
+                    args.audio.audio,
+                )
+                .await?;
+            }
         }
-        Provider::ProxyHyprnote => {
+        DebugProvider::ProxyHyprnote => {
             run_proxy(
                 ProxyKind::Hyprnote,
                 args.deepgram_api_key,
@@ -96,11 +109,11 @@ pub async fn run(args: TranscribeArgs) -> CliResult<()> {
             )
             .await?;
         }
-        Provider::ProxyDeepgram => {
+        DebugProvider::ProxyDeepgram => {
             let api_key = require_key(args.deepgram_api_key, "DEEPGRAM_API_KEY")?;
             run_proxy(ProxyKind::Deepgram, Some(api_key), None, args.audio.audio).await?;
         }
-        Provider::ProxySoniox => {
+        DebugProvider::ProxySoniox => {
             let api_key = require_key(args.soniox_api_key, "SONIOX_API_KEY")?;
             run_proxy(ProxyKind::Soniox, None, Some(api_key), args.audio.audio).await?;
         }
@@ -108,149 +121,57 @@ pub async fn run(args: TranscribeArgs) -> CliResult<()> {
     Ok(())
 }
 
-fn require_model_name(model: Option<&str>, provider: &Provider) -> CliResult<String> {
+fn require_model_name(model: Option<&str>, provider: &DebugProvider) -> CliResult<String> {
     if let Some(m) = model {
         return Ok(m.to_string());
     }
 
     let hint = match provider {
-        Provider::Deepgram => "Available models: nova-3, nova-2, nova, enhanced, base",
-        Provider::Soniox => "Available models: stt_rt_preview",
+        DebugProvider::Deepgram => "Available models: nova-3, nova-2, nova, enhanced, base",
+        DebugProvider::Soniox => "Available models: stt_rt_preview",
         _ => "Pass a model name for the upstream provider.",
     };
 
     Err(CliError::required_argument_with_hint("--model", hint))
 }
 
-fn resolve_local_model(model_id: Option<&str>, model_path: Option<PathBuf>) -> CliResult<PathBuf> {
-    if let Some(path) = model_path {
-        if !path.exists() {
-            return Err(CliError::not_found(
-                format!("model path '{}'", path.display()),
-                None,
-            ));
-        }
-        return Ok(path);
-    }
-
-    if let Some(name) = model_id {
-        return resolve_cactus_model_path(name);
-    }
-
-    Err(CliError::required_argument_with_hint(
-        "--model or --model-path",
-        suggest_cactus_models(),
-    ))
-}
-
-fn resolve_cactus_model_path(name: &str) -> CliResult<PathBuf> {
-    let paths = settings::resolve_paths();
-    let models_base = &paths.models_base;
-
-    let canonical = if name.starts_with("cactus-") {
-        name.to_string()
-    } else {
-        format!("cactus-{name}")
-    };
-
-    let model = LocalModel::all()
-        .into_iter()
-        .find(|m| {
-            matches!(m, LocalModel::Cactus(_))
-                && (m.cli_name() == name || m.cli_name() == canonical)
-        })
-        .ok_or_else(|| {
-            let names: Vec<&str> = LocalModel::all()
-                .iter()
-                .filter(|m| matches!(m, LocalModel::Cactus(_)))
-                .map(|m| m.cli_name())
-                .collect();
-            let mut hint = String::new();
-            if let Some(suggestion) = did_you_mean(name, &names) {
-                hint.push_str(&format!("Did you mean '{suggestion}'?\n\n"));
-            }
-            hint.push_str(&suggest_cactus_models());
-            CliError::not_found(format!("cactus model '{name}'"), Some(hint))
-        })?;
-
-    let path = model.install_path(models_base);
-    if !path.exists() {
-        return Err(CliError::not_found(
-            format!("cactus model '{name}' (not downloaded)"),
-            Some(format!(
-                "Download it first: char model cactus download {name}"
-            )),
-        ));
-    }
-
-    Ok(path)
-}
-
-fn suggest_cactus_models() -> String {
-    let paths = settings::resolve_paths();
-    let models_base = paths.models_base;
-
-    let mut downloaded = Vec::new();
-    let mut available = Vec::new();
-
-    for model in LocalModel::all() {
-        let LocalModel::Cactus(_) = &model else {
-            continue;
-        };
-        let name = model.cli_name();
-        if model.install_path(&models_base).exists() {
-            downloaded.push(name);
-        } else {
-            available.push(name);
-        }
-    }
-
-    let mut hint = String::new();
-    if !downloaded.is_empty() {
-        hint.push_str("Downloaded models:\n");
-        for name in &downloaded {
-            hint.push_str(&format!("  {name}\n"));
-        }
-    }
-    if !available.is_empty() {
-        if !downloaded.is_empty() {
-            hint.push_str("Other models (not downloaded):\n");
-        } else {
-            hint.push_str("No models downloaded. Available models:\n");
-        }
-        for name in &available {
-            hint.push_str(&format!("  {name}\n"));
-        }
-        hint.push_str("Download with: char model cactus download <name>");
-    }
-    if hint.is_empty() {
-        hint.push_str("No cactus models found. Run `char model cactus list` to check.");
-    }
-    hint
-}
-
 fn require_key(key: Option<String>, env_name: &str) -> CliResult<String> {
     key.ok_or_else(|| {
-        CliError::required_argument(Box::leak(
-            format!(
-                "--{} (or {env_name})",
-                env_name.to_lowercase().replace('_', "-")
-            )
-            .into_boxed_str(),
+        CliError::required_argument(format!(
+            "--{} (or {env_name})",
+            env_name.to_lowercase().replace('_', "-")
         ))
     })
 }
 
-async fn run_simple_provider<A: RealtimeSttAdapter>(
-    api_base: &str,
+async fn resolve_standard_provider(
+    provider: &DebugProvider,
     api_key: Option<String>,
-    params: owhisper_interface::ListenParams,
+    model: Option<String>,
+) -> CliResult<ResolvedSttConfig> {
+    let shared = provider.shared_provider().ok_or_else(|| {
+        CliError::operation_failed("resolve debug provider", "provider is not shared")
+    })?;
+    resolve_config(shared, None, api_key, model, "en").await
+}
+
+async fn run_resolved_provider<A: RealtimeSttAdapter>(
+    resolved: &ResolvedSttConfig,
     source: AudioSource,
-) {
+) -> CliResult<()> {
+    let _ = resolved.server.as_ref();
     let audio: Arc<dyn AudioProvider> = Arc::new(ActualAudio);
+    let mut params = default_listen_params();
+    params.languages = vec![resolved.language.clone()];
+    params.model = resolved.model_option();
+    let api_key = if resolved.api_key.is_empty() {
+        None
+    } else {
+        Some(resolved.api_key.clone())
+    };
 
     if source.is_dual() {
-        let client = build_dual_client::<A>(api_base, api_key, params).await;
+        let client = build_dual_client::<A>(&resolved.base_url, api_key, params).await;
         run_dual_client(
             audio,
             source,
@@ -258,9 +179,9 @@ async fn run_simple_provider<A: RealtimeSttAdapter>(
             DEFAULT_SAMPLE_RATE,
             DEFAULT_TIMEOUT_SECS,
         )
-        .await;
+        .await?;
     } else {
-        let client = build_single_client::<A>(api_base, api_key, params).await;
+        let client = build_single_client::<A>(&resolved.base_url, api_key, params).await;
         run_single_client(
             audio,
             source,
@@ -268,12 +189,14 @@ async fn run_simple_provider<A: RealtimeSttAdapter>(
             DEFAULT_SAMPLE_RATE,
             DEFAULT_TIMEOUT_SECS,
         )
-        .await;
+        .await?;
     }
+
+    Ok(())
 }
 
 async fn run_cactus_from_path(model_path: PathBuf, source: AudioSource) -> CliResult<()> {
-    let server = LocalSttServer::start(model_path)
+    let server = hypr_local_stt_server::LocalSttServer::start(model_path)
         .await
         .map_err(|e| CliError::operation_failed("start local cactus server", e.to_string()))?;
     let base_url = server.base_url().to_string();
@@ -294,7 +217,7 @@ async fn run_cactus_from_path(model_path: PathBuf, source: AudioSource) -> CliRe
             DEFAULT_SAMPLE_RATE,
             DEFAULT_TIMEOUT_SECS,
         )
-        .await;
+        .await?;
     } else {
         let client = build_single_client::<owhisper_client::CactusAdapter>(
             &base_url,
@@ -309,7 +232,7 @@ async fn run_cactus_from_path(model_path: PathBuf, source: AudioSource) -> CliRe
             DEFAULT_SAMPLE_RATE,
             DEFAULT_TIMEOUT_SECS,
         )
-        .await;
+        .await?;
     }
 
     // keep server alive until transcription ends
@@ -357,7 +280,7 @@ async fn run_proxy(
     let config = SttProxyConfig::new(&env, &supabase_env)
         .with_hyprnote_routing(HyprnoteRoutingConfig::default());
     let app = hypr_transcribe_proxy::router(config);
-    let server = spawn_router(app).await;
+    let server = spawn_router(app).await?;
 
     eprintln!("proxy: {} -> {}", server.addr(), provider_name);
     eprintln!();
@@ -367,13 +290,13 @@ async fn run_proxy(
 
     match kind {
         ProxyKind::Hyprnote => {
-            run_with_adapter::<owhisper_client::HyprnoteAdapter>(audio, &source, api_base).await;
+            run_with_adapter::<owhisper_client::HyprnoteAdapter>(audio, &source, api_base).await?;
         }
         ProxyKind::Deepgram => {
-            run_with_adapter::<owhisper_client::DeepgramAdapter>(audio, &source, api_base).await;
+            run_with_adapter::<owhisper_client::DeepgramAdapter>(audio, &source, api_base).await?;
         }
         ProxyKind::Soniox => {
-            run_with_adapter::<owhisper_client::SonioxAdapter>(audio, &source, api_base).await;
+            run_with_adapter::<owhisper_client::SonioxAdapter>(audio, &source, api_base).await?;
         }
     }
 
@@ -384,7 +307,7 @@ async fn run_with_adapter<A: RealtimeSttAdapter>(
     audio: Arc<dyn AudioProvider>,
     source: &AudioSource,
     api_base: String,
-) {
+) -> CliResult<()> {
     if source.is_dual() {
         let client = build_dual_client::<A>(api_base, None, default_listen_params()).await;
         run_dual_client(
@@ -394,7 +317,7 @@ async fn run_with_adapter<A: RealtimeSttAdapter>(
             DEFAULT_SAMPLE_RATE,
             DEFAULT_TIMEOUT_SECS,
         )
-        .await;
+        .await?;
     } else {
         let client = build_single_client::<A>(api_base, None, default_listen_params()).await;
         run_single_client(
@@ -404,6 +327,8 @@ async fn run_with_adapter<A: RealtimeSttAdapter>(
             DEFAULT_SAMPLE_RATE,
             DEFAULT_TIMEOUT_SECS,
         )
-        .await;
+        .await?;
     }
+
+    Ok(())
 }

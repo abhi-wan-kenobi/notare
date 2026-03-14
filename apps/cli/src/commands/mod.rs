@@ -1,17 +1,66 @@
 pub mod auth;
 pub mod batch;
-pub mod cactus_server;
+pub mod chat;
 pub mod debug;
 pub mod desktop;
 pub mod listen;
 pub mod model;
-pub mod transcribe;
 
 use clap::ValueEnum;
+use hypr_listener2_core::BatchProvider;
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 pub enum OutputFormat {
     Pretty,
     Text,
     Json,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum Provider {
+    Deepgram,
+    Soniox,
+    Assemblyai,
+    Fireworks,
+    Openai,
+    Gladia,
+    Elevenlabs,
+    Mistral,
+    Cactus,
+}
+
+impl Provider {
+    pub fn is_local(&self) -> bool {
+        matches!(self, Provider::Cactus)
+    }
+
+    pub fn cloud_provider(&self) -> Option<owhisper_client::Provider> {
+        match self {
+            Provider::Deepgram => Some(owhisper_client::Provider::Deepgram),
+            Provider::Soniox => Some(owhisper_client::Provider::Soniox),
+            Provider::Assemblyai => Some(owhisper_client::Provider::AssemblyAI),
+            Provider::Fireworks => Some(owhisper_client::Provider::Fireworks),
+            Provider::Openai => Some(owhisper_client::Provider::OpenAI),
+            Provider::Gladia => Some(owhisper_client::Provider::Gladia),
+            Provider::Elevenlabs => Some(owhisper_client::Provider::ElevenLabs),
+            Provider::Mistral => Some(owhisper_client::Provider::Mistral),
+            Provider::Cactus => None,
+        }
+    }
+}
+
+impl From<Provider> for BatchProvider {
+    fn from(value: Provider) -> Self {
+        match value {
+            Provider::Deepgram => BatchProvider::Deepgram,
+            Provider::Soniox => BatchProvider::Soniox,
+            Provider::Assemblyai => BatchProvider::AssemblyAI,
+            Provider::Fireworks => BatchProvider::Fireworks,
+            Provider::Openai => BatchProvider::OpenAI,
+            Provider::Gladia => BatchProvider::Gladia,
+            Provider::Elevenlabs => BatchProvider::ElevenLabs,
+            Provider::Mistral => BatchProvider::Mistral,
+            Provider::Cactus => BatchProvider::Cactus,
+        }
+    }
 }

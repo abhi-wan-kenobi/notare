@@ -12,10 +12,11 @@ use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::commands::OutputFormat;
 use crate::error::{CliError, CliResult, did_you_mean};
+use crate::runtime::cactus;
 
 mod runtime;
-pub(crate) mod settings;
 
+use crate::runtime::desktop as settings;
 use runtime::CliModelRuntime;
 
 #[derive(Subcommand, Debug)]
@@ -151,77 +152,13 @@ pub async fn run(command: ModelCommands) -> CliResult<()> {
             let Some(model) = find_model(&name) else {
                 return Err(not_found_model(&name));
             };
-
-            let progress = make_download_progress_bar(&model);
-            let runtime = Arc::new(CliModelRuntime {
-                models_base: models_base.clone(),
-                progress: progress.clone(),
-            });
-            let manager = ModelDownloadManager::new(runtime);
-
-            if manager.is_downloaded(&model).await.unwrap_or(false) {
-                println!(
-                    "Model already downloaded: {} ({})",
-                    model.display_name(),
-                    model.install_path(&models_base).display()
-                );
-                return Ok(());
-            }
-
-            if let Err(e) = manager.download(&model).await {
-                if let Some(progress) = progress {
-                    progress.abandon_with_message("Failed");
-                }
-                return Err(CliError::operation_failed(
-                    "start model download",
-                    format!("{}: {e}", model.cli_name()),
-                ));
-            }
-
-            while manager.is_downloading(&model).await {
-                tokio::time::sleep(Duration::from_millis(120)).await;
-            }
-
-            if manager.is_downloaded(&model).await.unwrap_or(false) {
-                if let Some(progress) = progress {
-                    progress.finish_and_clear();
-                }
-                println!(
-                    "Downloaded {} -> {}",
-                    model.display_name(),
-                    model.install_path(&models_base).display()
-                );
-                Ok(())
-            } else {
-                if let Some(progress) = progress {
-                    progress.abandon_with_message("Failed");
-                }
-                Err(CliError::operation_failed(
-                    "download model",
-                    model.cli_name().to_string(),
-                ))
-            }
+            download_model(model, &models_base).await
         }
         ModelCommands::Delete { name } => {
-            let runtime = Arc::new(CliModelRuntime {
-                models_base: models_base.clone(),
-                progress: None,
-            });
-            let manager = ModelDownloadManager::new(runtime);
-
             let Some(model) = find_model(&name) else {
                 return Err(not_found_model(&name));
             };
-
-            if let Err(e) = manager.delete(&model).await {
-                return Err(CliError::operation_failed(
-                    "delete model",
-                    format!("{}: {e}", model.cli_name()),
-                ));
-            }
-
-            println!("Deleted {}", model.display_name());
-            Ok(())
+            delete_model(model, &models_base).await
         }
     }
 }
@@ -239,86 +176,22 @@ async fn run_cactus(
             });
             let manager = ModelDownloadManager::new(runtime);
             let current = settings::load_settings(settings_path);
-            let models = all_cactus_models();
+            let models = cactus::all_cactus_models();
 
             let rows = collect_model_rows(&models, models_base, &current, &manager).await;
             write_model_output(&rows, models_base, format)
         }
         CactusCommands::Download { name } => {
-            let Some(model) = find_cactus_model(&name) else {
-                return Err(not_found_cactus_model(&name));
+            let Some(model) = cactus::find_cactus_model(&name) else {
+                return Err(cactus::not_found_cactus_model(&name, false));
             };
-
-            let progress = make_download_progress_bar(&model);
-            let runtime = Arc::new(CliModelRuntime {
-                models_base: models_base.to_path_buf(),
-                progress: progress.clone(),
-            });
-            let manager = ModelDownloadManager::new(runtime);
-
-            if manager.is_downloaded(&model).await.unwrap_or(false) {
-                println!(
-                    "Model already downloaded: {} ({})",
-                    model.display_name(),
-                    model.install_path(models_base).display()
-                );
-                return Ok(());
-            }
-
-            if let Err(e) = manager.download(&model).await {
-                if let Some(progress) = progress {
-                    progress.abandon_with_message("Failed");
-                }
-                return Err(CliError::operation_failed(
-                    "start model download",
-                    format!("{}: {e}", model.cli_name()),
-                ));
-            }
-
-            while manager.is_downloading(&model).await {
-                tokio::time::sleep(Duration::from_millis(120)).await;
-            }
-
-            if manager.is_downloaded(&model).await.unwrap_or(false) {
-                if let Some(progress) = progress {
-                    progress.finish_and_clear();
-                }
-                println!(
-                    "Downloaded {} -> {}",
-                    model.display_name(),
-                    model.install_path(models_base).display()
-                );
-                Ok(())
-            } else {
-                if let Some(progress) = progress {
-                    progress.abandon_with_message("Failed");
-                }
-                Err(CliError::operation_failed(
-                    "download model",
-                    model.cli_name().to_string(),
-                ))
-            }
+            download_model(model, models_base).await
         }
         CactusCommands::Delete { name } => {
-            let runtime = Arc::new(CliModelRuntime {
-                models_base: models_base.to_path_buf(),
-                progress: None,
-            });
-            let manager = ModelDownloadManager::new(runtime);
-
-            let Some(model) = find_cactus_model(&name) else {
-                return Err(not_found_cactus_model(&name));
+            let Some(model) = cactus::find_cactus_model(&name) else {
+                return Err(cactus::not_found_cactus_model(&name, false));
             };
-
-            if let Err(e) = manager.delete(&model).await {
-                return Err(CliError::operation_failed(
-                    "delete model",
-                    format!("{}: {e}", model.cli_name()),
-                ));
-            }
-
-            println!("Deleted {}", model.display_name());
-            Ok(())
+            delete_model(model, models_base).await
         }
     }
 }
@@ -437,6 +310,76 @@ fn print_model_rows_table(models_base: &Path, rows: &[ModelRow]) -> CliResult<()
     Ok(())
 }
 
+async fn download_model(model: LocalModel, models_base: &Path) -> CliResult<()> {
+    let progress = make_download_progress_bar(&model);
+    let runtime = Arc::new(CliModelRuntime {
+        models_base: models_base.to_path_buf(),
+        progress: progress.clone(),
+    });
+    let manager = ModelDownloadManager::new(runtime);
+
+    if manager.is_downloaded(&model).await.unwrap_or(false) {
+        println!(
+            "Model already downloaded: {} ({})",
+            model.display_name(),
+            model.install_path(models_base).display()
+        );
+        return Ok(());
+    }
+
+    if let Err(e) = manager.download(&model).await {
+        if let Some(progress) = progress {
+            progress.abandon_with_message("Failed");
+        }
+        return Err(CliError::operation_failed(
+            "start model download",
+            format!("{}: {e}", model.cli_name()),
+        ));
+    }
+
+    while manager.is_downloading(&model).await {
+        tokio::time::sleep(Duration::from_millis(120)).await;
+    }
+
+    if manager.is_downloaded(&model).await.unwrap_or(false) {
+        if let Some(progress) = progress {
+            progress.finish_and_clear();
+        }
+        println!(
+            "Downloaded {} -> {}",
+            model.display_name(),
+            model.install_path(models_base).display()
+        );
+        Ok(())
+    } else {
+        if let Some(progress) = progress {
+            progress.abandon_with_message("Failed");
+        }
+        Err(CliError::operation_failed(
+            "download model",
+            model.cli_name().to_string(),
+        ))
+    }
+}
+
+async fn delete_model(model: LocalModel, models_base: &Path) -> CliResult<()> {
+    let runtime = Arc::new(CliModelRuntime {
+        models_base: models_base.to_path_buf(),
+        progress: None,
+    });
+    let manager = ModelDownloadManager::new(runtime);
+
+    if let Err(e) = manager.delete(&model).await {
+        return Err(CliError::operation_failed(
+            "delete model",
+            format!("{}: {e}", model.cli_name()),
+        ));
+    }
+
+    println!("Deleted {}", model.display_name());
+    Ok(())
+}
+
 fn make_download_progress_bar(model: &LocalModel) -> Option<ProgressBar> {
     if !std::io::stderr().is_terminal() {
         return None;
@@ -457,25 +400,6 @@ fn find_model(name: &str) -> Option<LocalModel> {
     all_models(None)
         .into_iter()
         .find(|model| model.cli_name() == name)
-}
-
-fn all_cactus_models() -> Vec<LocalModel> {
-    LocalModel::all()
-        .into_iter()
-        .filter(|model| model.cli_name().starts_with("cactus-"))
-        .collect()
-}
-
-fn find_cactus_model(name: &str) -> Option<LocalModel> {
-    let canonical = if name.starts_with("cactus-") {
-        name.to_string()
-    } else {
-        format!("cactus-{name}")
-    };
-
-    all_cactus_models()
-        .into_iter()
-        .find(|model| model.cli_name() == name || model.cli_name() == canonical)
 }
 
 fn all_models(kind: Option<ModelKind>) -> Vec<LocalModel> {
@@ -532,16 +456,6 @@ fn not_found_model(name: &str) -> CliError {
     }
     hint.push_str("Run `char model list` to see available models.");
     CliError::not_found(format!("model '{name}'"), Some(hint))
-}
-
-fn not_found_cactus_model(name: &str) -> CliError {
-    let names: Vec<&str> = all_cactus_models().iter().map(|m| m.cli_name()).collect();
-    let mut hint = String::new();
-    if let Some(suggestion) = did_you_mean(name, &names) {
-        hint.push_str(&format!("Did you mean '{suggestion}'?\n\n"));
-    }
-    hint.push_str("Run `char model cactus list` to see available models.");
-    CliError::not_found(format!("cactus model '{name}'"), Some(hint))
 }
 
 fn is_current_model(model: &LocalModel, current: &settings::DesktopSettings) -> bool {

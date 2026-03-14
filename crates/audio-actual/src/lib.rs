@@ -26,7 +26,8 @@ impl AudioOutput {
         let (tx, rx) = std::sync::mpsc::channel();
 
         std::thread::spawn(move || {
-            if let Ok(stream) = OutputStreamBuilder::open_default_stream() {
+            if let Ok(mut stream) = OutputStreamBuilder::open_default_stream() {
+                stream.log_on_drop(false);
                 let file = std::io::Cursor::new(bytes);
                 if let Ok(source) = Decoder::try_from(file) {
                     let sink = Sink::connect_new(stream.mixer());
@@ -50,7 +51,8 @@ impl AudioOutput {
         let (tx, rx) = std::sync::mpsc::channel();
 
         std::thread::spawn(move || {
-            if let Ok(stream) = OutputStreamBuilder::open_default_stream() {
+            if let Ok(mut stream) = OutputStreamBuilder::open_default_stream() {
+                stream.log_on_drop(false);
                 let silence = Zero::new(2, 48_000)
                     .take_duration(std::time::Duration::from_secs(1))
                     .repeat_infinite();
@@ -290,7 +292,8 @@ pub(crate) fn play_sine_for_sec(seconds: u64) -> std::thread::JoinHandle<()> {
     };
 
     spawn(move || {
-        let stream = OutputStreamBuilder::open_default_stream().unwrap();
+        let mut stream = OutputStreamBuilder::open_default_stream().unwrap();
+        stream.log_on_drop(false);
         let source = SignalGenerator::new(44100, 440.0, Sine);
 
         let source = source
