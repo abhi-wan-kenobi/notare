@@ -52,6 +52,7 @@ open = { workspace = true }
 ractor = { workspace = true, features = ["async-trait"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
+strsim = "0.11"
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal", "sync", "time"] }
 tokio-stream = { workspace = true }

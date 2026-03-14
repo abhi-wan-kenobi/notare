@@ -473,6 +473,7 @@ version = "0.1.0"
 dependencies = [
  "analytics",
  "api-auth",
+ "api-cactus",
  "api-calendar",
  "api-env",
  "api-nango",
@@ -529,6 +530,17 @@ dependencies = [
  "tracing",
  "urlencoding",
  "utoipa",
+]
+
+[[package]]
+name = "api-cactus"
+version = "0.1.0"
+dependencies = [
+ "axum 0.8.8",
+ "bytes",
+ "reqwest 0.13.2",
+ "serde",
+ "tracing",
 ]
 
 [[package]]
@@ -3238,6 +3250,7 @@ dependencies = [
  "serde",
  "serde_json",
  "storage",
+ "strsim",
  "tempfile",
  "textwrap",
  "thiserror 2.0.18",
