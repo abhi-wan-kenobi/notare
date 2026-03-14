@@ -31,6 +31,12 @@ pub enum Provider {
     Cactus,
 }
 
+impl Provider {
+    fn is_local(&self) -> bool {
+        matches!(self, Provider::Cactus)
+    }
+}
+
 impl From<Provider> for BatchProvider {
     fn from(value: Provider) -> Self {
         match value {
@@ -50,65 +56,65 @@ impl From<Provider> for BatchProvider {
     }
 }
 
-pub struct Args {
-    pub input: PathBuf,
+#[derive(clap::Args)]
+pub struct BatchArgs {
+    #[arg(long, value_name = "FILE", visible_alias = "file")]
+    pub input: clio::InputPath,
+    #[arg(long, value_enum)]
     pub provider: Provider,
-    pub base_url: Option<String>,
-    pub api_key: String,
-    pub model: Option<String>,
-    pub language: String,
+    #[arg(long = "keyword", short = 'k', value_name = "KEYWORD")]
     pub keywords: Vec<String>,
+    #[arg(long, value_name = "FILE")]
     pub output: Option<PathBuf>,
+    #[arg(long, value_enum, default_value = "pretty")]
     pub format: OutputFormat,
-    pub quiet: bool,
 }
 
-pub async fn run(args: Args) -> CliResult<()> {
-    validate_input_path(&args.input)?;
-
-    let languages = vec![
-        args.language
-            .parse::<hypr_language::Language>()
-            .map_err(|e| {
-                CliError::invalid_argument("--language", args.language.clone(), e.to_string())
-            })?,
-    ];
+pub async fn run(
+    args: BatchArgs,
+    base_url: Option<String>,
+    api_key: String,
+    model: Option<String>,
+    language: String,
+    quiet: bool,
+) -> CliResult<()> {
+    let language_parsed = language
+        .parse::<hypr_language::Language>()
+        .map_err(|e| CliError::invalid_argument("--language", language, e.to_string()))?;
 
     let _server;
-    let base_url = if matches!(args.provider, Provider::Cactus) {
-        let (server, url) = resolve_and_spawn_cactus(args.model.as_deref()).await?;
+    let base_url = if args.provider.is_local() {
+        let (server, url) = resolve_and_spawn_cactus(model.as_deref()).await?;
         _server = Some(server);
         url
     } else {
         _server = None;
-        args.base_url
-            .ok_or_else(|| CliError::required_argument("--base-url (or CHAR_BASE_URL)"))?
+        base_url.ok_or_else(|| CliError::required_argument("--base-url (or CHAR_BASE_URL)"))?
     };
+
+    let file_path = args.input.path().to_str().ok_or_else(|| {
+        CliError::invalid_argument(
+            "--input",
+            args.input.path().display().to_string(),
+            "path must be valid utf-8",
+        )
+    })?;
 
     let session_id = uuid::Uuid::new_v4().to_string();
     let (batch_tx, mut batch_rx) = mpsc::unbounded_channel::<BatchEvent>();
     let runtime = Arc::new(BatchEventRuntime { tx: batch_tx });
 
-    let file_path = args.input.to_str().ok_or_else(|| {
-        CliError::invalid_argument(
-            "--input",
-            args.input.display().to_string(),
-            "path must be valid utf-8",
-        )
-    })?;
-
     let params = BatchParams {
         session_id,
         provider: args.provider.into(),
         file_path: file_path.to_string(),
-        model: args.model,
+        model,
         base_url,
-        api_key: args.api_key,
-        languages,
+        api_key,
+        languages: vec![language_parsed],
         keywords: args.keywords,
     };
 
-    let quiet = args.quiet;
     let show_progress = !quiet && std::io::stderr().is_terminal();
     let format = args.format;
     let output = args.output;
@@ -299,25 +305,6 @@ fn batch_response_from_streams(
             }],
         },
     })
-}
-
-fn validate_input_path(path: &Path) -> CliResult<()> {
-    if !path.exists() {
-        return Err(CliError::not_found(
-            format!("input file '{}'", path.display()),
-            None,
-        ));
-    }
-
-    if !path.is_file() {
-        return Err(CliError::invalid_argument(
-            "--input",
-            path.display().to_string(),
-            "expected a file path",
-        ));
-    }
-
-    Ok(())
 }
 
 fn format_timestamp(secs: f64) -> String {

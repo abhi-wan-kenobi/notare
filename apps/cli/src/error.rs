@@ -1,28 +1,43 @@
-use std::fmt::{Display, Formatter};
+use miette::Diagnostic;
+use thiserror::Error;
 
 pub type CliResult<T> = Result<T, CliError>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Error, Diagnostic)]
 pub enum CliError {
+    #[error("{0}")]
     Message(String),
+
+    #[error("{name} is required")]
     RequiredArgument {
         name: &'static str,
+        #[help]
+        hint: Option<String>,
     },
+
+    #[error("invalid {name} '{value}': {reason}")]
     InvalidArgument {
         name: &'static str,
         value: String,
         reason: String,
     },
+
+    #[error("{action} failed: {reason}")]
     ExternalActionFailed {
         action: &'static str,
         reason: String,
     },
+
+    #[error("{action} failed: {reason}")]
     OperationFailed {
         action: &'static str,
         reason: String,
     },
+
+    #[error("{what} not found")]
     NotFound {
         what: String,
+        #[help]
         hint: Option<String>,
     },
 }
@@ -33,7 +48,14 @@ impl CliError {
     }
 
     pub fn required_argument(name: &'static str) -> Self {
-        Self::RequiredArgument { name }
+        Self::RequiredArgument { name, hint: None }
+    }
+
+    pub fn required_argument_with_hint(name: &'static str, hint: impl Into<String>) -> Self {
+        Self::RequiredArgument {
+            name,
+            hint: Some(hint.into()),
+        }
     }
 
     pub fn invalid_argument(
@@ -69,39 +91,6 @@ impl CliError {
         }
     }
 }
-
-impl Display for CliError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Message(message) => f.write_str(message),
-            Self::RequiredArgument { name } => {
-                write!(f, "{name} is required")
-            }
-            Self::InvalidArgument {
-                name,
-                value,
-                reason,
-            } => {
-                write!(f, "invalid {name} '{value}': {reason}")
-            }
-            Self::ExternalActionFailed { action, reason } => {
-                write!(f, "{action} failed: {reason}")
-            }
-            Self::OperationFailed { action, reason } => {
-                write!(f, "{action} failed: {reason}")
-            }
-            Self::NotFound { what, hint } => {
-                if let Some(hint) = hint {
-                    write!(f, "{what} not found\n{hint}")
-                } else {
-                    write!(f, "{what} not found")
-                }
-            }
-        }
-    }
-}
-
-impl std::error::Error for CliError {}
 
 impl From<String> for CliError {
     fn from(message: String) -> Self {
@@ -146,6 +135,5 @@ mod tests {
 
         let rendered = error.to_string();
         assert!(rendered.contains("model 'foo' not found"));
-        assert!(rendered.contains("char model list"));
     }
 }

@@ -50,7 +50,7 @@ impl AudioSource {
 
 #[derive(Args)]
 pub struct AudioArgs {
-    #[arg(long, default_value = "input")]
+    #[arg(long, value_enum, default_value = "input")]
     pub audio: AudioSource,
 }
 
@@ -367,63 +367,6 @@ pub async fn process_stream<S, H>(
     let _ = tokio::time::timeout(Duration::from_secs(timeout_secs), read_loop).await;
     handle.finalize().await;
     eprintln!();
-}
-
-#[macro_export]
-macro_rules! simple_provider_example {
-    (
-        adapter: $adapter:path,
-        api_base: $api_base:expr,
-        api_key_env: $api_key_env:literal,
-        params: $params:expr $(,)?
-    ) => {
-        #[derive(::clap::Parser)]
-        struct Args {
-            #[command(flatten)]
-            audio: $crate::AudioArgs,
-        }
-
-        #[::tokio::main]
-        async fn main() {
-            let args = <Args as ::clap::Parser>::parse();
-            let audio: ::std::sync::Arc<dyn $crate::AudioProvider> =
-                ::std::sync::Arc::new($crate::ActualAudio);
-
-            if args.audio.audio.is_dual() {
-                let client = $crate::build_dual_client::<$adapter>(
-                    $api_base,
-                    Some(::std::env::var($api_key_env).expect(concat!($api_key_env, " not set"))),
-                    $params,
-                )
-                .await;
-
-                $crate::run_dual_client(
-                    audio,
-                    args.audio.audio,
-                    client,
-                    $crate::DEFAULT_SAMPLE_RATE,
-                    $crate::DEFAULT_TIMEOUT_SECS,
-                )
-                .await;
-            } else {
-                let client = $crate::build_single_client::<$adapter>(
-                    $api_base,
-                    Some(::std::env::var($api_key_env).expect(concat!($api_key_env, " not set"))),
-                    $params,
-                )
-                .await;
-
-                $crate::run_single_client(
-                    audio,
-                    args.audio.audio,
-                    client,
-                    $crate::DEFAULT_SAMPLE_RATE,
-                    $crate::DEFAULT_TIMEOUT_SECS,
-                )
-                .await;
-            }
-        }
-    };
 }
 
 fn capture_frame_to_bytes(

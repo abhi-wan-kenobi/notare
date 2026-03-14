@@ -5,14 +5,17 @@ edition = "2024"
 homepage = "https://char.com"
 license = "GPL-3.0"
 repository = "https://github.com/fastrepl/char"
-description = "Live transcription TUI"
+description = "Live transcription and audio tools"
 
 [[bin]]
 name = "char"
 path = "src/main.rs"
 
 [dependencies]
+hypr-api-env = { workspace = true }
+hypr-audio = { workspace = true }
 hypr-audio-actual = { workspace = true }
+hypr-audio-utils = { workspace = true }
 hypr-file = { workspace = true }
 hypr-language = { workspace = true }
 hypr-listener-core = { workspace = true }
@@ -22,17 +25,25 @@ hypr-local-stt-core = { workspace = true }
 hypr-local-stt-server = { workspace = true }
 hypr-model-downloader = { workspace = true }
 hypr-storage = { workspace = true }
+hypr-transcribe-proxy = { workspace = true }
 hypr-transcript = { workspace = true }
+owhisper-client = { workspace = true }
 owhisper-interface = { workspace = true }
 
+axum = { workspace = true, features = ["ws"] }
+bytes = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
+clap-verbosity-flag = "3"
+clio = { version = "0.3", features = ["clap-parse"] }
+colored = "3"
 comfy-table = "7"
 crossterm = { workspace = true }
 dirs = { workspace = true }
-image = { version = "0.25", default-features = false, features = ["png"] }
+futures-util = { workspace = true }
 indicatif = "0.17"
+log = "0.4"
+miette = { version = "7", features = ["fancy"] }
 ratatui = { workspace = true }
-ratatui-image = { version = "10.0.6", default-features = false, features = ["crossterm", "image-defaults"] }
 tempfile = { workspace = true }
 textwrap = { version = "0.16", features = ["terminal_size"] }
 tui-textarea = { workspace = true }
@@ -41,6 +52,7 @@ open = { workspace = true }
 ractor = { workspace = true, features = ["async-trait"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
+thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal", "sync", "time"] }
 tokio-stream = { workspace = true }
 url = { workspace = true }

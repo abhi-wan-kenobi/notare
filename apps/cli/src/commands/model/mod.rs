@@ -20,8 +20,11 @@ use runtime::CliModelRuntime;
 
 #[derive(Subcommand, Debug)]
 pub enum ModelCommands {
+    /// Show resolved paths for settings and model storage
     Paths,
+    /// Show current STT and LLM provider/model configuration
     Current,
+    /// List available models and their download status
     List {
         #[arg(long, value_enum)]
         kind: Option<ModelKind>,
@@ -29,42 +32,46 @@ pub enum ModelCommands {
         supported: bool,
         #[arg(long, value_enum, default_value = "text")]
         format: OutputFormat,
-        #[arg(long, hide = true, conflicts_with = "format")]
-        json: bool,
     },
-    #[command(about = "Manage downloadable Cactus models")]
+    /// Manage downloadable Cactus models
     Cactus {
         #[command(subcommand)]
         command: CactusCommands,
     },
-    Download {
-        name: String,
-    },
-    Delete {
-        name: String,
-    },
+    /// Download a model by name
+    Download { name: String },
+    /// Delete a downloaded model
+    Delete { name: String },
 }
 
 #[derive(Subcommand, Debug)]
 pub enum CactusCommands {
+    /// List available Cactus models
     List {
         #[arg(long, value_enum, default_value = "text")]
         format: OutputFormat,
-        #[arg(long, hide = true, conflicts_with = "format")]
-        json: bool,
     },
-    Download {
-        name: String,
-    },
-    Delete {
-        name: String,
-    },
+    /// Download a Cactus model by name
+    Download { name: String },
+    /// Delete a downloaded Cactus model
+    Delete { name: String },
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 pub enum ModelKind {
     Stt,
     Llm,
+}
+
+#[derive(Clone, Debug, serde::Serialize)]
+struct ModelRow {
+    name: String,
+    kind: String,
+    status: String,
+    display_name: String,
+    description: String,
+    active: bool,
+    install_path: String,
 }
 
 pub async fn run(command: ModelCommands) -> CliResult<()> {
@@ -120,7 +127,6 @@ pub async fn run(command: ModelCommands) -> CliResult<()> {
             kind,
             supported,
             format,
-            json,
         } => {
             let runtime = Arc::new(CliModelRuntime {
                 models_base: models_base.clone(),
@@ -135,43 +141,8 @@ pub async fn run(command: ModelCommands) -> CliResult<()> {
                 all_models(kind)
             };
 
-            let mut rows = Vec::new();
-            for model in &models {
-                let status = match manager.is_downloaded(model).await {
-                    Ok(true) => "downloaded",
-                    Ok(false) => {
-                        if model.download_url().is_some() {
-                            "not-downloaded"
-                        } else {
-                            "unavailable"
-                        }
-                    }
-                    Err(_) => "error",
-                };
-
-                let active = current
-                    .as_ref()
-                    .is_some_and(|value| is_current_model(model, value));
-
-                rows.push(ModelRow {
-                    active,
-                    name: model.cli_name().to_string(),
-                    kind: model.kind().to_string(),
-                    status: status.to_string(),
-                    display_name: model.display_name().to_string(),
-                    description: model.description().to_string(),
-                    install_path: model.install_path(&models_base).display().to_string(),
-                });
-            }
-
-            let format = if json { OutputFormat::Json } else { format };
-
-            if matches!(format, OutputFormat::Json) {
-                return print_model_rows_json(&models_base, &rows);
-            }
-
-            print_model_rows(&models_base, &rows)?;
-            Ok(())
+            let rows = collect_model_rows(&models, &models_base, &current, &manager).await;
+            write_model_output(&rows, &models_base, format)
         }
         ModelCommands::Cactus { command } => {
             run_cactus(command, &paths.settings_path, &models_base).await
@@ -267,106 +238,17 @@ async fn run_cactus(
     models_base: &std::path::Path,
 ) -> CliResult<()> {
     match command {
-        CactusCommands::List { format, json } => {
+        CactusCommands::List { format } => {
             let runtime = Arc::new(CliModelRuntime {
                 models_base: models_base.to_path_buf(),
                 progress: None,
             });
             let manager = ModelDownloadManager::new(runtime);
-
             let current = settings::load_settings(settings_path);
             let models = all_cactus_models();
 
-            let format = if json { OutputFormat::Json } else { format };
-
-            if matches!(format, OutputFormat::Json) {
-                #[derive(serde::Serialize)]
-                struct Item {
-                    name: String,
-                    kind: String,
-                    status: String,
-                    display_name: String,
-                    description: String,
-                    active: bool,
-                    install_path: String,
-                }
-
-                let mut items = Vec::with_capacity(models.len());
-                for model in models {
-                    let status = match manager.is_downloaded(&model).await {
-                        Ok(true) => "downloaded",
-                        Ok(false) => {
-                            if model.download_url().is_some() {
-                                "not-downloaded"
-                            } else {
-                                "unavailable"
-                            }
-                        }
-                        Err(_) => "error",
-                    };
-
-                    let active = current
-                        .as_ref()
-                        .is_some_and(|value| is_current_model(&model, value));
-
-                    items.push(Item {
-                        name: model.cli_name().to_string(),
-                        kind: model.kind().to_string(),
-                        status: status.to_string(),
-                        display_name: model.display_name().to_string(),
-                        description: model.description().to_string(),
-                        active,
-                        install_path: model.install_path(models_base).display().to_string(),
-                    });
-                }
-
-                let bytes = if std::io::stdout().is_terminal() {
-                    serde_json::to_vec_pretty(&items)
-                } else {
-                    serde_json::to_vec(&items)
-                }
-                .map_err(|e| CliError::operation_failed("serialize model list", e.to_string()))?;
-
-                std::io::stdout()
-                    .write_all(&bytes)
-                    .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
-                std::io::stdout()
-                    .write_all(b"\n")
-                    .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
-                return Ok(());
-            }
-
-            let mut rows = Vec::new();
-            for model in models {
-                let status = match manager.is_downloaded(&model).await {
-                    Ok(true) => "downloaded",
-                    Ok(false) => {
-                        if model.download_url().is_some() {
-                            "not-downloaded"
-                        } else {
-                            "unavailable"
-                        }
-                    }
-                    Err(_) => "error",
-                };
-
-                let active = current
-                    .as_ref()
-                    .is_some_and(|value| is_current_model(&model, value));
-
-                rows.push(ModelRow {
-                    active,
-                    name: model.cli_name().to_string(),
-                    kind: model.kind().to_string(),
-                    status: status.to_string(),
-                    display_name: model.display_name().to_string(),
-                    description: model.description().to_string(),
-                    install_path: model.install_path(models_base).display().to_string(),
-                });
-            }
-
-            print_model_rows(models_base, &rows)?;
-            Ok(())
+            let rows = collect_model_rows(&models, models_base, &current, &manager).await;
+            write_model_output(&rows, models_base, format)
         }
         CactusCommands::Download { name } => {
             let Some(model) = find_cactus_model(&name) else {
@@ -453,59 +335,64 @@ async fn run_cactus(
     }
 }
 
-#[derive(Clone, Debug)]
-struct ModelRow {
-    active: bool,
-    name: String,
-    kind: String,
-    status: String,
-    display_name: String,
-    description: String,
-    install_path: String,
+async fn collect_model_rows(
+    models: &[LocalModel],
+    models_base: &Path,
+    current: &Option<settings::DesktopSettings>,
+    manager: &ModelDownloadManager<LocalModel>,
+) -> Vec<ModelRow> {
+    let mut rows = Vec::new();
+    for model in models {
+        let status = match manager.is_downloaded(model).await {
+            Ok(true) => "downloaded",
+            Ok(false) if model.download_url().is_some() => "not-downloaded",
+            Ok(false) => "unavailable",
+            Err(_) => "error",
+        };
+
+        let active = current
+            .as_ref()
+            .is_some_and(|value| is_current_model(model, value));
+
+        rows.push(ModelRow {
+            name: model.cli_name().to_string(),
+            kind: model.kind().to_string(),
+            status: status.to_string(),
+            display_name: model.display_name().to_string(),
+            description: model.description().to_string(),
+            active,
+            install_path: model.install_path(models_base).display().to_string(),
+        });
+    }
+    rows
 }
 
-fn print_model_rows_json(_models_base: &Path, rows: &[ModelRow]) -> CliResult<()> {
-    #[derive(serde::Serialize)]
-    struct Item {
-        name: String,
-        kind: String,
-        status: String,
-        display_name: String,
-        description: String,
-        active: bool,
-        install_path: String,
+fn write_model_output(
+    rows: &[ModelRow],
+    models_base: &Path,
+    format: OutputFormat,
+) -> CliResult<()> {
+    if matches!(format, OutputFormat::Json) {
+        let bytes = if std::io::stdout().is_terminal() {
+            serde_json::to_vec_pretty(rows)
+        } else {
+            serde_json::to_vec(rows)
+        }
+        .map_err(|e| CliError::operation_failed("serialize model list", e.to_string()))?;
+
+        std::io::stdout()
+            .write_all(&bytes)
+            .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
+        std::io::stdout()
+            .write_all(b"\n")
+            .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
+        return Ok(());
     }
 
-    let items: Vec<Item> = rows
-        .iter()
-        .map(|row| Item {
-            name: row.name.clone(),
-            kind: row.kind.clone(),
-            status: row.status.clone(),
-            display_name: row.display_name.clone(),
-            description: row.description.clone(),
-            active: row.active,
-            install_path: row.install_path.clone(),
-        })
-        .collect();
-
-    let bytes = if std::io::stdout().is_terminal() {
-        serde_json::to_vec_pretty(&items)
-    } else {
-        serde_json::to_vec(&items)
-    }
-    .map_err(|e| CliError::operation_failed("serialize model list", e.to_string()))?;
-
-    std::io::stdout()
-        .write_all(&bytes)
-        .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
-    std::io::stdout()
-        .write_all(b"\n")
-        .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
-    Ok(())
+    print_model_rows_table(models_base, rows)
 }
 
-fn print_model_rows(models_base: &Path, rows: &[ModelRow]) -> CliResult<()> {
+fn print_model_rows_table(models_base: &Path, rows: &[ModelRow]) -> CliResult<()> {
     println!("models_base={}", models_base.display());
 
     if !std::io::stdout().is_terminal() {

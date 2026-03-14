@@ -1,10 +1,11 @@
 pub mod auth;
 pub mod batch;
 pub mod cactus_server;
+pub mod debug;
 pub mod desktop;
-pub mod entry;
 pub mod listen;
 pub mod model;
+pub mod transcribe;
 
 use clap::ValueEnum;
 
