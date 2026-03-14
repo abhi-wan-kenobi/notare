@@ -87,7 +87,6 @@
     "tinybase": "^7.3.2",
     "unpic": "^4.2.2",
     "usehooks-ts": "^3.1.1",
-    "vite-tsconfig-paths": "^5.1.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -107,14 +106,14 @@
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
     "@types/semver": "^7.7.1",
-    "@vitejs/plugin-react": "^5.1.4",
+    "@vitejs/plugin-react": "^6.0.0",
     "js-yaml": "^4.1.1",
     "jsdom": "^27.4.0",
     "netlify": "^23.15.1",
     "pagefind": "^1.4.0",
     "tanstack-router-sitemap": "^1.0.13",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1",
+    "vite": "^8.0.0",
     "web-vitals": "^5.1.0"
   }
 }

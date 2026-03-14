@@ -165,7 +165,7 @@
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
     "@types/stopword": "^2.0.3",
-    "@vitejs/plugin-react": "^4.7.0",
+    "@vitejs/plugin-react": "^6.0.0",
     "autoprefixer": "^10.4.24",
     "postcss": "^8.5.6",
     "react-grab": "^0.1.23",
@@ -173,8 +173,8 @@
     "tailwindcss": "^4.1.18",
     "tsx": "^4.21.0",
     "typescript": "~5.8.3",
-    "vite": "^7.3.1",
+    "vite": "^8.0.0",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.0"
   }
 }
