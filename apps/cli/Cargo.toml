@@ -15,7 +15,9 @@ path = "src/main.rs"
 hypr-api-env = { workspace = true }
 hypr-audio = { workspace = true }
 hypr-audio-actual = { workspace = true }
+hypr-audio-mock = { workspace = true, optional = true }
 hypr-audio-utils = { workspace = true }
+hypr-cli-tui = { workspace = true }
 hypr-file = { workspace = true }
 hypr-fs-sync-core = { workspace = true }
 hypr-language = { workspace = true }
@@ -61,3 +63,6 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal", "
 tokio-stream = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
+
+[features]
+mock-audio = ["dep:hypr-audio-mock"]

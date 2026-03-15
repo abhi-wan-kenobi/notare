@@ -1,15 +1,15 @@
 use ratatui::text::Span;
 
-use super::app::App;
+use crate::commands::listen::app::App;
 use crate::theme::Theme;
 
-pub fn build_waveform_spans(app: &App, width: usize, theme: &Theme) -> Vec<Span<'static>> {
+pub(super) fn build_waveform_spans(app: &App, width: usize, theme: &Theme) -> Vec<Span<'static>> {
     if width == 0 {
         return Vec::new();
     }
 
-    let mic = app.mic_history.iter().copied().collect::<Vec<_>>();
-    let speaker = app.speaker_history.iter().copied().collect::<Vec<_>>();
+    let mic = app.mic_history().iter().copied().collect::<Vec<_>>();
+    let speaker = app.speaker_history().iter().copied().collect::<Vec<_>>();
     let sample_count = mic.len().max(speaker.len());
 
     if sample_count == 0 {
@@ -43,7 +43,7 @@ pub fn build_waveform_spans(app: &App, width: usize, theme: &Theme) -> Vec<Span<
             style = theme.waveform_hot;
         }
 
-        if app.mic_muted {
+        if app.mic_muted() {
             style = theme.waveform_silent;
         }
 
@@ -53,6 +53,8 @@ pub fn build_waveform_spans(app: &App, width: usize, theme: &Theme) -> Vec<Span<
     spans
 }
 
+const ENVELOPE_FLAT_RADIUS: f64 = 0.62;
+
 fn edge_envelope(x: usize, width: usize) -> f64 {
     if width <= 1 {
         return 1.0;
@@ -60,11 +62,11 @@ fn edge_envelope(x: usize, width: usize) -> f64 {
 
     let center = (width - 1) as f64 / 2.0;
     let distance = ((x as f64) - center).abs() / center.max(1.0);
-    if distance <= 0.62 {
+    if distance <= ENVELOPE_FLAT_RADIUS {
         return 1.0;
     }
 
-    let t = ((distance - 0.62) / 0.38).clamp(0.0, 1.0);
+    let t = ((distance - ENVELOPE_FLAT_RADIUS) / (1.0 - ENVELOPE_FLAT_RADIUS)).clamp(0.0, 1.0);
     let smooth = t * t * (3.0 - 2.0 * t);
     1.0 - smooth
 }

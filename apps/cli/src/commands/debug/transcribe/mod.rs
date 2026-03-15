@@ -62,13 +62,15 @@ pub struct TranscribeArgs {
 }
 
 pub async fn run(args: TranscribeArgs) -> CliResult<()> {
-    if args.model_path.is_some() && !args.provider.is_local() {
-        return Err(CliError::invalid_argument_with_hint(
-            "--model-path",
-            args.model_path.unwrap().display().to_string(),
-            "only valid with local providers (cactus)",
-            "Use --provider cactus for local model files, or remove --model-path for cloud providers.",
-        ));
+    if let Some(ref model_path) = args.model_path {
+        if !args.provider.is_local() {
+            return Err(CliError::invalid_argument_with_hint(
+                "--model-path",
+                model_path.display().to_string(),
+                "only valid with local providers (cactus)",
+                "Use --provider cactus for local model files, or remove --model-path for cloud providers.",
+            ));
+        }
     }
 
     match args.provider {
@@ -155,12 +157,21 @@ async fn resolve_standard_provider(
     resolve_config(shared, None, api_key, model, "en").await
 }
 
+fn create_audio_provider(source: &AudioSource) -> Arc<dyn AudioProvider> {
+    #[cfg(feature = "mock-audio")]
+    if source.is_mock() {
+        return Arc::new(hypr_audio_mock::MockAudio::new(1));
+    }
+    let _ = source;
+    Arc::new(ActualAudio)
+}
+
 async fn run_resolved_provider<A: RealtimeSttAdapter>(
     resolved: &ResolvedSttConfig,
     source: AudioSource,
 ) -> CliResult<()> {
     let _ = resolved.server.as_ref();
-    let audio: Arc<dyn AudioProvider> = Arc::new(ActualAudio);
+    let audio: Arc<dyn AudioProvider> = create_audio_provider(&source);
     let mut params = default_listen_params();
     params.languages = vec![resolved.language.clone()];
     params.model = resolved.model_option();
@@ -170,29 +181,7 @@ async fn run_resolved_provider<A: RealtimeSttAdapter>(
         Some(resolved.api_key.clone())
     };
 
-    if source.is_dual() {
-        let client = build_dual_client::<A>(&resolved.base_url, api_key, params).await;
-        run_dual_client(
-            audio,
-            source,
-            client,
-            DEFAULT_SAMPLE_RATE,
-            DEFAULT_TIMEOUT_SECS,
-        )
-        .await?;
-    } else {
-        let client = build_single_client::<A>(&resolved.base_url, api_key, params).await;
-        run_single_client(
-            audio,
-            source,
-            client,
-            DEFAULT_SAMPLE_RATE,
-            DEFAULT_TIMEOUT_SECS,
-        )
-        .await?;
-    }
-
-    Ok(())
+    run_for_source::<A>(audio, source, &resolved.base_url, api_key, params).await
 }
 
 async fn run_cactus_from_path(model_path: PathBuf, source: AudioSource) -> CliResult<()> {
@@ -200,40 +189,16 @@ async fn run_cactus_from_path(model_path: PathBuf, source: AudioSource) -> CliRe
         .await
         .map_err(|e| CliError::operation_failed("start local cactus server", e.to_string()))?;
     let base_url = server.base_url().to_string();
+    let audio: Arc<dyn AudioProvider> = create_audio_provider(&source);
 
-    let audio: Arc<dyn AudioProvider> = Arc::new(ActualAudio);
-
-    if source.is_dual() {
-        let client = build_dual_client::<owhisper_client::CactusAdapter>(
-            &base_url,
-            None,
-            default_listen_params(),
-        )
-        .await;
-        run_dual_client(
-            audio,
-            source,
-            client,
-            DEFAULT_SAMPLE_RATE,
-            DEFAULT_TIMEOUT_SECS,
-        )
-        .await?;
-    } else {
-        let client = build_single_client::<owhisper_client::CactusAdapter>(
-            &base_url,
-            None,
-            default_listen_params(),
-        )
-        .await;
-        run_single_client(
-            audio,
-            source,
-            client,
-            DEFAULT_SAMPLE_RATE,
-            DEFAULT_TIMEOUT_SECS,
-        )
-        .await?;
-    }
+    run_for_source::<owhisper_client::CactusAdapter>(
+        audio,
+        source,
+        &base_url,
+        None,
+        default_listen_params(),
+    )
+    .await?;
 
     // keep server alive until transcription ends
     drop(server);
@@ -308,27 +273,12 @@ async fn run_with_adapter<A: RealtimeSttAdapter>(
     source: &AudioSource,
     api_base: String,
 ) -> CliResult<()> {
-    if source.is_dual() {
-        let client = build_dual_client::<A>(api_base, None, default_listen_params()).await;
-        run_dual_client(
-            audio,
-            source.clone(),
-            client,
-            DEFAULT_SAMPLE_RATE,
-            DEFAULT_TIMEOUT_SECS,
-        )
-        .await?;
-    } else {
-        let client = build_single_client::<A>(api_base, None, default_listen_params()).await;
-        run_single_client(
-            audio,
-            source.clone(),
-            client,
-            DEFAULT_SAMPLE_RATE,
-            DEFAULT_TIMEOUT_SECS,
-        )
-        .await?;
-    }
-
-    Ok(())
+    run_for_source::<A>(
+        audio,
+        source.clone(),
+        api_base,
+        None,
+        default_listen_params(),
+    )
+    .await
 }

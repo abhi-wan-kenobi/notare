@@ -3220,11 +3220,13 @@ dependencies = [
  "api-env",
  "audio",
  "audio-actual",
+ "audio-mock",
  "audio-utils",
  "axum 0.8.8",
  "bytes",
  "clap",
  "clap-verbosity-flag",
+ "cli-tui",
  "clio",
  "colored",
  "comfy-table",
@@ -3264,6 +3266,17 @@ dependencies = [
  "tui-textarea-2",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "cli-tui"
+version = "0.1.0"
+dependencies = [
+ "crossterm",
+ "ratatui",
+ "tokio",
+ "tokio-stream",
+ "tui-textarea-2",
 ]
 
 [[package]]

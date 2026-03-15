@@ -9,6 +9,14 @@ pub mod model;
 use clap::ValueEnum;
 use hypr_listener2_core::BatchProvider;
 
+pub struct SttGlobalArgs {
+    pub provider: Provider,
+    pub base_url: Option<String>,
+    pub api_key: Option<String>,
+    pub model: Option<String>,
+    pub language: String,
+}
+
 #[derive(Clone, Copy, Debug, ValueEnum)]
 pub enum OutputFormat {
     Pretty,

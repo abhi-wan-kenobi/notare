@@ -49,6 +49,37 @@ pub async fn build_dual_client<A: RealtimeSttAdapter>(
     builder.build_dual().await
 }
 
+pub async fn run_for_source<A: RealtimeSttAdapter>(
+    audio: Arc<dyn AudioProvider>,
+    source: AudioSource,
+    api_base: impl Into<String>,
+    api_key: Option<String>,
+    params: owhisper_interface::ListenParams,
+) -> CliResult<()> {
+    if source.is_dual() {
+        let client = build_dual_client::<A>(api_base, api_key, params).await;
+        run_dual_client(
+            audio,
+            source,
+            client,
+            DEFAULT_SAMPLE_RATE,
+            DEFAULT_TIMEOUT_SECS,
+        )
+        .await?;
+    } else {
+        let client = build_single_client::<A>(api_base, api_key, params).await;
+        run_single_client(
+            audio,
+            source,
+            client,
+            DEFAULT_SAMPLE_RATE,
+            DEFAULT_TIMEOUT_SECS,
+        )
+        .await?;
+    }
+    Ok(())
+}
+
 pub async fn run_single_client<A: RealtimeSttAdapter>(
     audio: Arc<dyn AudioProvider>,
     source: AudioSource,

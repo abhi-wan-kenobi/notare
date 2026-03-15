@@ -32,6 +32,8 @@ pub enum AudioSource {
     Output,
     RawDual,
     AecDual,
+    #[cfg(feature = "mock-audio")]
+    Mock,
 }
 
 impl AudioSource {
@@ -41,6 +43,11 @@ impl AudioSource {
 
     fn uses_aec(&self) -> bool {
         matches!(self, Self::AecDual)
+    }
+
+    #[cfg(feature = "mock-audio")]
+    pub fn is_mock(&self) -> bool {
+        matches!(self, Self::Mock)
     }
 }
 
@@ -64,43 +71,49 @@ pub fn create_single_audio_stream(
     >,
 > {
     let chunk_size = chunk_size_for_stt(sample_rate);
-    match source {
-        AudioSource::Input => {
-            let capture = audio
-                .open_mic_capture(None, sample_rate, chunk_size)
-                .map_err(|e| CliError::operation_failed("open mic capture", e.to_string()))?;
-            Ok(Box::pin(capture.filter_map(|result| async move {
-                match result {
-                    Ok(frame) => Some(MixedMessage::Audio(f32_to_i16_bytes(
-                        frame.raw_mic.iter().copied(),
-                    ))),
-                    Err(error) => {
-                        eprintln!("capture failed: {error}");
-                        None
-                    }
-                }
-            })))
+    let use_mic = match source {
+        AudioSource::Input => true,
+        AudioSource::Output => false,
+        #[cfg(feature = "mock-audio")]
+        AudioSource::Mock => true,
+        AudioSource::RawDual | AudioSource::AecDual => {
+            return Err(CliError::operation_failed(
+                "create single audio stream",
+                "dual audio modes use create_dual_audio_stream",
+            ));
         }
-        AudioSource::Output => {
-            let capture = audio
-                .open_speaker_capture(sample_rate, chunk_size)
-                .map_err(|e| CliError::operation_failed("open speaker capture", e.to_string()))?;
-            Ok(Box::pin(capture.filter_map(|result| async move {
-                match result {
-                    Ok(frame) => Some(MixedMessage::Audio(f32_to_i16_bytes(
-                        frame.raw_speaker.iter().copied(),
-                    ))),
-                    Err(error) => {
-                        eprintln!("capture failed: {error}");
-                        None
-                    }
+    };
+
+    if use_mic {
+        let capture = audio
+            .open_mic_capture(None, sample_rate, chunk_size)
+            .map_err(|e| CliError::operation_failed("open mic capture", e.to_string()))?;
+        Ok(Box::pin(capture.filter_map(|result| async move {
+            match result {
+                Ok(frame) => Some(MixedMessage::Audio(f32_to_i16_bytes(
+                    frame.raw_mic.iter().copied(),
+                ))),
+                Err(error) => {
+                    eprintln!("capture failed: {error}");
+                    None
                 }
-            })))
-        }
-        AudioSource::RawDual | AudioSource::AecDual => Err(CliError::operation_failed(
-            "create single audio stream",
-            "dual audio modes use create_dual_audio_stream",
-        )),
+            }
+        })))
+    } else {
+        let capture = audio
+            .open_speaker_capture(sample_rate, chunk_size)
+            .map_err(|e| CliError::operation_failed("open speaker capture", e.to_string()))?;
+        Ok(Box::pin(capture.filter_map(|result| async move {
+            match result {
+                Ok(frame) => Some(MixedMessage::Audio(f32_to_i16_bytes(
+                    frame.raw_speaker.iter().copied(),
+                ))),
+                Err(error) => {
+                    eprintln!("capture failed: {error}");
+                    None
+                }
+            }
+        })))
     }
 }
 
@@ -149,6 +162,8 @@ pub fn print_audio_info(audio: &dyn AudioProvider, source: &AudioSource, sample_
     let source_name = match source {
         AudioSource::Input => "input",
         AudioSource::Output => "output",
+        #[cfg(feature = "mock-audio")]
+        AudioSource::Mock => "mock",
         AudioSource::RawDual | AudioSource::AecDual => unreachable!(),
     };
     let chunk_size = chunk_size_for_stt(sample_rate);
@@ -167,6 +182,8 @@ pub fn print_dual_audio_info(audio: &dyn AudioProvider, source: &AudioSource, sa
         AudioSource::RawDual => "raw-dual",
         AudioSource::AecDual => "aec-dual",
         AudioSource::Input | AudioSource::Output => unreachable!(),
+        #[cfg(feature = "mock-audio")]
+        AudioSource::Mock => unreachable!(),
     };
 
     eprintln!(
@@ -195,6 +212,8 @@ pub fn capture_frame_to_bytes(
         AudioSource::RawDual => frame.raw_dual(),
         AudioSource::AecDual => frame.aec_dual(),
         AudioSource::Input | AudioSource::Output => unreachable!(),
+        #[cfg(feature = "mock-audio")]
+        AudioSource::Mock => unreachable!(),
     };
 
     (

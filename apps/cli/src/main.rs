@@ -1,11 +1,8 @@
 mod commands;
 mod error;
-mod event;
 mod fmt;
-mod frame;
+mod output;
 mod runtime;
-mod terminal;
-mod textarea_input;
 mod theme;
 
 use clap::{Parser, Subcommand};
@@ -75,6 +72,9 @@ enum Commands {
     Listen {
         #[arg(long, value_enum)]
         provider: commands::Provider,
+
+        #[arg(long, value_enum, default_value = "dual")]
+        audio: commands::listen::AudioMode,
     },
     /// Authenticate with char.com
     Auth,
@@ -137,27 +137,29 @@ async fn run(cli: Cli) -> CliResult<()> {
             }
             Ok(())
         }
-        Commands::Listen { provider } => {
+        Commands::Listen { provider, audio } => {
             commands::listen::run(commands::listen::Args {
-                provider,
-                base_url: global.base_url,
-                api_key: global.api_key,
-                model: global.model,
-                language: global.language,
+                stt: commands::SttGlobalArgs {
+                    provider,
+                    base_url: global.base_url,
+                    api_key: global.api_key,
+                    model: global.model,
+                    language: global.language,
+                },
                 record: global.record,
+                audio,
             })
             .await
         }
         Commands::Batch { args } => {
-            commands::batch::run(
-                args,
-                global.base_url,
-                global.api_key,
-                global.model,
-                global.language,
-                verbose.is_silent(),
-            )
-            .await
+            let stt = commands::SttGlobalArgs {
+                provider: args.provider,
+                base_url: global.base_url,
+                api_key: global.api_key,
+                model: global.model,
+                language: global.language,
+            };
+            commands::batch::run(args, stt, verbose.is_silent()).await
         }
         Commands::Model { command } => commands::model::run(command).await,
         Commands::Debug { command } => commands::debug::run(command).await,

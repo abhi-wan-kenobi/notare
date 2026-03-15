@@ -31,6 +31,27 @@ TinyBase as the primary data store (schema at `packages/store/src/tinybase.ts`),
 - Use `cn` from `@hypr/utils` for conditional classNames. Always pass an array, split by logical grouping.
 - Use `motion/react` instead of `framer-motion`.
 
+## CLI TUI Command Architecture
+
+Each TUI command in `apps/cli/src/commands/` follows this layout:
+
+```
+commands/<name>/
+  mod.rs        -- Screen impl, Args, run()          [glue]
+  app.rs        -- App, dispatch(Action)->Vec<Effect> [pure state machine]
+  action.rs     -- Action enum                        [input events]
+  effect.rs     -- Effect enum                        [output commands]
+  runtime.rs    -- Runtime, RuntimeEvent              [async I/O]
+  ui.rs         -- draw(frame, app)                   [rendering]
+```
+
+Naming rules:
+- Types drop the command prefix: `App`, `Action`, `Effect`, `Runtime`, `RuntimeEvent`
+- `app.rs` → `app/mod.rs` with private submodules when state is complex
+- `ui.rs` → `ui/mod.rs` with sub-files when rendering is complex
+- `action.rs`/`effect.rs` are siblings of `mod.rs`, never nested inside `app/`
+- `app.rs` contains no rendering logic, no API calls, no async code
+
 ## Misc
 
 - Do not create summary docs or example code files unless requested.

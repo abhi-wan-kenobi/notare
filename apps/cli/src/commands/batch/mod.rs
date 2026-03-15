@@ -1,18 +1,17 @@
-use std::io::{IsTerminal, Write};
-use std::path::{Path, PathBuf};
+mod output;
+mod response;
+
+use std::io::IsTerminal;
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use hypr_listener2_core::{BatchErrorCode, BatchEvent, BatchParams};
-use indicatif::{ProgressBar, ProgressStyle};
+use hypr_listener2_core::{BatchErrorCode, BatchEvent};
 use tokio::sync::mpsc;
 
-use crate::commands::{OutputFormat, Provider};
+use crate::commands::{OutputFormat, Provider, SttGlobalArgs};
 use crate::error::{CliError, CliResult};
-use crate::runtime::stt::{ResolvedSttConfig, resolve_config};
-
-mod runtime;
-
-use runtime::BatchEventRuntime;
+use crate::runtime::batch::ChannelBatchRuntime;
+use crate::runtime::stt::resolve_config;
 
 #[derive(clap::Args)]
 pub struct BatchArgs {
@@ -28,15 +27,15 @@ pub struct BatchArgs {
     pub format: OutputFormat,
 }
 
-pub async fn run(
-    args: BatchArgs,
-    base_url: Option<String>,
-    api_key: Option<String>,
-    model: Option<String>,
-    language: String,
-    quiet: bool,
-) -> CliResult<()> {
-    let resolved = resolve_config(args.provider, base_url, api_key, model, language).await?;
+pub async fn run(args: BatchArgs, stt: SttGlobalArgs, quiet: bool) -> CliResult<()> {
+    let resolved = resolve_config(
+        stt.provider,
+        stt.base_url,
+        stt.api_key,
+        stt.model,
+        stt.language,
+    )
+    .await?;
     let _ = resolved.server.as_ref();
 
     let file_path = args.input.path().to_str().ok_or_else(|| {
@@ -49,30 +48,20 @@ pub async fn run(
 
     let session_id = uuid::Uuid::new_v4().to_string();
     let (batch_tx, mut batch_rx) = mpsc::unbounded_channel::<BatchEvent>();
-    let runtime = Arc::new(BatchEventRuntime { tx: batch_tx });
+    let runtime = Arc::new(ChannelBatchRuntime { tx: batch_tx });
 
-    let params = build_batch_params(
-        session_id,
-        file_path.to_string(),
-        args.keywords,
-        &resolved,
-        resolved.language.clone(),
-    );
+    let params = resolved.to_batch_params(session_id, file_path.to_string(), args.keywords);
 
     let show_progress = !quiet && std::io::stderr().is_terminal();
     let format = args.format;
     let output = args.output;
 
     let progress = if show_progress {
-        let bar = ProgressBar::new(100);
-        bar.set_style(
-            ProgressStyle::with_template("{spinner} {msg} [{bar:20}] {pos:>3}%")
-                .unwrap()
-                .progress_chars("█▓░"),
-        );
-        bar.set_message("Transcribing");
-        bar.enable_steady_tick(std::time::Duration::from_millis(120));
-        Some(bar)
+        crate::output::create_progress_bar(
+            "Transcribing",
+            "{spinner} {msg} [{bar:20}] {pos:>3}%",
+            "█▓░",
+        )
     } else {
         None
     };
@@ -82,7 +71,7 @@ pub async fn run(
         tokio::spawn(async move { hypr_listener2_core::run_batch(runtime, params).await });
 
     let mut last_progress_percent: i8 = -1;
-    let mut response: Option<owhisper_interface::batch::Response> = None;
+    let mut batch_response: Option<owhisper_interface::batch::Response> = None;
     let mut streamed_segments: Vec<owhisper_interface::stream::StreamResponse> = Vec::new();
     let mut failure: Option<(BatchErrorCode, String)> = None;
 
@@ -116,7 +105,7 @@ pub async fn run(
                 progress.set_position(percent as u64);
             }
             BatchEvent::BatchResponse { response: next, .. } => {
-                response = Some(next);
+                batch_response = Some(next);
             }
             BatchEvent::BatchFailed { code, error, .. } => {
                 failure = Some((code, error));
@@ -126,7 +115,7 @@ pub async fn run(
 
     let result = batch_task
         .await
-        .map_err(|e| CliError::external_action_failed("batch transcription", e.to_string()))?;
+        .map_err(|e| CliError::operation_failed("batch transcription", e.to_string()))?;
     if let Err(error) = result {
         if let Some(progress) = progress {
             progress.abandon_with_message("Failed");
@@ -144,23 +133,23 @@ pub async fn run(
         progress.finish_and_clear();
     }
 
-    let response = response
-        .or_else(|| batch_response_from_streams(streamed_segments))
+    let response = batch_response
+        .or_else(|| response::batch_response_from_streams(streamed_segments))
         .ok_or_else(|| {
             CliError::operation_failed("batch transcription", "completed without a final response")
         })?;
 
     match format {
         OutputFormat::Json => {
-            write_json_response(output.as_deref(), &response).await?;
+            crate::output::write_json(output.as_deref(), &response).await?;
         }
         OutputFormat::Text => {
-            let transcript = extract_transcript(&response);
-            write_text_response(output.as_deref(), transcript).await?;
+            let transcript = output::extract_transcript(&response);
+            crate::output::write_text(output.as_deref(), transcript).await?;
         }
         OutputFormat::Pretty => {
-            let pretty = format_pretty(&response);
-            write_text_response(output.as_deref(), pretty).await?;
+            let pretty = output::format_pretty(&response);
+            crate::output::write_text(output.as_deref(), pretty).await?;
         }
     }
 
@@ -183,218 +172,5 @@ pub async fn run(
         eprintln!("\x1b[2m{}\x1b[0m", parts.join(", "));
     }
 
-    Ok(())
-}
-
-fn build_batch_params(
-    session_id: String,
-    file_path: String,
-    keywords: Vec<String>,
-    resolved: &ResolvedSttConfig,
-    language: hypr_language::Language,
-) -> BatchParams {
-    BatchParams {
-        session_id,
-        provider: resolved.batch_provider(),
-        file_path,
-        model: resolved.model_option(),
-        base_url: resolved.base_url.clone(),
-        api_key: resolved.api_key.clone(),
-        languages: vec![language],
-        keywords,
-    }
-}
-
-fn batch_response_from_streams(
-    segments: Vec<owhisper_interface::stream::StreamResponse>,
-) -> Option<owhisper_interface::batch::Response> {
-    use owhisper_interface::batch;
-    use owhisper_interface::stream::StreamResponse;
-
-    if segments.is_empty() {
-        return None;
-    }
-
-    let mut all_words: Vec<batch::Word> = Vec::new();
-    let mut all_transcripts: Vec<String> = Vec::new();
-    let mut total_confidence = 0.0;
-    let mut max_end = 0.0_f64;
-    let mut count = 0usize;
-
-    for segment in segments {
-        let StreamResponse::TranscriptResponse {
-            channel,
-            start,
-            duration,
-            ..
-        } = segment
-        else {
-            continue;
-        };
-
-        let Some(alt) = channel.alternatives.into_iter().next() else {
-            continue;
-        };
-
-        let text = alt.transcript.trim().to_string();
-        if text.is_empty() {
-            continue;
-        }
-
-        let words: Vec<batch::Word> = alt.words.into_iter().map(batch::Word::from).collect();
-        all_words.extend(words);
-        all_transcripts.push(text);
-        total_confidence += alt.confidence;
-        max_end = max_end.max(start + duration);
-        count += 1;
-    }
-
-    if count == 0 {
-        return None;
-    }
-
-    let transcript = all_transcripts.join(" ");
-    let avg_confidence = total_confidence / count as f64;
-
-    Some(batch::Response {
-        metadata: serde_json::json!({ "duration": max_end }),
-        results: batch::Results {
-            channels: vec![batch::Channel {
-                alternatives: vec![batch::Alternatives {
-                    transcript,
-                    confidence: avg_confidence,
-                    words: all_words,
-                }],
-            }],
-        },
-    })
-}
-
-use crate::fmt::format_timestamp_secs;
-
-fn format_pretty(response: &owhisper_interface::batch::Response) -> String {
-    use owhisper_interface::batch::Word;
-
-    let words: Vec<&Word> = response
-        .results
-        .channels
-        .iter()
-        .filter_map(|c| c.alternatives.first())
-        .flat_map(|alt| &alt.words)
-        .collect();
-
-    if words.is_empty() {
-        return extract_transcript(response);
-    }
-
-    // Words from different VAD chunks will have gaps between them.
-    // Use a small threshold to detect segment boundaries.
-    let pause_threshold = 0.5;
-    let mut segments: Vec<(f64, f64, Vec<&str>)> = Vec::new();
-
-    for word in &words {
-        let text = word
-            .punctuated_word
-            .as_deref()
-            .unwrap_or(word.word.as_str());
-
-        let should_split = segments
-            .last()
-            .map(|(_, end, _)| word.start - *end > pause_threshold)
-            .unwrap_or(true);
-
-        if should_split {
-            segments.push((word.start, word.end, vec![text]));
-        } else {
-            let seg = segments.last_mut().unwrap();
-            seg.1 = word.end;
-            seg.2.push(text);
-        }
-    }
-
-    let term_width = textwrap::termwidth();
-
-    segments
-        .iter()
-        .map(|(start, end, words)| {
-            let prefix = format!(
-                "\x1b[2m[{} \u{2192} {}]\x1b[0m  ",
-                format_timestamp_secs(*start),
-                format_timestamp_secs(*end),
-            );
-            // "[00:00.0 → 00:00.0]  " = 22 visible chars
-            let prefix_visible_len = 22;
-            let indent = " ".repeat(prefix_visible_len);
-            let text = words.join(" ");
-
-            let opts = textwrap::Options::new(term_width)
-                .initial_indent(&prefix)
-                .subsequent_indent(&indent);
-            textwrap::fill(&text, opts)
-        })
-        .collect::<Vec<_>>()
-        .join("\n\n")
-}
-
-fn extract_transcript(response: &owhisper_interface::batch::Response) -> String {
-    response
-        .results
-        .channels
-        .iter()
-        .filter_map(|c| c.alternatives.first())
-        .map(|alt| alt.transcript.trim())
-        .filter(|t| !t.is_empty())
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-async fn write_text_response(output: Option<&Path>, transcript: String) -> CliResult<()> {
-    if let Some(path) = output {
-        if let Some(parent) = path.parent() {
-            tokio::fs::create_dir_all(parent).await.map_err(|e| {
-                CliError::operation_failed("create output directory", e.to_string())
-            })?;
-        }
-
-        tokio::fs::write(path, transcript + "\n")
-            .await
-            .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
-        return Ok(());
-    }
-
-    println!("{transcript}");
-    Ok(())
-}
-
-async fn write_json_response(
-    output: Option<&Path>,
-    response: &owhisper_interface::batch::Response,
-) -> CliResult<()> {
-    let bytes = if std::io::stdout().is_terminal() {
-        serde_json::to_vec_pretty(response)
-    } else {
-        serde_json::to_vec(response)
-    }
-    .map_err(|e| CliError::operation_failed("serialize response", e.to_string()))?;
-
-    if let Some(path) = output {
-        if let Some(parent) = path.parent() {
-            tokio::fs::create_dir_all(parent).await.map_err(|e| {
-                CliError::operation_failed("create output directory", e.to_string())
-            })?;
-        }
-
-        tokio::fs::write(path, bytes)
-            .await
-            .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
-        return Ok(());
-    }
-
-    std::io::stdout()
-        .write_all(&bytes)
-        .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
-    std::io::stdout()
-        .write_all(b"\n")
-        .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
     Ok(())
 }

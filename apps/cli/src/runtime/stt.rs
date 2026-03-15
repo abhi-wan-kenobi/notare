@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use hypr_listener2_core::BatchProvider;
+use hypr_listener2_core::{BatchParams, BatchProvider};
 use hypr_local_model::LocalModel;
 use hypr_local_stt_server::LocalSttServer;
 
@@ -37,6 +37,24 @@ impl ResolvedSttConfig {
 
     pub fn batch_provider(&self) -> BatchProvider {
         self.provider.into()
+    }
+
+    pub fn to_batch_params(
+        &self,
+        session_id: String,
+        file_path: String,
+        keywords: Vec<String>,
+    ) -> BatchParams {
+        BatchParams {
+            session_id,
+            provider: self.batch_provider(),
+            file_path,
+            model: self.model_option(),
+            base_url: self.base_url.clone(),
+            api_key: self.api_key.clone(),
+            languages: vec![self.language.clone()],
+            keywords,
+        }
     }
 }
 

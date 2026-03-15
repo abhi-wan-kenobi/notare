@@ -1,9 +1,7 @@
-use crossterm::terminal::SetTitle;
-use hypr_listener_core::State;
 use hypr_transcript::{Segment, SegmentKey, SegmentWord, SpeakerLabeler};
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout, Margin, Rect},
+    layout::{Margin, Rect},
     style::{Color, Style},
     text::{Line, Span},
     widgets::{
@@ -11,80 +9,13 @@ use ratatui::{
     },
 };
 
-use super::app::{App, Mode};
-use super::waveform::build_waveform_spans;
+use crate::commands::listen::app::App;
+use crate::fmt::format_timestamp_ms;
 use crate::theme::Theme;
 
 const FADE_IN_SECS: f64 = 0.4;
 
-pub fn draw(frame: &mut Frame, app: &mut App) {
-    let elapsed = app.frame_elapsed();
-    let theme = Theme::default();
-    let [header_area, body_area, status_area] = Layout::vertical([
-        Constraint::Length(1),
-        Constraint::Min(3),
-        Constraint::Length(1),
-    ])
-    .areas(frame.area());
-
-    draw_header_bar(frame, app, header_area, &theme);
-
-    let [memo_area, transcript_area] = Layout::horizontal([
-        Constraint::Percentage(app.notepad_width_percent()),
-        Constraint::Percentage(100 - app.notepad_width_percent()),
-    ])
-    .areas(body_area);
-
-    draw_notepad(frame, app, memo_area, &theme);
-    draw_transcript(frame, app, transcript_area, elapsed, &theme);
-    draw_status_bar(frame, app, status_area, &theme);
-    update_terminal_title(app);
-}
-
-fn update_terminal_title(app: &App) {
-    let time = super::format_hhmmss(app.elapsed());
-    let title = format!("char: {} ({time})", app.status);
-    let _ = crossterm::execute!(std::io::stdout(), SetTitle(title));
-}
-
-fn draw_header_bar(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
-    let time_str = super::format_hhmmss(app.elapsed());
-
-    let state_style = match app.state {
-        State::Active if app.degraded.is_some() => theme.status_degraded,
-        State::Active => theme.status_active,
-        State::Finalizing => theme.status_degraded,
-        State::Inactive => theme.status_inactive,
-    };
-
-    let mut spans = vec![
-        Span::raw(" "),
-        Span::styled(&app.status, state_style),
-        Span::styled("  |  ", theme.muted),
-        Span::raw(time_str),
-        Span::styled("  |  ", theme.muted),
-        Span::raw(format!("{} words", app.words.len())),
-    ];
-
-    if let Some(err) = app.errors.last() {
-        spans.push(Span::styled("  |  ", theme.muted));
-        spans.push(Span::styled(err, theme.error));
-    }
-
-    if app.mic_muted {
-        spans.push(Span::styled("  |  ", theme.muted));
-        spans.push(Span::styled("mic muted", theme.muted));
-    }
-
-    // Waveform on the right side
-    let waveform_width = 20usize;
-    spans.push(Span::raw("  "));
-    spans.extend(build_waveform_spans(app, waveform_width, theme));
-
-    frame.render_widget(Paragraph::new(Line::from(spans)), area);
-}
-
-fn draw_transcript(
+pub(super) fn draw_transcript(
     frame: &mut Frame,
     app: &mut App,
     area: Rect,
@@ -135,13 +66,13 @@ fn draw_transcript(
         .min(u16::MAX as usize) as u16;
     app.update_transcript_max_scroll(max_scroll);
 
-    let paragraph = paragraph.scroll((app.scroll_offset, 0));
+    let paragraph = paragraph.scroll((app.scroll_offset(), 0));
     frame.render_widget(paragraph, area);
 
     app.process_effects(elapsed, frame.buffer_mut(), inner_area);
 
     let mut scrollbar_state =
-        ScrollbarState::new(line_count.max(1)).position(app.scroll_offset as usize);
+        ScrollbarState::new(line_count.max(1)).position(app.scroll_offset() as usize);
     let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight);
     frame.render_stateful_widget(
         scrollbar,
@@ -251,69 +182,4 @@ fn ease_out_cubic(t: f64) -> f64 {
 
 fn speaker_label(key: &SegmentKey, labeler: &mut SpeakerLabeler) -> String {
     labeler.label_for(key, None)
-}
-
-use crate::fmt::format_timestamp_ms;
-
-fn draw_notepad(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
-    if area.width < 3 || area.height < 3 {
-        return;
-    }
-
-    let border_style = if app.memo_focused() {
-        theme.border_focused
-    } else {
-        theme.border
-    };
-
-    let block = Block::new()
-        .borders(Borders::ALL)
-        .border_style(border_style)
-        .title(" Notepad ");
-
-    app.set_memo_block(block);
-    frame.render_widget(app.memo(), area);
-}
-
-fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
-    let mode = app.mode();
-
-    let line = match mode {
-        Mode::Command => {
-            let cmd_display = format!(":{}", app.command_buffer);
-            Line::from(vec![
-                Span::styled(" COMMAND ", Style::new().fg(Color::Black).bg(Color::Yellow)),
-                Span::raw(" "),
-                Span::styled(cmd_display, Style::new().fg(Color::White)),
-                Span::styled("\u{2588}", Style::new().fg(Color::Gray)),
-            ])
-        }
-        Mode::Insert => Line::from(vec![
-            Span::styled(" INSERT ", Style::new().fg(Color::Black).bg(Color::Green)),
-            Span::raw(" "),
-            Span::styled("[esc]", theme.shortcut_key),
-            Span::raw(" normal  "),
-            Span::styled("[tab]", theme.shortcut_key),
-            Span::raw(" normal  "),
-            Span::styled("[ctrl+z/y]", theme.shortcut_key),
-            Span::raw(" undo/redo  "),
-            Span::styled("[ctrl+u]", theme.shortcut_key),
-            Span::raw(" clear"),
-        ]),
-        Mode::Normal => Line::from(vec![
-            Span::styled(" NORMAL ", Style::new().fg(Color::Black).bg(Color::Cyan)),
-            Span::raw(" "),
-            Span::styled("[:q]", theme.shortcut_key),
-            Span::raw(" quit  "),
-            Span::styled("[j/k]", theme.shortcut_key),
-            Span::raw(" scroll  "),
-            Span::styled("[i]", theme.shortcut_key),
-            Span::raw(" notepad  "),
-            Span::styled("[G/g]", theme.shortcut_key),
-            Span::raw(" bottom/top  "),
-            Span::styled(format!("{} words", app.words.len()), theme.muted),
-        ]),
-    };
-
-    frame.render_widget(Paragraph::new(line), area);
 }

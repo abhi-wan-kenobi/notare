@@ -1,21 +1,18 @@
-use std::io::{IsTerminal, Write};
+mod list;
+mod runtime;
+
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
 use clap::{Subcommand, ValueEnum};
-use comfy_table::{Cell, Color, ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use hypr_local_model::{LocalModel, LocalModelKind};
 use hypr_local_stt_core::SUPPORTED_MODELS as SUPPORTED_STT_MODELS;
-use hypr_model_downloader::{DownloadableModel, ModelDownloadManager};
-use indicatif::{ProgressBar, ProgressStyle};
+use hypr_model_downloader::ModelDownloadManager;
 
 use crate::commands::OutputFormat;
 use crate::error::{CliError, CliResult, did_you_mean};
 use crate::runtime::cactus;
-
-mod runtime;
-
 use crate::runtime::desktop as settings;
 use runtime::CliModelRuntime;
 
@@ -62,17 +59,6 @@ pub enum CactusCommands {
 pub enum ModelKind {
     Stt,
     Llm,
-}
-
-#[derive(Clone, Debug, serde::Serialize)]
-struct ModelRow {
-    name: String,
-    kind: String,
-    status: String,
-    display_name: String,
-    description: String,
-    active: bool,
-    install_path: String,
 }
 
 pub async fn run(command: ModelCommands) -> CliResult<()> {
@@ -142,8 +128,8 @@ pub async fn run(command: ModelCommands) -> CliResult<()> {
                 all_models(kind)
             };
 
-            let rows = collect_model_rows(&models, &models_base, &current, &manager).await;
-            write_model_output(&rows, &models_base, format)
+            let rows = list::collect_model_rows(&models, &models_base, &current, &manager).await;
+            list::write_model_output(&rows, &models_base, format).await
         }
         ModelCommands::Cactus { command } => {
             run_cactus(command, &paths.settings_path, &models_base).await
@@ -178,8 +164,8 @@ async fn run_cactus(
             let current = settings::load_settings(settings_path);
             let models = cactus::all_cactus_models();
 
-            let rows = collect_model_rows(&models, models_base, &current, &manager).await;
-            write_model_output(&rows, models_base, format)
+            let rows = list::collect_model_rows(&models, models_base, &current, &manager).await;
+            list::write_model_output(&rows, models_base, format).await
         }
         CactusCommands::Download { name } => {
             let Some(model) = cactus::find_cactus_model(&name) else {
@@ -194,120 +180,6 @@ async fn run_cactus(
             delete_model(model, models_base).await
         }
     }
-}
-
-async fn collect_model_rows(
-    models: &[LocalModel],
-    models_base: &Path,
-    current: &Option<settings::DesktopSettings>,
-    manager: &ModelDownloadManager<LocalModel>,
-) -> Vec<ModelRow> {
-    let mut rows = Vec::new();
-    for model in models {
-        let status = match manager.is_downloaded(model).await {
-            Ok(true) => "downloaded",
-            Ok(false) if model.download_url().is_some() => "not-downloaded",
-            Ok(false) => "unavailable",
-            Err(_) => "error",
-        };
-
-        let active = current
-            .as_ref()
-            .is_some_and(|value| is_current_model(model, value));
-
-        rows.push(ModelRow {
-            name: model.cli_name().to_string(),
-            kind: model.kind().to_string(),
-            status: status.to_string(),
-            display_name: model.display_name().to_string(),
-            description: model.description().to_string(),
-            active,
-            install_path: model.install_path(models_base).display().to_string(),
-        });
-    }
-    rows
-}
-
-fn write_model_output(
-    rows: &[ModelRow],
-    models_base: &Path,
-    format: OutputFormat,
-) -> CliResult<()> {
-    if matches!(format, OutputFormat::Json) {
-        let bytes = if std::io::stdout().is_terminal() {
-            serde_json::to_vec_pretty(rows)
-        } else {
-            serde_json::to_vec(rows)
-        }
-        .map_err(|e| CliError::operation_failed("serialize model list", e.to_string()))?;
-
-        std::io::stdout()
-            .write_all(&bytes)
-            .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
-        std::io::stdout()
-            .write_all(b"\n")
-            .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
-        return Ok(());
-    }
-
-    print_model_rows_table(models_base, rows)
-}
-
-fn print_model_rows_table(models_base: &Path, rows: &[ModelRow]) -> CliResult<()> {
-    println!("models_base={}", models_base.display());
-
-    if !std::io::stdout().is_terminal() {
-        for row in rows {
-            let active = if row.active { "*" } else { "" };
-            if row.description.is_empty() {
-                println!(
-                    "{}\t{}\t{}\t{}\t{}",
-                    active, row.name, row.kind, row.status, row.display_name,
-                );
-            } else {
-                println!(
-                    "{}\t{}\t{}\t{}\t{} ({})",
-                    active, row.name, row.kind, row.status, row.display_name, row.description,
-                );
-            }
-        }
-        return Ok(());
-    }
-
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic);
-    table.set_header(["", "Name", "Kind", "Status", "Model", "Description"]);
-
-    for row in rows {
-        let active = if row.active {
-            Cell::new("*")
-        } else {
-            Cell::new("")
-        };
-
-        let status_cell = match row.status.as_str() {
-            "downloaded" => Cell::new(&row.status).fg(Color::Green),
-            "not-downloaded" => Cell::new(&row.status).fg(Color::Yellow),
-            "unavailable" => Cell::new(&row.status).fg(Color::DarkGrey),
-            "error" => Cell::new(&row.status).fg(Color::Red),
-            _ => Cell::new(&row.status),
-        };
-
-        table.add_row([
-            active,
-            Cell::new(&row.name),
-            Cell::new(&row.kind),
-            status_cell,
-            Cell::new(&row.display_name),
-            Cell::new(&row.description),
-        ]);
-    }
-
-    println!();
-    println!("{table}");
-    Ok(())
 }
 
 async fn download_model(model: LocalModel, models_base: &Path) -> CliResult<()> {
@@ -380,20 +252,12 @@ async fn delete_model(model: LocalModel, models_base: &Path) -> CliResult<()> {
     Ok(())
 }
 
-fn make_download_progress_bar(model: &LocalModel) -> Option<ProgressBar> {
-    if !std::io::stderr().is_terminal() {
-        return None;
-    }
-
-    let bar = ProgressBar::new(100);
-    bar.set_style(
-        ProgressStyle::with_template("{spinner} {msg} [{wide_bar}] {pos:>3}%")
-            .unwrap()
-            .progress_chars("=>-"),
-    );
-    bar.set_message(format!("Downloading {}", model.cli_name()));
-    bar.enable_steady_tick(Duration::from_millis(120));
-    Some(bar)
+fn make_download_progress_bar(model: &LocalModel) -> Option<indicatif::ProgressBar> {
+    crate::output::create_progress_bar(
+        &format!("Downloading {}", model.cli_name()),
+        "{spinner} {msg} [{wide_bar}] {pos:>3}%",
+        "=>-",
+    )
 }
 
 fn find_model(name: &str) -> Option<LocalModel> {

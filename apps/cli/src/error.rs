@@ -25,12 +25,6 @@ pub enum CliError {
     },
 
     #[error("{action} failed: {reason}")]
-    ExternalActionFailed {
-        action: &'static str,
-        reason: String,
-    },
-
-    #[error("{action} failed: {reason}")]
     OperationFailed {
         action: &'static str,
         reason: String,
@@ -90,13 +84,6 @@ impl CliError {
         }
     }
 
-    pub fn external_action_failed(action: &'static str, reason: impl Into<String>) -> Self {
-        Self::ExternalActionFailed {
-            action,
-            reason: reason.into(),
-        }
-    }
-
     pub fn operation_failed(action: &'static str, reason: impl Into<String>) -> Self {
         Self::OperationFailed {
             action,
@@ -120,7 +107,7 @@ pub fn did_you_mean<'a>(input: &str, candidates: &[&'a str]) -> Option<&'a str> 
             let sim = strsim::jaro_winkler(input, c) as f64;
             if sim > 0.7 { Some((*c, sim)) } else { None }
         })
-        .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+        .max_by(|a, b| a.1.total_cmp(&b.1))
         .map(|(c, _)| c)
 }
 

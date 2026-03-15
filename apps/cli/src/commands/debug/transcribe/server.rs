@@ -42,7 +42,7 @@ pub async fn spawn_router(app: Router) -> CliResult<LocalServer> {
                 let _ = shutdown_rx.await;
             })
             .await
-            .unwrap();
+            .expect("axum serve error");
     });
 
     Ok(LocalServer {

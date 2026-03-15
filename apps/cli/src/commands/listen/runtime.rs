@@ -4,28 +4,27 @@ use hypr_listener_core::{
     ListenerRuntime, SessionDataEvent, SessionErrorEvent, SessionLifecycleEvent,
     SessionProgressEvent,
 };
-use hypr_listener2_core::{BatchEvent, BatchRuntime};
 use tokio::sync::mpsc;
 
-pub(super) enum ListenerEvent {
+pub(super) enum RuntimeEvent {
     Lifecycle(SessionLifecycleEvent),
     Progress(SessionProgressEvent),
     Error(SessionErrorEvent),
     Data(SessionDataEvent),
 }
 
-pub(super) struct ListenRuntime {
+pub(super) struct Runtime {
     vault_base: PathBuf,
-    tx: mpsc::UnboundedSender<ListenerEvent>,
+    tx: mpsc::UnboundedSender<RuntimeEvent>,
 }
 
-impl ListenRuntime {
-    pub fn new(vault_base: PathBuf, tx: mpsc::UnboundedSender<ListenerEvent>) -> Self {
+impl Runtime {
+    pub fn new(vault_base: PathBuf, tx: mpsc::UnboundedSender<RuntimeEvent>) -> Self {
         Self { vault_base, tx }
     }
 }
 
-impl hypr_storage::StorageRuntime for ListenRuntime {
+impl hypr_storage::StorageRuntime for Runtime {
     fn global_base(&self) -> Result<PathBuf, hypr_storage::Error> {
         Ok(self.vault_base.clone())
     }
@@ -35,30 +34,20 @@ impl hypr_storage::StorageRuntime for ListenRuntime {
     }
 }
 
-impl ListenerRuntime for ListenRuntime {
+impl ListenerRuntime for Runtime {
     fn emit_lifecycle(&self, event: SessionLifecycleEvent) {
-        let _ = self.tx.send(ListenerEvent::Lifecycle(event));
+        let _ = self.tx.send(RuntimeEvent::Lifecycle(event));
     }
 
     fn emit_progress(&self, event: SessionProgressEvent) {
-        let _ = self.tx.send(ListenerEvent::Progress(event));
+        let _ = self.tx.send(RuntimeEvent::Progress(event));
     }
 
     fn emit_error(&self, event: SessionErrorEvent) {
-        let _ = self.tx.send(ListenerEvent::Error(event));
+        let _ = self.tx.send(RuntimeEvent::Error(event));
     }
 
     fn emit_data(&self, event: SessionDataEvent) {
-        let _ = self.tx.send(ListenerEvent::Data(event));
-    }
-}
-
-pub(super) struct ListenBatchRuntime {
-    pub(super) tx: mpsc::UnboundedSender<BatchEvent>,
-}
-
-impl BatchRuntime for ListenBatchRuntime {
-    fn emit(&self, event: BatchEvent) {
-        let _ = self.tx.send(event);
+        let _ = self.tx.send(RuntimeEvent::Data(event));
     }
 }
