@@ -13,11 +13,18 @@ use tauri_plugin_permissions::{Permission, PermissionsPluginExt};
 use tauri_plugin_windows::{AppWindow, WindowsPluginExt};
 
 fn create_audio_provider() -> std::sync::Arc<dyn hypr_audio_actual::AudioProvider> {
-    if std::env::var("MOCK_AUDIO").ok().as_deref() == Some("1") {
-        std::sync::Arc::new(hypr_audio_mock::MockAudio::new())
-    } else {
-        std::sync::Arc::new(hypr_audio_actual::ActualAudio)
+    #[cfg(feature = "mock-audio")]
+    {
+        let selection: u32 = std::env::var("MOCK_AUDIO")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0);
+
+        if selection > 0 {
+            return std::sync::Arc::new(hypr_audio_mock::MockAudio::new(selection));
+        }
     }
+    std::sync::Arc::new(hypr_audio_actual::ActualAudio)
 }
 
 #[tokio::main]

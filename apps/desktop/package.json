@@ -11,7 +11,7 @@
     "tauri": "dotenvx run --ignore MISSING_ENV_FILE -f ../../.env.supabase -f .env -- tauri",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "tauri:dev": "dotenvx run --ignore MISSING_ENV_FILE -f ../../.env.supabase -f .env -- tauri dev --no-watch",
+    "tauri:dev": "dotenvx run --ignore MISSING_ENV_FILE -f ../../.env.supabase -f .env -- tauri dev --no-watch --features mock-audio",
     "tauri:build": "tauri build"
   },
   "dependencies": {

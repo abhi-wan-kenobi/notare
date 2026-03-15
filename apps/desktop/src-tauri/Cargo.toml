@@ -99,11 +99,12 @@ ractor = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 hypr-audio-actual = { workspace = true }
-hypr-audio-mock = { workspace = true }
+hypr-audio-mock = { workspace = true, optional = true }
 
 [features]
 default = []
 devtools = ["tauri/devtools"]
+mock-audio = ["dep:hypr-audio-mock"]
 automation = ["tauri-plugin-automation"]
 
 [target.'cfg(target_os = "macos")'.dependencies]

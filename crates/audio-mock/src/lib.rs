@@ -17,31 +17,52 @@ const MOCK_MIC_DEVICE_NAME: &str = "mock-mic";
 const MOCK_MIC_AUDIO_ENV: &str = "HYPR_MOCK_MIC_AUDIO";
 const MOCK_SPK_AUDIO_ENV: &str = "HYPR_MOCK_SPK_AUDIO";
 const MOCK_PLAYBACK_ENV: &str = "MOCK_PLAYBACK";
-const DEFAULT_MIC_AUDIO_PATH: &str = hypr_data::english_10::AUDIO_MIC_MP3_PATH;
-const DEFAULT_SPEAKER_AUDIO_PATH: &str = hypr_data::english_10::AUDIO_SPK_MP3_PATH;
+
+struct AudioPaths {
+    mic: &'static str,
+    spk: &'static str,
+}
+
+fn audio_paths_for_selection(selection: u32) -> AudioPaths {
+    match selection {
+        // MOCK_AUDIO=1
+        1 => AudioPaths {
+            mic: hypr_data::english_10::AUDIO_MIC_MP3_PATH,
+            spk: hypr_data::english_10::AUDIO_SPK_MP3_PATH,
+        },
+        // Future selections go here:
+        // 2 => AudioPaths { ... },
+        _ => AudioPaths {
+            mic: hypr_data::english_10::AUDIO_MIC_MP3_PATH,
+            spk: hypr_data::english_10::AUDIO_SPK_MP3_PATH,
+        },
+    }
+}
 
 pub struct MockAudio {
     mic_cache: OnceLock<Result<MockAudioData, Error>>,
     spk_cache: OnceLock<Result<MockAudioData, Error>>,
+    paths: AudioPaths,
 }
 
 impl MockAudio {
-    pub fn new() -> Self {
+    pub fn new(selection: u32) -> Self {
         Self {
             mic_cache: OnceLock::new(),
             spk_cache: OnceLock::new(),
+            paths: audio_paths_for_selection(selection),
         }
     }
 
     fn mic_audio(&self) -> Result<MockAudioData, Error> {
         self.mic_cache
-            .get_or_init(|| load_mock_audio(MOCK_MIC_AUDIO_ENV, DEFAULT_MIC_AUDIO_PATH))
+            .get_or_init(|| load_mock_audio(MOCK_MIC_AUDIO_ENV, self.paths.mic))
             .clone()
     }
 
     fn spk_audio(&self) -> Result<MockAudioData, Error> {
         self.spk_cache
-            .get_or_init(|| load_mock_audio(MOCK_SPK_AUDIO_ENV, DEFAULT_SPEAKER_AUDIO_PATH))
+            .get_or_init(|| load_mock_audio(MOCK_SPK_AUDIO_ENV, self.paths.spk))
             .clone()
     }
 }
