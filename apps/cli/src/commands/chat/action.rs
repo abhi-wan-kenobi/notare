@@ -7,4 +7,5 @@ pub(crate) enum Action {
     StreamChunk(String),
     StreamCompleted(Option<String>),
     StreamFailed(String),
+    TitleGenerated(String),
 }

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use hypr_cli_tui::ScreenControl;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -10,20 +9,21 @@ use ratatui::{
     widgets::{Block, Borders, Padding, Paragraph},
 };
 
-use crate::widgets::{ScrollState, Scrollable, TracingCapture};
+use super::TracingCapture;
+use crate::widgets::{ScrollState, Scrollable};
 
-pub(super) struct TranscribeShell {
+pub(crate) struct TranscribeShell {
     tracing: Arc<TracingCapture>,
     log_lines: Vec<Line<'static>>,
     log_scroll: ScrollState,
     log_autoscroll: bool,
-    pub(super) transcript_scroll: ScrollState,
-    pub(super) transcript_autoscroll: bool,
-    pub(super) stream_ended: bool,
+    transcript_scroll: ScrollState,
+    transcript_autoscroll: bool,
+    pub(crate) stream_ended: bool,
 }
 
 impl TranscribeShell {
-    pub(super) fn new(tracing: Arc<TracingCapture>) -> Self {
+    pub(crate) fn new(tracing: Arc<TracingCapture>) -> Self {
         Self {
             tracing,
             log_lines: Vec::new(),
@@ -35,12 +35,13 @@ impl TranscribeShell {
         }
     }
 
-    pub(super) fn handle_key(&mut self, key: KeyEvent) -> Option<ScreenControl<()>> {
+    pub(crate) fn handle_key(&mut self, key: KeyEvent) -> bool {
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
-            return Some(ScreenControl::Exit(()));
+            return true;
         }
+
         match key.code {
-            KeyCode::Char('q') => return Some(ScreenControl::Exit(())),
+            KeyCode::Char('q') => return true,
             KeyCode::Char('j') | KeyCode::Down => {
                 self.transcript_scroll.offset = self
                     .transcript_scroll
@@ -64,17 +65,11 @@ impl TranscribeShell {
             }
             _ => {}
         }
-        None
+
+        false
     }
 
-    pub(super) fn transcript_scroll_mut(&mut self) -> &mut ScrollState {
-        if self.transcript_autoscroll {
-            self.transcript_scroll.offset = self.transcript_scroll.max_scroll;
-        }
-        &mut self.transcript_scroll
-    }
-
-    pub(super) fn draw(
+    pub(crate) fn draw(
         &mut self,
         frame: &mut Frame,
         transcript_title: &str,
@@ -132,13 +127,13 @@ impl TranscribeShell {
             .padding(Padding::new(1, 1, 0, 0));
 
         if lines.is_empty() {
-            let msg = if self.stream_ended {
+            let message = if self.stream_ended {
                 placeholder
             } else {
                 "Waiting for speech..."
             };
             let paragraph = Paragraph::new(vec![Line::from(Span::styled(
-                msg.to_string(),
+                message.to_string(),
                 Style::new()
                     .fg(Color::DarkGray)
                     .add_modifier(Modifier::ITALIC),
@@ -147,8 +142,10 @@ impl TranscribeShell {
             frame.render_widget(paragraph, area);
         } else {
             let scrollable = Scrollable::new(lines).block(block);
-            let scroll_state = self.transcript_scroll_mut();
-            frame.render_stateful_widget(scrollable, area, scroll_state);
+            if self.transcript_autoscroll {
+                self.transcript_scroll.offset = self.transcript_scroll.max_scroll;
+            }
+            frame.render_stateful_widget(scrollable, area, &mut self.transcript_scroll);
         }
     }
 }

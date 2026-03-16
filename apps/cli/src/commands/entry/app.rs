@@ -6,23 +6,23 @@ use tui_textarea::TextArea;
 
 use hypr_cli_tui::textarea_input_from_key_event;
 
+use super::action::Action;
+use super::effect::Effect;
+
 const LOGO_PNG_BYTES: &[u8] = include_bytes!("../../../assets/char.png");
 
-const TIPS: &[&str] = &[
+const TIPS_UNCONFIGURED: &[&str] = &[
+    "Run /connect to set up a provider",
+    "Use /auth to sign in, then /connect to configure",
+    "Press Tab to auto-fill the selected command",
+];
+
+const TIPS_READY: &[&str] = &[
     "Type /listen to start a live transcription session",
-    "Use /sessions to browse your past sessions",
     "Use /desktop to open or install the desktop app",
     "Press Tab to auto-fill the selected command",
     "Press Esc to clear the input field",
 ];
-
-fn pick_tip() -> &'static str {
-    let index = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .map(|d| d.as_millis() as usize % TIPS.len())
-        .unwrap_or(0);
-    TIPS[index]
-}
 
 #[derive(Clone, Copy)]
 pub struct SlashCommand {
@@ -34,10 +34,6 @@ pub const COMMANDS: &[SlashCommand] = &[
     SlashCommand {
         name: "/connect",
         description: "Connect provider",
-    },
-    SlashCommand {
-        name: "/sessions",
-        description: "Switch session",
     },
     SlashCommand {
         name: "/listen",
@@ -57,133 +53,51 @@ pub const COMMANDS: &[SlashCommand] = &[
     },
 ];
 
-#[derive(Clone, Copy)]
-pub enum EntryAction {
-    Listen,
-    Connect,
-    Quit,
-}
-
-pub struct SessionEntry {
-    pub title: String,
-    pub time_label: String,
-    pub day_label: String,
-    pub notes: String,
-    pub transcript: String,
-}
-
-pub struct SessionsOverlay {
-    pub search: TextArea<'static>,
-    pub entries: Vec<SessionEntry>,
-    pub filtered_indices: Vec<usize>,
-    pub selected_index: usize,
-    pub status_message: Option<String>,
-    pub viewing_session: Option<usize>,
-}
-
-impl SessionsOverlay {
-    fn new() -> Self {
-        let mut overlay = Self {
-            search: TextArea::default(),
-            entries: demo_sessions(),
-            filtered_indices: Vec::new(),
-            selected_index: 0,
-            status_message: None,
-            viewing_session: None,
-        };
-        overlay.recompute_filter();
-        overlay
-    }
-
-    pub fn search_text(&self) -> String {
-        self.search
-            .lines()
-            .first()
-            .cloned()
-            .unwrap_or_else(String::new)
-    }
-
-    pub fn search_cursor_col(&self) -> usize {
-        self.search.cursor().1
-    }
-
-    fn recompute_filter(&mut self) {
-        let query = self.search_text().trim().to_ascii_lowercase();
-        self.filtered_indices = self
-            .entries
-            .iter()
-            .enumerate()
-            .filter(|(_, entry)| {
-                if query.is_empty() {
-                    return true;
-                }
-
-                entry.title.to_ascii_lowercase().contains(&query)
-                    || entry.day_label.to_ascii_lowercase().contains(&query)
-                    || entry.time_label.to_ascii_lowercase().contains(&query)
-            })
-            .map(|(index, _)| index)
-            .collect();
-
-        self.selected_index = self
-            .selected_index
-            .min(self.filtered_indices.len().saturating_sub(1));
-    }
-
-    fn selected_session_index(&self) -> Option<usize> {
-        self.filtered_indices.get(self.selected_index).copied()
-    }
-
-    fn normalize_search_single_line(&mut self) {
-        let current = self
-            .search
-            .lines()
-            .first()
-            .cloned()
-            .unwrap_or_else(String::new);
-        if self.search.lines().len() == 1 {
-            return;
-        }
-        self.search = TextArea::from([current]);
-    }
-}
-
-pub struct EntryApp {
-    pub should_quit: bool,
-    action: Option<EntryAction>,
+pub struct App {
     input: TextArea<'static>,
     filtered_commands: Vec<usize>,
     selected_index: usize,
     popup_visible: bool,
-    sessions_overlay: Option<SessionsOverlay>,
     pub status_message: Option<String>,
     pub tip: &'static str,
     logo_protocol: Option<StatefulProtocol>,
+    pub stt_provider: Option<String>,
+    pub llm_provider: Option<String>,
 }
 
-impl EntryApp {
-    pub fn new(status_message: Option<String>, initial_command: Option<String>) -> Self {
+impl App {
+    pub fn new(
+        status_message: Option<String>,
+        stt_provider: Option<String>,
+        llm_provider: Option<String>,
+    ) -> Self {
         let mut app = Self {
-            should_quit: false,
-            action: None,
             input: TextArea::default(),
             filtered_commands: Vec::new(),
             selected_index: 0,
             popup_visible: false,
-            sessions_overlay: None,
             status_message,
-            tip: pick_tip(),
+            tip: pick_tip(&stt_provider, &llm_provider),
             logo_protocol: load_logo_protocol(),
+            stt_provider,
+            llm_provider,
         };
         app.recompute_popup();
-        if let Some(command) = initial_command {
-            app.dispatch_command(&command);
-        }
         app
     }
 
-    pub fn action(&self) -> Option<EntryAction> {
-        self.action
+    pub fn dispatch(&mut self, action: Action) -> Vec<Effect> {
+        match action {
+            Action::Key(key) => self.handle_key(key),
+            Action::Paste(pasted) => self.handle_paste(pasted),
+            Action::SubmitCommand(command) => self.submit_command(&command),
+            Action::StatusMessage(message) => {
+                self.status_message = Some(message);
+                self.input = TextArea::default();
+                self.recompute_popup();
+                Vec::new()
+            }
+        }
     }
 
     pub fn logo_protocol(&mut self) -> Option<&mut StatefulProtocol> {
@@ -231,46 +145,35 @@ impl EntryApp {
         COMMANDS.get(selected).copied()
     }
 
-    pub fn sessions_overlay(&self) -> Option<&SessionsOverlay> {
-        self.sessions_overlay.as_ref()
-    }
-
-    pub fn handle_key(&mut self, key: KeyEvent) {
+    fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
-            self.action = Some(EntryAction::Quit);
-            self.should_quit = true;
-            return;
-        }
-
-        if self.sessions_overlay.is_some() {
-            self.handle_sessions_overlay_key(key);
-            return;
+            return vec![Effect::Exit];
         }
 
         if key.code == KeyCode::Esc {
             self.input = TextArea::default();
             self.status_message = None;
             self.recompute_popup();
-            return;
+            return Vec::new();
         }
 
         if self.popup_visible {
             match key.code {
                 KeyCode::Up => {
                     self.selected_index = self.selected_index.saturating_sub(1);
-                    return;
+                    return Vec::new();
                 }
                 KeyCode::Down => {
                     let max = self.filtered_commands.len().saturating_sub(1);
                     self.selected_index = (self.selected_index + 1).min(max);
-                    return;
+                    return Vec::new();
                 }
                 KeyCode::Tab => {
                     if let Some(cmd) = self.selected_command_name() {
                         self.set_input_text(cmd.to_string());
                         self.recompute_popup();
                     }
-                    return;
+                    return Vec::new();
                 }
                 _ => {}
             }
@@ -284,8 +187,7 @@ impl EntryApp {
             }
 
             let command = self.input_text().trim().to_string();
-            self.dispatch_command(&command);
-            return;
+            return self.submit_command(&command);
         }
 
         if let Some(input) = textarea_input_from_key_event(key, false) {
@@ -294,21 +196,11 @@ impl EntryApp {
             self.status_message = None;
             self.recompute_popup();
         }
+
+        Vec::new()
     }
 
-    pub fn handle_paste(&mut self, pasted: String) {
-        if let Some(overlay) = self.sessions_overlay.as_mut() {
-            let pasted = pasted.replace("\r\n", "\n").replace('\r', "\n");
-            let first_line = pasted.lines().next().unwrap_or("");
-            if !first_line.is_empty() {
-                overlay.search.insert_str(first_line);
-                overlay.normalize_search_single_line();
-                overlay.status_message = None;
-                overlay.recompute_filter();
-            }
-            return;
-        }
-
+    fn handle_paste(&mut self, pasted: String) -> Vec<Effect> {
         let pasted = pasted.replace("\r\n", "\n").replace('\r', "\n");
         let first_line = pasted.lines().next().unwrap_or("");
         if !first_line.is_empty() {
@@ -316,6 +208,34 @@ impl EntryApp {
             self.normalize_single_line();
             self.status_message = None;
             self.recompute_popup();
+        }
+        Vec::new()
+    }
+
+    fn submit_command(&mut self, command: &str) -> Vec<Effect> {
+        let normalized = command.trim().trim_start_matches('/').to_ascii_lowercase();
+
+        match normalized.as_str() {
+            "connect" => vec![Effect::LaunchConnect],
+            "listen" => vec![Effect::LaunchListen],
+            "exit" | "quit" => vec![Effect::Exit],
+            "auth" => {
+                self.input = TextArea::default();
+                self.status_message = None;
+                self.recompute_popup();
+                vec![Effect::OpenAuth]
+            }
+            "desktop" => {
+                self.input = TextArea::default();
+                self.status_message = None;
+                self.recompute_popup();
+                vec![Effect::OpenDesktop]
+            }
+            _ if normalized.is_empty() => Vec::new(),
+            _ => {
+                self.status_message = Some(format!("Unknown command: {}", command.trim()));
+                Vec::new()
+            }
         }
     }
 
@@ -326,139 +246,6 @@ impl EntryApp {
 
     fn set_input_text(&mut self, value: String) {
         self.input = TextArea::from([value]);
-    }
-
-    fn dispatch_command(&mut self, command: &str) {
-        let normalized = command.trim().trim_start_matches('/').to_ascii_lowercase();
-
-        match normalized.as_str() {
-            "connect" => {
-                self.action = Some(EntryAction::Connect);
-                self.should_quit = true;
-            }
-            "listen" => {
-                self.action = Some(EntryAction::Listen);
-                self.should_quit = true;
-            }
-            "sessions" => {
-                self.open_sessions_overlay();
-            }
-            "exit" | "quit" => {
-                self.action = Some(EntryAction::Quit);
-                self.should_quit = true;
-            }
-            "auth" => {
-                self.status_message = match crate::commands::auth::run() {
-                    Ok(()) => Some("Opened auth page in browser".into()),
-                    Err(error) => Some(error.to_string()),
-                };
-                self.input = TextArea::default();
-                self.recompute_popup();
-            }
-            "desktop" => {
-                let message = match crate::commands::desktop::run() {
-                    Ok(crate::commands::desktop::DesktopAction::OpenedApp) => {
-                        "Opened desktop app".to_string()
-                    }
-                    Ok(crate::commands::desktop::DesktopAction::OpenedDownloadPage) => {
-                        "Desktop app not found. Opened download page".to_string()
-                    }
-                    Err(error) => error.to_string(),
-                };
-                self.status_message = Some(message);
-                self.input = TextArea::default();
-                self.recompute_popup();
-            }
-            _ if normalized.is_empty() => {}
-            _ => {
-                self.status_message = Some(format!("Unknown command: {}", command.trim()));
-            }
-        }
-    }
-
-    fn open_sessions_overlay(&mut self) {
-        self.sessions_overlay = Some(SessionsOverlay::new());
-        self.status_message = None;
-        self.input = TextArea::default();
-        self.popup_visible = false;
-        self.filtered_commands.clear();
-    }
-
-    fn handle_sessions_overlay_key(&mut self, key: KeyEvent) {
-        let Some(overlay) = self.sessions_overlay.as_mut() else {
-            return;
-        };
-
-        if key.code == KeyCode::Esc {
-            if overlay.viewing_session.is_some() {
-                overlay.viewing_session = None;
-            } else {
-                self.sessions_overlay = None;
-            }
-            return;
-        }
-
-        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('d') {
-            if let Some(index) = overlay.selected_session_index() {
-                let title = overlay.entries[index].title.clone();
-                overlay.entries.remove(index);
-                overlay.status_message = Some(format!("Deleted session: {title}"));
-                if let Some(viewing) = overlay.viewing_session {
-                    if viewing == index {
-                        overlay.viewing_session = None;
-                    } else if viewing > index {
-                        overlay.viewing_session = Some(viewing - 1);
-                    }
-                }
-                overlay.recompute_filter();
-            }
-            return;
-        }
-
-        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('r') {
-            if let Some(index) = overlay.selected_session_index() {
-                let title = overlay.entries[index].title.clone();
-                let next_title = if title.ends_with(" (renamed)") {
-                    title
-                } else {
-                    format!("{title} (renamed)")
-                };
-                overlay.entries[index].title = next_title.clone();
-                overlay.status_message = Some(format!("Renamed session to: {next_title}"));
-                overlay.recompute_filter();
-            }
-            return;
-        }
-
-        if key.code == KeyCode::Enter {
-            if let Some(index) = overlay.selected_session_index() {
-                overlay.viewing_session = Some(index);
-                overlay.status_message = None;
-            }
-            return;
-        }
-
-        if key.code == KeyCode::Up {
-            overlay.selected_index = overlay.selected_index.saturating_sub(1);
-            return;
-        }
-
-        if key.code == KeyCode::Down {
-            let max = overlay.filtered_indices.len().saturating_sub(1);
-            overlay.selected_index = (overlay.selected_index + 1).min(max);
-            return;
-        }
-
-        if overlay.viewing_session.is_some() {
-            return;
-        }
-
-        if let Some(input) = textarea_input_from_key_event(key, false) {
-            overlay.search.input(input);
-            overlay.normalize_search_single_line();
-            overlay.status_message = None;
-            overlay.recompute_filter();
-        }
     }
 
     fn recompute_popup(&mut self) {
@@ -511,6 +298,19 @@ impl EntryApp {
         }
         self.input = TextArea::from([current]);
     }
+}
+
+fn pick_tip(stt_provider: &Option<String>, llm_provider: &Option<String>) -> &'static str {
+    let tips = if stt_provider.is_none() || llm_provider.is_none() {
+        TIPS_UNCONFIGURED
+    } else {
+        TIPS_READY
+    };
+    let index = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_millis() as usize % tips.len())
+        .unwrap_or(0);
+    tips[index]
 }
 
 fn load_logo_protocol() -> Option<StatefulProtocol> {
@@ -592,64 +392,8 @@ fn single_command_match_score(query: &str, command: &str) -> Option<i32> {
 fn command_aliases(command: &str) -> &'static [&'static str] {
     match command {
         "exit" => &["quit"],
-        "sessions" => &["session"],
         _ => &[],
     }
-}
-
-fn demo_sessions() -> Vec<SessionEntry> {
-    vec![
-        SessionEntry {
-            title: "Adding version at bottom-right in CLI UI?".into(),
-            time_label: "9:39 PM".into(),
-            day_label: "Today".into(),
-            notes: "Pin version string to lower-right and keep alignment stable on resize.".into(),
-            transcript: "Let's add the version text to the footer area and reserve width so it does not shift with status updates.".into(),
-        },
-        SessionEntry {
-            title: "Search item match discontinuation fix".into(),
-            time_label: "9:37 PM".into(),
-            day_label: "Today".into(),
-            notes: "Investigate why matching resets after a delete key event.".into(),
-            transcript: "The issue happens when the query becomes empty and we do not recompute list ordering.".into(),
-        },
-        SessionEntry {
-            title: "App CLI: check/install/open web page for char.com/download".into(),
-            time_label: "9:31 PM".into(),
-            day_label: "Today".into(),
-            notes: "Desktop command should open app if installed, otherwise open download page."
-                .into(),
-            transcript: "We can probe common install locations first, then fall back to browser launch for download.".into(),
-        },
-        SessionEntry {
-            title: "Exit message for listen session".into(),
-            time_label: "9:30 PM".into(),
-            day_label: "Today".into(),
-            notes: "Print session id, duration, and word count after leaving listen mode.".into(),
-            transcript: "Exit summary now includes compact timing and total finalized words.".into(),
-        },
-        SessionEntry {
-            title: "OpenCode: Char alignment vs OpenCode screenshot comparison".into(),
-            time_label: "9:27 PM".into(),
-            day_label: "Today".into(),
-            notes: "Adjust spacing and typography in command picker to match reference.".into(),
-            transcript: "Main differences are title spacing and list highlight contrast.".into(),
-        },
-        SessionEntry {
-            title: "UI/CLI input alignment and design cleanup".into(),
-            time_label: "9:06 PM".into(),
-            day_label: "Today".into(),
-            notes: "Center command input and keep logo vertical rhythm consistent.".into(),
-            transcript: "The centered layout works better when popup height changes dynamically.".into(),
-        },
-        SessionEntry {
-            title: "Centralized theme setup in CLI".into(),
-            time_label: "7:48 PM".into(),
-            day_label: "Yesterday".into(),
-            notes: "Move all shared color/typography to a single theme struct.".into(),
-            transcript: "This makes focused border and muted styles consistent across screens.".into(),
-        },
-    ]
 }
 
 pub fn command_highlight_indices(query: &str, command: &str) -> Vec<usize> {

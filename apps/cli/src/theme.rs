@@ -2,6 +2,8 @@ use ratatui::style::{Color, Modifier, Style};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Theme {
+    pub accent: Style,
+    pub input_bg: Color,
     pub border: Style,
     pub border_focused: Style,
     pub status_active: Style,
@@ -23,8 +25,10 @@ pub struct Theme {
 impl Default for Theme {
     fn default() -> Self {
         Self {
+            accent: Style::new().fg(Color::Yellow),
+            input_bg: Color::Rgb(28, 30, 38),
             border: Style::new().fg(Color::DarkGray),
-            border_focused: Style::new().fg(Color::Cyan),
+            border_focused: Style::new().fg(Color::Yellow),
             status_active: Style::new().fg(Color::Green),
             status_degraded: Style::new().fg(Color::Yellow),
             status_inactive: Style::new().fg(Color::Red),
@@ -41,7 +45,7 @@ impl Default for Theme {
                 .fg(Color::DarkGray)
                 .add_modifier(Modifier::ITALIC),
             shortcut_key: Style::new().fg(Color::DarkGray),
-            speaker_label: Style::new().fg(Color::Cyan),
+            speaker_label: Style::new().fg(Color::Yellow),
             timestamp: Style::new().fg(Color::DarkGray),
         }
     }

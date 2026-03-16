@@ -2,20 +2,59 @@ use std::convert::Infallible;
 
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
 
+mod action;
 mod app;
+mod effect;
 mod ui;
 
-pub use app::EntryAction;
+pub use effect::EntryAction;
 
-use app::EntryApp;
+use action::Action;
+use app::App;
+use effect::Effect;
 
 pub struct Args {
     pub status_message: Option<String>,
     pub initial_command: Option<String>,
+    pub stt_provider: Option<String>,
+    pub llm_provider: Option<String>,
 }
 
 struct EntryScreen {
-    app: EntryApp,
+    app: App,
+}
+
+impl EntryScreen {
+    fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<EntryAction> {
+        for effect in effects {
+            match effect {
+                Effect::LaunchListen => return ScreenControl::Exit(EntryAction::Listen),
+                Effect::LaunchConnect => return ScreenControl::Exit(EntryAction::Connect),
+                Effect::OpenAuth => {
+                    let message = match crate::commands::auth::run() {
+                        Ok(()) => "Opened auth page in browser".to_string(),
+                        Err(error) => error.to_string(),
+                    };
+                    let _ = self.app.dispatch(Action::StatusMessage(message));
+                }
+                Effect::OpenDesktop => {
+                    let message = match crate::commands::desktop::run() {
+                        Ok(crate::commands::desktop::DesktopAction::OpenedApp) => {
+                            "Opened desktop app".to_string()
+                        }
+                        Ok(crate::commands::desktop::DesktopAction::OpenedDownloadPage) => {
+                            "Desktop app not found. Opened download page".to_string()
+                        }
+                        Err(error) => error.to_string(),
+                    };
+                    let _ = self.app.dispatch(Action::StatusMessage(message));
+                }
+                Effect::Exit => return ScreenControl::Exit(EntryAction::Quit),
+            }
+        }
+
+        ScreenControl::Continue
+    }
 }
 
 impl Screen for EntryScreen {
@@ -28,15 +67,15 @@ impl Screen for EntryScreen {
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
         match event {
-            TuiEvent::Key(key) => self.app.handle_key(key),
-            TuiEvent::Paste(pasted) => self.app.handle_paste(pasted),
-            TuiEvent::Draw => {}
-        }
-
-        if self.app.should_quit {
-            ScreenControl::Exit(self.app.action().unwrap_or(EntryAction::Quit))
-        } else {
-            ScreenControl::Continue
+            TuiEvent::Key(key) => {
+                let effects = self.app.dispatch(Action::Key(key));
+                self.apply_effects(effects)
+            }
+            TuiEvent::Paste(pasted) => {
+                let effects = self.app.dispatch(Action::Paste(pasted));
+                self.apply_effects(effects)
+            }
+            TuiEvent::Draw => ScreenControl::Continue,
         }
     }
 
@@ -58,9 +97,16 @@ impl Screen for EntryScreen {
 }
 
 pub async fn run(args: Args) -> EntryAction {
-    let screen = EntryScreen {
-        app: EntryApp::new(args.status_message, args.initial_command),
+    let mut screen = EntryScreen {
+        app: App::new(args.status_message, args.stt_provider, args.llm_provider),
     };
+
+    if let Some(command) = args.initial_command {
+        let effects = screen.app.dispatch(Action::SubmitCommand(command));
+        if let ScreenControl::Exit(action) = screen.apply_effects(effects) {
+            return action;
+        }
+    }
 
     run_screen::<EntryScreen>(screen, None)
         .await

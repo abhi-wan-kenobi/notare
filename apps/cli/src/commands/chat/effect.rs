@@ -5,5 +5,9 @@ pub(crate) enum Effect {
         prompt: String,
         history: Vec<Message>,
     },
+    GenerateTitle {
+        prompt: String,
+        response: String,
+    },
     Exit,
 }

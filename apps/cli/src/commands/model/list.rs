@@ -5,7 +5,7 @@ use comfy_table::{Cell, Color, ContentArrangement, Table, presets::UTF8_FULL_CON
 use hypr_local_model::LocalModel;
 use hypr_model_downloader::{DownloadableModel, ModelDownloadManager};
 
-use crate::commands::OutputFormat;
+use crate::cli::OutputFormat;
 use crate::config::desktop as settings;
 use crate::error::CliResult;
 

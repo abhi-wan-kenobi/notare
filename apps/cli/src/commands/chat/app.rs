@@ -5,7 +5,6 @@ use hypr_cli_tui::textarea_input_from_key_event;
 use rig::message::Message;
 use tui_textarea::TextArea;
 
-use crate::output::format_hhmmss;
 use crate::theme::Theme;
 use crate::widgets::ScrollState;
 
@@ -40,6 +39,8 @@ pub(crate) struct App {
     started_at: Instant,
     scroll: ScrollState,
     autoscroll: bool,
+    terminal_title: Option<String>,
+    title_requested: bool,
 }
 
 impl App {
@@ -68,6 +69,8 @@ impl App {
             started_at: Instant::now(),
             scroll: ScrollState::new(),
             autoscroll: true,
+            terminal_title: None,
+            title_requested: false,
         }
     }
 
@@ -85,16 +88,18 @@ impl App {
             }
             Action::StreamCompleted(final_text) => self.finish_stream(final_text),
             Action::StreamFailed(error) => self.fail_stream(error),
+            Action::TitleGenerated(title) => {
+                self.terminal_title = Some(title);
+                Vec::new()
+            }
         }
     }
 
     pub(crate) fn title(&self) -> String {
-        let label = if self.streaming {
-            "streaming"
-        } else {
-            self.status.as_str()
-        };
-        format!("char chat: {label} ({})", format_hhmmss(self.elapsed()))
+        match &self.terminal_title {
+            Some(title) => format!("Char | {title}"),
+            None => "Char | Chat".to_string(),
+        }
     }
 
     pub(crate) fn model(&self) -> &str {
@@ -261,8 +266,20 @@ impl App {
             speaker: Speaker::Assistant,
             content: content.clone(),
         });
+
+        let mut effects = Vec::new();
+        if !self.title_requested {
+            self.title_requested = true;
+            if let Some(user_msg) = self.transcript.iter().find(|m| m.speaker == Speaker::User) {
+                effects.push(Effect::GenerateTitle {
+                    prompt: user_msg.content.clone(),
+                    response: content.clone(),
+                });
+            }
+        }
+
         self.api_history.push(Message::assistant(content));
-        Vec::new()
+        effects
     }
 
     fn fail_stream(&mut self, error: String) -> Vec<Effect> {

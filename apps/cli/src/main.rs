@@ -1,3 +1,4 @@
+mod agent;
 mod cli;
 mod commands;
 mod config;
@@ -12,6 +13,7 @@ use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
 
 use crate::cli::{Cli, Commands};
+use crate::config::stt::SttGlobalArgs;
 use crate::error::CliResult;
 
 #[tokio::main]
@@ -156,7 +158,7 @@ async fn run(cli: Cli) -> CliResult<()> {
         }
         Some(Commands::Listen { provider, audio }) => {
             commands::listen::run(commands::listen::Args {
-                stt: commands::SttGlobalArgs {
+                stt: SttGlobalArgs {
                     provider,
                     base_url: global.base_url,
                     api_key: global.api_key,
@@ -169,7 +171,7 @@ async fn run(cli: Cli) -> CliResult<()> {
             .await
         }
         Some(Commands::Batch { args }) => {
-            let stt = commands::SttGlobalArgs {
+            let stt = SttGlobalArgs {
                 provider: args.provider,
                 base_url: global.base_url,
                 api_key: global.api_key,
@@ -189,27 +191,39 @@ async fn run(cli: Cli) -> CliResult<()> {
     }
 }
 
-async fn run_entry_loop(
-    global: cli::GlobalArgs,
-    initial_command: Option<String>,
-) -> CliResult<()> {
+async fn run_entry_loop(global: cli::GlobalArgs, initial_command: Option<String>) -> CliResult<()> {
     let mut status_message: Option<String> = None;
     let mut initial_cmd = initial_command;
     loop {
+        let settings = load_entry_settings();
         let action = commands::entry::run(commands::entry::Args {
             status_message: status_message.take(),
             initial_command: initial_cmd.take(),
+            stt_provider: settings
+                .as_ref()
+                .and_then(|value| value.current_stt_provider.clone()),
+            llm_provider: settings
+                .as_ref()
+                .and_then(|value| value.current_llm_provider.clone()),
         })
         .await;
         match action {
             commands::entry::EntryAction::Listen => {
+                let listen = match resolve_entry_listen_config(settings.as_ref()) {
+                    Ok(listen) => listen,
+                    Err(message) => {
+                        status_message = Some(message);
+                        continue;
+                    }
+                };
+
                 return commands::listen::run(commands::listen::Args {
-                    stt: commands::SttGlobalArgs {
-                        provider: cli::Provider::Deepgram,
-                        base_url: global.base_url,
-                        api_key: global.api_key,
-                        model: global.model,
-                        language: global.language,
+                    stt: SttGlobalArgs {
+                        provider: listen.provider,
+                        base_url: global.base_url.clone(),
+                        api_key: global.api_key.clone(),
+                        model: global.model.clone().or(listen.model),
+                        language: global.language.clone(),
                     },
                     record: global.record,
                     audio: cli::AudioMode::Dual,
@@ -231,4 +245,67 @@ async fn run_entry_loop(
             commands::entry::EntryAction::Quit => return Ok(()),
         }
     }
+}
+
+fn load_entry_settings() -> Option<config::desktop::DesktopSettings> {
+    let paths = config::desktop::resolve_paths();
+    config::desktop::load_settings(&paths.settings_path)
+}
+
+struct EntryListenConfig {
+    provider: cli::Provider,
+    model: Option<String>,
+}
+
+fn resolve_entry_listen_config(
+    settings: Option<&config::desktop::DesktopSettings>,
+) -> Result<EntryListenConfig, String> {
+    let Some(settings) = settings else {
+        return Err("No STT provider configured. Run /connect.".to_string());
+    };
+
+    let Some(provider_id) = settings.current_stt_provider.as_deref() else {
+        return Err("No STT provider configured. Run /connect.".to_string());
+    };
+
+    let saved_model = settings
+        .current_stt_model
+        .clone()
+        .filter(|value| !value.trim().is_empty());
+
+    let provider = match provider_id {
+        "deepgram" => cli::Provider::Deepgram,
+        "soniox" => cli::Provider::Soniox,
+        "assemblyai" => cli::Provider::Assemblyai,
+        "fireworks" => cli::Provider::Fireworks,
+        "openai" => cli::Provider::Openai,
+        "gladia" => cli::Provider::Gladia,
+        "elevenlabs" => cli::Provider::Elevenlabs,
+        "mistral" => cli::Provider::Mistral,
+        "hyprnote" => resolve_hyprnote_listen_provider(saved_model.as_deref())?,
+        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        "cactus" => cli::Provider::Cactus,
+        _ => {
+            return Err(format!(
+                "Configured STT provider `{provider_id}` is not supported by CLI listen."
+            ));
+        }
+    };
+
+    Ok(EntryListenConfig {
+        provider,
+        model: saved_model,
+    })
+}
+
+fn resolve_hyprnote_listen_provider(model: Option<&str>) -> Result<cli::Provider, String> {
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+    if model.is_some_and(|value| value.starts_with("cactus-")) {
+        return Ok(cli::Provider::Cactus);
+    }
+
+    Err(
+        "Configured STT provider `hyprnote` is not supported by CLI listen. Run /connect to choose a supported provider."
+            .to_string(),
+    )
 }

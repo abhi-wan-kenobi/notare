@@ -1,6 +1,5 @@
 mod output;
 mod response;
-pub(crate) mod runtime;
 
 use std::io::IsTerminal;
 use std::sync::Arc;
@@ -9,11 +8,10 @@ use hypr_listener2_core::{BatchErrorCode, BatchEvent};
 use tokio::sync::mpsc;
 
 pub use crate::cli::BatchArgs;
-use crate::commands::{OutputFormat, SttGlobalArgs};
+use crate::cli::OutputFormat;
 use crate::config::stt::resolve_config;
+use crate::config::stt::{ChannelBatchRuntime, SttGlobalArgs};
 use crate::error::{CliError, CliResult};
-
-use self::runtime::ChannelBatchRuntime;
 
 pub async fn run(args: BatchArgs, stt: SttGlobalArgs, quiet: bool) -> CliResult<()> {
     let resolved = resolve_config(

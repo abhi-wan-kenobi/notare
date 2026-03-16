@@ -101,7 +101,7 @@ pub fn did_you_mean<'a>(input: &str, candidates: &[&'a str]) -> Option<&'a str> 
     candidates
         .iter()
         .filter_map(|c| {
-            let sim = strsim::jaro_winkler(input, c) as f64;
+            let sim = strsim::jaro_winkler(input, c);
             if sim > 0.7 { Some((*c, sim)) } else { None }
         })
         .max_by(|a, b| a.1.total_cmp(&b.1))

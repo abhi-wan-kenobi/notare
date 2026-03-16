@@ -21,6 +21,7 @@ pub enum ChannelKind {
     Speaker,
 }
 
+#[derive(Clone, Copy)]
 pub enum DisplayMode {
     Single(ChannelKind),
     Dual,
@@ -35,7 +36,7 @@ impl AudioSource {
         matches!(self, Self::AecDual)
     }
 
-        pub fn is_mock(&self) -> bool {
+    pub fn is_mock(&self) -> bool {
         matches!(self, Self::Mock)
     }
 }

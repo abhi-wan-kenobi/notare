@@ -6,8 +6,8 @@ use ractor::Actor;
 use tokio::sync::mpsc;
 
 pub use crate::cli::AudioMode;
-use crate::commands::SttGlobalArgs;
 use crate::config::desktop;
+use crate::config::stt::{ChannelBatchRuntime, SttGlobalArgs};
 use crate::config::stt::{ResolvedSttConfig, resolve_config};
 use crate::error::{CliError, CliResult};
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
@@ -24,8 +24,6 @@ use app::App;
 use audio_drop::AudioDropRequest;
 use effect::Effect;
 use runtime::Runtime;
-
-use crate::commands::batch::runtime::ChannelBatchRuntime;
 
 pub struct Args {
     pub stt: SttGlobalArgs,

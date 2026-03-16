@@ -1,11 +1,12 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::widgets::ListState;
+use url::Url;
 
 use crate::cli::{ConnectProvider, ConnectionType};
 
 use super::action::Action;
 use super::effect::Effect;
-use super::{LLM_PROVIDERS, STT_PROVIDERS};
+use super::providers::{LLM_PROVIDERS, STT_PROVIDERS};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Step {
@@ -37,7 +38,7 @@ impl App {
         provider: Option<ConnectProvider>,
         base_url: Option<String>,
         api_key: Option<String>,
-    ) -> (Self, Vec<Effect>) {
+    ) -> (Self, Option<Effect>) {
         let mut app = Self {
             step: Step::SelectType,
             connection_type,
@@ -56,7 +57,7 @@ impl App {
         (app, effects)
     }
 
-    pub fn dispatch(&mut self, action: Action) -> Vec<Effect> {
+    pub fn dispatch(&mut self, action: Action) -> Option<Effect> {
         match action {
             Action::Key(key) => self.handle_key(key),
             Action::Paste(text) => self.handle_paste(&text),
@@ -82,21 +83,21 @@ impl App {
         parts.join(" > ")
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+    fn handle_key(&mut self, key: KeyEvent) -> Option<Effect> {
         if key.code == KeyCode::Esc
             || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c'))
         {
-            return vec![Effect::Exit];
+            return Some(Effect::Exit);
         }
 
         match self.step {
             Step::SelectType | Step::SelectProvider => self.handle_list_key(key),
             Step::InputBaseUrl | Step::InputApiKey => self.handle_input_key(key),
-            Step::Done => vec![],
+            Step::Done => None,
         }
     }
 
-    fn handle_paste(&mut self, text: &str) -> Vec<Effect> {
+    fn handle_paste(&mut self, text: &str) -> Option<Effect> {
         match self.step {
             Step::InputBaseUrl | Step::InputApiKey => {
                 for c in text.chars() {
@@ -108,18 +109,18 @@ impl App {
             }
             _ => {}
         }
-        vec![]
+        None
     }
 
-    fn handle_list_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+    fn handle_list_key(&mut self, key: KeyEvent) -> Option<Effect> {
         match key.code {
             KeyCode::Up | KeyCode::Char('k') => {
                 self.list_state.select_previous();
-                vec![]
+                None
             }
             KeyCode::Down | KeyCode::Char('j') => {
                 self.list_state.select_next();
-                vec![]
+                None
             }
             KeyCode::Enter => {
                 self.confirm_list_selection();
@@ -130,17 +131,17 @@ impl App {
                 };
                 self.advance()
             }
-            KeyCode::Char('q') => vec![Effect::Exit],
-            _ => vec![],
+            KeyCode::Char('q') => Some(Effect::Exit),
+            _ => None,
         }
     }
 
-    fn handle_input_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+    fn handle_input_key(&mut self, key: KeyEvent) -> Option<Effect> {
         match key.code {
             KeyCode::Enter => {
                 if let Err(msg) = self.confirm_input() {
                     self.error = Some(msg);
-                    return vec![];
+                    return None;
                 }
                 self.error = None;
                 self.step = match self.step {
@@ -155,7 +156,7 @@ impl App {
                 self.input.insert(idx, c);
                 self.cursor_pos += 1;
                 self.error = None;
-                vec![]
+                None
             }
             KeyCode::Backspace => {
                 if self.cursor_pos > 0 {
@@ -164,20 +165,20 @@ impl App {
                     self.input.remove(idx);
                 }
                 self.error = None;
-                vec![]
+                None
             }
             KeyCode::Left => {
                 self.cursor_pos = self.cursor_pos.saturating_sub(1);
-                vec![]
+                None
             }
             KeyCode::Right => {
                 let max = self.input.chars().count();
                 if self.cursor_pos < max {
                     self.cursor_pos += 1;
                 }
-                vec![]
+                None
             }
-            _ => vec![],
+            _ => None,
         }
     }
 
@@ -219,7 +220,7 @@ impl App {
         match self.step {
             Step::InputBaseUrl => {
                 if let Some(ref url) = value {
-                    super::validate_base_url(url)?;
+                    validate_base_url(url)?;
                 }
                 self.base_url = value;
             }
@@ -231,7 +232,7 @@ impl App {
         Ok(())
     }
 
-    fn advance(&mut self) -> Vec<Effect> {
+    fn advance(&mut self) -> Option<Effect> {
         loop {
             match self.step {
                 Step::SelectType => {
@@ -240,7 +241,7 @@ impl App {
                         continue;
                     }
                     self.list_state = ListState::default().with_selected(Some(0));
-                    return vec![];
+                    return None;
                 }
                 Step::SelectProvider => {
                     if let Some(provider) = self.provider {
@@ -252,7 +253,7 @@ impl App {
                         self.provider = None;
                     }
                     self.list_state = ListState::default().with_selected(Some(0));
-                    return vec![];
+                    return None;
                 }
                 Step::InputBaseUrl => {
                     let provider = self.provider.unwrap();
@@ -269,7 +270,7 @@ impl App {
                     self.input_default = provider.default_base_url().map(|s| s.to_string());
                     self.input_label = "Base URL";
                     self.input_masked = false;
-                    return vec![];
+                    return None;
                 }
                 Step::InputApiKey => {
                     let provider = self.provider.unwrap();
@@ -282,19 +283,29 @@ impl App {
                     self.input_default = None;
                     self.input_label = "API Key";
                     self.input_masked = true;
-                    return vec![];
+                    return None;
                 }
                 Step::Done => {
-                    return vec![Effect::Save {
+                    return Some(Effect::Save {
                         connection_type: self.connection_type.unwrap(),
                         provider: self.provider.unwrap(),
                         base_url: self.base_url.clone(),
                         api_key: self.api_key.clone(),
-                    }];
+                    });
                 }
             }
         }
     }
+}
+
+pub(crate) fn validate_base_url(input: &str) -> Result<(), String> {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return Ok(());
+    }
+    Url::parse(trimmed)
+        .map(|_| ())
+        .map_err(|e| format!("invalid URL: {e}"))
 }
 
 #[cfg(test)]
@@ -310,21 +321,21 @@ mod tests {
             Some("key123".to_string()),
         );
         assert_eq!(app.step, Step::Done);
-        assert!(matches!(effects.first(), Some(Effect::Save { .. })));
+        assert!(matches!(effects, Some(Effect::Save { .. })));
     }
 
     #[test]
     fn no_args_starts_at_select_type() {
         let (app, effects) = App::new(None, None, None, None);
         assert_eq!(app.step, Step::SelectType);
-        assert!(effects.is_empty());
+        assert!(effects.is_none());
     }
 
     #[test]
     fn type_provided_starts_at_select_provider() {
         let (app, effects) = App::new(Some(ConnectionType::Stt), None, None, None);
         assert_eq!(app.step, Step::SelectProvider);
-        assert!(effects.is_empty());
+        assert!(effects.is_none());
     }
 
     #[test]
@@ -336,7 +347,7 @@ mod tests {
             None,
         );
         assert_eq!(app.step, Step::InputBaseUrl);
-        assert!(effects.is_empty());
+        assert!(effects.is_none());
     }
 
     #[test]
@@ -357,7 +368,7 @@ mod tests {
         assert_eq!(app.step, Step::SelectType);
 
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
-        assert!(effects.is_empty());
+        assert!(effects.is_none());
         assert_eq!(app.step, Step::SelectProvider);
         assert_eq!(app.connection_type, Some(ConnectionType::Stt));
     }
@@ -376,7 +387,7 @@ mod tests {
             app.dispatch(Action::Key(KeyEvent::from(KeyCode::Char(c))));
         }
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
-        assert!(effects.is_empty());
+        assert!(effects.is_none());
         assert!(app.error.is_some());
     }
 
@@ -384,6 +395,6 @@ mod tests {
     fn esc_exits() {
         let (mut app, _) = App::new(None, None, None, None);
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Esc)));
-        assert!(matches!(effects.first(), Some(Effect::Exit)));
+        assert!(matches!(effects, Some(Effect::Exit)));
     }
 }

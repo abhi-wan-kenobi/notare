@@ -1,16 +1,75 @@
 use std::path::PathBuf;
 
-use hypr_listener2_core::{BatchParams, BatchProvider};
+use hypr_listener2_core::{BatchEvent, BatchParams, BatchProvider, BatchRuntime};
 use hypr_local_model::LocalModel;
 use hypr_local_stt_server::LocalSttServer;
+use tokio::sync::mpsc;
 
-use crate::commands::Provider;
+use crate::cli::Provider;
 use crate::config::cactus::{
     CACTUS_ENABLED, canonical_cactus_name, not_found_cactus_model, resolve_cactus_model,
     suggest_cactus_models, unsupported_cactus_error,
 };
 use crate::config::desktop;
 use crate::error::{CliError, CliResult};
+
+pub struct SttGlobalArgs {
+    pub provider: Provider,
+    pub base_url: Option<String>,
+    pub api_key: Option<String>,
+    pub model: Option<String>,
+    pub language: String,
+}
+
+pub struct ChannelBatchRuntime {
+    pub tx: mpsc::UnboundedSender<BatchEvent>,
+}
+
+impl BatchRuntime for ChannelBatchRuntime {
+    fn emit(&self, event: BatchEvent) {
+        let _ = self.tx.send(event);
+    }
+}
+
+impl Provider {
+    pub fn is_local(&self) -> bool {
+        match self {
+            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+            Provider::Cactus => true,
+            _ => false,
+        }
+    }
+
+    fn cloud_provider(&self) -> Option<owhisper_client::Provider> {
+        match self {
+            Provider::Deepgram => Some(owhisper_client::Provider::Deepgram),
+            Provider::Soniox => Some(owhisper_client::Provider::Soniox),
+            Provider::Assemblyai => Some(owhisper_client::Provider::AssemblyAI),
+            Provider::Fireworks => Some(owhisper_client::Provider::Fireworks),
+            Provider::Openai => Some(owhisper_client::Provider::OpenAI),
+            Provider::Gladia => Some(owhisper_client::Provider::Gladia),
+            Provider::Elevenlabs => Some(owhisper_client::Provider::ElevenLabs),
+            Provider::Mistral => Some(owhisper_client::Provider::Mistral),
+            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+            Provider::Cactus => None,
+        }
+    }
+
+    fn to_batch_provider(&self) -> BatchProvider {
+        match self {
+            Provider::Deepgram => BatchProvider::Deepgram,
+            Provider::Soniox => BatchProvider::Soniox,
+            Provider::Assemblyai => BatchProvider::AssemblyAI,
+            Provider::Fireworks => BatchProvider::Fireworks,
+            Provider::Openai => BatchProvider::OpenAI,
+            Provider::Gladia => BatchProvider::Gladia,
+            Provider::Elevenlabs => BatchProvider::ElevenLabs,
+            Provider::Mistral => BatchProvider::Mistral,
+            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+            Provider::Cactus => BatchProvider::Cactus,
+        }
+    }
+}
 
 pub struct CactusServerInfo {
     pub server: LocalSttServer,
@@ -19,7 +78,7 @@ pub struct CactusServerInfo {
 }
 
 pub struct ResolvedSttConfig {
-    pub provider: Provider,
+    pub provider: BatchProvider,
     pub base_url: String,
     pub api_key: String,
     pub model: String,
@@ -36,10 +95,6 @@ impl ResolvedSttConfig {
         }
     }
 
-    pub fn batch_provider(&self) -> BatchProvider {
-        self.provider.into()
-    }
-
     pub fn to_batch_params(
         &self,
         session_id: String,
@@ -48,7 +103,7 @@ impl ResolvedSttConfig {
     ) -> BatchParams {
         BatchParams {
             session_id,
-            provider: self.batch_provider(),
+            provider: self.provider.clone(),
             file_path,
             model: self.model_option(),
             base_url: self.base_url.clone(),
@@ -71,10 +126,12 @@ pub async fn resolve_config(
         .parse::<hypr_language::Language>()
         .map_err(|e| CliError::invalid_argument("--language", language_code, e.to_string()))?;
 
+    let batch_provider = provider.to_batch_provider();
+
     if provider.is_local() {
         let info = resolve_and_spawn_cactus(model.as_deref()).await?;
         return Ok(ResolvedSttConfig {
-            provider,
+            provider: batch_provider,
             base_url: info.base_url,
             api_key: api_key.unwrap_or_default(),
             model: info.model_name,
@@ -94,7 +151,7 @@ pub async fn resolve_config(
                 )
             })?;
         return Ok(ResolvedSttConfig {
-            provider,
+            provider: batch_provider,
             base_url,
             api_key,
             model: model.unwrap_or_default(),
@@ -109,7 +166,7 @@ pub async fn resolve_config(
         api_key.ok_or_else(|| CliError::required_argument("--api-key (or CHAR_API_KEY)"))?;
 
     Ok(ResolvedSttConfig {
-        provider,
+        provider: batch_provider,
         base_url,
         api_key,
         model: model.unwrap_or_default(),
@@ -132,6 +189,7 @@ pub async fn resolve_and_spawn_cactus(model_name: Option<&str>) -> CliResult<Cac
     })
 }
 
+#[cfg_attr(not(feature = "dev"), allow(dead_code))]
 pub fn resolve_local_model_path(
     model_id: Option<&str>,
     model_path: Option<PathBuf>,
@@ -156,6 +214,7 @@ pub fn resolve_local_model_path(
     ))
 }
 
+#[cfg_attr(not(feature = "dev"), allow(dead_code))]
 pub fn resolve_cactus_model_path(name: &str) -> CliResult<PathBuf> {
     if !CACTUS_ENABLED {
         return Err(unsupported_cactus_error());

@@ -1,13 +1,13 @@
 mod action;
 mod app;
 mod effect;
+mod providers;
 mod ui;
 
 use std::convert::Infallible;
 use std::time::Duration;
 
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
-use url::Url;
 
 pub use crate::cli::{ConnectProvider, ConnectionType};
 use crate::config::desktop;
@@ -19,112 +19,6 @@ use self::effect::Effect;
 
 const IDLE_FRAME: Duration = Duration::from_secs(1);
 
-const STT_PROVIDERS: &[ConnectProvider] = &[
-    ConnectProvider::Deepgram,
-    ConnectProvider::Soniox,
-    ConnectProvider::Assemblyai,
-    ConnectProvider::Openai,
-    ConnectProvider::Gladia,
-    ConnectProvider::Elevenlabs,
-    ConnectProvider::Mistral,
-    ConnectProvider::Fireworks,
-    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    ConnectProvider::Cactus,
-    ConnectProvider::Custom,
-];
-
-const LLM_PROVIDERS: &[ConnectProvider] = &[
-    ConnectProvider::Openai,
-    ConnectProvider::Anthropic,
-    ConnectProvider::Openrouter,
-    ConnectProvider::GoogleGenerativeAi,
-    ConnectProvider::Mistral,
-    ConnectProvider::AzureOpenai,
-    ConnectProvider::AzureAi,
-    ConnectProvider::Ollama,
-    ConnectProvider::Lmstudio,
-    ConnectProvider::Custom,
-];
-
-impl std::fmt::Display for ConnectionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Stt => write!(f, "stt"),
-            Self::Llm => write!(f, "llm"),
-        }
-    }
-}
-
-impl std::fmt::Display for ConnectProvider {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.id())
-    }
-}
-
-impl ConnectProvider {
-    pub(crate) fn id(&self) -> &'static str {
-        match self {
-            Self::Deepgram => "deepgram",
-            Self::Soniox => "soniox",
-            Self::Assemblyai => "assemblyai",
-            Self::Openai => "openai",
-            Self::Gladia => "gladia",
-            Self::Elevenlabs => "elevenlabs",
-            Self::Mistral => "mistral",
-            Self::Fireworks => "fireworks",
-            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-            Self::Cactus => "cactus",
-            Self::Anthropic => "anthropic",
-            Self::Openrouter => "openrouter",
-            Self::GoogleGenerativeAi => "google_generative_ai",
-            Self::AzureOpenai => "azure_openai",
-            Self::AzureAi => "azure_ai",
-            Self::Ollama => "ollama",
-            Self::Lmstudio => "lmstudio",
-            Self::Custom => "custom",
-        }
-    }
-
-    fn is_local(&self) -> bool {
-        match self {
-            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-            Self::Cactus => true,
-            Self::Ollama | Self::Lmstudio => true,
-            _ => false,
-        }
-    }
-
-    fn default_base_url(&self) -> Option<&'static str> {
-        match self {
-            Self::Deepgram => Some("https://api.deepgram.com/v1"),
-            Self::Soniox => Some("https://api.soniox.com"),
-            Self::Assemblyai => Some("https://api.assemblyai.com"),
-            Self::Openai => Some("https://api.openai.com/v1"),
-            Self::Gladia => Some("https://api.gladia.io"),
-            Self::Elevenlabs => Some("https://api.elevenlabs.io"),
-            Self::Mistral => Some("https://api.mistral.ai/v1"),
-            Self::Fireworks => Some("https://api.fireworks.ai"),
-            Self::Anthropic => Some("https://api.anthropic.com/v1"),
-            Self::Openrouter => Some("https://openrouter.ai/api/v1"),
-            Self::GoogleGenerativeAi => {
-                Some("https://generativelanguage.googleapis.com/v1beta")
-            }
-            Self::Ollama => Some("http://127.0.0.1:11434/v1"),
-            Self::Lmstudio => Some("http://127.0.0.1:1234/v1"),
-            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-            Self::Cactus => None,
-            Self::AzureOpenai | Self::AzureAi | Self::Custom => None,
-        }
-    }
-
-    fn valid_for(&self, ct: ConnectionType) -> bool {
-        match ct {
-            ConnectionType::Stt => STT_PROVIDERS.contains(self),
-            ConnectionType::Llm => LLM_PROVIDERS.contains(self),
-        }
-    }
-}
-
 // --- Screen ---
 
 struct ConnectScreen {
@@ -132,8 +26,8 @@ struct ConnectScreen {
 }
 
 impl ConnectScreen {
-    fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<Option<SaveData>> {
-        for effect in effects {
+    fn apply_effect(&mut self, effect: Option<Effect>) -> ScreenControl<Option<SaveData>> {
+        if let Some(effect) = effect {
             match effect {
                 Effect::Save {
                     connection_type,
@@ -173,12 +67,12 @@ impl Screen for ConnectScreen {
     ) -> ScreenControl<Self::Output> {
         match event {
             TuiEvent::Key(key) => {
-                let effects = self.app.dispatch(Action::Key(key));
-                self.apply_effects(effects)
+                let effect = self.app.dispatch(Action::Key(key));
+                self.apply_effect(effect)
             }
             TuiEvent::Paste(text) => {
-                let effects = self.app.dispatch(Action::Paste(text));
-                self.apply_effects(effects)
+                let effect = self.app.dispatch(Action::Paste(text));
+                self.apply_effect(effect)
             }
             TuiEvent::Draw => ScreenControl::Continue,
         }
@@ -217,22 +111,22 @@ pub struct Args {
 pub async fn run(args: Args) -> CliResult<bool> {
     let interactive = std::io::IsTerminal::is_terminal(&std::io::stdin());
 
-    if let (Some(ct), Some(p)) = (args.connection_type, &args.provider) {
-        if !p.valid_for(ct) {
-            return Err(CliError::invalid_argument(
-                "--provider",
-                p.id(),
-                format!("not a valid {ct} provider"),
-            ));
-        }
+    if let (Some(ct), Some(p)) = (args.connection_type, &args.provider)
+        && !p.valid_for(ct)
+    {
+        return Err(CliError::invalid_argument(
+            "--provider",
+            p.id(),
+            format!("not a valid {ct} provider"),
+        ));
     }
 
     if let Some(ref url) = args.base_url {
-        validate_base_url(url)
+        app::validate_base_url(url)
             .map_err(|reason| CliError::invalid_argument("--base-url", url, reason))?;
     }
 
-    let (app, initial_effects) = App::new(
+    let (app, initial_effect) = App::new(
         args.connection_type,
         args.provider,
         args.base_url,
@@ -240,17 +134,15 @@ pub async fn run(args: Args) -> CliResult<bool> {
     );
 
     if app.step == Step::Done {
-        for effect in initial_effects {
-            if let Effect::Save {
-                connection_type,
-                provider,
-                base_url,
-                api_key,
-            } = effect
-            {
-                save_config(connection_type, provider, base_url, api_key)?;
-                return Ok(true);
-            }
+        if let Some(Effect::Save {
+            connection_type,
+            provider,
+            base_url,
+            api_key,
+        }) = initial_effect
+        {
+            save_config(connection_type, provider, base_url, api_key)?;
+            return Ok(true);
         }
     }
 
@@ -286,21 +178,16 @@ pub async fn run(args: Args) -> CliResult<bool> {
 
     match result {
         Some(data) => {
-            save_config(data.connection_type, data.provider, data.base_url, data.api_key)?;
+            save_config(
+                data.connection_type,
+                data.provider,
+                data.base_url,
+                data.api_key,
+            )?;
             Ok(true)
         }
         None => Ok(false),
     }
-}
-
-fn validate_base_url(input: &str) -> Result<(), String> {
-    let trimmed = input.trim();
-    if trimmed.is_empty() {
-        return Ok(());
-    }
-    Url::parse(trimmed)
-        .map(|_| ())
-        .map_err(|e| format!("invalid URL: {e}"))
 }
 
 fn save_config(

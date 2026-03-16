@@ -45,6 +45,9 @@ impl ChatScreen {
                 Effect::Submit { prompt, history } => {
                     self.runtime.submit(prompt, history);
                 }
+                Effect::GenerateTitle { prompt, response } => {
+                    self.runtime.generate_title(prompt, response);
+                }
                 Effect::Exit => return ScreenControl::Exit(()),
             }
         }
@@ -81,9 +84,10 @@ impl Screen for ChatScreen {
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
         let action = match event {
-            RuntimeEvent::StreamChunk(chunk) => Action::StreamChunk(chunk),
-            RuntimeEvent::StreamCompleted(final_text) => Action::StreamCompleted(final_text),
-            RuntimeEvent::StreamFailed(error) => Action::StreamFailed(error),
+            RuntimeEvent::Chunk(chunk) => Action::StreamChunk(chunk),
+            RuntimeEvent::Completed(final_text) => Action::StreamCompleted(final_text),
+            RuntimeEvent::Failed(error) => Action::StreamFailed(error),
+            RuntimeEvent::TitleGenerated(title) => Action::TitleGenerated(title),
         };
         let effects = self.app.dispatch(action);
         self.apply_effects(effects)
@@ -111,7 +115,7 @@ pub async fn run(args: Args) -> CliResult<()> {
     let config = resolve_config(args.provider, args.base_url, args.api_key, args.model)?;
 
     if let Some(prompt) = args.prompt {
-        return runtime::run_prompt(config, system_message, &prompt).await;
+        return crate::agent::run_prompt(config, system_message, &prompt).await;
     }
 
     let (runtime_tx, runtime_rx) = mpsc::unbounded_channel();

@@ -1,8 +1,8 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Flex, Layout, Position, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Clear, List, Paragraph};
-use ratatui::Frame;
 
 use crate::theme::Theme;
 use crate::widgets::KeyHints;
@@ -112,10 +112,7 @@ fn draw_input(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
         app.input.clone()
     };
 
-    frame.render_widget(
-        Paragraph::new(display_text).block(input_block),
-        input_area,
-    );
+    frame.render_widget(Paragraph::new(display_text).block(input_block), input_area);
 
     #[allow(clippy::cast_possible_truncation)]
     frame.set_cursor_position(Position::new(
@@ -156,7 +153,11 @@ fn draw_status(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
 
 fn centered_dialog(area: Rect) -> Rect {
     let width = area.width.saturating_mul(3).saturating_div(5).clamp(40, 80);
-    let height = area.height.saturating_mul(3).saturating_div(5).clamp(12, 30);
+    let height = area
+        .height
+        .saturating_mul(3)
+        .saturating_div(5)
+        .clamp(12, 30);
     let [v] = Layout::vertical([Constraint::Length(height)])
         .flex(Flex::Center)
         .areas(area);
