@@ -1,54 +1,82 @@
 use ratatui::Frame;
 use ratatui::layout::Rect;
-use ratatui::style::Style;
-use ratatui::text::Span;
-use ratatui::widgets::{Block, Borders};
+use ratatui::style::{Color, Style};
+use ratatui::text::{Line, Span};
+use textwrap::wrap;
 
 use crate::commands::chat::app::{App, Speaker};
 use crate::theme::Theme;
-use crate::widgets::{Transcript, TranscriptEntry};
+use crate::widgets::Scrollable;
 
 pub(super) fn draw(frame: &mut Frame, app: &mut App, area: Rect) {
     let theme = Theme::default();
+    let width = area.width as usize;
+    let wrap_width = width.saturating_sub(6).max(8);
 
-    let mut entries: Vec<TranscriptEntry> = app
-        .transcript()
-        .iter()
-        .map(|m| {
-            let (label, style) = match m.speaker {
-                Speaker::User => ("You", Style::new()),
-                Speaker::Assistant => ("Assistant", theme.transcript_final),
-                Speaker::Error => ("Error", theme.error),
-            };
-            TranscriptEntry {
-                label: label.to_string(),
-                content: m.content.clone(),
-                label_style: theme.speaker_label,
-                content_style: style,
+    let accent = Style::new().fg(Color::Indexed(69));
+
+    let mut lines: Vec<Line<'static>> = Vec::new();
+
+    for msg in app.transcript() {
+        if !lines.is_empty() {
+            lines.push(Line::default());
+        }
+        match msg.speaker {
+            Speaker::User => {
+                let wrapped = wrap(&msg.content, wrap_width);
+                for w in wrapped {
+                    lines.push(Line::from(vec![
+                        Span::styled("  \u{258e} ", accent),
+                        Span::raw(w.to_string()),
+                    ]));
+                }
             }
-        })
-        .collect();
-
-    if app.streaming() || !app.pending_assistant().is_empty() {
-        entries.push(TranscriptEntry {
-            label: "Assistant".to_string(),
-            content: app.pending_assistant().to_string(),
-            label_style: theme.speaker_label,
-            content_style: theme.transcript_final,
-        });
+            Speaker::Assistant => {
+                let wrapped = wrap(&msg.content, wrap_width);
+                for w in wrapped {
+                    lines.push(Line::from(Span::styled(
+                        format!("    {w}"),
+                        theme.transcript_final,
+                    )));
+                }
+            }
+            Speaker::Error => {
+                let wrapped = wrap(&msg.content, wrap_width);
+                for w in wrapped {
+                    lines.push(Line::from(Span::styled(format!("    {w}"), theme.error)));
+                }
+            }
+        }
     }
 
-    let transcript = Transcript::new(entries)
-        .placeholder(Span::styled(
-            "No messages yet. Start typing below.",
-            theme.placeholder,
-        ))
-        .block(
-            Block::new()
-                .borders(Borders::ALL)
-                .border_style(theme.border)
-                .title(" Transcript "),
-        );
+    if app.streaming() || !app.pending_assistant().is_empty() {
+        if !lines.is_empty() {
+            lines.push(Line::default());
+        }
+        let content = app.pending_assistant();
+        if content.is_empty() {
+            lines.push(Line::from(Span::styled(
+                "    ...",
+                theme.transcript_partial,
+            )));
+        } else {
+            let wrapped = wrap(content, wrap_width);
+            for w in wrapped {
+                lines.push(Line::from(Span::styled(
+                    format!("    {w}"),
+                    theme.transcript_final,
+                )));
+            }
+        }
+    }
 
-    frame.render_stateful_widget(transcript, area, app.scroll_state_mut());
+    if lines.is_empty() {
+        lines.push(Line::from(Span::styled(
+            "    Start a conversation below.",
+            theme.placeholder,
+        )));
+    }
+
+    let scrollable = Scrollable::new(lines);
+    frame.render_stateful_widget(scrollable, area, app.scroll_state_mut());
 }

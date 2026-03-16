@@ -8,15 +8,16 @@ use crate::theme::Theme;
 pub(super) fn draw(frame: &mut Frame, app: &mut App, area: Rect) {
     let theme = Theme::default();
 
-    let title = if app.status().starts_with("Streaming") {
-        " Composer (locked) "
+    let border_style = if app.streaming() {
+        theme.border
     } else {
-        " Composer "
+        theme.border_focused
     };
+
     let block = Block::new()
         .borders(Borders::ALL)
-        .border_style(theme.border_focused)
-        .title(title);
+        .border_style(border_style);
+
     app.input_mut().set_block(block);
     frame.render_widget(app.input(), area);
 }
