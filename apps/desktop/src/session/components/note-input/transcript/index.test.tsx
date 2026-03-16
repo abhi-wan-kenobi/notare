@@ -58,6 +58,18 @@ vi.mock("./renderer", () => ({
   TranscriptViewer: () => <div data-testid="transcript-viewer" />,
 }));
 
+vi.mock("~/stt/useUploadFile", () => ({
+  useUploadFile: vi.fn(() => ({
+    uploadAudio: vi.fn(),
+    uploadTranscript: vi.fn(),
+    processFile: vi.fn(),
+  })),
+}));
+
+vi.mock("~/stt/pending-upload", () => ({
+  consumePendingUpload: vi.fn(() => null),
+}));
+
 describe("Transcript", () => {
   const sessionId = "session-1";
   const transcriptId = "transcript-1";
