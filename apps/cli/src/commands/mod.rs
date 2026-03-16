@@ -2,6 +2,7 @@ pub mod auth;
 pub mod batch;
 pub mod chat;
 pub mod connect;
+#[cfg(debug_assertions)]
 pub mod debug;
 pub mod desktop;
 pub mod listen;

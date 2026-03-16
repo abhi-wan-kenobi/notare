@@ -104,6 +104,7 @@ async fn run(cli: Cli) -> CliResult<()> {
             commands::batch::run(args, stt, verbose.is_silent()).await
         }
         Commands::Model { command } => commands::model::run(command).await,
+        #[cfg(debug_assertions)]
         Commands::Debug { command } => commands::debug::run(command).await,
         Commands::Completions { shell } => {
             cli::generate_completions(shell);

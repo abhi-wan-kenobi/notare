@@ -74,7 +74,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.14.0"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm install -g npm@11.5.1
+      - run: |
+          node -v
+          npm -v
       - run: |
           cd apps/cli/npm
           VERSION="${{ needs.compute-version.outputs.version }}"
@@ -85,7 +90,7 @@ jobs:
             pkg.version = '$VERSION';
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
-          npm publish --tag "$NPM_TAG" --provenance
+          npm publish --tag "$NPM_TAG"
 
   create-tag:
     needs: [compute-version, publish-npm]

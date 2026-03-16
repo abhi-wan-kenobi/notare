@@ -5,9 +5,19 @@
   "license": "GPL-3.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/fastrepl/char"
+    "url": "git+https://github.com/fastrepl/char.git",
+    "directory": "apps/cli/npm"
   },
   "homepage": "https://char.com",
+  "bugs": {
+    "url": "https://github.com/fastrepl/char/issues"
+  },
+  "keywords": [
+    "char",
+    "cli",
+    "transcription",
+    "notes"
+  ],
   "bin": {
     "char": "bin/run.js"
   },

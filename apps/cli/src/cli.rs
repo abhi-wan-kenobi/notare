@@ -103,6 +103,7 @@ pub enum Commands {
         command: ModelCommands,
     },
     /// Debug and diagnostic tools
+    #[cfg(debug_assertions)]
     Debug {
         #[command(subcommand)]
         command: DebugCommands,
@@ -227,6 +228,7 @@ pub enum ModelKind {
     Llm,
 }
 
+#[cfg(debug_assertions)]
 #[derive(Subcommand)]
 pub enum DebugCommands {
     /// Real-time transcription from audio devices
@@ -236,6 +238,7 @@ pub enum DebugCommands {
     },
 }
 
+#[cfg(debug_assertions)]
 #[derive(clap::Args)]
 pub struct TranscribeArgs {
     #[arg(long, value_enum)]
@@ -254,6 +257,7 @@ pub struct TranscribeArgs {
     pub audio: AudioArgs,
 }
 
+#[cfg(debug_assertions)]
 #[derive(Clone, ValueEnum)]
 pub enum DebugProvider {
     Deepgram,
@@ -264,12 +268,14 @@ pub enum DebugProvider {
     ProxySoniox,
 }
 
+#[cfg(debug_assertions)]
 #[derive(clap::Args)]
 pub struct AudioArgs {
     #[arg(long, value_enum, default_value = "input")]
     pub audio: AudioSource,
 }
 
+#[cfg(debug_assertions)]
 #[derive(Clone, ValueEnum)]
 pub enum AudioSource {
     Input,
