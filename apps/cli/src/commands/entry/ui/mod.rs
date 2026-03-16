@@ -20,7 +20,7 @@ use command_popup::CommandPopup;
 const APP_VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
 
 pub fn draw(frame: &mut Frame, app: &mut App) {
-    let theme = Theme::default();
+    let theme = Theme::DEFAULT;
     let logo_height = frame.area().height.saturating_div(4).clamp(7, 12);
 
     let [main_area, status_area] =

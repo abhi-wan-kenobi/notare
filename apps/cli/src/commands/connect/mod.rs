@@ -26,8 +26,8 @@ struct ConnectScreen {
 }
 
 impl ConnectScreen {
-    fn apply_effect(&mut self, effect: Option<Effect>) -> ScreenControl<Option<SaveData>> {
-        if let Some(effect) = effect {
+    fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<Option<SaveData>> {
+        for effect in effects {
             match effect {
                 Effect::Save {
                     connection_type,
@@ -67,12 +67,12 @@ impl Screen for ConnectScreen {
     ) -> ScreenControl<Self::Output> {
         match event {
             TuiEvent::Key(key) => {
-                let effect = self.app.dispatch(Action::Key(key));
-                self.apply_effect(effect)
+                let effects = self.app.dispatch(Action::Key(key));
+                self.apply_effects(effects)
             }
             TuiEvent::Paste(text) => {
-                let effect = self.app.dispatch(Action::Paste(text));
-                self.apply_effect(effect)
+                let effects = self.app.dispatch(Action::Paste(text));
+                self.apply_effects(effects)
             }
             TuiEvent::Draw => ScreenControl::Continue,
         }
@@ -133,21 +133,23 @@ pub async fn run(args: Args) -> CliResult<bool> {
         args.api_key,
     );
 
-    if app.step == Step::Done {
-        if let Some(Effect::Save {
-            connection_type,
-            provider,
-            base_url,
-            api_key,
-        }) = initial_effect
-        {
-            save_config(connection_type, provider, base_url, api_key)?;
-            return Ok(true);
+    if app.step() == Step::Done {
+        for effect in initial_effect {
+            if let Effect::Save {
+                connection_type,
+                provider,
+                base_url,
+                api_key,
+            } = effect
+            {
+                save_config(connection_type, provider, base_url, api_key)?;
+                return Ok(true);
+            }
         }
     }
 
     if !interactive {
-        return Err(match app.step {
+        return Err(match app.step() {
             Step::SelectType => CliError::required_argument_with_hint(
                 "--type",
                 "pass --type stt or --type llm (interactive prompts require a terminal)",
@@ -160,7 +162,7 @@ pub async fn run(args: Args) -> CliResult<bool> {
                 "--base-url",
                 format!(
                     "{} requires a base URL",
-                    app.provider.map(|p| p.id()).unwrap_or("provider")
+                    app.provider().map(|p| p.id()).unwrap_or("provider")
                 ),
             ),
             Step::InputApiKey => CliError::required_argument_with_hint(

@@ -45,7 +45,10 @@ impl Screen for TranscribeScreen {
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
         match event {
-            TuiEvent::Key(key) => self.apply_effects(self.app.dispatch(Action::Key(key))),
+            TuiEvent::Key(key) => {
+                let effects = self.app.dispatch(Action::Key(key));
+                self.apply_effects(effects)
+            }
             TuiEvent::Paste(_) | TuiEvent::Draw => ScreenControl::Continue,
         }
     }
@@ -55,7 +58,8 @@ impl Screen for TranscribeScreen {
         event: Self::ExternalEvent,
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
-        self.apply_effects(self.app.dispatch(Action::Runtime(event)))
+        let effects = self.app.dispatch(Action::Runtime(event));
+        self.apply_effects(effects)
     }
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
@@ -67,7 +71,13 @@ impl Screen for TranscribeScreen {
     }
 
     fn next_frame_delay(&self) -> std::time::Duration {
-        self.app.next_frame_delay()
+        if self.app.is_raw_mode() {
+            std::time::Duration::from_millis(50)
+        } else if self.app.has_recent_words() {
+            std::time::Duration::from_millis(16)
+        } else {
+            std::time::Duration::from_millis(100)
+        }
     }
 }
 

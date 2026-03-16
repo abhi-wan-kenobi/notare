@@ -9,7 +9,7 @@ use crate::theme::Theme;
 use crate::widgets::Scrollable;
 
 pub(super) fn draw(frame: &mut Frame, app: &mut App, area: Rect) {
-    let theme = Theme::default();
+    let theme = Theme::DEFAULT;
     let width = area.width as usize;
     let wrap_width = width.saturating_sub(6).max(8);
 

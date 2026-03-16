@@ -10,7 +10,7 @@ use crate::widgets::KeyHints;
 use super::app::{App, Step};
 
 pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
-    let theme = Theme::default();
+    let theme = Theme::DEFAULT;
     let area = centered_dialog(frame.area());
 
     frame.render_widget(Clear, area);
@@ -29,7 +29,7 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
 
     draw_header(frame, app, header_area);
 
-    match app.step {
+    match app.step() {
         Step::SelectType | Step::SelectProvider => draw_list(frame, app, content_area, &theme),
         Step::InputBaseUrl | Step::InputApiKey => draw_input(frame, app, content_area, &theme),
         Step::Done => {}
@@ -60,14 +60,14 @@ fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, _theme: &Theme) {
     ])
     .areas(area);
 
-    let label = match app.step {
+    let label = match app.step() {
         Step::SelectType => "  Connection type:",
         Step::SelectProvider => "  Provider:",
         _ => "",
     };
     frame.render_widget(Span::styled(label, Style::new().bold()), label_area);
 
-    let items: Vec<&str> = match app.step {
+    let items: Vec<&str> = match app.step() {
         Step::SelectType => vec!["stt", "llm"],
         Step::SelectProvider => app.provider_list().iter().map(|p| p.id()).collect(),
         _ => vec![],
@@ -77,7 +77,7 @@ fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, _theme: &Theme) {
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
         .highlight_symbol("  > ");
 
-    frame.render_stateful_widget(list, list_area, &mut app.list_state);
+    frame.render_stateful_widget(list, list_area, app.list_state_mut());
 }
 
 fn draw_input(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
@@ -85,10 +85,10 @@ fn draw_input(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
         Constraint::Length(1), // label
         Constraint::Length(3), // input box
     ];
-    if app.input_default.is_some() {
+    if app.input_default().is_some() {
         constraints.push(Constraint::Length(1));
     }
-    if app.error.is_some() {
+    if app.error().is_some() {
         constraints.push(Constraint::Length(1));
     }
     constraints.push(Constraint::Min(0));
@@ -97,7 +97,7 @@ fn draw_input(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     let mut idx = 0;
 
     frame.render_widget(
-        Span::styled(format!("  {}:", app.input_label), Style::new().bold()),
+        Span::styled(format!("  {}:", app.input_label()), Style::new().bold()),
         areas[idx],
     );
     idx += 1;
@@ -106,22 +106,22 @@ fn draw_input(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     let input_block = Block::bordered().border_style(Style::new().fg(Color::Cyan));
     let inner_input = input_block.inner(input_area);
 
-    let display_text = if app.input_masked && !app.input.is_empty() {
-        "*".repeat(app.input.chars().count())
+    let display_text = if app.input_masked() && !app.input().is_empty() {
+        "*".repeat(app.input().chars().count())
     } else {
-        app.input.clone()
+        app.input().to_string()
     };
 
     frame.render_widget(Paragraph::new(display_text).block(input_block), input_area);
 
     #[allow(clippy::cast_possible_truncation)]
     frame.set_cursor_position(Position::new(
-        inner_input.x + app.cursor_pos as u16,
+        inner_input.x + app.cursor_pos() as u16,
         inner_input.y,
     ));
     idx += 1;
 
-    if let Some(ref default) = app.input_default {
+    if let Some(default) = app.input_default() {
         frame.render_widget(
             Span::styled(
                 format!("  default: {default}"),
@@ -132,13 +132,13 @@ fn draw_input(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
         idx += 1;
     }
 
-    if let Some(ref error) = app.error {
+    if let Some(error) = app.error() {
         frame.render_widget(Span::styled(format!("  {error}"), theme.error), areas[idx]);
     }
 }
 
 fn draw_status(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
-    let hints = match app.step {
+    let hints = match app.step() {
         Step::SelectType | Step::SelectProvider => {
             vec![("↑/↓", "navigate"), ("Enter", "select"), ("Esc", "quit")]
         }

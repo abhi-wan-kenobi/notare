@@ -18,18 +18,18 @@ pub(crate) enum Step {
 }
 
 pub(crate) struct App {
-    pub step: Step,
-    pub connection_type: Option<ConnectionType>,
-    pub provider: Option<ConnectProvider>,
-    pub base_url: Option<String>,
-    pub api_key: Option<String>,
-    pub list_state: ListState,
-    pub input: String,
-    pub cursor_pos: usize,
-    pub input_default: Option<String>,
-    pub input_label: &'static str,
-    pub input_masked: bool,
-    pub error: Option<String>,
+    step: Step,
+    connection_type: Option<ConnectionType>,
+    provider: Option<ConnectProvider>,
+    base_url: Option<String>,
+    api_key: Option<String>,
+    list_state: ListState,
+    input: String,
+    cursor_pos: usize,
+    input_default: Option<String>,
+    input_label: &'static str,
+    input_masked: bool,
+    error: Option<String>,
 }
 
 impl App {
@@ -38,7 +38,7 @@ impl App {
         provider: Option<ConnectProvider>,
         base_url: Option<String>,
         api_key: Option<String>,
-    ) -> (Self, Option<Effect>) {
+    ) -> (Self, Vec<Effect>) {
         let mut app = Self {
             step: Step::SelectType,
             connection_type,
@@ -57,11 +57,51 @@ impl App {
         (app, effects)
     }
 
-    pub fn dispatch(&mut self, action: Action) -> Option<Effect> {
+    pub fn dispatch(&mut self, action: Action) -> Vec<Effect> {
         match action {
             Action::Key(key) => self.handle_key(key),
             Action::Paste(text) => self.handle_paste(&text),
         }
+    }
+
+    pub fn step(&self) -> Step {
+        self.step
+    }
+
+    pub fn connection_type(&self) -> Option<ConnectionType> {
+        self.connection_type
+    }
+
+    pub fn provider(&self) -> Option<ConnectProvider> {
+        self.provider
+    }
+
+    pub fn input(&self) -> &str {
+        &self.input
+    }
+
+    pub fn cursor_pos(&self) -> usize {
+        self.cursor_pos
+    }
+
+    pub fn input_default(&self) -> Option<&str> {
+        self.input_default.as_deref()
+    }
+
+    pub fn input_label(&self) -> &'static str {
+        self.input_label
+    }
+
+    pub fn input_masked(&self) -> bool {
+        self.input_masked
+    }
+
+    pub fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+
+    pub fn list_state_mut(&mut self) -> &mut ListState {
+        &mut self.list_state
     }
 
     pub fn provider_list(&self) -> &'static [ConnectProvider] {
@@ -83,21 +123,21 @@ impl App {
         parts.join(" > ")
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> Option<Effect> {
+    fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         if key.code == KeyCode::Esc
             || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c'))
         {
-            return Some(Effect::Exit);
+            return vec![Effect::Exit];
         }
 
         match self.step {
             Step::SelectType | Step::SelectProvider => self.handle_list_key(key),
             Step::InputBaseUrl | Step::InputApiKey => self.handle_input_key(key),
-            Step::Done => None,
+            Step::Done => Vec::new(),
         }
     }
 
-    fn handle_paste(&mut self, text: &str) -> Option<Effect> {
+    fn handle_paste(&mut self, text: &str) -> Vec<Effect> {
         match self.step {
             Step::InputBaseUrl | Step::InputApiKey => {
                 for c in text.chars() {
@@ -109,18 +149,18 @@ impl App {
             }
             _ => {}
         }
-        None
+        Vec::new()
     }
 
-    fn handle_list_key(&mut self, key: KeyEvent) -> Option<Effect> {
+    fn handle_list_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         match key.code {
             KeyCode::Up | KeyCode::Char('k') => {
                 self.list_state.select_previous();
-                None
+                Vec::new()
             }
             KeyCode::Down | KeyCode::Char('j') => {
                 self.list_state.select_next();
-                None
+                Vec::new()
             }
             KeyCode::Enter => {
                 self.confirm_list_selection();
@@ -131,17 +171,17 @@ impl App {
                 };
                 self.advance()
             }
-            KeyCode::Char('q') => Some(Effect::Exit),
-            _ => None,
+            KeyCode::Char('q') => vec![Effect::Exit],
+            _ => Vec::new(),
         }
     }
 
-    fn handle_input_key(&mut self, key: KeyEvent) -> Option<Effect> {
+    fn handle_input_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         match key.code {
             KeyCode::Enter => {
                 if let Err(msg) = self.confirm_input() {
                     self.error = Some(msg);
-                    return None;
+                    return Vec::new();
                 }
                 self.error = None;
                 self.step = match self.step {
@@ -156,7 +196,7 @@ impl App {
                 self.input.insert(idx, c);
                 self.cursor_pos += 1;
                 self.error = None;
-                None
+                Vec::new()
             }
             KeyCode::Backspace => {
                 if self.cursor_pos > 0 {
@@ -165,20 +205,20 @@ impl App {
                     self.input.remove(idx);
                 }
                 self.error = None;
-                None
+                Vec::new()
             }
             KeyCode::Left => {
                 self.cursor_pos = self.cursor_pos.saturating_sub(1);
-                None
+                Vec::new()
             }
             KeyCode::Right => {
                 let max = self.input.chars().count();
                 if self.cursor_pos < max {
                     self.cursor_pos += 1;
                 }
-                None
+                Vec::new()
             }
-            _ => None,
+            _ => Vec::new(),
         }
     }
 
@@ -232,7 +272,7 @@ impl App {
         Ok(())
     }
 
-    fn advance(&mut self) -> Option<Effect> {
+    fn advance(&mut self) -> Vec<Effect> {
         loop {
             match self.step {
                 Step::SelectType => {
@@ -241,7 +281,7 @@ impl App {
                         continue;
                     }
                     self.list_state = ListState::default().with_selected(Some(0));
-                    return None;
+                    return Vec::new();
                 }
                 Step::SelectProvider => {
                     if let Some(provider) = self.provider {
@@ -253,7 +293,7 @@ impl App {
                         self.provider = None;
                     }
                     self.list_state = ListState::default().with_selected(Some(0));
-                    return None;
+                    return Vec::new();
                 }
                 Step::InputBaseUrl => {
                     let provider = self.provider.unwrap();
@@ -270,7 +310,7 @@ impl App {
                     self.input_default = provider.default_base_url().map(|s| s.to_string());
                     self.input_label = "Base URL";
                     self.input_masked = false;
-                    return None;
+                    return Vec::new();
                 }
                 Step::InputApiKey => {
                     let provider = self.provider.unwrap();
@@ -283,15 +323,15 @@ impl App {
                     self.input_default = None;
                     self.input_label = "API Key";
                     self.input_masked = true;
-                    return None;
+                    return Vec::new();
                 }
                 Step::Done => {
-                    return Some(Effect::Save {
+                    return vec![Effect::Save {
                         connection_type: self.connection_type.unwrap(),
                         provider: self.provider.unwrap(),
                         base_url: self.base_url.clone(),
                         api_key: self.api_key.clone(),
-                    });
+                    }];
                 }
             }
         }
@@ -320,22 +360,22 @@ mod tests {
             Some("https://api.deepgram.com/v1".to_string()),
             Some("key123".to_string()),
         );
-        assert_eq!(app.step, Step::Done);
-        assert!(matches!(effects, Some(Effect::Save { .. })));
+        assert_eq!(app.step(), Step::Done);
+        assert!(matches!(effects.as_slice(), [Effect::Save { .. }]));
     }
 
     #[test]
     fn no_args_starts_at_select_type() {
         let (app, effects) = App::new(None, None, None, None);
-        assert_eq!(app.step, Step::SelectType);
-        assert!(effects.is_none());
+        assert_eq!(app.step(), Step::SelectType);
+        assert!(effects.is_empty());
     }
 
     #[test]
     fn type_provided_starts_at_select_provider() {
         let (app, effects) = App::new(Some(ConnectionType::Stt), None, None, None);
-        assert_eq!(app.step, Step::SelectProvider);
-        assert!(effects.is_none());
+        assert_eq!(app.step(), Step::SelectProvider);
+        assert!(effects.is_empty());
     }
 
     #[test]
@@ -346,8 +386,8 @@ mod tests {
             None,
             None,
         );
-        assert_eq!(app.step, Step::InputBaseUrl);
-        assert!(effects.is_none());
+        assert_eq!(app.step(), Step::InputBaseUrl);
+        assert!(effects.is_empty());
     }
 
     #[test]
@@ -358,19 +398,19 @@ mod tests {
             None,
             None,
         );
-        assert_eq!(app.step, Step::SelectProvider);
-        assert!(app.provider.is_none());
+        assert_eq!(app.step(), Step::SelectProvider);
+        assert!(app.provider().is_none());
     }
 
     #[test]
     fn select_type_then_advance() {
         let (mut app, _) = App::new(None, None, None, None);
-        assert_eq!(app.step, Step::SelectType);
+        assert_eq!(app.step(), Step::SelectType);
 
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
-        assert!(effects.is_none());
-        assert_eq!(app.step, Step::SelectProvider);
-        assert_eq!(app.connection_type, Some(ConnectionType::Stt));
+        assert!(effects.is_empty());
+        assert_eq!(app.step(), Step::SelectProvider);
+        assert_eq!(app.connection_type(), Some(ConnectionType::Stt));
     }
 
     #[test]
@@ -381,20 +421,20 @@ mod tests {
             None,
             None,
         );
-        assert_eq!(app.step, Step::InputBaseUrl);
+        assert_eq!(app.step(), Step::InputBaseUrl);
 
         for c in "not-a-url".chars() {
             app.dispatch(Action::Key(KeyEvent::from(KeyCode::Char(c))));
         }
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
-        assert!(effects.is_none());
-        assert!(app.error.is_some());
+        assert!(effects.is_empty());
+        assert!(app.error().is_some());
     }
 
     #[test]
     fn esc_exits() {
         let (mut app, _) = App::new(None, None, None, None);
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Esc)));
-        assert!(matches!(effects, Some(Effect::Exit)));
+        assert!(matches!(effects.as_slice(), [Effect::Exit]));
     }
 }

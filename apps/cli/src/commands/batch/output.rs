@@ -1,3 +1,5 @@
+use colored::Colorize;
+
 use crate::output::format_timestamp_secs;
 
 const PAUSE_THRESHOLD_SECS: f64 = 0.5;
@@ -44,9 +46,13 @@ pub(super) fn format_pretty(response: &owhisper_interface::batch::Response) -> S
         .iter()
         .map(|(start, end, words)| {
             let prefix = format!(
-                "\x1b[2m[{} \u{2192} {}]\x1b[0m  ",
-                format_timestamp_secs(*start),
-                format_timestamp_secs(*end),
+                "{}  ",
+                format!(
+                    "[{} \u{2192} {}]",
+                    format_timestamp_secs(*start),
+                    format_timestamp_secs(*end)
+                )
+                .dimmed(),
             );
             // "[00:00.0 → 00:00.0]  " = 22 visible chars
             let prefix_visible_len = 22;

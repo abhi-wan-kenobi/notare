@@ -1,5 +1,5 @@
 use futures_util::StreamExt;
-use rig::agent::{Agent, MultiTurnStreamItem};
+use rig::agent::{Agent, MultiTurnStreamItem, StreamingError};
 use rig::client::CompletionClient;
 use rig::message::Message;
 use rig::providers::{anthropic, openrouter};
@@ -60,89 +60,55 @@ impl Backend {
     {
         match self {
             Self::Anthropic(agent) => {
-                let mut stream = agent
+                let stream = agent
                     .stream_chat(prompt, history)
                     .multi_turn(max_turns)
                     .await;
-                let mut accumulated = String::new();
-                let mut final_response = None;
-                while let Some(item) = stream.next().await {
-                    match item {
-                        Ok(MultiTurnStreamItem::StreamAssistantItem(
-                            StreamedAssistantContent::Text(text),
-                        )) => {
-                            accumulated.push_str(&text.text);
-                            on_chunk(&text.text)?;
-                        }
-                        Ok(MultiTurnStreamItem::FinalResponse(response)) => {
-                            final_response = Some(response);
-                        }
-                        Ok(_) => {}
-                        Err(error) => {
-                            return Err(CliError::operation_failed(
-                                "chat stream",
-                                error.to_string(),
-                            ));
-                        }
-                    }
-                }
-                if let Some(response) = final_response
-                    && !response.response().is_empty()
-                {
-                    let final_text = response.response();
-                    if accumulated.is_empty() {
-                        on_chunk(final_text)?;
-                    } else if final_text.starts_with(&accumulated)
-                        && final_text.len() > accumulated.len()
-                    {
-                        on_chunk(&final_text[accumulated.len()..])?;
-                    }
-                    return Ok(Some(final_text.to_string()));
-                }
-                Ok((!accumulated.is_empty()).then_some(accumulated))
+                process_stream(stream, &mut on_chunk).await
             }
             Self::Openrouter(agent) => {
-                let mut stream = agent
+                let stream = agent
                     .stream_chat(prompt, history)
                     .multi_turn(max_turns)
                     .await;
-                let mut accumulated = String::new();
-                let mut final_response = None;
-                while let Some(item) = stream.next().await {
-                    match item {
-                        Ok(MultiTurnStreamItem::StreamAssistantItem(
-                            StreamedAssistantContent::Text(text),
-                        )) => {
-                            accumulated.push_str(&text.text);
-                            on_chunk(&text.text)?;
-                        }
-                        Ok(MultiTurnStreamItem::FinalResponse(response)) => {
-                            final_response = Some(response);
-                        }
-                        Ok(_) => {}
-                        Err(error) => {
-                            return Err(CliError::operation_failed(
-                                "chat stream",
-                                error.to_string(),
-                            ));
-                        }
-                    }
-                }
-                if let Some(response) = final_response
-                    && !response.response().is_empty()
-                {
-                    let final_text = response.response();
-                    if accumulated.is_empty() {
-                        on_chunk(final_text)?;
-                    } else if final_text.starts_with(&accumulated)
-                        && final_text.len() > accumulated.len()
-                    {
-                        on_chunk(&final_text[accumulated.len()..])?;
-                    }
-                    return Ok(Some(final_text.to_string()));
-                }
-                Ok((!accumulated.is_empty()).then_some(accumulated))
+                process_stream(stream, &mut on_chunk).await
             }
         }
     }
+}
+
+async fn process_stream<S, R, F>(mut stream: S, on_chunk: &mut F) -> CliResult<Option<String>>
+where
+    S: StreamExt<Item = Result<MultiTurnStreamItem<R>, StreamingError>> + Unpin,
+    F: FnMut(&str) -> CliResult<()>,
+{
+    let mut accumulated = String::new();
+    let mut final_response = None;
+    while let Some(item) = stream.next().await {
+        match item {
+            Ok(MultiTurnStreamItem::StreamAssistantItem(StreamedAssistantContent::Text(text))) => {
+                accumulated.push_str(&text.text);
+                on_chunk(&text.text)?;
+            }
+            Ok(MultiTurnStreamItem::FinalResponse(response)) => {
+                final_response = Some(response);
+            }
+            Ok(_) => {}
+            Err(error) => {
+                return Err(CliError::operation_failed("chat stream", error.to_string()));
+            }
+        }
+    }
+    if let Some(response) = final_response
+        && !response.response().is_empty()
+    {
+        let final_text = response.response();
+        if accumulated.is_empty() {
+            on_chunk(final_text)?;
+        } else if final_text.starts_with(&accumulated) && final_text.len() > accumulated.len() {
+            on_chunk(&final_text[accumulated.len()..])?;
+        }
+        return Ok(Some(final_text.to_string()));
+    }
+    Ok((!accumulated.is_empty()).then_some(accumulated))
 }

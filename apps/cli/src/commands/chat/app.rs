@@ -47,7 +47,7 @@ impl App {
     pub(crate) fn new(model: String, session: Option<String>) -> Self {
         let mut input = TextArea::default();
         input.set_placeholder_text("Type a message and press Enter...");
-        input.set_placeholder_style(Theme::default().placeholder);
+        input.set_placeholder_style(Theme::DEFAULT.placeholder);
 
         let status = if session.is_some() {
             "Ready (session loaded)".to_string()
@@ -214,8 +214,7 @@ impl App {
         self.input = TextArea::default();
         self.input
             .set_placeholder_text("Type a message and press Enter...");
-        self.input
-            .set_placeholder_style(Theme::default().placeholder);
+        self.input.set_placeholder_style(Theme::DEFAULT.placeholder);
         self.last_error = None;
         self.streaming = true;
         self.pending_assistant.clear();

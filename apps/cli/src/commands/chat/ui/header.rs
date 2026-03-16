@@ -8,7 +8,7 @@ use crate::theme::Theme;
 use crate::widgets::InfoLine;
 
 pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
-    let theme = Theme::default();
+    let theme = Theme::DEFAULT;
 
     let mut info = InfoLine::new(&theme)
         .item(Span::styled("chat", theme.status_active))

@@ -8,7 +8,7 @@ use ratatui::{
 
 use crate::theme::Theme;
 
-use super::super::app::{COMMANDS, command_highlight_indices};
+use super::super::app::COMMANDS;
 
 pub struct CommandPopup<'a> {
     filtered_commands: &'a [usize],
@@ -75,7 +75,7 @@ impl StatefulWidget for CommandPopup<'_> {
 
 fn command_name_spans(command: &str, query: &str) -> Vec<Span<'static>> {
     let command_body = command.trim_start_matches('/');
-    let highlight_indices = command_highlight_indices(query, command);
+    let highlight_indices = highlight_indices(query, command);
 
     let mut spans = Vec::with_capacity(command_body.chars().count() + 1);
     spans.push(Span::styled(
@@ -95,4 +95,44 @@ fn command_name_spans(command: &str, query: &str) -> Vec<Span<'static>> {
     }
 
     spans
+}
+
+fn highlight_indices(query: &str, command: &str) -> Vec<usize> {
+    let query = query.trim().to_ascii_lowercase();
+    let command = command.trim_start_matches('/').to_ascii_lowercase();
+
+    if query.is_empty() {
+        return Vec::new();
+    }
+
+    if command.starts_with(&query) {
+        return (0..query.chars().count()).collect();
+    }
+
+    if let Some(start) = command.find(&query) {
+        let width = query.chars().count();
+        return (start..start + width).collect();
+    }
+
+    let mut query_chars = query.chars();
+    let mut target = match query_chars.next() {
+        Some(ch) => ch,
+        None => return Vec::new(),
+    };
+    let mut indices = Vec::new();
+
+    for (i, ch) in command.chars().enumerate() {
+        if ch != target {
+            continue;
+        }
+
+        indices.push(i);
+        if let Some(next) = query_chars.next() {
+            target = next;
+        } else {
+            return indices;
+        }
+    }
+
+    Vec::new()
 }

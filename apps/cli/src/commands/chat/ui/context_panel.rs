@@ -9,7 +9,7 @@ use crate::output::format_hhmmss;
 use crate::theme::Theme;
 
 pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
-    let theme = Theme::default();
+    let theme = Theme::DEFAULT;
     let heading = Style::new().fg(Color::White);
 
     let title = app.session().unwrap_or("Chat");

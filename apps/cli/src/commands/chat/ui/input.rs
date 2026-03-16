@@ -6,7 +6,7 @@ use crate::commands::chat::app::App;
 use crate::theme::Theme;
 
 pub(super) fn draw(frame: &mut Frame, app: &mut App, area: Rect) {
-    let theme = Theme::default();
+    let theme = Theme::DEFAULT;
 
     let border_style = if app.streaming() {
         theme.border

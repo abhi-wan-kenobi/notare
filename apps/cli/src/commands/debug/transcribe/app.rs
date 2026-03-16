@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 use owhisper_interface::stream::StreamResponse;
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 
 use hypr_transcript::{
@@ -89,16 +89,8 @@ impl App {
         }
     }
 
-    pub(crate) fn draw(&mut self, frame: &mut ratatui::Frame) {
-        let width = frame.area().width.saturating_sub(4) as usize;
-        let view = self.transcript_view(width);
-        self.shell.draw(
-            frame,
-            view.title,
-            view.lines,
-            &view.placeholder,
-            view.border_style,
-        );
+    pub(crate) fn shell_mut(&mut self) -> &mut TranscribeShell {
+        &mut self.shell
     }
 
     pub(crate) fn title(&self) -> String {
@@ -108,20 +100,18 @@ impl App {
         }
     }
 
-    pub(crate) fn next_frame_delay(&self) -> std::time::Duration {
+    pub(crate) fn is_raw_mode(&self) -> bool {
+        matches!(self.state, TranscriptState::Raw(_))
+    }
+
+    pub(crate) fn has_recent_words(&self) -> bool {
         match &self.state {
-            TranscriptState::Raw(_) => std::time::Duration::from_millis(50),
-            TranscriptState::Rich(rich) => {
-                if rich.has_recent_words() {
-                    std::time::Duration::from_millis(16)
-                } else {
-                    std::time::Duration::from_millis(100)
-                }
-            }
+            TranscriptState::Rich(rich) => rich.has_recent_words(),
+            TranscriptState::Raw(_) => false,
         }
     }
 
-    fn transcript_view(&self, width: usize) -> TranscriptView {
+    pub(crate) fn transcript_view(&self, width: usize) -> TranscriptView {
         let placeholder = if let Some(message) = &self.terminal_message {
             message.clone()
         } else {
@@ -265,19 +255,10 @@ impl ChannelTranscript {
         };
 
         let prefix = format!("[{} / {}]", from_str, fmt_ts(to));
+        let theme = Theme::DEFAULT;
         let (confirmed_style, partial_style) = match self.kind {
-            ChannelKind::Mic => (
-                Style::new()
-                    .fg(Color::Rgb(255, 190, 190))
-                    .add_modifier(Modifier::BOLD),
-                Style::new().fg(Color::Rgb(128, 95, 95)),
-            ),
-            ChannelKind::Speaker => (
-                Style::new()
-                    .fg(Color::Rgb(190, 200, 255))
-                    .add_modifier(Modifier::BOLD),
-                Style::new().fg(Color::Rgb(95, 100, 128)),
-            ),
+            ChannelKind::Mic => (theme.raw_mic_confirmed, theme.raw_mic_partial),
+            ChannelKind::Speaker => (theme.raw_speaker_confirmed, theme.raw_speaker_partial),
         };
 
         let mut spans = vec![
@@ -314,7 +295,7 @@ impl RichState {
             partial_hints: Vec::new(),
             transcript: TranscriptProcessor::new(),
             word_first_seen: HashMap::new(),
-            theme: Theme::default(),
+            theme: Theme::DEFAULT,
         }
     }
 

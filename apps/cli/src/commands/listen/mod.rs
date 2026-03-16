@@ -19,11 +19,11 @@ mod effect;
 mod runtime;
 mod ui;
 
-use action::Action;
-use app::App;
-use audio_drop::AudioDropRequest;
-use effect::Effect;
-use runtime::Runtime;
+use self::action::Action;
+use self::app::App;
+use self::audio_drop::AudioDropRequest;
+use self::effect::Effect;
+use self::runtime::Runtime;
 
 pub struct Args {
     pub stt: SttGlobalArgs,
@@ -164,6 +164,7 @@ pub async fn run(args: Args) -> CliResult<()> {
         stt.language,
     )
     .await?;
+    // keep local server alive for the duration of this scope
     let _ = resolved.server.as_ref();
     let languages = vec![resolved.language.clone()];
 
@@ -250,10 +251,7 @@ pub async fn run(args: Args) -> CliResult<()> {
 }
 
 fn print_exit_summary(session_id: &str, elapsed: std::time::Duration) {
-    let dim = "\x1b[2m";
-    let reset = "\x1b[0m";
-    let bold = "\x1b[1m";
-    let cyan = "\x1b[36m";
+    use colored::Colorize;
 
     let chat_cmd = format!("char chat --session {session_id} --api-key <KEY> --model <MODEL>");
     let session_line = format!("Session   {session_id}");
@@ -285,21 +283,21 @@ fn print_exit_summary(session_id: &str, elapsed: std::time::Duration) {
     println!("{top}");
     println!(
         "  │{}│",
-        pad(&format!("{dim}{session_line}{reset}"), session_line.len())
+        pad(&format!("{}", session_line.dimmed()), session_line.len())
     );
     println!(
         "  │{}│",
-        pad(&format!("{dim}{duration_line}{reset}"), duration_line.len())
+        pad(&format!("{}", duration_line.dimmed()), duration_line.len())
     );
     println!("{sep}");
     println!(
         "  │{}│",
-        pad(&format!("{dim}{chat_label}{reset}"), chat_label.len())
+        pad(&format!("{}", chat_label.dimmed()), chat_label.len())
     );
     println!("{empty}");
     println!(
         "  │{}│",
-        pad(&format!("{bold}{cyan}{chat_cmd}{reset}"), chat_cmd.len())
+        pad(&format!("{}", chat_cmd.bold().cyan()), chat_cmd.len())
     );
     println!("{bot}");
     println!();

@@ -13,7 +13,7 @@ mod transcript;
 
 pub fn draw(frame: &mut Frame, app: &mut App) {
     let elapsed = app.frame_elapsed();
-    let theme = Theme::default();
+    let theme = Theme::DEFAULT;
     let [header_area, body_area, status_area] = Layout::vertical([
         Constraint::Length(1),
         Constraint::Min(3),

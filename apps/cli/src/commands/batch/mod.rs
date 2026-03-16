@@ -22,6 +22,7 @@ pub async fn run(args: BatchArgs, stt: SttGlobalArgs, quiet: bool) -> CliResult<
         stt.language,
     )
     .await?;
+    // keep local server alive for the duration of this scope
     let _ = resolved.server.as_ref();
 
     let file_path = args.input.path().to_str().ok_or_else(|| {
@@ -155,7 +156,8 @@ pub async fn run(args: BatchArgs, stt: SttGlobalArgs, quiet: bool) -> CliResult<
         if let Some(path) = &output {
             parts.push(format!("-> {}", path.display()));
         }
-        eprintln!("\x1b[2m{}\x1b[0m", parts.join(", "));
+        use colored::Colorize;
+        eprintln!("{}", parts.join(", ").dimmed());
     }
 
     Ok(())

@@ -56,13 +56,37 @@ pub trait Screen {
 }
 
 pub async fn run_screen<S>(
-    mut screen: S,
+    screen: S,
     external_rx: Option<mpsc::UnboundedReceiver<S::ExternalEvent>>,
 ) -> std::io::Result<S::Output>
 where
     S: Screen,
 {
-    let mut terminal = TerminalGuard::new();
+    let terminal = TerminalGuard::new();
+    run_screen_with(screen, terminal, true, external_rx).await
+}
+
+pub async fn run_screen_inline<S>(
+    screen: S,
+    height: u16,
+    external_rx: Option<mpsc::UnboundedReceiver<S::ExternalEvent>>,
+) -> std::io::Result<S::Output>
+where
+    S: Screen,
+{
+    let terminal = TerminalGuard::new_inline(height)?;
+    run_screen_with(screen, terminal, false, external_rx).await
+}
+
+async fn run_screen_with<S>(
+    mut screen: S,
+    mut terminal: TerminalGuard,
+    set_title: bool,
+    external_rx: Option<mpsc::UnboundedReceiver<S::ExternalEvent>>,
+) -> std::io::Result<S::Output>
+where
+    S: Screen,
+{
     let (draw_tx, draw_rx) = tokio::sync::broadcast::channel(16);
     let frame_requester = FrameRequester::new(draw_tx);
     let mut cx = ScreenContext::new(frame_requester.clone());
@@ -79,10 +103,12 @@ where
             tui_event = events.next(), if events_open => {
                 match tui_event {
                     Some(TuiEvent::Draw) => {
-                        let _ = crossterm::execute!(
-                            std::io::stdout(),
-                            crossterm::terminal::SetTitle(screen.title()),
-                        );
+                        if set_title {
+                            let _ = crossterm::execute!(
+                                std::io::stdout(),
+                                crossterm::terminal::SetTitle(screen.title()),
+                            );
+                        }
                         terminal
                             .terminal_mut()
                             .draw(|frame| screen.draw(frame))?;

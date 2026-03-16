@@ -7,11 +7,16 @@ mod app;
 mod effect;
 mod ui;
 
-pub use effect::EntryAction;
+#[derive(Clone, Copy)]
+pub enum EntryAction {
+    Listen,
+    Connect,
+    Quit,
+}
 
-use action::Action;
-use app::App;
-use effect::Effect;
+use self::action::Action;
+use self::app::App;
+use self::effect::Effect;
 
 pub struct Args {
     pub status_message: Option<String>,

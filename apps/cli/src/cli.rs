@@ -239,6 +239,8 @@ pub enum DebugCommands {
         #[command(flatten)]
         args: TranscribeArgs,
     },
+    /// Experimental inline download progress demo
+    Exp,
 }
 
 #[cfg(feature = "dev")]
