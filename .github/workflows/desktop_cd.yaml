@@ -121,6 +121,7 @@ jobs:
       - run: |
           TAURI_ENV_TARGET_TRIPLE=${{ matrix.target }} cargo xtask prepare-binaries
           ./scripts/sidecar.sh "./apps/desktop/${{ env.TAURI_CONF_PATH }}" "binaries/char-chrome-native-host"
+          ./scripts/sidecar.sh "./apps/desktop/${{ env.TAURI_CONF_PATH }}" "binaries/check-permissions"
       # - run: ./scripts/resource.sh "./apps/desktop/${{ env.TAURI_CONF_PATH }}" "resources/libonnxruntime.dylib"
       - uses: ./.github/actions/apple_cert
         id: apple-cert
