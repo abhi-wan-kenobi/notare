@@ -108,26 +108,17 @@ jobs:
           VERSION: ${{ needs.compute-version.outputs.version }}
         run: |
           CURRENT_TAG="cli_v$VERSION"
-          PREV_TAG=""
-          LAST_TAG=""
-
-          while IFS= read -r tag; do
-            if [[ "$tag" == "$CURRENT_TAG" ]]; then
-              PREV_TAG="$LAST_TAG"
-              break
-            fi
-            LAST_TAG="$tag"
-          done < <(git tag -l 'cli_v*' --sort=v:refname)
+          PREV_TAG=$(git tag -l 'cli_v*' --sort=-v:refname | grep -v "^$CURRENT_TAG$" | head -n1)
 
           if [[ -n "$PREV_TAG" ]]; then
             echo "value=https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURRENT_TAG" >> "$GITHUB_OUTPUT"
           else
-            echo "value=https://github.com/${{ github.repository }}/commits/${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "value=https://github.com/${{ github.repository }}/commits/$CURRENT_TAG" >> "$GITHUB_OUTPUT"
           fi
       - uses: ncipollo/release-action@v1
         with:
           tag: cli_v${{ needs.compute-version.outputs.version }}
-          name: cli_v${{ needs.compute-version.outputs.version }}
+          name: char_v${{ needs.compute-version.outputs.version }}
           body: ${{ steps.release-body.outputs.value }}
           prerelease: ${{ inputs.channel == 'nightly' }}
           artifacts: ${{ steps.artifacts.outputs.list }}
