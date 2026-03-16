@@ -3256,6 +3256,7 @@ dependencies = [
  "colored",
  "comfy-table",
  "crossterm 0.29.0",
+ "db3",
  "dirs 6.0.0",
  "file",
  "fs-sync-core",
