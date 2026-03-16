@@ -85,6 +85,10 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - run: git fetch --tags --force
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -99,16 +103,40 @@ jobs:
           TARBALLS=$(ls artifacts/*.tar.xz | tr '\n' ',')
           CHECKSUMS=$(ls artifacts/*.sha256 | tr '\n' ',')
           echo "list=${TARBALLS}${CHECKSUMS}" >> $GITHUB_OUTPUT
+      - id: release-body
+        env:
+          VERSION: ${{ needs.compute-version.outputs.version }}
+        run: |
+          CURRENT_TAG="cli_v$VERSION"
+          PREV_TAG=""
+          LAST_TAG=""
+
+          while IFS= read -r tag; do
+            if [[ "$tag" == "$CURRENT_TAG" ]]; then
+              PREV_TAG="$LAST_TAG"
+              break
+            fi
+            LAST_TAG="$tag"
+          done < <(git tag -l 'cli_v*' --sort=v:refname)
+
+          if [[ -n "$PREV_TAG" ]]; then
+            echo "value=https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURRENT_TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=https://github.com/${{ github.repository }}/commits/${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
       - uses: ncipollo/release-action@v1
         with:
           tag: cli_v${{ needs.compute-version.outputs.version }}
-          name: char v${{ needs.compute-version.outputs.version }}
+          name: cli_v${{ needs.compute-version.outputs.version }}
+          body: ${{ steps.release-body.outputs.value }}
           prerelease: ${{ inputs.channel == 'nightly' }}
           artifacts: ${{ steps.artifacts.outputs.list }}
 
   publish-npm:
     needs: [compute-version, release]
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -125,6 +153,4 @@ jobs:
             pkg.version = '$VERSION';
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
-          npm publish --access public --tag "$NPM_TAG"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          npm publish --tag "$NPM_TAG" --provenance

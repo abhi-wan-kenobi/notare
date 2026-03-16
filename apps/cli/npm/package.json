@@ -1,5 +1,5 @@
 {
-  "name": "@fastrepl/char",
+  "name": "char",
   "version": "0.0.0",
   "description": "Live transcription and audio tools",
   "license": "GPL-3.0",
