@@ -70,8 +70,8 @@ uuid = { workspace = true, features = ["v4"] }
 [build-dependencies]
 clap = { workspace = true, features = ["derive", "env"] }
 clap-verbosity-flag = { version = "3", features = ["tracing"] }
+cli-docs = { path = "../../crates/cli-docs" }
 clap_complete = { workspace = true }
-clap_mangen = { workspace = true }
 clio = { version = "0.3", features = ["clap-parse"] }
 url = { workspace = true }
 
