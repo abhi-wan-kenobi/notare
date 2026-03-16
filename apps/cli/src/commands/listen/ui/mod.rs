@@ -10,7 +10,6 @@ mod header;
 mod notepad;
 mod status_bar;
 mod transcript;
-mod waveform;
 
 pub fn draw(frame: &mut Frame, app: &mut App) {
     let elapsed = app.frame_elapsed();

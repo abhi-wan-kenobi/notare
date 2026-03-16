@@ -5,61 +5,15 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
-use clap::{Subcommand, ValueEnum};
 use hypr_local_model::{LocalModel, LocalModelKind};
 use hypr_local_stt_core::SUPPORTED_MODELS as SUPPORTED_STT_MODELS;
 use hypr_model_downloader::ModelDownloadManager;
 
-use crate::commands::OutputFormat;
+pub use crate::cli::{CactusCommands, ModelCommands, ModelKind};
 use crate::error::{CliError, CliResult, did_you_mean};
 use crate::runtime::cactus;
 use crate::runtime::desktop as settings;
 use runtime::CliModelRuntime;
-
-#[derive(Subcommand, Debug)]
-pub enum ModelCommands {
-    /// Show resolved paths for settings and model storage
-    Paths,
-    /// Show current STT and LLM provider/model configuration
-    Current,
-    /// List available models and their download status
-    List {
-        #[arg(long, value_enum)]
-        kind: Option<ModelKind>,
-        #[arg(long)]
-        supported: bool,
-        #[arg(long, value_enum, default_value = "text")]
-        format: OutputFormat,
-    },
-    /// Manage downloadable Cactus models
-    Cactus {
-        #[command(subcommand)]
-        command: CactusCommands,
-    },
-    /// Download a model by name
-    Download { name: String },
-    /// Delete a downloaded model
-    Delete { name: String },
-}
-
-#[derive(Subcommand, Debug)]
-pub enum CactusCommands {
-    /// List available Cactus models
-    List {
-        #[arg(long, value_enum, default_value = "text")]
-        format: OutputFormat,
-    },
-    /// Download a Cactus model by name
-    Download { name: String },
-    /// Delete a downloaded Cactus model
-    Delete { name: String },
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum ModelKind {
-    Stt,
-    Llm,
-}
 
 pub async fn run(command: ModelCommands) -> CliResult<()> {
     let paths = settings::resolve_paths();

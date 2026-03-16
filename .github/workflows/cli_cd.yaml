@@ -42,48 +42,26 @@ jobs:
 
   build:
     needs: compute-version
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - target: aarch64-apple-darwin
-            runner: depot-macos-15
-            platform: macos
-          - target: x86_64-unknown-linux-gnu
-            runner: depot-ubuntu-24.04-8
-            platform: linux-x86_64
-          - target: aarch64-unknown-linux-gnu
-            runner: depot-ubuntu-24.04-arm-8
-            platform: linux-aarch64
-    runs-on: ${{ matrix.runner }}
+    runs-on: depot-macos-15
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v4
-      - if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libasound2-dev libpulse-dev pkg-config
       - uses: ./.github/actions/rust_install
         with:
-          platform: ${{ matrix.platform }}
-      - if: matrix.platform == 'macos'
-        run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-      - run: cargo build --release -p cli --target ${{ matrix.target }}
+          platform: macos
+      - run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
+      - run: cargo build --release -p cli --target aarch64-apple-darwin
       - run: |
-          BIN="target/${{ matrix.target }}/release/char"
-          if [[ "${{ runner.os }}" == "macOS" ]]; then
-            strip -x "$BIN"
-          else
-            strip "$BIN"
-          fi
-          ARCHIVE="char-${{ needs.compute-version.outputs.version }}-${{ matrix.target }}.tar.xz"
-          tar -cJf "$ARCHIVE" -C "target/${{ matrix.target }}/release" char
+          BIN="target/aarch64-apple-darwin/release/char"
+          strip -x "$BIN"
+          ARCHIVE="char-${{ needs.compute-version.outputs.version }}-aarch64-apple-darwin.tar.xz"
+          tar -cJf "$ARCHIVE" -C "target/aarch64-apple-darwin/release" char
           echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:
-          name: char-${{ matrix.target }}
+          name: char-aarch64-apple-darwin
           path: ${{ env.ARCHIVE }}
           retention-days: 3
 
@@ -116,8 +94,6 @@ jobs:
         with:
           files: |
             artifacts/char-${{ needs.compute-version.outputs.version }}-aarch64-apple-darwin.tar.xz
-            artifacts/char-${{ needs.compute-version.outputs.version }}-x86_64-unknown-linux-gnu.tar.xz
-            artifacts/char-${{ needs.compute-version.outputs.version }}-aarch64-unknown-linux-gnu.tar.xz
       - id: artifacts
         run: |
           TARBALLS=$(ls artifacts/*.tar.xz | tr '\n' ',')

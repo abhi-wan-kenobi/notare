@@ -1,26 +1,20 @@
-use miette::Diagnostic;
 use thiserror::Error;
 
 pub type CliResult<T> = Result<T, CliError>;
 
-#[derive(Debug, Error, Diagnostic)]
+#[derive(Debug, Error)]
 pub enum CliError {
     #[error("{0}")]
     Message(String),
 
-    #[error("{name} is required")]
-    RequiredArgument {
-        name: String,
-        #[help]
-        hint: Option<String>,
-    },
+    #[error("{name} is required{}", hint_suffix(.hint))]
+    RequiredArgument { name: String, hint: Option<String> },
 
-    #[error("invalid {name} '{value}': {reason}")]
+    #[error("invalid {name} '{value}': {reason}{}", hint_suffix(.hint))]
     InvalidArgument {
         name: &'static str,
         value: String,
         reason: String,
-        #[help]
         hint: Option<String>,
     },
 
@@ -30,12 +24,15 @@ pub enum CliError {
         reason: String,
     },
 
-    #[error("{what} not found")]
-    NotFound {
-        what: String,
-        #[help]
-        hint: Option<String>,
-    },
+    #[error("{what} not found{}", hint_suffix(.hint))]
+    NotFound { what: String, hint: Option<String> },
+}
+
+fn hint_suffix(hint: &Option<String>) -> String {
+    match hint {
+        Some(h) => format!("\n  hint: {h}"),
+        None => String::new(),
+    }
 }
 
 impl CliError {
@@ -163,5 +160,6 @@ mod tests {
 
         let rendered = error.to_string();
         assert!(rendered.contains("model 'foo' not found"));
+        assert!(rendered.contains("hint:"));
     }
 }

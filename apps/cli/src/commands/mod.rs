@@ -1,13 +1,16 @@
 pub mod auth;
 pub mod batch;
 pub mod chat;
+pub mod connect;
 pub mod debug;
 pub mod desktop;
 pub mod listen;
 pub mod model;
+pub mod status;
 
-use clap::ValueEnum;
 use hypr_listener2_core::BatchProvider;
+
+pub use crate::cli::{OutputFormat, Provider};
 
 pub struct SttGlobalArgs {
     pub provider: Provider,
@@ -15,26 +18,6 @@ pub struct SttGlobalArgs {
     pub api_key: Option<String>,
     pub model: Option<String>,
     pub language: String,
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum OutputFormat {
-    Pretty,
-    Text,
-    Json,
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum Provider {
-    Deepgram,
-    Soniox,
-    Assemblyai,
-    Fireworks,
-    Openai,
-    Gladia,
-    Elevenlabs,
-    Mistral,
-    Cactus,
 }
 
 impl Provider {

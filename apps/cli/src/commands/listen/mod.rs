@@ -5,8 +5,7 @@ use hypr_listener_core::{RecordingMode, StopSessionParams, TranscriptionMode};
 use ractor::Actor;
 use tokio::sync::mpsc;
 
-use clap::ValueEnum;
-
+pub use crate::cli::AudioMode;
 use crate::commands::SttGlobalArgs;
 use crate::error::{CliError, CliResult};
 use crate::runtime::desktop;
@@ -28,13 +27,6 @@ use runtime::Runtime;
 
 use crate::runtime::batch::ChannelBatchRuntime;
 
-#[derive(Clone, ValueEnum)]
-pub enum AudioMode {
-    Dual,
-    #[cfg(feature = "mock-audio")]
-    Mock,
-}
-
 pub struct Args {
     pub stt: SttGlobalArgs,
     pub record: bool,
@@ -54,7 +46,7 @@ fn spawn_batch_transcription(
     });
 }
 
-use crate::fmt::format_hhmmss;
+use crate::output::format_hhmmss;
 
 const ANIMATION_FRAME: std::time::Duration = std::time::Duration::from_millis(33);
 const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);

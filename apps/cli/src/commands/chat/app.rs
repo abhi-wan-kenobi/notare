@@ -5,8 +5,9 @@ use hypr_cli_tui::textarea_input_from_key_event;
 use hypr_openrouter::{ChatMessage, Role};
 use tui_textarea::TextArea;
 
-use crate::fmt::format_hhmmss;
+use crate::output::format_hhmmss;
 use crate::theme::Theme;
+use crate::widgets::ScrollState;
 
 use super::action::Action;
 use super::effect::Effect;
@@ -35,8 +36,7 @@ pub(crate) struct App {
     status: String,
     last_error: Option<String>,
     started_at: Instant,
-    scroll_offset: u16,
-    max_scroll: u16,
+    scroll: ScrollState,
     autoscroll: bool,
 }
 
@@ -68,8 +68,7 @@ impl App {
             status,
             last_error: None,
             started_at: Instant::now(),
-            scroll_offset: 0,
-            max_scroll: 0,
+            scroll: ScrollState::new(),
             autoscroll: true,
         }
     }
@@ -82,7 +81,7 @@ impl App {
                 self.pending_assistant.push_str(&chunk);
                 self.status = "Streaming response...".to_string();
                 if self.autoscroll {
-                    self.scroll_offset = self.max_scroll;
+                    self.scroll.offset = self.scroll.max_scroll;
                 }
                 Vec::new()
             }
@@ -146,17 +145,11 @@ impl App {
         self.streaming
     }
 
-    pub(crate) fn scroll_offset(&self) -> u16 {
-        self.scroll_offset
-    }
-
-    pub(crate) fn update_max_scroll(&mut self, max_scroll: u16) {
-        self.max_scroll = max_scroll;
+    pub(crate) fn scroll_state_mut(&mut self) -> &mut ScrollState {
         if self.autoscroll {
-            self.scroll_offset = max_scroll;
-        } else {
-            self.scroll_offset = self.scroll_offset.min(max_scroll);
+            self.scroll.offset = self.scroll.max_scroll;
         }
+        &mut self.scroll
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
@@ -279,23 +272,31 @@ impl App {
     }
 
     fn scroll_up(&mut self) {
-        self.scroll_offset = self.scroll_offset.saturating_sub(1);
+        self.scroll.offset = self.scroll.offset.saturating_sub(1);
         self.autoscroll = false;
     }
 
     fn scroll_down(&mut self) {
-        self.scroll_offset = self.scroll_offset.saturating_add(1).min(self.max_scroll);
-        self.autoscroll = self.scroll_offset >= self.max_scroll;
+        self.scroll.offset = self
+            .scroll
+            .offset
+            .saturating_add(1)
+            .min(self.scroll.max_scroll);
+        self.autoscroll = self.scroll.offset >= self.scroll.max_scroll;
     }
 
     fn scroll_page_up(&mut self) {
-        self.scroll_offset = self.scroll_offset.saturating_sub(10);
+        self.scroll.offset = self.scroll.offset.saturating_sub(10);
         self.autoscroll = false;
     }
 
     fn scroll_page_down(&mut self) {
-        self.scroll_offset = self.scroll_offset.saturating_add(10).min(self.max_scroll);
-        self.autoscroll = self.scroll_offset >= self.max_scroll;
+        self.scroll.offset = self
+            .scroll
+            .offset
+            .saturating_add(10)
+            .min(self.scroll.max_scroll);
+        self.autoscroll = self.scroll.offset >= self.scroll.max_scroll;
     }
 }
 

@@ -1,18 +1,7 @@
 mod transcribe;
 
-use clap::Subcommand;
-
+pub use crate::cli::DebugCommands;
 use crate::error::CliResult;
-use transcribe::TranscribeArgs;
-
-#[derive(Subcommand)]
-pub enum DebugCommands {
-    /// Real-time transcription from audio devices
-    Transcribe {
-        #[command(flatten)]
-        args: TranscribeArgs,
-    },
-}
 
 pub async fn run(command: DebugCommands) -> CliResult<()> {
     match command {

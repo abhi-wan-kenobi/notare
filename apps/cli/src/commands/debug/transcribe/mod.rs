@@ -6,25 +6,15 @@ pub mod server;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use clap::ValueEnum;
 use owhisper_client::RealtimeSttAdapter;
 
 use self::audio::*;
 use self::client::*;
 use self::server::spawn_router;
+pub use crate::cli::{DebugProvider, TranscribeArgs};
 use crate::commands::Provider as SharedProvider;
 use crate::error::{CliError, CliResult};
 use crate::runtime::stt::{ResolvedSttConfig, resolve_config, resolve_local_model_path};
-
-#[derive(Clone, ValueEnum)]
-pub enum DebugProvider {
-    Deepgram,
-    Soniox,
-    Cactus,
-    ProxyHyprnote,
-    ProxyDeepgram,
-    ProxySoniox,
-}
 
 impl DebugProvider {
     fn is_local(&self) -> bool {
@@ -41,24 +31,6 @@ impl DebugProvider {
             | DebugProvider::ProxySoniox => None,
         }
     }
-}
-
-#[derive(clap::Args)]
-pub struct TranscribeArgs {
-    #[arg(long, value_enum)]
-    pub provider: DebugProvider,
-    /// Model name (API model for cloud providers, model ID for local)
-    #[arg(long, conflicts_with = "model_path")]
-    pub model: Option<String>,
-    /// Path to a local model directory on disk
-    #[arg(long, conflicts_with = "model")]
-    pub model_path: Option<PathBuf>,
-    #[arg(long, env = "DEEPGRAM_API_KEY")]
-    pub deepgram_api_key: Option<String>,
-    #[arg(long, env = "SONIOX_API_KEY")]
-    pub soniox_api_key: Option<String>,
-    #[command(flatten)]
-    pub audio: AudioArgs,
 }
 
 pub async fn run(args: TranscribeArgs) -> CliResult<()> {

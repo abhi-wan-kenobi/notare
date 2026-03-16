@@ -5,6 +5,8 @@ use ratatui::style::{Color, Modifier, Style};
 use tachyonfx::{Effect, Interpolation, Motion, fx};
 use tui_textarea::TextArea;
 
+use crate::widgets::ScrollState;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Normal,
@@ -18,9 +20,8 @@ pub(super) struct ListenUiState {
     mode: Mode,
     command_buffer: String,
     notepad_width_percent: u16,
-    transcript_max_scroll: u16,
+    scroll: ScrollState,
     transcript_autoscroll: bool,
-    scroll_offset: u16,
     memo: TextArea<'static>,
     last_frame_time: Instant,
     prev_segment_count: usize,
@@ -34,9 +35,8 @@ impl ListenUiState {
             mode: Mode::Normal,
             command_buffer: String::new(),
             notepad_width_percent: DEFAULT_NOTEPAD_WIDTH_PERCENT,
-            transcript_max_scroll: 0,
+            scroll: ScrollState::new(),
             transcript_autoscroll: true,
-            scroll_offset: 0,
             memo: Self::init_memo(),
             last_frame_time: now,
             prev_segment_count: 0,
@@ -80,17 +80,11 @@ impl ListenUiState {
         self.notepad_width_percent
     }
 
-    pub(super) fn scroll_offset(&self) -> u16 {
-        self.scroll_offset
-    }
-
-    pub(super) fn update_transcript_max_scroll(&mut self, max_scroll: u16) {
-        self.transcript_max_scroll = max_scroll;
+    pub(super) fn scroll_state_mut(&mut self) -> &mut ScrollState {
         if self.transcript_autoscroll {
-            self.scroll_offset = max_scroll;
-        } else {
-            self.scroll_offset = self.scroll_offset.min(max_scroll);
+            self.scroll.offset = self.scroll.max_scroll;
         }
+        &mut self.scroll
     }
 
     pub(super) fn frame_elapsed(&mut self) -> std::time::Duration {
@@ -157,25 +151,26 @@ impl ListenUiState {
     }
 
     pub(super) fn scroll_down(&mut self) {
-        self.scroll_offset = self
-            .scroll_offset
+        self.scroll.offset = self
+            .scroll
+            .offset
             .saturating_add(1)
-            .min(self.transcript_max_scroll);
-        self.transcript_autoscroll = self.scroll_offset >= self.transcript_max_scroll;
+            .min(self.scroll.max_scroll);
+        self.transcript_autoscroll = self.scroll.offset >= self.scroll.max_scroll;
     }
 
     pub(super) fn scroll_up(&mut self) {
-        self.scroll_offset = self.scroll_offset.saturating_sub(1);
+        self.scroll.offset = self.scroll.offset.saturating_sub(1);
         self.transcript_autoscroll = false;
     }
 
     pub(super) fn scroll_bottom(&mut self) {
-        self.scroll_offset = self.transcript_max_scroll;
+        self.scroll.offset = self.scroll.max_scroll;
         self.transcript_autoscroll = true;
     }
 
     pub(super) fn scroll_top(&mut self) {
-        self.scroll_offset = 0;
+        self.scroll.offset = 0;
         self.transcript_autoscroll = false;
     }
 

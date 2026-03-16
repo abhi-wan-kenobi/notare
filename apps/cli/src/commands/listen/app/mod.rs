@@ -111,8 +111,8 @@ impl App {
         self.ui.memo()
     }
 
-    pub(crate) fn update_transcript_max_scroll(&mut self, max_scroll: u16) {
-        self.ui.update_transcript_max_scroll(max_scroll);
+    pub(crate) fn scroll_state_mut(&mut self) -> &mut crate::widgets::ScrollState {
+        self.ui.scroll_state_mut()
     }
 
     pub(crate) fn notepad_width_percent(&self) -> u16 {
@@ -153,10 +153,6 @@ impl App {
 
     pub(crate) fn command_buffer(&self) -> &str {
         self.ui.command_buffer()
-    }
-
-    pub(crate) fn scroll_offset(&self) -> u16 {
-        self.ui.scroll_offset()
     }
 
     pub(crate) fn segments(&self) -> Vec<hypr_transcript::Segment> {

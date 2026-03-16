@@ -22,6 +22,7 @@ const IDLE_FRAME: Duration = Duration::from_secs(1);
 
 pub struct Args {
     pub session: Option<String>,
+    pub prompt: Option<String>,
     pub api_key: Option<String>,
     pub model: Option<String>,
 }
@@ -106,6 +107,11 @@ pub async fn run(args: Args) -> CliResult<()> {
     let model = args
         .model
         .unwrap_or_else(|| "anthropic/claude-sonnet-4".to_string());
+
+    if let Some(prompt) = args.prompt {
+        return run_prompt(&api_key, &model, &prompt).await;
+    }
+
     let system_message = args
         .session
         .as_deref()
@@ -120,4 +126,54 @@ pub async fn run(args: Args) -> CliResult<()> {
     run_screen(ChatScreen::new(app, runtime), Some(runtime_rx))
         .await
         .map_err(|e| CliError::operation_failed("chat tui", e.to_string()))
+}
+
+async fn run_prompt(api_key: &str, model: &str, prompt: &str) -> CliResult<()> {
+    use futures_util::StreamExt;
+    use hypr_openrouter::{ChatCompletionRequest, ChatMessage, Role};
+    use std::io::Write;
+
+    let text = if prompt == "-" {
+        std::io::read_to_string(std::io::stdin())
+            .map_err(|e| CliError::operation_failed("read stdin", e.to_string()))?
+    } else {
+        prompt.to_string()
+    };
+
+    let client = Client::new(api_key.to_string());
+    let req = ChatCompletionRequest {
+        model: Some(model.to_string()),
+        messages: vec![ChatMessage::new(Role::User, text)],
+        ..Default::default()
+    };
+
+    let mut stream = client
+        .chat_completion_stream(&req)
+        .await
+        .map_err(|e| CliError::operation_failed("chat stream", e.to_string()))?;
+
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            Ok(chunk) => {
+                if let Some(choice) = chunk.choices.first()
+                    && let Some(content) = choice.delta.content.as_deref()
+                {
+                    out.write_all(content.as_bytes())
+                        .map_err(|e| CliError::operation_failed("write stdout", e.to_string()))?;
+                    out.flush()
+                        .map_err(|e| CliError::operation_failed("flush stdout", e.to_string()))?;
+                }
+            }
+            Err(e) => {
+                return Err(CliError::operation_failed("chat stream", e.to_string()));
+            }
+        }
+    }
+
+    writeln!(out).map_err(|e| CliError::operation_failed("write stdout", e.to_string()))?;
+
+    Ok(())
 }

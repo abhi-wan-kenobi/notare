@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use clap::{Args, ValueEnum};
 use futures_util::StreamExt;
 use owhisper_interface::MixedMessage;
 
 use hypr_audio::{CaptureConfig, CaptureFrame};
 use hypr_audio_utils::{chunk_size_for_stt, f32_to_i16_bytes};
 
+pub use crate::cli::AudioSource;
 pub use hypr_audio::AudioProvider;
 pub use hypr_audio_actual::ActualAudio;
 
@@ -26,16 +26,6 @@ pub enum DisplayMode {
     Dual,
 }
 
-#[derive(Clone, ValueEnum)]
-pub enum AudioSource {
-    Input,
-    Output,
-    RawDual,
-    AecDual,
-    #[cfg(feature = "mock-audio")]
-    Mock,
-}
-
 impl AudioSource {
     pub fn is_dual(&self) -> bool {
         matches!(self, Self::RawDual | Self::AecDual)
@@ -49,12 +39,6 @@ impl AudioSource {
     pub fn is_mock(&self) -> bool {
         matches!(self, Self::Mock)
     }
-}
-
-#[derive(Args)]
-pub struct AudioArgs {
-    #[arg(long, value_enum, default_value = "input")]
-    pub audio: AudioSource,
 }
 
 pub fn create_single_audio_stream(

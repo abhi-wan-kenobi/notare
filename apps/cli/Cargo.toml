@@ -37,7 +37,8 @@ owhisper-interface = { workspace = true }
 axum = { workspace = true, features = ["ws"] }
 bytes = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
-clap-verbosity-flag = "3"
+clap-verbosity-flag = { version = "3", features = ["tracing"] }
+clap_complete = { workspace = true }
 clio = { version = "0.3", features = ["clap-parse"] }
 colored = "3"
 comfy-table = "7"
@@ -45,12 +46,13 @@ crossterm = { workspace = true }
 dirs = { workspace = true }
 futures-util = { workspace = true }
 indicatif = "0.17"
-log = "0.4"
-miette = { version = "7", features = ["fancy"] }
+inquire = "0.7"
 ratatui = { workspace = true }
 tachyonfx = { workspace = true }
 tempfile = { workspace = true }
 textwrap = { version = "0.16", features = ["terminal_size"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tui-textarea = { workspace = true }
 
 open = { workspace = true }
@@ -63,6 +65,14 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal", "
 tokio-stream = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
+
+[build-dependencies]
+clap = { workspace = true, features = ["derive", "env"] }
+clap-verbosity-flag = { version = "3", features = ["tracing"] }
+clap_complete = { workspace = true }
+clap_mangen = { workspace = true }
+clio = { version = "0.3", features = ["clap-parse"] }
+url = { workspace = true }
 
 [features]
 mock-audio = ["dep:hypr-audio-mock"]

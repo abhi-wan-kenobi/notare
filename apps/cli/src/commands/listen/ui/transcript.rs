@@ -1,17 +1,16 @@
 use hypr_transcript::{Segment, SegmentKey, SegmentWord, SpeakerLabeler};
 use ratatui::{
     Frame,
-    layout::{Margin, Rect},
+    layout::Rect,
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{
-        Block, Borders, Padding, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
-    },
+    widgets::{Block, Borders, Padding, Paragraph},
 };
 
 use crate::commands::listen::app::App;
-use crate::fmt::format_timestamp_ms;
+use crate::output::format_timestamp_ms;
 use crate::theme::Theme;
+use crate::widgets::Scrollable;
 
 const FADE_IN_SECS: f64 = 0.4;
 
@@ -47,41 +46,19 @@ pub(super) fn draw_transcript(
         let lines = vec![Line::from(Span::styled(empty_message, theme.placeholder))];
         let paragraph = Paragraph::new(lines).block(block);
         frame.render_widget(paragraph, area);
-        app.update_transcript_max_scroll(0);
         return;
     }
 
     app.check_new_segments(segments.len(), inner_area);
 
-    // border (1) + padding (1) on each side = 4 chars
     let content_width = area.width.saturating_sub(4) as usize;
     let lines = build_segment_lines(&segments, theme, content_width, app);
 
-    let line_count = lines.len();
-    let paragraph = Paragraph::new(lines).block(block);
-
-    let visible_lines = area.height.saturating_sub(2) as usize;
-    let max_scroll = line_count
-        .saturating_sub(visible_lines)
-        .min(u16::MAX as usize) as u16;
-    app.update_transcript_max_scroll(max_scroll);
-
-    let paragraph = paragraph.scroll((app.scroll_offset(), 0));
-    frame.render_widget(paragraph, area);
+    let scrollable = Scrollable::new(lines).block(block);
+    let scroll_state = app.scroll_state_mut();
+    frame.render_stateful_widget(scrollable, area, scroll_state);
 
     app.process_effects(elapsed, frame.buffer_mut(), inner_area);
-
-    let mut scrollbar_state =
-        ScrollbarState::new(line_count.max(1)).position(app.scroll_offset() as usize);
-    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight);
-    frame.render_stateful_widget(
-        scrollbar,
-        area.inner(Margin {
-            vertical: 1,
-            horizontal: 0,
-        }),
-        &mut scrollbar_state,
-    );
 }
 
 fn build_segment_lines<'a>(
@@ -98,7 +75,6 @@ fn build_segment_lines<'a>(
             lines.push(Line::default());
         }
 
-        // Header: speaker label + timestamp
         let label = speaker_label(&segment.key, &mut labeler);
         let timestamp = segment
             .words
@@ -112,8 +88,6 @@ fn build_segment_lines<'a>(
             Span::styled(format!("[{timestamp}]"), theme.timestamp),
         ]));
 
-        // Build word spans, wrapping manually to respect content width.
-        // We join words into flowing text and wrap at word boundaries.
         let indent = "  ";
         let wrap_width = content_width.saturating_sub(indent.len());
 
@@ -129,7 +103,6 @@ fn build_segment_lines<'a>(
             let separator = if j > 0 { " " } else { "" };
             let needed = separator.len() + text.len();
 
-            // Wrap to next line if adding this word would exceed width
             if current_len > 0 && current_len + needed > wrap_width {
                 lines.push(Line::from(std::mem::take(&mut current_spans)));
                 current_spans = vec![Span::raw(indent.to_string())];

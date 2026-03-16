@@ -133,6 +133,29 @@ fn models_base_override() -> Option<PathBuf> {
     std::env::var_os(CHAR_MODELS_BASE).map(PathBuf::from)
 }
 
+fn deep_merge(base: &mut serde_json::Value, patch: serde_json::Value) {
+    match (base, patch) {
+        (serde_json::Value::Object(base), serde_json::Value::Object(patch)) => {
+            for (k, v) in patch {
+                deep_merge(base.entry(k).or_insert(serde_json::Value::Null), v);
+            }
+        }
+        (base, patch) => *base = patch,
+    }
+}
+
+pub fn save_settings(path: &Path, update: serde_json::Value) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let mut existing = std::fs::read_to_string(path)
+        .ok()
+        .and_then(|c| serde_json::from_str(&c).ok())
+        .unwrap_or_else(|| serde_json::json!({}));
+    deep_merge(&mut existing, update);
+    hypr_storage::fs::atomic_write(path, &serde_json::to_string_pretty(&existing).unwrap())
+}
+
 fn get_string(value: Option<&serde_json::Value>) -> Option<String> {
     value?.as_str().map(ToString::to_string)
 }

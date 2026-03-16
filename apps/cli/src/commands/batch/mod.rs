@@ -2,30 +2,16 @@ mod output;
 mod response;
 
 use std::io::IsTerminal;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use hypr_listener2_core::{BatchErrorCode, BatchEvent};
 use tokio::sync::mpsc;
 
-use crate::commands::{OutputFormat, Provider, SttGlobalArgs};
+pub use crate::cli::BatchArgs;
+use crate::commands::{OutputFormat, SttGlobalArgs};
 use crate::error::{CliError, CliResult};
 use crate::runtime::batch::ChannelBatchRuntime;
 use crate::runtime::stt::resolve_config;
-
-#[derive(clap::Args)]
-pub struct BatchArgs {
-    #[arg(long, value_name = "FILE", visible_alias = "file")]
-    pub input: clio::InputPath,
-    #[arg(long, value_enum)]
-    pub provider: Provider,
-    #[arg(long = "keyword", short = 'k', value_name = "KEYWORD")]
-    pub keywords: Vec<String>,
-    #[arg(long, value_name = "FILE")]
-    pub output: Option<PathBuf>,
-    #[arg(long, value_enum, default_value = "pretty")]
-    pub format: OutputFormat,
-}
 
 pub async fn run(args: BatchArgs, stt: SttGlobalArgs, quiet: bool) -> CliResult<()> {
     let resolved = resolve_config(

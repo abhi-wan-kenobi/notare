@@ -1,4 +1,4 @@
-use crate::fmt::format_timestamp_secs;
+use crate::output::format_timestamp_secs;
 
 const PAUSE_THRESHOLD_SECS: f64 = 0.5;
 

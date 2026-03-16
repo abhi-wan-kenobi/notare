@@ -1,107 +1,36 @@
+mod cli;
 mod commands;
 mod error;
-mod fmt;
 mod output;
 mod runtime;
 mod theme;
+mod widgets;
 
-use clap::{Parser, Subcommand};
-use clap_verbosity_flag::{InfoLevel, Verbosity};
+use clap::Parser;
+use tracing_subscriber::EnvFilter;
 
-use crate::commands::batch;
-use crate::commands::debug::DebugCommands;
-use crate::commands::model::ModelCommands;
+use crate::cli::{Cli, Commands};
 use crate::error::CliResult;
-
-/// Live transcription and audio tools
-#[derive(Parser)]
-#[command(
-    name = "char",
-    version,
-    propagate_version = true,
-    subcommand_required = true,
-    arg_required_else_help = true
-)]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-
-    #[command(flatten)]
-    global: GlobalArgs,
-
-    #[command(flatten)]
-    verbose: Verbosity<InfoLevel>,
-}
-
-#[derive(clap::Args)]
-struct GlobalArgs {
-    #[arg(long, global = true, env = "CHAR_BASE_URL", value_parser = parse_base_url)]
-    base_url: Option<String>,
-
-    #[arg(long, global = true, env = "CHAR_API_KEY")]
-    api_key: Option<String>,
-
-    #[arg(long, global = true, env = "CHAR_MODEL")]
-    model: Option<String>,
-
-    #[arg(long, global = true, env = "CHAR_LANGUAGE", default_value = "en")]
-    language: String,
-
-    #[arg(long, global = true, env = "CHAR_RECORD")]
-    record: bool,
-}
-
-fn parse_base_url(value: &str) -> Result<String, String> {
-    let parsed = url::Url::parse(value).map_err(|e| format!("invalid URL '{value}': {e}"))?;
-    if parsed.scheme() != "http" && parsed.scheme() != "https" {
-        return Err(format!(
-            "invalid URL '{value}': scheme must be http or https"
-        ));
-    }
-    Ok(value.to_string())
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Interactive chat with an LLM
-    Chat {
-        #[arg(long)]
-        session: Option<String>,
-    },
-    /// Start live transcription (TUI)
-    Listen {
-        #[arg(long, value_enum)]
-        provider: commands::Provider,
-
-        #[arg(long, value_enum, default_value = "dual")]
-        audio: commands::listen::AudioMode,
-    },
-    /// Authenticate with char.com
-    Auth,
-    /// Open the desktop app or download page
-    Desktop,
-    /// Transcribe an audio file
-    Batch {
-        #[command(flatten)]
-        args: batch::BatchArgs,
-    },
-    /// Manage local models
-    Model {
-        #[command(subcommand)]
-        command: ModelCommands,
-    },
-    /// Debug and diagnostic tools
-    Debug {
-        #[command(subcommand)]
-        command: DebugCommands,
-    },
-}
 
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
+
+    if cli.global.no_color || std::env::var_os("NO_COLOR").is_some() {
+        colored::control::set_override(false);
+    }
+
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::builder()
+                .with_default_directive(cli.verbose.tracing_level_filter().into())
+                .from_env_lossy(),
+        )
+        .with_writer(std::io::stderr)
+        .init();
+
     if let Err(error) = run(cli).await {
-        eprintln!("{:?}", miette::Report::new(error));
+        eprintln!("error: {error}");
         std::process::exit(1);
     }
 }
@@ -114,17 +43,30 @@ async fn run(cli: Cli) -> CliResult<()> {
     } = cli;
 
     match command {
-        Commands::Chat { session } => {
+        Commands::Chat { session, prompt } => {
             commands::chat::run(commands::chat::Args {
                 session,
+                prompt,
                 api_key: global.api_key,
                 model: global.model,
             })
             .await
         }
+        Commands::Connect { r#type, provider } => {
+            commands::connect::run(commands::connect::Args {
+                connection_type: r#type,
+                provider,
+                base_url: global.base_url,
+                api_key: global.api_key,
+            })?;
+            eprintln!("Next: run `char status` to verify");
+            Ok(())
+        }
+        Commands::Status => commands::status::run(),
         Commands::Auth => {
             commands::auth::run()?;
             eprintln!("Opened auth page in browser");
+            eprintln!("Next: run `char connect` to configure a provider");
             Ok(())
         }
         Commands::Desktop => {
@@ -163,5 +105,9 @@ async fn run(cli: Cli) -> CliResult<()> {
         }
         Commands::Model { command } => commands::model::run(command).await,
         Commands::Debug { command } => commands::debug::run(command).await,
+        Commands::Completions { shell } => {
+            cli::generate_completions(shell);
+            Ok(())
+        }
     }
 }
