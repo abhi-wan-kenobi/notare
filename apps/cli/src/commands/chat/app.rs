@@ -24,10 +24,13 @@ pub(crate) struct VisibleMessage {
     pub(crate) content: String,
 }
 
+const MAX_HISTORY: usize = 20;
+
 pub(crate) struct App {
     model: String,
     session: Option<String>,
     api_history: Vec<Message>,
+    max_history: usize,
     transcript: Vec<VisibleMessage>,
     input: TextArea<'static>,
     pending_assistant: String,
@@ -55,6 +58,7 @@ impl App {
             model,
             session,
             api_history: Vec::new(),
+            max_history: MAX_HISTORY,
             transcript: Vec::new(),
             input,
             pending_assistant: String::new(),
@@ -79,14 +83,8 @@ impl App {
                 }
                 Vec::new()
             }
-            Action::StreamCompleted(final_text) => {
-                self.finish_stream(final_text);
-                Vec::new()
-            }
-            Action::StreamFailed(error) => {
-                self.fail_stream(error);
-                Vec::new()
-            }
+            Action::StreamCompleted(final_text) => self.finish_stream(final_text),
+            Action::StreamFailed(error) => self.fail_stream(error),
         }
     }
 
@@ -195,6 +193,11 @@ impl App {
         Vec::new()
     }
 
+    fn working_history(&self) -> Vec<Message> {
+        let skip = self.api_history.len().saturating_sub(self.max_history);
+        self.api_history[skip..].to_vec()
+    }
+
     fn submit_input(&mut self) -> Vec<Effect> {
         let input = self.input.lines().join("\n");
         let trimmed = input.trim();
@@ -217,7 +220,7 @@ impl App {
             speaker: Speaker::User,
             content: content.clone(),
         });
-        let history = self.api_history.clone();
+        let history = self.working_history();
         self.api_history.push(Message::user(content.clone()));
 
         vec![Effect::Submit {
@@ -226,7 +229,7 @@ impl App {
         }]
     }
 
-    fn finish_stream(&mut self, final_text: Option<String>) {
+    fn finish_stream(&mut self, final_text: Option<String>) -> Vec<Effect> {
         self.streaming = false;
         self.status = "Ready".to_string();
 
@@ -250,7 +253,7 @@ impl App {
                 speaker: Speaker::Error,
                 content: "No response content received from the model.".to_string(),
             });
-            return;
+            return Vec::new();
         }
 
         let content = std::mem::take(&mut self.pending_assistant);
@@ -259,9 +262,10 @@ impl App {
             content: content.clone(),
         });
         self.api_history.push(Message::assistant(content));
+        Vec::new()
     }
 
-    fn fail_stream(&mut self, error: String) {
+    fn fail_stream(&mut self, error: String) -> Vec<Effect> {
         self.streaming = false;
         if !self.pending_assistant.is_empty() {
             let content = std::mem::take(&mut self.pending_assistant);
@@ -277,6 +281,7 @@ impl App {
             speaker: Speaker::Error,
             content: error,
         });
+        Vec::new()
     }
 
     fn scroll_up(&mut self) {

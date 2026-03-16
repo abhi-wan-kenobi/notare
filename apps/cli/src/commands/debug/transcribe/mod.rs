@@ -1,7 +1,9 @@
-pub mod audio;
-pub mod client;
-pub mod display;
-pub mod server;
+mod audio;
+mod client;
+mod raw;
+mod rich;
+mod server;
+mod shell;
 
 use std::sync::Arc;
 
@@ -10,14 +12,20 @@ use owhisper_client::RealtimeSttAdapter;
 use self::audio::*;
 use self::client::*;
 use self::server::spawn_router;
-pub use crate::cli::{DebugProvider, TranscribeArgs};
+pub use crate::cli::{DebugProvider, TranscribeArgs, TranscribeMode};
 use crate::commands::Provider as SharedProvider;
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 use crate::config::stt::resolve_local_model_path;
 use crate::config::stt::{ResolvedSttConfig, resolve_config};
 use crate::error::{CliError, CliResult};
+use crate::widgets::TracingCapture;
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 use std::path::PathBuf;
+
+struct TranscribeCtx {
+    mode: TranscribeMode,
+    tracing: Arc<TracingCapture>,
+}
 
 impl DebugProvider {
     fn is_local(&self) -> bool {
@@ -53,32 +61,49 @@ pub async fn run(args: TranscribeArgs) -> CliResult<()> {
         }
     }
 
+    let tracing = TracingCapture::new();
+    crate::widgets::init_tracing_capture(Arc::clone(&tracing));
+
+    let ctx = TranscribeCtx {
+        mode: args.mode,
+        tracing,
+    };
+
     match args.provider {
         DebugProvider::Deepgram => {
             let model = require_model_name(args.model.as_deref(), &args.provider)?;
             let resolved =
                 resolve_standard_provider(&args.provider, args.deepgram_api_key, Some(model))
                     .await?;
-            run_resolved_provider::<owhisper_client::DeepgramAdapter>(&resolved, args.audio.audio)
-                .await?;
+            run_resolved_provider::<owhisper_client::DeepgramAdapter>(
+                &resolved,
+                args.audio.audio,
+                &ctx,
+            )
+            .await?;
         }
         DebugProvider::Soniox => {
             let model = require_model_name(args.model.as_deref(), &args.provider)?;
             let resolved =
                 resolve_standard_provider(&args.provider, args.soniox_api_key, Some(model)).await?;
-            run_resolved_provider::<owhisper_client::SonioxAdapter>(&resolved, args.audio.audio)
-                .await?;
+            run_resolved_provider::<owhisper_client::SonioxAdapter>(
+                &resolved,
+                args.audio.audio,
+                &ctx,
+            )
+            .await?;
         }
         #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
         DebugProvider::Cactus => {
             if args.model_path.is_some() {
                 let model_path = resolve_local_model_path(args.model.as_deref(), args.model_path)?;
-                run_cactus_from_path(model_path, args.audio.audio).await?;
+                run_cactus_from_path(model_path, args.audio.audio, &ctx).await?;
             } else {
                 let resolved = resolve_standard_provider(&args.provider, None, args.model).await?;
                 run_resolved_provider::<owhisper_client::CactusAdapter>(
                     &resolved,
                     args.audio.audio,
+                    &ctx,
                 )
                 .await?;
             }
@@ -89,16 +114,31 @@ pub async fn run(args: TranscribeArgs) -> CliResult<()> {
                 args.deepgram_api_key,
                 args.soniox_api_key,
                 args.audio.audio,
+                &ctx,
             )
             .await?;
         }
         DebugProvider::ProxyDeepgram => {
             let api_key = require_key(args.deepgram_api_key, "DEEPGRAM_API_KEY")?;
-            run_proxy(ProxyKind::Deepgram, Some(api_key), None, args.audio.audio).await?;
+            run_proxy(
+                ProxyKind::Deepgram,
+                Some(api_key),
+                None,
+                args.audio.audio,
+                &ctx,
+            )
+            .await?;
         }
         DebugProvider::ProxySoniox => {
             let api_key = require_key(args.soniox_api_key, "SONIOX_API_KEY")?;
-            run_proxy(ProxyKind::Soniox, None, Some(api_key), args.audio.audio).await?;
+            run_proxy(
+                ProxyKind::Soniox,
+                None,
+                Some(api_key),
+                args.audio.audio,
+                &ctx,
+            )
+            .await?;
         }
     }
     Ok(())
@@ -139,7 +179,7 @@ async fn resolve_standard_provider(
 }
 
 fn create_audio_provider(source: &AudioSource) -> Arc<dyn AudioProvider> {
-    #[cfg(feature = "mock-audio")]
+    #[cfg(feature = "dev")]
     if source.is_mock() {
         return Arc::new(hypr_audio_mock::MockAudio::new(1));
     }
@@ -150,6 +190,7 @@ fn create_audio_provider(source: &AudioSource) -> Arc<dyn AudioProvider> {
 async fn run_resolved_provider<A: RealtimeSttAdapter>(
     resolved: &ResolvedSttConfig,
     source: AudioSource,
+    ctx: &TranscribeCtx,
 ) -> CliResult<()> {
     let _ = resolved.server.as_ref();
     let audio: Arc<dyn AudioProvider> = create_audio_provider(&source);
@@ -162,11 +203,15 @@ async fn run_resolved_provider<A: RealtimeSttAdapter>(
         Some(resolved.api_key.clone())
     };
 
-    run_for_source::<A>(audio, source, &resolved.base_url, api_key, params).await
+    run_for_source::<A>(audio, source, &resolved.base_url, api_key, params, ctx).await
 }
 
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-async fn run_cactus_from_path(model_path: PathBuf, source: AudioSource) -> CliResult<()> {
+async fn run_cactus_from_path(
+    model_path: PathBuf,
+    source: AudioSource,
+    ctx: &TranscribeCtx,
+) -> CliResult<()> {
     let server = hypr_local_stt_server::LocalSttServer::start(model_path)
         .await
         .map_err(|e| CliError::operation_failed("start local cactus server", e.to_string()))?;
@@ -179,10 +224,10 @@ async fn run_cactus_from_path(model_path: PathBuf, source: AudioSource) -> CliRe
         &base_url,
         None,
         default_listen_params(),
+        ctx,
     )
     .await?;
 
-    // keep server alive until transcription ends
     drop(server);
     Ok(())
 }
@@ -198,6 +243,7 @@ async fn run_proxy(
     deepgram_api_key: Option<String>,
     soniox_api_key: Option<String>,
     source: AudioSource,
+    ctx: &TranscribeCtx,
 ) -> CliResult<()> {
     use hypr_transcribe_proxy::{HyprnoteRoutingConfig, SttProxyConfig};
 
@@ -229,38 +275,46 @@ async fn run_proxy(
     let app = hypr_transcribe_proxy::router(config);
     let server = spawn_router(app).await?;
 
-    eprintln!("proxy: {} -> {}", server.addr(), provider_name);
-    eprintln!();
+    tracing::info!("proxy: {} -> {}", server.addr(), provider_name);
 
     let audio: Arc<dyn AudioProvider> = Arc::new(ActualAudio);
     let api_base = server.api_base("");
 
     match kind {
         ProxyKind::Hyprnote => {
-            run_with_adapter::<owhisper_client::HyprnoteAdapter>(audio, &source, api_base).await?;
+            run_for_source::<owhisper_client::HyprnoteAdapter>(
+                audio,
+                source,
+                api_base,
+                None,
+                default_listen_params(),
+                ctx,
+            )
+            .await?;
         }
         ProxyKind::Deepgram => {
-            run_with_adapter::<owhisper_client::DeepgramAdapter>(audio, &source, api_base).await?;
+            run_for_source::<owhisper_client::DeepgramAdapter>(
+                audio,
+                source,
+                api_base,
+                None,
+                default_listen_params(),
+                ctx,
+            )
+            .await?;
         }
         ProxyKind::Soniox => {
-            run_with_adapter::<owhisper_client::SonioxAdapter>(audio, &source, api_base).await?;
+            run_for_source::<owhisper_client::SonioxAdapter>(
+                audio,
+                source,
+                api_base,
+                None,
+                default_listen_params(),
+                ctx,
+            )
+            .await?;
         }
     }
 
     Ok(())
-}
-
-async fn run_with_adapter<A: RealtimeSttAdapter>(
-    audio: Arc<dyn AudioProvider>,
-    source: &AudioSource,
-    api_base: String,
-) -> CliResult<()> {
-    run_for_source::<A>(
-        audio,
-        source.clone(),
-        api_base,
-        None,
-        default_listen_params(),
-    )
-    .await
 }

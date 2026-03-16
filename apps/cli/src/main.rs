@@ -17,26 +17,51 @@ use crate::error::CliResult;
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
-    let tui_chat = matches!(&cli.command, Commands::Chat { prompt: None, .. });
+    let tui_chat = matches!(&cli.command, Some(Commands::Chat { prompt: None, .. }));
+    let tui_entry = cli.command.is_none()
+        || matches!(
+            &cli.command,
+            Some(Commands::Connect {
+                r#type: None,
+                provider: None
+            })
+        );
+    let skip_tracing_init = {
+        #[cfg(feature = "dev")]
+        {
+            matches!(
+                &cli.command,
+                Some(Commands::Debug {
+                    command: cli::DebugCommands::Transcribe { .. }
+                })
+            )
+        }
+        #[cfg(not(feature = "dev"))]
+        {
+            false
+        }
+    };
 
     if cli.global.no_color || std::env::var_os("NO_COLOR").is_some() {
         colored::control::set_override(false);
     }
 
-    let default_directive = if tui_chat {
-        LevelFilter::OFF.into()
-    } else {
-        cli.verbose.tracing_level_filter().into()
-    };
+    if !skip_tracing_init {
+        let default_directive = if tui_chat || tui_entry {
+            LevelFilter::OFF.into()
+        } else {
+            cli.verbose.tracing_level_filter().into()
+        };
 
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::builder()
-                .with_default_directive(default_directive)
-                .from_env_lossy(),
-        )
-        .with_writer(std::io::stderr)
-        .init();
+        tracing_subscriber::fmt()
+            .with_env_filter(
+                EnvFilter::builder()
+                    .with_default_directive(default_directive)
+                    .from_env_lossy(),
+            )
+            .with_writer(std::io::stderr)
+            .init();
+    }
 
     if let Err(error) = run(cli).await {
         eprintln!("error: {error}");
@@ -68,8 +93,10 @@ fn track_command(client: &hypr_analytics::AnalyticsClient, subcommand: &'static 
 async fn run(cli: Cli) -> CliResult<()> {
     let analytics = analytics_client();
 
-    let subcommand: &'static str = (&cli.command).into();
-    track_command(&analytics, subcommand);
+    if let Some(ref command) = cli.command {
+        let subcommand: &'static str = command.into();
+        track_command(&analytics, subcommand);
+    }
 
     let Cli {
         command,
@@ -78,11 +105,11 @@ async fn run(cli: Cli) -> CliResult<()> {
     } = cli;
 
     match command {
-        Commands::Chat {
+        Some(Commands::Chat {
             session,
             prompt,
             provider,
-        } => {
+        }) => {
             commands::chat::run(commands::chat::Args {
                 session,
                 prompt,
@@ -93,24 +120,31 @@ async fn run(cli: Cli) -> CliResult<()> {
             })
             .await
         }
-        Commands::Connect { r#type, provider } => {
-            commands::connect::run(commands::connect::Args {
-                connection_type: r#type,
-                provider,
-                base_url: global.base_url,
-                api_key: global.api_key,
-            })?;
-            eprintln!("Next: run `char status` to verify");
-            Ok(())
+        Some(Commands::Connect { r#type, provider }) => {
+            if r#type.is_some() || provider.is_some() {
+                let saved = commands::connect::run(commands::connect::Args {
+                    connection_type: r#type,
+                    provider,
+                    base_url: global.base_url,
+                    api_key: global.api_key,
+                })
+                .await?;
+                if saved {
+                    eprintln!("Next: run `char status` to verify");
+                }
+                Ok(())
+            } else {
+                run_entry_loop(global, Some("/connect".to_string())).await
+            }
         }
-        Commands::Status => commands::status::run(),
-        Commands::Auth => {
+        Some(Commands::Status) => commands::status::run(),
+        Some(Commands::Auth) => {
             commands::auth::run()?;
             eprintln!("Opened auth page in browser");
             eprintln!("Next: run `char connect` to configure a provider");
             Ok(())
         }
-        Commands::Desktop => {
+        Some(Commands::Desktop) => {
             use commands::desktop::DesktopAction;
             match commands::desktop::run()? {
                 DesktopAction::OpenedApp => eprintln!("Opened desktop app"),
@@ -120,7 +154,7 @@ async fn run(cli: Cli) -> CliResult<()> {
             }
             Ok(())
         }
-        Commands::Listen { provider, audio } => {
+        Some(Commands::Listen { provider, audio }) => {
             commands::listen::run(commands::listen::Args {
                 stt: commands::SttGlobalArgs {
                     provider,
@@ -134,7 +168,7 @@ async fn run(cli: Cli) -> CliResult<()> {
             })
             .await
         }
-        Commands::Batch { args } => {
+        Some(Commands::Batch { args }) => {
             let stt = commands::SttGlobalArgs {
                 provider: args.provider,
                 base_url: global.base_url,
@@ -144,12 +178,57 @@ async fn run(cli: Cli) -> CliResult<()> {
             };
             commands::batch::run(args, stt, verbose.is_silent()).await
         }
-        Commands::Model { command } => commands::model::run(command).await,
-        #[cfg(debug_assertions)]
-        Commands::Debug { command } => commands::debug::run(command).await,
-        Commands::Completions { shell } => {
+        Some(Commands::Model { command }) => commands::model::run(command).await,
+        #[cfg(feature = "dev")]
+        Some(Commands::Debug { command }) => commands::debug::run(command).await,
+        Some(Commands::Completions { shell }) => {
             cli::generate_completions(shell);
             Ok(())
+        }
+        None => run_entry_loop(global, None).await,
+    }
+}
+
+async fn run_entry_loop(
+    global: cli::GlobalArgs,
+    initial_command: Option<String>,
+) -> CliResult<()> {
+    let mut status_message: Option<String> = None;
+    let mut initial_cmd = initial_command;
+    loop {
+        let action = commands::entry::run(commands::entry::Args {
+            status_message: status_message.take(),
+            initial_command: initial_cmd.take(),
+        })
+        .await;
+        match action {
+            commands::entry::EntryAction::Listen => {
+                return commands::listen::run(commands::listen::Args {
+                    stt: commands::SttGlobalArgs {
+                        provider: cli::Provider::Deepgram,
+                        base_url: global.base_url,
+                        api_key: global.api_key,
+                        model: global.model,
+                        language: global.language,
+                    },
+                    record: global.record,
+                    audio: cli::AudioMode::Dual,
+                })
+                .await;
+            }
+            commands::entry::EntryAction::Connect => {
+                let saved = commands::connect::run(commands::connect::Args {
+                    connection_type: None,
+                    provider: None,
+                    base_url: None,
+                    api_key: None,
+                })
+                .await?;
+                if saved {
+                    status_message = Some("Provider configured".into());
+                }
+            }
+            commands::entry::EntryAction::Quit => return Ok(()),
         }
     }
 }

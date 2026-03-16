@@ -103,8 +103,8 @@ hypr-audio-mock = { workspace = true, optional = true }
 
 [features]
 default = []
+dev = ["dep:hypr-audio-mock"]
 devtools = ["tauri/devtools"]
-mock-audio = ["dep:hypr-audio-mock"]
 automation = ["tauri-plugin-automation"]
 
 [target.'cfg(target_os = "macos")'.dependencies]

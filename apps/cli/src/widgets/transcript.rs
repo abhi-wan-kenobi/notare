@@ -1,91 +1,106 @@
+use hypr_transcript::{Segment, SegmentWord, SpeakerLabeler};
 use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::Style,
+    style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, StatefulWidget},
 };
-use textwrap::wrap;
 
-use super::scrollable::{ScrollState, Scrollable};
+use crate::output::format_timestamp_ms;
+use crate::theme::Theme;
 
-pub struct TranscriptEntry {
-    pub label: String,
-    pub content: String,
-    pub label_style: Style,
-    pub content_style: Style,
-}
+const FADE_IN_SECS: f64 = 0.4;
 
-pub struct Transcript<'a> {
-    entries: Vec<TranscriptEntry>,
-    placeholder: Option<Span<'a>>,
-    block: Option<Block<'a>>,
-}
+pub fn build_segment_lines<'a>(
+    segments: &[Segment],
+    theme: &Theme,
+    content_width: usize,
+    word_age_fn: Option<&dyn Fn(&str) -> f64>,
+) -> Vec<Line<'a>> {
+    let mut lines: Vec<Line> = Vec::new();
+    let mut labeler = SpeakerLabeler::from_segments(segments, None);
 
-impl<'a> Transcript<'a> {
-    pub fn new(entries: Vec<TranscriptEntry>) -> Self {
-        Self {
-            entries,
-            placeholder: None,
-            block: None,
+    for (i, segment) in segments.iter().enumerate() {
+        if i > 0 {
+            lines.push(Line::default());
         }
-    }
 
-    pub fn placeholder(mut self, span: Span<'a>) -> Self {
-        self.placeholder = Some(span);
-        self
-    }
+        let label = labeler.label_for(&segment.key, None);
+        let timestamp = segment
+            .words
+            .first()
+            .map(|w| format_timestamp_ms(w.start_ms))
+            .unwrap_or_default();
 
-    pub fn block(mut self, block: Block<'a>) -> Self {
-        self.block = Some(block);
-        self
-    }
-}
+        lines.push(Line::from(vec![
+            Span::styled(label, theme.speaker_label),
+            Span::raw(" "),
+            Span::styled(format!("[{timestamp}]"), theme.timestamp),
+        ]));
 
-impl StatefulWidget for Transcript<'_> {
-    type State = ScrollState;
+        let indent = "  ";
+        let wrap_width = content_width.saturating_sub(indent.len());
 
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let block = self.block.unwrap_or_default();
-        let inner = block.inner(area);
-        let width = inner.width.saturating_sub(2) as usize;
-        let wrap_width = width.max(8);
+        if wrap_width == 0 {
+            continue;
+        }
 
-        let mut lines = Vec::new();
+        let mut current_spans: Vec<Span> = vec![Span::raw(indent.to_string())];
+        let mut current_len = 0usize;
 
-        for entry in &self.entries {
-            if !lines.is_empty() {
-                lines.push(Line::default());
+        for (j, word) in segment.words.iter().enumerate() {
+            let text = &word.text;
+            let separator = if j > 0 { " " } else { "" };
+            let needed = separator.len() + text.len();
+
+            if current_len > 0 && current_len + needed > wrap_width {
+                lines.push(Line::from(std::mem::take(&mut current_spans)));
+                current_spans = vec![Span::raw(indent.to_string())];
+                current_len = 0;
+            } else if !separator.is_empty() {
+                current_spans.push(Span::raw(separator.to_string()));
+                current_len += separator.len();
             }
-            lines.extend(render_entry(entry, wrap_width));
+
+            let style = word_style(word, theme, word_age_fn);
+            current_spans.push(Span::styled(text.clone(), style));
+            current_len += text.len();
         }
 
-        if lines.is_empty() {
-            if let Some(placeholder) = self.placeholder {
-                lines.push(Line::from(placeholder));
-            }
+        if current_len > 0 {
+            lines.push(Line::from(current_spans));
         }
-
-        Scrollable::new(lines).block(block).render(area, buf, state);
-    }
-}
-
-fn render_entry(entry: &TranscriptEntry, width: usize) -> Vec<Line<'static>> {
-    let mut lines = vec![Line::from(vec![
-        Span::styled(format!("{}: ", entry.label), entry.label_style),
-        Span::styled(String::new(), entry.content_style),
-    ])];
-
-    let wrapped = wrap(&entry.content, width.saturating_sub(2).max(8));
-    if wrapped.is_empty() {
-        lines.push(Line::from(Span::styled("  ", entry.content_style)));
-    } else {
-        lines.extend(
-            wrapped
-                .into_iter()
-                .map(|line| Line::from(Span::styled(format!("  {line}"), entry.content_style))),
-        );
     }
 
     lines
+}
+
+fn word_style(
+    word: &SegmentWord,
+    theme: &Theme,
+    word_age_fn: Option<&dyn Fn(&str) -> f64>,
+) -> Style {
+    if !word.is_final {
+        return theme.transcript_partial;
+    }
+
+    if let (Some(id), Some(age_fn)) = (&word.id, word_age_fn) {
+        let age = age_fn(id);
+        if age < FADE_IN_SECS {
+            return fade_in_style(age);
+        }
+    }
+
+    theme.transcript_final
+}
+
+fn fade_in_style(age: f64) -> Style {
+    let t = (age / FADE_IN_SECS).clamp(0.0, 1.0);
+    let t = ease_out_cubic(t);
+    let start = 50u8;
+    let end = 220u8;
+    let v = start + ((end - start) as f64 * t) as u8;
+    Style::new().fg(Color::Rgb(v, v, v))
+}
+
+fn ease_out_cubic(t: f64) -> f64 {
+    1.0 - (1.0 - t).powi(3)
 }

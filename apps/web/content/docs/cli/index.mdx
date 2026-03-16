@@ -38,7 +38,6 @@ char [--base-url] [--api-key] [-m] [-l] [--record] [--no-color] [-v] [-q] [-h] [
 - `desktop` — Open the desktop app or download page
 - `batch` — Transcribe an audio file
 - `model` — Manage local models
-- `debug` — Debug and diagnostic tools
 - `completions` — Generate shell completions
 
 ---
@@ -314,44 +313,6 @@ char model delete [-h] [-V] <name>
 **Arguments:**
 
 - `<NAME>`
-
-### char debug
-
-Debug and diagnostic tools
-
-```
-char debug [-h] [-V] <command>
-```
-
-**Options:**
-
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-**Subcommands:**
-
-- `transcribe` — Real-time transcription from audio devices
-
----
-
-### char debug transcribe
-
-Real-time transcription from audio devices
-
-```
-char debug transcribe <--provider> [--model] [--model-path] [--deepgram-api-key] [--soniox-api-key] [--audio] [-h] [-V]
-```
-
-**Options:**
-
-- `--provider <PROVIDER>`
-- `--model <MODEL>` — Model name (API model for cloud providers, model ID for local)
-- `--model-path <MODEL_PATH>` — Path to a local model directory on disk
-- `--deepgram-api-key <DEEPGRAM_API_KEY>`
-- `--soniox-api-key <SONIOX_API_KEY>`
-- `--audio <AUDIO>` (default: `input`)
-- `-h, --help` — Print help
-- `-V, --version` — Print version
 
 ### char completions
 

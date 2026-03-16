@@ -178,7 +178,7 @@ pub async fn run(args: Args) -> CliResult<()> {
 
     let audio: Arc<dyn hypr_audio_actual::AudioProvider> = match audio_mode {
         AudioMode::Dual => Arc::new(hypr_audio_actual::ActualAudio),
-        #[cfg(feature = "mock-audio")]
+        #[cfg(feature = "dev")]
         AudioMode::Mock => Arc::new(hypr_audio_mock::MockAudio::new(1)),
     };
 

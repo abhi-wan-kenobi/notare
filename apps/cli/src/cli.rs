@@ -7,16 +7,10 @@ use crate::llm::LlmProvider;
 
 /// Live transcription and audio tools
 #[derive(Parser)]
-#[command(
-    name = "char",
-    version,
-    propagate_version = true,
-    subcommand_required = true,
-    arg_required_else_help = true
-)]
+#[command(name = "char", version, propagate_version = true)]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 
     #[command(flatten)]
     pub global: GlobalArgs,
@@ -108,7 +102,7 @@ pub enum Commands {
         command: ModelCommands,
     },
     /// Debug and diagnostic tools
-    #[cfg(debug_assertions)]
+    #[cfg(feature = "dev")]
     Debug {
         #[command(subcommand)]
         command: DebugCommands,
@@ -141,7 +135,7 @@ pub enum OutputFormat {
     Json,
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum ConnectionType {
     Stt,
     Llm,
@@ -172,7 +166,7 @@ pub enum ConnectProvider {
 #[derive(Clone, Copy, Debug, ValueEnum)]
 pub enum AudioMode {
     Dual,
-    #[cfg(feature = "mock-audio")]
+    #[cfg(feature = "dev")]
     Mock,
 }
 
@@ -237,7 +231,7 @@ pub enum ModelKind {
     Llm,
 }
 
-#[cfg(debug_assertions)]
+#[cfg(feature = "dev")]
 #[derive(Subcommand)]
 pub enum DebugCommands {
     /// Real-time transcription from audio devices
@@ -247,11 +241,24 @@ pub enum DebugCommands {
     },
 }
 
-#[cfg(debug_assertions)]
+#[cfg(feature = "dev")]
+#[derive(Clone, Default, ValueEnum)]
+pub enum TranscribeMode {
+    /// Print transcription line-by-line to stderr (default)
+    #[default]
+    Raw,
+    /// TUI with speaker labels, word-level tracking, and segmenting
+    Rich,
+}
+
+#[cfg(feature = "dev")]
 #[derive(clap::Args)]
 pub struct TranscribeArgs {
     #[arg(long, value_enum)]
     pub provider: DebugProvider,
+    /// Display mode
+    #[arg(long, value_enum, default_value = "raw")]
+    pub mode: TranscribeMode,
     /// Model name (API model for cloud providers, model ID for local)
     #[arg(long, conflicts_with = "model_path")]
     pub model: Option<String>,
@@ -266,7 +273,7 @@ pub struct TranscribeArgs {
     pub audio: AudioArgs,
 }
 
-#[cfg(debug_assertions)]
+#[cfg(feature = "dev")]
 #[derive(Clone, ValueEnum)]
 pub enum DebugProvider {
     Deepgram,
@@ -278,21 +285,20 @@ pub enum DebugProvider {
     ProxySoniox,
 }
 
-#[cfg(debug_assertions)]
+#[cfg(feature = "dev")]
 #[derive(clap::Args)]
 pub struct AudioArgs {
     #[arg(long, value_enum, default_value = "input")]
     pub audio: AudioSource,
 }
 
-#[cfg(debug_assertions)]
+#[cfg(feature = "dev")]
 #[derive(Clone, ValueEnum)]
 pub enum AudioSource {
     Input,
     Output,
     RawDual,
     AecDual,
-    #[cfg(feature = "mock-audio")]
     Mock,
 }
 

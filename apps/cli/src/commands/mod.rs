@@ -2,9 +2,10 @@ pub mod auth;
 pub mod batch;
 pub mod chat;
 pub mod connect;
-#[cfg(debug_assertions)]
+#[cfg(feature = "dev")]
 pub mod debug;
 pub mod desktop;
+pub mod entry;
 pub mod listen;
 pub mod model;
 pub mod status;

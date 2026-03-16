@@ -35,8 +35,7 @@ impl AudioSource {
         matches!(self, Self::AecDual)
     }
 
-    #[cfg(feature = "mock-audio")]
-    pub fn is_mock(&self) -> bool {
+        pub fn is_mock(&self) -> bool {
         matches!(self, Self::Mock)
     }
 }
@@ -58,7 +57,6 @@ pub fn create_single_audio_stream(
     let use_mic = match source {
         AudioSource::Input => true,
         AudioSource::Output => false,
-        #[cfg(feature = "mock-audio")]
         AudioSource::Mock => true,
         AudioSource::RawDual | AudioSource::AecDual => {
             return Err(CliError::operation_failed(
@@ -142,52 +140,6 @@ pub fn create_dual_audio_stream(
     })))
 }
 
-pub fn print_audio_info(audio: &dyn AudioProvider, source: &AudioSource, sample_rate: u32) {
-    let source_name = match source {
-        AudioSource::Input => "input",
-        AudioSource::Output => "output",
-        #[cfg(feature = "mock-audio")]
-        AudioSource::Mock => "mock",
-        AudioSource::RawDual | AudioSource::AecDual => unreachable!(),
-    };
-    let chunk_size = chunk_size_for_stt(sample_rate);
-
-    eprintln!("source: {} ({})", source_name, audio.default_device_name());
-    eprintln!(
-        "sample rate: {} Hz, chunk size: {} samples",
-        sample_rate, chunk_size
-    );
-    eprintln!();
-}
-
-pub fn print_dual_audio_info(audio: &dyn AudioProvider, source: &AudioSource, sample_rate: u32) {
-    let chunk_size = chunk_size_for_stt(sample_rate);
-    let source_name = match source {
-        AudioSource::RawDual => "raw-dual",
-        AudioSource::AecDual => "aec-dual",
-        AudioSource::Input | AudioSource::Output => unreachable!(),
-        #[cfg(feature = "mock-audio")]
-        AudioSource::Mock => unreachable!(),
-    };
-
-    eprintln!(
-        "source: {} (input: {}, output: RealtimeSpeaker)",
-        source_name,
-        audio.default_device_name()
-    );
-    eprintln!(
-        "sample rate: {} Hz, chunk size: {} samples, AEC: {}",
-        sample_rate,
-        chunk_size,
-        if source.uses_aec() {
-            "enabled"
-        } else {
-            "disabled"
-        }
-    );
-    eprintln!();
-}
-
 pub fn capture_frame_to_bytes(
     source: &AudioSource,
     frame: CaptureFrame,
@@ -196,7 +148,6 @@ pub fn capture_frame_to_bytes(
         AudioSource::RawDual => frame.raw_dual(),
         AudioSource::AecDual => frame.aec_dual(),
         AudioSource::Input | AudioSource::Output => unreachable!(),
-        #[cfg(feature = "mock-audio")]
         AudioSource::Mock => unreachable!(),
     };
 

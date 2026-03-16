@@ -48,9 +48,10 @@ comfy-table = "7"
 crossterm = { workspace = true }
 dirs = { workspace = true }
 futures-util = { workspace = true }
+image = { version = "0.25", default-features = false, features = ["png"] }
 indicatif = "0.17"
-inquire = "0.7"
 ratatui = { workspace = true }
+ratatui-image = { version = "10.0.6", default-features = false, features = ["crossterm", "image-defaults"] }
 tachyonfx = { workspace = true }
 tempfile = { workspace = true }
 textwrap = { version = "0.16", features = ["terminal_size"] }
@@ -79,4 +80,4 @@ strum = { workspace = true, features = ["derive"] }
 url = { workspace = true }
 
 [features]
-mock-audio = ["dep:hypr-audio-mock"]
+dev = ["dep:hypr-audio-mock"]

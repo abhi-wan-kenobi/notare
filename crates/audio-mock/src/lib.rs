@@ -179,38 +179,34 @@ impl Drop for CaptureStreamInner {
     }
 }
 
-struct StereoPlaybackSource {
+struct MonoPlaybackSource {
     mic: Arc<[f32]>,
     spk: Arc<[f32]>,
     position: usize,
     sample_rate: u32,
 }
 
-impl Iterator for StereoPlaybackSource {
+impl Iterator for MonoPlaybackSource {
     type Item = f32;
 
     fn next(&mut self) -> Option<f32> {
-        let channel = self.position % 2;
-        let sample_idx = self.position / 2;
         let max_len = self.mic.len().max(self.spk.len());
-        if sample_idx >= max_len {
+        if self.position >= max_len {
             return None;
         }
+        let mic_sample = self.mic.get(self.position).copied().unwrap_or(0.0);
+        let spk_sample = self.spk.get(self.position).copied().unwrap_or(0.0);
         self.position += 1;
-        Some(if channel == 0 {
-            self.mic.get(sample_idx).copied().unwrap_or(0.0)
-        } else {
-            self.spk.get(sample_idx).copied().unwrap_or(0.0)
-        })
+        Some((mic_sample + spk_sample) * 0.5)
     }
 }
 
-impl Source for StereoPlaybackSource {
+impl Source for MonoPlaybackSource {
     fn current_span_len(&self) -> Option<usize> {
         None
     }
     fn channels(&self) -> u16 {
-        2
+        1
     }
     fn sample_rate(&self) -> u32 {
         self.sample_rate
@@ -231,16 +227,13 @@ fn start_stereo_playback(mic: &MockAudioData, spk: &MockAudioData) {
         match OutputStreamBuilder::open_default_stream() {
             Ok(stream) => {
                 let sink = Sink::connect_new(stream.mixer());
-                sink.append(StereoPlaybackSource {
+                sink.append(MonoPlaybackSource {
                     mic: mic_samples,
                     spk: spk_samples,
                     position: 0,
                     sample_rate,
                 });
-                tracing::info!(
-                    sample_rate,
-                    "mock playback started (mic=left, speaker=right)"
-                );
+                tracing::info!(sample_rate, "mock playback started (mono mix)");
                 sink.sleep_until_end();
             }
             Err(e) => {
