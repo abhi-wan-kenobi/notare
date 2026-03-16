@@ -9,9 +9,9 @@ use std::time::Duration;
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
 use tokio::sync::mpsc;
 
+use crate::config::session_context::load_chat_system_message;
 use crate::error::{CliError, CliResult};
 use crate::llm::{LlmProvider, resolve_config};
-use crate::config::session_context::load_chat_system_message;
 
 use self::action::Action;
 use self::app::App;

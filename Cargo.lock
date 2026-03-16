@@ -3272,6 +3272,7 @@ dependencies = [
  "serde_json",
  "storage",
  "strsim",
+ "strum 0.27.2",
  "tachyonfx",
  "tempfile",
  "textwrap",

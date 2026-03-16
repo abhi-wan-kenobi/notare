@@ -68,14 +68,10 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal", "
 tokio-stream = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
+strum = { workspace = true, features = ["derive"] }
 
-[build-dependencies]
-clap = { workspace = true, features = ["derive", "env"] }
-clap-verbosity-flag = { version = "3", features = ["tracing"] }
+[dev-dependencies]
 cli-docs = { path = "../../crates/cli-docs" }
-clap_complete = { workspace = true }
-clio = { version = "0.3", features = ["clap-parse"] }
-url = { workspace = true }
 
 [features]
 mock-audio = ["dep:hypr-audio-mock"]

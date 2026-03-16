@@ -130,6 +130,7 @@ pub enum Provider {
     Gladia,
     Elevenlabs,
     Mistral,
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     Cactus,
 }
 
@@ -156,6 +157,7 @@ pub enum ConnectProvider {
     Elevenlabs,
     Mistral,
     Fireworks,
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     Cactus,
     Anthropic,
     Openrouter,
@@ -204,6 +206,7 @@ pub enum ModelCommands {
         format: OutputFormat,
     },
     /// Manage downloadable Cactus models
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     Cactus {
         #[command(subcommand)]
         command: CactusCommands,
@@ -214,6 +217,7 @@ pub enum ModelCommands {
     Delete { name: String },
 }
 
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 #[derive(Subcommand, Debug)]
 pub enum CactusCommands {
     /// List available Cactus models
@@ -267,6 +271,7 @@ pub struct TranscribeArgs {
 pub enum DebugProvider {
     Deepgram,
     Soniox,
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     Cactus,
     ProxyHyprnote,
     ProxyDeepgram,
@@ -303,5 +308,23 @@ mod tests {
     #[test]
     fn verify_cli() {
         Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn generate_docs() {
+        let cmd = Cli::command();
+        let md = cli_docs::generate(&cmd);
+
+        let frontmatter = "\
+---
+title: \"CLI Reference\"
+section: \"CLI\"
+description: \"Command-line reference for the char CLI\"
+---\n\n";
+
+        let mdx_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../web/content/docs/cli/index.mdx");
+        std::fs::create_dir_all(mdx_path.parent().unwrap()).unwrap();
+        std::fs::write(&mdx_path, format!("{frontmatter}{md}")).unwrap();
     }
 }

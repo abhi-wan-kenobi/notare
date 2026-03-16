@@ -7,9 +7,9 @@ use tokio::sync::mpsc;
 
 pub use crate::cli::AudioMode;
 use crate::commands::SttGlobalArgs;
-use crate::error::{CliError, CliResult};
 use crate::config::desktop;
 use crate::config::stt::{ResolvedSttConfig, resolve_config};
+use crate::error::{CliError, CliResult};
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
 
 mod action;
