@@ -139,7 +139,8 @@ jobs:
             --exclude tauri-plugin-tray \
             --exclude tauri-plugin-updater2 \
             --exclude tauri-plugin-webhook \
-            --exclude tauri-plugin-windows
+            --exclude tauri-plugin-windows \
+            --exclude db3
 
   ci:
     if: always()
