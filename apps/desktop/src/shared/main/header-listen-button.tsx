@@ -1,5 +1,12 @@
-import { useCallback } from "react";
+import { ChevronDownIcon } from "lucide-react";
+import { useCallback, useState } from "react";
 
+import { Button } from "@hypr/ui/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@hypr/ui/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
@@ -7,7 +14,7 @@ import {
 } from "@hypr/ui/components/ui/tooltip";
 import { cn } from "@hypr/utils";
 
-import { useNewNoteAndListen } from "./useNewNote";
+import { useNewNoteAndListen, useNewNoteAndUpload } from "./useNewNote";
 
 import { useNetwork } from "~/contexts/network";
 import {
@@ -78,11 +85,27 @@ function useHeaderListenState() {
 function HeaderListenButtonInner() {
   const { isDisabled, warningMessage } = useHeaderListenState();
   const handleClick = useNewNoteAndListen();
+  const handleUpload = useNewNoteAndUpload();
   const openNew = useTabs((state) => state.openNew);
+  const [open, setOpen] = useState(false);
 
   const handleConfigure = useCallback(() => {
     openNew({ type: "ai", state: { tab: "transcription" } });
   }, [openNew]);
+
+  const handleUploadAudio = useCallback(() => {
+    setOpen(false);
+    handleUpload("audio").catch((error) => {
+      console.error("[upload] audio dialog failed:", error);
+    });
+  }, [handleUpload]);
+
+  const handleUploadTranscript = useCallback(() => {
+    setOpen(false);
+    handleUpload("transcript").catch((error) => {
+      console.error("[upload] transcript dialog failed:", error);
+    });
+  }, [handleUpload]);
 
   const button = (
     <button
@@ -92,7 +115,7 @@ function HeaderListenButtonInner() {
       className={cn([
         "inline-flex items-center justify-center rounded-full text-sm font-medium text-white",
         "gap-2",
-        "h-8 px-4",
+        "h-8 pr-8 pl-4",
         "border-2 border-stone-600 bg-stone-800",
         "transition-all duration-200 ease-out",
         "hover:bg-stone-700",
@@ -104,22 +127,65 @@ function HeaderListenButtonInner() {
     </button>
   );
 
-  if (!warningMessage) {
-    return button;
-  }
-
-  return (
-    <Tooltip delayDuration={0}>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent side="bottom">
-        <ActionableTooltipContent
-          message={warningMessage}
-          action={{
-            label: "Configure",
-            handleClick: handleConfigure,
-          }}
-        />
-      </TooltipContent>
-    </Tooltip>
+  const chevron = (
+    <button
+      type="button"
+      className="absolute top-1/2 right-1.5 z-10 -translate-y-1/2 cursor-pointer text-white/70 transition-colors hover:text-white"
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
+    >
+      <ChevronDownIcon className="size-3.5" />
+      <span className="sr-only">More options</span>
+    </button>
   );
+
+  const content = (
+    <Popover open={open} onOpenChange={setOpen}>
+      <div className="relative flex items-center">
+        {warningMessage ? (
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>{button}</TooltipTrigger>
+            <TooltipContent side="bottom">
+              <ActionableTooltipContent
+                message={warningMessage}
+                action={{
+                  label: "Configure",
+                  handleClick: handleConfigure,
+                }}
+              />
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          button
+        )}
+        <PopoverTrigger asChild>{chevron}</PopoverTrigger>
+      </div>
+      <PopoverContent
+        side="bottom"
+        align="end"
+        sideOffset={4}
+        className="w-43 rounded-xl p-1.5"
+      >
+        <div className="flex flex-col gap-1">
+          <Button
+            variant="ghost"
+            className="h-9 justify-center px-3 whitespace-nowrap"
+            onClick={handleUploadAudio}
+          >
+            <span className="text-sm">Upload audio</span>
+          </Button>
+          <Button
+            variant="ghost"
+            className="h-9 justify-center px-3 whitespace-nowrap"
+            onClick={handleUploadTranscript}
+          >
+            <span className="text-sm">Upload transcript</span>
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
+  return content;
 }
