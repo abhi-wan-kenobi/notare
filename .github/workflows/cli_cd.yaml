@@ -65,8 +65,30 @@ jobs:
           path: ${{ env.ARCHIVE }}
           retention-days: 3
 
-  create-tag:
+  publish-npm:
     needs: [compute-version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          cd apps/cli/npm
+          VERSION="${{ needs.compute-version.outputs.version }}"
+          NPM_TAG="${{ inputs.channel == 'nightly' && 'nightly' || 'latest' }}"
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '$VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          npm publish --tag "$NPM_TAG" --provenance
+
+  create-tag:
+    needs: [compute-version, publish-npm]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -122,26 +144,3 @@ jobs:
           body: ${{ steps.release-body.outputs.value }}
           prerelease: ${{ inputs.channel == 'nightly' }}
           artifacts: ${{ steps.artifacts.outputs.list }}
-
-  publish-npm:
-    needs: [compute-version, release]
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          registry-url: "https://registry.npmjs.org"
-      - run: |
-          cd apps/cli/npm
-          VERSION="${{ needs.compute-version.outputs.version }}"
-          NPM_TAG="${{ inputs.channel == 'nightly' && 'nightly' || 'latest' }}"
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            pkg.version = '$VERSION';
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          "
-          npm publish --tag "$NPM_TAG" --provenance
