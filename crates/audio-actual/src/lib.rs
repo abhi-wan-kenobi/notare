@@ -274,8 +274,10 @@ impl AudioProvider for ActualAudio {
     }
 
     fn probe_speaker(&self) -> Result<(), Error> {
-        let mut input = AudioInput::from_speaker();
-        let _stream = input.stream();
+        let speaker = SpeakerInput::new().map_err(|_| Error::SpeakerStreamSetupFailed)?;
+        let _stream = speaker
+            .stream()
+            .map_err(|_| Error::SpeakerStreamSetupFailed)?;
         Ok(())
     }
 }

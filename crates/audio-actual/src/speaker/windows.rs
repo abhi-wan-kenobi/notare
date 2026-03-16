@@ -1,193 +1,339 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use futures_util::Stream;
+use futures_util::task::AtomicWaker;
+use hypr_audio_utils::{pcm_i16_to_f32, pcm_i32_to_f32};
 use pin_project::pin_project;
+use ringbuf::{
+    HeapCons, HeapProd, HeapRb,
+    traits::{Producer, Split},
+};
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex, mpsc};
-use std::task::{Poll, Waker};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
 use std::thread;
 use std::time::Duration;
 use tracing::error;
-use wasapi::{Direction, SampleType, StreamMode, WaveFormat, get_default_device};
+use wasapi::{Direction, SampleType, ShareMode, StreamMode, WaveFormat, get_default_device};
+
+use crate::async_ring::RingbufAsyncReader;
+use crate::rt_ring::{PushStats, push_f32le_bytes_first_channel_to_ringbuf};
 
 use super::{BUFFER_SIZE, CHUNK_SIZE};
 
-pub struct SpeakerInput {}
+const DEFAULT_SAMPLE_RATE: u32 = 44_100;
+
+pub struct SpeakerInput;
 
 impl SpeakerInput {
     pub fn new() -> Result<Self> {
-        Ok(Self {})
+        Ok(Self)
     }
 
     pub fn sample_rate(&self) -> u32 {
-        44100
+        DEFAULT_SAMPLE_RATE
     }
 
-    pub fn stream(self) -> SpeakerStream {
-        let sample_queue = Arc::new(Mutex::new(VecDeque::new()));
-        let waker_state = Arc::new(Mutex::new(WakerState {
-            waker: None,
-            has_data: false,
-            shutdown: false,
-        }));
+    pub fn stream(self) -> Result<SpeakerStream> {
+        let rb = HeapRb::<f32>::new(BUFFER_SIZE);
+        let (producer, consumer) = rb.split();
 
-        let queue_clone = sample_queue.clone();
-        let waker_clone = waker_state.clone();
-        let (init_tx, init_rx) = mpsc::channel();
+        let waker = Arc::new(AtomicWaker::new());
+        let wake_pending = Arc::new(AtomicBool::new(false));
+        let alive = Arc::new(AtomicBool::new(true));
+        let running = Arc::new(AtomicBool::new(true));
+        let current_sample_rate = Arc::new(AtomicU32::new(DEFAULT_SAMPLE_RATE));
+        let dropped_samples = Arc::new(AtomicUsize::new(0));
+        let (init_tx, init_rx) = std::sync::mpsc::channel();
 
-        let capture_thread = thread::spawn(move || {
-            if let Err(e) = SpeakerStream::capture_audio_loop(queue_clone, waker_clone, init_tx) {
-                error!("Audio capture loop failed: {}", e);
+        let capture_thread = {
+            let waker = waker.clone();
+            let wake_pending = wake_pending.clone();
+            let alive = alive.clone();
+            let running = running.clone();
+            let current_sample_rate = current_sample_rate.clone();
+            let dropped_samples = dropped_samples.clone();
+
+            thread::spawn(move || {
+                let result = capture_audio_loop(
+                    producer,
+                    waker.clone(),
+                    wake_pending.clone(),
+                    alive.clone(),
+                    running,
+                    current_sample_rate,
+                    dropped_samples,
+                    init_tx,
+                );
+
+                if let Err(err) = result {
+                    error!("Audio capture loop failed: {}", err);
+                }
+
+                alive.store(false, Ordering::Release);
+                waker.wake();
+            })
+        };
+
+        match init_rx.recv_timeout(Duration::from_secs(5)) {
+            Ok(Ok(())) => {}
+            Ok(Err(err)) => {
+                running.store(false, Ordering::Release);
+                let _ = capture_thread.join();
+                return Err(err);
             }
-        });
-
-        if let Ok(Err(e)) = init_rx.recv_timeout(Duration::from_secs(5)) {
-            error!("Audio initialization failed: {}", e);
+            Err(_) => {
+                running.store(false, Ordering::Release);
+                let _ = capture_thread.join();
+                anyhow::bail!("Timed out initializing WASAPI loopback stream");
+            }
         }
 
-        SpeakerStream {
-            sample_queue,
-            waker_state,
+        Ok(SpeakerStream {
+            reader: RingbufAsyncReader::new(consumer, waker, wake_pending, vec![0.0; CHUNK_SIZE])
+                .with_alive(alive)
+                .with_dropped_samples(dropped_samples, "samples_dropped"),
+            current_sample_rate,
+            running,
             capture_thread: Some(capture_thread),
-        }
+        })
     }
-}
-
-struct WakerState {
-    waker: Option<Waker>,
-    has_data: bool,
-    shutdown: bool,
 }
 
 #[pin_project(PinnedDrop)]
 pub struct SpeakerStream {
-    sample_queue: Arc<Mutex<VecDeque<f32>>>,
-    waker_state: Arc<Mutex<WakerState>>,
+    reader: RingbufAsyncReader<HeapCons<f32>>,
+    current_sample_rate: Arc<AtomicU32>,
+    running: Arc<AtomicBool>,
     capture_thread: Option<thread::JoinHandle<()>>,
 }
 
 impl SpeakerStream {
     pub fn sample_rate(&self) -> u32 {
-        44100
-    }
-
-    fn capture_audio_loop(
-        sample_queue: Arc<Mutex<VecDeque<f32>>>,
-        waker_state: Arc<Mutex<WakerState>>,
-        init_tx: mpsc::Sender<Result<()>>,
-    ) -> Result<()> {
-        let init_result = (|| -> Result<_> {
-            let device = get_default_device(&Direction::Render)?;
-            let mut audio_client = device.get_iaudioclient()?;
-
-            let desired_format = WaveFormat::new(32, 32, &SampleType::Float, 44100, 1, None);
-
-            let (_def_time, min_time) = audio_client.get_device_period()?;
-
-            let mode = StreamMode::EventsShared {
-                autoconvert: true,
-                buffer_duration_hns: min_time,
-            };
-
-            audio_client.initialize_client(&desired_format, &Direction::Capture, &mode)?;
-
-            let h_event = audio_client.set_get_eventhandle()?;
-            let render_client = audio_client.get_audiocaptureclient()?;
-
-            audio_client.start_stream()?;
-
-            Ok((h_event, render_client))
-        })();
-
-        match init_result {
-            Ok((h_event, render_client)) => {
-                let _ = init_tx.send(Ok(()));
-
-                loop {
-                    {
-                        let state = waker_state.lock().unwrap();
-                        if state.shutdown {
-                            break;
-                        }
-                    }
-
-                    if h_event.wait_for_event(3000).is_err() {
-                        error!("timeout error, stopping capture");
-                        break;
-                    }
-
-                    let mut temp_queue = VecDeque::new();
-                    if let Err(e) = render_client.read_from_device_to_deque(&mut temp_queue) {
-                        error!("Failed to read audio data: {}", e);
-                        continue;
-                    }
-
-                    if temp_queue.is_empty() {
-                        continue;
-                    }
-
-                    let mut samples = Vec::new();
-                    while temp_queue.len() >= 4 {
-                        let bytes = [
-                            temp_queue.pop_front().unwrap(),
-                            temp_queue.pop_front().unwrap(),
-                            temp_queue.pop_front().unwrap(),
-                            temp_queue.pop_front().unwrap(),
-                        ];
-                        let sample = f32::from_le_bytes(bytes);
-                        samples.push(sample);
-                    }
-
-                    if !samples.is_empty() {
-                        {
-                            let mut queue = sample_queue.lock().unwrap();
-                            queue.extend(samples);
-
-                            let len = queue.len();
-                            if len > BUFFER_SIZE {
-                                let dropped = len - BUFFER_SIZE;
-                                tracing::warn!(dropped, "samples_dropped");
-                                queue.drain(0..(len - BUFFER_SIZE));
-                            }
-                        }
-
-                        {
-                            let mut state = waker_state.lock().unwrap();
-                            if !state.has_data {
-                                state.has_data = true;
-                                if let Some(waker) = state.waker.take() {
-                                    drop(state);
-                                    waker.wake();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                let _ = init_tx.send(Err(e));
-                return Ok(());
-            }
-        }
-
-        Ok(())
+        self.current_sample_rate.load(Ordering::Acquire)
     }
 }
 
-#[pin_project::pinned_drop]
-impl PinnedDrop for SpeakerStream {
-    fn drop(self: std::pin::Pin<&mut Self>) {
-        let this = self.project();
+#[derive(Clone, Copy)]
+struct WasapiCaptureFormat {
+    sample_rate: u32,
+    channels: usize,
+    sample_type: SampleType,
+    bits_per_sample: u16,
+}
 
-        {
-            let mut state = this.waker_state.lock().unwrap();
-            state.shutdown = true;
+fn capture_audio_loop(
+    mut producer: HeapProd<f32>,
+    waker: Arc<AtomicWaker>,
+    wake_pending: Arc<AtomicBool>,
+    alive: Arc<AtomicBool>,
+    running: Arc<AtomicBool>,
+    current_sample_rate: Arc<AtomicU32>,
+    dropped_samples: Arc<AtomicUsize>,
+    init_tx: std::sync::mpsc::Sender<Result<()>>,
+) -> Result<()> {
+    let setup_result = (|| -> Result<_> {
+        let device = get_default_device(&Direction::Render)
+            .context("Failed to get default render device")?;
+        let mut audio_client = device
+            .get_iaudioclient()
+            .context("Failed to get IAudioClient")?;
+
+        let mix_format = audio_client
+            .get_mixformat()
+            .context("Failed to get WASAPI mix format")?;
+        let desired_format = WaveFormat::new(
+            32,
+            32,
+            &SampleType::Float,
+            mix_format.get_samplespersec() as usize,
+            mix_format.get_nchannels() as usize,
+            Some(mix_format.get_dwchannelmask()),
+        );
+        let accepted_format = audio_client
+            .is_supported(&desired_format, &ShareMode::Shared)
+            .context("Failed to query WASAPI shared-mode support")?
+            .unwrap_or(desired_format);
+
+        let capture_format = WasapiCaptureFormat {
+            sample_rate: accepted_format.get_samplespersec(),
+            channels: accepted_format.get_nchannels() as usize,
+            sample_type: accepted_format
+                .get_subformat()
+                .context("Unsupported WASAPI sample type")?,
+            bits_per_sample: accepted_format.get_bitspersample(),
+        };
+
+        let (_default_period, min_period) = audio_client
+            .get_device_period()
+            .context("Failed to get WASAPI device period")?;
+        let mode = StreamMode::EventsShared {
+            autoconvert: true,
+            buffer_duration_hns: min_period,
+        };
+
+        audio_client
+            .initialize_client(&accepted_format, &Direction::Capture, &mode)
+            .context("Failed to initialize WASAPI loopback client")?;
+
+        let event = audio_client
+            .set_get_eventhandle()
+            .context("Failed to create WASAPI event handle")?;
+        let capture_client = audio_client
+            .get_audiocaptureclient()
+            .context("Failed to get WASAPI capture client")?;
+
+        audio_client
+            .start_stream()
+            .context("Failed to start WASAPI loopback stream")?;
+
+        Ok((audio_client, event, capture_client, capture_format))
+    })();
+
+    let (audio_client, event, capture_client, capture_format) = match setup_result {
+        Ok(values) => values,
+        Err(err) => {
+            let _ = init_tx.send(Err(anyhow::anyhow!(err.to_string())));
+            return Err(err);
+        }
+    };
+
+    current_sample_rate.store(capture_format.sample_rate, Ordering::Release);
+    tracing::info!(
+        hyprnote.audio.sample_rate_hz = capture_format.sample_rate,
+        "wasapi_loopback_initialized"
+    );
+    let _ = init_tx.send(Ok(()));
+
+    let mut temp_queue = VecDeque::new();
+    let mut scratch = vec![0.0f32; crate::rt_ring::DEFAULT_SCRATCH_LEN];
+
+    while running.load(Ordering::Acquire) {
+        if event.wait_for_event(250).is_err() {
+            continue;
         }
 
-        if let Some(thread) = this.capture_thread.take() {
-            if let Err(e) = thread.join() {
-                error!("Failed to join capture thread: {:?}", e);
-            }
+        temp_queue.clear();
+        if let Err(err) = capture_client.read_from_device_to_deque(&mut temp_queue) {
+            error!("Failed to read audio data: {}", err);
+            continue;
         }
+
+        if temp_queue.is_empty() {
+            continue;
+        }
+
+        let stats = push_wasapi_bytes(
+            temp_queue.make_contiguous(),
+            capture_format,
+            &mut scratch,
+            &mut producer,
+        )?;
+        if stats.dropped > 0 {
+            dropped_samples.fetch_add(stats.dropped, Ordering::Relaxed);
+        }
+
+        if stats.pushed > 0 && wake_pending.load(Ordering::Acquire) {
+            wake_pending.store(false, Ordering::Release);
+            waker.wake();
+        }
+    }
+
+    alive.store(false, Ordering::Release);
+    waker.wake();
+    let _ = audio_client.stop_stream();
+
+    Ok(())
+}
+
+fn push_wasapi_bytes(
+    data: &[u8],
+    format: WasapiCaptureFormat,
+    scratch: &mut [f32],
+    producer: &mut HeapProd<f32>,
+) -> Result<PushStats> {
+    match (format.sample_type, format.bits_per_sample) {
+        (SampleType::Float, 32) => Ok(push_f32le_bytes_first_channel_to_ringbuf(
+            data,
+            format.channels,
+            scratch,
+            producer,
+        )),
+        (SampleType::Int, 16) => Ok(push_pcm_bytes_first_channel_to_ringbuf(
+            data,
+            format.channels,
+            2,
+            scratch,
+            producer,
+            |bytes| pcm_i16_to_f32(i16::from_le_bytes([bytes[0], bytes[1]])),
+        )),
+        (SampleType::Int, 32) => Ok(push_pcm_bytes_first_channel_to_ringbuf(
+            data,
+            format.channels,
+            4,
+            scratch,
+            producer,
+            |bytes| pcm_i32_to_f32(i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])),
+        )),
+        (sample_type, bits_per_sample) => anyhow::bail!(
+            "Unsupported WASAPI capture format: {:?} {}-bit",
+            sample_type,
+            bits_per_sample
+        ),
+    }
+}
+
+fn push_pcm_bytes_first_channel_to_ringbuf(
+    data: &[u8],
+    channels: usize,
+    sample_bytes: usize,
+    scratch: &mut [f32],
+    producer: &mut HeapProd<f32>,
+    mut convert: impl FnMut(&[u8]) -> f32,
+) -> PushStats {
+    if scratch.is_empty() || channels == 0 || sample_bytes == 0 {
+        return PushStats::default();
+    }
+
+    let frame_size = channels.saturating_mul(sample_bytes);
+    if frame_size == 0 {
+        return PushStats::default();
+    }
+
+    let frame_count = data.len() / frame_size;
+    if frame_count == 0 {
+        return PushStats::default();
+    }
+
+    let mut offset = 0usize;
+    let mut pushed_total = 0usize;
+    let mut dropped_total = 0usize;
+
+    while offset < frame_count {
+        let count = (frame_count - offset).min(scratch.len());
+
+        let vacant = producer.vacant_len();
+        if vacant == 0 {
+            dropped_total += frame_count - offset;
+            break;
+        }
+
+        let convert_count = count.min(vacant);
+
+        for i in 0..convert_count {
+            let byte_offset = (offset + i) * frame_size;
+            scratch[i] = convert(&data[byte_offset..byte_offset + sample_bytes]);
+        }
+
+        let pushed = producer.push_slice(&scratch[..convert_count]);
+        pushed_total += pushed;
+        dropped_total += count - pushed;
+
+        offset += count;
+    }
+
+    PushStats {
+        pushed: pushed_total,
+        dropped: dropped_total,
     }
 }
 
@@ -195,46 +341,23 @@ impl Stream for SpeakerStream {
     type Item = Vec<f32>;
 
     fn poll_next(
-        self: std::pin::Pin<&mut Self>,
+        mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
+    ) -> std::task::Poll<Option<Self::Item>> {
+        self.reader.poll_next_chunk(cx).poll
+    }
+}
+
+#[pin_project::pinned_drop]
+impl PinnedDrop for SpeakerStream {
+    fn drop(self: std::pin::Pin<&mut Self>) {
         let this = self.project();
+        this.running.store(false, Ordering::Release);
 
+        if let Some(thread) = this.capture_thread.take()
+            && let Err(err) = thread.join()
         {
-            let state = this.waker_state.lock().unwrap();
-            if state.shutdown {
-                return Poll::Ready(None);
-            }
-        }
-
-        {
-            let mut queue = this.sample_queue.lock().unwrap();
-            if !queue.is_empty() {
-                let chunk_len = queue.len().min(CHUNK_SIZE);
-                let chunk: Vec<f32> = queue.drain(..chunk_len).collect();
-                return Poll::Ready(Some(chunk));
-            }
-        }
-
-        {
-            let mut state = this.waker_state.lock().unwrap();
-            if state.shutdown {
-                return Poll::Ready(None);
-            }
-            state.has_data = false;
-            state.waker = Some(cx.waker().clone());
-            drop(state);
-        }
-
-        {
-            let mut queue = this.sample_queue.lock().unwrap();
-            if !queue.is_empty() {
-                let chunk_len = queue.len().min(CHUNK_SIZE);
-                let chunk: Vec<f32> = queue.drain(..chunk_len).collect();
-                Poll::Ready(Some(chunk))
-            } else {
-                Poll::Pending
-            }
+            error!("Failed to join capture thread: {:?}", err);
         }
     }
 }

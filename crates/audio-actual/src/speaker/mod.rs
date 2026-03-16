@@ -60,7 +60,7 @@ impl SpeakerInput {
 
     #[cfg(all(not(target_os = "macos"), not(test)))]
     pub fn stream(self) -> Result<SpeakerStream> {
-        let inner = self.inner.stream();
+        let inner = self.inner.stream()?;
         let initial_rate = inner.sample_rate();
         Ok(SpeakerStream {
             inner,
