@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use hypr_local_model::{CactusSttModel, LocalModel};
 
+use crate::config::desktop;
 use crate::error::{CliError, CliResult, did_you_mean};
-use crate::runtime::desktop;
 
 pub fn canonical_cactus_name(name: &str) -> String {
     if name.starts_with("cactus-") {

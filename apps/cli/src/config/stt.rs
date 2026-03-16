@@ -5,11 +5,11 @@ use hypr_local_model::LocalModel;
 use hypr_local_stt_server::LocalSttServer;
 
 use crate::commands::Provider;
-use crate::error::{CliError, CliResult};
-use crate::runtime::cactus::{
+use crate::config::cactus::{
     canonical_cactus_name, not_found_cactus_model, resolve_cactus_model, suggest_cactus_models,
 };
-use crate::runtime::desktop;
+use crate::config::desktop;
+use crate::error::{CliError, CliResult};
 
 pub struct CactusServerInfo {
     pub server: LocalSttServer,

@@ -12,6 +12,7 @@ name = "char"
 path = "src/main.rs"
 
 [dependencies]
+hypr-analytics = { workspace = true }
 hypr-api-env = { workspace = true }
 hypr-audio = { workspace = true }
 hypr-audio-actual = { workspace = true }
@@ -21,6 +22,7 @@ hypr-cli-tui = { workspace = true }
 hypr-db3 = { workspace = true }
 hypr-file = { workspace = true }
 hypr-fs-sync-core = { workspace = true }
+hypr-host = { workspace = true }
 hypr-language = { workspace = true }
 hypr-listener-core = { workspace = true }
 hypr-listener2-core = { workspace = true }

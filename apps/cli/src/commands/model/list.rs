@@ -7,7 +7,7 @@ use hypr_model_downloader::{DownloadableModel, ModelDownloadManager};
 
 use crate::commands::OutputFormat;
 use crate::error::CliResult;
-use crate::runtime::desktop as settings;
+use crate::config::desktop as settings;
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub(super) struct ModelRow {

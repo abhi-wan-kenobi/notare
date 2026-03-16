@@ -11,8 +11,8 @@ use hypr_model_downloader::ModelDownloadManager;
 
 pub use crate::cli::{CactusCommands, ModelCommands, ModelKind};
 use crate::error::{CliError, CliResult, did_you_mean};
-use crate::runtime::cactus;
-use crate::runtime::desktop as settings;
+use crate::config::cactus;
+use crate::config::desktop as settings;
 use runtime::CliModelRuntime;
 
 pub async fn run(command: ModelCommands) -> CliResult<()> {

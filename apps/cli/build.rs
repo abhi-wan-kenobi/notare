@@ -5,6 +5,12 @@ use clap::CommandFactory;
 #[allow(dead_code)]
 #[path = "src/cli.rs"]
 mod cli;
+#[allow(dead_code)]
+#[path = "src/llm/provider.rs"]
+mod llm_provider;
+mod llm {
+    pub use super::llm_provider::LlmProvider;
+}
 
 fn main() -> std::io::Result<()> {
     let cmd = cli::Cli::command();

@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 
+use crate::llm::LlmProvider;
+
 /// Live transcription and audio tools
 #[derive(Parser)]
 #[command(
@@ -60,7 +62,8 @@ fn parse_base_url(value: &str) -> Result<String, String> {
     Ok(value.to_string())
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, strum::IntoStaticStr)]
+#[strum(serialize_all = "snake_case")]
 pub enum Commands {
     /// Interactive chat with an LLM
     Chat {
@@ -69,6 +72,8 @@ pub enum Commands {
         /// Send a single prompt without entering the TUI (use `-` to read from stdin)
         #[arg(long)]
         prompt: Option<String>,
+        #[arg(long, value_enum)]
+        provider: Option<LlmProvider>,
     },
     /// Start live transcription (TUI)
     Listen {

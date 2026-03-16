@@ -1,6 +1,6 @@
 pub use crate::cli::{ConnectProvider, ConnectionType};
+use crate::config::desktop;
 use crate::error::{CliError, CliResult};
-use crate::runtime::desktop;
 
 impl std::fmt::Display for ConnectionType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

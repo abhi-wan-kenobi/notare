@@ -14,7 +14,7 @@ use self::server::spawn_router;
 pub use crate::cli::{DebugProvider, TranscribeArgs};
 use crate::commands::Provider as SharedProvider;
 use crate::error::{CliError, CliResult};
-use crate::runtime::stt::{ResolvedSttConfig, resolve_config, resolve_local_model_path};
+use crate::config::stt::{ResolvedSttConfig, resolve_config, resolve_local_model_path};
 
 impl DebugProvider {
     fn is_local(&self) -> bool {
