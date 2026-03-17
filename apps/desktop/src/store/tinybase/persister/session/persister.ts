@@ -7,6 +7,7 @@ import {
   loadSingleSession,
 } from "./load/index";
 import {
+  buildEmptySessionDeleteOps,
   buildNoteSaveOps,
   buildSessionSaveOps,
   buildTranscriptSaveOps,
@@ -49,14 +50,17 @@ export function createSessionPersister(store: Store) {
     ],
     loadAll: loadAllSessionData,
     loadSingle: loadSingleSession,
-    save: (store, tables, dataDir, changedTables) => {
+    save: (_store, tables, dataDir, changedTables) => {
       let changedSessionIds: Set<string> | undefined;
+      let emptySessionIds = new Set<string>();
 
       if (changedTables) {
         const changeResult = getChangedSessionIds(tables, changedTables);
         if (!changeResult) {
           return { operations: [] };
         }
+
+        emptySessionIds = changeResult.emptySessionIds;
 
         if (changeResult.hasUnresolvedDeletions) {
           changedSessionIds = undefined;
@@ -66,7 +70,7 @@ export function createSessionPersister(store: Store) {
       }
 
       const sessionOps = buildSessionSaveOps(
-        store,
+        _store,
         tables,
         dataDir,
         changedSessionIds,
@@ -77,14 +81,19 @@ export function createSessionPersister(store: Store) {
         changedSessionIds,
       );
       const noteOps = buildNoteSaveOps(
-        store,
+        _store,
         tables,
         dataDir,
         changedSessionIds,
       );
+      const deleteOps = buildEmptySessionDeleteOps(
+        tables,
+        dataDir,
+        emptySessionIds,
+      );
 
       return {
-        operations: [...sessionOps, ...transcriptOps, ...noteOps],
+        operations: [...sessionOps, ...transcriptOps, ...noteOps, ...deleteOps],
       };
     },
   });

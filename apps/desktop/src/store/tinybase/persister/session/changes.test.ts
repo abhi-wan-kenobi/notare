@@ -73,8 +73,10 @@ describe("parseSessionIdFromPath", () => {
 
 describe("getChangedSessionIds", () => {
   describe("direct session changes", () => {
-    test("adds changed session ids directly", () => {
-      const tables: TablesContent = {};
+    test("empty sessions go to emptySessionIds", () => {
+      const tables: TablesContent = {
+        sessions: { "session-1": {}, "session-2": {} },
+      };
       const changedTables: ChangedTables = {
         sessions: { "session-1": {}, "session-2": {} },
       };
@@ -82,18 +84,40 @@ describe("getChangedSessionIds", () => {
       const result = getChangedSessionIds(tables, changedTables);
 
       expect(result).toBeDefined();
-      expect(result?.changedSessionIds).toEqual(
+      expect(result?.changedSessionIds).toEqual(new Set());
+      expect(result?.emptySessionIds).toEqual(
         new Set(["session-1", "session-2"]),
       );
       expect(result?.hasUnresolvedDeletions).toBe(false);
+    });
+
+    test("non-empty sessions go to changedSessionIds", () => {
+      const tables: TablesContent = {
+        sessions: {
+          "session-1": { title: "My Note" },
+          "session-2": {},
+        },
+      };
+      const changedTables: ChangedTables = {
+        sessions: { "session-1": {}, "session-2": {} },
+      };
+
+      const result = getChangedSessionIds(tables, changedTables);
+
+      expect(result?.changedSessionIds).toEqual(new Set(["session-1"]));
+      expect(result?.emptySessionIds).toEqual(new Set(["session-2"]));
     });
   });
 
   describe("participant changes", () => {
     test("resolves session id from participant", () => {
       const tables: TablesContent = {
+        sessions: { "session-1": {} },
         mapping_session_participant: {
-          "participant-1": { session_id: "session-1" },
+          "participant-1": {
+            session_id: "session-1",
+            source: "manual",
+          },
         },
       };
       const changedTables: ChangedTables = {
@@ -124,6 +148,7 @@ describe("getChangedSessionIds", () => {
   describe("transcript changes", () => {
     test("resolves session id from transcript", () => {
       const tables: TablesContent = {
+        sessions: { "session-1": {} },
         transcripts: { "transcript-1": { session_id: "session-1" } },
       };
       const changedTables: ChangedTables = {
@@ -151,6 +176,7 @@ describe("getChangedSessionIds", () => {
   describe("enhanced note changes", () => {
     test("resolves session id from enhanced note", () => {
       const tables: TablesContent = {
+        sessions: { "session-1": {} },
         enhanced_notes: { "note-1": { session_id: "session-1" } },
       };
       const changedTables: ChangedTables = {
@@ -198,6 +224,7 @@ describe("getChangedSessionIds", () => {
 
     test("combines changes from multiple sources", () => {
       const tables: TablesContent = {
+        sessions: { "session-1": {}, "session-2": {}, "session-3": {} },
         mapping_session_participant: {
           "participant-1": { session_id: "session-2" },
         },
@@ -211,13 +238,15 @@ describe("getChangedSessionIds", () => {
 
       const result = getChangedSessionIds(tables, changedTables);
 
+      expect(result?.emptySessionIds).toEqual(new Set(["session-1"]));
       expect(result?.changedSessionIds).toEqual(
-        new Set(["session-1", "session-2", "session-3"]),
+        new Set(["session-2", "session-3"]),
       );
     });
 
     test("deduplicates session ids from multiple changes", () => {
       const tables: TablesContent = {
+        sessions: { "session-1": {} },
         mapping_session_participant: {
           "participant-1": { session_id: "session-1" },
         },
