@@ -33,12 +33,10 @@ pub(super) fn draw_transcript(
     let inner_area = block.inner(area);
 
     if segments.is_empty() {
-        let empty_message = if app.can_accept_audio_drop() {
-            "Drop an audio file to transcribe..."
-        } else {
-            "Waiting for speech..."
-        };
-        let lines = vec![Line::from(Span::styled(empty_message, theme.placeholder))];
+        let lines = vec![Line::from(Span::styled(
+            "Waiting for speech...",
+            theme.placeholder,
+        ))];
         let paragraph = Paragraph::new(lines).block(block);
         frame.render_widget(paragraph, area);
         return;

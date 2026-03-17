@@ -1,12 +1,10 @@
 use std::collections::{HashMap, VecDeque};
-use std::path::Path;
 use std::time::Instant;
 
 use hypr_listener_core::{
     DegradedError, SessionDataEvent, SessionErrorEvent, SessionLifecycleEvent,
     SessionProgressEvent, State,
 };
-use hypr_listener2_core::BatchEvent;
 use hypr_transcript::{
     FinalizedWord, PartialWord, RuntimeSpeakerHint, Segment, TranscriptDelta, TranscriptProcessor,
     WordRef,
@@ -32,7 +30,6 @@ pub(super) struct ListenState {
     partial_hints: Vec<RuntimeSpeakerHint>,
     transcript: TranscriptProcessor,
     started_at: Instant,
-    batch_running: bool,
     word_first_seen: HashMap<String, Instant>,
 }
 
@@ -54,7 +51,6 @@ impl ListenState {
             partial_hints: Vec::new(),
             transcript: TranscriptProcessor::new(),
             started_at: Instant::now(),
-            batch_running: false,
             word_first_seen: HashMap::new(),
         }
     }
@@ -69,46 +65,6 @@ impl ListenState {
             RuntimeEvent::Progress(e) => self.handle_progress(e),
             RuntimeEvent::Error(e) => self.handle_error(e),
             RuntimeEvent::Data(e) => self.handle_data(e),
-        }
-    }
-
-    pub(super) fn handle_batch_event(&mut self, event: BatchEvent) {
-        match event {
-            BatchEvent::BatchStarted { .. } => {
-                self.batch_running = true;
-                self.status = "Transcribing dropped audio...".into();
-            }
-            BatchEvent::BatchCompleted { .. } => {
-                self.batch_running = false;
-                self.status = "Dropped audio transcription completed".into();
-            }
-            BatchEvent::BatchResponseStreamed {
-                response,
-                percentage,
-                ..
-            } => {
-                if let Some(delta) = self.transcript.process(&response) {
-                    self.apply_transcript_delta(delta);
-                }
-
-                self.status = format!("Transcribing dropped audio... {:.0}%", percentage * 100.0);
-
-                if percentage >= 1.0 {
-                    self.batch_running = false;
-                    self.status = "Dropped audio transcription completed".into();
-                }
-            }
-            BatchEvent::BatchResponse { response, .. } => {
-                let delta = TranscriptProcessor::process_batch_response(&response);
-                self.apply_transcript_delta(delta);
-                self.batch_running = false;
-                self.status = "Dropped audio transcription completed".into();
-            }
-            BatchEvent::BatchFailed { error, .. } => {
-                self.batch_running = false;
-                self.errors.push(format!("Batch: {error}"));
-                self.status = format!("Dropped audio transcription failed: {error}");
-            }
         }
     }
 
@@ -144,21 +100,8 @@ impl ListenState {
         self.words.len()
     }
 
-    pub(super) fn batch_running(&self) -> bool {
-        self.batch_running
-    }
-
-    pub(super) fn is_transcript_empty(&self) -> bool {
-        self.words.is_empty() && self.partials.is_empty()
-    }
-
     pub(super) fn push_error(&mut self, error: String) {
         self.errors.push(error);
-    }
-
-    pub(super) fn begin_audio_drop(&mut self, path: &Path) {
-        self.batch_running = true;
-        self.status = format!("Transcribing dropped audio: {}", path.display());
     }
 
     pub(super) fn segments(&self) -> Vec<Segment> {

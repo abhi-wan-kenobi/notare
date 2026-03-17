@@ -7,22 +7,22 @@ use tokio::sync::mpsc;
 
 pub use crate::cli::AudioMode;
 use crate::config::desktop;
-use crate::config::stt::{ChannelBatchRuntime, SttGlobalArgs};
-use crate::config::stt::{ResolvedSttConfig, resolve_config};
+use crate::config::stt::{SttGlobalArgs, resolve_config};
 use crate::error::{CliError, CliResult};
-use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
+use crate::output::format_hhmmss;
+use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen, run_screen_inline};
 
 mod action;
 mod app;
-mod audio_drop;
 mod effect;
+mod exit;
 mod runtime;
 mod ui;
 
 use self::action::Action;
 use self::app::App;
-use self::audio_drop::AudioDropRequest;
 use self::effect::Effect;
+use self::exit::{ExitEvent, ExitScreen, spawn_post_session};
 use self::runtime::Runtime;
 
 pub struct Args {
@@ -31,59 +31,36 @@ pub struct Args {
     pub audio: AudioMode,
 }
 
-fn spawn_batch_transcription(
-    request: AudioDropRequest,
-    batch_runtime: Arc<ChannelBatchRuntime>,
-    resolved: &ResolvedSttConfig,
-) {
-    let batch_session_id = uuid::Uuid::new_v4().to_string();
-    let params = resolved.to_batch_params(batch_session_id, request.file_path, vec![]);
-
-    tokio::spawn(async move {
-        let _ = hypr_listener2_core::run_batch(batch_runtime, params).await;
-    });
-}
-
-use crate::output::format_hhmmss;
-
 const ANIMATION_FRAME: std::time::Duration = std::time::Duration::from_millis(33);
 const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);
 
 struct Output {
     elapsed: std::time::Duration,
     force_quit: bool,
+    segments: Vec<hypr_transcript::Segment>,
 }
 
 enum ExternalEvent {
     Listener(runtime::RuntimeEvent),
-    Batch(hypr_listener2_core::BatchEvent),
 }
 
 struct ListenScreen {
     app: App,
-    batch_runtime: Arc<ChannelBatchRuntime>,
-    resolved: ResolvedSttConfig,
 }
 
 impl ListenScreen {
-    fn new(batch_runtime: Arc<ChannelBatchRuntime>, resolved: ResolvedSttConfig) -> Self {
-        Self {
-            app: App::new(),
-            batch_runtime,
-            resolved,
-        }
+    fn new() -> Self {
+        Self { app: App::new() }
     }
 
     fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<Output> {
         for effect in effects {
             match effect {
-                Effect::StartBatch(request) => {
-                    spawn_batch_transcription(request, self.batch_runtime.clone(), &self.resolved);
-                }
                 Effect::Exit { force } => {
                     return ScreenControl::Exit(Output {
                         elapsed: self.app.elapsed(),
                         force_quit: force,
+                        segments: self.app.segments(),
                     });
                 }
             }
@@ -122,7 +99,6 @@ impl Screen for ListenScreen {
     ) -> ScreenControl<Self::Output> {
         let action = match event {
             ExternalEvent::Listener(event) => Action::RuntimeEvent(event),
-            ExternalEvent::Batch(event) => Action::BatchEvent(event),
         };
         let effects = self.app.dispatch(action);
         self.apply_effects(effects)
@@ -173,7 +149,7 @@ pub async fn run(args: Args) -> CliResult<()> {
     let vault_base = desktop::resolve_paths().vault_base;
 
     let (listener_tx, mut listener_rx) = tokio::sync::mpsc::unbounded_channel();
-    let runtime = Arc::new(Runtime::new(vault_base, listener_tx));
+    let runtime = Arc::new(Runtime::new(vault_base.clone(), listener_tx));
 
     let audio: Arc<dyn hypr_audio_actual::AudioProvider> = match audio_mode {
         AudioMode::Dual => Arc::new(hypr_audio_actual::ActualAudio),
@@ -212,35 +188,36 @@ pub async fn run(args: Args) -> CliResult<()> {
         .map_err(|e| CliError::operation_failed("start session", e.to_string()))?
         .map_err(|e| CliError::operation_failed("start session", format!("{e:?}")))?;
 
-    let (batch_tx, mut batch_rx) = mpsc::unbounded_channel();
-    let batch_runtime = Arc::new(ChannelBatchRuntime { tx: batch_tx });
     let (external_tx, external_rx) = mpsc::unbounded_channel();
     tokio::spawn(async move {
-        loop {
-            tokio::select! {
-                Some(listener_event) = listener_rx.recv() => {
-                    if external_tx.send(ExternalEvent::Listener(listener_event)).is_err() {
-                        break;
-                    }
-                }
-                Some(batch_event) = batch_rx.recv() => {
-                    if external_tx.send(ExternalEvent::Batch(batch_event)).is_err() {
-                        break;
-                    }
-                }
-                else => break,
+        while let Some(event) = listener_rx.recv().await {
+            if external_tx.send(ExternalEvent::Listener(event)).is_err() {
+                break;
             }
         }
     });
 
-    let output = run_screen(
-        ListenScreen::new(batch_runtime, resolved),
-        Some(external_rx),
-    )
-    .await
-    .map_err(|e| CliError::operation_failed("listen tui", e.to_string()))?;
+    let output = run_screen(ListenScreen::new(), Some(external_rx))
+        .await
+        .map_err(|e| CliError::operation_failed("listen tui", e.to_string()))?;
 
-    print_exit_summary(&session_label, output.elapsed);
+    if !output.force_quit {
+        let session_dir = vault_base.join("sessions").join(&session_label);
+        let llm_config = crate::llm::resolve_config(None, None, None, None).ok();
+
+        let (exit_tx, exit_rx) = mpsc::unbounded_channel();
+        spawn_post_session(output.segments, session_dir, llm_config, exit_tx);
+
+        let exit_screen = ExitScreen::new(
+            session_label,
+            output.elapsed,
+            vec!["Saving transcript", "Generating summary"],
+        );
+        let height = exit_screen.viewport_height();
+        run_screen_inline(exit_screen, height, Some(exit_rx))
+            .await
+            .map_err(|e| CliError::operation_failed("exit summary", e.to_string()))?;
+    }
 
     if !output.force_quit {
         let _ = ractor::call!(root_ref, RootMsg::StopSession, StopSessionParams::default());
@@ -248,57 +225,4 @@ pub async fn run(args: Args) -> CliResult<()> {
     }
 
     Ok(())
-}
-
-fn print_exit_summary(session_id: &str, elapsed: std::time::Duration) {
-    use colored::Colorize;
-
-    let chat_cmd = format!("char chat --session {session_id} --api-key <KEY> --model <MODEL>");
-    let session_line = format!("Session   {session_id}");
-    let duration_line = format!("Duration  {}", format_hhmmss(elapsed));
-    let chat_label = "Chat with this session:";
-
-    let inner_width = [
-        session_line.len(),
-        duration_line.len(),
-        chat_label.len(),
-        chat_cmd.len(),
-    ]
-    .into_iter()
-    .max()
-    .unwrap()
-        + 2;
-
-    let top = format!("  ╭{}╮", "─".repeat(inner_width));
-    let bot = format!("  ╰{}╯", "─".repeat(inner_width));
-    let sep = format!("  ├{}┤", "─".repeat(inner_width));
-    let empty = format!("  │{}│", " ".repeat(inner_width));
-
-    let pad = |s: &str, visible_len: usize| {
-        let padding = inner_width - 1 - visible_len;
-        format!(" {s}{}", " ".repeat(padding))
-    };
-
-    println!();
-    println!("{top}");
-    println!(
-        "  │{}│",
-        pad(&format!("{}", session_line.dimmed()), session_line.len())
-    );
-    println!(
-        "  │{}│",
-        pad(&format!("{}", duration_line.dimmed()), duration_line.len())
-    );
-    println!("{sep}");
-    println!(
-        "  │{}│",
-        pad(&format!("{}", chat_label.dimmed()), chat_label.len())
-    );
-    println!("{empty}");
-    println!(
-        "  │{}│",
-        pad(&format!("{}", chat_cmd.bold().cyan()), chat_cmd.len())
-    );
-    println!("{bot}");
-    println!();
 }

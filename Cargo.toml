@@ -70,7 +70,8 @@ hypr-data = { path = "crates/data", package = "data" }
 hypr-db-core = { path = "crates/db-core", package = "db-core" }
 hypr-db-parser = { path = "crates/db-parser", package = "db-parser" }
 hypr-db-user = { path = "crates/db-user", package = "db-user" }
-hypr-db3 = { path = "crates/db3", package = "db3" }
+hypr-db-app = { path = "crates/db-app", package = "db-app" }
+hypr-db-core2 = { path = "crates/db-core2", package = "db-core2" }
 hypr-denoise = { path = "crates/denoise", package = "denoise" }
 hypr-detect = { path = "crates/detect", package = "detect" }
 hypr-device-monitor = { path = "crates/device-monitor", package = "device-monitor" }
@@ -352,7 +353,7 @@ mp3lame-encoder = "0.2.2"
 ratatui = "0.30"
 realfft = "3.5.0"
 ringbuf = "0.4.8"
-rodio = "0.21"
+rodio = "0.22"
 tachyonfx = "0.25"
 tui-textarea = { package = "tui-textarea-2", version = "0.10", default-features = false, features = ["no-backend"] }
 vorbis_rs = "0.5.5"

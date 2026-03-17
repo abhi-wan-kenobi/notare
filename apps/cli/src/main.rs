@@ -19,15 +19,15 @@ use crate::error::CliResult;
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
-    let tui_chat = matches!(&cli.command, Some(Commands::Chat { prompt: None, .. }));
-    let tui_entry = cli.command.is_none()
-        || matches!(
-            &cli.command,
-            Some(Commands::Connect {
+    let tui_command = matches!(
+        &cli.command,
+        Some(Commands::Chat { prompt: None, .. })
+            | Some(Commands::Listen { .. })
+            | Some(Commands::Connect {
                 r#type: None,
                 provider: None
             })
-        );
+    ) || cli.command.is_none();
     let skip_tracing_init = {
         #[cfg(feature = "dev")]
         {
@@ -49,7 +49,7 @@ async fn main() {
     }
 
     if !skip_tracing_init {
-        let default_directive = if tui_chat || tui_entry {
+        let default_directive = if tui_command {
             LevelFilter::OFF.into()
         } else {
             cli.verbose.tracing_level_filter().into()

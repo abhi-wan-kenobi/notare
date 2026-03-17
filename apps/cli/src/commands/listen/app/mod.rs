@@ -8,7 +8,6 @@ use ratatui::widgets::Block;
 use tui_textarea::TextArea;
 
 use super::action::Action;
-use super::audio_drop::{AudioDropRequest, looks_like_audio_file, normalize_pasted_path};
 use super::effect::Effect;
 use crate::commands::listen::app::state::ListenState;
 use crate::commands::listen::app::ui_state::ListenUiState;
@@ -38,10 +37,6 @@ impl App {
             Action::Paste(pasted) => self.handle_paste(pasted),
             Action::RuntimeEvent(event) => {
                 self.state.handle_runtime_event(event);
-                Vec::new()
-            }
-            Action::BatchEvent(event) => {
-                self.state.handle_batch_event(event);
                 Vec::new()
             }
         }
@@ -77,18 +72,11 @@ impl App {
 
     fn handle_paste(&mut self, pasted: String) -> Vec<Effect> {
         if self.ui.mode() != Mode::Insert {
-            return self.handle_transcript_paste(pasted);
+            return Vec::new();
         }
         let pasted = pasted.replace("\r\n", "\n").replace('\r', "\n");
         self.ui.memo_mut().insert_str(&pasted);
         Vec::new()
-    }
-
-    pub(crate) fn can_accept_audio_drop(&self) -> bool {
-        self.ui.mode() == Mode::Normal
-            && self.state.listener_state() == State::Inactive
-            && !self.state.batch_running()
-            && self.state.is_transcript_empty()
     }
 
     pub(crate) fn mode(&self) -> Mode {
@@ -280,30 +268,6 @@ impl App {
         }
     }
 
-    fn handle_transcript_paste(&mut self, pasted: String) -> Vec<Effect> {
-        if !self.can_accept_audio_drop() {
-            return Vec::new();
-        }
-
-        let Some(path) = normalize_pasted_path(&pasted) else {
-            return Vec::new();
-        };
-
-        if !looks_like_audio_file(&path) {
-            return Vec::new();
-        }
-
-        if !path.is_file() {
-            self.state
-                .push_error(format!("Dropped path is not a file: {}", path.display()));
-            return Vec::new();
-        }
-
-        self.state.begin_audio_drop(&path);
-        vec![Effect::StartBatch(AudioDropRequest {
-            file_path: path.to_string_lossy().to_string(),
-        })]
-    }
 }
 
 #[cfg(test)]
@@ -323,15 +287,5 @@ mod tests {
             effects.as_slice(),
             [Effect::Exit { force: false }]
         ));
-    }
-
-    #[test]
-    fn transcript_paste_starts_batch_for_audio_file() {
-        let mut app = App::new();
-        let file = tempfile::NamedTempFile::with_suffix(".wav").expect("temp audio file");
-
-        let effects = app.dispatch(Action::Paste(file.path().display().to_string()));
-
-        assert!(matches!(effects.as_slice(), [Effect::StartBatch(_)]));
     }
 }

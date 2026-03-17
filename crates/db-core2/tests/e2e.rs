@@ -1,4 +1,4 @@
-use db3::Db3;
+use db_core2::Db3;
 
 fn connection_string() -> String {
     std::env::var("SQLITECLOUD_URL").expect("SQLITECLOUD_URL must be set")
