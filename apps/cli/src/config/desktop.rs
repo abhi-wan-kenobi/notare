@@ -1,5 +1,12 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+
+static BASE_OVERRIDE: OnceLock<PathBuf> = OnceLock::new();
+
+pub fn set_base(path: PathBuf) {
+    let _ = BASE_OVERRIDE.set(path);
+}
 
 const DESKTOP_BASE_FOLDERS: &[&str] = &[
     "hyprnote",
@@ -25,7 +32,6 @@ pub struct DesktopPaths {
 pub struct ProviderConfig {
     pub base_url: Option<String>,
     pub api_key: Option<String>,
-    pub has_api_key: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -43,15 +49,18 @@ pub fn resolve_paths() -> DesktopPaths {
         return build_paths_from_settings_override(settings_path);
     }
 
-    if let Some(paths) = discover_desktop_paths() {
-        return with_models_override(paths);
-    }
-
     let data_dir = dirs::data_dir().unwrap_or_else(std::env::temp_dir);
-    let global_base = data_dir.join("char");
+    let global_base = BASE_OVERRIDE
+        .get()
+        .cloned()
+        .unwrap_or_else(|| data_dir.join("char"));
     let vault_base = global_base.clone();
     let settings_path = vault_base.join(hypr_storage::vault::SETTINGS_FILENAME);
     let models_base = models_base_override().unwrap_or_else(|| global_base.join("models"));
+
+    if !settings_path.is_file() {
+        try_copy_from_desktop(&data_dir, &settings_path);
+    }
 
     DesktopPaths {
         global_base,
@@ -84,6 +93,36 @@ pub fn load_settings(path: &Path) -> Option<DesktopSettings> {
     })
 }
 
+fn try_copy_from_desktop(data_dir: &Path, target: &Path) {
+    let Some(desktop_settings_path) = find_desktop_settings(data_dir) else {
+        return;
+    };
+    let Ok(content) = std::fs::read_to_string(&desktop_settings_path) else {
+        return;
+    };
+    let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) else {
+        return;
+    };
+    let Some(ai) = json.get("ai") else {
+        return;
+    };
+    let subset = serde_json::json!({ "ai": ai });
+    let _ = save_settings(target, subset);
+}
+
+fn find_desktop_settings(data_dir: &Path) -> Option<PathBuf> {
+    for folder in DESKTOP_BASE_FOLDERS {
+        let global_base = data_dir.join(folder);
+        let vault_base = hypr_storage::vault::resolve_custom(&global_base, &global_base)
+            .unwrap_or(global_base.clone());
+        let settings_path = vault_base.join(hypr_storage::vault::SETTINGS_FILENAME);
+        if settings_path.is_file() {
+            return Some(settings_path);
+        }
+    }
+    None
+}
+
 fn build_paths_from_settings_override(settings_path: PathBuf) -> DesktopPaths {
     let vault_base = settings_path
         .parent()
@@ -98,36 +137,6 @@ fn build_paths_from_settings_override(settings_path: PathBuf) -> DesktopPaths {
         settings_path,
         models_base,
     }
-}
-
-fn with_models_override(mut paths: DesktopPaths) -> DesktopPaths {
-    if let Some(override_base) = models_base_override() {
-        paths.models_base = override_base;
-    }
-    paths
-}
-
-fn discover_desktop_paths() -> Option<DesktopPaths> {
-    let data_dir = dirs::data_dir()?;
-
-    for folder in DESKTOP_BASE_FOLDERS {
-        let global_base = data_dir.join(folder);
-        let vault_base = hypr_storage::vault::resolve_custom(&global_base, &global_base)
-            .unwrap_or(global_base.clone());
-        let settings_path = vault_base.join(hypr_storage::vault::SETTINGS_FILENAME);
-
-        if settings_path.is_file() {
-            let models_base = global_base.join("models");
-            return Some(DesktopPaths {
-                global_base,
-                vault_base,
-                settings_path,
-                models_base,
-            });
-        }
-    }
-
-    None
 }
 
 fn models_base_override() -> Option<PathBuf> {
@@ -184,16 +193,7 @@ fn parse_provider_map(value: Option<&serde_json::Value>) -> HashMap<String, Prov
             .map(str::trim)
             .filter(|v| !v.is_empty())
             .map(ToString::to_string);
-        let has_api_key = api_key.is_some();
-
-        out.insert(
-            provider_id.clone(),
-            ProviderConfig {
-                base_url,
-                api_key,
-                has_api_key,
-            },
-        );
+        out.insert(provider_id.clone(), ProviderConfig { base_url, api_key });
     }
 
     out

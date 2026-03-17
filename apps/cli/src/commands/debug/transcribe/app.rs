@@ -95,8 +95,8 @@ impl App {
 
     pub(crate) fn title(&self) -> String {
         match self.mode {
-            TranscribeMode::Raw => "debug transcribe (raw)".into(),
-            TranscribeMode::Rich => "debug transcribe (rich)".into(),
+            TranscribeMode::Raw => hypr_cli_tui::terminal_title(Some("debug transcribe (raw)")),
+            TranscribeMode::Rich => hypr_cli_tui::terminal_title(Some("debug transcribe (rich)")),
         }
     }
 

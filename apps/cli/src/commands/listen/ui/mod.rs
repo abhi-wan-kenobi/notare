@@ -1,6 +1,8 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Layout},
+    style::Style,
+    widgets::Block,
 };
 
 use crate::commands::listen::app::App;
@@ -13,7 +15,12 @@ mod transcript;
 
 pub fn draw(frame: &mut Frame, app: &mut App) {
     let elapsed = app.frame_elapsed();
-    let theme = Theme::DEFAULT;
+    let theme = Theme::TRANSPARENT;
+
+    frame.render_widget(
+        Block::default().style(Style::default().bg(theme.bg)),
+        frame.area(),
+    );
     let [header_area, body_area, status_area] = Layout::vertical([
         Constraint::Length(1),
         Constraint::Min(3),

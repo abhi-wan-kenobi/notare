@@ -200,6 +200,34 @@ pub async fn load_hints(
         .collect())
 }
 
+pub async fn list_sessions(pool: &SqlitePool) -> Result<Vec<SessionRow>, sqlx::Error> {
+    let rows = sqlx::query_as::<
+        _,
+        (
+            String,
+            String,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        ),
+    >(
+        "SELECT id, created_at, title, summary, memo FROM sessions ORDER BY created_at DESC",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|(id, created_at, title, summary, memo)| SessionRow {
+            id,
+            created_at,
+            title,
+            summary,
+            memo,
+        })
+        .collect())
+}
+
 pub async fn get_session(
     pool: &SqlitePool,
     session_id: &str,

@@ -255,7 +255,7 @@ impl Screen for ExpScreen {
     }
 
     fn title(&self) -> String {
-        "exp".to_string()
+        hypr_cli_tui::terminal_title(Some("exp"))
     }
 
     fn next_frame_delay(&self) -> Duration {

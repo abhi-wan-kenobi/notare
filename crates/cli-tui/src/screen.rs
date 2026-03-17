@@ -28,6 +28,13 @@ impl ScreenContext {
     }
 }
 
+pub fn terminal_title(subtitle: Option<&str>) -> String {
+    match subtitle {
+        Some(s) => format!("Char | {s}"),
+        None => "Char".to_string(),
+    }
+}
+
 pub trait Screen {
     type ExternalEvent;
     type Output;

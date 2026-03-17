@@ -58,7 +58,11 @@ fn print_section(
                 ""
             };
             let url = config.base_url.as_deref().unwrap_or("-");
-            let key = if config.has_api_key { "yes" } else { "no" };
+            let key = if config.api_key.is_some() {
+                "yes"
+            } else {
+                "no"
+            };
             println!("{}\t{}\t{}\t{}", active, name, url, key);
         }
         return;
@@ -81,7 +85,7 @@ fn print_section(
             Cell::new("")
         };
         let url = Cell::new(config.base_url.as_deref().unwrap_or("-"));
-        let key = if config.has_api_key {
+        let key = if config.api_key.is_some() {
             Cell::new("yes").fg(Color::Green)
         } else {
             Cell::new("no").fg(Color::DarkGrey)

@@ -68,10 +68,6 @@ impl App {
         self.step
     }
 
-    pub fn connection_type(&self) -> Option<ConnectionType> {
-        self.connection_type
-    }
-
     pub fn provider(&self) -> Option<ConnectProvider> {
         self.provider
     }
@@ -410,7 +406,6 @@ mod tests {
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
         assert!(effects.is_empty());
         assert_eq!(app.step(), Step::SelectProvider);
-        assert_eq!(app.connection_type(), Some(ConnectionType::Stt));
     }
 
     #[test]

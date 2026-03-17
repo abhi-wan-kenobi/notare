@@ -23,6 +23,7 @@ async fn main() {
         &cli.command,
         Some(Commands::Chat { prompt: None, .. })
             | Some(Commands::Listen { .. })
+            | Some(Commands::Sessions)
             | Some(Commands::Connect {
                 r#type: None,
                 provider: None
@@ -43,6 +44,10 @@ async fn main() {
             false
         }
     };
+
+    if let Some(base) = &cli.global.base {
+        config::desktop::set_base(base.clone());
+    }
 
     if cli.global.no_color || std::env::var_os("NO_COLOR").is_some() {
         colored::control::set_override(false);
@@ -108,10 +113,13 @@ async fn run(cli: Cli) -> CliResult<()> {
 
     match command {
         Some(Commands::Chat {
-            session,
+            command,
             prompt,
             provider,
         }) => {
+            let session = command.and_then(|cmd| match cmd {
+                cli::ChatCommands::Resume { session } => session,
+            });
             commands::chat::run(commands::chat::Args {
                 session,
                 prompt,
@@ -156,13 +164,50 @@ async fn run(cli: Cli) -> CliResult<()> {
             }
             Ok(())
         }
+        Some(Commands::Bug) => {
+            commands::bug::run()?;
+            eprintln!("Opened bug report page in browser");
+            Ok(())
+        }
+        Some(Commands::Hello) => {
+            commands::hello::run()?;
+            eprintln!("Opened char.com in browser");
+            Ok(())
+        }
+        Some(Commands::Sessions) => {
+            let paths = config::desktop::resolve_paths();
+            let db_path = paths.vault_base.join("app.db");
+            let selected = commands::sessions::run(db_path.clone()).await?;
+            if let Some(session_id) = selected {
+                commands::view::run(commands::view::Args {
+                    session_id,
+                    db_path,
+                })
+                .await
+            } else {
+                Ok(())
+            }
+        }
         Some(Commands::Listen { provider, audio }) => {
+            let settings = load_entry_settings();
+            let resolved = match provider {
+                Some(p) => EntryListenConfig {
+                    provider: p,
+                    model: None,
+                },
+                None => resolve_entry_listen_config(settings.as_ref()).map_err(|msg| {
+                    error::CliError::msg(format!(
+                        "{msg}\nOr pass --provider explicitly: char listen -p <provider>"
+                    ))
+                })?,
+            };
+
             commands::listen::run(commands::listen::Args {
                 stt: SttGlobalArgs {
-                    provider,
+                    provider: resolved.provider,
                     base_url: global.base_url,
                     api_key: global.api_key,
-                    model: global.model,
+                    model: global.model.or(resolved.model),
                     language: global.language,
                 },
                 record: global.record,
@@ -208,38 +253,54 @@ async fn run_entry_loop(global: cli::GlobalArgs, initial_command: Option<String>
         })
         .await;
         match action {
-            commands::entry::EntryAction::Listen => {
-                let listen = match resolve_entry_listen_config(settings.as_ref()) {
-                    Ok(listen) => listen,
-                    Err(message) => {
-                        status_message = Some(message);
-                        continue;
-                    }
-                };
+            commands::entry::EntryAction::Launch(cmd) => match cmd {
+                commands::entry::EntryCommand::Listen => {
+                    let settings = load_entry_settings();
+                    let listen = match resolve_entry_listen_config(settings.as_ref()) {
+                        Ok(listen) => listen,
+                        Err(message) => {
+                            status_message = Some(message);
+                            continue;
+                        }
+                    };
 
-                return commands::listen::run(commands::listen::Args {
-                    stt: SttGlobalArgs {
-                        provider: listen.provider,
+                    return commands::listen::run(commands::listen::Args {
+                        stt: SttGlobalArgs {
+                            provider: listen.provider,
+                            base_url: global.base_url.clone(),
+                            api_key: global.api_key.clone(),
+                            model: global.model.clone().or(listen.model),
+                            language: global.language.clone(),
+                        },
+                        record: global.record,
+                        audio: cli::AudioMode::Dual,
+                    })
+                    .await;
+                }
+                commands::entry::EntryCommand::Chat => {
+                    return commands::chat::run(commands::chat::Args {
+                        session: None,
+                        prompt: None,
+                        provider: None,
                         base_url: global.base_url.clone(),
                         api_key: global.api_key.clone(),
-                        model: global.model.clone().or(listen.model),
-                        language: global.language.clone(),
-                    },
-                    record: global.record,
-                    audio: cli::AudioMode::Dual,
-                })
-                .await;
-            }
-            commands::entry::EntryAction::Connect => {
-                let saved = commands::connect::run(commands::connect::Args {
-                    connection_type: None,
-                    provider: None,
-                    base_url: None,
-                    api_key: None,
-                })
-                .await?;
-                if saved {
-                    status_message = Some("Provider configured".into());
+                        model: global.model.clone(),
+                    })
+                    .await;
+                }
+                commands::entry::EntryCommand::View { session_id } => {
+                    let paths = config::desktop::resolve_paths();
+                    let db_path = paths.vault_base.join("app.db");
+                    return commands::view::run(commands::view::Args {
+                        session_id,
+                        db_path,
+                    })
+                    .await;
+                }
+            },
+            commands::entry::EntryAction::Model(cmd) => {
+                if let Err(e) = commands::model::run(cmd).await {
+                    status_message = Some(format!("model error: {e}"));
                 }
             }
             commands::entry::EntryAction::Quit => return Ok(()),

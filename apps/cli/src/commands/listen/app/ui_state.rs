@@ -1,6 +1,8 @@
 use std::time::Instant;
 
 use hypr_cli_editor::Editor;
+
+use crate::theme::Theme;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use tachyonfx::{Effect, Interpolation, Motion, fx};
@@ -22,7 +24,7 @@ pub(super) struct ListenUiState {
     notepad_width_percent: u16,
     scroll: ScrollState,
     transcript_autoscroll: bool,
-    memo: Editor,
+    memo: Editor<Theme>,
     last_frame_time: Instant,
     prev_segment_count: usize,
     transcript_effects: Vec<Effect>,
@@ -48,11 +50,11 @@ impl ListenUiState {
         self.mode
     }
 
-    pub(super) fn memo(&self) -> &Editor {
+    pub(super) fn memo(&self) -> &Editor<Theme> {
         &self.memo
     }
 
-    pub(super) fn memo_mut(&mut self) -> &mut Editor {
+    pub(super) fn memo_mut(&mut self) -> &mut Editor<Theme> {
         &mut self.memo
     }
 
@@ -174,8 +176,8 @@ impl ListenUiState {
         self.transcript_autoscroll = false;
     }
 
-    fn init_memo() -> Editor {
-        let mut memo = Editor::new();
+    fn init_memo() -> Editor<Theme> {
+        let mut memo = Editor::with_styles(Theme::DEFAULT);
         memo.set_placeholder(
             "press [i] to start writing notes...",
             Style::new()

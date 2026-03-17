@@ -3,6 +3,8 @@ mod ui_state;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use hypr_cli_editor::Editor;
+
+use crate::theme::Theme;
 use hypr_listener_core::State;
 use ratatui::layout::Rect;
 use ratatui::widgets::Block;
@@ -94,7 +96,7 @@ impl App {
         self.ui.memo_mut().set_block(block);
     }
 
-    pub(crate) fn memo(&self) -> &Editor {
+    pub(crate) fn memo(&self) -> &Editor<Theme> {
         self.ui.memo()
     }
 

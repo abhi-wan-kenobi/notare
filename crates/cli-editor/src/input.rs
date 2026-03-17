@@ -1,8 +1,9 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::{Editor, KeyResult};
+use crate::history::ActionKind;
+use crate::{Editor, KeyResult, StyleSheet};
 
-impl Editor {
+impl<S: StyleSheet> Editor<S> {
     pub fn handle_key(&mut self, key: KeyEvent) -> KeyResult {
         if self.vim_enabled {
             return self.handle_key_vim(key);
@@ -15,11 +16,11 @@ impl Editor {
 
         if ctrl {
             return match key.code {
-                KeyCode::Char('z') => {
+                KeyCode::Char('z') if !self.readonly => {
                     self.undo();
                     KeyResult::Consumed
                 }
-                KeyCode::Char('y') => {
+                KeyCode::Char('y') if !self.readonly => {
                     self.redo();
                     KeyResult::Consumed
                 }
@@ -38,14 +39,14 @@ impl Editor {
         }
 
         match key.code {
-            KeyCode::Char(c) => {
-                self.save_for_undo();
+            KeyCode::Char(c) if !self.readonly => {
+                self.save_for_undo_coalesced(ActionKind::CharInsert);
                 let new_col = self.buffer.insert_char(self.cursor.row, self.cursor.col, c);
                 self.cursor.col = new_col;
                 self.ensure_visible();
                 KeyResult::Consumed
             }
-            KeyCode::Backspace => {
+            KeyCode::Backspace if !self.readonly => {
                 self.save_for_undo();
                 if let Some((r, c)) = self
                     .buffer
@@ -57,7 +58,7 @@ impl Editor {
                 self.ensure_visible();
                 KeyResult::Consumed
             }
-            KeyCode::Delete => {
+            KeyCode::Delete if !self.readonly => {
                 self.save_for_undo();
                 self.buffer.delete_char_at(self.cursor.row, self.cursor.col);
                 self.ensure_visible();
@@ -93,6 +94,13 @@ impl Editor {
                 self.ensure_visible();
                 KeyResult::Consumed
             }
+            KeyCode::Enter if self.readonly => {
+                if let Some(url) = self.link_at_cursor() {
+                    KeyResult::FollowLink(url)
+                } else {
+                    KeyResult::Consumed
+                }
+            }
             KeyCode::Enter if !self.single_line => {
                 self.save_for_undo();
                 let (r, c) = self.buffer.insert_newline(self.cursor.row, self.cursor.col);
@@ -101,16 +109,79 @@ impl Editor {
                 self.ensure_visible();
                 KeyResult::Consumed
             }
-            KeyCode::Tab if !self.single_line => {
+            KeyCode::Tab if !self.readonly && !self.single_line => {
                 self.save_for_undo();
-                let new_col = self
+                let (r, c) = self
                     .buffer
-                    .insert_char(self.cursor.row, self.cursor.col, '\t');
-                self.cursor.col = new_col;
+                    .insert_str_at(self.cursor.row, self.cursor.col, "    ");
+                self.cursor.row = r;
+                self.cursor.col = c;
                 self.ensure_visible();
                 KeyResult::Consumed
             }
             _ => KeyResult::Ignored,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    use crate::{Editor, KeyResult};
+
+    fn key(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::NONE)
+    }
+
+    #[test]
+    fn single_line_rejects_enter() {
+        let mut ed = Editor::single_line();
+        ed.handle_key(key(KeyCode::Char('a')));
+        let result = ed.handle_key(key(KeyCode::Enter));
+        assert_eq!(result, KeyResult::Ignored);
+        assert_eq!(ed.lines().len(), 1);
+    }
+
+    #[test]
+    fn single_line_ignores_up_down() {
+        let mut ed = Editor::single_line();
+        ed.handle_key(key(KeyCode::Char('x')));
+        let up = ed.handle_key(key(KeyCode::Up));
+        let down = ed.handle_key(key(KeyCode::Down));
+        assert_eq!(up, KeyResult::Ignored);
+        assert_eq!(down, KeyResult::Ignored);
+    }
+
+    #[test]
+    fn readonly_blocks_insert() {
+        let mut ed = Editor::new();
+        ed.set_readonly(true);
+        let result = ed.handle_key(key(KeyCode::Char('a')));
+        assert_eq!(result, KeyResult::Ignored);
+        assert!(ed.is_empty());
+    }
+
+    #[test]
+    fn undo_coalescing_groups_chars() {
+        let mut ed = Editor::new();
+        for c in "hello".chars() {
+            ed.handle_key(key(KeyCode::Char(c)));
+        }
+        assert_eq!(ed.text(), "hello");
+        ed.undo();
+        assert!(ed.is_empty());
+    }
+
+    #[test]
+    fn coalescing_breaks_on_non_char_action() {
+        let mut ed = Editor::new();
+        ed.handle_key(key(KeyCode::Char('a')));
+        ed.handle_key(key(KeyCode::Char('b')));
+        ed.handle_key(key(KeyCode::Backspace));
+        ed.handle_key(key(KeyCode::Char('c')));
+        assert_eq!(ed.text(), "ac");
+        ed.undo();
+        assert_eq!(ed.text(), "a");
     }
 }

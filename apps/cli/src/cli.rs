@@ -44,6 +44,9 @@ pub struct GlobalArgs {
 
     #[arg(long, global = true)]
     pub no_color: bool,
+
+    #[arg(long, global = true, env = "CHAR_BASE", value_name = "DIR")]
+    pub base: Option<PathBuf>,
 }
 
 fn parse_base_url(value: &str) -> Result<String, String> {
@@ -61,8 +64,8 @@ fn parse_base_url(value: &str) -> Result<String, String> {
 pub enum Commands {
     /// Interactive chat with an LLM
     Chat {
-        #[arg(long)]
-        session: Option<String>,
+        #[command(subcommand)]
+        command: Option<ChatCommands>,
         /// Send a single prompt without entering the TUI (use `-` to read from stdin)
         #[arg(long)]
         prompt: Option<String>,
@@ -72,7 +75,7 @@ pub enum Commands {
     /// Start live transcription (TUI)
     Listen {
         #[arg(short = 'p', long, value_enum)]
-        provider: Provider,
+        provider: Option<Provider>,
 
         #[arg(long, value_enum, default_value = "dual")]
         audio: AudioMode,
@@ -85,12 +88,18 @@ pub enum Commands {
         #[arg(long, value_enum)]
         provider: Option<ConnectProvider>,
     },
+    /// Browse past sessions
+    Sessions,
     /// Show configured providers and settings
     Status,
     /// Authenticate with char.com
     Auth,
     /// Open the desktop app or download page
     Desktop,
+    /// Report a bug on GitHub
+    Bug,
+    /// Open char.com
+    Hello,
     /// Transcribe an audio file
     Batch {
         #[command(flatten)]
@@ -111,6 +120,15 @@ pub enum Commands {
     Completions {
         #[arg(value_enum)]
         shell: clap_complete::Shell,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ChatCommands {
+    /// Resume an existing chat session
+    Resume {
+        #[arg(long)]
+        session: Option<String>,
     },
 }
 

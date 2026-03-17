@@ -64,7 +64,7 @@ fn resolve_provider_from_settings(current_provider_id: Option<&str>) -> CliResul
     let Some(current_provider_id) = current_provider_id else {
         return Err(CliError::required_argument_with_hint(
             "--provider",
-            "Pass --provider anthropic|openrouter, or run `char connect --type llm --provider ...` first.",
+            "Pass --provider anthropic|openai|openrouter, or run `char connect --type llm --provider ...` first.",
         ));
     };
 
@@ -72,8 +72,8 @@ fn resolve_provider_from_settings(current_provider_id: Option<&str>) -> CliResul
         CliError::invalid_argument_with_hint(
             "--provider",
             current_provider_id,
-            "chat currently supports only anthropic and openrouter",
-            "Pass --provider anthropic|openrouter, or set one of them as the current LLM provider in your desktop settings.",
+            "chat currently supports anthropic, openai, and openrouter",
+            "Pass --provider anthropic|openai|openrouter, or set one of them as the current LLM provider in your desktop settings.",
         )
     })
 }

@@ -8,9 +8,9 @@ use ratatui::{
     widgets::Widget,
 };
 
-use crate::Editor;
+use crate::{Editor, StyleSheet};
 
-impl Widget for &Editor {
+impl<S: StyleSheet> Widget for &Editor<S> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let inner = if let Some(ref block) = self.block {
             let inner = block.inner(area);
@@ -45,8 +45,11 @@ impl Widget for &Editor {
         }
 
         let highlights = if self.highlight_enabled {
-            self.highlighter.highlight(self.buffer.lines())
+            let result = self.highlighter.highlight(self.buffer.lines());
+            *self.links.borrow_mut() = result.links;
+            result.styles
         } else {
+            *self.links.borrow_mut() = Vec::new();
             Vec::new()
         };
 
@@ -88,7 +91,7 @@ impl Widget for &Editor {
     }
 }
 
-impl Editor {
+impl<S: StyleSheet> Editor<S> {
     pub fn cursor_position(&self, area: Rect) -> Position {
         let inner = if let Some(ref block) = self.block {
             block.inner(area)
@@ -97,8 +100,10 @@ impl Editor {
         };
         let scroll = self.scroll_offset.get();
         let visible_row = self.cursor.row.saturating_sub(scroll);
-        let x = inner.x + self.cursor.col as u16;
-        let y = inner.y + visible_row as u16;
+        let max_x = inner.x + inner.width.saturating_sub(1);
+        let max_y = inner.y + inner.height.saturating_sub(1);
+        let x = (inner.x + self.cursor.col as u16).min(max_x);
+        let y = (inner.y + visible_row as u16).min(max_y);
         Position { x, y }
     }
 }
@@ -129,11 +134,15 @@ fn build_highlighted_line<'a>(text: &'a str, spans: &[(Range<usize>, Style)]) ->
     for (range, style) in &sorted {
         let start = range.start.min(text.len());
         let end = range.end.min(text.len());
-        if start > pos {
-            result.push(Span::raw(&text[pos..start]));
+        if end <= pos {
+            continue;
         }
-        if start < end {
-            result.push(Span::styled(&text[start..end], *style));
+        let effective_start = start.max(pos);
+        if effective_start > pos {
+            result.push(Span::raw(&text[pos..effective_start]));
+        }
+        if effective_start < end {
+            result.push(Span::styled(&text[effective_start..end], *style));
         }
         pos = end;
     }

@@ -273,7 +273,11 @@ fn format_provider_config_status(config: Option<&settings::ProviderConfig>) -> S
     } else {
         "missing"
     };
-    let api_key = if config.has_api_key { "set" } else { "missing" };
+    let api_key = if config.api_key.is_some() {
+        "set"
+    } else {
+        "missing"
+    };
 
     format!("config=base_url:{} api_key:{}", base_url, api_key)
 }

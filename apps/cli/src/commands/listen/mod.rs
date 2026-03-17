@@ -22,7 +22,7 @@ mod ui;
 use self::action::Action;
 use self::app::App;
 use self::effect::Effect;
-use self::exit::{ExitEvent, ExitScreen, spawn_post_session};
+use self::exit::{ExitScreen, spawn_post_session};
 use self::runtime::Runtime;
 
 pub struct Args {
@@ -109,11 +109,11 @@ impl Screen for ListenScreen {
     }
 
     fn title(&self) -> String {
-        format!(
-            "char: {} ({})",
+        hypr_cli_tui::terminal_title(Some(&format!(
+            "{} ({})",
             self.app.status(),
             format_hhmmss(self.app.elapsed())
-        )
+        )))
     }
 
     fn next_frame_delay(&self) -> std::time::Duration {
@@ -203,7 +203,13 @@ pub async fn run(args: Args) -> CliResult<()> {
 
     if !output.force_quit {
         let session_dir = vault_base.join("sessions").join(&session_label);
-        let llm_config = crate::llm::resolve_config(None, None, None, None).ok();
+        let llm_config = crate::llm::resolve_config(None, None, None, None).map_err(|e| {
+            e.to_string()
+                .lines()
+                .next()
+                .unwrap_or("LLM not configured")
+                .to_string()
+        });
 
         let (exit_tx, exit_rx) = mpsc::unbounded_channel();
         spawn_post_session(output.segments, session_dir, llm_config, exit_tx);

@@ -30,7 +30,7 @@ pub(crate) struct App {
     api_history: Vec<Message>,
     max_history: usize,
     transcript: Vec<VisibleMessage>,
-    input: Editor,
+    input: Editor<Theme>,
     pending_assistant: String,
     streaming: bool,
     status: String,
@@ -44,7 +44,7 @@ pub(crate) struct App {
 
 impl App {
     pub(crate) fn new(model: String, session: Option<String>) -> Self {
-        let mut input = Editor::new();
+        let mut input = Editor::with_styles(Theme::DEFAULT);
         input.set_placeholder(
             "Type a message and press Enter...",
             Theme::DEFAULT.placeholder,
@@ -98,8 +98,8 @@ impl App {
 
     pub(crate) fn title(&self) -> String {
         match &self.terminal_title {
-            Some(title) => format!("Char | {title}"),
-            None => "Char | Chat".to_string(),
+            Some(title) => hypr_cli_tui::terminal_title(Some(title)),
+            None => hypr_cli_tui::terminal_title(Some("chat")),
         }
     }
 
@@ -123,11 +123,11 @@ impl App {
         self.started_at.elapsed()
     }
 
-    pub(crate) fn input(&self) -> &Editor {
+    pub(crate) fn input(&self) -> &Editor<Theme> {
         &self.input
     }
 
-    pub(crate) fn input_mut(&mut self) -> &mut Editor {
+    pub(crate) fn input_mut(&mut self) -> &mut Editor<Theme> {
         &mut self.input
     }
 
@@ -210,7 +210,7 @@ impl App {
         }
 
         let content = trimmed.to_string();
-        self.input = Editor::new();
+        self.input = Editor::with_styles(Theme::DEFAULT);
         self.input.set_placeholder(
             "Type a message and press Enter...",
             Theme::DEFAULT.placeholder,

@@ -1,7 +1,9 @@
+use hypr_cli_editor::StyleSheet;
 use ratatui::style::{Color, Modifier, Style};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Theme {
+    pub bg: Color,
     pub accent: Style,
     pub input_bg: Color,
     pub border: Style,
@@ -24,12 +26,20 @@ pub struct Theme {
     pub raw_mic_partial: Style,
     pub raw_speaker_confirmed: Style,
     pub raw_speaker_partial: Style,
+    pub highlight_bg: Color,
+    pub disabled_bg: Color,
 }
 
 impl Theme {
+    pub const TRANSPARENT: Self = Self {
+        bg: Color::Reset,
+        ..Self::DEFAULT
+    };
+
     pub const DEFAULT: Self = Self {
+        bg: Color::Rgb(15, 17, 23),
         accent: Style::new().fg(Color::Yellow),
-        input_bg: Color::Rgb(28, 30, 38),
+        input_bg: Color::Rgb(20, 24, 38),
         border: Style::new().fg(Color::DarkGray),
         border_focused: Style::new().fg(Color::Yellow),
         status_active: Style::new().fg(Color::Green),
@@ -58,5 +68,52 @@ impl Theme {
             .fg(Color::Rgb(190, 200, 255))
             .add_modifier(Modifier::BOLD),
         raw_speaker_partial: Style::new().fg(Color::Rgb(95, 100, 128)),
+        highlight_bg: Color::Rgb(60, 55, 30),
+        disabled_bg: Color::Rgb(22, 22, 30),
     };
+}
+
+impl StyleSheet for Theme {
+    fn heading(&self, level: u8) -> Style {
+        match level {
+            1 => self.accent.add_modifier(Modifier::BOLD),
+            2 => Style::new().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            3 => Style::new().fg(Color::Green).add_modifier(Modifier::BOLD),
+            _ => Style::new().fg(Color::Blue).add_modifier(Modifier::BOLD),
+        }
+    }
+
+    fn strong(&self) -> Style {
+        Style::new().add_modifier(Modifier::BOLD)
+    }
+
+    fn emphasis(&self) -> Style {
+        Style::new().add_modifier(Modifier::ITALIC)
+    }
+
+    fn strikethrough(&self) -> Style {
+        Style::new().add_modifier(Modifier::CROSSED_OUT)
+    }
+
+    fn code_inline(&self) -> Style {
+        self.muted
+    }
+
+    fn code_fence(&self) -> Style {
+        self.muted
+    }
+
+    fn link(&self) -> Style {
+        Style::new()
+            .fg(Color::Blue)
+            .add_modifier(Modifier::UNDERLINED)
+    }
+
+    fn blockquote(&self) -> Style {
+        self.muted.add_modifier(Modifier::ITALIC)
+    }
+
+    fn list_marker(&self) -> Style {
+        self.accent
+    }
 }

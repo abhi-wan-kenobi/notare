@@ -80,60 +80,86 @@ fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, _theme: &Theme) {
     frame.render_stateful_widget(list, list_area, app.list_state_mut());
 }
 
-fn draw_input(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
-    let mut constraints = vec![
-        Constraint::Length(1), // label
-        Constraint::Length(3), // input box
-    ];
-    if app.input_default().is_some() {
-        constraints.push(Constraint::Length(1));
-    }
-    if app.error().is_some() {
-        constraints.push(Constraint::Length(1));
-    }
-    constraints.push(Constraint::Min(0));
+// --- Data layer: describe what to render ---
 
-    let areas = Layout::vertical(constraints).split(area);
-    let mut idx = 0;
+enum Section {
+    Label(String),
+    Input { text: String, cursor_x: u16 },
+    Default(String),
+    Error(String),
+}
 
-    frame.render_widget(
-        Span::styled(format!("  {}:", app.input_label()), Style::new().bold()),
-        areas[idx],
-    );
-    idx += 1;
-
-    let input_area = areas[idx];
-    let input_block = Block::bordered().border_style(Style::new().fg(Color::Cyan));
-    let inner_input = input_block.inner(input_area);
-
+fn input_sections(app: &App) -> Vec<Section> {
     let display_text = if app.input_masked() && !app.input().is_empty() {
         "*".repeat(app.input().chars().count())
     } else {
         app.input().to_string()
     };
 
-    frame.render_widget(Paragraph::new(display_text).block(input_block), input_area);
-
     #[allow(clippy::cast_possible_truncation)]
-    frame.set_cursor_position(Position::new(
-        inner_input.x + app.cursor_pos() as u16,
-        inner_input.y,
-    ));
-    idx += 1;
+    let cursor_x = app.cursor_pos() as u16;
+
+    let mut out = vec![
+        Section::Label(format!("  {}:", app.input_label())),
+        Section::Input {
+            text: display_text,
+            cursor_x,
+        },
+    ];
 
     if let Some(default) = app.input_default() {
-        frame.render_widget(
-            Span::styled(
-                format!("  default: {default}"),
-                Style::new().fg(Color::DarkGray),
-            ),
-            areas[idx],
-        );
-        idx += 1;
+        out.push(Section::Default(format!("  default: {default}")));
     }
 
     if let Some(error) = app.error() {
-        frame.render_widget(Span::styled(format!("  {error}"), theme.error), areas[idx]);
+        out.push(Section::Error(format!("  {error}")));
+    }
+
+    out
+}
+
+// --- View layer: how to render each section ---
+
+fn section_constraint(section: &Section) -> Constraint {
+    match section {
+        Section::Input { .. } => Constraint::Length(3),
+        _ => Constraint::Length(1),
+    }
+}
+
+fn render_section(frame: &mut Frame, section: &Section, area: Rect, theme: &Theme) {
+    match section {
+        Section::Label(text) => {
+            frame.render_widget(Span::styled(text.as_str(), Style::new().bold()), area);
+        }
+        Section::Input { text, cursor_x } => {
+            let input_block = Block::bordered().border_style(Style::new().fg(Color::Cyan));
+            let inner = input_block.inner(area);
+            frame.render_widget(Paragraph::new(text.as_str()).block(input_block), area);
+            frame.set_cursor_position(Position::new(inner.x + cursor_x, inner.y));
+        }
+        Section::Default(text) => {
+            frame.render_widget(
+                Span::styled(text.as_str(), Style::new().fg(Color::DarkGray)),
+                area,
+            );
+        }
+        Section::Error(text) => {
+            frame.render_widget(Span::styled(text.as_str(), theme.error), area);
+        }
+    }
+}
+
+fn draw_input(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
+    let sections = input_sections(app);
+
+    let mut constraints: Vec<Constraint> = sections.iter().map(section_constraint).collect();
+    constraints.push(Constraint::Min(0));
+
+    let areas = Layout::vertical(constraints).split(area);
+
+    for (section, &area) in sections.iter().zip(areas.iter()) {
+        render_section(frame, section, area, theme);
     }
 }
 

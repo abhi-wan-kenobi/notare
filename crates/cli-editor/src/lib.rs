@@ -4,26 +4,30 @@ mod highlight;
 mod history;
 mod input;
 mod render;
+mod style;
 mod vim;
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 
 use ratatui::style::Style;
 use ratatui::widgets::Block;
 
 use buffer::Buffer;
 use cursor::Cursor;
-use highlight::Highlighter;
-use history::{History, Snapshot};
+use highlight::{Highlighter, LinkInfo};
+use history::{ActionKind, History, Snapshot};
 use vim::{VimMode, VimState};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub use crate::style::{DefaultStyleSheet, StyleSheet};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KeyResult {
     Consumed,
     Ignored,
+    FollowLink(String),
 }
 
-pub struct Editor {
+pub struct Editor<S: StyleSheet = DefaultStyleSheet> {
     buffer: Buffer,
     cursor: Cursor,
     history: History,
@@ -37,11 +41,27 @@ pub struct Editor {
     vim_enabled: bool,
     vim_state: VimState,
     highlight_enabled: bool,
-    highlighter: Highlighter,
+    highlighter: Highlighter<S>,
+    readonly: bool,
+    links: RefCell<Vec<Vec<LinkInfo>>>,
 }
 
-impl Editor {
+impl Editor<DefaultStyleSheet> {
     pub fn new() -> Self {
+        Self::with_styles(DefaultStyleSheet)
+    }
+
+    pub fn single_line() -> Self {
+        Self::single_line_with_styles(DefaultStyleSheet)
+    }
+
+    pub fn from_lines(lines: Vec<String>) -> Self {
+        Self::from_lines_with_styles(lines, DefaultStyleSheet)
+    }
+}
+
+impl<S: StyleSheet> Editor<S> {
+    pub fn with_styles(styles: S) -> Self {
         Self {
             buffer: Buffer::new(),
             cursor: Cursor::new(),
@@ -56,25 +76,30 @@ impl Editor {
             vim_enabled: false,
             vim_state: VimState::new(),
             highlight_enabled: true,
-            highlighter: Highlighter::new(),
+            highlighter: Highlighter::new(styles),
+            readonly: false,
+            links: RefCell::new(Vec::new()),
         }
     }
 
-    pub fn single_line() -> Self {
-        Self {
-            single_line: true,
-            highlight_enabled: false,
-            ..Self::new()
-        }
+    pub fn single_line_with_styles(styles: S) -> Self {
+        let mut editor = Self::with_styles(styles);
+        editor.single_line = true;
+        editor.highlight_enabled = false;
+        editor
     }
 
-    pub fn from_lines(lines: Vec<String>) -> Self {
-        let mut editor = Self::new();
+    pub fn from_lines_with_styles(lines: Vec<String>, styles: S) -> Self {
+        let mut editor = Self::with_styles(styles);
         editor.buffer = Buffer::from_lines(lines);
         let last = editor.buffer.line_count().saturating_sub(1);
         editor.cursor.row = last;
         editor.cursor.col = editor.buffer.line_char_count(last);
         editor
+    }
+
+    pub fn set_styles(&mut self, styles: S) {
+        self.highlighter.set_styles(styles);
     }
 
     // Input
@@ -124,6 +149,7 @@ impl Editor {
     // Undo/redo
 
     pub fn undo(&mut self) -> bool {
+        self.history.break_coalescing();
         let current = Snapshot {
             lines: self.buffer.snapshot(),
             row: self.cursor.row,
@@ -142,6 +168,7 @@ impl Editor {
     }
 
     pub fn redo(&mut self) -> bool {
+        self.history.break_coalescing();
         let current = Snapshot {
             lines: self.buffer.snapshot(),
             row: self.cursor.row,
@@ -176,11 +203,19 @@ impl Editor {
 
     // Vim
 
+    pub fn vim_enabled(&self) -> bool {
+        self.vim_enabled
+    }
+
     pub fn set_vim_mode(&mut self, enabled: bool) {
         self.vim_enabled = enabled;
         if enabled {
             self.vim_state = VimState::new();
         }
+    }
+
+    pub fn toggle_vim_mode(&mut self) {
+        self.set_vim_mode(!self.vim_enabled);
     }
 
     pub fn vim_mode_label(&self) -> Option<&str> {
@@ -199,6 +234,38 @@ impl Editor {
         self.highlight_enabled = enabled;
     }
 
+    // Readonly
+
+    pub fn set_readonly(&mut self, readonly: bool) {
+        self.readonly = readonly;
+    }
+
+    pub fn readonly(&self) -> bool {
+        self.readonly
+    }
+
+    pub fn link_at_cursor(&self) -> Option<String> {
+        let row = self.cursor.row;
+        let links = self.links.borrow();
+        let row_links = links.get(row)?;
+        if row_links.is_empty() {
+            return None;
+        }
+        let byte_off = self.cursor_byte_offset();
+        row_links
+            .iter()
+            .find(|l| l.range.contains(&byte_off))
+            .map(|l| l.url.clone())
+    }
+
+    fn cursor_byte_offset(&self) -> usize {
+        let line = self.buffer.line(self.cursor.row);
+        line.char_indices()
+            .nth(self.cursor.col)
+            .map(|(i, _)| i)
+            .unwrap_or(line.len())
+    }
+
     // Internal
 
     pub(crate) fn save_for_undo(&mut self) {
@@ -207,6 +274,17 @@ impl Editor {
             row: self.cursor.row,
             col: self.cursor.col,
         });
+    }
+
+    pub(crate) fn save_for_undo_coalesced(&mut self, kind: ActionKind) {
+        self.history.push_coalesced(
+            Snapshot {
+                lines: self.buffer.snapshot(),
+                row: self.cursor.row,
+                col: self.cursor.col,
+            },
+            kind,
+        );
     }
 
     pub(crate) fn ensure_visible(&self) {
@@ -224,7 +302,7 @@ impl Editor {
     }
 }
 
-impl Default for Editor {
+impl Default for Editor<DefaultStyleSheet> {
     fn default() -> Self {
         Self::new()
     }

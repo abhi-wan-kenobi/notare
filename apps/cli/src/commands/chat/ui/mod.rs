@@ -6,10 +6,21 @@ mod transcript;
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout};
+use ratatui::style::Style;
+use ratatui::widgets::Block;
+
+use crate::theme::Theme;
 
 use super::app::App;
 
 pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
+    let theme = Theme::DEFAULT;
+
+    frame.render_widget(
+        Block::default().style(Style::default().bg(theme.bg)),
+        frame.area(),
+    );
+
     let [main_area, status_area] =
         Layout::vertical([Constraint::Min(3), Constraint::Length(1)]).areas(frame.area());
 

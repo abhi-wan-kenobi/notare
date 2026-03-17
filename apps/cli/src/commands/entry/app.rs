@@ -4,6 +4,9 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use hypr_cli_editor::{Editor, KeyResult};
 use ratatui_image::{picker::Picker, protocol::StatefulProtocol};
 
+use crate::commands::connect;
+use crate::commands::sessions;
+
 use super::action::Action;
 use super::effect::Effect;
 
@@ -23,48 +26,108 @@ const TIPS_READY: &[&str] = &[
 ];
 
 #[derive(Clone, Copy)]
-pub struct SlashCommand {
-    pub name: &'static str,
-    pub description: &'static str,
+pub(crate) struct SlashCommand {
+    pub(crate) name: &'static str,
+    pub(crate) description: &'static str,
+    pub(crate) group: &'static str,
 }
 
-pub const COMMANDS: &[SlashCommand] = &[
-    SlashCommand {
-        name: "/connect",
-        description: "Connect provider",
-    },
+pub(crate) struct CommandEntry {
+    pub(crate) name: &'static str,
+    pub(crate) description: &'static str,
+    pub(crate) group: &'static str,
+    pub(crate) disabled_reason: Option<&'static str>,
+}
+
+pub(crate) const COMMANDS: &[SlashCommand] = &[
     SlashCommand {
         name: "/listen",
         description: "Start live transcription",
+        group: "Session",
+    },
+    SlashCommand {
+        name: "/chat",
+        description: "Start a chat",
+        group: "Session",
+    },
+    SlashCommand {
+        name: "/chat resume",
+        description: "Resume an existing chat",
+        group: "Session",
+    },
+    SlashCommand {
+        name: "/sessions",
+        description: "Browse past sessions",
+        group: "Session",
+    },
+    SlashCommand {
+        name: "/connect",
+        description: "Connect provider",
+        group: "Setup",
     },
     SlashCommand {
         name: "/auth",
         description: "Open auth in browser",
+        group: "Setup",
+    },
+    SlashCommand {
+        name: "/bug",
+        description: "Report a bug on GitHub",
+        group: "App",
+    },
+    SlashCommand {
+        name: "/hello",
+        description: "Open char.com",
+        group: "App",
     },
     SlashCommand {
         name: "/desktop",
         description: "Open desktop app or download page",
+        group: "App",
+    },
+    SlashCommand {
+        name: "/model paths",
+        description: "Show model storage paths",
+        group: "Model",
+    },
+    SlashCommand {
+        name: "/model current",
+        description: "Show current model config",
+        group: "Model",
+    },
+    SlashCommand {
+        name: "/model list",
+        description: "List available models",
+        group: "Model",
     },
     SlashCommand {
         name: "/exit",
         description: "Exit",
+        group: "App",
     },
 ];
 
-pub struct App {
+pub(crate) enum Overlay {
+    None,
+    Connect(connect::app::App),
+    Sessions(sessions::app::App),
+}
+
+pub(crate) struct App {
     input: Editor,
     filtered_commands: Vec<usize>,
     selected_index: usize,
     popup_visible: bool,
-    pub status_message: Option<String>,
-    pub tip: &'static str,
+    pub(crate) status_message: Option<String>,
+    pub(crate) tip: &'static str,
     logo_protocol: Option<StatefulProtocol>,
-    pub stt_provider: Option<String>,
-    pub llm_provider: Option<String>,
+    pub(crate) stt_provider: Option<String>,
+    pub(crate) llm_provider: Option<String>,
+    overlay: Overlay,
 }
 
 impl App {
-    pub fn new(
+    pub(crate) fn new(
         status_message: Option<String>,
         stt_provider: Option<String>,
         llm_provider: Option<String>,
@@ -79,12 +142,13 @@ impl App {
             logo_protocol: load_logo_protocol(),
             stt_provider,
             llm_provider,
+            overlay: Overlay::None,
         };
         app.recompute_popup();
         app
     }
 
-    pub fn dispatch(&mut self, action: Action) -> Vec<Effect> {
+    pub(crate) fn dispatch(&mut self, action: Action) -> Vec<Effect> {
         match action {
             Action::Key(key) => self.handle_key(key),
             Action::Paste(pasted) => self.handle_paste(pasted),
@@ -95,63 +159,131 @@ impl App {
                 self.recompute_popup();
                 Vec::new()
             }
+            Action::SessionsLoaded(sessions) => {
+                if let Overlay::Sessions(ref mut app) = self.overlay {
+                    let effects = app.dispatch(sessions::action::Action::Loaded(sessions));
+                    self.translate_sessions_effects(effects)
+                } else {
+                    Vec::new()
+                }
+            }
+            Action::SessionsLoadError(msg) => {
+                if let Overlay::Sessions(ref mut app) = self.overlay {
+                    let effects = app.dispatch(sessions::action::Action::LoadError(msg));
+                    self.translate_sessions_effects(effects)
+                } else {
+                    Vec::new()
+                }
+            }
+            Action::ConnectSaved {
+                connection_type,
+                provider_id,
+            } => {
+                match connection_type {
+                    crate::cli::ConnectionType::Stt => {
+                        self.stt_provider = Some(provider_id);
+                    }
+                    crate::cli::ConnectionType::Llm => {
+                        self.llm_provider = Some(provider_id);
+                    }
+                }
+                self.tip = pick_tip(&self.stt_provider, &self.llm_provider);
+                self.status_message = Some("Provider configured".into());
+                Vec::new()
+            }
         }
     }
 
-    pub fn logo_protocol(&mut self) -> Option<&mut StatefulProtocol> {
+    pub(crate) fn logo_protocol(&mut self) -> Option<&mut StatefulProtocol> {
         self.logo_protocol.as_mut()
     }
 
-    pub fn cursor_col(&self) -> usize {
+    pub(crate) fn cursor_col(&self) -> usize {
         self.input.cursor().1
     }
 
-    pub fn input_text(&self) -> String {
-        self.input
-            .lines()
-            .first()
-            .cloned()
-            .unwrap_or_else(String::new)
+    pub(crate) fn input_text(&self) -> String {
+        self.input.lines().first().cloned().unwrap_or_default()
     }
 
-    pub fn query(&self) -> String {
+    pub(crate) fn query(&self) -> String {
         self.input_text()
             .trim()
             .trim_start_matches('/')
             .to_ascii_lowercase()
     }
 
-    pub fn popup_visible(&self) -> bool {
+    pub(crate) fn overlay_mut(&mut self) -> &mut Overlay {
+        &mut self.overlay
+    }
+
+    pub(crate) fn has_overlay(&self) -> bool {
+        !matches!(self.overlay, Overlay::None)
+    }
+
+    pub(crate) fn popup_visible(&self) -> bool {
         self.popup_visible
     }
 
-    pub fn popup_height(&self) -> u16 {
-        let rows = self.filtered_commands.len().clamp(1, 6) as u16;
-        rows + 2
+    pub(crate) fn visible_commands(&self) -> Vec<CommandEntry> {
+        self.filtered_commands
+            .iter()
+            .filter_map(|&i| {
+                let cmd = COMMANDS.get(i)?;
+                Some(CommandEntry {
+                    name: cmd.name,
+                    description: cmd.description,
+                    group: cmd.group,
+                    disabled_reason: self.disabled_reason(cmd),
+                })
+            })
+            .collect()
     }
 
-    pub fn filtered_commands(&self) -> &[usize] {
-        &self.filtered_commands
+    fn disabled_reason(&self, cmd: &SlashCommand) -> Option<&'static str> {
+        match cmd.name {
+            "/listen" if self.stt_provider.is_none() => Some("no STT provider"),
+            "/chat" | "/chat resume" if self.llm_provider.is_none() => Some("no LLM provider"),
+            _ => None,
+        }
     }
 
-    pub fn selected_index(&self) -> usize {
+    fn is_command_disabled(&self, normalized_name: &str) -> bool {
+        let name = format!("/{}", normalized_name);
+        COMMANDS
+            .iter()
+            .find(|c| c.name == name)
+            .is_some_and(|cmd| self.disabled_reason(cmd).is_some())
+    }
+
+    pub(crate) fn selected_index(&self) -> usize {
         self.selected_index
     }
 
-    pub fn selected_command(&self) -> Option<SlashCommand> {
+    pub(crate) fn selected_command(&self) -> Option<SlashCommand> {
         let selected = *self.filtered_commands.get(self.selected_index)?;
         COMMANDS.get(selected).copied()
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        match self.overlay {
+            Overlay::Connect(ref mut app) => {
+                let effects = app.dispatch(connect::action::Action::Key(key));
+                return self.translate_connect_effects(effects);
+            }
+            Overlay::Sessions(ref mut app) => {
+                let effects = app.dispatch(sessions::action::Action::Key(key));
+                return self.translate_sessions_effects(effects);
+            }
+            Overlay::None => {}
+        }
+
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
             return vec![Effect::Exit];
         }
 
         if key.code == KeyCode::Esc {
-            self.input = Editor::single_line();
-            self.status_message = None;
-            self.recompute_popup();
+            self.reset_input();
             return Vec::new();
         }
 
@@ -197,6 +329,15 @@ impl App {
     }
 
     fn handle_paste(&mut self, pasted: String) -> Vec<Effect> {
+        match self.overlay {
+            Overlay::Connect(ref mut app) => {
+                let effects = app.dispatch(connect::action::Action::Paste(pasted));
+                return self.translate_connect_effects(effects);
+            }
+            Overlay::Sessions(_) => return Vec::new(),
+            Overlay::None => {}
+        }
+
         let pasted = pasted.replace("\r\n", "\n").replace('\r', "\n");
         if !pasted.is_empty() {
             self.input.insert_str(&pasted);
@@ -209,28 +350,130 @@ impl App {
     fn submit_command(&mut self, command: &str) -> Vec<Effect> {
         let normalized = command.trim().trim_start_matches('/').to_ascii_lowercase();
 
-        match normalized.as_str() {
-            "connect" => vec![Effect::LaunchConnect],
-            "listen" => vec![Effect::LaunchListen],
+        if self.is_command_disabled(&normalized) {
+            return Vec::new();
+        }
+
+        let (head, rest) = match normalized.split_once(' ') {
+            Some((h, r)) => (h, r.trim()),
+            None => (normalized.as_str(), ""),
+        };
+
+        match head {
+            "connect" => {
+                let (connect_app, initial_effects) = connect::app::App::new(None, None, None, None);
+                self.reset_input();
+                self.overlay = Overlay::Connect(connect_app);
+                self.translate_connect_effects(initial_effects)
+            }
+            "listen" => vec![Effect::Launch(super::EntryCommand::Listen)],
+            "chat" if rest == "resume" => {
+                self.reset_input();
+                self.overlay = Overlay::Sessions(sessions::app::App::new());
+                vec![Effect::LoadSessions]
+            }
+            "chat" => vec![Effect::Launch(super::EntryCommand::Chat)],
+            "sessions" => {
+                self.reset_input();
+                self.overlay = Overlay::Sessions(sessions::app::App::new());
+                vec![Effect::LoadSessions]
+            }
             "exit" | "quit" => vec![Effect::Exit],
             "auth" => {
-                self.input = Editor::single_line();
-                self.status_message = None;
-                self.recompute_popup();
+                self.reset_input();
                 vec![Effect::OpenAuth]
             }
+            "bug" => {
+                self.reset_input();
+                vec![Effect::OpenBug]
+            }
+            "hello" => {
+                self.reset_input();
+                vec![Effect::OpenHello]
+            }
             "desktop" => {
-                self.input = Editor::single_line();
-                self.status_message = None;
-                self.recompute_popup();
+                self.reset_input();
                 vec![Effect::OpenDesktop]
             }
-            _ if normalized.is_empty() => Vec::new(),
+            "model" => self.submit_model_command(rest),
+            _ if head.is_empty() => Vec::new(),
             _ => {
                 self.status_message = Some(format!("Unknown command: {}", command.trim()));
                 Vec::new()
             }
         }
+    }
+
+    fn submit_model_command(&mut self, rest: &str) -> Vec<Effect> {
+        use crate::cli::{ModelCommands, OutputFormat};
+
+        let subcmd = rest.split_whitespace().next().unwrap_or("");
+        match subcmd {
+            "paths" => vec![Effect::RunModel(ModelCommands::Paths)],
+            "current" => vec![Effect::RunModel(ModelCommands::Current)],
+            "list" => vec![Effect::RunModel(ModelCommands::List {
+                kind: None,
+                supported: false,
+                format: OutputFormat::Pretty,
+            })],
+            _ => {
+                self.reset_input();
+                self.status_message = Some("Usage: /model [paths | current | list]".to_string());
+                Vec::new()
+            }
+        }
+    }
+
+    fn translate_connect_effects(&mut self, effects: Vec<connect::effect::Effect>) -> Vec<Effect> {
+        let mut result = Vec::new();
+        for effect in effects {
+            match effect {
+                connect::effect::Effect::Save {
+                    connection_type,
+                    provider,
+                    base_url,
+                    api_key,
+                } => {
+                    self.reset_input();
+                    result.push(Effect::SaveConnect {
+                        connection_type,
+                        provider,
+                        base_url,
+                        api_key,
+                    });
+                }
+                connect::effect::Effect::Exit => {
+                    self.reset_input();
+                }
+            }
+        }
+        result
+    }
+
+    fn translate_sessions_effects(
+        &mut self,
+        effects: Vec<sessions::effect::Effect>,
+    ) -> Vec<Effect> {
+        let mut result = Vec::new();
+        for effect in effects {
+            match effect {
+                sessions::effect::Effect::Select(id) => {
+                    self.reset_input();
+                    result.push(Effect::Launch(super::EntryCommand::View { session_id: id }));
+                }
+                sessions::effect::Effect::Exit => {
+                    self.reset_input();
+                }
+            }
+        }
+        result
+    }
+
+    fn reset_input(&mut self) {
+        self.overlay = Overlay::None;
+        self.input = Editor::single_line();
+        self.status_message = None;
+        self.recompute_popup();
     }
 
     fn selected_command_name(&self) -> Option<&'static str> {
@@ -303,6 +546,10 @@ fn load_logo_protocol() -> Option<StatefulProtocol> {
 
 fn command_match_score(query: &str, command: &str) -> Option<i32> {
     let query = query.trim().to_ascii_lowercase();
+    if query.is_empty() {
+        return Some(1);
+    }
+
     let command = command.trim_start_matches('/').to_ascii_lowercase();
 
     let direct_score = single_command_match_score(&query, &command);
@@ -311,18 +558,12 @@ fn command_match_score(query: &str, command: &str) -> Option<i32> {
         .filter_map(|alias| single_command_match_score(&query, alias).map(|score| score - 25))
         .max();
 
-    let best_score = match (direct_score, alias_score) {
+    match (direct_score, alias_score) {
         (Some(direct), Some(alias)) => Some(direct.max(alias)),
         (Some(direct), None) => Some(direct),
         (None, Some(alias)) => Some(alias),
         (None, None) => None,
-    };
-
-    if query.is_empty() {
-        return Some(1);
     }
-
-    best_score
 }
 
 fn single_command_match_score(query: &str, command: &str) -> Option<i32> {

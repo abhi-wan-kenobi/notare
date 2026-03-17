@@ -103,6 +103,12 @@ impl Cursor {
         self.col = pos;
     }
 
+    pub fn move_to_first_non_blank(&mut self, lines: &[String]) {
+        if let Some(line) = lines.get(self.row) {
+            self.col = line.chars().take_while(|c| c.is_whitespace()).count();
+        }
+    }
+
     pub fn move_word_back(&mut self, lines: &[String]) {
         if self.col == 0 {
             if self.row > 0 {

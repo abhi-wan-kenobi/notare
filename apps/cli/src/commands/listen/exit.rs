@@ -238,7 +238,7 @@ fn segments_to_markdown(segments: &[hypr_transcript::Segment]) -> String {
 pub fn spawn_post_session(
     segments: Vec<hypr_transcript::Segment>,
     session_dir: PathBuf,
-    llm_config: Option<ResolvedLlmConfig>,
+    llm_config: Result<ResolvedLlmConfig, String>,
     tx: mpsc::UnboundedSender<ExitEvent>,
 ) {
     tokio::spawn(async move {
@@ -261,12 +261,15 @@ pub fn spawn_post_session(
 
         // Task 1: generate summary
         let _ = tx.send(ExitEvent::TaskStarted(1));
-        let Some(config) = llm_config else {
-            let _ = tx.send(ExitEvent::TaskFailed(1, "LLM not configured".into()));
-            let _ = tx.send(ExitEvent::AllDone);
-            tokio::time::sleep(AUTO_EXIT_DELAY).await;
-            let _ = tx.send(ExitEvent::AutoExit);
-            return;
+        let config = match llm_config {
+            Ok(config) => config,
+            Err(msg) => {
+                let _ = tx.send(ExitEvent::TaskFailed(1, msg));
+                let _ = tx.send(ExitEvent::AllDone);
+                tokio::time::sleep(AUTO_EXIT_DELAY).await;
+                let _ = tx.send(ExitEvent::AutoExit);
+                return;
+            }
         };
 
         let backend = match crate::agent::Backend::new(config, None) {

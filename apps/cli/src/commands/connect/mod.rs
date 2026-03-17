@@ -1,8 +1,8 @@
-mod action;
-mod app;
-mod effect;
+pub(crate) mod action;
+pub(crate) mod app;
+pub(crate) mod effect;
 mod providers;
-mod ui;
+pub(crate) mod ui;
 
 use std::convert::Infallible;
 use std::time::Duration;
@@ -91,7 +91,7 @@ impl Screen for ConnectScreen {
     }
 
     fn title(&self) -> String {
-        "char connect".to_string()
+        hypr_cli_tui::terminal_title(Some("connect"))
     }
 
     fn next_frame_delay(&self) -> Duration {
@@ -192,7 +192,7 @@ pub async fn run(args: Args) -> CliResult<bool> {
     }
 }
 
-fn save_config(
+pub(crate) fn save_config(
     connection_type: ConnectionType,
     provider: ConnectProvider,
     base_url: Option<String>,

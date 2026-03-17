@@ -134,6 +134,18 @@ impl Buffer {
         self.lines.insert(idx, String::new());
     }
 
+    pub fn insert_empty_line_before(&mut self, row: usize) {
+        let idx = row.min(self.lines.len());
+        self.lines.insert(idx, String::new());
+    }
+
+    pub fn delete_to_end_of_line(&mut self, row: usize, col: usize) {
+        if let Some(line) = self.lines.get_mut(row) {
+            let byte_pos = char_to_byte(line, col);
+            line.truncate(byte_pos);
+        }
+    }
+
     pub fn clear(&mut self) {
         self.lines.clear();
         self.lines.push(String::new());

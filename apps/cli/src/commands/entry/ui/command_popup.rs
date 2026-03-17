@@ -1,17 +1,109 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, StatefulWidget},
+    widgets::{List, ListItem, Widget},
 };
 
 use crate::theme::Theme;
 
-use super::super::app::COMMANDS;
+use super::super::app::CommandEntry;
+
+const GROUP_ORDER: &[&str] = &["Session", "Setup", "Model", "App"];
+
+// --- Data layer: describe what to render ---
+
+enum Row<'a> {
+    Spacer,
+    Header(&'a str),
+    Command {
+        entry: &'a CommandEntry,
+        selected: bool,
+    },
+}
+
+fn layout<'a>(commands: &'a [CommandEntry], selected_index: usize) -> Vec<Row<'a>> {
+    let mut rows = Vec::new();
+    let mut cmd_index = 0usize;
+
+    for &group in GROUP_ORDER {
+        let group_cmds: Vec<_> = commands.iter().filter(|c| c.group == group).collect();
+        if group_cmds.is_empty() {
+            continue;
+        }
+
+        if !rows.is_empty() {
+            rows.push(Row::Spacer);
+        }
+        rows.push(Row::Header(group));
+
+        for entry in group_cmds {
+            rows.push(Row::Command {
+                entry,
+                selected: cmd_index == selected_index,
+            });
+            cmd_index += 1;
+        }
+    }
+
+    rows
+}
+
+pub fn popup_row_count(commands: &[CommandEntry]) -> u16 {
+    layout(commands, 0).len().min(u16::MAX as usize) as u16
+}
+
+// --- View layer: how to render each row ---
+
+fn render_row<'a>(row: &Row<'_>, query: &str, theme: &Theme) -> ListItem<'a> {
+    match row {
+        Row::Spacer => ListItem::new(Line::raw("")),
+        Row::Header(label) => ListItem::new(Line::from(vec![Span::styled(
+            format!(" {}", label),
+            theme.muted,
+        )])),
+        Row::Command { entry, .. } => render_command(entry, query, theme),
+    }
+}
+
+fn render_command<'a>(entry: &CommandEntry, query: &str, theme: &Theme) -> ListItem<'a> {
+    let disabled = entry.disabled_reason.is_some();
+    let mut spans = vec![Span::raw("  ")];
+
+    if disabled {
+        spans.push(Span::styled(entry.name, theme.muted));
+    } else {
+        spans.extend(command_name_spans(entry.name, query, theme));
+    }
+
+    let name_width = entry.name.chars().count();
+    if name_width < 20 {
+        spans.push(Span::raw(" ".repeat(20 - name_width)));
+    }
+
+    spans.push(Span::styled(entry.description, theme.muted));
+
+    if let Some(reason) = entry.disabled_reason {
+        spans.push(Span::raw("  "));
+        spans.push(Span::styled(
+            reason,
+            theme.muted.add_modifier(Modifier::ITALIC),
+        ));
+    }
+
+    let item = ListItem::new(Line::from(spans));
+    if disabled {
+        item.style(Style::new().bg(theme.disabled_bg))
+    } else {
+        item
+    }
+}
+
+// --- Widget: wires layout + view together ---
 
 pub struct CommandPopup<'a> {
-    filtered_commands: &'a [usize],
+    commands: &'a [CommandEntry],
     selected_index: usize,
     query: &'a str,
     theme: &'a Theme,
@@ -19,13 +111,13 @@ pub struct CommandPopup<'a> {
 
 impl<'a> CommandPopup<'a> {
     pub fn new(
-        filtered_commands: &'a [usize],
+        commands: &'a [CommandEntry],
         selected_index: usize,
         query: &'a str,
         theme: &'a Theme,
     ) -> Self {
         Self {
-            filtered_commands,
+            commands,
             selected_index,
             query,
             theme,
@@ -33,63 +125,48 @@ impl<'a> CommandPopup<'a> {
     }
 }
 
-impl StatefulWidget for CommandPopup<'_> {
-    type State = ();
-
-    fn render(self, area: Rect, buf: &mut Buffer, _state: &mut Self::State) {
-        if area.height < 3 {
+impl Widget for CommandPopup<'_> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        if area.height < 1 || area.width < 4 {
             return;
         }
 
-        let items = self
-            .filtered_commands
+        let rows = layout(self.commands, self.selected_index);
+
+        let selected_row = rows
             .iter()
-            .map(|index| {
-                let command = COMMANDS[*index];
-                let mut spans = command_name_spans(command.name, self.query);
-                let command_width = command.name.chars().count();
-                if command_width < 10 {
-                    spans.push(Span::raw(" ".repeat(10 - command_width)));
-                }
-                spans.push(Span::raw("  "));
-                spans.push(Span::styled(command.description, self.theme.muted));
-                ListItem::new(Line::from(spans))
-            })
-            .collect::<Vec<_>>();
+            .position(|r| matches!(r, Row::Command { selected: true, .. }));
+        let items: Vec<ListItem> = rows
+            .iter()
+            .map(|r| render_row(r, self.query, self.theme))
+            .collect();
 
         let list = List::new(items)
-            .block(
-                Block::new()
-                    .borders(Borders::ALL)
-                    .border_style(self.theme.border)
-                    .title(" Commands "),
-            )
-            .highlight_style(Style::new().bg(Color::Rgb(55, 60, 70)))
-            .highlight_symbol("› ");
+            .style(Style::new().bg(self.theme.input_bg))
+            .highlight_style(Style::new().bg(self.theme.highlight_bg));
 
-        let mut state =
-            ratatui::widgets::ListState::default().with_selected(Some(self.selected_index));
-        StatefulWidget::render(list, area, buf, &mut state);
+        let mut state = ratatui::widgets::ListState::default().with_selected(selected_row);
+        ratatui::widgets::StatefulWidget::render(list, area, buf, &mut state);
     }
 }
 
-fn command_name_spans(command: &str, query: &str) -> Vec<Span<'static>> {
-    let command_body = command.trim_start_matches('/');
-    let highlight_indices = highlight_indices(query, command);
+// --- Helpers ---
 
-    let mut spans = Vec::with_capacity(command_body.chars().count() + 1);
-    spans.push(Span::styled(
-        "/",
-        Style::new().fg(ratatui::style::Color::Yellow),
-    ));
+fn command_name_spans<'a>(name: &str, query: &str, theme: &Theme) -> Vec<Span<'a>> {
+    let body = name.trim_start_matches('/');
+    let matched = highlight_indices(query, name);
 
-    for (i, ch) in command_body.chars().enumerate() {
-        let style = if highlight_indices.contains(&i) {
-            Style::new()
-                .fg(ratatui::style::Color::Yellow)
-                .add_modifier(Modifier::BOLD)
+    let bold = Style::new().add_modifier(Modifier::BOLD);
+    let highlight = theme.accent.add_modifier(Modifier::BOLD);
+
+    let mut spans = Vec::with_capacity(body.len() + 1);
+    spans.push(Span::styled("/", bold));
+
+    for (i, ch) in body.chars().enumerate() {
+        let style = if matched.contains(&i) {
+            highlight
         } else {
-            Style::new().add_modifier(Modifier::BOLD)
+            bold
         };
         spans.push(Span::styled(ch.to_string(), style));
     }
