@@ -267,6 +267,7 @@ export const generalSchema = z.object({
   ai_language: z.string().default("en"),
   spoken_languages: jsonObject(z.array(z.string()).default(["en"])),
   ignored_platforms: jsonObject(z.array(z.string()).default([])),
+  included_platforms: jsonObject(z.array(z.string()).default([])),
   ignored_events: jsonObject(z.array(ignoredEventEntrySchema).default([])),
   ignored_recurring_series: jsonObject(
     z.array(ignoredRecurringSeriesEntrySchema).default([]),

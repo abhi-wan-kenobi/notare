@@ -94,6 +94,7 @@ describe("settingsPersister roundtrip", () => {
         detect: false,
         respect_dnd: true,
         ignored_platforms: ["zoom", "slack"],
+        included_platforms: ["code"],
       },
       general: {
         autostart: true,
@@ -154,6 +155,7 @@ describe("settingsPersister roundtrip", () => {
       notification_detect: false,
       respect_dnd: true,
       ignored_platforms: '["zoom"]',
+      included_platforms: '["code"]',
       autostart: true,
       save_recordings: false,
       telemetry_consent: false,
@@ -289,6 +291,7 @@ describe("settingsPersister roundtrip", () => {
       },
       notification: {
         ignored_platforms: '["zoom"]',
+        included_platforms: '["code"]',
       },
     };
 
@@ -305,6 +308,7 @@ describe("settingsPersister roundtrip", () => {
     });
     expect(result.notification).toEqual({
       ignored_platforms: ["zoom"],
+      included_platforms: ["code"],
     });
   });
 
@@ -315,6 +319,7 @@ describe("settingsPersister roundtrip", () => {
       },
       notification: {
         ignored_platforms: "zoom,slack",
+        included_platforms: "code,terminal",
       },
     };
 
@@ -331,6 +336,7 @@ describe("settingsPersister roundtrip", () => {
     });
     expect(result.notification).toEqual({
       ignored_platforms: ["zoom", "slack"],
+      included_platforms: ["code", "terminal"],
     });
   });
 

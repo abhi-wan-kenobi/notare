@@ -71,6 +71,11 @@ export const SETTINGS_MAPPING = {
       path: ["notification", "ignored_platforms"],
       default: "[]" as string,
     },
+    included_platforms: {
+      type: "string",
+      path: ["notification", "included_platforms"],
+      default: "[]" as string,
+    },
     mic_active_threshold: {
       type: "number",
       path: ["notification", "mic_active_threshold"],
@@ -277,6 +282,12 @@ const SETTINGS_LISTENERS: SettingsListeners = {
     try {
       const parsed = JSON.parse(newValue);
       detectCommands.setIgnoredBundleIds(parsed).catch(console.error);
+    } catch {}
+  },
+  included_platforms: (_store, newValue) => {
+    try {
+      const parsed = JSON.parse(newValue);
+      detectCommands.setIncludedBundleIds(parsed).catch(console.error);
     } catch {}
   },
   mic_active_threshold: (_store, newValue) => {

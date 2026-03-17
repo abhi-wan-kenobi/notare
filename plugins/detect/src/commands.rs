@@ -36,6 +36,16 @@ pub(crate) async fn set_ignored_bundle_ids<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
+pub(crate) async fn set_included_bundle_ids<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    bundle_ids: Vec<String>,
+) -> Result<(), String> {
+    app.detect().set_included_bundle_ids(bundle_ids);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub(crate) async fn set_respect_do_not_disturb<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     enabled: bool,

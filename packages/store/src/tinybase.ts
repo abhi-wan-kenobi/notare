@@ -172,6 +172,7 @@ export const valueSchemaForTinybase = {
   ai_language: { type: "string" },
   spoken_languages: { type: "string" },
   ignored_platforms: { type: "string" },
+  included_platforms: { type: "string" },
   ignored_events: { type: "string" },
   ignored_recurring_series: { type: "string" },
   current_llm_provider: { type: "string" },
