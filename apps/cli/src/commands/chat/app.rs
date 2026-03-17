@@ -1,9 +1,8 @@
 use std::time::Instant;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use hypr_cli_tui::textarea_input_from_key_event;
+use hypr_cli_editor::Editor;
 use rig::message::Message;
-use tui_textarea::TextArea;
 
 use crate::theme::Theme;
 use crate::widgets::ScrollState;
@@ -31,7 +30,7 @@ pub(crate) struct App {
     api_history: Vec<Message>,
     max_history: usize,
     transcript: Vec<VisibleMessage>,
-    input: TextArea<'static>,
+    input: Editor,
     pending_assistant: String,
     streaming: bool,
     status: String,
@@ -45,9 +44,11 @@ pub(crate) struct App {
 
 impl App {
     pub(crate) fn new(model: String, session: Option<String>) -> Self {
-        let mut input = TextArea::default();
-        input.set_placeholder_text("Type a message and press Enter...");
-        input.set_placeholder_style(Theme::DEFAULT.placeholder);
+        let mut input = Editor::new();
+        input.set_placeholder(
+            "Type a message and press Enter...",
+            Theme::DEFAULT.placeholder,
+        );
 
         let status = if session.is_some() {
             "Ready (session loaded)".to_string()
@@ -122,11 +123,11 @@ impl App {
         self.started_at.elapsed()
     }
 
-    pub(crate) fn input(&self) -> &TextArea<'static> {
+    pub(crate) fn input(&self) -> &Editor {
         &self.input
     }
 
-    pub(crate) fn input_mut(&mut self) -> &mut TextArea<'static> {
+    pub(crate) fn input_mut(&mut self) -> &mut Editor {
         &mut self.input
     }
 
@@ -181,9 +182,7 @@ impl App {
         match key.code {
             KeyCode::Enter => self.submit_input(),
             _ => {
-                if let Some(input) = textarea_input_from_key_event(key, false) {
-                    self.input.input(input);
-                }
+                self.input.handle_key(key);
                 Vec::new()
             }
         }
@@ -204,17 +203,18 @@ impl App {
     }
 
     fn submit_input(&mut self) -> Vec<Effect> {
-        let input = self.input.lines().join("\n");
+        let input = self.input.text();
         let trimmed = input.trim();
         if trimmed.is_empty() {
             return Vec::new();
         }
 
         let content = trimmed.to_string();
-        self.input = TextArea::default();
-        self.input
-            .set_placeholder_text("Type a message and press Enter...");
-        self.input.set_placeholder_style(Theme::DEFAULT.placeholder);
+        self.input = Editor::new();
+        self.input.set_placeholder(
+            "Type a message and press Enter...",
+            Theme::DEFAULT.placeholder,
+        );
         self.last_error = None;
         self.streaming = true;
         self.pending_assistant.clear();

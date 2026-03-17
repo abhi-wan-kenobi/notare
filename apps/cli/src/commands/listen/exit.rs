@@ -14,6 +14,7 @@ pub enum ExitEvent {
     TaskDone(usize),
     TaskFailed(usize, String),
     AllDone,
+    AutoExit,
 }
 
 enum TaskState {
@@ -33,7 +34,6 @@ pub struct ExitScreen {
     elapsed: std::time::Duration,
     spinner_tick: usize,
     tasks: Vec<TaskItem>,
-    done_at: Option<std::time::Instant>,
 }
 
 impl ExitScreen {
@@ -54,7 +54,6 @@ impl ExitScreen {
             elapsed,
             spinner_tick: 0,
             tasks,
-            done_at: None,
         }
     }
 
@@ -78,20 +77,14 @@ impl Screen for ExitScreen {
     ) -> ScreenControl<Self::Output> {
         match event {
             TuiEvent::Key(key) => {
-                use crossterm::event::KeyCode;
+                use crossterm::event::{KeyCode, KeyModifiers};
+                if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
+                    return ScreenControl::Exit(());
+                }
                 match key.code {
                     KeyCode::Char('q') | KeyCode::Esc | KeyCode::Enter => ScreenControl::Exit(()),
                     _ => ScreenControl::Continue,
                 }
-            }
-            TuiEvent::Draw => {
-                self.spinner_tick = self.spinner_tick.wrapping_add(1);
-                if let Some(done_at) = self.done_at {
-                    if done_at.elapsed() >= AUTO_EXIT_DELAY {
-                        return ScreenControl::Exit(());
-                    }
-                }
-                ScreenControl::Continue
             }
             _ => ScreenControl::Continue,
         }
@@ -118,8 +111,9 @@ impl Screen for ExitScreen {
                     task.state = TaskState::Failed(msg);
                 }
             }
-            ExitEvent::AllDone => {
-                self.done_at = Some(std::time::Instant::now());
+            ExitEvent::AllDone => {}
+            ExitEvent::AutoExit => {
+                return ScreenControl::Exit(());
             }
         }
         ScreenControl::Continue
@@ -158,6 +152,7 @@ impl Screen for ExitScreen {
             Line::raw(""),
         ];
 
+        self.spinner_tick = self.spinner_tick.wrapping_add(1);
         let spinner = SPINNER_FRAMES[self.spinner_tick % SPINNER_FRAMES.len()];
         for task in &self.tasks {
             let line = match &task.state {
@@ -258,6 +253,8 @@ pub fn spawn_post_session(
             Err(e) => {
                 let _ = tx.send(ExitEvent::TaskFailed(0, e.to_string()));
                 let _ = tx.send(ExitEvent::AllDone);
+                tokio::time::sleep(AUTO_EXIT_DELAY).await;
+                let _ = tx.send(ExitEvent::AutoExit);
                 return;
             }
         }
@@ -267,6 +264,8 @@ pub fn spawn_post_session(
         let Some(config) = llm_config else {
             let _ = tx.send(ExitEvent::TaskFailed(1, "LLM not configured".into()));
             let _ = tx.send(ExitEvent::AllDone);
+            tokio::time::sleep(AUTO_EXIT_DELAY).await;
+            let _ = tx.send(ExitEvent::AutoExit);
             return;
         };
 
@@ -275,6 +274,8 @@ pub fn spawn_post_session(
             Err(e) => {
                 let _ = tx.send(ExitEvent::TaskFailed(1, e.to_string()));
                 let _ = tx.send(ExitEvent::AllDone);
+                tokio::time::sleep(AUTO_EXIT_DELAY).await;
+                let _ = tx.send(ExitEvent::AutoExit);
                 return;
             }
         };
@@ -311,5 +312,7 @@ pub fn spawn_post_session(
         }
 
         let _ = tx.send(ExitEvent::AllDone);
+        tokio::time::sleep(AUTO_EXIT_DELAY).await;
+        let _ = tx.send(ExitEvent::AutoExit);
     });
 }

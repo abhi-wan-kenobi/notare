@@ -1,10 +1,8 @@
 use std::time::SystemTime;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use hypr_cli_editor::{Editor, KeyResult};
 use ratatui_image::{picker::Picker, protocol::StatefulProtocol};
-use tui_textarea::TextArea;
-
-use hypr_cli_tui::textarea_input_from_key_event;
 
 use super::action::Action;
 use super::effect::Effect;
@@ -54,7 +52,7 @@ pub const COMMANDS: &[SlashCommand] = &[
 ];
 
 pub struct App {
-    input: TextArea<'static>,
+    input: Editor,
     filtered_commands: Vec<usize>,
     selected_index: usize,
     popup_visible: bool,
@@ -72,7 +70,7 @@ impl App {
         llm_provider: Option<String>,
     ) -> Self {
         let mut app = Self {
-            input: TextArea::default(),
+            input: Editor::single_line(),
             filtered_commands: Vec::new(),
             selected_index: 0,
             popup_visible: false,
@@ -93,7 +91,7 @@ impl App {
             Action::SubmitCommand(command) => self.submit_command(&command),
             Action::StatusMessage(message) => {
                 self.status_message = Some(message);
-                self.input = TextArea::default();
+                self.input = Editor::single_line();
                 self.recompute_popup();
                 Vec::new()
             }
@@ -151,7 +149,7 @@ impl App {
         }
 
         if key.code == KeyCode::Esc {
-            self.input = TextArea::default();
+            self.input = Editor::single_line();
             self.status_message = None;
             self.recompute_popup();
             return Vec::new();
@@ -190,9 +188,7 @@ impl App {
             return self.submit_command(&command);
         }
 
-        if let Some(input) = textarea_input_from_key_event(key, false) {
-            self.input.input(input);
-            self.normalize_single_line();
+        if self.input.handle_key(key) == KeyResult::Consumed {
             self.status_message = None;
             self.recompute_popup();
         }
@@ -202,10 +198,8 @@ impl App {
 
     fn handle_paste(&mut self, pasted: String) -> Vec<Effect> {
         let pasted = pasted.replace("\r\n", "\n").replace('\r', "\n");
-        let first_line = pasted.lines().next().unwrap_or("");
-        if !first_line.is_empty() {
-            self.input.insert_str(first_line);
-            self.normalize_single_line();
+        if !pasted.is_empty() {
+            self.input.insert_str(&pasted);
             self.status_message = None;
             self.recompute_popup();
         }
@@ -220,13 +214,13 @@ impl App {
             "listen" => vec![Effect::LaunchListen],
             "exit" | "quit" => vec![Effect::Exit],
             "auth" => {
-                self.input = TextArea::default();
+                self.input = Editor::single_line();
                 self.status_message = None;
                 self.recompute_popup();
                 vec![Effect::OpenAuth]
             }
             "desktop" => {
-                self.input = TextArea::default();
+                self.input = Editor::single_line();
                 self.status_message = None;
                 self.recompute_popup();
                 vec![Effect::OpenDesktop]
@@ -245,7 +239,8 @@ impl App {
     }
 
     fn set_input_text(&mut self, value: String) {
-        self.input = TextArea::from([value]);
+        self.input = Editor::single_line();
+        self.input.insert_str(&value);
     }
 
     fn recompute_popup(&mut self) {
@@ -284,19 +279,6 @@ impl App {
         self.selected_index = self
             .selected_index
             .min(self.filtered_commands.len().saturating_sub(1));
-    }
-
-    fn normalize_single_line(&mut self) {
-        let current = self
-            .input
-            .lines()
-            .first()
-            .cloned()
-            .unwrap_or_else(String::new);
-        if self.input.lines().len() == 1 {
-            return;
-        }
-        self.input = TextArea::from([current]);
     }
 }
 

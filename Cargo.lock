@@ -3393,6 +3393,7 @@ dependencies = [
  "clap-verbosity-flag",
  "clap_complete",
  "cli-docs",
+ "cli-editor",
  "cli-tui",
  "clio",
  "colored",
@@ -3436,7 +3437,6 @@ dependencies = [
  "tracing-subscriber",
  "transcribe-proxy",
  "transcript",
- "tui-textarea-2",
  "url",
  "uuid",
 ]
@@ -3449,6 +3449,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cli-editor"
+version = "0.1.0"
+dependencies = [
+ "crossterm",
+ "ratatui",
+ "regex",
+]
+
+[[package]]
 name = "cli-tui"
 version = "0.1.0"
 dependencies = [
@@ -3456,7 +3465,6 @@ dependencies = [
  "ratatui",
  "tokio",
  "tokio-stream",
- "tui-textarea-2",
 ]
 
 [[package]]
@@ -4569,6 +4577,8 @@ version = "0.1.0"
 dependencies = [
  "db-core2",
  "sqlx",
+ "tokio",
+ "transcript",
 ]
 
 [[package]]
@@ -6086,7 +6096,9 @@ dependencies = [
  "afconvert",
  "assert_fs",
  "audio-utils",
+ "audioadapter-buffers",
  "chrono",
+ "criterion",
  "data",
  "frontmatter",
  "fs-format",
@@ -6094,6 +6106,7 @@ dependencies = [
  "mp3",
  "predicates",
  "rayon",
+ "resampler",
  "rodio",
  "serde",
  "serde_json",
@@ -20681,19 +20694,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
 dependencies = [
  "core_maths",
-]
-
-[[package]]
-name = "tui-textarea-2"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74a31ca0965e3ff6a7ac5ecb02b20a88b4f68ebf138d8ae438e8510b27a1f00f"
-dependencies = [
- "portable-atomic",
- "ratatui-core",
- "ratatui-widgets",
- "unicode-segmentation",
- "unicode-width 0.2.0",
 ]
 
 [[package]]

@@ -2,16 +2,15 @@ mod state;
 mod ui_state;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use hypr_cli_editor::Editor;
 use hypr_listener_core::State;
 use ratatui::layout::Rect;
 use ratatui::widgets::Block;
-use tui_textarea::TextArea;
 
 use super::action::Action;
 use super::effect::Effect;
 use crate::commands::listen::app::state::ListenState;
 use crate::commands::listen::app::ui_state::ListenUiState;
-use hypr_cli_tui::textarea_input_from_key_event;
 pub(crate) use ui_state::Mode;
 
 pub(crate) struct App {
@@ -95,7 +94,7 @@ impl App {
         self.ui.memo_mut().set_block(block);
     }
 
-    pub(crate) fn memo(&self) -> &TextArea<'static> {
+    pub(crate) fn memo(&self) -> &Editor {
         self.ui.memo()
     }
 
@@ -208,19 +207,7 @@ impl App {
             return Vec::new();
         }
 
-        if key.code == KeyCode::Char('z') && key.modifiers.contains(KeyModifiers::CONTROL) {
-            self.ui.memo_mut().undo();
-            return Vec::new();
-        }
-
-        if key.code == KeyCode::Char('y') && key.modifiers.contains(KeyModifiers::CONTROL) {
-            self.ui.memo_mut().redo();
-            return Vec::new();
-        }
-
-        if let Some(input) = textarea_input_from_key_event(key, true) {
-            self.ui.memo_mut().input(input);
-        }
+        self.ui.memo_mut().handle_key(key);
 
         Vec::new()
     }
@@ -267,7 +254,6 @@ impl App {
             }
         }
     }
-
 }
 
 #[cfg(test)]

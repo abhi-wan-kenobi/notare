@@ -18,6 +18,7 @@ hypr-audio = { workspace = true }
 hypr-audio-actual = { workspace = true }
 hypr-audio-mock = { workspace = true, optional = true }
 hypr-audio-utils = { workspace = true }
+hypr-cli-editor = { workspace = true }
 hypr-cli-tui = { workspace = true }
 hypr-db-core2 = { workspace = true }
 hypr-file = { workspace = true }
@@ -57,7 +58,6 @@ tempfile = { workspace = true }
 textwrap = { version = "0.16", features = ["terminal_size"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-tui-textarea = { workspace = true }
 
 open = { workspace = true }
 ractor = { workspace = true, features = ["async-trait"] }

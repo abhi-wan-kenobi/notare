@@ -1,9 +1,9 @@
 use std::time::Instant;
 
+use hypr_cli_editor::Editor;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use tachyonfx::{Effect, Interpolation, Motion, fx};
-use tui_textarea::TextArea;
 
 use crate::widgets::ScrollState;
 
@@ -22,7 +22,7 @@ pub(super) struct ListenUiState {
     notepad_width_percent: u16,
     scroll: ScrollState,
     transcript_autoscroll: bool,
-    memo: TextArea<'static>,
+    memo: Editor,
     last_frame_time: Instant,
     prev_segment_count: usize,
     transcript_effects: Vec<Effect>,
@@ -48,11 +48,11 @@ impl ListenUiState {
         self.mode
     }
 
-    pub(super) fn memo(&self) -> &TextArea<'static> {
+    pub(super) fn memo(&self) -> &Editor {
         &self.memo
     }
 
-    pub(super) fn memo_mut(&mut self) -> &mut TextArea<'static> {
+    pub(super) fn memo_mut(&mut self) -> &mut Editor {
         &mut self.memo
     }
 
@@ -174,10 +174,10 @@ impl ListenUiState {
         self.transcript_autoscroll = false;
     }
 
-    fn init_memo() -> TextArea<'static> {
-        let mut memo = TextArea::default();
-        memo.set_placeholder_text("press [i] to start writing notes...");
-        memo.set_placeholder_style(
+    fn init_memo() -> Editor {
+        let mut memo = Editor::new();
+        memo.set_placeholder(
+            "press [i] to start writing notes...",
             Style::new()
                 .fg(Color::DarkGray)
                 .add_modifier(Modifier::ITALIC),
