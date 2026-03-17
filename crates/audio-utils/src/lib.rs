@@ -16,6 +16,25 @@ pub use rodio::Source;
 
 const I16_SCALE: f32 = 32768.0;
 
+pub fn mono_frames(
+    mut source: impl Iterator<Item = f32>,
+    channel_count: usize,
+) -> impl Iterator<Item = f32> {
+    std::iter::from_fn(move || {
+        let first = source.next()?;
+        let mut sum = first;
+        let mut count = 1usize;
+        while count < channel_count {
+            let Some(sample) = source.next() else {
+                break;
+            };
+            sum += sample;
+            count += 1;
+        }
+        Some(sum / count as f32)
+    })
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct AudioMetadata {
     pub sample_rate: u32,

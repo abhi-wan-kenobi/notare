@@ -5,7 +5,10 @@ import { Effect, pipe } from "effect";
 import { useCallback } from "react";
 
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
-import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
+import {
+  commands as fsSyncCommands,
+  events as fsSyncEvents,
+} from "@hypr/plugin-fs-sync";
 import { commands as listener2Commands } from "@hypr/plugin-listener2";
 import type { TranscriptStorage } from "@hypr/store";
 
@@ -26,6 +29,7 @@ export function useUploadFile(sessionId: string) {
   const queryClient = useQueryClient();
   const handleBatchStarted = useListener((state) => state.handleBatchStarted);
   const handleBatchFailed = useListener((state) => state.handleBatchFailed);
+  const updateBatchProgress = useListener((state) => state.updateBatchProgress);
   const clearBatchSession = useListener((state) => state.clearBatchSession);
 
   const store = main.UI.useStore(main.STORE_ID) as main.Store | undefined;
@@ -142,10 +146,37 @@ export function useUploadFile(sessionId: string) {
               view: { type: "transcript" },
             });
           }
-          handleBatchStarted(sessionId);
+          handleBatchStarted(sessionId, "importing");
         }),
         Effect.flatMap(() =>
-          fromResult(fsSyncCommands.audioImport(sessionId, filePath)),
+          Effect.tryPromise({
+            try: async () => {
+              const unlisten = await fsSyncEvents.audioImportEvent.listen(
+                (e) => {
+                  if (
+                    e.payload.type === "audioImportProgress" &&
+                    e.payload.session_id === sessionId
+                  ) {
+                    updateBatchProgress(sessionId, e.payload.percentage);
+                  }
+                },
+              );
+              try {
+                const result = await fsSyncCommands.audioImport(
+                  sessionId,
+                  filePath,
+                );
+                if (result.status === "error") {
+                  throw new Error(result.error);
+                }
+                return result.data;
+              } finally {
+                unlisten();
+              }
+            },
+            catch: (error) =>
+              error instanceof Error ? error : new Error(String(error)),
+          }),
         ),
         Effect.tap(() =>
           Effect.sync(() => {
@@ -185,6 +216,7 @@ export function useUploadFile(sessionId: string) {
       clearBatchSession,
       handleBatchFailed,
       handleBatchStarted,
+      updateBatchProgress,
       queryClient,
       runBatch,
       sessionId,

@@ -1,21 +1,25 @@
-use std::fs::{File, copy, remove_file, rename, write};
-use std::io::ErrorKind;
+use std::fs::{File, copy, remove_file, rename};
+use std::io::{BufWriter, ErrorKind, Write};
 use std::num::NonZeroU8;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use audioadapter_buffers::direct::SequentialSliceOfVecs;
-use hypr_audio_utils::Source;
+use hypr_audio_utils::{Source, f32_to_i16, mono_frames};
 use hypr_resampler::{
     Async, FixedAsync, Indexing, Resampler, SincInterpolationParameters, SincInterpolationType,
     WindowFunction,
 };
 
 use crate::error::{AudioImportError, AudioProcessingError};
+use crate::runtime::{AudioImportEvent, AudioImportRuntime};
 
 const TARGET_SAMPLE_RATE_HZ: u32 = 16_000;
 const AUDIO_FORMATS: [&str; 3] = ["audio.mp3", "audio.wav", "audio.ogg"];
 const RESAMPLE_CHUNK_SIZE: usize = 1024;
 const MONO_ENCODE_CHUNK_SIZE: usize = 4096;
+const TARGET_MP3_BYTES_PER_SECOND: usize = 64_000 / 8;
+const MP3_BUFFER_OVERHEAD_BYTES: usize = 4096;
 
 pub fn exists(session_dir: &Path) -> std::io::Result<bool> {
     AUDIO_FORMATS
@@ -44,9 +48,15 @@ pub fn path(session_dir: &Path) -> Option<PathBuf> {
 }
 
 pub fn import_to_session(
+    runtime: &dyn AudioImportRuntime,
+    session_id: &str,
     session_dir: &Path,
     source_path: &Path,
 ) -> Result<PathBuf, AudioImportError> {
+    runtime.emit(AudioImportEvent::Started {
+        session_id: session_id.to_string(),
+    });
+
     std::fs::create_dir_all(session_dir)?;
 
     let target_path = session_dir.join("audio.mp3");
@@ -56,15 +66,54 @@ pub fn import_to_session(
         std::fs::remove_file(&tmp_path)?;
     }
 
-    match import_audio(source_path, &tmp_path, &target_path) {
-        Ok(final_path) => Ok(final_path),
+    let on_progress = {
+        let session_id = session_id.to_string();
+        let mut last_emitted: f64 = 0.0;
+        let mut last_time = std::time::Instant::now();
+        move |percentage: f64| {
+            let now = std::time::Instant::now();
+            if (percentage - last_emitted) >= 0.01
+                || now.duration_since(last_time).as_millis() >= 100
+            {
+                runtime.emit(AudioImportEvent::Progress {
+                    session_id: session_id.clone(),
+                    percentage,
+                });
+                last_emitted = percentage;
+                last_time = now;
+            }
+        }
+    };
+
+    match import_audio_with_progress(source_path, &tmp_path, &target_path, on_progress) {
+        Ok(final_path) => {
+            runtime.emit(AudioImportEvent::Completed {
+                session_id: session_id.to_string(),
+            });
+            Ok(final_path)
+        }
         Err(error) => {
             if tmp_path.exists() {
                 let _ = std::fs::remove_file(&tmp_path);
             }
+            runtime.emit(AudioImportEvent::Failed {
+                session_id: session_id.to_string(),
+                error: error.to_string(),
+            });
             Err(error.into())
         }
     }
+}
+
+fn import_audio_with_progress(
+    source_path: &Path,
+    tmp_path: &Path,
+    target_path: &Path,
+    on_progress: impl FnMut(f64),
+) -> Result<PathBuf, AudioProcessingError> {
+    decode_to_mp3_file_with_progress(source_path, tmp_path, None, on_progress)?;
+    atomic_move(tmp_path, target_path)?;
+    Ok(target_path.to_path_buf())
 }
 
 pub fn import_audio(
@@ -72,55 +121,122 @@ pub fn import_audio(
     tmp_path: &Path,
     target_path: &Path,
 ) -> Result<PathBuf, AudioProcessingError> {
-    let mp3_bytes = decode_to_mp3(source_path)?;
-    write(tmp_path, &mp3_bytes)?;
+    import_audio_with_max_duration(source_path, tmp_path, target_path, None)
+}
+
+pub fn import_audio_with_max_duration(
+    source_path: &Path,
+    tmp_path: &Path,
+    target_path: &Path,
+    max_duration: Option<Duration>,
+) -> Result<PathBuf, AudioProcessingError> {
+    decode_to_mp3_file(source_path, tmp_path, max_duration)?;
     atomic_move(tmp_path, target_path)?;
     Ok(target_path.to_path_buf())
 }
 
 pub fn decode_to_mp3(source_path: &Path) -> Result<Vec<u8>, AudioProcessingError> {
-    let _rodio_err = match decode_to_mp3_with_rodio(source_path) {
-        Ok(bytes) if !bytes.is_empty() => return Ok(bytes),
-        Ok(_) => None,
-        Err(e) => Some(e),
-    };
+    decode_to_mp3_with_max_duration(source_path, None)
+}
 
-    #[cfg(target_os = "macos")]
-    {
-        let wav_path = hypr_afconvert::to_wav(source_path)
-            .map_err(|e| AudioProcessingError::AfconvertFailed(e.to_string()))?;
-        let result = decode_to_mp3_with_rodio(&wav_path).and_then(non_empty_mp3_bytes);
-        let _ = std::fs::remove_file(&wav_path);
-        return result;
-    }
+pub fn decode_to_mp3_with_max_duration(
+    source_path: &Path,
+    max_duration: Option<Duration>,
+) -> Result<Vec<u8>, AudioProcessingError> {
+    with_afconvert_fallback(source_path, |path| {
+        let mut mp3_bytes = Vec::new();
+        let bytes_written = decode_with_rodio(path, max_duration, &mut mp3_bytes)?;
+        if bytes_written == 0 {
+            return Err(AudioProcessingError::EmptyInput);
+        }
+        Ok(mp3_bytes)
+    })
+}
 
-    #[cfg(not(target_os = "macos"))]
-    match _rodio_err {
-        Some(e) => Err(e),
-        None => Err(AudioProcessingError::EmptyInput),
+fn decode_to_mp3_file(
+    path: &Path,
+    tmp_path: &Path,
+    max_duration: Option<Duration>,
+) -> Result<(), AudioProcessingError> {
+    with_afconvert_fallback(path, |path| {
+        let file = File::create(tmp_path)?;
+        let writer = BufWriter::new(file);
+        let bytes_written = decode_with_rodio(path, max_duration, writer)?;
+        if bytes_written == 0 {
+            let _ = std::fs::remove_file(tmp_path);
+            return Err(AudioProcessingError::EmptyInput);
+        }
+        Ok(())
+    })
+}
+
+fn decode_to_mp3_file_with_progress(
+    path: &Path,
+    tmp_path: &Path,
+    max_duration: Option<Duration>,
+    on_progress: impl FnMut(f64),
+) -> Result<(), AudioProcessingError> {
+    with_afconvert_fallback_mut(path, on_progress, |path, on_progress| {
+        let file = File::create(tmp_path)?;
+        let writer = BufWriter::new(file);
+        let bytes_written = decode_with_rodio_progress(path, max_duration, writer, on_progress)?;
+        if bytes_written == 0 {
+            let _ = std::fs::remove_file(tmp_path);
+            return Err(AudioProcessingError::EmptyInput);
+        }
+        Ok(())
+    })
+}
+
+fn with_afconvert_fallback_mut<F, T>(
+    source_path: &Path,
+    mut on_progress: impl FnMut(f64),
+    mut try_fn: F,
+) -> Result<T, AudioProcessingError>
+where
+    F: FnMut(&Path, &mut dyn FnMut(f64)) -> Result<T, AudioProcessingError>,
+{
+    match try_fn(source_path, &mut on_progress) {
+        Ok(val) => Ok(val),
+        Err(_first_err) => {
+            #[cfg(target_os = "macos")]
+            {
+                let wav_path = hypr_afconvert::to_wav(source_path)
+                    .map_err(|e| AudioProcessingError::AfconvertFailed(e.to_string()))?;
+                let result = try_fn(&wav_path, &mut on_progress);
+                let _ = std::fs::remove_file(&wav_path);
+                result
+            }
+            #[cfg(not(target_os = "macos"))]
+            Err(_first_err)
+        }
     }
 }
 
-fn non_empty_mp3_bytes(bytes: Vec<u8>) -> Result<Vec<u8>, AudioProcessingError> {
-    if bytes.is_empty() {
-        Err(AudioProcessingError::EmptyInput)
-    } else {
-        Ok(bytes)
-    }
-}
-
-fn decode_to_mp3_with_rodio(path: &Path) -> Result<Vec<u8>, AudioProcessingError> {
+fn decode_with_rodio_progress<W: Write>(
+    path: &Path,
+    max_duration: Option<Duration>,
+    output: W,
+    on_progress: &mut dyn FnMut(f64),
+) -> Result<usize, AudioProcessingError> {
     let file = File::open(path)?;
     let decoder = rodio::Decoder::try_from(file)?;
-    encode_source_to_mp3(decoder)
+    encode_source_to_mp3_with_progress(decoder, max_duration, output, on_progress)
 }
 
-fn encode_source_to_mp3<S>(source: S) -> Result<Vec<u8>, AudioProcessingError>
+fn encode_source_to_mp3_with_progress<S, W>(
+    source: S,
+    max_duration: Option<Duration>,
+    output: W,
+    on_progress: &mut dyn FnMut(f64),
+) -> Result<usize, AudioProcessingError>
 where
     S: Source<Item = f32>,
+    W: Write,
 {
     let source_rate: u32 = source.sample_rate().into();
     let channel_count_raw: u16 = source.channels().into();
+    let input_duration = source.total_duration();
     let channel_count_raw = channel_count_raw.max(1);
     let channel_count_u8 = u8::try_from(channel_count_raw).map_err(|_| {
         AudioProcessingError::UnsupportedChannelCount {
@@ -130,83 +246,216 @@ where
     let channel_count =
         NonZeroU8::new(channel_count_u8).ok_or(AudioProcessingError::InvalidChannelCount)?;
 
-    let mp3_err = |e: hypr_mp3::Error| AudioProcessingError::Mp3Encode(e.to_string());
     let mut encoder = hypr_mp3::MonoStreamEncoder::new(TARGET_SAMPLE_RATE_HZ).map_err(mp3_err)?;
-    let mut mp3_buffer = Vec::new();
+    let effective_duration = max_duration
+        .map(|max| input_duration.map_or(max, |inp| inp.min(max)))
+        .or(input_duration);
+    let mut output = Mp3Output::new(output, estimated_mp3_capacity(effective_duration));
     let channel_count = usize::from(channel_count.get());
     let needs_resample = source_rate != TARGET_SAMPLE_RATE_HZ;
     let mut saw_input = false;
+    let mut remaining_frames = max_duration
+        .map(|duration| max_frames_for_duration(source_rate, duration))
+        .unwrap_or(usize::MAX);
+
+    let total_frames = effective_duration.map(|d| {
+        let frames = d.as_secs_f64() * source_rate as f64;
+        frames.ceil() as usize
+    });
+    let mut processed_frames: usize = 0;
 
     if needs_resample {
-        let mut resampler = create_mono_resampler(source_rate)?;
-        let mut input_chunk = vec![Vec::with_capacity(RESAMPLE_CHUNK_SIZE)];
-        let mut output_chunk = vec![vec![0.0; resampler.output_frames_max()]];
-        let mut frames_to_trim = resampler.output_delay();
+        let mut state = ResamplerState::new(source_rate)?;
         let mut expected_output_frames = 0usize;
-        let mut written_output_frames = 0usize;
 
         for mono_frame in mono_frames(source, channel_count) {
+            if remaining_frames == 0 {
+                break;
+            }
+            remaining_frames -= 1;
             saw_input = true;
             expected_output_frames += 1;
-            input_chunk[0].push(mono_frame);
+            processed_frames += 1;
+            state.input_buf[0].push(mono_frame);
 
-            if input_chunk[0].len() < resampler.input_frames_next() {
+            if state.input_buf[0].len() < state.resampler.input_frames_next() {
                 continue;
             }
 
-            encode_resampler_chunk(
-                &mut resampler,
-                &mut input_chunk,
-                &mut output_chunk,
-                &mut encoder,
-                &mut mp3_buffer,
-                &mut frames_to_trim,
-                &mut written_output_frames,
-                mp3_err,
-                None,
-            )?;
+            state.encode_chunk(&mut encoder, &mut output, None)?;
+
+            if let Some(total) = total_frames {
+                on_progress(processed_frames as f64 / total as f64);
+            }
         }
 
         if !saw_input {
-            return Ok(Vec::new());
+            return Ok(0);
         }
 
         let expected_output_frames = (expected_output_frames as f64 * TARGET_SAMPLE_RATE_HZ as f64
             / source_rate as f64)
             .ceil() as usize;
 
-        if !input_chunk[0].is_empty() {
-            let partial_len = input_chunk[0].len();
-            encode_resampler_chunk(
-                &mut resampler,
-                &mut input_chunk,
-                &mut output_chunk,
-                &mut encoder,
-                &mut mp3_buffer,
-                &mut frames_to_trim,
-                &mut written_output_frames,
-                mp3_err,
-                Some(partial_len),
-            )?;
+        if !state.input_buf[0].is_empty() {
+            let partial_len = state.input_buf[0].len();
+            state.encode_chunk(&mut encoder, &mut output, Some(partial_len))?;
         }
 
-        while written_output_frames < expected_output_frames {
-            encode_resampler_chunk(
-                &mut resampler,
-                &mut input_chunk,
-                &mut output_chunk,
-                &mut encoder,
-                &mut mp3_buffer,
-                &mut frames_to_trim,
-                &mut written_output_frames,
-                mp3_err,
-                Some(0),
-            )?;
+        while state.written_frames < expected_output_frames {
+            state.encode_chunk(&mut encoder, &mut output, Some(0))?;
         }
     } else {
         let mut mono_chunk = Vec::with_capacity(MONO_ENCODE_CHUNK_SIZE);
+        let mut mono_pcm = Vec::with_capacity(MONO_ENCODE_CHUNK_SIZE);
 
         for mono_frame in mono_frames(source, channel_count) {
+            if remaining_frames == 0 {
+                break;
+            }
+            remaining_frames -= 1;
+            saw_input = true;
+            processed_frames += 1;
+            mono_chunk.push(mono_frame);
+
+            if mono_chunk.len() < MONO_ENCODE_CHUNK_SIZE {
+                continue;
+            }
+
+            encode_mono_chunk(&mut encoder, &mono_chunk, &mut mono_pcm, &mut output)?;
+            mono_chunk.clear();
+
+            if let Some(total) = total_frames {
+                on_progress(processed_frames as f64 / total as f64);
+            }
+        }
+
+        if !saw_input {
+            return Ok(0);
+        }
+
+        if !mono_chunk.is_empty() {
+            encode_mono_chunk(&mut encoder, &mono_chunk, &mut mono_pcm, &mut output)?;
+        }
+    }
+
+    on_progress(1.0);
+
+    encoder.flush(output.buffer()).map_err(mp3_err)?;
+    output.flush()?;
+
+    Ok(output.bytes_written())
+}
+
+fn with_afconvert_fallback<F, T>(source_path: &Path, try_fn: F) -> Result<T, AudioProcessingError>
+where
+    F: Fn(&Path) -> Result<T, AudioProcessingError>,
+{
+    match try_fn(source_path) {
+        Ok(val) => Ok(val),
+        Err(_first_err) => {
+            #[cfg(target_os = "macos")]
+            {
+                let wav_path = hypr_afconvert::to_wav(source_path)
+                    .map_err(|e| AudioProcessingError::AfconvertFailed(e.to_string()))?;
+                let result = try_fn(&wav_path);
+                let _ = std::fs::remove_file(&wav_path);
+                result
+            }
+            #[cfg(not(target_os = "macos"))]
+            Err(_first_err)
+        }
+    }
+}
+
+fn decode_with_rodio<W: Write>(
+    path: &Path,
+    max_duration: Option<Duration>,
+    output: W,
+) -> Result<usize, AudioProcessingError> {
+    let file = File::open(path)?;
+    let decoder = rodio::Decoder::try_from(file)?;
+    encode_source_to_mp3(decoder, max_duration, output)
+}
+
+fn encode_source_to_mp3<S, W>(
+    source: S,
+    max_duration: Option<Duration>,
+    output: W,
+) -> Result<usize, AudioProcessingError>
+where
+    S: Source<Item = f32>,
+    W: Write,
+{
+    let source_rate: u32 = source.sample_rate().into();
+    let channel_count_raw: u16 = source.channels().into();
+    let input_duration = source.total_duration();
+    let channel_count_raw = channel_count_raw.max(1);
+    let channel_count_u8 = u8::try_from(channel_count_raw).map_err(|_| {
+        AudioProcessingError::UnsupportedChannelCount {
+            count: channel_count_raw,
+        }
+    })?;
+    let channel_count =
+        NonZeroU8::new(channel_count_u8).ok_or(AudioProcessingError::InvalidChannelCount)?;
+
+    let mut encoder = hypr_mp3::MonoStreamEncoder::new(TARGET_SAMPLE_RATE_HZ).map_err(mp3_err)?;
+    let effective_duration = max_duration
+        .map(|max| input_duration.map_or(max, |inp| inp.min(max)))
+        .or(input_duration);
+    let mut output = Mp3Output::new(output, estimated_mp3_capacity(effective_duration));
+    let channel_count = usize::from(channel_count.get());
+    let needs_resample = source_rate != TARGET_SAMPLE_RATE_HZ;
+    let mut saw_input = false;
+    let mut remaining_frames = max_duration
+        .map(|duration| max_frames_for_duration(source_rate, duration))
+        .unwrap_or(usize::MAX);
+
+    if needs_resample {
+        let mut state = ResamplerState::new(source_rate)?;
+        let mut expected_output_frames = 0usize;
+
+        for mono_frame in mono_frames(source, channel_count) {
+            if remaining_frames == 0 {
+                break;
+            }
+            remaining_frames -= 1;
+            saw_input = true;
+            expected_output_frames += 1;
+            state.input_buf[0].push(mono_frame);
+
+            if state.input_buf[0].len() < state.resampler.input_frames_next() {
+                continue;
+            }
+
+            state.encode_chunk(&mut encoder, &mut output, None)?;
+        }
+
+        if !saw_input {
+            return Ok(0);
+        }
+
+        let expected_output_frames = (expected_output_frames as f64 * TARGET_SAMPLE_RATE_HZ as f64
+            / source_rate as f64)
+            .ceil() as usize;
+
+        if !state.input_buf[0].is_empty() {
+            let partial_len = state.input_buf[0].len();
+            state.encode_chunk(&mut encoder, &mut output, Some(partial_len))?;
+        }
+
+        while state.written_frames < expected_output_frames {
+            state.encode_chunk(&mut encoder, &mut output, Some(0))?;
+        }
+    } else {
+        let mut mono_chunk = Vec::with_capacity(MONO_ENCODE_CHUNK_SIZE);
+        let mut mono_pcm = Vec::with_capacity(MONO_ENCODE_CHUNK_SIZE);
+
+        for mono_frame in mono_frames(source, channel_count) {
+            if remaining_frames == 0 {
+                break;
+            }
+            remaining_frames -= 1;
             saw_input = true;
             mono_chunk.push(mono_frame);
 
@@ -214,26 +463,53 @@ where
                 continue;
             }
 
-            encoder
-                .encode_f32(&mono_chunk, &mut mp3_buffer)
-                .map_err(mp3_err)?;
+            encode_mono_chunk(&mut encoder, &mono_chunk, &mut mono_pcm, &mut output)?;
             mono_chunk.clear();
         }
 
         if !saw_input {
-            return Ok(Vec::new());
+            return Ok(0);
         }
 
         if !mono_chunk.is_empty() {
-            encoder
-                .encode_f32(&mono_chunk, &mut mp3_buffer)
-                .map_err(mp3_err)?;
+            encode_mono_chunk(&mut encoder, &mono_chunk, &mut mono_pcm, &mut output)?;
         }
     }
 
-    encoder.flush(&mut mp3_buffer).map_err(mp3_err)?;
+    encoder.flush(output.buffer()).map_err(mp3_err)?;
+    output.flush()?;
 
-    Ok(mp3_buffer)
+    Ok(output.bytes_written())
+}
+
+fn mp3_err(e: hypr_mp3::Error) -> AudioProcessingError {
+    AudioProcessingError::Mp3Encode(e.to_string())
+}
+
+fn estimated_mp3_capacity(duration: Option<Duration>) -> usize {
+    let Some(duration) = duration else {
+        return 0;
+    };
+
+    let bytes_from_seconds = duration
+        .as_secs()
+        .saturating_mul(TARGET_MP3_BYTES_PER_SECOND as u64);
+    let bytes_from_nanos = (u64::from(duration.subsec_nanos())
+        .saturating_mul(TARGET_MP3_BYTES_PER_SECOND as u64))
+        / 1_000_000_000u64;
+    let total_bytes = bytes_from_seconds
+        .saturating_add(bytes_from_nanos)
+        .saturating_add(MP3_BUFFER_OVERHEAD_BYTES as u64);
+
+    total_bytes.min(usize::MAX as u64) as usize
+}
+
+fn max_frames_for_duration(source_rate: u32, duration: Duration) -> usize {
+    let frames_from_seconds = u128::from(duration.as_secs()) * u128::from(source_rate);
+    let frames_from_nanos =
+        u128::from(duration.subsec_nanos()) * u128::from(source_rate) / 1_000_000_000u128;
+    let total_frames = frames_from_seconds.saturating_add(frames_from_nanos);
+    total_frames.min(usize::MAX as u128) as usize
 }
 
 fn create_mono_resampler(source_rate: u32) -> Result<Async<f32>, AudioProcessingError> {
@@ -256,114 +532,160 @@ fn create_mono_resampler(source_rate: u32) -> Result<Async<f32>, AudioProcessing
     .map_err(hypr_resampler::Error::from)?)
 }
 
-fn mono_frames<S>(mut source: S, channel_count: usize) -> impl Iterator<Item = f32>
-where
-    S: Source<Item = f32>,
-{
-    std::iter::from_fn(move || {
-        let first = source.next()?;
-        let mut sum = first;
-        let mut frame_len = 1usize;
-
-        while frame_len < channel_count {
-            let Some(sample) = source.next() else {
-                break;
-            };
-            sum += sample;
-            frame_len += 1;
-        }
-
-        Some(sum / frame_len as f32)
-    })
+struct ResamplerState {
+    resampler: Async<f32>,
+    input_buf: Vec<Vec<f32>>,
+    output_buf: Vec<Vec<f32>>,
+    mono_pcm: Vec<i16>,
+    frames_to_trim: usize,
+    written_frames: usize,
 }
 
-fn encode_resampler_chunk(
-    resampler: &mut Async<f32>,
-    input_chunk: &mut [Vec<f32>],
-    output_chunk: &mut [Vec<f32>],
-    encoder: &mut hypr_mp3::MonoStreamEncoder,
-    mp3_buffer: &mut Vec<u8>,
-    frames_to_trim: &mut usize,
-    written_output_frames: &mut usize,
-    mp3_err: impl Fn(hypr_mp3::Error) -> AudioProcessingError,
-    partial_len: Option<usize>,
-) -> Result<(), AudioProcessingError> {
-    let frames_needed = resampler.input_frames_next();
-    if input_chunk[0].len() < frames_needed {
-        input_chunk[0].resize(frames_needed, 0.0);
+impl ResamplerState {
+    fn new(source_rate: u32) -> Result<Self, AudioProcessingError> {
+        let resampler = create_mono_resampler(source_rate)?;
+        let output_max = resampler.output_frames_max();
+        Ok(Self {
+            input_buf: vec![Vec::with_capacity(RESAMPLE_CHUNK_SIZE)],
+            output_buf: vec![vec![0.0; output_max]],
+            mono_pcm: Vec::with_capacity(output_max),
+            frames_to_trim: resampler.output_delay(),
+            written_frames: 0,
+            resampler,
+        })
     }
 
-    let frames_in = input_chunk[0].len();
-    let input_adapter =
-        SequentialSliceOfVecs::new(input_chunk, 1, frames_in).expect("input adapter");
-    let frames_out = output_chunk[0].len();
-    let mut output_adapter =
-        SequentialSliceOfVecs::new_mut(output_chunk, 1, frames_out).expect("output adapter");
-    let indexing = partial_len.map(|partial_len| Indexing {
-        input_offset: 0,
-        output_offset: 0,
-        partial_len: Some(partial_len),
-        active_channels_mask: None,
-    });
-    let (_, produced_frames) = resampler
-        .process_into_buffer(&input_adapter, &mut output_adapter, indexing.as_ref())
-        .map_err(hypr_resampler::Error::from)?;
-    input_chunk[0].clear();
+    fn encode_chunk(
+        &mut self,
+        encoder: &mut hypr_mp3::MonoStreamEncoder,
+        output: &mut Mp3Output<impl Write>,
+        partial_len: Option<usize>,
+    ) -> Result<(), AudioProcessingError> {
+        let frames_needed = self.resampler.input_frames_next();
+        if self.input_buf[0].len() < frames_needed {
+            self.input_buf[0].resize(frames_needed, 0.0);
+        }
 
-    if produced_frames == 0 {
+        let frames_in = self.input_buf[0].len();
+        let input_adapter =
+            SequentialSliceOfVecs::new(&self.input_buf, 1, frames_in).expect("input adapter");
+        let frames_out = self.output_buf[0].len();
+        let mut output_adapter =
+            SequentialSliceOfVecs::new_mut(&mut self.output_buf, 1, frames_out)
+                .expect("output adapter");
+        let indexing = partial_len.map(|partial_len| Indexing {
+            input_offset: 0,
+            output_offset: 0,
+            partial_len: Some(partial_len),
+            active_channels_mask: None,
+        });
+        let (_, produced_frames) = self
+            .resampler
+            .process_into_buffer(&input_adapter, &mut output_adapter, indexing.as_ref())
+            .map_err(hypr_resampler::Error::from)?;
+        self.input_buf[0].clear();
+
+        if produced_frames == 0 {
+            return Ok(());
+        }
+
+        let trim = self.frames_to_trim.min(produced_frames);
+        self.frames_to_trim -= trim;
+
+        let encoded_frames = &self.output_buf[0][trim..produced_frames];
+        if !encoded_frames.is_empty() {
+            encode_mono_chunk(encoder, encoded_frames, &mut self.mono_pcm, output)?;
+            self.written_frames += encoded_frames.len();
+        }
+
+        Ok(())
+    }
+}
+
+fn encode_mono_chunk<W: Write>(
+    encoder: &mut hypr_mp3::MonoStreamEncoder,
+    samples: &[f32],
+    mono_pcm: &mut Vec<i16>,
+    output: &mut Mp3Output<W>,
+) -> Result<(), AudioProcessingError> {
+    if samples.is_empty() {
         return Ok(());
     }
 
-    let trim = (*frames_to_trim).min(produced_frames);
-    *frames_to_trim -= trim;
+    mono_pcm.clear();
+    mono_pcm.extend(samples.iter().copied().map(f32_to_i16));
+    encoder
+        .encode_i16(mono_pcm, output.buffer())
+        .map_err(mp3_err)?;
+    output.flush()
+}
 
-    let encoded_frames = &output_chunk[0][trim..produced_frames];
-    if !encoded_frames.is_empty() {
-        encoder
-            .encode_f32(encoded_frames, mp3_buffer)
-            .map_err(mp3_err)?;
-        *written_output_frames += encoded_frames.len();
+struct Mp3Output<W> {
+    writer: W,
+    buffer: Vec<u8>,
+    bytes_written: usize,
+}
+
+impl<W: Write> Mp3Output<W> {
+    fn new(writer: W, estimated_total_bytes: usize) -> Self {
+        Self {
+            writer,
+            buffer: Vec::with_capacity(estimated_total_bytes.min(MP3_BUFFER_OVERHEAD_BYTES)),
+            bytes_written: 0,
+        }
     }
 
-    Ok(())
+    fn buffer(&mut self) -> &mut Vec<u8> {
+        &mut self.buffer
+    }
+
+    fn flush(&mut self) -> Result<(), AudioProcessingError> {
+        if self.buffer.is_empty() {
+            return Ok(());
+        }
+
+        self.writer.write_all(&self.buffer)?;
+        self.bytes_written += self.buffer.len();
+        self.buffer.clear();
+        Ok(())
+    }
+
+    fn bytes_written(&self) -> usize {
+        self.bytes_written
+    }
+}
+
+fn is_cross_device(_err: &std::io::Error) -> bool {
+    #[cfg(unix)]
+    {
+        _err.raw_os_error() == Some(18)
+    }
+    #[cfg(not(unix))]
+    {
+        false
+    }
+}
+
+fn rename_or_copy(from: &Path, to: &Path) -> Result<(), std::io::Error> {
+    match rename(from, to) {
+        Ok(()) => Ok(()),
+        Err(err) if is_cross_device(&err) => {
+            copy(from, to)?;
+            remove_file(from)?;
+            Ok(())
+        }
+        Err(err) => Err(err),
+    }
 }
 
 fn atomic_move(from: &Path, to: &Path) -> Result<(), std::io::Error> {
-    match rename(from, to) {
+    match rename_or_copy(from, to) {
         Ok(()) => Ok(()),
-        Err(err) => {
-            #[cfg(unix)]
-            let is_cross_device = err.raw_os_error() == Some(18);
-            #[cfg(not(unix))]
-            let is_cross_device = false;
-
-            if is_cross_device {
-                copy(from, to)?;
-                remove_file(from)?;
-                Ok(())
-            } else if err.kind() == ErrorKind::AlreadyExists {
-                remove_file(to)?;
-                match rename(from, to) {
-                    Ok(()) => Ok(()),
-                    Err(rename_err) => {
-                        #[cfg(unix)]
-                        let is_cross_device_retry = rename_err.raw_os_error() == Some(18);
-                        #[cfg(not(unix))]
-                        let is_cross_device_retry = false;
-
-                        if is_cross_device_retry {
-                            copy(from, to)?;
-                            remove_file(from)?;
-                            Ok(())
-                        } else {
-                            Err(rename_err)
-                        }
-                    }
-                }
-            } else {
-                Err(err)
-            }
+        Err(err) if err.kind() == ErrorKind::AlreadyExists => {
+            remove_file(to)?;
+            rename_or_copy(from, to)
         }
+        Err(err) => Err(err),
     }
 }
 
@@ -448,7 +770,9 @@ mod tests {
             vec![0.5f32; 44_100 * 5 * usize::from(channels.get())],
         );
 
-        let bytes = encode_source_to_mp3(source).unwrap();
+        let mut bytes = Vec::new();
+        let bytes_written = encode_source_to_mp3(source, None, &mut bytes).unwrap();
+        assert_eq!(bytes_written, bytes.len());
         assert!(bytes.len() > MIN_MP3_BYTES as usize);
 
         let temp = TempDir::new().unwrap();

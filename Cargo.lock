@@ -789,10 +789,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "apple-contact"
-version = "0.1.0"
-
-[[package]]
 name = "apple-note"
 version = "0.1.0"
 dependencies = [
@@ -6112,6 +6108,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "specta",
+ "tauri-specta",
  "tempfile",
  "thiserror 2.0.18",
  "tiptap",
@@ -12916,10 +12913,6 @@ dependencies = [
  "digest",
  "hmac",
 ]
-
-[[package]]
-name = "pdf"
-version = "0.1.0"
 
 [[package]]
 name = "pdf-writer"

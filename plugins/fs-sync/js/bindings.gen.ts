@@ -195,6 +195,11 @@ async attachmentRemove(sessionId: string, attachmentId: string) : Promise<Result
 /** user-defined events **/
 
 
+export const events = __makeEvents__<{
+audioImportEvent: AudioImportEvent
+}>({
+audioImportEvent: "plugin:fs-sync:audio-import-event"
+})
 
 /** user-defined constants **/
 
@@ -204,6 +209,7 @@ async attachmentRemove(sessionId: string, attachmentId: string) : Promise<Result
 
 export type AttachmentInfo = { attachmentId: string; path: string; extension: string; modifiedAt: string }
 export type AttachmentSaveResult = { path: string; attachmentId: string }
+export type AudioImportEvent = { type: "audioImportStarted"; session_id: string } | { type: "audioImportProgress"; session_id: string; percentage: number } | { type: "audioImportCompleted"; session_id: string } | { type: "audioImportFailed"; session_id: string; error: string }
 export type CleanupTarget = { type: "files"; subdir: string; extension: string } | { type: "dirs"; subdir: string; marker_file: string } | { type: "filesRecursive"; subdir: string; marker_file: string; extension: string }
 export type FolderInfo = { name: string; parent_folder_id: string | null }
 export type FolderSessionUpdate = { sessionId: string; folderId: string }

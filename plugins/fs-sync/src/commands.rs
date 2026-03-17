@@ -221,9 +221,13 @@ pub(crate) async fn audio_import<R: tauri::Runtime>(
     source_path: String,
 ) -> Result<String, String> {
     let session_dir = resolve_session_dir(&app, &session_id)?;
-    crate::audio::import_to_session(&session_dir, &PathBuf::from(&source_path))
-        .map(|path| path.to_string_lossy().to_string())
-        .map_err(|e| e.to_string())
+    let source_path = PathBuf::from(&source_path);
+    let runtime = crate::runtime::TauriAudioImportRuntime::new(app);
+    spawn_blocking!({
+        crate::audio::import_to_session(&runtime, &session_id, &session_dir, &source_path)
+            .map(|path| path.to_string_lossy().to_string())
+            .map_err(|e| e.to_string())
+    })
 }
 
 #[tauri::command]

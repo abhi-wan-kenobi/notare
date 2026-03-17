@@ -43,6 +43,7 @@ export type BatchActions = {
     percentage: number,
   ) => void;
   handleBatchFailed: (sessionId: string, error: string) => void;
+  updateBatchProgress: (sessionId: string, percentage: number) => void;
   clearBatchSession: (sessionId: string) => void;
   setBatchPersist: (sessionId: string, callback: HandlePersistCallback) => void;
   clearBatchPersist: (sessionId: string) => void;
@@ -141,6 +142,22 @@ export const createBatchSlice = <T extends BatchState>(
         ),
       },
     }));
+  },
+
+  updateBatchProgress: (sessionId, percentage) => {
+    set((state) => {
+      const entry = state.batch[sessionId];
+      if (!entry) {
+        return state;
+      }
+      return {
+        ...state,
+        batch: {
+          ...state.batch,
+          [sessionId]: { ...entry, percentage },
+        },
+      };
+    });
   },
 
   handleBatchFailed: (sessionId, error) => {

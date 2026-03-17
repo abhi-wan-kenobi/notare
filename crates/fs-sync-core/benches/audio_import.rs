@@ -1,10 +1,11 @@
-use std::fs::metadata;
 use std::hint::black_box;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use criterion::{Criterion, Throughput, criterion_group, criterion_main};
-use fs_sync_core::audio::{decode_to_mp3, import_audio};
+use criterion::{Criterion, criterion_group, criterion_main};
+use fs_sync_core::audio::import_audio_with_max_duration;
+
+const MAX_BENCH_DURATION: Duration = Duration::from_secs(5 * 60);
 
 fn bench_input_path() -> PathBuf {
     std::env::var_os("FS_SYNC_AUDIO_BENCH_PATH")
@@ -13,49 +14,22 @@ fn bench_input_path() -> PathBuf {
 }
 
 fn bench_input_label(path: &Path) -> String {
-    path.file_name()
+    let base = path
+        .file_stem()
         .and_then(|name| name.to_str())
         .unwrap_or("audio")
-        .to_string()
-}
-
-fn bench_input_size(path: &Path) -> u64 {
-    metadata(path).map(|meta| meta.len()).unwrap_or(0)
-}
-
-fn bench_decode_to_mp3(c: &mut Criterion) {
-    let input_path = bench_input_path();
-    let input_label = bench_input_label(&input_path);
-    let input_size = bench_input_size(&input_path);
-
-    let mut group = c.benchmark_group("audio_decode_to_mp3");
-    group.sample_size(10);
-    group.warm_up_time(Duration::from_secs(2));
-    group.measurement_time(Duration::from_secs(12));
-    if input_size > 0 {
-        group.throughput(Throughput::Bytes(input_size));
-    }
-
-    group.bench_function(input_label, |b| {
-        b.iter(|| {
-            black_box(decode_to_mp3(black_box(input_path.as_path())).unwrap());
-        });
-    });
-    group.finish();
+        .to_string();
+    format!("{base}_first_5m")
 }
 
 fn bench_import_audio(c: &mut Criterion) {
     let input_path = bench_input_path();
     let input_label = bench_input_label(&input_path);
-    let input_size = bench_input_size(&input_path);
 
     let mut group = c.benchmark_group("audio_import");
     group.sample_size(10);
     group.warm_up_time(Duration::from_secs(2));
     group.measurement_time(Duration::from_secs(12));
-    if input_size > 0 {
-        group.throughput(Throughput::Bytes(input_size));
-    }
 
     group.bench_function(input_label, |b| {
         b.iter(|| {
@@ -64,10 +38,11 @@ fn bench_import_audio(c: &mut Criterion) {
             let target_path = temp.path().join("audio.mp3");
 
             black_box(
-                import_audio(
+                import_audio_with_max_duration(
                     black_box(input_path.as_path()),
                     black_box(tmp_path.as_path()),
                     black_box(target_path.as_path()),
+                    Some(MAX_BENCH_DURATION),
                 )
                 .unwrap(),
             );
@@ -76,5 +51,5 @@ fn bench_import_audio(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_decode_to_mp3, bench_import_audio);
+criterion_group!(benches, bench_import_audio);
 criterion_main!(benches);
