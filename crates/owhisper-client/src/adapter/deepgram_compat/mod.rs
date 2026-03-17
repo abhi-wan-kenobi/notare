@@ -138,7 +138,6 @@ where
     );
     builder
         .add("model", model)
-        .add("encoding", "linear16")
         .add_bool("diarize", true)
         .add_bool("multichannel", false)
         .add_bool("punctuate", true)

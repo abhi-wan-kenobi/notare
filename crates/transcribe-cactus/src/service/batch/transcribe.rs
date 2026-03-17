@@ -37,7 +37,7 @@ pub(super) fn transcribe_batch(
     temp_file.flush()?;
 
     let source = hypr_audio_utils::source_from_path(temp_file.path())?;
-    let channel_count = source.channels().max(1) as usize;
+    let channel_count = u16::from(source.channels()).max(1) as usize;
     let resampled = hypr_audio_utils::resample_audio(source, TARGET_SAMPLE_RATE)?;
     let channel_samples = split_resampled_channels(&resampled, channel_count);
     let total_duration = channel_samples

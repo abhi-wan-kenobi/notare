@@ -1,3 +1,4 @@
+use std::num::NonZero;
 use std::path::Path;
 use std::pin::Pin;
 use std::sync::{Arc, OnceLock};
@@ -205,11 +206,11 @@ impl Source for MonoPlaybackSource {
     fn current_span_len(&self) -> Option<usize> {
         None
     }
-    fn channels(&self) -> u16 {
-        1
+    fn channels(&self) -> NonZero<u16> {
+        NonZero::new(1).unwrap()
     }
-    fn sample_rate(&self) -> u32 {
-        self.sample_rate
+    fn sample_rate(&self) -> NonZero<u32> {
+        NonZero::new(self.sample_rate).unwrap()
     }
     fn total_duration(&self) -> Option<std::time::Duration> {
         None
@@ -222,19 +223,20 @@ fn start_stereo_playback(mic: &MockAudioData, spk: &MockAudioData) {
     let spk_samples = Arc::clone(&spk.samples);
 
     std::thread::spawn(move || {
-        use rodio::{OutputStreamBuilder, Sink};
+        use rodio::Player;
+        use rodio::stream::DeviceSinkBuilder;
 
-        match OutputStreamBuilder::open_default_stream() {
+        match DeviceSinkBuilder::open_default_sink() {
             Ok(stream) => {
-                let sink = Sink::connect_new(stream.mixer());
-                sink.append(MonoPlaybackSource {
+                let player = Player::connect_new(stream.mixer());
+                player.append(MonoPlaybackSource {
                     mic: mic_samples,
                     spk: spk_samples,
                     position: 0,
                     sample_rate,
                 });
                 tracing::info!(sample_rate, "mock playback started (mono mix)");
-                sink.sleep_until_end();
+                player.sleep_until_end();
             }
             Err(e) => {
                 tracing::warn!(error = ?e, "failed to open audio output for mock playback");
@@ -358,7 +360,7 @@ fn load_audio(path: &Path, is_speaker: bool) -> Result<MockAudioData, Error> {
     let file = std::fs::File::open(path).map_err(|_| map_audio_error(is_speaker))?;
     let decoder = rodio::Decoder::try_from(file).map_err(|_| map_audio_error(is_speaker))?;
     let sample_rate = decoder.sample_rate();
-    let channels = decoder.channels().max(1) as usize;
+    let channels = decoder.channels().get().max(1) as usize;
     let samples = decoder
         .enumerate()
         .filter_map(|(idx, sample)| (idx % channels == 0).then_some(sample.clamp(-1.0, 1.0)))
@@ -366,7 +368,7 @@ fn load_audio(path: &Path, is_speaker: bool) -> Result<MockAudioData, Error> {
 
     Ok(MockAudioData {
         samples: Arc::from(samples.into_boxed_slice()),
-        sample_rate,
+        sample_rate: sample_rate.into(),
     })
 }
 

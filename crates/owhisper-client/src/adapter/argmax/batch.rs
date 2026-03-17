@@ -89,8 +89,8 @@ async fn decode_audio_to_linear16(path: PathBuf) -> Result<(bytes::Bytes, u32), 
         let decoder =
             source_from_path(&path).map_err(|err| Error::AudioProcessing(err.to_string()))?;
 
-        let channels = decoder.channels().max(1);
-        let sample_rate = decoder.sample_rate();
+        let channels: u16 = decoder.channels().into();
+        let sample_rate: u32 = decoder.sample_rate().into();
 
         let samples = resample_audio(decoder, sample_rate)
             .map_err(|err| Error::AudioProcessing(err.to_string()))?;

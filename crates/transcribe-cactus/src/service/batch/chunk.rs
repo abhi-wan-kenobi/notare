@@ -2,14 +2,21 @@ use std::time::Duration;
 
 use futures_util::StreamExt;
 use hypr_vad_chunking::{AudioChunk, VadExt};
+use std::num::NonZero;
+
 use rodio::buffer::SamplesBuffer;
+use rodio::nz;
 
 pub(super) const TARGET_SAMPLE_RATE: u32 = 16000;
 const VAD_REDEMPTION_TIME: Duration = Duration::from_millis(150);
 const MAX_CHUNK_SAMPLES: usize = TARGET_SAMPLE_RATE as usize * 25;
 
 pub(super) async fn chunk_mono_audio(mono: &[f32]) -> Result<Vec<AudioChunk>, crate::Error> {
-    let source = SamplesBuffer::new(1, TARGET_SAMPLE_RATE, mono.to_vec());
+    let source = SamplesBuffer::new(
+        nz!(1u16),
+        NonZero::new(TARGET_SAMPLE_RATE).unwrap(),
+        mono.to_vec(),
+    );
 
     let vad_chunks = source
         .speech_chunks(VAD_REDEMPTION_TIME)

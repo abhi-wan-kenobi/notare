@@ -119,8 +119,8 @@ fn audio_duration_secs(path: &Path) -> f64 {
     if let Some(d) = source.total_duration() {
         return d.as_secs_f64();
     }
-    let sample_rate = source.sample_rate() as f64;
-    let channels = source.channels().max(1) as f64;
+    let sample_rate = u32::from(source.sample_rate()) as f64;
+    let channels = u16::from(source.channels()).max(1) as f64;
     let count = source.count() as f64;
     count / channels / sample_rate
 }
