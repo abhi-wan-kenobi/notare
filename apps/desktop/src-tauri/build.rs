@@ -20,10 +20,6 @@ fn build_check_permissions() {
 
     println!("cargo:rerun-if-changed={}", swift_src.display());
 
-    if dst.exists() {
-        return;
-    }
-
     std::fs::create_dir_all(&binaries_dir).expect("create binaries/");
 
     let status = std::process::Command::new("swiftc")
