@@ -77,7 +77,7 @@ pub fn create_single_audio_stream(
                     frame.raw_mic.iter().copied(),
                 ))),
                 Err(error) => {
-                    eprintln!("capture failed: {error}");
+                    tracing::error!("capture failed: {error}");
                     None
                 }
             }
@@ -92,7 +92,7 @@ pub fn create_single_audio_stream(
                     frame.raw_speaker.iter().copied(),
                 ))),
                 Err(error) => {
-                    eprintln!("capture failed: {error}");
+                    tracing::error!("capture failed: {error}");
                     None
                 }
             }
@@ -133,7 +133,7 @@ pub fn create_dual_audio_stream(
             match result {
                 Ok(frame) => Some(MixedMessage::Audio(capture_frame_to_bytes(&source, frame))),
                 Err(error) => {
-                    eprintln!("capture failed: {error}");
+                    tracing::error!("capture failed: {error}");
                     None
                 }
             }

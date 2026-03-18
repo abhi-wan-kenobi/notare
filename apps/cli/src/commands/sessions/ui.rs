@@ -1,24 +1,18 @@
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Flex, Layout, Rect};
+use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Clear, List, ListItem, Paragraph};
+use ratatui::widgets::{List, ListItem, Paragraph};
 
 use crate::theme::Theme;
-use crate::widgets::KeyHints;
+use crate::widgets::{CenteredDialog, KeyHints};
 
 use super::app::App;
 
 pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     let theme = Theme::DEFAULT;
-    let area = centered_dialog(frame.area());
 
-    frame.render_widget(Clear, area);
-    let block = Block::bordered()
-        .title(" Sessions ")
-        .border_style(theme.border);
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
+    let inner = CenteredDialog::new("Sessions", &theme).render(frame);
 
     let [content_area, status_area] =
         Layout::vertical([Constraint::Min(1), Constraint::Length(1)]).areas(inner);
@@ -63,25 +57,7 @@ fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
         })
         .collect();
 
-    let list = List::new(items)
-        .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
-        .highlight_symbol("  > ");
+    let list = List::new(items).highlight_style(Style::new().bg(theme.highlight_bg));
 
     frame.render_stateful_widget(list, area, app.list_state_mut());
-}
-
-fn centered_dialog(area: Rect) -> Rect {
-    let width = area.width.saturating_mul(3).saturating_div(5).clamp(40, 80);
-    let height = area
-        .height
-        .saturating_mul(3)
-        .saturating_div(5)
-        .clamp(12, 30);
-    let [v] = Layout::vertical([Constraint::Length(height)])
-        .flex(Flex::Center)
-        .areas(area);
-    let [h] = Layout::horizontal([Constraint::Length(width)])
-        .flex(Flex::Center)
-        .areas(v);
-    h
 }

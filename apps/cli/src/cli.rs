@@ -89,7 +89,10 @@ pub enum Commands {
         provider: Option<ConnectProvider>,
     },
     /// Browse past sessions
-    Sessions,
+    Sessions {
+        #[command(subcommand)]
+        command: Option<SessionsCommands>,
+    },
     /// Show configured providers and settings
     Status,
     /// Authenticate with char.com
@@ -120,6 +123,15 @@ pub enum Commands {
     Completions {
         #[arg(value_enum)]
         shell: clap_complete::Shell,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum SessionsCommands {
+    /// View a specific session
+    View {
+        #[arg(long)]
+        id: String,
     },
 }
 

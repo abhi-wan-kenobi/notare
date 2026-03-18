@@ -2,6 +2,7 @@ pub(crate) mod action;
 pub(crate) mod app;
 pub(crate) mod effect;
 pub(crate) mod ui;
+pub(crate) mod view;
 
 use std::path::PathBuf;
 
@@ -51,8 +52,7 @@ impl Screen for SessionsScreen {
                 let effects = self.app.dispatch(Action::Key(key));
                 self.apply_effects(effects)
             }
-            TuiEvent::Paste(_) => ScreenControl::Continue,
-            TuiEvent::Draw => ScreenControl::Continue,
+            TuiEvent::Paste(_) | TuiEvent::Draw | TuiEvent::Resize => ScreenControl::Continue,
         }
     }
 

@@ -53,6 +53,8 @@ pub trait Screen {
 
     fn draw(&mut self, frame: &mut Frame);
 
+    fn on_resize(&mut self) {}
+
     fn title(&self) -> String {
         String::new()
     }
@@ -109,6 +111,19 @@ where
         tokio::select! {
             tui_event = events.next(), if events_open => {
                 match tui_event {
+                    Some(TuiEvent::Resize) => {
+                        screen.on_resize();
+                        if set_title {
+                            let _ = crossterm::execute!(
+                                std::io::stdout(),
+                                crossterm::terminal::SetTitle(screen.title()),
+                            );
+                        }
+                        terminal
+                            .terminal_mut()
+                            .draw(|frame| screen.draw(frame))?;
+                        frame_requester.schedule_frame_in(screen.next_frame_delay());
+                    }
                     Some(TuiEvent::Draw) => {
                         if set_title {
                             let _ = crossterm::execute!(

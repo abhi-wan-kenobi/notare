@@ -46,7 +46,9 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     let tip_area = centered_width(tip_area, 76);
 
     draw_logo(frame, logo_area, app);
-    draw_input(frame, input_area, app, &theme);
+    if !app.has_overlay() {
+        draw_input(frame, input_area, app, &theme);
+    }
     draw_tip(frame, tip_area, app, &theme);
     draw_status(frame, status_area, app, &theme);
 

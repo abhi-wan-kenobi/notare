@@ -49,7 +49,7 @@ impl Screen for TranscribeScreen {
                 let effects = self.app.dispatch(Action::Key(key));
                 self.apply_effects(effects)
             }
-            TuiEvent::Paste(_) | TuiEvent::Draw => ScreenControl::Continue,
+            TuiEvent::Paste(_) | TuiEvent::Draw | TuiEvent::Resize => ScreenControl::Continue,
         }
     }
 

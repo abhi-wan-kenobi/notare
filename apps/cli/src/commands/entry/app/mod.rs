@@ -1,111 +1,25 @@
-use std::time::SystemTime;
+mod commands;
+mod search;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use hypr_cli_editor::{Editor, KeyResult};
-use ratatui_image::{picker::Picker, protocol::StatefulProtocol};
+use ratatui_image::protocol::StatefulProtocol;
 
 use crate::commands::connect;
 use crate::commands::sessions;
 
+pub(crate) use commands::{COMMANDS, CommandEntry, SlashCommand};
+
+use commands::{load_logo_protocol, pick_tip};
+use search::command_match_score;
+
 use super::action::Action;
 use super::effect::Effect;
 
-const LOGO_PNG_BYTES: &[u8] = include_bytes!("../../../assets/char.png");
-
-const TIPS_UNCONFIGURED: &[&str] = &[
-    "Run /connect to set up a provider",
-    "Use /auth to sign in, then /connect to configure",
-    "Press Tab to auto-fill the selected command",
-];
-
-const TIPS_READY: &[&str] = &[
-    "Type /listen to start a live transcription session",
-    "Use /desktop to open or install the desktop app",
-    "Press Tab to auto-fill the selected command",
-    "Press Esc to clear the input field",
-];
-
-#[derive(Clone, Copy)]
-pub(crate) struct SlashCommand {
-    pub(crate) name: &'static str,
-    pub(crate) description: &'static str,
-    pub(crate) group: &'static str,
+enum SessionsIntent {
+    View,
+    ChatResume,
 }
-
-pub(crate) struct CommandEntry {
-    pub(crate) name: &'static str,
-    pub(crate) description: &'static str,
-    pub(crate) group: &'static str,
-    pub(crate) disabled_reason: Option<&'static str>,
-}
-
-pub(crate) const COMMANDS: &[SlashCommand] = &[
-    SlashCommand {
-        name: "/listen",
-        description: "Start live transcription",
-        group: "Session",
-    },
-    SlashCommand {
-        name: "/chat",
-        description: "Start a chat",
-        group: "Session",
-    },
-    SlashCommand {
-        name: "/chat resume",
-        description: "Resume an existing chat",
-        group: "Session",
-    },
-    SlashCommand {
-        name: "/sessions",
-        description: "Browse past sessions",
-        group: "Session",
-    },
-    SlashCommand {
-        name: "/connect",
-        description: "Connect provider",
-        group: "Setup",
-    },
-    SlashCommand {
-        name: "/auth",
-        description: "Open auth in browser",
-        group: "Setup",
-    },
-    SlashCommand {
-        name: "/bug",
-        description: "Report a bug on GitHub",
-        group: "App",
-    },
-    SlashCommand {
-        name: "/hello",
-        description: "Open char.com",
-        group: "App",
-    },
-    SlashCommand {
-        name: "/desktop",
-        description: "Open desktop app or download page",
-        group: "App",
-    },
-    SlashCommand {
-        name: "/model paths",
-        description: "Show model storage paths",
-        group: "Model",
-    },
-    SlashCommand {
-        name: "/model current",
-        description: "Show current model config",
-        group: "Model",
-    },
-    SlashCommand {
-        name: "/model list",
-        description: "List available models",
-        group: "Model",
-    },
-    SlashCommand {
-        name: "/exit",
-        description: "Exit",
-        group: "App",
-    },
-];
 
 pub(crate) enum Overlay {
     None,
@@ -124,6 +38,7 @@ pub(crate) struct App {
     pub(crate) stt_provider: Option<String>,
     pub(crate) llm_provider: Option<String>,
     overlay: Overlay,
+    sessions_intent: SessionsIntent,
 }
 
 impl App {
@@ -143,6 +58,7 @@ impl App {
             stt_provider,
             llm_provider,
             overlay: Overlay::None,
+            sessions_intent: SessionsIntent::View,
         };
         app.recompute_popup();
         app
@@ -192,6 +108,10 @@ impl App {
                 Vec::new()
             }
         }
+    }
+
+    pub(crate) fn reload_logo(&mut self) {
+        self.logo_protocol = load_logo_protocol();
     }
 
     pub(crate) fn logo_protocol(&mut self) -> Option<&mut StatefulProtocol> {
@@ -258,11 +178,6 @@ impl App {
 
     pub(crate) fn selected_index(&self) -> usize {
         self.selected_index
-    }
-
-    pub(crate) fn selected_command(&self) -> Option<SlashCommand> {
-        let selected = *self.filtered_commands.get(self.selected_index)?;
-        COMMANDS.get(selected).copied()
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
@@ -369,12 +284,16 @@ impl App {
             "listen" => vec![Effect::Launch(super::EntryCommand::Listen)],
             "chat" if rest == "resume" => {
                 self.reset_input();
+                self.sessions_intent = SessionsIntent::ChatResume;
                 self.overlay = Overlay::Sessions(sessions::app::App::new());
                 vec![Effect::LoadSessions]
             }
-            "chat" => vec![Effect::Launch(super::EntryCommand::Chat)],
+            "chat" => vec![Effect::Launch(super::EntryCommand::Chat {
+                session_id: None,
+            })],
             "sessions" => {
                 self.reset_input();
+                self.sessions_intent = SessionsIntent::View;
                 self.overlay = Overlay::Sessions(sessions::app::App::new());
                 vec![Effect::LoadSessions]
             }
@@ -428,18 +347,13 @@ impl App {
         let mut result = Vec::new();
         for effect in effects {
             match effect {
-                connect::effect::Effect::Save {
-                    connection_type,
-                    provider,
-                    base_url,
-                    api_key,
-                } => {
+                connect::effect::Effect::Save(data) => {
                     self.reset_input();
                     result.push(Effect::SaveConnect {
-                        connection_type,
-                        provider,
-                        base_url,
-                        api_key,
+                        connection_type: data.connection_type,
+                        provider: data.provider,
+                        base_url: data.base_url,
+                        api_key: data.api_key,
                     });
                 }
                 connect::effect::Effect::Exit => {
@@ -458,8 +372,14 @@ impl App {
         for effect in effects {
             match effect {
                 sessions::effect::Effect::Select(id) => {
+                    let cmd = match self.sessions_intent {
+                        SessionsIntent::View => super::EntryCommand::View { session_id: id },
+                        SessionsIntent::ChatResume => super::EntryCommand::Chat {
+                            session_id: Some(id),
+                        },
+                    };
                     self.reset_input();
-                    result.push(Effect::Launch(super::EntryCommand::View { session_id: id }));
+                    result.push(Effect::Launch(cmd));
                 }
                 sessions::effect::Effect::Exit => {
                     self.reset_input();
@@ -522,99 +442,5 @@ impl App {
         self.selected_index = self
             .selected_index
             .min(self.filtered_commands.len().saturating_sub(1));
-    }
-}
-
-fn pick_tip(stt_provider: &Option<String>, llm_provider: &Option<String>) -> &'static str {
-    let tips = if stt_provider.is_none() || llm_provider.is_none() {
-        TIPS_UNCONFIGURED
-    } else {
-        TIPS_READY
-    };
-    let index = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .map(|d| d.as_millis() as usize % tips.len())
-        .unwrap_or(0);
-    tips[index]
-}
-
-fn load_logo_protocol() -> Option<StatefulProtocol> {
-    let picker = Picker::from_query_stdio().unwrap_or_else(|_| Picker::halfblocks());
-    let image = image::load_from_memory(LOGO_PNG_BYTES).ok()?;
-    Some(picker.new_resize_protocol(image))
-}
-
-fn command_match_score(query: &str, command: &str) -> Option<i32> {
-    let query = query.trim().to_ascii_lowercase();
-    if query.is_empty() {
-        return Some(1);
-    }
-
-    let command = command.trim_start_matches('/').to_ascii_lowercase();
-
-    let direct_score = single_command_match_score(&query, &command);
-    let alias_score = command_aliases(&command)
-        .iter()
-        .filter_map(|alias| single_command_match_score(&query, alias).map(|score| score - 25))
-        .max();
-
-    match (direct_score, alias_score) {
-        (Some(direct), Some(alias)) => Some(direct.max(alias)),
-        (Some(direct), None) => Some(direct),
-        (None, Some(alias)) => Some(alias),
-        (None, None) => None,
-    }
-}
-
-fn single_command_match_score(query: &str, command: &str) -> Option<i32> {
-    if query.is_empty() {
-        return Some(1);
-    }
-
-    if command.starts_with(query) {
-        let penalty = (command.len() as i32 - query.len() as i32).max(0);
-        return Some(500 - penalty);
-    }
-
-    if let Some(pos) = command.find(query) {
-        return Some(350 - pos as i32);
-    }
-
-    let mut query_chars = query.chars();
-    let mut current = query_chars.next()?;
-    let mut score = 200;
-    let mut matched = 0usize;
-    let mut prev_index = None;
-
-    for (i, ch) in command.chars().enumerate() {
-        if ch != current {
-            continue;
-        }
-
-        matched += 1;
-        if let Some(prev) = prev_index {
-            if i == prev + 1 {
-                score += 8;
-            } else {
-                score -= (i - prev) as i32;
-            }
-        }
-        prev_index = Some(i);
-
-        if let Some(next) = query_chars.next() {
-            current = next;
-        } else {
-            score -= (command.len() as i32 - matched as i32).max(0);
-            return Some(score);
-        }
-    }
-
-    None
-}
-
-fn command_aliases(command: &str) -> &'static [&'static str] {
-    match command {
-        "exit" => &["quit"],
-        _ => &[],
     }
 }

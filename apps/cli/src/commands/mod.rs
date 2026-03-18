@@ -12,4 +12,3 @@ pub mod listen;
 pub mod model;
 pub mod sessions;
 pub mod status;
-pub mod view;

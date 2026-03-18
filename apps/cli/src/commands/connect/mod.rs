@@ -15,7 +15,7 @@ use crate::error::{CliError, CliResult};
 
 use self::action::Action;
 use self::app::{App, Step};
-use self::effect::Effect;
+use self::effect::{Effect, SaveData};
 
 const IDLE_FRAME: Duration = Duration::from_secs(1);
 
@@ -29,31 +29,12 @@ impl ConnectScreen {
     fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<Option<SaveData>> {
         for effect in effects {
             match effect {
-                Effect::Save {
-                    connection_type,
-                    provider,
-                    base_url,
-                    api_key,
-                } => {
-                    return ScreenControl::Exit(Some(SaveData {
-                        connection_type,
-                        provider,
-                        base_url,
-                        api_key,
-                    }));
-                }
+                Effect::Save(data) => return ScreenControl::Exit(Some(data)),
                 Effect::Exit => return ScreenControl::Exit(None),
             }
         }
         ScreenControl::Continue
     }
-}
-
-struct SaveData {
-    connection_type: ConnectionType,
-    provider: ConnectProvider,
-    base_url: Option<String>,
-    api_key: Option<String>,
 }
 
 impl Screen for ConnectScreen {
@@ -74,7 +55,7 @@ impl Screen for ConnectScreen {
                 let effects = self.app.dispatch(Action::Paste(text));
                 self.apply_effects(effects)
             }
-            TuiEvent::Draw => ScreenControl::Continue,
+            TuiEvent::Draw | TuiEvent::Resize => ScreenControl::Continue,
         }
     }
 
@@ -126,34 +107,26 @@ pub async fn run(args: Args) -> CliResult<bool> {
             .map_err(|reason| CliError::invalid_argument("--base-url", url, reason))?;
     }
 
-    let (app, initial_effect) = App::new(
+    let (app, initial_effects) = App::new(
         args.connection_type,
         args.provider,
         args.base_url,
         args.api_key,
     );
 
-    if app.step() == Step::Done {
-        for effect in initial_effect {
-            if let Effect::Save {
-                connection_type,
-                provider,
-                base_url,
-                api_key,
-            } = effect
-            {
-                save_config(connection_type, provider, base_url, api_key)?;
-                return Ok(true);
-            }
-        }
-    }
-
-    if !interactive {
+    let save_data = if app.step() == Step::Done {
+        initial_effects.into_iter().find_map(|e| match e {
+            Effect::Save(data) => Some(data),
+            _ => None,
+        })
+    } else if !interactive {
         return Err(match app.step() {
-            Step::SelectType => CliError::required_argument_with_hint(
-                "--type",
-                "pass --type stt or --type llm (interactive prompts require a terminal)",
-            ),
+            Step::SelectProvider if args.connection_type.is_none() => {
+                CliError::required_argument_with_hint(
+                    "--type",
+                    "pass --type stt or --type llm (interactive prompts require a terminal)",
+                )
+            }
             Step::SelectProvider => CliError::required_argument_with_hint(
                 "--provider",
                 "pass --provider <name> (interactive prompts require a terminal)",
@@ -171,41 +144,31 @@ pub async fn run(args: Args) -> CliResult<bool> {
             ),
             Step::Done => unreachable!(),
         });
-    }
+    } else {
+        let screen = ConnectScreen { app };
+        run_screen(screen, None)
+            .await
+            .map_err(|e| CliError::operation_failed("connect tui", e.to_string()))?
+    };
 
-    let screen = ConnectScreen { app };
-    let result = run_screen(screen, None)
-        .await
-        .map_err(|e| CliError::operation_failed("connect tui", e.to_string()))?;
-
-    match result {
+    match save_data {
         Some(data) => {
-            save_config(
-                data.connection_type,
-                data.provider,
-                data.base_url,
-                data.api_key,
-            )?;
+            save_config(data)?;
             Ok(true)
         }
         None => Ok(false),
     }
 }
 
-pub(crate) fn save_config(
-    connection_type: ConnectionType,
-    provider: ConnectProvider,
-    base_url: Option<String>,
-    api_key: Option<String>,
-) -> CliResult<()> {
-    let type_key = connection_type.to_string();
-    let provider_id = provider.id();
+pub(crate) fn save_config(data: SaveData) -> CliResult<()> {
+    let type_key = data.connection_type.to_string();
+    let provider_id = data.provider.id();
 
     let mut provider_config = serde_json::Map::new();
-    if let Some(url) = &base_url {
+    if let Some(url) = &data.base_url {
         provider_config.insert("base_url".into(), serde_json::Value::String(url.clone()));
     }
-    if let Some(key) = &api_key {
+    if let Some(key) = &data.api_key {
         provider_config.insert("api_key".into(), serde_json::Value::String(key.clone()));
     }
 

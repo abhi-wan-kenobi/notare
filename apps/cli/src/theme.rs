@@ -28,6 +28,9 @@ pub struct Theme {
     pub raw_speaker_partial: Style,
     pub highlight_bg: Color,
     pub disabled_bg: Color,
+    pub overlay_bg: Color,
+    pub dialog_bg: Color,
+    pub dialog_title_fg: Color,
 }
 
 impl Theme {
@@ -37,9 +40,9 @@ impl Theme {
     };
 
     pub const DEFAULT: Self = Self {
-        bg: Color::Rgb(15, 17, 23),
+        bg: Color::Rgb(13, 17, 22),
         accent: Style::new().fg(Color::Yellow),
-        input_bg: Color::Rgb(20, 24, 38),
+        input_bg: Color::Rgb(22, 27, 34),
         border: Style::new().fg(Color::DarkGray),
         border_focused: Style::new().fg(Color::Yellow),
         status_active: Style::new().fg(Color::Green),
@@ -68,8 +71,11 @@ impl Theme {
             .fg(Color::Rgb(190, 200, 255))
             .add_modifier(Modifier::BOLD),
         raw_speaker_partial: Style::new().fg(Color::Rgb(95, 100, 128)),
-        highlight_bg: Color::Rgb(60, 55, 30),
+        highlight_bg: Color::Rgb(30, 60, 100),
         disabled_bg: Color::Rgb(22, 22, 30),
+        overlay_bg: Color::Rgb(2, 4, 10),
+        dialog_bg: Color::Rgb(18, 22, 28),
+        dialog_title_fg: Color::White,
     };
 }
 

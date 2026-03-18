@@ -5,16 +5,21 @@ use url::Url;
 use crate::cli::{ConnectProvider, ConnectionType};
 
 use super::action::Action;
-use super::effect::Effect;
+use super::effect::{Effect, SaveData};
 use super::providers::{LLM_PROVIDERS, STT_PROVIDERS};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Step {
-    SelectType,
     SelectProvider,
     InputBaseUrl,
     InputApiKey,
     Done,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum ListEntry {
+    Header(ConnectionType),
+    Provider(ConnectionType, ConnectProvider),
 }
 
 pub(crate) struct App {
@@ -40,7 +45,7 @@ impl App {
         api_key: Option<String>,
     ) -> (Self, Vec<Effect>) {
         let mut app = Self {
-            step: Step::SelectType,
+            step: Step::SelectProvider,
             connection_type,
             provider,
             base_url,
@@ -100,23 +105,36 @@ impl App {
         &mut self.list_state
     }
 
-    pub fn provider_list(&self) -> &'static [ConnectProvider] {
+    pub fn flat_entries(&self) -> Vec<ListEntry> {
         match self.connection_type {
-            Some(ConnectionType::Stt) => STT_PROVIDERS,
-            Some(ConnectionType::Llm) => LLM_PROVIDERS,
-            None => &[],
+            Some(ConnectionType::Llm) => LLM_PROVIDERS
+                .iter()
+                .map(|&p| ListEntry::Provider(ConnectionType::Llm, p))
+                .collect(),
+            Some(ConnectionType::Stt) => STT_PROVIDERS
+                .iter()
+                .map(|&p| ListEntry::Provider(ConnectionType::Stt, p))
+                .collect(),
+            None => {
+                let mut entries = Vec::new();
+                entries.push(ListEntry::Header(ConnectionType::Llm));
+                for &p in LLM_PROVIDERS {
+                    entries.push(ListEntry::Provider(ConnectionType::Llm, p));
+                }
+                entries.push(ListEntry::Header(ConnectionType::Stt));
+                for &p in STT_PROVIDERS {
+                    entries.push(ListEntry::Provider(ConnectionType::Stt, p));
+                }
+                entries
+            }
         }
     }
 
     pub fn breadcrumb(&self) -> String {
-        let mut parts = Vec::new();
-        if let Some(ct) = self.connection_type {
-            parts.push(ct.to_string());
+        match self.provider {
+            Some(p) => p.to_string(),
+            None => String::new(),
         }
-        if let Some(p) = self.provider {
-            parts.push(p.to_string());
-        }
-        parts.join(" > ")
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
@@ -127,7 +145,7 @@ impl App {
         }
 
         match self.step {
-            Step::SelectType | Step::SelectProvider => self.handle_list_key(key),
+            Step::SelectProvider => self.handle_list_key(key),
             Step::InputBaseUrl | Step::InputApiKey => self.handle_input_key(key),
             Step::Done => Vec::new(),
         }
@@ -151,24 +169,33 @@ impl App {
     fn handle_list_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         match key.code {
             KeyCode::Up | KeyCode::Char('k') => {
-                self.list_state.select_previous();
+                self.list_navigate(-1);
                 Vec::new()
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.list_state.select_next();
+                self.list_navigate(1);
                 Vec::new()
             }
             KeyCode::Enter => {
                 self.confirm_list_selection();
-                self.step = match self.step {
-                    Step::SelectType => Step::SelectProvider,
-                    Step::SelectProvider => Step::InputBaseUrl,
-                    _ => unreachable!(),
-                };
+                self.step = Step::InputBaseUrl;
                 self.advance()
             }
             KeyCode::Char('q') => vec![Effect::Exit],
             _ => Vec::new(),
+        }
+    }
+
+    fn list_navigate(&mut self, direction: isize) {
+        let entries = self.flat_entries();
+        let current = self.list_state.selected().unwrap_or(0);
+        let mut next = current as isize + direction;
+        while next >= 0 && (next as usize) < entries.len() {
+            if matches!(entries[next as usize], ListEntry::Provider(..)) {
+                self.list_state.select(Some(next as usize));
+                return;
+            }
+            next += direction;
         }
     }
 
@@ -228,21 +255,10 @@ impl App {
 
     fn confirm_list_selection(&mut self) {
         let idx = self.list_state.selected().unwrap_or(0);
-        match self.step {
-            Step::SelectType => {
-                self.connection_type = Some(if idx == 0 {
-                    ConnectionType::Stt
-                } else {
-                    ConnectionType::Llm
-                });
-            }
-            Step::SelectProvider => {
-                let providers = self.provider_list();
-                if idx < providers.len() {
-                    self.provider = Some(providers[idx]);
-                }
-            }
-            _ => {}
+        let entries = self.flat_entries();
+        if let Some(ListEntry::Provider(ct, provider)) = entries.get(idx) {
+            self.connection_type = Some(*ct);
+            self.provider = Some(*provider);
         }
     }
 
@@ -268,27 +284,28 @@ impl App {
         Ok(())
     }
 
+    fn first_selectable_index(&self) -> usize {
+        self.flat_entries()
+            .iter()
+            .position(|e| matches!(e, ListEntry::Provider(..)))
+            .unwrap_or(0)
+    }
+
     fn advance(&mut self) -> Vec<Effect> {
         loop {
             match self.step {
-                Step::SelectType => {
-                    if self.connection_type.is_some() {
-                        self.step = Step::SelectProvider;
-                        continue;
-                    }
-                    self.list_state = ListState::default().with_selected(Some(0));
-                    return Vec::new();
-                }
                 Step::SelectProvider => {
                     if let Some(provider) = self.provider {
-                        let ct = self.connection_type.unwrap();
-                        if provider.valid_for(ct) {
-                            self.step = Step::InputBaseUrl;
-                            continue;
+                        if let Some(ct) = self.connection_type {
+                            if provider.valid_for(ct) {
+                                self.step = Step::InputBaseUrl;
+                                continue;
+                            }
                         }
                         self.provider = None;
                     }
-                    self.list_state = ListState::default().with_selected(Some(0));
+                    let first = self.first_selectable_index();
+                    self.list_state = ListState::default().with_selected(Some(first));
                     return Vec::new();
                 }
                 Step::InputBaseUrl => {
@@ -322,12 +339,12 @@ impl App {
                     return Vec::new();
                 }
                 Step::Done => {
-                    return vec![Effect::Save {
+                    return vec![Effect::Save(SaveData {
                         connection_type: self.connection_type.unwrap(),
                         provider: self.provider.unwrap(),
                         base_url: self.base_url.clone(),
                         api_key: self.api_key.clone(),
-                    }];
+                    })];
                 }
             }
         }
@@ -357,13 +374,13 @@ mod tests {
             Some("key123".to_string()),
         );
         assert_eq!(app.step(), Step::Done);
-        assert!(matches!(effects.as_slice(), [Effect::Save { .. }]));
+        assert!(matches!(effects.as_slice(), [Effect::Save(_)]));
     }
 
     #[test]
-    fn no_args_starts_at_select_type() {
+    fn no_args_starts_at_select_provider() {
         let (app, effects) = App::new(None, None, None, None);
-        assert_eq!(app.step(), Step::SelectType);
+        assert_eq!(app.step(), Step::SelectProvider);
         assert!(effects.is_empty());
     }
 
@@ -399,13 +416,15 @@ mod tests {
     }
 
     #[test]
-    fn select_type_then_advance() {
+    fn select_provider_from_flat_list() {
         let (mut app, _) = App::new(None, None, None, None);
-        assert_eq!(app.step(), Step::SelectType);
+        assert_eq!(app.step(), Step::SelectProvider);
+        // First selectable entry is the first LLM provider (index 1, after the header)
+        assert_eq!(app.list_state_mut().selected(), Some(1));
 
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
         assert!(effects.is_empty());
-        assert_eq!(app.step(), Step::SelectProvider);
+        assert_eq!(app.step(), Step::InputBaseUrl);
     }
 
     #[test]

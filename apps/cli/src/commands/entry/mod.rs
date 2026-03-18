@@ -8,7 +8,7 @@ mod ui;
 
 pub enum EntryCommand {
     Listen,
-    Chat,
+    Chat { session_id: Option<String> },
     View { session_id: String },
 }
 
@@ -67,10 +67,12 @@ impl EntryScreen {
                 } => {
                     let provider_id = provider.id().to_string();
                     let action = match crate::commands::connect::save_config(
-                        connection_type,
-                        provider,
-                        base_url,
-                        api_key,
+                        crate::commands::connect::effect::SaveData {
+                            connection_type,
+                            provider,
+                            base_url,
+                            api_key,
+                        },
                     ) {
                         Ok(()) => Action::ConnectSaved {
                             connection_type,
@@ -145,7 +147,7 @@ impl Screen for EntryScreen {
                 let effects = self.app.dispatch(Action::Paste(pasted));
                 self.apply_effects(effects)
             }
-            TuiEvent::Draw => ScreenControl::Continue,
+            TuiEvent::Draw | TuiEvent::Resize => ScreenControl::Continue,
         }
     }
 
@@ -164,6 +166,10 @@ impl Screen for EntryScreen {
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
         ui::draw(frame, &mut self.app);
+    }
+
+    fn on_resize(&mut self) {
+        self.app.reload_logo();
     }
 
     fn title(&self) -> String {

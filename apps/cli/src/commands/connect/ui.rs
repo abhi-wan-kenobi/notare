@@ -1,24 +1,18 @@
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Flex, Layout, Position, Rect};
+use ratatui::layout::{Constraint, Layout, Position, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Clear, List, Paragraph};
+use ratatui::widgets::{Block, List, ListItem, Paragraph};
 
 use crate::theme::Theme;
-use crate::widgets::KeyHints;
+use crate::widgets::{CenteredDialog, KeyHints};
 
-use super::app::{App, Step};
+use super::app::{App, ListEntry, Step};
 
 pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     let theme = Theme::DEFAULT;
-    let area = centered_dialog(frame.area());
 
-    frame.render_widget(Clear, area);
-    let block = Block::bordered()
-        .title(" Connect a provider ")
-        .border_style(theme.border);
-    let inner = block.inner(area);
-    frame.render_widget(block, area);
+    let inner = CenteredDialog::new("Connect a provider", &theme).render(frame);
 
     let [header_area, content_area, status_area] = Layout::vertical([
         Constraint::Length(1),
@@ -30,7 +24,7 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     draw_header(frame, app, header_area);
 
     match app.step() {
-        Step::SelectType | Step::SelectProvider => draw_list(frame, app, content_area, &theme),
+        Step::SelectProvider => draw_list(frame, app, content_area, &theme),
         Step::InputBaseUrl | Step::InputApiKey => draw_input(frame, app, content_area, &theme),
         Step::Done => {}
     }
@@ -52,32 +46,23 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     );
 }
 
-fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, _theme: &Theme) {
-    let [label_area, _, list_area] = Layout::vertical([
-        Constraint::Length(1),
-        Constraint::Length(1),
-        Constraint::Min(1),
-    ])
-    .areas(area);
+fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
+    let entries = app.flat_entries();
 
-    let label = match app.step() {
-        Step::SelectType => "  Connection type:",
-        Step::SelectProvider => "  Provider:",
-        _ => "",
-    };
-    frame.render_widget(Span::styled(label, Style::new().bold()), label_area);
+    let items: Vec<ListItem> = entries
+        .iter()
+        .map(|entry| match entry {
+            ListEntry::Header(ct) => ListItem::new(Line::from(Span::styled(
+                format!(" {}", ct.to_string().to_uppercase()),
+                theme.accent.add_modifier(Modifier::BOLD),
+            ))),
+            ListEntry::Provider(_, provider) => ListItem::new(format!("    {}", provider.id())),
+        })
+        .collect();
 
-    let items: Vec<&str> = match app.step() {
-        Step::SelectType => vec!["stt", "llm"],
-        Step::SelectProvider => app.provider_list().iter().map(|p| p.id()).collect(),
-        _ => vec![],
-    };
+    let list = List::new(items).highlight_style(Style::new().bg(theme.highlight_bg));
 
-    let list = List::new(items)
-        .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
-        .highlight_symbol("  > ");
-
-    frame.render_stateful_widget(list, list_area, app.list_state_mut());
+    frame.render_stateful_widget(list, area, app.list_state_mut());
 }
 
 // --- Data layer: describe what to render ---
@@ -165,7 +150,7 @@ fn draw_input(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
 
 fn draw_status(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let hints = match app.step() {
-        Step::SelectType | Step::SelectProvider => {
+        Step::SelectProvider => {
             vec![("↑/↓", "navigate"), ("Enter", "select"), ("Esc", "quit")]
         }
         Step::InputBaseUrl | Step::InputApiKey => {
@@ -175,20 +160,4 @@ fn draw_status(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     };
 
     frame.render_widget(KeyHints::new(theme).hints(hints), area);
-}
-
-fn centered_dialog(area: Rect) -> Rect {
-    let width = area.width.saturating_mul(3).saturating_div(5).clamp(40, 80);
-    let height = area
-        .height
-        .saturating_mul(3)
-        .saturating_div(5)
-        .clamp(12, 30);
-    let [v] = Layout::vertical([Constraint::Length(height)])
-        .flex(Flex::Center)
-        .areas(area);
-    let [h] = Layout::horizontal([Constraint::Length(width)])
-        .flex(Flex::Center)
-        .areas(v);
-    h
 }

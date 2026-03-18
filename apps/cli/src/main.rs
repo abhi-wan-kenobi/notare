@@ -23,7 +23,7 @@ async fn main() {
         &cli.command,
         Some(Commands::Chat { prompt: None, .. })
             | Some(Commands::Listen { .. })
-            | Some(Commands::Sessions)
+            | Some(Commands::Sessions { .. })
             | Some(Commands::Connect {
                 r#type: None,
                 provider: None
@@ -174,18 +174,29 @@ async fn run(cli: Cli) -> CliResult<()> {
             eprintln!("Opened char.com in browser");
             Ok(())
         }
-        Some(Commands::Sessions) => {
+        Some(Commands::Sessions { command }) => {
             let paths = config::desktop::resolve_paths();
             let db_path = paths.vault_base.join("app.db");
-            let selected = commands::sessions::run(db_path.clone()).await?;
-            if let Some(session_id) = selected {
-                commands::view::run(commands::view::Args {
-                    session_id,
-                    db_path,
-                })
-                .await
-            } else {
-                Ok(())
+            match command {
+                Some(cli::SessionsCommands::View { id }) => {
+                    commands::sessions::view::run(commands::sessions::view::Args {
+                        session_id: id,
+                        db_path,
+                    })
+                    .await
+                }
+                None => {
+                    let selected = commands::sessions::run(db_path.clone()).await?;
+                    if let Some(session_id) = selected {
+                        commands::sessions::view::run(commands::sessions::view::Args {
+                            session_id,
+                            db_path,
+                        })
+                        .await
+                    } else {
+                        Ok(())
+                    }
+                }
             }
         }
         Some(Commands::Listen { provider, audio }) => {
@@ -277,9 +288,9 @@ async fn run_entry_loop(global: cli::GlobalArgs, initial_command: Option<String>
                     })
                     .await;
                 }
-                commands::entry::EntryCommand::Chat => {
+                commands::entry::EntryCommand::Chat { session_id } => {
                     return commands::chat::run(commands::chat::Args {
-                        session: None,
+                        session: session_id,
                         prompt: None,
                         provider: None,
                         base_url: global.base_url.clone(),
@@ -291,7 +302,7 @@ async fn run_entry_loop(global: cli::GlobalArgs, initial_command: Option<String>
                 commands::entry::EntryCommand::View { session_id } => {
                     let paths = config::desktop::resolve_paths();
                     let db_path = paths.vault_base.join("app.db");
-                    return commands::view::run(commands::view::Args {
+                    return commands::sessions::view::run(commands::sessions::view::Args {
                         session_id,
                         db_path,
                     })

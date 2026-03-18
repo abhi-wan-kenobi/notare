@@ -13,6 +13,7 @@ pub enum TuiEvent {
     Key(KeyEvent),
     Paste(String),
     Draw,
+    Resize,
 }
 
 pub struct EventHandler {
@@ -83,7 +84,7 @@ impl EventHandler {
                                         TuiEvent::Key(key)
                                     }
                                     CrosstermEvent::Paste(pasted) => TuiEvent::Paste(pasted),
-                                    CrosstermEvent::Resize(_, _) => TuiEvent::Draw,
+                                    CrosstermEvent::Resize(_, _) => TuiEvent::Resize,
                                     _ => continue,
                                 }
                             }
