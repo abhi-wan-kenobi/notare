@@ -140,6 +140,18 @@ impl App {
         self.state.word_count()
     }
 
+    pub(crate) fn words(&self) -> Vec<hypr_transcript::FinalizedWord> {
+        self.state.words().to_vec()
+    }
+
+    pub(crate) fn hints(&self) -> Vec<hypr_transcript::RuntimeSpeakerHint> {
+        self.state.hints().to_vec()
+    }
+
+    pub(crate) fn memo_text(&self) -> String {
+        self.ui.memo().text()
+    }
+
     pub(crate) fn command_buffer(&self) -> &str {
         self.ui.command_buffer()
     }

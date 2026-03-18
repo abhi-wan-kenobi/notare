@@ -38,6 +38,9 @@ struct Output {
     elapsed: std::time::Duration,
     force_quit: bool,
     segments: Vec<hypr_transcript::Segment>,
+    words: Vec<hypr_transcript::FinalizedWord>,
+    hints: Vec<hypr_transcript::RuntimeSpeakerHint>,
+    memo_text: String,
 }
 
 enum ExternalEvent {
@@ -61,6 +64,9 @@ impl ListenScreen {
                         elapsed: self.app.elapsed(),
                         force_quit: force,
                         segments: self.app.segments(),
+                        words: self.app.words(),
+                        hints: self.app.hints(),
+                        memo_text: self.app.memo_text(),
                     });
                 }
             }
@@ -211,13 +217,28 @@ pub async fn run(args: Args) -> CliResult<()> {
                 .to_string()
         });
 
+        let db_path = vault_base.join("app.db");
         let (exit_tx, exit_rx) = mpsc::unbounded_channel();
-        spawn_post_session(output.segments, session_dir, llm_config, exit_tx);
+        spawn_post_session(
+            output.segments,
+            session_dir,
+            llm_config,
+            exit_tx,
+            output.words,
+            output.hints,
+            output.memo_text,
+            session_label.clone(),
+            db_path,
+        );
 
         let exit_screen = ExitScreen::new(
             session_label,
             output.elapsed,
-            vec!["Saving transcript", "Generating summary"],
+            vec![
+                "Saving to database",
+                "Saving transcript",
+                "Generating summary",
+            ],
         );
         let height = exit_screen.viewport_height();
         run_screen_inline(exit_screen, height, Some(exit_rx))

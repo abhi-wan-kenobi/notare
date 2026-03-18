@@ -1,13 +1,17 @@
 use std::io::IsTerminal;
 use std::path::Path;
 
-use comfy_table::{Cell, Color, ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use hypr_local_model::LocalModel;
 use hypr_model_downloader::{DownloadableModel, ModelDownloadManager};
+use ratatui::layout::Constraint;
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::Text;
+use ratatui::widgets::{Cell, Row, Table};
 
 use crate::cli::OutputFormat;
 use crate::config::desktop as settings;
 use crate::error::CliResult;
+use crate::widgets::InlineBox;
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub(super) struct ModelRow {
@@ -86,38 +90,61 @@ fn print_model_rows_table(models_base: &Path, rows: &[ModelRow]) -> CliResult<()
         return Ok(());
     }
 
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic);
-    table.set_header(["", "Name", "Kind", "Status", "Model", "Description"]);
+    let dim = Style::default().add_modifier(Modifier::DIM);
 
-    for row in rows {
-        let active = if row.active {
-            Cell::new("*")
-        } else {
-            Cell::new("")
-        };
+    let header = Row::new(["", "Name", "Kind", "Status", "Model", "Description"]).style(dim);
 
-        let status_cell = match row.status.as_str() {
-            "downloaded" => Cell::new(&row.status).fg(Color::Green),
-            "not-downloaded" => Cell::new(&row.status).fg(Color::Yellow),
-            "unavailable" => Cell::new(&row.status).fg(Color::DarkGrey),
-            "error" => Cell::new(&row.status).fg(Color::Red),
-            _ => Cell::new(&row.status),
-        };
+    let table_rows: Vec<Row> = rows
+        .iter()
+        .map(|row| {
+            let active = if row.active {
+                Cell::from(Text::raw("*"))
+            } else {
+                Cell::from("")
+            };
 
-        table.add_row([
-            active,
-            Cell::new(&row.name),
-            Cell::new(&row.kind),
-            status_cell,
-            Cell::new(&row.display_name),
-            Cell::new(&row.description),
-        ]);
-    }
+            let status_cell = match row.status.as_str() {
+                "downloaded" => {
+                    Cell::from(row.status.as_str()).style(Style::default().fg(Color::Green))
+                }
+                "not-downloaded" => {
+                    Cell::from(row.status.as_str()).style(Style::default().fg(Color::Yellow))
+                }
+                "unavailable" => {
+                    Cell::from(row.status.as_str()).style(Style::default().fg(Color::DarkGray))
+                }
+                "error" => Cell::from(row.status.as_str()).style(Style::default().fg(Color::Red)),
+                _ => Cell::from(row.status.as_str()),
+            };
+
+            Row::new([
+                active,
+                Cell::from(row.name.as_str()),
+                Cell::from(row.kind.as_str()),
+                status_cell,
+                Cell::from(row.display_name.as_str()),
+                Cell::from(row.description.as_str()),
+            ])
+        })
+        .collect();
+
+    let content_lines = (table_rows.len() + 1) as u16;
+    let height = InlineBox::viewport_height(content_lines);
+
+    let widths = [
+        Constraint::Length(1),
+        Constraint::Length(20),
+        Constraint::Length(8),
+        Constraint::Length(14),
+        Constraint::Min(16),
+        Constraint::Min(12),
+    ];
+    let table = Table::new(table_rows, widths).header(header);
 
     println!();
-    println!("{table}");
+    let _ = hypr_cli_tui::render_inline(height, |frame| {
+        let inner = InlineBox::render(frame);
+        frame.render_widget(table, inner);
+    });
     Ok(())
 }

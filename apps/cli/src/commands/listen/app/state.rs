@@ -100,6 +100,14 @@ impl ListenState {
         self.words.len()
     }
 
+    pub(super) fn words(&self) -> &[FinalizedWord] {
+        &self.words
+    }
+
+    pub(super) fn hints(&self) -> &[RuntimeSpeakerHint] {
+        &self.hints
+    }
+
     pub(super) fn push_error(&mut self, error: String) {
         self.errors.push(error);
     }

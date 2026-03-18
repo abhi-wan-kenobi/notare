@@ -5,6 +5,7 @@ pub mod chat;
 pub mod connect;
 pub mod desktop;
 pub mod entry;
+pub mod exit;
 pub mod hello;
 pub mod listen;
 pub mod model;

@@ -2,8 +2,6 @@ use std::io::{IsTerminal, Write};
 use std::path::Path;
 use std::time::Duration;
 
-use indicatif::{ProgressBar, ProgressStyle};
-
 use crate::error::{CliError, CliResult};
 
 pub fn format_hhmmss(duration: Duration) -> String {
@@ -77,23 +75,4 @@ pub async fn write_json(output: Option<&Path>, value: &impl serde::Serialize) ->
     .map_err(|e| CliError::operation_failed("serialize response", e.to_string()))?;
 
     write_bytes_to(output, bytes).await
-}
-
-pub fn create_progress_bar(
-    message: &str,
-    template: &str,
-    progress_chars: &str,
-) -> Option<ProgressBar> {
-    if !std::io::stderr().is_terminal() {
-        return None;
-    }
-    let bar = ProgressBar::new(100);
-    bar.set_style(
-        ProgressStyle::with_template(template)
-            .expect("hardcoded progress template")
-            .progress_chars(progress_chars),
-    );
-    bar.set_message(message.to_string());
-    bar.enable_steady_tick(std::time::Duration::from_millis(120));
-    Some(bar)
 }

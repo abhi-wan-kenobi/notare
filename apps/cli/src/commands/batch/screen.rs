@@ -4,6 +4,7 @@ use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent};
 use owhisper_interface::{batch, stream::StreamResponse};
 
 use crate::output::format_hhmmss;
+use crate::widgets::InlineBox;
 use hypr_listener2_core::BatchErrorCode;
 
 const SPINNER_FRAMES: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -53,8 +54,7 @@ impl BatchScreen {
     }
 
     pub fn viewport_height(&self) -> u16 {
-        // 4 content lines + 2 padding_v + 2 border + 2 outer margin
-        10
+        InlineBox::viewport_height(4)
     }
 }
 
@@ -118,10 +118,9 @@ impl Screen for BatchScreen {
     }
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
-        use ratatui::layout::{Constraint, Layout};
         use ratatui::style::{Color, Modifier, Style};
         use ratatui::text::{Line, Span};
-        use ratatui::widgets::{Block, BorderType, Padding, Paragraph};
+        use ratatui::widgets::Paragraph;
 
         let dim = Style::default().add_modifier(Modifier::DIM);
         let elapsed = format_hhmmss(self.started_at.elapsed());
@@ -166,25 +165,7 @@ impl Screen for BatchScreen {
         };
         lines.push(status_line);
 
-        let area = frame.area();
-        let [_, box_area, _] = Layout::horizontal([
-            Constraint::Length(2),
-            Constraint::Max(80),
-            Constraint::Length(2),
-        ])
-        .areas(area);
-        let [_, box_area, _] = Layout::vertical([
-            Constraint::Length(1),
-            Constraint::Min(0),
-            Constraint::Length(1),
-        ])
-        .areas(box_area);
-
-        let block = Block::bordered()
-            .border_type(BorderType::Rounded)
-            .padding(Padding::new(2, 2, 1, 1));
-        let inner = block.inner(box_area);
-        frame.render_widget(block, box_area);
+        let inner = InlineBox::render(frame);
         frame.render_widget(Paragraph::new(lines), inner);
     }
 

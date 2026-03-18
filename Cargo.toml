@@ -70,10 +70,10 @@ hypr-cloudsync = { path = "crates/cloudsync", package = "cloudsync" }
 hypr-data = { path = "crates/data", package = "data" }
 hypr-db-app = { path = "crates/db-app", package = "db-app" }
 hypr-db-core = { path = "crates/db-core", package = "db-core" }
-hypr-db-watch = { path = "crates/db-watch", package = "db-watch" }
 hypr-db-core2 = { path = "crates/db-core2", package = "db-core2" }
 hypr-db-parser = { path = "crates/db-parser", package = "db-parser" }
 hypr-db-user = { path = "crates/db-user", package = "db-user" }
+hypr-db-watch = { path = "crates/db-watch", package = "db-watch" }
 hypr-denoise = { path = "crates/denoise", package = "denoise" }
 hypr-detect = { path = "crates/detect", package = "detect" }
 hypr-device-monitor = { path = "crates/device-monitor", package = "device-monitor" }
@@ -357,7 +357,6 @@ realfft = "3.5.0"
 ringbuf = "0.4.8"
 rodio = "0.22"
 tachyonfx = "0.25"
-tui-widgets = { version = "0.7.0", features = ["scrollview"] }
 vorbis_rs = "0.5.5"
 
 deepgram = { version = "0.7", default-features = false }

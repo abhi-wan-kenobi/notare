@@ -1,13 +1,17 @@
 mod list;
 mod runtime;
+mod screen;
 
+use std::io::IsTerminal;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
+use hypr_cli_tui::run_screen_inline;
 use hypr_local_model::{LocalModel, LocalModelKind};
 use hypr_local_stt_core::SUPPORTED_MODELS as SUPPORTED_STT_MODELS;
 use hypr_model_downloader::ModelDownloadManager;
+use tokio::sync::mpsc;
 
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 pub use crate::cli::CactusCommands;
@@ -73,7 +77,7 @@ pub async fn run(command: ModelCommands) -> CliResult<()> {
         } => {
             let runtime = Arc::new(CliModelRuntime {
                 models_base: models_base.clone(),
-                progress: None,
+                progress_tx: None,
             });
             let manager = ModelDownloadManager::new(runtime);
             let current = settings::load_settings(&paths.settings_path);
@@ -116,7 +120,7 @@ async fn run_cactus(
         CactusCommands::List { format } => {
             let runtime = Arc::new(CliModelRuntime {
                 models_base: models_base.to_path_buf(),
-                progress: None,
+                progress_tx: None,
             });
             let manager = ModelDownloadManager::new(runtime);
             let current = settings::load_settings(settings_path);
@@ -141,10 +145,18 @@ async fn run_cactus(
 }
 
 async fn download_model(model: LocalModel, models_base: &Path) -> CliResult<()> {
-    let progress = make_download_progress_bar(&model);
+    let show_progress = std::io::stderr().is_terminal();
+
+    let (progress_tx, progress_rx) = if show_progress {
+        let (tx, rx) = mpsc::unbounded_channel();
+        (Some(tx), Some(rx))
+    } else {
+        (None, None)
+    };
+
     let runtime = Arc::new(CliModelRuntime {
         models_base: models_base.to_path_buf(),
-        progress: progress.clone(),
+        progress_tx,
     });
     let manager = ModelDownloadManager::new(runtime);
 
@@ -158,44 +170,57 @@ async fn download_model(model: LocalModel, models_base: &Path) -> CliResult<()> 
     }
 
     if let Err(e) = manager.download(&model).await {
-        if let Some(progress) = progress {
-            progress.abandon_with_message("Failed");
-        }
         return Err(CliError::operation_failed(
             "start model download",
             format!("{}: {e}", model.cli_name()),
         ));
     }
 
-    while manager.is_downloading(&model).await {
-        tokio::time::sleep(Duration::from_millis(120)).await;
-    }
+    if let Some(progress_rx) = progress_rx {
+        let screen = screen::DownloadScreen::new(model.cli_name().to_string());
+        let height = screen.viewport_height();
+        let success = run_screen_inline(screen, height, Some(progress_rx))
+            .await
+            .map_err(|e| CliError::operation_failed("download tui", e.to_string()))?;
 
-    if manager.is_downloaded(&model).await.unwrap_or(false) {
-        if let Some(progress) = progress {
-            progress.finish_and_clear();
+        if success {
+            println!(
+                "Downloaded {} -> {}",
+                model.display_name(),
+                model.install_path(models_base).display()
+            );
+            Ok(())
+        } else {
+            Err(CliError::operation_failed(
+                "download model",
+                model.cli_name().to_string(),
+            ))
         }
-        println!(
-            "Downloaded {} -> {}",
-            model.display_name(),
-            model.install_path(models_base).display()
-        );
-        Ok(())
     } else {
-        if let Some(progress) = progress {
-            progress.abandon_with_message("Failed");
+        while manager.is_downloading(&model).await {
+            tokio::time::sleep(Duration::from_millis(120)).await;
         }
-        Err(CliError::operation_failed(
-            "download model",
-            model.cli_name().to_string(),
-        ))
+
+        if manager.is_downloaded(&model).await.unwrap_or(false) {
+            println!(
+                "Downloaded {} -> {}",
+                model.display_name(),
+                model.install_path(models_base).display()
+            );
+            Ok(())
+        } else {
+            Err(CliError::operation_failed(
+                "download model",
+                model.cli_name().to_string(),
+            ))
+        }
     }
 }
 
 async fn delete_model(model: LocalModel, models_base: &Path) -> CliResult<()> {
     let runtime = Arc::new(CliModelRuntime {
         models_base: models_base.to_path_buf(),
-        progress: None,
+        progress_tx: None,
     });
     let manager = ModelDownloadManager::new(runtime);
 
@@ -208,14 +233,6 @@ async fn delete_model(model: LocalModel, models_base: &Path) -> CliResult<()> {
 
     println!("Deleted {}", model.display_name());
     Ok(())
-}
-
-fn make_download_progress_bar(model: &LocalModel) -> Option<indicatif::ProgressBar> {
-    crate::output::create_progress_bar(
-        &format!("Downloading {}", model.cli_name()),
-        "{spinner} {msg} [{wide_bar}] {pos:>3}%",
-        "=>-",
-    )
 }
 
 fn find_model(name: &str) -> Option<LocalModel> {

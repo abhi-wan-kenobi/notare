@@ -4,13 +4,13 @@ pub(crate) mod command_popup;
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Flex, Layout, Rect},
-    style::Style,
     text::{Line, Span},
-    widgets::{Block, Clear, Paragraph},
+    widgets::{Clear, Paragraph},
 };
 use ratatui_image::{Resize, StatefulImage};
 
 use crate::theme::Theme;
+use crate::widgets::AppShell;
 
 use super::app::{App, Overlay};
 
@@ -22,15 +22,9 @@ const APP_VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
 pub fn draw(frame: &mut Frame, app: &mut App) {
     let theme = Theme::DEFAULT;
 
-    frame.render_widget(
-        Block::default().style(Style::default().bg(theme.bg)),
-        frame.area(),
-    );
+    let [main_area, status_area] = AppShell::new(&theme).render(frame);
 
     let logo_height = frame.area().height.saturating_div(6).clamp(5, 7);
-
-    let [main_area, status_area] =
-        Layout::vertical([Constraint::Min(1), Constraint::Length(1)]).areas(frame.area());
 
     let [logo_area, input_area, _gap, tip_area] = Layout::vertical([
         Constraint::Length(logo_height),

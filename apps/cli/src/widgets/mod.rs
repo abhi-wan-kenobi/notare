@@ -1,15 +1,19 @@
+mod app_shell;
 mod centered_dialog;
 mod command_bar;
 mod info_line;
+mod inline_box;
 mod key_hints;
 mod scrollable;
 mod select_list;
 mod transcript;
 mod waveform;
 
+pub use app_shell::AppShell;
 pub use centered_dialog::CenteredDialog;
 pub use command_bar::CommandBar;
 pub use info_line::InfoLine;
+pub use inline_box::InlineBox;
 pub use key_hints::KeyHints;
 pub use scrollable::{ScrollViewState, render_scrollable};
 pub use select_list::SelectList;

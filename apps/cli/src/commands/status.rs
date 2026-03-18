@@ -1,9 +1,13 @@
 use std::io::IsTerminal;
 
-use comfy_table::{Cell, Color, ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
+use ratatui::layout::Constraint;
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::Text;
+use ratatui::widgets::{Cell, Row, Table};
 
 use crate::config::desktop;
 use crate::error::CliResult;
+use crate::widgets::InlineBox;
 
 pub fn run() -> CliResult<()> {
     let paths = desktop::resolve_paths();
@@ -68,30 +72,45 @@ fn print_section(
         return;
     }
 
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic);
-    table.set_header(["", "Provider", "Base URL", "API Key"]);
+    let dim = Style::default().add_modifier(Modifier::DIM);
+
+    let header = Row::new(["", "Provider", "Base URL", "API Key"]).style(dim);
 
     let mut names: Vec<&String> = providers.keys().collect();
     names.sort();
 
-    for name in names {
-        let config = &providers[name];
-        let active = if current.as_deref() == Some(name.as_str()) {
-            Cell::new("*").fg(Color::Green)
-        } else {
-            Cell::new("")
-        };
-        let url = Cell::new(config.base_url.as_deref().unwrap_or("-"));
-        let key = if config.api_key.is_some() {
-            Cell::new("yes").fg(Color::Green)
-        } else {
-            Cell::new("no").fg(Color::DarkGrey)
-        };
-        table.add_row([active, Cell::new(name), url, key]);
-    }
+    let rows: Vec<Row> = names
+        .iter()
+        .map(|name| {
+            let config = &providers[*name];
+            let active = if current.as_deref() == Some(name.as_str()) {
+                Cell::from(Text::raw("*")).style(Style::default().fg(Color::Green))
+            } else {
+                Cell::from("")
+            };
+            let url = Cell::from(config.base_url.as_deref().unwrap_or("-"));
+            let key = if config.api_key.is_some() {
+                Cell::from("yes").style(Style::default().fg(Color::Green))
+            } else {
+                Cell::from("no").style(Style::default().fg(Color::DarkGray))
+            };
+            Row::new([active, Cell::from(name.as_str()), url, key])
+        })
+        .collect();
 
-    println!("{table}");
+    let content_lines = (rows.len() + 1) as u16;
+    let height = InlineBox::viewport_height(content_lines);
+
+    let widths = [
+        Constraint::Length(1),
+        Constraint::Length(16),
+        Constraint::Min(20),
+        Constraint::Length(7),
+    ];
+    let table = Table::new(rows, widths).header(header);
+
+    let _ = hypr_cli_tui::render_inline(height, |frame| {
+        let inner = InlineBox::render(frame);
+        frame.render_widget(table, inner);
+    });
 }

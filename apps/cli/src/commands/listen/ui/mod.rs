@@ -1,12 +1,11 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Layout},
-    style::Style,
-    widgets::Block,
 };
 
 use crate::commands::listen::app::App;
 use crate::theme::Theme;
+use crate::widgets::AppShell;
 
 mod header;
 mod notepad;
@@ -17,16 +16,9 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     let elapsed = app.frame_elapsed();
     let theme = Theme::TRANSPARENT;
 
-    frame.render_widget(
-        Block::default().style(Style::default().bg(theme.bg)),
-        frame.area(),
-    );
-    let [header_area, body_area, status_area] = Layout::vertical([
-        Constraint::Length(1),
-        Constraint::Min(3),
-        Constraint::Length(1),
-    ])
-    .areas(frame.area());
+    let [content_area, status_area] = AppShell::new(&theme).render(frame);
+    let [header_area, body_area] =
+        Layout::vertical([Constraint::Length(1), Constraint::Min(3)]).areas(content_area);
 
     header::draw_header_bar(frame, app, header_area, &theme);
 

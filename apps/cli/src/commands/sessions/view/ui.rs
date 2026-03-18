@@ -3,28 +3,22 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Padding, Paragraph},
+    widgets::{Padding, Paragraph},
 };
 
 use crate::theme::Theme;
-use crate::widgets::{CommandBar, InfoLine, KeyHints, build_segment_lines, render_scrollable};
+use crate::widgets::{
+    AppShell, CommandBar, InfoLine, KeyHints, build_segment_lines, render_scrollable,
+};
 
 use super::app::{App, Mode};
 
 pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     let theme = Theme::TRANSPARENT;
 
-    frame.render_widget(
-        Block::default().style(Style::default().bg(theme.bg)),
-        frame.area(),
-    );
-
-    let [header_area, body_area, status_area] = Layout::vertical([
-        Constraint::Length(1),
-        Constraint::Min(3),
-        Constraint::Length(1),
-    ])
-    .areas(frame.area());
+    let [content_area, status_area] = AppShell::new(&theme).render(frame);
+    let [header_area, body_area] =
+        Layout::vertical([Constraint::Length(1), Constraint::Min(3)]).areas(content_area);
 
     draw_header(frame, app, header_area, &theme);
 

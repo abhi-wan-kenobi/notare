@@ -309,6 +309,80 @@ mod tests {
     use super::*;
     use hypr_db_core2::Db3;
 
+    // https://docs.sqlitecloud.io/docs/sqlite-sync-best-practices
+    mod sync_compat {
+        use super::*;
+
+        // PRAGMA table_info returns: (cid, name, type, notnull, dflt_value, pk)
+        type PragmaRow = (i32, String, String, i32, Option<String>, i32);
+
+        async fn table_names(pool: &sqlx::SqlitePool) -> Vec<String> {
+            sqlx::query_as::<_, (String,)>(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_sqlx%' AND name NOT LIKE '%_fts%'",
+            )
+            .fetch_all(pool)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|r| r.0)
+            .collect()
+        }
+
+        async fn table_info(pool: &sqlx::SqlitePool, table: &str) -> Vec<PragmaRow> {
+            sqlx::query_as::<_, PragmaRow>(&format!("PRAGMA table_info('{}')", table))
+                .fetch_all(pool)
+                .await
+                .unwrap()
+        }
+
+        #[tokio::test]
+        async fn primary_keys_are_text_not_null() {
+            let db = Db3::connect_memory_plain().await.unwrap();
+            migrate(db.pool()).await.unwrap();
+
+            for table in &table_names(db.pool()).await {
+                let cols = table_info(db.pool(), table).await;
+                let pks: Vec<_> = cols.iter().filter(|c| c.5 != 0).collect();
+                assert!(!pks.is_empty(), "{table}: no primary key");
+                for pk in &pks {
+                    assert_eq!(
+                        pk.2.to_uppercase(),
+                        "TEXT",
+                        "{table}.{}: pk must be TEXT, got {}",
+                        pk.1,
+                        pk.2
+                    );
+                    assert_ne!(pk.3, 0, "{table}.{}: pk must be NOT NULL", pk.1);
+                }
+            }
+        }
+
+        #[tokio::test]
+        async fn not_null_columns_have_defaults() {
+            let db = Db3::connect_memory_plain().await.unwrap();
+            migrate(db.pool()).await.unwrap();
+
+            let mut violations = vec![];
+            for table in &table_names(db.pool()).await {
+                for col in &table_info(db.pool(), table).await {
+                    let (_, ref name, _, notnull, ref dflt, pk) = *col;
+                    if pk != 0 || notnull == 0 {
+                        continue;
+                    }
+                    if dflt.is_none() {
+                        violations.push(format!("{table}.{name}"));
+                    }
+                }
+            }
+
+            assert!(
+                violations.is_empty(),
+                "NOT NULL non-PK columns without DEFAULT: {}",
+                violations.join(", ")
+            );
+        }
+    }
+
     #[tokio::test]
     async fn roundtrip_words_and_hints() {
         let db = Db3::connect_memory_plain().await.unwrap();
