@@ -10,14 +10,14 @@ use ratatui::{
 };
 
 use super::TracingCapture;
-use crate::widgets::{ScrollState, Scrollable};
+use crate::widgets::{ScrollViewState, render_scrollable};
 
 pub(crate) struct TranscribeShell {
     tracing: Arc<TracingCapture>,
     log_lines: Vec<Line<'static>>,
-    log_scroll: ScrollState,
+    log_scroll: ScrollViewState,
     log_autoscroll: bool,
-    transcript_scroll: ScrollState,
+    transcript_scroll: ScrollViewState,
     transcript_autoscroll: bool,
     pub(crate) stream_ended: bool,
 }
@@ -27,9 +27,9 @@ impl TranscribeShell {
         Self {
             tracing,
             log_lines: Vec::new(),
-            log_scroll: ScrollState::new(),
+            log_scroll: ScrollViewState::new(),
             log_autoscroll: true,
-            transcript_scroll: ScrollState::new(),
+            transcript_scroll: ScrollViewState::new(),
             transcript_autoscroll: true,
             stream_ended: false,
         }
@@ -43,24 +43,18 @@ impl TranscribeShell {
         match key.code {
             KeyCode::Char('q') => return true,
             KeyCode::Char('j') | KeyCode::Down => {
-                self.transcript_scroll.offset = self
-                    .transcript_scroll
-                    .offset
-                    .saturating_add(1)
-                    .min(self.transcript_scroll.max_scroll);
-                self.transcript_autoscroll =
-                    self.transcript_scroll.offset >= self.transcript_scroll.max_scroll;
+                self.transcript_scroll.scroll_down();
             }
             KeyCode::Char('k') | KeyCode::Up => {
-                self.transcript_scroll.offset = self.transcript_scroll.offset.saturating_sub(1);
+                self.transcript_scroll.scroll_up();
                 self.transcript_autoscroll = false;
             }
             KeyCode::Char('G') => {
-                self.transcript_scroll.offset = self.transcript_scroll.max_scroll;
+                self.transcript_scroll.scroll_to_bottom();
                 self.transcript_autoscroll = true;
             }
             KeyCode::Char('g') => {
-                self.transcript_scroll.offset = 0;
+                self.transcript_scroll.scroll_to_top();
                 self.transcript_autoscroll = false;
             }
             _ => {}
@@ -104,11 +98,10 @@ impl TranscribeShell {
             .padding(Padding::new(1, 1, 0, 0));
 
         let lines = self.log_lines.clone();
-        let scrollable = Scrollable::new(lines).block(block);
         if self.log_autoscroll {
-            self.log_scroll.offset = self.log_scroll.max_scroll;
+            self.log_scroll.scroll_to_bottom();
         }
-        frame.render_stateful_widget(scrollable, area, &mut self.log_scroll);
+        render_scrollable(frame, lines, Some(block), area, &mut self.log_scroll);
     }
 
     fn draw_transcript_panel(
@@ -141,11 +134,10 @@ impl TranscribeShell {
             .block(block);
             frame.render_widget(paragraph, area);
         } else {
-            let scrollable = Scrollable::new(lines).block(block);
             if self.transcript_autoscroll {
-                self.transcript_scroll.offset = self.transcript_scroll.max_scroll;
+                self.transcript_scroll.scroll_to_bottom();
             }
-            frame.render_stateful_widget(scrollable, area, &mut self.transcript_scroll);
+            render_scrollable(frame, lines, Some(block), area, &mut self.transcript_scroll);
         }
     }
 }

@@ -117,9 +117,12 @@ async fn run(cli: Cli) -> CliResult<()> {
             prompt,
             provider,
         }) => {
-            let session = command.and_then(|cmd| match cmd {
-                cli::ChatCommands::Resume { session } => session,
-            });
+            let paths = config::desktop::resolve_paths();
+            let db_path = paths.vault_base.join("app.db");
+            let (session, resume_session_id) = match command {
+                Some(cli::ChatCommands::Resume { session }) => (None, session),
+                None => (None, None),
+            };
             commands::chat::run(commands::chat::Args {
                 session,
                 prompt,
@@ -127,6 +130,8 @@ async fn run(cli: Cli) -> CliResult<()> {
                 base_url: global.base_url,
                 api_key: global.api_key,
                 model: global.model,
+                db_path,
+                resume_session_id,
             })
             .await
         }
@@ -289,6 +294,8 @@ async fn run_entry_loop(global: cli::GlobalArgs, initial_command: Option<String>
                     .await;
                 }
                 commands::entry::EntryCommand::Chat { session_id } => {
+                    let paths = config::desktop::resolve_paths();
+                    let db_path = paths.vault_base.join("app.db");
                     return commands::chat::run(commands::chat::Args {
                         session: session_id,
                         prompt: None,
@@ -296,6 +303,8 @@ async fn run_entry_loop(global: cli::GlobalArgs, initial_command: Option<String>
                         base_url: global.base_url.clone(),
                         api_key: global.api_key.clone(),
                         model: global.model.clone(),
+                        db_path,
+                        resume_session_id: None,
                     })
                     .await;
                 }

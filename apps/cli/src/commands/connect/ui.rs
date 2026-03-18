@@ -1,13 +1,13 @@
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Position, Rect};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, List, ListItem, Paragraph};
+use ratatui::widgets::{Block, ListItem, Paragraph};
 
 use crate::theme::Theme;
-use crate::widgets::{CenteredDialog, KeyHints};
+use crate::widgets::{CenteredDialog, KeyHints, SelectList};
 
-use super::app::{App, ListEntry, Step};
+use super::app::{App, Step};
 
 pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     let theme = Theme::DEFAULT;
@@ -24,7 +24,8 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     draw_header(frame, app, header_area);
 
     match app.step() {
-        Step::SelectProvider => draw_list(frame, app, content_area, &theme),
+        Step::SelectType => draw_type_list(frame, app, content_area, &theme),
+        Step::SelectProvider => draw_provider_list(frame, app, content_area, &theme),
         Step::InputBaseUrl | Step::InputApiKey => draw_input(frame, app, content_area, &theme),
         Step::Done => {}
     }
@@ -46,23 +47,32 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     );
 }
 
-fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
-    let entries = app.flat_entries();
+fn draw_type_list(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
+    let current_llm = app.current_llm_provider().map(str::to_string);
+    let current_stt = app.current_stt_provider().map(str::to_string);
 
-    let items: Vec<ListItem> = entries
-        .iter()
-        .map(|entry| match entry {
-            ListEntry::Header(ct) => ListItem::new(Line::from(Span::styled(
-                format!(" {}", ct.to_string().to_uppercase()),
-                theme.accent.add_modifier(Modifier::BOLD),
-            ))),
-            ListEntry::Provider(_, provider) => ListItem::new(format!("    {}", provider.id())),
+    let items: Vec<ListItem> = [("LLM", current_llm), ("STT", current_stt)]
+        .into_iter()
+        .map(|(label, current)| {
+            let mut spans = vec![Span::raw(label)];
+            if let Some(provider) = current {
+                spans.push(Span::styled(format!("  {provider}"), theme.muted));
+            }
+            ListItem::new(Line::from(spans))
         })
         .collect();
 
-    let list = List::new(items).highlight_style(Style::new().bg(theme.highlight_bg));
+    frame.render_stateful_widget(SelectList::new(items, theme), area, app.list_state_mut());
+}
 
-    frame.render_stateful_widget(list, area, app.list_state_mut());
+fn draw_provider_list(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
+    let entries = app.provider_entries();
+    let items: Vec<ListItem> = entries
+        .iter()
+        .map(|p| ListItem::new(p.id().to_string()))
+        .collect();
+
+    frame.render_stateful_widget(SelectList::new(items, theme), area, app.list_state_mut());
 }
 
 // --- Data layer: describe what to render ---
@@ -150,9 +160,7 @@ fn draw_input(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
 
 fn draw_status(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let hints = match app.step() {
-        Step::SelectProvider => {
-            vec![("↑/↓", "navigate"), ("Enter", "select"), ("Esc", "quit")]
-        }
+        Step::SelectType | Step::SelectProvider => vec![],
         Step::InputBaseUrl | Step::InputApiKey => {
             vec![("Enter", "confirm"), ("Esc", "quit")]
         }

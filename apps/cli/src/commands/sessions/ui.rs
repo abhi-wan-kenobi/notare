@@ -2,10 +2,10 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{List, ListItem, Paragraph};
+use ratatui::widgets::{ListItem, Paragraph};
 
 use crate::theme::Theme;
-use crate::widgets::{CenteredDialog, KeyHints};
+use crate::widgets::{CenteredDialog, KeyHints, SelectList};
 
 use super::app::App;
 
@@ -57,7 +57,5 @@ fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
         })
         .collect();
 
-    let list = List::new(items).highlight_style(Style::new().bg(theme.highlight_bg));
-
-    frame.render_stateful_widget(list, area, app.list_state_mut());
+    frame.render_stateful_widget(SelectList::new(items, theme), area, app.list_state_mut());
 }

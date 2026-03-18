@@ -276,7 +276,8 @@ impl App {
 
         match head {
             "connect" => {
-                let (connect_app, initial_effects) = connect::app::App::new(None, None, None, None);
+                let (connect_app, initial_effects) =
+                    connect::app::App::new(None, None, None, None, None, None);
                 self.reset_input();
                 self.overlay = Overlay::Connect(connect_app);
                 self.translate_connect_effects(initial_effects)
@@ -434,6 +435,15 @@ impl App {
         });
 
         self.filtered_commands = ranked.into_iter().map(|(i, _)| i).collect();
+
+        use super::ui::command_popup::GROUP_ORDER;
+        self.filtered_commands.sort_by_key(|&i| {
+            let group = COMMANDS[i].group;
+            GROUP_ORDER
+                .iter()
+                .position(|&g| g == group)
+                .unwrap_or(usize::MAX)
+        });
 
         if self.filtered_commands.is_empty() {
             self.filtered_commands = (0..COMMANDS.len()).collect();

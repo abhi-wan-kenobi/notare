@@ -1,8 +1,4 @@
-use ratatui::{
-    Frame,
-    layout::Rect,
-    widgets::{Block, Borders},
-};
+use ratatui::{Frame, layout::Rect};
 
 use crate::commands::listen::app::App;
 use crate::theme::Theme;
@@ -12,17 +8,7 @@ pub(super) fn draw_notepad(frame: &mut Frame, app: &mut App, area: Rect, theme: 
         return;
     }
 
-    let border_style = if app.memo_focused() {
-        theme.border_focused
-    } else {
-        theme.border
-    };
-
-    let block = Block::new()
-        .borders(Borders::ALL)
-        .border_style(border_style)
-        .title(" Notepad ");
-
+    let block = theme.bordered_block(app.memo_focused()).title(" Notepad ");
     app.set_memo_block(block);
     frame.render_widget(app.memo(), area);
 }

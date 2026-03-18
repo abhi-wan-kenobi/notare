@@ -2,25 +2,17 @@ use ratatui::{
     Frame,
     layout::Rect,
     style::{Color, Style},
-    text::{Line, Span},
-    widgets::Paragraph,
+    text::Span,
 };
 
 use crate::commands::listen::app::{App, Mode};
 use crate::theme::Theme;
-use crate::widgets::KeyHints;
+use crate::widgets::{CommandBar, KeyHints};
 
 pub(super) fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     match app.mode() {
         Mode::Command => {
-            let cmd_display = format!(":{}", app.command_buffer());
-            let line = Line::from(vec![
-                Span::styled(" COMMAND ", Style::new().fg(Color::Black).bg(Color::Yellow)),
-                Span::raw(" "),
-                Span::styled(cmd_display, Style::new().fg(Color::White)),
-                Span::styled("\u{2588}", Style::new().fg(Color::Gray)),
-            ]);
-            frame.render_widget(Paragraph::new(line), area);
+            frame.render_widget(CommandBar::new(app.command_buffer()), area);
         }
         Mode::Insert => {
             frame.render_widget(

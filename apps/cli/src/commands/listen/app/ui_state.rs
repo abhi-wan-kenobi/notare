@@ -7,7 +7,7 @@ use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use tachyonfx::{Effect, Interpolation, Motion, fx};
 
-use crate::widgets::ScrollState;
+use crate::widgets::ScrollViewState;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
@@ -22,7 +22,7 @@ pub(super) struct ListenUiState {
     mode: Mode,
     command_buffer: String,
     notepad_width_percent: u16,
-    scroll: ScrollState,
+    scroll: ScrollViewState,
     transcript_autoscroll: bool,
     memo: Editor<Theme>,
     last_frame_time: Instant,
@@ -37,7 +37,7 @@ impl ListenUiState {
             mode: Mode::Normal,
             command_buffer: String::new(),
             notepad_width_percent: DEFAULT_NOTEPAD_WIDTH_PERCENT,
-            scroll: ScrollState::new(),
+            scroll: ScrollViewState::new(),
             transcript_autoscroll: true,
             memo: Self::init_memo(),
             last_frame_time: now,
@@ -82,9 +82,9 @@ impl ListenUiState {
         self.notepad_width_percent
     }
 
-    pub(super) fn scroll_state_mut(&mut self) -> &mut ScrollState {
+    pub(super) fn scroll_state_mut(&mut self) -> &mut ScrollViewState {
         if self.transcript_autoscroll {
-            self.scroll.offset = self.scroll.max_scroll;
+            self.scroll.scroll_to_bottom();
         }
         &mut self.scroll
     }
@@ -153,26 +153,21 @@ impl ListenUiState {
     }
 
     pub(super) fn scroll_down(&mut self) {
-        self.scroll.offset = self
-            .scroll
-            .offset
-            .saturating_add(1)
-            .min(self.scroll.max_scroll);
-        self.transcript_autoscroll = self.scroll.offset >= self.scroll.max_scroll;
+        self.scroll.scroll_down();
     }
 
     pub(super) fn scroll_up(&mut self) {
-        self.scroll.offset = self.scroll.offset.saturating_sub(1);
+        self.scroll.scroll_up();
         self.transcript_autoscroll = false;
     }
 
     pub(super) fn scroll_bottom(&mut self) {
-        self.scroll.offset = self.scroll.max_scroll;
+        self.scroll.scroll_to_bottom();
         self.transcript_autoscroll = true;
     }
 
     pub(super) fn scroll_top(&mut self) {
-        self.scroll.offset = 0;
+        self.scroll.scroll_to_top();
         self.transcript_autoscroll = false;
     }
 

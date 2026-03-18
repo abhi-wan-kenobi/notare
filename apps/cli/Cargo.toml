@@ -55,6 +55,7 @@ indicatif = "0.17"
 ratatui = { workspace = true }
 ratatui-image = { version = "10.0.6", default-features = false, features = ["crossterm", "image-defaults"] }
 tachyonfx = { workspace = true }
+tui-widgets = { workspace = true }
 tempfile = { workspace = true }
 textwrap = { version = "0.16", features = ["terminal_size"] }
 tracing = { workspace = true }

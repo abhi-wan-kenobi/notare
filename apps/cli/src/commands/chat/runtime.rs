@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use rig::message::Message;
 use tokio::sync::mpsc;
 
@@ -48,6 +50,51 @@ impl Runtime {
                     let _ = tx.send(RuntimeEvent::TitleGenerated(title));
                 }
             }
+        });
+    }
+
+    pub(crate) fn create_session(&self, db_path: PathBuf, session_id: String) {
+        tokio::spawn(async move {
+            let Ok(db) = hypr_db_core2::Db3::connect_local_plain(&db_path).await else {
+                return;
+            };
+            let _ = hypr_db_app::migrate(db.pool()).await;
+            let _ = hypr_db_app::insert_session(db.pool(), &session_id).await;
+        });
+    }
+
+    pub(crate) fn persist_message(
+        &self,
+        db_path: PathBuf,
+        session_id: String,
+        message_id: String,
+        role: String,
+        content: String,
+    ) {
+        tokio::spawn(async move {
+            let Ok(db) = hypr_db_core2::Db3::connect_local_plain(&db_path).await else {
+                return;
+            };
+            let _ = hypr_db_app::migrate(db.pool()).await;
+            let _ = hypr_db_app::insert_chat_message(
+                db.pool(),
+                &message_id,
+                &session_id,
+                &role,
+                &content,
+            )
+            .await;
+        });
+    }
+
+    pub(crate) fn update_title(&self, db_path: PathBuf, session_id: String, title: String) {
+        tokio::spawn(async move {
+            let Ok(db) = hypr_db_core2::Db3::connect_local_plain(&db_path).await else {
+                return;
+            };
+            let _ = hypr_db_app::migrate(db.pool()).await;
+            let _ =
+                hypr_db_app::update_session(db.pool(), &session_id, Some(&title), None, None).await;
         });
     }
 

@@ -10,16 +10,11 @@ use super::providers::{LLM_PROVIDERS, STT_PROVIDERS};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Step {
+    SelectType,
     SelectProvider,
     InputBaseUrl,
     InputApiKey,
     Done,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum ListEntry {
-    Header(ConnectionType),
-    Provider(ConnectionType, ConnectProvider),
 }
 
 pub(crate) struct App {
@@ -28,6 +23,8 @@ pub(crate) struct App {
     provider: Option<ConnectProvider>,
     base_url: Option<String>,
     api_key: Option<String>,
+    current_llm_provider: Option<String>,
+    current_stt_provider: Option<String>,
     list_state: ListState,
     input: String,
     cursor_pos: usize,
@@ -43,13 +40,17 @@ impl App {
         provider: Option<ConnectProvider>,
         base_url: Option<String>,
         api_key: Option<String>,
+        current_llm_provider: Option<String>,
+        current_stt_provider: Option<String>,
     ) -> (Self, Vec<Effect>) {
         let mut app = Self {
-            step: Step::SelectProvider,
+            step: Step::SelectType,
             connection_type,
             provider,
             base_url,
             api_key,
+            current_llm_provider,
+            current_stt_provider,
             list_state: ListState::default(),
             input: String::new(),
             cursor_pos: 0,
@@ -105,36 +106,31 @@ impl App {
         &mut self.list_state
     }
 
-    pub fn flat_entries(&self) -> Vec<ListEntry> {
+    pub fn provider_entries(&self) -> &'static [ConnectProvider] {
         match self.connection_type {
-            Some(ConnectionType::Llm) => LLM_PROVIDERS
-                .iter()
-                .map(|&p| ListEntry::Provider(ConnectionType::Llm, p))
-                .collect(),
-            Some(ConnectionType::Stt) => STT_PROVIDERS
-                .iter()
-                .map(|&p| ListEntry::Provider(ConnectionType::Stt, p))
-                .collect(),
-            None => {
-                let mut entries = Vec::new();
-                entries.push(ListEntry::Header(ConnectionType::Llm));
-                for &p in LLM_PROVIDERS {
-                    entries.push(ListEntry::Provider(ConnectionType::Llm, p));
-                }
-                entries.push(ListEntry::Header(ConnectionType::Stt));
-                for &p in STT_PROVIDERS {
-                    entries.push(ListEntry::Provider(ConnectionType::Stt, p));
-                }
-                entries
-            }
+            Some(ConnectionType::Llm) => LLM_PROVIDERS,
+            Some(ConnectionType::Stt) => STT_PROVIDERS,
+            None => &[],
         }
     }
 
+    pub fn current_llm_provider(&self) -> Option<&str> {
+        self.current_llm_provider.as_deref()
+    }
+
+    pub fn current_stt_provider(&self) -> Option<&str> {
+        self.current_stt_provider.as_deref()
+    }
+
     pub fn breadcrumb(&self) -> String {
-        match self.provider {
-            Some(p) => p.to_string(),
-            None => String::new(),
+        let mut parts = Vec::new();
+        if let Some(ct) = self.connection_type {
+            parts.push(ct.to_string().to_uppercase());
         }
+        if let Some(p) = self.provider {
+            parts.push(p.to_string());
+        }
+        parts.join(" > ")
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
@@ -145,7 +141,7 @@ impl App {
         }
 
         match self.step {
-            Step::SelectProvider => self.handle_list_key(key),
+            Step::SelectType | Step::SelectProvider => self.handle_list_key(key),
             Step::InputBaseUrl | Step::InputApiKey => self.handle_input_key(key),
             Step::Done => Vec::new(),
         }
@@ -167,18 +163,33 @@ impl App {
     }
 
     fn handle_list_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        let len = match self.step {
+            Step::SelectType => 2,
+            Step::SelectProvider => self.provider_entries().len(),
+            _ => return Vec::new(),
+        };
+
         match key.code {
             KeyCode::Up | KeyCode::Char('k') => {
-                self.list_navigate(-1);
+                self.list_navigate(-1, len);
                 Vec::new()
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.list_navigate(1);
+                self.list_navigate(1, len);
                 Vec::new()
             }
             KeyCode::Enter => {
-                self.confirm_list_selection();
-                self.step = Step::InputBaseUrl;
+                match self.step {
+                    Step::SelectType => {
+                        self.confirm_type_selection();
+                        self.step = Step::SelectProvider;
+                    }
+                    Step::SelectProvider => {
+                        self.confirm_provider_selection();
+                        self.step = Step::InputBaseUrl;
+                    }
+                    _ => unreachable!(),
+                }
                 self.advance()
             }
             KeyCode::Char('q') => vec![Effect::Exit],
@@ -186,16 +197,11 @@ impl App {
         }
     }
 
-    fn list_navigate(&mut self, direction: isize) {
-        let entries = self.flat_entries();
+    fn list_navigate(&mut self, direction: isize, len: usize) {
         let current = self.list_state.selected().unwrap_or(0);
-        let mut next = current as isize + direction;
-        while next >= 0 && (next as usize) < entries.len() {
-            if matches!(entries[next as usize], ListEntry::Provider(..)) {
-                self.list_state.select(Some(next as usize));
-                return;
-            }
-            next += direction;
+        let next = current as isize + direction;
+        if next >= 0 && (next as usize) < len {
+            self.list_state.select(Some(next as usize));
         }
     }
 
@@ -253,12 +259,23 @@ impl App {
             .unwrap_or(self.input.len())
     }
 
-    fn confirm_list_selection(&mut self) {
+    fn confirm_type_selection(&mut self) {
         let idx = self.list_state.selected().unwrap_or(0);
-        let entries = self.flat_entries();
-        if let Some(ListEntry::Provider(ct, provider)) = entries.get(idx) {
-            self.connection_type = Some(*ct);
-            self.provider = Some(*provider);
+        self.connection_type = Some(match idx {
+            0 => ConnectionType::Llm,
+            _ => ConnectionType::Stt,
+        });
+    }
+
+    fn confirm_provider_selection(&mut self) {
+        let idx = self.list_state.selected().unwrap_or(0);
+        let providers = match self.connection_type {
+            Some(ConnectionType::Llm) => LLM_PROVIDERS,
+            Some(ConnectionType::Stt) => STT_PROVIDERS,
+            None => return,
+        };
+        if let Some(&provider) = providers.get(idx) {
+            self.provider = Some(provider);
         }
     }
 
@@ -284,16 +301,17 @@ impl App {
         Ok(())
     }
 
-    fn first_selectable_index(&self) -> usize {
-        self.flat_entries()
-            .iter()
-            .position(|e| matches!(e, ListEntry::Provider(..)))
-            .unwrap_or(0)
-    }
-
     fn advance(&mut self) -> Vec<Effect> {
         loop {
             match self.step {
+                Step::SelectType => {
+                    if self.connection_type.is_some() {
+                        self.step = Step::SelectProvider;
+                        continue;
+                    }
+                    self.list_state = ListState::default().with_selected(Some(0));
+                    return Vec::new();
+                }
                 Step::SelectProvider => {
                     if let Some(provider) = self.provider {
                         if let Some(ct) = self.connection_type {
@@ -304,8 +322,7 @@ impl App {
                         }
                         self.provider = None;
                     }
-                    let first = self.first_selectable_index();
-                    self.list_state = ListState::default().with_selected(Some(first));
+                    self.list_state = ListState::default().with_selected(Some(0));
                     return Vec::new();
                 }
                 Step::InputBaseUrl => {
@@ -372,21 +389,23 @@ mod tests {
             Some(ConnectProvider::Deepgram),
             Some("https://api.deepgram.com/v1".to_string()),
             Some("key123".to_string()),
+            None,
+            None,
         );
         assert_eq!(app.step(), Step::Done);
         assert!(matches!(effects.as_slice(), [Effect::Save(_)]));
     }
 
     #[test]
-    fn no_args_starts_at_select_provider() {
-        let (app, effects) = App::new(None, None, None, None);
-        assert_eq!(app.step(), Step::SelectProvider);
+    fn no_args_starts_at_select_type() {
+        let (app, effects) = App::new(None, None, None, None, None, None);
+        assert_eq!(app.step(), Step::SelectType);
         assert!(effects.is_empty());
     }
 
     #[test]
     fn type_provided_starts_at_select_provider() {
-        let (app, effects) = App::new(Some(ConnectionType::Stt), None, None, None);
+        let (app, effects) = App::new(Some(ConnectionType::Stt), None, None, None, None, None);
         assert_eq!(app.step(), Step::SelectProvider);
         assert!(effects.is_empty());
     }
@@ -396,6 +415,8 @@ mod tests {
         let (app, effects) = App::new(
             Some(ConnectionType::Llm),
             Some(ConnectProvider::Ollama),
+            None,
+            None,
             None,
             None,
         );
@@ -410,17 +431,34 @@ mod tests {
             Some(ConnectProvider::Anthropic),
             None,
             None,
+            None,
+            None,
         );
         assert_eq!(app.step(), Step::SelectProvider);
         assert!(app.provider().is_none());
     }
 
     #[test]
-    fn select_provider_from_flat_list() {
-        let (mut app, _) = App::new(None, None, None, None);
+    fn select_type_then_provider() {
+        let (mut app, _) = App::new(None, None, None, None, None, None);
+        assert_eq!(app.step(), Step::SelectType);
+        assert_eq!(app.list_state_mut().selected(), Some(0));
+
+        let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
+        assert!(effects.is_empty());
         assert_eq!(app.step(), Step::SelectProvider);
-        // First selectable entry is the first LLM provider (index 1, after the header)
-        assert_eq!(app.list_state_mut().selected(), Some(1));
+        assert_eq!(app.list_state_mut().selected(), Some(0));
+
+        let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
+        assert!(effects.is_empty());
+        assert_eq!(app.step(), Step::InputBaseUrl);
+    }
+
+    #[test]
+    fn select_provider_with_type_preset() {
+        let (mut app, _) = App::new(Some(ConnectionType::Stt), None, None, None, None, None);
+        assert_eq!(app.step(), Step::SelectProvider);
+        assert_eq!(app.list_state_mut().selected(), Some(0));
 
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
         assert!(effects.is_empty());
@@ -432,6 +470,8 @@ mod tests {
         let (mut app, _) = App::new(
             Some(ConnectionType::Stt),
             Some(ConnectProvider::Custom),
+            None,
+            None,
             None,
             None,
         );
@@ -447,7 +487,7 @@ mod tests {
 
     #[test]
     fn esc_exits() {
-        let (mut app, _) = App::new(None, None, None, None);
+        let (mut app, _) = App::new(None, None, None, None, None, None);
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Esc)));
         assert!(matches!(effects.as_slice(), [Effect::Exit]));
     }

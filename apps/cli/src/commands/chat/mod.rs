@@ -4,6 +4,7 @@ mod effect;
 mod runtime;
 mod ui;
 
+use std::path::PathBuf;
 use std::time::Duration;
 
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
@@ -27,6 +28,8 @@ pub struct Args {
     pub base_url: Option<String>,
     pub api_key: Option<String>,
     pub model: Option<String>,
+    pub db_path: PathBuf,
+    pub resume_session_id: Option<String>,
 }
 
 struct ChatScreen {
@@ -47,6 +50,23 @@ impl ChatScreen {
                 }
                 Effect::GenerateTitle { prompt, response } => {
                     self.runtime.generate_title(prompt, response);
+                }
+                Effect::Persist {
+                    db_path,
+                    session_id,
+                    message_id,
+                    role,
+                    content,
+                } => {
+                    self.runtime
+                        .persist_message(db_path, session_id, message_id, role, content);
+                }
+                Effect::UpdateTitle {
+                    db_path,
+                    session_id,
+                    title,
+                } => {
+                    self.runtime.update_title(db_path, session_id, title);
                 }
                 Effect::Exit => return ScreenControl::Exit(()),
             }
@@ -118,11 +138,50 @@ pub async fn run(args: Args) -> CliResult<()> {
         return crate::agent::run_prompt(config, system_message, &prompt).await;
     }
 
+    let db_path = args.db_path;
+    let session_id = args
+        .resume_session_id
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+
     let (runtime_tx, runtime_rx) = mpsc::unbounded_channel();
     let runtime = Runtime::new(config.clone(), system_message, runtime_tx)?;
-    let app = App::new(config.model, args.session);
+
+    let mut app = App::new(
+        config.model,
+        args.session,
+        db_path.clone(),
+        session_id.clone(),
+    );
+
+    // Load existing messages if resuming, otherwise create new session
+    let history = load_or_create_session(&db_path, &session_id).await;
+    if let Some(messages) = history {
+        app.load_history(messages);
+    } else {
+        runtime.create_session(db_path, session_id);
+    }
 
     run_screen(ChatScreen::new(app, runtime), Some(runtime_rx))
         .await
         .map_err(|e| CliError::operation_failed("chat tui", e.to_string()))
+}
+
+async fn load_or_create_session(
+    db_path: &std::path::Path,
+    session_id: &str,
+) -> Option<Vec<hypr_db_app::ChatMessageRow>> {
+    let db = hypr_db_core2::Db3::connect_local_plain(db_path)
+        .await
+        .ok()?;
+    hypr_db_app::migrate(db.pool()).await.ok()?;
+    let session = hypr_db_app::get_session(db.pool(), session_id).await.ok()?;
+    if session.is_some() {
+        Some(
+            hypr_db_app::load_chat_messages(db.pool(), session_id)
+                .await
+                .unwrap_or_default(),
+        )
+    } else {
+        None
+    }
 }

@@ -1,12 +1,11 @@
 use ratatui::Frame;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 use textwrap::wrap;
 
 use crate::commands::chat::app::{App, Speaker};
 use crate::theme::Theme;
-use crate::widgets::Scrollable;
+use crate::widgets::render_scrollable;
 
 // --- Data layer: describe what to render ---
 
@@ -61,7 +60,6 @@ fn render_message(
     wrap_width: usize,
     theme: &Theme,
 ) -> Vec<Line<'static>> {
-    let accent = Style::new().fg(Color::Indexed(69));
     let wrapped = wrap(content, wrap_width);
 
     match speaker {
@@ -69,7 +67,7 @@ fn render_message(
             .iter()
             .map(|w| {
                 Line::from(vec![
-                    Span::styled("  \u{258e} ", accent),
+                    Span::styled("  \u{258e} ", theme.user_bar),
                     Span::raw(w.to_string()),
                 ])
             })
@@ -99,8 +97,7 @@ fn render_pending(content: &str, wrap_width: usize, theme: &Theme) -> Vec<Line<'
     }
 }
 
-pub(super) fn draw(frame: &mut Frame, app: &mut App, area: Rect) {
-    let theme = Theme::DEFAULT;
+pub(super) fn draw(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     let width = area.width as usize;
     let wrap_width = width.saturating_sub(6).max(8);
 
@@ -109,9 +106,8 @@ pub(super) fn draw(frame: &mut Frame, app: &mut App, area: Rect) {
         if !lines.is_empty() {
             lines.push(Line::default());
         }
-        lines.extend(render_entry(entry, wrap_width, &theme));
+        lines.extend(render_entry(entry, wrap_width, theme));
     }
 
-    let scrollable = Scrollable::new(lines);
-    frame.render_stateful_widget(scrollable, area, app.scroll_state_mut());
+    render_scrollable(frame, lines, None, area, app.scroll_state_mut());
 }

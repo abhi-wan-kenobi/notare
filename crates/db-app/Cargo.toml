@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 hypr-db-core2 = { workspace = true }
 hypr-transcript = { workspace = true }
-sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbundled"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbundled", "macros", "migrate"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }

@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::time::Instant;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -5,7 +6,7 @@ use hypr_cli_editor::Editor;
 use rig::message::Message;
 
 use crate::theme::Theme;
-use crate::widgets::ScrollState;
+use crate::widgets::ScrollViewState;
 
 use super::action::Action;
 use super::effect::Effect;
@@ -27,6 +28,8 @@ const MAX_HISTORY: usize = 20;
 pub(crate) struct App {
     model: String,
     session: Option<String>,
+    db_path: PathBuf,
+    session_id: String,
     api_history: Vec<Message>,
     max_history: usize,
     transcript: Vec<VisibleMessage>,
@@ -36,14 +39,19 @@ pub(crate) struct App {
     status: String,
     last_error: Option<String>,
     started_at: Instant,
-    scroll: ScrollState,
+    scroll: ScrollViewState,
     autoscroll: bool,
     terminal_title: Option<String>,
     title_requested: bool,
 }
 
 impl App {
-    pub(crate) fn new(model: String, session: Option<String>) -> Self {
+    pub(crate) fn new(
+        model: String,
+        session: Option<String>,
+        db_path: PathBuf,
+        session_id: String,
+    ) -> Self {
         let mut input = Editor::with_styles(Theme::DEFAULT);
         input.set_placeholder(
             "Type a message and press Enter...",
@@ -59,6 +67,8 @@ impl App {
         Self {
             model,
             session,
+            db_path,
+            session_id,
             api_history: Vec::new(),
             max_history: MAX_HISTORY,
             transcript: Vec::new(),
@@ -68,10 +78,36 @@ impl App {
             status,
             last_error: None,
             started_at: Instant::now(),
-            scroll: ScrollState::new(),
+            scroll: ScrollViewState::new(),
             autoscroll: true,
             terminal_title: None,
             title_requested: false,
+        }
+    }
+
+    pub(crate) fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub(crate) fn load_history(&mut self, messages: Vec<hypr_db_app::ChatMessageRow>) {
+        for msg in messages {
+            let speaker = match msg.role.as_str() {
+                "user" => Speaker::User,
+                "assistant" => Speaker::Assistant,
+                _ => Speaker::Error,
+            };
+            self.transcript.push(VisibleMessage {
+                speaker,
+                content: msg.content.clone(),
+            });
+            match speaker {
+                Speaker::User => self.api_history.push(Message::user(msg.content)),
+                Speaker::Assistant => self.api_history.push(Message::assistant(msg.content)),
+                _ => {}
+            }
+        }
+        if !self.transcript.is_empty() {
+            self.title_requested = true;
         }
     }
 
@@ -83,15 +119,19 @@ impl App {
                 self.pending_assistant.push_str(&chunk);
                 self.status = "Streaming response...".to_string();
                 if self.autoscroll {
-                    self.scroll.offset = self.scroll.max_scroll;
+                    self.scroll.scroll_to_bottom();
                 }
                 Vec::new()
             }
             Action::StreamCompleted(final_text) => self.finish_stream(final_text),
             Action::StreamFailed(error) => self.fail_stream(error),
             Action::TitleGenerated(title) => {
-                self.terminal_title = Some(title);
-                Vec::new()
+                self.terminal_title = Some(title.clone());
+                vec![Effect::UpdateTitle {
+                    db_path: self.db_path.clone(),
+                    session_id: self.session_id.clone(),
+                    title,
+                }]
             }
         }
     }
@@ -143,9 +183,9 @@ impl App {
         self.streaming
     }
 
-    pub(crate) fn scroll_state_mut(&mut self) -> &mut ScrollState {
+    pub(crate) fn scroll_state_mut(&mut self) -> &mut ScrollViewState {
         if self.autoscroll {
-            self.scroll.offset = self.scroll.max_scroll;
+            self.scroll.scroll_to_bottom();
         }
         &mut self.scroll
     }
@@ -227,10 +267,20 @@ impl App {
         let history = self.working_history();
         self.api_history.push(Message::user(content.clone()));
 
-        vec![Effect::Submit {
-            prompt: content,
-            history,
-        }]
+        let message_id = uuid::Uuid::new_v4().to_string();
+        vec![
+            Effect::Persist {
+                db_path: self.db_path.clone(),
+                session_id: self.session_id.clone(),
+                message_id,
+                role: "user".to_string(),
+                content: content.clone(),
+            },
+            Effect::Submit {
+                prompt: content,
+                history,
+            },
+        ]
     }
 
     fn finish_stream(&mut self, final_text: Option<String>) -> Vec<Effect> {
@@ -266,7 +316,14 @@ impl App {
             content: content.clone(),
         });
 
-        let mut effects = Vec::new();
+        let message_id = uuid::Uuid::new_v4().to_string();
+        let mut effects = vec![Effect::Persist {
+            db_path: self.db_path.clone(),
+            session_id: self.session_id.clone(),
+            message_id,
+            role: "assistant".to_string(),
+            content: content.clone(),
+        }];
         if !self.title_requested {
             self.title_requested = true;
             if let Some(user_msg) = self.transcript.iter().find(|m| m.speaker == Speaker::User) {
@@ -301,31 +358,21 @@ impl App {
     }
 
     fn scroll_up(&mut self) {
-        self.scroll.offset = self.scroll.offset.saturating_sub(1);
+        self.scroll.scroll_up();
         self.autoscroll = false;
     }
 
     fn scroll_down(&mut self) {
-        self.scroll.offset = self
-            .scroll
-            .offset
-            .saturating_add(1)
-            .min(self.scroll.max_scroll);
-        self.autoscroll = self.scroll.offset >= self.scroll.max_scroll;
+        self.scroll.scroll_down();
     }
 
     fn scroll_page_up(&mut self) {
-        self.scroll.offset = self.scroll.offset.saturating_sub(10);
+        self.scroll.scroll_page_up();
         self.autoscroll = false;
     }
 
     fn scroll_page_down(&mut self) {
-        self.scroll.offset = self
-            .scroll
-            .offset
-            .saturating_add(10)
-            .min(self.scroll.max_scroll);
-        self.autoscroll = self.scroll.offset >= self.scroll.max_scroll;
+        self.scroll.scroll_page_down();
     }
 }
 
@@ -333,21 +380,31 @@ impl App {
 mod tests {
     use super::*;
 
+    fn test_app() -> App {
+        App::new(
+            "model".to_string(),
+            None,
+            PathBuf::from("/tmp/test.db"),
+            "test-session".to_string(),
+        )
+    }
+
     #[test]
     fn submit_creates_request_effect() {
-        let mut app = App::new("model".to_string(), None);
+        let mut app = test_app();
         app.input_mut().insert_str("hello");
 
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
 
-        assert!(matches!(effects.first(), Some(Effect::Submit { .. })));
+        assert!(effects.iter().any(|e| matches!(e, Effect::Submit { .. })));
+        assert!(effects.iter().any(|e| matches!(e, Effect::Persist { .. })));
         assert!(app.streaming);
         assert_eq!(app.transcript.len(), 1);
     }
 
     #[test]
     fn empty_submit_is_ignored() {
-        let mut app = App::new("model".to_string(), None);
+        let mut app = test_app();
 
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
 
@@ -357,7 +414,7 @@ mod tests {
 
     #[test]
     fn stream_failure_preserves_partial_response() {
-        let mut app = App::new("model".to_string(), None);
+        let mut app = test_app();
         app.input_mut().insert_str("hello");
         let _ = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
         let _ = app.dispatch(Action::StreamChunk("partial".to_string()));
@@ -370,7 +427,7 @@ mod tests {
 
     #[test]
     fn empty_stream_completion_shows_error() {
-        let mut app = App::new("model".to_string(), None);
+        let mut app = test_app();
         app.input_mut().insert_str("hello");
         let _ = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
         let _ = app.dispatch(Action::StreamCompleted(None));

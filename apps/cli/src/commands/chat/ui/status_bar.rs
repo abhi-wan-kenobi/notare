@@ -6,9 +6,7 @@ use crate::commands::chat::app::App;
 use crate::theme::Theme;
 use crate::widgets::KeyHints;
 
-pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
-    let theme = Theme::DEFAULT;
-
+pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let status_style = if app.last_error().is_some() {
         theme.error
     } else if app.status().starts_with("Streaming") {
@@ -18,7 +16,7 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
     };
 
     frame.render_widget(
-        KeyHints::new(&theme)
+        KeyHints::new(theme)
             .hints(vec![
                 ("Enter", "submit"),
                 ("Ctrl+C", "quit"),

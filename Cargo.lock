@@ -369,7 +369,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "710e8eae58854cdc1790fcb56cca04d712a17be849eeb81da2a724bf4bae2bc4"
 dependencies = [
  "anstyle",
- "unicode-width 0.2.0",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -3448,6 +3448,7 @@ dependencies = [
  "tracing-subscriber",
  "transcribe-proxy",
  "transcript",
+ "tui-widgets",
  "url",
  "uuid",
 ]
@@ -3630,6 +3631,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "colorgrad"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aee94de557db6ddae3ca7b37b5fbe77ed6f159219f1815a8c2c1a9854c73087e"
+dependencies = [
+ "csscolorparser 0.8.3",
+ "libm",
+]
+
+[[package]]
 name = "combine"
 version = "4.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3671,7 +3682,7 @@ checksum = "958c5d6ecf1f214b4c2bbbbf6ab9523a864bd136dcf71a7e8904799acfe1ad47"
 dependencies = [
  "crossterm",
  "unicode-segmentation",
- "unicode-width 0.2.0",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -3742,7 +3753,7 @@ dependencies = [
  "encode_unicode",
  "libc",
  "once_cell",
- "unicode-width 0.2.0",
+ "unicode-width 0.2.2",
  "windows-sys 0.59.0",
 ]
 
@@ -3755,7 +3766,7 @@ dependencies = [
  "encode_unicode",
  "libc",
  "once_cell",
- "unicode-width 0.2.0",
+ "unicode-width 0.2.2",
  "windows-sys 0.61.2",
 ]
 
@@ -4236,6 +4247,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "csscolorparser"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "199f851bd3cb5004c09474252c7f74e7c047441ed0979bf3688a7106a13da952"
+dependencies = [
+ "num-traits",
+ "phf 0.13.1",
+ "serde",
+]
+
+[[package]]
 name = "cssparser"
 version = "0.29.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4652,6 +4674,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "db-watch"
+version = "0.1.0"
+dependencies = [
+ "db-app",
+ "db-core2",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "deadpool"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4767,6 +4799,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive-getters"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74ef43543e701c01ad77d3a5922755c6a1d71b22d942cb8042be4994b380caff"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "derive_arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4842,6 +4885,18 @@ dependencies = [
  "rustc_version",
  "syn 2.0.117",
  "unicode-xid",
+]
+
+[[package]]
+name = "derive_setters"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7e6f6fa1f03c14ae082120b84b3c7fbd7b8588d924cf2d7c3daf9afd49df8b9"
+dependencies = [
+ "darling 0.21.3",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -5980,6 +6035,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "font8x8"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "875488b8711a968268c7cf5d139578713097ca4635a76044e8fe8eedf831d07e"
+
+[[package]]
 name = "fontconfig-parser"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6450,7 +6511,7 @@ version = "0.2.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfe4fbac503b8d1f88e6676011885f34b7174f46e59956bba534ba83abded4df"
 dependencies = [
- "unicode-width 0.2.0",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -9487,7 +9548,7 @@ dependencies = [
  "console 0.15.11",
  "number_prefix",
  "portable-atomic",
- "unicode-width 0.2.0",
+ "unicode-width 0.2.2",
  "web-time",
 ]
 
@@ -9499,7 +9560,7 @@ checksum = "25470f23803092da7d239834776d653104d551bc4d7eacaf31e6837854b8e9eb"
 dependencies = [
  "console 0.16.2",
  "portable-atomic",
- "unicode-width 0.2.0",
+ "unicode-width 0.2.2",
  "unit-prefix",
  "web-time",
 ]
@@ -13195,6 +13256,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
+ "uncased",
 ]
 
 [[package]]
@@ -13241,6 +13303,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e57fef6bc5981e38c2ce2d63bfa546861309f875b8a75f092d1d54ae2d64f266"
 dependencies = [
  "siphasher 1.0.2",
+ "uncased",
 ]
 
 [[package]]
@@ -14005,6 +14068,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "qrcode"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d68782463e408eb1e668cf6152704bd856c78c5b6417adaee3203d8f4c1fc9ec"
+
+[[package]]
 name = "quanta"
 version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -14386,7 +14455,7 @@ dependencies = [
  "thiserror 2.0.18",
  "unicode-segmentation",
  "unicode-truncate",
- "unicode-width 0.2.0",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -14453,7 +14522,7 @@ dependencies = [
  "strum 0.27.2",
  "time",
  "unicode-segmentation",
- "unicode-width 0.2.0",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -17786,7 +17855,7 @@ dependencies = [
  "micromath",
  "ratatui-core",
  "thiserror 2.0.18",
- "unicode-width 0.2.0",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -19727,7 +19796,7 @@ dependencies = [
  "smawk",
  "terminal_size",
  "unicode-linebreak",
- "unicode-width 0.2.0",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -20730,6 +20799,131 @@ dependencies = [
 ]
 
 [[package]]
+name = "tui-bar-graph"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97505cbb8633edb0f727724b72a71dec4b810499cdbda7c10727b57e83581950"
+dependencies = [
+ "colorgrad",
+ "ratatui-core",
+ "strum 0.27.2",
+]
+
+[[package]]
+name = "tui-big-text"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3524088df83a9214c4a84648c5812d6aa9f930a4172a1604706468e8b98bed1"
+dependencies = [
+ "derive_builder",
+ "font8x8",
+ "itertools 0.14.0",
+ "ratatui-core",
+]
+
+[[package]]
+name = "tui-box-text"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69d11c846fc24fab5328d989797c1c6c11f1f1a59c1cb9ebe23cbd166b4ea6a5"
+dependencies = [
+ "color-eyre",
+ "indoc",
+ "ratatui-core",
+]
+
+[[package]]
+name = "tui-cards"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a294c7192e8074d75066008b7e5446d2aa012f6644d690bfbaa28d129738128"
+dependencies = [
+ "color-eyre",
+ "indoc",
+ "itertools 0.14.0",
+ "ratatui-core",
+ "strum 0.27.2",
+]
+
+[[package]]
+name = "tui-popup"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f9a9e0ae701c6379fa75fa53656a8827b0b8da794fe3cd325f13641a074e234"
+dependencies = [
+ "derive-getters",
+ "derive_setters",
+ "document-features",
+ "ratatui-core",
+ "ratatui-widgets",
+]
+
+[[package]]
+name = "tui-prompts"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d023fd58a5c0488696d4b5b1e5d137ff8f3ed44eeaa7c92a1e570bd21a87d4e"
+dependencies = [
+ "crossterm",
+ "itertools 0.14.0",
+ "ratatui-core",
+ "ratatui-macros",
+ "ratatui-widgets",
+ "unicode-width 0.2.2",
+]
+
+[[package]]
+name = "tui-qrcode"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58f655a1caed301ef718cf24a83373e3c4840e2d51b91c266925284f17327fbe"
+dependencies = [
+ "color-eyre",
+ "qrcode",
+ "ratatui-core",
+]
+
+[[package]]
+name = "tui-scrollbar"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e4267311b5c7999a996ea94939b6d2b1b44a9e5cc11e76cbbb6dcca4c281df4"
+dependencies = [
+ "document-features",
+ "ratatui-core",
+]
+
+[[package]]
+name = "tui-scrollview"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8ada5290cf63e5e718a13111020398979975d4df556a55ae88014aa8850f171"
+dependencies = [
+ "indoc",
+ "ratatui-core",
+ "ratatui-widgets",
+]
+
+[[package]]
+name = "tui-widgets"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6111a7837540d6b76b81fb8f507c57457fc654400ca24bd73910f939318ec4c4"
+dependencies = [
+ "document-features",
+ "ratatui-core",
+ "tui-bar-graph",
+ "tui-big-text",
+ "tui-box-text",
+ "tui-cards",
+ "tui-popup",
+ "tui-prompts",
+ "tui-qrcode",
+ "tui-scrollbar",
+ "tui-scrollview",
+]
+
+[[package]]
 name = "tungstenite"
 version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -21376,7 +21570,7 @@ checksum = "16b380a1238663e5f8a691f9039c73e1cdae598a30e9855f541d29b08b53e9a5"
 dependencies = [
  "itertools 0.14.0",
  "unicode-segmentation",
- "unicode-width 0.2.0",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -21393,9 +21587,9 @@ checksum = "7dd6e30e90baa6f72411720665d41d89b9a3d039dc45b8faea1ddd07f617f6af"
 
 [[package]]
 name = "unicode-width"
-version = "0.2.0"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fc81956842c57dac11422a97c3b8195a1ff727f06e85c84ed2e8aa277c9a0fd"
+checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 
 [[package]]
 name = "unicode-xid"
@@ -22440,7 +22634,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7de81ef35c9010270d63772bebef2f2d6d1f2d20a983d27505ac850b8c4b4296"
 dependencies = [
- "csscolorparser",
+ "csscolorparser 0.6.2",
  "deltae",
  "lazy_static",
  "wezterm-dynamic",

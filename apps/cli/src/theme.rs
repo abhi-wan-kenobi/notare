@@ -1,5 +1,6 @@
 use hypr_cli_editor::StyleSheet;
 use ratatui::style::{Color, Modifier, Style};
+use ratatui::widgets::{Block, Borders};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Theme {
@@ -31,9 +32,19 @@ pub struct Theme {
     pub overlay_bg: Color,
     pub dialog_bg: Color,
     pub dialog_title_fg: Color,
+    pub user_bar: Style,
 }
 
 impl Theme {
+    pub fn bordered_block(&self, focused: bool) -> Block<'static> {
+        let style = if focused {
+            self.border_focused
+        } else {
+            self.border
+        };
+        Block::new().borders(Borders::ALL).border_style(style)
+    }
+
     pub const TRANSPARENT: Self = Self {
         bg: Color::Reset,
         ..Self::DEFAULT
@@ -76,6 +87,7 @@ impl Theme {
         overlay_bg: Color::Rgb(2, 4, 10),
         dialog_bg: Color::Rgb(18, 22, 28),
         dialog_title_fg: Color::White,
+        user_bar: Style::new().fg(Color::Indexed(69)),
     };
 }
 

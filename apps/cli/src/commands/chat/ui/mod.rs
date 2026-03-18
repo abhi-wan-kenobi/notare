@@ -34,9 +34,9 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     ])
     .areas(chat_col);
 
-    header::draw(frame, app, header_area);
-    transcript::draw(frame, app, body_area);
-    input::draw(frame, app, input_area);
-    context_panel::draw(frame, app, context_col);
-    status_bar::draw(frame, app, status_area);
+    header::draw(frame, app, header_area, &theme);
+    transcript::draw(frame, app, body_area, &theme);
+    input::draw(frame, app, input_area, &theme);
+    context_panel::draw(frame, app, context_col, &theme);
+    status_bar::draw(frame, app, status_area, &theme);
 }

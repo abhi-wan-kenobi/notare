@@ -107,11 +107,20 @@ pub async fn run(args: Args) -> CliResult<bool> {
             .map_err(|reason| CliError::invalid_argument("--base-url", url, reason))?;
     }
 
+    let paths = desktop::resolve_paths();
+    let settings = desktop::load_settings(&paths.settings_path);
+
     let (app, initial_effects) = App::new(
         args.connection_type,
         args.provider,
         args.base_url,
         args.api_key,
+        settings
+            .as_ref()
+            .and_then(|s| s.current_llm_provider.clone()),
+        settings
+            .as_ref()
+            .and_then(|s| s.current_stt_provider.clone()),
     );
 
     let save_data = if app.step() == Step::Done {
@@ -121,12 +130,10 @@ pub async fn run(args: Args) -> CliResult<bool> {
         })
     } else if !interactive {
         return Err(match app.step() {
-            Step::SelectProvider if args.connection_type.is_none() => {
-                CliError::required_argument_with_hint(
-                    "--type",
-                    "pass --type stt or --type llm (interactive prompts require a terminal)",
-                )
-            }
+            Step::SelectType => CliError::required_argument_with_hint(
+                "--type",
+                "pass --type stt or --type llm (interactive prompts require a terminal)",
+            ),
             Step::SelectProvider => CliError::required_argument_with_hint(
                 "--provider",
                 "pass --provider <name> (interactive prompts require a terminal)",

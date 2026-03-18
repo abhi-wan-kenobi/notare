@@ -100,7 +100,7 @@ impl App {
         self.ui.memo()
     }
 
-    pub(crate) fn scroll_state_mut(&mut self) -> &mut crate::widgets::ScrollState {
+    pub(crate) fn scroll_state_mut(&mut self) -> &mut crate::widgets::ScrollViewState {
         self.ui.scroll_state_mut()
     }
 

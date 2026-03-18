@@ -3,6 +3,14 @@
 use hypr_transcript::{FinalizedWord, SpeakerHintData, WordState};
 use sqlx::SqlitePool;
 
+pub struct ChatMessageRow {
+    pub id: String,
+    pub session_id: String,
+    pub role: String,
+    pub content: String,
+    pub created_at: String,
+}
+
 pub struct SessionRow {
     pub id: String,
     pub created_at: String,
@@ -22,11 +30,8 @@ pub struct PersistableSpeakerHint {
     pub data: SpeakerHintData,
 }
 
-pub async fn migrate(pool: &SqlitePool) -> Result<(), sqlx::Error> {
-    sqlx::raw_sql(include_str!("schema.sql"))
-        .execute(pool)
-        .await?;
-    Ok(())
+pub async fn migrate(pool: &SqlitePool) -> Result<(), sqlx::migrate::MigrateError> {
+    sqlx::migrate!("./migrations").run(pool).await
 }
 
 pub async fn insert_session(pool: &SqlitePool, session_id: &str) -> Result<(), sqlx::Error> {
@@ -257,6 +262,48 @@ pub async fn get_session(
     )
 }
 
+pub async fn insert_chat_message(
+    pool: &SqlitePool,
+    id: &str,
+    session_id: &str,
+    role: &str,
+    content: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("INSERT INTO chat_messages (id, session_id, role, content) VALUES (?, ?, ?, ?)")
+        .bind(id)
+        .bind(session_id)
+        .bind(role)
+        .bind(content)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+pub async fn load_chat_messages(
+    pool: &SqlitePool,
+    session_id: &str,
+) -> Result<Vec<ChatMessageRow>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, (String, String, String, String, String)>(
+        "SELECT id, session_id, role, content, created_at FROM chat_messages WHERE session_id = ? ORDER BY created_at",
+    )
+    .bind(session_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(
+            |(id, session_id, role, content, created_at)| ChatMessageRow {
+                id,
+                session_id,
+                role,
+                content,
+                created_at,
+            },
+        )
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -384,5 +431,30 @@ mod tests {
 
         let hints = load_hints(db.pool(), sid).await.unwrap();
         assert!(hints.is_empty());
+    }
+
+    #[tokio::test]
+    async fn chat_message_roundtrip() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        migrate(db.pool()).await.unwrap();
+
+        let sid = "chat-sess-1";
+        insert_session(db.pool(), sid).await.unwrap();
+
+        insert_chat_message(db.pool(), "m1", sid, "user", "hello")
+            .await
+            .unwrap();
+        insert_chat_message(db.pool(), "m2", sid, "assistant", "hi there")
+            .await
+            .unwrap();
+
+        let messages = load_chat_messages(db.pool(), sid).await.unwrap();
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].id, "m1");
+        assert_eq!(messages[0].role, "user");
+        assert_eq!(messages[0].content, "hello");
+        assert_eq!(messages[1].id, "m2");
+        assert_eq!(messages[1].role, "assistant");
+        assert_eq!(messages[1].content, "hi there");
     }
 }

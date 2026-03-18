@@ -1,5 +1,5 @@
 mod command_input;
-mod command_popup;
+pub(crate) mod command_popup;
 
 use ratatui::{
     Frame,

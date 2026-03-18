@@ -5,7 +5,7 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::Block;
 
 use crate::theme::Theme;
-use crate::widgets::ScrollState;
+use crate::widgets::ScrollViewState;
 
 use super::action::Action;
 use super::effect::Effect;
@@ -28,7 +28,7 @@ pub(crate) struct App {
     segments: Vec<Segment>,
     memo: Editor<Theme>,
     mode: Mode,
-    scroll: ScrollState,
+    scroll: ScrollViewState,
     command_buffer: String,
     notepad_width_percent: u16,
     loading: bool,
@@ -46,7 +46,7 @@ impl App {
             segments: Vec::new(),
             memo: Self::init_memo(""),
             mode: Mode::Normal,
-            scroll: ScrollState::new(),
+            scroll: ScrollViewState::new(),
             command_buffer: String::new(),
             notepad_width_percent: DEFAULT_NOTEPAD_WIDTH_PERCENT,
             loading: true,
@@ -118,7 +118,7 @@ impl App {
         self.mode == Mode::Normal
     }
 
-    pub(crate) fn scroll_state_mut(&mut self) -> &mut ScrollState {
+    pub(crate) fn scroll_state_mut(&mut self) -> &mut ScrollViewState {
         &mut self.scroll
     }
 
@@ -200,20 +200,16 @@ impl App {
                 self.save_message = None;
             }
             KeyCode::Char('j') | KeyCode::Down => {
-                self.scroll.offset = self
-                    .scroll
-                    .offset
-                    .saturating_add(1)
-                    .min(self.scroll.max_scroll);
+                self.scroll.scroll_down();
             }
             KeyCode::Char('k') | KeyCode::Up => {
-                self.scroll.offset = self.scroll.offset.saturating_sub(1);
+                self.scroll.scroll_up();
             }
             KeyCode::Char('G') => {
-                self.scroll.offset = self.scroll.max_scroll;
+                self.scroll.scroll_to_bottom();
             }
             KeyCode::Char('g') => {
-                self.scroll.offset = 0;
+                self.scroll.scroll_to_top();
             }
             _ => {}
         }

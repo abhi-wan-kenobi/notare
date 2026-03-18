@@ -86,15 +86,13 @@ fn render_section(section: &Section<'_>, theme: &Theme) -> Vec<Line<'static>> {
     }
 }
 
-pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect) {
-    let theme = Theme::DEFAULT;
-
+pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let mut lines: Vec<Line<'static>> = Vec::new();
     for section in &sections(app) {
         if !lines.is_empty() {
             lines.push(Line::default());
         }
-        lines.extend(render_section(section, &theme));
+        lines.extend(render_section(section, theme));
     }
 
     let block = Block::new()
