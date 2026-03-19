@@ -18,6 +18,8 @@ hypr-audio = { workspace = true }
 hypr-audio-actual = { workspace = true }
 hypr-audio-mock = { workspace = true, optional = true }
 hypr-audio-utils = { workspace = true }
+hypr-calendar = { workspace = true }
+hypr-calendar-interface = { workspace = true }
 hypr-cli-editor = { workspace = true }
 hypr-cli-tui = { workspace = true }
 hypr-db-app = { workspace = true }
@@ -39,13 +41,18 @@ hypr-transcript = { workspace = true }
 owhisper-client = { workspace = true }
 owhisper-interface = { workspace = true }
 
+apalis = { workspace = true }
+apalis-cron = { workspace = true }
+async-trait = "0.1"
 axum = { workspace = true, features = ["ws"] }
 bytes = { workspace = true }
+chrono = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 clap-verbosity-flag = { version = "3", features = ["tracing"] }
 clap_complete = { workspace = true }
 clio = { version = "0.3", features = ["clap-parse"] }
 colored = "3"
+cron = "0.15"
 crossterm = { workspace = true }
 dirs = { workspace = true }
 futures-util = { workspace = true }

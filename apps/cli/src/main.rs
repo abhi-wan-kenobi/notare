@@ -1,4 +1,5 @@
 mod agent;
+mod calendar_sync;
 mod cli;
 mod commands;
 mod config;
@@ -137,6 +138,24 @@ async fn run(cli: Cli) -> CliResult<()> {
     } = cli;
 
     let pool = init_pool().await?;
+
+    let _calendar_sync_handle = {
+        let apple_authorized = commands::connect::runtime::check_permission_sync()
+            == commands::connect::runtime::CalendarPermissionState::Authorized;
+        let api_base_url =
+            std::env::var("CHAR_API_URL").unwrap_or_else(|_| "https://app.char.com".to_string());
+        let access_token = std::env::var("CHAR_ACCESS_TOKEN").ok();
+        let user_id = hypr_host::fingerprint();
+        calendar_sync::spawn_calendar_sync(
+            pool.clone(),
+            calendar_sync::CalendarSyncConfig {
+                api_base_url,
+                access_token,
+                apple_authorized,
+                user_id,
+            },
+        )
+    };
 
     let is_tui = matches!(
         &command,

@@ -13,6 +13,7 @@ pub mod model;
 pub mod orgs;
 pub mod sessions;
 pub mod status;
+pub mod timeline;
 pub mod update;
 
 #[cfg(feature = "dev")]

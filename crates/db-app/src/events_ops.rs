@@ -100,6 +100,40 @@ pub async fn find_current_or_upcoming_event(
     Ok(row.as_ref().map(map_event_row))
 }
 
+pub async fn list_events_by_calendar_ids(
+    pool: &SqlitePool,
+    calendar_ids: &[String],
+    from: &str,
+    to: &str,
+) -> Result<Vec<EventRow>, sqlx::Error> {
+    if calendar_ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let placeholders: Vec<&str> = calendar_ids.iter().map(|_| "?").collect();
+    let query = format!(
+        "SELECT id, user_id, calendar_id, tracking_id, title, started_at, ended_at, location, meeting_link, description, note, recurrence_series_id, has_recurrence_rules, is_all_day, participants_json, raw_json, created_at FROM events WHERE calendar_id IN ({}) AND started_at >= ? AND started_at < ? ORDER BY started_at",
+        placeholders.join(", ")
+    );
+    let mut q = sqlx::query(&query);
+    for id in calendar_ids {
+        q = q.bind(id);
+    }
+    q = q.bind(from).bind(to);
+    let rows = q.fetch_all(pool).await?;
+    Ok(rows.iter().map(map_event_row).collect())
+}
+
+pub async fn delete_events_by_calendar(
+    pool: &SqlitePool,
+    calendar_id: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM events WHERE calendar_id = ?")
+        .bind(calendar_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 pub async fn delete_event(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM events WHERE id = ?")
         .bind(id)

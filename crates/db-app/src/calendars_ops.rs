@@ -29,6 +29,102 @@ pub async fn upsert_calendar(
     Ok(())
 }
 
+pub async fn list_enabled_calendars_by_provider(
+    pool: &SqlitePool,
+    provider: &str,
+    connection_id: &str,
+) -> Result<Vec<CalendarRow>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, (String, String, String, String, String, String, String, i32, String, String, String)>(
+        "SELECT id, provider, connection_id, tracking_id, name, color, source, enabled, created_at, user_id, raw_json FROM calendars WHERE provider = ? AND connection_id = ? AND enabled = 1 ORDER BY name",
+    )
+    .bind(provider)
+    .bind(connection_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(
+            |(
+                id,
+                provider,
+                connection_id,
+                tracking_id,
+                name,
+                color,
+                source,
+                enabled,
+                created_at,
+                user_id,
+                raw_json,
+            )| CalendarRow {
+                id,
+                provider,
+                connection_id,
+                tracking_id,
+                name,
+                color,
+                source,
+                enabled: enabled != 0,
+                created_at,
+                user_id,
+                raw_json,
+            },
+        )
+        .collect())
+}
+
+pub async fn list_all_calendars_by_provider(
+    pool: &SqlitePool,
+    provider: &str,
+) -> Result<Vec<CalendarRow>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, (String, String, String, String, String, String, String, i32, String, String, String)>(
+        "SELECT id, provider, connection_id, tracking_id, name, color, source, enabled, created_at, user_id, raw_json FROM calendars WHERE provider = ? ORDER BY name",
+    )
+    .bind(provider)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(
+            |(
+                id,
+                provider,
+                connection_id,
+                tracking_id,
+                name,
+                color,
+                source,
+                enabled,
+                created_at,
+                user_id,
+                raw_json,
+            )| CalendarRow {
+                id,
+                provider,
+                connection_id,
+                tracking_id,
+                name,
+                color,
+                source,
+                enabled: enabled != 0,
+                created_at,
+                user_id,
+                raw_json,
+            },
+        )
+        .collect())
+}
+
+pub async fn delete_calendar(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM calendars WHERE id = ?")
+        .bind(id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 pub async fn list_calendars_by_connection(
     pool: &SqlitePool,
     connection_id: &str,

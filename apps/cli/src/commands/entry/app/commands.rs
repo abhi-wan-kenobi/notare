@@ -14,6 +14,7 @@ pub(crate) enum Command {
     Chat,
     ChatResume,
     Sessions,
+    Timeline,
     Connect,
     Auth,
     Bug,
@@ -31,6 +32,7 @@ pub(crate) const ALL_COMMANDS: &[Command] = &[
     Command::Chat,
     Command::ChatResume,
     Command::Sessions,
+    Command::Timeline,
     Command::Connect,
     Command::Auth,
     Command::Bug,
@@ -49,6 +51,7 @@ impl Command {
             Self::Chat => "/chat",
             Self::ChatResume => "/chat resume",
             Self::Sessions => "/sessions",
+            Self::Timeline => "/timeline",
             Self::Connect => "/connect",
             Self::Auth => "/auth",
             Self::Bug => "/bug",
@@ -68,6 +71,7 @@ impl Command {
             Self::Chat => "Start a chat",
             Self::ChatResume => "Resume an existing chat",
             Self::Sessions => "Browse past sessions",
+            Self::Timeline => "CRM timeline view",
             Self::Connect => "Connect provider",
             Self::Auth => "Open auth in browser",
             Self::Bug => "Report a bug on GitHub",
@@ -83,7 +87,9 @@ impl Command {
 
     pub(crate) fn group(&self) -> &'static str {
         match self {
-            Self::Listen | Self::Chat | Self::ChatResume | Self::Sessions => "Session",
+            Self::Listen | Self::Chat | Self::ChatResume | Self::Sessions | Self::Timeline => {
+                "Session"
+            }
             Self::Connect | Self::Auth => "Setup",
             Self::Bug | Self::Hello | Self::Desktop | Self::Exit => "App",
             Self::Models | Self::ModelsDownload | Self::ModelsDelete | Self::ModelsPaths => {
@@ -117,6 +123,7 @@ const ALL_VARIANTS: &[Command] = &[
     Command::Chat,
     Command::ChatResume,
     Command::Sessions,
+    Command::Timeline,
     Command::Connect,
     Command::Auth,
     Command::Bug,

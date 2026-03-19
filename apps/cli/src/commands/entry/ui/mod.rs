@@ -75,6 +75,9 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         Overlay::Models(models_app) => {
             crate::commands::model::ui::draw(frame, models_app);
         }
+        Overlay::Timeline(timeline_app) => {
+            crate::commands::timeline::ui::draw(frame, timeline_app);
+        }
         Overlay::None => {}
     }
 }

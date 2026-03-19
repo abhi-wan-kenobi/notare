@@ -5,6 +5,8 @@ pub(crate) enum Effect {
     Launch(super::EntryCommand),
     LoadSessions,
     LoadModels,
+    LoadTimelineContacts,
+    LoadTimelineEntries(String),
     SaveConnect {
         connection_types: Vec<ConnectionType>,
         provider: ConnectProvider,

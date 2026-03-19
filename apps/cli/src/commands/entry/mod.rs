@@ -42,6 +42,13 @@ enum ExternalEvent {
         provider_id: String,
     },
     ConnectSaveError(String),
+    TimelineContactsLoaded {
+        orgs: Vec<hypr_db_app::OrganizationRow>,
+        humans: Vec<hypr_db_app::HumanRow>,
+    },
+    TimelineContactsLoadError(String),
+    TimelineEntriesLoaded(Vec<hypr_db_app::TimelineRow>),
+    TimelineEntriesLoadError(String),
 }
 
 struct EntryScreen {
@@ -96,6 +103,39 @@ impl EntryScreen {
                         )
                         .await;
                         let _ = tx.send(ExternalEvent::ModelsLoaded(rows));
+                    });
+                }
+                Effect::LoadTimelineContacts => {
+                    let tx = self.external_tx.clone();
+                    let pool = self.pool.clone();
+                    tokio::spawn(async move {
+                        let orgs = hypr_db_app::list_organizations(&pool).await;
+                        let humans = hypr_db_app::list_humans(&pool).await;
+                        match (orgs, humans) {
+                            (Ok(orgs), Ok(humans)) => {
+                                let _ =
+                                    tx.send(ExternalEvent::TimelineContactsLoaded { orgs, humans });
+                            }
+                            (Err(e), _) | (_, Err(e)) => {
+                                let _ = tx
+                                    .send(ExternalEvent::TimelineContactsLoadError(e.to_string()));
+                            }
+                        }
+                    });
+                }
+                Effect::LoadTimelineEntries(human_id) => {
+                    let tx = self.external_tx.clone();
+                    let pool = self.pool.clone();
+                    tokio::spawn(async move {
+                        match hypr_db_app::list_timeline_by_human(&pool, &human_id).await {
+                            Ok(entries) => {
+                                let _ = tx.send(ExternalEvent::TimelineEntriesLoaded(entries));
+                            }
+                            Err(e) => {
+                                let _ =
+                                    tx.send(ExternalEvent::TimelineEntriesLoadError(e.to_string()));
+                            }
+                        }
                     });
                 }
                 Effect::SaveConnect {
@@ -259,6 +299,12 @@ impl Screen for EntryScreen {
                 provider_id,
             },
             ExternalEvent::ConnectSaveError(msg) => Action::StatusMessage(msg),
+            ExternalEvent::TimelineContactsLoaded { orgs, humans } => {
+                Action::TimelineContactsLoaded { orgs, humans }
+            }
+            ExternalEvent::TimelineContactsLoadError(msg) => Action::TimelineContactsLoadError(msg),
+            ExternalEvent::TimelineEntriesLoaded(entries) => Action::TimelineEntriesLoaded(entries),
+            ExternalEvent::TimelineEntriesLoadError(msg) => Action::TimelineEntriesLoadError(msg),
         };
         let effects = self.app.dispatch(action);
         self.apply_effects(effects)

@@ -337,8 +337,8 @@ tracing-opentelemetry = "0.31"
 tracing-subscriber = "0.3"
 tracing-test = "0.2"
 
-apalis = "0.7.0"
-apalis-cron = "0.7.0"
+apalis = "1.0.0-rc.6"
+apalis-cron = "1.0.0-rc.6"
 
 specta = "2.0.0-rc.22"
 specta-typescript = "0.0.9"

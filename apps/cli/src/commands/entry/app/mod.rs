@@ -8,6 +8,7 @@ use ratatui_image::protocol::StatefulProtocol;
 use crate::commands::connect;
 use crate::commands::model;
 use crate::commands::sessions;
+use crate::commands::timeline;
 
 pub(crate) use commands::{ALL_COMMANDS, Command, CommandEntry};
 
@@ -27,6 +28,7 @@ pub(crate) enum Overlay {
     Connect(connect::app::App),
     Sessions(sessions::app::App),
     Models(model::app::App),
+    Timeline(timeline::app::App),
 }
 
 pub(crate) struct App {
@@ -113,6 +115,39 @@ impl App {
                 if let Overlay::Models(ref mut app) = self.overlay {
                     let effects = app.dispatch(model::action::Action::LoadError(msg));
                     self.translate_models_effects(effects)
+                } else {
+                    Vec::new()
+                }
+            }
+            Action::TimelineContactsLoaded { orgs, humans } => {
+                if let Overlay::Timeline(ref mut app) = self.overlay {
+                    let effects =
+                        app.dispatch(timeline::action::Action::ContactsLoaded { orgs, humans });
+                    self.translate_timeline_effects(effects)
+                } else {
+                    Vec::new()
+                }
+            }
+            Action::TimelineContactsLoadError(msg) => {
+                if let Overlay::Timeline(ref mut app) = self.overlay {
+                    let effects = app.dispatch(timeline::action::Action::ContactsLoadError(msg));
+                    self.translate_timeline_effects(effects)
+                } else {
+                    Vec::new()
+                }
+            }
+            Action::TimelineEntriesLoaded(entries) => {
+                if let Overlay::Timeline(ref mut app) = self.overlay {
+                    let effects = app.dispatch(timeline::action::Action::EntriesLoaded(entries));
+                    self.translate_timeline_effects(effects)
+                } else {
+                    Vec::new()
+                }
+            }
+            Action::TimelineEntriesLoadError(msg) => {
+                if let Overlay::Timeline(ref mut app) = self.overlay {
+                    let effects = app.dispatch(timeline::action::Action::EntriesLoadError(msg));
+                    self.translate_timeline_effects(effects)
                 } else {
                     Vec::new()
                 }
@@ -212,6 +247,10 @@ impl App {
                 let effects = app.dispatch(model::action::Action::Key(key));
                 return self.translate_models_effects(effects);
             }
+            Overlay::Timeline(ref mut app) => {
+                let effects = app.dispatch(timeline::action::Action::Key(key));
+                return self.translate_timeline_effects(effects);
+            }
             Overlay::None => {}
         }
 
@@ -273,6 +312,7 @@ impl App {
             }
             Overlay::Sessions(_) => return Vec::new(),
             Overlay::Models(_) => return Vec::new(),
+            Overlay::Timeline(_) => return Vec::new(),
             Overlay::None => {}
         }
 
@@ -320,6 +360,11 @@ impl App {
                 self.sessions_intent = SessionsIntent::View;
                 self.overlay = Overlay::Sessions(sessions::app::App::new());
                 vec![Effect::LoadSessions]
+            }
+            Command::Timeline => {
+                self.reset_input();
+                self.overlay = Overlay::Timeline(timeline::app::App::new());
+                vec![Effect::LoadTimelineContacts]
             }
             Command::Connect => {
                 let (connect_app, initial_effects) = connect::app::App::new(None, None, None, None);
@@ -427,6 +472,28 @@ impl App {
                     result.push(Effect::Launch(cmd));
                 }
                 sessions::effect::Effect::Exit => {
+                    self.reset_input();
+                }
+            }
+        }
+        result
+    }
+
+    fn translate_timeline_effects(
+        &mut self,
+        effects: Vec<timeline::effect::Effect>,
+    ) -> Vec<Effect> {
+        let mut result = Vec::new();
+        for effect in effects {
+            match effect {
+                timeline::effect::Effect::LoadTimeline(human_id) => {
+                    result.push(Effect::LoadTimelineEntries(human_id));
+                }
+                timeline::effect::Effect::ViewSession(session_id) => {
+                    self.reset_input();
+                    result.push(Effect::Launch(super::EntryCommand::View { session_id }));
+                }
+                timeline::effect::Effect::Exit => {
                     self.reset_input();
                 }
             }
@@ -542,7 +609,7 @@ mod tests {
                     Some(connect::runtime::CalendarPermissionState::NotDetermined)
                 );
             }
-            Overlay::None | Overlay::Models(_) | Overlay::Sessions(_) => {
+            Overlay::None | Overlay::Models(_) | Overlay::Sessions(_) | Overlay::Timeline(_) => {
                 panic!("expected connect overlay")
             }
         }

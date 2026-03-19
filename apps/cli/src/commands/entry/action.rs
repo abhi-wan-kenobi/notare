@@ -18,4 +18,11 @@ pub(crate) enum Action {
         connection_types: Vec<ConnectionType>,
         provider_id: String,
     },
+    TimelineContactsLoaded {
+        orgs: Vec<hypr_db_app::OrganizationRow>,
+        humans: Vec<hypr_db_app::HumanRow>,
+    },
+    TimelineContactsLoadError(String),
+    TimelineEntriesLoaded(Vec<hypr_db_app::TimelineRow>),
+    TimelineEntriesLoadError(String),
 }

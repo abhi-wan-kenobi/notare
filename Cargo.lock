@@ -459,47 +459,49 @@ dependencies = [
 
 [[package]]
 name = "apalis"
-version = "0.7.4"
+version = "1.0.0-rc.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "504d52557a16b7b202941660f339c9182910d498cac40f93d15f6b31e6bef290"
+checksum = "d46b0b1f4ded5b28d3af14243ec0b13a40b673d2e6d7bd94e0de4c8a4a7bbd8b"
 dependencies = [
  "apalis-core",
- "futures",
- "pin-project-lite",
- "serde",
+ "futures-util",
+ "pin-project",
  "thiserror 2.0.18",
  "tower 0.5.3",
  "tracing",
- "tracing-futures",
 ]
 
 [[package]]
 name = "apalis-core"
-version = "0.7.4"
+version = "1.0.0-rc.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3948d2051795c769e6a44a46549879af39d5e8e4fb113e0011cf99f7cd21b657"
+checksum = "acfebc2bba9ddc815fa574ce4f506762c01122096fa57d0c5b585c57d069284a"
 dependencies = [
- "futures",
+ "futures-channel",
+ "futures-core",
+ "futures-sink",
  "futures-timer",
- "pin-project-lite",
+ "futures-util",
+ "pin-project",
  "serde",
  "thiserror 2.0.18",
- "tower 0.5.3",
- "ulid",
+ "tower-layer",
+ "tower-service",
+ "tracing",
 ]
 
 [[package]]
 name = "apalis-cron"
-version = "0.7.4"
+version = "1.0.0-rc.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82ce16ed2870e0226b02b242ef7b552f015ee9592bb797c20b32fb37bd796e2d"
+checksum = "93d181417d11062bf039160d1c55d4cd7388a786e95b9bb33bb6a8f03724040c"
 dependencies = [
  "apalis-core",
- "async-stream",
  "chrono",
  "cron",
- "futures",
- "tower 0.5.3",
+ "futures-util",
+ "serde",
+ "ulid",
 ]
 
 [[package]]
@@ -2948,6 +2950,7 @@ version = "0.1.0"
 dependencies = [
  "api-client",
  "apple-calendar",
+ "async-trait",
  "calendar-interface",
  "chrono",
  "chrono-tz 0.10.4",
@@ -2958,6 +2961,8 @@ dependencies = [
  "serde_json",
  "specta",
  "thiserror 2.0.18",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -3391,14 +3396,20 @@ name = "cli"
 version = "0.1.0"
 dependencies = [
  "analytics",
+ "apalis",
+ "apalis-cron",
  "api-env",
  "apple-calendar",
+ "async-trait",
  "audio",
  "audio-actual",
  "audio-mock",
  "audio-utils",
  "axum 0.8.8",
  "bytes",
+ "calendar",
+ "calendar-interface",
+ "chrono",
  "clap",
  "clap-verbosity-flag",
  "clap_complete",
@@ -3407,6 +3418,7 @@ dependencies = [
  "cli-tui",
  "clio",
  "colored",
+ "cron",
  "crossterm",
  "db-app",
  "db-core2",
