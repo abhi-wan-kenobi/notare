@@ -37,9 +37,11 @@ const INPUT_CLASSES = [
 
 export function SelectionMenu({
   containerRef,
+  editable,
   onAction,
 }: {
   containerRef: React.RefObject<HTMLElement | null>;
+  editable?: boolean;
   onAction?: (
     action: string,
     selectedText: string,
@@ -104,6 +106,8 @@ export function SelectionMenu({
         >
           {mode === "menu" ? (
             <MainMenu
+              editable={editable}
+              onCopy={() => handleAction("copy")}
               onRemove={() => handleAction("remove")}
               onReplace={() => setMode("replace")}
             />
@@ -120,20 +124,31 @@ export function SelectionMenu({
 }
 
 function MainMenu({
+  editable,
+  onCopy,
   onRemove,
   onReplace,
 }: {
+  editable?: boolean;
+  onCopy: () => void;
   onRemove: () => void;
   onReplace: () => void;
 }) {
   return (
     <>
-      <button onClick={onRemove} className={cn(MENU_BUTTON_CLASSES)}>
-        Remove
+      <button onClick={onCopy} className={cn(MENU_BUTTON_CLASSES)}>
+        Copy
       </button>
-      <button onClick={onReplace} className={cn(MENU_BUTTON_CLASSES)}>
-        Replace
-      </button>
+      {editable && (
+        <>
+          <button onClick={onRemove} className={cn(MENU_BUTTON_CLASSES)}>
+            Remove
+          </button>
+          <button onClick={onReplace} className={cn(MENU_BUTTON_CLASSES)}>
+            Replace
+          </button>
+        </>
+      )}
     </>
   );
 }

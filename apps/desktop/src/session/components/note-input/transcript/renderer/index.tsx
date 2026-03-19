@@ -109,7 +109,6 @@ export function TranscriptViewer({
               scrollElement={scrollElement}
               isLastTranscript={index === transcriptIds.length - 1}
               isAtBottom={isAtBottom}
-              editable={editable}
               transcriptId={transcriptId}
               partialWords={
                 index === transcriptIds.length - 1 && currentActive
@@ -131,12 +130,11 @@ export function TranscriptViewer({
           </div>
         ))}
 
-        {editable && (
-          <SelectionMenu
-            containerRef={containerRef}
-            onAction={handleSelectionAction}
-          />
-        )}
+        <SelectionMenu
+          containerRef={containerRef}
+          editable={editable}
+          onAction={handleSelectionAction}
+        />
       </div>
 
       <button

@@ -9,7 +9,6 @@ import { getTimestampRange } from "./utils";
 
 export type SegmentsListProps = {
   segments: Segment[];
-  editable?: boolean;
   offsetMs?: number;
   audioState?: AudioState;
   speakerLabelResolver: (key: SegmentKey) => { label: string; color: string };
@@ -25,7 +24,6 @@ export type SegmentsListProps = {
 export const SegmentsList = memo(
   ({
     segments,
-    editable = false,
     offsetMs = 0,
     audioState,
     speakerLabelResolver,
@@ -47,7 +45,6 @@ export const SegmentsList = memo(
           return (
             <div key={key} className={cn([index > 0 && "pt-8"])}>
               <SegmentRenderer
-                editable={editable}
                 segment={segment}
                 offsetMs={offsetMs}
                 operations={operations}

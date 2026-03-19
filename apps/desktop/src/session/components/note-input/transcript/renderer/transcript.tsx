@@ -31,7 +31,6 @@ export function RenderTranscript({
   scrollElement,
   isLastTranscript,
   isAtBottom,
-  editable,
   transcriptId,
   partialWords,
   partialHints,
@@ -44,7 +43,6 @@ export function RenderTranscript({
   scrollElement: HTMLDivElement | null;
   isLastTranscript: boolean;
   isAtBottom: boolean;
-  editable: boolean;
   transcriptId: string;
   partialWords: PartialWord[];
   partialHints: RuntimeSpeakerHint[];
@@ -94,7 +92,6 @@ export function RenderTranscript({
       segments={segments}
       scrollElement={scrollElement}
       transcriptId={transcriptId}
-      editable={editable}
       offsetMs={offsetMs}
       operations={operations}
       sessionId={sessionId}
@@ -112,7 +109,6 @@ const SegmentsList = memo(
     segments,
     scrollElement,
     transcriptId,
-    editable,
     offsetMs,
     operations,
     sessionId,
@@ -125,7 +121,6 @@ const SegmentsList = memo(
     segments: Segment[];
     scrollElement: HTMLDivElement | null;
     transcriptId: string;
-    editable: boolean;
     offsetMs: number;
     operations?: Operations;
     sessionId?: string;
@@ -175,7 +170,6 @@ const SegmentsList = memo(
             className={cn([index > 0 && "pt-8"])}
           >
             <SegmentRenderer
-              editable={editable}
               segment={segment}
               offsetMs={offsetMs}
               operations={operations}

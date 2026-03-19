@@ -22,7 +22,6 @@ function getSegmentTimeRange(
 
 export const SegmentRenderer = memo(
   ({
-    editable,
     segment,
     offsetMs,
     operations,
@@ -32,7 +31,6 @@ export const SegmentRenderer = memo(
     seekAndPlay,
     audioExists,
   }: {
-    editable: boolean;
     segment: Segment;
     offsetMs: number;
     operations?: Operations;
@@ -59,7 +57,7 @@ export const SegmentRenderer = memo(
         <div
           className={cn([
             "overflow-wrap-anywhere mt-1.5 text-sm leading-relaxed wrap-break-word",
-            editable && "select-text-deep",
+            "select-text-deep",
           ])}
         >
           {lines.map((line, lineIdx) => {
@@ -98,7 +96,6 @@ export const SegmentRenderer = memo(
   },
   (prev, next) => {
     if (
-      prev.editable !== next.editable ||
       prev.segment !== next.segment ||
       prev.offsetMs !== next.offsetMs ||
       prev.operations !== next.operations ||
