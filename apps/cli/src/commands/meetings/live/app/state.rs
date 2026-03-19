@@ -10,13 +10,13 @@ use hypr_transcript::{
     WordRef,
 };
 
-use crate::commands::listen::runtime::RuntimeEvent;
+use super::super::runtime::RuntimeEvent;
 
 const AUDIO_HISTORY_CAP: usize = 64;
 const MAX_ERRORS: usize = 8;
 const WORD_FIRST_SEEN_RETENTION: Duration = Duration::from_secs(2);
 
-pub(super) struct ListenState {
+pub(super) struct LiveState {
     state: State,
     status: String,
     degraded: Option<DegradedError>,
@@ -33,7 +33,7 @@ pub(super) struct ListenState {
     word_first_seen: HashMap<String, Instant>,
 }
 
-impl ListenState {
+impl LiveState {
     pub(super) fn new() -> Self {
         Self {
             state: State::Inactive,

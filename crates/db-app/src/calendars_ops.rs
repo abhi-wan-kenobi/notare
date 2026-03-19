@@ -1,6 +1,14 @@
-use sqlx::SqlitePool;
+use sqlx::{Row, SqlitePool};
 
 use crate::CalendarRow;
+
+pub async fn has_calendars(pool: &SqlitePool) -> Result<bool, sqlx::Error> {
+    let row = sqlx::query("SELECT EXISTS(SELECT 1 FROM calendars) AS has_any")
+        .fetch_one(pool)
+        .await?;
+    let has_any: bool = row.get("has_any");
+    Ok(has_any)
+}
 
 pub async fn upsert_calendar(
     pool: &SqlitePool,

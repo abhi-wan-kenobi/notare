@@ -89,7 +89,7 @@ impl App {
             }
             Action::MeetingsLoaded(meetings) => {
                 if let Overlay::Meetings(ref mut app) = self.overlay {
-                    let effects = app.dispatch(meetings::action::Action::Loaded(meetings));
+                    let effects = app.dispatch(meetings::action::Action::MeetingsLoaded(meetings));
                     self.translate_meetings_effects(effects)
                 } else {
                     Vec::new()
@@ -98,6 +98,22 @@ impl App {
             Action::MeetingsLoadError(msg) => {
                 if let Overlay::Meetings(ref mut app) = self.overlay {
                     let effects = app.dispatch(meetings::action::Action::LoadError(msg));
+                    self.translate_meetings_effects(effects)
+                } else {
+                    Vec::new()
+                }
+            }
+            Action::EventsLoaded(events) => {
+                if let Overlay::Meetings(ref mut app) = self.overlay {
+                    let effects = app.dispatch(meetings::action::Action::EventsLoaded(events));
+                    self.translate_meetings_effects(effects)
+                } else {
+                    Vec::new()
+                }
+            }
+            Action::CalendarNotConfigured => {
+                if let Overlay::Meetings(ref mut app) = self.overlay {
+                    let effects = app.dispatch(meetings::action::Action::CalendarNotConfigured);
                     self.translate_meetings_effects(effects)
                 } else {
                     Vec::new()
@@ -513,10 +529,14 @@ impl App {
     }
 
     fn reset_input(&mut self) {
+        let had_overlay = self.has_overlay();
         self.overlay = Overlay::None;
         self.input = Editor::single_line();
         self.status_message = None;
         self.recompute_popup();
+        if had_overlay {
+            self.reload_logo();
+        }
     }
 
     fn selected_command_name(&self) -> Option<&'static str> {

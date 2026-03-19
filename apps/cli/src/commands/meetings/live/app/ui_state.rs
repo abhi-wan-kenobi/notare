@@ -9,16 +9,11 @@ use tachyonfx::{Effect, Interpolation, Motion, fx};
 
 use crate::widgets::ScrollViewState;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Mode {
-    Normal,
-    Insert,
-    Command,
-}
+pub(crate) use crate::commands::meetings::ui::Mode;
 
 const DEFAULT_NOTEPAD_WIDTH_PERCENT: u16 = 60;
 
-pub(super) struct ListenUiState {
+pub(super) struct LiveUiState {
     mode: Mode,
     command_buffer: String,
     notepad_width_percent: u16,
@@ -30,7 +25,7 @@ pub(super) struct ListenUiState {
     transcript_effects: Vec<Effect>,
 }
 
-impl ListenUiState {
+impl LiveUiState {
     pub(super) fn new() -> Self {
         let now = Instant::now();
         Self {

@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct CalendarRow {
     pub id: String,
     pub provider: String,

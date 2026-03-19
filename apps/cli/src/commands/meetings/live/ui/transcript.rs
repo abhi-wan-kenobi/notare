@@ -5,7 +5,7 @@ use ratatui::{
     widgets::{Padding, Paragraph},
 };
 
-use crate::commands::listen::app::App;
+use super::super::app::App;
 use crate::theme::Theme;
 use crate::widgets::{build_segment_lines, render_scrollable};
 

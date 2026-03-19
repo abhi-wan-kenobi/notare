@@ -2,15 +2,14 @@ use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
     text::{Line, Span},
-    widgets::{Padding, Paragraph},
+    widgets::Paragraph,
 };
 
+use crate::commands::meetings::ui::{self, status_bar::StatusBarConfig};
 use crate::theme::Theme;
-use crate::widgets::{
-    AppShell, CommandBar, InfoLine, KeyHints, build_segment_lines, render_scrollable,
-};
+use crate::widgets::{AppShell, InfoLine};
 
-use super::app::{App, Mode};
+use super::app::App;
 
 pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     let theme = Theme::TRANSPARENT;
@@ -34,11 +33,68 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
         ])
         .areas(body_area);
 
-        draw_memo(frame, app, memo_area, &theme);
-        draw_transcript(frame, app, transcript_area, &theme);
+        let memo_focused = app.memo_focused();
+        ui::draw_notepad(
+            frame,
+            app.memo_mut(),
+            memo_focused,
+            memo_area,
+            &theme,
+            " Memo ",
+        );
+
+        let transcript_focused = app.transcript_focused();
+        let (segments, scroll) = app.segments_and_scroll();
+        ui::draw_transcript(
+            frame,
+            segments,
+            transcript_focused,
+            transcript_area,
+            &theme,
+            scroll,
+            "No transcript",
+            None,
+            None,
+        );
     }
 
-    draw_status_bar(frame, app, status_area, &theme);
+    let mut normal_hints = vec![
+        (":q", "quit"),
+        (":w", "save"),
+        ("j/k", "scroll"),
+        ("i", "memo"),
+    ];
+    if app.memo_dirty() {
+        normal_hints.push(("", "[modified]"));
+    }
+
+    let normal_suffix = app
+        .save_message()
+        .map(|msg| Span::styled(msg, theme.status_active));
+
+    let insert_suffix = if app.memo_dirty() {
+        Some(Span::styled("[modified]", theme.muted))
+    } else {
+        None
+    };
+
+    ui::draw_status_bar(
+        frame,
+        StatusBarConfig {
+            mode: app.mode(),
+            command_buffer: app.command_buffer(),
+            normal_hints,
+            insert_hints: vec![
+                ("esc", "normal"),
+                ("tab", "normal"),
+                ("ctrl+z/y", "undo/redo"),
+            ],
+            normal_suffix,
+            insert_suffix,
+        },
+        status_area,
+        &theme,
+    );
 }
 
 fn draw_header(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
@@ -56,74 +112,4 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
         .item(Span::raw(short_date));
 
     frame.render_widget(info, area);
-}
-
-fn draw_memo(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
-    if area.width < 3 || area.height < 3 {
-        return;
-    }
-
-    let block = theme.bordered_block(app.memo_focused()).title(" Memo ");
-    app.set_memo_block(block);
-    frame.render_widget(app.memo(), area);
-}
-
-fn draw_transcript(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
-    let segments = app.segments();
-
-    let block = theme
-        .bordered_block(app.transcript_focused())
-        .title(" Transcript ")
-        .padding(Padding::new(1, 1, 0, 0));
-
-    if segments.is_empty() {
-        let lines = vec![Line::from(Span::styled("No transcript", theme.placeholder))];
-        let paragraph = Paragraph::new(lines).block(block);
-        frame.render_widget(paragraph, area);
-        return;
-    }
-
-    let content_width = area.width.saturating_sub(4) as usize;
-    let lines = build_segment_lines(segments, theme, content_width, None, None);
-
-    render_scrollable(frame, lines, Some(block), area, app.scroll_state_mut());
-}
-
-fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
-    match app.mode() {
-        Mode::Command => {
-            frame.render_widget(CommandBar::new(app.command_buffer(), theme), area);
-        }
-        Mode::Insert => {
-            let mut hints_widget = KeyHints::new(theme)
-                .badge(" INSERT ", theme.mode_insert)
-                .hints(vec![
-                    ("esc", "normal"),
-                    ("tab", "normal"),
-                    ("ctrl+z/y", "undo/redo"),
-                ]);
-            if app.memo_dirty() {
-                hints_widget = hints_widget.suffix(Span::styled("[modified]", theme.muted));
-            }
-            frame.render_widget(hints_widget, area);
-        }
-        Mode::Normal => {
-            let mut hints = vec![
-                (":q", "quit"),
-                (":w", "save"),
-                ("j/k", "scroll"),
-                ("i", "memo"),
-            ];
-            if app.memo_dirty() {
-                hints.push(("", "[modified]"));
-            }
-            let mut hints_widget = KeyHints::new(theme)
-                .badge(" NORMAL ", theme.mode_normal)
-                .hints(hints);
-            if let Some(msg) = app.save_message() {
-                hints_widget = hints_widget.suffix(Span::styled(msg, theme.status_active));
-            }
-            frame.render_widget(hints_widget, area);
-        }
-    }
 }

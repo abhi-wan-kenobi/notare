@@ -1,23 +1,29 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use hypr_db_app::MeetingRow;
+use hypr_db_app::{EventRow, MeetingRow};
 use ratatui::widgets::ListState;
 
 use super::action::Action;
 use super::effect::Effect;
 
 pub(crate) struct App {
+    events: Vec<EventRow>,
     meetings: Vec<MeetingRow>,
+    calendar_configured: Option<bool>,
     list_state: ListState,
-    loading: bool,
+    meetings_loaded: bool,
+    events_loaded: bool,
     error: Option<String>,
 }
 
 impl App {
     pub fn new() -> Self {
         Self {
+            events: Vec::new(),
             meetings: Vec::new(),
+            calendar_configured: None,
             list_state: ListState::default(),
-            loading: true,
+            meetings_loaded: false,
+            events_loaded: false,
             error: None,
         }
     }
@@ -25,24 +31,44 @@ impl App {
     pub fn dispatch(&mut self, action: Action) -> Vec<Effect> {
         match action {
             Action::Key(key) => self.handle_key(key),
-            Action::Loaded(meetings) => {
-                self.loading = false;
+            Action::MeetingsLoaded(meetings) => {
+                self.meetings_loaded = true;
                 self.meetings = meetings;
                 if !self.meetings.is_empty() {
                     self.list_state.select(Some(0));
                 }
                 Vec::new()
             }
+            Action::EventsLoaded(events) => {
+                self.events_loaded = true;
+                self.calendar_configured = Some(true);
+                self.events = events;
+                Vec::new()
+            }
+            Action::CalendarNotConfigured => {
+                self.events_loaded = true;
+                self.calendar_configured = Some(false);
+                Vec::new()
+            }
             Action::LoadError(msg) => {
-                self.loading = false;
+                self.meetings_loaded = true;
+                self.events_loaded = true;
                 self.error = Some(msg);
                 Vec::new()
             }
         }
     }
 
+    pub fn events(&self) -> &[EventRow] {
+        &self.events
+    }
+
     pub fn meetings(&self) -> &[MeetingRow] {
         &self.meetings
+    }
+
+    pub fn calendar_configured(&self) -> Option<bool> {
+        self.calendar_configured
     }
 
     pub fn list_state_mut(&mut self) -> &mut ListState {
@@ -50,7 +76,7 @@ impl App {
     }
 
     pub fn loading(&self) -> bool {
-        self.loading
+        !self.meetings_loaded || !self.events_loaded
     }
 
     pub fn error(&self) -> Option<&str> {

@@ -95,8 +95,11 @@ pub enum Commands {
         #[command(subcommand)]
         command: Option<OrgsCommands>,
     },
-    /// Show configured providers and settings
-    Status,
+    /// Configure providers and settings
+    Configure {
+        #[arg(long, value_enum)]
+        tab: Option<ConfigureTab>,
+    },
     /// Authenticate with char.com
     Auth,
     /// Open the desktop app or download page
@@ -225,6 +228,13 @@ pub enum ChatCommands {
         #[arg(long)]
         meeting: Option<String>,
     },
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum ConfigureTab {
+    Stt,
+    Llm,
+    Calendar,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -436,7 +446,7 @@ pub enum DebugCommands {
     /// Real-time transcription from audio devices
     Transcribe {
         #[command(flatten)]
-        args: TranscribeArgs,
+        args: DebugTranscribeArgs,
     },
 }
 
@@ -452,7 +462,7 @@ pub enum TranscribeMode {
 
 #[cfg(feature = "dev")]
 #[derive(clap::Args)]
-pub struct TranscribeArgs {
+pub struct DebugTranscribeArgs {
     #[arg(long, value_enum)]
     pub provider: DebugProvider,
     /// Display mode

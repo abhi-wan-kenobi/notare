@@ -1,6 +1,8 @@
 pub(crate) mod action;
 pub(crate) mod app;
 pub(crate) mod effect;
+pub(crate) mod live;
+mod runtime;
 pub(crate) mod ui;
 pub(crate) mod view;
 
@@ -13,13 +15,9 @@ use crate::error::{CliError, CliResult};
 use self::action::Action;
 use self::app::App;
 use self::effect::Effect;
+use self::runtime::{Runtime, RuntimeEvent};
 
 const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);
-
-enum ExternalEvent {
-    Loaded(Vec<hypr_db_app::MeetingRow>),
-    LoadError(String),
-}
 
 struct MeetingsScreen {
     app: App,
@@ -38,7 +36,7 @@ impl MeetingsScreen {
 }
 
 impl Screen for MeetingsScreen {
-    type ExternalEvent = ExternalEvent;
+    type ExternalEvent = RuntimeEvent;
     type Output = Option<String>;
 
     fn on_tui_event(
@@ -61,15 +59,17 @@ impl Screen for MeetingsScreen {
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
         let action = match event {
-            ExternalEvent::Loaded(meetings) => Action::Loaded(meetings),
-            ExternalEvent::LoadError(msg) => Action::LoadError(msg),
+            RuntimeEvent::MeetingsLoaded(meetings) => Action::MeetingsLoaded(meetings),
+            RuntimeEvent::EventsLoaded(events) => Action::EventsLoaded(events),
+            RuntimeEvent::CalendarNotConfigured => Action::CalendarNotConfigured,
+            RuntimeEvent::LoadError(msg) => Action::LoadError(msg),
         };
         let effects = self.app.dispatch(action);
         self.apply_effects(effects)
     }
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
-        ui::draw(frame, &mut self.app);
+        ui::list::draw(frame, &mut self.app);
     }
 
     fn title(&self) -> String {
@@ -84,30 +84,15 @@ impl Screen for MeetingsScreen {
 pub async fn run(pool: SqlitePool) -> CliResult<Option<String>> {
     let (external_tx, external_rx) = mpsc::unbounded_channel();
 
-    tokio::spawn(async move {
-        match hypr_db_app::list_meetings(&pool).await {
-            Ok(meetings) => {
-                let _ = external_tx.send(ExternalEvent::Loaded(meetings));
-            }
-            Err(e) => {
-                let _ = external_tx.send(ExternalEvent::LoadError(e.to_string()));
-            }
-        }
-    });
+    let runtime = Runtime::new(pool, external_tx);
+    runtime.load_meetings();
+    runtime.load_events();
 
     let screen = MeetingsScreen { app: App::new() };
 
     run_screen(screen, Some(external_rx))
         .await
         .map_err(|e| CliError::operation_failed("meetings tui", e.to_string()))
-}
-
-pub(crate) async fn load_meetings(
-    pool: SqlitePool,
-) -> Result<Vec<hypr_db_app::MeetingRow>, String> {
-    hypr_db_app::list_meetings(&pool)
-        .await
-        .map_err(|e| format!("query failed: {e}"))
 }
 
 pub async fn new_from_audio(
@@ -120,7 +105,7 @@ pub async fn new_from_audio(
     use tokio::sync::mpsc;
 
     use crate::commands::exit::ExitScreen;
-    use crate::commands::listen::post_meeting::spawn_post_meeting;
+    use crate::commands::meetings::live::post_meeting::spawn_post_meeting;
     use crate::commands::transcribe;
 
     let result = transcribe::run_batch(&input, stt, keywords, false).await?;

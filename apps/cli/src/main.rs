@@ -30,6 +30,7 @@ async fn main() {
                 r#type: None,
                 provider: None
             })
+            | Some(Commands::Configure { .. })
     ) || cli.command.is_none();
     let skip_tracing_init = {
         #[cfg(feature = "dev")]
@@ -162,6 +163,7 @@ async fn run(cli: Cli) -> CliResult<()> {
                 r#type: None,
                 provider: None
             })
+            | Some(Commands::Configure { .. })
     ) || command.is_none();
 
     if is_tui {
@@ -212,14 +214,14 @@ async fn run(cli: Cli) -> CliResult<()> {
                 })
                 .await?;
                 if saved {
-                    eprintln!("Next: run `char status` to verify");
+                    eprintln!("Next: run `char configure` to verify");
                 }
                 Ok(())
             } else {
                 run_entry_loop(pool, global, Some("/connect".to_string())).await
             }
         }
-        Some(Commands::Status) => commands::status::run(&pool).await,
+        Some(Commands::Configure { tab }) => commands::configure::run(&pool, tab).await,
         Some(Commands::Auth) => {
             commands::auth::run()?;
             eprintln!("Opened auth page in browser");
@@ -257,7 +259,7 @@ async fn run(cli: Cli) -> CliResult<()> {
                     commands::meetings::new_from_audio(audio_input, stt, keywords, pool).await
                 } else {
                     let stt = resolve_stt_args(&pool, &global, provider).await?;
-                    commands::listen::run(commands::listen::Args {
+                    commands::meetings::live::run(commands::meetings::live::Args {
                         stt,
                         record: global.record,
                         audio: cli::AudioMode::Dual,
@@ -375,7 +377,7 @@ async fn run_entry_loop(
                         }
                     };
 
-                    return commands::listen::run(commands::listen::Args {
+                    return commands::meetings::live::run(commands::meetings::live::Args {
                         stt,
                         record: global.record,
                         audio: cli::AudioMode::Dual,

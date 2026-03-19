@@ -13,7 +13,7 @@ use super::audio::{
 use super::server::spawn_router;
 use super::tracing::{TracingCapture, init_capture};
 use crate::cli::Provider;
-pub use crate::cli::{DebugProvider, TranscribeArgs};
+pub use crate::cli::{DebugProvider, DebugTranscribeArgs};
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 use crate::config::stt::resolve_local_model_path;
 use crate::config::stt::{ResolvedSttConfig, resolve_config};
@@ -35,7 +35,7 @@ pub(crate) struct Runtime {
 
 impl Runtime {
     pub(crate) async fn start(
-        args: TranscribeArgs,
+        args: DebugTranscribeArgs,
         tx: mpsc::UnboundedSender<RuntimeEvent>,
     ) -> CliResult<Self> {
         let tracing = TracingCapture::new();
@@ -61,7 +61,7 @@ impl Runtime {
     }
 }
 
-fn validate_args(args: &TranscribeArgs) -> CliResult<()> {
+fn validate_args(args: &DebugTranscribeArgs) -> CliResult<()> {
     if let Some(ref model_path) = args.model_path
         && !is_local_provider(&args.provider)
     {
@@ -84,7 +84,7 @@ fn is_local_provider(provider: &DebugProvider) -> bool {
     }
 }
 
-async fn run(args: TranscribeArgs, tx: mpsc::UnboundedSender<RuntimeEvent>) -> CliResult<()> {
+async fn run(args: DebugTranscribeArgs, tx: mpsc::UnboundedSender<RuntimeEvent>) -> CliResult<()> {
     match args.provider.clone() {
         DebugProvider::Deepgram => {
             let model = require_model_name(args.model.as_deref(), &args.provider)?;

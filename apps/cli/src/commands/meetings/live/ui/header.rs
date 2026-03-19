@@ -5,7 +5,7 @@ use ratatui::{
     text::Span,
 };
 
-use crate::commands::listen::app::App;
+use super::super::app::App;
 use crate::output::format_hhmmss;
 use crate::theme::Theme;
 use crate::widgets::{InfoLine, Waveform};

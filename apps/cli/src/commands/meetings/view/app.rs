@@ -2,7 +2,6 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use hypr_cli_editor::Editor;
 use hypr_transcript::Segment;
 use ratatui::style::{Color, Modifier, Style};
-use ratatui::widgets::Block;
 
 use crate::theme::Theme;
 use crate::widgets::ScrollViewState;
@@ -10,12 +9,7 @@ use crate::widgets::ScrollViewState;
 use super::action::Action;
 use super::effect::Effect;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Mode {
-    Normal,
-    Insert,
-    Command,
-}
+pub(crate) use crate::commands::meetings::ui::Mode;
 
 const DEFAULT_NOTEPAD_WIDTH_PERCENT: u16 = 60;
 const MIN_NOTEPAD_WIDTH_PERCENT: u16 = 40;
@@ -106,16 +100,12 @@ impl App {
         &self.created_at
     }
 
-    pub(crate) fn segments(&self) -> &[Segment] {
-        &self.segments
+    pub(crate) fn segments_and_scroll(&mut self) -> (&[Segment], &mut ScrollViewState) {
+        (&self.segments, &mut self.scroll)
     }
 
-    pub(crate) fn memo(&self) -> &Editor<Theme> {
-        &self.memo
-    }
-
-    pub(crate) fn set_memo_block(&mut self, block: Block<'static>) {
-        self.memo.set_block(block);
+    pub(crate) fn memo_mut(&mut self) -> &mut Editor<Theme> {
+        &mut self.memo
     }
 
     pub(crate) fn mode(&self) -> Mode {
@@ -128,10 +118,6 @@ impl App {
 
     pub(crate) fn transcript_focused(&self) -> bool {
         self.mode == Mode::Normal
-    }
-
-    pub(crate) fn scroll_state_mut(&mut self) -> &mut ScrollViewState {
-        &mut self.scroll
     }
 
     pub(crate) fn notepad_width_percent(&self) -> u16 {

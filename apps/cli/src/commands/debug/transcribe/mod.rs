@@ -11,7 +11,7 @@ mod ui;
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
 use tokio::sync::mpsc;
 
-pub use crate::cli::{DebugProvider, TranscribeArgs, TranscribeMode};
+pub use crate::cli::{DebugProvider, DebugTranscribeArgs, TranscribeMode};
 use crate::error::{CliError, CliResult};
 
 use self::action::Action;
@@ -81,7 +81,7 @@ impl Screen for TranscribeScreen {
     }
 }
 
-pub async fn run(args: TranscribeArgs) -> CliResult<()> {
+pub async fn run(args: DebugTranscribeArgs) -> CliResult<()> {
     let mode = args.mode.clone();
     let (tx, rx) = mpsc::unbounded_channel();
     let runtime = Runtime::start(args, tx).await?;

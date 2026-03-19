@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 use owhisper_interface::stream::StreamResponse;
-use ratatui::style::{Color, Style};
-use ratatui::text::{Line, Span};
+use ratatui::style::Style;
+use ratatui::text::Line;
 
 use hypr_transcript::{
     FinalizedWord, PartialWord, RuntimeSpeakerHint, SegmentBuilderOptions, TranscriptDelta,
@@ -20,9 +20,14 @@ use crate::cli::TranscribeMode;
 use crate::theme::Theme;
 use crate::widgets::build_segment_lines;
 
-pub(crate) struct TranscriptView {
+pub(crate) enum TranscriptContent<'a> {
+    Raw(&'a RawState),
+    Rich(Vec<Line<'static>>),
+}
+
+pub(crate) struct TranscriptView<'a> {
     pub title: &'static str,
-    pub lines: Vec<Line<'static>>,
+    pub content: TranscriptContent<'a>,
     pub placeholder: String,
     pub border_style: Style,
 }
@@ -124,13 +129,13 @@ impl App {
         match &self.state {
             TranscriptState::Raw(raw) => TranscriptView {
                 title: "Transcript",
-                lines: raw.lines(),
+                content: TranscriptContent::Raw(raw),
                 placeholder,
-                border_style: Style::new().fg(Color::Cyan),
+                border_style: Style::new().fg(ratatui::style::Color::Cyan),
             },
             TranscriptState::Rich(rich) => TranscriptView {
                 title: "Transcript",
-                lines: rich.lines(width),
+                content: TranscriptContent::Rich(rich.lines(width)),
                 placeholder,
                 border_style: rich.theme.border_focused,
             },
@@ -138,7 +143,7 @@ impl App {
     }
 }
 
-struct RawState {
+pub(crate) struct RawState {
     channels: Vec<ChannelTranscript>,
 }
 
@@ -201,15 +206,12 @@ impl RawState {
         }
     }
 
-    fn lines(&self) -> Vec<Line<'static>> {
-        self.channels
-            .iter()
-            .filter_map(ChannelTranscript::render_line)
-            .collect()
+    pub(crate) fn channels(&self) -> &[ChannelTranscript] {
+        &self.channels
     }
 }
 
-struct ChannelTranscript {
+pub(crate) struct ChannelTranscript {
     segments: Vec<String>,
     partial: String,
     t0: Instant,
@@ -241,38 +243,24 @@ impl ChannelTranscript {
         self.partial.clear();
     }
 
-    fn render_line(&self) -> Option<Line<'static>> {
-        let confirmed = self.segments.join(" ");
-        if confirmed.is_empty() && self.partial.is_empty() {
-            return None;
-        }
+    pub(crate) fn confirmed_text(&self) -> String {
+        self.segments.join(" ")
+    }
 
-        let to = self.t0.elapsed().as_secs_f64();
-        let from_str = if self.segments.is_empty() {
-            "--:--".to_string()
-        } else {
-            fmt_ts(0.0)
-        };
+    pub(crate) fn partial(&self) -> &str {
+        &self.partial
+    }
 
-        let prefix = format!("[{} / {}]", from_str, fmt_ts(to));
-        let theme = Theme::DEFAULT;
-        let (confirmed_style, partial_style) = match self.kind {
-            ChannelKind::Mic => (theme.raw_mic_confirmed, theme.raw_mic_partial),
-            ChannelKind::Speaker => (theme.raw_speaker_confirmed, theme.raw_speaker_partial),
-        };
+    pub(crate) fn elapsed_secs(&self) -> f64 {
+        self.t0.elapsed().as_secs_f64()
+    }
 
-        let mut spans = vec![
-            Span::styled(prefix, Style::new().fg(Color::DarkGray)),
-            Span::raw(" "),
-            Span::styled(confirmed, confirmed_style),
-        ];
+    pub(crate) fn has_confirmed(&self) -> bool {
+        !self.segments.is_empty()
+    }
 
-        if !self.partial.is_empty() {
-            spans.push(Span::raw(" "));
-            spans.push(Span::styled(self.partial.clone(), partial_style));
-        }
-
-        Some(Line::from(spans))
+    pub(crate) fn kind(&self) -> ChannelKind {
+        self.kind
     }
 }
 
@@ -359,10 +347,4 @@ impl RichState {
             .map(|time| time.elapsed().as_secs_f64())
             .unwrap_or(f64::MAX)
     }
-}
-
-fn fmt_ts(secs: f64) -> String {
-    let m = (secs / 60.0) as u32;
-    let s = secs % 60.0;
-    format!("{:02}:{:02}", m, s as u32)
 }

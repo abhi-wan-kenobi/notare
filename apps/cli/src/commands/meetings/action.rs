@@ -2,6 +2,8 @@ use crossterm::event::KeyEvent;
 
 pub(crate) enum Action {
     Key(KeyEvent),
-    Loaded(Vec<hypr_db_app::MeetingRow>),
+    MeetingsLoaded(Vec<hypr_db_app::MeetingRow>),
+    EventsLoaded(Vec<hypr_db_app::EventRow>),
+    CalendarNotConfigured,
     LoadError(String),
 }

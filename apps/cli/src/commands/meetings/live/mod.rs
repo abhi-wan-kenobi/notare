@@ -50,12 +50,12 @@ enum ExternalEvent {
     Listener(runtime::RuntimeEvent),
 }
 
-struct ListenScreen {
+struct LiveScreen {
     app: App,
     capture_post_exit_events: Arc<AtomicBool>,
 }
 
-impl ListenScreen {
+impl LiveScreen {
     fn new(
         participant_names: HashMap<String, String>,
         capture_post_exit_events: Arc<AtomicBool>,
@@ -87,7 +87,7 @@ impl ListenScreen {
     }
 }
 
-impl Screen for ListenScreen {
+impl Screen for LiveScreen {
     type ExternalEvent = ExternalEvent;
     type Output = Output;
 
@@ -226,11 +226,11 @@ pub async fn run(args: Args) -> CliResult<()> {
     });
 
     let output = run_screen(
-        ListenScreen::new(participant_names, capture_post_exit_events.clone()),
+        LiveScreen::new(participant_names, capture_post_exit_events.clone()),
         Some(external_rx),
     )
     .await
-    .map_err(|e| CliError::operation_failed("listen tui", e.to_string()))?;
+    .map_err(|e| CliError::operation_failed("live tui", e.to_string()))?;
 
     let Output {
         elapsed,

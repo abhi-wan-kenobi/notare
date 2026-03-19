@@ -297,7 +297,7 @@ fn resolve_cactus_model(name: Option<&str>) -> CliResult<(CactusSttModel, PathBu
             format!("cactus model files at '{}'", model_path.display()),
             Some(format!(
                 "Download it first: char model cactus download {}",
-                model.display_name()
+                LocalModel::Cactus(model.clone()).cli_name()
             )),
         ));
     }

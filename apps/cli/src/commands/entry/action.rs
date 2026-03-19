@@ -12,6 +12,8 @@ pub(crate) enum Action {
     ConnectRuntime(ConnectRuntimeEvent),
     MeetingsLoaded(Vec<hypr_db_app::MeetingRow>),
     MeetingsLoadError(String),
+    EventsLoaded(Vec<hypr_db_app::EventRow>),
+    CalendarNotConfigured,
     ModelsLoaded(Vec<ModelRow>),
     ModelsLoadError(String),
     ConnectSaved {

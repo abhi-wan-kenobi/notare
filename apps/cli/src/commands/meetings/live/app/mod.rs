@@ -10,25 +10,24 @@ use hypr_transcript::SpeakerLabelContext;
 use crate::theme::Theme;
 use hypr_listener_core::State;
 use ratatui::layout::Rect;
-use ratatui::widgets::Block;
 
+use self::state::LiveState;
+use self::ui_state::LiveUiState;
 use super::action::Action;
 use super::effect::Effect;
-use crate::commands::listen::app::state::ListenState;
-use crate::commands::listen::app::ui_state::ListenUiState;
 pub(crate) use ui_state::Mode;
 
 pub(crate) struct App {
-    state: ListenState,
-    ui: ListenUiState,
+    state: LiveState,
+    ui: LiveUiState,
     participant_names: HashMap<String, String>,
 }
 
 impl App {
     pub(crate) fn new(participant_names: HashMap<String, String>) -> Self {
         Self {
-            state: ListenState::new(),
-            ui: ListenUiState::new(),
+            state: LiveState::new(),
+            ui: LiveUiState::new(),
             participant_names,
         }
     }
@@ -114,12 +113,8 @@ impl App {
         self.ui.mode() == Mode::Normal
     }
 
-    pub(crate) fn set_memo_block(&mut self, block: Block<'static>) {
-        self.ui.memo_mut().set_block(block);
-    }
-
-    pub(crate) fn memo(&self) -> &Editor<Theme> {
-        self.ui.memo()
+    pub(crate) fn memo_mut(&mut self) -> &mut Editor<Theme> {
+        self.ui.memo_mut()
     }
 
     pub(crate) fn scroll_state_mut(&mut self) -> &mut crate::widgets::ScrollViewState {

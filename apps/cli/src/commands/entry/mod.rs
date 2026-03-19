@@ -35,6 +35,8 @@ enum ExternalEvent {
     ConnectRuntime(crate::commands::connect::runtime::RuntimeEvent),
     MeetingsLoaded(Vec<hypr_db_app::MeetingRow>),
     MeetingsLoadError(String),
+    EventsLoaded(Vec<hypr_db_app::EventRow>),
+    CalendarNotConfigured,
     ModelsLoaded(Vec<crate::commands::model::list::ModelRow>),
     ModelsLoadError(String),
     ConnectSaved {
@@ -70,6 +72,34 @@ impl EntryScreen {
                         match hypr_db_app::list_meetings(&pool).await {
                             Ok(meetings) => {
                                 let _ = tx.send(ExternalEvent::MeetingsLoaded(meetings));
+                            }
+                            Err(e) => {
+                                let _ = tx.send(ExternalEvent::MeetingsLoadError(e.to_string()));
+                            }
+                        }
+                    });
+                    let tx = self.external_tx.clone();
+                    let pool = self.pool.clone();
+                    tokio::spawn(async move {
+                        match hypr_db_app::has_calendars(&pool).await {
+                            Ok(true) => {
+                                let today = chrono::Local::now().date_naive();
+                                let start = today.format("%Y-%m-%d").to_string();
+                                let end = (today + chrono::Duration::days(2))
+                                    .format("%Y-%m-%d")
+                                    .to_string();
+                                match hypr_db_app::list_events_in_range(&pool, &start, &end).await {
+                                    Ok(events) => {
+                                        let _ = tx.send(ExternalEvent::EventsLoaded(events));
+                                    }
+                                    Err(e) => {
+                                        let _ = tx
+                                            .send(ExternalEvent::MeetingsLoadError(e.to_string()));
+                                    }
+                                }
+                            }
+                            Ok(false) => {
+                                let _ = tx.send(ExternalEvent::CalendarNotConfigured);
                             }
                             Err(e) => {
                                 let _ = tx.send(ExternalEvent::MeetingsLoadError(e.to_string()));
@@ -289,6 +319,8 @@ impl Screen for EntryScreen {
             ExternalEvent::ConnectRuntime(event) => Action::ConnectRuntime(event),
             ExternalEvent::MeetingsLoaded(meetings) => Action::MeetingsLoaded(meetings),
             ExternalEvent::MeetingsLoadError(msg) => Action::MeetingsLoadError(msg),
+            ExternalEvent::EventsLoaded(events) => Action::EventsLoaded(events),
+            ExternalEvent::CalendarNotConfigured => Action::CalendarNotConfigured,
             ExternalEvent::ModelsLoaded(models) => Action::ModelsLoaded(models),
             ExternalEvent::ModelsLoadError(msg) => Action::ModelsLoadError(msg),
             ExternalEvent::ConnectSaved {
