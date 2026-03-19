@@ -136,9 +136,8 @@ jobs:
             artifacts/char-${{ needs.compute-version.outputs.version }}-x86_64-apple-darwin.tar.xz
       - id: artifacts
         run: |
-          TARBALLS=$(ls artifacts/*.tar.xz | tr '\n' ',')
-          CHECKSUMS=$(ls artifacts/*.sha256 | tr '\n' ',')
-          echo "list=${TARBALLS}${CHECKSUMS}" >> $GITHUB_OUTPUT
+          LIST=$(ls artifacts/*.tar.xz artifacts/*.sha256 | paste -sd,)
+          echo "list=$LIST" >> $GITHUB_OUTPUT
       - id: release-body
         env:
           VERSION: ${{ needs.compute-version.outputs.version }}
