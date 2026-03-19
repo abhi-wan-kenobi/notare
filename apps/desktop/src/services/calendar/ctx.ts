@@ -115,7 +115,7 @@ export async function syncCalendars(
     );
 
     store.transaction(() => {
-      const removedCalendarIds = new Set<string>();
+      const disabledCalendarIds = new Set<string>();
 
       for (const rowId of store.getRowIds("calendars")) {
         const row = store.getRow("calendars", rowId);
@@ -123,15 +123,17 @@ export async function syncCalendars(
           row.provider === provider &&
           !incomingIds.has(row.tracking_id_calendar as string)
         ) {
-          removedCalendarIds.add(rowId);
+          disabledCalendarIds.add(rowId);
           store.delRow("calendars", rowId);
+        } else if (row.provider === provider && !row.enabled) {
+          disabledCalendarIds.add(rowId);
         }
       }
 
-      if (removedCalendarIds.size > 0) {
+      if (disabledCalendarIds.size > 0) {
         for (const eventId of store.getRowIds("events")) {
           const event = store.getRow("events", eventId);
-          if (event.calendar_id && removedCalendarIds.has(event.calendar_id)) {
+          if (event.calendar_id && disabledCalendarIds.has(event.calendar_id)) {
             store.delRow("events", eventId);
           }
         }

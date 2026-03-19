@@ -40,41 +40,53 @@ pub async fn list_connection_ids(
     access_token: Option<&str>,
     apple_authorized: bool,
 ) -> Result<Vec<ProviderConnectionIds>, Error> {
-    let mut result = Vec::new();
+    use std::collections::HashMap;
+
+    let mut map: HashMap<CalendarProviderType, Vec<String>> = HashMap::new();
 
     #[cfg(target_os = "macos")]
     {
+        // empty vec = provider is available but has no connections (vs absent = unavailable)
+        map.entry(CalendarProviderType::Apple).or_default();
         if apple_authorized {
-            result.push(ProviderConnectionIds {
-                provider: CalendarProviderType::Apple,
-                connection_ids: vec!["apple".to_string()],
-            });
+            map.insert(CalendarProviderType::Apple, vec!["apple".to_string()]);
         }
     }
 
     #[cfg(not(target_os = "macos"))]
     let _ = apple_authorized;
 
-    let token = match access_token {
-        Some(t) if !t.is_empty() => t,
-        _ => return Ok(result),
-    };
-
-    let all = fetch::list_all_connection_ids(api_base_url, token).await?;
-
-    for (integration_id, connection_ids) in all {
-        let provider = match integration_id.as_str() {
-            "google-calendar" => CalendarProviderType::Google,
-            "outlook-calendar" => CalendarProviderType::Outlook,
-            _ => continue,
-        };
-        result.push(ProviderConnectionIds {
-            provider,
-            connection_ids,
-        });
+    if let Some(token) = access_token.filter(|t| !t.is_empty()) {
+        match fetch::list_all_connection_ids(api_base_url, token).await {
+            Ok(all) => {
+                for provider in [CalendarProviderType::Google, CalendarProviderType::Outlook] {
+                    // empty vec = provider is available but has no connections (vs absent = unavailable)
+                    map.entry(provider).or_default();
+                }
+                for (integration_id, connection_ids) in all {
+                    let provider = match integration_id.as_str() {
+                        "google-calendar" => CalendarProviderType::Google,
+                        "outlook-calendar" => CalendarProviderType::Outlook,
+                        _ => continue,
+                    };
+                    map.insert(provider, connection_ids);
+                }
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "failed to fetch remote connection ids: {e}; continuing with local providers only"
+                );
+            }
+        }
     }
 
-    Ok(result)
+    Ok(map
+        .into_iter()
+        .map(|(provider, connection_ids)| ProviderConnectionIds {
+            provider,
+            connection_ids,
+        })
+        .collect())
 }
 
 pub async fn is_provider_enabled(
