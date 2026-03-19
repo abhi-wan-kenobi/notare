@@ -48,6 +48,7 @@ import {
 import { Spinner } from "@hypr/ui/components/ui/spinner";
 import { cn } from "@hypr/utils";
 
+import { useCloseActiveTabShortcut } from "@/hooks/use-close-active-tab-shortcut";
 import {
   fetchMediaItems,
   type MediaItem,
@@ -2273,7 +2274,7 @@ function MediaItemCard({
           <img
             src={item.publicUrl}
             alt={item.name}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain p-4"
             loading="lazy"
           />
         ) : isVideo && item.thumbnailUrl ? (
@@ -2281,7 +2282,7 @@ function MediaItemCard({
             <img
               src={item.thumbnailUrl}
               alt={item.name}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain p-4"
               loading="lazy"
             />
             <span className="absolute right-2 bottom-2 rounded bg-black/60 px-1.5 py-0.5 text-xs text-white">
