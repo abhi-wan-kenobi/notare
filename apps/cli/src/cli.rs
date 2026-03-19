@@ -121,6 +121,11 @@ pub enum Commands {
         #[command(subcommand)]
         command: DebugCommands,
     },
+    /// Export data in various formats
+    Export {
+        #[command(subcommand)]
+        command: ExportCommands,
+    },
     /// Generate shell completions
     Completions {
         #[arg(value_enum)]
@@ -340,6 +345,89 @@ pub enum CactusCommands {
 pub enum ModelKind {
     Stt,
     Llm,
+}
+
+#[derive(Subcommand)]
+pub enum ExportCommands {
+    /// Export a single meeting with all associated data
+    Meeting {
+        #[arg(long)]
+        id: String,
+        #[arg(short = 'f', long, value_enum, default_value = "json")]
+        format: ExportDocFormat,
+        #[arg(short = 'o', long, value_name = "FILE")]
+        output: Option<PathBuf>,
+    },
+    /// Export meeting list
+    Meetings {
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: ExportTableFormat,
+        #[arg(short = 'o', long, value_name = "FILE")]
+        output: Option<PathBuf>,
+    },
+    /// Export transcript for a meeting
+    Transcript {
+        #[arg(long)]
+        meeting: String,
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: ExportTranscriptFormat,
+        #[arg(short = 'o', long, value_name = "FILE")]
+        output: Option<PathBuf>,
+    },
+    /// Export notes for a meeting
+    Notes {
+        #[arg(long)]
+        meeting: String,
+        #[arg(short = 'f', long, value_enum, default_value = "markdown")]
+        format: ExportDocFormat,
+        #[arg(short = 'o', long, value_name = "FILE")]
+        output: Option<PathBuf>,
+    },
+    /// Export chat messages for a meeting
+    Chat {
+        #[arg(long)]
+        meeting: String,
+        #[arg(short = 'f', long, value_enum, default_value = "markdown")]
+        format: ExportDocFormat,
+        #[arg(short = 'o', long, value_name = "FILE")]
+        output: Option<PathBuf>,
+    },
+    /// Export all contacts
+    Humans {
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: ExportTableFormat,
+        #[arg(short = 'o', long, value_name = "FILE")]
+        output: Option<PathBuf>,
+    },
+    /// Export all organizations
+    Orgs {
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: ExportTableFormat,
+        #[arg(short = 'o', long, value_name = "FILE")]
+        output: Option<PathBuf>,
+    },
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum ExportDocFormat {
+    Json,
+    Markdown,
+    Text,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum ExportTableFormat {
+    Json,
+    Csv,
+    Text,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum ExportTranscriptFormat {
+    Json,
+    Text,
+    Srt,
+    Vtt,
 }
 
 #[cfg(feature = "dev")]

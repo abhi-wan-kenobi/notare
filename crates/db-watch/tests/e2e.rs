@@ -10,14 +10,14 @@ async fn test_pool() -> SqlitePool {
 #[tokio::test]
 async fn full_cycle() {
     let pool = test_pool().await;
-    let tables = extract_tables(&pool, "SELECT id FROM sessions WHERE id = ?")
+    let tables = extract_tables(&pool, "SELECT id FROM meetings WHERE id = ?")
         .await
         .unwrap();
 
     let mut deps = TableDeps::new();
     let w = deps.register(tables);
 
-    assert!(deps.affected(&["sessions"]).contains(&w));
+    assert!(deps.affected(&["meetings"]).contains(&w));
     assert!(!deps.affected(&["words"]).contains(&w));
 }
 
@@ -26,7 +26,7 @@ async fn multi_table_join() {
     let pool = test_pool().await;
     let tables = extract_tables(
         &pool,
-        "SELECT w.id FROM words w JOIN sessions s ON w.session_id = s.id",
+        "SELECT w.id FROM words w JOIN meetings m ON w.meeting_id = m.id",
     )
     .await
     .unwrap();
@@ -34,7 +34,7 @@ async fn multi_table_join() {
     let mut deps = TableDeps::new();
     let w = deps.register(tables);
 
-    assert!(deps.affected(&["sessions"]).contains(&w));
+    assert!(deps.affected(&["meetings"]).contains(&w));
     assert!(deps.affected(&["words"]).contains(&w));
     assert!(!deps.affected(&["chat_messages"]).contains(&w));
 }
@@ -42,17 +42,17 @@ async fn multi_table_join() {
 #[tokio::test]
 async fn unregister_stops_notifications() {
     let pool = test_pool().await;
-    let tables = extract_tables(&pool, "SELECT id FROM sessions WHERE id = ?")
+    let tables = extract_tables(&pool, "SELECT id FROM meetings WHERE id = ?")
         .await
         .unwrap();
 
     let mut deps = TableDeps::new();
     let w = deps.register(tables);
 
-    assert!(deps.affected(&["sessions"]).contains(&w));
+    assert!(deps.affected(&["meetings"]).contains(&w));
 
     deps.unregister(w);
-    assert!(!deps.affected(&["sessions"]).contains(&w));
+    assert!(!deps.affected(&["meetings"]).contains(&w));
 }
 
 #[tokio::test]
@@ -61,14 +61,14 @@ async fn overlapping_watches() {
 
     let tables_a = extract_tables(
         &pool,
-        "SELECT w.id FROM words w JOIN sessions s ON w.session_id = s.id",
+        "SELECT w.id FROM words w JOIN meetings m ON w.meeting_id = m.id",
     )
     .await
     .unwrap();
 
     let tables_b = extract_tables(
         &pool,
-        "SELECT c.id FROM chat_messages c JOIN sessions s ON c.session_id = s.id",
+        "SELECT c.id FROM chat_messages c JOIN meetings m ON c.meeting_id = m.id",
     )
     .await
     .unwrap();
@@ -85,9 +85,9 @@ async fn overlapping_watches() {
     assert!(!chat_hit.contains(&a));
     assert!(chat_hit.contains(&b));
 
-    let sessions_hit = deps.affected(&["sessions"]);
-    assert!(sessions_hit.contains(&a));
-    assert!(sessions_hit.contains(&b));
+    let meetings_hit = deps.affected(&["meetings"]);
+    assert!(meetings_hit.contains(&a));
+    assert!(meetings_hit.contains(&b));
 }
 
 #[tokio::test]
@@ -95,7 +95,7 @@ async fn fts_watch_cycle() {
     let pool = test_pool().await;
     let tables = extract_tables(
         &pool,
-        "SELECT rowid FROM sessions_fts WHERE sessions_fts MATCH 'test'",
+        "SELECT rowid FROM meetings_fts WHERE meetings_fts MATCH 'test'",
     )
     .await
     .unwrap();
@@ -105,6 +105,6 @@ async fn fts_watch_cycle() {
     let mut deps = TableDeps::new();
     let w = deps.register(tables);
 
-    assert!(deps.affected(&["sessions_fts"]).contains(&w));
-    assert!(!deps.affected(&["sessions"]).contains(&w));
+    assert!(deps.affected(&["meetings_fts"]).contains(&w));
+    assert!(!deps.affected(&["meetings"]).contains(&w));
 }

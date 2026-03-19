@@ -331,6 +331,7 @@ async fn run(cli: Cli) -> CliResult<()> {
             };
             commands::transcribe::run(args, stt, verbose.is_silent()).await
         }
+        Some(Commands::Export { command }) => commands::export::run(&pool, command).await,
         Some(Commands::Models { command }) => commands::model::run(command, &pool).await,
         #[cfg(feature = "dev")]
         Some(Commands::Debug { command }) => commands::debug::run(command).await,

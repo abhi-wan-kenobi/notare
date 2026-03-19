@@ -23,11 +23,7 @@ macro_rules! build_agent {
         if let Some(msg) = $system_message.as_deref() {
             agent = agent.preamble(msg);
         }
-        agent
-            .tool(tools::ListHumans)
-            .tool(tools::ShowHuman)
-            .tool(tools::AddHuman)
-            .build()
+        agent.tool(tools::Char).build()
     }};
 }
 
