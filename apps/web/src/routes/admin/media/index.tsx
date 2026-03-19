@@ -304,53 +304,73 @@ function MediaLibrary() {
     });
   };
 
-  const openTab = useCallback(
-    (
-      type: "folder" | "file",
-      name: string,
-      path: string,
-      options: { pinned?: boolean; forceNewTab?: boolean } = {},
-    ) => {
-      const { pinned = false, forceNewTab = false } = options;
-      setTabs((prev) => {
-        // If opening the home/root folder, just activate the Home tab
-        if (type === "folder" && path === "") {
-          return prev.map((t) => ({ ...t, active: t.isHome === true }));
-        }
+  const openFileTab = useCallback((name: string, path: string) => {
+    setTabs((prev) => {
+      const existingIndex = prev.findIndex(
+        (tab) => tab.type === "file" && tab.path === path,
+      );
+      if (existingIndex !== -1) {
+        return prev.map((tab, index) => ({
+          ...tab,
+          active: index === existingIndex,
+        }));
+      }
 
-        const existingIndex = prev.findIndex(
-          (t) => t.type === type && t.path === path,
+      const newTab: Tab = {
+        id: `file-${path}-${Date.now()}`,
+        type: "file",
+        name,
+        path,
+        pinned: false,
+        active: true,
+      };
+
+      return [...prev.map((tab) => ({ ...tab, active: false })), newTab];
+    });
+    setSelectedItems(new Set());
+  }, []);
+
+  const openFolderTab = useCallback((name: string, path: string) => {
+    setTabs((prev) => {
+      if (path === "") {
+        return prev.map((tab) => ({ ...tab, active: tab.isHome === true }));
+      }
+
+      const existingIndex = prev.findIndex(
+        (tab) => tab.type === "folder" && tab.path === path,
+      );
+      if (existingIndex !== -1) {
+        return prev.map((tab, index) => ({
+          ...tab,
+          active: index === existingIndex,
+        }));
+      }
+
+      const activeFolderTab = prev.find(
+        (tab) =>
+          tab.active && tab.type === "folder" && !tab.isHome && !tab.pinned,
+      );
+      if (activeFolderTab) {
+        return prev.map((tab) =>
+          tab.id === activeFolderTab.id
+            ? { ...tab, name, path, active: true }
+            : { ...tab, active: false },
         );
-        if (existingIndex !== -1) {
-          return prev.map((t, i) => ({ ...t, active: i === existingIndex }));
-        }
+      }
 
-        const newTab: Tab = {
-          id: `${type}-${path}-${Date.now()}`,
-          type,
-          name,
-          path,
-          pinned,
-          active: true,
-        };
+      const newTab: Tab = {
+        id: `folder-${path}-${Date.now()}`,
+        type: "folder",
+        name,
+        path,
+        pinned: false,
+        active: true,
+      };
 
-        if (forceNewTab) {
-          return [...prev.map((t) => ({ ...t, active: false })), newTab];
-        }
-
-        const unpinnedIndex = prev.findIndex((t) => !t.pinned && !t.isHome);
-        if (unpinnedIndex !== -1 && prev.length > 0) {
-          return prev.map((t, i) =>
-            i === unpinnedIndex ? newTab : { ...t, active: false },
-          );
-        }
-
-        return [...prev.map((t) => ({ ...t, active: false })), newTab];
-      });
-      setSelectedItems(new Set());
-    },
-    [],
-  );
+      return [...prev.map((tab) => ({ ...tab, active: false })), newTab];
+    });
+    setSelectedItems(new Set());
+  }, []);
 
   const closeTab = useCallback((tabId: string) => {
     setTabs((prev) => {
@@ -400,9 +420,9 @@ function MediaLibrary() {
         setHistoryIndex((prev) => Math.min(prev + 1, 49));
       }
       isNavigatingRef.current = false;
-      openTab("folder", name || "Home", path);
+      openFolderTab(name || "Home", path);
     },
-    [historyIndex, openTab],
+    [historyIndex, openFolderTab],
   );
 
   const handleNavigateBack = useCallback(() => {
@@ -410,18 +430,18 @@ function MediaLibrary() {
       isNavigatingRef.current = true;
       const prevEntry = navigationHistory[historyIndex - 1];
       setHistoryIndex(historyIndex - 1);
-      openTab("folder", prevEntry.name, prevEntry.path);
+      openFolderTab(prevEntry.name, prevEntry.path);
     }
-  }, [historyIndex, navigationHistory, openTab]);
+  }, [historyIndex, navigationHistory, openFolderTab]);
 
   const handleNavigateForward = useCallback(() => {
     if (historyIndex < navigationHistory.length - 1) {
       isNavigatingRef.current = true;
       const nextEntry = navigationHistory[historyIndex + 1];
       setHistoryIndex(historyIndex + 1);
-      openTab("folder", nextEntry.name, nextEntry.path);
+      openFolderTab(nextEntry.name, nextEntry.path);
     }
-  }, [historyIndex, navigationHistory, openTab]);
+  }, [historyIndex, navigationHistory, openFolderTab]);
 
   const {
     uploadMutation,
@@ -515,23 +535,34 @@ function MediaLibrary() {
     deleteMutation.mutate(Array.from(selectedItems));
   };
 
-  const handleDownload = (path: string, filename: string) => {
+  const handleDownload = async (path: string, filename: string) => {
+    const response = await fetch(getAdminMediaDownloadUrl(path), {
+      credentials: "same-origin",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download ${filename}`);
+    }
+
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = getAdminMediaDownloadUrl(path);
+    link.href = blobUrl;
     link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
   };
 
-  const handleDownloadSelected = () => {
+  const handleDownloadSelected = async () => {
     const currentItems = currentPathQuery.data || [];
-    selectedItems.forEach((path) => {
+    for (const path of selectedItems) {
       const item = currentItems.find((i) => i.path === path);
       if (item && item.type === "file") {
-        handleDownload(item.path, item.name);
+        await handleDownload(item.path, item.name);
       }
-    });
+    }
   };
 
   const handleReplace = (file: File, path: string) => {
@@ -596,8 +627,8 @@ function MediaLibrary() {
             onSearchChange={setSearchQuery}
             loadingPaths={loadingPaths}
             filteredTreeNodes={filteredTreeNodes}
-            onOpenFolder={(path, name) => openTab("folder", name, path)}
-            onOpenFile={(path, name) => openTab("file", name, path)}
+            onOpenFolder={navigateToFolder}
+            onOpenFile={openFileTab}
             onToggleNodeExpanded={toggleNodeExpanded}
             uploadPending={uploadMutation.isPending}
             fileInputRef={fileInputRef}
@@ -655,7 +686,7 @@ function MediaLibrary() {
             onDownload={handleDownload}
             onReplace={handleReplace}
             onDeleteSingle={handleDeleteSingle}
-            onOpenPreview={(path, name) => openTab("file", name, path)}
+            onOpenPreview={openFileTab}
             onOpenFolder={(path, name) => navigateToFolder(path, name)}
             onMove={openMoveModal}
             onRename={handleRename}
@@ -2335,16 +2366,20 @@ function MediaItemCard({
       onClick={onOpenPreview}
       onContextMenu={handleContextMenu}
     >
-      <div className="flex aspect-square items-center justify-center overflow-hidden bg-neutral-100">
+      <div
+        className="relative flex aspect-square items-center justify-center overflow-hidden bg-white"
+        style={{ backgroundImage: "url(/patterns/dots.svg)" }}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_220px_140px_at_50%_50%,white_0%,rgba(255,255,255,0.86)_42%,transparent_72%)]" />
         {isImage && item.publicUrl ? (
           <img
             src={item.publicUrl}
             alt={item.name}
-            className="h-full w-full object-contain p-4"
+            className="relative z-10 h-full w-full object-contain p-4"
             loading="lazy"
           />
         ) : isVideo && item.thumbnailUrl ? (
-          <div className="relative h-full w-full">
+          <div className="relative z-10 h-full w-full">
             <img
               src={item.thumbnailUrl}
               alt={item.name}
@@ -2356,21 +2391,21 @@ function MediaItemCard({
             </span>
           </div>
         ) : isVideo ? (
-          <div className="relative flex h-full w-full items-center justify-center bg-neutral-900">
+          <div className="relative z-10 flex h-full w-full items-center justify-center">
             <FileIcon className="size-12 text-neutral-400" />
             <span className="absolute right-2 bottom-2 rounded bg-black/60 px-1.5 py-0.5 text-xs text-white">
               Video
             </span>
           </div>
         ) : isAudio ? (
-          <div className="relative flex h-full w-full items-center justify-center bg-neutral-900">
+          <div className="relative z-10 flex h-full w-full items-center justify-center">
             <FileIcon className="size-12 text-neutral-400" />
             <span className="absolute right-2 bottom-2 rounded bg-black/60 px-1.5 py-0.5 text-xs text-white">
               Audio
             </span>
           </div>
         ) : (
-          <FileIcon className="size-12 text-neutral-400" />
+          <FileIcon className="relative z-10 size-12 text-neutral-400" />
         )}
       </div>
 
@@ -2592,20 +2627,21 @@ function FilePreview({ item }: { item: MediaItem | undefined }) {
 
   return (
     <div
-      className="flex h-full flex-1 items-center justify-center overflow-hidden bg-neutral-50 p-4"
+      className="relative flex h-full flex-1 items-center justify-center overflow-hidden bg-white p-4"
       style={{ backgroundImage: "url(/patterns/dots.svg)" }}
     >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_800px_400px_at_50%_50%,white_0%,rgba(255,255,255,0.8)_40%,transparent_70%)]" />
       {isImage && (
         <img
           src={item.publicUrl}
           alt={item.name}
-          className="max-h-full max-w-full object-scale-down"
+          className="relative z-10 max-h-full max-w-full object-scale-down"
         />
       )}
       {isVideo && (
         <>
           {item.playbackId ? (
-            <div className="w-full max-w-5xl overflow-hidden rounded-lg border border-neutral-200 bg-black">
+            <div className="relative z-10 w-full max-w-5xl overflow-hidden rounded-lg border border-neutral-200 bg-black">
               <MuxPlayer
                 playbackId={item.playbackId}
                 className="aspect-video w-full"
@@ -2615,16 +2651,20 @@ function FilePreview({ item }: { item: MediaItem | undefined }) {
             <video
               src={item.publicUrl}
               controls
-              className="max-h-full max-w-full object-contain"
+              className="relative z-10 max-h-full max-w-full object-contain"
             />
           )}
         </>
       )}
       {isAudio && (
-        <audio src={item.publicUrl} controls className="w-full max-w-md" />
+        <audio
+          src={item.publicUrl}
+          controls
+          className="relative z-10 w-full max-w-md"
+        />
       )}
       {!isImage && !isVideo && !isAudio && (
-        <div className="text-center">
+        <div className="relative z-10 text-center">
           <FileIcon className="mb-4 size-16 text-neutral-400" />
           <p className="text-sm text-neutral-600">{item.name}</p>
           <p className="mt-1 text-xs text-neutral-400">
