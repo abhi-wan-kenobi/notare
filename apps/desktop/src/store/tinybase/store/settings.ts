@@ -59,12 +59,11 @@ export const SETTINGS_MAPPING = {
     ai_language: {
       type: "string",
       path: ["language", "ai_language"],
-      default: "en" as string,
     },
     spoken_languages: {
       type: "string",
       path: ["language", "spoken_languages"],
-      default: '["en"]' as string,
+      default: "[]" as string,
     },
     ignored_platforms: {
       type: "string",

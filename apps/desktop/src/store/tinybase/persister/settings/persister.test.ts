@@ -1,7 +1,11 @@
 import { createMergeableStore } from "tinybase/with-schemas";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { settingsToContent, storeToSettings } from "./transform";
+import {
+  settingsToContent,
+  storeToSettings,
+  storeValuesToSettings,
+} from "./transform";
 
 import { createTestSettingsStore } from "~/store/tinybase/persister/testing/mocks";
 import { SCHEMA } from "~/store/tinybase/store/settings";
@@ -118,7 +122,6 @@ describe("settingsPersister roundtrip", () => {
     const expected = { ...original, cactus: {} };
     // storeToSettings omits values that equal schema defaults
     delete (expected as any).notification.event;
-    delete (expected as any).language.ai_language;
     expect(result).toEqual(expected);
   });
 
@@ -422,6 +425,75 @@ describe("settingsPersister roundtrip", () => {
 
     expect(result.general).toEqual({ autostart: true });
     expect(result.notification).toEqual({ event: false });
+  });
+
+  test("storeValuesToSettings clears language values matching OS locale defaults", () => {
+    const [tables, values] = settingsToContent({
+      language: {
+        ai_language: "pl",
+        spoken_languages: ["pl", "en"],
+      },
+    });
+    const store = createMergeableStore()
+      .setTablesSchema(SCHEMA.table)
+      .setValuesSchema(SCHEMA.value);
+    store.setTables(tables);
+    store.setValues(values);
+
+    const storeValues = store.getValues();
+    const result = storeValuesToSettings(
+      storeValues as Record<string, unknown>,
+      { ai_language: "pl", spoken_languages: ["pl", "en"] },
+    );
+
+    expect(result.language).toEqual({});
+  });
+
+  test("storeValuesToSettings keeps language values differing from OS locale defaults", () => {
+    const [tables, values] = settingsToContent({
+      language: {
+        ai_language: "ko",
+        spoken_languages: ["ko", "en"],
+      },
+    });
+    const store = createMergeableStore()
+      .setTablesSchema(SCHEMA.table)
+      .setValuesSchema(SCHEMA.value);
+    store.setTables(tables);
+    store.setValues(values);
+
+    const storeValues = store.getValues();
+    const result = storeValuesToSettings(
+      storeValues as Record<string, unknown>,
+      { ai_language: "pl", spoken_languages: ["pl"] },
+    );
+
+    expect(result.language).toEqual({
+      ai_language: "ko",
+      spoken_languages: ["ko", "en"],
+    });
+  });
+
+  test("storeValuesToSettings clears language values matching OS locale defaults by prefix", () => {
+    const [tables, values] = settingsToContent({
+      language: {
+        ai_language: "ko",
+        spoken_languages: ["ko", "en"],
+      },
+    });
+    const store = createMergeableStore()
+      .setTablesSchema(SCHEMA.table)
+      .setValuesSchema(SCHEMA.value);
+    store.setTables(tables);
+    store.setValues(values);
+
+    const storeValues = store.getValues();
+    const result = storeValuesToSettings(
+      storeValues as Record<string, unknown>,
+      { ai_language: "ko-KR", spoken_languages: ["ko-KR", "en-US"] },
+    );
+
+    expect(result.language).toEqual({});
   });
 
   test("language section takes precedence over general section", () => {
