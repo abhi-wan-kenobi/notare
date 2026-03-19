@@ -86,8 +86,62 @@ function formatFileSize(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
+function HoverMarqueeText({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [overflowWidth, setOverflowWidth] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    const measure = () => {
+      const containerWidth = containerRef.current?.clientWidth ?? 0;
+      const textWidth = textRef.current?.scrollWidth ?? 0;
+      setOverflowWidth(Math.max(0, textWidth - containerWidth));
+    };
+
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [text]);
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn(["overflow-hidden whitespace-nowrap", className])}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      title={text}
+    >
+      <span
+        ref={textRef}
+        className="inline-block whitespace-nowrap"
+        style={{
+          transform:
+            isHovered && overflowWidth > 0
+              ? `translateX(-${overflowWidth}px)`
+              : "translateX(0)",
+          transitionDuration: `${Math.max(1.8, overflowWidth / 40)}s`,
+          transitionTimingFunction: "linear",
+        }}
+      >
+        {text}
+      </span>
+    </div>
+  );
+}
+
 function getRelativePath(fullPath: string): string {
   return fullPath;
+}
+
+function getAdminMediaDownloadUrl(path: string): string {
+  return `/api/admin/media/download?path=${encodeURIComponent(path)}`;
 }
 
 function MediaLibrary() {
@@ -462,11 +516,10 @@ function MediaLibrary() {
     deleteMutation.mutate(Array.from(selectedItems));
   };
 
-  const handleDownload = (publicUrl: string, filename: string) => {
+  const handleDownload = (path: string, filename: string) => {
     const link = document.createElement("a");
-    link.href = publicUrl;
+    link.href = getAdminMediaDownloadUrl(path);
     link.download = filename;
-    link.target = "_blank";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -477,7 +530,7 @@ function MediaLibrary() {
     selectedItems.forEach((path) => {
       const item = currentItems.find((i) => i.path === path);
       if (item && item.type === "file") {
-        handleDownload(item.publicUrl, item.name);
+        handleDownload(item.path, item.name);
       }
     });
   };
@@ -1222,7 +1275,7 @@ function ContentPanel({
   items: MediaItem[];
   onToggleSelection: (path: string) => void;
   onCopyToClipboard: (text: string) => void;
-  onDownload: (publicUrl: string, filename: string) => void;
+  onDownload: (path: string, filename: string) => void;
   onReplace: (file: File, path: string) => void;
   onDeleteSingle: (path: string) => void;
   onOpenPreview: (path: string, name: string) => void;
@@ -1303,6 +1356,7 @@ function ContentPanel({
                 selectedItems={selectedItems}
                 onToggleSelection={onToggleSelection}
                 onCopyToClipboard={onCopyToClipboard}
+                onDownload={onDownload}
                 onReplace={onReplace}
                 onDeleteSingle={onDeleteSingle}
                 onOpenPreview={onOpenPreview}
@@ -1567,7 +1621,7 @@ function HeaderBar({
   deletePending: boolean;
   currentFile?: MediaItem;
   onCopyToClipboard: (text: string) => void;
-  onDownload: (publicUrl: string, filename: string) => void;
+  onDownload: (path: string, filename: string) => void;
   onReplace: (file: File, path: string) => void;
   onDeleteSingle: (path: string) => void;
   onCreateFolder: () => void;
@@ -1591,7 +1645,7 @@ function HeaderBar({
 
   return (
     <div className="flex h-10 items-center justify-between border-b border-neutral-200 px-4">
-      <div className="flex items-center gap-1 text-sm text-neutral-500">
+      <div className="flex min-w-0 flex-1 items-center gap-1 text-sm text-neutral-500">
         <div className="mr-2 flex items-center gap-0.5">
           <button
             type="button"
@@ -1656,12 +1710,20 @@ function HeaderBar({
           const isLast = index === breadcrumbs.length - 1;
           const folderPath = breadcrumbs.slice(0, index + 1).join("/");
           const isDropTarget = draggingItem && dropTargetPath === folderPath;
+          const isFileName = currentTab.type === "file" && isLast;
           return (
-            <span key={index} className="flex items-center gap-1">
+            <span key={index} className="flex min-w-0 items-center gap-1">
               <ChevronRightIcon className="size-4 text-neutral-300" />
               {isLast ? (
-                <span className="px-1.5 py-0.5 font-medium text-neutral-700">
-                  {crumb}
+                <span className="min-w-0 px-1.5 py-0.5 font-medium text-neutral-700">
+                  {isFileName ? (
+                    <HoverMarqueeText
+                      text={crumb}
+                      className="max-w-[min(42rem,52vw)]"
+                    />
+                  ) : (
+                    crumb
+                  )}
                 </span>
               ) : (
                 <span
@@ -1695,7 +1757,7 @@ function HeaderBar({
         })}
         {currentFile && (
           <span className="ml-2 text-xs text-neutral-400">
-            {formatFileSize(currentFile.size)} • {currentFile.mimeType}
+            {formatFileSize(currentFile.size)}
           </span>
         )}
       </div>
@@ -1795,7 +1857,7 @@ function HeaderBar({
             <CopyIcon className="size-4" />
           </button>
           <button
-            onClick={() => onDownload(currentFile.publicUrl, currentFile.name)}
+            onClick={() => onDownload(currentFile.path, currentFile.name)}
             className="rounded p-1.5 text-neutral-400 transition-colors hover:text-neutral-600"
             title="Download"
           >
@@ -1845,6 +1907,7 @@ function FolderView({
   selectedItems,
   onToggleSelection,
   onCopyToClipboard,
+  onDownload,
   onReplace,
   onDeleteSingle,
   onOpenPreview,
@@ -1868,6 +1931,7 @@ function FolderView({
   selectedItems: Set<string>;
   onToggleSelection: (path: string) => void;
   onCopyToClipboard: (text: string) => void;
+  onDownload: (path: string, filename: string) => void;
   onReplace: (file: File, path: string) => void;
   onDeleteSingle: (path: string) => void;
   onOpenPreview: (path: string, name: string) => void;
@@ -1921,6 +1985,7 @@ function FolderView({
               isSelected={selectedItems.has(item.path)}
               onSelect={() => onToggleSelection(item.path)}
               onCopyPath={() => onCopyToClipboard(item.publicUrl)}
+              onDownload={() => onDownload(item.path, item.name)}
               onReplace={(file) => onReplace(file, item.path)}
               onDelete={() => onDeleteSingle(item.path)}
               onOpenPreview={() => onOpenPreview(item.path, item.name)}
@@ -1953,6 +2018,7 @@ function MediaItemCard({
   isSelected,
   onSelect,
   onCopyPath,
+  onDownload,
   onReplace,
   onDelete,
   onOpenPreview,
@@ -1971,6 +2037,7 @@ function MediaItemCard({
   isSelected: boolean;
   onSelect: () => void;
   onCopyPath: () => void;
+  onDownload: () => void;
   onReplace: (file: File) => void;
   onDelete: () => void;
   onOpenPreview: () => void;
@@ -2365,15 +2432,16 @@ function MediaItemCard({
                 <CopyIcon className="size-4" />
                 Copy URL
               </button>
-              <a
-                href={item.publicUrl}
-                download={item.name}
-                onClick={() => setShowMenu(false)}
+              <button
+                onClick={() => {
+                  setShowMenu(false);
+                  onDownload();
+                }}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-neutral-100"
               >
                 <DownloadIcon className="size-4" />
                 Download
-              </a>
+              </button>
               <button
                 onClick={handleReplace}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-neutral-100"
@@ -2462,15 +2530,16 @@ function MediaItemCard({
               <CopyIcon className="size-4" />
               Copy URL
             </button>
-            <a
-              href={item.publicUrl}
-              download={item.name}
-              onClick={closeContextMenu}
+            <button
+              onClick={() => {
+                closeContextMenu();
+                onDownload();
+              }}
               className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-neutral-100"
             >
               <DownloadIcon className="size-4" />
               Download
-            </a>
+            </button>
             <button
               onClick={() => {
                 closeContextMenu();

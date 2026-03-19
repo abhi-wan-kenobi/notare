@@ -126,6 +126,7 @@ import { Route as ApiAdminMediaUploadRouteImport } from './routes/api/admin/medi
 import { Route as ApiAdminMediaRegisterRouteImport } from './routes/api/admin/media/register'
 import { Route as ApiAdminMediaMoveRouteImport } from './routes/api/admin/media/move'
 import { Route as ApiAdminMediaListRouteImport } from './routes/api/admin/media/list'
+import { Route as ApiAdminMediaDownloadRouteImport } from './routes/api/admin/media/download'
 import { Route as ApiAdminMediaDeleteRouteImport } from './routes/api/admin/media/delete'
 import { Route as ApiAdminMediaCreateFolderRouteImport } from './routes/api/admin/media/create-folder'
 import { Route as ApiAdminKanbanUpdateRouteImport } from './routes/api/admin/kanban/update'
@@ -751,6 +752,11 @@ const ApiAdminMediaListRoute = ApiAdminMediaListRouteImport.update({
   path: '/api/admin/media/list',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminMediaDownloadRoute = ApiAdminMediaDownloadRouteImport.update({
+  id: '/api/admin/media/download',
+  path: '/api/admin/media/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminMediaDeleteRoute = ApiAdminMediaDeleteRouteImport.update({
   id: '/api/admin/media/delete',
   path: '/api/admin/media/delete',
@@ -1050,6 +1056,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/kanban/update': typeof ApiAdminKanbanUpdateRoute
   '/api/admin/media/create-folder': typeof ApiAdminMediaCreateFolderRoute
   '/api/admin/media/delete': typeof ApiAdminMediaDeleteRoute
+  '/api/admin/media/download': typeof ApiAdminMediaDownloadRoute
   '/api/admin/media/list': typeof ApiAdminMediaListRoute
   '/api/admin/media/move': typeof ApiAdminMediaMoveRoute
   '/api/admin/media/register': typeof ApiAdminMediaRegisterRoute
@@ -1193,6 +1200,7 @@ export interface FileRoutesByTo {
   '/api/admin/kanban/update': typeof ApiAdminKanbanUpdateRoute
   '/api/admin/media/create-folder': typeof ApiAdminMediaCreateFolderRoute
   '/api/admin/media/delete': typeof ApiAdminMediaDeleteRoute
+  '/api/admin/media/download': typeof ApiAdminMediaDownloadRoute
   '/api/admin/media/list': typeof ApiAdminMediaListRoute
   '/api/admin/media/move': typeof ApiAdminMediaMoveRoute
   '/api/admin/media/register': typeof ApiAdminMediaRegisterRoute
@@ -1342,6 +1350,7 @@ export interface FileRoutesById {
   '/api/admin/kanban/update': typeof ApiAdminKanbanUpdateRoute
   '/api/admin/media/create-folder': typeof ApiAdminMediaCreateFolderRoute
   '/api/admin/media/delete': typeof ApiAdminMediaDeleteRoute
+  '/api/admin/media/download': typeof ApiAdminMediaDownloadRoute
   '/api/admin/media/list': typeof ApiAdminMediaListRoute
   '/api/admin/media/move': typeof ApiAdminMediaMoveRoute
   '/api/admin/media/register': typeof ApiAdminMediaRegisterRoute
@@ -1491,6 +1500,7 @@ export interface FileRouteTypes {
     | '/api/admin/kanban/update'
     | '/api/admin/media/create-folder'
     | '/api/admin/media/delete'
+    | '/api/admin/media/download'
     | '/api/admin/media/list'
     | '/api/admin/media/move'
     | '/api/admin/media/register'
@@ -1634,6 +1644,7 @@ export interface FileRouteTypes {
     | '/api/admin/kanban/update'
     | '/api/admin/media/create-folder'
     | '/api/admin/media/delete'
+    | '/api/admin/media/download'
     | '/api/admin/media/list'
     | '/api/admin/media/move'
     | '/api/admin/media/register'
@@ -1782,6 +1793,7 @@ export interface FileRouteTypes {
     | '/api/admin/kanban/update'
     | '/api/admin/media/create-folder'
     | '/api/admin/media/delete'
+    | '/api/admin/media/download'
     | '/api/admin/media/list'
     | '/api/admin/media/move'
     | '/api/admin/media/register'
@@ -1832,6 +1844,7 @@ export interface RootRouteChildren {
   ApiAdminKanbanUpdateRoute: typeof ApiAdminKanbanUpdateRoute
   ApiAdminMediaCreateFolderRoute: typeof ApiAdminMediaCreateFolderRoute
   ApiAdminMediaDeleteRoute: typeof ApiAdminMediaDeleteRoute
+  ApiAdminMediaDownloadRoute: typeof ApiAdminMediaDownloadRoute
   ApiAdminMediaListRoute: typeof ApiAdminMediaListRoute
   ApiAdminMediaMoveRoute: typeof ApiAdminMediaMoveRoute
   ApiAdminMediaRegisterRoute: typeof ApiAdminMediaRegisterRoute
@@ -2662,6 +2675,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminMediaListRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/media/download': {
+      id: '/api/admin/media/download'
+      path: '/api/admin/media/download'
+      fullPath: '/api/admin/media/download'
+      preLoaderRoute: typeof ApiAdminMediaDownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/media/delete': {
       id: '/api/admin/media/delete'
       path: '/api/admin/media/delete'
@@ -3161,6 +3181,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminKanbanUpdateRoute: ApiAdminKanbanUpdateRoute,
   ApiAdminMediaCreateFolderRoute: ApiAdminMediaCreateFolderRoute,
   ApiAdminMediaDeleteRoute: ApiAdminMediaDeleteRoute,
+  ApiAdminMediaDownloadRoute: ApiAdminMediaDownloadRoute,
   ApiAdminMediaListRoute: ApiAdminMediaListRoute,
   ApiAdminMediaMoveRoute: ApiAdminMediaMoveRoute,
   ApiAdminMediaRegisterRoute: ApiAdminMediaRegisterRoute,
