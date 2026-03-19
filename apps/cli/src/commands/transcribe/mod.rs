@@ -94,7 +94,7 @@ pub async fn run_batch(
         stt.language,
     )
     .await?;
-    let _ = resolved.server.as_ref();
+    let _ = &resolved.server;
 
     let file_path = input.path().to_str().ok_or_else(|| {
         CliError::invalid_argument(

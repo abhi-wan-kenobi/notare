@@ -2,12 +2,19 @@ use std::path::PathBuf;
 
 use hypr_listener2_core::{BatchEvent, BatchParams, BatchProvider, BatchRuntime};
 use hypr_local_model::{CactusSttModel, LocalModel};
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 use hypr_local_stt_server::LocalSttServer;
 use tokio::sync::mpsc;
 
 use crate::cli::Provider;
 use crate::config::paths;
 use crate::error::{CliError, CliResult, did_you_mean};
+
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+pub(crate) type ServerGuard = Option<hypr_local_stt_server::LocalSttServer>;
+
+#[cfg(not(any(target_arch = "arm", target_arch = "aarch64")))]
+pub(crate) type ServerGuard = ();
 
 pub struct SttGlobalArgs {
     pub provider: Provider,
@@ -67,6 +74,7 @@ impl Provider {
     }
 }
 
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 pub struct CactusServerInfo {
     pub server: LocalSttServer,
     pub base_url: String,
@@ -79,7 +87,7 @@ pub struct ResolvedSttConfig {
     pub api_key: String,
     pub model: String,
     pub language: hypr_language::Language,
-    pub server: Option<LocalSttServer>,
+    pub server: ServerGuard,
 }
 
 impl ResolvedSttConfig {
@@ -124,6 +132,7 @@ pub async fn resolve_config(
 
     let batch_provider = provider.to_batch_provider();
 
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     if provider.is_local() {
         let info = resolve_and_spawn_cactus(model.as_deref()).await?;
         return Ok(ResolvedSttConfig {
@@ -152,7 +161,7 @@ pub async fn resolve_config(
             api_key,
             model: model.unwrap_or_default(),
             language,
-            server: None,
+            server: ServerGuard::default(),
         });
     }
 
@@ -167,10 +176,11 @@ pub async fn resolve_config(
         api_key,
         model: model.unwrap_or_default(),
         language,
-        server: None,
+        server: ServerGuard::default(),
     })
 }
 
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 pub async fn resolve_and_spawn_cactus(model_name: Option<&str>) -> CliResult<CactusServerInfo> {
     let (model, model_path) = resolve_cactus_model(model_name)?;
 

@@ -190,7 +190,7 @@ async fn run_resolved_provider<A: RealtimeSttAdapter>(
     tx: mpsc::UnboundedSender<RuntimeEvent>,
 ) -> CliResult<()> {
     // keep local server alive for the duration of this scope
-    let _ = resolved.server.as_ref();
+    let _ = &resolved.server;
     let audio: Arc<dyn AudioProvider> = create_audio_provider(&source);
     let mut params = default_listen_params();
     params.languages = vec![resolved.language.clone()];
