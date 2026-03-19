@@ -1,14 +1,17 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Flex, Layout},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::Paragraph,
 };
 
+use crate::theme::Theme;
+
 use super::app::App;
 
 pub fn draw(frame: &mut Frame, app: &App) {
+    let theme = Theme::DEFAULT;
     let install_label = format!("Update now (npm install -g char@{})", app.npm_tag);
     let items: [&str; 3] = [&install_label, "Skip", "Don't remind for this version"];
 
@@ -31,16 +34,11 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
     let title = Line::from(vec![
         Span::raw("Update available: "),
-        Span::styled(
-            format!("v{}", app.current),
-            Style::default().fg(Color::DarkGray),
-        ),
+        Span::styled(format!("v{}", app.current), theme.muted),
         Span::raw(" → "),
         Span::styled(
             format!("v{}", app.latest),
-            Style::default()
-                .fg(Color::Green)
-                .add_modifier(Modifier::BOLD),
+            theme.status_active.add_modifier(Modifier::BOLD),
         ),
     ]);
     frame.render_widget(Paragraph::new(title), rows[0]);
@@ -51,11 +49,11 @@ pub fn draw(frame: &mut Frame, app: &App) {
             (
                 "> ",
                 Style::default()
-                    .fg(Color::Cyan)
+                    .fg(ratatui::style::Color::Cyan)
                     .add_modifier(Modifier::BOLD),
             )
         } else {
-            ("  ", Style::default().fg(Color::DarkGray))
+            ("  ", theme.muted)
         };
         let line = Line::from(Span::styled(format!("{prefix}{label}"), style));
         frame.render_widget(Paragraph::new(line), rows[row_idx]);

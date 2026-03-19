@@ -141,10 +141,10 @@ mod tests {
     #[tokio::test]
     async fn single_table() {
         let pool = test_pool().await;
-        let tables = extract_tables(&pool, "SELECT id FROM sessions WHERE id = ?")
+        let tables = extract_tables(&pool, "SELECT id FROM meetings WHERE id = ?")
             .await
             .unwrap();
-        assert_eq!(tables, HashSet::from(["sessions".to_string()]));
+        assert_eq!(tables, HashSet::from(["meetings".to_string()]));
     }
 
     #[tokio::test]
@@ -152,12 +152,12 @@ mod tests {
         let pool = test_pool().await;
         let tables = extract_tables(
             &pool,
-            "SELECT w.id FROM words w JOIN sessions s ON w.session_id = s.id",
+            "SELECT w.id FROM words w JOIN meetings m ON w.meeting_id = m.id",
         )
         .await
         .unwrap();
         assert!(tables.contains("words"));
-        assert!(tables.contains("sessions"));
+        assert!(tables.contains("meetings"));
         assert_eq!(tables.len(), 2);
     }
 
@@ -166,11 +166,11 @@ mod tests {
         let pool = test_pool().await;
         let tables = extract_tables(
             &pool,
-            "SELECT rowid FROM sessions_fts WHERE sessions_fts MATCH 'test'",
+            "SELECT rowid FROM meetings_fts WHERE meetings_fts MATCH 'test'",
         )
         .await
         .unwrap();
-        assert!(tables.contains("sessions_fts"));
+        assert!(tables.contains("meetings_fts"));
     }
 
     #[tokio::test]
@@ -178,11 +178,11 @@ mod tests {
         let pool = test_pool().await;
         let tables = extract_tables(
             &pool,
-            "SELECT id FROM sessions WHERE id IN (SELECT session_id FROM words)",
+            "SELECT id FROM meetings WHERE id IN (SELECT meeting_id FROM words)",
         )
         .await
         .unwrap();
-        assert!(tables.contains("sessions"));
+        assert!(tables.contains("meetings"));
         assert!(tables.contains("words"));
         assert_eq!(tables.len(), 2);
     }

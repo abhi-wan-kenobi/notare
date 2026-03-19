@@ -37,7 +37,7 @@ impl Runtime {
         Ok(Self {
             backend: Backend::new(config, system_message)?,
             tx,
-            max_turns: 1,
+            max_turns: 5,
             pool,
             pending_writes: Arc::new(Mutex::new(JoinSet::new())),
         })

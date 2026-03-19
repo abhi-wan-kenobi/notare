@@ -149,12 +149,21 @@ pub async fn run(args: Args) -> CliResult<bool> {
         .into_iter()
         .collect();
 
+    let current_stt = hypr_db_app::get_setting(&args.pool, "current_stt_provider")
+        .await
+        .unwrap_or(None);
+    let current_llm = hypr_db_app::get_setting(&args.pool, "current_llm_provider")
+        .await
+        .unwrap_or(None);
+
     let (app, initial_effects) = App::new_with_configured(
         args.connection_type,
         args.provider,
         args.base_url,
         args.api_key,
         configured,
+        current_stt,
+        current_llm,
     );
 
     let save_data = if app.step() == Step::Done {

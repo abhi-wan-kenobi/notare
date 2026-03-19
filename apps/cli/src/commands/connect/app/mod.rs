@@ -37,6 +37,8 @@ pub(crate) struct App {
     form: FormState,
     calendar: CalendarState,
     configured_providers: HashSet<String>,
+    current_stt_provider: Option<String>,
+    current_llm_provider: Option<String>,
 }
 
 impl App {
@@ -46,7 +48,15 @@ impl App {
         base_url: Option<String>,
         api_key: Option<String>,
     ) -> (Self, Vec<Effect>) {
-        Self::new_with_configured(type_filter, provider, base_url, api_key, HashSet::new())
+        Self::new_with_configured(
+            type_filter,
+            provider,
+            base_url,
+            api_key,
+            HashSet::new(),
+            None,
+            None,
+        )
     }
 
     pub fn new_with_configured(
@@ -55,6 +65,8 @@ impl App {
         base_url: Option<String>,
         api_key: Option<String>,
         configured_providers: HashSet<String>,
+        current_stt_provider: Option<String>,
+        current_llm_provider: Option<String>,
     ) -> (Self, Vec<Effect>) {
         let mut app = Self {
             step: Step::SelectProvider,
@@ -67,6 +79,8 @@ impl App {
             form: FormState::empty(),
             calendar: CalendarState::new(),
             configured_providers,
+            current_stt_provider,
+            current_llm_provider,
         };
         let effects = app.advance();
         (app, effects)
@@ -106,6 +120,14 @@ impl App {
 
     pub fn configured_providers(&self) -> &HashSet<String> {
         &self.configured_providers
+    }
+
+    pub fn current_stt_provider(&self) -> Option<&str> {
+        self.current_stt_provider.as_deref()
+    }
+
+    pub fn current_llm_provider(&self) -> Option<&str> {
+        self.current_llm_provider.as_deref()
     }
 
     pub fn cal_auth_status(&self) -> Option<CalendarPermissionState> {

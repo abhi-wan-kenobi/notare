@@ -8,6 +8,14 @@ use tracing_subscriber::EnvFilter;
 
 const DEFAULT_CAP: usize = 2000;
 
+const LOG_ERROR: Style = Style::new().fg(Color::Red).add_modifier(Modifier::BOLD);
+const LOG_WARN: Style = Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD);
+const LOG_INFO: Style = Style::new().fg(Color::Green);
+const LOG_DEBUG: Style = Style::new().fg(Color::Blue);
+const LOG_TRACE: Style = Style::new().fg(Color::DarkGray);
+const LOG_TARGET: Style = Style::new().fg(Color::DarkGray);
+const LOG_TIMESTAMP: Style = Style::new().fg(Color::DarkGray);
+
 pub struct TracingCapture {
     lines: Mutex<VecDeque<String>>,
 }
@@ -57,10 +65,7 @@ fn stylize_log_line(raw: &str) -> Line<'static> {
             } else {
                 full_ts
             };
-            spans.push(Span::styled(
-                time_part.to_string(),
-                Style::new().fg(Color::DarkGray),
-            ));
+            spans.push(Span::styled(time_part.to_string(), LOG_TIMESTAMP));
             rest = &rest[ts_end + 1..];
         }
     }
@@ -79,11 +84,11 @@ fn stylize_log_line(raw: &str) -> Line<'static> {
     for level in &levels {
         if rest.starts_with(level) {
             let style = match *level {
-                "ERROR" => Style::new().fg(Color::Red).add_modifier(Modifier::BOLD),
-                "WARN" => Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD),
-                "INFO" => Style::new().fg(Color::Green),
-                "DEBUG" => Style::new().fg(Color::Blue),
-                "TRACE" => Style::new().fg(Color::DarkGray),
+                "ERROR" => LOG_ERROR,
+                "WARN" => LOG_WARN,
+                "INFO" => LOG_INFO,
+                "DEBUG" => LOG_DEBUG,
+                "TRACE" => LOG_TRACE,
                 _ => Style::new(),
             };
             spans.push(Span::styled(level.to_string(), style));
@@ -104,10 +109,7 @@ fn stylize_log_line(raw: &str) -> Line<'static> {
     if let Some(colon_pos) = rest_str.find(':') {
         let target = &rest_str[..colon_pos + 1];
         let message = &rest_str[colon_pos + 1..];
-        spans.push(Span::styled(
-            target.to_string(),
-            Style::new().fg(Color::DarkGray),
-        ));
+        spans.push(Span::styled(target.to_string(), LOG_TARGET));
         spans.push(Span::raw(message.to_string()));
     } else {
         spans.push(Span::raw(rest_str));

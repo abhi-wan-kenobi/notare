@@ -82,10 +82,13 @@ impl Screen for DownloadScreen {
     }
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
-        use ratatui::style::{Color, Modifier, Style};
+        use ratatui::style::{Modifier, Style};
         use ratatui::text::{Line, Span};
         use ratatui::widgets::Paragraph;
 
+        use crate::theme::Theme;
+
+        let theme = Theme::DEFAULT;
         let dim = Style::default().add_modifier(Modifier::DIM);
 
         let mut lines = vec![
@@ -106,19 +109,19 @@ impl Screen for DownloadScreen {
                 let empty = 20 - filled;
                 let bar = format!("{}{} {}%", "█".repeat(filled), "░".repeat(empty), percent);
                 Line::from(vec![
-                    Span::styled(format!("{spinner}  "), Style::default().fg(Color::Yellow)),
+                    Span::styled(format!("{spinner}  "), theme.status_degraded),
                     Span::raw("Downloading ["),
                     Span::raw(bar),
                     Span::raw("]"),
                 ])
             }
             Phase::Done => Line::from(vec![
-                Span::styled("[✓] ", Style::default().fg(Color::Green)),
-                Span::styled("Download complete", Style::default().fg(Color::Green)),
+                Span::styled("[✓] ", theme.status_active),
+                Span::styled("Download complete", theme.status_active),
             ]),
             Phase::Failed => Line::from(vec![
-                Span::styled("[!] ", Style::default().fg(Color::Red)),
-                Span::styled("Download failed", Style::default().fg(Color::Red)),
+                Span::styled("[!] ", theme.error),
+                Span::styled("Download failed", theme.error),
             ]),
         };
         lines.push(status_line);

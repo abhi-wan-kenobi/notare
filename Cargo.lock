@@ -3446,6 +3446,7 @@ dependencies = [
  "ratatui-image",
  "reqwest 0.13.2",
  "rig-core",
+ "schemars 1.2.1",
  "serde",
  "serde_json",
  "sqlx",

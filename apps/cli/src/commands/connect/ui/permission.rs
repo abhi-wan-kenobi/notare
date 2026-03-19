@@ -2,12 +2,13 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::widgets::Paragraph;
 
+use crate::theme::Theme;
 use crate::widgets::{PermissionButton, PermissionStatus};
 
 use super::super::app::App;
 use super::super::runtime::CalendarPermissionState;
 
-pub(crate) fn draw(frame: &mut Frame, app: &App, area: Rect) {
+pub(crate) fn draw(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let [label_area, button_area] =
         Layout::vertical([Constraint::Length(2), Constraint::Min(1)]).areas(area);
 
@@ -23,5 +24,5 @@ pub(crate) fn draw(frame: &mut Frame, app: &App, area: Rect) {
         Some(CalendarPermissionState::Denied) => PermissionStatus::Denied,
     };
 
-    frame.render_widget(PermissionButton::new(status), button_area);
+    frame.render_widget(PermissionButton::new(status, theme), button_area);
 }

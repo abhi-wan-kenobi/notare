@@ -5,7 +5,6 @@ mod provider_list;
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
-use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 
 use crate::theme::Theme;
@@ -36,7 +35,7 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     match app.step() {
         Step::SelectProvider => provider_list::draw(frame, app, content_area, &theme),
         Step::InputForm => input_form::draw(frame, app, content_area, &theme),
-        Step::CalendarPermission => permission::draw(frame, app, content_area),
+        Step::CalendarPermission => permission::draw(frame, app, content_area, &theme),
         Step::CalendarSelect => calendar_select::draw(frame, app, content_area, &theme),
         Step::Done => {}
     }
@@ -53,7 +52,7 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(
         Line::from(Span::styled(
             format!("  {breadcrumb}"),
-            Style::new().fg(Color::DarkGray),
+            Theme::DEFAULT.muted,
         )),
         area,
     );

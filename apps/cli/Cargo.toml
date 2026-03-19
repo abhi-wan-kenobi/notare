@@ -70,6 +70,7 @@ open = { workspace = true }
 ractor = { workspace = true, features = ["async-trait"] }
 reqwest = { workspace = true, features = ["json"] }
 rig = { package = "rig-core", version = "0.32" }
+schemars = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"] }

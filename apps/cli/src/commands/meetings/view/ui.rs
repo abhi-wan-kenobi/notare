@@ -1,7 +1,6 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Style},
     text::{Line, Span},
     widgets::{Padding, Paragraph},
 };
@@ -53,7 +52,7 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let short_date = date.get(..10).unwrap_or(date);
 
     let info = InfoLine::new(theme)
-        .item(Span::styled(title, Style::new().fg(Color::Yellow)))
+        .item(Span::styled(title, theme.accent))
         .item(Span::raw(short_date));
 
     frame.render_widget(info, area);
@@ -93,11 +92,11 @@ fn draw_transcript(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) 
 fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     match app.mode() {
         Mode::Command => {
-            frame.render_widget(CommandBar::new(app.command_buffer()), area);
+            frame.render_widget(CommandBar::new(app.command_buffer(), theme), area);
         }
         Mode::Insert => {
             let mut hints_widget = KeyHints::new(theme)
-                .badge(" INSERT ", Style::new().fg(Color::Black).bg(Color::Green))
+                .badge(" INSERT ", theme.mode_insert)
                 .hints(vec![
                     ("esc", "normal"),
                     ("tab", "normal"),
@@ -119,7 +118,7 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
                 hints.push(("", "[modified]"));
             }
             let mut hints_widget = KeyHints::new(theme)
-                .badge(" NORMAL ", Style::new().fg(Color::Black).bg(Color::Cyan))
+                .badge(" NORMAL ", theme.mode_normal)
                 .hints(hints);
             if let Some(msg) = app.save_message() {
                 hints_widget = hints_widget.suffix(Span::styled(msg, theme.status_active));

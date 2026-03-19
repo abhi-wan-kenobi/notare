@@ -1,7 +1,7 @@
 use std::io::IsTerminal;
 
 use ratatui::layout::Constraint;
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 use ratatui::text::Text;
 use ratatui::widgets::{Cell, Row, Table};
 use sqlx::SqlitePool;
@@ -77,6 +77,9 @@ fn print_section(
 
     let header = Row::new(["", "Provider", "Base URL", "API Key"]).style(dim);
 
+    use crate::theme::Theme;
+    let theme = Theme::DEFAULT;
+
     let mut names: Vec<&String> = providers.keys().collect();
     names.sort();
 
@@ -85,15 +88,15 @@ fn print_section(
         .map(|name| {
             let config = &providers[*name];
             let active = if current.as_deref() == Some(name.as_str()) {
-                Cell::from(Text::raw("*")).style(Style::default().fg(Color::Green))
+                Cell::from(Text::raw("*")).style(theme.status_active)
             } else {
                 Cell::from("")
             };
             let url = Cell::from(config.base_url.as_deref().unwrap_or("-"));
             let key = if config.api_key.is_some() {
-                Cell::from("yes").style(Style::default().fg(Color::Green))
+                Cell::from("yes").style(theme.status_active)
             } else {
-                Cell::from("no").style(Style::default().fg(Color::DarkGray))
+                Cell::from("no").style(theme.muted)
             };
             Row::new([active, Cell::from(name.as_str()), url, key])
         })

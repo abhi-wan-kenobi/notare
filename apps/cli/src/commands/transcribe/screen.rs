@@ -118,10 +118,13 @@ impl Screen for BatchScreen {
     }
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
-        use ratatui::style::{Color, Modifier, Style};
+        use ratatui::style::{Modifier, Style};
         use ratatui::text::{Line, Span};
         use ratatui::widgets::Paragraph;
 
+        use crate::theme::Theme;
+
+        let theme = Theme::DEFAULT;
         let dim = Style::default().add_modifier(Modifier::DIM);
         let elapsed = format_hhmmss(self.started_at.elapsed());
 
@@ -139,7 +142,7 @@ impl Screen for BatchScreen {
 
         let status_line = match &self.phase {
             Phase::Waiting => Line::from(vec![
-                Span::styled(format!("{spinner}  "), Style::default().fg(Color::Yellow)),
+                Span::styled(format!("{spinner}  "), theme.status_degraded),
                 Span::raw("Waiting..."),
             ]),
             Phase::InProgress(pct) => {
@@ -148,19 +151,19 @@ impl Screen for BatchScreen {
                 let empty = 20 - filled;
                 let bar = format!("{}{} {}%", "█".repeat(filled), "░".repeat(empty), percent);
                 Line::from(vec![
-                    Span::styled(format!("{spinner}  "), Style::default().fg(Color::Yellow)),
+                    Span::styled(format!("{spinner}  "), theme.status_degraded),
                     Span::raw("Transcribing ["),
                     Span::raw(bar),
                     Span::raw("]"),
                 ])
             }
             Phase::Done => Line::from(vec![
-                Span::styled("[✓] ", Style::default().fg(Color::Green)),
-                Span::styled("Transcription complete", Style::default().fg(Color::Green)),
+                Span::styled("[✓] ", theme.status_active),
+                Span::styled("Transcription complete", theme.status_active),
             ]),
             Phase::Failed(msg) => Line::from(vec![
-                Span::styled("[!] ", Style::default().fg(Color::Red)),
-                Span::styled(format!("Failed: {msg}"), Style::default().fg(Color::Red)),
+                Span::styled("[!] ", theme.error),
+                Span::styled(format!("Failed: {msg}"), theme.error),
             ]),
         };
         lines.push(status_line);

@@ -1,6 +1,6 @@
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{ListItem, Paragraph};
 
@@ -60,10 +60,10 @@ fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
             let active_marker = if *active { "* " } else { "  " };
 
             let status_style = match status.as_str() {
-                "downloaded" => Style::default().fg(Color::Green),
-                "not-downloaded" => Style::default().fg(Color::Yellow),
-                "unavailable" => Style::default().fg(Color::DarkGray),
-                "error" => Style::default().fg(Color::Red),
+                "downloaded" => theme.status_active,
+                "not-downloaded" => theme.status_degraded,
+                "unavailable" => theme.muted,
+                "error" => theme.error,
                 _ => theme.muted,
             };
 

@@ -1,8 +1,9 @@
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Widget;
+
+use crate::theme::Theme;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PermissionStatus {
@@ -12,32 +13,33 @@ pub enum PermissionStatus {
     Denied,
 }
 
-pub struct PermissionButton {
+pub struct PermissionButton<'a> {
     status: PermissionStatus,
+    theme: &'a Theme,
 }
 
-impl PermissionButton {
-    pub fn new(status: PermissionStatus) -> Self {
-        Self { status }
+impl<'a> PermissionButton<'a> {
+    pub fn new(status: PermissionStatus, theme: &'a Theme) -> Self {
+        Self { status, theme }
     }
 }
 
-impl Widget for PermissionButton {
+impl Widget for PermissionButton<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         if area.height < 2 {
             return;
         }
 
-        let (status_text, status_color) = match self.status {
-            PermissionStatus::Checking => ("Checking...", Color::DarkGray),
-            PermissionStatus::NotRequested => ("Not Requested", Color::Yellow),
-            PermissionStatus::Authorized => ("Authorized", Color::Green),
-            PermissionStatus::Denied => ("Denied", Color::Red),
+        let (status_text, status_style) = match self.status {
+            PermissionStatus::Checking => ("Checking...", self.theme.muted),
+            PermissionStatus::NotRequested => ("Not Requested", self.theme.status_degraded),
+            PermissionStatus::Authorized => ("Authorized", self.theme.status_active),
+            PermissionStatus::Denied => ("Denied", self.theme.error),
         };
 
         let status_line = Line::from(vec![
             Span::raw("  Status: "),
-            Span::styled(status_text, Style::new().fg(status_color)),
+            Span::styled(status_text, status_style),
         ]);
         status_line.render(area, buf);
 
@@ -54,7 +56,7 @@ impl Widget for PermissionButton {
                 height: 1,
                 ..area
             };
-            Line::from(Span::styled(hint, Style::new().fg(Color::DarkGray))).render(hint_area, buf);
+            Line::from(Span::styled(hint, self.theme.muted)).render(hint_area, buf);
         }
     }
 }

@@ -4,7 +4,7 @@ use std::path::Path;
 use hypr_local_model::LocalModel;
 use hypr_model_downloader::{DownloadableModel, ModelDownloadManager};
 use ratatui::layout::Constraint;
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 use ratatui::text::Text;
 use ratatui::widgets::{Cell, Row, Table};
 
@@ -70,6 +70,9 @@ pub(super) async fn write_model_output(
 }
 
 fn print_model_rows_table(models_base: &Path, rows: &[ModelRow]) -> CliResult<()> {
+    use crate::theme::Theme;
+    let theme = Theme::DEFAULT;
+
     println!("models_base={}", models_base.display());
 
     if !std::io::stdout().is_terminal() {
@@ -104,16 +107,10 @@ fn print_model_rows_table(models_base: &Path, rows: &[ModelRow]) -> CliResult<()
             };
 
             let status_cell = match row.status.as_str() {
-                "downloaded" => {
-                    Cell::from(row.status.as_str()).style(Style::default().fg(Color::Green))
-                }
-                "not-downloaded" => {
-                    Cell::from(row.status.as_str()).style(Style::default().fg(Color::Yellow))
-                }
-                "unavailable" => {
-                    Cell::from(row.status.as_str()).style(Style::default().fg(Color::DarkGray))
-                }
-                "error" => Cell::from(row.status.as_str()).style(Style::default().fg(Color::Red)),
+                "downloaded" => Cell::from(row.status.as_str()).style(theme.status_active),
+                "not-downloaded" => Cell::from(row.status.as_str()).style(theme.status_degraded),
+                "unavailable" => Cell::from(row.status.as_str()).style(theme.muted),
+                "error" => Cell::from(row.status.as_str()).style(theme.error),
                 _ => Cell::from(row.status.as_str()),
             };
 

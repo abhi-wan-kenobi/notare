@@ -142,8 +142,8 @@ pub async fn resolve_config(
             .or_else(|| std::env::var(cloud.env_key_name()).ok())
             .ok_or_else(|| {
                 CliError::required_argument_with_hint(
-                    format!("--api-key (or {})", cloud.env_key_name()),
-                    format!("Or set {} in your environment", cloud.env_key_name()),
+                    "STT API key",
+                    "Run `char connect` to configure your STT provider",
                 )
             })?;
         return Ok(ResolvedSttConfig {

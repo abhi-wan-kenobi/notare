@@ -1,4 +1,5 @@
 mod backend;
+mod tools;
 
 pub use backend::Backend;
 
@@ -23,7 +24,7 @@ pub async fn run_prompt(
     let mut out = stdout.lock();
 
     backend
-        .stream_text(text, Vec::new(), 1, |chunk| {
+        .stream_text(text, Vec::new(), 5, |chunk| {
             out.write_all(chunk.as_bytes())
                 .map_err(|e| CliError::operation_failed("write stdout", e.to_string()))?;
             out.flush()

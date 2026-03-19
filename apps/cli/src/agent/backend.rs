@@ -8,6 +8,8 @@ use rig::streaming::{StreamedAssistantContent, StreamingChat};
 use crate::error::{CliError, CliResult};
 use crate::llm::{LlmProvider, ResolvedLlmConfig};
 
+use super::tools;
+
 macro_rules! build_agent {
     ($client_type:path, $config:expr, $system_message:expr, $provider_name:expr) => {{
         let mut builder = <$client_type>::builder().api_key($config.api_key.as_str());
@@ -21,7 +23,11 @@ macro_rules! build_agent {
         if let Some(msg) = $system_message.as_deref() {
             agent = agent.preamble(msg);
         }
-        agent.build()
+        agent
+            .tool(tools::ListHumans)
+            .tool(tools::ShowHuman)
+            .tool(tools::AddHuman)
+            .build()
     }};
 }
 

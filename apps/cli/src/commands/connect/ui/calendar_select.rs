@@ -10,10 +10,7 @@ use super::super::app::App;
 
 pub(crate) fn draw(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     if app.cal_loading() {
-        frame.render_widget(
-            Span::styled("  Loading calendars...", Style::new().fg(Color::DarkGray)),
-            area,
-        );
+        frame.render_widget(Span::styled("  Loading calendars...", theme.muted), area);
         return;
     }
 
@@ -23,10 +20,7 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) 
     }
 
     if app.cal_items().is_empty() {
-        frame.render_widget(
-            Span::styled("  No calendars found", Style::new().fg(Color::DarkGray)),
-            area,
-        );
+        frame.render_widget(Span::styled("  No calendars found", theme.muted), area);
         return;
     }
 
@@ -41,7 +35,7 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) 
             }
             entries.push(MultiSelectEntry::Group(Line::from(Span::styled(
                 item.source.clone(),
-                Style::new().fg(Color::DarkGray),
+                theme.muted,
             ))));
             current_source = &item.source;
         }

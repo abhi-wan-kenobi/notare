@@ -33,6 +33,9 @@ pub struct Theme {
     pub dialog_bg: Color,
     pub dialog_title_fg: Color,
     pub user_bar: Style,
+    pub mode_insert: Style,
+    pub mode_normal: Style,
+    pub mode_command: Style,
 }
 
 impl Theme {
@@ -88,6 +91,9 @@ impl Theme {
         dialog_bg: Color::Rgb(18, 22, 28),
         dialog_title_fg: Color::White,
         user_bar: Style::new().fg(Color::Indexed(69)),
+        mode_insert: Style::new().fg(Color::Black).bg(Color::Green),
+        mode_normal: Style::new().fg(Color::Black).bg(Color::Cyan),
+        mode_command: Style::new().fg(Color::Black).bg(Color::Yellow),
     };
 }
 

@@ -9,6 +9,10 @@ use crate::widgets::SelectList;
 
 use super::super::app::App;
 
+const BADGE_STT: Style = Style::new().fg(Color::Cyan);
+const BADGE_LLM: Style = Style::new().fg(Color::Yellow);
+const BADGE_CAL: Style = Style::new().fg(Color::Magenta);
+
 pub(crate) fn draw(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     let [search_area, list_area] =
         Layout::vertical([Constraint::Length(3), Constraint::Min(1)]).areas(area);
@@ -29,14 +33,13 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) 
     // Provider list with tags
     let filtered = app.filtered_providers();
     if filtered.is_empty() {
-        frame.render_widget(
-            Span::styled("  No matches", Style::new().fg(Color::DarkGray)),
-            list_area,
-        );
+        frame.render_widget(Span::styled("  No matches", theme.muted), list_area);
         return;
     }
 
     let configured = app.configured_providers();
+    let current_stt = app.current_stt_provider();
+    let current_llm = app.current_llm_provider();
     let available_width = list_area.width as usize;
     let items: Vec<ListItem> = filtered
         .iter()
@@ -46,32 +49,45 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) 
             let caps = p.capabilities();
             let is_configured = configured.contains(p.id());
 
+            let is_active_stt = current_stt == Some(p.id());
+            let is_active_llm = current_llm == Some(p.id());
+
             let mut tag_spans: Vec<Span> = Vec::new();
 
             if is_configured {
-                tag_spans.push(Span::styled("[ok]", Style::new().fg(Color::Green)));
+                tag_spans.push(Span::styled("✓", theme.status_active));
             }
 
             if disabled {
                 if !tag_spans.is_empty() {
                     tag_spans.push(Span::raw(" "));
                 }
-                tag_spans.push(Span::styled("soon", Style::new().fg(Color::DarkGray)));
+                tag_spans.push(Span::styled("soon", theme.muted));
             }
 
             for cap in &caps {
                 if !tag_spans.is_empty() {
                     tag_spans.push(Span::raw(" "));
                 }
-                let style = if disabled {
-                    Style::new().fg(Color::DarkGray)
-                } else {
-                    match cap {
-                        crate::cli::ConnectionType::Stt => Style::new().fg(Color::Cyan),
-                        crate::cli::ConnectionType::Llm => Style::new().fg(Color::Yellow),
-                        crate::cli::ConnectionType::Cal => Style::new().fg(Color::Magenta),
-                    }
+
+                let is_active = match cap {
+                    crate::cli::ConnectionType::Stt => is_active_stt,
+                    crate::cli::ConnectionType::Llm => is_active_llm,
+                    crate::cli::ConnectionType::Cal => false,
                 };
+
+                let style = if disabled {
+                    theme.muted
+                } else if is_active {
+                    match cap {
+                        crate::cli::ConnectionType::Stt => BADGE_STT,
+                        crate::cli::ConnectionType::Llm => BADGE_LLM,
+                        crate::cli::ConnectionType::Cal => BADGE_CAL,
+                    }
+                } else {
+                    theme.muted
+                };
+
                 let label = match cap {
                     crate::cli::ConnectionType::Stt => "[STT]",
                     crate::cli::ConnectionType::Llm => "[LLM]",
@@ -88,7 +104,7 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) 
             };
 
             let name_style = if disabled {
-                Style::new().fg(Color::DarkGray)
+                theme.muted
             } else {
                 Style::default()
             };

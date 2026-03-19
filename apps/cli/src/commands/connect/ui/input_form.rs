@@ -84,7 +84,7 @@ fn render_section(frame: &mut Frame, section: &Section, area: Rect, theme: &Them
             let style = if *focused {
                 Style::new().bold()
             } else {
-                Style::new().fg(Color::DarkGray)
+                theme.muted
             };
             frame.render_widget(Span::styled(text.as_str(), style), area);
         }
@@ -93,12 +93,12 @@ fn render_section(frame: &mut Frame, section: &Section, area: Rect, theme: &Them
             cursor_x,
             focused,
         } => {
-            let border_color = if *focused {
-                Color::Cyan
+            let border_style = if *focused {
+                Style::new().fg(Color::Cyan)
             } else {
-                Color::DarkGray
+                theme.border
             };
-            let input_block = Block::bordered().border_style(Style::new().fg(border_color));
+            let input_block = Block::bordered().border_style(border_style);
             let inner = input_block.inner(area);
             frame.render_widget(Paragraph::new(text.as_str()).block(input_block), area);
             if let Some(cx) = cursor_x {
@@ -106,10 +106,7 @@ fn render_section(frame: &mut Frame, section: &Section, area: Rect, theme: &Them
             }
         }
         Section::Default(text) => {
-            frame.render_widget(
-                Span::styled(text.as_str(), Style::new().fg(Color::DarkGray)),
-                area,
-            );
+            frame.render_widget(Span::styled(text.as_str(), theme.muted), area);
         }
         Section::Error(text) => {
             frame.render_widget(Span::styled(text.as_str(), theme.error), area);

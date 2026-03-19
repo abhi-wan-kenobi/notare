@@ -118,6 +118,9 @@ impl Screen for ExitScreen {
         use ratatui::text::{Line, Span};
         use ratatui::widgets::Paragraph;
 
+        use crate::theme::Theme;
+
+        let theme = Theme::DEFAULT;
         let dim = Style::default().add_modifier(Modifier::DIM);
         let chat_cmd = format!(
             "char chat --session {} --api-key <KEY> --model <MODEL>",
@@ -150,11 +153,11 @@ impl Screen for ExitScreen {
         for task in &self.tasks {
             let line = match &task.state {
                 TaskState::Done => Line::from(vec![
-                    Span::styled("[✓] ", Style::default().fg(Color::Green)),
+                    Span::styled("[✓] ", theme.status_active),
                     Span::styled(task.label, dim.add_modifier(Modifier::CROSSED_OUT)),
                 ]),
                 TaskState::InProgress => Line::from(vec![
-                    Span::styled(format!("{spinner}  "), Style::default().fg(Color::Yellow)),
+                    Span::styled(format!("{spinner}  "), theme.status_degraded),
                     Span::raw(task.label),
                 ]),
                 TaskState::NotStarted => Line::from(vec![
@@ -162,8 +165,8 @@ impl Screen for ExitScreen {
                     Span::styled(task.label, dim),
                 ]),
                 TaskState::Failed(msg) => Line::from(vec![
-                    Span::styled("[!] ", Style::default().fg(Color::Red)),
-                    Span::styled(task.label, Style::default().fg(Color::Red)),
+                    Span::styled("[!] ", theme.error),
+                    Span::styled(task.label, theme.error),
                     Span::styled(format!(" ({msg})"), dim.fg(Color::Red)),
                 ]),
             };
