@@ -6,18 +6,18 @@ use super::effect::Effect;
 pub(crate) struct App {
     pub(crate) current: String,
     pub(crate) latest: String,
-    pub(crate) npm_tag: &'static str,
+    pub(crate) update_command: String,
     pub(crate) selected: usize,
 }
 
 const ITEM_COUNT: usize = 3;
 
 impl App {
-    pub(crate) fn new(current: String, latest: String, npm_tag: &'static str) -> Self {
+    pub(crate) fn new(current: String, latest: String, update_command: String) -> Self {
         Self {
             current,
             latest,
-            npm_tag,
+            update_command,
             selected: 0,
         }
     }

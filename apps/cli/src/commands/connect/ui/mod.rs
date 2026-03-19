@@ -1,6 +1,5 @@
-mod calendar_select;
+mod calendar;
 mod input_form;
-mod permission;
 mod provider_list;
 
 use ratatui::Frame;
@@ -10,7 +9,7 @@ use ratatui::text::{Line, Span};
 use crate::theme::Theme;
 use crate::widgets::{CenteredDialog, KeyHints};
 
-use super::app::{App, Step};
+use super::app::{App, CalendarPhase, Step};
 use super::runtime::CalendarPermissionState;
 
 pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
@@ -18,7 +17,7 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
 
     let inner = CenteredDialog::new("Connect a provider", &theme).render(frame);
 
-    let show_header = !matches!(app.step(), Step::CalendarSelect);
+    let show_header = app.step() != Step::Calendar || app.calendar().show_header();
 
     let [header_area, content_area, gap_area, status_area] = Layout::vertical([
         Constraint::Length(if show_header { 1 } else { 0 }),
@@ -35,8 +34,7 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     match app.step() {
         Step::SelectProvider => provider_list::draw(frame, app, content_area, &theme),
         Step::InputForm => input_form::draw(frame, app, content_area, &theme),
-        Step::CalendarPermission => permission::draw(frame, app, content_area, &theme),
-        Step::CalendarSelect => calendar_select::draw(frame, app, content_area, &theme),
+        Step::Calendar => calendar::draw(frame, app, content_area, &theme),
         Step::Done => {}
     }
 
@@ -68,21 +66,23 @@ fn draw_status(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
             }
             hints
         }
-        Step::CalendarPermission => match app.cal_auth_status() {
-            Some(CalendarPermissionState::NotDetermined) => {
-                vec![("Enter", "request access"), ("Esc", "quit")]
+        Step::Calendar => match app.calendar().phase() {
+            CalendarPhase::Permission => match app.calendar().auth_status() {
+                Some(CalendarPermissionState::NotDetermined) => {
+                    vec![("Enter", "request access"), ("Esc", "quit")]
+                }
+                Some(CalendarPermissionState::Authorized) => {
+                    vec![("Enter", "continue"), ("Esc", "quit")]
+                }
+                Some(CalendarPermissionState::Denied) => {
+                    vec![("Enter", "reset"), ("Esc", "quit")]
+                }
+                None => vec![("Esc", "quit")],
+            },
+            CalendarPhase::Select => {
+                vec![("Space", "toggle"), ("Enter", "confirm")]
             }
-            Some(CalendarPermissionState::Authorized) => {
-                vec![("Enter", "continue"), ("Esc", "quit")]
-            }
-            Some(CalendarPermissionState::Denied) => {
-                vec![("Enter", "reset"), ("Esc", "quit")]
-            }
-            None => vec![("Esc", "quit")],
         },
-        Step::CalendarSelect => {
-            vec![("Space", "toggle"), ("Enter", "confirm")]
-        }
         Step::Done => vec![],
     };
 

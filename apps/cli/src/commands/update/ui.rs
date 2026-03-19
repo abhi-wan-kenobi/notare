@@ -12,7 +12,7 @@ use super::app::App;
 
 pub fn draw(frame: &mut Frame, app: &App) {
     let theme = Theme::DEFAULT;
-    let install_label = format!("Update now (npm install -g char@{})", app.npm_tag);
+    let install_label = format!("Update now ({})", app.update_command);
     let items: [&str; 3] = [&install_label, "Skip", "Don't remind for this version"];
 
     let area = frame.area();

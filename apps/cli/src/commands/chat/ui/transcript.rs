@@ -3,14 +3,16 @@ use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use textwrap::wrap;
 
-use crate::commands::chat::app::{App, Speaker};
+use crate::commands::chat::Role;
+use crate::commands::chat::app::{App, TranscriptEntry};
 use crate::theme::Theme;
 use crate::widgets::render_scrollable;
 
 // --- Data layer: describe what to render ---
 
 enum Entry<'a> {
-    Message { speaker: Speaker, content: &'a str },
+    Message { role: Role, content: &'a str },
+    Error(&'a str),
     Pending { content: &'a str },
     Placeholder,
 }
@@ -24,9 +26,12 @@ fn entries(app: &App) -> Vec<Entry<'_>> {
 
     let mut out: Vec<Entry<'_>> = transcript
         .iter()
-        .map(|msg| Entry::Message {
-            speaker: msg.speaker,
-            content: &msg.content,
+        .map(|e| match e {
+            TranscriptEntry::Message { role, content } => Entry::Message {
+                role: *role,
+                content,
+            },
+            TranscriptEntry::Error(content) => Entry::Error(content),
         })
         .collect();
 
@@ -43,7 +48,14 @@ fn entries(app: &App) -> Vec<Entry<'_>> {
 
 fn render_entry(entry: &Entry<'_>, wrap_width: usize, theme: &Theme) -> Vec<Line<'static>> {
     match entry {
-        Entry::Message { speaker, content } => render_message(*speaker, content, wrap_width, theme),
+        Entry::Message { role, content } => render_message(*role, content, wrap_width, theme),
+        Entry::Error(content) => {
+            let wrapped = wrap(content, wrap_width);
+            wrapped
+                .iter()
+                .map(|w| Line::from(Span::styled(format!("    {w}"), theme.error)))
+                .collect()
+        }
         Entry::Pending { content } => render_pending(content, wrap_width, theme),
         Entry::Placeholder => {
             vec![Line::from(Span::styled(
@@ -55,15 +67,15 @@ fn render_entry(entry: &Entry<'_>, wrap_width: usize, theme: &Theme) -> Vec<Line
 }
 
 fn render_message(
-    speaker: Speaker,
+    role: Role,
     content: &str,
     wrap_width: usize,
     theme: &Theme,
 ) -> Vec<Line<'static>> {
     let wrapped = wrap(content, wrap_width);
 
-    match speaker {
-        Speaker::User => wrapped
+    match role {
+        Role::User => wrapped
             .iter()
             .map(|w| {
                 Line::from(vec![
@@ -72,14 +84,15 @@ fn render_message(
                 ])
             })
             .collect(),
-        Speaker::Assistant => wrapped
+        Role::Assistant => wrapped
             .iter()
             .map(|w| Line::from(Span::styled(format!("    {w}"), theme.transcript_final)))
             .collect(),
-        Speaker::Error => wrapped
+        Role::Tool => wrapped
             .iter()
-            .map(|w| Line::from(Span::styled(format!("    {w}"), theme.error)))
+            .map(|w| Line::from(Span::styled(format!("  > {w}"), theme.muted)))
             .collect(),
+        _ => Vec::new(),
     }
 }
 

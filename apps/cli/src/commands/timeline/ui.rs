@@ -2,7 +2,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Flex, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Clear, ListItem, Paragraph};
+use ratatui::widgets::{Block, Clear, ListItem, ListState, Paragraph};
 
 use crate::theme::Theme;
 use crate::widgets::{KeyHints, SelectList};
@@ -88,17 +88,46 @@ fn draw_columns(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     draw_entries(frame, app, timeline_area, theme);
 }
 
-fn draw_orgs(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
-    let focused = app.pane() == Pane::Orgs;
+enum ColumnBody<'a> {
+    Loading,
+    Empty(&'a str),
+    Items(Vec<ListItem<'a>>, &'a mut ListState),
+}
+
+fn render_column(
+    frame: &mut Frame,
+    area: Rect,
+    title: &str,
+    focused: bool,
+    body: ColumnBody<'_>,
+    theme: &Theme,
+) {
     let [header, list_area] =
         Layout::vertical([Constraint::Length(1), Constraint::Min(1)]).areas(area);
 
     let header_style = if focused { theme.accent } else { theme.muted };
     frame.render_widget(
-        Paragraph::new(Span::styled(" Organizations", header_style)),
+        Paragraph::new(Span::styled(format!(" {title}"), header_style)),
         header,
     );
 
+    match body {
+        ColumnBody::Loading => {
+            frame.render_widget(
+                Paragraph::new(Span::styled("  Loading...", theme.muted)),
+                list_area,
+            );
+        }
+        ColumnBody::Empty(msg) => {
+            frame.render_widget(Paragraph::new(Span::styled(msg, theme.muted)), list_area);
+        }
+        ColumnBody::Items(items, state) => {
+            frame.render_stateful_widget(SelectList::new(items, theme), list_area, state);
+        }
+    }
+}
+
+fn draw_orgs(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     let mut items: Vec<ListItem> = vec![ListItem::new(Line::from(vec![
         Span::raw("  "),
         Span::styled("All", Style::new().add_modifier(Modifier::ITALIC)),
@@ -110,34 +139,20 @@ fn draw_orgs(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
         ])));
     }
 
-    frame.render_stateful_widget(
-        SelectList::new(items, theme),
-        list_area,
-        app.org_state_mut(),
+    render_column(
+        frame,
+        area,
+        "Organizations",
+        app.pane() == Pane::Orgs,
+        ColumnBody::Items(items, app.org_state_mut()),
+        theme,
     );
 }
 
 fn draw_humans(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     let focused = app.pane() == Pane::Humans;
-    let [header, list_area] =
-        Layout::vertical([Constraint::Length(1), Constraint::Min(1)]).areas(area);
-
-    let header_style = if focused { theme.accent } else { theme.muted };
-    frame.render_widget(
-        Paragraph::new(Span::styled(" Humans", header_style)),
-        header,
-    );
-
-    let humans = app.filtered_humans();
-    if humans.is_empty() {
-        frame.render_widget(
-            Paragraph::new(Span::styled("  No humans", theme.muted)),
-            list_area,
-        );
-        return;
-    }
-
-    let items: Vec<ListItem> = humans
+    let items: Vec<ListItem> = app
+        .filtered_humans()
         .iter()
         .map(|h| {
             let name = if h.name.is_empty() {
@@ -157,39 +172,19 @@ fn draw_humans(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
         })
         .collect();
 
-    frame.render_stateful_widget(
-        SelectList::new(items, theme),
-        list_area,
-        app.human_state_mut(),
-    );
+    let body = if items.is_empty() {
+        ColumnBody::Empty("  No humans")
+    } else {
+        ColumnBody::Items(items, app.human_state_mut())
+    };
+    render_column(frame, area, "Humans", focused, body, theme);
 }
 
 fn draw_entries(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     let focused = app.pane() == Pane::Timeline;
-    let [header, list_area] =
-        Layout::vertical([Constraint::Length(1), Constraint::Min(1)]).areas(area);
-
-    let header_style = if focused { theme.accent } else { theme.muted };
-    frame.render_widget(
-        Paragraph::new(Span::styled(" Activity", header_style)),
-        header,
-    );
 
     if app.loading_entries() {
-        frame.render_widget(
-            Paragraph::new(Span::styled("  Loading...", theme.muted)),
-            list_area,
-        );
-        return;
-    }
-
-    if app.entries().is_empty() {
-        let msg = if app.selected_human().is_some() {
-            "  No activity"
-        } else {
-            "  Select a human"
-        };
-        frame.render_widget(Paragraph::new(Span::styled(msg, theme.muted)), list_area);
+        render_column(frame, area, "Activity", focused, ColumnBody::Loading, theme);
         return;
     }
 
@@ -215,11 +210,17 @@ fn draw_entries(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
         })
         .collect();
 
-    frame.render_stateful_widget(
-        SelectList::new(items, theme),
-        list_area,
-        app.entry_state_mut(),
-    );
+    let body = if items.is_empty() {
+        let msg = if app.selected_human().is_some() {
+            "  No activity"
+        } else {
+            "  Select a human"
+        };
+        ColumnBody::Empty(msg)
+    } else {
+        ColumnBody::Items(items, app.entry_state_mut())
+    };
+    render_column(frame, area, "Activity", focused, body, theme);
 }
 
 fn wide_area(area: Rect) -> Rect {

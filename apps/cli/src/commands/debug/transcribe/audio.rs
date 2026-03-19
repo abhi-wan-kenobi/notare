@@ -6,7 +6,7 @@ use owhisper_interface::MixedMessage;
 use hypr_audio::{CaptureConfig, CaptureFrame};
 use hypr_audio_utils::{chunk_size_for_stt, f32_to_i16_bytes};
 
-pub use crate::cli::AudioSource;
+pub use super::super::AudioSource;
 pub use hypr_audio::AudioProvider;
 pub use hypr_audio_actual::ActualAudio;
 

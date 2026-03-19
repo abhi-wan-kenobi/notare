@@ -3,6 +3,8 @@ use tokio::sync::mpsc;
 
 use hypr_db_app::CalendarRow;
 
+use super::app::Tab;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CalendarPermissionState {
     NotDetermined,
@@ -19,8 +21,6 @@ pub enum RuntimeEvent {
     },
     CalendarsLoaded(Vec<CalendarRow>),
     CalendarPermissionStatus(CalendarPermissionState),
-    CalendarPermissionResult(bool),
-    CalendarPermissionReset,
     Saved,
     Error(String),
 }
@@ -50,10 +50,10 @@ impl Runtime {
         let pool = self.pool.clone();
         let tx = self.tx.clone();
         tokio::spawn(async move {
-            let stt_connections = hypr_db_app::list_connections(&pool, "stt")
+            let stt_connections = hypr_db_app::list_connections(&pool, Tab::Stt.connection_type())
                 .await
                 .unwrap_or_default();
-            let llm_connections = hypr_db_app::list_connections(&pool, "llm")
+            let llm_connections = hypr_db_app::list_connections(&pool, Tab::Llm.connection_type())
                 .await
                 .unwrap_or_default();
 
@@ -63,11 +63,11 @@ impl Runtime {
             let map: std::collections::HashMap<String, String> = all_settings.into_iter().collect();
 
             let current_stt = map
-                .get("current_stt_provider")
+                .get(Tab::Stt.setting_key())
                 .filter(|v| !v.is_empty())
                 .cloned();
             let current_llm = map
-                .get("current_llm_provider")
+                .get(Tab::Llm.setting_key())
                 .filter(|v| !v.is_empty())
                 .cloned();
 
@@ -85,26 +85,12 @@ impl Runtime {
         });
     }
 
-    pub fn save_stt_provider(&self, provider: String) {
+    pub fn save_provider(&self, tab: Tab, provider: String) {
         let pool = self.pool.clone();
         let tx = self.tx.clone();
+        let key = tab.setting_key();
         tokio::spawn(async move {
-            match hypr_db_app::set_setting(&pool, "current_stt_provider", &provider).await {
-                Ok(()) => {
-                    let _ = tx.send(RuntimeEvent::Saved);
-                }
-                Err(e) => {
-                    let _ = tx.send(RuntimeEvent::Error(e.to_string()));
-                }
-            }
-        });
-    }
-
-    pub fn save_llm_provider(&self, provider: String) {
-        let pool = self.pool.clone();
-        let tx = self.tx.clone();
-        tokio::spawn(async move {
-            match hypr_db_app::set_setting(&pool, "current_llm_provider", &provider).await {
+            match hypr_db_app::set_setting(&pool, key, &provider).await {
                 Ok(()) => {
                     let _ = tx.send(RuntimeEvent::Saved);
                 }
@@ -119,18 +105,73 @@ impl Runtime {
         let pool = self.pool.clone();
         let tx = self.tx.clone();
         tokio::spawn(async move {
-            let connections = hypr_db_app::list_connections(&pool, "cal")
+            let connections = hypr_db_app::list_connections(&pool, Tab::Calendar.connection_type())
                 .await
                 .unwrap_or_default();
 
-            let mut all_calendars = Vec::new();
-            for conn in connections {
+            let mut db_calendars = Vec::new();
+            for conn in &connections {
                 if let Ok(cals) = hypr_db_app::list_calendars_by_connection(&pool, &conn.id).await {
-                    all_calendars.extend(cals);
+                    db_calendars.extend(cals);
                 }
             }
 
-            let _ = tx.send(RuntimeEvent::CalendarsLoaded(all_calendars));
+            #[cfg(target_os = "macos")]
+            {
+                if let Ok(fresh) = tokio::task::spawn_blocking(|| {
+                    let handle = hypr_apple_calendar::Handle::new();
+                    handle.list_calendars()
+                })
+                .await
+                .unwrap_or_else(|_| Err(hypr_apple_calendar::Error::CalendarAccessDenied))
+                {
+                    let db_enabled: std::collections::HashMap<&str, bool> = db_calendars
+                        .iter()
+                        .map(|c| (c.tracking_id.as_str(), c.enabled))
+                        .collect();
+
+                    let connection_id = connections
+                        .first()
+                        .map(|c| c.id.as_str())
+                        .unwrap_or("cal:apple_calendar");
+
+                    let merged: Vec<CalendarRow> = fresh
+                        .into_iter()
+                        .map(|cal| {
+                            let enabled = db_enabled.get(cal.id.as_str()).copied().unwrap_or(true);
+                            let color = cal
+                                .color
+                                .map(|c| {
+                                    format!(
+                                        "#{:02X}{:02X}{:02X}",
+                                        (c.red * 255.0) as u8,
+                                        (c.green * 255.0) as u8,
+                                        (c.blue * 255.0) as u8
+                                    )
+                                })
+                                .unwrap_or_default();
+                            CalendarRow {
+                                id: format!("{connection_id}:{}", cal.id),
+                                provider: "apple_calendar".to_string(),
+                                connection_id: connection_id.to_string(),
+                                tracking_id: cal.id,
+                                name: cal.title,
+                                color,
+                                source: cal.source.title,
+                                enabled,
+                                created_at: String::new(),
+                                user_id: String::new(),
+                                raw_json: String::new(),
+                            }
+                        })
+                        .collect();
+
+                    let _ = tx.send(RuntimeEvent::CalendarsLoaded(merged));
+                    return;
+                }
+            }
+
+            let _ = tx.send(RuntimeEvent::CalendarsLoaded(db_calendars));
         });
     }
 
@@ -173,39 +214,6 @@ impl Runtime {
                 let _ = tx.send(RuntimeEvent::Error(
                     "Calendar permissions are only available on macOS".to_string(),
                 ));
-            }
-        });
-    }
-
-    pub fn request_permission(&self) {
-        let tx = self.tx.clone();
-        std::thread::spawn(move || {
-            #[cfg(target_os = "macos")]
-            {
-                let granted = hypr_apple_calendar::Handle::request_full_access();
-                let _ = tx.send(RuntimeEvent::CalendarPermissionResult(granted));
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                let _ = tx.send(RuntimeEvent::CalendarPermissionResult(false));
-            }
-        });
-    }
-
-    pub fn reset_permission(&self) {
-        let tx = self.tx.clone();
-        tokio::spawn(async move {
-            let result = tokio::process::Command::new("tccutil")
-                .args(["reset", "Calendar"])
-                .output()
-                .await;
-            match result {
-                Ok(_) => {
-                    let _ = tx.send(RuntimeEvent::CalendarPermissionReset);
-                }
-                Err(e) => {
-                    let _ = tx.send(RuntimeEvent::Error(e.to_string()));
-                }
             }
         });
     }

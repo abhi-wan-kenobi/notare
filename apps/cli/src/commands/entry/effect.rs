@@ -1,5 +1,6 @@
-use crate::cli::{ConnectProvider, ConnectionType, ModelCommands};
 use crate::commands::connect::effect::CalendarSaveData;
+use crate::commands::connect::{ConnectProvider, ConnectionType};
+use crate::commands::model::Commands as ModelCommands;
 
 pub(crate) enum Effect {
     Launch(super::EntryCommand),

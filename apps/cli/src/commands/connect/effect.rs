@@ -1,4 +1,4 @@
-use crate::cli::{ConnectProvider, ConnectionType};
+use super::{ConnectProvider, ConnectionType};
 
 use super::runtime::CalendarItem;
 

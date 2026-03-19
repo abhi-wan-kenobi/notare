@@ -15,7 +15,7 @@ pub enum EntryCommand {
 
 pub enum EntryAction {
     Launch(EntryCommand),
-    Model(crate::cli::ModelCommands),
+    Model(crate::commands::model::Commands),
     Quit,
 }
 
@@ -40,7 +40,7 @@ enum ExternalEvent {
     ModelsLoaded(Vec<crate::commands::model::list::ModelRow>),
     ModelsLoadError(String),
     ConnectSaved {
-        connection_types: Vec<crate::cli::ConnectionType>,
+        connection_types: Vec<crate::commands::connect::ConnectionType>,
         provider_id: String,
     },
     ConnectSaveError(String),

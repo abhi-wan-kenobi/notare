@@ -1,8 +1,16 @@
+use clap::ValueEnum;
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
 use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
 use crate::error::CliResult;
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum ConfigureTab {
+    Stt,
+    Llm,
+    Calendar,
+}
 
 mod action;
 mod app;
@@ -26,13 +34,10 @@ impl ConfigureScreen {
             match effect {
                 Effect::Exit => return ScreenControl::Exit(()),
                 Effect::LoadSettings => self.runtime.load_settings(),
-                Effect::SaveSttProvider(p) => self.runtime.save_stt_provider(p),
-                Effect::SaveLlmProvider(p) => self.runtime.save_llm_provider(p),
+                Effect::SaveProvider { tab, provider } => self.runtime.save_provider(tab, provider),
                 Effect::LoadCalendars => self.runtime.load_calendars(),
                 Effect::SaveCalendars(cals) => self.runtime.save_calendars(cals),
                 Effect::CheckCalendarPermission => self.runtime.check_permission(),
-                Effect::RequestCalendarPermission => self.runtime.request_permission(),
-                Effect::ResetCalendarPermission => self.runtime.reset_permission(),
             }
         }
         ScreenControl::Continue
@@ -75,11 +80,11 @@ impl Screen for ConfigureScreen {
     }
 }
 
-pub async fn run(pool: &SqlitePool, cli_tab: Option<crate::cli::ConfigureTab>) -> CliResult<()> {
+pub async fn run(pool: &SqlitePool, cli_tab: Option<ConfigureTab>) -> CliResult<()> {
     let initial_tab = cli_tab.map(|t| match t {
-        crate::cli::ConfigureTab::Stt => app::Tab::Stt,
-        crate::cli::ConfigureTab::Llm => app::Tab::Llm,
-        crate::cli::ConfigureTab::Calendar => app::Tab::Calendar,
+        ConfigureTab::Stt => app::Tab::Stt,
+        ConfigureTab::Llm => app::Tab::Llm,
+        ConfigureTab::Calendar => app::Tab::Calendar,
     });
 
     let (tx, rx) = mpsc::unbounded_channel();

@@ -1,6 +1,6 @@
 use crossterm::event::KeyEvent;
 
-use crate::cli::ConnectionType;
+use crate::commands::connect::ConnectionType;
 use crate::commands::connect::runtime::RuntimeEvent as ConnectRuntimeEvent;
 use crate::commands::model::list::ModelRow;
 

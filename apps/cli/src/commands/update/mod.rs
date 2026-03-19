@@ -11,8 +11,8 @@ use self::action::Action;
 use self::app::App;
 use self::effect::Effect;
 
-pub enum UpdateAction {
-    RunUpdate { npm_tag: &'static str },
+pub enum UpdateOutcome {
+    RunUpdate,
     Continue,
 }
 
@@ -21,18 +21,16 @@ struct UpdateScreen {
 }
 
 impl UpdateScreen {
-    fn apply_effects(&self, effects: Vec<Effect>) -> ScreenControl<UpdateAction> {
+    fn apply_effects(&self, effects: Vec<Effect>) -> ScreenControl<UpdateOutcome> {
         for effect in effects {
             match effect {
                 Effect::AcceptUpdate => {
-                    return ScreenControl::Exit(UpdateAction::RunUpdate {
-                        npm_tag: self.app.npm_tag,
-                    });
+                    return ScreenControl::Exit(UpdateOutcome::RunUpdate);
                 }
-                Effect::Skip => return ScreenControl::Exit(UpdateAction::Continue),
+                Effect::Skip => return ScreenControl::Exit(UpdateOutcome::Continue),
                 Effect::SkipVersion => {
                     crate::update_check::save_skipped_version(&self.app.latest);
-                    return ScreenControl::Exit(UpdateAction::Continue);
+                    return ScreenControl::Exit(UpdateOutcome::Continue);
                 }
             }
         }
@@ -42,7 +40,7 @@ impl UpdateScreen {
 
 impl Screen for UpdateScreen {
     type ExternalEvent = Infallible;
-    type Output = UpdateAction;
+    type Output = UpdateOutcome;
 
     fn on_tui_event(
         &mut self,
@@ -78,13 +76,13 @@ impl Screen for UpdateScreen {
 pub async fn run(
     current: String,
     latest: String,
-    channel: crate::update_check::Channel,
-) -> UpdateAction {
+    action: &crate::update_check::UpdateAction,
+) -> UpdateOutcome {
     let screen = UpdateScreen {
-        app: App::new(current, latest, channel.npm_tag()),
+        app: App::new(current, latest, action.command_str()),
     };
 
     run_screen::<UpdateScreen>(screen, None)
         .await
-        .unwrap_or(UpdateAction::Continue)
+        .unwrap_or(UpdateOutcome::Continue)
 }

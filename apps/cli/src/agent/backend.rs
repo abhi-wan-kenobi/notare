@@ -3,12 +3,23 @@ use rig::agent::{Agent, MultiTurnStreamItem, StreamingError};
 use rig::client::CompletionClient;
 use rig::message::Message;
 use rig::providers::{anthropic, openai, openrouter};
-use rig::streaming::{StreamedAssistantContent, StreamingChat};
+use rig::streaming::{StreamedAssistantContent, StreamedUserContent, StreamingChat};
 
 use crate::error::{CliError, CliResult};
 use crate::llm::{LlmProvider, ResolvedLlmConfig};
 
 use super::tools;
+
+pub enum StreamEvent {
+    TextChunk(String),
+    ToolCallStart {
+        tool_name: String,
+        arguments: String,
+    },
+    ToolResult {
+        success: bool,
+    },
+}
 
 macro_rules! build_agent {
     ($client_type:path, $config:expr, $system_message:expr, $provider_name:expr) => {{
@@ -63,10 +74,10 @@ impl Backend {
         prompt: String,
         history: Vec<Message>,
         max_turns: usize,
-        mut on_chunk: F,
+        mut on_event: F,
     ) -> CliResult<Option<String>>
     where
-        F: FnMut(&str) -> CliResult<()>,
+        F: FnMut(StreamEvent) -> CliResult<()>,
     {
         macro_rules! do_stream {
             ($agent:expr) => {{
@@ -74,7 +85,7 @@ impl Backend {
                     .stream_chat(prompt, history)
                     .multi_turn(max_turns)
                     .await;
-                process_stream(stream, &mut on_chunk).await
+                process_stream(stream, &mut on_event).await
             }};
         }
 
@@ -86,10 +97,10 @@ impl Backend {
     }
 }
 
-async fn process_stream<S, R, F>(mut stream: S, on_chunk: &mut F) -> CliResult<Option<String>>
+async fn process_stream<S, R, F>(mut stream: S, on_event: &mut F) -> CliResult<Option<String>>
 where
     S: StreamExt<Item = Result<MultiTurnStreamItem<R>, StreamingError>> + Unpin,
-    F: FnMut(&str) -> CliResult<()>,
+    F: FnMut(StreamEvent) -> CliResult<()>,
 {
     let mut accumulated = String::new();
     let mut final_response = None;
@@ -97,7 +108,19 @@ where
         match item {
             Ok(MultiTurnStreamItem::StreamAssistantItem(StreamedAssistantContent::Text(text))) => {
                 accumulated.push_str(&text.text);
-                on_chunk(&text.text)?;
+                on_event(StreamEvent::TextChunk(text.text))?;
+            }
+            Ok(MultiTurnStreamItem::StreamAssistantItem(StreamedAssistantContent::ToolCall {
+                tool_call,
+                ..
+            })) => {
+                on_event(StreamEvent::ToolCallStart {
+                    tool_name: tool_call.function.name.clone(),
+                    arguments: tool_call.function.arguments.to_string(),
+                })?;
+            }
+            Ok(MultiTurnStreamItem::StreamUserItem(StreamedUserContent::ToolResult { .. })) => {
+                on_event(StreamEvent::ToolResult { success: true })?;
             }
             Ok(MultiTurnStreamItem::FinalResponse(response)) => {
                 final_response = Some(response);
@@ -113,9 +136,11 @@ where
     {
         let final_text = response.response();
         if accumulated.is_empty() {
-            on_chunk(final_text)?;
+            on_event(StreamEvent::TextChunk(final_text.to_string()))?;
         } else if final_text.starts_with(&accumulated) && final_text.len() > accumulated.len() {
-            on_chunk(&final_text[accumulated.len()..])?;
+            on_event(StreamEvent::TextChunk(
+                final_text[accumulated.len()..].to_string(),
+            ))?;
         }
         return Ok(Some(final_text.to_string()));
     }

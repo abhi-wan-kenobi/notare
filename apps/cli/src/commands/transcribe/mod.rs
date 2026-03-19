@@ -9,11 +9,24 @@ use hypr_cli_tui::run_screen_inline;
 use hypr_listener2_core::{BatchErrorCode, BatchEvent};
 use tokio::sync::mpsc;
 
-pub use crate::cli::TranscribeArgs;
+use crate::cli::{OutputFormat, Provider};
+
+#[derive(clap::Args)]
+pub struct Args {
+    #[arg(long, value_name = "FILE", visible_alias = "file")]
+    pub input: clio::InputPath,
+    #[arg(short = 'p', long, value_enum)]
+    pub provider: Provider,
+    #[arg(long = "keyword", short = 'k', value_name = "KEYWORD")]
+    pub keywords: Vec<String>,
+    #[arg(short = 'o', long, value_name = "FILE")]
+    pub output: Option<std::path::PathBuf>,
+    #[arg(short = 'f', long, value_enum, default_value = "pretty")]
+    pub format: OutputFormat,
+}
 use hypr_db_app::PersistableSpeakerHint;
 use hypr_transcript::{FinalizedWord, SpeakerHintData, WordState};
 
-use crate::cli::OutputFormat;
 use crate::config::stt::resolve_config;
 use crate::config::stt::{ChannelBatchRuntime, SttGlobalArgs};
 use crate::error::{CliError, CliResult};
@@ -186,7 +199,7 @@ pub async fn run_batch(
     })
 }
 
-pub async fn run(args: TranscribeArgs, stt: SttGlobalArgs, quiet: bool) -> CliResult<()> {
+pub async fn run(args: Args, stt: SttGlobalArgs, quiet: bool) -> CliResult<()> {
     let format = args.format;
     let output = args.output.clone();
 

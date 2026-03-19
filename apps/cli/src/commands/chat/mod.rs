@@ -6,6 +6,17 @@ mod ui;
 
 use std::time::Duration;
 
+use clap::Subcommand;
+
+#[derive(Subcommand)]
+pub enum Commands {
+    /// Resume an existing chat session
+    Resume {
+        #[arg(long)]
+        meeting: Option<String>,
+    },
+}
+
 #[derive(Clone, Copy, Debug, strum::Display)]
 #[strum(serialize_all = "snake_case")]
 pub(crate) enum Role {
@@ -108,6 +119,13 @@ impl Screen for ChatScreen {
     ) -> ScreenControl<Self::Output> {
         let action = match event {
             RuntimeEvent::Chunk(chunk) => Action::StreamChunk(chunk),
+            RuntimeEvent::ToolCallStarted {
+                tool_name,
+                arguments,
+            } => Action::ToolCallStarted {
+                tool_name,
+                arguments,
+            },
             RuntimeEvent::Completed(final_text) => Action::StreamCompleted(final_text),
             RuntimeEvent::Failed(error) => Action::StreamFailed(error),
             RuntimeEvent::TitleGenerated(title) => Action::TitleGenerated(title),

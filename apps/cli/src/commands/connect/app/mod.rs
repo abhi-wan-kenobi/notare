@@ -1,6 +1,7 @@
 mod calendar;
 mod form;
 
+pub(crate) use self::calendar::{CalendarComponent, CalendarPhase};
 pub(crate) use self::form::{FormField, FormFieldId, validate_base_url};
 
 use std::collections::HashSet;
@@ -8,21 +9,20 @@ use std::collections::HashSet;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::widgets::ListState;
 
-use crate::cli::{ConnectProvider, ConnectionType};
+use crate::commands::connect::{ConnectProvider, ConnectionType};
 
-use self::calendar::{CalendarOutcome, CalendarState};
+use self::calendar::ComponentResult;
 use self::form::{FormOutcome, FormState};
 use super::action::Action;
 use super::effect::{Effect, SaveData};
 use super::providers::PROVIDERS;
-use super::runtime::{CalendarPermissionState, RuntimeEvent};
+use super::runtime::RuntimeEvent;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Step {
     SelectProvider,
     InputForm,
-    CalendarPermission,
-    CalendarSelect,
+    Calendar,
     Done,
 }
 
@@ -35,7 +35,7 @@ pub(crate) struct App {
     list_state: ListState,
     search_query: String,
     form: FormState,
-    calendar: CalendarState,
+    calendar: CalendarComponent,
     configured_providers: HashSet<String>,
     current_stt_provider: Option<String>,
     current_llm_provider: Option<String>,
@@ -77,7 +77,7 @@ impl App {
             list_state: ListState::default(),
             search_query: String::new(),
             form: FormState::empty(),
-            calendar: CalendarState::new(),
+            calendar: CalendarComponent::new(),
             configured_providers,
             current_stt_provider,
             current_llm_provider,
@@ -130,28 +130,12 @@ impl App {
         self.current_llm_provider.as_deref()
     }
 
-    pub fn cal_auth_status(&self) -> Option<CalendarPermissionState> {
-        self.calendar.auth_status()
+    pub fn calendar(&self) -> &CalendarComponent {
+        &self.calendar
     }
 
-    pub fn cal_loading(&self) -> bool {
-        self.calendar.loading()
-    }
-
-    pub fn cal_items(&self) -> &[super::runtime::CalendarItem] {
-        self.calendar.items()
-    }
-
-    pub fn cal_enabled(&self) -> &[bool] {
-        self.calendar.enabled()
-    }
-
-    pub fn cal_list_state_mut(&mut self) -> &mut ListState {
-        self.calendar.list_state_mut()
-    }
-
-    pub fn cal_error(&self) -> Option<&str> {
-        self.calendar.error()
+    pub fn calendar_mut(&mut self) -> &mut CalendarComponent {
+        &mut self.calendar
     }
 
     pub fn filtered_providers(&self) -> Vec<ConnectProvider> {
@@ -199,16 +183,17 @@ impl App {
                     self.advance()
                 }
             },
-            Step::CalendarPermission => {
-                let effects = self.calendar.handle_permission_key(key);
-                if effects.iter().any(|e| matches!(e, Effect::LoadCalendars)) {
-                    self.step = Step::CalendarSelect;
-                }
-                effects
-            }
-            Step::CalendarSelect => {
+            Step::Calendar => {
                 let provider = self.provider.unwrap();
-                self.calendar.handle_select_key(key, provider)
+                match self.calendar.handle_key(key, provider) {
+                    ComponentResult::Effects(e) => e,
+                    ComponentResult::Done(e) => {
+                        self.step = Step::Done;
+                        let mut all = e;
+                        all.extend(self.advance());
+                        all
+                    }
+                }
             }
             Step::Done => Vec::new(),
         }
@@ -280,18 +265,9 @@ impl App {
     }
 
     fn handle_runtime_event(&mut self, event: RuntimeEvent) -> Vec<Effect> {
-        let outcome = self.calendar.handle_runtime_event(event);
-        match outcome {
-            CalendarOutcome::Effects(effects) => effects,
-            CalendarOutcome::AdvanceToSelect(effects) => {
-                if self.step == Step::CalendarPermission {
-                    self.step = Step::CalendarSelect;
-                    effects
-                } else {
-                    Vec::new()
-                }
-            }
-            CalendarOutcome::Done(effects) => {
+        match self.calendar.handle_runtime_event(event) {
+            ComponentResult::Effects(effects) => effects,
+            ComponentResult::Done(effects) => {
                 self.step = Step::Done;
                 let mut all = effects;
                 all.extend(self.advance());
@@ -315,7 +291,7 @@ impl App {
                     let provider = self.provider.unwrap();
 
                     if provider.is_local() && provider.is_calendar_provider() {
-                        self.step = Step::CalendarPermission;
+                        self.step = Step::Calendar;
                         return vec![Effect::CheckCalendarPermission];
                     }
 
@@ -328,7 +304,7 @@ impl App {
                     self.form = form;
                     return Vec::new();
                 }
-                Step::CalendarPermission | Step::CalendarSelect => {
+                Step::Calendar => {
                     return Vec::new();
                 }
                 Step::Done => {
@@ -351,6 +327,7 @@ impl App {
 
 #[cfg(test)]
 mod tests {
+    use super::super::runtime::CalendarPermissionState;
     use super::*;
 
     #[test]
@@ -507,9 +484,10 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn apple_calendar_goes_to_permission_step() {
+    fn apple_calendar_goes_to_calendar_step() {
         let (app, effects) = App::new(None, Some(ConnectProvider::AppleCalendar), None, None);
-        assert_eq!(app.step(), Step::CalendarPermission);
+        assert_eq!(app.step(), Step::Calendar);
+        assert_eq!(app.calendar().phase(), CalendarPhase::Permission);
         assert!(matches!(
             effects.as_slice(),
             [Effect::CheckCalendarPermission]
@@ -524,8 +502,9 @@ mod tests {
             CalendarPermissionState::Authorized,
         )));
 
-        assert_eq!(app.step(), Step::CalendarSelect);
-        assert!(app.cal_loading());
+        assert_eq!(app.step(), Step::Calendar);
+        assert_eq!(app.calendar().phase(), CalendarPhase::Select);
+        assert!(app.calendar().loading());
         assert!(matches!(effects.as_slice(), [Effect::LoadCalendars]));
     }
 

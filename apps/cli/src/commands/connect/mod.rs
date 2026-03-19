@@ -12,7 +12,40 @@ use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
 use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
-pub use crate::cli::{ConnectProvider, ConnectionType};
+use clap::ValueEnum;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum ConnectionType {
+    Stt,
+    Llm,
+    Cal,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum ConnectProvider {
+    Deepgram,
+    Soniox,
+    Assemblyai,
+    Openai,
+    Gladia,
+    Elevenlabs,
+    Mistral,
+    Fireworks,
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+    Cactus,
+    Anthropic,
+    Openrouter,
+    GoogleGenerativeAi,
+    AzureOpenai,
+    AzureAi,
+    Ollama,
+    Lmstudio,
+    Custom,
+    #[cfg(target_os = "macos")]
+    AppleCalendar,
+    GoogleCalendar,
+    OutlookCalendar,
+}
 use crate::error::{CliError, CliResult};
 
 use self::action::Action;
@@ -187,7 +220,9 @@ pub async fn run(args: Args) -> CliResult<bool> {
                         "--base-url",
                         format!(
                             "{} requires a base URL",
-                            app.provider().map(|p| p.id()).unwrap_or("provider")
+                            app.provider()
+                                .map(|p: ConnectProvider| p.id())
+                                .unwrap_or("provider")
                         ),
                     )
                 } else {
@@ -197,12 +232,10 @@ pub async fn run(args: Args) -> CliResult<bool> {
                     )
                 }
             }
-            Step::CalendarPermission | Step::CalendarSelect => {
-                CliError::required_argument_with_hint(
-                    "--provider",
-                    "calendar setup requires an interactive terminal",
-                )
-            }
+            Step::Calendar => CliError::required_argument_with_hint(
+                "--provider",
+                "calendar setup requires an interactive terminal",
+            ),
             Step::Done => unreachable!(),
         });
     } else {

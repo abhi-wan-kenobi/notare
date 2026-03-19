@@ -6,11 +6,54 @@ mod runtime;
 pub(crate) mod ui;
 pub(crate) mod view;
 
+use clap::Subcommand;
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
 use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
+use crate::cli::Provider;
 use crate::error::{CliError, CliResult};
+
+#[derive(Subcommand)]
+pub enum Commands {
+    /// Start a new meeting
+    New {
+        #[arg(short = 'p', long, value_enum)]
+        provider: Option<Provider>,
+
+        /// Create meeting from an audio file instead of live transcription
+        #[arg(long, value_name = "FILE")]
+        audio: Option<clio::InputPath>,
+
+        /// Keywords to boost transcription accuracy (with --audio)
+        #[arg(long = "keyword", short = 'k', value_name = "KEYWORD")]
+        keywords: Vec<String>,
+    },
+    /// View a specific meeting
+    View {
+        #[arg(long)]
+        id: String,
+    },
+    /// List participants in a meeting
+    Participants {
+        #[arg(long)]
+        id: String,
+    },
+    /// Add a participant to a meeting
+    AddParticipant {
+        #[arg(long)]
+        meeting: String,
+        #[arg(long)]
+        human: String,
+    },
+    /// Remove a participant from a meeting
+    RmParticipant {
+        #[arg(long)]
+        meeting: String,
+        #[arg(long)]
+        human: String,
+    },
+}
 
 use self::action::Action;
 use self::app::App;

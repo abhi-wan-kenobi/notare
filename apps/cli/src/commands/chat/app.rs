@@ -11,16 +11,9 @@ use super::Role;
 use super::action::Action;
 use super::effect::Effect;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Speaker {
-    User,
-    Assistant,
-    Error,
-}
-
-pub(crate) struct VisibleMessage {
-    pub(crate) speaker: Speaker,
-    pub(crate) content: String,
+pub(crate) enum TranscriptEntry {
+    Message { role: Role, content: String },
+    Error(String),
 }
 
 const MAX_HISTORY: usize = 20;
@@ -45,7 +38,7 @@ pub(crate) struct App {
     meeting_id: String,
     api_history: Vec<Message>,
     max_history: usize,
-    transcript: Vec<VisibleMessage>,
+    transcript: Vec<TranscriptEntry>,
     input: Editor<Theme>,
     stream: StreamState,
     last_error: Option<String>,
@@ -78,18 +71,22 @@ impl App {
 
     pub(crate) fn load_history(&mut self, messages: Vec<hypr_db_app::ChatMessageRow>) {
         for msg in messages {
-            let speaker = match msg.role.as_str() {
-                "user" => Speaker::User,
-                "assistant" => Speaker::Assistant,
-                _ => Speaker::Error,
+            let role = match msg.role.as_str() {
+                "user" => Role::User,
+                "assistant" => Role::Assistant,
+                _ => {
+                    self.transcript
+                        .push(TranscriptEntry::Error(msg.content.clone()));
+                    continue;
+                }
             };
-            self.transcript.push(VisibleMessage {
-                speaker,
+            self.transcript.push(TranscriptEntry::Message {
+                role,
                 content: msg.content.clone(),
             });
-            match speaker {
-                Speaker::User => self.push_api_history(Message::user(msg.content)),
-                Speaker::Assistant => self.push_api_history(Message::assistant(msg.content)),
+            match role {
+                Role::User => self.push_api_history(Message::user(msg.content)),
+                Role::Assistant => self.push_api_history(Message::assistant(msg.content)),
                 _ => {}
             }
         }
@@ -106,6 +103,20 @@ impl App {
                 if let StreamState::Streaming(buf) = &mut self.stream {
                     buf.push_str(&chunk);
                 }
+                if self.autoscroll {
+                    self.scroll.scroll_to_bottom();
+                }
+                Vec::new()
+            }
+            Action::ToolCallStarted {
+                tool_name: _,
+                arguments,
+            } => {
+                let command = extract_command(&arguments);
+                self.transcript.push(TranscriptEntry::Message {
+                    role: Role::Tool,
+                    content: format!("Running: char {command}"),
+                });
                 if self.autoscroll {
                     self.scroll.scroll_to_bottom();
                 }
@@ -164,7 +175,7 @@ impl App {
         &mut self.input
     }
 
-    pub(crate) fn transcript(&self) -> &[VisibleMessage] {
+    pub(crate) fn transcript(&self) -> &[TranscriptEntry] {
         &self.transcript
     }
 
@@ -253,8 +264,8 @@ impl App {
         self.last_error = None;
         self.stream = StreamState::Streaming(String::new());
         self.autoscroll = true;
-        self.transcript.push(VisibleMessage {
-            speaker: Speaker::User,
+        self.transcript.push(TranscriptEntry::Message {
+            role: Role::User,
             content: content.clone(),
         });
         let history = self.working_history();
@@ -295,15 +306,14 @@ impl App {
 
         if buffer.is_empty() {
             self.last_error = Some("Empty response from model".to_string());
-            self.transcript.push(VisibleMessage {
-                speaker: Speaker::Error,
-                content: "No response content received from the model.".to_string(),
-            });
+            self.transcript.push(TranscriptEntry::Error(
+                "No response content received from the model.".to_string(),
+            ));
             return Vec::new();
         }
 
-        self.transcript.push(VisibleMessage {
-            speaker: Speaker::Assistant,
+        self.transcript.push(TranscriptEntry::Message {
+            role: Role::Assistant,
             content: buffer.clone(),
         });
 
@@ -316,9 +326,15 @@ impl App {
         }];
         if !self.title_requested {
             self.title_requested = true;
-            if let Some(user_msg) = self.transcript.iter().find(|m| m.speaker == Speaker::User) {
+            if let Some(content) = self.transcript.iter().find_map(|e| match e {
+                TranscriptEntry::Message {
+                    role: Role::User,
+                    content,
+                } => Some(content),
+                _ => None,
+            }) {
                 effects.push(Effect::GenerateTitle {
-                    prompt: user_msg.content.clone(),
+                    prompt: content.clone(),
                     response: buffer.clone(),
                 });
             }
@@ -335,8 +351,8 @@ impl App {
         };
         let mut effects = Vec::new();
         if !buffer.is_empty() {
-            self.transcript.push(VisibleMessage {
-                speaker: Speaker::Assistant,
+            self.transcript.push(TranscriptEntry::Message {
+                role: Role::Assistant,
                 content: buffer.clone(),
             });
             let message_id = uuid::Uuid::new_v4().to_string();
@@ -349,10 +365,7 @@ impl App {
             });
         }
         self.last_error = Some(error.clone());
-        self.transcript.push(VisibleMessage {
-            speaker: Speaker::Error,
-            content: error,
-        });
+        self.transcript.push(TranscriptEntry::Error(error));
         effects
     }
 
@@ -381,6 +394,13 @@ impl App {
     fn scroll_page_down(&mut self) {
         self.scroll.scroll_page_down();
     }
+}
+
+fn extract_command(arguments: &str) -> String {
+    serde_json::from_str::<serde_json::Value>(arguments)
+        .ok()
+        .and_then(|v| v.get("command")?.as_str().map(String::from))
+        .unwrap_or_else(|| arguments.to_string())
 }
 
 #[cfg(test)]
@@ -423,8 +443,11 @@ mod tests {
         let effects = app.dispatch(Action::StreamFailed("boom".to_string()));
 
         assert_eq!(app.transcript.len(), 3);
-        assert_eq!(app.transcript[1].content, "partial");
-        assert_eq!(app.transcript[2].speaker, Speaker::Error);
+        assert!(matches!(
+            &app.transcript[1],
+            TranscriptEntry::Message { content, .. } if content == "partial"
+        ));
+        assert!(matches!(&app.transcript[2], TranscriptEntry::Error(_)));
         assert!(effects.iter().any(|e| matches!(e, Effect::Persist { .. })));
     }
 
@@ -448,8 +471,58 @@ mod tests {
 
         assert!(!app.streaming());
         assert_eq!(app.transcript.len(), 2);
-        assert_eq!(app.transcript[0].speaker, Speaker::User);
-        assert_eq!(app.transcript[1].speaker, Speaker::Error);
+        assert!(matches!(
+            &app.transcript[0],
+            TranscriptEntry::Message {
+                role: Role::User,
+                ..
+            }
+        ));
+        assert!(matches!(&app.transcript[1], TranscriptEntry::Error(_)));
         assert!(app.last_error.is_some());
+    }
+
+    #[test]
+    fn tool_call_creates_tool_transcript_entry() {
+        let mut app = test_app();
+        app.input_mut().insert_str("list humans");
+        let _ = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
+
+        let _ = app.dispatch(Action::ToolCallStarted {
+            tool_name: "Char".to_string(),
+            arguments: r#"{"command":"humans list"}"#.to_string(),
+        });
+
+        assert_eq!(app.transcript.len(), 2);
+        assert!(matches!(
+            &app.transcript[1],
+            TranscriptEntry::Message { role: Role::Tool, content } if content == "Running: char humans list"
+        ));
+    }
+
+    #[test]
+    fn parallel_tool_calls_each_append_entry() {
+        let mut app = test_app();
+        app.input_mut().insert_str("do stuff");
+        let _ = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
+
+        let _ = app.dispatch(Action::ToolCallStarted {
+            tool_name: "Char".to_string(),
+            arguments: r#"{"command":"humans list"}"#.to_string(),
+        });
+        let _ = app.dispatch(Action::ToolCallStarted {
+            tool_name: "Char".to_string(),
+            arguments: r#"{"command":"orgs list"}"#.to_string(),
+        });
+
+        assert_eq!(app.transcript.len(), 3);
+        assert!(matches!(
+            &app.transcript[1],
+            TranscriptEntry::Message { role: Role::Tool, content } if content == "Running: char humans list"
+        ));
+        assert!(matches!(
+            &app.transcript[2],
+            TranscriptEntry::Message { role: Role::Tool, content } if content == "Running: char orgs list"
+        ));
     }
 }

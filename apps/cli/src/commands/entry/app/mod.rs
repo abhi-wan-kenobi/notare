@@ -174,10 +174,10 @@ impl App {
             } => {
                 for ct in &connection_types {
                     match ct {
-                        crate::cli::ConnectionType::Stt => {
+                        crate::commands::connect::ConnectionType::Stt => {
                             self.stt_provider = Some(provider_id.clone());
                         }
-                        crate::cli::ConnectionType::Llm => {
+                        crate::commands::connect::ConnectionType::Llm => {
                             self.llm_provider = Some(provider_id.clone());
                         }
                         _ => {}
@@ -358,7 +358,7 @@ impl App {
     }
 
     fn dispatch_command(&mut self, cmd: Command, rest: &str) -> Vec<Effect> {
-        use crate::cli::ModelCommands;
+        use crate::commands::model::Commands as ModelCommands;
 
         match cmd {
             Command::MeetingsNew => vec![Effect::Launch(super::EntryCommand::MeetingsNew)],
@@ -608,7 +608,7 @@ mod tests {
         let mut app = App::new(None, None, None);
         let (connect_app, _) = connect::app::App::new(
             None,
-            Some(crate::cli::ConnectProvider::AppleCalendar),
+            Some(crate::commands::connect::ConnectProvider::AppleCalendar),
             None,
             None,
         );
@@ -625,7 +625,7 @@ mod tests {
         match app.overlay {
             Overlay::Connect(ref connect_app) => {
                 assert_eq!(
-                    connect_app.cal_auth_status(),
+                    connect_app.calendar().auth_status(),
                     Some(connect::runtime::CalendarPermissionState::NotDetermined)
                 );
             }

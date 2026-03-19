@@ -4,12 +4,9 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::ListItem;
 
 use crate::theme::Theme;
-use crate::widgets::{
-    CenteredDialog, KeyHints, MultiSelect, MultiSelectEntry, PermissionButton, PermissionStatus,
-    SelectList,
-};
+use crate::widgets::{CenteredDialog, KeyHints, MultiSelect, MultiSelectEntry, SelectList};
 
-use super::app::{App, Tab};
+use super::app::{App, ProviderTab, Tab};
 use super::runtime::CalendarPermissionState;
 
 const THEME: Theme = Theme::DEFAULT;
@@ -29,12 +26,13 @@ pub fn draw(frame: &mut ratatui::Frame, app: &mut App) {
     draw_tabs(frame, app, tabs_area);
 
     match app.tab {
-        Tab::Stt => draw_provider_content(frame, app, true, content_area),
-        Tab::Llm => draw_provider_content(frame, app, false, content_area),
+        Tab::Stt => draw_provider_content(frame, &mut app.stt, content_area),
+        Tab::Llm => draw_provider_content(frame, &mut app.llm, content_area),
         Tab::Calendar => draw_calendar_content(frame, app, content_area),
     }
 
-    let authorized = app.cal_permission == Some(CalendarPermissionState::Authorized);
+    let cal_has_items = app.cal_permission == Some(CalendarPermissionState::Authorized)
+        && !app.calendars.is_empty();
     let hints = match app.tab {
         Tab::Stt | Tab::Llm => KeyHints::new(&THEME).hints(vec![
             ("\u{2190}\u{2192}", "tab"),
@@ -42,18 +40,16 @@ pub fn draw(frame: &mut ratatui::Frame, app: &mut App) {
             ("Enter", "confirm"),
             ("Esc", "quit"),
         ]),
-        Tab::Calendar if !authorized => KeyHints::new(&THEME).hints(vec![
-            ("Enter", "request access"),
-            ("\u{2190}\u{2192}", "tab"),
-            ("Esc", "quit"),
-        ]),
-        Tab::Calendar => KeyHints::new(&THEME).hints(vec![
+        Tab::Calendar if cal_has_items => KeyHints::new(&THEME).hints(vec![
             ("\u{2190}\u{2192}", "tab"),
             ("\u{2191}\u{2193}", "navigate"),
             ("Space", "toggle"),
             ("Enter", "save"),
             ("Esc", "quit"),
         ]),
+        Tab::Calendar => {
+            KeyHints::new(&THEME).hints(vec![("\u{2190}\u{2192}", "tab"), ("Esc", "quit")])
+        }
     };
     frame.render_widget(hints, hints_area);
 }
@@ -81,22 +77,10 @@ fn draw_tabs(frame: &mut ratatui::Frame, app: &App, area: ratatui::layout::Rect)
 
 fn draw_provider_content(
     frame: &mut ratatui::Frame,
-    app: &mut App,
-    is_stt: bool,
+    pt: &mut ProviderTab,
     area: ratatui::layout::Rect,
 ) {
-    let providers = if is_stt {
-        &app.stt_providers
-    } else {
-        &app.llm_providers
-    };
-    let current = if is_stt {
-        &app.current_stt
-    } else {
-        &app.current_llm
-    };
-
-    if providers.is_empty() {
+    if pt.providers.is_empty() {
         let [label_area, _, msg_area] = Layout::vertical([
             Constraint::Length(1),
             Constraint::Length(1),
@@ -132,7 +116,7 @@ fn draw_provider_content(
     ));
     frame.render_widget(label, label_area);
 
-    if let Some(cur) = current {
+    if let Some(cur) = &pt.current {
         let current_line = Line::from(vec![
             Span::raw("Current: "),
             Span::styled(cur.as_str(), THEME.status_active),
@@ -140,10 +124,11 @@ fn draw_provider_content(
         frame.render_widget(current_line, current_area);
     }
 
-    let items: Vec<ListItem> = providers
+    let items: Vec<ListItem> = pt
+        .providers
         .iter()
         .map(|p| {
-            let marker = if current.as_deref() == Some(p.as_str()) {
+            let marker = if pt.current.as_deref() == Some(p.as_str()) {
                 "\u{2713} "
             } else {
                 "  "
@@ -156,23 +141,15 @@ fn draw_provider_content(
         .collect();
 
     let list = SelectList::new(items, &THEME);
-    frame.render_stateful_widget(list, list_area, &mut app.provider_list_state);
+    frame.render_stateful_widget(list, list_area, &mut pt.list_state);
 }
 
 fn draw_calendar_content(frame: &mut ratatui::Frame, app: &mut App, area: ratatui::layout::Rect) {
     let authorized = app.cal_permission == Some(CalendarPermissionState::Authorized);
 
-    let permission_status = match app.cal_permission {
-        None => PermissionStatus::Checking,
-        Some(CalendarPermissionState::NotDetermined) => PermissionStatus::NotRequested,
-        Some(CalendarPermissionState::Authorized) => PermissionStatus::Authorized,
-        Some(CalendarPermissionState::Denied) => PermissionStatus::Denied,
-    };
-
     if !authorized {
-        let [label_area, perm_area, _, msg_area] = Layout::vertical([
+        let [label_area, _, msg_area] = Layout::vertical([
             Constraint::Length(1),
-            Constraint::Length(2),
             Constraint::Length(1),
             Constraint::Min(0),
         ])
@@ -183,19 +160,35 @@ fn draw_calendar_content(frame: &mut ratatui::Frame, app: &mut App, area: ratatu
             Style::new().add_modifier(Modifier::BOLD),
         ));
         frame.render_widget(label, label_area);
-        frame.render_widget(PermissionButton::new(permission_status, &THEME), perm_area);
 
         let msg = Line::from(Span::styled(
-            "Grant calendar access to manage calendars",
+            "Permission not granted. Run `char connect` to set up calendar access.",
             THEME.muted,
         ));
         frame.render_widget(msg, msg_area);
         return;
     }
 
-    let [label_area, perm_area, _gap, cal_label_area, cal_list_area] = Layout::vertical([
-        Constraint::Length(1),
-        Constraint::Length(2),
+    if app.calendars.is_empty() {
+        let [label_area, _, msg_area] = Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Min(0),
+        ])
+        .areas(area);
+
+        let label = Line::from(Span::styled(
+            "Apple Calendar",
+            Style::new().add_modifier(Modifier::BOLD),
+        ));
+        frame.render_widget(label, label_area);
+
+        let msg = Line::from(Span::styled("No calendars found.", THEME.muted));
+        frame.render_widget(msg, msg_area);
+        return;
+    }
+
+    let [label_area, _, cal_list_area] = Layout::vertical([
         Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Min(0),
@@ -207,19 +200,6 @@ fn draw_calendar_content(frame: &mut ratatui::Frame, app: &mut App, area: ratatu
         Style::new().add_modifier(Modifier::BOLD),
     ));
     frame.render_widget(label, label_area);
-    frame.render_widget(PermissionButton::new(permission_status, &THEME), perm_area);
-
-    let cal_label = Line::from(Span::styled(
-        "Calendars",
-        Style::new().add_modifier(Modifier::BOLD),
-    ));
-    frame.render_widget(cal_label, cal_label_area);
-
-    if app.calendars.is_empty() {
-        let msg = Line::from(Span::styled("No calendars found.", THEME.muted));
-        frame.render_widget(msg, cal_list_area);
-        return;
-    }
 
     let mut current_source: Option<&str> = None;
     let mut entries: Vec<MultiSelectEntry> = Vec::new();

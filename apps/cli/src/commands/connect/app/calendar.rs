@@ -1,18 +1,24 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::widgets::ListState;
 
-use crate::cli::ConnectProvider;
+use super::super::ConnectProvider;
 
 use super::super::effect::{CalendarSaveData, Effect};
 use super::super::runtime::{CalendarItem, CalendarPermissionState, RuntimeEvent};
 
-pub(crate) enum CalendarOutcome {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CalendarPhase {
+    Permission,
+    Select,
+}
+
+pub(crate) enum ComponentResult {
     Effects(Vec<Effect>),
-    AdvanceToSelect(Vec<Effect>),
     Done(Vec<Effect>),
 }
 
-pub(crate) struct CalendarState {
+pub(crate) struct CalendarComponent {
+    phase: CalendarPhase,
     auth_status: Option<CalendarPermissionState>,
     loading: bool,
     items: Vec<CalendarItem>,
@@ -21,9 +27,10 @@ pub(crate) struct CalendarState {
     error: Option<String>,
 }
 
-impl CalendarState {
+impl CalendarComponent {
     pub(crate) fn new() -> Self {
         Self {
+            phase: CalendarPhase::Permission,
             auth_status: None,
             loading: false,
             items: Vec::new(),
@@ -31,6 +38,14 @@ impl CalendarState {
             list_state: ListState::default(),
             error: None,
         }
+    }
+
+    pub(crate) fn phase(&self) -> CalendarPhase {
+        self.phase
+    }
+
+    pub(crate) fn show_header(&self) -> bool {
+        self.phase != CalendarPhase::Select
     }
 
     pub(crate) fn auth_status(&self) -> Option<CalendarPermissionState> {
@@ -57,90 +72,96 @@ impl CalendarState {
         self.error.as_deref()
     }
 
-    pub(crate) fn handle_permission_key(&mut self, key: KeyEvent) -> Vec<Effect> {
-        if key.code != KeyCode::Enter {
-            return Vec::new();
-        }
-
-        match self.auth_status {
-            Some(CalendarPermissionState::NotDetermined) => {
-                vec![Effect::RequestCalendarPermission]
-            }
-            Some(CalendarPermissionState::Denied) => {
-                vec![Effect::ResetCalendarPermission]
-            }
-            Some(CalendarPermissionState::Authorized) => {
-                self.error = None;
-                self.loading = true;
-                vec![Effect::LoadCalendars]
-            }
-            None => Vec::new(),
-        }
-    }
-
-    pub(crate) fn handle_select_key(
+    pub(crate) fn handle_key(
         &mut self,
         key: KeyEvent,
         provider: ConnectProvider,
-    ) -> Vec<Effect> {
-        if self.loading {
-            return Vec::new();
-        }
-
-        let len = self.items.len();
-        if len == 0 {
-            return Vec::new();
-        }
-
-        match key.code {
-            KeyCode::Up => {
-                let current = self.list_state.selected().unwrap_or(0);
-                if current > 0 {
-                    self.list_state.select(Some(current - 1));
+    ) -> ComponentResult {
+        match self.phase {
+            CalendarPhase::Permission => {
+                if key.code != KeyCode::Enter {
+                    return ComponentResult::Effects(Vec::new());
                 }
-                Vec::new()
-            }
-            KeyCode::Down => {
-                let current = self.list_state.selected().unwrap_or(0);
-                if current + 1 < len {
-                    self.list_state.select(Some(current + 1));
-                }
-                Vec::new()
-            }
-            KeyCode::Char(' ') => {
-                if let Some(idx) = self.list_state.selected() {
-                    if idx < self.enabled.len() {
-                        self.enabled[idx] = !self.enabled[idx];
+
+                let effects = match self.auth_status {
+                    Some(CalendarPermissionState::NotDetermined) => {
+                        vec![Effect::RequestCalendarPermission]
                     }
+                    Some(CalendarPermissionState::Denied) => {
+                        vec![Effect::ResetCalendarPermission]
+                    }
+                    Some(CalendarPermissionState::Authorized) => {
+                        self.error = None;
+                        self.loading = true;
+                        self.phase = CalendarPhase::Select;
+                        vec![Effect::LoadCalendars]
+                    }
+                    None => Vec::new(),
+                };
+                ComponentResult::Effects(effects)
+            }
+            CalendarPhase::Select => {
+                if self.loading {
+                    return ComponentResult::Effects(Vec::new());
                 }
-                Vec::new()
+
+                let len = self.items.len();
+                if len == 0 {
+                    return ComponentResult::Effects(Vec::new());
+                }
+
+                match key.code {
+                    KeyCode::Up => {
+                        let current = self.list_state.selected().unwrap_or(0);
+                        if current > 0 {
+                            self.list_state.select(Some(current - 1));
+                        }
+                        ComponentResult::Effects(Vec::new())
+                    }
+                    KeyCode::Down => {
+                        let current = self.list_state.selected().unwrap_or(0);
+                        if current + 1 < len {
+                            self.list_state.select(Some(current + 1));
+                        }
+                        ComponentResult::Effects(Vec::new())
+                    }
+                    KeyCode::Char(' ') => {
+                        if let Some(idx) = self.list_state.selected() {
+                            if idx < self.enabled.len() {
+                                self.enabled[idx] = !self.enabled[idx];
+                            }
+                        }
+                        ComponentResult::Effects(Vec::new())
+                    }
+                    KeyCode::Enter => {
+                        let items: Vec<(CalendarItem, bool)> = self
+                            .items
+                            .iter()
+                            .zip(self.enabled.iter())
+                            .map(|(item, &enabled)| (item.clone(), enabled))
+                            .collect();
+                        ComponentResult::Done(vec![Effect::SaveCalendars(CalendarSaveData {
+                            provider: provider.id().to_string(),
+                            items,
+                        })])
+                    }
+                    _ => ComponentResult::Effects(Vec::new()),
+                }
             }
-            KeyCode::Enter => {
-                let items: Vec<(CalendarItem, bool)> = self
-                    .items
-                    .iter()
-                    .zip(self.enabled.iter())
-                    .map(|(item, &enabled)| (item.clone(), enabled))
-                    .collect();
-                vec![Effect::SaveCalendars(CalendarSaveData {
-                    provider: provider.id().to_string(),
-                    items,
-                })]
-            }
-            _ => Vec::new(),
         }
     }
 
-    pub(crate) fn handle_runtime_event(&mut self, event: RuntimeEvent) -> CalendarOutcome {
+    pub(crate) fn handle_runtime_event(&mut self, event: RuntimeEvent) -> ComponentResult {
         match event {
             RuntimeEvent::CalendarPermissionStatus(status) => {
                 self.auth_status = Some(status);
                 if status == CalendarPermissionState::Authorized {
                     self.error = None;
                     self.loading = true;
-                    CalendarOutcome::AdvanceToSelect(vec![Effect::LoadCalendars])
+                    self.phase = CalendarPhase::Select;
+                    ComponentResult::Effects(vec![Effect::LoadCalendars])
                 } else {
-                    CalendarOutcome::Effects(Vec::new())
+                    ComponentResult::Effects(Vec::new())
                 }
             }
             RuntimeEvent::CalendarPermissionResult(granted) => {
@@ -148,15 +169,16 @@ impl CalendarState {
                     self.auth_status = Some(CalendarPermissionState::Authorized);
                     self.error = None;
                     self.loading = true;
-                    CalendarOutcome::AdvanceToSelect(vec![Effect::LoadCalendars])
+                    self.phase = CalendarPhase::Select;
+                    ComponentResult::Effects(vec![Effect::LoadCalendars])
                 } else {
                     self.auth_status = Some(CalendarPermissionState::Denied);
-                    CalendarOutcome::Effects(Vec::new())
+                    ComponentResult::Effects(Vec::new())
                 }
             }
             RuntimeEvent::CalendarPermissionReset => {
                 self.auth_status = None;
-                CalendarOutcome::Effects(vec![Effect::CheckCalendarPermission])
+                ComponentResult::Effects(vec![Effect::CheckCalendarPermission])
             }
             RuntimeEvent::CalendarsLoaded(mut items) => {
                 self.error = None;
@@ -167,13 +189,13 @@ impl CalendarState {
                 if !self.items.is_empty() {
                     self.list_state.select(Some(0));
                 }
-                CalendarOutcome::Effects(Vec::new())
+                ComponentResult::Effects(Vec::new())
             }
-            RuntimeEvent::CalendarsSaved => CalendarOutcome::Done(Vec::new()),
+            RuntimeEvent::CalendarsSaved => ComponentResult::Done(Vec::new()),
             RuntimeEvent::Error(msg) => {
                 self.error = Some(msg);
                 self.loading = false;
-                CalendarOutcome::Effects(Vec::new())
+                ComponentResult::Effects(Vec::new())
             }
         }
     }

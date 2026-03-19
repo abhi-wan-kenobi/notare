@@ -6,6 +6,7 @@ use owhisper_client::{ListenClient, RealtimeSttAdapter};
 use owhisper_interface::stream::StreamResponse;
 use tokio::sync::mpsc;
 
+pub use super::super::{DebugProvider, TranscribeArgs as DebugTranscribeArgs};
 use super::audio::{
     ActualAudio, AudioProvider, AudioSource, ChannelKind, DEFAULT_SAMPLE_RATE,
     DEFAULT_TIMEOUT_SECS, DisplayMode, create_dual_audio_stream, create_single_audio_stream,
@@ -13,7 +14,6 @@ use super::audio::{
 use super::server::spawn_router;
 use super::tracing::{TracingCapture, init_capture};
 use crate::cli::Provider;
-pub use crate::cli::{DebugProvider, DebugTranscribeArgs};
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 use crate::config::stt::resolve_local_model_path;
 use crate::config::stt::{ResolvedSttConfig, resolve_config};

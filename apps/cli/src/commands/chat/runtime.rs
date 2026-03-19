@@ -5,7 +5,7 @@ use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 
-use crate::agent::Backend;
+use crate::agent::{Backend, StreamEvent};
 use crate::error::{CliError, CliResult};
 use crate::llm::ResolvedLlmConfig;
 
@@ -13,6 +13,10 @@ use super::Role;
 
 pub(crate) enum RuntimeEvent {
     Chunk(String),
+    ToolCallStarted {
+        tool_name: String,
+        arguments: String,
+    },
     Completed(Option<String>),
     Failed(String),
     TitleGenerated(String),
@@ -52,7 +56,7 @@ impl Runtime {
                 "Generate a short title (3-5 words) for this conversation. Reply with ONLY the title, no quotes or punctuation.\n\nUser: {prompt}\nAssistant: {response}"
             );
             let result = backend
-                .stream_text(title_prompt, Vec::new(), 1, |_| Ok(()))
+                .stream_text(title_prompt, Vec::new(), 1, |_event| Ok(()))
                 .await;
             if let Ok(Some(title)) = result {
                 let title = title.trim().to_string();
@@ -105,8 +109,19 @@ impl Runtime {
 
         tokio::spawn(async move {
             let final_text = match backend
-                .stream_text(prompt, history, max_turns, |chunk| {
-                    tx.send(RuntimeEvent::Chunk(chunk.to_string()))
+                .stream_text(prompt, history, max_turns, |event| {
+                    let runtime_event = match event {
+                        StreamEvent::TextChunk(chunk) => RuntimeEvent::Chunk(chunk),
+                        StreamEvent::ToolCallStart {
+                            tool_name,
+                            arguments,
+                        } => RuntimeEvent::ToolCallStarted {
+                            tool_name,
+                            arguments,
+                        },
+                        StreamEvent::ToolResult { .. } => return Ok(()),
+                    };
+                    tx.send(runtime_event)
                         .map_err(|e| CliError::operation_failed("chat stream", e.to_string()))?;
                     Ok(())
                 })

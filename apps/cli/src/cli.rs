@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 
@@ -46,7 +44,7 @@ pub struct GlobalArgs {
     pub no_color: bool,
 
     #[arg(long, global = true, env = "CHAR_BASE", value_name = "DIR")]
-    pub base: Option<PathBuf>,
+    pub base: Option<std::path::PathBuf>,
 }
 
 fn parse_base_url(value: &str) -> Result<String, String> {
@@ -65,7 +63,7 @@ pub enum Commands {
     /// Interactive chat with an LLM
     Chat {
         #[command(subcommand)]
-        command: Option<ChatCommands>,
+        command: Option<crate::commands::chat::Commands>,
         /// Send a single prompt without entering the TUI (use `-` to read from stdin)
         #[arg(long)]
         prompt: Option<String>,
@@ -75,30 +73,30 @@ pub enum Commands {
     /// Configure an STT or LLM provider
     Connect {
         #[arg(long, value_enum)]
-        r#type: Option<ConnectionType>,
+        r#type: Option<crate::commands::connect::ConnectionType>,
 
         #[arg(long, value_enum)]
-        provider: Option<ConnectProvider>,
+        provider: Option<crate::commands::connect::ConnectProvider>,
     },
     /// Browse past meetings
     Meetings {
         #[command(subcommand)]
-        command: Option<MeetingsCommands>,
+        command: Option<crate::commands::meetings::Commands>,
     },
     /// Browse humans (contacts)
     Humans {
         #[command(subcommand)]
-        command: Option<HumansCommands>,
+        command: Option<crate::commands::humans::Commands>,
     },
     /// Browse organizations
     Orgs {
         #[command(subcommand)]
-        command: Option<OrgsCommands>,
+        command: Option<crate::commands::orgs::Commands>,
     },
     /// Configure providers and settings
     Configure {
         #[arg(long, value_enum)]
-        tab: Option<ConfigureTab>,
+        tab: Option<crate::commands::configure::ConfigureTab>,
     },
     /// Authenticate with char.com
     Auth,
@@ -111,23 +109,23 @@ pub enum Commands {
     /// Transcribe an audio file (no meeting created)
     Transcribe {
         #[command(flatten)]
-        args: TranscribeArgs,
+        args: crate::commands::transcribe::Args,
     },
     /// Manage local models
     Models {
         #[command(subcommand)]
-        command: ModelCommands,
+        command: crate::commands::model::Commands,
     },
     /// Debug and diagnostic tools
     #[cfg(feature = "dev")]
     Debug {
         #[command(subcommand)]
-        command: DebugCommands,
+        command: crate::commands::debug::Commands,
     },
     /// Export data in various formats
     Export {
         #[command(subcommand)]
-        command: ExportCommands,
+        command: crate::commands::export::Commands,
     },
     /// Generate shell completions
     Completions {
@@ -136,106 +134,7 @@ pub enum Commands {
     },
 }
 
-#[derive(Subcommand)]
-pub enum MeetingsCommands {
-    /// Start a new meeting
-    New {
-        #[arg(short = 'p', long, value_enum)]
-        provider: Option<Provider>,
-
-        /// Create meeting from an audio file instead of live transcription
-        #[arg(long, value_name = "FILE")]
-        audio: Option<clio::InputPath>,
-
-        /// Keywords to boost transcription accuracy (with --audio)
-        #[arg(long = "keyword", short = 'k', value_name = "KEYWORD")]
-        keywords: Vec<String>,
-    },
-    /// View a specific meeting
-    View {
-        #[arg(long)]
-        id: String,
-    },
-    /// List participants in a meeting
-    Participants {
-        #[arg(long)]
-        id: String,
-    },
-    /// Add a participant to a meeting
-    AddParticipant {
-        #[arg(long)]
-        meeting: String,
-        #[arg(long)]
-        human: String,
-    },
-    /// Remove a participant from a meeting
-    RmParticipant {
-        #[arg(long)]
-        meeting: String,
-        #[arg(long)]
-        human: String,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum HumansCommands {
-    /// List all humans
-    List,
-    /// Add a new human
-    Add {
-        name: String,
-        #[arg(long)]
-        email: Option<String>,
-        #[arg(long)]
-        org: Option<String>,
-        #[arg(long)]
-        title: Option<String>,
-    },
-    /// Show details for a human
-    Show {
-        #[arg(long)]
-        id: String,
-    },
-    /// Remove a human
-    Rm {
-        #[arg(long)]
-        id: String,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum OrgsCommands {
-    /// List all organizations
-    List,
-    /// Add a new organization
-    Add { name: String },
-    /// Show details for an organization
-    Show {
-        #[arg(long)]
-        id: String,
-    },
-    /// Remove an organization
-    Rm {
-        #[arg(long)]
-        id: String,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum ChatCommands {
-    /// Resume an existing chat session
-    Resume {
-        #[arg(long)]
-        meeting: Option<String>,
-    },
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum ConfigureTab {
-    Stt,
-    Llm,
-    Calendar,
-}
+// --- Shared types (used across multiple modules) ---
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 pub enum Provider {
@@ -256,259 +155,6 @@ pub enum OutputFormat {
     Pretty,
     Text,
     Json,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
-pub enum ConnectionType {
-    Stt,
-    Llm,
-    Cal,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
-pub enum ConnectProvider {
-    Deepgram,
-    Soniox,
-    Assemblyai,
-    Openai,
-    Gladia,
-    Elevenlabs,
-    Mistral,
-    Fireworks,
-    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    Cactus,
-    Anthropic,
-    Openrouter,
-    GoogleGenerativeAi,
-    AzureOpenai,
-    AzureAi,
-    Ollama,
-    Lmstudio,
-    Custom,
-    #[cfg(target_os = "macos")]
-    AppleCalendar,
-    GoogleCalendar,
-    OutlookCalendar,
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum AudioMode {
-    Dual,
-    #[cfg(feature = "dev")]
-    Mock,
-}
-
-#[derive(clap::Args)]
-pub struct TranscribeArgs {
-    #[arg(long, value_name = "FILE", visible_alias = "file")]
-    pub input: clio::InputPath,
-    #[arg(short = 'p', long, value_enum)]
-    pub provider: Provider,
-    #[arg(long = "keyword", short = 'k', value_name = "KEYWORD")]
-    pub keywords: Vec<String>,
-    #[arg(short = 'o', long, value_name = "FILE")]
-    pub output: Option<PathBuf>,
-    #[arg(short = 'f', long, value_enum, default_value = "pretty")]
-    pub format: OutputFormat,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum ModelCommands {
-    /// Show resolved paths for settings and model storage
-    Paths,
-    /// List available models and their download status
-    List {
-        #[arg(long, value_enum)]
-        kind: Option<ModelKind>,
-        #[arg(long)]
-        supported: bool,
-        #[arg(short = 'f', long, value_enum, default_value = "text")]
-        format: OutputFormat,
-    },
-    /// Manage downloadable Cactus models
-    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    Cactus {
-        #[command(subcommand)]
-        command: CactusCommands,
-    },
-    /// Download a model by name
-    Download { name: String },
-    /// Delete a downloaded model
-    Delete { name: String },
-}
-
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-#[derive(Subcommand, Debug)]
-pub enum CactusCommands {
-    /// List available Cactus models
-    List {
-        #[arg(short = 'f', long, value_enum, default_value = "text")]
-        format: OutputFormat,
-    },
-    /// Download a Cactus model by name
-    Download { name: String },
-    /// Delete a downloaded Cactus model
-    Delete { name: String },
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum ModelKind {
-    Stt,
-    Llm,
-}
-
-#[derive(Subcommand)]
-pub enum ExportCommands {
-    /// Export a single meeting with all associated data
-    Meeting {
-        #[arg(long)]
-        id: String,
-        #[arg(short = 'f', long, value_enum, default_value = "json")]
-        format: ExportDocFormat,
-        #[arg(short = 'o', long, value_name = "FILE")]
-        output: Option<PathBuf>,
-    },
-    /// Export meeting list
-    Meetings {
-        #[arg(short = 'f', long, value_enum, default_value = "text")]
-        format: ExportTableFormat,
-        #[arg(short = 'o', long, value_name = "FILE")]
-        output: Option<PathBuf>,
-    },
-    /// Export transcript for a meeting
-    Transcript {
-        #[arg(long)]
-        meeting: String,
-        #[arg(short = 'f', long, value_enum, default_value = "text")]
-        format: ExportTranscriptFormat,
-        #[arg(short = 'o', long, value_name = "FILE")]
-        output: Option<PathBuf>,
-    },
-    /// Export notes for a meeting
-    Notes {
-        #[arg(long)]
-        meeting: String,
-        #[arg(short = 'f', long, value_enum, default_value = "markdown")]
-        format: ExportDocFormat,
-        #[arg(short = 'o', long, value_name = "FILE")]
-        output: Option<PathBuf>,
-    },
-    /// Export chat messages for a meeting
-    Chat {
-        #[arg(long)]
-        meeting: String,
-        #[arg(short = 'f', long, value_enum, default_value = "markdown")]
-        format: ExportDocFormat,
-        #[arg(short = 'o', long, value_name = "FILE")]
-        output: Option<PathBuf>,
-    },
-    /// Export all contacts
-    Humans {
-        #[arg(short = 'f', long, value_enum, default_value = "text")]
-        format: ExportTableFormat,
-        #[arg(short = 'o', long, value_name = "FILE")]
-        output: Option<PathBuf>,
-    },
-    /// Export all organizations
-    Orgs {
-        #[arg(short = 'f', long, value_enum, default_value = "text")]
-        format: ExportTableFormat,
-        #[arg(short = 'o', long, value_name = "FILE")]
-        output: Option<PathBuf>,
-    },
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum ExportDocFormat {
-    Json,
-    Markdown,
-    Text,
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum ExportTableFormat {
-    Json,
-    Csv,
-    Text,
-}
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum ExportTranscriptFormat {
-    Json,
-    Text,
-    Srt,
-    Vtt,
-}
-
-#[cfg(feature = "dev")]
-#[derive(Subcommand)]
-pub enum DebugCommands {
-    /// Real-time transcription from audio devices
-    Transcribe {
-        #[command(flatten)]
-        args: DebugTranscribeArgs,
-    },
-}
-
-#[cfg(feature = "dev")]
-#[derive(Clone, Default, ValueEnum)]
-pub enum TranscribeMode {
-    /// Print transcription line-by-line to stderr (default)
-    #[default]
-    Raw,
-    /// TUI with speaker labels, word-level tracking, and segmenting
-    Rich,
-}
-
-#[cfg(feature = "dev")]
-#[derive(clap::Args)]
-pub struct DebugTranscribeArgs {
-    #[arg(long, value_enum)]
-    pub provider: DebugProvider,
-    /// Display mode
-    #[arg(long, value_enum, default_value = "raw")]
-    pub mode: TranscribeMode,
-    /// Model name (API model for cloud providers, model ID for local)
-    #[arg(long, conflicts_with = "model_path")]
-    pub model: Option<String>,
-    /// Path to a local model directory on disk
-    #[arg(long, conflicts_with = "model")]
-    pub model_path: Option<PathBuf>,
-    #[arg(long, env = "DEEPGRAM_API_KEY", hide_env_values = true)]
-    pub deepgram_api_key: Option<String>,
-    #[arg(long, env = "SONIOX_API_KEY", hide_env_values = true)]
-    pub soniox_api_key: Option<String>,
-    #[command(flatten)]
-    pub audio: AudioArgs,
-}
-
-#[cfg(feature = "dev")]
-#[derive(Clone, ValueEnum)]
-pub enum DebugProvider {
-    Deepgram,
-    Soniox,
-    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    Cactus,
-    ProxyHyprnote,
-    ProxyDeepgram,
-    ProxySoniox,
-}
-
-#[cfg(feature = "dev")]
-#[derive(clap::Args)]
-pub struct AudioArgs {
-    #[arg(long, value_enum, default_value = "input")]
-    pub audio: AudioSource,
-}
-
-#[cfg(feature = "dev")]
-#[derive(Clone, ValueEnum)]
-pub enum AudioSource {
-    Input,
-    Output,
-    RawDual,
-    AecDual,
-    Mock,
 }
 
 pub fn generate_completions(shell: clap_complete::Shell) {

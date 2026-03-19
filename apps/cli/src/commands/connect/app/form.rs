@@ -1,7 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use url::Url;
 
-use crate::cli::ConnectProvider;
+use super::super::ConnectProvider;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum FormFieldId {

@@ -11,7 +11,7 @@ mod ui;
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
 use tokio::sync::mpsc;
 
-pub use crate::cli::{DebugProvider, DebugTranscribeArgs, TranscribeMode};
+pub use super::{DebugProvider, TranscribeArgs as DebugTranscribeArgs, TranscribeMode};
 use crate::error::{CliError, CliResult};
 
 use self::action::Action;

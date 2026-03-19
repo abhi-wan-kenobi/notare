@@ -71,27 +71,27 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) 
                 }
 
                 let is_active = match cap {
-                    crate::cli::ConnectionType::Stt => is_active_stt,
-                    crate::cli::ConnectionType::Llm => is_active_llm,
-                    crate::cli::ConnectionType::Cal => false,
+                    super::super::ConnectionType::Stt => is_active_stt,
+                    super::super::ConnectionType::Llm => is_active_llm,
+                    super::super::ConnectionType::Cal => false,
                 };
 
                 let style = if disabled {
                     theme.muted
                 } else if is_active {
                     match cap {
-                        crate::cli::ConnectionType::Stt => BADGE_STT,
-                        crate::cli::ConnectionType::Llm => BADGE_LLM,
-                        crate::cli::ConnectionType::Cal => BADGE_CAL,
+                        super::super::ConnectionType::Stt => BADGE_STT,
+                        super::super::ConnectionType::Llm => BADGE_LLM,
+                        super::super::ConnectionType::Cal => BADGE_CAL,
                     }
                 } else {
                     theme.muted
                 };
 
                 let label = match cap {
-                    crate::cli::ConnectionType::Stt => "[STT]",
-                    crate::cli::ConnectionType::Llm => "[LLM]",
-                    crate::cli::ConnectionType::Cal => "[CAL]",
+                    super::super::ConnectionType::Stt => "[STT]",
+                    super::super::ConnectionType::Llm => "[LLM]",
+                    super::super::ConnectionType::Cal => "[CAL]",
                 };
                 tag_spans.push(Span::styled(label, style));
             }

@@ -8,7 +8,14 @@ use ractor::Actor;
 use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
-pub use crate::cli::AudioMode;
+use clap::ValueEnum;
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum AudioMode {
+    Dual,
+    #[cfg(feature = "dev")]
+    Mock,
+}
 use crate::config::paths;
 use crate::config::stt::{SttGlobalArgs, resolve_config};
 use crate::error::{CliError, CliResult};

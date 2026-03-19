@@ -10,13 +10,13 @@ use hypr_transcript::{
     TranscriptProcessor, WordRef,
 };
 
+use super::super::TranscribeMode;
 use super::action::Action;
 use super::audio::{ChannelKind, DisplayMode};
 use super::effect::Effect;
 use super::runtime::RuntimeEvent;
 use super::ui::TracingCapture;
 use super::ui::shell::TranscribeShell;
-use crate::cli::TranscribeMode;
 use crate::theme::Theme;
 use crate::widgets::build_segment_lines;
 

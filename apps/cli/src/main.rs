@@ -38,7 +38,7 @@ async fn main() {
             matches!(
                 &cli.command,
                 Some(Commands::Debug {
-                    command: cli::DebugCommands::Transcribe { .. }
+                    command: commands::debug::Commands::Transcribe { .. }
                 })
             )
         }
@@ -173,10 +173,12 @@ async fn run(cli: Cli) -> CliResult<()> {
             channel,
         } = update_check::check_for_update().await
         {
-            if let commands::update::UpdateAction::RunUpdate { npm_tag } =
-                commands::update::run(current, latest, channel).await
-            {
-                return run_npm_update(npm_tag);
+            if let Some(action) = update_check::UpdateAction::detect(channel) {
+                if let commands::update::UpdateOutcome::RunUpdate =
+                    commands::update::run(current, latest, &action).await
+                {
+                    return run_update(&action);
+                }
             }
         }
     }
@@ -188,7 +190,7 @@ async fn run(cli: Cli) -> CliResult<()> {
             provider,
         }) => {
             let (meeting, resume_meeting_id) = match command {
-                Some(cli::ChatCommands::Resume { meeting }) => (None, meeting),
+                Some(commands::chat::Commands::Resume { meeting }) => (None, meeting),
                 None => (None, None),
             };
             commands::chat::run(commands::chat::Args {
@@ -249,7 +251,7 @@ async fn run(cli: Cli) -> CliResult<()> {
             Ok(())
         }
         Some(Commands::Meetings { command }) => match command {
-            Some(cli::MeetingsCommands::New {
+            Some(commands::meetings::Commands::New {
                 provider,
                 audio,
                 keywords,
@@ -262,26 +264,26 @@ async fn run(cli: Cli) -> CliResult<()> {
                     commands::meetings::live::run(commands::meetings::live::Args {
                         stt,
                         record: global.record,
-                        audio: cli::AudioMode::Dual,
+                        audio: commands::meetings::live::AudioMode::Dual,
                         pool,
                     })
                     .await
                 }
             }
-            Some(cli::MeetingsCommands::View { id }) => {
+            Some(commands::meetings::Commands::View { id }) => {
                 commands::meetings::view::run(commands::meetings::view::Args {
                     meeting_id: id,
                     pool,
                 })
                 .await
             }
-            Some(cli::MeetingsCommands::Participants { id }) => {
+            Some(commands::meetings::Commands::Participants { id }) => {
                 commands::meetings::participants(&pool, &id).await
             }
-            Some(cli::MeetingsCommands::AddParticipant { meeting, human }) => {
+            Some(commands::meetings::Commands::AddParticipant { meeting, human }) => {
                 commands::meetings::add_participant(&pool, &meeting, &human).await
             }
-            Some(cli::MeetingsCommands::RmParticipant { meeting, human }) => {
+            Some(commands::meetings::Commands::RmParticipant { meeting, human }) => {
                 commands::meetings::remove_participant(&pool, &meeting, &human).await
             }
             None => {
@@ -297,32 +299,8 @@ async fn run(cli: Cli) -> CliResult<()> {
                 }
             }
         },
-        Some(Commands::Humans { command }) => match command {
-            Some(cli::HumansCommands::Add {
-                name,
-                email,
-                org,
-                title,
-            }) => {
-                commands::humans::add(
-                    &pool,
-                    &name,
-                    email.as_deref(),
-                    org.as_deref(),
-                    title.as_deref(),
-                )
-                .await
-            }
-            Some(cli::HumansCommands::Show { id }) => commands::humans::show(&pool, &id).await,
-            Some(cli::HumansCommands::Rm { id }) => commands::humans::rm(&pool, &id).await,
-            Some(cli::HumansCommands::List) | None => commands::humans::list(&pool).await,
-        },
-        Some(Commands::Orgs { command }) => match command {
-            Some(cli::OrgsCommands::Add { name }) => commands::orgs::add(&pool, &name).await,
-            Some(cli::OrgsCommands::Show { id }) => commands::orgs::show(&pool, &id).await,
-            Some(cli::OrgsCommands::Rm { id }) => commands::orgs::rm(&pool, &id).await,
-            Some(cli::OrgsCommands::List) | None => commands::orgs::list(&pool).await,
-        },
+        Some(Commands::Humans { command }) => commands::humans::run(&pool, command).await,
+        Some(Commands::Orgs { command }) => commands::orgs::run(&pool, command).await,
         Some(Commands::Transcribe { args }) => {
             let stt = SttGlobalArgs {
                 provider: args.provider,
@@ -380,7 +358,7 @@ async fn run_entry_loop(
                     return commands::meetings::live::run(commands::meetings::live::Args {
                         stt,
                         record: global.record,
-                        audio: cli::AudioMode::Dual,
+                        audio: commands::meetings::live::AudioMode::Dual,
                         pool: pool.clone(),
                     })
                     .await;
@@ -507,13 +485,11 @@ fn resolve_hyprnote_listen_provider(model: Option<&str>) -> Result<cli::Provider
     )
 }
 
-fn run_npm_update(npm_tag: &str) -> CliResult<()> {
-    let pkg = format!("char@{npm_tag}");
-    eprintln!("Running: npm install -g {pkg}");
-    let status = std::process::Command::new("npm")
-        .args(["install", "-g", &pkg])
-        .status()
-        .map_err(|e| error::CliError::operation_failed("npm update", e.to_string()))?;
+fn run_update(action: &update_check::UpdateAction) -> CliResult<()> {
+    eprintln!("Running: {}", action.command_str());
+    let status = action
+        .run()
+        .map_err(|e| error::CliError::operation_failed("update", e.to_string()))?;
 
     if status.success() {
         eprintln!("Update complete!");

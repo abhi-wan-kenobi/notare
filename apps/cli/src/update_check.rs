@@ -19,11 +19,37 @@ impl Channel {
             Channel::Stable
         }
     }
+}
 
-    pub fn npm_tag(self) -> &'static str {
-        match self {
+pub enum UpdateAction {
+    Npm { package: String },
+}
+
+impl UpdateAction {
+    pub fn detect(channel: Channel) -> Option<Self> {
+        if std::env::var("CHAR_MANAGED_BY_NPM").unwrap_or_default() != "1" {
+            return None;
+        }
+        let tag = match channel {
             Channel::Stable => "latest",
             Channel::Nightly => "nightly",
+        };
+        Some(UpdateAction::Npm {
+            package: format!("char@{tag}"),
+        })
+    }
+
+    pub fn command_str(&self) -> String {
+        match self {
+            UpdateAction::Npm { package } => format!("npm install -g {package}"),
+        }
+    }
+
+    pub fn run(&self) -> std::io::Result<std::process::ExitStatus> {
+        match self {
+            UpdateAction::Npm { package } => std::process::Command::new("npm")
+                .args(["install", "-g", package])
+                .status(),
         }
     }
 }
@@ -82,13 +108,6 @@ pub fn save_skipped_version(version: &str) {
     save_cache(channel, &cache);
 }
 
-fn is_nightly_version(version: &str) -> bool {
-    version.contains("-nightly")
-}
-
-/// Compare versions. For nightly versions like `0.1.2-nightly.5`, the full
-/// string is compared so that `0.1.2-nightly.5 > 0.1.2-nightly.3` works
-/// via the patch-level tuple `(0, 1, 2)` plus the nightly number.
 fn is_newer(latest: &str, current: &str) -> bool {
     match (parse_version(latest), parse_version(current)) {
         (Some(l), Some(c)) => l > c,
@@ -141,31 +160,17 @@ async fn fetch_latest_cli_version(channel: Channel) -> Option<String> {
 
     releases.iter().find_map(|r| {
         let version = r.tag_name.strip_prefix("cli_v")?;
-        match channel {
-            Channel::Nightly => {
-                if is_nightly_version(version) {
-                    Some(version.to_string())
-                } else {
-                    None
-                }
-            }
-            Channel::Stable => {
-                if !r.prerelease && !is_nightly_version(version) {
-                    Some(version.to_string())
-                } else {
-                    None
-                }
-            }
+        if Channel::detect(version) != channel {
+            return None;
         }
+        if channel == Channel::Stable && r.prerelease {
+            return None;
+        }
+        Some(version.to_string())
     })
 }
 
 pub async fn check_for_update() -> UpdateStatus {
-    let managed = std::env::var("CHAR_MANAGED_BY_NPM").unwrap_or_default() == "1";
-    if !managed {
-        return UpdateStatus::NoUpdate;
-    }
-
     let current = match option_env!("APP_VERSION") {
         Some(v) if v != "dev" && !v.is_empty() => v,
         _ => return UpdateStatus::NoUpdate,

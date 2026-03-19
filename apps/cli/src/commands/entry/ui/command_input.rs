@@ -8,14 +8,9 @@ use ratatui::{
 
 use crate::theme::Theme;
 
+#[derive(Default)]
 pub struct CursorState {
     pub position: Option<Position>,
-}
-
-impl Default for CursorState {
-    fn default() -> Self {
-        Self { position: None }
-    }
 }
 
 pub struct CommandInput<'a> {

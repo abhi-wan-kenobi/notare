@@ -1,13 +1,12 @@
 use hypr_db_app::CalendarRow;
 
+use super::app::Tab;
+
 pub enum Effect {
     Exit,
     LoadSettings,
-    SaveSttProvider(String),
-    SaveLlmProvider(String),
+    SaveProvider { tab: Tab, provider: String },
     LoadCalendars,
     SaveCalendars(Vec<CalendarRow>),
     CheckCalendarPermission,
-    RequestCalendarPermission,
-    ResetCalendarPermission,
 }

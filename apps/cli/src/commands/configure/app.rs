@@ -31,16 +31,55 @@ impl Tab {
             Tab::Calendar => "Calendar",
         }
     }
+
+    pub fn setting_key(self) -> &'static str {
+        match self {
+            Tab::Stt => "current_stt_provider",
+            Tab::Llm => "current_llm_provider",
+            Tab::Calendar => unreachable!(),
+        }
+    }
+
+    pub fn connection_type(self) -> &'static str {
+        match self {
+            Tab::Stt => "stt",
+            Tab::Llm => "llm",
+            Tab::Calendar => "cal",
+        }
+    }
+}
+
+pub struct ProviderTab {
+    pub current: Option<String>,
+    pub providers: Vec<String>,
+    pub list_state: ListState,
+}
+
+impl ProviderTab {
+    fn new() -> Self {
+        Self {
+            current: None,
+            providers: Vec::new(),
+            list_state: ListState::default(),
+        }
+    }
+
+    fn reset_cursor(&mut self) {
+        let idx = self
+            .current
+            .as_ref()
+            .and_then(|c| self.providers.iter().position(|p| p == c))
+            .unwrap_or(0);
+        self.list_state = ListState::default();
+        self.list_state.select(Some(idx));
+    }
 }
 
 pub struct App {
     pub tab: Tab,
-    pub current_stt: Option<String>,
-    pub current_llm: Option<String>,
-    pub stt_providers: Vec<String>,
-    pub llm_providers: Vec<String>,
+    pub stt: ProviderTab,
+    pub llm: ProviderTab,
     pub calendars: Vec<CalendarRow>,
-    pub provider_list_state: ListState,
     pub cal_cursor: usize,
     pub cal_permission: Option<CalendarPermissionState>,
     pub loading: bool,
@@ -51,12 +90,9 @@ impl App {
     pub fn new(initial_tab: Option<Tab>) -> (Self, Vec<Effect>) {
         let app = Self {
             tab: initial_tab.unwrap_or(Tab::Stt),
-            current_stt: None,
-            current_llm: None,
-            stt_providers: Vec::new(),
-            llm_providers: Vec::new(),
+            stt: ProviderTab::new(),
+            llm: ProviderTab::new(),
             calendars: Vec::new(),
-            provider_list_state: ListState::default(),
             cal_cursor: 0,
             cal_permission: None,
             loading: true,
@@ -71,6 +107,14 @@ impl App {
                 Effect::CheckCalendarPermission,
             ],
         )
+    }
+
+    fn provider_tab(&mut self) -> Option<&mut ProviderTab> {
+        match self.tab {
+            Tab::Stt => Some(&mut self.stt),
+            Tab::Llm => Some(&mut self.llm),
+            Tab::Calendar => None,
+        }
     }
 
     pub fn dispatch(&mut self, action: Action) -> Vec<Effect> {
@@ -95,47 +139,33 @@ impl App {
         }
 
         match self.tab {
-            Tab::Stt => self.handle_provider_key(key, true),
-            Tab::Llm => self.handle_provider_key(key, false),
+            Tab::Stt | Tab::Llm => self.handle_provider_key(key),
             Tab::Calendar => self.handle_calendar_key(key),
         }
     }
 
-    fn handle_provider_key(&mut self, key: KeyEvent, is_stt: bool) -> Vec<Effect> {
-        let count = if is_stt {
-            self.stt_providers.len()
-        } else {
-            self.llm_providers.len()
-        };
+    fn handle_provider_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        let tab = self.tab;
+        let pt = self.provider_tab().unwrap();
+        let count = pt.providers.len();
 
         match key.code {
             KeyCode::Up | KeyCode::Char('k') => {
-                let i = self.provider_list_state.selected().unwrap_or(0);
-                self.provider_list_state.select(Some(i.saturating_sub(1)));
+                let i = pt.list_state.selected().unwrap_or(0);
+                pt.list_state.select(Some(i.saturating_sub(1)));
                 vec![]
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                let i = self.provider_list_state.selected().unwrap_or(0);
-                self.provider_list_state
+                let i = pt.list_state.selected().unwrap_or(0);
+                pt.list_state
                     .select(Some((i + 1).min(count.saturating_sub(1))));
                 vec![]
             }
             KeyCode::Enter => {
-                let idx = self.provider_list_state.selected().unwrap_or(0);
-                let providers = if is_stt {
-                    &self.stt_providers
-                } else {
-                    &self.llm_providers
-                };
-                if let Some(provider) = providers.get(idx) {
-                    let provider = provider.clone();
-                    if is_stt {
-                        self.current_stt = Some(provider.clone());
-                        vec![Effect::SaveSttProvider(provider)]
-                    } else {
-                        self.current_llm = Some(provider.clone());
-                        vec![Effect::SaveLlmProvider(provider)]
-                    }
+                let idx = pt.list_state.selected().unwrap_or(0);
+                if let Some(provider) = pt.providers.get(idx).cloned() {
+                    pt.current = Some(provider.clone());
+                    vec![Effect::SaveProvider { tab, provider }]
                 } else {
                     vec![]
                 }
@@ -146,47 +176,31 @@ impl App {
 
     fn handle_calendar_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         let authorized = self.cal_permission == Some(CalendarPermissionState::Authorized);
+        if !authorized || self.calendars.is_empty() {
+            return vec![];
+        }
 
-        if !authorized {
-            match key.code {
-                KeyCode::Enter => match self.cal_permission {
-                    Some(CalendarPermissionState::NotDetermined) => {
-                        vec![Effect::RequestCalendarPermission]
-                    }
-                    Some(CalendarPermissionState::Denied) => {
-                        vec![Effect::ResetCalendarPermission]
-                    }
-                    _ => vec![],
-                },
-                _ => vec![],
+        let item_count = self.calendars.len();
+        match key.code {
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.cal_cursor = self.cal_cursor.saturating_sub(1);
+                vec![]
             }
-        } else {
-            let item_count = self.calendars.len();
-            match key.code {
-                KeyCode::Up | KeyCode::Char('k') => {
-                    if item_count > 0 {
-                        self.cal_cursor = self.cal_cursor.saturating_sub(1);
-                    }
-                    vec![]
-                }
-                KeyCode::Down | KeyCode::Char('j') => {
-                    if item_count > 0 {
-                        self.cal_cursor = (self.cal_cursor + 1).min(item_count.saturating_sub(1));
-                    }
-                    vec![]
-                }
-                KeyCode::Char(' ') => {
-                    if let Some(cal) = self.calendars.get_mut(self.cal_cursor) {
-                        cal.enabled = !cal.enabled;
-                    }
-                    vec![]
-                }
-                KeyCode::Enter => {
-                    let calendars = self.calendars.clone();
-                    vec![Effect::SaveCalendars(calendars)]
-                }
-                _ => vec![],
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.cal_cursor = (self.cal_cursor + 1).min(item_count.saturating_sub(1));
+                vec![]
             }
+            KeyCode::Char(' ') => {
+                if let Some(cal) = self.calendars.get_mut(self.cal_cursor) {
+                    cal.enabled = !cal.enabled;
+                }
+                vec![]
+            }
+            KeyCode::Enter => {
+                let calendars = self.calendars.clone();
+                vec![Effect::SaveCalendars(calendars)]
+            }
+            _ => vec![],
         }
     }
 
@@ -198,37 +212,22 @@ impl App {
                 stt_providers,
                 llm_providers,
             } => {
-                self.current_stt = current_stt;
-                self.current_llm = current_llm;
-                self.stt_providers = stt_providers;
-                self.llm_providers = llm_providers;
+                self.stt.current = current_stt;
+                self.stt.providers = stt_providers;
+                self.llm.current = current_llm;
+                self.llm.providers = llm_providers;
                 self.loading = false;
                 self.reset_tab_state();
                 vec![]
             }
-            RuntimeEvent::CalendarsLoaded(calendars) => {
+            RuntimeEvent::CalendarsLoaded(mut calendars) => {
+                calendars.sort_by(|a, b| a.source.cmp(&b.source));
                 self.calendars = calendars;
                 vec![]
             }
             RuntimeEvent::CalendarPermissionStatus(state) => {
                 self.cal_permission = Some(state);
                 vec![]
-            }
-            RuntimeEvent::CalendarPermissionResult(granted) => {
-                self.cal_permission = Some(if granted {
-                    CalendarPermissionState::Authorized
-                } else {
-                    CalendarPermissionState::Denied
-                });
-                if granted {
-                    vec![Effect::LoadCalendars]
-                } else {
-                    vec![]
-                }
-            }
-            RuntimeEvent::CalendarPermissionReset => {
-                self.cal_permission = None;
-                vec![Effect::CheckCalendarPermission]
             }
             RuntimeEvent::Saved => {
                 vec![]
@@ -250,24 +249,8 @@ impl App {
 
     fn reset_tab_state(&mut self) {
         match self.tab {
-            Tab::Stt => {
-                let idx = self
-                    .current_stt
-                    .as_ref()
-                    .and_then(|c| self.stt_providers.iter().position(|p| p == c))
-                    .unwrap_or(0);
-                self.provider_list_state = ListState::default();
-                self.provider_list_state.select(Some(idx));
-            }
-            Tab::Llm => {
-                let idx = self
-                    .current_llm
-                    .as_ref()
-                    .and_then(|c| self.llm_providers.iter().position(|p| p == c))
-                    .unwrap_or(0);
-                self.provider_list_state = ListState::default();
-                self.provider_list_state.select(Some(idx));
-            }
+            Tab::Stt => self.stt.reset_cursor(),
+            Tab::Llm => self.llm.reset_cursor(),
             Tab::Calendar => {
                 self.cal_cursor = 0;
             }

@@ -17,58 +17,169 @@ use hypr_model_downloader::ModelDownloadManager;
 use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-pub use crate::cli::CactusCommands;
-pub use crate::cli::{ModelCommands, ModelKind};
+use clap::{Subcommand, ValueEnum};
+
+use crate::cli::OutputFormat;
 use crate::config::paths as settings;
 use crate::error::{CliError, CliResult, did_you_mean};
 use runtime::CliModelRuntime;
 
-pub async fn run(command: ModelCommands, pool: &SqlitePool) -> CliResult<()> {
+#[derive(Subcommand, Debug)]
+pub enum Commands {
+    /// Show resolved paths for settings and model storage
+    Paths,
+    /// List available models and their download status
+    List {
+        #[arg(long, value_enum)]
+        kind: Option<ModelKind>,
+        #[arg(long)]
+        supported: bool,
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: OutputFormat,
+    },
+    /// Manage downloadable Cactus models
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+    Cactus {
+        #[command(subcommand)]
+        command: CactusCommands,
+    },
+    /// Download a model by name
+    Download { name: String },
+    /// Delete a downloaded model
+    Delete { name: String },
+}
+
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[derive(Subcommand, Debug)]
+pub enum CactusCommands {
+    /// List available Cactus models
+    List {
+        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        format: OutputFormat,
+    },
+    /// Download a Cactus model by name
+    Download { name: String },
+    /// Delete a downloaded Cactus model
+    Delete { name: String },
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum ModelKind {
+    Stt,
+    Llm,
+}
+
+// ---------------------------------------------------------------------------
+// ModelScope – a filtered set of models with metadata for error messages
+// ---------------------------------------------------------------------------
+
+struct ModelScope {
+    models: Vec<LocalModel>,
+    label: &'static str,
+    list_cmd: &'static str,
+}
+
+impl ModelScope {
+    fn all(kind: Option<ModelKind>) -> Self {
+        Self {
+            models: LocalModel::all()
+                .into_iter()
+                .filter(|m| model_is_enabled(m) && matches_kind(m, kind))
+                .collect(),
+            label: "model",
+            list_cmd: "char models list",
+        }
+    }
+
+    fn supported(kind: Option<ModelKind>) -> CliResult<Self> {
+        match kind {
+            Some(ModelKind::Stt) => Ok(Self {
+                models: SUPPORTED_STT_MODELS
+                    .iter()
+                    .filter(|m| model_is_enabled(m))
+                    .cloned()
+                    .collect(),
+                label: "model",
+                list_cmd: "char models list",
+            }),
+            Some(ModelKind::Llm) => Err(CliError::invalid_argument(
+                "--supported",
+                "true",
+                "Only STT has a shared supported model list right now; use `--kind stt`.",
+            )),
+            None => Err(CliError::invalid_argument(
+                "--supported",
+                "true",
+                "Pass `--kind stt` (supported list is STT-only right now).",
+            )),
+        }
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+    fn cactus() -> Self {
+        Self {
+            models: LocalModel::all()
+                .into_iter()
+                .filter(|m| m.cli_name().starts_with("cactus-"))
+                .collect(),
+            label: "cactus model",
+            list_cmd: "char models cactus list",
+        }
+    }
+
+    fn resolve(&self, name: &str) -> CliResult<LocalModel> {
+        self.models
+            .iter()
+            .find(|m| m.cli_name() == name)
+            .cloned()
+            .ok_or_else(|| {
+                let names: Vec<&str> = self.models.iter().map(|m| m.cli_name()).collect();
+                let mut hint = String::new();
+                if let Some(suggestion) = did_you_mean(name, &names) {
+                    hint.push_str(&format!("Did you mean '{suggestion}'?\n\n"));
+                }
+                hint.push_str(&format!("Run `{}` to see available models.", self.list_cmd));
+                CliError::not_found(format!("{} '{name}'", self.label), Some(hint))
+            })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Command dispatch
+// ---------------------------------------------------------------------------
+
+pub async fn run(command: Commands, pool: &SqlitePool) -> CliResult<()> {
     let paths = settings::resolve_paths();
     let models_base = paths.models_base.clone();
     let db_path = paths.base.join("app.db");
 
     match command {
-        ModelCommands::Paths => {
+        Commands::Paths => {
             println!("base={}", paths.base.display());
             println!("db_path={}", db_path.display());
             println!("models_base={}", models_base.display());
             Ok(())
         }
-        ModelCommands::List {
+        Commands::List {
             kind,
             supported,
             format,
         } => {
-            let runtime = Arc::new(CliModelRuntime {
-                models_base: models_base.clone(),
-                progress_tx: None,
-            });
-            let manager = ModelDownloadManager::new(runtime);
-            let current = settings::load_settings_from_db(pool).await;
-
-            let models = if supported {
-                supported_models(kind)?
+            let scope = if supported {
+                ModelScope::supported(kind)?
             } else {
-                all_models(kind)
+                ModelScope::all(kind)
             };
-
-            let rows = list::collect_model_rows(&models, &models_base, &current, &manager).await;
-            list::write_model_output(&rows, &models_base, format).await
+            list_models(&scope, pool, &models_base, format).await
         }
         #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-        ModelCommands::Cactus { command } => run_cactus(command, pool, &models_base).await,
-        ModelCommands::Download { name } => {
-            let Some(model) = find_model(&name) else {
-                return Err(not_found_model(&name));
-            };
+        Commands::Cactus { command } => run_cactus(command, pool, &models_base).await,
+        Commands::Download { name } => {
+            let model = ModelScope::all(None).resolve(&name)?;
             download_model(model, &models_base).await
         }
-        ModelCommands::Delete { name } => {
-            let Some(model) = find_model(&name) else {
-                return Err(not_found_model(&name));
-            };
+        Commands::Delete { name } => {
+            let model = ModelScope::all(None).resolve(&name)?;
             delete_model(model, &models_base).await
         }
     }
@@ -80,32 +191,35 @@ async fn run_cactus(
     pool: &SqlitePool,
     models_base: &std::path::Path,
 ) -> CliResult<()> {
-    match command {
-        CactusCommands::List { format } => {
-            let runtime = Arc::new(CliModelRuntime {
-                models_base: models_base.to_path_buf(),
-                progress_tx: None,
-            });
-            let manager = ModelDownloadManager::new(runtime);
-            let current = settings::load_settings_from_db(pool).await;
-            let models = all_cactus_models();
+    let scope = ModelScope::cactus();
 
-            let rows = list::collect_model_rows(&models, models_base, &current, &manager).await;
-            list::write_model_output(&rows, models_base, format).await
-        }
+    match command {
+        CactusCommands::List { format } => list_models(&scope, pool, models_base, format).await,
         CactusCommands::Download { name } => {
-            let Some(model) = find_cactus_model(&name) else {
-                return Err(not_found_cactus_model(&name, false));
-            };
-            download_model(model, models_base).await
+            let name = normalize_cactus_name(&name);
+            download_model(scope.resolve(&name)?, models_base).await
         }
         CactusCommands::Delete { name } => {
-            let Some(model) = find_cactus_model(&name) else {
-                return Err(not_found_cactus_model(&name, false));
-            };
-            delete_model(model, models_base).await
+            let name = normalize_cactus_name(&name);
+            delete_model(scope.resolve(&name)?, models_base).await
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Operations
+// ---------------------------------------------------------------------------
+
+async fn list_models(
+    scope: &ModelScope,
+    pool: &SqlitePool,
+    models_base: &std::path::Path,
+    format: OutputFormat,
+) -> CliResult<()> {
+    let manager = make_manager(models_base, None);
+    let current = settings::load_settings_from_db(pool).await;
+    let rows = list::collect_model_rows(&scope.models, models_base, &current, &manager).await;
+    list::write_model_output(&rows, models_base, format).await
 }
 
 async fn download_model(model: LocalModel, models_base: &std::path::Path) -> CliResult<()> {
@@ -118,11 +232,7 @@ async fn download_model(model: LocalModel, models_base: &std::path::Path) -> Cli
         (None, None)
     };
 
-    let runtime = Arc::new(CliModelRuntime {
-        models_base: models_base.to_path_buf(),
-        progress_tx,
-    });
-    let manager = ModelDownloadManager::new(runtime);
+    let manager = make_manager(models_base, progress_tx);
 
     if manager.is_downloaded(&model).await.unwrap_or(false) {
         println!(
@@ -182,11 +292,7 @@ async fn download_model(model: LocalModel, models_base: &std::path::Path) -> Cli
 }
 
 async fn delete_model(model: LocalModel, models_base: &std::path::Path) -> CliResult<()> {
-    let runtime = Arc::new(CliModelRuntime {
-        models_base: models_base.to_path_buf(),
-        progress_tx: None,
-    });
-    let manager = ModelDownloadManager::new(runtime);
+    let manager = make_manager(models_base, None);
 
     if let Err(e) = manager.delete(&model).await {
         return Err(CliError::operation_failed(
@@ -199,87 +305,33 @@ async fn delete_model(model: LocalModel, models_base: &std::path::Path) -> CliRe
     Ok(())
 }
 
-fn find_model(name: &str) -> Option<LocalModel> {
-    all_models(None)
-        .into_iter()
-        .find(|model| model.cli_name() == name)
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+fn make_manager(
+    models_base: &std::path::Path,
+    progress_tx: Option<mpsc::UnboundedSender<runtime::DownloadEvent>>,
+) -> ModelDownloadManager<LocalModel> {
+    let runtime = Arc::new(CliModelRuntime {
+        models_base: models_base.to_path_buf(),
+        progress_tx,
+    });
+    ModelDownloadManager::new(runtime)
 }
 
-fn all_models(kind: Option<ModelKind>) -> Vec<LocalModel> {
-    LocalModel::all()
-        .into_iter()
-        .filter(|model| model_is_enabled(model) && matches_kind(model, kind))
-        .collect()
-}
-
-fn supported_models(kind: Option<ModelKind>) -> CliResult<Vec<LocalModel>> {
-    match kind {
-        Some(ModelKind::Stt) => Ok(SUPPORTED_STT_MODELS
-            .iter()
-            .filter(|model| model_is_enabled(model))
-            .cloned()
-            .collect()),
-        Some(ModelKind::Llm) => Err(CliError::invalid_argument(
-            "--supported",
-            "true",
-            "Only STT has a shared supported model list right now; use `--kind stt`.",
-        )),
-        None => Err(CliError::invalid_argument(
-            "--supported",
-            "true",
-            "Pass `--kind stt` (supported list is STT-only right now).",
-        )),
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+fn normalize_cactus_name(name: &str) -> String {
+    if name.starts_with("cactus-") {
+        name.to_string()
+    } else {
+        format!("cactus-{name}")
     }
 }
 
 pub(crate) fn model_is_enabled(model: &LocalModel) -> bool {
-    cfg!(any(target_arch = "arm", target_arch = "aarch64")) || !is_cactus_local_model(model)
-}
-
-fn is_cactus_local_model(model: &LocalModel) -> bool {
-    matches!(model, LocalModel::Cactus(_) | LocalModel::CactusLlm(_))
-}
-
-fn all_cactus_models() -> Vec<LocalModel> {
-    if !cfg!(any(target_arch = "arm", target_arch = "aarch64")) {
-        return Vec::new();
-    }
-
-    LocalModel::all()
-        .into_iter()
-        .filter(|model| model.cli_name().starts_with("cactus-"))
-        .collect()
-}
-
-fn find_cactus_model(name: &str) -> Option<LocalModel> {
-    let canonical = if name.starts_with("cactus-") {
-        name.to_string()
-    } else {
-        format!("cactus-{name}")
-    };
-    all_cactus_models()
-        .into_iter()
-        .find(|model| model.cli_name() == name || model.cli_name() == canonical)
-}
-
-fn not_found_cactus_model(name: &str, _include_downloaded_hint: bool) -> CliError {
-    let names: Vec<&str> = LocalModel::all()
-        .iter()
-        .filter_map(|model| {
-            if matches!(model, LocalModel::Cactus(_)) {
-                Some(model.cli_name())
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let mut hint = String::new();
-    if let Some(suggestion) = did_you_mean(name, &names) {
-        hint.push_str(&format!("Did you mean '{suggestion}'?\n\n"));
-    }
-    hint.push_str("Run `char models cactus list` to see available models.");
-    CliError::not_found(format!("cactus model '{name}'"), Some(hint))
+    cfg!(any(target_arch = "arm", target_arch = "aarch64"))
+        || !matches!(model, LocalModel::Cactus(_) | LocalModel::CactusLlm(_))
 }
 
 fn matches_kind(model: &LocalModel, kind: Option<ModelKind>) -> bool {
@@ -288,16 +340,6 @@ fn matches_kind(model: &LocalModel, kind: Option<ModelKind>) -> bool {
         Some(ModelKind::Stt) => model.model_kind() == LocalModelKind::Stt,
         Some(ModelKind::Llm) => model.model_kind() == LocalModelKind::Llm,
     }
-}
-
-fn not_found_model(name: &str) -> CliError {
-    let names: Vec<&str> = all_models(None).iter().map(|m| m.cli_name()).collect();
-    let mut hint = String::new();
-    if let Some(suggestion) = did_you_mean(name, &names) {
-        hint.push_str(&format!("Did you mean '{suggestion}'?\n\n"));
-    }
-    hint.push_str("Run `char models list` to see available models.");
-    CliError::not_found(format!("model '{name}'"), Some(hint))
 }
 
 fn is_current_model(model: &LocalModel, current: &settings::Settings) -> bool {

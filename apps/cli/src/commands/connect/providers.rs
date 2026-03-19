@@ -1,4 +1,4 @@
-use crate::cli::{ConnectProvider, ConnectionType};
+use super::{ConnectProvider, ConnectionType};
 
 pub(crate) struct ProviderMeta {
     pub provider: ConnectProvider,
