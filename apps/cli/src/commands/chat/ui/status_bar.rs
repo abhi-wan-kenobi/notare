@@ -9,7 +9,7 @@ use crate::widgets::KeyHints;
 pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let status_style = if app.last_error().is_some() {
         theme.error
-    } else if app.status().starts_with("Streaming") {
+    } else if app.streaming() {
         theme.status_active
     } else {
         theme.muted

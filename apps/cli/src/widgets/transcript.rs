@@ -1,4 +1,4 @@
-use hypr_transcript::{Segment, SegmentWord, SpeakerLabeler};
+use hypr_transcript::{Segment, SegmentWord, SpeakerLabelContext, SpeakerLabeler};
 use ratatui::{
     style::{Color, Style},
     text::{Line, Span},
@@ -14,16 +14,17 @@ pub fn build_segment_lines<'a>(
     theme: &Theme,
     content_width: usize,
     word_age_fn: Option<&dyn Fn(&str) -> f64>,
+    speaker_ctx: Option<&SpeakerLabelContext>,
 ) -> Vec<Line<'a>> {
     let mut lines: Vec<Line> = Vec::new();
-    let mut labeler = SpeakerLabeler::from_segments(segments, None);
+    let mut labeler = SpeakerLabeler::from_segments(segments, speaker_ctx);
 
     for (i, segment) in segments.iter().enumerate() {
         if i > 0 {
             lines.push(Line::default());
         }
 
-        let label = labeler.label_for(&segment.key, None);
+        let label = labeler.label_for(&segment.key, speaker_ctx);
         let timestamp = segment
             .words
             .first()

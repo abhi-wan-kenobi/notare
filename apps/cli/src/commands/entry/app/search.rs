@@ -67,8 +67,9 @@ fn single_command_match_score(query: &str, command: &str) -> Option<i32> {
 }
 
 fn command_aliases(command: &str) -> &'static [&'static str] {
-    match command {
-        "exit" => &["quit"],
-        _ => &[],
-    }
+    super::commands::ALL_COMMANDS
+        .iter()
+        .find(|c| c.name().trim_start_matches('/') == command)
+        .map(|c| c.aliases())
+        .unwrap_or(&[])
 }

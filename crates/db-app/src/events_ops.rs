@@ -86,6 +86,20 @@ pub async fn list_events_in_range(
     Ok(rows.iter().map(map_event_row).collect())
 }
 
+pub async fn find_current_or_upcoming_event(
+    pool: &SqlitePool,
+    lookahead_minutes: i64,
+) -> Result<Option<EventRow>, sqlx::Error> {
+    let row = sqlx::query(
+        "SELECT id, user_id, calendar_id, tracking_id, title, started_at, ended_at, location, meeting_link, description, note, recurrence_series_id, has_recurrence_rules, is_all_day, participants_json, raw_json, created_at FROM events WHERE ended_at > datetime('now') AND started_at <= datetime('now', '+' || ? || ' minutes') ORDER BY started_at ASC LIMIT 1",
+    )
+    .bind(lookahead_minutes)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row.as_ref().map(map_event_row))
+}
+
 pub async fn delete_event(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM events WHERE id = ?")
         .bind(id)

@@ -1,8 +1,11 @@
 mod state;
 mod ui_state;
 
+use std::collections::HashMap;
+
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use hypr_cli_editor::Editor;
+use hypr_transcript::SpeakerLabelContext;
 
 use crate::theme::Theme;
 use hypr_listener_core::State;
@@ -18,14 +21,26 @@ pub(crate) use ui_state::Mode;
 pub(crate) struct App {
     state: ListenState,
     ui: ListenUiState,
+    participant_names: HashMap<String, String>,
 }
 
 impl App {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(participant_names: HashMap<String, String>) -> Self {
         Self {
             state: ListenState::new(),
             ui: ListenUiState::new(),
+            participant_names,
         }
+    }
+
+    pub(crate) fn speaker_label_context(&self) -> Option<SpeakerLabelContext> {
+        if self.participant_names.is_empty() {
+            return None;
+        }
+        Some(SpeakerLabelContext {
+            self_human_id: None,
+            human_name_by_id: self.participant_names.clone(),
+        })
     }
 
     pub(crate) fn elapsed(&self) -> std::time::Duration {
@@ -283,7 +298,7 @@ mod tests {
 
     #[test]
     fn ctrl_c_exits_without_force() {
-        let mut app = App::new();
+        let mut app = App::new(HashMap::new());
 
         let effects = app.dispatch(Action::Key(KeyEvent::new(
             KeyCode::Char('c'),

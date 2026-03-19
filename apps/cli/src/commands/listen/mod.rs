@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -53,9 +54,12 @@ struct ListenScreen {
 }
 
 impl ListenScreen {
-    fn new(capture_post_exit_events: Arc<AtomicBool>) -> Self {
+    fn new(
+        participant_names: HashMap<String, String>,
+        capture_post_exit_events: Arc<AtomicBool>,
+    ) -> Self {
         Self {
-            app: App::new(),
+            app: App::new(participant_names),
             capture_post_exit_events,
         }
     }
@@ -67,7 +71,7 @@ impl ListenScreen {
                     if !force {
                         self.capture_post_exit_events.store(true, Ordering::SeqCst);
                     }
-                    let app = std::mem::replace(&mut self.app, App::new());
+                    let app = std::mem::replace(&mut self.app, App::new(HashMap::new()));
                     return ScreenControl::Exit(Output {
                         elapsed: app.elapsed(),
                         force_quit: force,
@@ -156,6 +160,9 @@ pub async fn run(args: Args) -> CliResult<()> {
 
     let session_id = uuid::Uuid::new_v4().to_string();
     let session_label = session_id.clone();
+
+    let (event_id, participant_names) = resolve_event(&pool).await;
+
     let vault_base = paths::resolve_paths().base;
 
     let (listener_tx, mut listener_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -217,7 +224,7 @@ pub async fn run(args: Args) -> CliResult<()> {
     });
 
     let output = run_screen(
-        ListenScreen::new(capture_post_exit_events.clone()),
+        ListenScreen::new(participant_names, capture_post_exit_events.clone()),
         Some(external_rx),
     )
     .await
@@ -253,6 +260,7 @@ pub async fn run(args: Args) -> CliResult<()> {
             app.hints(),
             app.memo_text(),
             session_label.clone(),
+            event_id,
             pool,
         );
 
@@ -268,4 +276,33 @@ pub async fn run(args: Args) -> CliResult<()> {
     }
 
     Ok(())
+}
+
+async fn resolve_event(pool: &SqlitePool) -> (Option<String>, HashMap<String, String>) {
+    let event = match hypr_db_app::find_current_or_upcoming_event(pool, 15).await {
+        Ok(Some(e)) => e,
+        _ => return (None, HashMap::new()),
+    };
+
+    let event_id = event.id.clone();
+    let participants = hypr_db_app::list_event_participants(pool, &event_id)
+        .await
+        .unwrap_or_default();
+
+    let mut names = HashMap::new();
+    for p in &participants {
+        if let Some(human_id) = &p.human_id {
+            let name = if p.name.is_empty() {
+                match hypr_db_app::get_human(pool, human_id).await {
+                    Ok(Some(h)) => h.name,
+                    _ => continue,
+                }
+            } else {
+                p.name.clone()
+            };
+            names.insert(human_id.clone(), name);
+        }
+    }
+
+    (Some(event_id), names)
 }

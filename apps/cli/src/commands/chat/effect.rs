@@ -1,5 +1,7 @@
 use rig::message::Message;
 
+use super::Role;
+
 pub(crate) enum Effect {
     Submit {
         prompt: String,
@@ -12,7 +14,7 @@ pub(crate) enum Effect {
     Persist {
         session_id: String,
         message_id: String,
-        role: String,
+        role: Role,
         content: String,
     },
     UpdateTitle {

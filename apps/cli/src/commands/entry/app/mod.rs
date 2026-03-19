@@ -9,9 +9,9 @@ use crate::commands::connect;
 use crate::commands::model;
 use crate::commands::sessions;
 
-pub(crate) use commands::{COMMANDS, CommandEntry, SlashCommand};
+pub(crate) use commands::{ALL_COMMANDS, Command, CommandEntry};
 
-use commands::{load_logo_protocol, pick_tip};
+use commands::{load_logo_protocol, lookup, pick_tip};
 use search::command_match_score;
 
 use super::action::Action;
@@ -178,31 +178,20 @@ impl App {
         self.filtered_commands
             .iter()
             .filter_map(|&i| {
-                let cmd = COMMANDS.get(i)?;
+                let cmd = ALL_COMMANDS.get(i)?;
                 Some(CommandEntry {
-                    name: cmd.name,
-                    description: cmd.description,
-                    group: cmd.group,
-                    disabled_reason: self.disabled_reason(cmd),
+                    name: cmd.name(),
+                    description: cmd.description(),
+                    group: cmd.group(),
+                    disabled_reason: cmd.disabled_reason(&self.stt_provider, &self.llm_provider),
                 })
             })
             .collect()
     }
 
-    fn disabled_reason(&self, cmd: &SlashCommand) -> Option<&'static str> {
-        match cmd.name {
-            "/listen" if self.stt_provider.is_none() => Some("no STT provider"),
-            "/chat" | "/chat resume" if self.llm_provider.is_none() => Some("no LLM provider"),
-            _ => None,
-        }
-    }
-
-    fn is_command_disabled(&self, normalized_name: &str) -> bool {
-        let name = format!("/{}", normalized_name);
-        COMMANDS
-            .iter()
-            .find(|c| c.name == name)
-            .is_some_and(|cmd| self.disabled_reason(cmd).is_some())
+    fn is_command_disabled(&self, cmd: Command) -> bool {
+        cmd.disabled_reason(&self.stt_provider, &self.llm_provider)
+            .is_some()
     }
 
     pub(crate) fn selected_index(&self) -> usize {
@@ -298,82 +287,69 @@ impl App {
 
     fn submit_command(&mut self, command: &str) -> Vec<Effect> {
         let normalized = command.trim().trim_start_matches('/').to_ascii_lowercase();
-
-        if self.is_command_disabled(&normalized) {
+        if normalized.is_empty() {
             return Vec::new();
         }
 
-        let (head, rest) = match normalized.split_once(' ') {
-            Some((h, r)) => (h, r.trim()),
-            None => (normalized.as_str(), ""),
+        let Some((cmd, rest)) = lookup(&normalized) else {
+            self.status_message = Some(format!("Unknown command: {}", command.trim()));
+            return Vec::new();
         };
+        if self.is_command_disabled(cmd) {
+            return Vec::new();
+        }
+        self.dispatch_command(cmd, rest)
+    }
 
-        match head {
-            "connect" => {
-                let (connect_app, initial_effects) = connect::app::App::new(None, None, None, None);
-                self.reset_input();
-                self.overlay = Overlay::Connect(connect_app);
-                self.translate_connect_effects(initial_effects)
-            }
-            "listen" => vec![Effect::Launch(super::EntryCommand::Listen)],
-            "chat" if rest == "resume" => {
+    fn dispatch_command(&mut self, cmd: Command, rest: &str) -> Vec<Effect> {
+        use crate::cli::ModelCommands;
+
+        match cmd {
+            Command::Listen => vec![Effect::Launch(super::EntryCommand::Listen)],
+            Command::Chat => vec![Effect::Launch(super::EntryCommand::Chat {
+                session_id: None,
+            })],
+            Command::ChatResume => {
                 self.reset_input();
                 self.sessions_intent = SessionsIntent::ChatResume;
                 self.overlay = Overlay::Sessions(sessions::app::App::new());
                 vec![Effect::LoadSessions]
             }
-            "chat" => vec![Effect::Launch(super::EntryCommand::Chat {
-                session_id: None,
-            })],
-            "sessions" => {
+            Command::Sessions => {
                 self.reset_input();
                 self.sessions_intent = SessionsIntent::View;
                 self.overlay = Overlay::Sessions(sessions::app::App::new());
                 vec![Effect::LoadSessions]
             }
-            "exit" | "quit" => vec![Effect::Exit],
-            "auth" => {
+            Command::Connect => {
+                let (connect_app, initial_effects) = connect::app::App::new(None, None, None, None);
+                self.reset_input();
+                self.overlay = Overlay::Connect(connect_app);
+                self.translate_connect_effects(initial_effects)
+            }
+            Command::Auth => {
                 self.reset_input();
                 vec![Effect::OpenAuth]
             }
-            "bug" => {
+            Command::Bug => {
                 self.reset_input();
                 vec![Effect::OpenBug]
             }
-            "hello" => {
+            Command::Hello => {
                 self.reset_input();
                 vec![Effect::OpenHello]
             }
-            "desktop" => {
+            Command::Desktop => {
                 self.reset_input();
                 vec![Effect::OpenDesktop]
             }
-            "models" => self.submit_model_command(rest),
-            _ if head.is_empty() => Vec::new(),
-            _ => {
-                self.status_message = Some(format!("Unknown command: {}", command.trim()));
-                Vec::new()
-            }
-        }
-    }
-
-    fn submit_model_command(&mut self, rest: &str) -> Vec<Effect> {
-        use crate::cli::ModelCommands;
-
-        let subcmd = rest.split_whitespace().next().unwrap_or("");
-        match subcmd {
-            "" | "list" => {
+            Command::Models => {
                 self.reset_input();
                 self.overlay = Overlay::Models(model::app::App::new());
                 vec![Effect::LoadModels]
             }
-            "paths" => vec![Effect::RunModel(ModelCommands::Paths)],
-            "download" => {
-                let name = rest
-                    .strip_prefix("download")
-                    .unwrap_or("")
-                    .trim()
-                    .to_string();
+            Command::ModelsDownload => {
+                let name = rest.to_string();
                 if name.is_empty() {
                     self.reset_input();
                     self.status_message = Some("Usage: /models download <name>".to_string());
@@ -382,8 +358,8 @@ impl App {
                     vec![Effect::RunModel(ModelCommands::Download { name })]
                 }
             }
-            "delete" => {
-                let name = rest.strip_prefix("delete").unwrap_or("").trim().to_string();
+            Command::ModelsDelete => {
+                let name = rest.to_string();
                 if name.is_empty() {
                     self.reset_input();
                     self.status_message = Some("Usage: /models delete <name>".to_string());
@@ -392,13 +368,8 @@ impl App {
                     vec![Effect::RunModel(ModelCommands::Delete { name })]
                 }
             }
-            _ => {
-                self.reset_input();
-                self.status_message = Some(
-                    "Usage: /models [list | download <name> | delete <name> | paths]".to_string(),
-                );
-                Vec::new()
-            }
+            Command::ModelsPaths => vec![Effect::RunModel(ModelCommands::Paths)],
+            Command::Exit => vec![Effect::Exit],
         }
     }
 
@@ -483,7 +454,7 @@ impl App {
 
     fn selected_command_name(&self) -> Option<&'static str> {
         let selected = *self.filtered_commands.get(self.selected_index)?;
-        Some(COMMANDS.get(selected)?.name)
+        Some(ALL_COMMANDS.get(selected)?.name())
     }
 
     fn set_input_text(&mut self, value: String) {
@@ -504,25 +475,27 @@ impl App {
 
         self.popup_visible = true;
         let query = input.trim_start_matches('/');
-        let mut ranked = COMMANDS
+        let mut ranked = ALL_COMMANDS
             .iter()
             .enumerate()
             .filter_map(|(i, command)| {
-                command_match_score(query, command.name).map(|score| (i, score))
+                command_match_score(query, command.name()).map(|score| (i, score))
             })
             .collect::<Vec<_>>();
 
         ranked.sort_by(|(left_i, left_score), (right_i, right_score)| {
-            right_score
-                .cmp(left_score)
-                .then_with(|| COMMANDS[*left_i].name.cmp(COMMANDS[*right_i].name))
+            right_score.cmp(left_score).then_with(|| {
+                ALL_COMMANDS[*left_i]
+                    .name()
+                    .cmp(ALL_COMMANDS[*right_i].name())
+            })
         });
 
         self.filtered_commands = ranked.into_iter().map(|(i, _)| i).collect();
 
         use super::ui::command_popup::GROUP_ORDER;
         self.filtered_commands.sort_by_key(|&i| {
-            let group = COMMANDS[i].group;
+            let group = ALL_COMMANDS[i].group();
             GROUP_ORDER
                 .iter()
                 .position(|&g| g == group)
@@ -530,7 +503,7 @@ impl App {
         });
 
         if self.filtered_commands.is_empty() {
-            self.filtered_commands = (0..COMMANDS.len()).collect();
+            self.filtered_commands = (0..ALL_COMMANDS.len()).collect();
         }
 
         self.selected_index = self

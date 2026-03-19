@@ -53,123 +53,128 @@ pub fn spawn_post_session(
     hints: Vec<RuntimeSpeakerHint>,
     memo_text: String,
     session_id: String,
+    event_id: Option<String>,
     pool: SqlitePool,
 ) {
     tokio::spawn(async move {
-        // Task 0: save to database
-        let _ = tx.send(ExitEvent::TaskStarted(0));
-        let ok = match hypr_db_app::insert_session(&pool, &session_id).await {
-            Err(e) => {
-                let _ = tx.send(ExitEvent::TaskFailed(0, e.to_string()));
-                false
-            }
-            Ok(()) => {
-                let delta = TranscriptDeltaPersist {
-                    new_words: words,
-                    hints: to_persistable_hints(&hints),
-                    replaced_ids: vec![],
-                };
-                match hypr_db_app::apply_delta(&pool, &session_id, &delta).await {
-                    Err(e) => {
-                        let _ = tx.send(ExitEvent::TaskFailed(0, e.to_string()));
-                        false
-                    }
-                    Ok(()) => {
-                        let memo = memo_text.trim();
-                        if !memo.is_empty() {
-                            let note_id = format!("{session_id}:memo");
-                            let _ = hypr_db_app::insert_note(
-                                &pool,
-                                &note_id,
-                                &session_id,
-                                "memo",
-                                "",
-                                memo,
-                            )
-                            .await;
-                        }
-                        let _ = tx.send(ExitEvent::TaskDone(0));
-                        true
-                    }
-                }
-            }
-        };
-
-        // Task 1: generate summary
-        if !ok {
-            let _ = tx.send(ExitEvent::TaskFailed(1, "database unavailable".into()));
-            let _ = tx.send(ExitEvent::AllDone);
-            tokio::time::sleep(AUTO_EXIT_DELAY).await;
-            let _ = tx.send(ExitEvent::AutoExit);
-            return;
-        }
-
-        let _ = tx.send(ExitEvent::TaskStarted(1));
-
-        let transcript_text = match hypr_db_app::load_words(&pool, &session_id).await {
-            Ok(words) => words_to_transcript_text(&words),
-            Err(e) => {
-                let _ = tx.send(ExitEvent::TaskFailed(1, e.to_string()));
-                let _ = tx.send(ExitEvent::AllDone);
-                tokio::time::sleep(AUTO_EXIT_DELAY).await;
-                let _ = tx.send(ExitEvent::AutoExit);
-                return;
-            }
-        };
-
-        let config = match llm_config {
-            Ok(config) => config,
-            Err(msg) => {
-                let _ = tx.send(ExitEvent::TaskFailed(1, msg));
-                let _ = tx.send(ExitEvent::AllDone);
-                tokio::time::sleep(AUTO_EXIT_DELAY).await;
-                let _ = tx.send(ExitEvent::AutoExit);
-                return;
-            }
-        };
-
-        let backend = match crate::agent::Backend::new(config, None) {
-            Ok(b) => b,
-            Err(e) => {
-                let _ = tx.send(ExitEvent::TaskFailed(1, e.to_string()));
-                let _ = tx.send(ExitEvent::AllDone);
-                tokio::time::sleep(AUTO_EXIT_DELAY).await;
-                let _ = tx.send(ExitEvent::AutoExit);
-                return;
-            }
-        };
-
-        let prompt = format!(
-            "Summarize the following meeting transcript in a few concise paragraphs. \
-             Focus on key topics, decisions, and action items.\n\n{transcript_text}"
-        );
-
-        match backend
-            .stream_text(prompt, vec![], 1, |_chunk| Ok(()))
-            .await
-        {
-            Ok(Some(summary)) => {
-                let _ = tx.send(ExitEvent::TaskDone(1));
-                let title = title_from_summary(&summary);
-                let _ = hypr_db_app::update_session(&pool, &session_id, Some(&title)).await;
-                let note_id = format!("{session_id}:summary");
-                let _ =
-                    hypr_db_app::insert_note(&pool, &note_id, &session_id, "summary", "", &summary)
-                        .await;
-            }
-            Ok(None) => {
-                let _ = tx.send(ExitEvent::TaskFailed(
-                    1,
-                    "LLM returned empty response".into(),
-                ));
-            }
-            Err(e) => {
-                let _ = tx.send(ExitEvent::TaskFailed(1, e.to_string()));
-            }
-        }
-
+        run_post_session(
+            &tx,
+            llm_config,
+            words,
+            hints,
+            memo_text,
+            &session_id,
+            event_id.as_deref(),
+            &pool,
+        )
+        .await;
         let _ = tx.send(ExitEvent::AllDone);
         tokio::time::sleep(AUTO_EXIT_DELAY).await;
         let _ = tx.send(ExitEvent::AutoExit);
     });
+}
+
+async fn save_to_db(
+    pool: &SqlitePool,
+    session_id: &str,
+    event_id: Option<&str>,
+    words: Vec<FinalizedWord>,
+    hints: &[RuntimeSpeakerHint],
+    memo_text: &str,
+) -> Result<(), String> {
+    hypr_db_app::insert_session(pool, session_id, event_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    if let Some(eid) = event_id {
+        let _ = hypr_db_app::copy_event_participants_to_session(pool, session_id, eid).await;
+    }
+    let delta = TranscriptDeltaPersist {
+        new_words: words,
+        hints: to_persistable_hints(hints),
+        replaced_ids: vec![],
+    };
+    hypr_db_app::apply_delta(pool, session_id, &delta)
+        .await
+        .map_err(|e| e.to_string())?;
+    let memo = memo_text.trim();
+    if !memo.is_empty() {
+        let note_id = format!("{session_id}:memo");
+        let _ = hypr_db_app::insert_note(pool, &note_id, session_id, "memo", "", memo).await;
+    }
+    Ok(())
+}
+
+async fn run_post_session(
+    tx: &mpsc::UnboundedSender<ExitEvent>,
+    llm_config: Result<ResolvedLlmConfig, String>,
+    words: Vec<FinalizedWord>,
+    hints: Vec<RuntimeSpeakerHint>,
+    memo_text: String,
+    session_id: &str,
+    event_id: Option<&str>,
+    pool: &SqlitePool,
+) {
+    // Task 0: save to database
+    let _ = tx.send(ExitEvent::TaskStarted(0));
+    if let Err(e) = save_to_db(pool, session_id, event_id, words, &hints, &memo_text).await {
+        let _ = tx.send(ExitEvent::TaskFailed(0, e));
+        let _ = tx.send(ExitEvent::TaskFailed(1, "database unavailable".into()));
+        return;
+    }
+    let _ = tx.send(ExitEvent::TaskDone(0));
+
+    // Task 1: generate summary
+    let _ = tx.send(ExitEvent::TaskStarted(1));
+
+    let transcript_text = match hypr_db_app::load_words(pool, session_id).await {
+        Ok(words) => words_to_transcript_text(&words),
+        Err(e) => {
+            let _ = tx.send(ExitEvent::TaskFailed(1, e.to_string()));
+            return;
+        }
+    };
+
+    let config = match llm_config {
+        Ok(config) => config,
+        Err(msg) => {
+            let _ = tx.send(ExitEvent::TaskFailed(1, msg));
+            return;
+        }
+    };
+
+    let backend = match crate::agent::Backend::new(config, None) {
+        Ok(b) => b,
+        Err(e) => {
+            let _ = tx.send(ExitEvent::TaskFailed(1, e.to_string()));
+            return;
+        }
+    };
+
+    let prompt = format!(
+        "Summarize the following meeting transcript in a few concise paragraphs. \
+         Focus on key topics, decisions, and action items.\n\n{transcript_text}"
+    );
+
+    match backend
+        .stream_text(prompt, vec![], 1, |_chunk| Ok(()))
+        .await
+    {
+        Ok(Some(summary)) => {
+            let _ = tx.send(ExitEvent::TaskDone(1));
+            let title = title_from_summary(&summary);
+            let _ = hypr_db_app::update_session(pool, session_id, Some(&title)).await;
+            let note_id = format!("{session_id}:summary");
+            let _ =
+                hypr_db_app::insert_note(pool, &note_id, session_id, "summary", "", &summary).await;
+        }
+        Ok(None) => {
+            let _ = tx.send(ExitEvent::TaskFailed(
+                1,
+                "LLM returned empty response".into(),
+            ));
+        }
+        Err(e) => {
+            let _ = tx.send(ExitEvent::TaskFailed(1, e.to_string()));
+        }
+    }
 }

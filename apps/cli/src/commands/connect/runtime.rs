@@ -26,19 +26,21 @@ pub(crate) enum CalendarPermissionState {
     Denied,
 }
 
+#[cfg(target_os = "macos")]
+fn map_auth_status(status: hypr_apple_calendar::CalendarAuthStatus) -> CalendarPermissionState {
+    match status {
+        hypr_apple_calendar::CalendarAuthStatus::NotDetermined => {
+            CalendarPermissionState::NotDetermined
+        }
+        hypr_apple_calendar::CalendarAuthStatus::Authorized => CalendarPermissionState::Authorized,
+        hypr_apple_calendar::CalendarAuthStatus::Denied => CalendarPermissionState::Denied,
+    }
+}
+
 pub(crate) fn check_permission_sync() -> CalendarPermissionState {
     #[cfg(target_os = "macos")]
     {
-        let status = hypr_apple_calendar::Handle::authorization_status();
-        match status {
-            hypr_apple_calendar::CalendarAuthStatus::NotDetermined => {
-                CalendarPermissionState::NotDetermined
-            }
-            hypr_apple_calendar::CalendarAuthStatus::Authorized => {
-                CalendarPermissionState::Authorized
-            }
-            hypr_apple_calendar::CalendarAuthStatus::Denied => CalendarPermissionState::Denied,
-        }
+        map_auth_status(hypr_apple_calendar::Handle::authorization_status())
     }
     #[cfg(not(target_os = "macos"))]
     {
@@ -96,18 +98,7 @@ impl Runtime {
         std::thread::spawn(move || {
             #[cfg(target_os = "macos")]
             {
-                let status = hypr_apple_calendar::Handle::authorization_status();
-                let state = match status {
-                    hypr_apple_calendar::CalendarAuthStatus::NotDetermined => {
-                        CalendarPermissionState::NotDetermined
-                    }
-                    hypr_apple_calendar::CalendarAuthStatus::Authorized => {
-                        CalendarPermissionState::Authorized
-                    }
-                    hypr_apple_calendar::CalendarAuthStatus::Denied => {
-                        CalendarPermissionState::Denied
-                    }
-                };
+                let state = map_auth_status(hypr_apple_calendar::Handle::authorization_status());
                 let _ = tx.send(RuntimeEvent::CalendarPermissionStatus(state));
             }
             #[cfg(not(target_os = "macos"))]

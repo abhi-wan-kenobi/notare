@@ -7,6 +7,7 @@ use rig::message::Message;
 use crate::theme::Theme;
 use crate::widgets::ScrollViewState;
 
+use super::Role;
 use super::action::Action;
 use super::effect::Effect;
 
@@ -24,6 +25,20 @@ pub(crate) struct VisibleMessage {
 
 const MAX_HISTORY: usize = 20;
 
+enum StreamState {
+    Idle,
+    Streaming(String),
+}
+
+fn new_editor() -> Editor<Theme> {
+    let mut e = Editor::with_styles(Theme::DEFAULT);
+    e.set_placeholder(
+        "Type a message and press Enter...",
+        Theme::DEFAULT.placeholder,
+    );
+    e
+}
+
 pub(crate) struct App {
     model: String,
     session: Option<String>,
@@ -32,9 +47,7 @@ pub(crate) struct App {
     max_history: usize,
     transcript: Vec<VisibleMessage>,
     input: Editor<Theme>,
-    pending_assistant: String,
-    streaming: bool,
-    status: String,
+    stream: StreamState,
     last_error: Option<String>,
     started_at: Instant,
     scroll: ScrollViewState,
@@ -45,18 +58,6 @@ pub(crate) struct App {
 
 impl App {
     pub(crate) fn new(model: String, session: Option<String>, session_id: String) -> Self {
-        let mut input = Editor::with_styles(Theme::DEFAULT);
-        input.set_placeholder(
-            "Type a message and press Enter...",
-            Theme::DEFAULT.placeholder,
-        );
-
-        let status = if session.is_some() {
-            "Ready (session loaded)".to_string()
-        } else {
-            "Ready".to_string()
-        };
-
         Self {
             model,
             session,
@@ -64,10 +65,8 @@ impl App {
             api_history: Vec::new(),
             max_history: MAX_HISTORY,
             transcript: Vec::new(),
-            input,
-            pending_assistant: String::new(),
-            streaming: false,
-            status,
+            input: new_editor(),
+            stream: StreamState::Idle,
             last_error: None,
             started_at: Instant::now(),
             scroll: ScrollViewState::new(),
@@ -104,8 +103,9 @@ impl App {
             Action::Key(key) => self.handle_key(key),
             Action::Paste(pasted) => self.handle_paste(pasted),
             Action::StreamChunk(chunk) => {
-                self.pending_assistant.push_str(&chunk);
-                self.status = "Streaming response...".to_string();
+                if let StreamState::Streaming(buf) = &mut self.stream {
+                    buf.push_str(&chunk);
+                }
                 if self.autoscroll {
                     self.scroll.scroll_to_bottom();
                 }
@@ -138,8 +138,14 @@ impl App {
         self.session.as_deref()
     }
 
-    pub(crate) fn status(&self) -> &str {
-        &self.status
+    pub(crate) fn status(&self) -> String {
+        if let Some(err) = &self.last_error {
+            format!("Error: {err}")
+        } else if self.streaming() {
+            "Streaming response...".into()
+        } else {
+            "Ready".into()
+        }
     }
 
     pub(crate) fn last_error(&self) -> Option<&str> {
@@ -163,17 +169,23 @@ impl App {
     }
 
     pub(crate) fn pending_assistant(&self) -> &str {
-        &self.pending_assistant
+        match &self.stream {
+            StreamState::Streaming(buf) => buf,
+            StreamState::Idle => "",
+        }
     }
 
     pub(crate) fn streaming(&self) -> bool {
-        self.streaming
+        matches!(self.stream, StreamState::Streaming(_))
     }
 
-    pub(crate) fn scroll_state_mut(&mut self) -> &mut ScrollViewState {
+    pub(crate) fn apply_autoscroll(&mut self) {
         if self.autoscroll {
             self.scroll.scroll_to_bottom();
         }
+    }
+
+    pub(crate) fn scroll_state_mut(&mut self) -> &mut ScrollViewState {
         &mut self.scroll
     }
 
@@ -202,7 +214,7 @@ impl App {
             _ => {}
         }
 
-        if self.streaming {
+        if self.streaming() {
             return Vec::new();
         }
 
@@ -216,7 +228,7 @@ impl App {
     }
 
     fn handle_paste(&mut self, pasted: String) -> Vec<Effect> {
-        if self.streaming {
+        if self.streaming() {
             return Vec::new();
         }
         let pasted = pasted.replace("\r\n", "\n").replace('\r', "\n");
@@ -237,16 +249,10 @@ impl App {
         }
 
         let content = trimmed.to_string();
-        self.input = Editor::with_styles(Theme::DEFAULT);
-        self.input.set_placeholder(
-            "Type a message and press Enter...",
-            Theme::DEFAULT.placeholder,
-        );
+        self.input = new_editor();
         self.last_error = None;
-        self.streaming = true;
-        self.pending_assistant.clear();
+        self.stream = StreamState::Streaming(String::new());
         self.autoscroll = true;
-        self.status = "Streaming response...".to_string();
         self.transcript.push(VisibleMessage {
             speaker: Speaker::User,
             content: content.clone(),
@@ -259,7 +265,7 @@ impl App {
             Effect::Persist {
                 session_id: self.session_id.clone(),
                 message_id,
-                role: "user".to_string(),
+                role: Role::User,
                 content: content.clone(),
             },
             Effect::Submit {
@@ -270,25 +276,25 @@ impl App {
     }
 
     fn finish_stream(&mut self, final_text: Option<String>) -> Vec<Effect> {
-        self.streaming = false;
-        self.status = "Ready".to_string();
+        let mut buffer = match std::mem::replace(&mut self.stream, StreamState::Idle) {
+            StreamState::Streaming(buf) => buf,
+            StreamState::Idle => String::new(),
+        };
 
-        if self.pending_assistant.is_empty()
+        if buffer.is_empty()
             && let Some(final_text) = final_text.as_deref()
             && !final_text.is_empty()
         {
-            self.pending_assistant = final_text.to_string();
+            buffer = final_text.to_string();
         } else if let Some(final_text) = final_text.as_deref()
-            && final_text.starts_with(&self.pending_assistant)
-            && final_text.len() > self.pending_assistant.len()
+            && final_text.starts_with(&buffer)
+            && final_text.len() > buffer.len()
         {
-            self.pending_assistant
-                .push_str(&final_text[self.pending_assistant.len()..]);
+            buffer.push_str(&final_text[buffer.len()..]);
         }
 
-        if self.pending_assistant.is_empty() {
+        if buffer.is_empty() {
             self.last_error = Some("Empty response from model".to_string());
-            self.status = "Error: empty response".to_string();
             self.transcript.push(VisibleMessage {
                 speaker: Speaker::Error,
                 content: "No response content received from the model.".to_string(),
@@ -296,53 +302,53 @@ impl App {
             return Vec::new();
         }
 
-        let content = std::mem::take(&mut self.pending_assistant);
         self.transcript.push(VisibleMessage {
             speaker: Speaker::Assistant,
-            content: content.clone(),
+            content: buffer.clone(),
         });
 
         let message_id = uuid::Uuid::new_v4().to_string();
         let mut effects = vec![Effect::Persist {
             session_id: self.session_id.clone(),
             message_id,
-            role: "assistant".to_string(),
-            content: content.clone(),
+            role: Role::Assistant,
+            content: buffer.clone(),
         }];
         if !self.title_requested {
             self.title_requested = true;
             if let Some(user_msg) = self.transcript.iter().find(|m| m.speaker == Speaker::User) {
                 effects.push(Effect::GenerateTitle {
                     prompt: user_msg.content.clone(),
-                    response: content.clone(),
+                    response: buffer.clone(),
                 });
             }
         }
 
-        self.push_api_history(Message::assistant(content));
+        self.push_api_history(Message::assistant(buffer));
         effects
     }
 
     fn fail_stream(&mut self, error: String) -> Vec<Effect> {
-        self.streaming = false;
+        let buffer = match std::mem::replace(&mut self.stream, StreamState::Idle) {
+            StreamState::Streaming(buf) => buf,
+            StreamState::Idle => String::new(),
+        };
         let mut effects = Vec::new();
-        if !self.pending_assistant.is_empty() {
-            let content = std::mem::take(&mut self.pending_assistant);
+        if !buffer.is_empty() {
             self.transcript.push(VisibleMessage {
                 speaker: Speaker::Assistant,
-                content: content.clone(),
+                content: buffer.clone(),
             });
             let message_id = uuid::Uuid::new_v4().to_string();
-            self.push_api_history(Message::assistant(content.clone()));
+            self.push_api_history(Message::assistant(buffer.clone()));
             effects.push(Effect::Persist {
                 session_id: self.session_id.clone(),
                 message_id,
-                role: "assistant".to_string(),
-                content,
+                role: Role::Assistant,
+                content: buffer,
             });
         }
         self.last_error = Some(error.clone());
-        self.status = format!("Error: {error}");
         self.transcript.push(VisibleMessage {
             speaker: Speaker::Error,
             content: error,
@@ -394,7 +400,7 @@ mod tests {
 
         assert!(effects.iter().any(|e| matches!(e, Effect::Submit { .. })));
         assert!(effects.iter().any(|e| matches!(e, Effect::Persist { .. })));
-        assert!(app.streaming);
+        assert!(app.streaming());
         assert_eq!(app.transcript.len(), 1);
     }
 
@@ -440,7 +446,7 @@ mod tests {
         let _ = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
         let _ = app.dispatch(Action::StreamCompleted(None));
 
-        assert!(!app.streaming);
+        assert!(!app.streaming());
         assert_eq!(app.transcript.len(), 2);
         assert_eq!(app.transcript[0].speaker, Speaker::User);
         assert_eq!(app.transcript[1].speaker, Speaker::Error);

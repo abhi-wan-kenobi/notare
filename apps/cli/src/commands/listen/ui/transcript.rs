@@ -39,7 +39,14 @@ pub(super) fn draw_transcript(
 
     let content_width = area.width.saturating_sub(4) as usize;
     let word_age_fn = |id: &str| app.word_age_secs(id);
-    let lines = build_segment_lines(&segments, theme, content_width, Some(&word_age_fn));
+    let ctx = app.speaker_label_context();
+    let lines = build_segment_lines(
+        &segments,
+        theme,
+        content_width,
+        Some(&word_age_fn),
+        ctx.as_ref(),
+    );
 
     render_scrollable(frame, lines, Some(block), area, app.scroll_state_mut());
 

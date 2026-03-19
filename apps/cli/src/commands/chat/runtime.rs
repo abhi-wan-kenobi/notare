@@ -9,6 +9,8 @@ use crate::agent::Backend;
 use crate::error::{CliError, CliResult};
 use crate::llm::ResolvedLlmConfig;
 
+use super::Role;
+
 pub(crate) enum RuntimeEvent {
     Chunk(String),
     Completed(Option<String>),
@@ -62,17 +64,18 @@ impl Runtime {
     }
 
     pub(crate) async fn ensure_session(&self, session_id: &str) {
-        let _ = hypr_db_app::insert_session(&self.pool, session_id).await;
+        let _ = hypr_db_app::insert_session(&self.pool, session_id, None).await;
     }
 
     pub(crate) fn persist_message(
         &self,
         session_id: String,
         message_id: String,
-        role: String,
+        role: Role,
         content: String,
     ) {
         let pool = self.pool.clone();
+        let role = role.to_string();
         self.pending_writes.lock().unwrap().spawn(async move {
             let _ =
                 hypr_db_app::insert_chat_message(&pool, &message_id, &session_id, &role, &content)

@@ -1,73 +1,209 @@
 use crate::cli::{ConnectProvider, ConnectionType};
 
-const STT_PROVIDERS: &[ConnectProvider] = &[
-    ConnectProvider::Deepgram,
-    ConnectProvider::Soniox,
-    ConnectProvider::Assemblyai,
-    ConnectProvider::Openai,
-    ConnectProvider::Gladia,
-    ConnectProvider::Elevenlabs,
-    ConnectProvider::Mistral,
-    ConnectProvider::Fireworks,
-    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    ConnectProvider::Cactus,
-    ConnectProvider::Custom,
-];
+pub(crate) struct ProviderMeta {
+    pub provider: ConnectProvider,
+    pub id: &'static str,
+    pub display_name: &'static str,
+    pub default_base_url: Option<&'static str>,
+    pub capabilities: &'static [ConnectionType],
+    pub is_local: bool,
+    pub is_disabled: bool,
+}
 
-const LLM_PROVIDERS: &[ConnectProvider] = &[
-    ConnectProvider::Openai,
-    ConnectProvider::Anthropic,
-    ConnectProvider::Openrouter,
-    ConnectProvider::GoogleGenerativeAi,
-    ConnectProvider::Mistral,
-    ConnectProvider::AzureOpenai,
-    ConnectProvider::AzureAi,
-    ConnectProvider::Ollama,
-    ConnectProvider::Lmstudio,
-    ConnectProvider::Custom,
-];
+const CAP_STT: &[ConnectionType] = &[ConnectionType::Stt];
+const CAP_LLM: &[ConnectionType] = &[ConnectionType::Llm];
+const CAP_CAL: &[ConnectionType] = &[ConnectionType::Cal];
+const CAP_STT_LLM: &[ConnectionType] = &[ConnectionType::Stt, ConnectionType::Llm];
 
-const CAL_PROVIDERS: &[ConnectProvider] = &[
-    #[cfg(target_os = "macos")]
-    ConnectProvider::AppleCalendar,
-    ConnectProvider::GoogleCalendar,
-    ConnectProvider::OutlookCalendar,
-];
-
-const DISABLED_PROVIDERS: &[ConnectProvider] = &[
-    ConnectProvider::GoogleCalendar,
-    ConnectProvider::OutlookCalendar,
-];
-
-pub(crate) const ALL_PROVIDERS: &[ConnectProvider] = &[
+pub(crate) const PROVIDERS: &[ProviderMeta] = &[
     // STT-only
-    ConnectProvider::Deepgram,
-    ConnectProvider::Soniox,
-    ConnectProvider::Assemblyai,
-    ConnectProvider::Gladia,
-    ConnectProvider::Elevenlabs,
-    ConnectProvider::Fireworks,
+    ProviderMeta {
+        provider: ConnectProvider::Deepgram,
+        id: "deepgram",
+        display_name: "Deepgram",
+        default_base_url: Some("https://api.deepgram.com/v1"),
+        capabilities: CAP_STT,
+        is_local: false,
+        is_disabled: false,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::Soniox,
+        id: "soniox",
+        display_name: "Soniox",
+        default_base_url: Some("https://api.soniox.com"),
+        capabilities: CAP_STT,
+        is_local: false,
+        is_disabled: false,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::Assemblyai,
+        id: "assemblyai",
+        display_name: "AssemblyAI",
+        default_base_url: Some("https://api.assemblyai.com"),
+        capabilities: CAP_STT,
+        is_local: false,
+        is_disabled: false,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::Gladia,
+        id: "gladia",
+        display_name: "Gladia",
+        default_base_url: Some("https://api.gladia.io"),
+        capabilities: CAP_STT,
+        is_local: false,
+        is_disabled: false,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::Elevenlabs,
+        id: "elevenlabs",
+        display_name: "ElevenLabs",
+        default_base_url: Some("https://api.elevenlabs.io"),
+        capabilities: CAP_STT,
+        is_local: false,
+        is_disabled: false,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::Fireworks,
+        id: "fireworks",
+        display_name: "Fireworks",
+        default_base_url: Some("https://api.fireworks.ai"),
+        capabilities: CAP_STT,
+        is_local: false,
+        is_disabled: false,
+    },
     // Dual (STT + LLM)
-    ConnectProvider::Openai,
-    ConnectProvider::Mistral,
+    ProviderMeta {
+        provider: ConnectProvider::Openai,
+        id: "openai",
+        display_name: "OpenAI",
+        default_base_url: Some("https://api.openai.com/v1"),
+        capabilities: CAP_STT_LLM,
+        is_local: false,
+        is_disabled: false,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::Mistral,
+        id: "mistral",
+        display_name: "Mistral",
+        default_base_url: Some("https://api.mistral.ai/v1"),
+        capabilities: CAP_STT_LLM,
+        is_local: false,
+        is_disabled: false,
+    },
     // LLM-only
-    ConnectProvider::Anthropic,
-    ConnectProvider::Openrouter,
-    ConnectProvider::GoogleGenerativeAi,
-    ConnectProvider::AzureOpenai,
-    ConnectProvider::AzureAi,
+    ProviderMeta {
+        provider: ConnectProvider::Anthropic,
+        id: "anthropic",
+        display_name: "Anthropic",
+        default_base_url: Some("https://api.anthropic.com/v1"),
+        capabilities: CAP_LLM,
+        is_local: false,
+        is_disabled: false,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::Openrouter,
+        id: "openrouter",
+        display_name: "OpenRouter",
+        default_base_url: Some("https://openrouter.ai/api/v1"),
+        capabilities: CAP_LLM,
+        is_local: false,
+        is_disabled: false,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::GoogleGenerativeAi,
+        id: "google_generative_ai",
+        display_name: "Google Generative AI",
+        default_base_url: Some("https://generativelanguage.googleapis.com/v1beta"),
+        capabilities: CAP_LLM,
+        is_local: false,
+        is_disabled: false,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::AzureOpenai,
+        id: "azure_openai",
+        display_name: "Azure OpenAI",
+        default_base_url: None,
+        capabilities: CAP_LLM,
+        is_local: false,
+        is_disabled: false,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::AzureAi,
+        id: "azure_ai",
+        display_name: "Azure AI",
+        default_base_url: None,
+        capabilities: CAP_LLM,
+        is_local: false,
+        is_disabled: false,
+    },
     // Local
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    ConnectProvider::Cactus,
-    ConnectProvider::Ollama,
-    ConnectProvider::Lmstudio,
+    ProviderMeta {
+        provider: ConnectProvider::Cactus,
+        id: "cactus",
+        display_name: "Cactus",
+        default_base_url: None,
+        capabilities: CAP_STT,
+        is_local: true,
+        is_disabled: false,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::Ollama,
+        id: "ollama",
+        display_name: "Ollama",
+        default_base_url: Some("http://127.0.0.1:11434/v1"),
+        capabilities: CAP_LLM,
+        is_local: true,
+        is_disabled: false,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::Lmstudio,
+        id: "lmstudio",
+        display_name: "LM Studio",
+        default_base_url: Some("http://127.0.0.1:1234/v1"),
+        capabilities: CAP_LLM,
+        is_local: true,
+        is_disabled: false,
+    },
     // Custom
-    ConnectProvider::Custom,
+    ProviderMeta {
+        provider: ConnectProvider::Custom,
+        id: "custom",
+        display_name: "Custom",
+        default_base_url: None,
+        capabilities: CAP_STT_LLM,
+        is_local: false,
+        is_disabled: false,
+    },
     // Calendar
     #[cfg(target_os = "macos")]
-    ConnectProvider::AppleCalendar,
-    ConnectProvider::GoogleCalendar,
-    ConnectProvider::OutlookCalendar,
+    ProviderMeta {
+        provider: ConnectProvider::AppleCalendar,
+        id: "apple_calendar",
+        display_name: "Apple Calendar",
+        default_base_url: None,
+        capabilities: CAP_CAL,
+        is_local: true,
+        is_disabled: false,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::GoogleCalendar,
+        id: "google_calendar",
+        display_name: "Google Calendar",
+        default_base_url: None,
+        capabilities: CAP_CAL,
+        is_local: false,
+        is_disabled: true,
+    },
+    ProviderMeta {
+        provider: ConnectProvider::OutlookCalendar,
+        id: "outlook_calendar",
+        display_name: "Outlook Calendar",
+        default_base_url: None,
+        capabilities: CAP_CAL,
+        is_local: false,
+        is_disabled: true,
+    },
 ];
 
 impl std::fmt::Display for ConnectionType {
@@ -87,118 +223,42 @@ impl std::fmt::Display for ConnectProvider {
 }
 
 impl ConnectProvider {
+    pub(crate) fn meta(&self) -> &'static ProviderMeta {
+        PROVIDERS
+            .iter()
+            .find(|m| m.provider == *self)
+            .expect("all providers must have metadata")
+    }
+
     pub(crate) fn id(&self) -> &'static str {
-        match self {
-            Self::Deepgram => "deepgram",
-            Self::Soniox => "soniox",
-            Self::Assemblyai => "assemblyai",
-            Self::Openai => "openai",
-            Self::Gladia => "gladia",
-            Self::Elevenlabs => "elevenlabs",
-            Self::Mistral => "mistral",
-            Self::Fireworks => "fireworks",
-            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-            Self::Cactus => "cactus",
-            Self::Anthropic => "anthropic",
-            Self::Openrouter => "openrouter",
-            Self::GoogleGenerativeAi => "google_generative_ai",
-            Self::AzureOpenai => "azure_openai",
-            Self::AzureAi => "azure_ai",
-            Self::Ollama => "ollama",
-            Self::Lmstudio => "lmstudio",
-            Self::Custom => "custom",
-            #[cfg(target_os = "macos")]
-            Self::AppleCalendar => "apple_calendar",
-            Self::GoogleCalendar => "google_calendar",
-            Self::OutlookCalendar => "outlook_calendar",
-        }
+        self.meta().id
     }
 
     pub(crate) fn display_name(&self) -> &'static str {
-        match self {
-            Self::Deepgram => "Deepgram",
-            Self::Soniox => "Soniox",
-            Self::Assemblyai => "AssemblyAI",
-            Self::Openai => "OpenAI",
-            Self::Gladia => "Gladia",
-            Self::Elevenlabs => "ElevenLabs",
-            Self::Mistral => "Mistral",
-            Self::Fireworks => "Fireworks",
-            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-            Self::Cactus => "Cactus",
-            Self::Anthropic => "Anthropic",
-            Self::Openrouter => "OpenRouter",
-            Self::GoogleGenerativeAi => "Google Generative AI",
-            Self::AzureOpenai => "Azure OpenAI",
-            Self::AzureAi => "Azure AI",
-            Self::Ollama => "Ollama",
-            Self::Lmstudio => "LM Studio",
-            Self::Custom => "Custom",
-            #[cfg(target_os = "macos")]
-            Self::AppleCalendar => "Apple Calendar",
-            Self::GoogleCalendar => "Google Calendar",
-            Self::OutlookCalendar => "Outlook Calendar",
-        }
+        self.meta().display_name
     }
 
     pub(crate) fn capabilities(&self) -> Vec<ConnectionType> {
-        let mut caps = Vec::new();
-        if STT_PROVIDERS.contains(self) {
-            caps.push(ConnectionType::Stt);
-        }
-        if LLM_PROVIDERS.contains(self) {
-            caps.push(ConnectionType::Llm);
-        }
-        if CAL_PROVIDERS.contains(self) {
-            caps.push(ConnectionType::Cal);
-        }
-        caps
+        self.meta().capabilities.to_vec()
     }
 
     pub(crate) fn is_disabled(&self) -> bool {
-        DISABLED_PROVIDERS.contains(self)
+        self.meta().is_disabled
     }
 
     pub(crate) fn is_local(&self) -> bool {
-        match self {
-            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-            Self::Cactus => true,
-            Self::Ollama | Self::Lmstudio => true,
-            #[cfg(target_os = "macos")]
-            Self::AppleCalendar => true,
-            _ => false,
-        }
+        self.meta().is_local
     }
 
     pub(crate) fn default_base_url(&self) -> Option<&'static str> {
-        match self {
-            Self::Deepgram => Some("https://api.deepgram.com/v1"),
-            Self::Soniox => Some("https://api.soniox.com"),
-            Self::Assemblyai => Some("https://api.assemblyai.com"),
-            Self::Openai => Some("https://api.openai.com/v1"),
-            Self::Gladia => Some("https://api.gladia.io"),
-            Self::Elevenlabs => Some("https://api.elevenlabs.io"),
-            Self::Mistral => Some("https://api.mistral.ai/v1"),
-            Self::Fireworks => Some("https://api.fireworks.ai"),
-            Self::Anthropic => Some("https://api.anthropic.com/v1"),
-            Self::Openrouter => Some("https://openrouter.ai/api/v1"),
-            Self::GoogleGenerativeAi => Some("https://generativelanguage.googleapis.com/v1beta"),
-            Self::Ollama => Some("http://127.0.0.1:11434/v1"),
-            Self::Lmstudio => Some("http://127.0.0.1:1234/v1"),
-            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-            Self::Cactus => None,
-            #[cfg(target_os = "macos")]
-            Self::AppleCalendar => None,
-            Self::GoogleCalendar | Self::OutlookCalendar => None,
-            Self::AzureOpenai | Self::AzureAi | Self::Custom => None,
-        }
+        self.meta().default_base_url
     }
 
     pub(crate) fn valid_for(&self, ct: ConnectionType) -> bool {
-        self.capabilities().contains(&ct)
+        self.meta().capabilities.contains(&ct)
     }
 
     pub(crate) fn is_calendar_provider(&self) -> bool {
-        CAL_PROVIDERS.contains(self)
+        self.meta().capabilities.contains(&ConnectionType::Cal)
     }
 }

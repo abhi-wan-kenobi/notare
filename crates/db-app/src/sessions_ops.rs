@@ -2,9 +2,14 @@ use sqlx::SqlitePool;
 
 use crate::SessionRow;
 
-pub async fn insert_session(pool: &SqlitePool, session_id: &str) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT OR IGNORE INTO sessions (id) VALUES (?)")
+pub async fn insert_session(
+    pool: &SqlitePool,
+    session_id: &str,
+    event_id: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("INSERT OR IGNORE INTO sessions (id, event_id) VALUES (?, ?)")
         .bind(session_id)
+        .bind(event_id)
         .execute(pool)
         .await?;
     Ok(())
@@ -24,8 +29,8 @@ pub async fn update_session(
 }
 
 pub async fn list_sessions(pool: &SqlitePool) -> Result<Vec<SessionRow>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, Option<String>, String, String, Option<String>)>(
-        "SELECT id, created_at, title, user_id, visibility, folder_id FROM sessions ORDER BY created_at DESC",
+    let rows = sqlx::query_as::<_, (String, String, Option<String>, String, String, Option<String>, Option<String>)>(
+        "SELECT id, created_at, title, user_id, visibility, folder_id, event_id FROM sessions ORDER BY created_at DESC",
     )
     .fetch_all(pool)
     .await?;
@@ -33,13 +38,14 @@ pub async fn list_sessions(pool: &SqlitePool) -> Result<Vec<SessionRow>, sqlx::E
     Ok(rows
         .into_iter()
         .map(
-            |(id, created_at, title, user_id, visibility, folder_id)| SessionRow {
+            |(id, created_at, title, user_id, visibility, folder_id, event_id)| SessionRow {
                 id,
                 created_at,
                 title,
                 user_id,
                 visibility,
                 folder_id,
+                event_id,
             },
         )
         .collect())
@@ -58,22 +64,24 @@ pub async fn get_session(
             String,
             String,
             Option<String>,
+            Option<String>,
         ),
     >(
-        "SELECT id, created_at, title, user_id, visibility, folder_id FROM sessions WHERE id = ?",
+        "SELECT id, created_at, title, user_id, visibility, folder_id, event_id FROM sessions WHERE id = ?",
     )
     .bind(session_id)
     .fetch_optional(pool)
     .await?;
 
     Ok(row.map(
-        |(id, created_at, title, user_id, visibility, folder_id)| SessionRow {
+        |(id, created_at, title, user_id, visibility, folder_id, event_id)| SessionRow {
             id,
             created_at,
             title,
             user_id,
             visibility,
             folder_id,
+            event_id,
         },
     ))
 }

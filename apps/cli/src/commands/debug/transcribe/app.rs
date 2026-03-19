@@ -322,7 +322,7 @@ impl RichState {
         let segments =
             hypr_transcript::build_segments(&self.words, &self.partials, &all_hints, Some(&opts));
         let word_age = |id: &str| self.word_age_secs(id);
-        build_segment_lines(&segments, &self.theme, width, Some(&word_age))
+        build_segment_lines(&segments, &self.theme, width, Some(&word_age), None)
     }
 
     fn has_recent_words(&self) -> bool {

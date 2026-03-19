@@ -163,7 +163,7 @@ mod tests {
         migrate(db.pool()).await.unwrap();
 
         let sid = "sess-1";
-        insert_session(db.pool(), sid).await.unwrap();
+        insert_session(db.pool(), sid, None).await.unwrap();
 
         let session = get_session(db.pool(), sid).await.unwrap().unwrap();
         assert_eq!(session.id, sid);
@@ -237,7 +237,7 @@ mod tests {
         migrate(db.pool()).await.unwrap();
 
         let sid = "sess-2";
-        insert_session(db.pool(), sid).await.unwrap();
+        insert_session(db.pool(), sid, None).await.unwrap();
 
         let delta1 = TranscriptDeltaPersist {
             new_words: vec![FinalizedWord {
@@ -288,7 +288,7 @@ mod tests {
         migrate(db.pool()).await.unwrap();
 
         let sid = "chat-sess-1";
-        insert_session(db.pool(), sid).await.unwrap();
+        insert_session(db.pool(), sid, None).await.unwrap();
 
         insert_chat_message(db.pool(), "m1", sid, "user", "hello")
             .await
@@ -388,7 +388,7 @@ mod tests {
         let db = Db3::connect_memory_plain().await.unwrap();
         migrate(db.pool()).await.unwrap();
 
-        insert_session(db.pool(), "s1").await.unwrap();
+        insert_session(db.pool(), "s1", None).await.unwrap();
         insert_human(db.pool(), "h1", "Alice", "", "", "")
             .await
             .unwrap();
@@ -428,7 +428,7 @@ mod tests {
         migrate(db.pool()).await.unwrap();
 
         let sid = "note-sess-1";
-        insert_session(db.pool(), sid).await.unwrap();
+        insert_session(db.pool(), sid, None).await.unwrap();
 
         insert_note(db.pool(), "n1", sid, "memo", "", "my memo")
             .await
@@ -490,7 +490,7 @@ mod tests {
         let db = Db3::connect_memory_plain().await.unwrap();
         migrate(db.pool()).await.unwrap();
 
-        insert_session(db.pool(), "s1").await.unwrap();
+        insert_session(db.pool(), "s1", None).await.unwrap();
 
         insert_thread(db.pool(), "t1", "u1", Some("s1"), "Chat about code")
             .await
@@ -685,7 +685,7 @@ mod tests {
         migrate(db.pool()).await.unwrap();
 
         let sid = "vis-sess-1";
-        insert_session(db.pool(), sid).await.unwrap();
+        insert_session(db.pool(), sid, None).await.unwrap();
 
         let delta = TranscriptDeltaPersist {
             new_words: vec![FinalizedWord {
@@ -939,7 +939,7 @@ mod tests {
             .unwrap();
 
         // Meeting (session + participant)
-        insert_session(db.pool(), "s1").await.unwrap();
+        insert_session(db.pool(), "s1", None).await.unwrap();
         update_session(db.pool(), "s1", Some("Weekly Standup"))
             .await
             .unwrap();
@@ -1017,5 +1017,105 @@ mod tests {
         let note = timeline.iter().find(|t| t.source_type == "note").unwrap();
         assert_eq!(note.source_id, "n1");
         assert_eq!(note.title, "Note title");
+    }
+
+    #[tokio::test]
+    async fn session_event_link_copies_participants() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        migrate(db.pool()).await.unwrap();
+
+        // Create event
+        upsert_event(
+            db.pool(),
+            "e1",
+            "u1",
+            "cal1",
+            "track1",
+            "Standup",
+            "2026-03-19T09:00:00Z",
+            "2026-03-19T09:30:00Z",
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            false,
+            "[]",
+            "{}",
+        )
+        .await
+        .unwrap();
+
+        // Create humans
+        insert_human(db.pool(), "h1", "Alice", "alice@example.com", "", "")
+            .await
+            .unwrap();
+        insert_human(db.pool(), "h2", "Bob", "bob@example.com", "", "")
+            .await
+            .unwrap();
+
+        // Add event participants (one with human_id, one without)
+        upsert_event_participant(
+            db.pool(),
+            "ep1",
+            "e1",
+            Some("h1"),
+            "alice@example.com",
+            "Alice",
+            false,
+            false,
+            "u1",
+        )
+        .await
+        .unwrap();
+        upsert_event_participant(
+            db.pool(),
+            "ep2",
+            "e1",
+            Some("h2"),
+            "bob@example.com",
+            "Bob",
+            false,
+            false,
+            "u1",
+        )
+        .await
+        .unwrap();
+        upsert_event_participant(
+            db.pool(),
+            "ep3",
+            "e1",
+            None,
+            "unknown@example.com",
+            "Unknown",
+            false,
+            false,
+            "u1",
+        )
+        .await
+        .unwrap();
+
+        // Create session linked to event
+        insert_session(db.pool(), "s1", Some("e1")).await.unwrap();
+
+        let session = get_session(db.pool(), "s1").await.unwrap().unwrap();
+        assert_eq!(session.event_id.as_deref(), Some("e1"));
+
+        // Copy event participants to session
+        let copied = copy_event_participants_to_session(db.pool(), "s1", "e1")
+            .await
+            .unwrap();
+        assert_eq!(copied, 2);
+
+        let participants = list_session_participants(db.pool(), "s1").await.unwrap();
+        assert_eq!(participants.len(), 2);
+
+        let sources: Vec<&str> = participants.iter().map(|p| p.source.as_str()).collect();
+        assert!(sources.iter().all(|s| *s == "event"));
+
+        let human_ids: Vec<&str> = participants.iter().map(|p| p.human_id.as_str()).collect();
+        assert!(human_ids.contains(&"h1"));
+        assert!(human_ids.contains(&"h2"));
     }
 }

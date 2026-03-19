@@ -38,7 +38,7 @@ fn sections(app: &App) -> Vec<Section<'_>> {
         },
         Section::Field {
             label: "Status",
-            value: app.status().to_string(),
+            value: app.status(),
             active: app.streaming(),
         },
     ];

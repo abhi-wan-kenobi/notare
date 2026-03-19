@@ -59,6 +59,23 @@ pub async fn list_session_participants(
         .collect())
 }
 
+pub async fn copy_event_participants_to_session(
+    pool: &SqlitePool,
+    session_id: &str,
+    event_id: &str,
+) -> Result<usize, sqlx::Error> {
+    let result = sqlx::query(
+        "INSERT OR IGNORE INTO session_participants (id, session_id, human_id, source) SELECT ? || ':' || human_id, ?, human_id, 'event' FROM event_participants WHERE event_id = ? AND human_id IS NOT NULL",
+    )
+    .bind(session_id)
+    .bind(session_id)
+    .bind(event_id)
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected() as usize)
+}
+
 pub async fn list_sessions_by_human(
     pool: &SqlitePool,
     human_id: &str,

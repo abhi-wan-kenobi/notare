@@ -85,7 +85,7 @@ fn draw_transcript(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) 
     }
 
     let content_width = area.width.saturating_sub(4) as usize;
-    let lines = build_segment_lines(segments, theme, content_width, None);
+    let lines = build_segment_lines(segments, theme, content_width, None, None);
 
     render_scrollable(frame, lines, Some(block), area, app.scroll_state_mut());
 }

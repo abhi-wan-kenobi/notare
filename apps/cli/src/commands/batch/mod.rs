@@ -179,7 +179,7 @@ pub async fn run(
 
     // Persist session to SQLite (non-fatal)
     {
-        if hypr_db_app::insert_session(&pool, &session_id)
+        if hypr_db_app::insert_session(&pool, &session_id, None)
             .await
             .is_ok()
         {

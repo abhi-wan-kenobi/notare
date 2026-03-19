@@ -5,4 +5,5 @@ pub struct SessionRow {
     pub user_id: String,
     pub visibility: String,
     pub folder_id: Option<String>,
+    pub event_id: Option<String>,
 }

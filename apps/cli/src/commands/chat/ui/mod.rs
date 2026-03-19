@@ -34,6 +34,8 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     ])
     .areas(chat_col);
 
+    app.apply_autoscroll();
+
     header::draw(frame, app, header_area, &theme);
     transcript::draw(frame, app, body_area, &theme);
     input::draw(frame, app, input_area, &theme);

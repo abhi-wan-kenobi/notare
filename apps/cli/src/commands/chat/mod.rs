@@ -6,6 +6,15 @@ mod ui;
 
 use std::time::Duration;
 
+#[derive(Clone, Copy, Debug, strum::Display)]
+#[strum(serialize_all = "snake_case")]
+pub(crate) enum Role {
+    System,
+    User,
+    Assistant,
+    Tool,
+}
+
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
 use sqlx::SqlitePool;
 use tokio::sync::mpsc;
