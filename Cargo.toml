@@ -118,6 +118,7 @@ hypr-mp3 = { path = "crates/mp3", package = "mp3" }
 hypr-nango = { path = "crates/nango", package = "nango" }
 hypr-notification = { path = "crates/notification", package = "notification" }
 hypr-notification-interface = { path = "crates/notification-interface", package = "notification-interface" }
+hypr-notification-macos2 = { path = "crates/notification-macos2", package = "notification-macos2" }
 hypr-notion = { path = "crates/notion", package = "notion" }
 hypr-observability = { path = "crates/observability", package = "observability" }
 hypr-onnx = { path = "crates/onnx", package = "onnx" }
