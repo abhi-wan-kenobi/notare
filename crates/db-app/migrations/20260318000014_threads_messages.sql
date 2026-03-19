@@ -1,12 +1,12 @@
 CREATE TABLE IF NOT EXISTS threads (
   id TEXT PRIMARY KEY NOT NULL,
   user_id TEXT NOT NULL DEFAULT '',
-  session_id TEXT DEFAULT NULL,
+  meeting_id TEXT DEFAULT NULL,
   title TEXT NOT NULL DEFAULT '',
   visibility TEXT NOT NULL DEFAULT 'public',
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
-CREATE INDEX IF NOT EXISTS idx_threads_session ON threads(session_id);
+CREATE INDEX IF NOT EXISTS idx_threads_meeting ON threads(meeting_id);
 CREATE INDEX IF NOT EXISTS idx_threads_user ON threads(user_id);
 
 CREATE TABLE IF NOT EXISTS messages (

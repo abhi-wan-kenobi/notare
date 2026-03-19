@@ -1,11 +1,11 @@
 mod agent;
-mod calendar_sync;
 mod cli;
 mod commands;
 mod config;
 mod error;
 mod llm;
 mod output;
+mod services;
 mod theme;
 mod update_check;
 mod widgets;
@@ -25,10 +25,7 @@ async fn main() {
     let tui_command = matches!(
         &cli.command,
         Some(Commands::Chat { prompt: None, .. })
-            | Some(Commands::Listen { .. })
-            | Some(Commands::Sessions { .. })
-            | Some(Commands::Humans { command: None })
-            | Some(Commands::Orgs { command: None })
+            | Some(Commands::Meetings { .. })
             | Some(Commands::Connect {
                 r#type: None,
                 provider: None
@@ -146,9 +143,9 @@ async fn run(cli: Cli) -> CliResult<()> {
             std::env::var("CHAR_API_URL").unwrap_or_else(|_| "https://app.char.com".to_string());
         let access_token = std::env::var("CHAR_ACCESS_TOKEN").ok();
         let user_id = hypr_host::fingerprint();
-        calendar_sync::spawn_calendar_sync(
+        services::calendar_sync::spawn_calendar_sync(
             pool.clone(),
-            calendar_sync::CalendarSyncConfig {
+            services::calendar_sync::CalendarSyncConfig {
                 api_base_url,
                 access_token,
                 apple_authorized,
@@ -160,10 +157,7 @@ async fn run(cli: Cli) -> CliResult<()> {
     let is_tui = matches!(
         &command,
         Some(Commands::Chat { prompt: None, .. })
-            | Some(Commands::Listen { .. })
-            | Some(Commands::Sessions { .. })
-            | Some(Commands::Humans { command: None })
-            | Some(Commands::Orgs { command: None })
+            | Some(Commands::Meetings { .. })
             | Some(Commands::Connect {
                 r#type: None,
                 provider: None
@@ -191,19 +185,19 @@ async fn run(cli: Cli) -> CliResult<()> {
             prompt,
             provider,
         }) => {
-            let (session, resume_session_id) = match command {
-                Some(cli::ChatCommands::Resume { session }) => (None, session),
+            let (meeting, resume_meeting_id) = match command {
+                Some(cli::ChatCommands::Resume { meeting }) => (None, meeting),
                 None => (None, None),
             };
             commands::chat::run(commands::chat::Args {
-                session,
+                meeting,
                 prompt,
                 provider,
                 base_url: global.base_url,
                 api_key: global.api_key,
                 model: global.model,
                 pool,
-                resume_session_id,
+                resume_meeting_id,
             })
             .await
         }
@@ -252,28 +246,47 @@ async fn run(cli: Cli) -> CliResult<()> {
             eprintln!("Opened char.com in browser");
             Ok(())
         }
-        Some(Commands::Sessions { command }) => match command {
-            Some(cli::SessionsCommands::View { id }) => {
-                commands::sessions::view::run(commands::sessions::view::Args {
-                    session_id: id,
+        Some(Commands::Meetings { command }) => match command {
+            Some(cli::MeetingsCommands::New {
+                provider,
+                audio,
+                keywords,
+            }) => {
+                if let Some(audio_input) = audio {
+                    let stt = resolve_stt_args(&pool, &global, provider).await?;
+                    commands::meetings::new_from_audio(audio_input, stt, keywords, pool).await
+                } else {
+                    let stt = resolve_stt_args(&pool, &global, provider).await?;
+                    commands::listen::run(commands::listen::Args {
+                        stt,
+                        record: global.record,
+                        audio: cli::AudioMode::Dual,
+                        pool,
+                    })
+                    .await
+                }
+            }
+            Some(cli::MeetingsCommands::View { id }) => {
+                commands::meetings::view::run(commands::meetings::view::Args {
+                    meeting_id: id,
                     pool,
                 })
                 .await
             }
-            Some(cli::SessionsCommands::Participants { id }) => {
-                commands::sessions::participants(&pool, &id).await
+            Some(cli::MeetingsCommands::Participants { id }) => {
+                commands::meetings::participants(&pool, &id).await
             }
-            Some(cli::SessionsCommands::AddParticipant { session, human }) => {
-                commands::sessions::add_participant(&pool, &session, &human).await
+            Some(cli::MeetingsCommands::AddParticipant { meeting, human }) => {
+                commands::meetings::add_participant(&pool, &meeting, &human).await
             }
-            Some(cli::SessionsCommands::RmParticipant { session, human }) => {
-                commands::sessions::remove_participant(&pool, &session, &human).await
+            Some(cli::MeetingsCommands::RmParticipant { meeting, human }) => {
+                commands::meetings::remove_participant(&pool, &meeting, &human).await
             }
             None => {
-                let selected = commands::sessions::run(pool.clone()).await?;
-                if let Some(session_id) = selected {
-                    commands::sessions::view::run(commands::sessions::view::Args {
-                        session_id,
+                let selected = commands::meetings::run(pool.clone()).await?;
+                if let Some(meeting_id) = selected {
+                    commands::meetings::view::run(commands::meetings::view::Args {
+                        meeting_id,
                         pool,
                     })
                     .await
@@ -300,49 +313,15 @@ async fn run(cli: Cli) -> CliResult<()> {
             }
             Some(cli::HumansCommands::Show { id }) => commands::humans::show(&pool, &id).await,
             Some(cli::HumansCommands::Rm { id }) => commands::humans::rm(&pool, &id).await,
-            None => {
-                let _ = commands::humans::run(pool).await?;
-                Ok(())
-            }
+            Some(cli::HumansCommands::List) | None => commands::humans::list(&pool).await,
         },
         Some(Commands::Orgs { command }) => match command {
             Some(cli::OrgsCommands::Add { name }) => commands::orgs::add(&pool, &name).await,
             Some(cli::OrgsCommands::Show { id }) => commands::orgs::show(&pool, &id).await,
             Some(cli::OrgsCommands::Rm { id }) => commands::orgs::rm(&pool, &id).await,
-            None => {
-                let _ = commands::orgs::run(pool).await?;
-                Ok(())
-            }
+            Some(cli::OrgsCommands::List) | None => commands::orgs::list(&pool).await,
         },
-        Some(Commands::Listen { provider, audio }) => {
-            let settings = load_entry_settings(&pool).await;
-            let resolved = match provider {
-                Some(p) => EntryListenConfig {
-                    provider: p,
-                    model: None,
-                },
-                None => resolve_entry_listen_config(settings.as_ref()).map_err(|msg| {
-                    error::CliError::msg(format!(
-                        "{msg}\nOr pass --provider explicitly: char listen -p <provider>"
-                    ))
-                })?,
-            };
-
-            commands::listen::run(commands::listen::Args {
-                stt: SttGlobalArgs {
-                    provider: resolved.provider,
-                    base_url: global.base_url,
-                    api_key: global.api_key,
-                    model: global.model.or(resolved.model),
-                    language: global.language,
-                },
-                record: global.record,
-                audio,
-                pool,
-            })
-            .await
-        }
-        Some(Commands::Batch { args }) => {
+        Some(Commands::Transcribe { args }) => {
             let stt = SttGlobalArgs {
                 provider: args.provider,
                 base_url: global.base_url,
@@ -350,7 +329,7 @@ async fn run(cli: Cli) -> CliResult<()> {
                 model: global.model,
                 language: global.language,
             };
-            commands::batch::run(args, stt, verbose.is_silent(), pool).await
+            commands::transcribe::run(args, stt, verbose.is_silent()).await
         }
         Some(Commands::Models { command }) => commands::model::run(command, &pool).await,
         #[cfg(feature = "dev")]
@@ -386,24 +365,17 @@ async fn run_entry_loop(
         .await;
         match action {
             commands::entry::EntryAction::Launch(cmd) => match cmd {
-                commands::entry::EntryCommand::Listen => {
-                    let settings = load_entry_settings(&pool).await;
-                    let listen = match resolve_entry_listen_config(settings.as_ref()) {
-                        Ok(listen) => listen,
-                        Err(message) => {
-                            status_message = Some(message);
+                commands::entry::EntryCommand::MeetingsNew => {
+                    let stt = match resolve_stt_args(&pool, &global, None).await {
+                        Ok(stt) => stt,
+                        Err(e) => {
+                            status_message = Some(e.to_string());
                             continue;
                         }
                     };
 
                     return commands::listen::run(commands::listen::Args {
-                        stt: SttGlobalArgs {
-                            provider: listen.provider,
-                            base_url: global.base_url.clone(),
-                            api_key: global.api_key.clone(),
-                            model: global.model.clone().or(listen.model),
-                            language: global.language.clone(),
-                        },
+                        stt,
                         record: global.record,
                         audio: cli::AudioMode::Dual,
                         pool: pool.clone(),
@@ -412,20 +384,20 @@ async fn run_entry_loop(
                 }
                 commands::entry::EntryCommand::Chat { session_id } => {
                     return commands::chat::run(commands::chat::Args {
-                        session: session_id,
+                        meeting: session_id,
                         prompt: None,
                         provider: None,
                         base_url: global.base_url.clone(),
                         api_key: global.api_key.clone(),
                         model: global.model.clone(),
                         pool: pool.clone(),
-                        resume_session_id: None,
+                        resume_meeting_id: None,
                     })
                     .await;
                 }
                 commands::entry::EntryCommand::View { session_id } => {
-                    return commands::sessions::view::run(commands::sessions::view::Args {
-                        session_id,
+                    return commands::meetings::view::run(commands::meetings::view::Args {
+                        meeting_id: session_id,
                         pool: pool.clone(),
                     })
                     .await;
@@ -443,6 +415,35 @@ async fn run_entry_loop(
 
 async fn load_entry_settings(pool: &SqlitePool) -> Option<config::paths::Settings> {
     config::paths::load_settings_from_db(pool).await
+}
+
+async fn resolve_stt_args(
+    pool: &SqlitePool,
+    global: &cli::GlobalArgs,
+    explicit_provider: Option<cli::Provider>,
+) -> CliResult<SttGlobalArgs> {
+    let resolved = match explicit_provider {
+        Some(p) => EntryListenConfig {
+            provider: p,
+            model: None,
+        },
+        None => {
+            let settings = load_entry_settings(pool).await;
+            resolve_entry_listen_config(settings.as_ref()).map_err(|msg| {
+                error::CliError::msg(format!(
+                    "{msg}\nOr pass --provider explicitly: char meetings new -p <provider>"
+                ))
+            })?
+        }
+    };
+
+    Ok(SttGlobalArgs {
+        provider: resolved.provider,
+        base_url: global.base_url.clone(),
+        api_key: global.api_key.clone(),
+        model: global.model.clone().or(resolved.model),
+        language: global.language.clone(),
+    })
 }
 
 struct EntryListenConfig {

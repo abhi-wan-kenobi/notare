@@ -72,14 +72,6 @@ pub enum Commands {
         #[arg(long, value_enum)]
         provider: Option<LlmProvider>,
     },
-    /// Start live transcription (TUI)
-    Listen {
-        #[arg(short = 'p', long, value_enum)]
-        provider: Option<Provider>,
-
-        #[arg(long, value_enum, default_value = "dual")]
-        audio: AudioMode,
-    },
     /// Configure an STT or LLM provider
     Connect {
         #[arg(long, value_enum)]
@@ -88,10 +80,10 @@ pub enum Commands {
         #[arg(long, value_enum)]
         provider: Option<ConnectProvider>,
     },
-    /// Browse past sessions
-    Sessions {
+    /// Browse past meetings
+    Meetings {
         #[command(subcommand)]
-        command: Option<SessionsCommands>,
+        command: Option<MeetingsCommands>,
     },
     /// Browse humans (contacts)
     Humans {
@@ -113,10 +105,10 @@ pub enum Commands {
     Bug,
     /// Open char.com
     Hello,
-    /// Transcribe an audio file
-    Batch {
+    /// Transcribe an audio file (no meeting created)
+    Transcribe {
         #[command(flatten)]
-        args: BatchArgs,
+        args: TranscribeArgs,
     },
     /// Manage local models
     Models {
@@ -137,28 +129,41 @@ pub enum Commands {
 }
 
 #[derive(Subcommand)]
-pub enum SessionsCommands {
-    /// View a specific session
+pub enum MeetingsCommands {
+    /// Start a new meeting
+    New {
+        #[arg(short = 'p', long, value_enum)]
+        provider: Option<Provider>,
+
+        /// Create meeting from an audio file instead of live transcription
+        #[arg(long, value_name = "FILE")]
+        audio: Option<clio::InputPath>,
+
+        /// Keywords to boost transcription accuracy (with --audio)
+        #[arg(long = "keyword", short = 'k', value_name = "KEYWORD")]
+        keywords: Vec<String>,
+    },
+    /// View a specific meeting
     View {
         #[arg(long)]
         id: String,
     },
-    /// List participants in a session
+    /// List participants in a meeting
     Participants {
         #[arg(long)]
         id: String,
     },
-    /// Add a participant to a session
+    /// Add a participant to a meeting
     AddParticipant {
         #[arg(long)]
-        session: String,
+        meeting: String,
         #[arg(long)]
         human: String,
     },
-    /// Remove a participant from a session
+    /// Remove a participant from a meeting
     RmParticipant {
         #[arg(long)]
-        session: String,
+        meeting: String,
         #[arg(long)]
         human: String,
     },
@@ -166,6 +171,8 @@ pub enum SessionsCommands {
 
 #[derive(Subcommand)]
 pub enum HumansCommands {
+    /// List all humans
+    List,
     /// Add a new human
     Add {
         name: String,
@@ -190,6 +197,8 @@ pub enum HumansCommands {
 
 #[derive(Subcommand)]
 pub enum OrgsCommands {
+    /// List all organizations
+    List,
     /// Add a new organization
     Add { name: String },
     /// Show details for an organization
@@ -209,7 +218,7 @@ pub enum ChatCommands {
     /// Resume an existing chat session
     Resume {
         #[arg(long)]
-        session: Option<String>,
+        meeting: Option<String>,
     },
 }
 
@@ -275,7 +284,7 @@ pub enum AudioMode {
 }
 
 #[derive(clap::Args)]
-pub struct BatchArgs {
+pub struct TranscribeArgs {
     #[arg(long, value_name = "FILE", visible_alias = "file")]
     pub input: clio::InputPath,
     #[arg(short = 'p', long, value_enum)]

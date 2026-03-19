@@ -30,14 +30,14 @@ use self::runtime::{Runtime, RuntimeEvent};
 const IDLE_FRAME: Duration = Duration::from_secs(1);
 
 pub struct Args {
-    pub session: Option<String>,
+    pub meeting: Option<String>,
     pub prompt: Option<String>,
     pub provider: Option<LlmProvider>,
     pub base_url: Option<String>,
     pub api_key: Option<String>,
     pub model: Option<String>,
     pub pool: SqlitePool,
-    pub resume_session_id: Option<String>,
+    pub resume_meeting_id: Option<String>,
 }
 
 struct ChatScreen {
@@ -60,16 +60,16 @@ impl ChatScreen {
                     self.runtime.generate_title(prompt, response);
                 }
                 Effect::Persist {
-                    session_id,
+                    meeting_id,
                     message_id,
                     role,
                     content,
                 } => {
                     self.runtime
-                        .persist_message(session_id, message_id, role, content);
+                        .persist_message(meeting_id, message_id, role, content);
                 }
-                Effect::UpdateTitle { session_id, title } => {
-                    self.runtime.update_title(session_id, title);
+                Effect::UpdateTitle { meeting_id, title } => {
+                    self.runtime.update_title(meeting_id, title);
                 }
                 Effect::Exit => return ScreenControl::Exit(()),
             }
@@ -131,8 +131,8 @@ impl Screen for ChatScreen {
 
 pub async fn run(args: Args) -> CliResult<()> {
     let pool = args.pool;
-    let system_message = match args.session.as_deref() {
-        Some(session_id) => Some(load_session_context(&pool, session_id).await?),
+    let system_message = match args.meeting.as_deref() {
+        Some(meeting_id) => Some(load_meeting_context(&pool, meeting_id).await?),
         None => None,
     };
     let config = resolve_config(
@@ -148,20 +148,20 @@ pub async fn run(args: Args) -> CliResult<()> {
         return crate::agent::run_prompt(config, system_message, &prompt).await;
     }
 
-    let session_id = args
-        .resume_session_id
+    let meeting_id = args
+        .resume_meeting_id
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
 
     let (runtime_tx, runtime_rx) = mpsc::unbounded_channel();
     let runtime = Runtime::new(config.clone(), system_message, runtime_tx, pool.clone())?;
 
-    let mut app = App::new(config.model, args.session, session_id.clone());
+    let mut app = App::new(config.model, args.meeting, meeting_id.clone());
 
-    let history = load_or_create_session(&pool, &session_id).await?;
+    let history = load_or_create_meeting(&pool, &meeting_id).await?;
     if let Some(messages) = history {
         app.load_history(messages);
     } else {
-        runtime.ensure_session(&session_id).await;
+        runtime.ensure_meeting(&meeting_id).await;
     }
 
     let runtime_handle = runtime.clone();
@@ -173,13 +173,13 @@ pub async fn run(args: Args) -> CliResult<()> {
     result
 }
 
-async fn load_session_context(pool: &SqlitePool, session_id: &str) -> CliResult<String> {
-    let session = hypr_db_app::get_session(pool, session_id)
+async fn load_meeting_context(pool: &SqlitePool, meeting_id: &str) -> CliResult<String> {
+    let meeting = hypr_db_app::get_meeting(pool, meeting_id)
         .await
-        .map_err(|e| CliError::operation_failed("get session", e.to_string()))?
-        .ok_or_else(|| CliError::not_found(format!("session '{session_id}'"), None))?;
+        .map_err(|e| CliError::operation_failed("get meeting", e.to_string()))?
+        .ok_or_else(|| CliError::not_found(format!("meeting '{meeting_id}'"), None))?;
 
-    let words = hypr_db_app::load_words(pool, session_id)
+    let words = hypr_db_app::load_words(pool, meeting_id)
         .await
         .unwrap_or_default();
     let transcript_text = {
@@ -194,7 +194,7 @@ async fn load_session_context(pool: &SqlitePool, session_id: &str) -> CliResult<
         if text.is_empty() { None } else { Some(text) }
     };
 
-    let participant_rows = hypr_db_app::list_session_participants(pool, session_id)
+    let participant_rows = hypr_db_app::list_meeting_participants(pool, meeting_id)
         .await
         .unwrap_or_default();
     let mut participants = Vec::new();
@@ -213,30 +213,30 @@ async fn load_session_context(pool: &SqlitePool, session_id: &str) -> CliResult<
         }
     }
 
-    let memo = hypr_db_app::get_note_by_session_and_kind(pool, session_id, "memo")
+    let memo = hypr_db_app::get_note_by_meeting_and_kind(pool, meeting_id, "memo")
         .await
         .ok()
         .flatten()
         .map(|n| n.content)
         .filter(|v| !v.trim().is_empty());
-    let summary = hypr_db_app::get_note_by_session_and_kind(pool, session_id, "summary")
+    let summary = hypr_db_app::get_note_by_meeting_and_kind(pool, meeting_id, "summary")
         .await
         .ok()
         .flatten()
         .map(|n| n.content)
         .filter(|v| !v.trim().is_empty());
 
-    if session.title.is_none() && memo.is_none() && summary.is_none() && transcript_text.is_none() {
+    if meeting.title.is_none() && memo.is_none() && summary.is_none() && transcript_text.is_none() {
         return Err(CliError::operation_failed(
-            "load session context",
-            format!("session '{session_id}' has no transcript, memo, or summary"),
+            "load meeting context",
+            format!("meeting '{meeting_id}' has no transcript, memo, or summary"),
         ));
     }
 
     let ctx = hypr_template_cli::ChatContext {
-        session_id: session_id.to_string(),
-        title: session.title,
-        created_at: Some(session.created_at),
+        meeting_id: meeting_id.to_string(),
+        title: meeting.title,
+        created_at: Some(meeting.created_at),
         participants,
         memo,
         summary,
@@ -244,19 +244,19 @@ async fn load_session_context(pool: &SqlitePool, session_id: &str) -> CliResult<
     };
 
     ctx.render()
-        .map_err(|e| CliError::operation_failed("render session context", e.to_string()))
+        .map_err(|e| CliError::operation_failed("render meeting context", e.to_string()))
 }
 
-async fn load_or_create_session(
+async fn load_or_create_meeting(
     pool: &SqlitePool,
-    session_id: &str,
+    meeting_id: &str,
 ) -> CliResult<Option<Vec<hypr_db_app::ChatMessageRow>>> {
-    let session = hypr_db_app::get_session(pool, session_id)
+    let meeting = hypr_db_app::get_meeting(pool, meeting_id)
         .await
-        .map_err(|e| CliError::operation_failed("get session", e.to_string()))?;
-    match session {
+        .map_err(|e| CliError::operation_failed("get meeting", e.to_string()))?;
+    match meeting {
         Some(_) => {
-            let messages = hypr_db_app::load_chat_messages(pool, session_id)
+            let messages = hypr_db_app::load_chat_messages(pool, meeting_id)
                 .await
                 .unwrap_or_default();
             Ok(Some(messages))

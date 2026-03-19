@@ -6,14 +6,14 @@ const LOGO_PNG_BYTES: &[u8] = include_bytes!("../../../../assets/char.png");
 
 const TIPS_UNCONFIGURED: &[&str] = &["Run /connect to set up a provider"];
 
-const TIPS_READY: &[&str] = &["Type /listen to start a live transcription session"];
+const TIPS_READY: &[&str] = &["Type /meetings new to start a new meeting"];
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Command {
-    Listen,
+    MeetingsNew,
     Chat,
     ChatResume,
-    Sessions,
+    Meetings,
     Timeline,
     Connect,
     Auth,
@@ -28,10 +28,10 @@ pub(crate) enum Command {
 }
 
 pub(crate) const ALL_COMMANDS: &[Command] = &[
-    Command::Listen,
+    Command::MeetingsNew,
     Command::Chat,
     Command::ChatResume,
-    Command::Sessions,
+    Command::Meetings,
     Command::Timeline,
     Command::Connect,
     Command::Auth,
@@ -47,10 +47,10 @@ pub(crate) const ALL_COMMANDS: &[Command] = &[
 impl Command {
     pub(crate) fn name(&self) -> &'static str {
         match self {
-            Self::Listen => "/listen",
+            Self::MeetingsNew => "/meetings new",
             Self::Chat => "/chat",
             Self::ChatResume => "/chat resume",
-            Self::Sessions => "/sessions",
+            Self::Meetings => "/meetings",
             Self::Timeline => "/timeline",
             Self::Connect => "/connect",
             Self::Auth => "/auth",
@@ -67,10 +67,10 @@ impl Command {
 
     pub(crate) fn description(&self) -> &'static str {
         match self {
-            Self::Listen => "Start live transcription",
+            Self::MeetingsNew => "Start a new meeting",
             Self::Chat => "Start a chat",
             Self::ChatResume => "Resume an existing chat",
-            Self::Sessions => "Browse past sessions",
+            Self::Meetings => "Browse past meetings",
             Self::Timeline => "CRM timeline view",
             Self::Connect => "Connect provider",
             Self::Auth => "Open auth in browser",
@@ -87,8 +87,8 @@ impl Command {
 
     pub(crate) fn group(&self) -> &'static str {
         match self {
-            Self::Listen | Self::Chat | Self::ChatResume | Self::Sessions | Self::Timeline => {
-                "Session"
+            Self::MeetingsNew | Self::Chat | Self::ChatResume | Self::Meetings | Self::Timeline => {
+                "Meeting"
             }
             Self::Connect | Self::Auth => "Setup",
             Self::Bug | Self::Hello | Self::Desktop | Self::Exit => "App",
@@ -111,7 +111,7 @@ impl Command {
         llm: &Option<String>,
     ) -> Option<&'static str> {
         match self {
-            Self::Listen if stt.is_none() => Some("no STT provider"),
+            Self::MeetingsNew if stt.is_none() => Some("no STT provider"),
             Self::Chat | Self::ChatResume if llm.is_none() => Some("no LLM provider"),
             _ => None,
         }
@@ -119,10 +119,10 @@ impl Command {
 }
 
 const ALL_VARIANTS: &[Command] = &[
-    Command::Listen,
+    Command::MeetingsNew,
     Command::Chat,
     Command::ChatResume,
-    Command::Sessions,
+    Command::Meetings,
     Command::Timeline,
     Command::Connect,
     Command::Auth,

@@ -171,7 +171,7 @@ pub async fn list_humans_by_org(
 
 pub async fn delete_human(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
     let mut tx = pool.begin().await?;
-    sqlx::query("DELETE FROM session_participants WHERE human_id = ?")
+    sqlx::query("DELETE FROM meeting_participants WHERE human_id = ?")
         .bind(id)
         .execute(&mut *tx)
         .await?;

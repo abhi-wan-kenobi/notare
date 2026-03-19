@@ -1,12 +1,12 @@
 CREATE VIEW IF NOT EXISTS timeline AS
   SELECT
-    sp.human_id AS human_id,
+    mp.human_id AS human_id,
     'meeting' AS source_type,
-    s.id AS source_id,
-    s.created_at AS happened_at,
-    COALESCE(s.title, '') AS title
-  FROM session_participants sp
-  JOIN sessions s ON s.id = sp.session_id
+    m.id AS source_id,
+    m.created_at AS happened_at,
+    COALESCE(m.title, '') AS title
+  FROM meeting_participants mp
+  JOIN meetings m ON m.id = mp.meeting_id
 
   UNION ALL
 

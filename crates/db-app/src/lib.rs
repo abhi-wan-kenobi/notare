@@ -14,14 +14,14 @@ mod folders_ops;
 mod folders_types;
 mod humans_ops;
 mod humans_types;
+mod meeting_participants_ops;
+mod meeting_participants_types;
+mod meetings_ops;
+mod meetings_types;
 mod notes_ops;
 mod notes_types;
 mod organizations_ops;
 mod organizations_types;
-mod session_participants_ops;
-mod session_participants_types;
-mod sessions_ops;
-mod sessions_types;
 mod settings_ops;
 mod slack_ops;
 mod slack_types;
@@ -49,15 +49,15 @@ pub use folders_ops::*;
 pub use folders_types::*;
 pub use humans_ops::*;
 pub use humans_types::*;
+pub use meeting_participants_ops::*;
+pub use meeting_participants_types::*;
+pub use meetings_ops::*;
+#[allow(unused_imports)]
+pub use meetings_types::*;
 pub use notes_ops::*;
 pub use notes_types::*;
 pub use organizations_ops::*;
 pub use organizations_types::*;
-pub use session_participants_ops::*;
-pub use session_participants_types::*;
-pub use sessions_ops::*;
-#[allow(unused_imports)]
-pub use sessions_types::*;
 pub use settings_ops::*;
 pub use slack_ops::*;
 pub use slack_types::*;
@@ -163,20 +163,20 @@ mod tests {
         migrate(db.pool()).await.unwrap();
 
         let sid = "sess-1";
-        insert_session(db.pool(), sid, None).await.unwrap();
+        insert_meeting(db.pool(), sid, None).await.unwrap();
 
-        let session = get_session(db.pool(), sid).await.unwrap().unwrap();
-        assert_eq!(session.id, sid);
-        assert!(session.title.is_none());
-        assert_eq!(session.user_id, "");
-        assert_eq!(session.visibility, "public");
-        assert!(session.folder_id.is_none());
+        let meeting = get_meeting(db.pool(), sid).await.unwrap().unwrap();
+        assert_eq!(meeting.id, sid);
+        assert!(meeting.title.is_none());
+        assert_eq!(meeting.user_id, "");
+        assert_eq!(meeting.visibility, "public");
+        assert!(meeting.folder_id.is_none());
 
-        update_session(db.pool(), sid, Some("My Title"))
+        update_meeting(db.pool(), sid, Some("My Title"))
             .await
             .unwrap();
-        let session = get_session(db.pool(), sid).await.unwrap().unwrap();
-        assert_eq!(session.title.as_deref(), Some("My Title"));
+        let meeting = get_meeting(db.pool(), sid).await.unwrap().unwrap();
+        assert_eq!(meeting.title.as_deref(), Some("My Title"));
 
         let delta = TranscriptDeltaPersist {
             new_words: vec![
@@ -237,7 +237,7 @@ mod tests {
         migrate(db.pool()).await.unwrap();
 
         let sid = "sess-2";
-        insert_session(db.pool(), sid, None).await.unwrap();
+        insert_meeting(db.pool(), sid, None).await.unwrap();
 
         let delta1 = TranscriptDeltaPersist {
             new_words: vec![FinalizedWord {
@@ -288,7 +288,7 @@ mod tests {
         migrate(db.pool()).await.unwrap();
 
         let sid = "chat-sess-1";
-        insert_session(db.pool(), sid, None).await.unwrap();
+        insert_meeting(db.pool(), sid, None).await.unwrap();
 
         insert_chat_message(db.pool(), "m1", sid, "user", "hello")
             .await
@@ -384,11 +384,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn session_participant_roundtrip() {
+    async fn meeting_participant_roundtrip() {
         let db = Db3::connect_memory_plain().await.unwrap();
         migrate(db.pool()).await.unwrap();
 
-        insert_session(db.pool(), "s1", None).await.unwrap();
+        insert_meeting(db.pool(), "s1", None).await.unwrap();
         insert_human(db.pool(), "h1", "Alice", "", "", "")
             .await
             .unwrap();
@@ -396,29 +396,29 @@ mod tests {
             .await
             .unwrap();
 
-        add_session_participant(db.pool(), "s1", "h1", "manual")
+        add_meeting_participant(db.pool(), "s1", "h1", "manual")
             .await
             .unwrap();
-        add_session_participant(db.pool(), "s1", "h2", "auto")
+        add_meeting_participant(db.pool(), "s1", "h2", "auto")
             .await
             .unwrap();
 
-        let participants = list_session_participants(db.pool(), "s1").await.unwrap();
+        let participants = list_meeting_participants(db.pool(), "s1").await.unwrap();
         assert_eq!(participants.len(), 2);
 
-        let sessions = list_sessions_by_human(db.pool(), "h1").await.unwrap();
-        assert_eq!(sessions.len(), 1);
-        assert_eq!(sessions[0].session_id, "s1");
+        let meetings = list_meetings_by_human(db.pool(), "h1").await.unwrap();
+        assert_eq!(meetings.len(), 1);
+        assert_eq!(meetings[0].meeting_id, "s1");
 
-        remove_session_participant(db.pool(), "s1", "h1")
+        remove_meeting_participant(db.pool(), "s1", "h1")
             .await
             .unwrap();
-        let participants = list_session_participants(db.pool(), "s1").await.unwrap();
+        let participants = list_meeting_participants(db.pool(), "s1").await.unwrap();
         assert_eq!(participants.len(), 1);
         assert_eq!(participants[0].human_id, "h2");
 
         delete_human(db.pool(), "h2").await.unwrap();
-        let participants = list_session_participants(db.pool(), "s1").await.unwrap();
+        let participants = list_meeting_participants(db.pool(), "s1").await.unwrap();
         assert!(participants.is_empty());
     }
 
@@ -428,7 +428,7 @@ mod tests {
         migrate(db.pool()).await.unwrap();
 
         let sid = "note-sess-1";
-        insert_session(db.pool(), sid, None).await.unwrap();
+        insert_meeting(db.pool(), sid, None).await.unwrap();
 
         insert_note(db.pool(), "n1", sid, "memo", "", "my memo")
             .await
@@ -437,32 +437,32 @@ mod tests {
             .await
             .unwrap();
 
-        let notes = list_notes_by_session(db.pool(), sid).await.unwrap();
+        let notes = list_notes_by_meeting(db.pool(), sid).await.unwrap();
         assert_eq!(notes.len(), 2);
         assert_eq!(notes[0].user_id, "");
         assert_eq!(notes[0].visibility, "public");
 
-        let memo = get_note_by_session_and_kind(db.pool(), sid, "memo")
+        let memo = get_note_by_meeting_and_kind(db.pool(), sid, "memo")
             .await
             .unwrap()
             .unwrap();
         assert_eq!(memo.content, "my memo");
 
-        let summary = get_note_by_session_and_kind(db.pool(), sid, "summary")
+        let summary = get_note_by_meeting_and_kind(db.pool(), sid, "summary")
             .await
             .unwrap()
             .unwrap();
         assert_eq!(summary.content, "my summary");
 
         update_note(db.pool(), "n1", "updated memo").await.unwrap();
-        let memo = get_note_by_session_and_kind(db.pool(), sid, "memo")
+        let memo = get_note_by_meeting_and_kind(db.pool(), sid, "memo")
             .await
             .unwrap()
             .unwrap();
         assert_eq!(memo.content, "updated memo");
 
-        delete_notes_by_session(db.pool(), sid).await.unwrap();
-        let notes = list_notes_by_session(db.pool(), sid).await.unwrap();
+        delete_notes_by_meeting(db.pool(), sid).await.unwrap();
+        let notes = list_notes_by_meeting(db.pool(), sid).await.unwrap();
         assert!(notes.is_empty());
     }
 
@@ -490,7 +490,7 @@ mod tests {
         let db = Db3::connect_memory_plain().await.unwrap();
         migrate(db.pool()).await.unwrap();
 
-        insert_session(db.pool(), "s1", None).await.unwrap();
+        insert_meeting(db.pool(), "s1", None).await.unwrap();
 
         insert_thread(db.pool(), "t1", "u1", Some("s1"), "Chat about code")
             .await
@@ -501,11 +501,11 @@ mod tests {
 
         let thread = get_thread(db.pool(), "t1").await.unwrap().unwrap();
         assert_eq!(thread.title, "Chat about code");
-        assert_eq!(thread.session_id.as_deref(), Some("s1"));
+        assert_eq!(thread.meeting_id.as_deref(), Some("s1"));
         assert_eq!(thread.visibility, "public");
 
         let thread2 = get_thread(db.pool(), "t2").await.unwrap().unwrap();
-        assert!(thread2.session_id.is_none());
+        assert!(thread2.meeting_id.is_none());
 
         update_thread(db.pool(), "t1", Some("Updated title"))
             .await
@@ -513,9 +513,9 @@ mod tests {
         let thread = get_thread(db.pool(), "t1").await.unwrap().unwrap();
         assert_eq!(thread.title, "Updated title");
 
-        let by_session = list_threads_by_session(db.pool(), "s1").await.unwrap();
-        assert_eq!(by_session.len(), 1);
-        assert_eq!(by_session[0].id, "t1");
+        let by_meeting = list_threads_by_meeting(db.pool(), "s1").await.unwrap();
+        assert_eq!(by_meeting.len(), 1);
+        assert_eq!(by_meeting[0].id, "t1");
 
         insert_message(
             db.pool(),
@@ -680,12 +680,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn set_session_visibility_propagates() {
+    async fn set_meeting_visibility_propagates() {
         let db = Db3::connect_memory_plain().await.unwrap();
         migrate(db.pool()).await.unwrap();
 
         let sid = "vis-sess-1";
-        insert_session(db.pool(), sid, None).await.unwrap();
+        insert_meeting(db.pool(), sid, None).await.unwrap();
 
         let delta = TranscriptDeltaPersist {
             new_words: vec![FinalizedWord {
@@ -711,17 +711,17 @@ mod tests {
             .await
             .unwrap();
 
-        let session = get_session(db.pool(), sid).await.unwrap().unwrap();
-        assert_eq!(session.visibility, "public");
+        let meeting = get_meeting(db.pool(), sid).await.unwrap().unwrap();
+        assert_eq!(meeting.visibility, "public");
 
-        set_session_visibility(db.pool(), sid, "private")
+        set_meeting_visibility(db.pool(), sid, "private")
             .await
             .unwrap();
 
-        let session = get_session(db.pool(), sid).await.unwrap().unwrap();
-        assert_eq!(session.visibility, "private");
+        let meeting = get_meeting(db.pool(), sid).await.unwrap().unwrap();
+        assert_eq!(meeting.visibility, "private");
 
-        let note = get_note_by_session_and_kind(db.pool(), sid, "memo")
+        let note = get_note_by_meeting_and_kind(db.pool(), sid, "memo")
             .await
             .unwrap()
             .unwrap();
@@ -729,7 +729,7 @@ mod tests {
 
         // verify words visibility via raw query
         let vis =
-            sqlx::query_as::<_, (String,)>("SELECT visibility FROM words WHERE session_id = ?")
+            sqlx::query_as::<_, (String,)>("SELECT visibility FROM words WHERE meeting_id = ?")
                 .bind(sid)
                 .fetch_one(db.pool())
                 .await
@@ -737,7 +737,7 @@ mod tests {
         assert_eq!(vis.0, "private");
 
         let vis = sqlx::query_as::<_, (String,)>(
-            "SELECT visibility FROM speaker_hints WHERE session_id = ?",
+            "SELECT visibility FROM speaker_hints WHERE meeting_id = ?",
         )
         .bind(sid)
         .fetch_one(db.pool())
@@ -925,7 +925,7 @@ mod tests {
         assert_eq!(notes[0].entity_id, "h1");
         assert_eq!(notes[0].title, "About Alice");
         assert_eq!(notes[0].content, "She likes Rust");
-        assert_eq!(notes[0].session_id, "");
+        assert_eq!(notes[0].meeting_id, "");
     }
 
     #[tokio::test]
@@ -938,12 +938,12 @@ mod tests {
             .await
             .unwrap();
 
-        // Meeting (session + participant)
-        insert_session(db.pool(), "s1", None).await.unwrap();
-        update_session(db.pool(), "s1", Some("Weekly Standup"))
+        // Meeting
+        insert_meeting(db.pool(), "s1", None).await.unwrap();
+        update_meeting(db.pool(), "s1", Some("Weekly Standup"))
             .await
             .unwrap();
-        add_session_participant(db.pool(), "s1", "h1", "auto")
+        add_meeting_participant(db.pool(), "s1", "h1", "auto")
             .await
             .unwrap();
 
@@ -1020,7 +1020,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn session_event_link_copies_participants() {
+    async fn meeting_event_link_copies_participants() {
         let db = Db3::connect_memory_plain().await.unwrap();
         migrate(db.pool()).await.unwrap();
 
@@ -1096,19 +1096,19 @@ mod tests {
         .await
         .unwrap();
 
-        // Create session linked to event
-        insert_session(db.pool(), "s1", Some("e1")).await.unwrap();
+        // Create meeting linked to event
+        insert_meeting(db.pool(), "s1", Some("e1")).await.unwrap();
 
-        let session = get_session(db.pool(), "s1").await.unwrap().unwrap();
-        assert_eq!(session.event_id.as_deref(), Some("e1"));
+        let meeting = get_meeting(db.pool(), "s1").await.unwrap().unwrap();
+        assert_eq!(meeting.event_id.as_deref(), Some("e1"));
 
-        // Copy event participants to session
-        let copied = copy_event_participants_to_session(db.pool(), "s1", "e1")
+        // Copy event participants to meeting
+        let copied = copy_event_participants_to_meeting(db.pool(), "s1", "e1")
             .await
             .unwrap();
         assert_eq!(copied, 2);
 
-        let participants = list_session_participants(db.pool(), "s1").await.unwrap();
+        let participants = list_meeting_participants(db.pool(), "s1").await.unwrap();
         assert_eq!(participants.len(), 2);
 
         let sources: Vec<&str> = participants.iter().map(|p| p.source.as_str()).collect();

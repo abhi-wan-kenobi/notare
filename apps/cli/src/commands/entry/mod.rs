@@ -8,7 +8,7 @@ mod effect;
 mod ui;
 
 pub enum EntryCommand {
-    Listen,
+    MeetingsNew,
     Chat { session_id: Option<String> },
     View { session_id: String },
 }
@@ -33,8 +33,8 @@ pub struct Args {
 
 enum ExternalEvent {
     ConnectRuntime(crate::commands::connect::runtime::RuntimeEvent),
-    SessionsLoaded(Vec<hypr_db_app::SessionRow>),
-    SessionsLoadError(String),
+    MeetingsLoaded(Vec<hypr_db_app::MeetingRow>),
+    MeetingsLoadError(String),
     ModelsLoaded(Vec<crate::commands::model::list::ModelRow>),
     ModelsLoadError(String),
     ConnectSaved {
@@ -63,16 +63,16 @@ impl EntryScreen {
         for effect in effects {
             match effect {
                 Effect::Launch(cmd) => return ScreenControl::Exit(EntryAction::Launch(cmd)),
-                Effect::LoadSessions => {
+                Effect::LoadMeetings => {
                     let tx = self.external_tx.clone();
                     let pool = self.pool.clone();
                     tokio::spawn(async move {
-                        match hypr_db_app::list_sessions(&pool).await {
-                            Ok(sessions) => {
-                                let _ = tx.send(ExternalEvent::SessionsLoaded(sessions));
+                        match hypr_db_app::list_meetings(&pool).await {
+                            Ok(meetings) => {
+                                let _ = tx.send(ExternalEvent::MeetingsLoaded(meetings));
                             }
                             Err(e) => {
-                                let _ = tx.send(ExternalEvent::SessionsLoadError(e.to_string()));
+                                let _ = tx.send(ExternalEvent::MeetingsLoadError(e.to_string()));
                             }
                         }
                     });
@@ -287,8 +287,8 @@ impl Screen for EntryScreen {
     ) -> ScreenControl<Self::Output> {
         let action = match event {
             ExternalEvent::ConnectRuntime(event) => Action::ConnectRuntime(event),
-            ExternalEvent::SessionsLoaded(sessions) => Action::SessionsLoaded(sessions),
-            ExternalEvent::SessionsLoadError(msg) => Action::SessionsLoadError(msg),
+            ExternalEvent::MeetingsLoaded(meetings) => Action::MeetingsLoaded(meetings),
+            ExternalEvent::MeetingsLoadError(msg) => Action::MeetingsLoadError(msg),
             ExternalEvent::ModelsLoaded(models) => Action::ModelsLoaded(models),
             ExternalEvent::ModelsLoadError(msg) => Action::ModelsLoadError(msg),
             ExternalEvent::ConnectSaved {

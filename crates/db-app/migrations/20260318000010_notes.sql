@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY NOT NULL,
-  session_id TEXT NOT NULL DEFAULT '',
+  meeting_id TEXT NOT NULL DEFAULT '',
   kind TEXT NOT NULL DEFAULT '',
   title TEXT NOT NULL DEFAULT '',
   content TEXT NOT NULL DEFAULT '',
@@ -10,5 +10,5 @@ CREATE TABLE IF NOT EXISTS notes (
   entity_type TEXT NOT NULL DEFAULT '',
   entity_id TEXT NOT NULL DEFAULT ''
 );
-CREATE INDEX IF NOT EXISTS idx_notes_session ON notes(session_id);
+CREATE INDEX IF NOT EXISTS idx_notes_meeting ON notes(meeting_id);
 CREATE INDEX IF NOT EXISTS idx_notes_entity ON notes(entity_type, entity_id);

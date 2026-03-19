@@ -12,8 +12,8 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
         .item(Span::styled("chat", theme.status_active))
         .item(Span::raw(app.model().to_string()));
 
-    if let Some(session) = app.session() {
-        info = info.item(Span::raw(format!("session {session}")));
+    if let Some(meeting) = app.meeting() {
+        info = info.item(Span::raw(format!("meeting {meeting}")));
     }
 
     info = info.item(Span::raw(format_hhmmss(app.elapsed())));

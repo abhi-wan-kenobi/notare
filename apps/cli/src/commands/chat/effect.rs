@@ -12,13 +12,13 @@ pub(crate) enum Effect {
         response: String,
     },
     Persist {
-        session_id: String,
+        meeting_id: String,
         message_id: String,
         role: Role,
         content: String,
     },
     UpdateTitle {
-        session_id: String,
+        meeting_id: String,
         title: String,
     },
     Exit,

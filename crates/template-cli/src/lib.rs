@@ -6,7 +6,7 @@ pub struct Participant {
 #[derive(askama::Template)]
 #[template(path = "chat.context.md.jinja")]
 pub struct ChatContext {
-    pub session_id: String,
+    pub meeting_id: String,
     pub title: Option<String>,
     pub created_at: Option<String>,
     pub participants: Vec<Participant>,

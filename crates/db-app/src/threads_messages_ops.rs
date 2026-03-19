@@ -6,13 +6,13 @@ pub async fn insert_thread(
     pool: &SqlitePool,
     id: &str,
     user_id: &str,
-    session_id: Option<&str>,
+    meeting_id: Option<&str>,
     title: &str,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT INTO threads (id, user_id, session_id, title) VALUES (?, ?, ?, ?)")
+    sqlx::query("INSERT INTO threads (id, user_id, meeting_id, title) VALUES (?, ?, ?, ?)")
         .bind(id)
         .bind(user_id)
-        .bind(session_id)
+        .bind(meeting_id)
         .bind(title)
         .execute(pool)
         .await?;
@@ -21,17 +21,17 @@ pub async fn insert_thread(
 
 pub async fn get_thread(pool: &SqlitePool, id: &str) -> Result<Option<ThreadRow>, sqlx::Error> {
     let row = sqlx::query_as::<_, (String, String, Option<String>, String, String, String)>(
-        "SELECT id, user_id, session_id, title, visibility, created_at FROM threads WHERE id = ?",
+        "SELECT id, user_id, meeting_id, title, visibility, created_at FROM threads WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(pool)
     .await?;
 
     Ok(row.map(
-        |(id, user_id, session_id, title, visibility, created_at)| ThreadRow {
+        |(id, user_id, meeting_id, title, visibility, created_at)| ThreadRow {
             id,
             user_id,
-            session_id,
+            meeting_id,
             title,
             visibility,
             created_at,
@@ -39,24 +39,24 @@ pub async fn get_thread(pool: &SqlitePool, id: &str) -> Result<Option<ThreadRow>
     ))
 }
 
-pub async fn list_threads_by_session(
+pub async fn list_threads_by_meeting(
     pool: &SqlitePool,
-    session_id: &str,
+    meeting_id: &str,
 ) -> Result<Vec<ThreadRow>, sqlx::Error> {
     let rows = sqlx::query_as::<_, (String, String, Option<String>, String, String, String)>(
-        "SELECT id, user_id, session_id, title, visibility, created_at FROM threads WHERE session_id = ? ORDER BY created_at",
+        "SELECT id, user_id, meeting_id, title, visibility, created_at FROM threads WHERE meeting_id = ? ORDER BY created_at",
     )
-    .bind(session_id)
+    .bind(meeting_id)
     .fetch_all(pool)
     .await?;
 
     Ok(rows
         .into_iter()
         .map(
-            |(id, user_id, session_id, title, visibility, created_at)| ThreadRow {
+            |(id, user_id, meeting_id, title, visibility, created_at)| ThreadRow {
                 id,
                 user_id,
-                session_id,
+                meeting_id,
                 title,
                 visibility,
                 created_at,

@@ -5,7 +5,7 @@ use crate::{PersistableSpeakerHint, TranscriptDeltaPersist};
 
 pub async fn apply_delta(
     pool: &SqlitePool,
-    session_id: &str,
+    meeting_id: &str,
     delta: &TranscriptDeltaPersist,
 ) -> Result<(), sqlx::Error> {
     let mut tx = pool.begin().await?;
@@ -27,10 +27,10 @@ pub async fn apply_delta(
             WordState::Pending => "pending",
         };
         sqlx::query(
-            "INSERT OR REPLACE INTO words (id, session_id, text, start_ms, end_ms, channel, state) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT OR REPLACE INTO words (id, meeting_id, text, start_ms, end_ms, channel, state) VALUES (?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&w.id)
-        .bind(session_id)
+        .bind(meeting_id)
         .bind(&w.text)
         .bind(w.start_ms)
         .bind(w.end_ms)
@@ -61,12 +61,12 @@ pub async fn apply_delta(
                 Some(human_id.as_str()),
             ),
         };
-        let hint_id = format!("{session_id}:{}:{kind}", h.word_id);
+        let hint_id = format!("{meeting_id}:{}:{kind}", h.word_id);
         sqlx::query(
-            "INSERT OR REPLACE INTO speaker_hints (id, session_id, word_id, kind, speaker_index, provider, channel, human_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT OR REPLACE INTO speaker_hints (id, meeting_id, word_id, kind, speaker_index, provider, channel, human_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&hint_id)
-        .bind(session_id)
+        .bind(meeting_id)
         .bind(&h.word_id)
         .bind(kind)
         .bind(speaker_index)
@@ -83,12 +83,12 @@ pub async fn apply_delta(
 
 pub async fn load_words(
     pool: &SqlitePool,
-    session_id: &str,
+    meeting_id: &str,
 ) -> Result<Vec<FinalizedWord>, sqlx::Error> {
     let rows = sqlx::query_as::<_, (String, String, i64, i64, i32, String)>(
-        "SELECT id, text, start_ms, end_ms, channel, state FROM words WHERE session_id = ? ORDER BY start_ms",
+        "SELECT id, text, start_ms, end_ms, channel, state FROM words WHERE meeting_id = ? ORDER BY start_ms",
     )
-    .bind(session_id)
+    .bind(meeting_id)
     .fetch_all(pool)
     .await?;
 
@@ -113,12 +113,12 @@ pub async fn load_words(
 
 pub async fn load_hints(
     pool: &SqlitePool,
-    session_id: &str,
+    meeting_id: &str,
 ) -> Result<Vec<PersistableSpeakerHint>, sqlx::Error> {
     let rows = sqlx::query_as::<_, (String, String, Option<i32>, Option<String>, Option<i32>, Option<String>)>(
-        "SELECT word_id, kind, speaker_index, provider, channel, human_id FROM speaker_hints WHERE session_id = ? ORDER BY word_id",
+        "SELECT word_id, kind, speaker_index, provider, channel, human_id FROM speaker_hints WHERE meeting_id = ? ORDER BY word_id",
     )
-    .bind(session_id)
+    .bind(meeting_id)
     .fetch_all(pool)
     .await?;
 

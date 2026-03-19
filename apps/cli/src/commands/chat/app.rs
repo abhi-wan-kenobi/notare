@@ -41,8 +41,8 @@ fn new_editor() -> Editor<Theme> {
 
 pub(crate) struct App {
     model: String,
-    session: Option<String>,
-    session_id: String,
+    meeting: Option<String>,
+    meeting_id: String,
     api_history: Vec<Message>,
     max_history: usize,
     transcript: Vec<VisibleMessage>,
@@ -57,11 +57,11 @@ pub(crate) struct App {
 }
 
 impl App {
-    pub(crate) fn new(model: String, session: Option<String>, session_id: String) -> Self {
+    pub(crate) fn new(model: String, meeting: Option<String>, meeting_id: String) -> Self {
         Self {
             model,
-            session,
-            session_id,
+            meeting,
+            meeting_id,
             api_history: Vec::new(),
             max_history: MAX_HISTORY,
             transcript: Vec::new(),
@@ -116,7 +116,7 @@ impl App {
             Action::TitleGenerated(title) => {
                 self.terminal_title = Some(title.clone());
                 vec![Effect::UpdateTitle {
-                    session_id: self.session_id.clone(),
+                    meeting_id: self.meeting_id.clone(),
                     title,
                 }]
             }
@@ -134,8 +134,8 @@ impl App {
         &self.model
     }
 
-    pub(crate) fn session(&self) -> Option<&str> {
-        self.session.as_deref()
+    pub(crate) fn meeting(&self) -> Option<&str> {
+        self.meeting.as_deref()
     }
 
     pub(crate) fn status(&self) -> String {
@@ -263,7 +263,7 @@ impl App {
         let message_id = uuid::Uuid::new_v4().to_string();
         vec![
             Effect::Persist {
-                session_id: self.session_id.clone(),
+                meeting_id: self.meeting_id.clone(),
                 message_id,
                 role: Role::User,
                 content: content.clone(),
@@ -309,7 +309,7 @@ impl App {
 
         let message_id = uuid::Uuid::new_v4().to_string();
         let mut effects = vec![Effect::Persist {
-            session_id: self.session_id.clone(),
+            meeting_id: self.meeting_id.clone(),
             message_id,
             role: Role::Assistant,
             content: buffer.clone(),
@@ -342,7 +342,7 @@ impl App {
             let message_id = uuid::Uuid::new_v4().to_string();
             self.push_api_history(Message::assistant(buffer.clone()));
             effects.push(Effect::Persist {
-                session_id: self.session_id.clone(),
+                meeting_id: self.meeting_id.clone(),
                 message_id,
                 role: Role::Assistant,
                 content: buffer,

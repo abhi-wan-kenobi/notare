@@ -6,8 +6,8 @@ use hypr_cli_editor::{Editor, KeyResult};
 use ratatui_image::protocol::StatefulProtocol;
 
 use crate::commands::connect;
+use crate::commands::meetings;
 use crate::commands::model;
-use crate::commands::sessions;
 use crate::commands::timeline;
 
 pub(crate) use commands::{ALL_COMMANDS, Command, CommandEntry};
@@ -18,7 +18,7 @@ use search::command_match_score;
 use super::action::Action;
 use super::effect::Effect;
 
-enum SessionsIntent {
+enum MeetingsIntent {
     View,
     ChatResume,
 }
@@ -26,7 +26,7 @@ enum SessionsIntent {
 pub(crate) enum Overlay {
     None,
     Connect(connect::app::App),
-    Sessions(sessions::app::App),
+    Meetings(meetings::app::App),
     Models(model::app::App),
     Timeline(timeline::app::App),
 }
@@ -42,7 +42,7 @@ pub(crate) struct App {
     pub(crate) stt_provider: Option<String>,
     pub(crate) llm_provider: Option<String>,
     overlay: Overlay,
-    sessions_intent: SessionsIntent,
+    meetings_intent: MeetingsIntent,
 }
 
 impl App {
@@ -62,7 +62,7 @@ impl App {
             stt_provider,
             llm_provider,
             overlay: Overlay::None,
-            sessions_intent: SessionsIntent::View,
+            meetings_intent: MeetingsIntent::View,
         };
         app.recompute_popup();
         app
@@ -87,18 +87,18 @@ impl App {
                     Vec::new()
                 }
             }
-            Action::SessionsLoaded(sessions) => {
-                if let Overlay::Sessions(ref mut app) = self.overlay {
-                    let effects = app.dispatch(sessions::action::Action::Loaded(sessions));
-                    self.translate_sessions_effects(effects)
+            Action::MeetingsLoaded(meetings) => {
+                if let Overlay::Meetings(ref mut app) = self.overlay {
+                    let effects = app.dispatch(meetings::action::Action::Loaded(meetings));
+                    self.translate_meetings_effects(effects)
                 } else {
                     Vec::new()
                 }
             }
-            Action::SessionsLoadError(msg) => {
-                if let Overlay::Sessions(ref mut app) = self.overlay {
-                    let effects = app.dispatch(sessions::action::Action::LoadError(msg));
-                    self.translate_sessions_effects(effects)
+            Action::MeetingsLoadError(msg) => {
+                if let Overlay::Meetings(ref mut app) = self.overlay {
+                    let effects = app.dispatch(meetings::action::Action::LoadError(msg));
+                    self.translate_meetings_effects(effects)
                 } else {
                     Vec::new()
                 }
@@ -239,9 +239,9 @@ impl App {
                 let effects = app.dispatch(connect::action::Action::Key(key));
                 return self.translate_connect_effects(effects);
             }
-            Overlay::Sessions(ref mut app) => {
-                let effects = app.dispatch(sessions::action::Action::Key(key));
-                return self.translate_sessions_effects(effects);
+            Overlay::Meetings(ref mut app) => {
+                let effects = app.dispatch(meetings::action::Action::Key(key));
+                return self.translate_meetings_effects(effects);
             }
             Overlay::Models(ref mut app) => {
                 let effects = app.dispatch(model::action::Action::Key(key));
@@ -310,7 +310,7 @@ impl App {
                 let effects = app.dispatch(connect::action::Action::Paste(pasted));
                 return self.translate_connect_effects(effects);
             }
-            Overlay::Sessions(_) => return Vec::new(),
+            Overlay::Meetings(_) => return Vec::new(),
             Overlay::Models(_) => return Vec::new(),
             Overlay::Timeline(_) => return Vec::new(),
             Overlay::None => {}
@@ -345,21 +345,21 @@ impl App {
         use crate::cli::ModelCommands;
 
         match cmd {
-            Command::Listen => vec![Effect::Launch(super::EntryCommand::Listen)],
+            Command::MeetingsNew => vec![Effect::Launch(super::EntryCommand::MeetingsNew)],
             Command::Chat => vec![Effect::Launch(super::EntryCommand::Chat {
                 session_id: None,
             })],
             Command::ChatResume => {
                 self.reset_input();
-                self.sessions_intent = SessionsIntent::ChatResume;
-                self.overlay = Overlay::Sessions(sessions::app::App::new());
-                vec![Effect::LoadSessions]
+                self.meetings_intent = MeetingsIntent::ChatResume;
+                self.overlay = Overlay::Meetings(meetings::app::App::new());
+                vec![Effect::LoadMeetings]
             }
-            Command::Sessions => {
+            Command::Meetings => {
                 self.reset_input();
-                self.sessions_intent = SessionsIntent::View;
-                self.overlay = Overlay::Sessions(sessions::app::App::new());
-                vec![Effect::LoadSessions]
+                self.meetings_intent = MeetingsIntent::View;
+                self.overlay = Overlay::Meetings(meetings::app::App::new());
+                vec![Effect::LoadMeetings]
             }
             Command::Timeline => {
                 self.reset_input();
@@ -454,24 +454,24 @@ impl App {
         result
     }
 
-    fn translate_sessions_effects(
+    fn translate_meetings_effects(
         &mut self,
-        effects: Vec<sessions::effect::Effect>,
+        effects: Vec<meetings::effect::Effect>,
     ) -> Vec<Effect> {
         let mut result = Vec::new();
         for effect in effects {
             match effect {
-                sessions::effect::Effect::Select(id) => {
-                    let cmd = match self.sessions_intent {
-                        SessionsIntent::View => super::EntryCommand::View { session_id: id },
-                        SessionsIntent::ChatResume => super::EntryCommand::Chat {
+                meetings::effect::Effect::Select(id) => {
+                    let cmd = match self.meetings_intent {
+                        MeetingsIntent::View => super::EntryCommand::View { session_id: id },
+                        MeetingsIntent::ChatResume => super::EntryCommand::Chat {
                             session_id: Some(id),
                         },
                     };
                     self.reset_input();
                     result.push(Effect::Launch(cmd));
                 }
-                sessions::effect::Effect::Exit => {
+                meetings::effect::Effect::Exit => {
                     self.reset_input();
                 }
             }
@@ -609,7 +609,7 @@ mod tests {
                     Some(connect::runtime::CalendarPermissionState::NotDetermined)
                 );
             }
-            Overlay::None | Overlay::Models(_) | Overlay::Sessions(_) | Overlay::Timeline(_) => {
+            Overlay::None | Overlay::Models(_) | Overlay::Meetings(_) | Overlay::Timeline(_) => {
                 panic!("expected connect overlay")
             }
         }

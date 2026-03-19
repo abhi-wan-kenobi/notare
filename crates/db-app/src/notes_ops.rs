@@ -5,14 +5,14 @@ use crate::NoteRow;
 pub async fn insert_note(
     pool: &SqlitePool,
     id: &str,
-    session_id: &str,
+    meeting_id: &str,
     kind: &str,
     title: &str,
     content: &str,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT INTO notes (id, session_id, kind, title, content) VALUES (?, ?, ?, ?, ?)")
+    sqlx::query("INSERT INTO notes (id, meeting_id, kind, title, content) VALUES (?, ?, ?, ?, ?)")
         .bind(id)
-        .bind(session_id)
+        .bind(meeting_id)
         .bind(kind)
         .bind(title)
         .bind(content)
@@ -30,7 +30,7 @@ pub async fn insert_note_on_entity(
     title: &str,
     content: &str,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT INTO notes (id, session_id, kind, title, content, entity_type, entity_id) VALUES (?, '', ?, ?, ?, ?, ?)")
+    sqlx::query("INSERT INTO notes (id, meeting_id, kind, title, content, entity_type, entity_id) VALUES (?, '', ?, ?, ?, ?, ?)")
         .bind(id)
         .bind(kind)
         .bind(title)
@@ -42,14 +42,14 @@ pub async fn insert_note_on_entity(
     Ok(())
 }
 
-pub async fn list_notes_by_session(
+pub async fn list_notes_by_meeting(
     pool: &SqlitePool,
-    session_id: &str,
+    meeting_id: &str,
 ) -> Result<Vec<NoteRow>, sqlx::Error> {
     let rows = sqlx::query_as::<_, (String, String, String, String, String, String, String, String, String, String)>(
-        "SELECT id, session_id, kind, title, content, created_at, user_id, visibility, entity_type, entity_id FROM notes WHERE session_id = ? ORDER BY created_at",
+        "SELECT id, meeting_id, kind, title, content, created_at, user_id, visibility, entity_type, entity_id FROM notes WHERE meeting_id = ? ORDER BY created_at",
     )
-    .bind(session_id)
+    .bind(meeting_id)
     .fetch_all(pool)
     .await?;
 
@@ -58,7 +58,7 @@ pub async fn list_notes_by_session(
         .map(
             |(
                 id,
-                session_id,
+                meeting_id,
                 kind,
                 title,
                 content,
@@ -69,7 +69,7 @@ pub async fn list_notes_by_session(
                 entity_id,
             )| NoteRow {
                 id,
-                session_id,
+                meeting_id,
                 kind,
                 title,
                 content,
@@ -83,15 +83,15 @@ pub async fn list_notes_by_session(
         .collect())
 }
 
-pub async fn get_note_by_session_and_kind(
+pub async fn get_note_by_meeting_and_kind(
     pool: &SqlitePool,
-    session_id: &str,
+    meeting_id: &str,
     kind: &str,
 ) -> Result<Option<NoteRow>, sqlx::Error> {
     let row = sqlx::query_as::<_, (String, String, String, String, String, String, String, String, String, String)>(
-        "SELECT id, session_id, kind, title, content, created_at, user_id, visibility, entity_type, entity_id FROM notes WHERE session_id = ? AND kind = ? ORDER BY created_at DESC LIMIT 1",
+        "SELECT id, meeting_id, kind, title, content, created_at, user_id, visibility, entity_type, entity_id FROM notes WHERE meeting_id = ? AND kind = ? ORDER BY created_at DESC LIMIT 1",
     )
-    .bind(session_id)
+    .bind(meeting_id)
     .bind(kind)
     .fetch_optional(pool)
     .await?;
@@ -99,7 +99,7 @@ pub async fn get_note_by_session_and_kind(
     Ok(row.map(
         |(
             id,
-            session_id,
+            meeting_id,
             kind,
             title,
             content,
@@ -110,7 +110,7 @@ pub async fn get_note_by_session_and_kind(
             entity_id,
         )| NoteRow {
             id,
-            session_id,
+            meeting_id,
             kind,
             title,
             content,
@@ -132,12 +132,12 @@ pub async fn update_note(pool: &SqlitePool, id: &str, content: &str) -> Result<(
     Ok(())
 }
 
-pub async fn delete_notes_by_session(
+pub async fn delete_notes_by_meeting(
     pool: &SqlitePool,
-    session_id: &str,
+    meeting_id: &str,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM notes WHERE session_id = ?")
-        .bind(session_id)
+    sqlx::query("DELETE FROM notes WHERE meeting_id = ?")
+        .bind(meeting_id)
         .execute(pool)
         .await?;
     Ok(())
@@ -149,7 +149,7 @@ pub async fn list_notes_by_entity(
     entity_id: &str,
 ) -> Result<Vec<NoteRow>, sqlx::Error> {
     let rows = sqlx::query_as::<_, (String, String, String, String, String, String, String, String, String, String)>(
-        "SELECT id, session_id, kind, title, content, created_at, user_id, visibility, entity_type, entity_id FROM notes WHERE entity_type = ? AND entity_id = ? ORDER BY created_at",
+        "SELECT id, meeting_id, kind, title, content, created_at, user_id, visibility, entity_type, entity_id FROM notes WHERE entity_type = ? AND entity_id = ? ORDER BY created_at",
     )
     .bind(entity_type)
     .bind(entity_id)
@@ -161,7 +161,7 @@ pub async fn list_notes_by_entity(
         .map(
             |(
                 id,
-                session_id,
+                meeting_id,
                 kind,
                 title,
                 content,
@@ -172,7 +172,7 @@ pub async fn list_notes_by_entity(
                 entity_id,
             )| NoteRow {
                 id,
-                session_id,
+                meeting_id,
                 kind,
                 title,
                 content,

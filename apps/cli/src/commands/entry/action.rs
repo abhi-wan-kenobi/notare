@@ -10,8 +10,8 @@ pub(crate) enum Action {
     SubmitCommand(String),
     StatusMessage(String),
     ConnectRuntime(ConnectRuntimeEvent),
-    SessionsLoaded(Vec<hypr_db_app::SessionRow>),
-    SessionsLoadError(String),
+    MeetingsLoaded(Vec<hypr_db_app::MeetingRow>),
+    MeetingsLoadError(String),
     ModelsLoaded(Vec<ModelRow>),
     ModelsLoadError(String),
     ConnectSaved {

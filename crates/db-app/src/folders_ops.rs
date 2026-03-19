@@ -85,7 +85,7 @@ pub async fn update_folder(
 
 pub async fn delete_folder(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
     let mut tx = pool.begin().await?;
-    sqlx::query("UPDATE sessions SET folder_id = NULL WHERE folder_id = ?")
+    sqlx::query("UPDATE meetings SET folder_id = NULL WHERE folder_id = ?")
         .bind(id)
         .execute(&mut *tx)
         .await?;

@@ -25,7 +25,7 @@ enum Section<'a> {
 
 fn sections(app: &App) -> Vec<Section<'_>> {
     let mut out = vec![
-        Section::Title(app.session().unwrap_or("Chat")),
+        Section::Title(app.meeting().unwrap_or("Chat")),
         Section::Field {
             label: "Model",
             value: app.model().to_string(),

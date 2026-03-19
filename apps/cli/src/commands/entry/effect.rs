@@ -3,7 +3,7 @@ use crate::commands::connect::effect::CalendarSaveData;
 
 pub(crate) enum Effect {
     Launch(super::EntryCommand),
-    LoadSessions,
+    LoadMeetings,
     LoadModels,
     LoadTimelineContacts,
     LoadTimelineEntries(String),

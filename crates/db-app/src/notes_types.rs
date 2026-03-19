@@ -1,6 +1,6 @@
 pub struct NoteRow {
     pub id: String,
-    pub session_id: String,
+    pub meeting_id: String,
     pub kind: String,
     pub title: String,
     pub content: String,

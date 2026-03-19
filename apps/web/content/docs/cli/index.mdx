@@ -32,9 +32,8 @@ char [--base-url] [--api-key] [-m] [-l] [--record] [--no-color] [--base] [-v] [-
 **Subcommands:**
 
 - `chat` — Interactive chat with an LLM
-- `listen` — Start live transcription (TUI)
 - `connect` — Configure an STT or LLM provider
-- `sessions` — Browse past sessions
+- `meetings` — Browse past meetings
 - `humans` — Browse humans (contacts)
 - `orgs` — Browse organizations
 - `status` — Show configured providers and settings
@@ -42,7 +41,7 @@ char [--base-url] [--api-key] [-m] [-l] [--record] [--no-color] [--base] [-v] [-
 - `desktop` — Open the desktop app or download page
 - `bug` — Report a bug on GitHub
 - `hello` — Open char.com
-- `batch` — Transcribe an audio file
+- `transcribe` — Transcribe an audio file (no meeting created)
 - `models` — Manage local models
 - `completions` — Generate shell completions
 
@@ -74,27 +73,12 @@ char chat [--prompt] [--provider] [-h] [-V] <command>
 Resume an existing chat session
 
 ```
-char chat resume [--session] [-h] [-V]
+char chat resume [--meeting] [-h] [-V]
 ```
 
 **Options:**
 
-- `--session <SESSION>`
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-### char listen
-
-Start live transcription (TUI)
-
-```
-char listen [-p] [--audio] [-h] [-V]
-```
-
-**Options:**
-
-- `-p, --provider <PROVIDER>`
-- `--audio <AUDIO>` (default: `dual`)
+- `--meeting <MEETING>`
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
@@ -113,12 +97,12 @@ char connect [--type] [--provider] [-h] [-V]
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
-### char sessions
+### char meetings
 
-Browse past sessions
+Browse past meetings
 
 ```
-char sessions [-h] [-V] <command>
+char meetings [-h] [-V] <command>
 ```
 
 **Options:**
@@ -128,19 +112,36 @@ char sessions [-h] [-V] <command>
 
 **Subcommands:**
 
-- `view` — View a specific session
-- `participants` — List participants in a session
-- `add-participant` — Add a participant to a session
-- `rm-participant` — Remove a participant from a session
+- `new` — Start a new meeting
+- `view` — View a specific meeting
+- `participants` — List participants in a meeting
+- `add-participant` — Add a participant to a meeting
+- `rm-participant` — Remove a participant from a meeting
 
 ---
 
-### char sessions view
+### char meetings new
 
-View a specific session
+Start a new meeting
 
 ```
-char sessions view <--id> [-h] [-V]
+char meetings new [-p] [--audio] [-k] [-h] [-V]
+```
+
+**Options:**
+
+- `-p, --provider <PROVIDER>`
+- `--audio <FILE>` — Create meeting from an audio file instead of live transcription
+- `-k, --keyword <KEYWORD>` — Keywords to boost transcription accuracy (with --audio)
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char meetings view
+
+View a specific meeting
+
+```
+char meetings view <--id> [-h] [-V]
 ```
 
 **Options:**
@@ -149,12 +150,12 @@ char sessions view <--id> [-h] [-V]
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
-### char sessions participants
+### char meetings participants
 
-List participants in a session
+List participants in a meeting
 
 ```
-char sessions participants <--id> [-h] [-V]
+char meetings participants <--id> [-h] [-V]
 ```
 
 **Options:**
@@ -163,32 +164,32 @@ char sessions participants <--id> [-h] [-V]
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
-### char sessions add-participant
+### char meetings add-participant
 
-Add a participant to a session
+Add a participant to a meeting
 
 ```
-char sessions add-participant <--session> <--human> [-h] [-V]
+char meetings add-participant <--meeting> <--human> [-h] [-V]
 ```
 
 **Options:**
 
-- `--session <SESSION>`
+- `--meeting <MEETING>`
 - `--human <HUMAN>`
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
-### char sessions rm-participant
+### char meetings rm-participant
 
-Remove a participant from a session
+Remove a participant from a meeting
 
 ```
-char sessions rm-participant <--session> <--human> [-h] [-V]
+char meetings rm-participant <--meeting> <--human> [-h] [-V]
 ```
 
 **Options:**
 
-- `--session <SESSION>`
+- `--meeting <MEETING>`
 - `--human <HUMAN>`
 - `-h, --help` — Print help
 - `-V, --version` — Print version
@@ -208,11 +209,25 @@ char humans [-h] [-V] <command>
 
 **Subcommands:**
 
+- `list` — List all humans
 - `add` — Add a new human
 - `show` — Show details for a human
 - `rm` — Remove a human
 
 ---
+
+### char humans list
+
+List all humans
+
+```
+char humans list [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
 
 ### char humans add
 
@@ -277,11 +292,25 @@ char orgs [-h] [-V] <command>
 
 **Subcommands:**
 
+- `list` — List all organizations
 - `add` — Add a new organization
 - `show` — Show details for an organization
 - `rm` — Remove an organization
 
 ---
+
+### char orgs list
+
+List all organizations
+
+```
+char orgs list [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
 
 ### char orgs add
 
@@ -393,12 +422,12 @@ char hello [-h] [-V]
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
-### char batch
+### char transcribe
 
-Transcribe an audio file
+Transcribe an audio file (no meeting created)
 
 ```
-char batch <--input> <-p> [-k] [-o] [-f] [-h] [-V]
+char transcribe <--input> <-p> [-k] [-o] [-f] [-h] [-V]
 ```
 
 **Options:**

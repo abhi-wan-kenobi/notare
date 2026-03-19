@@ -63,13 +63,13 @@ impl Runtime {
         });
     }
 
-    pub(crate) async fn ensure_session(&self, session_id: &str) {
-        let _ = hypr_db_app::insert_session(&self.pool, session_id, None).await;
+    pub(crate) async fn ensure_meeting(&self, meeting_id: &str) {
+        let _ = hypr_db_app::insert_meeting(&self.pool, meeting_id, None).await;
     }
 
     pub(crate) fn persist_message(
         &self,
-        session_id: String,
+        meeting_id: String,
         message_id: String,
         role: Role,
         content: String,
@@ -78,15 +78,15 @@ impl Runtime {
         let role = role.to_string();
         self.pending_writes.lock().unwrap().spawn(async move {
             let _ =
-                hypr_db_app::insert_chat_message(&pool, &message_id, &session_id, &role, &content)
+                hypr_db_app::insert_chat_message(&pool, &message_id, &meeting_id, &role, &content)
                     .await;
         });
     }
 
-    pub(crate) fn update_title(&self, session_id: String, title: String) {
+    pub(crate) fn update_title(&self, meeting_id: String, title: String) {
         let pool = self.pool.clone();
         self.pending_writes.lock().unwrap().spawn(async move {
-            let _ = hypr_db_app::update_session(&pool, &session_id, Some(&title)).await;
+            let _ = hypr_db_app::update_meeting(&pool, &meeting_id, Some(&title)).await;
         });
     }
 

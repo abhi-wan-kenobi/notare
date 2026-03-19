@@ -69,8 +69,8 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         Overlay::Connect(connect_app) => {
             crate::commands::connect::ui::draw(frame, connect_app);
         }
-        Overlay::Sessions(sessions_app) => {
-            crate::commands::sessions::ui::draw(frame, sessions_app);
+        Overlay::Meetings(meetings_app) => {
+            crate::commands::meetings::ui::draw(frame, meetings_app);
         }
         Overlay::Models(models_app) => {
             crate::commands::model::ui::draw(frame, models_app);

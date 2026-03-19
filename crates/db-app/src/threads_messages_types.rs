@@ -1,7 +1,7 @@
 pub struct ThreadRow {
     pub id: String,
     pub user_id: String,
-    pub session_id: Option<String>,
+    pub meeting_id: Option<String>,
     pub title: String,
     pub visibility: String,
     pub created_at: String,

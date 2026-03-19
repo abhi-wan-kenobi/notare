@@ -19,13 +19,15 @@ mod action;
 mod app;
 mod effect;
 mod exit;
+pub mod post_meeting;
 mod runtime;
 mod ui;
 
 use self::action::Action;
 use self::app::App;
 use self::effect::Effect;
-use self::exit::{ExitScreen, spawn_post_session};
+use self::exit::ExitScreen;
+use self::post_meeting::spawn_post_meeting;
 use self::runtime::Runtime;
 
 pub struct Args {
@@ -158,8 +160,8 @@ pub async fn run(args: Args) -> CliResult<()> {
     .await?;
     let languages = vec![resolved.language.clone()];
 
-    let session_id = uuid::Uuid::new_v4().to_string();
-    let session_label = session_id.clone();
+    let meeting_id = uuid::Uuid::new_v4().to_string();
+    let meeting_label = meeting_id.clone();
 
     let (event_id, participant_names) = resolve_event(&pool).await;
 
@@ -186,7 +188,7 @@ pub async fn run(args: Args) -> CliResult<()> {
     .map_err(|e| CliError::operation_failed("spawn root actor", e.to_string()))?;
 
     let params = SessionParams {
-        session_id,
+        session_id: meeting_id,
         languages,
         onboarding: false,
         transcription_mode: TranscriptionMode::Live,
@@ -253,19 +255,19 @@ pub async fn run(args: Args) -> CliResult<()> {
             });
 
         let (exit_tx, exit_rx) = mpsc::unbounded_channel();
-        spawn_post_session(
+        spawn_post_meeting(
             llm_config,
             exit_tx,
             app.words(),
-            app.hints(),
+            post_meeting::to_persistable_hints(&app.hints()),
             app.memo_text(),
-            session_label.clone(),
+            meeting_label.clone(),
             event_id,
             pool,
         );
 
         let exit_screen = ExitScreen::new(
-            session_label,
+            meeting_label,
             elapsed,
             vec!["Saving to database", "Generating summary"],
         );

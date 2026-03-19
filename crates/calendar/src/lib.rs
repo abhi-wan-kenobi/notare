@@ -1,10 +1,7 @@
 mod convert;
 mod error;
 mod fetch;
-pub mod service;
-pub mod storage;
 pub mod sync;
-pub mod sync_calendars;
 
 pub use error::Error;
 pub use hypr_calendar_interface::{
