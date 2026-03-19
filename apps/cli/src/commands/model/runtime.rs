@@ -4,15 +4,15 @@ use hypr_local_model::LocalModel;
 use hypr_model_downloader::ModelDownloaderRuntime;
 use tokio::sync::mpsc;
 
-pub(super) enum DownloadEvent {
+pub(crate) enum DownloadEvent {
     Progress(u8),
     Completed,
     Failed,
 }
 
-pub(super) struct CliModelRuntime {
-    pub(super) models_base: PathBuf,
-    pub(super) progress_tx: Option<mpsc::UnboundedSender<DownloadEvent>>,
+pub(crate) struct CliModelRuntime {
+    pub(crate) models_base: PathBuf,
+    pub(crate) progress_tx: Option<mpsc::UnboundedSender<DownloadEvent>>,
 }
 
 impl ModelDownloaderRuntime<LocalModel> for CliModelRuntime {

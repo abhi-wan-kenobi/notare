@@ -43,7 +43,7 @@ char [--base-url] [--api-key] [-m] [-l] [--record] [--no-color] [--base] [-v] [-
 - `bug` — Report a bug on GitHub
 - `hello` — Open char.com
 - `batch` — Transcribe an audio file
-- `model` — Manage local models
+- `models` — Manage local models
 - `completions` — Generate shell completions
 
 ---
@@ -411,12 +411,12 @@ char batch <--input> <-p> [-k] [-o] [-f] [-h] [-V]
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
-### char model
+### char models
 
 Manage local models
 
 ```
-char model [-h] [-V] <command>
+char models [-h] [-V] <command>
 ```
 
 **Options:**
@@ -427,7 +427,6 @@ char model [-h] [-V] <command>
 **Subcommands:**
 
 - `paths` — Show resolved paths for settings and model storage
-- `current` — Show current STT and LLM provider/model configuration
 - `list` — List available models and their download status
 - `cactus` — Manage downloadable Cactus models
 - `download` — Download a model by name
@@ -435,12 +434,12 @@ char model [-h] [-V] <command>
 
 ---
 
-### char model paths
+### char models paths
 
 Show resolved paths for settings and model storage
 
 ```
-char model paths [-h] [-V]
+char models paths [-h] [-V]
 ```
 
 **Options:**
@@ -448,25 +447,12 @@ char model paths [-h] [-V]
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
-### char model current
-
-Show current STT and LLM provider/model configuration
-
-```
-char model current [-h] [-V]
-```
-
-**Options:**
-
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-### char model list
+### char models list
 
 List available models and their download status
 
 ```
-char model list [--kind] [--supported] [-f] [-h] [-V]
+char models list [--kind] [--supported] [-f] [-h] [-V]
 ```
 
 **Options:**
@@ -477,12 +463,12 @@ char model list [--kind] [--supported] [-f] [-h] [-V]
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
-### char model cactus
+### char models cactus
 
 Manage downloadable Cactus models
 
 ```
-char model cactus [-h] [-V] <command>
+char models cactus [-h] [-V] <command>
 ```
 
 **Options:**
@@ -498,12 +484,12 @@ char model cactus [-h] [-V] <command>
 
 ---
 
-### char model cactus list
+### char models cactus list
 
 List available Cactus models
 
 ```
-char model cactus list [-f] [-h] [-V]
+char models cactus list [-f] [-h] [-V]
 ```
 
 **Options:**
@@ -512,12 +498,12 @@ char model cactus list [-f] [-h] [-V]
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
-### char model cactus download
+### char models cactus download
 
 Download a Cactus model by name
 
 ```
-char model cactus download [-h] [-V] <name>
+char models cactus download [-h] [-V] <name>
 ```
 
 **Options:**
@@ -529,12 +515,12 @@ char model cactus download [-h] [-V] <name>
 
 - `<NAME>`
 
-### char model cactus delete
+### char models cactus delete
 
 Delete a downloaded Cactus model
 
 ```
-char model cactus delete [-h] [-V] <name>
+char models cactus delete [-h] [-V] <name>
 ```
 
 **Options:**
@@ -546,12 +532,12 @@ char model cactus delete [-h] [-V] <name>
 
 - `<NAME>`
 
-### char model download
+### char models download
 
 Download a model by name
 
 ```
-char model download [-h] [-V] <name>
+char models download [-h] [-V] <name>
 ```
 
 **Options:**
@@ -563,12 +549,12 @@ char model download [-h] [-V] <name>
 
 - `<NAME>`
 
-### char model delete
+### char models delete
 
 Delete a downloaded model
 
 ```
-char model delete [-h] [-V] <name>
+char models delete [-h] [-V] <name>
 ```
 
 **Options:**

@@ -1,853 +1,87 @@
 #![forbid(unsafe_code)]
 
-use hypr_transcript::{FinalizedWord, SpeakerHintData, WordState};
+mod aliases_ops;
+mod aliases_types;
+mod calendars_ops;
+mod calendars_types;
+mod chat_messages_ops;
+mod chat_messages_types;
+mod connections_ops;
+mod connections_types;
+mod events_ops;
+mod events_types;
+mod folders_ops;
+mod folders_types;
+mod humans_ops;
+mod humans_types;
+mod notes_ops;
+mod notes_types;
+mod organizations_ops;
+mod organizations_types;
+mod session_participants_ops;
+mod session_participants_types;
+mod sessions_ops;
+mod sessions_types;
+mod settings_ops;
+mod slack_ops;
+mod slack_types;
+mod threads_messages_ops;
+mod threads_messages_types;
+mod timeline_ops;
+mod timeline_types;
+mod transcript_ops;
+mod transcript_types;
+mod users_ops;
+mod users_types;
+mod visibility_ops;
+
+pub use aliases_ops::*;
+pub use aliases_types::*;
+pub use calendars_ops::*;
+pub use calendars_types::*;
+pub use chat_messages_ops::*;
+pub use chat_messages_types::*;
+pub use connections_ops::*;
+pub use connections_types::*;
+pub use events_ops::*;
+pub use events_types::*;
+pub use folders_ops::*;
+pub use folders_types::*;
+pub use humans_ops::*;
+pub use humans_types::*;
+pub use notes_ops::*;
+pub use notes_types::*;
+pub use organizations_ops::*;
+pub use organizations_types::*;
+pub use session_participants_ops::*;
+pub use session_participants_types::*;
+pub use sessions_ops::*;
+#[allow(unused_imports)]
+pub use sessions_types::*;
+pub use settings_ops::*;
+pub use slack_ops::*;
+pub use slack_types::*;
+pub use threads_messages_ops::*;
+pub use threads_messages_types::*;
+pub use timeline_ops::*;
+pub use timeline_types::*;
+pub use transcript_ops::*;
+pub use transcript_types::*;
+pub use users_ops::*;
+pub use users_types::*;
+pub use visibility_ops::*;
+
 use sqlx::SqlitePool;
-
-pub struct ChatMessageRow {
-    pub id: String,
-    pub session_id: String,
-    pub role: String,
-    pub content: String,
-    pub created_at: String,
-}
-
-pub struct SessionRow {
-    pub id: String,
-    pub created_at: String,
-    pub title: Option<String>,
-}
-
-pub struct NoteRow {
-    pub id: String,
-    pub session_id: String,
-    pub kind: String,
-    pub title: String,
-    pub content: String,
-    pub created_at: String,
-}
-
-pub struct HumanRow {
-    pub id: String,
-    pub created_at: String,
-    pub name: String,
-    pub email: String,
-    pub org_id: String,
-    pub job_title: String,
-    pub linkedin_username: String,
-    pub memo: String,
-    pub pinned: bool,
-    pub pin_order: i32,
-}
-
-pub struct OrganizationRow {
-    pub id: String,
-    pub created_at: String,
-    pub name: String,
-    pub pinned: bool,
-    pub pin_order: i32,
-}
-
-pub struct SessionParticipantRow {
-    pub id: String,
-    pub session_id: String,
-    pub human_id: String,
-    pub source: String,
-}
-
-pub struct TranscriptDeltaPersist {
-    pub new_words: Vec<FinalizedWord>,
-    pub hints: Vec<PersistableSpeakerHint>,
-    pub replaced_ids: Vec<String>,
-}
-
-pub struct PersistableSpeakerHint {
-    pub word_id: String,
-    pub data: SpeakerHintData,
-}
 
 pub async fn migrate(pool: &SqlitePool) -> Result<(), sqlx::migrate::MigrateError> {
     sqlx::migrate!("./migrations").run(pool).await
-}
-
-pub async fn insert_session(pool: &SqlitePool, session_id: &str) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT OR IGNORE INTO sessions (id) VALUES (?)")
-        .bind(session_id)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn update_session(
-    pool: &SqlitePool,
-    session_id: &str,
-    title: Option<&str>,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE sessions SET title = COALESCE(?, title) WHERE id = ?")
-        .bind(title)
-        .bind(session_id)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn insert_note(
-    pool: &SqlitePool,
-    id: &str,
-    session_id: &str,
-    kind: &str,
-    title: &str,
-    content: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT INTO notes (id, session_id, kind, title, content) VALUES (?, ?, ?, ?, ?)")
-        .bind(id)
-        .bind(session_id)
-        .bind(kind)
-        .bind(title)
-        .bind(content)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn list_notes_by_session(
-    pool: &SqlitePool,
-    session_id: &str,
-) -> Result<Vec<NoteRow>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, String, String, String, String)>(
-        "SELECT id, session_id, kind, title, content, created_at FROM notes WHERE session_id = ? ORDER BY created_at",
-    )
-    .bind(session_id)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(
-            |(id, session_id, kind, title, content, created_at)| NoteRow {
-                id,
-                session_id,
-                kind,
-                title,
-                content,
-                created_at,
-            },
-        )
-        .collect())
-}
-
-pub async fn get_note_by_session_and_kind(
-    pool: &SqlitePool,
-    session_id: &str,
-    kind: &str,
-) -> Result<Option<NoteRow>, sqlx::Error> {
-    let row = sqlx::query_as::<_, (String, String, String, String, String, String)>(
-        "SELECT id, session_id, kind, title, content, created_at FROM notes WHERE session_id = ? AND kind = ? ORDER BY created_at DESC LIMIT 1",
-    )
-    .bind(session_id)
-    .bind(kind)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(row.map(
-        |(id, session_id, kind, title, content, created_at)| NoteRow {
-            id,
-            session_id,
-            kind,
-            title,
-            content,
-            created_at,
-        },
-    ))
-}
-
-pub async fn update_note(pool: &SqlitePool, id: &str, content: &str) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE notes SET content = ? WHERE id = ?")
-        .bind(content)
-        .bind(id)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn delete_notes_by_session(
-    pool: &SqlitePool,
-    session_id: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM notes WHERE session_id = ?")
-        .bind(session_id)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn apply_delta(
-    pool: &SqlitePool,
-    session_id: &str,
-    delta: &TranscriptDeltaPersist,
-) -> Result<(), sqlx::Error> {
-    let mut tx = pool.begin().await?;
-
-    for id in &delta.replaced_ids {
-        sqlx::query("DELETE FROM speaker_hints WHERE word_id = ?")
-            .bind(id)
-            .execute(&mut *tx)
-            .await?;
-        sqlx::query("DELETE FROM words WHERE id = ?")
-            .bind(id)
-            .execute(&mut *tx)
-            .await?;
-    }
-
-    for w in &delta.new_words {
-        let state_str = match w.state {
-            WordState::Final => "final",
-            WordState::Pending => "pending",
-        };
-        sqlx::query(
-            "INSERT OR REPLACE INTO words (id, session_id, text, start_ms, end_ms, channel, state) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        )
-        .bind(&w.id)
-        .bind(session_id)
-        .bind(&w.text)
-        .bind(w.start_ms)
-        .bind(w.end_ms)
-        .bind(w.channel)
-        .bind(state_str)
-        .execute(&mut *tx)
-        .await?;
-    }
-
-    for h in &delta.hints {
-        let (kind, speaker_index, provider, channel, human_id) = match &h.data {
-            SpeakerHintData::ProviderSpeakerIndex {
-                speaker_index,
-                provider,
-                channel,
-            } => (
-                "provider_speaker_index",
-                Some(*speaker_index),
-                provider.as_deref(),
-                *channel,
-                None,
-            ),
-            SpeakerHintData::UserSpeakerAssignment { human_id } => (
-                "user_speaker_assignment",
-                None,
-                None,
-                None,
-                Some(human_id.as_str()),
-            ),
-        };
-        let hint_id = format!("{session_id}:{}:{kind}", h.word_id);
-        sqlx::query(
-            "INSERT OR REPLACE INTO speaker_hints (id, session_id, word_id, kind, speaker_index, provider, channel, human_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        )
-        .bind(&hint_id)
-        .bind(session_id)
-        .bind(&h.word_id)
-        .bind(kind)
-        .bind(speaker_index)
-        .bind(provider)
-        .bind(channel)
-        .bind(human_id)
-        .execute(&mut *tx)
-        .await?;
-    }
-
-    tx.commit().await?;
-    Ok(())
-}
-
-pub async fn load_words(
-    pool: &SqlitePool,
-    session_id: &str,
-) -> Result<Vec<FinalizedWord>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, i64, i64, i32, String)>(
-        "SELECT id, text, start_ms, end_ms, channel, state FROM words WHERE session_id = ? ORDER BY start_ms",
-    )
-    .bind(session_id)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(|(id, text, start_ms, end_ms, channel, state)| {
-            let state = match state.as_str() {
-                "pending" => WordState::Pending,
-                _ => WordState::Final,
-            };
-            FinalizedWord {
-                id,
-                text,
-                start_ms,
-                end_ms,
-                channel,
-                state,
-            }
-        })
-        .collect())
-}
-
-pub async fn load_hints(
-    pool: &SqlitePool,
-    session_id: &str,
-) -> Result<Vec<PersistableSpeakerHint>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, Option<i32>, Option<String>, Option<i32>, Option<String>)>(
-        "SELECT word_id, kind, speaker_index, provider, channel, human_id FROM speaker_hints WHERE session_id = ? ORDER BY word_id",
-    )
-    .bind(session_id)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .filter_map(
-            |(word_id, kind, speaker_index, provider, channel, human_id)| {
-                let data = match kind.as_str() {
-                    "provider_speaker_index" => SpeakerHintData::ProviderSpeakerIndex {
-                        speaker_index: speaker_index.unwrap_or(0),
-                        provider,
-                        channel,
-                    },
-                    "user_speaker_assignment" => SpeakerHintData::UserSpeakerAssignment {
-                        human_id: human_id.unwrap_or_default(),
-                    },
-                    _ => return None,
-                };
-                Some(PersistableSpeakerHint { word_id, data })
-            },
-        )
-        .collect())
-}
-
-pub async fn list_sessions(pool: &SqlitePool) -> Result<Vec<SessionRow>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, Option<String>)>(
-        "SELECT id, created_at, title FROM sessions ORDER BY created_at DESC",
-    )
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(|(id, created_at, title)| SessionRow {
-            id,
-            created_at,
-            title,
-        })
-        .collect())
-}
-
-pub async fn get_session(
-    pool: &SqlitePool,
-    session_id: &str,
-) -> Result<Option<SessionRow>, sqlx::Error> {
-    let row = sqlx::query_as::<_, (String, String, Option<String>)>(
-        "SELECT id, created_at, title FROM sessions WHERE id = ?",
-    )
-    .bind(session_id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(row.map(|(id, created_at, title)| SessionRow {
-        id,
-        created_at,
-        title,
-    }))
-}
-
-pub async fn insert_chat_message(
-    pool: &SqlitePool,
-    id: &str,
-    session_id: &str,
-    role: &str,
-    content: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT INTO chat_messages (id, session_id, role, content) VALUES (?, ?, ?, ?)")
-        .bind(id)
-        .bind(session_id)
-        .bind(role)
-        .bind(content)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn load_chat_messages(
-    pool: &SqlitePool,
-    session_id: &str,
-) -> Result<Vec<ChatMessageRow>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, String, String, String)>(
-        "SELECT id, session_id, role, content, created_at FROM chat_messages WHERE session_id = ? ORDER BY created_at",
-    )
-    .bind(session_id)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(
-            |(id, session_id, role, content, created_at)| ChatMessageRow {
-                id,
-                session_id,
-                role,
-                content,
-                created_at,
-            },
-        )
-        .collect())
-}
-
-// --- Humans ---
-
-pub async fn insert_human(
-    pool: &SqlitePool,
-    id: &str,
-    name: &str,
-    email: &str,
-    org_id: &str,
-    job_title: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT INTO humans (id, name, email, org_id, job_title) VALUES (?, ?, ?, ?, ?)")
-        .bind(id)
-        .bind(name)
-        .bind(email)
-        .bind(org_id)
-        .bind(job_title)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn update_human(
-    pool: &SqlitePool,
-    id: &str,
-    name: Option<&str>,
-    email: Option<&str>,
-    org_id: Option<&str>,
-    job_title: Option<&str>,
-    memo: Option<&str>,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "UPDATE humans SET name = COALESCE(?, name), email = COALESCE(?, email), org_id = COALESCE(?, org_id), job_title = COALESCE(?, job_title), memo = COALESCE(?, memo) WHERE id = ?",
-    )
-    .bind(name)
-    .bind(email)
-    .bind(org_id)
-    .bind(job_title)
-    .bind(memo)
-    .bind(id)
-    .execute(pool)
-    .await?;
-    Ok(())
-}
-
-pub async fn get_human(pool: &SqlitePool, id: &str) -> Result<Option<HumanRow>, sqlx::Error> {
-    let row = sqlx::query_as::<_, (String, String, String, String, String, String, String, String, i32, i32)>(
-        "SELECT id, created_at, name, email, org_id, job_title, linkedin_username, memo, pinned, pin_order FROM humans WHERE id = ?",
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(row.map(
-        |(
-            id,
-            created_at,
-            name,
-            email,
-            org_id,
-            job_title,
-            linkedin_username,
-            memo,
-            pinned,
-            pin_order,
-        )| HumanRow {
-            id,
-            created_at,
-            name,
-            email,
-            org_id,
-            job_title,
-            linkedin_username,
-            memo,
-            pinned: pinned != 0,
-            pin_order,
-        },
-    ))
-}
-
-pub async fn list_humans(pool: &SqlitePool) -> Result<Vec<HumanRow>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, String, String, String, String, String, String, i32, i32)>(
-        "SELECT id, created_at, name, email, org_id, job_title, linkedin_username, memo, pinned, pin_order FROM humans ORDER BY created_at DESC",
-    )
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(
-            |(
-                id,
-                created_at,
-                name,
-                email,
-                org_id,
-                job_title,
-                linkedin_username,
-                memo,
-                pinned,
-                pin_order,
-            )| HumanRow {
-                id,
-                created_at,
-                name,
-                email,
-                org_id,
-                job_title,
-                linkedin_username,
-                memo,
-                pinned: pinned != 0,
-                pin_order,
-            },
-        )
-        .collect())
-}
-
-pub async fn list_humans_by_org(
-    pool: &SqlitePool,
-    org_id: &str,
-) -> Result<Vec<HumanRow>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, String, String, String, String, String, String, i32, i32)>(
-        "SELECT id, created_at, name, email, org_id, job_title, linkedin_username, memo, pinned, pin_order FROM humans WHERE org_id = ? ORDER BY created_at DESC",
-    )
-    .bind(org_id)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(
-            |(
-                id,
-                created_at,
-                name,
-                email,
-                org_id,
-                job_title,
-                linkedin_username,
-                memo,
-                pinned,
-                pin_order,
-            )| HumanRow {
-                id,
-                created_at,
-                name,
-                email,
-                org_id,
-                job_title,
-                linkedin_username,
-                memo,
-                pinned: pinned != 0,
-                pin_order,
-            },
-        )
-        .collect())
-}
-
-pub async fn delete_human(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
-    let mut tx = pool.begin().await?;
-    sqlx::query("DELETE FROM session_participants WHERE human_id = ?")
-        .bind(id)
-        .execute(&mut *tx)
-        .await?;
-    sqlx::query("DELETE FROM humans WHERE id = ?")
-        .bind(id)
-        .execute(&mut *tx)
-        .await?;
-    tx.commit().await?;
-    Ok(())
-}
-
-// --- Organizations ---
-
-pub async fn insert_organization(
-    pool: &SqlitePool,
-    id: &str,
-    name: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT INTO organizations (id, name) VALUES (?, ?)")
-        .bind(id)
-        .bind(name)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn update_organization(
-    pool: &SqlitePool,
-    id: &str,
-    name: Option<&str>,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE organizations SET name = COALESCE(?, name) WHERE id = ?")
-        .bind(name)
-        .bind(id)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn get_organization(
-    pool: &SqlitePool,
-    id: &str,
-) -> Result<Option<OrganizationRow>, sqlx::Error> {
-    let row = sqlx::query_as::<_, (String, String, String, i32, i32)>(
-        "SELECT id, created_at, name, pinned, pin_order FROM organizations WHERE id = ?",
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(row.map(
-        |(id, created_at, name, pinned, pin_order)| OrganizationRow {
-            id,
-            created_at,
-            name,
-            pinned: pinned != 0,
-            pin_order,
-        },
-    ))
-}
-
-pub async fn list_organizations(pool: &SqlitePool) -> Result<Vec<OrganizationRow>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, String, i32, i32)>(
-        "SELECT id, created_at, name, pinned, pin_order FROM organizations ORDER BY created_at DESC",
-    )
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(
-            |(id, created_at, name, pinned, pin_order)| OrganizationRow {
-                id,
-                created_at,
-                name,
-                pinned: pinned != 0,
-                pin_order,
-            },
-        )
-        .collect())
-}
-
-pub async fn delete_organization(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
-    let mut tx = pool.begin().await?;
-    sqlx::query("UPDATE humans SET org_id = '' WHERE org_id = ?")
-        .bind(id)
-        .execute(&mut *tx)
-        .await?;
-    sqlx::query("DELETE FROM organizations WHERE id = ?")
-        .bind(id)
-        .execute(&mut *tx)
-        .await?;
-    tx.commit().await?;
-    Ok(())
-}
-
-// --- Session Participants ---
-
-pub async fn add_session_participant(
-    pool: &SqlitePool,
-    session_id: &str,
-    human_id: &str,
-    source: &str,
-) -> Result<(), sqlx::Error> {
-    let id = format!("{session_id}:{human_id}");
-    sqlx::query(
-        "INSERT OR REPLACE INTO session_participants (id, session_id, human_id, source) VALUES (?, ?, ?, ?)",
-    )
-    .bind(&id)
-    .bind(session_id)
-    .bind(human_id)
-    .bind(source)
-    .execute(pool)
-    .await?;
-    Ok(())
-}
-
-pub async fn remove_session_participant(
-    pool: &SqlitePool,
-    session_id: &str,
-    human_id: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM session_participants WHERE session_id = ? AND human_id = ?")
-        .bind(session_id)
-        .bind(human_id)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn list_session_participants(
-    pool: &SqlitePool,
-    session_id: &str,
-) -> Result<Vec<SessionParticipantRow>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, String, String)>(
-        "SELECT id, session_id, human_id, source FROM session_participants WHERE session_id = ?",
-    )
-    .bind(session_id)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(|(id, session_id, human_id, source)| SessionParticipantRow {
-            id,
-            session_id,
-            human_id,
-            source,
-        })
-        .collect())
-}
-
-// --- Connections ---
-
-pub struct ConnectionRow {
-    pub id: String,
-    pub provider_type: String,
-    pub provider_id: String,
-    pub base_url: String,
-    pub api_key: String,
-}
-
-pub async fn upsert_connection(
-    pool: &SqlitePool,
-    provider_type: &str,
-    provider_id: &str,
-    base_url: &str,
-    api_key: &str,
-) -> Result<(), sqlx::Error> {
-    let id = format!("{provider_type}:{provider_id}");
-    sqlx::query(
-        "INSERT OR REPLACE INTO connections (id, provider_type, provider_id, base_url, api_key) VALUES (?, ?, ?, ?, ?)",
-    )
-    .bind(&id)
-    .bind(provider_type)
-    .bind(provider_id)
-    .bind(base_url)
-    .bind(api_key)
-    .execute(pool)
-    .await?;
-    Ok(())
-}
-
-pub async fn get_connection(
-    pool: &SqlitePool,
-    provider_type: &str,
-    provider_id: &str,
-) -> Result<Option<ConnectionRow>, sqlx::Error> {
-    let id = format!("{provider_type}:{provider_id}");
-    let row = sqlx::query_as::<_, (String, String, String, String, String)>(
-        "SELECT id, provider_type, provider_id, base_url, api_key FROM connections WHERE id = ?",
-    )
-    .bind(&id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(row.map(
-        |(id, provider_type, provider_id, base_url, api_key)| ConnectionRow {
-            id,
-            provider_type,
-            provider_id,
-            base_url,
-            api_key,
-        },
-    ))
-}
-
-pub async fn list_connections(
-    pool: &SqlitePool,
-    provider_type: &str,
-) -> Result<Vec<ConnectionRow>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, String, String, String)>(
-        "SELECT id, provider_type, provider_id, base_url, api_key FROM connections WHERE provider_type = ? ORDER BY provider_id",
-    )
-    .bind(provider_type)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(
-            |(id, provider_type, provider_id, base_url, api_key)| ConnectionRow {
-                id,
-                provider_type,
-                provider_id,
-                base_url,
-                api_key,
-            },
-        )
-        .collect())
-}
-
-pub async fn list_configured_provider_ids(pool: &SqlitePool) -> Result<Vec<String>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String,)>("SELECT DISTINCT provider_id FROM connections")
-        .fetch_all(pool)
-        .await?;
-    Ok(rows.into_iter().map(|(id,)| id).collect())
-}
-
-// --- Settings ---
-
-pub async fn get_setting(pool: &SqlitePool, key: &str) -> Result<Option<String>, sqlx::Error> {
-    let row = sqlx::query_as::<_, (String,)>("SELECT value FROM settings WHERE key = ?")
-        .bind(key)
-        .fetch_optional(pool)
-        .await?;
-    Ok(row.map(|(v,)| v))
-}
-
-pub async fn set_setting(pool: &SqlitePool, key: &str, value: &str) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)")
-        .bind(key)
-        .bind(value)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
-
-pub async fn load_all_settings(pool: &SqlitePool) -> Result<Vec<(String, String)>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String)>("SELECT key, value FROM settings")
-        .fetch_all(pool)
-        .await?;
-    Ok(rows)
-}
-
-pub async fn list_sessions_by_human(
-    pool: &SqlitePool,
-    human_id: &str,
-) -> Result<Vec<SessionParticipantRow>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, String, String)>(
-        "SELECT id, session_id, human_id, source FROM session_participants WHERE human_id = ?",
-    )
-    .bind(human_id)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(|(id, session_id, human_id, source)| SessionParticipantRow {
-            id,
-            session_id,
-            human_id,
-            source,
-        })
-        .collect())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use hypr_db_core2::Db3;
+    use hypr_transcript::{FinalizedWord, SpeakerHintData, WordState};
 
     // https://docs.sqlitecloud.io/docs/sqlite-sync-best-practices
     mod sync_compat {
@@ -934,6 +168,9 @@ mod tests {
         let session = get_session(db.pool(), sid).await.unwrap().unwrap();
         assert_eq!(session.id, sid);
         assert!(session.title.is_none());
+        assert_eq!(session.user_id, "");
+        assert_eq!(session.visibility, "public");
+        assert!(session.folder_id.is_none());
 
         update_session(db.pool(), sid, Some("My Title"))
             .await
@@ -1090,6 +327,8 @@ mod tests {
         assert_eq!(human.name, "Alice");
         assert_eq!(human.email, "alice@example.com");
         assert_eq!(human.job_title, "Engineer");
+        assert_eq!(human.user_id, "");
+        assert!(human.linked_user_id.is_none());
 
         update_human(
             db.pool(),
@@ -1125,6 +364,7 @@ mod tests {
 
         let org = get_organization(db.pool(), "org1").await.unwrap().unwrap();
         assert_eq!(org.name, "Acme");
+        assert_eq!(org.user_id, "");
 
         update_organization(db.pool(), "org1", Some("Acme Inc"))
             .await
@@ -1199,6 +439,8 @@ mod tests {
 
         let notes = list_notes_by_session(db.pool(), sid).await.unwrap();
         assert_eq!(notes.len(), 2);
+        assert_eq!(notes[0].user_id, "");
+        assert_eq!(notes[0].visibility, "public");
 
         let memo = get_note_by_session_and_kind(db.pool(), sid, "memo")
             .await
@@ -1222,5 +464,558 @@ mod tests {
         delete_notes_by_session(db.pool(), sid).await.unwrap();
         let notes = list_notes_by_session(db.pool(), sid).await.unwrap();
         assert!(notes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn user_roundtrip() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        migrate(db.pool()).await.unwrap();
+
+        insert_user(db.pool(), "u1", "Alice").await.unwrap();
+
+        let user = get_user(db.pool(), "u1").await.unwrap().unwrap();
+        assert_eq!(user.id, "u1");
+        assert_eq!(user.name, "Alice");
+        assert!(!user.created_at.is_empty());
+
+        update_user(db.pool(), "u1", Some("Alice B")).await.unwrap();
+        let user = get_user(db.pool(), "u1").await.unwrap().unwrap();
+        assert_eq!(user.name, "Alice B");
+
+        assert!(get_user(db.pool(), "nonexistent").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn thread_and_message_roundtrip() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        migrate(db.pool()).await.unwrap();
+
+        insert_session(db.pool(), "s1").await.unwrap();
+
+        insert_thread(db.pool(), "t1", "u1", Some("s1"), "Chat about code")
+            .await
+            .unwrap();
+        insert_thread(db.pool(), "t2", "u1", None, "Standalone thread")
+            .await
+            .unwrap();
+
+        let thread = get_thread(db.pool(), "t1").await.unwrap().unwrap();
+        assert_eq!(thread.title, "Chat about code");
+        assert_eq!(thread.session_id.as_deref(), Some("s1"));
+        assert_eq!(thread.visibility, "public");
+
+        let thread2 = get_thread(db.pool(), "t2").await.unwrap().unwrap();
+        assert!(thread2.session_id.is_none());
+
+        update_thread(db.pool(), "t1", Some("Updated title"))
+            .await
+            .unwrap();
+        let thread = get_thread(db.pool(), "t1").await.unwrap().unwrap();
+        assert_eq!(thread.title, "Updated title");
+
+        let by_session = list_threads_by_session(db.pool(), "s1").await.unwrap();
+        assert_eq!(by_session.len(), 1);
+        assert_eq!(by_session[0].id, "t1");
+
+        insert_message(
+            db.pool(),
+            "msg1",
+            "u1",
+            "t1",
+            "user",
+            r#"[{"type":"text","text":"hello"}]"#,
+        )
+        .await
+        .unwrap();
+        insert_message(
+            db.pool(),
+            "msg2",
+            "u1",
+            "t1",
+            "assistant",
+            r#"[{"type":"text","text":"hi there"}]"#,
+        )
+        .await
+        .unwrap();
+
+        let msgs = load_messages(db.pool(), "t1").await.unwrap();
+        assert_eq!(msgs.len(), 2);
+        assert_eq!(msgs[0].role, "user");
+        assert_eq!(msgs[1].role, "assistant");
+        assert_eq!(msgs[0].visibility, "public");
+
+        update_message(
+            db.pool(),
+            "msg1",
+            Some(r#"[{"type":"text","text":"updated"}]"#),
+        )
+        .await
+        .unwrap();
+        let msgs = load_messages(db.pool(), "t1").await.unwrap();
+        assert!(msgs[0].parts.contains("updated"));
+
+        delete_messages_by_thread(db.pool(), "t1").await.unwrap();
+        let msgs = load_messages(db.pool(), "t1").await.unwrap();
+        assert!(msgs.is_empty());
+
+        delete_thread(db.pool(), "t1").await.unwrap();
+        assert!(get_thread(db.pool(), "t1").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn event_roundtrip() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        migrate(db.pool()).await.unwrap();
+
+        upsert_event(
+            db.pool(),
+            "e1",
+            "u1",
+            "cal1",
+            "track1",
+            "Standup",
+            "2026-03-19T09:00:00Z",
+            "2026-03-19T09:30:00Z",
+            "Room A",
+            "https://meet.example.com/123",
+            "Daily standup",
+            "",
+            "",
+            false,
+            false,
+            "[]",
+            "{}",
+        )
+        .await
+        .unwrap();
+
+        let event = get_event(db.pool(), "e1").await.unwrap().unwrap();
+        assert_eq!(event.title, "Standup");
+        assert_eq!(event.calendar_id, "cal1");
+        assert_eq!(event.location, "Room A");
+        assert!(!event.has_recurrence_rules);
+        assert!(!event.is_all_day);
+
+        let by_cal = list_events_by_calendar(db.pool(), "cal1").await.unwrap();
+        assert_eq!(by_cal.len(), 1);
+
+        let in_range =
+            list_events_in_range(db.pool(), "2026-03-19T00:00:00Z", "2026-03-20T00:00:00Z")
+                .await
+                .unwrap();
+        assert_eq!(in_range.len(), 1);
+
+        let out_of_range =
+            list_events_in_range(db.pool(), "2026-03-20T00:00:00Z", "2026-03-21T00:00:00Z")
+                .await
+                .unwrap();
+        assert!(out_of_range.is_empty());
+
+        // upsert overwrites
+        upsert_event(
+            db.pool(),
+            "e1",
+            "u1",
+            "cal1",
+            "track1",
+            "Updated Standup",
+            "2026-03-19T09:00:00Z",
+            "2026-03-19T09:30:00Z",
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            false,
+            "[]",
+            "{}",
+        )
+        .await
+        .unwrap();
+        let event = get_event(db.pool(), "e1").await.unwrap().unwrap();
+        assert_eq!(event.title, "Updated Standup");
+
+        delete_event(db.pool(), "e1").await.unwrap();
+        assert!(get_event(db.pool(), "e1").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn folder_roundtrip() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        migrate(db.pool()).await.unwrap();
+
+        insert_folder(db.pool(), "f1", "u1", "Work", None)
+            .await
+            .unwrap();
+        insert_folder(db.pool(), "f2", "u1", "Projects", Some("f1"))
+            .await
+            .unwrap();
+
+        let folder = get_folder(db.pool(), "f1").await.unwrap().unwrap();
+        assert_eq!(folder.name, "Work");
+        assert!(folder.parent_id.is_none());
+
+        let child = get_folder(db.pool(), "f2").await.unwrap().unwrap();
+        assert_eq!(child.parent_id.as_deref(), Some("f1"));
+
+        let all = list_folders(db.pool()).await.unwrap();
+        assert_eq!(all.len(), 2);
+
+        update_folder(db.pool(), "f1", Some("Work Stuff"), None)
+            .await
+            .unwrap();
+        let folder = get_folder(db.pool(), "f1").await.unwrap().unwrap();
+        assert_eq!(folder.name, "Work Stuff");
+
+        // reparent
+        update_folder(db.pool(), "f2", None, Some(None))
+            .await
+            .unwrap();
+        let child = get_folder(db.pool(), "f2").await.unwrap().unwrap();
+        assert!(child.parent_id.is_none());
+
+        delete_folder(db.pool(), "f1").await.unwrap();
+        assert!(get_folder(db.pool(), "f1").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn set_session_visibility_propagates() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        migrate(db.pool()).await.unwrap();
+
+        let sid = "vis-sess-1";
+        insert_session(db.pool(), sid).await.unwrap();
+
+        let delta = TranscriptDeltaPersist {
+            new_words: vec![FinalizedWord {
+                id: "w1".into(),
+                text: "hello".into(),
+                start_ms: 0,
+                end_ms: 500,
+                channel: 0,
+                state: WordState::Final,
+            }],
+            hints: vec![PersistableSpeakerHint {
+                word_id: "w1".into(),
+                data: SpeakerHintData::ProviderSpeakerIndex {
+                    speaker_index: 0,
+                    provider: None,
+                    channel: None,
+                },
+            }],
+            replaced_ids: vec![],
+        };
+        apply_delta(db.pool(), sid, &delta).await.unwrap();
+        insert_note(db.pool(), "n1", sid, "memo", "", "note content")
+            .await
+            .unwrap();
+
+        let session = get_session(db.pool(), sid).await.unwrap().unwrap();
+        assert_eq!(session.visibility, "public");
+
+        set_session_visibility(db.pool(), sid, "private")
+            .await
+            .unwrap();
+
+        let session = get_session(db.pool(), sid).await.unwrap().unwrap();
+        assert_eq!(session.visibility, "private");
+
+        let note = get_note_by_session_and_kind(db.pool(), sid, "memo")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(note.visibility, "private");
+
+        // verify words visibility via raw query
+        let vis =
+            sqlx::query_as::<_, (String,)>("SELECT visibility FROM words WHERE session_id = ?")
+                .bind(sid)
+                .fetch_one(db.pool())
+                .await
+                .unwrap();
+        assert_eq!(vis.0, "private");
+
+        let vis = sqlx::query_as::<_, (String,)>(
+            "SELECT visibility FROM speaker_hints WHERE session_id = ?",
+        )
+        .bind(sid)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        assert_eq!(vis.0, "private");
+    }
+
+    #[tokio::test]
+    async fn alias_roundtrip() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        migrate(db.pool()).await.unwrap();
+
+        insert_human(db.pool(), "h1", "Alice", "alice@example.com", "", "")
+            .await
+            .unwrap();
+
+        upsert_alias(
+            db.pool(),
+            "a1",
+            "h1",
+            "slack",
+            "U12345",
+            "T999",
+            "alice",
+            "confirmed",
+        )
+        .await
+        .unwrap();
+
+        let found = get_alias_by_external(db.pool(), "slack", "U12345", "T999")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.id, "a1");
+        assert_eq!(found.human_id, "h1");
+        assert_eq!(found.display_name, "alice");
+        assert_eq!(found.confidence, "confirmed");
+
+        upsert_alias(
+            db.pool(),
+            "a2",
+            "h1",
+            "email",
+            "alice@example.com",
+            "",
+            "Alice",
+            "confirmed",
+        )
+        .await
+        .unwrap();
+
+        let aliases = list_aliases_by_human(db.pool(), "h1").await.unwrap();
+        assert_eq!(aliases.len(), 2);
+
+        delete_alias(db.pool(), "a1").await.unwrap();
+        let aliases = list_aliases_by_human(db.pool(), "h1").await.unwrap();
+        assert_eq!(aliases.len(), 1);
+        assert_eq!(aliases[0].provider, "email");
+    }
+
+    #[tokio::test]
+    async fn resolve_or_create_alias_auto_creates() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        migrate(db.pool()).await.unwrap();
+
+        let alias = resolve_or_create_alias(db.pool(), "slack", "U999", "T1", "Bob Slack")
+            .await
+            .unwrap();
+        assert_eq!(alias.confidence, "auto");
+        assert_eq!(alias.display_name, "Bob Slack");
+
+        let human = get_human(db.pool(), &alias.human_id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(human.name, "Bob Slack");
+
+        let alias2 = resolve_or_create_alias(db.pool(), "slack", "U999", "T1", "Bob Slack")
+            .await
+            .unwrap();
+        assert_eq!(alias2.id, alias.id);
+    }
+
+    #[tokio::test]
+    async fn slack_entity_roundtrip() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        migrate(db.pool()).await.unwrap();
+
+        upsert_slack_team(db.pool(), "st1", "conn1", "T123", "Acme Workspace")
+            .await
+            .unwrap();
+        let team = get_slack_team(db.pool(), "st1").await.unwrap().unwrap();
+        assert_eq!(team.team_name, "Acme Workspace");
+        assert_eq!(team.team_id, "T123");
+
+        upsert_slack_channel(db.pool(), "sc1", "st1", "C456", "general", "channel", false)
+            .await
+            .unwrap();
+        let channel = get_slack_channel(db.pool(), "sc1").await.unwrap().unwrap();
+        assert_eq!(channel.name, "general");
+        assert!(!channel.is_external);
+
+        upsert_slack_thread(
+            db.pool(),
+            "sth1",
+            "sc1",
+            "1234567890.123456",
+            "2026-03-19T10:00:00Z",
+            "2026-03-19T10:05:00Z",
+            3,
+        )
+        .await
+        .unwrap();
+        let thread = get_slack_thread(db.pool(), "sth1").await.unwrap().unwrap();
+        assert_eq!(thread.message_count, 3);
+        assert_eq!(thread.thread_ts, "1234567890.123456");
+
+        insert_human(db.pool(), "h1", "Alice", "", "", "")
+            .await
+            .unwrap();
+        upsert_alias(
+            db.pool(),
+            "a1",
+            "h1",
+            "slack",
+            "U111",
+            "T123",
+            "alice",
+            "confirmed",
+        )
+        .await
+        .unwrap();
+
+        insert_slack_message(
+            db.pool(),
+            "sm1",
+            "sth1",
+            "sc1",
+            "a1",
+            "Hello world",
+            "1234567890.123456",
+            "{}",
+        )
+        .await
+        .unwrap();
+        let messages = list_slack_messages_by_thread(db.pool(), "sth1")
+            .await
+            .unwrap();
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].text, "Hello world");
+        assert_eq!(messages[0].alias_id, "a1");
+
+        upsert_slack_thread_participant(db.pool(), "stp1", "sth1", "a1")
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn note_on_human_roundtrip() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        migrate(db.pool()).await.unwrap();
+
+        insert_human(db.pool(), "h1", "Alice", "", "", "")
+            .await
+            .unwrap();
+
+        insert_note_on_entity(
+            db.pool(),
+            "n1",
+            "human",
+            "h1",
+            "memo",
+            "About Alice",
+            "She likes Rust",
+        )
+        .await
+        .unwrap();
+
+        let notes = list_notes_by_entity(db.pool(), "human", "h1")
+            .await
+            .unwrap();
+        assert_eq!(notes.len(), 1);
+        assert_eq!(notes[0].entity_type, "human");
+        assert_eq!(notes[0].entity_id, "h1");
+        assert_eq!(notes[0].title, "About Alice");
+        assert_eq!(notes[0].content, "She likes Rust");
+        assert_eq!(notes[0].session_id, "");
+    }
+
+    #[tokio::test]
+    async fn timeline_view_query() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        migrate(db.pool()).await.unwrap();
+
+        // Setup human
+        insert_human(db.pool(), "h1", "Alice", "", "", "")
+            .await
+            .unwrap();
+
+        // Meeting (session + participant)
+        insert_session(db.pool(), "s1").await.unwrap();
+        update_session(db.pool(), "s1", Some("Weekly Standup"))
+            .await
+            .unwrap();
+        add_session_participant(db.pool(), "s1", "h1", "auto")
+            .await
+            .unwrap();
+
+        // Slack thread
+        upsert_slack_team(db.pool(), "st1", "conn1", "T1", "Workspace")
+            .await
+            .unwrap();
+        upsert_slack_channel(db.pool(), "sc1", "st1", "C1", "#general", "channel", false)
+            .await
+            .unwrap();
+        upsert_slack_thread(
+            db.pool(),
+            "sth1",
+            "sc1",
+            "123.456",
+            "2026-03-19T11:00:00Z",
+            "2026-03-19T11:05:00Z",
+            2,
+        )
+        .await
+        .unwrap();
+        upsert_alias(
+            db.pool(),
+            "a1",
+            "h1",
+            "slack",
+            "U1",
+            "T1",
+            "alice",
+            "confirmed",
+        )
+        .await
+        .unwrap();
+        upsert_slack_thread_participant(db.pool(), "stp1", "sth1", "a1")
+            .await
+            .unwrap();
+
+        // Note on human
+        insert_note_on_entity(
+            db.pool(),
+            "n1",
+            "human",
+            "h1",
+            "memo",
+            "Note title",
+            "content",
+        )
+        .await
+        .unwrap();
+
+        // Query timeline
+        let timeline = list_timeline_by_human(db.pool(), "h1").await.unwrap();
+        assert_eq!(timeline.len(), 3);
+
+        let types: Vec<&str> = timeline.iter().map(|t| t.source_type.as_str()).collect();
+        assert!(types.contains(&"meeting"));
+        assert!(types.contains(&"slack"));
+        assert!(types.contains(&"note"));
+
+        let meeting = timeline
+            .iter()
+            .find(|t| t.source_type == "meeting")
+            .unwrap();
+        assert_eq!(meeting.source_id, "s1");
+        assert_eq!(meeting.title, "Weekly Standup");
+
+        let slack = timeline.iter().find(|t| t.source_type == "slack").unwrap();
+        assert_eq!(slack.source_id, "sth1");
+        assert_eq!(slack.title, "#general");
+
+        let note = timeline.iter().find(|t| t.source_type == "note").unwrap();
+        assert_eq!(note.source_id, "n1");
+        assert_eq!(note.title, "Note title");
     }
 }

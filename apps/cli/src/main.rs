@@ -6,6 +6,7 @@ mod error;
 mod llm;
 mod output;
 mod theme;
+mod update_check;
 mod widgets;
 
 use clap::Parser;
@@ -102,10 +103,18 @@ fn track_command(client: &hypr_analytics::AnalyticsClient, subcommand: &'static 
 
 async fn init_pool() -> CliResult<SqlitePool> {
     let paths = config::paths::resolve_paths();
-    let db_path = paths.base.join("app.db");
-    let db = hypr_db_core2::Db3::connect_local_plain(&db_path)
-        .await
-        .map_err(|e| error::CliError::operation_failed("db connect", e.to_string()))?;
+
+    let db = if cfg!(debug_assertions) {
+        hypr_db_core2::Db3::connect_memory_plain()
+            .await
+            .map_err(|e| error::CliError::operation_failed("db connect", e.to_string()))?
+    } else {
+        let db_path = paths.base.join("app.db");
+        hypr_db_core2::Db3::connect_local_plain(&db_path)
+            .await
+            .map_err(|e| error::CliError::operation_failed("db connect", e.to_string()))?
+    };
+
     hypr_db_app::migrate(db.pool())
         .await
         .map_err(|e| error::CliError::operation_failed("db migrate", e.to_string()))?;
@@ -128,6 +137,34 @@ async fn run(cli: Cli) -> CliResult<()> {
     } = cli;
 
     let pool = init_pool().await?;
+
+    let is_tui = matches!(
+        &command,
+        Some(Commands::Chat { prompt: None, .. })
+            | Some(Commands::Listen { .. })
+            | Some(Commands::Sessions { .. })
+            | Some(Commands::Humans { command: None })
+            | Some(Commands::Orgs { command: None })
+            | Some(Commands::Connect {
+                r#type: None,
+                provider: None
+            })
+    ) || command.is_none();
+
+    if is_tui {
+        if let update_check::UpdateStatus::UpdateAvailable {
+            current,
+            latest,
+            channel,
+        } = update_check::check_for_update().await
+        {
+            if let commands::update::UpdateAction::RunUpdate { npm_tag } =
+                commands::update::run(current, latest, channel).await
+            {
+                return run_npm_update(npm_tag);
+            }
+        }
+    }
 
     match command {
         Some(Commands::Chat {
@@ -296,7 +333,7 @@ async fn run(cli: Cli) -> CliResult<()> {
             };
             commands::batch::run(args, stt, verbose.is_silent(), pool).await
         }
-        Some(Commands::Model { command }) => commands::model::run(command, &pool).await,
+        Some(Commands::Models { command }) => commands::model::run(command, &pool).await,
         #[cfg(feature = "dev")]
         Some(Commands::Debug { command }) => commands::debug::run(command).await,
         Some(Commands::Completions { shell }) => {
@@ -445,4 +482,20 @@ fn resolve_hyprnote_listen_provider(model: Option<&str>) -> Result<cli::Provider
         "Configured STT provider `hyprnote` is not supported by CLI listen. Run /connect to choose a supported provider."
             .to_string(),
     )
+}
+
+fn run_npm_update(npm_tag: &str) -> CliResult<()> {
+    let pkg = format!("char@{npm_tag}");
+    eprintln!("Running: npm install -g {pkg}");
+    let status = std::process::Command::new("npm")
+        .args(["install", "-g", &pkg])
+        .status()
+        .map_err(|e| error::CliError::operation_failed("npm update", e.to_string()))?;
+
+    if status.success() {
+        eprintln!("Update complete!");
+    } else {
+        eprintln!("Update failed (exit code: {})", status.code().unwrap_or(1));
+    }
+    Ok(())
 }

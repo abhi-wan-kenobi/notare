@@ -119,7 +119,7 @@ pub enum Commands {
         args: BatchArgs,
     },
     /// Manage local models
-    Model {
+    Models {
         #[command(subcommand)]
         command: ModelCommands,
     },
@@ -292,8 +292,6 @@ pub struct BatchArgs {
 pub enum ModelCommands {
     /// Show resolved paths for settings and model storage
     Paths,
-    /// Show current STT and LLM provider/model configuration
-    Current,
     /// List available models and their download status
     List {
         #[arg(long, value_enum)]

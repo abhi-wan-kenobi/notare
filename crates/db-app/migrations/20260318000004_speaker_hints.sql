@@ -6,7 +6,9 @@ CREATE TABLE IF NOT EXISTS speaker_hints (
   speaker_index INTEGER,
   provider TEXT,
   channel INTEGER,
-  human_id TEXT
+  human_id TEXT,
+  user_id TEXT NOT NULL DEFAULT '',
+  visibility TEXT NOT NULL DEFAULT 'public'
 );
 CREATE INDEX IF NOT EXISTS idx_hints_session ON speaker_hints(session_id);
 CREATE INDEX IF NOT EXISTS idx_hints_word ON speaker_hints(word_id);

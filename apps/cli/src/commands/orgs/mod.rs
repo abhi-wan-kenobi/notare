@@ -116,6 +116,24 @@ pub async fn show(pool: &SqlitePool, id: &str) -> CliResult<()> {
             println!("id: {}", org.id);
             println!("name: {}", org.name);
             println!("created_at: {}", org.created_at);
+
+            match hypr_db_app::list_events_by_org(pool, id).await {
+                Ok(events) if !events.is_empty() => {
+                    println!();
+                    println!("recent events:");
+                    for event in &events {
+                        let date = if event.started_at.len() >= 16 {
+                            &event.started_at[..16]
+                        } else {
+                            &event.started_at
+                        };
+                        let date = date.replace('T', " ");
+                        println!("  {}  {}", date, event.title);
+                    }
+                }
+                _ => {}
+            }
+
             Ok(())
         }
         Ok(None) => Err(CliError::msg(format!("organization '{id}' not found"))),

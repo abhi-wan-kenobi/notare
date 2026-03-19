@@ -43,6 +43,11 @@ jobs:
   build:
     needs: compute-version
     runs-on: depot-macos-15
+    strategy:
+      matrix:
+        target:
+          - aarch64-apple-darwin
+          - x86_64-apple-darwin
     defaults:
       run:
         shell: bash
@@ -52,19 +57,19 @@ jobs:
         with:
           platform: macos
       - run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-      - run: cargo build --release -p cli --target aarch64-apple-darwin
+      - run: cargo build --release -p cli --target ${{ matrix.target }}
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           APP_VERSION: ${{ needs.compute-version.outputs.version }}
       - run: |
-          BIN="target/aarch64-apple-darwin/release/char"
+          BIN="target/${{ matrix.target }}/release/char"
           strip -x "$BIN"
-          ARCHIVE="char-${{ needs.compute-version.outputs.version }}-aarch64-apple-darwin.tar.xz"
-          tar -cJf "$ARCHIVE" -C "target/aarch64-apple-darwin/release" char
+          ARCHIVE="char-${{ needs.compute-version.outputs.version }}-${{ matrix.target }}.tar.xz"
+          tar -cJf "$ARCHIVE" -C "target/${{ matrix.target }}/release" char
           echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:
-          name: char-aarch64-apple-darwin
+          name: char-${{ matrix.target }}
           path: ${{ env.ARCHIVE }}
           retention-days: 3
 
@@ -128,6 +133,7 @@ jobs:
         with:
           files: |
             artifacts/char-${{ needs.compute-version.outputs.version }}-aarch64-apple-darwin.tar.xz
+            artifacts/char-${{ needs.compute-version.outputs.version }}-x86_64-apple-darwin.tar.xz
       - id: artifacts
         run: |
           TARBALLS=$(ls artifacts/*.tar.xz | tr '\n' ',')

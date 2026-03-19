@@ -10,7 +10,7 @@ use crate::theme::Theme;
 
 use super::super::app::CommandEntry;
 
-pub(crate) const GROUP_ORDER: &[&str] = &["Session", "Setup", "Model", "App"];
+pub(crate) const GROUP_ORDER: &[&str] = &["Session", "Setup", "Models", "App"];
 
 // --- Data layer: describe what to render ---
 

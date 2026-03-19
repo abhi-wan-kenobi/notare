@@ -61,6 +61,7 @@ tui-widgets = { version = "0.7.0", features = ["scrollview"] }
 
 open = { workspace = true }
 ractor = { workspace = true, features = ["async-trait"] }
+reqwest = { workspace = true, features = ["json"] }
 rig = { package = "rig-core", version = "0.32" }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -72,6 +73,9 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal", "
 tokio-stream = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+hypr-apple-calendar = { workspace = true }
 
 [dev-dependencies]
 clap_complete = { workspace = true }

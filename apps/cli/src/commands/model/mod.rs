@@ -1,6 +1,10 @@
-mod list;
-mod runtime;
+pub(crate) mod action;
+pub(crate) mod app;
+pub(crate) mod effect;
+pub(crate) mod list;
+pub(crate) mod runtime;
 mod screen;
+pub(crate) mod ui;
 
 use std::io::IsTerminal;
 use std::sync::Arc;
@@ -30,43 +34,6 @@ pub async fn run(command: ModelCommands, pool: &SqlitePool) -> CliResult<()> {
             println!("base={}", paths.base.display());
             println!("db_path={}", db_path.display());
             println!("models_base={}", models_base.display());
-            Ok(())
-        }
-        ModelCommands::Current => {
-            println!("db_path={}", db_path.display());
-
-            let Some(current) = settings::load_settings_from_db(pool).await else {
-                println!("stt\tprovider=unset\tmodel=unset\tconfig=unavailable");
-                println!("llm\tprovider=unset\tmodel=unset\tconfig=unavailable");
-                return Ok(());
-            };
-
-            let stt_provider = current.current_stt_provider.as_deref().unwrap_or("unset");
-            let stt_model = current.current_stt_model.as_deref().unwrap_or("unset");
-            let llm_provider = current.current_llm_provider.as_deref().unwrap_or("unset");
-            let llm_model = current.current_llm_model.as_deref().unwrap_or("unset");
-
-            let stt_config = current
-                .current_stt_provider
-                .as_deref()
-                .and_then(|id| current.stt_providers.get(id));
-            let llm_config = current
-                .current_llm_provider
-                .as_deref()
-                .and_then(|id| current.llm_providers.get(id));
-
-            println!(
-                "stt\tprovider={}\tmodel={}\t{}",
-                stt_provider,
-                stt_model,
-                format_provider_config_status(stt_config)
-            );
-            println!(
-                "llm\tprovider={}\tmodel={}\t{}",
-                llm_provider,
-                llm_model,
-                format_provider_config_status(llm_config)
-            );
             Ok(())
         }
         ModelCommands::List {
@@ -265,7 +232,7 @@ fn supported_models(kind: Option<ModelKind>) -> CliResult<Vec<LocalModel>> {
     }
 }
 
-fn model_is_enabled(model: &LocalModel) -> bool {
+pub(crate) fn model_is_enabled(model: &LocalModel) -> bool {
     cfg!(any(target_arch = "arm", target_arch = "aarch64")) || !is_cactus_local_model(model)
 }
 
@@ -311,7 +278,7 @@ fn not_found_cactus_model(name: &str, _include_downloaded_hint: bool) -> CliErro
     if let Some(suggestion) = did_you_mean(name, &names) {
         hint.push_str(&format!("Did you mean '{suggestion}'?\n\n"));
     }
-    hint.push_str("Run `char model cactus list` to see available models.");
+    hint.push_str("Run `char models cactus list` to see available models.");
     CliError::not_found(format!("cactus model '{name}'"), Some(hint))
 }
 
@@ -323,32 +290,13 @@ fn matches_kind(model: &LocalModel, kind: Option<ModelKind>) -> bool {
     }
 }
 
-fn format_provider_config_status(config: Option<&settings::ProviderConfig>) -> String {
-    let Some(config) = config else {
-        return "config=missing".to_string();
-    };
-
-    let base_url = if config.base_url.is_some() {
-        "set"
-    } else {
-        "missing"
-    };
-    let api_key = if config.api_key.is_some() {
-        "set"
-    } else {
-        "missing"
-    };
-
-    format!("config=base_url:{} api_key:{}", base_url, api_key)
-}
-
 fn not_found_model(name: &str) -> CliError {
     let names: Vec<&str> = all_models(None).iter().map(|m| m.cli_name()).collect();
     let mut hint = String::new();
     if let Some(suggestion) = did_you_mean(name, &names) {
         hint.push_str(&format!("Did you mean '{suggestion}'?\n\n"));
     }
-    hint.push_str("Run `char model list` to see available models.");
+    hint.push_str("Run `char models list` to see available models.");
     CliError::not_found(format!("model '{name}'"), Some(hint))
 }
 

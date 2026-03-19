@@ -14,17 +14,17 @@ use crate::error::CliResult;
 use crate::widgets::InlineBox;
 
 #[derive(Clone, Debug, serde::Serialize)]
-pub(super) struct ModelRow {
-    name: String,
-    kind: String,
-    status: String,
-    display_name: String,
-    description: String,
-    active: bool,
-    install_path: String,
+pub(crate) struct ModelRow {
+    pub(crate) name: String,
+    pub(crate) kind: String,
+    pub(crate) status: String,
+    pub(crate) display_name: String,
+    pub(crate) description: String,
+    pub(crate) active: bool,
+    pub(crate) install_path: String,
 }
 
-pub(super) async fn collect_model_rows(
+pub(crate) async fn collect_model_rows(
     models: &[LocalModel],
     models_base: &Path,
     current: &Option<settings::Settings>,

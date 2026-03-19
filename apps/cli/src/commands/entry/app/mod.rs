@@ -6,6 +6,7 @@ use hypr_cli_editor::{Editor, KeyResult};
 use ratatui_image::protocol::StatefulProtocol;
 
 use crate::commands::connect;
+use crate::commands::model;
 use crate::commands::sessions;
 
 pub(crate) use commands::{COMMANDS, CommandEntry, SlashCommand};
@@ -25,6 +26,7 @@ pub(crate) enum Overlay {
     None,
     Connect(connect::app::App),
     Sessions(sessions::app::App),
+    Models(model::app::App),
 }
 
 pub(crate) struct App {
@@ -75,6 +77,14 @@ impl App {
                 self.recompute_popup();
                 Vec::new()
             }
+            Action::ConnectRuntime(event) => {
+                if let Overlay::Connect(ref mut app) = self.overlay {
+                    let effects = app.dispatch(connect::action::Action::Runtime(event));
+                    self.translate_connect_effects(effects)
+                } else {
+                    Vec::new()
+                }
+            }
             Action::SessionsLoaded(sessions) => {
                 if let Overlay::Sessions(ref mut app) = self.overlay {
                     let effects = app.dispatch(sessions::action::Action::Loaded(sessions));
@@ -87,6 +97,22 @@ impl App {
                 if let Overlay::Sessions(ref mut app) = self.overlay {
                     let effects = app.dispatch(sessions::action::Action::LoadError(msg));
                     self.translate_sessions_effects(effects)
+                } else {
+                    Vec::new()
+                }
+            }
+            Action::ModelsLoaded(models) => {
+                if let Overlay::Models(ref mut app) = self.overlay {
+                    let effects = app.dispatch(model::action::Action::Loaded(models));
+                    self.translate_models_effects(effects)
+                } else {
+                    Vec::new()
+                }
+            }
+            Action::ModelsLoadError(msg) => {
+                if let Overlay::Models(ref mut app) = self.overlay {
+                    let effects = app.dispatch(model::action::Action::LoadError(msg));
+                    self.translate_models_effects(effects)
                 } else {
                     Vec::new()
                 }
@@ -193,6 +219,10 @@ impl App {
                 let effects = app.dispatch(sessions::action::Action::Key(key));
                 return self.translate_sessions_effects(effects);
             }
+            Overlay::Models(ref mut app) => {
+                let effects = app.dispatch(model::action::Action::Key(key));
+                return self.translate_models_effects(effects);
+            }
             Overlay::None => {}
         }
 
@@ -253,6 +283,7 @@ impl App {
                 return self.translate_connect_effects(effects);
             }
             Overlay::Sessions(_) => return Vec::new(),
+            Overlay::Models(_) => return Vec::new(),
             Overlay::None => {}
         }
 
@@ -317,7 +348,7 @@ impl App {
                 self.reset_input();
                 vec![Effect::OpenDesktop]
             }
-            "model" => self.submit_model_command(rest),
+            "models" => self.submit_model_command(rest),
             _ if head.is_empty() => Vec::new(),
             _ => {
                 self.status_message = Some(format!("Unknown command: {}", command.trim()));
@@ -327,20 +358,45 @@ impl App {
     }
 
     fn submit_model_command(&mut self, rest: &str) -> Vec<Effect> {
-        use crate::cli::{ModelCommands, OutputFormat};
+        use crate::cli::ModelCommands;
 
         let subcmd = rest.split_whitespace().next().unwrap_or("");
         match subcmd {
+            "" | "list" => {
+                self.reset_input();
+                self.overlay = Overlay::Models(model::app::App::new());
+                vec![Effect::LoadModels]
+            }
             "paths" => vec![Effect::RunModel(ModelCommands::Paths)],
-            "current" => vec![Effect::RunModel(ModelCommands::Current)],
-            "list" => vec![Effect::RunModel(ModelCommands::List {
-                kind: None,
-                supported: false,
-                format: OutputFormat::Pretty,
-            })],
+            "download" => {
+                let name = rest
+                    .strip_prefix("download")
+                    .unwrap_or("")
+                    .trim()
+                    .to_string();
+                if name.is_empty() {
+                    self.reset_input();
+                    self.status_message = Some("Usage: /models download <name>".to_string());
+                    Vec::new()
+                } else {
+                    vec![Effect::RunModel(ModelCommands::Download { name })]
+                }
+            }
+            "delete" => {
+                let name = rest.strip_prefix("delete").unwrap_or("").trim().to_string();
+                if name.is_empty() {
+                    self.reset_input();
+                    self.status_message = Some("Usage: /models delete <name>".to_string());
+                    Vec::new()
+                } else {
+                    vec![Effect::RunModel(ModelCommands::Delete { name })]
+                }
+            }
             _ => {
                 self.reset_input();
-                self.status_message = Some("Usage: /model [paths | current | list]".to_string());
+                self.status_message = Some(
+                    "Usage: /models [list | download <name> | delete <name> | paths]".to_string(),
+                );
                 Vec::new()
             }
         }
@@ -361,6 +417,21 @@ impl App {
                 }
                 connect::effect::Effect::Exit => {
                     self.reset_input();
+                }
+                connect::effect::Effect::CheckCalendarPermission => {
+                    result.push(Effect::CheckCalendarPermission);
+                }
+                connect::effect::Effect::RequestCalendarPermission => {
+                    result.push(Effect::RequestCalendarPermission);
+                }
+                connect::effect::Effect::ResetCalendarPermission => {
+                    result.push(Effect::ResetCalendarPermission);
+                }
+                connect::effect::Effect::LoadCalendars => {
+                    result.push(Effect::LoadCalendars);
+                }
+                connect::effect::Effect::SaveCalendars(data) => {
+                    result.push(Effect::SaveCalendars(data));
                 }
             }
         }
@@ -390,6 +461,17 @@ impl App {
             }
         }
         result
+    }
+
+    fn translate_models_effects(&mut self, effects: Vec<model::effect::Effect>) -> Vec<Effect> {
+        for effect in effects {
+            match effect {
+                model::effect::Effect::Exit => {
+                    self.reset_input();
+                }
+            }
+        }
+        Vec::new()
     }
 
     fn reset_input(&mut self) {
@@ -454,5 +536,56 @@ impl App {
         self.selected_index = self
             .selected_index
             .min(self.filtered_commands.len().saturating_sub(1));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn connect_runtime_events_update_connect_overlay() {
+        let mut app = App::new(None, None, None);
+        let (connect_app, _) = connect::app::App::new(
+            None,
+            Some(crate::cli::ConnectProvider::AppleCalendar),
+            None,
+            None,
+        );
+        app.overlay = Overlay::Connect(connect_app);
+
+        let effects = app.dispatch(Action::ConnectRuntime(
+            connect::runtime::RuntimeEvent::CalendarPermissionStatus(
+                connect::runtime::CalendarPermissionState::NotDetermined,
+            ),
+        ));
+
+        assert!(effects.is_empty());
+
+        match app.overlay {
+            Overlay::Connect(ref connect_app) => {
+                assert_eq!(
+                    connect_app.cal_auth_status(),
+                    Some(connect::runtime::CalendarPermissionState::NotDetermined)
+                );
+            }
+            Overlay::None | Overlay::Models(_) | Overlay::Sessions(_) => {
+                panic!("expected connect overlay")
+            }
+        }
+    }
+
+    #[test]
+    fn connect_calendar_effects_are_forwarded() {
+        let mut app = App::new(None, None, None);
+
+        let effects = app.translate_connect_effects(vec![
+            connect::effect::Effect::CheckCalendarPermission,
+            connect::effect::Effect::LoadCalendars,
+        ]);
+
+        assert_eq!(effects.len(), 2);
+        assert!(matches!(effects[0], Effect::CheckCalendarPermission));
+        assert!(matches!(effects[1], Effect::LoadCalendars));
     }
 }

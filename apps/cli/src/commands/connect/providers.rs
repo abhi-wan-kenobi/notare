@@ -197,4 +197,8 @@ impl ConnectProvider {
     pub(crate) fn valid_for(&self, ct: ConnectionType) -> bool {
         self.capabilities().contains(&ct)
     }
+
+    pub(crate) fn is_calendar_provider(&self) -> bool {
+        CAL_PROVIDERS.contains(self)
+    }
 }

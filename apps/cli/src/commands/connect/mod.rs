@@ -2,21 +2,23 @@ pub(crate) mod action;
 pub(crate) mod app;
 pub(crate) mod effect;
 mod providers;
+pub(crate) mod runtime;
 pub(crate) mod ui;
 
 use std::collections::HashSet;
-use std::convert::Infallible;
 use std::time::Duration;
 
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
 use sqlx::SqlitePool;
+use tokio::sync::mpsc;
 
 pub use crate::cli::{ConnectProvider, ConnectionType};
 use crate::error::{CliError, CliResult};
 
 use self::action::Action;
-use self::app::{App, Step};
+use self::app::{App, FormFieldId, Step};
 use self::effect::{Effect, SaveData};
+use self::runtime::{Runtime, RuntimeEvent};
 
 const IDLE_FRAME: Duration = Duration::from_secs(1);
 
@@ -24,6 +26,8 @@ const IDLE_FRAME: Duration = Duration::from_secs(1);
 
 struct ConnectScreen {
     app: App,
+    runtime: Runtime,
+    pool: SqlitePool,
 }
 
 impl ConnectScreen {
@@ -32,6 +36,35 @@ impl ConnectScreen {
             match effect {
                 Effect::Save(data) => return ScreenControl::Exit(Some(data)),
                 Effect::Exit => return ScreenControl::Exit(None),
+                Effect::CheckCalendarPermission => {
+                    self.runtime.check_permission();
+                }
+                Effect::RequestCalendarPermission => {
+                    self.runtime.request_permission();
+                }
+                Effect::ResetCalendarPermission => {
+                    self.runtime.reset_permission();
+                }
+                Effect::LoadCalendars => {
+                    let event = match runtime::load_calendars_sync() {
+                        Ok(items) => RuntimeEvent::CalendarsLoaded(items),
+                        Err(err) => RuntimeEvent::Error(err),
+                    };
+                    let effects = self.app.dispatch(Action::Runtime(event));
+                    if let ScreenControl::Exit(output) = self.apply_effects(effects) {
+                        return ScreenControl::Exit(output);
+                    }
+                }
+                Effect::SaveCalendars(data) => {
+                    let provider = self.app.provider().unwrap();
+                    let connection_id = format!("cal:{}", provider.id());
+                    self.runtime.save_calendars(
+                        self.pool.clone(),
+                        data.provider,
+                        connection_id,
+                        data.items,
+                    );
+                }
             }
         }
         ScreenControl::Continue
@@ -39,7 +72,7 @@ impl ConnectScreen {
 }
 
 impl Screen for ConnectScreen {
-    type ExternalEvent = Infallible;
+    type ExternalEvent = RuntimeEvent;
     type Output = Option<SaveData>;
 
     fn on_tui_event(
@@ -65,7 +98,8 @@ impl Screen for ConnectScreen {
         event: Self::ExternalEvent,
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
-        match event {}
+        let effects = self.app.dispatch(Action::Runtime(event));
+        self.apply_effects(effects)
     }
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
@@ -134,22 +168,77 @@ pub async fn run(args: Args) -> CliResult<bool> {
                 "--provider",
                 "pass --provider <name> (interactive prompts require a terminal)",
             ),
-            Step::InputBaseUrl => CliError::required_argument_with_hint(
-                "--base-url",
-                format!(
-                    "{} requires a base URL",
-                    app.provider().map(|p| p.id()).unwrap_or("provider")
-                ),
-            ),
-            Step::InputApiKey => CliError::required_argument_with_hint(
-                "--api-key",
-                "pass --api-key <key> (interactive prompts require a terminal)",
-            ),
+            Step::InputForm => {
+                if app
+                    .form_fields()
+                    .iter()
+                    .any(|f| f.id == FormFieldId::BaseUrl)
+                {
+                    CliError::required_argument_with_hint(
+                        "--base-url",
+                        format!(
+                            "{} requires a base URL",
+                            app.provider().map(|p| p.id()).unwrap_or("provider")
+                        ),
+                    )
+                } else {
+                    CliError::required_argument_with_hint(
+                        "--api-key",
+                        "pass --api-key <key> (interactive prompts require a terminal)",
+                    )
+                }
+            }
+            Step::CalendarPermission | Step::CalendarSelect => {
+                CliError::required_argument_with_hint(
+                    "--provider",
+                    "calendar setup requires an interactive terminal",
+                )
+            }
             Step::Done => unreachable!(),
         });
     } else {
-        let screen = ConnectScreen { app };
-        run_screen(screen, None)
+        let (runtime_tx, runtime_rx) = mpsc::unbounded_channel();
+        let runtime = Runtime::new(runtime_tx);
+
+        let mut app = app;
+
+        // Resolve initial calendar permission synchronously so the screen
+        // opens with the status already known (avoids async channel timing).
+        for effect in &initial_effects {
+            match effect {
+                Effect::CheckCalendarPermission => {
+                    let state = runtime::check_permission_sync();
+                    let effects = app.dispatch(Action::Runtime(
+                        RuntimeEvent::CalendarPermissionStatus(state),
+                    ));
+                    // If authorized, this may produce LoadCalendars
+                    for e in &effects {
+                        if matches!(e, Effect::LoadCalendars) {
+                            let event = match runtime::load_calendars_sync() {
+                                Ok(items) => RuntimeEvent::CalendarsLoaded(items),
+                                Err(err) => RuntimeEvent::Error(err),
+                            };
+                            let _ = app.dispatch(Action::Runtime(event));
+                        }
+                    }
+                }
+                Effect::LoadCalendars => {
+                    let event = match runtime::load_calendars_sync() {
+                        Ok(items) => RuntimeEvent::CalendarsLoaded(items),
+                        Err(err) => RuntimeEvent::Error(err),
+                    };
+                    let _ = app.dispatch(Action::Runtime(event));
+                }
+                _ => {}
+            }
+        }
+
+        let screen = ConnectScreen {
+            app,
+            runtime,
+            pool: args.pool.clone(),
+        };
+        run_screen(screen, Some(runtime_rx))
             .await
             .map_err(|e| CliError::operation_failed("connect tui", e.to_string()))?
     };

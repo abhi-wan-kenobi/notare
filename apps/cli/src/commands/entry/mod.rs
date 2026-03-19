@@ -32,8 +32,11 @@ pub struct Args {
 }
 
 enum ExternalEvent {
+    ConnectRuntime(crate::commands::connect::runtime::RuntimeEvent),
     SessionsLoaded(Vec<hypr_db_app::SessionRow>),
     SessionsLoadError(String),
+    ModelsLoaded(Vec<crate::commands::model::list::ModelRow>),
+    ModelsLoadError(String),
     ConnectSaved {
         connection_types: Vec<crate::cli::ConnectionType>,
         provider_id: String,
@@ -44,6 +47,7 @@ enum ExternalEvent {
 struct EntryScreen {
     app: App,
     external_tx: mpsc::UnboundedSender<ExternalEvent>,
+    connect_runtime: crate::commands::connect::runtime::Runtime,
     pool: SqlitePool,
 }
 
@@ -64,6 +68,34 @@ impl EntryScreen {
                                 let _ = tx.send(ExternalEvent::SessionsLoadError(e.to_string()));
                             }
                         }
+                    });
+                }
+                Effect::LoadModels => {
+                    let tx = self.external_tx.clone();
+                    let pool = self.pool.clone();
+                    tokio::spawn(async move {
+                        let paths = crate::config::paths::resolve_paths();
+                        let models_base = paths.models_base.clone();
+                        let runtime =
+                            std::sync::Arc::new(crate::commands::model::runtime::CliModelRuntime {
+                                models_base: models_base.clone(),
+                                progress_tx: None,
+                            });
+                        let manager = hypr_model_downloader::ModelDownloadManager::new(runtime);
+                        let current = crate::config::paths::load_settings_from_db(&pool).await;
+                        let models: Vec<hypr_local_model::LocalModel> =
+                            hypr_local_model::LocalModel::all()
+                                .into_iter()
+                                .filter(|m| crate::commands::model::model_is_enabled(m))
+                                .collect();
+                        let rows = crate::commands::model::list::collect_model_rows(
+                            &models,
+                            &models_base,
+                            &current,
+                            &manager,
+                        )
+                        .await;
+                        let _ = tx.send(ExternalEvent::ModelsLoaded(rows));
                     });
                 }
                 Effect::SaveConnect {
@@ -99,6 +131,46 @@ impl EntryScreen {
                             }
                         }
                     });
+                }
+                Effect::CheckCalendarPermission => {
+                    let effects = self.app.dispatch(Action::ConnectRuntime(
+                        crate::commands::connect::runtime::RuntimeEvent::CalendarPermissionStatus(
+                            crate::commands::connect::runtime::check_permission_sync(),
+                        ),
+                    ));
+                    if let ScreenControl::Exit(output) = self.apply_effects(effects) {
+                        return ScreenControl::Exit(output);
+                    }
+                }
+                Effect::RequestCalendarPermission => {
+                    self.connect_runtime.request_permission();
+                }
+                Effect::ResetCalendarPermission => {
+                    self.connect_runtime.reset_permission();
+                }
+                Effect::LoadCalendars => {
+                    let effects = self.app.dispatch(Action::ConnectRuntime(
+                        match crate::commands::connect::runtime::load_calendars_sync() {
+                            Ok(items) => {
+                                crate::commands::connect::runtime::RuntimeEvent::CalendarsLoaded(
+                                    items,
+                                )
+                            }
+                            Err(err) => crate::commands::connect::runtime::RuntimeEvent::Error(err),
+                        },
+                    ));
+                    if let ScreenControl::Exit(output) = self.apply_effects(effects) {
+                        return ScreenControl::Exit(output);
+                    }
+                }
+                Effect::SaveCalendars(data) => {
+                    let connection_id = format!("cal:{}", data.provider);
+                    self.connect_runtime.save_calendars(
+                        self.pool.clone(),
+                        data.provider,
+                        connection_id,
+                        data.items,
+                    );
                 }
                 Effect::OpenAuth => {
                     let message = match crate::commands::auth::run() {
@@ -174,8 +246,11 @@ impl Screen for EntryScreen {
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
         let action = match event {
+            ExternalEvent::ConnectRuntime(event) => Action::ConnectRuntime(event),
             ExternalEvent::SessionsLoaded(sessions) => Action::SessionsLoaded(sessions),
             ExternalEvent::SessionsLoadError(msg) => Action::SessionsLoadError(msg),
+            ExternalEvent::ModelsLoaded(models) => Action::ModelsLoaded(models),
+            ExternalEvent::ModelsLoadError(msg) => Action::ModelsLoadError(msg),
             ExternalEvent::ConnectSaved {
                 connection_types,
                 provider_id,
@@ -204,11 +279,27 @@ impl Screen for EntryScreen {
 
 pub async fn run(args: Args) -> EntryAction {
     let (external_tx, external_rx) = mpsc::unbounded_channel();
+    let (connect_tx, mut connect_rx) = mpsc::unbounded_channel();
+
+    {
+        let external_tx = external_tx.clone();
+        tokio::spawn(async move {
+            while let Some(event) = connect_rx.recv().await {
+                if external_tx
+                    .send(ExternalEvent::ConnectRuntime(event))
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        });
+    }
 
     let pool = args.pool.clone();
     let mut screen = EntryScreen {
         app: App::new(args.status_message, args.stt_provider, args.llm_provider),
         external_tx,
+        connect_runtime: crate::commands::connect::runtime::Runtime::new(connect_tx),
         pool,
     };
 

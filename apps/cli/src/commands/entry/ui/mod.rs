@@ -72,6 +72,9 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         Overlay::Sessions(sessions_app) => {
             crate::commands::sessions::ui::draw(frame, sessions_app);
         }
+        Overlay::Models(models_app) => {
+            crate::commands::model::ui::draw(frame, models_app);
+        }
         Overlay::None => {}
     }
 }

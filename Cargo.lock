@@ -3392,6 +3392,7 @@ version = "0.1.0"
 dependencies = [
  "analytics",
  "api-env",
+ "apple-calendar",
  "audio",
  "audio-actual",
  "audio-mock",
@@ -3428,6 +3429,7 @@ dependencies = [
  "ractor",
  "ratatui",
  "ratatui-image",
+ "reqwest 0.13.2",
  "rig-core",
  "serde",
  "serde_json",

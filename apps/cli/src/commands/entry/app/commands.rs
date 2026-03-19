@@ -69,19 +69,19 @@ pub(crate) const COMMANDS: &[SlashCommand] = &[
         group: "App",
     },
     SlashCommand {
-        name: "/model paths",
-        description: "Show model storage paths",
-        group: "Model",
-    },
-    SlashCommand {
-        name: "/model current",
-        description: "Show current model config",
-        group: "Model",
-    },
-    SlashCommand {
-        name: "/model list",
+        name: "/models",
         description: "List available models",
-        group: "Model",
+        group: "Models",
+    },
+    SlashCommand {
+        name: "/models download",
+        description: "Download a model",
+        group: "Models",
+    },
+    SlashCommand {
+        name: "/models paths",
+        description: "Show model storage paths",
+        group: "Models",
     },
     SlashCommand {
         name: "/exit",
