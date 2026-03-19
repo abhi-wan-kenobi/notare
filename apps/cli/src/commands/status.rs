@@ -4,16 +4,17 @@ use ratatui::layout::Constraint;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Text;
 use ratatui::widgets::{Cell, Row, Table};
+use sqlx::SqlitePool;
 
-use crate::config::desktop;
+use crate::config::paths;
 use crate::error::CliResult;
 use crate::widgets::InlineBox;
 
-pub fn run() -> CliResult<()> {
-    let paths = desktop::resolve_paths();
-    let settings = desktop::load_settings(&paths.settings_path);
+pub async fn run(pool: &SqlitePool) -> CliResult<()> {
+    let paths = paths::resolve_paths();
+    let settings = paths::load_settings_from_db(pool).await;
 
-    eprintln!("settings: {}", paths.settings_path.display());
+    eprintln!("db: {}", paths.base.join("app.db").display());
     eprintln!();
 
     let Some(settings) = settings else {
@@ -43,7 +44,7 @@ pub fn run() -> CliResult<()> {
 fn print_section(
     label: &str,
     current: &Option<String>,
-    providers: &std::collections::HashMap<String, desktop::ProviderConfig>,
+    providers: &std::collections::HashMap<String, paths::ProviderConfig>,
     is_tty: bool,
 ) {
     let current_str = current.as_deref().unwrap_or("(none)");

@@ -6,6 +6,7 @@ use hypr_listener_core::{
 };
 use tokio::sync::mpsc;
 
+#[derive(Clone)]
 pub(super) enum RuntimeEvent {
     Lifecycle(SessionLifecycleEvent),
     Progress(SessionProgressEvent),

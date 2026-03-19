@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use rig::message::Message;
 
 pub(crate) enum Effect {
@@ -12,14 +10,12 @@ pub(crate) enum Effect {
         response: String,
     },
     Persist {
-        db_path: PathBuf,
         session_id: String,
         message_id: String,
         role: String,
         content: String,
     },
     UpdateTitle {
-        db_path: PathBuf,
         session_id: String,
         title: String,
     },

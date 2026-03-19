@@ -4,13 +4,14 @@ pub(crate) mod effect;
 mod providers;
 pub(crate) mod ui;
 
+use std::collections::HashSet;
 use std::convert::Infallible;
 use std::time::Duration;
 
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
+use sqlx::SqlitePool;
 
 pub use crate::cli::{ConnectProvider, ConnectionType};
-use crate::config::desktop;
 use crate::error::{CliError, CliResult};
 
 use self::action::Action;
@@ -87,6 +88,7 @@ pub struct Args {
     pub provider: Option<ConnectProvider>,
     pub base_url: Option<String>,
     pub api_key: Option<String>,
+    pub pool: SqlitePool,
 }
 
 pub async fn run(args: Args) -> CliResult<bool> {
@@ -107,20 +109,18 @@ pub async fn run(args: Args) -> CliResult<bool> {
             .map_err(|reason| CliError::invalid_argument("--base-url", url, reason))?;
     }
 
-    let paths = desktop::resolve_paths();
-    let settings = desktop::load_settings(&paths.settings_path);
+    let configured: HashSet<String> = hypr_db_app::list_configured_provider_ids(&args.pool)
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .collect();
 
-    let (app, initial_effects) = App::new(
+    let (app, initial_effects) = App::new_with_configured(
         args.connection_type,
         args.provider,
         args.base_url,
         args.api_key,
-        settings
-            .as_ref()
-            .and_then(|s| s.current_llm_provider.clone()),
-        settings
-            .as_ref()
-            .and_then(|s| s.current_stt_provider.clone()),
+        configured,
     );
 
     let save_data = if app.step() == Step::Done {
@@ -130,10 +130,6 @@ pub async fn run(args: Args) -> CliResult<bool> {
         })
     } else if !interactive {
         return Err(match app.step() {
-            Step::SelectType => CliError::required_argument_with_hint(
-                "--type",
-                "pass --type stt or --type llm (interactive prompts require a terminal)",
-            ),
             Step::SelectProvider => CliError::required_argument_with_hint(
                 "--provider",
                 "pass --provider <name> (interactive prompts require a terminal)",
@@ -160,41 +156,40 @@ pub async fn run(args: Args) -> CliResult<bool> {
 
     match save_data {
         Some(data) => {
-            save_config(data)?;
+            save_config(&args.pool, data).await?;
             Ok(true)
         }
         None => Ok(false),
     }
 }
 
-pub(crate) fn save_config(data: SaveData) -> CliResult<()> {
-    let type_key = data.connection_type.to_string();
+pub(crate) async fn save_config(pool: &SqlitePool, data: SaveData) -> CliResult<()> {
     let provider_id = data.provider.id();
 
-    let mut provider_config = serde_json::Map::new();
-    if let Some(url) = &data.base_url {
-        provider_config.insert("base_url".into(), serde_json::Value::String(url.clone()));
+    for ct in &data.connection_types {
+        let type_key = ct.to_string();
+
+        let _ =
+            hypr_db_app::set_setting(pool, &format!("current_{type_key}_provider"), provider_id)
+                .await
+                .map_err(|e| CliError::operation_failed("save setting", e.to_string()))?;
+
+        let _ = hypr_db_app::upsert_connection(
+            pool,
+            &type_key,
+            provider_id,
+            data.base_url.as_deref().unwrap_or(""),
+            data.api_key.as_deref().unwrap_or(""),
+        )
+        .await
+        .map_err(|e| CliError::operation_failed("save connection", e.to_string()))?;
     }
-    if let Some(key) = &data.api_key {
-        provider_config.insert("api_key".into(), serde_json::Value::String(key.clone()));
-    }
 
-    let patch = serde_json::json!({
-        "ai": {
-            format!("current_{type_key}_provider"): provider_id,
-            &type_key: {
-                provider_id: provider_config,
-            }
-        }
-    });
-
-    let paths = desktop::resolve_paths();
-    desktop::save_settings(&paths.settings_path, patch)
-        .map_err(|e| CliError::operation_failed("save settings", e.to_string()))?;
-
-    eprintln!(
-        "Saved {type_key} provider: {provider_id} -> {}",
-        paths.settings_path.display()
-    );
+    let type_keys: Vec<String> = data
+        .connection_types
+        .iter()
+        .map(|t| t.to_string())
+        .collect();
+    eprintln!("Saved {} provider: {provider_id}", type_keys.join("+"),);
     Ok(())
 }

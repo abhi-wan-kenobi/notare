@@ -35,6 +35,7 @@ pub(crate) struct App {
     error: Option<String>,
     memo_dirty: bool,
     save_message: Option<&'static str>,
+    exit_after_save: bool,
 }
 
 impl App {
@@ -53,6 +54,7 @@ impl App {
             error: None,
             memo_dirty: false,
             save_message: None,
+            exit_after_save: false,
         }
     }
 
@@ -60,11 +62,15 @@ impl App {
         match action {
             Action::Key(key) => self.handle_key(key),
             Action::Paste(pasted) => self.handle_paste(pasted),
-            Action::Loaded { session, segments } => {
+            Action::Loaded {
+                session,
+                segments,
+                memo,
+            } => {
                 self.loading = false;
                 self.title = session.title.unwrap_or_default();
                 self.created_at = session.created_at;
-                let memo_text = session.memo.as_deref().unwrap_or("");
+                let memo_text = memo.as_ref().map(|n| n.content.as_str()).unwrap_or("");
                 self.memo = Self::init_memo(memo_text);
                 self.segments = segments;
                 Vec::new()
@@ -77,9 +83,15 @@ impl App {
             Action::Saved => {
                 self.memo_dirty = false;
                 self.save_message = Some("saved");
-                Vec::new()
+                if self.exit_after_save {
+                    self.exit_after_save = false;
+                    vec![Effect::Exit]
+                } else {
+                    Vec::new()
+                }
             }
             Action::SaveError(msg) => {
+                self.exit_after_save = false;
                 self.error = Some(format!("save failed: {msg}"));
                 Vec::new()
             }
@@ -276,13 +288,11 @@ impl App {
                 }]
             }
             "wq" => {
-                vec![
-                    Effect::SaveMemo {
-                        session_id: self.session_id.clone(),
-                        memo: self.memo_text(),
-                    },
-                    Effect::Exit,
-                ]
+                self.exit_after_save = true;
+                vec![Effect::SaveMemo {
+                    session_id: self.session_id.clone(),
+                    memo: self.memo_text(),
+                }]
             }
             _ => {
                 self.error = Some(format!("Unknown command: :{cmd}"));
@@ -312,5 +322,37 @@ impl App {
             memo.insert_str(initial);
         }
         memo
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wq_exits_only_after_successful_save() {
+        let mut app = App::new("session-1".to_string());
+        app.command_buffer = "wq".to_string();
+        app.mode = Mode::Command;
+
+        let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
+        assert!(matches!(effects.as_slice(), [Effect::SaveMemo { .. }]));
+
+        let effects = app.dispatch(Action::Saved);
+        assert!(matches!(effects.as_slice(), [Effect::Exit]));
+    }
+
+    #[test]
+    fn wq_does_not_exit_when_save_fails() {
+        let mut app = App::new("session-1".to_string());
+        app.command_buffer = "wq".to_string();
+        app.mode = Mode::Command;
+
+        let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
+        assert!(matches!(effects.as_slice(), [Effect::SaveMemo { .. }]));
+
+        let effects = app.dispatch(Action::SaveError("boom".to_string()));
+        assert!(effects.is_empty());
+        assert_eq!(app.error(), Some("save failed: boom"));
     }
 }

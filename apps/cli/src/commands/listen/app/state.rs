@@ -1,5 +1,5 @@
 use std::collections::{HashMap, VecDeque};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use hypr_listener_core::{
     DegradedError, SessionDataEvent, SessionErrorEvent, SessionLifecycleEvent,
@@ -13,14 +13,14 @@ use hypr_transcript::{
 use crate::commands::listen::runtime::RuntimeEvent;
 
 const AUDIO_HISTORY_CAP: usize = 64;
+const MAX_ERRORS: usize = 8;
+const WORD_FIRST_SEEN_RETENTION: Duration = Duration::from_secs(2);
 
 pub(super) struct ListenState {
     state: State,
     status: String,
     degraded: Option<DegradedError>,
-    errors: Vec<String>,
-    mic_level: u16,
-    speaker_level: u16,
+    errors: VecDeque<String>,
     mic_history: VecDeque<u64>,
     speaker_history: VecDeque<u64>,
     mic_muted: bool,
@@ -39,9 +39,7 @@ impl ListenState {
             state: State::Inactive,
             status: "Starting...".into(),
             degraded: None,
-            errors: Vec::new(),
-            mic_level: 0,
-            speaker_level: 0,
+            errors: VecDeque::with_capacity(MAX_ERRORS),
             mic_history: VecDeque::with_capacity(AUDIO_HISTORY_CAP),
             speaker_history: VecDeque::with_capacity(AUDIO_HISTORY_CAP),
             mic_muted: false,
@@ -68,6 +66,15 @@ impl ListenState {
         }
     }
 
+    pub(super) fn apply_runtime_events<I>(&mut self, events: I)
+    where
+        I: IntoIterator<Item = RuntimeEvent>,
+    {
+        for event in events {
+            self.handle_runtime_event(event);
+        }
+    }
+
     pub(super) fn listener_state(&self) -> State {
         self.state.clone()
     }
@@ -78,10 +85,6 @@ impl ListenState {
 
     pub(super) fn degraded(&self) -> Option<&DegradedError> {
         self.degraded.as_ref()
-    }
-
-    pub(super) fn errors(&self) -> &[String] {
-        &self.errors
     }
 
     pub(super) fn mic_muted(&self) -> bool {
@@ -109,7 +112,14 @@ impl ListenState {
     }
 
     pub(super) fn push_error(&mut self, error: String) {
-        self.errors.push(error);
+        if self.errors.len() >= MAX_ERRORS {
+            self.errors.pop_front();
+        }
+        self.errors.push_back(error);
+    }
+
+    pub(super) fn last_error(&self) -> Option<&str> {
+        self.errors.back().map(String::as_str)
     }
 
     pub(super) fn segments(&self) -> Vec<Segment> {
@@ -192,10 +202,10 @@ impl ListenState {
     fn handle_error(&mut self, event: SessionErrorEvent) {
         match event {
             SessionErrorEvent::AudioError { error, .. } => {
-                self.errors.push(format!("Audio: {error}"));
+                self.push_error(format!("Audio: {error}"));
             }
             SessionErrorEvent::ConnectionError { error, .. } => {
-                self.errors.push(format!("Connection: {error}"));
+                self.push_error(format!("Connection: {error}"));
             }
         }
     }
@@ -203,9 +213,6 @@ impl ListenState {
     fn handle_data(&mut self, event: SessionDataEvent) {
         match event {
             SessionDataEvent::AudioAmplitude { mic, speaker, .. } => {
-                self.mic_level = mic;
-                self.speaker_level = speaker;
-
                 if self.mic_history.len() >= AUDIO_HISTORY_CAP {
                     self.mic_history.pop_front();
                 }
@@ -243,5 +250,7 @@ impl ListenState {
         self.hints.extend(delta.hints);
         self.partials = delta.partials;
         self.partial_hints = delta.partial_hints;
+        let cutoff = Instant::now() - WORD_FIRST_SEEN_RETENTION;
+        self.word_first_seen.retain(|_, seen_at| *seen_at > cutoff);
     }
 }

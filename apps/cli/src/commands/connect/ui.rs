@@ -24,7 +24,6 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     draw_header(frame, app, header_area);
 
     match app.step() {
-        Step::SelectType => draw_type_list(frame, app, content_area, &theme),
         Step::SelectProvider => draw_provider_list(frame, app, content_area, &theme),
         Step::InputBaseUrl | Step::InputApiKey => draw_input(frame, app, content_area, &theme),
         Step::Done => {}
@@ -47,32 +46,104 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     );
 }
 
-fn draw_type_list(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
-    let current_llm = app.current_llm_provider().map(str::to_string);
-    let current_stt = app.current_stt_provider().map(str::to_string);
+fn draw_provider_list(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
+    let [search_area, list_area] =
+        Layout::vertical([Constraint::Length(3), Constraint::Min(1)]).areas(area);
 
-    let items: Vec<ListItem> = [("LLM", current_llm), ("STT", current_stt)]
-        .into_iter()
-        .map(|(label, current)| {
-            let mut spans = vec![Span::raw(label)];
-            if let Some(provider) = current {
-                spans.push(Span::styled(format!("  {provider}"), theme.muted));
+    // Search input
+    let search_block = Block::bordered()
+        .title(" Search ")
+        .border_style(Style::new().fg(Color::Cyan));
+    let search_inner = search_block.inner(search_area);
+    frame.render_widget(
+        Paragraph::new(app.search_query()).block(search_block),
+        search_area,
+    );
+    #[allow(clippy::cast_possible_truncation)]
+    let cursor_x = app.search_query().chars().count() as u16;
+    frame.set_cursor_position(Position::new(search_inner.x + cursor_x, search_inner.y));
+
+    // Provider list with tags
+    let filtered = app.filtered_providers();
+    if filtered.is_empty() {
+        frame.render_widget(
+            Span::styled("  No matches", Style::new().fg(Color::DarkGray)),
+            list_area,
+        );
+        return;
+    }
+
+    let configured = app.configured_providers();
+    let available_width = list_area.width as usize;
+    let items: Vec<ListItem> = filtered
+        .iter()
+        .map(|p| {
+            let disabled = p.is_disabled();
+            let name = p.display_name();
+            let caps = p.capabilities();
+            let is_configured = configured.contains(p.id());
+
+            let mut tag_spans: Vec<Span> = Vec::new();
+
+            if is_configured {
+                tag_spans.push(Span::styled("[ok]", Style::new().fg(Color::Green)));
             }
+
+            if disabled {
+                if !tag_spans.is_empty() {
+                    tag_spans.push(Span::raw(" "));
+                }
+                tag_spans.push(Span::styled("soon", Style::new().fg(Color::DarkGray)));
+            }
+
+            for cap in &caps {
+                if !tag_spans.is_empty() {
+                    tag_spans.push(Span::raw(" "));
+                }
+                let style = if disabled {
+                    Style::new().fg(Color::DarkGray)
+                } else {
+                    match cap {
+                        crate::cli::ConnectionType::Stt => Style::new().fg(Color::Cyan),
+                        crate::cli::ConnectionType::Llm => Style::new().fg(Color::Yellow),
+                        crate::cli::ConnectionType::Cal => Style::new().fg(Color::Magenta),
+                    }
+                };
+                let label = match cap {
+                    crate::cli::ConnectionType::Stt => "[STT]",
+                    crate::cli::ConnectionType::Llm => "[LLM]",
+                    crate::cli::ConnectionType::Cal => "[CAL]",
+                };
+                tag_spans.push(Span::styled(label, style));
+            }
+
+            let tags_width: usize = tag_spans.iter().map(|s| s.width()).sum();
+            let padding = if available_width > name.len() + tags_width + 2 {
+                available_width - name.len() - tags_width - 2
+            } else {
+                1
+            };
+
+            let name_style = if disabled {
+                Style::new().fg(Color::DarkGray)
+            } else {
+                Style::default()
+            };
+
+            let mut spans = vec![
+                Span::styled(name.to_string(), name_style),
+                Span::raw(" ".repeat(padding)),
+            ];
+            spans.extend(tag_spans);
             ListItem::new(Line::from(spans))
         })
         .collect();
 
-    frame.render_stateful_widget(SelectList::new(items, theme), area, app.list_state_mut());
-}
-
-fn draw_provider_list(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
-    let entries = app.provider_entries();
-    let items: Vec<ListItem> = entries
-        .iter()
-        .map(|p| ListItem::new(p.id().to_string()))
-        .collect();
-
-    frame.render_stateful_widget(SelectList::new(items, theme), area, app.list_state_mut());
+    frame.render_stateful_widget(
+        SelectList::new(items, theme),
+        list_area,
+        app.list_state_mut(),
+    );
 }
 
 // --- Data layer: describe what to render ---
@@ -160,7 +231,7 @@ fn draw_input(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
 
 fn draw_status(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let hints = match app.step() {
-        Step::SelectType | Step::SelectProvider => vec![],
+        Step::SelectProvider => vec![],
         Step::InputBaseUrl | Step::InputApiKey => {
             vec![("Enter", "confirm"), ("Esc", "quit")]
         }

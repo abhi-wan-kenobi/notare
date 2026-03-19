@@ -9,10 +9,6 @@ pub use explain::extract_tables;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct WatchId(u64);
 
-/// Pure dependency graph: maps watch IDs to the tables they depend on.
-///
-/// No closures, no channels — async re-execution logic lives in each
-/// command's runtime where concrete types are known.
 pub struct TableDeps {
     next_id: u64,
     forward: HashMap<WatchId, HashSet<String>>,

@@ -9,6 +9,7 @@ mod theme;
 mod widgets;
 
 use clap::Parser;
+use sqlx::SqlitePool;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::filter::LevelFilter;
 
@@ -24,6 +25,8 @@ async fn main() {
         Some(Commands::Chat { prompt: None, .. })
             | Some(Commands::Listen { .. })
             | Some(Commands::Sessions { .. })
+            | Some(Commands::Humans { command: None })
+            | Some(Commands::Orgs { command: None })
             | Some(Commands::Connect {
                 r#type: None,
                 provider: None
@@ -46,7 +49,7 @@ async fn main() {
     };
 
     if let Some(base) = &cli.global.base {
-        config::desktop::set_base(base.clone());
+        config::paths::set_base(base.clone());
     }
 
     if cli.global.no_color || std::env::var_os("NO_COLOR").is_some() {
@@ -97,6 +100,19 @@ fn track_command(client: &hypr_analytics::AnalyticsClient, subcommand: &'static 
     });
 }
 
+async fn init_pool() -> CliResult<SqlitePool> {
+    let paths = config::paths::resolve_paths();
+    let db_path = paths.base.join("app.db");
+    let db = hypr_db_core2::Db3::connect_local_plain(&db_path)
+        .await
+        .map_err(|e| error::CliError::operation_failed("db connect", e.to_string()))?;
+    hypr_db_app::migrate(db.pool())
+        .await
+        .map_err(|e| error::CliError::operation_failed("db migrate", e.to_string()))?;
+    config::paths::migrate_json_settings_to_db(db.pool(), &paths.base).await;
+    Ok(db.pool().clone())
+}
+
 async fn run(cli: Cli) -> CliResult<()> {
     let analytics = analytics_client();
 
@@ -111,14 +127,14 @@ async fn run(cli: Cli) -> CliResult<()> {
         verbose,
     } = cli;
 
+    let pool = init_pool().await?;
+
     match command {
         Some(Commands::Chat {
             command,
             prompt,
             provider,
         }) => {
-            let paths = config::desktop::resolve_paths();
-            let db_path = paths.vault_base.join("app.db");
             let (session, resume_session_id) = match command {
                 Some(cli::ChatCommands::Resume { session }) => (None, session),
                 None => (None, None),
@@ -130,7 +146,7 @@ async fn run(cli: Cli) -> CliResult<()> {
                 base_url: global.base_url,
                 api_key: global.api_key,
                 model: global.model,
-                db_path,
+                pool,
                 resume_session_id,
             })
             .await
@@ -142,6 +158,7 @@ async fn run(cli: Cli) -> CliResult<()> {
                     provider,
                     base_url: global.base_url,
                     api_key: global.api_key,
+                    pool,
                 })
                 .await?;
                 if saved {
@@ -149,10 +166,10 @@ async fn run(cli: Cli) -> CliResult<()> {
                 }
                 Ok(())
             } else {
-                run_entry_loop(global, Some("/connect".to_string())).await
+                run_entry_loop(pool, global, Some("/connect".to_string())).await
             }
         }
-        Some(Commands::Status) => commands::status::run(),
+        Some(Commands::Status) => commands::status::run(&pool).await,
         Some(Commands::Auth) => {
             commands::auth::run()?;
             eprintln!("Opened auth page in browser");
@@ -179,33 +196,70 @@ async fn run(cli: Cli) -> CliResult<()> {
             eprintln!("Opened char.com in browser");
             Ok(())
         }
-        Some(Commands::Sessions { command }) => {
-            let paths = config::desktop::resolve_paths();
-            let db_path = paths.vault_base.join("app.db");
-            match command {
-                Some(cli::SessionsCommands::View { id }) => {
+        Some(Commands::Sessions { command }) => match command {
+            Some(cli::SessionsCommands::View { id }) => {
+                commands::sessions::view::run(commands::sessions::view::Args {
+                    session_id: id,
+                    pool,
+                })
+                .await
+            }
+            Some(cli::SessionsCommands::Participants { id }) => {
+                commands::sessions::participants(&pool, &id).await
+            }
+            Some(cli::SessionsCommands::AddParticipant { session, human }) => {
+                commands::sessions::add_participant(&pool, &session, &human).await
+            }
+            Some(cli::SessionsCommands::RmParticipant { session, human }) => {
+                commands::sessions::remove_participant(&pool, &session, &human).await
+            }
+            None => {
+                let selected = commands::sessions::run(pool.clone()).await?;
+                if let Some(session_id) = selected {
                     commands::sessions::view::run(commands::sessions::view::Args {
-                        session_id: id,
-                        db_path,
+                        session_id,
+                        pool,
                     })
                     .await
-                }
-                None => {
-                    let selected = commands::sessions::run(db_path.clone()).await?;
-                    if let Some(session_id) = selected {
-                        commands::sessions::view::run(commands::sessions::view::Args {
-                            session_id,
-                            db_path,
-                        })
-                        .await
-                    } else {
-                        Ok(())
-                    }
+                } else {
+                    Ok(())
                 }
             }
-        }
+        },
+        Some(Commands::Humans { command }) => match command {
+            Some(cli::HumansCommands::Add {
+                name,
+                email,
+                org,
+                title,
+            }) => {
+                commands::humans::add(
+                    &pool,
+                    &name,
+                    email.as_deref(),
+                    org.as_deref(),
+                    title.as_deref(),
+                )
+                .await
+            }
+            Some(cli::HumansCommands::Show { id }) => commands::humans::show(&pool, &id).await,
+            Some(cli::HumansCommands::Rm { id }) => commands::humans::rm(&pool, &id).await,
+            None => {
+                let _ = commands::humans::run(pool).await?;
+                Ok(())
+            }
+        },
+        Some(Commands::Orgs { command }) => match command {
+            Some(cli::OrgsCommands::Add { name }) => commands::orgs::add(&pool, &name).await,
+            Some(cli::OrgsCommands::Show { id }) => commands::orgs::show(&pool, &id).await,
+            Some(cli::OrgsCommands::Rm { id }) => commands::orgs::rm(&pool, &id).await,
+            None => {
+                let _ = commands::orgs::run(pool).await?;
+                Ok(())
+            }
+        },
         Some(Commands::Listen { provider, audio }) => {
-            let settings = load_entry_settings();
+            let settings = load_entry_settings(&pool).await;
             let resolved = match provider {
                 Some(p) => EntryListenConfig {
                     provider: p,
@@ -228,6 +282,7 @@ async fn run(cli: Cli) -> CliResult<()> {
                 },
                 record: global.record,
                 audio,
+                pool,
             })
             .await
         }
@@ -239,24 +294,28 @@ async fn run(cli: Cli) -> CliResult<()> {
                 model: global.model,
                 language: global.language,
             };
-            commands::batch::run(args, stt, verbose.is_silent()).await
+            commands::batch::run(args, stt, verbose.is_silent(), pool).await
         }
-        Some(Commands::Model { command }) => commands::model::run(command).await,
+        Some(Commands::Model { command }) => commands::model::run(command, &pool).await,
         #[cfg(feature = "dev")]
         Some(Commands::Debug { command }) => commands::debug::run(command).await,
         Some(Commands::Completions { shell }) => {
             cli::generate_completions(shell);
             Ok(())
         }
-        None => run_entry_loop(global, None).await,
+        None => run_entry_loop(pool, global, None).await,
     }
 }
 
-async fn run_entry_loop(global: cli::GlobalArgs, initial_command: Option<String>) -> CliResult<()> {
+async fn run_entry_loop(
+    pool: SqlitePool,
+    global: cli::GlobalArgs,
+    initial_command: Option<String>,
+) -> CliResult<()> {
     let mut status_message: Option<String> = None;
     let mut initial_cmd = initial_command;
     loop {
-        let settings = load_entry_settings();
+        let settings = load_entry_settings(&pool).await;
         let action = commands::entry::run(commands::entry::Args {
             status_message: status_message.take(),
             initial_command: initial_cmd.take(),
@@ -266,12 +325,13 @@ async fn run_entry_loop(global: cli::GlobalArgs, initial_command: Option<String>
             llm_provider: settings
                 .as_ref()
                 .and_then(|value| value.current_llm_provider.clone()),
+            pool: pool.clone(),
         })
         .await;
         match action {
             commands::entry::EntryAction::Launch(cmd) => match cmd {
                 commands::entry::EntryCommand::Listen => {
-                    let settings = load_entry_settings();
+                    let settings = load_entry_settings(&pool).await;
                     let listen = match resolve_entry_listen_config(settings.as_ref()) {
                         Ok(listen) => listen,
                         Err(message) => {
@@ -290,12 +350,11 @@ async fn run_entry_loop(global: cli::GlobalArgs, initial_command: Option<String>
                         },
                         record: global.record,
                         audio: cli::AudioMode::Dual,
+                        pool: pool.clone(),
                     })
                     .await;
                 }
                 commands::entry::EntryCommand::Chat { session_id } => {
-                    let paths = config::desktop::resolve_paths();
-                    let db_path = paths.vault_base.join("app.db");
                     return commands::chat::run(commands::chat::Args {
                         session: session_id,
                         prompt: None,
@@ -303,23 +362,21 @@ async fn run_entry_loop(global: cli::GlobalArgs, initial_command: Option<String>
                         base_url: global.base_url.clone(),
                         api_key: global.api_key.clone(),
                         model: global.model.clone(),
-                        db_path,
+                        pool: pool.clone(),
                         resume_session_id: None,
                     })
                     .await;
                 }
                 commands::entry::EntryCommand::View { session_id } => {
-                    let paths = config::desktop::resolve_paths();
-                    let db_path = paths.vault_base.join("app.db");
                     return commands::sessions::view::run(commands::sessions::view::Args {
                         session_id,
-                        db_path,
+                        pool: pool.clone(),
                     })
                     .await;
                 }
             },
             commands::entry::EntryAction::Model(cmd) => {
-                if let Err(e) = commands::model::run(cmd).await {
+                if let Err(e) = commands::model::run(cmd, &pool).await {
                     status_message = Some(format!("model error: {e}"));
                 }
             }
@@ -328,9 +385,8 @@ async fn run_entry_loop(global: cli::GlobalArgs, initial_command: Option<String>
     }
 }
 
-fn load_entry_settings() -> Option<config::desktop::DesktopSettings> {
-    let paths = config::desktop::resolve_paths();
-    config::desktop::load_settings(&paths.settings_path)
+async fn load_entry_settings(pool: &SqlitePool) -> Option<config::paths::Settings> {
+    config::paths::load_settings_from_db(pool).await
 }
 
 struct EntryListenConfig {
@@ -339,7 +395,7 @@ struct EntryListenConfig {
 }
 
 fn resolve_entry_listen_config(
-    settings: Option<&config::desktop::DesktopSettings>,
+    settings: Option<&config::paths::Settings>,
 ) -> Result<EntryListenConfig, String> {
     let Some(settings) = settings else {
         return Err("No STT provider configured. Run /connect.".to_string());

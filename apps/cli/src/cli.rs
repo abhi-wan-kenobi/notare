@@ -93,6 +93,16 @@ pub enum Commands {
         #[command(subcommand)]
         command: Option<SessionsCommands>,
     },
+    /// Browse humans (contacts)
+    Humans {
+        #[command(subcommand)]
+        command: Option<HumansCommands>,
+    },
+    /// Browse organizations
+    Orgs {
+        #[command(subcommand)]
+        command: Option<OrgsCommands>,
+    },
     /// Show configured providers and settings
     Status,
     /// Authenticate with char.com
@@ -133,6 +143,65 @@ pub enum SessionsCommands {
         #[arg(long)]
         id: String,
     },
+    /// List participants in a session
+    Participants {
+        #[arg(long)]
+        id: String,
+    },
+    /// Add a participant to a session
+    AddParticipant {
+        #[arg(long)]
+        session: String,
+        #[arg(long)]
+        human: String,
+    },
+    /// Remove a participant from a session
+    RmParticipant {
+        #[arg(long)]
+        session: String,
+        #[arg(long)]
+        human: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum HumansCommands {
+    /// Add a new human
+    Add {
+        name: String,
+        #[arg(long)]
+        email: Option<String>,
+        #[arg(long)]
+        org: Option<String>,
+        #[arg(long)]
+        title: Option<String>,
+    },
+    /// Show details for a human
+    Show {
+        #[arg(long)]
+        id: String,
+    },
+    /// Remove a human
+    Rm {
+        #[arg(long)]
+        id: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum OrgsCommands {
+    /// Add a new organization
+    Add { name: String },
+    /// Show details for an organization
+    Show {
+        #[arg(long)]
+        id: String,
+    },
+    /// Remove an organization
+    Rm {
+        #[arg(long)]
+        id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -169,6 +238,7 @@ pub enum OutputFormat {
 pub enum ConnectionType {
     Stt,
     Llm,
+    Cal,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
@@ -191,6 +261,10 @@ pub enum ConnectProvider {
     Ollama,
     Lmstudio,
     Custom,
+    #[cfg(target_os = "macos")]
+    AppleCalendar,
+    GoogleCalendar,
+    OutlookCalendar,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]

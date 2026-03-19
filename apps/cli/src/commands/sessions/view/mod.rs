@@ -3,10 +3,9 @@ mod app;
 mod effect;
 mod ui;
 
-use std::path::PathBuf;
-
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
 use hypr_transcript::{RuntimeSpeakerHint, WordRef};
+use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
 use crate::error::{CliError, CliResult};
@@ -19,13 +18,14 @@ const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);
 
 pub struct Args {
     pub session_id: String,
-    pub db_path: PathBuf,
+    pub pool: SqlitePool,
 }
 
 enum ExternalEvent {
     Loaded {
         session: hypr_db_app::SessionRow,
         segments: Vec<hypr_transcript::Segment>,
+        memo: Option<hypr_db_app::NoteRow>,
     },
     LoadError(String),
     Saved,
@@ -35,7 +35,7 @@ enum ExternalEvent {
 struct ViewScreen {
     app: App,
     external_tx: mpsc::UnboundedSender<ExternalEvent>,
-    db_path: PathBuf,
+    pool: SqlitePool,
 }
 
 impl ViewScreen {
@@ -44,9 +44,9 @@ impl ViewScreen {
             match effect {
                 Effect::SaveMemo { session_id, memo } => {
                     let tx = self.external_tx.clone();
-                    let db_path = self.db_path.clone();
+                    let pool = self.pool.clone();
                     tokio::spawn(async move {
-                        match save_memo(db_path, &session_id, &memo).await {
+                        match save_memo(&pool, &session_id, &memo).await {
                             Ok(()) => {
                                 let _ = tx.send(ExternalEvent::Saved);
                             }
@@ -91,7 +91,15 @@ impl Screen for ViewScreen {
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
         let action = match event {
-            ExternalEvent::Loaded { session, segments } => Action::Loaded { session, segments },
+            ExternalEvent::Loaded {
+                session,
+                segments,
+                memo,
+            } => Action::Loaded {
+                session,
+                segments,
+                memo,
+            },
             ExternalEvent::LoadError(msg) => Action::LoadError(msg),
             ExternalEvent::Saved => Action::Saved,
             ExternalEvent::SaveError(msg) => Action::SaveError(msg),
@@ -118,12 +126,16 @@ pub async fn run(args: Args) -> CliResult<()> {
 
     let load_tx = external_tx.clone();
     let session_id = args.session_id.clone();
-    let db_path = args.db_path.clone();
+    let pool = args.pool.clone();
 
     tokio::spawn(async move {
-        match load_session_data(db_path, &session_id).await {
-            Ok((session, segments)) => {
-                let _ = load_tx.send(ExternalEvent::Loaded { session, segments });
+        match load_session_data(&pool, &session_id).await {
+            Ok((session, segments, memo)) => {
+                let _ = load_tx.send(ExternalEvent::Loaded {
+                    session,
+                    segments,
+                    memo,
+                });
             }
             Err(e) => {
                 let _ = load_tx.send(ExternalEvent::LoadError(e));
@@ -134,7 +146,7 @@ pub async fn run(args: Args) -> CliResult<()> {
     let screen = ViewScreen {
         app: App::new(args.session_id),
         external_tx,
-        db_path: args.db_path,
+        pool: args.pool,
     };
 
     run_screen(screen, Some(external_rx))
@@ -143,29 +155,32 @@ pub async fn run(args: Args) -> CliResult<()> {
 }
 
 async fn load_session_data(
-    db_path: PathBuf,
+    pool: &SqlitePool,
     session_id: &str,
-) -> Result<(hypr_db_app::SessionRow, Vec<hypr_transcript::Segment>), String> {
-    let db = hypr_db_core2::Db3::connect_local_plain(&db_path)
-        .await
-        .map_err(|e| format!("failed to open database: {e}"))?;
-
-    hypr_db_app::migrate(db.pool())
-        .await
-        .map_err(|e| format!("migration failed: {e}"))?;
-
-    let session = hypr_db_app::get_session(db.pool(), session_id)
+) -> Result<
+    (
+        hypr_db_app::SessionRow,
+        Vec<hypr_transcript::Segment>,
+        Option<hypr_db_app::NoteRow>,
+    ),
+    String,
+> {
+    let session = hypr_db_app::get_session(pool, session_id)
         .await
         .map_err(|e| format!("query failed: {e}"))?
         .ok_or_else(|| format!("session not found: {session_id}"))?;
 
-    let words = hypr_db_app::load_words(db.pool(), session_id)
+    let words = hypr_db_app::load_words(pool, session_id)
         .await
         .map_err(|e| format!("load words failed: {e}"))?;
 
-    let hints = hypr_db_app::load_hints(db.pool(), session_id)
+    let hints = hypr_db_app::load_hints(pool, session_id)
         .await
         .map_err(|e| format!("load hints failed: {e}"))?;
+
+    let memo = hypr_db_app::get_note_by_session_and_kind(pool, session_id, "memo")
+        .await
+        .map_err(|e| format!("load memo failed: {e}"))?;
 
     let runtime_hints: Vec<RuntimeSpeakerHint> = hints
         .into_iter()
@@ -177,17 +192,27 @@ async fn load_session_data(
 
     let segments = hypr_transcript::build_segments(&words, &[], &runtime_hints, None);
 
-    Ok((session, segments))
+    Ok((session, segments, memo))
 }
 
-async fn save_memo(db_path: PathBuf, session_id: &str, memo: &str) -> Result<(), String> {
-    let db = hypr_db_core2::Db3::connect_local_plain(&db_path)
+async fn save_memo(pool: &SqlitePool, session_id: &str, memo: &str) -> Result<(), String> {
+    let existing = hypr_db_app::get_note_by_session_and_kind(pool, session_id, "memo")
         .await
-        .map_err(|e| format!("failed to open database: {e}"))?;
+        .map_err(|e| format!("query failed: {e}"))?;
 
-    hypr_db_app::update_session(db.pool(), session_id, None, None, Some(memo))
-        .await
-        .map_err(|e| format!("update failed: {e}"))?;
+    match existing {
+        Some(note) => {
+            hypr_db_app::update_note(pool, &note.id, memo)
+                .await
+                .map_err(|e| format!("update failed: {e}"))?;
+        }
+        None => {
+            let note_id = format!("{session_id}:memo");
+            hypr_db_app::insert_note(pool, &note_id, session_id, "memo", "", memo)
+                .await
+                .map_err(|e| format!("insert failed: {e}"))?;
+        }
+    }
 
     Ok(())
 }

@@ -7,8 +7,10 @@ pub mod desktop;
 pub mod entry;
 pub mod exit;
 pub mod hello;
+pub mod humans;
 pub mod listen;
 pub mod model;
+pub mod orgs;
 pub mod sessions;
 pub mod status;
 

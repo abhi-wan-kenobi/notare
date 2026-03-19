@@ -9,7 +9,7 @@ use ratatui::text::Text;
 use ratatui::widgets::{Cell, Row, Table};
 
 use crate::cli::OutputFormat;
-use crate::config::desktop as settings;
+use crate::config::paths as settings;
 use crate::error::CliResult;
 use crate::widgets::InlineBox;
 
@@ -27,7 +27,7 @@ pub(super) struct ModelRow {
 pub(super) async fn collect_model_rows(
     models: &[LocalModel],
     models_base: &Path,
-    current: &Option<settings::DesktopSettings>,
+    current: &Option<settings::Settings>,
     manager: &ModelDownloadManager<LocalModel>,
 ) -> Vec<ModelRow> {
     let mut rows = Vec::new();

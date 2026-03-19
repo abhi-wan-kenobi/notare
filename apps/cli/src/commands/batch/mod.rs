@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use hypr_cli_tui::run_screen_inline;
 use hypr_listener2_core::{BatchErrorCode, BatchEvent};
+use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
 pub use crate::cli::BatchArgs;
@@ -14,7 +15,6 @@ use hypr_db_app::{PersistableSpeakerHint, TranscriptDeltaPersist};
 use hypr_transcript::{FinalizedWord, SpeakerHintData, WordState};
 
 use crate::cli::OutputFormat;
-use crate::config::desktop;
 use crate::config::stt::resolve_config;
 use crate::config::stt::{ChannelBatchRuntime, SttGlobalArgs};
 use crate::error::{CliError, CliResult};
@@ -62,7 +62,12 @@ fn spawn_bridge(
     });
 }
 
-pub async fn run(args: BatchArgs, stt: SttGlobalArgs, quiet: bool) -> CliResult<()> {
+pub async fn run(
+    args: BatchArgs,
+    stt: SttGlobalArgs,
+    quiet: bool,
+    pool: SqlitePool,
+) -> CliResult<()> {
     let resolved = resolve_config(
         stt.provider,
         stt.base_url,
@@ -174,28 +179,18 @@ pub async fn run(args: BatchArgs, stt: SttGlobalArgs, quiet: bool) -> CliResult<
 
     // Persist session to SQLite (non-fatal)
     {
-        let db_path = desktop::resolve_paths().vault_base.join("app.db");
-        if let Ok(db) = hypr_db_core2::Db3::connect_local_plain(&db_path).await {
-            if hypr_db_app::migrate(db.pool()).await.is_ok() {
-                let pool = db.pool();
-                if hypr_db_app::insert_session(pool, &session_id).await.is_ok() {
-                    let (words, hints) = response_to_words(&response);
-                    let delta = TranscriptDeltaPersist {
-                        new_words: words,
-                        hints,
-                        replaced_ids: vec![],
-                    };
-                    let _ = hypr_db_app::apply_delta(pool, &session_id, &delta).await;
-                    let _ = hypr_db_app::update_session(
-                        pool,
-                        &session_id,
-                        Some(&file_name),
-                        None,
-                        None,
-                    )
-                    .await;
-                }
-            }
+        if hypr_db_app::insert_session(&pool, &session_id)
+            .await
+            .is_ok()
+        {
+            let (words, hints) = response_to_words(&response);
+            let delta = TranscriptDeltaPersist {
+                new_words: words,
+                hints,
+                replaced_ids: vec![],
+            };
+            let _ = hypr_db_app::apply_delta(&pool, &session_id, &delta).await;
+            let _ = hypr_db_app::update_session(&pool, &session_id, Some(&file_name)).await;
         }
     }
 

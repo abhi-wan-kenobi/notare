@@ -39,7 +39,7 @@ impl<'a> CenteredDialog<'a> {
 
         let [title_area, _gap, content_area] = Layout::vertical([
             Constraint::Length(1),
-            Constraint::Length(2),
+            Constraint::Length(1),
             Constraint::Min(0),
         ])
         .areas(padded);

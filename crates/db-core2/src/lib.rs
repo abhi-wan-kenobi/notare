@@ -47,7 +47,8 @@ impl Db3 {
     pub async fn connect_local_plain(path: impl AsRef<Path>) -> Result<Self, sqlx::Error> {
         let options = SqliteConnectOptions::new()
             .filename(path)
-            .create_if_missing(true);
+            .create_if_missing(true)
+            .pragma("foreign_keys", "ON");
         let pool = SqlitePoolOptions::new().connect_with(options).await?;
 
         Ok(Self {
@@ -57,7 +58,8 @@ impl Db3 {
     }
 
     pub async fn connect_memory_plain() -> Result<Self, sqlx::Error> {
-        let options = SqliteConnectOptions::from_str("sqlite::memory:")?;
+        let options =
+            SqliteConnectOptions::from_str("sqlite::memory:")?.pragma("foreign_keys", "ON");
         let pool = SqlitePoolOptions::new()
             .max_connections(1)
             .connect_with(options)

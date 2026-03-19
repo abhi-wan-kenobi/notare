@@ -23,7 +23,6 @@ hypr-cli-tui = { workspace = true }
 hypr-db-app = { workspace = true }
 hypr-db-core2 = { workspace = true }
 hypr-file = { workspace = true }
-hypr-fs-sync-core = { workspace = true }
 hypr-host = { workspace = true }
 hypr-language = { workspace = true }
 hypr-listener-core = { workspace = true }
@@ -34,6 +33,7 @@ hypr-local-stt-server = { workspace = true }
 hypr-model-downloader = { workspace = true }
 hypr-openrouter = { workspace = true }
 hypr-storage = { workspace = true }
+hypr-template-cli = { workspace = true }
 hypr-transcribe-proxy = { workspace = true }
 hypr-transcript = { workspace = true }
 owhisper-client = { workspace = true }

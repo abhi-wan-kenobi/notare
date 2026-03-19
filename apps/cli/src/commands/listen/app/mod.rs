@@ -43,6 +43,13 @@ impl App {
         }
     }
 
+    pub(crate) fn apply_runtime_events<I>(&mut self, events: I)
+    where
+        I: IntoIterator<Item = super::runtime::RuntimeEvent>,
+    {
+        self.state.apply_runtime_events(events);
+    }
+
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
             return vec![Effect::Exit { force: false }];
@@ -121,7 +128,7 @@ impl App {
     }
 
     pub(crate) fn last_error(&self) -> Option<&str> {
-        self.state.errors().last().map(String::as_str)
+        self.state.last_error()
     }
 
     pub(crate) fn mic_muted(&self) -> bool {

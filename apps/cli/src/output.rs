@@ -28,10 +28,10 @@ pub fn format_timestamp_ms(ms: i64) -> String {
 }
 
 pub fn format_timestamp_secs(secs: f64) -> String {
-    let total_secs = secs as u64;
-    let mins = total_secs / 60;
-    let s = total_secs % 60;
-    let frac = ((secs - secs.floor()) * 10.0).round() as u64;
+    let total_tenths = (secs.max(0.0) * 10.0).round() as u64;
+    let mins = total_tenths / 600;
+    let s = (total_tenths % 600) / 10;
+    let frac = total_tenths % 10;
     format!("{mins:02}:{s:02}.{frac}")
 }
 
@@ -75,4 +75,17 @@ pub async fn write_json(output: Option<&Path>, value: &impl serde::Serialize) ->
     .map_err(|e| CliError::operation_failed("serialize response", e.to_string()))?;
 
     write_bytes_to(output, bytes).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_timestamp_secs;
+
+    #[test]
+    fn format_timestamp_secs_handles_rounding_boundaries() {
+        assert_eq!(format_timestamp_secs(5.94), "00:05.9");
+        assert_eq!(format_timestamp_secs(5.95), "00:06.0");
+        assert_eq!(format_timestamp_secs(59.95), "01:00.0");
+        assert_eq!(format_timestamp_secs(0.0), "00:00.0");
+    }
 }

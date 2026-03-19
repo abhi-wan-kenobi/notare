@@ -3,7 +3,6 @@ mod runtime;
 mod screen;
 
 use std::io::IsTerminal;
-use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -11,32 +10,32 @@ use hypr_cli_tui::run_screen_inline;
 use hypr_local_model::{LocalModel, LocalModelKind};
 use hypr_local_stt_core::SUPPORTED_MODELS as SUPPORTED_STT_MODELS;
 use hypr_model_downloader::ModelDownloadManager;
+use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 pub use crate::cli::CactusCommands;
 pub use crate::cli::{ModelCommands, ModelKind};
-use crate::config::cactus;
-use crate::config::desktop as settings;
+use crate::config::paths as settings;
 use crate::error::{CliError, CliResult, did_you_mean};
 use runtime::CliModelRuntime;
 
-pub async fn run(command: ModelCommands) -> CliResult<()> {
+pub async fn run(command: ModelCommands, pool: &SqlitePool) -> CliResult<()> {
     let paths = settings::resolve_paths();
     let models_base = paths.models_base.clone();
+    let db_path = paths.base.join("app.db");
 
     match command {
         ModelCommands::Paths => {
-            println!("global_base={}", paths.global_base.display());
-            println!("vault_base={}", paths.vault_base.display());
-            println!("settings_path={}", paths.settings_path.display());
+            println!("base={}", paths.base.display());
+            println!("db_path={}", db_path.display());
             println!("models_base={}", models_base.display());
             Ok(())
         }
         ModelCommands::Current => {
-            println!("settings_path={}", paths.settings_path.display());
+            println!("db_path={}", db_path.display());
 
-            let Some(current) = settings::load_settings(&paths.settings_path) else {
+            let Some(current) = settings::load_settings_from_db(pool).await else {
                 println!("stt\tprovider=unset\tmodel=unset\tconfig=unavailable");
                 println!("llm\tprovider=unset\tmodel=unset\tconfig=unavailable");
                 return Ok(());
@@ -80,7 +79,7 @@ pub async fn run(command: ModelCommands) -> CliResult<()> {
                 progress_tx: None,
             });
             let manager = ModelDownloadManager::new(runtime);
-            let current = settings::load_settings(&paths.settings_path);
+            let current = settings::load_settings_from_db(pool).await;
 
             let models = if supported {
                 supported_models(kind)?
@@ -92,9 +91,7 @@ pub async fn run(command: ModelCommands) -> CliResult<()> {
             list::write_model_output(&rows, &models_base, format).await
         }
         #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-        ModelCommands::Cactus { command } => {
-            run_cactus(command, &paths.settings_path, &models_base).await
-        }
+        ModelCommands::Cactus { command } => run_cactus(command, pool, &models_base).await,
         ModelCommands::Download { name } => {
             let Some(model) = find_model(&name) else {
                 return Err(not_found_model(&name));
@@ -113,7 +110,7 @@ pub async fn run(command: ModelCommands) -> CliResult<()> {
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 async fn run_cactus(
     command: CactusCommands,
-    settings_path: &std::path::Path,
+    pool: &SqlitePool,
     models_base: &std::path::Path,
 ) -> CliResult<()> {
     match command {
@@ -123,28 +120,28 @@ async fn run_cactus(
                 progress_tx: None,
             });
             let manager = ModelDownloadManager::new(runtime);
-            let current = settings::load_settings(settings_path);
-            let models = cactus::all_cactus_models();
+            let current = settings::load_settings_from_db(pool).await;
+            let models = all_cactus_models();
 
             let rows = list::collect_model_rows(&models, models_base, &current, &manager).await;
             list::write_model_output(&rows, models_base, format).await
         }
         CactusCommands::Download { name } => {
-            let Some(model) = cactus::find_cactus_model(&name) else {
-                return Err(cactus::not_found_cactus_model(&name, false));
+            let Some(model) = find_cactus_model(&name) else {
+                return Err(not_found_cactus_model(&name, false));
             };
             download_model(model, models_base).await
         }
         CactusCommands::Delete { name } => {
-            let Some(model) = cactus::find_cactus_model(&name) else {
-                return Err(cactus::not_found_cactus_model(&name, false));
+            let Some(model) = find_cactus_model(&name) else {
+                return Err(not_found_cactus_model(&name, false));
             };
             delete_model(model, models_base).await
         }
     }
 }
 
-async fn download_model(model: LocalModel, models_base: &Path) -> CliResult<()> {
+async fn download_model(model: LocalModel, models_base: &std::path::Path) -> CliResult<()> {
     let show_progress = std::io::stderr().is_terminal();
 
     let (progress_tx, progress_rx) = if show_progress {
@@ -217,7 +214,7 @@ async fn download_model(model: LocalModel, models_base: &Path) -> CliResult<()> 
     }
 }
 
-async fn delete_model(model: LocalModel, models_base: &Path) -> CliResult<()> {
+async fn delete_model(model: LocalModel, models_base: &std::path::Path) -> CliResult<()> {
     let runtime = Arc::new(CliModelRuntime {
         models_base: models_base.to_path_buf(),
         progress_tx: None,
@@ -269,7 +266,53 @@ fn supported_models(kind: Option<ModelKind>) -> CliResult<Vec<LocalModel>> {
 }
 
 fn model_is_enabled(model: &LocalModel) -> bool {
-    cactus::CACTUS_ENABLED || !cactus::is_cactus_local_model(model)
+    cfg!(any(target_arch = "arm", target_arch = "aarch64")) || !is_cactus_local_model(model)
+}
+
+fn is_cactus_local_model(model: &LocalModel) -> bool {
+    matches!(model, LocalModel::Cactus(_) | LocalModel::CactusLlm(_))
+}
+
+fn all_cactus_models() -> Vec<LocalModel> {
+    if !cfg!(any(target_arch = "arm", target_arch = "aarch64")) {
+        return Vec::new();
+    }
+
+    LocalModel::all()
+        .into_iter()
+        .filter(|model| model.cli_name().starts_with("cactus-"))
+        .collect()
+}
+
+fn find_cactus_model(name: &str) -> Option<LocalModel> {
+    let canonical = if name.starts_with("cactus-") {
+        name.to_string()
+    } else {
+        format!("cactus-{name}")
+    };
+    all_cactus_models()
+        .into_iter()
+        .find(|model| model.cli_name() == name || model.cli_name() == canonical)
+}
+
+fn not_found_cactus_model(name: &str, _include_downloaded_hint: bool) -> CliError {
+    let names: Vec<&str> = LocalModel::all()
+        .iter()
+        .filter_map(|model| {
+            if matches!(model, LocalModel::Cactus(_)) {
+                Some(model.cli_name())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let mut hint = String::new();
+    if let Some(suggestion) = did_you_mean(name, &names) {
+        hint.push_str(&format!("Did you mean '{suggestion}'?\n\n"));
+    }
+    hint.push_str("Run `char model cactus list` to see available models.");
+    CliError::not_found(format!("cactus model '{name}'"), Some(hint))
 }
 
 fn matches_kind(model: &LocalModel, kind: Option<ModelKind>) -> bool {
@@ -309,7 +352,7 @@ fn not_found_model(name: &str) -> CliError {
     CliError::not_found(format!("model '{name}'"), Some(hint))
 }
 
-fn is_current_model(model: &LocalModel, current: &settings::DesktopSettings) -> bool {
+fn is_current_model(model: &LocalModel, current: &settings::Settings) -> bool {
     match model.model_kind() {
         LocalModelKind::Llm => {
             current.current_llm_model.as_deref() == model.settings_name().as_deref()
@@ -341,8 +384,8 @@ mod tests {
 
     use super::*;
 
-    fn empty_settings() -> settings::DesktopSettings {
-        settings::DesktopSettings {
+    fn empty_settings() -> settings::Settings {
+        settings::Settings {
             current_stt_provider: None,
             current_stt_model: None,
             current_llm_provider: None,

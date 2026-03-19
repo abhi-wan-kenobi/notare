@@ -1,7 +1,9 @@
-use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use rig::message::Message;
+use sqlx::SqlitePool;
 use tokio::sync::mpsc;
+use tokio::task::JoinSet;
 
 use crate::agent::Backend;
 use crate::error::{CliError, CliResult};
@@ -14,10 +16,13 @@ pub(crate) enum RuntimeEvent {
     TitleGenerated(String),
 }
 
+#[derive(Clone)]
 pub(crate) struct Runtime {
     backend: Backend,
     tx: mpsc::UnboundedSender<RuntimeEvent>,
     max_turns: usize,
+    pool: SqlitePool,
+    pending_writes: Arc<Mutex<JoinSet<()>>>,
 }
 
 impl Runtime {
@@ -25,11 +30,14 @@ impl Runtime {
         config: ResolvedLlmConfig,
         system_message: Option<String>,
         tx: mpsc::UnboundedSender<RuntimeEvent>,
+        pool: SqlitePool,
     ) -> CliResult<Self> {
         Ok(Self {
             backend: Backend::new(config, system_message)?,
             tx,
             max_turns: 1,
+            pool,
+            pending_writes: Arc::new(Mutex::new(JoinSet::new())),
         })
     }
 
@@ -53,49 +61,38 @@ impl Runtime {
         });
     }
 
-    pub(crate) fn create_session(&self, db_path: PathBuf, session_id: String) {
-        tokio::spawn(async move {
-            let Ok(db) = hypr_db_core2::Db3::connect_local_plain(&db_path).await else {
-                return;
-            };
-            let _ = hypr_db_app::migrate(db.pool()).await;
-            let _ = hypr_db_app::insert_session(db.pool(), &session_id).await;
-        });
+    pub(crate) async fn ensure_session(&self, session_id: &str) {
+        let _ = hypr_db_app::insert_session(&self.pool, session_id).await;
     }
 
     pub(crate) fn persist_message(
         &self,
-        db_path: PathBuf,
         session_id: String,
         message_id: String,
         role: String,
         content: String,
     ) {
-        tokio::spawn(async move {
-            let Ok(db) = hypr_db_core2::Db3::connect_local_plain(&db_path).await else {
-                return;
-            };
-            let _ = hypr_db_app::migrate(db.pool()).await;
-            let _ = hypr_db_app::insert_chat_message(
-                db.pool(),
-                &message_id,
-                &session_id,
-                &role,
-                &content,
-            )
-            .await;
+        let pool = self.pool.clone();
+        self.pending_writes.lock().unwrap().spawn(async move {
+            let _ =
+                hypr_db_app::insert_chat_message(&pool, &message_id, &session_id, &role, &content)
+                    .await;
         });
     }
 
-    pub(crate) fn update_title(&self, db_path: PathBuf, session_id: String, title: String) {
-        tokio::spawn(async move {
-            let Ok(db) = hypr_db_core2::Db3::connect_local_plain(&db_path).await else {
-                return;
-            };
-            let _ = hypr_db_app::migrate(db.pool()).await;
-            let _ =
-                hypr_db_app::update_session(db.pool(), &session_id, Some(&title), None, None).await;
+    pub(crate) fn update_title(&self, session_id: String, title: String) {
+        let pool = self.pool.clone();
+        self.pending_writes.lock().unwrap().spawn(async move {
+            let _ = hypr_db_app::update_session(&pool, &session_id, Some(&title)).await;
         });
+    }
+
+    pub(crate) async fn drain_pending_writes(&self) {
+        let mut set = {
+            let mut guard = self.pending_writes.lock().unwrap();
+            std::mem::replace(&mut *guard, JoinSet::new())
+        };
+        while set.join_next().await.is_some() {}
     }
 
     pub(crate) fn submit(&self, prompt: String, history: Vec<Message>) {

@@ -1,4 +1,5 @@
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
+use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
 mod action;
@@ -27,16 +28,23 @@ pub struct Args {
     pub initial_command: Option<String>,
     pub stt_provider: Option<String>,
     pub llm_provider: Option<String>,
+    pub pool: SqlitePool,
 }
 
 enum ExternalEvent {
     SessionsLoaded(Vec<hypr_db_app::SessionRow>),
     SessionsLoadError(String),
+    ConnectSaved {
+        connection_types: Vec<crate::cli::ConnectionType>,
+        provider_id: String,
+    },
+    ConnectSaveError(String),
 }
 
 struct EntryScreen {
     app: App,
     external_tx: mpsc::UnboundedSender<ExternalEvent>,
+    pool: SqlitePool,
 }
 
 impl EntryScreen {
@@ -46,42 +54,51 @@ impl EntryScreen {
                 Effect::Launch(cmd) => return ScreenControl::Exit(EntryAction::Launch(cmd)),
                 Effect::LoadSessions => {
                     let tx = self.external_tx.clone();
-                    let paths = crate::config::desktop::resolve_paths();
-                    let db_path = paths.vault_base.join("app.db");
+                    let pool = self.pool.clone();
                     tokio::spawn(async move {
-                        match crate::commands::sessions::load_sessions(db_path).await {
+                        match hypr_db_app::list_sessions(&pool).await {
                             Ok(sessions) => {
                                 let _ = tx.send(ExternalEvent::SessionsLoaded(sessions));
                             }
                             Err(e) => {
-                                let _ = tx.send(ExternalEvent::SessionsLoadError(e));
+                                let _ = tx.send(ExternalEvent::SessionsLoadError(e.to_string()));
                             }
                         }
                     });
                 }
                 Effect::SaveConnect {
-                    connection_type,
+                    connection_types,
                     provider,
                     base_url,
                     api_key,
                 } => {
                     let provider_id = provider.id().to_string();
-                    let action = match crate::commands::connect::save_config(
-                        crate::commands::connect::effect::SaveData {
-                            connection_type,
-                            provider,
-                            base_url,
-                            api_key,
-                        },
-                    ) {
-                        Ok(()) => Action::ConnectSaved {
-                            connection_type,
-                            provider_id,
-                        },
-                        Err(error) => Action::StatusMessage(error.to_string()),
-                    };
-                    let inner = self.app.dispatch(action);
-                    debug_assert!(inner.is_empty());
+                    let pool = self.pool.clone();
+                    let tx = self.external_tx.clone();
+                    let ct = connection_types.clone();
+                    tokio::spawn(async move {
+                        match crate::commands::connect::save_config(
+                            &pool,
+                            crate::commands::connect::effect::SaveData {
+                                connection_types: ct,
+                                provider,
+                                base_url,
+                                api_key,
+                            },
+                        )
+                        .await
+                        {
+                            Ok(()) => {
+                                let _ = tx.send(ExternalEvent::ConnectSaved {
+                                    connection_types,
+                                    provider_id,
+                                });
+                            }
+                            Err(error) => {
+                                let _ = tx.send(ExternalEvent::ConnectSaveError(error.to_string()));
+                            }
+                        }
+                    });
                 }
                 Effect::OpenAuth => {
                     let message = match crate::commands::auth::run() {
@@ -159,6 +176,14 @@ impl Screen for EntryScreen {
         let action = match event {
             ExternalEvent::SessionsLoaded(sessions) => Action::SessionsLoaded(sessions),
             ExternalEvent::SessionsLoadError(msg) => Action::SessionsLoadError(msg),
+            ExternalEvent::ConnectSaved {
+                connection_types,
+                provider_id,
+            } => Action::ConnectSaved {
+                connection_types,
+                provider_id,
+            },
+            ExternalEvent::ConnectSaveError(msg) => Action::StatusMessage(msg),
         };
         let effects = self.app.dispatch(action);
         self.apply_effects(effects)
@@ -180,9 +205,11 @@ impl Screen for EntryScreen {
 pub async fn run(args: Args) -> EntryAction {
     let (external_tx, external_rx) = mpsc::unbounded_channel();
 
+    let pool = args.pool.clone();
     let mut screen = EntryScreen {
         app: App::new(args.status_message, args.stt_provider, args.llm_provider),
         external_tx,
+        pool,
     };
 
     if let Some(command) = args.initial_command {

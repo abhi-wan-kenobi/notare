@@ -4,9 +4,8 @@ pub(crate) mod effect;
 pub(crate) mod ui;
 pub(crate) mod view;
 
-use std::path::PathBuf;
-
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
+use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
 use crate::error::{CliError, CliResult};
@@ -82,16 +81,16 @@ impl Screen for SessionsScreen {
     }
 }
 
-pub async fn run(db_path: PathBuf) -> CliResult<Option<String>> {
+pub async fn run(pool: SqlitePool) -> CliResult<Option<String>> {
     let (external_tx, external_rx) = mpsc::unbounded_channel();
 
     tokio::spawn(async move {
-        match load_sessions(db_path).await {
+        match hypr_db_app::list_sessions(&pool).await {
             Ok(sessions) => {
                 let _ = external_tx.send(ExternalEvent::Loaded(sessions));
             }
             Err(e) => {
-                let _ = external_tx.send(ExternalEvent::LoadError(e));
+                let _ = external_tx.send(ExternalEvent::LoadError(e.to_string()));
             }
         }
     });
@@ -104,17 +103,40 @@ pub async fn run(db_path: PathBuf) -> CliResult<Option<String>> {
 }
 
 pub(crate) async fn load_sessions(
-    db_path: PathBuf,
+    pool: SqlitePool,
 ) -> Result<Vec<hypr_db_app::SessionRow>, String> {
-    let db = hypr_db_core2::Db3::connect_local_plain(&db_path)
-        .await
-        .map_err(|e| format!("failed to open database: {e}"))?;
-
-    hypr_db_app::migrate(db.pool())
-        .await
-        .map_err(|e| format!("migration failed: {e}"))?;
-
-    hypr_db_app::list_sessions(db.pool())
+    hypr_db_app::list_sessions(&pool)
         .await
         .map_err(|e| format!("query failed: {e}"))
+}
+
+pub async fn participants(pool: &SqlitePool, session_id: &str) -> CliResult<()> {
+    let rows = hypr_db_app::list_session_participants(pool, session_id)
+        .await
+        .map_err(|e| CliError::operation_failed("query", e.to_string()))?;
+
+    for row in &rows {
+        println!("{}\t{}", row.human_id, row.source);
+    }
+    Ok(())
+}
+
+pub async fn add_participant(pool: &SqlitePool, session_id: &str, human_id: &str) -> CliResult<()> {
+    hypr_db_app::add_session_participant(pool, session_id, human_id, "manual")
+        .await
+        .map_err(|e| CliError::operation_failed("add participant", e.to_string()))?;
+    eprintln!("added {human_id} to {session_id}");
+    Ok(())
+}
+
+pub async fn remove_participant(
+    pool: &SqlitePool,
+    session_id: &str,
+    human_id: &str,
+) -> CliResult<()> {
+    hypr_db_app::remove_session_participant(pool, session_id, human_id)
+        .await
+        .map_err(|e| CliError::operation_failed("remove participant", e.to_string()))?;
+    eprintln!("removed {human_id} from {session_id}");
+    Ok(())
 }

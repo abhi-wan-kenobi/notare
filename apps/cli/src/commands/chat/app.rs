@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::time::Instant;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -28,7 +27,6 @@ const MAX_HISTORY: usize = 20;
 pub(crate) struct App {
     model: String,
     session: Option<String>,
-    db_path: PathBuf,
     session_id: String,
     api_history: Vec<Message>,
     max_history: usize,
@@ -46,12 +44,7 @@ pub(crate) struct App {
 }
 
 impl App {
-    pub(crate) fn new(
-        model: String,
-        session: Option<String>,
-        db_path: PathBuf,
-        session_id: String,
-    ) -> Self {
+    pub(crate) fn new(model: String, session: Option<String>, session_id: String) -> Self {
         let mut input = Editor::with_styles(Theme::DEFAULT);
         input.set_placeholder(
             "Type a message and press Enter...",
@@ -67,7 +60,6 @@ impl App {
         Self {
             model,
             session,
-            db_path,
             session_id,
             api_history: Vec::new(),
             max_history: MAX_HISTORY,
@@ -85,10 +77,6 @@ impl App {
         }
     }
 
-    pub(crate) fn session_id(&self) -> &str {
-        &self.session_id
-    }
-
     pub(crate) fn load_history(&mut self, messages: Vec<hypr_db_app::ChatMessageRow>) {
         for msg in messages {
             let speaker = match msg.role.as_str() {
@@ -101,8 +89,8 @@ impl App {
                 content: msg.content.clone(),
             });
             match speaker {
-                Speaker::User => self.api_history.push(Message::user(msg.content)),
-                Speaker::Assistant => self.api_history.push(Message::assistant(msg.content)),
+                Speaker::User => self.push_api_history(Message::user(msg.content)),
+                Speaker::Assistant => self.push_api_history(Message::assistant(msg.content)),
                 _ => {}
             }
         }
@@ -128,7 +116,6 @@ impl App {
             Action::TitleGenerated(title) => {
                 self.terminal_title = Some(title.clone());
                 vec![Effect::UpdateTitle {
-                    db_path: self.db_path.clone(),
                     session_id: self.session_id.clone(),
                     title,
                 }]
@@ -265,12 +252,11 @@ impl App {
             content: content.clone(),
         });
         let history = self.working_history();
-        self.api_history.push(Message::user(content.clone()));
+        self.push_api_history(Message::user(content.clone()));
 
         let message_id = uuid::Uuid::new_v4().to_string();
         vec![
             Effect::Persist {
-                db_path: self.db_path.clone(),
                 session_id: self.session_id.clone(),
                 message_id,
                 role: "user".to_string(),
@@ -318,7 +304,6 @@ impl App {
 
         let message_id = uuid::Uuid::new_v4().to_string();
         let mut effects = vec![Effect::Persist {
-            db_path: self.db_path.clone(),
             session_id: self.session_id.clone(),
             message_id,
             role: "assistant".to_string(),
@@ -334,19 +319,27 @@ impl App {
             }
         }
 
-        self.api_history.push(Message::assistant(content));
+        self.push_api_history(Message::assistant(content));
         effects
     }
 
     fn fail_stream(&mut self, error: String) -> Vec<Effect> {
         self.streaming = false;
+        let mut effects = Vec::new();
         if !self.pending_assistant.is_empty() {
             let content = std::mem::take(&mut self.pending_assistant);
             self.transcript.push(VisibleMessage {
                 speaker: Speaker::Assistant,
                 content: content.clone(),
             });
-            self.api_history.push(Message::assistant(content));
+            let message_id = uuid::Uuid::new_v4().to_string();
+            self.push_api_history(Message::assistant(content.clone()));
+            effects.push(Effect::Persist {
+                session_id: self.session_id.clone(),
+                message_id,
+                role: "assistant".to_string(),
+                content,
+            });
         }
         self.last_error = Some(error.clone());
         self.status = format!("Error: {error}");
@@ -354,7 +347,15 @@ impl App {
             speaker: Speaker::Error,
             content: error,
         });
-        Vec::new()
+        effects
+    }
+
+    fn push_api_history(&mut self, message: Message) {
+        self.api_history.push(message);
+        if self.api_history.len() > self.max_history {
+            let excess = self.api_history.len() - self.max_history;
+            self.api_history.drain(..excess);
+        }
     }
 
     fn scroll_up(&mut self) {
@@ -381,12 +382,7 @@ mod tests {
     use super::*;
 
     fn test_app() -> App {
-        App::new(
-            "model".to_string(),
-            None,
-            PathBuf::from("/tmp/test.db"),
-            "test-session".to_string(),
-        )
+        App::new("model".to_string(), None, "test-session".to_string())
     }
 
     #[test]
@@ -418,11 +414,23 @@ mod tests {
         app.input_mut().insert_str("hello");
         let _ = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
         let _ = app.dispatch(Action::StreamChunk("partial".to_string()));
-        let _ = app.dispatch(Action::StreamFailed("boom".to_string()));
+        let effects = app.dispatch(Action::StreamFailed("boom".to_string()));
 
         assert_eq!(app.transcript.len(), 3);
         assert_eq!(app.transcript[1].content, "partial");
         assert_eq!(app.transcript[2].speaker, Speaker::Error);
+        assert!(effects.iter().any(|e| matches!(e, Effect::Persist { .. })));
+    }
+
+    #[test]
+    fn api_history_is_capped() {
+        let mut app = test_app();
+        for idx in 0..(MAX_HISTORY + 5) {
+            app.push_api_history(Message::user(format!("message-{idx}")));
+        }
+
+        assert_eq!(app.api_history.len(), MAX_HISTORY);
+        assert_eq!(app.working_history().len(), MAX_HISTORY);
     }
 
     #[test]

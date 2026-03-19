@@ -1,12 +1,14 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use hypr_listener_core::actors::{RootActor, RootArgs, RootMsg, SessionParams};
 use hypr_listener_core::{RecordingMode, StopSessionParams, TranscriptionMode};
 use ractor::Actor;
+use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
 pub use crate::cli::AudioMode;
-use crate::config::desktop;
+use crate::config::paths;
 use crate::config::stt::{SttGlobalArgs, resolve_config};
 use crate::error::{CliError, CliResult};
 use crate::output::format_hhmmss;
@@ -29,6 +31,7 @@ pub struct Args {
     pub stt: SttGlobalArgs,
     pub record: bool,
     pub audio: AudioMode,
+    pub pool: SqlitePool,
 }
 
 const ANIMATION_FRAME: std::time::Duration = std::time::Duration::from_millis(33);
@@ -37,10 +40,7 @@ const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);
 struct Output {
     elapsed: std::time::Duration,
     force_quit: bool,
-    segments: Vec<hypr_transcript::Segment>,
-    words: Vec<hypr_transcript::FinalizedWord>,
-    hints: Vec<hypr_transcript::RuntimeSpeakerHint>,
-    memo_text: String,
+    app: App,
 }
 
 enum ExternalEvent {
@@ -49,24 +49,29 @@ enum ExternalEvent {
 
 struct ListenScreen {
     app: App,
+    capture_post_exit_events: Arc<AtomicBool>,
 }
 
 impl ListenScreen {
-    fn new() -> Self {
-        Self { app: App::new() }
+    fn new(capture_post_exit_events: Arc<AtomicBool>) -> Self {
+        Self {
+            app: App::new(),
+            capture_post_exit_events,
+        }
     }
 
     fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<Output> {
         for effect in effects {
             match effect {
                 Effect::Exit { force } => {
+                    if !force {
+                        self.capture_post_exit_events.store(true, Ordering::SeqCst);
+                    }
+                    let app = std::mem::replace(&mut self.app, App::new());
                     return ScreenControl::Exit(Output {
-                        elapsed: self.app.elapsed(),
+                        elapsed: app.elapsed(),
                         force_quit: force,
-                        segments: self.app.segments(),
-                        words: self.app.words(),
-                        hints: self.app.hints(),
-                        memo_text: self.app.memo_text(),
+                        app,
                     });
                 }
             }
@@ -136,6 +141,7 @@ pub async fn run(args: Args) -> CliResult<()> {
         stt,
         record,
         audio: audio_mode,
+        pool,
     } = args;
 
     let resolved = resolve_config(
@@ -146,13 +152,11 @@ pub async fn run(args: Args) -> CliResult<()> {
         stt.language,
     )
     .await?;
-    // keep local server alive for the duration of this scope
-    let _ = resolved.server.as_ref();
     let languages = vec![resolved.language.clone()];
 
     let session_id = uuid::Uuid::new_v4().to_string();
     let session_label = session_id.clone();
-    let vault_base = desktop::resolve_paths().vault_base;
+    let vault_base = paths::resolve_paths().base;
 
     let (listener_tx, mut listener_rx) = tokio::sync::mpsc::unbounded_channel();
     let runtime = Arc::new(Runtime::new(vault_base.clone(), listener_tx));
@@ -195,60 +199,72 @@ pub async fn run(args: Args) -> CliResult<()> {
         .map_err(|e| CliError::operation_failed("start session", format!("{e:?}")))?;
 
     let (external_tx, external_rx) = mpsc::unbounded_channel();
+    let (post_exit_tx, mut post_exit_rx) = mpsc::unbounded_channel();
+    let capture_post_exit_events = Arc::new(AtomicBool::new(false));
+    let capture_post_exit_events_task = capture_post_exit_events.clone();
     tokio::spawn(async move {
         while let Some(event) = listener_rx.recv().await {
-            if external_tx.send(ExternalEvent::Listener(event)).is_err() {
+            let capture_post_exit_events = capture_post_exit_events_task.load(Ordering::SeqCst);
+            if capture_post_exit_events {
+                let _ = post_exit_tx.send(event.clone());
+            }
+            if external_tx.send(ExternalEvent::Listener(event)).is_err()
+                && !capture_post_exit_events
+            {
                 break;
             }
         }
     });
 
-    let output = run_screen(ListenScreen::new(), Some(external_rx))
-        .await
-        .map_err(|e| CliError::operation_failed("listen tui", e.to_string()))?;
+    let output = run_screen(
+        ListenScreen::new(capture_post_exit_events.clone()),
+        Some(external_rx),
+    )
+    .await
+    .map_err(|e| CliError::operation_failed("listen tui", e.to_string()))?;
 
-    if !output.force_quit {
-        let session_dir = vault_base.join("sessions").join(&session_label);
-        let llm_config = crate::llm::resolve_config(None, None, None, None).map_err(|e| {
-            e.to_string()
-                .lines()
-                .next()
-                .unwrap_or("LLM not configured")
-                .to_string()
-        });
+    let Output {
+        elapsed,
+        force_quit,
+        mut app,
+    } = output;
 
-        let db_path = vault_base.join("app.db");
+    if !force_quit {
+        ractor::call!(root_ref, RootMsg::StopSession, StopSessionParams::default())
+            .map_err(|e| CliError::operation_failed("stop session", e.to_string()))?;
+        tokio::task::yield_now().await;
+        app.apply_runtime_events(std::iter::from_fn(|| post_exit_rx.try_recv().ok()));
+
+        let llm_config = crate::llm::resolve_config(&pool, None, None, None, None)
+            .await
+            .map_err(|e| {
+                e.to_string()
+                    .lines()
+                    .next()
+                    .unwrap_or("LLM not configured")
+                    .to_string()
+            });
+
         let (exit_tx, exit_rx) = mpsc::unbounded_channel();
         spawn_post_session(
-            output.segments,
-            session_dir,
             llm_config,
             exit_tx,
-            output.words,
-            output.hints,
-            output.memo_text,
+            app.words(),
+            app.hints(),
+            app.memo_text(),
             session_label.clone(),
-            db_path,
+            pool,
         );
 
         let exit_screen = ExitScreen::new(
             session_label,
-            output.elapsed,
-            vec![
-                "Saving to database",
-                "Saving transcript",
-                "Generating summary",
-            ],
+            elapsed,
+            vec!["Saving to database", "Generating summary"],
         );
         let height = exit_screen.viewport_height();
         run_screen_inline(exit_screen, height, Some(exit_rx))
             .await
             .map_err(|e| CliError::operation_failed("exit summary", e.to_string()))?;
-    }
-
-    if !output.force_quit {
-        let _ = ractor::call!(root_ref, RootMsg::StopSession, StopSessionParams::default());
-        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     }
 
     Ok(())

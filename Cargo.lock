@@ -3411,7 +3411,6 @@ dependencies = [
  "db-core2",
  "dirs 6.0.0",
  "file",
- "fs-sync-core",
  "futures-util",
  "host",
  "image",
@@ -3438,6 +3437,7 @@ dependencies = [
  "strum 0.27.2",
  "tachyonfx",
  "tempfile",
+ "template-cli",
  "textwrap",
  "thiserror 2.0.18",
  "tokio",
@@ -19676,6 +19676,13 @@ dependencies = [
  "specta",
  "strum 0.27.2",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "template-cli"
+version = "0.1.0"
+dependencies = [
+ "askama 0.15.4",
 ]
 
 [[package]]

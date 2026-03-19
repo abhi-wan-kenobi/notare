@@ -1,4 +1,6 @@
-use crate::config::desktop;
+use sqlx::SqlitePool;
+
+use crate::config::paths;
 use crate::error::{CliError, CliResult};
 
 use super::LlmProvider;
@@ -11,14 +13,14 @@ pub struct ResolvedLlmConfig {
     pub base_url: String,
 }
 
-pub fn resolve_config(
+pub async fn resolve_config(
+    pool: &SqlitePool,
     provider_override: Option<LlmProvider>,
     base_url_override: Option<String>,
     api_key_override: Option<String>,
     model_override: Option<String>,
 ) -> CliResult<ResolvedLlmConfig> {
-    let paths = desktop::resolve_paths();
-    let settings = desktop::load_settings(&paths.settings_path);
+    let settings = paths::load_settings_from_db(pool).await;
     let current_provider_id = settings
         .as_ref()
         .and_then(|value| value.current_llm_provider.as_deref());
@@ -79,7 +81,7 @@ fn resolve_provider_from_settings(current_provider_id: Option<&str>) -> CliResul
 }
 
 fn resolve_model_from_settings(
-    settings: &Option<desktop::DesktopSettings>,
+    settings: &Option<paths::Settings>,
     provider: LlmProvider,
     current_provider_id: Option<&str>,
 ) -> CliResult<String> {

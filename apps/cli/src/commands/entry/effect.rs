@@ -4,7 +4,7 @@ pub(crate) enum Effect {
     Launch(super::EntryCommand),
     LoadSessions,
     SaveConnect {
-        connection_type: ConnectionType,
+        connection_types: Vec<ConnectionType>,
         provider: ConnectProvider,
         base_url: Option<String>,
         api_key: Option<String>,

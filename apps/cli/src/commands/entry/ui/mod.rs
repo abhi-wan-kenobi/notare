@@ -26,7 +26,8 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
 
     let logo_height = frame.area().height.saturating_div(6).clamp(5, 7);
 
-    let [logo_area, input_area, _gap, tip_area] = Layout::vertical([
+    let [_top_pad, logo_area, input_area, _gap, tip_area] = Layout::vertical([
+        Constraint::Length(3),
         Constraint::Length(logo_height),
         Constraint::Length(5),
         Constraint::Length(3),

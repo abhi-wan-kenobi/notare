@@ -10,7 +10,7 @@ pub(crate) enum Action {
     SessionsLoaded(Vec<hypr_db_app::SessionRow>),
     SessionsLoadError(String),
     ConnectSaved {
-        connection_type: ConnectionType,
+        connection_types: Vec<ConnectionType>,
         provider_id: String,
     },
 }

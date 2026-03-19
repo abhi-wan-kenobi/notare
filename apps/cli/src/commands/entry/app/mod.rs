@@ -92,15 +92,18 @@ impl App {
                 }
             }
             Action::ConnectSaved {
-                connection_type,
+                connection_types,
                 provider_id,
             } => {
-                match connection_type {
-                    crate::cli::ConnectionType::Stt => {
-                        self.stt_provider = Some(provider_id);
-                    }
-                    crate::cli::ConnectionType::Llm => {
-                        self.llm_provider = Some(provider_id);
+                for ct in &connection_types {
+                    match ct {
+                        crate::cli::ConnectionType::Stt => {
+                            self.stt_provider = Some(provider_id.clone());
+                        }
+                        crate::cli::ConnectionType::Llm => {
+                            self.llm_provider = Some(provider_id.clone());
+                        }
+                        _ => {}
                     }
                 }
                 self.tip = pick_tip(&self.stt_provider, &self.llm_provider);
@@ -276,8 +279,7 @@ impl App {
 
         match head {
             "connect" => {
-                let (connect_app, initial_effects) =
-                    connect::app::App::new(None, None, None, None, None, None);
+                let (connect_app, initial_effects) = connect::app::App::new(None, None, None, None);
                 self.reset_input();
                 self.overlay = Overlay::Connect(connect_app);
                 self.translate_connect_effects(initial_effects)
@@ -351,7 +353,7 @@ impl App {
                 connect::effect::Effect::Save(data) => {
                     self.reset_input();
                     result.push(Effect::SaveConnect {
-                        connection_type: data.connection_type,
+                        connection_types: data.connection_types,
                         provider: data.provider,
                         base_url: data.base_url,
                         api_key: data.api_key,

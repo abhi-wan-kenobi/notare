@@ -9,7 +9,7 @@ description: "Command-line reference for the char CLI"
 Live transcription and audio tools
 
 ```
-char [--base-url] [--api-key] [-m] [-l] [--record] [--no-color] [-v] [-q] [-h] [-V] <command>
+char [--base-url] [--api-key] [-m] [-l] [--record] [--no-color] [--base] [-v] [-q] [-h] [-V] <command>
 ```
 
 **Global options:**
@@ -20,6 +20,7 @@ char [--base-url] [--api-key] [-m] [-l] [--record] [--no-color] [-v] [-q] [-h] [
 - `-l, --language <LANGUAGE>` (default: `en`)
 - `--record`
 - `--no-color`
+- `--base <DIR>`
 - `-v, --verbose` — Increase logging verbosity
 - `-q, --quiet` — Decrease logging verbosity
 
@@ -33,9 +34,14 @@ char [--base-url] [--api-key] [-m] [-l] [--record] [--no-color] [-v] [-q] [-h] [
 - `chat` — Interactive chat with an LLM
 - `listen` — Start live transcription (TUI)
 - `connect` — Configure an STT or LLM provider
+- `sessions` — Browse past sessions
+- `humans` — Browse humans (contacts)
+- `orgs` — Browse organizations
 - `status` — Show configured providers and settings
 - `auth` — Authenticate with char.com
 - `desktop` — Open the desktop app or download page
+- `bug` — Report a bug on GitHub
+- `hello` — Open char.com
 - `batch` — Transcribe an audio file
 - `model` — Manage local models
 - `completions` — Generate shell completions
@@ -47,14 +53,33 @@ char [--base-url] [--api-key] [-m] [-l] [--record] [--no-color] [-v] [-q] [-h] [
 Interactive chat with an LLM
 
 ```
-char chat [--session] [--prompt] [--provider] [-h] [-V]
+char chat [--prompt] [--provider] [-h] [-V] <command>
+```
+
+**Options:**
+
+- `--prompt <PROMPT>` — Send a single prompt without entering the TUI (use `-` to read from stdin)
+- `--provider <PROVIDER>`
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Subcommands:**
+
+- `resume` — Resume an existing chat session
+
+---
+
+### char chat resume
+
+Resume an existing chat session
+
+```
+char chat resume [--session] [-h] [-V]
 ```
 
 **Options:**
 
 - `--session <SESSION>`
-- `--prompt <PROMPT>` — Send a single prompt without entering the TUI (use `-` to read from stdin)
-- `--provider <PROVIDER>`
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
@@ -63,7 +88,7 @@ char chat [--session] [--prompt] [--provider] [-h] [-V]
 Start live transcription (TUI)
 
 ```
-char listen <-p> [--audio] [-h] [-V]
+char listen [-p] [--audio] [-h] [-V]
 ```
 
 **Options:**
@@ -85,6 +110,221 @@ char connect [--type] [--provider] [-h] [-V]
 
 - `--type <TYPE>`
 - `--provider <PROVIDER>`
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char sessions
+
+Browse past sessions
+
+```
+char sessions [-h] [-V] <command>
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Subcommands:**
+
+- `view` — View a specific session
+- `participants` — List participants in a session
+- `add-participant` — Add a participant to a session
+- `rm-participant` — Remove a participant from a session
+
+---
+
+### char sessions view
+
+View a specific session
+
+```
+char sessions view <--id> [-h] [-V]
+```
+
+**Options:**
+
+- `--id <ID>`
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char sessions participants
+
+List participants in a session
+
+```
+char sessions participants <--id> [-h] [-V]
+```
+
+**Options:**
+
+- `--id <ID>`
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char sessions add-participant
+
+Add a participant to a session
+
+```
+char sessions add-participant <--session> <--human> [-h] [-V]
+```
+
+**Options:**
+
+- `--session <SESSION>`
+- `--human <HUMAN>`
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char sessions rm-participant
+
+Remove a participant from a session
+
+```
+char sessions rm-participant <--session> <--human> [-h] [-V]
+```
+
+**Options:**
+
+- `--session <SESSION>`
+- `--human <HUMAN>`
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char humans
+
+Browse humans (contacts)
+
+```
+char humans [-h] [-V] <command>
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Subcommands:**
+
+- `add` — Add a new human
+- `show` — Show details for a human
+- `rm` — Remove a human
+
+---
+
+### char humans add
+
+Add a new human
+
+```
+char humans add [--email] [--org] [--title] [-h] [-V] <name>
+```
+
+**Options:**
+
+- `--email <EMAIL>`
+- `--org <ORG>`
+- `--title <TITLE>`
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Arguments:**
+
+- `<NAME>`
+
+### char humans show
+
+Show details for a human
+
+```
+char humans show <--id> [-h] [-V]
+```
+
+**Options:**
+
+- `--id <ID>`
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char humans rm
+
+Remove a human
+
+```
+char humans rm <--id> [-h] [-V]
+```
+
+**Options:**
+
+- `--id <ID>`
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char orgs
+
+Browse organizations
+
+```
+char orgs [-h] [-V] <command>
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Subcommands:**
+
+- `add` — Add a new organization
+- `show` — Show details for an organization
+- `rm` — Remove an organization
+
+---
+
+### char orgs add
+
+Add a new organization
+
+```
+char orgs add [-h] [-V] <name>
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Arguments:**
+
+- `<NAME>`
+
+### char orgs show
+
+Show details for an organization
+
+```
+char orgs show <--id> [-h] [-V]
+```
+
+**Options:**
+
+- `--id <ID>`
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char orgs rm
+
+Remove an organization
+
+```
+char orgs rm <--id> [-h] [-V]
+```
+
+**Options:**
+
+- `--id <ID>`
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
@@ -120,6 +360,32 @@ Open the desktop app or download page
 
 ```
 char desktop [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char bug
+
+Report a bug on GitHub
+
+```
+char bug [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char hello
+
+Open char.com
+
+```
+char hello [-h] [-V]
 ```
 
 **Options:**

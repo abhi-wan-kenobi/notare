@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::widgets::ListState;
 use url::Url;
@@ -6,11 +8,10 @@ use crate::cli::{ConnectProvider, ConnectionType};
 
 use super::action::Action;
 use super::effect::{Effect, SaveData};
-use super::providers::{LLM_PROVIDERS, STT_PROVIDERS};
+use super::providers::ALL_PROVIDERS;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Step {
-    SelectType,
     SelectProvider,
     InputBaseUrl,
     InputApiKey,
@@ -19,45 +20,53 @@ pub(crate) enum Step {
 
 pub(crate) struct App {
     step: Step,
-    connection_type: Option<ConnectionType>,
+    type_filter: Option<ConnectionType>,
     provider: Option<ConnectProvider>,
     base_url: Option<String>,
     api_key: Option<String>,
-    current_llm_provider: Option<String>,
-    current_stt_provider: Option<String>,
     list_state: ListState,
+    search_query: String,
     input: String,
     cursor_pos: usize,
     input_default: Option<String>,
     input_label: &'static str,
     input_masked: bool,
     error: Option<String>,
+    configured_providers: HashSet<String>,
 }
 
 impl App {
     pub fn new(
-        connection_type: Option<ConnectionType>,
+        type_filter: Option<ConnectionType>,
         provider: Option<ConnectProvider>,
         base_url: Option<String>,
         api_key: Option<String>,
-        current_llm_provider: Option<String>,
-        current_stt_provider: Option<String>,
+    ) -> (Self, Vec<Effect>) {
+        Self::new_with_configured(type_filter, provider, base_url, api_key, HashSet::new())
+    }
+
+    pub fn new_with_configured(
+        type_filter: Option<ConnectionType>,
+        provider: Option<ConnectProvider>,
+        base_url: Option<String>,
+        api_key: Option<String>,
+        configured_providers: HashSet<String>,
     ) -> (Self, Vec<Effect>) {
         let mut app = Self {
-            step: Step::SelectType,
-            connection_type,
+            step: Step::SelectProvider,
+            type_filter,
             provider,
             base_url,
             api_key,
-            current_llm_provider,
-            current_stt_provider,
             list_state: ListState::default(),
+            search_query: String::new(),
             input: String::new(),
             cursor_pos: 0,
             input_default: None,
             input_label: "",
             input_masked: false,
             error: None,
+            configured_providers,
         };
         let effects = app.advance();
         (app, effects)
@@ -106,31 +115,39 @@ impl App {
         &mut self.list_state
     }
 
-    pub fn provider_entries(&self) -> &'static [ConnectProvider] {
-        match self.connection_type {
-            Some(ConnectionType::Llm) => LLM_PROVIDERS,
-            Some(ConnectionType::Stt) => STT_PROVIDERS,
-            None => &[],
-        }
+    pub fn search_query(&self) -> &str {
+        &self.search_query
     }
 
-    pub fn current_llm_provider(&self) -> Option<&str> {
-        self.current_llm_provider.as_deref()
+    pub fn configured_providers(&self) -> &HashSet<String> {
+        &self.configured_providers
     }
 
-    pub fn current_stt_provider(&self) -> Option<&str> {
-        self.current_stt_provider.as_deref()
+    pub fn filtered_providers(&self) -> Vec<ConnectProvider> {
+        let query = self.search_query.to_ascii_lowercase();
+        ALL_PROVIDERS
+            .iter()
+            .copied()
+            .filter(|p| {
+                if let Some(ct) = self.type_filter {
+                    if !p.valid_for(ct) {
+                        return false;
+                    }
+                }
+                if query.is_empty() {
+                    return true;
+                }
+                p.id().to_ascii_lowercase().contains(&query)
+                    || p.display_name().to_ascii_lowercase().contains(&query)
+            })
+            .collect()
     }
 
     pub fn breadcrumb(&self) -> String {
-        let mut parts = Vec::new();
-        if let Some(ct) = self.connection_type {
-            parts.push(ct.to_string().to_uppercase());
+        match self.provider {
+            Some(p) => p.display_name().to_string(),
+            None => String::new(),
         }
-        if let Some(p) = self.provider {
-            parts.push(p.to_string());
-        }
-        parts.join(" > ")
     }
 
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
@@ -141,7 +158,7 @@ impl App {
         }
 
         match self.step {
-            Step::SelectType | Step::SelectProvider => self.handle_list_key(key),
+            Step::SelectProvider => self.handle_provider_key(key),
             Step::InputBaseUrl | Step::InputApiKey => self.handle_input_key(key),
             Step::Done => Vec::new(),
         }
@@ -157,42 +174,54 @@ impl App {
                 }
                 self.error = None;
             }
+            Step::SelectProvider => {
+                self.search_query.push_str(text);
+                self.list_state.select(Some(0));
+            }
             _ => {}
         }
         Vec::new()
     }
 
-    fn handle_list_key(&mut self, key: KeyEvent) -> Vec<Effect> {
-        let len = match self.step {
-            Step::SelectType => 2,
-            Step::SelectProvider => self.provider_entries().len(),
-            _ => return Vec::new(),
-        };
+    fn handle_provider_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        let filtered = self.filtered_providers();
+        let len = filtered.len();
 
         match key.code {
-            KeyCode::Up | KeyCode::Char('k') => {
+            KeyCode::Up => {
                 self.list_navigate(-1, len);
                 Vec::new()
             }
-            KeyCode::Down | KeyCode::Char('j') => {
+            KeyCode::Down => {
                 self.list_navigate(1, len);
                 Vec::new()
             }
             KeyCode::Enter => {
-                match self.step {
-                    Step::SelectType => {
-                        self.confirm_type_selection();
-                        self.step = Step::SelectProvider;
-                    }
-                    Step::SelectProvider => {
-                        self.confirm_provider_selection();
-                        self.step = Step::InputBaseUrl;
-                    }
-                    _ => unreachable!(),
+                if len == 0 {
+                    return Vec::new();
                 }
-                self.advance()
+                let idx = self.list_state.selected().unwrap_or(0);
+                if let Some(&provider) = filtered.get(idx) {
+                    if provider.is_disabled() {
+                        return Vec::new();
+                    }
+                    self.provider = Some(provider);
+                    self.step = Step::InputBaseUrl;
+                    self.advance()
+                } else {
+                    Vec::new()
+                }
             }
-            KeyCode::Char('q') => vec![Effect::Exit],
+            KeyCode::Char(c) => {
+                self.search_query.push(c);
+                self.list_state.select(Some(0));
+                Vec::new()
+            }
+            KeyCode::Backspace => {
+                self.search_query.pop();
+                self.list_state.select(Some(0));
+                Vec::new()
+            }
             _ => Vec::new(),
         }
     }
@@ -259,26 +288,6 @@ impl App {
             .unwrap_or(self.input.len())
     }
 
-    fn confirm_type_selection(&mut self) {
-        let idx = self.list_state.selected().unwrap_or(0);
-        self.connection_type = Some(match idx {
-            0 => ConnectionType::Llm,
-            _ => ConnectionType::Stt,
-        });
-    }
-
-    fn confirm_provider_selection(&mut self) {
-        let idx = self.list_state.selected().unwrap_or(0);
-        let providers = match self.connection_type {
-            Some(ConnectionType::Llm) => LLM_PROVIDERS,
-            Some(ConnectionType::Stt) => STT_PROVIDERS,
-            None => return,
-        };
-        if let Some(&provider) = providers.get(idx) {
-            self.provider = Some(provider);
-        }
-    }
-
     fn confirm_input(&mut self) -> Result<(), String> {
         let value = if self.input.trim().is_empty() {
             self.input_default.clone()
@@ -304,23 +313,10 @@ impl App {
     fn advance(&mut self) -> Vec<Effect> {
         loop {
             match self.step {
-                Step::SelectType => {
-                    if self.connection_type.is_some() {
-                        self.step = Step::SelectProvider;
-                        continue;
-                    }
-                    self.list_state = ListState::default().with_selected(Some(0));
-                    return Vec::new();
-                }
                 Step::SelectProvider => {
-                    if let Some(provider) = self.provider {
-                        if let Some(ct) = self.connection_type {
-                            if provider.valid_for(ct) {
-                                self.step = Step::InputBaseUrl;
-                                continue;
-                            }
-                        }
-                        self.provider = None;
+                    if self.provider.is_some() {
+                        self.step = Step::InputBaseUrl;
+                        continue;
                     }
                     self.list_state = ListState::default().with_selected(Some(0));
                     return Vec::new();
@@ -331,13 +327,18 @@ impl App {
                         self.step = Step::InputApiKey;
                         continue;
                     }
-                    if provider.is_local() && provider.default_base_url().is_none() {
+                    if provider.default_base_url().is_some() {
+                        self.base_url = provider.default_base_url().map(|s| s.to_string());
+                        self.step = Step::InputApiKey;
+                        continue;
+                    }
+                    if provider.is_local() {
                         self.step = Step::InputApiKey;
                         continue;
                     }
                     self.input = String::new();
                     self.cursor_pos = 0;
-                    self.input_default = provider.default_base_url().map(|s| s.to_string());
+                    self.input_default = None;
                     self.input_label = "Base URL";
                     self.input_masked = false;
                     return Vec::new();
@@ -356,9 +357,14 @@ impl App {
                     return Vec::new();
                 }
                 Step::Done => {
+                    let provider = self.provider.unwrap();
+                    let mut connection_types = provider.capabilities();
+                    if let Some(ct) = self.type_filter {
+                        connection_types.retain(|t| *t == ct);
+                    }
                     return vec![Effect::Save(SaveData {
-                        connection_type: self.connection_type.unwrap(),
-                        provider: self.provider.unwrap(),
+                        connection_types,
+                        provider,
                         base_url: self.base_url.clone(),
                         api_key: self.api_key.clone(),
                     })];
@@ -373,9 +379,11 @@ pub(crate) fn validate_base_url(input: &str) -> Result<(), String> {
     if trimmed.is_empty() {
         return Ok(());
     }
-    Url::parse(trimmed)
-        .map(|_| ())
-        .map_err(|e| format!("invalid URL: {e}"))
+    let parsed = Url::parse(trimmed).map_err(|e| format!("invalid URL: {e}"))?;
+    if parsed.scheme() != "http" && parsed.scheme() != "https" {
+        return Err("invalid URL: scheme must be http or https".to_string());
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -389,80 +397,99 @@ mod tests {
             Some(ConnectProvider::Deepgram),
             Some("https://api.deepgram.com/v1".to_string()),
             Some("key123".to_string()),
-            None,
-            None,
         );
         assert_eq!(app.step(), Step::Done);
         assert!(matches!(effects.as_slice(), [Effect::Save(_)]));
     }
 
     #[test]
-    fn no_args_starts_at_select_type() {
-        let (app, effects) = App::new(None, None, None, None, None, None);
-        assert_eq!(app.step(), Step::SelectType);
+    fn no_args_starts_at_select_provider() {
+        let (app, effects) = App::new(None, None, None, None);
+        assert_eq!(app.step(), Step::SelectProvider);
         assert!(effects.is_empty());
     }
 
     #[test]
-    fn type_provided_starts_at_select_provider() {
-        let (app, effects) = App::new(Some(ConnectionType::Stt), None, None, None, None, None);
-        assert_eq!(app.step(), Step::SelectProvider);
+    fn provider_with_default_url_skips_base_url_input() {
+        let (app, effects) = App::new(None, Some(ConnectProvider::Deepgram), None, None);
+        assert_eq!(app.step(), Step::InputApiKey);
+        assert!(effects.is_empty());
+    }
+
+    #[test]
+    fn custom_provider_shows_base_url_input() {
+        let (app, effects) = App::new(
+            Some(ConnectionType::Stt),
+            Some(ConnectProvider::Custom),
+            None,
+            None,
+        );
+        assert_eq!(app.step(), Step::InputBaseUrl);
         assert!(effects.is_empty());
     }
 
     #[test]
     fn local_provider_skips_api_key() {
-        let (app, effects) = App::new(
-            Some(ConnectionType::Llm),
-            Some(ConnectProvider::Ollama),
-            None,
-            None,
-            None,
-            None,
-        );
-        assert_eq!(app.step(), Step::InputBaseUrl);
-        assert!(effects.is_empty());
+        let (app, effects) = App::new(None, Some(ConnectProvider::Ollama), None, None);
+        assert_eq!(app.step(), Step::Done);
+        assert!(matches!(effects.as_slice(), [Effect::Save(_)]));
     }
 
     #[test]
-    fn invalid_provider_for_type_clears_provider() {
-        let (app, _) = App::new(
+    fn search_filters_providers() {
+        let (mut app, _) = App::new(None, None, None, None);
+        assert_eq!(app.step(), Step::SelectProvider);
+
+        app.dispatch(Action::Key(KeyEvent::from(KeyCode::Char('m'))));
+        app.dispatch(Action::Key(KeyEvent::from(KeyCode::Char('i'))));
+        app.dispatch(Action::Key(KeyEvent::from(KeyCode::Char('s'))));
+
+        let filtered = app.filtered_providers();
+        assert!(filtered.contains(&ConnectProvider::Mistral));
+        assert!(!filtered.contains(&ConnectProvider::Deepgram));
+    }
+
+    #[test]
+    fn dual_capability_provider_produces_both_types() {
+        let (_, effects) = App::new(
+            None,
+            Some(ConnectProvider::Openai),
+            Some("https://api.openai.com/v1".to_string()),
+            Some("key".to_string()),
+        );
+        if let Effect::Save(data) = &effects[0] {
+            assert!(data.connection_types.contains(&ConnectionType::Stt));
+            assert!(data.connection_types.contains(&ConnectionType::Llm));
+        } else {
+            panic!("expected Save effect");
+        }
+    }
+
+    #[test]
+    fn type_filter_restricts_connection_types() {
+        let (_, effects) = App::new(
             Some(ConnectionType::Stt),
-            Some(ConnectProvider::Anthropic),
-            None,
-            None,
-            None,
-            None,
+            Some(ConnectProvider::Openai),
+            Some("https://api.openai.com/v1".to_string()),
+            Some("key".to_string()),
         );
-        assert_eq!(app.step(), Step::SelectProvider);
-        assert!(app.provider().is_none());
+        if let Effect::Save(data) = &effects[0] {
+            assert_eq!(data.connection_types, vec![ConnectionType::Stt]);
+        } else {
+            panic!("expected Save effect");
+        }
     }
 
     #[test]
-    fn select_type_then_provider() {
-        let (mut app, _) = App::new(None, None, None, None, None, None);
-        assert_eq!(app.step(), Step::SelectType);
-        assert_eq!(app.list_state_mut().selected(), Some(0));
-
-        let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
-        assert!(effects.is_empty());
+    fn select_provider_then_input() {
+        let (mut app, _) = App::new(None, None, None, None);
         assert_eq!(app.step(), Step::SelectProvider);
         assert_eq!(app.list_state_mut().selected(), Some(0));
 
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
         assert!(effects.is_empty());
-        assert_eq!(app.step(), Step::InputBaseUrl);
-    }
-
-    #[test]
-    fn select_provider_with_type_preset() {
-        let (mut app, _) = App::new(Some(ConnectionType::Stt), None, None, None, None, None);
-        assert_eq!(app.step(), Step::SelectProvider);
-        assert_eq!(app.list_state_mut().selected(), Some(0));
-
-        let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
-        assert!(effects.is_empty());
-        assert_eq!(app.step(), Step::InputBaseUrl);
+        // First provider (Deepgram) has a default URL, so it skips to InputApiKey
+        assert_eq!(app.step(), Step::InputApiKey);
     }
 
     #[test]
@@ -470,8 +497,6 @@ mod tests {
         let (mut app, _) = App::new(
             Some(ConnectionType::Stt),
             Some(ConnectProvider::Custom),
-            None,
-            None,
             None,
             None,
         );
@@ -483,11 +508,29 @@ mod tests {
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
         assert!(effects.is_empty());
         assert!(app.error().is_some());
+
+        let (mut app, _) = App::new(
+            Some(ConnectionType::Stt),
+            Some(ConnectProvider::Custom),
+            None,
+            None,
+        );
+        assert_eq!(app.step(), Step::InputBaseUrl);
+
+        for c in "ftp://example.com".chars() {
+            app.dispatch(Action::Key(KeyEvent::from(KeyCode::Char(c))));
+        }
+        let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Enter)));
+        assert!(effects.is_empty());
+        assert_eq!(
+            app.error(),
+            Some("invalid URL: scheme must be http or https")
+        );
     }
 
     #[test]
     fn esc_exits() {
-        let (mut app, _) = App::new(None, None, None, None, None, None);
+        let (mut app, _) = App::new(None, None, None, None);
         let effects = app.dispatch(Action::Key(KeyEvent::from(KeyCode::Esc)));
         assert!(matches!(effects.as_slice(), [Effect::Exit]));
     }
