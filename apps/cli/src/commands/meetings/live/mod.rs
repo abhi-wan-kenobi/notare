@@ -19,8 +19,7 @@ pub enum AudioMode {
 use crate::config::paths;
 use crate::config::stt::{SttGlobalArgs, resolve_config};
 use crate::error::{CliError, CliResult};
-use crate::output::format_hhmmss;
-use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen, run_screen_inline};
+use hypr_cli_tui::{run_screen, run_screen_inline};
 
 mod action;
 mod app;
@@ -28,143 +27,19 @@ mod effect;
 mod exit;
 pub mod post_meeting;
 mod runtime;
+mod screen;
 mod ui;
 
-use self::action::Action;
-use self::app::App;
-use self::effect::Effect;
 use self::exit::ExitScreen;
 use self::post_meeting::spawn_post_meeting;
 use self::runtime::Runtime;
+use self::screen::{ExternalEvent, LiveScreen, Output};
 
 pub struct Args {
     pub stt: SttGlobalArgs,
     pub record: bool,
     pub audio: AudioMode,
     pub pool: SqlitePool,
-}
-
-const ANIMATION_FRAME: std::time::Duration = std::time::Duration::from_millis(33);
-const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);
-
-struct Output {
-    elapsed: std::time::Duration,
-    force_quit: bool,
-    app: App,
-}
-
-enum ExternalEvent {
-    Listener(runtime::RuntimeEvent),
-}
-
-struct LiveScreen {
-    app: App,
-    capture_post_exit_events: Arc<AtomicBool>,
-    inspector: crate::interaction_debug::Inspector,
-}
-
-impl LiveScreen {
-    fn new(
-        participant_names: HashMap<String, String>,
-        capture_post_exit_events: Arc<AtomicBool>,
-    ) -> Self {
-        Self {
-            app: App::new(participant_names),
-            capture_post_exit_events,
-            inspector: crate::interaction_debug::Inspector::new("meeting-live"),
-        }
-    }
-
-    fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<Output> {
-        for effect in effects {
-            match effect {
-                Effect::Exit { force } => {
-                    crate::tui_trace::trace_effect(
-                        "meeting-live",
-                        if force { "Exit(force)" } else { "Exit" },
-                    );
-                    if !force {
-                        self.capture_post_exit_events.store(true, Ordering::SeqCst);
-                    }
-                    let app = std::mem::replace(&mut self.app, App::new(HashMap::new()));
-                    return ScreenControl::Exit(Output {
-                        elapsed: app.elapsed(),
-                        force_quit: force,
-                        app,
-                    });
-                }
-            }
-        }
-
-        ScreenControl::Continue
-    }
-}
-
-impl Screen for LiveScreen {
-    type ExternalEvent = ExternalEvent;
-    type Output = Output;
-
-    fn on_tui_event(
-        &mut self,
-        event: TuiEvent,
-        _cx: &mut ScreenContext,
-    ) -> ScreenControl<Self::Output> {
-        match event {
-            TuiEvent::Key(key) => {
-                if self.inspector.handle_key(key) {
-                    return ScreenControl::Continue;
-                }
-                crate::tui_trace::trace_input_key("meeting-live", &key);
-                crate::tui_trace::trace_action("meeting-live", "Key");
-                let effects = self.app.dispatch(Action::Key(key));
-                self.apply_effects(effects)
-            }
-            TuiEvent::Paste(pasted) => {
-                crate::tui_trace::trace_input_paste("meeting-live", pasted.chars().count());
-                crate::tui_trace::trace_action("meeting-live", "Paste");
-                let effects = self.app.dispatch(Action::Paste(pasted));
-                self.apply_effects(effects)
-            }
-            TuiEvent::Draw | TuiEvent::Resize => ScreenControl::Continue,
-        }
-    }
-
-    fn on_external_event(
-        &mut self,
-        event: Self::ExternalEvent,
-        _cx: &mut ScreenContext,
-    ) -> ScreenControl<Self::Output> {
-        let action = match event {
-            ExternalEvent::Listener(event) => {
-                crate::tui_trace::trace_external("meeting-live", "Listener");
-                crate::tui_trace::trace_action("meeting-live", "RuntimeEvent");
-                Action::RuntimeEvent(event)
-            }
-        };
-        let effects = self.app.dispatch(action);
-        self.apply_effects(effects)
-    }
-
-    fn draw(&mut self, frame: &mut ratatui::Frame) {
-        ui::draw(frame, &mut self.app);
-        self.inspector.draw(frame);
-    }
-
-    fn title(&self) -> String {
-        hypr_cli_tui::terminal_title(Some(&format!(
-            "{} ({})",
-            self.app.status(),
-            format_hhmmss(self.app.elapsed())
-        )))
-    }
-
-    fn next_frame_delay(&self) -> std::time::Duration {
-        if self.app.has_active_animations() {
-            ANIMATION_FRAME
-        } else {
-            IDLE_FRAME
-        }
-    }
 }
 
 pub async fn run(args: Args) -> CliResult<()> {
