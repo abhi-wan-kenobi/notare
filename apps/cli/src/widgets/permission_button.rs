@@ -32,8 +32,8 @@ impl Widget for PermissionButton<'_> {
 
         let (status_text, status_style) = match self.status {
             PermissionStatus::Checking => ("Checking...", self.theme.muted),
-            PermissionStatus::NotRequested => ("Not Requested", self.theme.status_degraded),
-            PermissionStatus::Authorized => ("Authorized", self.theme.status_active),
+            PermissionStatus::NotRequested => ("Not Requested", self.theme.status.degraded),
+            PermissionStatus::Authorized => ("Authorized", self.theme.status.active),
             PermissionStatus::Denied => ("Denied", self.theme.error),
         };
 

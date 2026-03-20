@@ -14,10 +14,10 @@ const WAVEFORM_WIDTH: u16 = 20;
 
 pub(super) fn draw_header_bar(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let state_style = match app.listener_state() {
-        State::Active if app.degraded().is_some() => theme.status_degraded,
-        State::Active => theme.status_active,
-        State::Finalizing => theme.status_degraded,
-        State::Inactive => theme.status_inactive,
+        State::Active if app.degraded().is_some() => theme.status.degraded,
+        State::Active => theme.status.active,
+        State::Finalizing => theme.status.degraded,
+        State::Inactive => theme.status.inactive,
     };
 
     let mut info = InfoLine::new(theme)

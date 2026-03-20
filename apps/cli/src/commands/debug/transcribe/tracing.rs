@@ -2,19 +2,13 @@ use std::collections::VecDeque;
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use tracing_subscriber::EnvFilter;
 
-const DEFAULT_CAP: usize = 2000;
+use crate::theme::Theme;
 
-const LOG_ERROR: Style = Style::new().fg(Color::Red).add_modifier(Modifier::BOLD);
-const LOG_WARN: Style = Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD);
-const LOG_INFO: Style = Style::new().fg(Color::Green);
-const LOG_DEBUG: Style = Style::new().fg(Color::Blue);
-const LOG_TRACE: Style = Style::new().fg(Color::DarkGray);
-const LOG_TARGET: Style = Style::new().fg(Color::DarkGray);
-const LOG_TIMESTAMP: Style = Style::new().fg(Color::DarkGray);
+const DEFAULT_CAP: usize = 2000;
 
 pub struct TracingCapture {
     lines: Mutex<VecDeque<String>>,
@@ -42,6 +36,8 @@ impl TracingCapture {
 }
 
 fn stylize_log_line(raw: &str) -> Line<'static> {
+    let theme = Theme::DEFAULT;
+
     // tracing_subscriber fmt output: "2026-03-16T09:45:03.056609Z  INFO target: message fields"
     // We want: "09:45:03  INFO target: message fields" with colors.
 
@@ -65,7 +61,7 @@ fn stylize_log_line(raw: &str) -> Line<'static> {
             } else {
                 full_ts
             };
-            spans.push(Span::styled(time_part.to_string(), LOG_TIMESTAMP));
+            spans.push(Span::styled(time_part.to_string(), theme.muted));
             rest = &rest[ts_end + 1..];
         }
     }
@@ -84,11 +80,11 @@ fn stylize_log_line(raw: &str) -> Line<'static> {
     for level in &levels {
         if rest.starts_with(level) {
             let style = match *level {
-                "ERROR" => LOG_ERROR,
-                "WARN" => LOG_WARN,
-                "INFO" => LOG_INFO,
-                "DEBUG" => LOG_DEBUG,
-                "TRACE" => LOG_TRACE,
+                "ERROR" => theme.error.add_modifier(Modifier::BOLD),
+                "WARN" => theme.status.degraded.add_modifier(Modifier::BOLD),
+                "INFO" => theme.status.active,
+                "DEBUG" => theme.accent,
+                "TRACE" => theme.muted,
                 _ => Style::new(),
             };
             spans.push(Span::styled(level.to_string(), style));
@@ -109,7 +105,7 @@ fn stylize_log_line(raw: &str) -> Line<'static> {
     if let Some(colon_pos) = rest_str.find(':') {
         let target = &rest_str[..colon_pos + 1];
         let message = &rest_str[colon_pos + 1..];
-        spans.push(Span::styled(target.to_string(), LOG_TARGET));
+        spans.push(Span::styled(target.to_string(), theme.muted));
         spans.push(Span::raw(message.to_string()));
     } else {
         spans.push(Span::raw(rest_str));

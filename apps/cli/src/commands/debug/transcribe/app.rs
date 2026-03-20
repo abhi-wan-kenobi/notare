@@ -131,13 +131,13 @@ impl App {
                 title: "Transcript",
                 content: TranscriptContent::Raw(raw),
                 placeholder,
-                border_style: Style::new().fg(ratatui::style::Color::Cyan),
+                border_style: Theme::DEFAULT.border.focused,
             },
             TranscriptState::Rich(rich) => TranscriptView {
                 title: "Transcript",
                 content: TranscriptContent::Rich(rich.lines(width)),
                 placeholder,
-                border_style: rich.theme.border_focused,
+                border_style: rich.theme.border.focused,
             },
         }
     }

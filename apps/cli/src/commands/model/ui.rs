@@ -60,8 +60,8 @@ fn draw_list(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
             let active_marker = if *active { "* " } else { "  " };
 
             let status_style = match status.as_str() {
-                "downloaded" => theme.status_active,
-                "not-downloaded" => theme.status_degraded,
+                "downloaded" => theme.status.active,
+                "not-downloaded" => theme.status.degraded,
                 "unavailable" => theme.muted,
                 "error" => theme.error,
                 _ => theme.muted,

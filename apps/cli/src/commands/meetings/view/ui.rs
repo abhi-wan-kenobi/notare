@@ -70,7 +70,7 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
 
     let normal_suffix = app
         .save_message()
-        .map(|msg| Span::styled(msg, theme.status_active));
+        .map(|msg| Span::styled(msg, theme.status.active));
 
     let insert_suffix = if app.memo_dirty() {
         Some(Span::styled("[modified]", theme.muted))

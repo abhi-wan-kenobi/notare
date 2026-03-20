@@ -22,7 +22,7 @@ impl<'a> CommandBar<'a> {
 impl Widget for CommandBar<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let line = Line::from(vec![
-            Span::styled(" COMMAND ", self.theme.mode_command),
+            Span::styled(" COMMAND ", self.theme.mode.command),
             Span::raw(" "),
             Span::styled(format!(":{}", self.buffer), Style::new().fg(Color::White)),
             Span::styled("\u{2588}", Style::new().fg(Color::Gray)),

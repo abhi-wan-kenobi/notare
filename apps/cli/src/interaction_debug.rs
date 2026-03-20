@@ -90,14 +90,14 @@ mod imp {
             }
 
             let theme = Theme::DEFAULT;
-            let backdrop = Block::new().style(Style::new().bg(theme.overlay_bg));
+            let backdrop = Block::new().style(Style::new().bg(theme.dialog.overlay_bg));
             frame.render_widget(backdrop, frame.area());
 
             let area = centered_overlay(frame.area());
             frame.render_widget(Clear, area);
 
             let block = Block::new()
-                .style(Style::new().bg(theme.dialog_bg))
+                .style(Style::new().bg(theme.dialog.bg))
                 .borders(Borders::ALL)
                 .border_style(Style::new().fg(Color::Cyan))
                 .title(format!(" Debug Inspector [{}] ", self.screen))

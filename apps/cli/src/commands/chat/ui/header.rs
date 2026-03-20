@@ -9,7 +9,7 @@ use crate::widgets::InfoLine;
 
 pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let mut info = InfoLine::new(theme)
-        .item(Span::styled("chat", theme.status_active))
+        .item(Span::styled("chat", theme.status.active))
         .item(Span::raw(app.model().to_string()));
 
     if let Some(meeting) = app.meeting() {

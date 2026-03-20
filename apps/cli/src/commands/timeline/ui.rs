@@ -1,56 +1,21 @@
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Flex, Layout, Rect};
+use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Clear, ListItem, ListState, Paragraph};
+use ratatui::widgets::{ListItem, ListState, Paragraph};
 
 use crate::theme::Theme;
-use crate::widgets::{KeyHints, SelectList};
+use crate::widgets::{CenteredDialog, KeyHints, SelectList};
 
 use super::app::{App, Pane};
 
 pub(crate) fn draw(frame: &mut Frame, app: &mut App) {
     let theme = Theme::DEFAULT;
 
-    frame.render_widget(
-        Block::default().style(Style::new().bg(theme.overlay_bg)),
-        frame.area(),
-    );
+    let content = CenteredDialog::new("Timeline", &theme).wide().render(frame);
 
-    let area = wide_area(frame.area());
-    frame.render_widget(Clear, area);
-    frame.render_widget(
-        Block::default().style(Style::new().bg(theme.dialog_bg)),
-        area,
-    );
-
-    let padded = Rect {
-        x: area.x + 2,
-        y: area.y + 1,
-        width: area.width.saturating_sub(4),
-        height: area.height.saturating_sub(2),
-    };
-
-    let [title_area, _gap, content_area, hints_area] = Layout::vertical([
-        Constraint::Length(1),
-        Constraint::Length(1),
-        Constraint::Min(1),
-        Constraint::Length(1),
-    ])
-    .areas(padded);
-
-    let [title_left, title_right] =
-        Layout::horizontal([Constraint::Min(0), Constraint::Length(3)]).areas(title_area);
-    frame.render_widget(
-        Span::styled(
-            "Timeline",
-            Style::new()
-                .fg(theme.dialog_title_fg)
-                .add_modifier(Modifier::BOLD),
-        ),
-        title_left,
-    );
-    frame.render_widget(Span::styled("esc", theme.muted), title_right);
+    let [content_area, hints_area] =
+        Layout::vertical([Constraint::Min(1), Constraint::Length(1)]).areas(content);
 
     if app.loading_contacts() {
         frame.render_widget(
@@ -221,18 +186,4 @@ fn draw_entries(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
         ColumnBody::Items(items, app.entry_state_mut())
     };
     render_column(frame, area, "Activity", focused, body, theme);
-}
-
-fn wide_area(area: Rect) -> Rect {
-    let width = area.width.saturating_mul(4) / 5;
-    let width = width.clamp(60, 140);
-    let height = area.height.saturating_mul(4) / 5;
-    let height = height.clamp(16, 50);
-    let [v] = Layout::vertical([Constraint::Length(height)])
-        .flex(Flex::Center)
-        .areas(area);
-    let [h] = Layout::horizontal([Constraint::Length(width)])
-        .flex(Flex::Center)
-        .areas(v);
-    h
 }

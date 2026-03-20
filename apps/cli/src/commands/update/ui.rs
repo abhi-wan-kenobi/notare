@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Flex, Layout},
-    style::{Modifier, Style},
+    style::Modifier,
     text::{Line, Span},
     widgets::Paragraph,
 };
@@ -38,7 +38,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         Span::raw(" → "),
         Span::styled(
             format!("v{}", app.latest),
-            theme.status_active.add_modifier(Modifier::BOLD),
+            theme.status.active.add_modifier(Modifier::BOLD),
         ),
     ]);
     frame.render_widget(Paragraph::new(title), rows[0]);
@@ -46,12 +46,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
     for (i, label) in items.iter().enumerate() {
         let row_idx = i + 2;
         let (prefix, style) = if i == app.selected {
-            (
-                "> ",
-                Style::default()
-                    .fg(ratatui::style::Color::Cyan)
-                    .add_modifier(Modifier::BOLD),
-            )
+            ("> ", theme.accent.add_modifier(Modifier::BOLD))
         } else {
             ("  ", theme.muted)
         };

@@ -142,7 +142,7 @@ impl Screen for BatchScreen {
 
         let status_line = match &self.phase {
             Phase::Waiting => Line::from(vec![
-                Span::styled(format!("{spinner}  "), theme.status_degraded),
+                Span::styled(format!("{spinner}  "), theme.status.degraded),
                 Span::raw("Waiting..."),
             ]),
             Phase::InProgress(pct) => {
@@ -151,15 +151,15 @@ impl Screen for BatchScreen {
                 let empty = 20 - filled;
                 let bar = format!("{}{} {}%", "█".repeat(filled), "░".repeat(empty), percent);
                 Line::from(vec![
-                    Span::styled(format!("{spinner}  "), theme.status_degraded),
+                    Span::styled(format!("{spinner}  "), theme.status.degraded),
                     Span::raw("Transcribing ["),
                     Span::raw(bar),
                     Span::raw("]"),
                 ])
             }
             Phase::Done => Line::from(vec![
-                Span::styled("[✓] ", theme.status_active),
-                Span::styled("Transcription complete", theme.status_active),
+                Span::styled("[✓] ", theme.status.active),
+                Span::styled("Transcription complete", theme.status.active),
             ]),
             Phase::Failed(msg) => Line::from(vec![
                 Span::styled("[!] ", theme.error),

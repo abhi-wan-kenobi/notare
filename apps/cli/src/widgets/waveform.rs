@@ -57,11 +57,11 @@ impl Widget for Waveform<'_> {
             };
 
             let style = if self.muted || level == 0 || envelope < 0.22 {
-                self.theme.waveform_silent
+                self.theme.waveform.silent
             } else if level >= 6 && envelope > 0.7 {
-                self.theme.waveform_hot
+                self.theme.waveform.hot
             } else {
-                self.theme.waveform_normal
+                self.theme.waveform.normal
             };
 
             let ch = level_char(level);

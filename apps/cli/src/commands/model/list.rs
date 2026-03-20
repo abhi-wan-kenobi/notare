@@ -107,8 +107,8 @@ fn print_model_rows_table(models_base: &Path, rows: &[ModelRow]) -> CliResult<()
             };
 
             let status_cell = match row.status.as_str() {
-                "downloaded" => Cell::from(row.status.as_str()).style(theme.status_active),
-                "not-downloaded" => Cell::from(row.status.as_str()).style(theme.status_degraded),
+                "downloaded" => Cell::from(row.status.as_str()).style(theme.status.active),
+                "not-downloaded" => Cell::from(row.status.as_str()).style(theme.status.degraded),
                 "unavailable" => Cell::from(row.status.as_str()).style(theme.muted),
                 "error" => Cell::from(row.status.as_str()).style(theme.error),
                 _ => Cell::from(row.status.as_str()),

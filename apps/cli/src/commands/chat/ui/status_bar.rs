@@ -10,7 +10,7 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let status_style = if app.last_error().is_some() {
         theme.error
     } else if app.streaming() {
-        theme.status_active
+        theme.status.active
     } else {
         theme.muted
     };

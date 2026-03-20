@@ -80,7 +80,7 @@ fn word_style(
     word_age_fn: Option<&dyn Fn(&str) -> f64>,
 ) -> Style {
     if !word.is_final {
-        return theme.transcript_partial;
+        return theme.transcript.partial;
     }
 
     if let (Some(id), Some(age_fn)) = (&word.id, word_age_fn) {
@@ -90,7 +90,7 @@ fn word_style(
         }
     }
 
-    theme.transcript_final
+    theme.transcript.confirmed
 }
 
 fn fade_in_style(age: f64) -> Style {

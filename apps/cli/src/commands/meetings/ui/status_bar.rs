@@ -26,7 +26,7 @@ pub(crate) fn draw_status_bar(
         }
         Mode::Insert => {
             let mut widget = KeyHints::new(theme)
-                .badge(" INSERT ", theme.mode_insert)
+                .badge(" INSERT ", theme.mode.insert)
                 .hints(config.insert_hints);
             if let Some(suffix) = config.insert_suffix {
                 widget = widget.suffix(suffix);
@@ -35,7 +35,7 @@ pub(crate) fn draw_status_bar(
         }
         Mode::Normal => {
             let mut widget = KeyHints::new(theme)
-                .badge(" NORMAL ", theme.mode_normal)
+                .badge(" NORMAL ", theme.mode.normal)
                 .hints(config.normal_hints);
             if let Some(suffix) = config.normal_suffix {
                 widget = widget.suffix(suffix);

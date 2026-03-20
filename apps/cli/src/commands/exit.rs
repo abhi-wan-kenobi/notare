@@ -114,7 +114,7 @@ impl Screen for ExitScreen {
     }
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
-        use ratatui::style::{Color, Modifier, Style};
+        use ratatui::style::{Modifier, Style};
         use ratatui::text::{Line, Span};
         use ratatui::widgets::Paragraph;
 
@@ -141,9 +141,7 @@ impl Screen for ExitScreen {
             Line::raw(""),
             Line::from(Span::styled(
                 chat_cmd,
-                Style::default()
-                    .add_modifier(Modifier::BOLD)
-                    .fg(Color::Cyan),
+                theme.accent.add_modifier(Modifier::BOLD),
             )),
             Line::raw(""),
         ];
@@ -153,11 +151,11 @@ impl Screen for ExitScreen {
         for task in &self.tasks {
             let line = match &task.state {
                 TaskState::Done => Line::from(vec![
-                    Span::styled("[✓] ", theme.status_active),
+                    Span::styled("[✓] ", theme.status.active),
                     Span::styled(task.label, dim.add_modifier(Modifier::CROSSED_OUT)),
                 ]),
                 TaskState::InProgress => Line::from(vec![
-                    Span::styled(format!("{spinner}  "), theme.status_degraded),
+                    Span::styled(format!("{spinner}  "), theme.status.degraded),
                     Span::raw(task.label),
                 ]),
                 TaskState::NotStarted => Line::from(vec![
@@ -167,7 +165,7 @@ impl Screen for ExitScreen {
                 TaskState::Failed(msg) => Line::from(vec![
                     Span::styled("[!] ", theme.error),
                     Span::styled(task.label, theme.error),
-                    Span::styled(format!(" ({msg})"), dim.fg(Color::Red)),
+                    Span::styled(format!(" ({msg})"), theme.error.add_modifier(Modifier::DIM)),
                 ]),
             };
             lines.push(line);

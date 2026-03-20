@@ -1,15 +1,84 @@
-use ratatui::layout::{Constraint, Layout};
+use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::ListItem;
+use ratatui::widgets::{ListItem, ListState};
 
 use crate::theme::Theme;
-use crate::widgets::{CenteredDialog, KeyHints, MultiSelect, MultiSelectEntry, SelectList};
+use crate::widgets::{
+    CenteredDialog, KeyHints, MultiSelect, MultiSelectEntry, MultiSelectState, SelectList,
+};
 
 use super::app::{App, ProviderTab, Tab};
 use super::runtime::CalendarPermissionState;
 
 const THEME: Theme = Theme::DEFAULT;
+
+enum Section<'a> {
+    Label(&'a str),
+    Message(&'a str),
+    CurrentProvider {
+        name: &'a str,
+    },
+    ProviderList {
+        items: Vec<ListItem<'a>>,
+        state: &'a mut ListState,
+    },
+    CalendarList {
+        entries: Vec<MultiSelectEntry<'a>>,
+        state: MultiSelectState,
+    },
+    Gap,
+}
+
+fn section_constraint(s: &Section) -> Constraint {
+    match s {
+        Section::Label(_) | Section::CurrentProvider { .. } | Section::Gap => Constraint::Length(1),
+        Section::Message(_) | Section::ProviderList { .. } | Section::CalendarList { .. } => {
+            Constraint::Min(0)
+        }
+    }
+}
+
+fn render_section(frame: &mut ratatui::Frame, section: Section, area: Rect) {
+    match section {
+        Section::Label(text) => {
+            frame.render_widget(
+                Line::from(Span::styled(
+                    text,
+                    Style::new().add_modifier(Modifier::BOLD),
+                )),
+                area,
+            );
+        }
+        Section::Message(text) => {
+            frame.render_widget(Line::from(Span::styled(text, THEME.muted)), area);
+        }
+        Section::CurrentProvider { name } => {
+            frame.render_widget(
+                Line::from(vec![
+                    Span::raw("Current: "),
+                    Span::styled(name, THEME.status.active),
+                ]),
+                area,
+            );
+        }
+        Section::ProviderList { items, state } => {
+            frame.render_stateful_widget(SelectList::new(items, &THEME), area, state);
+        }
+        Section::CalendarList { entries, mut state } => {
+            frame.render_stateful_widget(MultiSelect::new(entries, &THEME), area, &mut state);
+        }
+        Section::Gap => {}
+    }
+}
+
+fn render_sections(frame: &mut ratatui::Frame, sections: Vec<Section>, area: Rect) {
+    let constraints: Vec<Constraint> = sections.iter().map(section_constraint).collect();
+    let areas = Layout::vertical(constraints).split(area);
+    for (section, area) in sections.into_iter().zip(areas.iter()) {
+        render_section(frame, section, *area);
+    }
+}
 
 pub fn draw(frame: &mut ratatui::Frame, app: &mut App) {
     let content = CenteredDialog::new("Configure", &THEME).render(frame);
@@ -61,13 +130,7 @@ fn draw_tabs(frame: &mut ratatui::Frame, app: &App, area: ratatui::layout::Rect)
             spans.push(Span::raw("  "));
         }
         if *tab == app.tab {
-            spans.push(Span::styled(
-                format!(" {} ", tab.title()),
-                Style::new()
-                    .fg(THEME.bg)
-                    .bg(Color::White)
-                    .add_modifier(Modifier::BOLD),
-            ));
+            spans.push(Span::styled(format!(" {} ", tab.title()), THEME.tab_active));
         } else {
             spans.push(Span::styled(tab.title(), THEME.muted));
         }
@@ -75,131 +138,83 @@ fn draw_tabs(frame: &mut ratatui::Frame, app: &App, area: ratatui::layout::Rect)
     frame.render_widget(Line::from(spans), area);
 }
 
-fn draw_provider_content(
-    frame: &mut ratatui::Frame,
-    pt: &mut ProviderTab,
-    area: ratatui::layout::Rect,
-) {
+fn draw_provider_content(frame: &mut ratatui::Frame, pt: &mut ProviderTab, area: Rect) {
     if pt.providers.is_empty() {
-        let [label_area, _, msg_area] = Layout::vertical([
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Min(0),
-        ])
-        .areas(area);
-
-        let label = Line::from(Span::styled(
-            "Provider",
-            Style::new().add_modifier(Modifier::BOLD),
-        ));
-        frame.render_widget(label, label_area);
-
-        let msg = Line::from(Span::styled(
-            "No providers configured. Run `char connect` first.",
-            THEME.muted,
-        ));
-        frame.render_widget(msg, msg_area);
+        render_sections(
+            frame,
+            vec![
+                Section::Label("Provider"),
+                Section::Gap,
+                Section::Message("No providers configured. Run `char connect` first."),
+            ],
+            area,
+        );
         return;
     }
 
-    let [label_area, current_area, _gap, list_area] = Layout::vertical([
-        Constraint::Length(1),
-        Constraint::Length(1),
-        Constraint::Length(1),
-        Constraint::Min(0),
-    ])
-    .areas(area);
+    let ProviderTab {
+        providers,
+        current,
+        list_state,
+    } = pt;
 
-    let label = Line::from(Span::styled(
-        "Provider",
-        Style::new().add_modifier(Modifier::BOLD),
-    ));
-    frame.render_widget(label, label_area);
-
-    if let Some(cur) = &pt.current {
-        let current_line = Line::from(vec![
-            Span::raw("Current: "),
-            Span::styled(cur.as_str(), THEME.status_active),
-        ]);
-        frame.render_widget(current_line, current_area);
-    }
-
-    let items: Vec<ListItem> = pt
-        .providers
+    let items: Vec<ListItem> = providers
         .iter()
         .map(|p| {
-            let marker = if pt.current.as_deref() == Some(p.as_str()) {
+            let marker = if current.as_deref() == Some(p.as_str()) {
                 "\u{2713} "
             } else {
                 "  "
             };
             ListItem::new(Line::from(vec![
-                Span::styled(marker, Style::new().fg(Color::Green)),
+                Span::styled(marker, THEME.status.active),
                 Span::raw(p.as_str()),
             ]))
         })
         .collect();
 
-    let list = SelectList::new(items, &THEME);
-    frame.render_stateful_widget(list, list_area, &mut pt.list_state);
+    let mut sections: Vec<Section> = vec![Section::Label("Provider")];
+    if let Some(cur) = current {
+        sections.push(Section::CurrentProvider { name: cur.as_str() });
+    }
+    sections.push(Section::Gap);
+    sections.push(Section::ProviderList {
+        items,
+        state: list_state,
+    });
+    render_sections(frame, sections, area);
 }
 
-fn draw_calendar_content(frame: &mut ratatui::Frame, app: &mut App, area: ratatui::layout::Rect) {
+fn draw_calendar_content(frame: &mut ratatui::Frame, app: &mut App, area: Rect) {
     let authorized = app.cal_permission == Some(CalendarPermissionState::Authorized);
 
     if !authorized {
-        let [label_area, _, msg_area] = Layout::vertical([
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Min(0),
-        ])
-        .areas(area);
-
-        let label = Line::from(Span::styled(
-            "Apple Calendar",
-            Style::new().add_modifier(Modifier::BOLD),
-        ));
-        frame.render_widget(label, label_area);
-
-        let msg = Line::from(Span::styled(
-            "Permission not granted. Run `char connect` to set up calendar access.",
-            THEME.muted,
-        ));
-        frame.render_widget(msg, msg_area);
+        render_sections(
+            frame,
+            vec![
+                Section::Label("Apple Calendar"),
+                Section::Gap,
+                Section::Message(
+                    "Permission not granted. Run `char connect` to set up calendar access.",
+                ),
+            ],
+            area,
+        );
         return;
     }
 
     if app.calendars.is_empty() {
-        let [label_area, _, msg_area] = Layout::vertical([
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Min(0),
-        ])
-        .areas(area);
-
-        let label = Line::from(Span::styled(
-            "Apple Calendar",
-            Style::new().add_modifier(Modifier::BOLD),
-        ));
-        frame.render_widget(label, label_area);
-
-        let msg = Line::from(Span::styled("No calendars found.", THEME.muted));
-        frame.render_widget(msg, msg_area);
+        render_sections(
+            frame,
+            vec![
+                Section::Label("Apple Calendar"),
+                Section::Gap,
+                Section::Message("No calendars found."),
+            ],
+            area,
+        );
         return;
     }
-
-    let [label_area, _, cal_list_area] = Layout::vertical([
-        Constraint::Length(1),
-        Constraint::Length(1),
-        Constraint::Min(0),
-    ])
-    .areas(area);
-
-    let label = Line::from(Span::styled(
-        "Apple Calendar",
-        Style::new().add_modifier(Modifier::BOLD),
-    ));
-    frame.render_widget(label, label_area);
 
     let mut current_source: Option<&str> = None;
     let mut entries: Vec<MultiSelectEntry> = Vec::new();
@@ -227,9 +242,16 @@ fn draw_calendar_content(frame: &mut ratatui::Frame, app: &mut App, area: ratatu
         });
     }
 
-    let mut ms_state = crate::widgets::MultiSelectState::new(app.cal_cursor);
-    let ms = MultiSelect::new(entries, &THEME);
-    frame.render_stateful_widget(ms, cal_list_area, &mut ms_state);
+    let state = MultiSelectState::new(app.cal_cursor);
+    render_sections(
+        frame,
+        vec![
+            Section::Label("Apple Calendar"),
+            Section::Gap,
+            Section::CalendarList { entries, state },
+        ],
+        area,
+    );
 }
 
 fn parse_hex_color(hex: &str) -> Color {

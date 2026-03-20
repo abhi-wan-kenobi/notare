@@ -86,7 +86,7 @@ fn render_message(
             .collect(),
         Role::Assistant => wrapped
             .iter()
-            .map(|w| Line::from(Span::styled(format!("    {w}"), theme.transcript_final)))
+            .map(|w| Line::from(Span::styled(format!("    {w}"), theme.transcript.confirmed)))
             .collect(),
         Role::Tool => wrapped
             .iter()
@@ -100,12 +100,12 @@ fn render_pending(content: &str, wrap_width: usize, theme: &Theme) -> Vec<Line<'
     if content.is_empty() {
         vec![Line::from(Span::styled(
             "    ...",
-            theme.transcript_partial,
+            theme.transcript.partial,
         ))]
     } else {
         wrap(content, wrap_width)
             .iter()
-            .map(|w| Line::from(Span::styled(format!("    {w}"), theme.transcript_final)))
+            .map(|w| Line::from(Span::styled(format!("    {w}"), theme.transcript.confirmed)))
             .collect()
     }
 }

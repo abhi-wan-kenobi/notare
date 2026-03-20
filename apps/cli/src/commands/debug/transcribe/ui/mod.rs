@@ -41,8 +41,8 @@ fn render_channel_line(ch: &ChannelTranscript) -> Option<Line<'static>> {
     let prefix = format!("[{} / {}]", from_str, fmt_ts(ch.elapsed_secs()));
     let theme = Theme::DEFAULT;
     let (confirmed_style, partial_style) = match ch.kind() {
-        ChannelKind::Mic => (theme.raw_mic_confirmed, theme.raw_mic_partial),
-        ChannelKind::Speaker => (theme.raw_speaker_confirmed, theme.raw_speaker_partial),
+        ChannelKind::Mic => (theme.raw.mic_confirmed, theme.raw.mic_partial),
+        ChannelKind::Speaker => (theme.raw.speaker_confirmed, theme.raw.speaker_partial),
     };
 
     let mut spans = vec![

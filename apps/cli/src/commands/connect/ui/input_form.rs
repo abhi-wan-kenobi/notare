@@ -1,8 +1,8 @@
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Position, Rect};
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::text::Span;
-use ratatui::widgets::{Block, Paragraph};
+use ratatui::widgets::Paragraph;
 
 use crate::theme::Theme;
 
@@ -93,12 +93,7 @@ fn render_section(frame: &mut Frame, section: &Section, area: Rect, theme: &Them
             cursor_x,
             focused,
         } => {
-            let border_style = if *focused {
-                Style::new().fg(Color::Cyan)
-            } else {
-                theme.border
-            };
-            let input_block = Block::bordered().border_style(border_style);
+            let input_block = theme.bordered_block(*focused);
             let inner = input_block.inner(area);
             frame.render_widget(Paragraph::new(text.as_str()).block(input_block), area);
             if let Some(cx) = cursor_x {

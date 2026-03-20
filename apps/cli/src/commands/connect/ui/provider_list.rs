@@ -1,39 +1,29 @@
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Position, Rect};
-use ratatui::style::{Color, Style};
+use ratatui::style::Style;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, ListItem, Paragraph};
+use ratatui::widgets::{ListItem, Paragraph};
 
 use crate::theme::Theme;
 use crate::widgets::SelectList;
 
 use super::super::app::App;
+use super::super::{ConnectProvider, ConnectionType};
 
-const BADGE_STT: Style = Style::new().fg(Color::Cyan);
-const BADGE_LLM: Style = Style::new().fg(Color::Yellow);
-const BADGE_CAL: Style = Style::new().fg(Color::Magenta);
+const SEARCH_HEIGHT: u16 = 3;
+const NAME_TAG_BOUNDARY: usize = 2;
+const MIN_NAME_TAG_SPACER: usize = 1;
+const TAG_BOUNDARY: &str = " ";
 
 pub(crate) fn draw(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) {
     let [search_area, list_area] =
-        Layout::vertical([Constraint::Length(3), Constraint::Min(1)]).areas(area);
+        Layout::vertical([Constraint::Length(SEARCH_HEIGHT), Constraint::Min(1)]).areas(area);
 
-    // Search input
-    let search_block = Block::bordered()
-        .title(" Search ")
-        .border_style(Style::new().fg(Color::Cyan));
-    let search_inner = search_block.inner(search_area);
-    frame.render_widget(
-        Paragraph::new(app.search_query()).block(search_block),
-        search_area,
-    );
-    #[allow(clippy::cast_possible_truncation)]
-    let cursor_x = app.search_query().chars().count() as u16;
-    frame.set_cursor_position(Position::new(search_inner.x + cursor_x, search_inner.y));
+    draw_search_input(frame, app, search_area, theme);
 
-    // Provider list with tags
     let filtered = app.filtered_providers();
     if filtered.is_empty() {
-        frame.render_widget(Span::styled("  No matches", theme.muted), list_area);
+        draw_empty_state(frame, list_area, theme);
         return;
     }
 
@@ -43,78 +33,15 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) 
     let available_width = list_area.width as usize;
     let items: Vec<ListItem> = filtered
         .iter()
-        .map(|p| {
-            let disabled = p.is_disabled();
-            let name = p.display_name();
-            let caps = p.capabilities();
-            let is_configured = configured.contains(p.id());
-
-            let is_active_stt = current_stt == Some(p.id());
-            let is_active_llm = current_llm == Some(p.id());
-
-            let mut tag_spans: Vec<Span> = Vec::new();
-
-            if is_configured {
-                tag_spans.push(Span::styled("✓", theme.status_active));
-            }
-
-            if disabled {
-                if !tag_spans.is_empty() {
-                    tag_spans.push(Span::raw(" "));
-                }
-                tag_spans.push(Span::styled("soon", theme.muted));
-            }
-
-            for cap in &caps {
-                if !tag_spans.is_empty() {
-                    tag_spans.push(Span::raw(" "));
-                }
-
-                let is_active = match cap {
-                    super::super::ConnectionType::Stt => is_active_stt,
-                    super::super::ConnectionType::Llm => is_active_llm,
-                    super::super::ConnectionType::Cal => false,
-                };
-
-                let style = if disabled {
-                    theme.muted
-                } else if is_active {
-                    match cap {
-                        super::super::ConnectionType::Stt => BADGE_STT,
-                        super::super::ConnectionType::Llm => BADGE_LLM,
-                        super::super::ConnectionType::Cal => BADGE_CAL,
-                    }
-                } else {
-                    theme.muted
-                };
-
-                let label = match cap {
-                    super::super::ConnectionType::Stt => "[STT]",
-                    super::super::ConnectionType::Llm => "[LLM]",
-                    super::super::ConnectionType::Cal => "[CAL]",
-                };
-                tag_spans.push(Span::styled(label, style));
-            }
-
-            let tags_width: usize = tag_spans.iter().map(|s| s.width()).sum();
-            let padding = if available_width > name.len() + tags_width + 2 {
-                available_width - name.len() - tags_width - 2
-            } else {
-                1
-            };
-
-            let name_style = if disabled {
-                theme.muted
-            } else {
-                Style::default()
-            };
-
-            let mut spans = vec![
-                Span::styled(name.to_string(), name_style),
-                Span::raw(" ".repeat(padding)),
-            ];
-            spans.extend(tag_spans);
-            ListItem::new(Line::from(spans))
+        .map(|provider| {
+            build_provider_item(
+                provider,
+                configured.contains(provider.id()),
+                current_stt == Some(provider.id()),
+                current_llm == Some(provider.id()),
+                available_width,
+                theme,
+            )
         })
         .collect();
 
@@ -123,4 +50,129 @@ pub(crate) fn draw(frame: &mut Frame, app: &mut App, area: Rect, theme: &Theme) 
         list_area,
         app.list_state_mut(),
     );
+}
+
+fn draw_search_input(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
+    let search_block = theme.bordered_block(true).title(" Search ");
+    let search_inner = search_block.inner(area);
+
+    frame.render_widget(Paragraph::new(app.search_query()).block(search_block), area);
+
+    #[allow(clippy::cast_possible_truncation)]
+    let cursor_x = app.search_query().chars().count() as u16;
+    frame.set_cursor_position(Position::new(search_inner.x + cursor_x, search_inner.y));
+}
+
+fn draw_empty_state(frame: &mut Frame, area: Rect, theme: &Theme) {
+    frame.render_widget(Span::styled("  No matches", theme.muted), area);
+}
+
+fn build_provider_item(
+    provider: &ConnectProvider,
+    is_configured: bool,
+    is_active_stt: bool,
+    is_active_llm: bool,
+    available_width: usize,
+    theme: &Theme,
+) -> ListItem<'static> {
+    let disabled = provider.is_disabled();
+    let name = provider.display_name();
+    let tag_spans = build_tag_spans(
+        provider.capabilities(),
+        disabled,
+        is_configured,
+        is_active_stt,
+        is_active_llm,
+        theme,
+    );
+    let tags_width: usize = tag_spans.iter().map(|span| span.width()).sum();
+    let name_width = name.len();
+    let spacer_width = available_width
+        .saturating_sub(name_width + tags_width + NAME_TAG_BOUNDARY)
+        .max(MIN_NAME_TAG_SPACER);
+    let name_style = if disabled {
+        theme.muted
+    } else {
+        Style::default()
+    };
+
+    let mut spans = vec![
+        Span::styled(name.to_string(), name_style),
+        Span::raw(" ".repeat(spacer_width)),
+    ];
+    spans.extend(tag_spans);
+
+    ListItem::new(Line::from(spans))
+}
+
+fn build_tag_spans(
+    capabilities: Vec<ConnectionType>,
+    disabled: bool,
+    is_configured: bool,
+    is_active_stt: bool,
+    is_active_llm: bool,
+    theme: &Theme,
+) -> Vec<Span<'static>> {
+    let mut segments = Vec::new();
+
+    if is_configured {
+        push_tag_segment(&mut segments, Span::styled("✓", theme.status.active));
+    }
+
+    if disabled {
+        push_tag_segment(&mut segments, Span::styled("soon", theme.muted));
+    }
+
+    for capability in capabilities {
+        let is_active = match capability {
+            ConnectionType::Stt => is_active_stt,
+            ConnectionType::Llm => is_active_llm,
+            ConnectionType::Cal => false,
+        };
+        push_tag_segment(
+            &mut segments,
+            Span::styled(
+                capability_label(capability),
+                capability_style(capability, disabled, is_active, theme),
+            ),
+        );
+    }
+
+    segments
+}
+
+fn push_tag_segment(segments: &mut Vec<Span<'static>>, span: Span<'static>) {
+    if !segments.is_empty() {
+        segments.push(Span::raw(TAG_BOUNDARY));
+    }
+    segments.push(span);
+}
+
+fn capability_label(capability: ConnectionType) -> &'static str {
+    match capability {
+        ConnectionType::Stt => "[STT]",
+        ConnectionType::Llm => "[LLM]",
+        ConnectionType::Cal => "[CAL]",
+    }
+}
+
+fn capability_style(
+    capability: ConnectionType,
+    disabled: bool,
+    is_active: bool,
+    theme: &Theme,
+) -> Style {
+    if disabled {
+        return theme.muted;
+    }
+
+    if !is_active {
+        return theme.muted;
+    }
+
+    match capability {
+        ConnectionType::Stt => theme.capability.stt,
+        ConnectionType::Llm => theme.capability.llm,
+        ConnectionType::Cal => theme.capability.cal,
+    }
 }

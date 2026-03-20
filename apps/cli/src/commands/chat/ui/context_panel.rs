@@ -1,6 +1,5 @@
 use ratatui::Frame;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Padding, Paragraph};
 
@@ -56,11 +55,12 @@ fn sections(app: &App) -> Vec<Section<'_>> {
 // --- View layer: how to render each section ---
 
 fn render_section(section: &Section<'_>, theme: &Theme) -> Vec<Line<'static>> {
-    let heading = Style::new().fg(Color::White);
-
     match section {
         Section::Title(title) => {
-            vec![Line::from(Span::styled(title.to_string(), heading))]
+            vec![Line::from(Span::styled(
+                title.to_string(),
+                theme.panel_heading,
+            ))]
         }
         Section::Field {
             label,
@@ -68,12 +68,12 @@ fn render_section(section: &Section<'_>, theme: &Theme) -> Vec<Line<'static>> {
             active,
         } => {
             let value_style = if *active {
-                theme.status_active
+                theme.status.active
             } else {
                 theme.muted
             };
             vec![
-                Line::from(Span::styled(*label, heading)),
+                Line::from(Span::styled(*label, theme.panel_heading)),
                 Line::from(Span::styled(value.clone(), value_style)),
             ]
         }
@@ -97,7 +97,7 @@ pub(super) fn draw(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
 
     let block = Block::new()
         .borders(Borders::LEFT)
-        .border_style(theme.border)
+        .border_style(theme.border.default)
         .padding(Padding::horizontal(1));
 
     let paragraph = Paragraph::new(lines).block(block);

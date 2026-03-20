@@ -126,15 +126,15 @@ impl Screen for DownloadScreen {
                 let empty = 20 - filled;
                 let bar = format!("{}{} {}%", "█".repeat(filled), "░".repeat(empty), percent);
                 Line::from(vec![
-                    Span::styled(format!("{spinner}  "), theme.status_degraded),
+                    Span::styled(format!("{spinner}  "), theme.status.degraded),
                     Span::raw("Downloading ["),
                     Span::raw(bar),
                     Span::raw("]"),
                 ])
             }
             Phase::Done => Line::from(vec![
-                Span::styled("[✓] ", theme.status_active),
-                Span::styled("Download complete", theme.status_active),
+                Span::styled("[✓] ", theme.status.active),
+                Span::styled("Download complete", theme.status.active),
             ]),
             Phase::Failed => Line::from(vec![
                 Span::styled("[!] ", theme.error),
