@@ -58,14 +58,19 @@ struct EntryScreen {
     external_tx: mpsc::UnboundedSender<ExternalEvent>,
     connect_runtime: crate::commands::connect::runtime::Runtime,
     pool: SqlitePool,
+    inspector: crate::interaction_debug::Inspector,
 }
 
 impl EntryScreen {
     fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<EntryAction> {
         for effect in effects {
             match effect {
-                Effect::Launch(cmd) => return ScreenControl::Exit(EntryAction::Launch(cmd)),
+                Effect::Launch(cmd) => {
+                    crate::tui_trace::trace_effect("entry", "Launch");
+                    return ScreenControl::Exit(EntryAction::Launch(cmd));
+                }
                 Effect::LoadMeetings => {
+                    crate::tui_trace::trace_effect("entry", "LoadMeetings");
                     let tx = self.external_tx.clone();
                     let pool = self.pool.clone();
                     tokio::spawn(async move {
@@ -108,6 +113,7 @@ impl EntryScreen {
                     });
                 }
                 Effect::LoadModels => {
+                    crate::tui_trace::trace_effect("entry", "LoadModels");
                     let tx = self.external_tx.clone();
                     let pool = self.pool.clone();
                     tokio::spawn(async move {
@@ -136,6 +142,7 @@ impl EntryScreen {
                     });
                 }
                 Effect::LoadTimelineContacts => {
+                    crate::tui_trace::trace_effect("entry", "LoadTimelineContacts");
                     let tx = self.external_tx.clone();
                     let pool = self.pool.clone();
                     tokio::spawn(async move {
@@ -154,6 +161,7 @@ impl EntryScreen {
                     });
                 }
                 Effect::LoadTimelineEntries(human_id) => {
+                    crate::tui_trace::trace_effect("entry", "LoadTimelineEntries");
                     let tx = self.external_tx.clone();
                     let pool = self.pool.clone();
                     tokio::spawn(async move {
@@ -174,6 +182,7 @@ impl EntryScreen {
                     base_url,
                     api_key,
                 } => {
+                    crate::tui_trace::trace_effect("entry", "SaveConnect");
                     let provider_id = provider.id().to_string();
                     let pool = self.pool.clone();
                     let tx = self.external_tx.clone();
@@ -203,6 +212,7 @@ impl EntryScreen {
                     });
                 }
                 Effect::CheckCalendarPermission => {
+                    crate::tui_trace::trace_effect("entry", "CheckCalendarPermission");
                     let effects = self.app.dispatch(Action::ConnectRuntime(
                         crate::commands::connect::runtime::RuntimeEvent::CalendarPermissionStatus(
                             crate::commands::connect::runtime::check_permission_sync(),
@@ -213,12 +223,15 @@ impl EntryScreen {
                     }
                 }
                 Effect::RequestCalendarPermission => {
+                    crate::tui_trace::trace_effect("entry", "RequestCalendarPermission");
                     self.connect_runtime.request_permission();
                 }
                 Effect::ResetCalendarPermission => {
+                    crate::tui_trace::trace_effect("entry", "ResetCalendarPermission");
                     self.connect_runtime.reset_permission();
                 }
                 Effect::LoadCalendars => {
+                    crate::tui_trace::trace_effect("entry", "LoadCalendars");
                     let effects = self.app.dispatch(Action::ConnectRuntime(
                         match crate::commands::connect::runtime::load_calendars_sync() {
                             Ok(items) => {
@@ -234,6 +247,7 @@ impl EntryScreen {
                     }
                 }
                 Effect::SaveCalendars(data) => {
+                    crate::tui_trace::trace_effect("entry", "SaveCalendars");
                     let connection_id = format!("cal:{}", data.provider);
                     self.connect_runtime.save_calendars(
                         self.pool.clone(),
@@ -243,6 +257,7 @@ impl EntryScreen {
                     );
                 }
                 Effect::OpenAuth => {
+                    crate::tui_trace::trace_effect("entry", "OpenAuth");
                     let message = match crate::commands::auth::run() {
                         Ok(()) => "Opened auth page in browser".to_string(),
                         Err(error) => error.to_string(),
@@ -251,6 +266,7 @@ impl EntryScreen {
                     debug_assert!(inner.is_empty());
                 }
                 Effect::OpenBug => {
+                    crate::tui_trace::trace_effect("entry", "OpenBug");
                     let message = match crate::commands::bug::run() {
                         Ok(()) => "Opened bug report page in browser".to_string(),
                         Err(error) => error.to_string(),
@@ -259,6 +275,7 @@ impl EntryScreen {
                     debug_assert!(inner.is_empty());
                 }
                 Effect::OpenHello => {
+                    crate::tui_trace::trace_effect("entry", "OpenHello");
                     let message = match crate::commands::hello::run() {
                         Ok(()) => "Opened char.com in browser".to_string(),
                         Err(error) => error.to_string(),
@@ -267,6 +284,7 @@ impl EntryScreen {
                     debug_assert!(inner.is_empty());
                 }
                 Effect::OpenDesktop => {
+                    crate::tui_trace::trace_effect("entry", "OpenDesktop");
                     let message = match crate::commands::desktop::run() {
                         Ok(crate::commands::desktop::DesktopAction::OpenedApp) => {
                             "Opened desktop app".to_string()
@@ -279,8 +297,14 @@ impl EntryScreen {
                     let inner = self.app.dispatch(Action::StatusMessage(message));
                     debug_assert!(inner.is_empty());
                 }
-                Effect::RunModel(cmd) => return ScreenControl::Exit(EntryAction::Model(cmd)),
-                Effect::Exit => return ScreenControl::Exit(EntryAction::Quit),
+                Effect::RunModel(cmd) => {
+                    crate::tui_trace::trace_effect("entry", "RunModel");
+                    return ScreenControl::Exit(EntryAction::Model(cmd));
+                }
+                Effect::Exit => {
+                    crate::tui_trace::trace_effect("entry", "Exit");
+                    return ScreenControl::Exit(EntryAction::Quit);
+                }
             }
         }
 
@@ -299,10 +323,17 @@ impl Screen for EntryScreen {
     ) -> ScreenControl<Self::Output> {
         match event {
             TuiEvent::Key(key) => {
+                if self.inspector.handle_key(key) {
+                    return ScreenControl::Continue;
+                }
+                crate::tui_trace::trace_input_key("entry", &key);
+                crate::tui_trace::trace_action("entry", "Key");
                 let effects = self.app.dispatch(Action::Key(key));
                 self.apply_effects(effects)
             }
             TuiEvent::Paste(pasted) => {
+                crate::tui_trace::trace_input_paste("entry", pasted.chars().count());
+                crate::tui_trace::trace_action("entry", "Paste");
                 let effects = self.app.dispatch(Action::Paste(pasted));
                 self.apply_effects(effects)
             }
@@ -316,27 +347,77 @@ impl Screen for EntryScreen {
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
         let action = match event {
-            ExternalEvent::ConnectRuntime(event) => Action::ConnectRuntime(event),
-            ExternalEvent::MeetingsLoaded(meetings) => Action::MeetingsLoaded(meetings),
-            ExternalEvent::MeetingsLoadError(msg) => Action::MeetingsLoadError(msg),
-            ExternalEvent::EventsLoaded(events) => Action::EventsLoaded(events),
-            ExternalEvent::CalendarNotConfigured => Action::CalendarNotConfigured,
-            ExternalEvent::ModelsLoaded(models) => Action::ModelsLoaded(models),
-            ExternalEvent::ModelsLoadError(msg) => Action::ModelsLoadError(msg),
+            ExternalEvent::ConnectRuntime(event) => {
+                crate::tui_trace::trace_external("entry", "ConnectRuntime");
+                crate::tui_trace::trace_action("entry", "ConnectRuntime");
+                Action::ConnectRuntime(event)
+            }
+            ExternalEvent::MeetingsLoaded(meetings) => {
+                crate::tui_trace::trace_external("entry", "MeetingsLoaded");
+                crate::tui_trace::trace_action("entry", "MeetingsLoaded");
+                Action::MeetingsLoaded(meetings)
+            }
+            ExternalEvent::MeetingsLoadError(msg) => {
+                crate::tui_trace::trace_external("entry", "MeetingsLoadError");
+                crate::tui_trace::trace_action("entry", "MeetingsLoadError");
+                Action::MeetingsLoadError(msg)
+            }
+            ExternalEvent::EventsLoaded(events) => {
+                crate::tui_trace::trace_external("entry", "EventsLoaded");
+                crate::tui_trace::trace_action("entry", "EventsLoaded");
+                Action::EventsLoaded(events)
+            }
+            ExternalEvent::CalendarNotConfigured => {
+                crate::tui_trace::trace_external("entry", "CalendarNotConfigured");
+                crate::tui_trace::trace_action("entry", "CalendarNotConfigured");
+                Action::CalendarNotConfigured
+            }
+            ExternalEvent::ModelsLoaded(models) => {
+                crate::tui_trace::trace_external("entry", "ModelsLoaded");
+                crate::tui_trace::trace_action("entry", "ModelsLoaded");
+                Action::ModelsLoaded(models)
+            }
+            ExternalEvent::ModelsLoadError(msg) => {
+                crate::tui_trace::trace_external("entry", "ModelsLoadError");
+                crate::tui_trace::trace_action("entry", "ModelsLoadError");
+                Action::ModelsLoadError(msg)
+            }
             ExternalEvent::ConnectSaved {
                 connection_types,
                 provider_id,
-            } => Action::ConnectSaved {
-                connection_types,
-                provider_id,
-            },
-            ExternalEvent::ConnectSaveError(msg) => Action::StatusMessage(msg),
+            } => {
+                crate::tui_trace::trace_external("entry", "ConnectSaved");
+                crate::tui_trace::trace_action("entry", "ConnectSaved");
+                Action::ConnectSaved {
+                    connection_types,
+                    provider_id,
+                }
+            }
+            ExternalEvent::ConnectSaveError(msg) => {
+                crate::tui_trace::trace_external("entry", "ConnectSaveError");
+                crate::tui_trace::trace_action("entry", "StatusMessage");
+                Action::StatusMessage(msg)
+            }
             ExternalEvent::TimelineContactsLoaded { orgs, humans } => {
+                crate::tui_trace::trace_external("entry", "TimelineContactsLoaded");
+                crate::tui_trace::trace_action("entry", "TimelineContactsLoaded");
                 Action::TimelineContactsLoaded { orgs, humans }
             }
-            ExternalEvent::TimelineContactsLoadError(msg) => Action::TimelineContactsLoadError(msg),
-            ExternalEvent::TimelineEntriesLoaded(entries) => Action::TimelineEntriesLoaded(entries),
-            ExternalEvent::TimelineEntriesLoadError(msg) => Action::TimelineEntriesLoadError(msg),
+            ExternalEvent::TimelineContactsLoadError(msg) => {
+                crate::tui_trace::trace_external("entry", "TimelineContactsLoadError");
+                crate::tui_trace::trace_action("entry", "TimelineContactsLoadError");
+                Action::TimelineContactsLoadError(msg)
+            }
+            ExternalEvent::TimelineEntriesLoaded(entries) => {
+                crate::tui_trace::trace_external("entry", "TimelineEntriesLoaded");
+                crate::tui_trace::trace_action("entry", "TimelineEntriesLoaded");
+                Action::TimelineEntriesLoaded(entries)
+            }
+            ExternalEvent::TimelineEntriesLoadError(msg) => {
+                crate::tui_trace::trace_external("entry", "TimelineEntriesLoadError");
+                crate::tui_trace::trace_action("entry", "TimelineEntriesLoadError");
+                Action::TimelineEntriesLoadError(msg)
+            }
         };
         let effects = self.app.dispatch(action);
         self.apply_effects(effects)
@@ -344,6 +425,7 @@ impl Screen for EntryScreen {
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
         ui::draw(frame, &mut self.app);
+        self.inspector.draw(frame);
     }
 
     fn on_resize(&mut self) {
@@ -379,6 +461,7 @@ pub async fn run(args: Args) -> EntryAction {
         external_tx,
         connect_runtime: crate::commands::connect::runtime::Runtime::new(connect_tx),
         pool,
+        inspector: crate::interaction_debug::Inspector::new("entry"),
     };
 
     if let Some(command) = args.initial_command {

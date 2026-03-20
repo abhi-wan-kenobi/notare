@@ -12,7 +12,6 @@ use super::audio::{
     DEFAULT_TIMEOUT_SECS, DisplayMode, create_dual_audio_stream, create_single_audio_stream,
 };
 use super::server::spawn_router;
-use super::tracing::{TracingCapture, init_capture};
 use crate::cli::Provider;
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 use crate::config::stt::resolve_local_model_path;
@@ -30,7 +29,6 @@ pub(crate) enum RuntimeEvent {
 
 pub(crate) struct Runtime {
     task: tokio::task::JoinHandle<()>,
-    tracing: Arc<TracingCapture>,
 }
 
 impl Runtime {
@@ -38,9 +36,6 @@ impl Runtime {
         args: DebugTranscribeArgs,
         tx: mpsc::UnboundedSender<RuntimeEvent>,
     ) -> CliResult<Self> {
-        let tracing = TracingCapture::new();
-        init_capture(Arc::clone(&tracing));
-
         validate_args(&args)?;
 
         let task = tokio::spawn(async move {
@@ -49,11 +44,7 @@ impl Runtime {
             }
         });
 
-        Ok(Self { task, tracing })
-    }
-
-    pub(crate) fn tracing_capture(&self) -> Arc<TracingCapture> {
-        Arc::clone(&self.tracing)
+        Ok(Self { task })
     }
 
     pub(crate) fn abort(&self) {

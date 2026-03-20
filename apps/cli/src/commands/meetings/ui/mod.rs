@@ -1,5 +1,6 @@
 pub(crate) mod list;
 mod notepad;
+pub(crate) mod notepad_state;
 pub(crate) mod status_bar;
 mod transcript;
 

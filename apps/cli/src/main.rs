@@ -3,26 +3,25 @@ mod cli;
 mod commands;
 mod config;
 mod error;
+mod interaction_debug;
 mod llm;
 mod output;
 mod services;
 mod theme;
+mod tui_trace;
 mod update_check;
 mod widgets;
-
-use clap::Parser;
-use sqlx::SqlitePool;
-use tracing_subscriber::EnvFilter;
-use tracing_subscriber::filter::LevelFilter;
 
 use crate::cli::{Cli, Commands};
 use crate::config::stt::SttGlobalArgs;
 use crate::error::CliResult;
+use clap::Parser;
+use sqlx::SqlitePool;
 
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
-    let tui_command = matches!(
+    let base_tui_command = matches!(
         &cli.command,
         Some(Commands::Chat { prompt: None, .. })
             | Some(Commands::Meetings { .. })
@@ -32,19 +31,20 @@ async fn main() {
             })
             | Some(Commands::Configure { .. })
     ) || cli.command.is_none();
-    let skip_tracing_init = {
+    let tui_command = {
         #[cfg(feature = "dev")]
         {
-            matches!(
-                &cli.command,
-                Some(Commands::Debug {
-                    command: commands::debug::Commands::Transcribe { .. }
-                })
-            )
+            base_tui_command
+                || matches!(
+                    &cli.command,
+                    Some(Commands::Debug {
+                        command: commands::debug::Commands::Transcribe { .. }
+                    })
+                )
         }
         #[cfg(not(feature = "dev"))]
         {
-            false
+            base_tui_command
         }
     };
 
@@ -56,22 +56,7 @@ async fn main() {
         colored::control::set_override(false);
     }
 
-    if !skip_tracing_init {
-        let default_directive = if tui_command {
-            LevelFilter::OFF.into()
-        } else {
-            cli.verbose.tracing_level_filter().into()
-        };
-
-        tracing_subscriber::fmt()
-            .with_env_filter(
-                EnvFilter::builder()
-                    .with_default_directive(default_directive)
-                    .from_env_lossy(),
-            )
-            .with_writer(std::io::stderr)
-            .init();
-    }
+    crate::tui_trace::init(tui_command, cli.verbose.tracing_level_filter());
 
     if let Err(error) = run(cli).await {
         eprintln!("error: {error}");

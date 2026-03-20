@@ -25,6 +25,7 @@ pub struct Args {
 struct ViewScreen {
     app: App,
     runtime: Runtime,
+    inspector: crate::interaction_debug::Inspector,
 }
 
 impl ViewScreen {
@@ -32,9 +33,13 @@ impl ViewScreen {
         for effect in effects {
             match effect {
                 Effect::SaveMemo { meeting_id, memo } => {
+                    crate::tui_trace::trace_effect("meeting-view", "SaveMemo");
                     self.runtime.save_memo(meeting_id, memo);
                 }
-                Effect::Exit => return ScreenControl::Exit(()),
+                Effect::Exit => {
+                    crate::tui_trace::trace_effect("meeting-view", "Exit");
+                    return ScreenControl::Exit(());
+                }
             }
         }
         ScreenControl::Continue
@@ -52,10 +57,17 @@ impl Screen for ViewScreen {
     ) -> ScreenControl<Self::Output> {
         match event {
             TuiEvent::Key(key) => {
+                if self.inspector.handle_key(key) {
+                    return ScreenControl::Continue;
+                }
+                crate::tui_trace::trace_input_key("meeting-view", &key);
+                crate::tui_trace::trace_action("meeting-view", "Key");
                 let effects = self.app.dispatch(Action::Key(key));
                 self.apply_effects(effects)
             }
             TuiEvent::Paste(pasted) => {
+                crate::tui_trace::trace_input_paste("meeting-view", pasted.chars().count());
+                crate::tui_trace::trace_action("meeting-view", "Paste");
                 let effects = self.app.dispatch(Action::Paste(pasted));
                 self.apply_effects(effects)
             }
@@ -73,14 +85,30 @@ impl Screen for ViewScreen {
                 meeting,
                 segments,
                 memo,
-            } => Action::Loaded {
-                meeting,
-                segments,
-                memo,
-            },
-            RuntimeEvent::LoadError(msg) => Action::LoadError(msg),
-            RuntimeEvent::Saved => Action::Saved,
-            RuntimeEvent::SaveError(msg) => Action::SaveError(msg),
+            } => {
+                crate::tui_trace::trace_external("meeting-view", "Loaded");
+                crate::tui_trace::trace_action("meeting-view", "Loaded");
+                Action::Loaded {
+                    meeting,
+                    segments,
+                    memo,
+                }
+            }
+            RuntimeEvent::LoadError(msg) => {
+                crate::tui_trace::trace_external("meeting-view", "LoadError");
+                crate::tui_trace::trace_action("meeting-view", "LoadError");
+                Action::LoadError(msg)
+            }
+            RuntimeEvent::Saved => {
+                crate::tui_trace::trace_external("meeting-view", "Saved");
+                crate::tui_trace::trace_action("meeting-view", "Saved");
+                Action::Saved
+            }
+            RuntimeEvent::SaveError(msg) => {
+                crate::tui_trace::trace_external("meeting-view", "SaveError");
+                crate::tui_trace::trace_action("meeting-view", "SaveError");
+                Action::SaveError(msg)
+            }
         };
         let effects = self.app.dispatch(action);
         self.apply_effects(effects)
@@ -88,6 +116,7 @@ impl Screen for ViewScreen {
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
         ui::draw(frame, &mut self.app);
+        self.inspector.draw(frame);
     }
 
     fn title(&self) -> String {
@@ -108,6 +137,7 @@ pub async fn run(args: Args) -> CliResult<()> {
     let screen = ViewScreen {
         app: App::new(args.meeting_id),
         runtime,
+        inspector: crate::interaction_debug::Inspector::new("meeting-view"),
     };
 
     run_screen(screen, Some(external_rx))

@@ -61,34 +61,63 @@ struct ConnectScreen {
     app: App,
     runtime: Runtime,
     pool: SqlitePool,
+    inspector: crate::interaction_debug::Inspector,
 }
 
 impl ConnectScreen {
     fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<Option<SaveData>> {
         for effect in effects {
             match effect {
-                Effect::Save(data) => return ScreenControl::Exit(Some(data)),
-                Effect::Exit => return ScreenControl::Exit(None),
+                Effect::Save(data) => {
+                    crate::tui_trace::trace_effect("connect", "Save");
+                    return ScreenControl::Exit(Some(data));
+                }
+                Effect::Exit => {
+                    crate::tui_trace::trace_effect("connect", "Exit");
+                    return ScreenControl::Exit(None);
+                }
                 Effect::CheckCalendarPermission => {
+                    crate::tui_trace::trace_effect("connect", "CheckCalendarPermission");
                     self.runtime.check_permission();
                 }
                 Effect::RequestCalendarPermission => {
+                    crate::tui_trace::trace_effect("connect", "RequestCalendarPermission");
                     self.runtime.request_permission();
                 }
                 Effect::ResetCalendarPermission => {
+                    crate::tui_trace::trace_effect("connect", "ResetCalendarPermission");
                     self.runtime.reset_permission();
                 }
                 Effect::LoadCalendars => {
+                    crate::tui_trace::trace_effect("connect", "LoadCalendars");
                     let event = match runtime::load_calendars_sync() {
                         Ok(items) => RuntimeEvent::CalendarsLoaded(items),
                         Err(err) => RuntimeEvent::Error(err),
                     };
+                    crate::tui_trace::trace_action(
+                        "connect",
+                        match &event {
+                            RuntimeEvent::CalendarsLoaded(_) => "Runtime::CalendarsLoaded",
+                            RuntimeEvent::Error(_) => "Runtime::Error",
+                            RuntimeEvent::CalendarPermissionStatus(_) => {
+                                "Runtime::CalendarPermissionStatus"
+                            }
+                            RuntimeEvent::CalendarPermissionResult(_) => {
+                                "Runtime::CalendarPermissionResult"
+                            }
+                            RuntimeEvent::CalendarPermissionReset => {
+                                "Runtime::CalendarPermissionReset"
+                            }
+                            RuntimeEvent::CalendarsSaved => "Runtime::CalendarsSaved",
+                        },
+                    );
                     let effects = self.app.dispatch(Action::Runtime(event));
                     if let ScreenControl::Exit(output) = self.apply_effects(effects) {
                         return ScreenControl::Exit(output);
                     }
                 }
                 Effect::SaveCalendars(data) => {
+                    crate::tui_trace::trace_effect("connect", "SaveCalendars");
                     let provider = self.app.provider().unwrap();
                     let connection_id = format!("cal:{}", provider.id());
                     self.runtime.save_calendars(
@@ -115,10 +144,17 @@ impl Screen for ConnectScreen {
     ) -> ScreenControl<Self::Output> {
         match event {
             TuiEvent::Key(key) => {
+                if self.inspector.handle_key(key) {
+                    return ScreenControl::Continue;
+                }
+                crate::tui_trace::trace_input_key("connect", &key);
+                crate::tui_trace::trace_action("connect", "Key");
                 let effects = self.app.dispatch(Action::Key(key));
                 self.apply_effects(effects)
             }
             TuiEvent::Paste(text) => {
+                crate::tui_trace::trace_input_paste("connect", text.chars().count());
+                crate::tui_trace::trace_action("connect", "Paste");
                 let effects = self.app.dispatch(Action::Paste(text));
                 self.apply_effects(effects)
             }
@@ -131,12 +167,25 @@ impl Screen for ConnectScreen {
         event: Self::ExternalEvent,
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
+        crate::tui_trace::trace_external(
+            "connect",
+            match &event {
+                RuntimeEvent::CalendarPermissionStatus(_) => "CalendarPermissionStatus",
+                RuntimeEvent::CalendarPermissionResult(_) => "CalendarPermissionResult",
+                RuntimeEvent::CalendarPermissionReset => "CalendarPermissionReset",
+                RuntimeEvent::CalendarsLoaded(_) => "CalendarsLoaded",
+                RuntimeEvent::CalendarsSaved => "CalendarsSaved",
+                RuntimeEvent::Error(_) => "Error",
+            },
+        );
+        crate::tui_trace::trace_action("connect", "Runtime");
         let effects = self.app.dispatch(Action::Runtime(event));
         self.apply_effects(effects)
     }
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
         ui::draw(frame, &mut self.app);
+        self.inspector.draw(frame);
     }
 
     fn title(&self) -> String {
@@ -279,6 +328,7 @@ pub async fn run(args: Args) -> CliResult<bool> {
             app,
             runtime,
             pool: args.pool.clone(),
+            inspector: crate::interaction_debug::Inspector::new("connect"),
         };
         run_screen(screen, Some(runtime_rx))
             .await
@@ -321,6 +371,6 @@ pub(crate) async fn save_config(pool: &SqlitePool, data: SaveData) -> CliResult<
         .iter()
         .map(|t| t.to_string())
         .collect();
-    eprintln!("Saved {} provider: {provider_id}", type_keys.join("+"),);
+    println!("Saved {} provider: {provider_id}", type_keys.join("+"),);
     Ok(())
 }

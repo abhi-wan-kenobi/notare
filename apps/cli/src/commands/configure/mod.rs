@@ -26,18 +26,37 @@ use self::runtime::Runtime;
 struct ConfigureScreen {
     app: App,
     runtime: Runtime,
+    inspector: crate::interaction_debug::Inspector,
 }
 
 impl ConfigureScreen {
     fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<()> {
         for effect in effects {
             match effect {
-                Effect::Exit => return ScreenControl::Exit(()),
-                Effect::LoadSettings => self.runtime.load_settings(),
-                Effect::SaveProvider { tab, provider } => self.runtime.save_provider(tab, provider),
-                Effect::LoadCalendars => self.runtime.load_calendars(),
-                Effect::SaveCalendars(cals) => self.runtime.save_calendars(cals),
-                Effect::CheckCalendarPermission => self.runtime.check_permission(),
+                Effect::Exit => {
+                    crate::tui_trace::trace_effect("configure", "Exit");
+                    return ScreenControl::Exit(());
+                }
+                Effect::LoadSettings => {
+                    crate::tui_trace::trace_effect("configure", "LoadSettings");
+                    self.runtime.load_settings();
+                }
+                Effect::SaveProvider { tab, provider } => {
+                    crate::tui_trace::trace_effect("configure", "SaveProvider");
+                    self.runtime.save_provider(tab, provider);
+                }
+                Effect::LoadCalendars => {
+                    crate::tui_trace::trace_effect("configure", "LoadCalendars");
+                    self.runtime.load_calendars();
+                }
+                Effect::SaveCalendars(cals) => {
+                    crate::tui_trace::trace_effect("configure", "SaveCalendars");
+                    self.runtime.save_calendars(cals);
+                }
+                Effect::CheckCalendarPermission => {
+                    crate::tui_trace::trace_effect("configure", "CheckCalendarPermission");
+                    self.runtime.check_permission();
+                }
             }
         }
         ScreenControl::Continue
@@ -55,6 +74,11 @@ impl Screen for ConfigureScreen {
     ) -> ScreenControl<Self::Output> {
         match event {
             TuiEvent::Key(key) => {
+                if self.inspector.handle_key(key) {
+                    return ScreenControl::Continue;
+                }
+                crate::tui_trace::trace_input_key("configure", &key);
+                crate::tui_trace::trace_action("configure", "Key");
                 let effects = self.app.dispatch(Action::Key(key));
                 self.apply_effects(effects)
             }
@@ -67,12 +91,24 @@ impl Screen for ConfigureScreen {
         event: Self::ExternalEvent,
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
+        crate::tui_trace::trace_external(
+            "configure",
+            match &event {
+                runtime::RuntimeEvent::SettingsLoaded { .. } => "SettingsLoaded",
+                runtime::RuntimeEvent::CalendarsLoaded(_) => "CalendarsLoaded",
+                runtime::RuntimeEvent::CalendarPermissionStatus(_) => "CalendarPermissionStatus",
+                runtime::RuntimeEvent::Saved => "Saved",
+                runtime::RuntimeEvent::Error(_) => "Error",
+            },
+        );
+        crate::tui_trace::trace_action("configure", "Runtime");
         let effects = self.app.dispatch(Action::Runtime(event));
         self.apply_effects(effects)
     }
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
         ui::draw(frame, &mut self.app);
+        self.inspector.draw(frame);
     }
 
     fn title(&self) -> String {
@@ -91,7 +127,11 @@ pub async fn run(pool: &SqlitePool, cli_tab: Option<ConfigureTab>) -> CliResult<
     let runtime = Runtime::new(pool.clone(), tx);
 
     let (app, initial_effects) = App::new(initial_tab);
-    let mut screen = ConfigureScreen { app, runtime };
+    let mut screen = ConfigureScreen {
+        app,
+        runtime,
+        inspector: crate::interaction_debug::Inspector::new("configure"),
+    };
 
     screen.apply_effects(initial_effects);
 

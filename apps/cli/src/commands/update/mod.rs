@@ -18,6 +18,7 @@ pub enum UpdateOutcome {
 
 struct UpdateScreen {
     app: App,
+    inspector: crate::interaction_debug::Inspector,
 }
 
 impl UpdateScreen {
@@ -25,10 +26,15 @@ impl UpdateScreen {
         for effect in effects {
             match effect {
                 Effect::AcceptUpdate => {
+                    crate::tui_trace::trace_effect("update", "AcceptUpdate");
                     return ScreenControl::Exit(UpdateOutcome::RunUpdate);
                 }
-                Effect::Skip => return ScreenControl::Exit(UpdateOutcome::Continue),
+                Effect::Skip => {
+                    crate::tui_trace::trace_effect("update", "Skip");
+                    return ScreenControl::Exit(UpdateOutcome::Continue);
+                }
                 Effect::SkipVersion => {
+                    crate::tui_trace::trace_effect("update", "SkipVersion");
                     crate::update_check::save_skipped_version(&self.app.latest);
                     return ScreenControl::Exit(UpdateOutcome::Continue);
                 }
@@ -49,6 +55,11 @@ impl Screen for UpdateScreen {
     ) -> ScreenControl<Self::Output> {
         match event {
             TuiEvent::Key(key) => {
+                if self.inspector.handle_key(key) {
+                    return ScreenControl::Continue;
+                }
+                crate::tui_trace::trace_input_key("update", &key);
+                crate::tui_trace::trace_action("update", "Key");
                 let effects = self.app.dispatch(Action::Key(key));
                 self.apply_effects(effects)
             }
@@ -66,6 +77,7 @@ impl Screen for UpdateScreen {
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
         ui::draw(frame, &self.app);
+        self.inspector.draw(frame);
     }
 
     fn title(&self) -> String {
@@ -80,6 +92,7 @@ pub async fn run(
 ) -> UpdateOutcome {
     let screen = UpdateScreen {
         app: App::new(current, latest, action.command_str()),
+        inspector: crate::interaction_debug::Inspector::new("update"),
     };
 
     run_screen::<UpdateScreen>(screen, None)

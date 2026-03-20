@@ -15,6 +15,7 @@ pub(super) struct DownloadScreen {
     model_name: String,
     spinner_tick: usize,
     phase: Phase,
+    inspector: crate::interaction_debug::Inspector,
 }
 
 impl DownloadScreen {
@@ -23,6 +24,7 @@ impl DownloadScreen {
             model_name,
             spinner_tick: 0,
             phase: Phase::Downloading(0),
+            inspector: crate::interaction_debug::Inspector::new("model-download"),
         }
     }
 
@@ -42,8 +44,13 @@ impl Screen for DownloadScreen {
     ) -> ScreenControl<Self::Output> {
         match event {
             TuiEvent::Key(key) => {
+                if self.inspector.handle_key(key) {
+                    return ScreenControl::Continue;
+                }
+                crate::tui_trace::trace_input_key("model-download", &key);
                 use crossterm::event::{KeyCode, KeyModifiers};
                 if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
+                    crate::tui_trace::trace_effect("model-download", "Exit");
                     return match self.phase {
                         Phase::Done => ScreenControl::Exit(true),
                         _ => ScreenControl::Exit(false),
@@ -51,8 +58,14 @@ impl Screen for DownloadScreen {
                 }
                 match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => match self.phase {
-                        Phase::Done => ScreenControl::Exit(true),
-                        _ => ScreenControl::Exit(false),
+                        Phase::Done => {
+                            crate::tui_trace::trace_effect("model-download", "Exit");
+                            ScreenControl::Exit(true)
+                        }
+                        _ => {
+                            crate::tui_trace::trace_effect("model-download", "Exit");
+                            ScreenControl::Exit(false)
+                        }
                     },
                     _ => ScreenControl::Continue,
                 }
@@ -68,13 +81,17 @@ impl Screen for DownloadScreen {
     ) -> ScreenControl<Self::Output> {
         match event {
             DownloadEvent::Progress(pct) => {
+                crate::tui_trace::trace_external("model-download", "Progress");
                 self.phase = Phase::Downloading(pct);
             }
             DownloadEvent::Completed => {
+                crate::tui_trace::trace_external("model-download", "Completed");
+                crate::tui_trace::trace_effect("model-download", "Exit");
                 self.phase = Phase::Done;
                 return ScreenControl::Exit(true);
             }
             DownloadEvent::Failed => {
+                crate::tui_trace::trace_external("model-download", "Failed");
                 self.phase = Phase::Failed;
             }
         }
@@ -128,6 +145,7 @@ impl Screen for DownloadScreen {
 
         let inner = InlineBox::render(frame);
         frame.render_widget(Paragraph::new(lines), inner);
+        self.inspector.draw(frame);
     }
 
     fn next_frame_delay(&self) -> std::time::Duration {

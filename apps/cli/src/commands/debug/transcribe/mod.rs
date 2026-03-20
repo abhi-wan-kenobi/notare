@@ -4,8 +4,6 @@ mod audio;
 mod effect;
 mod runtime;
 mod server;
-#[cfg(feature = "dev")]
-mod tracing;
 mod ui;
 
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent, run_screen};
@@ -86,7 +84,7 @@ pub async fn run(args: DebugTranscribeArgs) -> CliResult<()> {
     let (tx, rx) = mpsc::unbounded_channel();
     let runtime = Runtime::start(args, tx).await?;
     let screen = TranscribeScreen {
-        app: App::new(mode, runtime.tracing_capture()),
+        app: App::new(mode, crate::tui_trace::capture()),
     };
 
     let result = run_screen(screen, Some(rx))

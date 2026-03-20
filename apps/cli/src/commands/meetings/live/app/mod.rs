@@ -1,34 +1,46 @@
 mod state;
-mod ui_state;
 
 use std::collections::HashMap;
+use std::time::Instant;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use hypr_cli_editor::Editor;
 use hypr_transcript::SpeakerLabelContext;
 
+use crate::commands::meetings::ui::notepad_state::{
+    NotepadCmd, NotepadEvent, NotepadState, ScrollDirection,
+};
 use crate::theme::Theme;
 use hypr_listener_core::State;
 use ratatui::layout::Rect;
+use ratatui::style::Color;
+use tachyonfx::{Interpolation, Motion, fx};
 
 use self::state::LiveState;
-use self::ui_state::LiveUiState;
 use super::action::Action;
 use super::effect::Effect;
-pub(crate) use ui_state::Mode;
+pub(crate) use crate::commands::meetings::ui::Mode;
 
 pub(crate) struct App {
     state: LiveState,
-    ui: LiveUiState,
+    notepad: NotepadState,
     participant_names: HashMap<String, String>,
+    transcript_autoscroll: bool,
+    last_frame_time: Instant,
+    prev_segment_count: usize,
+    transcript_effects: Vec<tachyonfx::Effect>,
 }
 
 impl App {
     pub(crate) fn new(participant_names: HashMap<String, String>) -> Self {
         Self {
             state: LiveState::new(),
-            ui: LiveUiState::new(),
+            notepad: NotepadState::new(""),
             participant_names,
+            transcript_autoscroll: true,
+            last_frame_time: Instant::now(),
+            prev_segment_count: 0,
+            transcript_effects: Vec::new(),
         }
     }
 
@@ -64,65 +76,31 @@ impl App {
         self.state.apply_runtime_events(events);
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
-        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
-            return vec![Effect::Exit { force: false }];
-        }
-
-        if key.modifiers.contains(KeyModifiers::CONTROL)
-            && matches!(self.ui.mode(), Mode::Normal | Mode::Insert)
-        {
-            match key.code {
-                KeyCode::Left => {
-                    self.ui.adjust_notepad_width(-2);
-                    return Vec::new();
-                }
-                KeyCode::Right => {
-                    self.ui.adjust_notepad_width(2);
-                    return Vec::new();
-                }
-                _ => {}
-            }
-        }
-
-        match self.ui.mode() {
-            Mode::Normal => self.handle_normal_key(key),
-            Mode::Insert => self.handle_insert_key(key),
-            Mode::Command => self.handle_command_key(key),
-        }
-    }
-
-    fn handle_paste(&mut self, pasted: String) -> Vec<Effect> {
-        if self.ui.mode() != Mode::Insert {
-            return Vec::new();
-        }
-        let pasted = pasted.replace("\r\n", "\n").replace('\r', "\n");
-        self.ui.memo_mut().insert_str(&pasted);
-        Vec::new()
-    }
-
     pub(crate) fn mode(&self) -> Mode {
-        self.ui.mode()
+        self.notepad.mode()
     }
 
     pub(crate) fn memo_focused(&self) -> bool {
-        self.ui.mode() == Mode::Insert
+        self.notepad.mode() == Mode::Insert
     }
 
     pub(crate) fn transcript_focused(&self) -> bool {
-        self.ui.mode() == Mode::Normal
+        self.notepad.mode() == Mode::Normal
     }
 
     pub(crate) fn memo_mut(&mut self) -> &mut Editor<Theme> {
-        self.ui.memo_mut()
+        self.notepad.memo_mut()
     }
 
     pub(crate) fn scroll_state_mut(&mut self) -> &mut crate::widgets::ScrollViewState {
-        self.ui.scroll_state_mut()
+        if self.transcript_autoscroll {
+            self.notepad.scroll_state_mut().scroll_to_bottom();
+        }
+        self.notepad.scroll_state_mut()
     }
 
     pub(crate) fn notepad_width_percent(&self) -> u16 {
-        self.ui.notepad_width_percent()
+        self.notepad.notepad_width_percent()
     }
 
     pub(crate) fn listener_state(&self) -> State {
@@ -166,11 +144,11 @@ impl App {
     }
 
     pub(crate) fn memo_text(&self) -> String {
-        self.ui.memo().text()
+        self.notepad.memo_text()
     }
 
     pub(crate) fn command_buffer(&self) -> &str {
-        self.ui.command_buffer()
+        self.notepad.command_buffer()
     }
 
     pub(crate) fn segments(&self) -> Vec<hypr_transcript::Segment> {
@@ -182,11 +160,25 @@ impl App {
     }
 
     pub(crate) fn frame_elapsed(&mut self) -> std::time::Duration {
-        self.ui.frame_elapsed()
+        let now = Instant::now();
+        let elapsed = now - self.last_frame_time;
+        self.last_frame_time = now;
+        elapsed
     }
 
     pub(crate) fn check_new_segments(&mut self, current_count: usize, transcript_area: Rect) {
-        self.ui.check_new_segments(current_count, transcript_area);
+        if current_count > self.prev_segment_count && self.prev_segment_count > 0 {
+            let effect = fx::sweep_in(
+                Motion::LeftToRight,
+                8,
+                0,
+                Color::Rgb(0, 60, 80),
+                (350u32, Interpolation::CubicOut),
+            )
+            .with_area(transcript_area);
+            self.transcript_effects.push(effect);
+        }
+        self.prev_segment_count = current_count;
     }
 
     pub(crate) fn process_effects(
@@ -195,94 +187,66 @@ impl App {
         buf: &mut ratatui::buffer::Buffer,
         area: Rect,
     ) {
-        self.ui.process_effects(elapsed, buf, area);
+        let elapsed: tachyonfx::Duration = elapsed.into();
+        self.transcript_effects.retain_mut(|effect| {
+            effect.process(elapsed, buf, area);
+            !effect.done()
+        });
     }
 
     pub(crate) fn has_active_animations(&self) -> bool {
-        self.ui.has_active_effects() || self.state.has_recent_words()
+        !self.transcript_effects.is_empty() || self.state.has_recent_words()
     }
 
-    fn handle_normal_key(&mut self, key: KeyEvent) -> Vec<Effect> {
-        match key.code {
-            KeyCode::Char(':') => {
-                self.ui.enter_command_mode();
-            }
-            KeyCode::Char('i') | KeyCode::Char('m') | KeyCode::Char('a') | KeyCode::Tab => {
-                self.ui.enter_insert_mode();
-            }
-            KeyCode::Char('j') | KeyCode::Down => {
-                self.ui.scroll_down();
-            }
-            KeyCode::Char('k') | KeyCode::Up => {
-                self.ui.scroll_up();
-            }
-            KeyCode::Char('G') => {
-                self.ui.scroll_bottom();
-            }
-            KeyCode::Char('g') => {
-                self.ui.scroll_top();
-            }
-            _ => {}
-        }
-        Vec::new()
-    }
-
-    fn handle_insert_key(&mut self, key: KeyEvent) -> Vec<Effect> {
-        if key.code == KeyCode::Esc || key.code == KeyCode::Tab {
-            self.ui.enter_normal_mode();
-            return Vec::new();
+    fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
+            return vec![Effect::Exit { force: false }];
         }
 
-        if key.code == KeyCode::Char('u') && key.modifiers.contains(KeyModifiers::CONTROL) {
-            self.ui.reset_memo();
-            return Vec::new();
+        match self.notepad.handle_key(key) {
+            NotepadEvent::None => {}
+            NotepadEvent::ModeChanged => {}
+            NotepadEvent::TextEdited => {}
+            NotepadEvent::Scrolled(dir) => self.update_autoscroll(dir),
+            NotepadEvent::Command(cmd) => return self.handle_notepad_cmd(cmd),
         }
-
-        self.ui.memo_mut().handle_key(key);
 
         Vec::new()
     }
 
-    fn handle_command_key(&mut self, key: KeyEvent) -> Vec<Effect> {
-        match key.code {
-            KeyCode::Esc => {
-                self.ui.enter_normal_mode();
-                self.ui.clear_command_buffer();
-            }
-            KeyCode::Enter => {
-                return self.execute_command();
-            }
-            KeyCode::Backspace => {
-                if self.ui.command_buffer().is_empty() {
-                    self.ui.enter_normal_mode();
-                } else {
-                    self.ui.pop_command_char();
-                }
-            }
-            KeyCode::Char(c) => {
-                self.ui.push_command_char(c);
-            }
-            _ => {}
-        }
+    fn handle_paste(&mut self, pasted: String) -> Vec<Effect> {
+        self.notepad.handle_paste(&pasted);
         Vec::new()
     }
 
-    fn execute_command(&mut self) -> Vec<Effect> {
-        let cmd = self.ui.command_buffer().trim().to_string();
-        self.ui.clear_command_buffer();
-        self.ui.enter_normal_mode();
-
-        match cmd.as_str() {
-            "q" | "quit" => {
-                vec![Effect::Exit { force: false }]
-            }
-            "q!" | "quit!" => {
-                vec![Effect::Exit { force: true }]
-            }
-            _ => {
-                self.state.push_error(format!("Unknown command: :{cmd}"));
+    fn handle_notepad_cmd(&mut self, cmd: NotepadCmd) -> Vec<Effect> {
+        match cmd {
+            NotepadCmd::Quit => vec![Effect::Exit { force: false }],
+            NotepadCmd::ForceQuit => vec![Effect::Exit { force: true }],
+            NotepadCmd::Write => {
+                self.state.push_error("Unknown command: :w".to_string());
                 Vec::new()
             }
+            NotepadCmd::WriteQuit => {
+                self.state.push_error("Unknown command: :wq".to_string());
+                Vec::new()
+            }
+            NotepadCmd::Unknown(s) => {
+                self.state.push_error(format!("Unknown command: :{s}"));
+                Vec::new()
+            }
+        }
+    }
+
+    fn update_autoscroll(&mut self, dir: ScrollDirection) {
+        match dir {
+            ScrollDirection::Up | ScrollDirection::Top => {
+                self.transcript_autoscroll = false;
+            }
+            ScrollDirection::Bottom => {
+                self.transcript_autoscroll = true;
+            }
+            ScrollDirection::Down => {}
         }
     }
 }

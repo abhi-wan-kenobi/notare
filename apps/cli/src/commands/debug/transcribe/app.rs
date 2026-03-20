@@ -15,9 +15,9 @@ use super::action::Action;
 use super::audio::{ChannelKind, DisplayMode};
 use super::effect::Effect;
 use super::runtime::RuntimeEvent;
-use super::ui::TracingCapture;
 use super::ui::shell::TranscribeShell;
 use crate::theme::Theme;
+use crate::tui_trace::TraceCapture;
 use crate::widgets::build_segment_lines;
 
 pub(crate) enum TranscriptContent<'a> {
@@ -45,7 +45,7 @@ enum TranscriptState {
 }
 
 impl App {
-    pub(crate) fn new(mode: TranscribeMode, tracing: std::sync::Arc<TracingCapture>) -> Self {
+    pub(crate) fn new(mode: TranscribeMode, tracing: std::sync::Arc<TraceCapture>) -> Self {
         let state = match mode {
             TranscribeMode::Raw => TranscriptState::Raw(RawState::new()),
             TranscribeMode::Rich => TranscriptState::Rich(RichState::new()),
@@ -116,7 +116,7 @@ impl App {
         }
     }
 
-    pub(crate) fn transcript_view(&self, width: usize) -> TranscriptView {
+    pub(crate) fn transcript_view(&self, width: usize) -> TranscriptView<'_> {
         let placeholder = if let Some(message) = &self.terminal_message {
             message.clone()
         } else {

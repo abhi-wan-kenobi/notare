@@ -1,7 +1,5 @@
 pub mod shell;
 
-pub use super::tracing::TracingCapture;
-
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 
@@ -12,17 +10,15 @@ use crate::theme::Theme;
 pub(crate) fn draw(frame: &mut ratatui::Frame, app: &mut App) {
     let width = frame.area().width.saturating_sub(4) as usize;
     let view = app.transcript_view(width);
+    let title = view.title;
+    let placeholder = view.placeholder;
+    let border_style = view.border_style;
     let lines = match view.content {
         TranscriptContent::Raw(raw) => render_raw_channels(raw.channels()),
         TranscriptContent::Rich(lines) => lines,
     };
-    app.shell_mut().draw(
-        frame,
-        view.title,
-        lines,
-        &view.placeholder,
-        view.border_style,
-    );
+    app.shell_mut()
+        .draw(frame, title, lines, &placeholder, border_style);
 }
 
 fn render_raw_channels(channels: &[ChannelTranscript]) -> Vec<Line<'static>> {

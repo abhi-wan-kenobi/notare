@@ -9,12 +9,11 @@ use ratatui::{
     widgets::{Block, Borders, Padding, Paragraph},
 };
 
-use super::TracingCapture;
+use crate::tui_trace::TraceCapture;
 use crate::widgets::{ScrollViewState, render_scrollable};
 
 pub(crate) struct TranscribeShell {
-    tracing: Arc<TracingCapture>,
-    log_lines: Vec<Line<'static>>,
+    tracing: Arc<TraceCapture>,
     log_scroll: ScrollViewState,
     log_autoscroll: bool,
     transcript_scroll: ScrollViewState,
@@ -23,10 +22,9 @@ pub(crate) struct TranscribeShell {
 }
 
 impl TranscribeShell {
-    pub(crate) fn new(tracing: Arc<TracingCapture>) -> Self {
+    pub(crate) fn new(tracing: Arc<TraceCapture>) -> Self {
         Self {
             tracing,
-            log_lines: Vec::new(),
             log_scroll: ScrollViewState::new(),
             log_autoscroll: true,
             transcript_scroll: ScrollViewState::new(),
@@ -71,8 +69,6 @@ impl TranscribeShell {
         placeholder: &str,
         border_style: Style,
     ) {
-        self.log_lines.extend(self.tracing.drain_lines());
-
         let area = frame.area();
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -97,7 +93,7 @@ impl TranscribeShell {
             .title(" Log ")
             .padding(Padding::new(1, 1, 0, 0));
 
-        let lines = self.log_lines.clone();
+        let lines = self.tracing.snapshot_lines_all();
         if self.log_autoscroll {
             self.log_scroll.scroll_to_bottom();
         }

@@ -60,6 +60,7 @@ enum ExternalEvent {
 struct LiveScreen {
     app: App,
     capture_post_exit_events: Arc<AtomicBool>,
+    inspector: crate::interaction_debug::Inspector,
 }
 
 impl LiveScreen {
@@ -70,6 +71,7 @@ impl LiveScreen {
         Self {
             app: App::new(participant_names),
             capture_post_exit_events,
+            inspector: crate::interaction_debug::Inspector::new("meeting-live"),
         }
     }
 
@@ -77,6 +79,10 @@ impl LiveScreen {
         for effect in effects {
             match effect {
                 Effect::Exit { force } => {
+                    crate::tui_trace::trace_effect(
+                        "meeting-live",
+                        if force { "Exit(force)" } else { "Exit" },
+                    );
                     if !force {
                         self.capture_post_exit_events.store(true, Ordering::SeqCst);
                     }
@@ -105,10 +111,17 @@ impl Screen for LiveScreen {
     ) -> ScreenControl<Self::Output> {
         match event {
             TuiEvent::Key(key) => {
+                if self.inspector.handle_key(key) {
+                    return ScreenControl::Continue;
+                }
+                crate::tui_trace::trace_input_key("meeting-live", &key);
+                crate::tui_trace::trace_action("meeting-live", "Key");
                 let effects = self.app.dispatch(Action::Key(key));
                 self.apply_effects(effects)
             }
             TuiEvent::Paste(pasted) => {
+                crate::tui_trace::trace_input_paste("meeting-live", pasted.chars().count());
+                crate::tui_trace::trace_action("meeting-live", "Paste");
                 let effects = self.app.dispatch(Action::Paste(pasted));
                 self.apply_effects(effects)
             }
@@ -122,7 +135,11 @@ impl Screen for LiveScreen {
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
         let action = match event {
-            ExternalEvent::Listener(event) => Action::RuntimeEvent(event),
+            ExternalEvent::Listener(event) => {
+                crate::tui_trace::trace_external("meeting-live", "Listener");
+                crate::tui_trace::trace_action("meeting-live", "RuntimeEvent");
+                Action::RuntimeEvent(event)
+            }
         };
         let effects = self.app.dispatch(action);
         self.apply_effects(effects)
@@ -130,6 +147,7 @@ impl Screen for LiveScreen {
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {
         ui::draw(frame, &mut self.app);
+        self.inspector.draw(frame);
     }
 
     fn title(&self) -> String {
