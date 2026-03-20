@@ -56,9 +56,11 @@ export const SETTINGS_MAPPING = {
       path: ["general", "telemetry_consent"],
       default: true as boolean,
     },
+    // Actual values populated via persister load; defaults here are for type inference.
     ai_language: {
       type: "string",
       path: ["language", "ai_language"],
+      default: "" as string,
     },
     spoken_languages: {
       type: "string",
