@@ -3,9 +3,7 @@ use std::convert::Infallible;
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent};
 
 use super::UpdateOutcome;
-use super::action::Action;
 use super::app::App;
-use super::effect::Effect;
 
 pub(super) struct UpdateScreen {
     app: App,
@@ -20,25 +18,23 @@ impl UpdateScreen {
         }
     }
 
-    fn apply_effects(&self, effects: Vec<Effect>) -> ScreenControl<UpdateOutcome> {
-        for effect in effects {
-            match effect {
-                Effect::AcceptUpdate => {
-                    crate::tui_trace::trace_effect("update", "AcceptUpdate");
-                    return ScreenControl::Exit(UpdateOutcome::RunUpdate);
-                }
-                Effect::Skip => {
-                    crate::tui_trace::trace_effect("update", "Skip");
-                    return ScreenControl::Exit(UpdateOutcome::Continue);
-                }
-                Effect::SkipVersion => {
-                    crate::tui_trace::trace_effect("update", "SkipVersion");
-                    crate::update_check::save_skipped_version(&self.app.latest);
-                    return ScreenControl::Exit(UpdateOutcome::Continue);
-                }
+    fn apply_outcome(&self, outcome: super::app::Outcome) -> ScreenControl<UpdateOutcome> {
+        match outcome {
+            super::app::Outcome::Continue => ScreenControl::Continue,
+            super::app::Outcome::AcceptUpdate => {
+                crate::tui_trace::trace_effect("update", "AcceptUpdate");
+                ScreenControl::Exit(UpdateOutcome::RunUpdate)
+            }
+            super::app::Outcome::Skip => {
+                crate::tui_trace::trace_effect("update", "Skip");
+                ScreenControl::Exit(UpdateOutcome::Continue)
+            }
+            super::app::Outcome::SkipVersion => {
+                crate::tui_trace::trace_effect("update", "SkipVersion");
+                crate::update_check::save_skipped_version(&self.app.latest);
+                ScreenControl::Exit(UpdateOutcome::Continue)
             }
         }
-        ScreenControl::Continue
     }
 }
 
@@ -58,8 +54,8 @@ impl Screen for UpdateScreen {
                 }
                 crate::tui_trace::trace_input_key("update", &key);
                 crate::tui_trace::trace_action("update", "Key");
-                let effects = self.app.dispatch(Action::Key(key));
-                self.apply_effects(effects)
+                let outcome = self.app.handle_key(key);
+                self.apply_outcome(outcome)
             }
             _ => ScreenControl::Continue,
         }

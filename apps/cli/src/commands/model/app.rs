@@ -1,8 +1,6 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::widgets::ListState;
 
-use super::action::Action;
-use super::effect::Effect;
 use super::list::ModelRow;
 
 pub(crate) struct App {
@@ -22,22 +20,11 @@ impl App {
         }
     }
 
-    pub fn dispatch(&mut self, action: Action) -> Vec<Effect> {
-        match action {
-            Action::Key(key) => self.handle_key(key),
-            Action::Loaded(models) => {
-                self.loading = false;
-                self.models = models;
-                if !self.models.is_empty() {
-                    self.list_state.select(Some(0));
-                }
-                Vec::new()
-            }
-            Action::LoadError(msg) => {
-                self.loading = false;
-                self.error = Some(msg);
-                Vec::new()
-            }
+    pub fn set_models(&mut self, models: Vec<ModelRow>) {
+        self.loading = false;
+        self.models = models;
+        if !self.models.is_empty() {
+            self.list_state.select(Some(0));
         }
     }
 
@@ -57,24 +44,24 @@ impl App {
         self.error.as_deref()
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+    pub fn handle_key(&mut self, key: KeyEvent) -> bool {
         if key.code == KeyCode::Esc
             || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c'))
         {
-            return vec![Effect::Exit];
+            return true;
         }
 
         match key.code {
             KeyCode::Up | KeyCode::Char('k') => {
                 self.list_state.select_previous();
-                Vec::new()
+                false
             }
             KeyCode::Down | KeyCode::Char('j') => {
                 self.list_state.select_next();
-                Vec::new()
+                false
             }
-            KeyCode::Char('q') => vec![Effect::Exit],
-            _ => Vec::new(),
+            KeyCode::Char('q') => true,
+            _ => false,
         }
     }
 }

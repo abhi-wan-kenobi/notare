@@ -79,115 +79,119 @@ impl App {
                 self.recompute_popup();
                 Vec::new()
             }
-            Action::ConnectRuntime(event) => {
-                if let Overlay::Connect(ref mut app) = self.overlay {
-                    let effects = app.dispatch(connect::action::Action::Runtime(event));
-                    self.translate_connect_effects(effects)
-                } else {
-                    Vec::new()
+        }
+    }
+
+    pub(crate) fn handle_connect_runtime(
+        &mut self,
+        event: connect::runtime::RuntimeEvent,
+    ) -> Vec<Effect> {
+        if let Overlay::Connect(ref mut app) = self.overlay {
+            let effects = app.dispatch(connect::action::Action::Runtime(event));
+            self.translate_connect_effects(effects)
+        } else {
+            Vec::new()
+        }
+    }
+
+    pub(crate) fn handle_meetings_loaded(
+        &mut self,
+        meetings: Vec<hypr_db_app::MeetingRow>,
+    ) -> Vec<Effect> {
+        if let Overlay::Meetings(ref mut app) = self.overlay {
+            app.set_meetings(meetings);
+        }
+        Vec::new()
+    }
+
+    pub(crate) fn handle_meetings_load_error(&mut self, msg: String) -> Vec<Effect> {
+        if let Overlay::Meetings(ref mut app) = self.overlay {
+            app.set_error(msg);
+        }
+        Vec::new()
+    }
+
+    pub(crate) fn handle_events_loaded(
+        &mut self,
+        events: Vec<hypr_db_app::EventRow>,
+    ) -> Vec<Effect> {
+        if let Overlay::Meetings(ref mut app) = self.overlay {
+            app.set_events(events);
+        }
+        Vec::new()
+    }
+
+    pub(crate) fn handle_calendar_not_configured(&mut self) -> Vec<Effect> {
+        if let Overlay::Meetings(ref mut app) = self.overlay {
+            app.set_calendar_not_configured();
+        }
+        Vec::new()
+    }
+
+    pub(crate) fn handle_models_loaded(
+        &mut self,
+        models: Vec<crate::commands::model::list::ModelRow>,
+    ) -> Vec<Effect> {
+        if let Overlay::Models(ref mut app) = self.overlay {
+            app.set_models(models);
+        }
+        Vec::new()
+    }
+
+    pub(crate) fn handle_connect_saved(
+        &mut self,
+        connection_types: Vec<crate::commands::connect::ConnectionType>,
+        provider_id: String,
+    ) -> Vec<Effect> {
+        for ct in &connection_types {
+            match ct {
+                crate::commands::connect::ConnectionType::Stt => {
+                    self.stt_provider = Some(provider_id.clone());
                 }
-            }
-            Action::MeetingsLoaded(meetings) => {
-                if let Overlay::Meetings(ref mut app) = self.overlay {
-                    let effects = app.dispatch(meetings::action::Action::MeetingsLoaded(meetings));
-                    self.translate_meetings_effects(effects)
-                } else {
-                    Vec::new()
+                crate::commands::connect::ConnectionType::Llm => {
+                    self.llm_provider = Some(provider_id.clone());
                 }
-            }
-            Action::MeetingsLoadError(msg) => {
-                if let Overlay::Meetings(ref mut app) = self.overlay {
-                    let effects = app.dispatch(meetings::action::Action::LoadError(msg));
-                    self.translate_meetings_effects(effects)
-                } else {
-                    Vec::new()
-                }
-            }
-            Action::EventsLoaded(events) => {
-                if let Overlay::Meetings(ref mut app) = self.overlay {
-                    let effects = app.dispatch(meetings::action::Action::EventsLoaded(events));
-                    self.translate_meetings_effects(effects)
-                } else {
-                    Vec::new()
-                }
-            }
-            Action::CalendarNotConfigured => {
-                if let Overlay::Meetings(ref mut app) = self.overlay {
-                    let effects = app.dispatch(meetings::action::Action::CalendarNotConfigured);
-                    self.translate_meetings_effects(effects)
-                } else {
-                    Vec::new()
-                }
-            }
-            Action::ModelsLoaded(models) => {
-                if let Overlay::Models(ref mut app) = self.overlay {
-                    let effects = app.dispatch(model::action::Action::Loaded(models));
-                    self.translate_models_effects(effects)
-                } else {
-                    Vec::new()
-                }
-            }
-            Action::ModelsLoadError(msg) => {
-                if let Overlay::Models(ref mut app) = self.overlay {
-                    let effects = app.dispatch(model::action::Action::LoadError(msg));
-                    self.translate_models_effects(effects)
-                } else {
-                    Vec::new()
-                }
-            }
-            Action::TimelineContactsLoaded { orgs, humans } => {
-                if let Overlay::Timeline(ref mut app) = self.overlay {
-                    let effects =
-                        app.dispatch(timeline::action::Action::ContactsLoaded { orgs, humans });
-                    self.translate_timeline_effects(effects)
-                } else {
-                    Vec::new()
-                }
-            }
-            Action::TimelineContactsLoadError(msg) => {
-                if let Overlay::Timeline(ref mut app) = self.overlay {
-                    let effects = app.dispatch(timeline::action::Action::ContactsLoadError(msg));
-                    self.translate_timeline_effects(effects)
-                } else {
-                    Vec::new()
-                }
-            }
-            Action::TimelineEntriesLoaded(entries) => {
-                if let Overlay::Timeline(ref mut app) = self.overlay {
-                    let effects = app.dispatch(timeline::action::Action::EntriesLoaded(entries));
-                    self.translate_timeline_effects(effects)
-                } else {
-                    Vec::new()
-                }
-            }
-            Action::TimelineEntriesLoadError(msg) => {
-                if let Overlay::Timeline(ref mut app) = self.overlay {
-                    let effects = app.dispatch(timeline::action::Action::EntriesLoadError(msg));
-                    self.translate_timeline_effects(effects)
-                } else {
-                    Vec::new()
-                }
-            }
-            Action::ConnectSaved {
-                connection_types,
-                provider_id,
-            } => {
-                for ct in &connection_types {
-                    match ct {
-                        crate::commands::connect::ConnectionType::Stt => {
-                            self.stt_provider = Some(provider_id.clone());
-                        }
-                        crate::commands::connect::ConnectionType::Llm => {
-                            self.llm_provider = Some(provider_id.clone());
-                        }
-                        _ => {}
-                    }
-                }
-                self.tip = pick_tip(&self.stt_provider, &self.llm_provider);
-                self.status_message = Some("Provider configured".into());
-                Vec::new()
+                _ => {}
             }
         }
+        self.tip = pick_tip(&self.stt_provider, &self.llm_provider);
+        self.status_message = Some("Provider configured".into());
+        Vec::new()
+    }
+
+    pub(crate) fn handle_timeline_contacts_loaded(
+        &mut self,
+        orgs: Vec<hypr_db_app::OrganizationRow>,
+        humans: Vec<hypr_db_app::HumanRow>,
+    ) -> Vec<Effect> {
+        if let Overlay::Timeline(ref mut app) = self.overlay {
+            app.set_contacts(orgs, humans);
+        }
+        Vec::new()
+    }
+
+    pub(crate) fn handle_timeline_contacts_load_error(&mut self, msg: String) -> Vec<Effect> {
+        if let Overlay::Timeline(ref mut app) = self.overlay {
+            app.set_error(msg);
+        }
+        Vec::new()
+    }
+
+    pub(crate) fn handle_timeline_entries_loaded(
+        &mut self,
+        entries: Vec<hypr_db_app::TimelineRow>,
+    ) -> Vec<Effect> {
+        if let Overlay::Timeline(ref mut app) = self.overlay {
+            app.set_entries(entries);
+        }
+        Vec::new()
+    }
+
+    pub(crate) fn handle_timeline_entries_load_error(&mut self, msg: String) -> Vec<Effect> {
+        if let Overlay::Timeline(ref mut app) = self.overlay {
+            app.set_entries_error(msg);
+        }
+        Vec::new()
     }
 
     pub(crate) fn reload_logo(&mut self) {
@@ -256,16 +260,18 @@ impl App {
                 return self.translate_connect_effects(effects);
             }
             Overlay::Meetings(ref mut app) => {
-                let effects = app.dispatch(meetings::action::Action::Key(key));
-                return self.translate_meetings_effects(effects);
+                let outcome = app.handle_key(key);
+                return self.handle_meetings_outcome(outcome);
             }
             Overlay::Models(ref mut app) => {
-                let effects = app.dispatch(model::action::Action::Key(key));
-                return self.translate_models_effects(effects);
+                if app.handle_key(key) {
+                    self.reset_input();
+                }
+                return Vec::new();
             }
             Overlay::Timeline(ref mut app) => {
-                let effects = app.dispatch(timeline::action::Action::Key(key));
-                return self.translate_timeline_effects(effects);
+                let outcome = app.handle_key(key);
+                return self.handle_timeline_outcome(outcome);
             }
             Overlay::None => {}
         }
@@ -470,62 +476,41 @@ impl App {
         result
     }
 
-    fn translate_meetings_effects(
-        &mut self,
-        effects: Vec<meetings::effect::Effect>,
-    ) -> Vec<Effect> {
-        let mut result = Vec::new();
-        for effect in effects {
-            match effect {
-                meetings::effect::Effect::Select(id) => {
-                    let cmd = match self.meetings_intent {
-                        MeetingsIntent::View => super::EntryCommand::View { session_id: id },
-                        MeetingsIntent::ChatResume => super::EntryCommand::Chat {
-                            session_id: Some(id),
-                        },
-                    };
-                    self.reset_input();
-                    result.push(Effect::Launch(cmd));
-                }
-                meetings::effect::Effect::Exit => {
-                    self.reset_input();
-                }
+    fn handle_meetings_outcome(&mut self, outcome: meetings::app::Outcome) -> Vec<Effect> {
+        match outcome {
+            meetings::app::Outcome::Continue => Vec::new(),
+            meetings::app::Outcome::Select(id) => {
+                let cmd = match self.meetings_intent {
+                    MeetingsIntent::View => super::EntryCommand::View { session_id: id },
+                    MeetingsIntent::ChatResume => super::EntryCommand::Chat {
+                        session_id: Some(id),
+                    },
+                };
+                self.reset_input();
+                vec![Effect::Launch(cmd)]
+            }
+            meetings::app::Outcome::Exit => {
+                self.reset_input();
+                Vec::new()
             }
         }
-        result
     }
 
-    fn translate_timeline_effects(
-        &mut self,
-        effects: Vec<timeline::effect::Effect>,
-    ) -> Vec<Effect> {
-        let mut result = Vec::new();
-        for effect in effects {
-            match effect {
-                timeline::effect::Effect::LoadTimeline(human_id) => {
-                    result.push(Effect::LoadTimelineEntries(human_id));
-                }
-                timeline::effect::Effect::ViewSession(session_id) => {
-                    self.reset_input();
-                    result.push(Effect::Launch(super::EntryCommand::View { session_id }));
-                }
-                timeline::effect::Effect::Exit => {
-                    self.reset_input();
-                }
+    fn handle_timeline_outcome(&mut self, outcome: timeline::app::Outcome) -> Vec<Effect> {
+        match outcome {
+            timeline::app::Outcome::Continue => Vec::new(),
+            timeline::app::Outcome::LoadTimeline(human_id) => {
+                vec![Effect::LoadTimelineEntries(human_id)]
+            }
+            timeline::app::Outcome::ViewSession(session_id) => {
+                self.reset_input();
+                vec![Effect::Launch(super::EntryCommand::View { session_id })]
+            }
+            timeline::app::Outcome::Exit => {
+                self.reset_input();
+                Vec::new()
             }
         }
-        result
-    }
-
-    fn translate_models_effects(&mut self, effects: Vec<model::effect::Effect>) -> Vec<Effect> {
-        for effect in effects {
-            match effect {
-                model::effect::Effect::Exit => {
-                    self.reset_input();
-                }
-            }
-        }
-        Vec::new()
     }
 
     fn reset_input(&mut self) {
@@ -614,11 +599,10 @@ mod tests {
         );
         app.overlay = Overlay::Connect(connect_app);
 
-        let effects = app.dispatch(Action::ConnectRuntime(
-            connect::runtime::RuntimeEvent::CalendarPermissionStatus(
+        let effects =
+            app.handle_connect_runtime(connect::runtime::RuntimeEvent::CalendarPermissionStatus(
                 connect::runtime::CalendarPermissionState::NotDetermined,
-            ),
-        ));
+            ));
 
         assert!(effects.is_empty());
 

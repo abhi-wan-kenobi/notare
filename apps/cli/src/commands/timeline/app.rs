@@ -2,14 +2,18 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use hypr_db_app::{HumanRow, OrganizationRow, TimelineRow};
 use ratatui::widgets::ListState;
 
-use super::action::Action;
-use super::effect::Effect;
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Pane {
     Orgs,
     Humans,
     Timeline,
+}
+
+pub(crate) enum Outcome {
+    Continue,
+    LoadTimeline(String),
+    ViewSession(String),
+    Exit,
 }
 
 pub(crate) struct App {
@@ -41,37 +45,31 @@ impl App {
         }
     }
 
-    pub fn dispatch(&mut self, action: Action) -> Vec<Effect> {
-        match action {
-            Action::Key(key) => self.handle_key(key),
-            Action::ContactsLoaded { orgs, humans } => {
-                self.loading_contacts = false;
-                self.orgs = orgs;
-                self.all_humans = humans;
-                self.recompute_humans();
-                Vec::new()
-            }
-            Action::ContactsLoadError(msg) => {
-                self.loading_contacts = false;
-                self.error = Some(msg);
-                Vec::new()
-            }
-            Action::EntriesLoaded(entries) => {
-                self.loading_entries = false;
-                self.entries = entries;
-                if !self.entries.is_empty() {
-                    self.entry_state.select(Some(0));
-                } else {
-                    self.entry_state.select(None);
-                }
-                Vec::new()
-            }
-            Action::EntriesLoadError(msg) => {
-                self.loading_entries = false;
-                self.error = Some(msg);
-                Vec::new()
-            }
+    pub fn set_contacts(&mut self, orgs: Vec<OrganizationRow>, humans: Vec<HumanRow>) {
+        self.loading_contacts = false;
+        self.orgs = orgs;
+        self.all_humans = humans;
+        self.recompute_humans();
+    }
+
+    pub fn set_error(&mut self, msg: String) {
+        self.loading_contacts = false;
+        self.error = Some(msg);
+    }
+
+    pub fn set_entries(&mut self, entries: Vec<TimelineRow>) {
+        self.loading_entries = false;
+        self.entries = entries;
+        if !self.entries.is_empty() {
+            self.entry_state.select(Some(0));
+        } else {
+            self.entry_state.select(None);
         }
+    }
+
+    pub fn set_entries_error(&mut self, msg: String) {
+        self.loading_entries = false;
+        self.error = Some(msg);
     }
 
     pub fn pane(&self) -> Pane {
@@ -146,15 +144,15 @@ impl App {
         self.entry_state.select(None);
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+    pub fn handle_key(&mut self, key: KeyEvent) -> Outcome {
         if key.code == KeyCode::Esc
             || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c'))
         {
-            return vec![Effect::Exit];
+            return Outcome::Exit;
         }
 
         if key.code == KeyCode::Char('q') {
-            return vec![Effect::Exit];
+            return Outcome::Exit;
         }
 
         match key.code {
@@ -164,7 +162,7 @@ impl App {
                     Pane::Humans => Pane::Timeline,
                     Pane::Timeline => Pane::Timeline,
                 };
-                Vec::new()
+                Outcome::Continue
             }
             KeyCode::BackTab | KeyCode::Left | KeyCode::Char('h') => {
                 self.pane = match self.pane {
@@ -172,7 +170,7 @@ impl App {
                     Pane::Humans => Pane::Orgs,
                     Pane::Timeline => Pane::Humans,
                 };
-                Vec::new()
+                Outcome::Continue
             }
             KeyCode::Up | KeyCode::Char('k') => {
                 match self.pane {
@@ -183,7 +181,7 @@ impl App {
                     Pane::Humans => self.human_state.select_previous(),
                     Pane::Timeline => self.entry_state.select_previous(),
                 }
-                Vec::new()
+                Outcome::Continue
             }
             KeyCode::Down | KeyCode::Char('j') => {
                 match self.pane {
@@ -198,19 +196,19 @@ impl App {
                     Pane::Humans => self.human_state.select_next(),
                     Pane::Timeline => self.entry_state.select_next(),
                 }
-                Vec::new()
+                Outcome::Continue
             }
             KeyCode::Enter => self.handle_enter(),
-            _ => Vec::new(),
+            _ => Outcome::Continue,
         }
     }
 
-    fn handle_enter(&mut self) -> Vec<Effect> {
+    fn handle_enter(&mut self) -> Outcome {
         match self.pane {
             Pane::Orgs => {
                 self.recompute_humans();
                 self.pane = Pane::Humans;
-                Vec::new()
+                Outcome::Continue
             }
             Pane::Humans => {
                 if let Some(human) = self.selected_human() {
@@ -219,20 +217,20 @@ impl App {
                     self.entries.clear();
                     self.entry_state.select(None);
                     self.pane = Pane::Timeline;
-                    vec![Effect::LoadTimeline(human_id)]
+                    Outcome::LoadTimeline(human_id)
                 } else {
-                    Vec::new()
+                    Outcome::Continue
                 }
             }
             Pane::Timeline => {
                 if let Some(idx) = self.entry_state.selected() {
                     if let Some(entry) = self.entries.get(idx) {
                         if entry.source_type == "meeting" {
-                            return vec![Effect::ViewSession(entry.source_id.clone())];
+                            return Outcome::ViewSession(entry.source_id.clone());
                         }
                     }
                 }
-                Vec::new()
+                Outcome::Continue
             }
         }
     }

@@ -6,7 +6,7 @@ use sqlx::SqlitePool;
 use super::action::Action;
 use super::app::App;
 use super::effect::{Effect, SaveData};
-use super::runtime::{self, Runtime, RuntimeEvent};
+use super::runtime::{Runtime, RuntimeEvent};
 
 const IDLE_FRAME: Duration = Duration::from_secs(1);
 
@@ -14,15 +14,22 @@ pub(super) struct ConnectScreen {
     app: App,
     runtime: Runtime,
     pool: SqlitePool,
+    pending_initial_effects: Vec<Effect>,
     inspector: crate::interaction_debug::Inspector,
 }
 
 impl ConnectScreen {
-    pub(super) fn new(app: App, runtime: Runtime, pool: SqlitePool) -> Self {
+    pub(super) fn new(
+        app: App,
+        runtime: Runtime,
+        pool: SqlitePool,
+        pending_initial_effects: Vec<Effect>,
+    ) -> Self {
         Self {
             app,
             runtime,
             pool,
+            pending_initial_effects,
             inspector: crate::interaction_debug::Inspector::new("connect"),
         }
     }
@@ -52,31 +59,7 @@ impl ConnectScreen {
                 }
                 Effect::LoadCalendars => {
                     crate::tui_trace::trace_effect("connect", "LoadCalendars");
-                    let event = match runtime::load_calendars_sync() {
-                        Ok(items) => RuntimeEvent::CalendarsLoaded(items),
-                        Err(err) => RuntimeEvent::Error(err),
-                    };
-                    crate::tui_trace::trace_action(
-                        "connect",
-                        match &event {
-                            RuntimeEvent::CalendarsLoaded(_) => "Runtime::CalendarsLoaded",
-                            RuntimeEvent::Error(_) => "Runtime::Error",
-                            RuntimeEvent::CalendarPermissionStatus(_) => {
-                                "Runtime::CalendarPermissionStatus"
-                            }
-                            RuntimeEvent::CalendarPermissionResult(_) => {
-                                "Runtime::CalendarPermissionResult"
-                            }
-                            RuntimeEvent::CalendarPermissionReset => {
-                                "Runtime::CalendarPermissionReset"
-                            }
-                            RuntimeEvent::CalendarsSaved => "Runtime::CalendarsSaved",
-                        },
-                    );
-                    let effects = self.app.dispatch(Action::Runtime(event));
-                    if let ScreenControl::Exit(output) = self.apply_effects(effects) {
-                        return ScreenControl::Exit(output);
-                    }
+                    self.runtime.load_calendars();
                 }
                 Effect::SaveCalendars(data) => {
                     crate::tui_trace::trace_effect("connect", "SaveCalendars");
@@ -105,6 +88,10 @@ impl Screen for ConnectScreen {
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
         match event {
+            TuiEvent::Draw | TuiEvent::Resize if !self.pending_initial_effects.is_empty() => {
+                let effects = std::mem::take(&mut self.pending_initial_effects);
+                self.apply_effects(effects)
+            }
             TuiEvent::Key(key) => {
                 if self.inspector.handle_key(key) {
                     return ScreenControl::Continue;

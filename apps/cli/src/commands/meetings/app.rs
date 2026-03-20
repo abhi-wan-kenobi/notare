@@ -2,8 +2,11 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use hypr_db_app::{EventRow, MeetingRow};
 use ratatui::widgets::ListState;
 
-use super::action::Action;
-use super::effect::Effect;
+pub(crate) enum Outcome {
+    Continue,
+    Select(String),
+    Exit,
+}
 
 pub(crate) struct App {
     events: Vec<EventRow>,
@@ -28,35 +31,29 @@ impl App {
         }
     }
 
-    pub fn dispatch(&mut self, action: Action) -> Vec<Effect> {
-        match action {
-            Action::Key(key) => self.handle_key(key),
-            Action::MeetingsLoaded(meetings) => {
-                self.meetings_loaded = true;
-                self.meetings = meetings;
-                if !self.meetings.is_empty() {
-                    self.list_state.select(Some(0));
-                }
-                Vec::new()
-            }
-            Action::EventsLoaded(events) => {
-                self.events_loaded = true;
-                self.calendar_configured = Some(true);
-                self.events = events;
-                Vec::new()
-            }
-            Action::CalendarNotConfigured => {
-                self.events_loaded = true;
-                self.calendar_configured = Some(false);
-                Vec::new()
-            }
-            Action::LoadError(msg) => {
-                self.meetings_loaded = true;
-                self.events_loaded = true;
-                self.error = Some(msg);
-                Vec::new()
-            }
+    pub fn set_meetings(&mut self, meetings: Vec<MeetingRow>) {
+        self.meetings_loaded = true;
+        self.meetings = meetings;
+        if !self.meetings.is_empty() {
+            self.list_state.select(Some(0));
         }
+    }
+
+    pub fn set_events(&mut self, events: Vec<EventRow>) {
+        self.events_loaded = true;
+        self.calendar_configured = Some(true);
+        self.events = events;
+    }
+
+    pub fn set_calendar_not_configured(&mut self) {
+        self.events_loaded = true;
+        self.calendar_configured = Some(false);
+    }
+
+    pub fn set_error(&mut self, msg: String) {
+        self.meetings_loaded = true;
+        self.events_loaded = true;
+        self.error = Some(msg);
     }
 
     pub fn events(&self) -> &[EventRow] {
@@ -83,32 +80,32 @@ impl App {
         self.error.as_deref()
     }
 
-    fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+    pub fn handle_key(&mut self, key: KeyEvent) -> Outcome {
         if key.code == KeyCode::Esc
             || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c'))
         {
-            return vec![Effect::Exit];
+            return Outcome::Exit;
         }
 
         match key.code {
             KeyCode::Up | KeyCode::Char('k') => {
                 self.list_state.select_previous();
-                Vec::new()
+                Outcome::Continue
             }
             KeyCode::Down | KeyCode::Char('j') => {
                 self.list_state.select_next();
-                Vec::new()
+                Outcome::Continue
             }
             KeyCode::Enter => {
                 if let Some(idx) = self.list_state.selected() {
                     if let Some(meeting) = self.meetings.get(idx) {
-                        return vec![Effect::Select(meeting.id.clone())];
+                        return Outcome::Select(meeting.id.clone());
                     }
                 }
-                Vec::new()
+                Outcome::Continue
             }
-            KeyCode::Char('q') => vec![Effect::Exit],
-            _ => Vec::new(),
+            KeyCode::Char('q') => Outcome::Exit,
+            _ => Outcome::Continue,
         }
     }
 }

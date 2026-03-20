@@ -1,8 +1,6 @@
 use hypr_cli_tui::{Screen, ScreenContext, ScreenControl, TuiEvent};
 
-use super::action::Action;
 use super::app::App;
-use super::effect::Effect;
 use super::runtime::RuntimeEvent;
 
 const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);
@@ -20,20 +18,18 @@ impl MeetingsScreen {
         }
     }
 
-    fn apply_effects(&mut self, effects: Vec<Effect>) -> ScreenControl<Option<String>> {
-        for effect in effects {
-            match effect {
-                Effect::Select(id) => {
-                    crate::tui_trace::trace_effect("meetings", "Select");
-                    return ScreenControl::Exit(Some(id));
-                }
-                Effect::Exit => {
-                    crate::tui_trace::trace_effect("meetings", "Exit");
-                    return ScreenControl::Exit(None);
-                }
+    fn apply_outcome(&mut self, outcome: super::app::Outcome) -> ScreenControl<Option<String>> {
+        match outcome {
+            super::app::Outcome::Continue => ScreenControl::Continue,
+            super::app::Outcome::Select(id) => {
+                crate::tui_trace::trace_effect("meetings", "Select");
+                ScreenControl::Exit(Some(id))
+            }
+            super::app::Outcome::Exit => {
+                crate::tui_trace::trace_effect("meetings", "Exit");
+                ScreenControl::Exit(None)
             }
         }
-        ScreenControl::Continue
     }
 }
 
@@ -53,8 +49,8 @@ impl Screen for MeetingsScreen {
                 }
                 crate::tui_trace::trace_input_key("meetings", &key);
                 crate::tui_trace::trace_action("meetings", "Key");
-                let effects = self.app.dispatch(Action::Key(key));
-                self.apply_effects(effects)
+                let outcome = self.app.handle_key(key);
+                self.apply_outcome(outcome)
             }
             TuiEvent::Paste(_) | TuiEvent::Draw | TuiEvent::Resize => ScreenControl::Continue,
         }
@@ -65,30 +61,25 @@ impl Screen for MeetingsScreen {
         event: Self::ExternalEvent,
         _cx: &mut ScreenContext,
     ) -> ScreenControl<Self::Output> {
-        let action = match event {
+        match event {
             RuntimeEvent::MeetingsLoaded(meetings) => {
                 crate::tui_trace::trace_external("meetings", "MeetingsLoaded");
-                crate::tui_trace::trace_action("meetings", "MeetingsLoaded");
-                Action::MeetingsLoaded(meetings)
+                self.app.set_meetings(meetings);
             }
             RuntimeEvent::EventsLoaded(events) => {
                 crate::tui_trace::trace_external("meetings", "EventsLoaded");
-                crate::tui_trace::trace_action("meetings", "EventsLoaded");
-                Action::EventsLoaded(events)
+                self.app.set_events(events);
             }
             RuntimeEvent::CalendarNotConfigured => {
                 crate::tui_trace::trace_external("meetings", "CalendarNotConfigured");
-                crate::tui_trace::trace_action("meetings", "CalendarNotConfigured");
-                Action::CalendarNotConfigured
+                self.app.set_calendar_not_configured();
             }
             RuntimeEvent::LoadError(msg) => {
                 crate::tui_trace::trace_external("meetings", "LoadError");
-                crate::tui_trace::trace_action("meetings", "LoadError");
-                Action::LoadError(msg)
+                self.app.set_error(msg);
             }
-        };
-        let effects = self.app.dispatch(action);
-        self.apply_effects(effects)
+        }
+        ScreenControl::Continue
     }
 
     fn draw(&mut self, frame: &mut ratatui::Frame) {

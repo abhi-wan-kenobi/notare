@@ -48,10 +48,9 @@ pub enum ConnectProvider {
 }
 use crate::error::{CliError, CliResult};
 
-use self::action::Action;
 use self::app::{App, FormFieldId, Step};
 use self::effect::{Effect, SaveData};
-use self::runtime::{Runtime, RuntimeEvent};
+use self::runtime::Runtime;
 use self::screen::ConnectScreen;
 
 // --- Public API ---
@@ -148,40 +147,7 @@ pub async fn run(args: Args) -> CliResult<bool> {
         let (runtime_tx, runtime_rx) = mpsc::unbounded_channel();
         let runtime = Runtime::new(runtime_tx);
 
-        let mut app = app;
-
-        // Resolve initial calendar permission synchronously so the screen
-        // opens with the status already known (avoids async channel timing).
-        for effect in &initial_effects {
-            match effect {
-                Effect::CheckCalendarPermission => {
-                    let state = runtime::check_permission_sync();
-                    let effects = app.dispatch(Action::Runtime(
-                        RuntimeEvent::CalendarPermissionStatus(state),
-                    ));
-                    // If authorized, this may produce LoadCalendars
-                    for e in &effects {
-                        if matches!(e, Effect::LoadCalendars) {
-                            let event = match runtime::load_calendars_sync() {
-                                Ok(items) => RuntimeEvent::CalendarsLoaded(items),
-                                Err(err) => RuntimeEvent::Error(err),
-                            };
-                            let _ = app.dispatch(Action::Runtime(event));
-                        }
-                    }
-                }
-                Effect::LoadCalendars => {
-                    let event = match runtime::load_calendars_sync() {
-                        Ok(items) => RuntimeEvent::CalendarsLoaded(items),
-                        Err(err) => RuntimeEvent::Error(err),
-                    };
-                    let _ = app.dispatch(Action::Runtime(event));
-                }
-                _ => {}
-            }
-        }
-
-        let screen = ConnectScreen::new(app, runtime, args.pool.clone());
+        let screen = ConnectScreen::new(app, runtime, args.pool.clone(), initial_effects);
         run_screen(screen, Some(runtime_rx))
             .await
             .map_err(|e| CliError::operation_failed("connect tui", e.to_string()))?

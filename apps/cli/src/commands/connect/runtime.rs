@@ -125,6 +125,17 @@ impl Runtime {
         });
     }
 
+    pub(crate) fn load_calendars(&self) {
+        let tx = self.tx.clone();
+        std::thread::spawn(move || {
+            let event = match load_calendars_sync() {
+                Ok(items) => RuntimeEvent::CalendarsLoaded(items),
+                Err(err) => RuntimeEvent::Error(err),
+            };
+            let _ = tx.send(event);
+        });
+    }
+
     pub(crate) fn reset_permission(&self) {
         let tx = self.tx.clone();
         tokio::spawn(async move {

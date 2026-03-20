@@ -1,8 +1,6 @@
 use hypr_cli_tui::run_screen;
 
-mod action;
 mod app;
-mod effect;
 mod screen;
 mod ui;
 
