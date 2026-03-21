@@ -2969,6 +2969,10 @@
       "name": "calendar"
     },
     {
+      "description": "Mail management",
+      "name": "mail"
+    },
+    {
       "description": "Integration management via Nango",
       "name": "nango"
     },

@@ -161,6 +161,8 @@ async fn app() -> Router {
 
     let integration_routes = Router::new()
         .nest("/calendar", hypr_api_calendar::router())
+        .nest("/mail", hypr_api_mail::router())
+        .nest("/ticket", hypr_api_ticket::router())
         .nest("/nango", hypr_api_nango::router(nango_config.clone()))
         .layer(axum::Extension(nango_connection_state))
         .route_layer(middleware::from_fn(auth::sentry_and_analytics))

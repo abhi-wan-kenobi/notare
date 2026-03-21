@@ -1,5 +1,11 @@
 use std::time::Duration;
 
+#[cfg(not(target_os = "macos"))]
+fn main() {
+    eprintln!("This example only works on macOS");
+}
+
+#[cfg(target_os = "macos")]
 fn main() {
     env_logger::init();
 

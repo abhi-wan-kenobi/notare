@@ -13,69 +13,45 @@ path = "src/main.rs"
 
 [dependencies]
 hypr-analytics = { workspace = true }
-hypr-api-env = { workspace = true }
-hypr-audio = { workspace = true }
-hypr-audio-actual = { workspace = true }
-hypr-audio-mock = { workspace = true, optional = true }
-hypr-audio-utils = { workspace = true }
-hypr-calendar = { workspace = true, optional = true }
-hypr-calendar-interface = { workspace = true, optional = true }
+hypr-audio = { workspace = true, optional = true }
+hypr-audio-actual = { workspace = true, optional = true }
+hypr-audio-utils = { workspace = true, optional = true }
 hypr-db-app = { workspace = true, features = ["cli"], optional = true }
 hypr-db-core2 = { workspace = true, optional = true }
-hypr-file = { workspace = true }
 hypr-host = { workspace = true }
 hypr-language = { workspace = true }
-hypr-listener-core = { workspace = true, optional = true }
 hypr-listener2-core = { workspace = true }
 hypr-local-model = { workspace = true }
 hypr-local-stt-core = { workspace = true, optional = true }
 hypr-model-downloader = { workspace = true, optional = true }
-hypr-openrouter = { workspace = true, optional = true }
-hypr-storage = { workspace = true, optional = true }
-hypr-template-cli = { workspace = true, optional = true }
-hypr-transcribe-proxy = { workspace = true }
 hypr-transcript = { workspace = true, optional = true }
 owhisper-client = { workspace = true }
 owhisper-interface = { workspace = true }
 
-apalis = { workspace = true, optional = true }
-apalis-cron = { workspace = true, optional = true }
-async-trait = "0.1"
-axum = { workspace = true, features = ["ws"], optional = true }
-bytes = { workspace = true, optional = true }
-chrono = { workspace = true }
+chrono = { workspace = true, optional = true }
 clap = { workspace = true, features = ["derive", "env"] }
 clap-verbosity-flag = { version = "3", features = ["tracing"] }
 clap_complete = { workspace = true }
 clio = { version = "0.3", features = ["clap-parse"] }
 colored = "3"
-cron = { version = "0.15", optional = true }
 dirs = { workspace = true }
-futures-util = { workspace = true, optional = true }
-tempfile = { workspace = true }
-textwrap = { version = "0.16", features = ["terminal_size"] }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["env-filter"] }
-
+hound = { workspace = true, optional = true }
 indicatif = { version = "0.17", optional = true }
 open = { workspace = true }
-ractor = { workspace = true, features = ["async-trait"], optional = true }
 reqwest = { workspace = true, features = ["json"] }
-rig = { package = "rig-core", version = "0.32", optional = true }
-schemars = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"], optional = true }
 strsim = "0.11"
 strum = { workspace = true, features = ["derive"] }
+textwrap = { version = "0.16", features = ["terminal_size"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal", "sync", "time"] }
-tokio-stream = { workspace = true }
+tokio-stream = { workspace = true, optional = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 url = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
-
-[target.'cfg(target_os = "macos")'.dependencies]
-hypr-apple-calendar = { workspace = true, optional = true }
 
 [target.'cfg(any(target_arch = "arm", target_arch = "aarch64"))'.dependencies]
 hypr-local-stt-server = { workspace = true }
@@ -91,32 +67,22 @@ url = { workspace = true }
 vt100 = "0.15"
 
 [features]
-dev = ["dep:hypr-audio-mock"]
 e2e = []
 desktop = [
   "dep:hypr-db-app",
   "dep:hypr-db-core2",
-  "dep:hypr-calendar",
-  "dep:hypr-calendar-interface",
-  "dep:hypr-listener-core",
-  "dep:hypr-openrouter",
-  "dep:hypr-storage",
-  "dep:hypr-template-cli",
   "dep:hypr-transcript",
-  "dep:apalis",
-  "dep:apalis-cron",
-  "dep:axum",
-  "dep:bytes",
-  "dep:cron",
-  "dep:futures-util",
-  "dep:ractor",
-  "dep:rig",
-  "dep:schemars",
+  "dep:chrono",
   "dep:sqlx",
-  "dep:hypr-apple-calendar",
 ]
 standalone = [
+  "dep:chrono",
+  "dep:hypr-audio",
+  "dep:hypr-audio-actual",
+  "dep:hypr-audio-utils",
+  "dep:hound",
   "dep:hypr-local-stt-core",
   "dep:hypr-model-downloader",
   "dep:indicatif",
+  "dep:tokio-stream",
 ]

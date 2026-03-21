@@ -35,9 +35,6 @@ pub struct GlobalArgs {
     )]
     pub language: String,
 
-    #[arg(long, global = true, env = "CHAR_RECORD")]
-    pub record: bool,
-
     #[arg(long, global = true)]
     pub no_color: bool,
 
@@ -82,6 +79,12 @@ pub enum Commands {
         shell: clap_complete::Shell,
     },
     #[cfg(feature = "standalone")]
+    /// Record audio to a WAV file
+    Record {
+        #[command(flatten)]
+        args: crate::commands::record::Args,
+    },
+    #[cfg(feature = "standalone")]
     /// Open the desktop app or download page
     Desktop,
     #[cfg(feature = "standalone")]
@@ -91,18 +94,6 @@ pub enum Commands {
     /// Open char.com
     Hello,
 
-    #[cfg(feature = "desktop")]
-    /// Interactive chat with an LLM
-    Chat {
-        /// Send a prompt (use `-` to read from stdin)
-        #[arg(long)]
-        prompt: String,
-        #[arg(long, value_enum)]
-        provider: Option<crate::llm::LlmProvider>,
-        /// Meeting ID for context
-        #[arg(long)]
-        meeting: Option<String>,
-    },
     #[cfg(feature = "desktop")]
     /// Browse past meetings
     Meetings {
@@ -126,12 +117,6 @@ pub enum Commands {
     Export {
         #[command(subcommand)]
         command: crate::commands::export::Commands,
-    },
-    #[cfg(feature = "dev")]
-    /// Debug and diagnostic tools
-    Debug {
-        #[command(subcommand)]
-        command: crate::commands::debug::Commands,
     },
 }
 

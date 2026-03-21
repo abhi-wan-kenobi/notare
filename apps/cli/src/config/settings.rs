@@ -13,10 +13,7 @@ pub struct ProviderConfig {
 pub struct Settings {
     pub current_stt_provider: Option<String>,
     pub current_stt_model: Option<String>,
-    pub current_llm_provider: Option<String>,
-    pub current_llm_model: Option<String>,
     pub stt_providers: HashMap<String, ProviderConfig>,
-    pub llm_providers: HashMap<String, ProviderConfig>,
 }
 
 pub async fn load_settings(pool: &SqlitePool) -> Option<Settings> {
@@ -31,36 +28,18 @@ pub async fn load_settings(pool: &SqlitePool) -> Option<Settings> {
         .get("current_stt_model")
         .filter(|v| !v.is_empty())
         .cloned();
-    let current_llm_provider = setting_map
-        .get("current_llm_provider")
-        .filter(|v| !v.is_empty())
-        .cloned();
-    let current_llm_model = setting_map
-        .get("current_llm_model")
-        .filter(|v| !v.is_empty())
-        .cloned();
 
     let stt_connections = hypr_db_app::list_connections(pool, "stt").await.ok()?;
-    let llm_connections = hypr_db_app::list_connections(pool, "llm").await.ok()?;
-
     let stt_providers = connections_to_provider_map(stt_connections);
-    let llm_providers = connections_to_provider_map(llm_connections);
 
-    if current_stt_provider.is_none()
-        && current_llm_provider.is_none()
-        && stt_providers.is_empty()
-        && llm_providers.is_empty()
-    {
+    if current_stt_provider.is_none() && stt_providers.is_empty() {
         return None;
     }
 
     Some(Settings {
         current_stt_provider,
         current_stt_model,
-        current_llm_provider,
-        current_llm_model,
         stt_providers,
-        llm_providers,
     })
 }
 
@@ -93,11 +72,7 @@ pub async fn migrate_json_settings_to_db(pool: &SqlitePool, base_path: &Path) {
     let has_connections = hypr_db_app::list_connections(pool, "stt")
         .await
         .map(|v| !v.is_empty())
-        .unwrap_or(false)
-        || hypr_db_app::list_connections(pool, "llm")
-            .await
-            .map(|v| !v.is_empty())
-            .unwrap_or(false);
+        .unwrap_or(false);
 
     if has_settings || has_connections {
         return;
@@ -114,28 +89,11 @@ pub async fn migrate_json_settings_to_db(pool: &SqlitePool, base_path: &Path) {
     if let Some(ref v) = settings.current_stt_model {
         let _ = hypr_db_app::set_setting(pool, "current_stt_model", v).await;
     }
-    if let Some(ref v) = settings.current_llm_provider {
-        let _ = hypr_db_app::set_setting(pool, "current_llm_provider", v).await;
-    }
-    if let Some(ref v) = settings.current_llm_model {
-        let _ = hypr_db_app::set_setting(pool, "current_llm_model", v).await;
-    }
 
     for (provider_id, config) in &settings.stt_providers {
         let _ = hypr_db_app::upsert_connection(
             pool,
             "stt",
-            provider_id,
-            config.base_url.as_deref().unwrap_or(""),
-            config.api_key.as_deref().unwrap_or(""),
-        )
-        .await;
-    }
-
-    for (provider_id, config) in &settings.llm_providers {
-        let _ = hypr_db_app::upsert_connection(
-            pool,
-            "llm",
             provider_id,
             config.base_url.as_deref().unwrap_or(""),
             config.api_key.as_deref().unwrap_or(""),
@@ -151,19 +109,12 @@ fn load_settings_from_json(path: &Path) -> Option<Settings> {
 
     let current_stt_provider = get_string(ai.get("current_stt_provider"));
     let current_stt_model = get_string(ai.get("current_stt_model"));
-    let current_llm_provider = get_string(ai.get("current_llm_provider"));
-    let current_llm_model = get_string(ai.get("current_llm_model"));
-
     let stt_providers = parse_provider_map(ai.get("stt"));
-    let llm_providers = parse_provider_map(ai.get("llm"));
 
     Some(Settings {
         current_stt_provider,
         current_stt_model,
-        current_llm_provider,
-        current_llm_model,
         stt_providers,
-        llm_providers,
     })
 }
 

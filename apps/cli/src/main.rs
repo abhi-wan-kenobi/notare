@@ -1,14 +1,8 @@
-#[cfg(feature = "desktop")]
-mod agent;
 mod cli;
 mod commands;
 mod config;
 mod error;
-#[cfg(feature = "desktop")]
-mod llm;
 mod output;
-#[cfg(feature = "desktop")]
-mod services;
 mod stt;
 
 use crate::cli::{Cli, Commands};
@@ -123,6 +117,8 @@ async fn run(cli: Cli) -> CliResult<()> {
         }
         #[cfg(feature = "standalone")]
         Some(Commands::Models { command }) => commands::model::run(command).await,
+        #[cfg(feature = "standalone")]
+        Some(Commands::Record { args }) => commands::record::run(args).await,
         Some(Commands::Completions { shell }) => {
             cli::generate_completions(shell);
             Ok(())
@@ -152,24 +148,6 @@ async fn run(cli: Cli) -> CliResult<()> {
         }
 
         #[cfg(feature = "desktop")]
-        Some(Commands::Chat {
-            prompt,
-            provider,
-            meeting,
-        }) => {
-            let pool = init_pool().await?;
-            commands::chat::run(commands::chat::Args {
-                meeting,
-                prompt,
-                provider,
-                base_url: global.base_url,
-                api_key: global.api_key,
-                model: global.model,
-                pool,
-            })
-            .await
-        }
-        #[cfg(feature = "desktop")]
         Some(Commands::Meetings { command }) => {
             let pool = init_pool().await?;
             commands::meetings::run(&pool, command, &global).await
@@ -189,9 +167,6 @@ async fn run(cli: Cli) -> CliResult<()> {
             let pool = init_pool().await?;
             commands::export::run(&pool, command).await
         }
-        #[cfg(feature = "dev")]
-        Some(Commands::Debug { command }) => commands::debug::run(command).await,
-
         None => {
             use clap::CommandFactory;
             Cli::command().print_help().ok();
