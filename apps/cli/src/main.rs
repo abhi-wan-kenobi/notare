@@ -29,7 +29,7 @@ async fn main() {
                 r#type: None,
                 provider: None
             })
-            | Some(Commands::Configure { .. })
+            | Some(Commands::Configure { command: None, .. })
     ) || cli.command.is_none();
     let tui_command = {
         #[cfg(feature = "dev")]
@@ -170,7 +170,7 @@ async fn run(cli: Cli) -> CliResult<()> {
                 r#type: None,
                 provider: None
             })
-            | Some(Commands::Configure { .. })
+            | Some(Commands::Configure { command: None, .. })
     ) || command.is_none();
 
     if is_tui {
@@ -230,7 +230,12 @@ async fn run(cli: Cli) -> CliResult<()> {
                 run_entry_loop(pool, global, Some("/connect".to_string())).await
             }
         }
-        Some(Commands::Configure { tab }) => commands::configure::run(&pool, tab).await,
+        Some(Commands::Configure {
+            command: Some(cmd), ..
+        }) => commands::configure::run_cli(&pool, cmd).await,
+        Some(Commands::Configure { command: None, tab }) => {
+            commands::configure::run(&pool, tab).await
+        }
         Some(Commands::Auth) => {
             commands::auth::run()?;
             eprintln!("Opened auth page in browser");

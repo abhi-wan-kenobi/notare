@@ -95,6 +95,9 @@ pub enum Commands {
     },
     /// Configure providers and settings
     Configure {
+        #[command(subcommand)]
+        command: Option<crate::commands::configure::Commands>,
+
         #[arg(long, value_enum)]
         tab: Option<crate::commands::configure::ConfigureTab>,
     },

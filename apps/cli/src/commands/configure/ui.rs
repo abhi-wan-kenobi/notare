@@ -81,12 +81,9 @@ fn render_sections(frame: &mut ratatui::Frame, sections: Vec<Section>, area: Rec
 }
 
 pub fn draw(frame: &mut ratatui::Frame, app: &mut App) {
-    let dialog = CenteredDialog::new("Configure", &THEME);
-    let content = if app.tab == Tab::Language {
-        dialog.wide().render(frame)
-    } else {
-        dialog.render(frame)
-    };
+    let content = CenteredDialog::new("Configure", &THEME)
+        .wide()
+        .render(frame);
 
     let [tabs_area, _gap, content_area, _, hints_area] = Layout::vertical([
         Constraint::Length(1),
