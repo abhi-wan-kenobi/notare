@@ -64,8 +64,6 @@ hypr-cactus-model = { path = "crates/cactus-model", package = "cactus-model" }
 hypr-calendar = { path = "crates/calendar", package = "calendar" }
 hypr-calendar-interface = { path = "crates/calendar-interface", package = "calendar-interface" }
 hypr-chatwoot = { path = "crates/chatwoot", package = "chatwoot" }
-hypr-cli-editor = { path = "crates/cli-editor", package = "cli-editor" }
-hypr-cli-tui = { path = "crates/cli-tui", package = "cli-tui" }
 hypr-cloudsync = { path = "crates/cloudsync", package = "cloudsync" }
 hypr-data = { path = "crates/data", package = "data" }
 hypr-db-app = { path = "crates/db-app", package = "db-app" }

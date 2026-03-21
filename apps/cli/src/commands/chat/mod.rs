@@ -1,50 +1,18 @@
-mod action;
-mod app;
-mod effect;
 mod runtime;
-mod screen;
-mod ui;
 
-use clap::Subcommand;
-
-#[derive(Subcommand)]
-pub enum Commands {
-    /// Resume an existing chat session
-    Resume {
-        #[arg(long)]
-        meeting: Option<String>,
-    },
-}
-
-#[derive(Clone, Copy, Debug, strum::Display)]
-#[strum(serialize_all = "snake_case")]
-pub(crate) enum Role {
-    System,
-    User,
-    Assistant,
-    Tool,
-}
-
-use hypr_cli_tui::run_screen;
 use sqlx::SqlitePool;
-use tokio::sync::mpsc;
 
 use crate::error::{CliError, CliResult};
 use crate::llm::{LlmOverrides, LlmProvider, resolve_config};
 
-use self::app::App;
-use self::runtime::Runtime;
-use self::screen::ChatScreen;
-
 pub struct Args {
     pub meeting: Option<String>,
-    pub prompt: Option<String>,
+    pub prompt: String,
     pub provider: Option<LlmProvider>,
     pub base_url: Option<String>,
     pub api_key: Option<String>,
     pub model: Option<String>,
     pub pool: SqlitePool,
-    pub resume_meeting_id: Option<String>,
 }
 
 pub async fn run(args: Args) -> CliResult<()> {
@@ -64,33 +32,7 @@ pub async fn run(args: Args) -> CliResult<()> {
     )
     .await?;
 
-    if let Some(prompt) = args.prompt {
-        return crate::agent::run_prompt(config, system_message, &prompt).await;
-    }
-
-    let meeting_id = args
-        .resume_meeting_id
-        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-
-    let (runtime_tx, runtime_rx) = mpsc::unbounded_channel();
-    let runtime = Runtime::new(config.clone(), system_message, runtime_tx, pool.clone())?;
-
-    let mut app = App::new(config.model, args.meeting, meeting_id.clone());
-
-    let history = load_or_create_meeting(&pool, &meeting_id).await?;
-    if let Some(messages) = history {
-        app.load_history(messages);
-    } else {
-        runtime.ensure_meeting(&meeting_id).await;
-    }
-
-    let runtime_handle = runtime.clone();
-    let result = run_screen(ChatScreen::new(app, runtime), Some(runtime_rx))
-        .await
-        .map_err(|e| CliError::operation_failed("chat tui", e.to_string()));
-
-    runtime_handle.drain_pending_writes().await;
-    result
+    crate::agent::run_prompt(config, system_message, &args.prompt).await
 }
 
 async fn load_meeting_context(pool: &SqlitePool, meeting_id: &str) -> CliResult<String> {
@@ -165,22 +107,4 @@ async fn load_meeting_context(pool: &SqlitePool, meeting_id: &str) -> CliResult<
 
     ctx.render()
         .map_err(|e| CliError::operation_failed("render meeting context", e.to_string()))
-}
-
-async fn load_or_create_meeting(
-    pool: &SqlitePool,
-    meeting_id: &str,
-) -> CliResult<Option<Vec<hypr_db_app::ChatMessageRow>>> {
-    let meeting = hypr_db_app::get_meeting(pool, meeting_id)
-        .await
-        .map_err(|e| CliError::operation_failed("get meeting", e.to_string()))?;
-    match meeting {
-        Some(_) => {
-            let messages = hypr_db_app::load_chat_messages(pool, meeting_id)
-                .await
-                .unwrap_or_default();
-            Ok(Some(messages))
-        }
-        None => Ok(None),
-    }
 }

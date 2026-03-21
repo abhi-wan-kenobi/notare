@@ -117,6 +117,7 @@ macro_rules! db {
     };
 }
 
+#[cfg(feature = "desktop")]
 impl From<hypr_db_app::CrudCliError> for CliError {
     fn from(e: hypr_db_app::CrudCliError) -> Self {
         Self::OperationFailed {

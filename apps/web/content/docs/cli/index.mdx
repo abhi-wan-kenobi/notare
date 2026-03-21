@@ -31,55 +31,66 @@ char [--base-url] [--api-key] [-m] [-l] [--record] [--no-color] [--base] [-v] [-
 
 **Subcommands:**
 
+- `transcribe` — Transcribe an audio file
+- `completions` — Generate shell completions
 - `chat` — Interactive chat with an LLM
 - `connect` — Configure an STT or LLM provider
 - `meetings` — Browse past meetings
 - `humans` — Browse humans (contacts)
 - `orgs` — Browse organizations
 - `configure` — Configure providers and settings
-- `auth` — Authenticate with char.com
-- `desktop` — Open the desktop app or download page
-- `bug` — Report a bug on GitHub
-- `hello` — Open char.com
-- `transcribe` — Transcribe an audio file (no meeting created)
-- `models` — Manage local models
 - `export` — Export data in various formats
-- `completions` — Generate shell completions
 
 ---
+
+### char transcribe
+
+Transcribe an audio file
+
+```
+char transcribe <--input> <-p> [-k] [-o] [-f] [-h] [-V]
+```
+
+**Options:**
+
+- `--input <FILE>`
+- `-p, --provider <PROVIDER>`
+- `-k, --keyword <KEYWORD>`
+- `-o, --output <FILE>`
+- `-f, --format <FORMAT>` (default: `json`)
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char completions
+
+Generate shell completions
+
+```
+char completions [-h] [-V] <shell>
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Arguments:**
+
+- `<SHELL>`
 
 ### char chat
 
 Interactive chat with an LLM
 
 ```
-char chat [--prompt] [--provider] [-h] [-V] <command>
+char chat <--prompt> [--provider] [--meeting] [-h] [-V]
 ```
 
 **Options:**
 
-- `--prompt <PROMPT>` — Send a single prompt without entering the TUI (use `-` to read from stdin)
+- `--prompt <PROMPT>` — Send a prompt (use `-` to read from stdin)
 - `--provider <PROVIDER>`
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-**Subcommands:**
-
-- `resume` — Resume an existing chat session
-
----
-
-### char chat resume
-
-Resume an existing chat session
-
-```
-char chat resume [--meeting] [-h] [-V]
-```
-
-**Options:**
-
-- `--meeting <MEETING>`
+- `--meeting <MEETING>` — Meeting ID for context
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
@@ -113,7 +124,7 @@ char meetings [-h] [-V] <command>
 
 **Subcommands:**
 
-- `new` — Start a new meeting
+- `list` — List meetings
 - `view` — View a specific meeting
 - `participants` — List participants in a meeting
 - `add-participant` — Add a participant to a meeting
@@ -121,19 +132,16 @@ char meetings [-h] [-V] <command>
 
 ---
 
-### char meetings new
+### char meetings list
 
-Start a new meeting
+List meetings
 
 ```
-char meetings new [-p] [--audio] [-k] [-h] [-V]
+char meetings list [-h] [-V]
 ```
 
 **Options:**
 
-- `-p, --provider <PROVIDER>`
-- `--audio <FILE>` — Create meeting from an audio file instead of live transcription
-- `-k, --keyword <KEYWORD>` — Keywords to boost transcription accuracy (with --audio)
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
@@ -317,9 +325,9 @@ char orgs [-h] [-V] <command>
 
 - `list` — List all organizations
 - `add` — Add a new organization
-- `edit` — Edit a organization
-- `show` — Show details for a organization
-- `rm` — Remove a organization
+- `edit` — Edit an organization
+- `show` — Show details for an organization
+- `rm` — Remove an organization
 
 ---
 
@@ -356,7 +364,7 @@ char orgs add [-h] [-V] <name>
 
 ### char orgs edit
 
-Edit a organization
+Edit an organization
 
 ```
 char orgs edit <--id> [--name] [-h] [-V]
@@ -371,7 +379,7 @@ char orgs edit <--id> [--name] [-h] [-V]
 
 ### char orgs show
 
-Show details for a organization
+Show details for an organization
 
 ```
 char orgs show <--id> [-f] [-h] [-V]
@@ -386,7 +394,7 @@ char orgs show <--id> [-f] [-h] [-V]
 
 ### char orgs rm
 
-Remove a organization
+Remove an organization
 
 ```
 char orgs rm <--id> [-h] [-V]
@@ -403,91 +411,7 @@ char orgs rm <--id> [-h] [-V]
 Configure providers and settings
 
 ```
-char configure [--tab] [-h] [-V]
-```
-
-**Options:**
-
-- `--tab <TAB>`
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-### char auth
-
-Authenticate with char.com
-
-```
-char auth [-h] [-V]
-```
-
-**Options:**
-
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-### char desktop
-
-Open the desktop app or download page
-
-```
-char desktop [-h] [-V]
-```
-
-**Options:**
-
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-### char bug
-
-Report a bug on GitHub
-
-```
-char bug [-h] [-V]
-```
-
-**Options:**
-
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-### char hello
-
-Open char.com
-
-```
-char hello [-h] [-V]
-```
-
-**Options:**
-
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-### char transcribe
-
-Transcribe an audio file (no meeting created)
-
-```
-char transcribe <--input> <-p> [-k] [-o] [-f] [-h] [-V]
-```
-
-**Options:**
-
-- `--input <FILE>`
-- `-p, --provider <PROVIDER>`
-- `-k, --keyword <KEYWORD>`
-- `-o, --output <FILE>`
-- `-f, --format <FORMAT>` (default: `pretty`)
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-### char models
-
-Manage local models
-
-```
-char models [-h] [-V] <command>
+char configure [-h] [-V] <command>
 ```
 
 **Options:**
@@ -497,84 +421,31 @@ char models [-h] [-V] <command>
 
 **Subcommands:**
 
-- `paths` — Show resolved paths for settings and model storage
-- `list` — List available models and their download status
-- `cactus` — Manage downloadable Cactus models
-- `download` — Download a model by name
-- `delete` — Delete a downloaded model
+- `show` — Show current configuration
+- `set` — Set a configuration value
 
 ---
 
-### char models paths
+### char configure show
 
-Show resolved paths for settings and model storage
-
-```
-char models paths [-h] [-V]
-```
-
-**Options:**
-
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-### char models list
-
-List available models and their download status
+Show current configuration
 
 ```
-char models list [--kind] [--supported] [-f] [-h] [-V]
+char configure show [-f] [-h] [-V]
 ```
 
 **Options:**
 
-- `--kind <KIND>`
-- `--supported`
-- `-f, --format <FORMAT>` (default: `text`)
+- `-f, --format <FORMAT>` (default: `json`)
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
-### char models cactus
+### char configure set
 
-Manage downloadable Cactus models
-
-```
-char models cactus [-h] [-V] <command>
-```
-
-**Options:**
-
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-**Subcommands:**
-
-- `list` — List available Cactus models
-- `download` — Download a Cactus model by name
-- `delete` — Delete a downloaded Cactus model
-
----
-
-### char models cactus list
-
-List available Cactus models
+Set a configuration value
 
 ```
-char models cactus list [-f] [-h] [-V]
-```
-
-**Options:**
-
-- `-f, --format <FORMAT>` (default: `text`)
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-### char models cactus download
-
-Download a Cactus model by name
-
-```
-char models cactus download [-h] [-V] <name>
+char configure set [-h] [-V] <key> <value>
 ```
 
 **Options:**
@@ -584,58 +455,8 @@ char models cactus download [-h] [-V] <name>
 
 **Arguments:**
 
-- `<NAME>`
-
-### char models cactus delete
-
-Delete a downloaded Cactus model
-
-```
-char models cactus delete [-h] [-V] <name>
-```
-
-**Options:**
-
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-**Arguments:**
-
-- `<NAME>`
-
-### char models download
-
-Download a model by name
-
-```
-char models download [-h] [-V] <name>
-```
-
-**Options:**
-
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-**Arguments:**
-
-- `<NAME>`
-
-### char models delete
-
-Delete a downloaded model
-
-```
-char models delete [-h] [-V] <name>
-```
-
-**Options:**
-
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-**Arguments:**
-
-- `<NAME>`
+- `<KEY>` — Setting key (current_stt_provider, current_llm_provider, ai_language, spoken_languages)
+- `<VALUE>` — Setting value
 
 ### char export
 
@@ -770,21 +591,4 @@ char export orgs [-f] [-o] [-h] [-V]
 - `-o, --output <FILE>`
 - `-h, --help` — Print help
 - `-V, --version` — Print version
-
-### char completions
-
-Generate shell completions
-
-```
-char completions [-h] [-V] <shell>
-```
-
-**Options:**
-
-- `-h, --help` — Print help
-- `-V, --version` — Print version
-
-**Arguments:**
-
-- `<SHELL>`
 

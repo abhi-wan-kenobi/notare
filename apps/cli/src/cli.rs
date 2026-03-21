@@ -1,8 +1,6 @@
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 
-use crate::llm::LlmProvider;
-
 /// Live transcription and audio tools
 #[derive(Parser)]
 #[command(name = "char", version, propagate_version = true)]
@@ -57,91 +55,84 @@ fn parse_base_url(value: &str) -> Result<String, String> {
     Ok(value.to_string())
 }
 
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum OutputFormat {
+    Pretty,
+    Text,
+    Json,
+}
+
 #[derive(Subcommand, strum::IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
 pub enum Commands {
-    /// Interactive chat with an LLM
-    Chat {
-        #[command(subcommand)]
-        command: Option<crate::commands::chat::Commands>,
-        /// Send a single prompt without entering the TUI (use `-` to read from stdin)
-        #[arg(long)]
-        prompt: Option<String>,
-        #[arg(long, value_enum)]
-        provider: Option<LlmProvider>,
-    },
-    /// Configure an STT or LLM provider
-    Connect {
-        #[arg(long, value_enum)]
-        r#type: Option<crate::commands::connect::ConnectionType>,
-
-        #[arg(long, value_enum)]
-        provider: Option<crate::commands::connect::ConnectProvider>,
-    },
-    /// Browse past meetings
-    Meetings {
-        #[command(subcommand)]
-        command: Option<crate::commands::meetings::Commands>,
-    },
-    /// Browse humans (contacts)
-    Humans {
-        #[command(subcommand)]
-        command: Option<crate::commands::humans::Commands>,
-    },
-    /// Browse organizations
-    Orgs {
-        #[command(subcommand)]
-        command: Option<crate::commands::orgs::Commands>,
-    },
-    /// Configure providers and settings
-    Configure {
-        #[command(subcommand)]
-        command: Option<crate::commands::configure::Commands>,
-
-        #[arg(long, value_enum)]
-        tab: Option<crate::commands::configure::ConfigureTab>,
-    },
-    /// Authenticate with char.com
-    Auth,
-    /// Open the desktop app or download page
-    Desktop,
-    /// Report a bug on GitHub
-    Bug,
-    /// Open char.com
-    Hello,
-    /// Transcribe an audio file (no meeting created)
+    /// Transcribe an audio file
     Transcribe {
         #[command(flatten)]
         args: crate::commands::transcribe::Args,
     },
+    #[cfg(feature = "standalone")]
     /// Manage local models
     Models {
         #[command(subcommand)]
         command: crate::commands::model::Commands,
-    },
-    /// Debug and diagnostic tools
-    #[cfg(feature = "dev")]
-    Debug {
-        #[command(subcommand)]
-        command: crate::commands::debug::Commands,
-    },
-    /// Export data in various formats
-    Export {
-        #[command(subcommand)]
-        command: crate::commands::export::Commands,
     },
     /// Generate shell completions
     Completions {
         #[arg(value_enum)]
         shell: clap_complete::Shell,
     },
-}
+    #[cfg(feature = "standalone")]
+    /// Open the desktop app or download page
+    Desktop,
+    #[cfg(feature = "standalone")]
+    /// Report a bug on GitHub
+    Bug,
+    #[cfg(feature = "standalone")]
+    /// Open char.com
+    Hello,
 
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum OutputFormat {
-    Pretty,
-    Text,
-    Json,
+    #[cfg(feature = "desktop")]
+    /// Interactive chat with an LLM
+    Chat {
+        /// Send a prompt (use `-` to read from stdin)
+        #[arg(long)]
+        prompt: String,
+        #[arg(long, value_enum)]
+        provider: Option<crate::llm::LlmProvider>,
+        /// Meeting ID for context
+        #[arg(long)]
+        meeting: Option<String>,
+    },
+    #[cfg(feature = "desktop")]
+    /// Browse past meetings
+    Meetings {
+        #[command(subcommand)]
+        command: crate::commands::meetings::Commands,
+    },
+    #[cfg(feature = "desktop")]
+    /// Browse humans (contacts)
+    Humans {
+        #[command(subcommand)]
+        command: Option<crate::commands::humans::Commands>,
+    },
+    #[cfg(feature = "desktop")]
+    /// Browse organizations
+    Orgs {
+        #[command(subcommand)]
+        command: Option<crate::commands::orgs::Commands>,
+    },
+    #[cfg(feature = "desktop")]
+    /// Export data in various formats
+    Export {
+        #[command(subcommand)]
+        command: crate::commands::export::Commands,
+    },
+    #[cfg(feature = "dev")]
+    /// Debug and diagnostic tools
+    Debug {
+        #[command(subcommand)]
+        command: crate::commands::debug::Commands,
+    },
 }
 
 pub fn generate_completions(shell: clap_complete::Shell) {

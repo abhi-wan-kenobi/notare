@@ -57,7 +57,7 @@ jobs:
         with:
           platform: macos
       - run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-      - run: cargo build --release -p cli --target ${{ matrix.target }}
+      - run: cargo build --release -p cli --features standalone --target ${{ matrix.target }}
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           APP_VERSION: ${{ needs.compute-version.outputs.version }}

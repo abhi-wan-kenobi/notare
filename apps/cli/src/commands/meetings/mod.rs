@@ -1,33 +1,12 @@
-pub(crate) mod app;
-pub(crate) mod live;
-mod runtime;
-mod screen;
-pub(crate) mod ui;
-pub(crate) mod view;
-
 use clap::Subcommand;
-use hypr_cli_tui::run_screen;
 use sqlx::SqlitePool;
-use tokio::sync::mpsc;
 
 use crate::error::{CliError, CliResult};
-use crate::stt::SttProvider;
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Start a new meeting
-    New {
-        #[arg(short = 'p', long, value_enum)]
-        provider: Option<SttProvider>,
-
-        /// Create meeting from an audio file instead of live transcription
-        #[arg(long, value_name = "FILE")]
-        audio: Option<clio::InputPath>,
-
-        /// Keywords to boost transcription accuracy (with --audio)
-        #[arg(long = "keyword", short = 'k', value_name = "KEYWORD")]
-        keywords: Vec<String>,
-    },
+    /// List meetings
+    List,
     /// View a specific meeting
     View {
         #[arg(long)]
@@ -54,110 +33,111 @@ pub enum Commands {
     },
 }
 
-use self::app::App;
-use self::runtime::Runtime;
-use self::screen::MeetingsScreen;
-
-pub async fn run(pool: SqlitePool) -> CliResult<Option<String>> {
-    let (external_tx, external_rx) = mpsc::unbounded_channel();
-
-    let runtime = Runtime::new(pool, external_tx);
-    runtime.load_meetings();
-    runtime.load_events();
-
-    let screen = MeetingsScreen::new(App::new());
-
-    run_screen(screen, Some(external_rx))
-        .await
-        .map_err(|e| CliError::operation_failed("meetings tui", e.to_string()))
+pub async fn run(
+    pool: &SqlitePool,
+    command: Commands,
+    _global: &crate::cli::GlobalArgs,
+) -> CliResult<()> {
+    match command {
+        Commands::List => list(pool).await,
+        Commands::View { id } => view(pool, &id).await,
+        Commands::Participants { id } => participants(pool, &id).await,
+        Commands::AddParticipant { meeting, human } => {
+            add_participant(pool, &meeting, &human).await
+        }
+        Commands::RmParticipant { meeting, human } => {
+            remove_participant(pool, &meeting, &human).await
+        }
+    }
 }
 
-pub async fn new_from_audio(
-    input: clio::InputPath,
-    stt: crate::stt::SttOverrides,
-    keywords: Vec<String>,
-    pool: SqlitePool,
-) -> CliResult<()> {
-    use hypr_cli_tui::run_screen_inline;
-    use tokio::sync::mpsc;
+async fn list(pool: &SqlitePool) -> CliResult<()> {
+    let meetings = hypr_db_app::list_meetings(pool)
+        .await
+        .map_err(|e| CliError::operation_failed("list meetings", e.to_string()))?;
 
-    use crate::commands::exit::ExitScreen;
-    use crate::commands::meetings::live::post_meeting::spawn_post_meeting;
-    use crate::commands::transcribe;
+    let rows: Vec<serde_json::Value> = meetings
+        .into_iter()
+        .map(|m| {
+            serde_json::json!({
+                "id": m.id,
+                "title": m.title,
+                "created_at": m.created_at,
+            })
+        })
+        .collect();
 
-    let result = transcribe::run_batch(&input, stt, keywords, &pool, false).await?;
-    let meeting_id = uuid::Uuid::new_v4().to_string();
-    let (words, hints) = transcribe::response_to_words(&result.response);
+    crate::output::write_json(None, &rows).await
+}
 
-    let llm_config = crate::llm::resolve_config(
-        &pool,
-        crate::llm::LlmOverrides {
-            provider: None,
-            base_url: None,
-            api_key: None,
-            model: None,
-        },
-    )
-    .await
-    .map_err(|e| {
-        e.to_string()
-            .lines()
-            .next()
-            .unwrap_or("LLM not configured")
-            .to_string()
+async fn view(pool: &SqlitePool, meeting_id: &str) -> CliResult<()> {
+    let meeting = hypr_db_app::get_meeting(pool, meeting_id)
+        .await
+        .map_err(|e| CliError::operation_failed("get meeting", e.to_string()))?
+        .ok_or_else(|| CliError::not_found(format!("meeting '{meeting_id}'"), None))?;
+
+    let words = hypr_db_app::load_words(pool, meeting_id)
+        .await
+        .unwrap_or_default();
+
+    let notes = hypr_db_app::list_notes_by_meeting(pool, meeting_id)
+        .await
+        .unwrap_or_default();
+
+    let participants = hypr_db_app::list_meeting_participants(pool, meeting_id)
+        .await
+        .unwrap_or_default();
+
+    let result = serde_json::json!({
+        "id": meeting.id,
+        "title": meeting.title,
+        "created_at": meeting.created_at,
+        "words": words.len(),
+        "notes": notes.iter().map(|n| serde_json::json!({
+            "id": n.id,
+            "kind": n.kind,
+            "title": n.title,
+            "content": n.content,
+        })).collect::<Vec<_>>(),
+        "participants": participants.iter().map(|p| serde_json::json!({
+            "human_id": p.human_id,
+            "source": p.source,
+        })).collect::<Vec<_>>(),
     });
 
-    let (exit_tx, exit_rx) = mpsc::unbounded_channel();
-    spawn_post_meeting(
-        llm_config,
-        exit_tx,
-        words,
-        hints,
-        String::new(),
-        meeting_id.clone(),
-        None,
-        pool,
-    );
-
-    let exit_screen = ExitScreen::new(
-        meeting_id,
-        result.elapsed,
-        vec!["Saving to database", "Generating summary"],
-    );
-    let height = exit_screen.viewport_height();
-    run_screen_inline(exit_screen, height, Some(exit_rx))
-        .await
-        .map_err(|e| CliError::operation_failed("exit summary", e.to_string()))?;
-    Ok(())
+    crate::output::write_json(None, &result).await
 }
 
-pub async fn participants(pool: &SqlitePool, meeting_id: &str) -> CliResult<()> {
+async fn participants(pool: &SqlitePool, meeting_id: &str) -> CliResult<()> {
     let rows = hypr_db_app::list_meeting_participants(pool, meeting_id)
         .await
         .map_err(|e| CliError::operation_failed("query", e.to_string()))?;
 
-    for row in &rows {
-        println!("{}\t{}", row.human_id, row.source);
-    }
-    Ok(())
+    let result: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "human_id": r.human_id,
+                "source": r.source,
+            })
+        })
+        .collect();
+
+    crate::output::write_json(None, &result).await
 }
 
-pub async fn add_participant(pool: &SqlitePool, meeting_id: &str, human_id: &str) -> CliResult<()> {
+async fn add_participant(pool: &SqlitePool, meeting_id: &str, human_id: &str) -> CliResult<()> {
     hypr_db_app::add_meeting_participant(pool, meeting_id, human_id, "manual")
         .await
         .map_err(|e| CliError::operation_failed("add participant", e.to_string()))?;
-    eprintln!("added {human_id} to {meeting_id}");
-    Ok(())
+    let result = serde_json::json!({ "added": human_id, "meeting": meeting_id });
+    crate::output::write_json(None, &result).await
 }
 
-pub async fn remove_participant(
-    pool: &SqlitePool,
-    meeting_id: &str,
-    human_id: &str,
-) -> CliResult<()> {
+async fn remove_participant(pool: &SqlitePool, meeting_id: &str, human_id: &str) -> CliResult<()> {
     hypr_db_app::remove_meeting_participant(pool, meeting_id, human_id)
         .await
         .map_err(|e| CliError::operation_failed("remove participant", e.to_string()))?;
-    eprintln!("removed {human_id} from {meeting_id}");
-    Ok(())
+    let result = serde_json::json!({ "removed": human_id, "meeting": meeting_id });
+    crate::output::write_json(None, &result).await
 }

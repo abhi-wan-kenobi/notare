@@ -6,9 +6,7 @@ use hypr_local_model::{CactusSttModel, LocalModel};
 use hypr_local_stt_server::LocalSttServer;
 use tokio::sync::mpsc;
 
-use sqlx::SqlitePool;
-
-use crate::config::{paths, settings};
+use crate::config::paths;
 use crate::error::{CliError, CliResult, did_you_mean};
 
 use super::SttProvider;
@@ -81,8 +79,12 @@ impl ResolvedSttConfig {
     }
 }
 
+/// Resolve STT config. When `pool` is None (standalone mode), only CLI
+/// overrides and env vars are used. When `pool` is Some (sidecar mode),
+/// saved settings from the database are also consulted.
 pub async fn resolve_config(
-    pool: &SqlitePool,
+    #[cfg(feature = "desktop")] pool: Option<&sqlx::SqlitePool>,
+    #[cfg(not(feature = "desktop"))] _pool: Option<()>,
     overrides: SttOverrides,
 ) -> CliResult<ResolvedSttConfig> {
     let language_code = overrides.language;
@@ -90,23 +92,58 @@ pub async fn resolve_config(
         .parse::<hypr_language::Language>()
         .map_err(|e| CliError::invalid_argument("--language", language_code, e.to_string()))?;
 
-    let settings = settings::load_settings(pool).await;
+    #[cfg(feature = "desktop")]
+    let settings = match pool {
+        Some(p) => crate::config::settings::load_settings(p).await,
+        None => None,
+    };
+    #[cfg(not(feature = "desktop"))]
+    let settings: Option<()> = None;
 
     let (provider, saved_model) = match overrides.provider {
         Some(p) => (p, None),
-        None => resolve_provider_from_settings(settings.as_ref())?,
+        None => {
+            #[cfg(feature = "desktop")]
+            {
+                resolve_provider_from_settings(settings.as_ref())?
+            }
+            #[cfg(not(feature = "desktop"))]
+            {
+                return Err(CliError::required_argument_with_hint(
+                    "--provider",
+                    "Pass --provider explicitly (standalone mode has no saved settings)",
+                ));
+            }
+        }
     };
 
+    #[cfg(feature = "desktop")]
     let saved = settings
         .as_ref()
         .and_then(|s| s.stt_providers.get(provider.id()));
+    #[cfg(not(feature = "desktop"))]
+    let saved: Option<&()> = None;
 
-    let base_url = overrides
-        .base_url
-        .or_else(|| saved.and_then(|s| s.base_url.clone()));
-    let api_key = overrides
-        .api_key
-        .or_else(|| saved.and_then(|s| s.api_key.clone()));
+    let base_url = overrides.base_url.or_else(|| {
+        #[cfg(feature = "desktop")]
+        {
+            saved.and_then(|s| s.base_url.clone())
+        }
+        #[cfg(not(feature = "desktop"))]
+        {
+            None
+        }
+    });
+    let api_key = overrides.api_key.or_else(|| {
+        #[cfg(feature = "desktop")]
+        {
+            saved.and_then(|s| s.api_key.clone())
+        }
+        #[cfg(not(feature = "desktop"))]
+        {
+            None
+        }
+    });
     let model = overrides.model.or(saved_model);
 
     let batch_provider = provider.to_batch_provider();
@@ -131,7 +168,7 @@ pub async fn resolve_config(
             .ok_or_else(|| {
                 CliError::required_argument_with_hint(
                     "STT API key",
-                    "Run `char connect` to configure your STT provider",
+                    format!("Pass --api-key or set {} env var", cloud.env_key_name()),
                 )
             })?;
         return Ok(ResolvedSttConfig {
@@ -159,8 +196,9 @@ pub async fn resolve_config(
     })
 }
 
+#[cfg(feature = "desktop")]
 fn resolve_provider_from_settings(
-    settings: Option<&settings::Settings>,
+    settings: Option<&crate::config::settings::Settings>,
 ) -> CliResult<(SttProvider, Option<String>)> {
     let Some(settings) = settings else {
         return Err(CliError::required_argument_with_hint(
@@ -194,10 +232,10 @@ fn resolve_provider_from_settings(
     Ok((provider, saved_model))
 }
 
-fn resolve_hyprnote_provider(model: Option<&str>) -> CliResult<(SttProvider, Option<String>)> {
+fn resolve_hyprnote_provider(_model: Option<&str>) -> CliResult<(SttProvider, Option<String>)> {
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    if model.is_some_and(|v| v.starts_with("cactus-")) {
-        return Ok((SttProvider::Cactus, model.map(String::from)));
+    if _model.is_some_and(|v| v.starts_with("cactus-")) {
+        return Ok((SttProvider::Cactus, _model.map(String::from)));
     }
 
     Err(CliError::msg(

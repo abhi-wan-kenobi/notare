@@ -1,24 +1,19 @@
-pub(crate) mod app;
 pub(crate) mod list;
 pub(crate) mod runtime;
-mod screen;
-pub(crate) mod ui;
 
 use std::io::IsTerminal;
 use std::sync::Arc;
 use std::time::Duration;
 
-use hypr_cli_tui::run_screen_inline;
 use hypr_local_model::{LocalModel, LocalModelKind};
 use hypr_local_stt_core::SUPPORTED_MODELS as SUPPORTED_STT_MODELS;
 use hypr_model_downloader::ModelDownloadManager;
-use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
 use clap::{Subcommand, ValueEnum};
 
 use crate::cli::OutputFormat;
-use crate::config::{paths, settings};
+use crate::config::paths;
 use crate::error::{CliError, CliResult, did_you_mean};
 use runtime::CliModelRuntime;
 
@@ -32,7 +27,7 @@ pub enum Commands {
         kind: Option<ModelKind>,
         #[arg(long)]
         supported: bool,
-        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        #[arg(short = 'f', long, value_enum, default_value = "json")]
         format: OutputFormat,
     },
     /// Manage downloadable Cactus models
@@ -52,7 +47,7 @@ pub enum Commands {
 pub enum CactusCommands {
     /// List available Cactus models
     List {
-        #[arg(short = 'f', long, value_enum, default_value = "text")]
+        #[arg(short = 'f', long, value_enum, default_value = "json")]
         format: OutputFormat,
     },
     /// Download a Cactus model by name
@@ -66,10 +61,6 @@ pub enum ModelKind {
     Stt,
     Llm,
 }
-
-// ---------------------------------------------------------------------------
-// ModelScope – a filtered set of models with metadata for error messages
-// ---------------------------------------------------------------------------
 
 struct ModelScope {
     models: Vec<LocalModel>,
@@ -142,11 +133,7 @@ impl ModelScope {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Command dispatch
-// ---------------------------------------------------------------------------
-
-pub async fn run(command: Commands, pool: &SqlitePool) -> CliResult<()> {
+pub async fn run(command: Commands) -> CliResult<()> {
     let paths = paths::resolve_paths();
     let models_base = paths.models_base.clone();
     let db_path = paths.base.join("app.db");
@@ -168,10 +155,10 @@ pub async fn run(command: Commands, pool: &SqlitePool) -> CliResult<()> {
             } else {
                 ModelScope::all(kind)
             };
-            list_models(&scope, pool, &models_base, format).await
+            list_models(&scope, &models_base, format).await
         }
         #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-        Commands::Cactus { command } => run_cactus(command, pool, &models_base).await,
+        Commands::Cactus { command } => run_cactus(command, &models_base).await,
         Commands::Download { name } => {
             let model = ModelScope::all(None).resolve(&name)?;
             download_model(model, &models_base).await
@@ -184,15 +171,11 @@ pub async fn run(command: Commands, pool: &SqlitePool) -> CliResult<()> {
 }
 
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-async fn run_cactus(
-    command: CactusCommands,
-    pool: &SqlitePool,
-    models_base: &std::path::Path,
-) -> CliResult<()> {
+async fn run_cactus(command: CactusCommands, models_base: &std::path::Path) -> CliResult<()> {
     let scope = ModelScope::cactus();
 
     match command {
-        CactusCommands::List { format } => list_models(&scope, pool, models_base, format).await,
+        CactusCommands::List { format } => list_models(&scope, models_base, format).await,
         CactusCommands::Download { name } => {
             let name = normalize_cactus_name(&name);
             download_model(scope.resolve(&name)?, models_base).await
@@ -204,33 +187,22 @@ async fn run_cactus(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Operations
-// ---------------------------------------------------------------------------
-
 async fn list_models(
     scope: &ModelScope,
-    pool: &SqlitePool,
     models_base: &std::path::Path,
     format: OutputFormat,
 ) -> CliResult<()> {
     let manager = make_manager(models_base, None);
-    let current = settings::load_settings(pool).await;
-    let rows = list::collect_model_rows(&scope.models, models_base, &current, &manager).await;
+    let rows = list::collect_model_rows(&scope.models, models_base, &manager).await;
     list::write_model_output(&rows, models_base, format).await
 }
 
 async fn download_model(model: LocalModel, models_base: &std::path::Path) -> CliResult<()> {
-    let show_progress = std::io::stderr().is_terminal();
+    use indicatif::{ProgressBar, ProgressStyle};
 
-    let (progress_tx, progress_rx) = if show_progress {
-        let (tx, rx) = mpsc::unbounded_channel();
-        (Some(tx), Some(rx))
-    } else {
-        (None, None)
-    };
+    let (progress_tx, mut progress_rx) = mpsc::unbounded_channel();
 
-    let manager = make_manager(models_base, progress_tx);
+    let manager = make_manager(models_base, Some(progress_tx));
 
     if manager.is_downloaded(&model).await.unwrap_or(false) {
         println!(
@@ -241,51 +213,51 @@ async fn download_model(model: LocalModel, models_base: &std::path::Path) -> Cli
         return Ok(());
     }
 
+    let pb = ProgressBar::new_spinner();
+    pb.set_style(
+        ProgressStyle::with_template("{spinner:.cyan} {msg}")
+            .unwrap()
+            .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"),
+    );
+    pb.set_message(format!("Downloading {}...", model.display_name()));
+    pb.enable_steady_tick(Duration::from_millis(80));
+
     if let Err(e) = manager.download(&model).await {
+        pb.finish_and_clear();
         return Err(CliError::operation_failed(
             "start model download",
             format!("{}: {e}", model.cli_name()),
         ));
     }
 
-    if let Some(progress_rx) = progress_rx {
-        let screen = screen::DownloadScreen::new(model.cli_name().to_string());
-        let height = screen.viewport_height();
-        let success = run_screen_inline(screen, height, Some(progress_rx))
-            .await
-            .map_err(|e| CliError::operation_failed("download tui", e.to_string()))?;
-
-        if success {
-            println!(
-                "Downloaded {} -> {}",
-                model.display_name(),
-                model.install_path(models_base).display()
-            );
-            Ok(())
-        } else {
-            Err(CliError::operation_failed(
-                "download model",
-                model.cli_name().to_string(),
-            ))
+    while let Some(event) = progress_rx.recv().await {
+        match event {
+            runtime::DownloadEvent::Completed | runtime::DownloadEvent::Failed => break,
+            runtime::DownloadEvent::Progress(pct) => {
+                pb.set_message(format!("Downloading {}... {}%", model.display_name(), pct));
+            }
         }
+    }
+
+    // Ensure download finishes
+    while manager.is_downloading(&model).await {
+        tokio::time::sleep(Duration::from_millis(120)).await;
+    }
+
+    pb.finish_and_clear();
+
+    if manager.is_downloaded(&model).await.unwrap_or(false) {
+        println!(
+            "Downloaded {} -> {}",
+            model.display_name(),
+            model.install_path(models_base).display()
+        );
+        Ok(())
     } else {
-        while manager.is_downloading(&model).await {
-            tokio::time::sleep(Duration::from_millis(120)).await;
-        }
-
-        if manager.is_downloaded(&model).await.unwrap_or(false) {
-            println!(
-                "Downloaded {} -> {}",
-                model.display_name(),
-                model.install_path(models_base).display()
-            );
-            Ok(())
-        } else {
-            Err(CliError::operation_failed(
-                "download model",
-                model.cli_name().to_string(),
-            ))
-        }
+        Err(CliError::operation_failed(
+            "download model",
+            model.cli_name().to_string(),
+        ))
     }
 }
 
@@ -302,10 +274,6 @@ async fn delete_model(model: LocalModel, models_base: &std::path::Path) -> CliRe
     println!("Deleted {}", model.display_name());
     Ok(())
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 fn make_manager(
     models_base: &std::path::Path,
@@ -337,68 +305,5 @@ fn matches_kind(model: &LocalModel, kind: Option<ModelKind>) -> bool {
         None => true,
         Some(ModelKind::Stt) => model.model_kind() == LocalModelKind::Stt,
         Some(ModelKind::Llm) => model.model_kind() == LocalModelKind::Llm,
-    }
-}
-
-fn is_current_model(model: &LocalModel, current: &settings::Settings) -> bool {
-    match model.model_kind() {
-        LocalModelKind::Llm => {
-            current.current_llm_model.as_deref() == model.settings_name().as_deref()
-        }
-        LocalModelKind::Stt => {
-            current.current_stt_provider.as_deref() == Some("hyprnote")
-                && current.current_stt_model.as_deref() != Some("cloud")
-                && current.current_stt_model.as_deref() == model.settings_name().as_deref()
-        }
-    }
-}
-
-trait SettingsName {
-    fn settings_name(&self) -> Option<String>;
-}
-
-impl SettingsName for LocalModel {
-    fn settings_name(&self) -> Option<String> {
-        serde_json::to_value(self)
-            .ok()?
-            .as_str()
-            .map(ToString::to_string)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::collections::HashMap;
-
-    use super::*;
-
-    fn empty_settings() -> settings::Settings {
-        settings::Settings {
-            current_stt_provider: None,
-            current_stt_model: None,
-            current_llm_provider: None,
-            current_llm_model: None,
-            stt_providers: HashMap::new(),
-            llm_providers: HashMap::new(),
-        }
-    }
-
-    #[test]
-    fn stt_current_model_uses_serialized_name() {
-        let model = LocalModel::Whisper(hypr_local_model::WhisperModel::QuantizedTiny);
-        let mut current = empty_settings();
-        current.current_stt_provider = Some("hyprnote".to_string());
-        current.current_stt_model = Some("QuantizedTiny".to_string());
-
-        assert!(is_current_model(&model, &current));
-    }
-
-    #[test]
-    fn llm_current_model_uses_serialized_name() {
-        let model = LocalModel::GgufLlm(hypr_local_model::GgufLlmModel::Llama3p2_3bQ4);
-        let mut current = empty_settings();
-        current.current_llm_model = Some("Llama3p2_3bQ4".to_string());
-
-        assert!(is_current_model(&model, &current));
     }
 }

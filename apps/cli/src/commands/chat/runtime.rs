@@ -9,7 +9,14 @@ use crate::agent::{Backend, StreamEvent};
 use crate::error::{CliError, CliResult};
 use crate::llm::ResolvedLlmConfig;
 
-use super::Role;
+#[derive(Clone, Copy, Debug, strum::Display)]
+#[strum(serialize_all = "snake_case")]
+pub(crate) enum Role {
+    System,
+    User,
+    Assistant,
+    Tool,
+}
 
 pub(crate) enum RuntimeEvent {
     Chunk(String),

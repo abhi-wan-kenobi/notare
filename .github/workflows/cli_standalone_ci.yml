@@ -7,7 +7,7 @@ on:
       - "crates/**"
       - "Cargo.toml"
       - "Cargo.lock"
-      - ".github/workflows/cli_ci.yml"
+      - ".github/workflows/cli_standalone_ci.yml"
       - ".github/actions/install_cli_deps/**"
 
 jobs:
@@ -40,13 +40,13 @@ jobs:
       - if: ${{ !matrix.clippy }}
         uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check -p cli
+      - run: cargo check -p cli --features standalone
       - if: matrix.clippy
-        run: cargo clippy -p cli -- -D warnings
+        run: cargo clippy -p cli --features standalone -- -D warnings
       - if: runner.os == 'macOS'
         run: |
           rustup target add x86_64-apple-darwin
-          cargo check -p cli --target x86_64-apple-darwin
+          cargo check -p cli --features standalone --target x86_64-apple-darwin
 
   e2e:
     if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
@@ -59,4 +59,4 @@ jobs:
       - uses: ./.github/actions/install_cli_deps
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test -p cli --features e2e -- --test-threads=1
+      - run: cargo test -p cli --features standalone,e2e -- --test-threads=1
