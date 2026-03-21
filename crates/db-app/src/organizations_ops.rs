@@ -1,4 +1,4 @@
-use sqlx::SqlitePool;
+use sqlx::{Row, SqlitePool};
 
 use crate::OrganizationRow;
 
@@ -15,6 +15,51 @@ pub async fn insert_organization(
     Ok(())
 }
 
+pub async fn get_organization(
+    pool: &SqlitePool,
+    id: &str,
+) -> Result<Option<OrganizationRow>, sqlx::Error> {
+    let row = sqlx::query(
+        "SELECT id, created_at, name, pinned, pin_order, user_id FROM organizations WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row.as_ref().map(|row| {
+        let pinned: i32 = row.get("pinned");
+        OrganizationRow {
+            id: row.get("id"),
+            created_at: row.get("created_at"),
+            name: row.get("name"),
+            pinned: pinned != 0,
+            pin_order: row.get("pin_order"),
+            user_id: row.get("user_id"),
+        }
+    }))
+}
+
+pub async fn list_organizations(pool: &SqlitePool) -> Result<Vec<OrganizationRow>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT id, created_at, name, pinned, pin_order, user_id FROM organizations ORDER BY created_at DESC",
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows
+        .iter()
+        .map(|row| {
+            let pinned: i32 = row.get("pinned");
+            OrganizationRow {
+                id: row.get("id"),
+                created_at: row.get("created_at"),
+                name: row.get("name"),
+                pinned: pinned != 0,
+                pin_order: row.get("pin_order"),
+                user_id: row.get("user_id"),
+            }
+        })
+        .collect())
+}
+
 pub async fn update_organization(
     pool: &SqlitePool,
     id: &str,
@@ -26,51 +71,6 @@ pub async fn update_organization(
         .execute(pool)
         .await?;
     Ok(())
-}
-
-pub async fn get_organization(
-    pool: &SqlitePool,
-    id: &str,
-) -> Result<Option<OrganizationRow>, sqlx::Error> {
-    let row = sqlx::query_as::<_, (String, String, String, i32, i32, String)>(
-        "SELECT id, created_at, name, pinned, pin_order, user_id FROM organizations WHERE id = ?",
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(row.map(
-        |(id, created_at, name, pinned, pin_order, user_id)| OrganizationRow {
-            id,
-            created_at,
-            name,
-            pinned: pinned != 0,
-            pin_order,
-            user_id,
-        },
-    ))
-}
-
-pub async fn list_organizations(pool: &SqlitePool) -> Result<Vec<OrganizationRow>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, String, i32, i32, String)>(
-        "SELECT id, created_at, name, pinned, pin_order, user_id FROM organizations ORDER BY created_at DESC",
-    )
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(
-            |(id, created_at, name, pinned, pin_order, user_id)| OrganizationRow {
-                id,
-                created_at,
-                name,
-                pinned: pinned != 0,
-                pin_order,
-                user_id,
-            },
-        )
-        .collect())
 }
 
 pub async fn delete_organization(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {

@@ -223,11 +223,12 @@ char humans [-h] [-V] <command>
 List all humans
 
 ```
-char humans list [-h] [-V]
+char humans list [-f] [-h] [-V]
 ```
 
 **Options:**
 
+- `-f, --format <FORMAT>` (default: `pretty`)
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
@@ -242,8 +243,8 @@ char humans add [--email] [--org] [--title] [-h] [-V] <name>
 **Options:**
 
 - `--email <EMAIL>`
-- `--org <ORG>`
-- `--title <TITLE>`
+- `--org <ORG_ID>`
+- `--title <JOB_TITLE>`
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
@@ -264,8 +265,8 @@ char humans edit <--id> [--name] [--email] [--org] [--title] [--memo] [-h] [-V]
 - `--id <ID>`
 - `--name <NAME>`
 - `--email <EMAIL>`
-- `--org <ORG>`
-- `--title <TITLE>`
+- `--org <ORG_ID>`
+- `--title <JOB_TITLE>`
 - `--memo <MEMO>`
 - `-h, --help` — Print help
 - `-V, --version` — Print version
@@ -275,12 +276,13 @@ char humans edit <--id> [--name] [--email] [--org] [--title] [--memo] [-h] [-V]
 Show details for a human
 
 ```
-char humans show <--id> [-h] [-V]
+char humans show <--id> [-f] [-h] [-V]
 ```
 
 **Options:**
 
 - `--id <ID>`
+- `-f, --format <FORMAT>` (default: `pretty`)
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
@@ -315,9 +317,9 @@ char orgs [-h] [-V] <command>
 
 - `list` — List all organizations
 - `add` — Add a new organization
-- `edit` — Edit an organization
-- `show` — Show details for an organization
-- `rm` — Remove an organization
+- `edit` — Edit a organization
+- `show` — Show details for a organization
+- `rm` — Remove a organization
 
 ---
 
@@ -326,11 +328,12 @@ char orgs [-h] [-V] <command>
 List all organizations
 
 ```
-char orgs list [-h] [-V]
+char orgs list [-f] [-h] [-V]
 ```
 
 **Options:**
 
+- `-f, --format <FORMAT>` (default: `pretty`)
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
@@ -353,7 +356,7 @@ char orgs add [-h] [-V] <name>
 
 ### char orgs edit
 
-Edit an organization
+Edit a organization
 
 ```
 char orgs edit <--id> [--name] [-h] [-V]
@@ -368,21 +371,22 @@ char orgs edit <--id> [--name] [-h] [-V]
 
 ### char orgs show
 
-Show details for an organization
+Show details for a organization
 
 ```
-char orgs show <--id> [-h] [-V]
+char orgs show <--id> [-f] [-h] [-V]
 ```
 
 **Options:**
 
 - `--id <ID>`
+- `-f, --format <FORMAT>` (default: `pretty`)
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
 ### char orgs rm
 
-Remove an organization
+Remove a organization
 
 ```
 char orgs rm <--id> [-h] [-V]

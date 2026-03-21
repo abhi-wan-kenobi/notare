@@ -4652,10 +4652,14 @@ checksum = "be1e0bca6c3637f992fc1cc7cbc52a78c1ef6db076dbf1059c4323d6a2048376"
 name = "db-app"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "db-core2",
+ "serde",
+ "serde_json",
  "sqlx",
  "tokio",
  "transcript",
+ "uuid",
 ]
 
 [[package]]
@@ -4675,6 +4679,7 @@ version = "0.1.0"
 dependencies = [
  "cloudsync",
  "sqlx",
+ "tempfile",
  "tokio",
  "uuid",
 ]

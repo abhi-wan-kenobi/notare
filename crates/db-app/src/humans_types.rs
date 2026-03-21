@@ -1,3 +1,4 @@
+#[cfg_attr(feature = "cli", derive(serde::Serialize))]
 pub struct HumanRow {
     pub id: String,
     pub created_at: String,

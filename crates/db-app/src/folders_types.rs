@@ -1,3 +1,4 @@
+#[cfg_attr(feature = "cli", derive(serde::Serialize))]
 pub struct FolderRow {
     pub id: String,
     pub user_id: String,

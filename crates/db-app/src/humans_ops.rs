@@ -1,4 +1,4 @@
-use sqlx::SqlitePool;
+use sqlx::{Row, SqlitePool};
 
 use crate::HumanRow;
 
@@ -19,6 +19,25 @@ pub async fn insert_human(
         .execute(pool)
         .await?;
     Ok(())
+}
+
+pub async fn get_human(pool: &SqlitePool, id: &str) -> Result<Option<HumanRow>, sqlx::Error> {
+    let row = sqlx::query(
+        "SELECT id, created_at, name, email, org_id, job_title, linkedin_username, memo, pinned, pin_order, user_id, linked_user_id FROM humans WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row.as_ref().map(map_human_row))
+}
+
+pub async fn list_humans(pool: &SqlitePool) -> Result<Vec<HumanRow>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT id, created_at, name, email, org_id, job_title, linkedin_username, memo, pinned, pin_order, user_id, linked_user_id FROM humans ORDER BY created_at DESC",
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows.iter().map(map_human_row).collect())
 }
 
 pub async fn update_human(
@@ -44,84 +63,22 @@ pub async fn update_human(
     Ok(())
 }
 
-pub async fn get_human(pool: &SqlitePool, id: &str) -> Result<Option<HumanRow>, sqlx::Error> {
-    let row = sqlx::query_as::<_, (String, String, String, String, String, String, String, String, i32, i32, String, Option<String>)>(
-        "SELECT id, created_at, name, email, org_id, job_title, linkedin_username, memo, pinned, pin_order, user_id, linked_user_id FROM humans WHERE id = ?",
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(row.map(
-        |(
-            id,
-            created_at,
-            name,
-            email,
-            org_id,
-            job_title,
-            linkedin_username,
-            memo,
-            pinned,
-            pin_order,
-            user_id,
-            linked_user_id,
-        )| HumanRow {
-            id,
-            created_at,
-            name,
-            email,
-            org_id,
-            job_title,
-            linkedin_username,
-            memo,
-            pinned: pinned != 0,
-            pin_order,
-            user_id,
-            linked_user_id,
-        },
-    ))
-}
-
-pub async fn list_humans(pool: &SqlitePool) -> Result<Vec<HumanRow>, sqlx::Error> {
-    let rows = sqlx::query_as::<_, (String, String, String, String, String, String, String, String, i32, i32, String, Option<String>)>(
-        "SELECT id, created_at, name, email, org_id, job_title, linkedin_username, memo, pinned, pin_order, user_id, linked_user_id FROM humans ORDER BY created_at DESC",
-    )
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(
-            |(
-                id,
-                created_at,
-                name,
-                email,
-                org_id,
-                job_title,
-                linkedin_username,
-                memo,
-                pinned,
-                pin_order,
-                user_id,
-                linked_user_id,
-            )| HumanRow {
-                id,
-                created_at,
-                name,
-                email,
-                org_id,
-                job_title,
-                linkedin_username,
-                memo,
-                pinned: pinned != 0,
-                pin_order,
-                user_id,
-                linked_user_id,
-            },
-        )
-        .collect())
+fn map_human_row(row: &sqlx::sqlite::SqliteRow) -> HumanRow {
+    let pinned: i32 = row.get("pinned");
+    HumanRow {
+        id: row.get("id"),
+        created_at: row.get("created_at"),
+        name: row.get("name"),
+        email: row.get("email"),
+        org_id: row.get("org_id"),
+        job_title: row.get("job_title"),
+        linkedin_username: row.get("linkedin_username"),
+        memo: row.get("memo"),
+        pinned: pinned != 0,
+        pin_order: row.get("pin_order"),
+        user_id: row.get("user_id"),
+        linked_user_id: row.get("linked_user_id"),
+    }
 }
 
 pub async fn list_humans_by_org(

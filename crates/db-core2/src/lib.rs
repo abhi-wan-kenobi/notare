@@ -14,6 +14,9 @@ pub struct Db3 {
 
 impl Db3 {
     pub async fn connect_local(path: impl AsRef<Path>) -> Result<Self, Error> {
+        if let Some(parent) = path.as_ref().parent() {
+            std::fs::create_dir_all(parent)?;
+        }
         let options = SqliteConnectOptions::new()
             .filename(path)
             .create_if_missing(true);
@@ -45,6 +48,9 @@ impl Db3 {
     }
 
     pub async fn connect_local_plain(path: impl AsRef<Path>) -> Result<Self, sqlx::Error> {
+        if let Some(parent) = path.as_ref().parent() {
+            std::fs::create_dir_all(parent).map_err(|e| sqlx::Error::Io(e))?;
+        }
         let options = SqliteConnectOptions::new()
             .filename(path)
             .create_if_missing(true)
@@ -114,5 +120,19 @@ impl Db3 {
         max_retries: Option<i64>,
     ) -> Result<(), Error> {
         hypr_cloudsync::network_sync(&self.pool, wait_ms, max_retries).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn connect_local_plain_creates_parent_dirs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db_path = tmp.path().join("nonexistent").join("nested").join("app.db");
+        let db = Db3::connect_local_plain(&db_path).await.unwrap();
+        assert!(db_path.exists());
+        drop(db);
     }
 }

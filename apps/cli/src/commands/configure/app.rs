@@ -11,16 +11,18 @@ pub enum Tab {
     Stt,
     Llm,
     Calendar,
+    Language,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 3] = [Tab::Stt, Tab::Llm, Tab::Calendar];
+    pub const ALL: [Tab; 4] = [Tab::Stt, Tab::Llm, Tab::Calendar, Tab::Language];
 
     pub fn index(self) -> usize {
         match self {
             Tab::Stt => 0,
             Tab::Llm => 1,
             Tab::Calendar => 2,
+            Tab::Language => 3,
         }
     }
 
@@ -29,6 +31,7 @@ impl Tab {
             Tab::Stt => "STT",
             Tab::Llm => "LLM",
             Tab::Calendar => "Calendar",
+            Tab::Language => "Language",
         }
     }
 
@@ -36,7 +39,7 @@ impl Tab {
         match self {
             Tab::Stt => "current_stt_provider",
             Tab::Llm => "current_llm_provider",
-            Tab::Calendar => unreachable!(),
+            Tab::Calendar | Tab::Language => unreachable!(),
         }
     }
 
@@ -45,6 +48,7 @@ impl Tab {
             Tab::Stt => "stt",
             Tab::Llm => "llm",
             Tab::Calendar => "cal",
+            Tab::Language => unreachable!(),
         }
     }
 }
@@ -75,6 +79,56 @@ impl ProviderTab {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum LanguageFocus {
+    AiLanguage,
+    SpokenLanguages,
+}
+
+pub struct LanguageTab {
+    pub focus: LanguageFocus,
+    pub languages: Vec<(String, String)>,
+    pub ai_language: Option<String>,
+    pub ai_list_state: ListState,
+    pub spoken_languages: Vec<String>,
+    pub spoken_cursor: usize,
+}
+
+impl LanguageTab {
+    fn new() -> Self {
+        let mut languages: Vec<(String, String)> = hypr_language::whisper_multilingual()
+            .into_iter()
+            .map(|l| {
+                let code = l.iso639_code().to_string();
+                let name = l.iso639().language_name().to_string();
+                (code, name)
+            })
+            .collect();
+        languages.sort_by(|a, b| a.1.cmp(&b.1));
+
+        Self {
+            focus: LanguageFocus::AiLanguage,
+            languages,
+            ai_language: None,
+            ai_list_state: ListState::default(),
+            spoken_languages: Vec::new(),
+            spoken_cursor: 0,
+        }
+    }
+
+    fn reset_cursor(&mut self) {
+        let idx = self
+            .ai_language
+            .as_ref()
+            .and_then(|c| self.languages.iter().position(|(code, _)| code == c))
+            .unwrap_or(0);
+        self.ai_list_state = ListState::default();
+        self.ai_list_state.select(Some(idx));
+        self.spoken_cursor = 0;
+        self.focus = LanguageFocus::AiLanguage;
+    }
+}
+
 pub struct App {
     pub tab: Tab,
     pub stt: ProviderTab,
@@ -82,6 +136,7 @@ pub struct App {
     pub calendars: Vec<CalendarRow>,
     pub cal_cursor: usize,
     pub cal_permission: Option<CalendarPermissionState>,
+    pub language: LanguageTab,
     pub loading: bool,
     pub error: Option<String>,
 }
@@ -95,6 +150,7 @@ impl App {
             calendars: Vec::new(),
             cal_cursor: 0,
             cal_permission: None,
+            language: LanguageTab::new(),
             loading: true,
             error: None,
         };
@@ -113,7 +169,7 @@ impl App {
         match self.tab {
             Tab::Stt => Some(&mut self.stt),
             Tab::Llm => Some(&mut self.llm),
-            Tab::Calendar => None,
+            Tab::Calendar | Tab::Language => None,
         }
     }
 
@@ -127,12 +183,17 @@ impl App {
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => return vec![Effect::Exit],
-            KeyCode::Right | KeyCode::Tab => {
+            KeyCode::Right => {
                 self.switch_tab(1);
                 return vec![];
             }
-            KeyCode::Left | KeyCode::BackTab => {
+            KeyCode::Left => {
                 self.switch_tab(-1);
+                return vec![];
+            }
+            KeyCode::Tab | KeyCode::BackTab if self.tab != Tab::Language => {
+                let delta = if key.code == KeyCode::Tab { 1 } else { -1 };
+                self.switch_tab(delta);
                 return vec![];
             }
             _ => {}
@@ -141,6 +202,7 @@ impl App {
         match self.tab {
             Tab::Stt | Tab::Llm => self.handle_provider_key(key),
             Tab::Calendar => self.handle_calendar_key(key),
+            Tab::Language => self.handle_language_key(key),
         }
     }
 
@@ -211,11 +273,15 @@ impl App {
                 current_llm,
                 stt_providers,
                 llm_providers,
+                ai_language,
+                spoken_languages,
             } => {
                 self.stt.current = current_stt;
                 self.stt.providers = stt_providers;
                 self.llm.current = current_llm;
                 self.llm.providers = llm_providers;
+                self.language.ai_language = ai_language;
+                self.language.spoken_languages = spoken_languages;
                 self.loading = false;
                 self.reset_tab_state();
                 vec![]
@@ -254,6 +320,81 @@ impl App {
             Tab::Calendar => {
                 self.cal_cursor = 0;
             }
+            Tab::Language => self.language.reset_cursor(),
+        }
+    }
+
+    fn handle_language_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        let lt = &mut self.language;
+        match key.code {
+            KeyCode::Tab | KeyCode::BackTab => {
+                lt.focus = match lt.focus {
+                    LanguageFocus::AiLanguage => LanguageFocus::SpokenLanguages,
+                    LanguageFocus::SpokenLanguages => LanguageFocus::AiLanguage,
+                };
+                vec![]
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                match lt.focus {
+                    LanguageFocus::AiLanguage => {
+                        let i = lt.ai_list_state.selected().unwrap_or(0);
+                        lt.ai_list_state.select(Some(i.saturating_sub(1)));
+                    }
+                    LanguageFocus::SpokenLanguages => {
+                        lt.spoken_cursor = lt.spoken_cursor.saturating_sub(1);
+                    }
+                }
+                vec![]
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                let max = lt.languages.len().saturating_sub(1);
+                match lt.focus {
+                    LanguageFocus::AiLanguage => {
+                        let i = lt.ai_list_state.selected().unwrap_or(0);
+                        lt.ai_list_state.select(Some((i + 1).min(max)));
+                    }
+                    LanguageFocus::SpokenLanguages => {
+                        lt.spoken_cursor = (lt.spoken_cursor + 1).min(max);
+                    }
+                }
+                vec![]
+            }
+            KeyCode::Enter => match lt.focus {
+                LanguageFocus::AiLanguage => {
+                    let idx = lt.ai_list_state.selected().unwrap_or(0);
+                    if let Some((code, _)) = lt.languages.get(idx) {
+                        lt.ai_language = Some(code.clone());
+                        vec![Effect::SaveLanguage {
+                            key: "ai_language".to_string(),
+                            value: code.clone(),
+                        }]
+                    } else {
+                        vec![]
+                    }
+                }
+                LanguageFocus::SpokenLanguages => {
+                    let json = serde_json::to_string(&lt.spoken_languages)
+                        .unwrap_or_else(|_| "[]".to_string());
+                    vec![Effect::SaveLanguage {
+                        key: "spoken_languages".to_string(),
+                        value: json,
+                    }]
+                }
+            },
+            KeyCode::Char(' ') => {
+                if matches!(lt.focus, LanguageFocus::SpokenLanguages) {
+                    let idx = lt.spoken_cursor;
+                    if let Some((code, _)) = lt.languages.get(idx) {
+                        if lt.spoken_languages.contains(code) {
+                            lt.spoken_languages.retain(|c| c != code);
+                        } else {
+                            lt.spoken_languages.push(code.clone());
+                        }
+                    }
+                }
+                vec![]
+            }
+            _ => vec![],
         }
     }
 }

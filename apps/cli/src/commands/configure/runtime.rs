@@ -18,6 +18,8 @@ pub enum RuntimeEvent {
         current_llm: Option<String>,
         stt_providers: Vec<String>,
         llm_providers: Vec<String>,
+        ai_language: Option<String>,
+        spoken_languages: Vec<String>,
     },
     CalendarsLoaded(Vec<CalendarRow>),
     CalendarPermissionStatus(CalendarPermissionState),
@@ -71,6 +73,12 @@ impl Runtime {
                 .filter(|v| !v.is_empty())
                 .cloned();
 
+            let ai_language = map.get("ai_language").filter(|v| !v.is_empty()).cloned();
+            let spoken_languages: Vec<String> = map
+                .get("spoken_languages")
+                .and_then(|v| serde_json::from_str(v).ok())
+                .unwrap_or_default();
+
             let stt_providers: Vec<String> =
                 stt_connections.into_iter().map(|c| c.provider_id).collect();
             let llm_providers: Vec<String> =
@@ -81,6 +89,8 @@ impl Runtime {
                 current_llm,
                 stt_providers,
                 llm_providers,
+                ai_language,
+                spoken_languages,
             });
         });
     }
@@ -91,6 +101,21 @@ impl Runtime {
         let key = tab.setting_key();
         tokio::spawn(async move {
             match hypr_db_app::set_setting(&pool, key, &provider).await {
+                Ok(()) => {
+                    let _ = tx.send(RuntimeEvent::Saved);
+                }
+                Err(e) => {
+                    let _ = tx.send(RuntimeEvent::Error(e.to_string()));
+                }
+            }
+        });
+    }
+
+    pub fn save_language(&self, key: String, value: String) {
+        let pool = self.pool.clone();
+        let tx = self.tx.clone();
+        tokio::spawn(async move {
+            match hypr_db_app::set_setting(&pool, &key, &value).await {
                 Ok(()) => {
                     let _ = tx.send(RuntimeEvent::Saved);
                 }

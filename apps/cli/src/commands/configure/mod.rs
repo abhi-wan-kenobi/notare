@@ -10,6 +10,7 @@ pub enum ConfigureTab {
     Stt,
     Llm,
     Calendar,
+    Language,
 }
 
 mod action;
@@ -28,6 +29,7 @@ pub async fn run(pool: &SqlitePool, cli_tab: Option<ConfigureTab>) -> CliResult<
         ConfigureTab::Stt => app::Tab::Stt,
         ConfigureTab::Llm => app::Tab::Llm,
         ConfigureTab::Calendar => app::Tab::Calendar,
+        ConfigureTab::Language => app::Tab::Language,
     });
 
     let (tx, rx) = mpsc::unbounded_channel();

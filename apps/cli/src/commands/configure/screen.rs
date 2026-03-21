@@ -47,6 +47,10 @@ impl ConfigureScreen {
                     crate::tui_trace::trace_effect("configure", "CheckCalendarPermission");
                     self.runtime.check_permission();
                 }
+                Effect::SaveLanguage { key, value } => {
+                    crate::tui_trace::trace_effect("configure", "SaveLanguage");
+                    self.runtime.save_language(key, value);
+                }
             }
         }
         ScreenControl::Continue

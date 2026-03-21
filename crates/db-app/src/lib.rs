@@ -1,5 +1,10 @@
 #![forbid(unsafe_code)]
 
+#[cfg(feature = "cli")]
+pub mod human_cli;
+#[cfg(feature = "cli")]
+pub mod organization_cli;
+
 mod aliases_ops;
 mod aliases_types;
 mod calendars_ops;
@@ -76,6 +81,40 @@ use sqlx::SqlitePool;
 pub async fn migrate(pool: &SqlitePool) -> Result<(), sqlx::migrate::MigrateError> {
     sqlx::migrate!("./migrations").run(pool).await
 }
+
+#[cfg(feature = "cli")]
+#[derive(Debug)]
+pub struct CrudCliError {
+    pub action: &'static str,
+    pub message: String,
+}
+
+#[cfg(feature = "cli")]
+impl CrudCliError {
+    pub fn db(action: &'static str, e: sqlx::Error) -> Self {
+        Self {
+            action,
+            message: e.to_string(),
+        }
+    }
+
+    pub fn not_found(noun: &str, id: &str) -> Self {
+        Self {
+            action: "query",
+            message: format!("{noun} '{id}' not found"),
+        }
+    }
+}
+
+#[cfg(feature = "cli")]
+impl std::fmt::Display for CrudCliError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} failed: {}", self.action, self.message)
+    }
+}
+
+#[cfg(feature = "cli")]
+impl std::error::Error for CrudCliError {}
 
 #[cfg(test)]
 mod tests {
@@ -1117,5 +1156,155 @@ mod tests {
         let human_ids: Vec<&str> = participants.iter().map(|p| p.human_id.as_str()).collect();
         assert!(human_ids.contains(&"h1"));
         assert!(human_ids.contains(&"h2"));
+    }
+
+    mod crud_macro {
+        use super::*;
+
+        #[tokio::test]
+        async fn get_returns_none_for_missing_id() {
+            let db = Db3::connect_memory_plain().await.unwrap();
+            migrate(db.pool()).await.unwrap();
+
+            assert!(get_human(db.pool(), "nonexistent").await.unwrap().is_none());
+            assert!(
+                get_organization(db.pool(), "nonexistent")
+                    .await
+                    .unwrap()
+                    .is_none()
+            );
+        }
+
+        #[tokio::test]
+        async fn bool_fields_roundtrip() {
+            let db = Db3::connect_memory_plain().await.unwrap();
+            migrate(db.pool()).await.unwrap();
+
+            insert_human(db.pool(), "h1", "Alice", "", "", "")
+                .await
+                .unwrap();
+
+            let human = get_human(db.pool(), "h1").await.unwrap().unwrap();
+            assert!(!human.pinned, "pinned should default to false");
+
+            sqlx::query("UPDATE humans SET pinned = 1 WHERE id = 'h1'")
+                .execute(db.pool())
+                .await
+                .unwrap();
+
+            let human = get_human(db.pool(), "h1").await.unwrap().unwrap();
+            assert!(human.pinned, "pinned should be true after setting to 1");
+        }
+
+        #[tokio::test]
+        async fn option_string_fields_roundtrip() {
+            let db = Db3::connect_memory_plain().await.unwrap();
+            migrate(db.pool()).await.unwrap();
+
+            insert_human(db.pool(), "h1", "Alice", "", "", "")
+                .await
+                .unwrap();
+
+            let human = get_human(db.pool(), "h1").await.unwrap().unwrap();
+            assert!(
+                human.linked_user_id.is_none(),
+                "linked_user_id should be None by default"
+            );
+
+            sqlx::query("UPDATE humans SET linked_user_id = 'u42' WHERE id = 'h1'")
+                .execute(db.pool())
+                .await
+                .unwrap();
+
+            let human = get_human(db.pool(), "h1").await.unwrap().unwrap();
+            assert_eq!(human.linked_user_id.as_deref(), Some("u42"));
+        }
+
+        #[tokio::test]
+        async fn update_coalesce_preserves_unset_fields() {
+            let db = Db3::connect_memory_plain().await.unwrap();
+            migrate(db.pool()).await.unwrap();
+
+            insert_organization(db.pool(), "org1", "Acme")
+                .await
+                .unwrap();
+
+            // update with None should preserve existing value
+            update_organization(db.pool(), "org1", None).await.unwrap();
+            let org = get_organization(db.pool(), "org1").await.unwrap().unwrap();
+            assert_eq!(org.name, "Acme");
+
+            // update with Some should change value
+            update_organization(db.pool(), "org1", Some("NewCo"))
+                .await
+                .unwrap();
+            let org = get_organization(db.pool(), "org1").await.unwrap().unwrap();
+            assert_eq!(org.name, "NewCo");
+        }
+
+        #[tokio::test]
+        async fn list_returns_ordered_results() {
+            let db = Db3::connect_memory_plain().await.unwrap();
+            migrate(db.pool()).await.unwrap();
+
+            insert_organization(db.pool(), "org1", "Alpha")
+                .await
+                .unwrap();
+            // insert a small delay via explicit created_at so ordering is deterministic
+            sqlx::query("UPDATE organizations SET created_at = '2025-01-01' WHERE id = 'org1'")
+                .execute(db.pool())
+                .await
+                .unwrap();
+
+            insert_organization(db.pool(), "org2", "Beta")
+                .await
+                .unwrap();
+            sqlx::query("UPDATE organizations SET created_at = '2025-06-01' WHERE id = 'org2'")
+                .execute(db.pool())
+                .await
+                .unwrap();
+
+            let orgs = list_organizations(db.pool()).await.unwrap();
+            assert_eq!(orgs.len(), 2);
+            // list_order = "created_at DESC" so Beta (newer) should come first
+            assert_eq!(orgs[0].name, "Beta");
+            assert_eq!(orgs[1].name, "Alpha");
+        }
+
+        #[tokio::test]
+        async fn generated_insert_and_update_multi_field() {
+            let db = Db3::connect_memory_plain().await.unwrap();
+            migrate(db.pool()).await.unwrap();
+
+            insert_human(db.pool(), "h1", "Alice", "a@b.com", "org1", "Eng")
+                .await
+                .unwrap();
+
+            let h = get_human(db.pool(), "h1").await.unwrap().unwrap();
+            assert_eq!(h.name, "Alice");
+            assert_eq!(h.email, "a@b.com");
+            assert_eq!(h.org_id, "org1");
+            assert_eq!(h.job_title, "Eng");
+            assert_eq!(h.memo, "");
+
+            // partial update: only change memo and job_title
+            update_human(
+                db.pool(),
+                "h1",
+                None,
+                None,
+                None,
+                Some("CTO"),
+                Some("great"),
+            )
+            .await
+            .unwrap();
+
+            let h = get_human(db.pool(), "h1").await.unwrap().unwrap();
+            assert_eq!(h.name, "Alice", "name should be unchanged");
+            assert_eq!(h.email, "a@b.com", "email should be unchanged");
+            assert_eq!(h.job_title, "CTO");
+            assert_eq!(h.memo, "great");
+        }
     }
 }

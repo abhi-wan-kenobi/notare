@@ -45,17 +45,6 @@ pub async fn upsert_event(
     Ok(())
 }
 
-pub async fn get_event(pool: &SqlitePool, id: &str) -> Result<Option<EventRow>, sqlx::Error> {
-    let row = sqlx::query(
-        "SELECT id, user_id, calendar_id, tracking_id, title, started_at, ended_at, location, meeting_link, description, note, recurrence_series_id, has_recurrence_rules, is_all_day, participants_json, raw_json, created_at FROM events WHERE id = ?",
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(row.as_ref().map(map_event_row))
-}
-
 pub async fn list_events_by_calendar(
     pool: &SqlitePool,
     calendar_id: &str,
@@ -140,6 +129,16 @@ pub async fn delete_event(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error
         .execute(pool)
         .await?;
     Ok(())
+}
+
+pub async fn get_event(pool: &SqlitePool, id: &str) -> Result<Option<EventRow>, sqlx::Error> {
+    let row = sqlx::query(
+        "SELECT id, user_id, calendar_id, tracking_id, title, started_at, ended_at, location, meeting_link, description, note, recurrence_series_id, has_recurrence_rules, is_all_day, participants_json, raw_json, created_at FROM events WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row.as_ref().map(map_event_row))
 }
 
 fn map_event_row(row: &sqlx::sqlite::SqliteRow) -> EventRow {

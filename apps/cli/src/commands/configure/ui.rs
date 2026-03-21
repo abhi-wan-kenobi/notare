@@ -8,7 +8,7 @@ use crate::widgets::{
     CenteredDialog, KeyHints, MultiSelect, MultiSelectEntry, MultiSelectState, SelectList,
 };
 
-use super::app::{App, ProviderTab, Tab};
+use super::app::{App, LanguageFocus, LanguageTab, ProviderTab, Tab};
 use super::runtime::CalendarPermissionState;
 
 const THEME: Theme = Theme::DEFAULT;
@@ -81,7 +81,12 @@ fn render_sections(frame: &mut ratatui::Frame, sections: Vec<Section>, area: Rec
 }
 
 pub fn draw(frame: &mut ratatui::Frame, app: &mut App) {
-    let content = CenteredDialog::new("Configure", &THEME).render(frame);
+    let dialog = CenteredDialog::new("Configure", &THEME);
+    let content = if app.tab == Tab::Language {
+        dialog.wide().render(frame)
+    } else {
+        dialog.render(frame)
+    };
 
     let [tabs_area, _gap, content_area, _, hints_area] = Layout::vertical([
         Constraint::Length(1),
@@ -98,6 +103,7 @@ pub fn draw(frame: &mut ratatui::Frame, app: &mut App) {
         Tab::Stt => draw_provider_content(frame, &mut app.stt, content_area),
         Tab::Llm => draw_provider_content(frame, &mut app.llm, content_area),
         Tab::Calendar => draw_calendar_content(frame, app, content_area),
+        Tab::Language => draw_language_content(frame, &mut app.language, content_area),
     }
 
     let cal_has_items = app.cal_permission == Some(CalendarPermissionState::Authorized)
@@ -119,6 +125,14 @@ pub fn draw(frame: &mut ratatui::Frame, app: &mut App) {
         Tab::Calendar => {
             KeyHints::new(&THEME).hints(vec![("\u{2190}\u{2192}", "tab"), ("Esc", "quit")])
         }
+        Tab::Language => KeyHints::new(&THEME).hints(vec![
+            ("\u{2190}\u{2192}", "tab"),
+            ("Tab", "section"),
+            ("\u{2191}\u{2193}", "navigate"),
+            ("Space", "toggle"),
+            ("Enter", "confirm"),
+            ("Esc", "quit"),
+        ]),
     };
     frame.render_widget(hints, hints_area);
 }
@@ -252,6 +266,83 @@ fn draw_calendar_content(frame: &mut ratatui::Frame, app: &mut App, area: Rect) 
         ],
         area,
     );
+}
+
+fn draw_language_content(frame: &mut ratatui::Frame, lt: &mut LanguageTab, area: Rect) {
+    let ai_focused = matches!(lt.focus, LanguageFocus::AiLanguage);
+    let spoken_focused = matches!(lt.focus, LanguageFocus::SpokenLanguages);
+
+    let [ai_area, _gap, spoken_area] = Layout::vertical([
+        Constraint::Ratio(1, 2),
+        Constraint::Length(1),
+        Constraint::Ratio(1, 2),
+    ])
+    .areas(area);
+
+    // AI Language section
+    {
+        let ai_label_style = if ai_focused {
+            Style::new().add_modifier(Modifier::BOLD)
+        } else {
+            THEME.muted
+        };
+
+        let items: Vec<ListItem> = lt
+            .languages
+            .iter()
+            .map(|(code, name)| {
+                let marker = if lt.ai_language.as_deref() == Some(code.as_str()) {
+                    "\u{2713} "
+                } else {
+                    "  "
+                };
+                ListItem::new(Line::from(vec![
+                    Span::styled(marker, THEME.status.active),
+                    Span::raw(format!("{name} ({code})")),
+                ]))
+            })
+            .collect();
+
+        let [label_area, list_area] =
+            Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).areas(ai_area);
+        frame.render_widget(
+            Line::from(Span::styled("AI Language", ai_label_style)),
+            label_area,
+        );
+        frame.render_stateful_widget(
+            SelectList::new(items, &THEME),
+            list_area,
+            &mut lt.ai_list_state,
+        );
+    }
+
+    // Spoken Languages section
+    {
+        let spoken_label_style = if spoken_focused {
+            Style::new().add_modifier(Modifier::BOLD)
+        } else {
+            THEME.muted
+        };
+
+        let entries: Vec<MultiSelectEntry> = lt
+            .languages
+            .iter()
+            .map(|(code, name)| MultiSelectEntry::Item {
+                checked: lt.spoken_languages.contains(code),
+                label: Line::from(format!("{name} ({code})")),
+            })
+            .collect();
+
+        let mut state = MultiSelectState::new(lt.spoken_cursor);
+
+        let [label_area, list_area] =
+            Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).areas(spoken_area);
+        frame.render_widget(
+            Line::from(Span::styled("Spoken Languages", spoken_label_style)),
+            label_area,
+        );
+        frame.render_stateful_widget(MultiSelect::new(entries, &THEME), list_area, &mut state);
+    }
 }
 
 fn parse_hex_color(hex: &str) -> Color {

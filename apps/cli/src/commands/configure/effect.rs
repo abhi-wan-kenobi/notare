@@ -9,4 +9,5 @@ pub enum Effect {
     LoadCalendars,
     SaveCalendars(Vec<CalendarRow>),
     CheckCalendarPermission,
+    SaveLanguage { key: String, value: String },
 }

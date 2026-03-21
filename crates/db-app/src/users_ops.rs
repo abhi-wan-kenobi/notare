@@ -1,4 +1,4 @@
-use sqlx::SqlitePool;
+use sqlx::{Row, SqlitePool};
 
 use crate::UserRow;
 
@@ -12,17 +12,14 @@ pub async fn insert_user(pool: &SqlitePool, id: &str, name: &str) -> Result<(), 
 }
 
 pub async fn get_user(pool: &SqlitePool, id: &str) -> Result<Option<UserRow>, sqlx::Error> {
-    let row = sqlx::query_as::<_, (String, String, String)>(
-        "SELECT id, name, created_at FROM users WHERE id = ?",
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(row.map(|(id, name, created_at)| UserRow {
-        id,
-        name,
-        created_at,
+    let row = sqlx::query("SELECT id, name, created_at FROM users WHERE id = ?")
+        .bind(id)
+        .fetch_optional(pool)
+        .await?;
+    Ok(row.as_ref().map(|row| UserRow {
+        id: row.get("id"),
+        name: row.get("name"),
+        created_at: row.get("created_at"),
     }))
 }
 

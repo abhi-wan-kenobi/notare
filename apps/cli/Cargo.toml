@@ -22,7 +22,7 @@ hypr-calendar = { workspace = true }
 hypr-calendar-interface = { workspace = true }
 hypr-cli-editor = { workspace = true }
 hypr-cli-tui = { workspace = true }
-hypr-db-app = { workspace = true }
+hypr-db-app = { workspace = true, features = ["cli"] }
 hypr-db-core2 = { workspace = true }
 hypr-file = { workspace = true }
 hypr-host = { workspace = true }
