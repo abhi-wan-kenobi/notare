@@ -17,8 +17,8 @@ pub enum AudioMode {
     Mock,
 }
 use crate::config::paths;
-use crate::config::stt::{SttGlobalArgs, resolve_config};
 use crate::error::{CliError, CliResult};
+use crate::stt::{SttOverrides, resolve_config};
 use hypr_cli_tui::{run_screen, run_screen_inline};
 
 mod action;
@@ -36,7 +36,7 @@ use self::runtime::Runtime;
 use self::screen::{ExternalEvent, LiveScreen, Output};
 
 pub struct Args {
-    pub stt: SttGlobalArgs,
+    pub stt: SttOverrides,
     pub record: bool,
     pub audio: AudioMode,
     pub pool: SqlitePool,
@@ -50,14 +50,7 @@ pub async fn run(args: Args) -> CliResult<()> {
         pool,
     } = args;
 
-    let resolved = resolve_config(
-        stt.provider,
-        stt.base_url,
-        stt.api_key,
-        stt.model,
-        stt.language,
-    )
-    .await?;
+    let resolved = resolve_config(&pool, stt).await?;
     let languages = vec![resolved.language.clone()];
 
     let meeting_id = uuid::Uuid::new_v4().to_string();
@@ -144,15 +137,23 @@ pub async fn run(args: Args) -> CliResult<()> {
         tokio::task::yield_now().await;
         app.apply_runtime_events(std::iter::from_fn(|| post_exit_rx.try_recv().ok()));
 
-        let llm_config = crate::llm::resolve_config(&pool, None, None, None, None)
-            .await
-            .map_err(|e| {
-                e.to_string()
-                    .lines()
-                    .next()
-                    .unwrap_or("LLM not configured")
-                    .to_string()
-            });
+        let llm_config = crate::llm::resolve_config(
+            &pool,
+            crate::llm::LlmOverrides {
+                provider: None,
+                base_url: None,
+                api_key: None,
+                model: None,
+            },
+        )
+        .await
+        .map_err(|e| {
+            e.to_string()
+                .lines()
+                .next()
+                .unwrap_or("LLM not configured")
+                .to_string()
+        });
 
         let (exit_tx, exit_rx) = mpsc::unbounded_channel();
         spawn_post_meeting(

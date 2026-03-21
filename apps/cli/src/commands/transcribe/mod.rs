@@ -9,14 +9,15 @@ use hypr_cli_tui::run_screen_inline;
 use hypr_listener2_core::{BatchErrorCode, BatchEvent};
 use tokio::sync::mpsc;
 
-use crate::cli::{OutputFormat, Provider};
+use crate::cli::OutputFormat;
+use crate::stt::SttProvider;
 
 #[derive(clap::Args)]
 pub struct Args {
     #[arg(long, value_name = "FILE", visible_alias = "file")]
     pub input: clio::InputPath,
     #[arg(short = 'p', long, value_enum)]
-    pub provider: Provider,
+    pub provider: SttProvider,
     #[arg(long = "keyword", short = 'k', value_name = "KEYWORD")]
     pub keywords: Vec<String>,
     #[arg(short = 'o', long, value_name = "FILE")]
@@ -27,9 +28,8 @@ pub struct Args {
 use hypr_db_app::PersistableSpeakerHint;
 use hypr_transcript::{FinalizedWord, SpeakerHintData, WordState};
 
-use crate::config::stt::resolve_config;
-use crate::config::stt::{ChannelBatchRuntime, SttGlobalArgs};
 use crate::error::{CliError, CliResult};
+use crate::stt::{ChannelBatchRuntime, SttOverrides, resolve_config};
 
 use self::screen::{BatchScreen, BatchScreenEvent, BatchScreenOutput, BatchScreenResult};
 
@@ -82,18 +82,12 @@ pub struct BatchResult {
 
 pub async fn run_batch(
     input: &clio::InputPath,
-    stt: SttGlobalArgs,
+    stt: SttOverrides,
     keywords: Vec<String>,
+    pool: &sqlx::SqlitePool,
     quiet: bool,
 ) -> CliResult<BatchResult> {
-    let resolved = resolve_config(
-        stt.provider,
-        stt.base_url,
-        stt.api_key,
-        stt.model,
-        stt.language,
-    )
-    .await?;
+    let resolved = resolve_config(pool, stt).await?;
     let _ = &resolved.server;
 
     let file_path = input.path().to_str().ok_or_else(|| {
@@ -199,11 +193,16 @@ pub async fn run_batch(
     })
 }
 
-pub async fn run(args: Args, stt: SttGlobalArgs, quiet: bool) -> CliResult<()> {
+pub async fn run(
+    args: Args,
+    stt: SttOverrides,
+    pool: &sqlx::SqlitePool,
+    quiet: bool,
+) -> CliResult<()> {
     let format = args.format;
     let output = args.output.clone();
 
-    let result = run_batch(&args.input, stt, args.keywords, quiet).await?;
+    let result = run_batch(&args.input, stt, args.keywords, pool, quiet).await?;
     let response = &result.response;
 
     match format {

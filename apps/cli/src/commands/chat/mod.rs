@@ -30,7 +30,7 @@ use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
 use crate::error::{CliError, CliResult};
-use crate::llm::{LlmProvider, resolve_config};
+use crate::llm::{LlmOverrides, LlmProvider, resolve_config};
 
 use self::app::App;
 use self::runtime::Runtime;
@@ -55,10 +55,12 @@ pub async fn run(args: Args) -> CliResult<()> {
     };
     let config = resolve_config(
         &pool,
-        args.provider,
-        args.base_url,
-        args.api_key,
-        args.model,
+        LlmOverrides {
+            provider: args.provider,
+            base_url: args.base_url,
+            api_key: args.api_key,
+            model: args.model,
+        },
     )
     .await?;
 

@@ -124,7 +124,7 @@ impl EntryScreen {
                                 progress_tx: None,
                             });
                         let manager = hypr_model_downloader::ModelDownloadManager::new(runtime);
-                        let current = crate::config::paths::load_settings_from_db(&pool).await;
+                        let current = crate::config::settings::load_settings(&pool).await;
                         let models: Vec<hypr_local_model::LocalModel> =
                             hypr_local_model::LocalModel::all()
                                 .into_iter()

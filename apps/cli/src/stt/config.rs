@@ -6,18 +6,21 @@ use hypr_local_model::{CactusSttModel, LocalModel};
 use hypr_local_stt_server::LocalSttServer;
 use tokio::sync::mpsc;
 
-use crate::cli::Provider;
-use crate::config::paths;
+use sqlx::SqlitePool;
+
+use crate::config::{paths, settings};
 use crate::error::{CliError, CliResult, did_you_mean};
 
+use super::SttProvider;
+
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-pub(crate) type ServerGuard = Option<hypr_local_stt_server::LocalSttServer>;
+pub type ServerGuard = Option<hypr_local_stt_server::LocalSttServer>;
 
 #[cfg(not(any(target_arch = "arm", target_arch = "aarch64")))]
-pub(crate) type ServerGuard = ();
+pub type ServerGuard = ();
 
-pub struct SttGlobalArgs {
-    pub provider: Provider,
+pub struct SttOverrides {
+    pub provider: Option<SttProvider>,
     pub base_url: Option<String>,
     pub api_key: Option<String>,
     pub model: Option<String>,
@@ -31,46 +34,6 @@ pub struct ChannelBatchRuntime {
 impl BatchRuntime for ChannelBatchRuntime {
     fn emit(&self, event: BatchEvent) {
         let _ = self.tx.send(event);
-    }
-}
-
-impl Provider {
-    pub fn is_local(&self) -> bool {
-        match self {
-            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-            Provider::Cactus => true,
-            _ => false,
-        }
-    }
-
-    fn cloud_provider(&self) -> Option<owhisper_client::Provider> {
-        match self {
-            Provider::Deepgram => Some(owhisper_client::Provider::Deepgram),
-            Provider::Soniox => Some(owhisper_client::Provider::Soniox),
-            Provider::Assemblyai => Some(owhisper_client::Provider::AssemblyAI),
-            Provider::Fireworks => Some(owhisper_client::Provider::Fireworks),
-            Provider::Openai => Some(owhisper_client::Provider::OpenAI),
-            Provider::Gladia => Some(owhisper_client::Provider::Gladia),
-            Provider::Elevenlabs => Some(owhisper_client::Provider::ElevenLabs),
-            Provider::Mistral => Some(owhisper_client::Provider::Mistral),
-            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-            Provider::Cactus => None,
-        }
-    }
-
-    fn to_batch_provider(&self) -> BatchProvider {
-        match self {
-            Provider::Deepgram => BatchProvider::Deepgram,
-            Provider::Soniox => BatchProvider::Soniox,
-            Provider::Assemblyai => BatchProvider::AssemblyAI,
-            Provider::Fireworks => BatchProvider::Fireworks,
-            Provider::Openai => BatchProvider::OpenAI,
-            Provider::Gladia => BatchProvider::Gladia,
-            Provider::Elevenlabs => BatchProvider::ElevenLabs,
-            Provider::Mistral => BatchProvider::Mistral,
-            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-            Provider::Cactus => BatchProvider::Cactus,
-        }
     }
 }
 
@@ -119,16 +82,32 @@ impl ResolvedSttConfig {
 }
 
 pub async fn resolve_config(
-    provider: Provider,
-    base_url: Option<String>,
-    api_key: Option<String>,
-    model: Option<String>,
-    language_code: impl Into<String>,
+    pool: &SqlitePool,
+    overrides: SttOverrides,
 ) -> CliResult<ResolvedSttConfig> {
-    let language_code = language_code.into();
+    let language_code = overrides.language;
     let language = language_code
         .parse::<hypr_language::Language>()
         .map_err(|e| CliError::invalid_argument("--language", language_code, e.to_string()))?;
+
+    let settings = settings::load_settings(pool).await;
+
+    let (provider, saved_model) = match overrides.provider {
+        Some(p) => (p, None),
+        None => resolve_provider_from_settings(settings.as_ref())?,
+    };
+
+    let saved = settings
+        .as_ref()
+        .and_then(|s| s.stt_providers.get(provider.id()));
+
+    let base_url = overrides
+        .base_url
+        .or_else(|| saved.and_then(|s| s.base_url.clone()));
+    let api_key = overrides
+        .api_key
+        .or_else(|| saved.and_then(|s| s.api_key.clone()));
+    let model = overrides.model.or(saved_model);
 
     let batch_provider = provider.to_batch_provider();
 
@@ -178,6 +157,52 @@ pub async fn resolve_config(
         language,
         server: ServerGuard::default(),
     })
+}
+
+fn resolve_provider_from_settings(
+    settings: Option<&settings::Settings>,
+) -> CliResult<(SttProvider, Option<String>)> {
+    let Some(settings) = settings else {
+        return Err(CliError::required_argument_with_hint(
+            "STT provider",
+            "Run `char connect` to configure your STT provider, or pass --provider explicitly",
+        ));
+    };
+
+    let Some(provider_id) = settings.current_stt_provider.as_deref() else {
+        return Err(CliError::required_argument_with_hint(
+            "STT provider",
+            "Run `char connect` to configure your STT provider, or pass --provider explicitly",
+        ));
+    };
+
+    let saved_model = settings
+        .current_stt_model
+        .clone()
+        .filter(|v| !v.trim().is_empty());
+
+    if provider_id == "hyprnote" {
+        return resolve_hyprnote_provider(saved_model.as_deref());
+    }
+
+    let provider = SttProvider::from_id(provider_id).ok_or_else(|| {
+        CliError::msg(format!(
+            "Configured STT provider `{provider_id}` is not supported by CLI. Run `char connect` to choose a supported provider."
+        ))
+    })?;
+
+    Ok((provider, saved_model))
+}
+
+fn resolve_hyprnote_provider(model: Option<&str>) -> CliResult<(SttProvider, Option<String>)> {
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+    if model.is_some_and(|v| v.starts_with("cactus-")) {
+        return Ok((SttProvider::Cactus, model.map(String::from)));
+    }
+
+    Err(CliError::msg(
+        "Configured STT provider `hyprnote` is not supported by CLI. Run `char connect` to choose a supported provider.",
+    ))
 }
 
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
@@ -249,8 +274,6 @@ fn resolve_cactus_model_path(name: &str) -> CliResult<PathBuf> {
 
     Ok(path)
 }
-
-// --- Cactus helpers (inlined from config/cactus.rs) ---
 
 fn cactus_enabled() -> bool {
     cfg!(any(target_arch = "arm", target_arch = "aarch64"))

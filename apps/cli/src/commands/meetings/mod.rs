@@ -10,15 +10,15 @@ use hypr_cli_tui::run_screen;
 use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
-use crate::cli::Provider;
 use crate::error::{CliError, CliResult};
+use crate::stt::SttProvider;
 
 #[derive(Subcommand)]
 pub enum Commands {
     /// Start a new meeting
     New {
         #[arg(short = 'p', long, value_enum)]
-        provider: Option<Provider>,
+        provider: Option<SttProvider>,
 
         /// Create meeting from an audio file instead of live transcription
         #[arg(long, value_name = "FILE")]
@@ -74,7 +74,7 @@ pub async fn run(pool: SqlitePool) -> CliResult<Option<String>> {
 
 pub async fn new_from_audio(
     input: clio::InputPath,
-    stt: crate::config::stt::SttGlobalArgs,
+    stt: crate::stt::SttOverrides,
     keywords: Vec<String>,
     pool: SqlitePool,
 ) -> CliResult<()> {
@@ -85,19 +85,27 @@ pub async fn new_from_audio(
     use crate::commands::meetings::live::post_meeting::spawn_post_meeting;
     use crate::commands::transcribe;
 
-    let result = transcribe::run_batch(&input, stt, keywords, false).await?;
+    let result = transcribe::run_batch(&input, stt, keywords, &pool, false).await?;
     let meeting_id = uuid::Uuid::new_v4().to_string();
     let (words, hints) = transcribe::response_to_words(&result.response);
 
-    let llm_config = crate::llm::resolve_config(&pool, None, None, None, None)
-        .await
-        .map_err(|e| {
-            e.to_string()
-                .lines()
-                .next()
-                .unwrap_or("LLM not configured")
-                .to_string()
-        });
+    let llm_config = crate::llm::resolve_config(
+        &pool,
+        crate::llm::LlmOverrides {
+            provider: None,
+            base_url: None,
+            api_key: None,
+            model: None,
+        },
+    )
+    .await
+    .map_err(|e| {
+        e.to_string()
+            .lines()
+            .next()
+            .unwrap_or("LLM not configured")
+            .to_string()
+    });
 
     let (exit_tx, exit_rx) = mpsc::unbounded_channel();
     spawn_post_meeting(

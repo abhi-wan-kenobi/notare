@@ -1,2 +1,2 @@
 pub mod paths;
-pub mod stt;
+pub mod settings;

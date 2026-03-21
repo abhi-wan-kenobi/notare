@@ -134,22 +134,6 @@ pub enum Commands {
     },
 }
 
-// --- Shared types (used across multiple modules) ---
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum Provider {
-    Deepgram,
-    Soniox,
-    Assemblyai,
-    Fireworks,
-    Openai,
-    Gladia,
-    Elevenlabs,
-    Mistral,
-    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    Cactus,
-}
-
 #[derive(Clone, Copy, Debug, ValueEnum)]
 pub enum OutputFormat {
     Pretty,

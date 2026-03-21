@@ -12,11 +12,11 @@ use super::audio::{
     DEFAULT_TIMEOUT_SECS, DisplayMode, create_dual_audio_stream, create_single_audio_stream,
 };
 use super::server::spawn_router;
-use crate::cli::Provider;
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-use crate::config::stt::resolve_local_model_path;
-use crate::config::stt::{ResolvedSttConfig, resolve_config};
 use crate::error::{CliError, CliResult};
+use crate::stt::SttProvider;
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+use crate::stt::resolve_local_model_path;
+use crate::stt::{ResolvedSttConfig, SttOverrides, resolve_config};
 
 pub(crate) enum RuntimeEvent {
     StreamResponse {
@@ -330,12 +330,12 @@ fn create_audio_provider(source: &AudioSource) -> Arc<dyn AudioProvider> {
     Arc::new(ActualAudio)
 }
 
-fn shared_provider(provider: DebugProvider) -> Option<Provider> {
+fn shared_provider(provider: DebugProvider) -> Option<SttProvider> {
     match provider {
-        DebugProvider::Deepgram => Some(Provider::Deepgram),
-        DebugProvider::Soniox => Some(Provider::Soniox),
+        DebugProvider::Deepgram => Some(SttProvider::Deepgram),
+        DebugProvider::Soniox => Some(SttProvider::Soniox),
         #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-        DebugProvider::Cactus => Some(Provider::Cactus),
+        DebugProvider::Cactus => Some(SttProvider::Cactus),
         DebugProvider::ProxyHyprnote
         | DebugProvider::ProxyDeepgram
         | DebugProvider::ProxySoniox => None,
@@ -350,7 +350,18 @@ async fn resolve_standard_provider(
     let shared = shared_provider(provider).ok_or_else(|| {
         CliError::operation_failed("resolve debug provider", "provider is not shared")
     })?;
-    resolve_config(shared, None, api_key, model, "en").await
+    let pool = crate::init_pool().await?;
+    resolve_config(
+        &pool,
+        SttOverrides {
+            provider: Some(shared),
+            base_url: None,
+            api_key,
+            model,
+            language: "en".to_string(),
+        },
+    )
+    .await
 }
 
 fn require_model_name(model: Option<&str>, provider: &DebugProvider) -> CliResult<String> {

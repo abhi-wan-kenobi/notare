@@ -9,7 +9,7 @@ use ratatui::text::Text;
 use ratatui::widgets::{Cell, Row, Table};
 
 use crate::cli::OutputFormat;
-use crate::config::paths as settings;
+use crate::config::settings;
 use crate::error::CliResult;
 use crate::widgets::InlineBox;
 

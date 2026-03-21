@@ -91,8 +91,12 @@ hypr-local-stt-server = { workspace = true }
 clap_complete = { workspace = true }
 cli-docs = { path = "../../crates/cli-docs" }
 clio = { version = "0.3", features = ["clap-parse"] }
+portable-pty = "0.9"
 strum = { workspace = true, features = ["derive"] }
+tempfile = { workspace = true }
 url = { workspace = true }
+vt100 = "0.15"
 
 [features]
 dev = ["dep:hypr-audio-mock"]
+e2e = []

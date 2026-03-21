@@ -1,9 +1,16 @@
 use sqlx::SqlitePool;
 
-use crate::config::paths;
+use crate::config::settings;
 use crate::error::{CliError, CliResult};
 
 use super::LlmProvider;
+
+pub struct LlmOverrides {
+    pub provider: Option<LlmProvider>,
+    pub base_url: Option<String>,
+    pub api_key: Option<String>,
+    pub model: Option<String>,
+}
 
 #[derive(Clone, Debug)]
 pub struct ResolvedLlmConfig {
@@ -15,16 +22,13 @@ pub struct ResolvedLlmConfig {
 
 pub async fn resolve_config(
     pool: &SqlitePool,
-    provider_override: Option<LlmProvider>,
-    base_url_override: Option<String>,
-    api_key_override: Option<String>,
-    model_override: Option<String>,
+    overrides: LlmOverrides,
 ) -> CliResult<ResolvedLlmConfig> {
-    let settings = paths::load_settings_from_db(pool).await;
+    let settings = settings::load_settings(pool).await;
     let current_provider_id = settings
         .as_ref()
         .and_then(|value| value.current_llm_provider.as_deref());
-    let provider = match provider_override {
+    let provider = match overrides.provider {
         Some(provider) => provider,
         None => resolve_provider_from_settings(current_provider_id)?,
     };
@@ -32,7 +36,8 @@ pub async fn resolve_config(
         .as_ref()
         .and_then(|value| value.llm_providers.get(provider.id()));
 
-    let api_key = api_key_override
+    let api_key = overrides
+        .api_key
         .or_else(|| saved_provider.and_then(|value| value.api_key.clone()))
         .ok_or_else(|| {
             CliError::required_argument_with_hint(
@@ -43,13 +48,14 @@ pub async fn resolve_config(
                 ),
             )
         })?;
-    let model = match model_override {
+    let model = match overrides.model {
         Some(model) => model,
         None => resolve_model_from_settings(&settings, provider, current_provider_id)?,
     };
     let base_url = normalize_base_url(
         provider,
-        base_url_override
+        overrides
+            .base_url
             .or_else(|| saved_provider.and_then(|value| value.base_url.clone()))
             .unwrap_or_else(|| provider.default_base_url().to_string()),
     );
@@ -81,7 +87,7 @@ fn resolve_provider_from_settings(current_provider_id: Option<&str>) -> CliResul
 }
 
 fn resolve_model_from_settings(
-    settings: &Option<paths::Settings>,
+    settings: &Option<settings::Settings>,
     provider: LlmProvider,
     current_provider_id: Option<&str>,
 ) -> CliResult<String> {

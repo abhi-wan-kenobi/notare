@@ -18,7 +18,7 @@ use tokio::sync::mpsc;
 use clap::{Subcommand, ValueEnum};
 
 use crate::cli::OutputFormat;
-use crate::config::paths as settings;
+use crate::config::{paths, settings};
 use crate::error::{CliError, CliResult, did_you_mean};
 use runtime::CliModelRuntime;
 
@@ -147,7 +147,7 @@ impl ModelScope {
 // ---------------------------------------------------------------------------
 
 pub async fn run(command: Commands, pool: &SqlitePool) -> CliResult<()> {
-    let paths = settings::resolve_paths();
+    let paths = paths::resolve_paths();
     let models_base = paths.models_base.clone();
     let db_path = paths.base.join("app.db");
 
@@ -215,7 +215,7 @@ async fn list_models(
     format: OutputFormat,
 ) -> CliResult<()> {
     let manager = make_manager(models_base, None);
-    let current = settings::load_settings_from_db(pool).await;
+    let current = settings::load_settings(pool).await;
     let rows = list::collect_model_rows(&scope.models, models_base, &current, &manager).await;
     list::write_model_output(&rows, models_base, format).await
 }

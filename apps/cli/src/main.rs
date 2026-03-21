@@ -7,13 +7,13 @@ mod interaction_debug;
 mod llm;
 mod output;
 mod services;
+mod stt;
 mod theme;
 mod tui_trace;
 mod update_check;
 mod widgets;
 
 use crate::cli::{Cli, Commands};
-use crate::config::stt::SttGlobalArgs;
 use crate::error::CliResult;
 use clap::Parser;
 use sqlx::SqlitePool;
@@ -85,7 +85,7 @@ fn track_command(client: &hypr_analytics::AnalyticsClient, subcommand: &'static 
     });
 }
 
-async fn init_pool() -> CliResult<SqlitePool> {
+pub(crate) async fn init_pool() -> CliResult<SqlitePool> {
     let paths = config::paths::resolve_paths();
 
     let db = if cfg!(debug_assertions) {
@@ -102,8 +102,30 @@ async fn init_pool() -> CliResult<SqlitePool> {
     hypr_db_app::migrate(db.pool())
         .await
         .map_err(|e| error::CliError::operation_failed("db migrate", e.to_string()))?;
-    config::paths::migrate_json_settings_to_db(db.pool(), &paths.base).await;
+    config::settings::migrate_json_settings_to_db(db.pool(), &paths.base).await;
     Ok(db.pool().clone())
+}
+
+fn stt_overrides(
+    global: &cli::GlobalArgs,
+    provider: Option<stt::SttProvider>,
+) -> stt::SttOverrides {
+    stt::SttOverrides {
+        provider,
+        base_url: global.base_url.clone(),
+        api_key: global.api_key.clone(),
+        model: global.model.clone(),
+        language: global.language.clone(),
+    }
+}
+
+fn llm_overrides(global: &cli::GlobalArgs) -> llm::LlmOverrides {
+    llm::LlmOverrides {
+        provider: None,
+        base_url: global.base_url.clone(),
+        api_key: global.api_key.clone(),
+        model: global.model.clone(),
+    }
 }
 
 async fn run(cli: Cli) -> CliResult<()> {
@@ -242,12 +264,12 @@ async fn run(cli: Cli) -> CliResult<()> {
                 keywords,
             }) => {
                 if let Some(audio_input) = audio {
-                    let stt = resolve_stt_args(&pool, &global, provider).await?;
-                    commands::meetings::new_from_audio(audio_input, stt, keywords, pool).await
+                    let overrides = stt_overrides(&global, provider);
+                    commands::meetings::new_from_audio(audio_input, overrides, keywords, pool).await
                 } else {
-                    let stt = resolve_stt_args(&pool, &global, provider).await?;
+                    let overrides = stt_overrides(&global, provider);
                     commands::meetings::live::run(commands::meetings::live::Args {
-                        stt,
+                        stt: overrides,
                         record: global.record,
                         audio: commands::meetings::live::AudioMode::Dual,
                         pool,
@@ -287,14 +309,8 @@ async fn run(cli: Cli) -> CliResult<()> {
         Some(Commands::Humans { command }) => commands::humans::run(&pool, command).await,
         Some(Commands::Orgs { command }) => commands::orgs::run(&pool, command).await,
         Some(Commands::Transcribe { args }) => {
-            let stt = SttGlobalArgs {
-                provider: args.provider,
-                base_url: global.base_url,
-                api_key: global.api_key,
-                model: global.model,
-                language: global.language,
-            };
-            commands::transcribe::run(args, stt, verbose.is_silent()).await
+            let overrides = stt_overrides(&global, Some(args.provider));
+            commands::transcribe::run(args, overrides, &pool, verbose.is_silent()).await
         }
         Some(Commands::Export { command }) => commands::export::run(&pool, command).await,
         Some(Commands::Models { command }) => commands::model::run(command, &pool).await,
@@ -316,7 +332,7 @@ async fn run_entry_loop(
     let mut status_message: Option<String> = None;
     let mut initial_cmd = initial_command;
     loop {
-        let settings = load_entry_settings(&pool).await;
+        let settings = config::settings::load_settings(&pool).await;
         let action = commands::entry::run(commands::entry::Args {
             status_message: status_message.take(),
             initial_command: initial_cmd.take(),
@@ -332,16 +348,17 @@ async fn run_entry_loop(
         match action {
             commands::entry::EntryAction::Launch(cmd) => match cmd {
                 commands::entry::EntryCommand::MeetingsNew => {
-                    let stt = match resolve_stt_args(&pool, &global, None).await {
-                        Ok(stt) => stt,
+                    let overrides = stt_overrides(&global, None);
+                    match stt::resolve_config(&pool, overrides).await {
+                        Ok(_) => {}
                         Err(e) => {
                             status_message = Some(e.to_string());
                             continue;
                         }
-                    };
+                    }
 
                     return commands::meetings::live::run(commands::meetings::live::Args {
-                        stt,
+                        stt: stt_overrides(&global, None),
                         record: global.record,
                         audio: commands::meetings::live::AudioMode::Dual,
                         pool: pool.clone(),
@@ -377,97 +394,6 @@ async fn run_entry_loop(
             commands::entry::EntryAction::Quit => return Ok(()),
         }
     }
-}
-
-async fn load_entry_settings(pool: &SqlitePool) -> Option<config::paths::Settings> {
-    config::paths::load_settings_from_db(pool).await
-}
-
-async fn resolve_stt_args(
-    pool: &SqlitePool,
-    global: &cli::GlobalArgs,
-    explicit_provider: Option<cli::Provider>,
-) -> CliResult<SttGlobalArgs> {
-    let resolved = match explicit_provider {
-        Some(p) => EntryListenConfig {
-            provider: p,
-            model: None,
-        },
-        None => {
-            let settings = load_entry_settings(pool).await;
-            resolve_entry_listen_config(settings.as_ref()).map_err(|msg| {
-                error::CliError::msg(format!(
-                    "{msg}\nOr pass --provider explicitly: char meetings new -p <provider>"
-                ))
-            })?
-        }
-    };
-
-    Ok(SttGlobalArgs {
-        provider: resolved.provider,
-        base_url: global.base_url.clone(),
-        api_key: global.api_key.clone(),
-        model: global.model.clone().or(resolved.model),
-        language: global.language.clone(),
-    })
-}
-
-struct EntryListenConfig {
-    provider: cli::Provider,
-    model: Option<String>,
-}
-
-fn resolve_entry_listen_config(
-    settings: Option<&config::paths::Settings>,
-) -> Result<EntryListenConfig, String> {
-    let Some(settings) = settings else {
-        return Err("No STT provider configured. Run /connect.".to_string());
-    };
-
-    let Some(provider_id) = settings.current_stt_provider.as_deref() else {
-        return Err("No STT provider configured. Run /connect.".to_string());
-    };
-
-    let saved_model = settings
-        .current_stt_model
-        .clone()
-        .filter(|value| !value.trim().is_empty());
-
-    let provider = match provider_id {
-        "deepgram" => cli::Provider::Deepgram,
-        "soniox" => cli::Provider::Soniox,
-        "assemblyai" => cli::Provider::Assemblyai,
-        "fireworks" => cli::Provider::Fireworks,
-        "openai" => cli::Provider::Openai,
-        "gladia" => cli::Provider::Gladia,
-        "elevenlabs" => cli::Provider::Elevenlabs,
-        "mistral" => cli::Provider::Mistral,
-        "hyprnote" => resolve_hyprnote_listen_provider(saved_model.as_deref())?,
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-        "cactus" => cli::Provider::Cactus,
-        _ => {
-            return Err(format!(
-                "Configured STT provider `{provider_id}` is not supported by CLI listen."
-            ));
-        }
-    };
-
-    Ok(EntryListenConfig {
-        provider,
-        model: saved_model,
-    })
-}
-
-fn resolve_hyprnote_listen_provider(model: Option<&str>) -> Result<cli::Provider, String> {
-    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    if model.is_some_and(|value| value.starts_with("cactus-")) {
-        return Ok(cli::Provider::Cactus);
-    }
-
-    Err(
-        "Configured STT provider `hyprnote` is not supported by CLI listen. Run /connect to choose a supported provider."
-            .to_string(),
-    )
 }
 
 fn run_update(action: &update_check::UpdateAction) -> CliResult<()> {
