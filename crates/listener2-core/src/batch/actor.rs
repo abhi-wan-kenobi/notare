@@ -8,7 +8,7 @@ use tracing::Instrument;
 
 use super::accumulator::StreamBatchAccumulator;
 use super::bootstrap::{notify_start_result, spawn_batch_task};
-use super::{BatchParams, BatchRunOutput, format_user_friendly_error, session_span};
+use super::{BatchParams, BatchRunMode, BatchRunOutput, format_user_friendly_error, session_span};
 use crate::{BatchEvent, BatchRuntime};
 
 const BATCH_STREAM_TIMEOUT_SECS: u64 = 30;
@@ -120,6 +120,7 @@ pub(super) enum BatchMsg {
     StreamResponse {
         response: Box<StreamResponse>,
         percentage: f64,
+        final_batch_response: Option<owhisper_interface::batch::Response>,
     },
     StreamError(crate::BatchFailure),
     StreamEnded,
@@ -151,6 +152,7 @@ struct BatchState {
     done_notifier: BatchDoneNotifier,
     final_result: Option<crate::Result<BatchRunOutput>>,
     accumulator: StreamBatchAccumulator,
+    stashed_final: Option<owhisper_interface::batch::Response>,
 }
 
 impl BatchState {
@@ -197,6 +199,7 @@ impl Actor for BatchActor {
             done_notifier: args.done_notifier,
             final_result: None,
             accumulator: StreamBatchAccumulator::new(),
+            stashed_final: None,
         })
     }
 
@@ -228,10 +231,14 @@ impl Actor for BatchActor {
             BatchMsg::StreamResponse {
                 response,
                 percentage,
+                final_batch_response,
             } => {
                 tracing::info!("batch stream response received");
                 state.accumulator.observe(&response);
                 state.emit_streamed(*response, percentage);
+                if let Some(final_resp) = final_batch_response {
+                    state.stashed_final = Some(final_resp);
+                }
             }
             BatchMsg::StreamStartFailed(error) => {
                 tracing::error!("batch_stream_start_failed: {}", error);
@@ -245,9 +252,16 @@ impl Actor for BatchActor {
             }
             BatchMsg::StreamEnded => {
                 tracing::info!("batch_stream_ended");
-                state.final_result = Some(Ok(
+                let output = if let Some(response) = state.stashed_final.take() {
+                    BatchRunOutput {
+                        session_id: state.session_id.clone(),
+                        mode: BatchRunMode::Streamed,
+                        response,
+                    }
+                } else {
                     std::mem::take(&mut state.accumulator).finish(&state.session_id)
-                ));
+                };
+                state.final_result = Some(Ok(output));
                 myself.stop(None);
             }
         }
@@ -292,8 +306,8 @@ pub(super) async fn process_provider_stream(
     context: &str,
 ) {
     futures_util::pin_mut!(stream);
-    process_stream_loop(&mut stream, myself, shutdown_rx, context, |event| {
-        (event.response, event.percentage)
+    process_stream_loop(&mut stream, myself, shutdown_rx, context, 1, |event| {
+        (event.response, event.percentage, event.final_batch_response)
     })
     .await;
 }
@@ -303,6 +317,7 @@ pub(super) async fn process_batch_stream<S, E>(
     myself: ActorRef<BatchMsg>,
     shutdown_rx: tokio::sync::oneshot::Receiver<()>,
     audio_duration_secs: f64,
+    expected_completions: usize,
 ) where
     S: futures_util::Stream<Item = Result<StreamResponse, E>>,
     E: std::fmt::Debug,
@@ -312,9 +327,10 @@ pub(super) async fn process_batch_stream<S, E>(
         myself,
         shutdown_rx,
         "batch stream",
+        expected_completions,
         |response| {
             let percentage = compute_percentage(&response, audio_duration_secs);
-            (response, percentage)
+            (response, percentage, None)
         },
     )
     .await;
@@ -325,15 +341,22 @@ async fn process_stream_loop<S, Item, E, F>(
     myself: ActorRef<BatchMsg>,
     mut shutdown_rx: tokio::sync::oneshot::Receiver<()>,
     context: &str,
+    expected_completions: usize,
     mut into_response: F,
 ) where
     S: futures_util::Stream<Item = Result<Item, E>>,
     E: std::fmt::Debug,
-    F: FnMut(Item) -> (StreamResponse, f64),
+    F: FnMut(
+        Item,
+    ) -> (
+        StreamResponse,
+        f64,
+        Option<owhisper_interface::batch::Response>,
+    ),
 {
     let mut response_count = 0;
     let response_timeout = Duration::from_secs(BATCH_STREAM_TIMEOUT_SECS);
-    let mut completion_seen = false;
+    let mut completions_seen: usize = 0;
 
     loop {
         tracing::debug!(
@@ -354,7 +377,7 @@ async fn process_stream_loop<S, Item, E, F>(
                 match result {
                     Ok(Some(Ok(item))) => {
                         response_count += 1;
-                        let (response, percentage) = into_response(item);
+                        let (response, percentage, final_batch_response) = into_response(item);
 
                         let is_from_finalize = matches!(
                             &response,
@@ -391,11 +414,14 @@ async fn process_stream_loop<S, Item, E, F>(
                         send_actor_message(&myself, BatchMsg::StreamResponse {
                             response: Box::new(response),
                             percentage,
+                            final_batch_response,
                         }, context, "stream response");
 
                         if is_completion {
-                            completion_seen = true;
-                            break;
+                            completions_seen += 1;
+                            if completions_seen >= expected_completions {
+                                break;
+                            }
                         }
                     }
                     Ok(Some(Err(err))) => {
@@ -416,7 +442,7 @@ async fn process_stream_loop<S, Item, E, F>(
                         break;
                     }
                     Ok(None) => {
-                        if completion_seen {
+                        if completions_seen >= expected_completions {
                             tracing::info!(
                                 hyprnote.response.count = response_count,
                                 "{context} completed"
@@ -426,6 +452,8 @@ async fn process_stream_loop<S, Item, E, F>(
 
                         tracing::error!(
                             hyprnote.response.count = response_count,
+                            hyprnote.completions.expected = expected_completions,
+                            hyprnote.completions.seen = completions_seen,
                             "{context} ended without completion signal"
                         );
                         send_actor_message(
@@ -457,7 +485,7 @@ async fn process_stream_loop<S, Item, E, F>(
         }
     }
 
-    if completion_seen {
+    if completions_seen >= expected_completions {
         send_actor_message(&myself, BatchMsg::StreamEnded, context, "stream ended");
     }
     tracing::info!("{context}: processing loop exited");

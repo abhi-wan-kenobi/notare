@@ -219,6 +219,7 @@ impl ArgmaxAdapter {
                     StreamingBatchEvent {
                         response,
                         percentage,
+                        final_batch_response: None,
                     }
                 })
                 .map_err(|e| Error::WebSocket(format!("{:?}", e)))

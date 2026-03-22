@@ -155,7 +155,6 @@ struct SseParserState<S> {
     pending_events: std::collections::VecDeque<Result<StreamingBatchEvent, Error>>,
     audio_duration_secs: f64,
     last_percentage: f64,
-    saw_segment_words: bool,
 }
 
 impl<S> SseParserState<S> {
@@ -166,7 +165,6 @@ impl<S> SseParserState<S> {
             pending_events: std::collections::VecDeque::new(),
             audio_duration_secs,
             last_percentage: 0.0,
-            saw_segment_words: false,
         }
     }
 
@@ -303,6 +301,7 @@ impl<S> SseParserState<S> {
         Some(Ok(StreamingBatchEvent {
             response,
             percentage: progress.percentage,
+            final_batch_response: None,
         }))
     }
 
@@ -310,16 +309,6 @@ impl<S> SseParserState<S> {
         &mut self,
         response: StreamResponse,
     ) -> Option<Result<StreamingBatchEvent, Error>> {
-        if let StreamResponse::TranscriptResponse { channel, .. } = &response {
-            if channel
-                .alternatives
-                .first()
-                .is_some_and(|a| !a.words.is_empty())
-            {
-                self.saw_segment_words = true;
-            }
-        }
-
         let segment_end = match &response {
             StreamResponse::TranscriptResponse {
                 start, duration, ..
@@ -337,6 +326,7 @@ impl<S> SseParserState<S> {
         Some(Ok(StreamingBatchEvent {
             response,
             percentage: self.last_percentage,
+            final_batch_response: None,
         }))
     }
 
@@ -352,44 +342,11 @@ impl<S> SseParserState<S> {
             .map(|a| a.transcript.clone())
             .unwrap_or_default();
 
-        let confidence = batch_response
-            .results
-            .channels
-            .first()
-            .and_then(|c| c.alternatives.first())
-            .map(|a| a.confidence)
-            .unwrap_or(0.0);
-
         let duration = batch_response
             .metadata
             .get("duration")
             .and_then(|v| v.as_f64())
             .unwrap_or(self.audio_duration_secs);
-
-        let words = if self.saw_segment_words {
-            vec![]
-        } else {
-            batch_response
-                .results
-                .channels
-                .first()
-                .and_then(|c| c.alternatives.first())
-                .map(|a| {
-                    a.words
-                        .iter()
-                        .map(|w| owhisper_interface::stream::Word {
-                            word: w.word.clone(),
-                            start: w.start,
-                            end: w.end,
-                            confidence: w.confidence,
-                            speaker: w.speaker.map(|s| s as i32),
-                            punctuated_word: w.punctuated_word.clone(),
-                            language: None,
-                        })
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default()
-        };
 
         let response = StreamResponse::TranscriptResponse {
             start: 0.0,
@@ -401,8 +358,8 @@ impl<S> SseParserState<S> {
                 alternatives: vec![owhisper_interface::stream::Alternatives {
                     transcript,
                     languages: vec![],
-                    words,
-                    confidence,
+                    words: vec![],
+                    confidence: 0.0,
                 }],
             },
             metadata: owhisper_interface::stream::Metadata::default(),
@@ -412,6 +369,7 @@ impl<S> SseParserState<S> {
         Some(Ok(StreamingBatchEvent {
             response,
             percentage: 1.0,
+            final_batch_response: Some(batch_response),
         }))
     }
 }

@@ -51,6 +51,7 @@ pub type BatchFuture<'a> = Pin<Box<dyn Future<Output = Result<BatchResponse, Err
 pub struct StreamingBatchEvent {
     pub response: StreamResponse,
     pub percentage: f64,
+    pub final_batch_response: Option<BatchResponse>,
 }
 
 pub type StreamingBatchStream =
