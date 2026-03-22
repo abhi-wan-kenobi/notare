@@ -1,0 +1,13 @@
+---
+interface Props { id: string; title: string; class?: string }
+const { id, title, class: className } = Astro.props;
+---
+
+<section class:list={["stagger-4 mt-12 mb-16", className]}>
+  <h2 id={id} class="mb-8 text-lg text-neutral-200">
+    <a href={`#${id}`} class="no-underline hover:text-white transition-colors">
+      <span class="text-neutral-600 mr-2">##</span>{title}
+    </a>
+  </h2>
+  <slot />
+</section>

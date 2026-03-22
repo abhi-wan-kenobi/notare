@@ -1,0 +1,10 @@
+---
+interface Props { id: string }
+const { id } = Astro.props;
+---
+
+<h2 id={id} class="mb-8 text-lg text-neutral-200">
+  <a href={`#${id}`} class="no-underline hover:text-white transition-colors">
+    <span class="text-neutral-600 mr-2">##</span><slot />
+  </a>
+</h2>

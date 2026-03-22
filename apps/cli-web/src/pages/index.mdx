@@ -2,14 +2,35 @@
 layout: "../layouts/Base.astro"
 ---
 
-import Hero from "../components/Hero.astro";
+import Logo from "../components/Logo.astro";
+import Title from "../components/Title.astro";
+import CyclingTools from "../components/CyclingTools.astro";
+import Byline from "../components/Byline.astro";
+import GithubMention from "../components/GithubMention.astro";
+import CharRepoDir from "../components/CharRepoDir.astro";
 import Install from "../components/Install.astro";
-import Nav from "../components/Nav.astro";
+import Section from "../components/Section.astro";
 import CommandReference from "../components/CommandReference.astro";
-import Footer from "../components/Footer.astro";
 
-<Hero />
-<Install />
-<Nav />
-<CommandReference />
-<Footer />
+<Logo />
+<Title>Composable CLI for your meeting workflow</Title>
+<CyclingTools />
+
+<Section id="installation" title="Installation">
+  <Install command="npx char --help" label="Run this to get started" />
+</Section>
+
+<Section id="record" title="char record">
+  This is good.
+</Section>
+
+<Section id="transcribe" title="char transcribe">
+  This is good.
+</Section>
+
+
+<Section id="reference" title="Reference">
+  <CommandReference />
+</Section>
+
+<Byline>Brought to you by <GithubMention name="@fastrepl/char" />, under <CharRepoDir name="apps/cli" />.</Byline>
