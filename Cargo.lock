@@ -21466,6 +21466,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "vad-chunking2"
+version = "0.1.0"
+dependencies = [
+ "audio-interface",
+ "data",
+ "futures-util",
+ "hound",
+ "onnx",
+ "pin-project",
+ "rodio",
+ "thiserror 2.0.18",
+ "tokio",
+ "vad",
+]
+
+[[package]]
 name = "vad-masking"
 version = "0.1.0"
 dependencies = [
