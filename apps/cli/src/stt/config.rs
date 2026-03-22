@@ -312,7 +312,7 @@ fn resolve_cactus_model(name: Option<&str>) -> CliResult<(CactusSttModel, PathBu
         return Err(CliError::not_found(
             format!("cactus model files at '{}'", model_path.display()),
             Some(format!(
-                "Download it first: char model cactus download {}",
+                "Download it first: char models cactus download {}",
                 LocalModel::Cactus(model.clone()).cli_name()
             )),
         ));
@@ -344,7 +344,7 @@ fn not_found_cactus_model(name: &str, include_downloaded_hint: bool) -> CliError
     if include_downloaded_hint {
         hint.push_str(&suggest_cactus_models());
     } else {
-        hint.push_str("Run `char model cactus list` to see available models.");
+        hint.push_str("Run `char models cactus list` to see available models.");
     }
 
     CliError::not_found(format!("cactus model '{name}'"), Some(hint))
@@ -387,10 +387,10 @@ fn suggest_cactus_models() -> String {
         for name in &available {
             hint.push_str(&format!("  {name}\n"));
         }
-        hint.push_str("Download with: char model cactus download <name>");
+        hint.push_str("Download with: char models cactus download <name>");
     }
     if hint.is_empty() {
-        hint.push_str("No cactus models found. Run `char model cactus list` to check.");
+        hint.push_str("No cactus models found. Run `char models cactus list` to check.");
     }
     hint
 }

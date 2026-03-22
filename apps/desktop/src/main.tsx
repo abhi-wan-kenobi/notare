@@ -65,7 +65,7 @@ function App() {
   }, [store, settingsStore]);
 
   if (!store || !settingsStore || !aiTaskStore) {
-    return null;
+    return <div className="h-screen w-screen bg-stone-50" />;
   }
 
   return (
