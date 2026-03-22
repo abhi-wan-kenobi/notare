@@ -31,7 +31,7 @@ jobs:
           platform: linux
       - run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential libcurl4-openssl-dev libclang-dev
+          sudo apt-get install -y cmake build-essential libcurl4-openssl-dev libclang-dev libpipewire-0.3-dev
       - run: |
           pip3 install --break-system-packages huggingface-hub
           pip3 install --break-system-packages -e cactus/python/ --no-deps
