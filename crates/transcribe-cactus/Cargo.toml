@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-live-example = []
+example-live = []
+example-batch = []
 
 [dependencies]
 hypr-audio-utils = { workspace = true }
@@ -45,7 +46,7 @@ axum = { workspace = true, features = ["ws"] }
 bytes = { workspace = true }
 crossterm = { workspace = true }
 futures-util = { workspace = true }
-reqwest = { workspace = true, features = ["json"] }
+reqwest = { workspace = true, features = ["json", "stream"] }
 tokio = { workspace = true }
 tokio-tungstenite = { workspace = true }
 
@@ -59,4 +60,8 @@ serde_json = { workspace = true }
 
 [[example]]
 name = "live"
-required-features = ["live-example"]
+required-features = ["example-live"]
+
+[[example]]
+name = "batch"
+required-features = ["example-batch"]
