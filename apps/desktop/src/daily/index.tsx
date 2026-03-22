@@ -1,40 +1,72 @@
-import { SunIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { format } from "@hypr/utils";
+
+import { DateHeader } from "./date-header";
+import { LazyNote } from "./lazy-note";
+import { DailyNoteEditor } from "./note-editor";
+import { TodayButton } from "./today-button";
+import { useToday } from "./use-today";
+
+import { useTimezone, toTz } from "~/calendar/hooks";
 import { StandardTabWrapper } from "~/shared/main";
-import { type TabItem, TabItemBase } from "~/shared/tabs";
-import { type Tab } from "~/store/zustand/tabs";
 
-export const TabItemDaily: TabItem<Extract<Tab, { type: "daily" }>> = ({
-  tab,
-  tabIndex,
-  handleCloseThis,
-  handleSelectThis,
-  handleCloseOthers,
-  handleCloseAll,
-  handlePinThis,
-  handleUnpinThis,
-}) => {
-  return (
-    <TabItemBase
-      icon={<SunIcon className="h-4 w-4" />}
-      title={"Daily"}
-      selected={tab.active}
-      pinned={tab.pinned}
-      tabIndex={tabIndex}
-      handleCloseThis={() => handleCloseThis(tab)}
-      handleSelectThis={() => handleSelectThis(tab)}
-      handleCloseOthers={handleCloseOthers}
-      handleCloseAll={handleCloseAll}
-      handlePinThis={() => handlePinThis(tab)}
-      handleUnpinThis={() => handleUnpinThis(tab)}
-    />
-  );
-};
+export { TabItemDaily } from "./tab-item";
 
 export function TabContentDaily() {
+  const today = useToday();
+  const tz = useTimezone();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const todayRef = useRef<HTMLDivElement>(null);
+  const [showTodayButton, setShowTodayButton] = useState(false);
+
+  const pastDates = useMemo(() => {
+    return Array.from({ length: 30 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (i + 1));
+      return format(toTz(d, tz), "yyyy-MM-dd");
+    });
+  }, [today, tz]);
+
+  const scrollToToday = useCallback(() => {
+    todayRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    const scrollEl = scrollRef.current;
+    const todayEl = todayRef.current;
+    if (!scrollEl || !todayEl) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowTodayButton(!entry.isIntersecting);
+      },
+      { root: scrollEl, threshold: 0 },
+    );
+
+    observer.observe(todayEl);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <StandardTabWrapper>
-      <div />
+      <div ref={scrollRef} className="relative flex-1 overflow-y-auto">
+        <TodayButton onClick={scrollToToday} visible={showTodayButton} />
+
+        <div className="mx-auto w-full max-w-3xl">
+          <div ref={todayRef} className="min-h-[400px]">
+            <DateHeader date={today} isToday={true} />
+            <DailyNoteEditor date={today} />
+          </div>
+
+          {pastDates.map((date) => (
+            <div key={date}>
+              <div className="mx-6 border-t border-neutral-200" />
+              <LazyNote date={date} />
+            </div>
+          ))}
+        </div>
+      </div>
     </StandardTabWrapper>
   );
 }
