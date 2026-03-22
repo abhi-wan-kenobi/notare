@@ -9,28 +9,45 @@ import Byline from "../components/Byline.astro";
 import GithubMention from "../components/GithubMention.astro";
 import CharRepoDir from "../components/CharRepoDir.astro";
 import Install from "../components/Install.astro";
-import Section from "../components/Section.astro";
 import CommandReference from "../components/CommandReference.astro";
+import Faq from "../components/Faq.astro";
 
 <Logo stagger={1} />
 <Title stagger={2}>Composable CLI for your meeting workflow</Title>
 <CyclingTools stagger={3} />
 
-<Section id="installation" title="Installation" stagger={4}>
-  <Install command="npx char --help" label="Run this to get started" />
-</Section>
+<div class="stagger-4">
 
-<Section id="record" title="char record" stagger={4}>
-  This is good.
-</Section>
+## Installation
 
-<Section id="transcribe" title="char transcribe" stagger={4}>
-  This is good.
-</Section>
+<Install command="npx char --help" label="Run this to get started" />
+
+## char record
+
+TODO
+
+<Faq question="Why not just record my mic? Shouldn't be hard, no?">
+</Faq>
+
+## char transcribe
+
+TODO
+
+<Faq question="Looking for realtime transcription, calendar syncing, etc?">
+</Faq>
+
+## char models
+
+TODO
+
+<Faq question="Is it Whisper.cpp?">
+</Faq>
 
 
-<Section id="reference" title="Reference" stagger={4}>
-  <CommandReference />
-</Section>
+## Reference
+
+<CommandReference />
+
+</div>
 
 <Byline stagger={5}>Brought to you by <GithubMention name="@fastrepl/char" />, under <CharRepoDir name="apps/cli" />.</Byline>
