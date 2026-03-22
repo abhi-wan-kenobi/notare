@@ -12,25 +12,25 @@ import Install from "../components/Install.astro";
 import Section from "../components/Section.astro";
 import CommandReference from "../components/CommandReference.astro";
 
-<Logo />
-<Title>Composable CLI for your meeting workflow</Title>
-<CyclingTools />
+<Logo stagger={1} />
+<Title stagger={2}>Composable CLI for your meeting workflow</Title>
+<CyclingTools stagger={3} />
 
-<Section id="installation" title="Installation">
+<Section id="installation" title="Installation" stagger={4}>
   <Install command="npx char --help" label="Run this to get started" />
 </Section>
 
-<Section id="record" title="char record">
+<Section id="record" title="char record" stagger={4}>
   This is good.
 </Section>
 
-<Section id="transcribe" title="char transcribe">
+<Section id="transcribe" title="char transcribe" stagger={4}>
   This is good.
 </Section>
 
 
-<Section id="reference" title="Reference">
+<Section id="reference" title="Reference" stagger={4}>
   <CommandReference />
 </Section>
 
-<Byline>Brought to you by <GithubMention name="@fastrepl/char" />, under <CharRepoDir name="apps/cli" />.</Byline>
+<Byline stagger={5}>Brought to you by <GithubMention name="@fastrepl/char" />, under <CharRepoDir name="apps/cli" />.</Byline>

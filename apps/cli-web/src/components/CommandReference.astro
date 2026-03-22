@@ -5,6 +5,18 @@ import OptionRow from "./OptionRow.astro";
 import cliData from "../data/cli.json";
 
 const data = cliData as CommandDoc;
+
+const first = ["record", "transcribe", "models"];
+const last = ["desktop"];
+const pinned = new Set([...first, ...last]);
+
+const shortName = (c: { name: string }) => c.name.split(" ").pop()!;
+
+const commands = [
+  ...first.flatMap((name) => data.subcommands?.filter((c) => shortName(c) === name) ?? []),
+  ...(data.subcommands?.filter((c) => !pinned.has(shortName(c))).sort((a, b) => a.name.localeCompare(b.name)) ?? []),
+  ...last.flatMap((name) => data.subcommands?.filter((c) => shortName(c) === name) ?? []),
+];
 ---
 
 
@@ -30,7 +42,7 @@ const data = cliData as CommandDoc;
     <div class="mt-8">
       <p class="mb-3 text-[11px] font-medium tracking-widest text-neutral-600 uppercase">Commands</p>
       <div class="overflow-hidden rounded-lg border border-neutral-800/40 bg-neutral-900/30">
-        {data.subcommands!.map((sub) => (
+        {commands.map((sub) => (
           <CommandItem cmd={sub} />
         ))}
       </div>

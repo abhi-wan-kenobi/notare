@@ -1,7 +1,9 @@
 ---
+interface Props { stagger?: number }
+const { stagger } = Astro.props;
 ---
 
-<p class="stagger-1 mt-1.5 text-sm text-neutral-500">
+<p class:list={[stagger && `stagger-${stagger}`, "mt-1.5 text-sm text-neutral-500"]}>
   Hack your own way, or pair it with
   <span id="cycling-tools" class="inline-flex items-baseline gap-1 whitespace-nowrap">
     <span class="relative inline-flex w-4 h-3.5 items-center justify-center self-center">
@@ -40,7 +42,7 @@
     position: absolute;
     white-space: nowrap;
     font-weight: 500;
-    color: #b9b8b8;
+    color: var(--color-neutral-400);
     opacity: 0;
     transform: translateY(8px);
     transition: opacity 0.3s ease, transform 0.3s ease;

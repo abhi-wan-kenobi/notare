@@ -1,9 +1,9 @@
 ---
-interface Props { id: string; title: string; class?: string }
-const { id, title, class: className } = Astro.props;
+interface Props { id: string; title: string; stagger?: number; class?: string }
+const { id, title, stagger, class: className } = Astro.props;
 ---
 
-<section class:list={["stagger-4 mt-12 mb-16", className]}>
+<section class:list={[stagger && `stagger-${stagger}`, "mt-12 mb-16", className]}>
   <h2 id={id} class="mb-8 text-lg text-neutral-200">
     <a href={`#${id}`} class="no-underline hover:text-white transition-colors">
       <span class="text-neutral-600 mr-2">##</span>{title}
