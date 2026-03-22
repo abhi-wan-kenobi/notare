@@ -1,0 +1,43 @@
+---
+import type { CommandDoc } from "../lib/types";
+import CommandItem from "./CommandItem.astro";
+import OptionRow from "./OptionRow.astro";
+import cliData from "../data/cli.json";
+
+const data = cliData as CommandDoc;
+---
+
+<section class="stagger-4 mb-16">
+  <h2 class="mb-8 font-serif text-lg text-neutral-500 italic">Reference</h2>
+
+  <pre class="mb-6 overflow-x-auto rounded-lg border border-neutral-800/50 bg-neutral-900/60 px-5 py-4 text-sm text-neutral-400">{data.synopsis}</pre>
+
+  {(data.global_options?.length ?? 0) > 0 && (
+    <div class="mb-5">
+      <p class="mb-2 text-[11px] font-medium tracking-widest text-neutral-600 uppercase">Global options</p>
+      {data.global_options!.map((opt) => (
+        <OptionRow opt={opt} />
+      ))}
+    </div>
+  )}
+
+  {(data.options?.length ?? 0) > 0 && (
+    <div class="mb-5">
+      <p class="mb-2 text-[11px] font-medium tracking-widest text-neutral-600 uppercase">Options</p>
+      {data.options!.map((opt) => (
+        <OptionRow opt={opt} />
+      ))}
+    </div>
+  )}
+
+  {(data.subcommands?.length ?? 0) > 0 && (
+    <div class="mt-8">
+      <p class="mb-3 text-[11px] font-medium tracking-widest text-neutral-600 uppercase">Commands</p>
+      <div class="overflow-hidden rounded-lg border border-neutral-800/40 bg-neutral-900/30">
+        {data.subcommands!.map((sub) => (
+          <CommandItem cmd={sub} />
+        ))}
+      </div>
+    </div>
+  )}
+</section>
