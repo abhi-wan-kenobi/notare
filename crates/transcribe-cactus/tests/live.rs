@@ -14,8 +14,9 @@ fn scale_close_after(audio_secs: usize, default_audio: usize, default_close: u32
     ((default_close as f64 * ratio).ceil() as u32).max(1)
 }
 
+use axum::Router;
 use axum::error_handling::HandleError;
-use axum::{Router, http::StatusCode};
+use axum::http::StatusCode;
 use futures_util::{SinkExt, StreamExt};
 use sequential_test::sequential;
 use tokio_tungstenite::{
@@ -26,7 +27,7 @@ use tokio_tungstenite::{
 use hypr_cactus::CloudConfig;
 use transcribe_cactus::{CactusConfig, TranscribeService};
 
-use common::{invalid_model_path, model_path};
+use common::invalid_model_path;
 
 async fn run_single_channel_opts(
     cactus_config: CactusConfig,
@@ -34,28 +35,7 @@ async fn run_single_channel_opts(
     close_after_results: u32,
     timeout_secs: u64,
 ) {
-    let app = Router::new().route_service(
-        "/v1/listen",
-        HandleError::new(
-            TranscribeService::builder()
-                .model_path(model_path())
-                .cactus_config(cactus_config)
-                .build(),
-            |err: String| async move { (StatusCode::INTERNAL_SERVER_ERROR, err) },
-        ),
-    );
-
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
-    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
-    tokio::spawn(async move {
-        axum::serve(listener, app)
-            .with_graceful_shutdown(async {
-                let _ = shutdown_rx.await;
-            })
-            .await
-            .unwrap();
-    });
+    let (addr, shutdown_tx) = common::start_test_server(cactus_config).await;
 
     let ws_url = format!(
         "ws://{}/v1/listen?channels=1&sample_rate=16000&chunk_size_ms=300",
@@ -257,34 +237,14 @@ fn e2e_websocket_dual_channel_no_handoff() {
     let dual_secs = e2e_audio_secs(100);
     let dual_close = scale_close_after(dual_secs, 100, 6);
     rt.block_on(async move {
-        let app = Router::new().route_service(
-            "/v1/listen",
-            HandleError::new(
-                TranscribeService::builder()
-                    .model_path(model_path())
-                    .cactus_config(CactusConfig {
-                        cloud: CloudConfig {
-                            threshold: Some(0.0),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    })
-                    .build(),
-                |err: String| async move { (StatusCode::INTERNAL_SERVER_ERROR, err) },
-            ),
-        );
-
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let addr = listener.local_addr().unwrap();
-        let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
-        tokio::spawn(async move {
-            axum::serve(listener, app)
-                .with_graceful_shutdown(async {
-                    let _ = shutdown_rx.await;
-                })
-                .await
-                .unwrap();
-        });
+        let (addr, shutdown_tx) = common::start_test_server(CactusConfig {
+            cloud: CloudConfig {
+                threshold: Some(0.0),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .await;
 
         let ws_url = format!(
             "ws://{}/v1/listen?channels=2&sample_rate=16000&chunk_size_ms=300",

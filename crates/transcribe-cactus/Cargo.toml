@@ -51,6 +51,7 @@ dirs = { workspace = true }
 pico-args = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 
+insta = { workspace = true, features = ["json", "redactions"] }
 sequential-test = "0.2"
 serde_json = { workspace = true }
 
