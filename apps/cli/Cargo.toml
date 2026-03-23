@@ -16,6 +16,8 @@ hypr-analytics = { workspace = true }
 hypr-audio = { workspace = true, optional = true }
 hypr-audio-actual = { workspace = true, optional = true }
 hypr-audio-utils = { workspace = true, optional = true }
+hypr-claude = { workspace = true, optional = true }
+hypr-codex = { workspace = true, optional = true }
 hypr-db-app = { workspace = true, features = ["cli"], optional = true }
 hypr-db-core2 = { workspace = true, optional = true }
 hypr-host = { workspace = true }
@@ -24,6 +26,7 @@ hypr-listener2-core = { workspace = true }
 hypr-local-model = { workspace = true }
 hypr-local-stt-core = { workspace = true, optional = true }
 hypr-model-downloader = { workspace = true, optional = true }
+hypr-opencode = { workspace = true, optional = true }
 hypr-transcript = { workspace = true, optional = true }
 owhisper-client = { workspace = true }
 owhisper-interface = { workspace = true }
@@ -70,6 +73,9 @@ vt100 = "0.15"
 [features]
 e2e = []
 desktop = [
+  "dep:hypr-claude",
+  "dep:hypr-codex",
+  "dep:hypr-opencode",
   "dep:hypr-db-app",
   "dep:hypr-db-core2",
   "dep:hypr-transcript",

@@ -101,6 +101,24 @@ pub enum Commands {
     Hello,
 
     #[cfg(feature = "desktop")]
+    /// Claude Code integration
+    Claude {
+        #[command(subcommand)]
+        command: crate::commands::claude::Commands,
+    },
+    #[cfg(feature = "desktop")]
+    /// Codex integration
+    Codex {
+        #[command(subcommand)]
+        command: crate::commands::codex::Commands,
+    },
+    #[cfg(feature = "desktop")]
+    /// OpenCode integration
+    Opencode {
+        #[command(subcommand)]
+        command: crate::commands::opencode::Commands,
+    },
+    #[cfg(feature = "desktop")]
     /// Browse past meetings
     Meetings {
         #[command(subcommand)]

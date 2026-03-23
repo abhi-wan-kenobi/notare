@@ -3315,6 +3315,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
+name = "claude"
+version = "0.1.0"
+dependencies = [
+ "dirs 6.0.0",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cli"
 version = "0.1.0"
 dependencies = [
@@ -3326,8 +3335,10 @@ dependencies = [
  "clap",
  "clap-verbosity-flag",
  "clap_complete",
+ "claude",
  "cli-docs",
  "clio",
+ "codex 0.1.0",
  "colored",
  "crossterm",
  "db-app",
@@ -3342,6 +3353,7 @@ dependencies = [
  "local-stt-server",
  "model-downloader",
  "open",
+ "opencode",
  "owhisper-client",
  "owhisper-interface",
  "portable-pty",
@@ -3467,6 +3479,16 @@ dependencies = [
  "csv",
  "serde",
  "tera",
+]
+
+[[package]]
+name = "codex"
+version = "0.1.0"
+dependencies = [
+ "dirs 6.0.0",
+ "serde",
+ "serde_json",
+ "toml 0.8.2",
 ]
 
 [[package]]
@@ -12185,6 +12207,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "opencode"
+version = "0.1.0"
+dependencies = [
+ "dirs 6.0.0",
+]
+
+[[package]]
 name = "openrouter"
 version = "0.1.0"
 dependencies = [
@@ -20636,7 +20665,7 @@ checksum = "4cab0200105831a9158e63718a0f6141c78cb2c1722ed17d19ad28941e3b8491"
 dependencies = [
  "az",
  "bumpalo",
- "codex",
+ "codex 0.2.0",
  "comemo",
  "ecow",
  "either",
@@ -20675,7 +20704,7 @@ dependencies = [
  "bumpalo",
  "chinese-number",
  "ciborium",
- "codex",
+ "codex 0.2.0",
  "comemo",
  "csv",
  "ecow",

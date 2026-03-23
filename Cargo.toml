@@ -66,7 +66,9 @@ hypr-cactus-model = { path = "crates/cactus-model", package = "cactus-model" }
 hypr-calendar = { path = "crates/calendar", package = "calendar" }
 hypr-calendar-interface = { path = "crates/calendar-interface", package = "calendar-interface" }
 hypr-chatwoot = { path = "crates/chatwoot", package = "chatwoot" }
+hypr-claude = { path = "crates/claude", package = "claude" }
 hypr-cloudsync = { path = "crates/cloudsync", package = "cloudsync" }
+hypr-codex = { path = "crates/codex", package = "codex" }
 hypr-data = { path = "crates/data", package = "data" }
 hypr-db-app = { path = "crates/db-app", package = "db-app" }
 hypr-db-core = { path = "crates/db-core", package = "db-core" }
@@ -125,6 +127,7 @@ hypr-notification-macos2 = { path = "crates/notification-macos2", package = "not
 hypr-notion = { path = "crates/notion", package = "notion" }
 hypr-observability = { path = "crates/observability", package = "observability" }
 hypr-onnx = { path = "crates/onnx", package = "onnx" }
+hypr-opencode = { path = "crates/opencode", package = "opencode" }
 hypr-openrouter = { path = "crates/openrouter", package = "openrouter" }
 hypr-openstatus = { path = "crates/openstatus", package = "openstatus" }
 hypr-outlook-calendar = { path = "crates/outlook-calendar", package = "outlook-calendar" }
@@ -295,6 +298,7 @@ statig = "0.4"
 strum = "0.27"
 tempfile = "3"
 thiserror = "2"
+toml = "0.8"
 url = "2"
 urlencoding = "2.1"
 uuid = "1"

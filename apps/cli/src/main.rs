@@ -226,6 +226,12 @@ async fn run(cli: Cli, trace_buffer: OptTraceBuffer) -> CliResult<()> {
         }
 
         #[cfg(feature = "desktop")]
+        Some(Commands::Claude { command }) => commands::claude::run(command).await,
+        #[cfg(feature = "desktop")]
+        Some(Commands::Codex { command }) => commands::codex::run(command).await,
+        #[cfg(feature = "desktop")]
+        Some(Commands::Opencode { command }) => commands::opencode::run(command).await,
+        #[cfg(feature = "desktop")]
         Some(Commands::Meetings { command }) => {
             let pool = init_pool().await?;
             commands::meetings::run(&pool, command, &global).await
