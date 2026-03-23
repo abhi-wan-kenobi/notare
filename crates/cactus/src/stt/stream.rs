@@ -19,17 +19,12 @@ pub struct TranscribeEvent {
 }
 
 pub struct TranscriptionSession {
-    audio_tx: tokio::sync::mpsc::Sender<Vec<f32>>,
     inner: ReceiverStream<Result<TranscribeEvent>>,
     cancellation_token: CancellationToken,
     handle: Option<std::thread::JoinHandle<()>>,
 }
 
 impl TranscriptionSession {
-    pub fn audio_tx(&self) -> &tokio::sync::mpsc::Sender<Vec<f32>> {
-        &self.audio_tx
-    }
-
     pub fn cancellation_token(&self) -> &CancellationToken {
         &self.cancellation_token
     }
@@ -70,7 +65,7 @@ pub fn transcribe_stream(
     cloud: CloudConfig,
     chunk_size_ms: u32,
     sample_rate: u32,
-) -> TranscriptionSession {
+) -> (tokio::sync::mpsc::Sender<Vec<f32>>, TranscriptionSession) {
     let (audio_tx, audio_rx) = tokio::sync::mpsc::channel::<Vec<f32>>(64);
     let (event_tx, event_rx) = tokio::sync::mpsc::channel(64);
     let cancellation_token = CancellationToken::new();
@@ -105,12 +100,17 @@ pub fn transcribe_stream(
     });
 
     let inner = ReceiverStream::new(event_rx);
-    TranscriptionSession {
+    // Return audio_tx separately so the caller is the sole owner. If the session
+    // held it, the channel would stay open as long as the stream is polled,
+    // preventing the worker from seeing a closed channel and terminating.
+    (
         audio_tx,
-        inner,
-        cancellation_token,
-        handle: Some(handle),
-    }
+        TranscriptionSession {
+            inner,
+            cancellation_token,
+            handle: Some(handle),
+        },
+    )
 }
 
 fn run_transcribe_worker(

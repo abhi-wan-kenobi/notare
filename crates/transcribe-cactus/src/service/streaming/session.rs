@@ -101,14 +101,14 @@ pub(super) async fn handle_websocket(
 
     for ch_idx in 0..total_channels {
         let cloud_config = cactus_config.cloud.clone();
-        let session = hypr_cactus::transcribe_stream(
+        let (audio_tx, session) = hypr_cactus::transcribe_stream(
             model.clone(),
             options.clone(),
             cloud_config,
             chunk_size_ms,
             SAMPLE_RATE,
         );
-        audio_txs.as_mut().unwrap().push(session.audio_tx().clone());
+        audio_txs.as_mut().unwrap().push(audio_tx);
         cancel_tokens.push(session.cancellation_token().clone());
         event_streams.push(Box::pin(session.map(move |e| (ch_idx, e))));
     }
