@@ -279,20 +279,24 @@ fn next_resolved_until(
 }
 
 fn overall_resolved_audio(resolved_until: &[f64]) -> f64 {
-    resolved_until
-        .iter()
-        .copied()
-        .reduce(f64::min)
-        .unwrap_or(0.0)
+    let n = resolved_until.len() as f64;
+    if n == 0.0 {
+        return 0.0;
+    }
+    resolved_until.iter().copied().sum::<f64>() / n
 }
 
 fn overall_resolved_with_channel(resolved_until: &[f64], channel_idx: usize, resolved: f64) -> f64 {
+    let n = resolved_until.len() as f64;
+    if n == 0.0 {
+        return resolved;
+    }
     resolved_until
         .iter()
         .enumerate()
         .map(|(idx, value)| if idx == channel_idx { resolved } else { *value })
-        .reduce(f64::min)
-        .unwrap_or(resolved)
+        .sum::<f64>()
+        / n
 }
 
 fn record_progress(resolved_audio: f64, total_duration: f64, last_progress: &mut f64) -> f64 {
@@ -421,17 +425,17 @@ mod tests {
     }
 
     #[test]
-    fn overall_resolved_audio_uses_slowest_channel() {
+    fn overall_resolved_audio_averages_channels() {
         let resolved = overall_resolved_audio(&[40.0, 18.0, 25.0]);
 
-        assert_eq!(resolved, 18.0);
+        assert!((resolved - 83.0 / 3.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn overall_resolved_with_channel_substitutes_current_channel() {
         let resolved = overall_resolved_with_channel(&[40.0, 10.0], 1, 22.0);
 
-        assert_eq!(resolved, 22.0);
+        assert!((resolved - 31.0).abs() < f64::EPSILON);
     }
 
     #[test]

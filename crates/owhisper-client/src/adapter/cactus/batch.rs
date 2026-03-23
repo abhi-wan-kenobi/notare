@@ -278,7 +278,7 @@ impl<S> SseParserState<S> {
         &mut self,
         progress: InferenceProgress,
     ) -> Option<Result<StreamingBatchEvent, Error>> {
-        self.last_percentage = progress.percentage;
+        self.last_percentage = self.last_percentage.max(progress.percentage);
 
         let response = StreamResponse::TranscriptResponse {
             start: 0.0,
