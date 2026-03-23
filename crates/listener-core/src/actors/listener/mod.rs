@@ -14,7 +14,8 @@ use owhisper_interface::{ControlMessage, MixedMessage};
 
 use super::session::session_span;
 use crate::{
-    DegradedError, ListenerRuntime, SessionDataEvent, SessionErrorEvent, SessionProgressEvent,
+    DegradedError, ListenerRuntime, LiveTranscriptEngine, SessionDataEvent, SessionErrorEvent,
+    SessionProgressEvent,
 };
 
 use adapters::spawn_rx_task;
@@ -49,6 +50,7 @@ pub struct ListenerArgs {
 
 pub struct ListenerState {
     pub args: ListenerArgs,
+    transcript: LiveTranscriptEngine,
     tx: ChannelSender,
     rx_task: tokio::task::JoinHandle<()>,
     shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
@@ -107,11 +109,12 @@ impl Actor for ListenerActor {
 
             args.runtime.emit_progress(SessionProgressEvent::Connected {
                 session_id: session_id.clone(),
-                adapter: adapter_name,
+                adapter: adapter_name.clone(),
             });
 
             let state = ListenerState {
                 args,
+                transcript: LiveTranscriptEngine::new(&adapter_name),
                 tx,
                 rx_task,
                 shutdown_tx: Some(shutdown_tx),
@@ -132,6 +135,17 @@ impl Actor for ListenerActor {
             let _ = shutdown_tx.send(());
             let _ = (&mut state.rx_task).await;
         }
+
+        if let Some(delta) = state.transcript.flush() {
+            state
+                .args
+                .runtime
+                .emit_data(SessionDataEvent::TranscriptDelta {
+                    session_id: state.args.session_id.clone(),
+                    delta: Box::new(delta),
+                });
+        }
+
         Ok(())
     }
 
@@ -211,8 +225,18 @@ impl Actor for ListenerActor {
                     .runtime
                     .emit_data(SessionDataEvent::StreamResponse {
                         session_id: state.args.session_id.clone(),
-                        response: Box::new(response),
+                        response: Box::new(response.clone()),
                     });
+
+                if let Some(delta) = state.transcript.process(&response) {
+                    state
+                        .args
+                        .runtime
+                        .emit_data(SessionDataEvent::TranscriptDelta {
+                            session_id: state.args.session_id.clone(),
+                            delta: Box::new(delta),
+                        });
+                }
             }
 
             ListenerMsg::StreamError(error) => {

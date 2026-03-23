@@ -1,3 +1,9 @@
+import type {
+  LiveTranscriptDelta,
+  PersistedSpeakerHint,
+  SpeakerHintData,
+} from "@hypr/plugin-listener";
+
 import type { SpeakerHintWithId, WordWithId } from "./types";
 
 interface TranscriptStore {
@@ -65,4 +71,76 @@ export function updateTranscriptHints(
     "speaker_hints",
     JSON.stringify(hints),
   );
+}
+
+export function applyLiveTranscriptDelta(
+  store: TranscriptStore,
+  transcriptId: string,
+  delta: LiveTranscriptDelta,
+): void {
+  const existingWords = parseTranscriptWords(store, transcriptId);
+  const existingHints = parseTranscriptHints(store, transcriptId);
+
+  const replacedIds = new Set(delta.replaced_ids);
+  const newWords: WordWithId[] = delta.new_words.map((word) => ({
+    id: word.id,
+    text: word.text,
+    start_ms: word.start_ms,
+    end_ms: word.end_ms,
+    channel: word.channel,
+  }));
+  const newWordIds = new Set(newWords.map((word) => word.id));
+
+  const nextWords = existingWords
+    .filter((word) => {
+      const wordId = word.id ?? "";
+      return !replacedIds.has(wordId) && !newWordIds.has(wordId);
+    })
+    .concat(newWords)
+    .sort((a, b) => (a.start_ms ?? 0) - (b.start_ms ?? 0));
+
+  const nextHints = existingHints
+    .filter((hint) => {
+      const wordId = hint.word_id ?? "";
+      return !replacedIds.has(wordId) && !newWordIds.has(wordId);
+    })
+    .concat(delta.hints.map(toStorageSpeakerHint))
+    .sort((a, b) => (a.word_id ?? "").localeCompare(b.word_id ?? ""));
+
+  updateTranscriptWords(store, transcriptId, nextWords);
+  updateTranscriptHints(store, transcriptId, nextHints);
+}
+
+function toStorageSpeakerHint(hint: PersistedSpeakerHint): SpeakerHintWithId {
+  const { type, value } = unwrapSpeakerHintData(hint.data);
+
+  return {
+    id: `${hint.word_id}:${type}`,
+    word_id: hint.word_id,
+    type,
+    value: JSON.stringify(value),
+  };
+}
+
+function unwrapSpeakerHintData(data: SpeakerHintData): {
+  type: SpeakerHintWithId["type"];
+  value: Record<string, unknown>;
+} {
+  if ("provider_speaker_index" in data) {
+    return {
+      type: "provider_speaker_index",
+      value: {
+        provider: data.provider_speaker_index.provider ?? undefined,
+        channel: data.provider_speaker_index.channel ?? undefined,
+        speaker_index: data.provider_speaker_index.speaker_index,
+      },
+    };
+  }
+
+  return {
+    type: "user_speaker_assignment",
+    value: {
+      human_id: data.user_speaker_assignment.human_id,
+    },
+  };
 }

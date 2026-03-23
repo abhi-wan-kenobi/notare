@@ -166,15 +166,14 @@ function HyprProviderCard({
                 <div className="flex-1 border-t border-dashed border-neutral-300" />
               </div>
 
-              {argmaxModels.length > 0 && (
+              {cactusModels.length > 0 && (
                 <>
-                  <ModelGroupLabel label="Argmax" />
-                  {argmaxModels.map((model) => (
-                    <HyprProviderLocalRow
+                  <ModelGroupLabel label="Latest" />
+                  {cactusModels.map((model) => (
+                    <CactusRow
                       key={model.key as string}
                       model={model.key}
                       displayName={model.display_name}
-                      description={model.description}
                     />
                   ))}
                 </>
@@ -194,16 +193,15 @@ function HyprProviderCard({
                 </>
               )}
 
-              {cactusModels.length > 0 && (
+              {argmaxModels.length > 0 && (
                 <>
-                  <ModelGroupLabel label="Cactus (Experimental)" />
-                  {/* <CactusSettings models={cactusModels.map((m) => m.key)} /> */}
-
-                  {cactusModels.map((model) => (
-                    <CactusRow
+                  <ModelGroupLabel label="Deprecated" />
+                  {argmaxModels.map((model) => (
+                    <HyprProviderLocalRow
                       key={model.key as string}
                       model={model.key}
                       displayName={model.display_name}
+                      description={model.description}
                     />
                   ))}
                 </>

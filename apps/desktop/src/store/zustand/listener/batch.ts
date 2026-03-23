@@ -2,7 +2,7 @@ import type { StoreApi } from "zustand";
 
 import type { BatchResponse, StreamResponse } from "@hypr/plugin-listener2";
 
-import type { HandlePersistCallback } from "./transcript";
+import type { BatchPersistCallback } from "./transcript";
 import { transformWordEntries } from "./utils";
 
 import {
@@ -30,7 +30,7 @@ export type BatchState = {
       hintsByChannel: Record<number, RuntimeSpeakerHint[]>;
     }
   >;
-  batchPersist: Record<string, HandlePersistCallback>;
+  batchPersist: Record<string, BatchPersistCallback>;
 };
 
 export type BatchActions = {
@@ -45,7 +45,7 @@ export type BatchActions = {
   handleBatchFailed: (sessionId: string, error: string) => void;
   updateBatchProgress: (sessionId: string, percentage: number) => void;
   clearBatchSession: (sessionId: string) => void;
-  setBatchPersist: (sessionId: string, callback: HandlePersistCallback) => void;
+  setBatchPersist: (sessionId: string, callback: BatchPersistCallback) => void;
   clearBatchPersist: (sessionId: string) => void;
 };
 

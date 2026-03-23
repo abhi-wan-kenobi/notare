@@ -8,13 +8,13 @@ import { commands as iconCommands } from "@hypr/plugin-icon";
 import {
   commands as listenerCommands,
   events as listenerEvents,
+  type LiveTranscriptDelta,
   type SessionDataEvent,
   type SessionErrorEvent,
   type SessionLifecycleEvent,
   type SessionParams,
   type SessionProgressEvent,
   type StopSessionParams,
-  type StreamResponse,
 } from "@hypr/plugin-listener";
 import { commands as settingsCommands } from "@hypr/plugin-settings";
 
@@ -185,10 +185,14 @@ const createSessionEventHandlers = <T extends LiveStore>(
       return;
     }
 
-    if (payload.type === "stream_response") {
-      get().handleTranscriptResponse(
-        payload.response as unknown as StreamResponse,
+    if (payload.type === "transcript_delta") {
+      get().handleTranscriptDelta(
+        payload.delta as unknown as LiveTranscriptDelta,
       );
+      return;
+    }
+
+    if (payload.type === "stream_response") {
       return;
     }
 

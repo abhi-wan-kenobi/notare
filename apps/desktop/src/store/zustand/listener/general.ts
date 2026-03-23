@@ -18,7 +18,8 @@ import {
   setLiveState,
 } from "./general-shared";
 import type {
-  HandlePersistCallback,
+  BatchPersistCallback,
+  LiveTranscriptPersistCallback,
   OnStoppedCallback,
   TranscriptActions,
   TranscriptState,
@@ -30,7 +31,7 @@ export type GeneralActions = {
   start: (
     params: SessionParams,
     options?: {
-      handlePersist?: HandlePersistCallback;
+      handlePersist?: LiveTranscriptPersistCallback;
       onStopped?: OnStoppedCallback;
     },
   ) => Promise<boolean>;
@@ -38,7 +39,7 @@ export type GeneralActions = {
   setMuted: (value: boolean) => void;
   runBatch: (
     params: BatchParams,
-    options?: { handlePersist?: HandlePersistCallback },
+    options?: { handlePersist?: BatchPersistCallback },
   ) => Promise<void>;
   getSessionMode: (sessionId: string) => SessionMode;
 };

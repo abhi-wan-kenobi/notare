@@ -15,17 +15,11 @@ import { useConfigValue } from "~/shared/config";
 import { id } from "~/shared/utils";
 import * as main from "~/store/tinybase/store/main";
 import type {
-  HandlePersistCallback,
+  LiveTranscriptPersistCallback,
   OnStoppedCallback,
 } from "~/store/zustand/listener/transcript";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
-import type { SpeakerHintWithId, WordWithId } from "~/stt/types";
-import {
-  parseTranscriptHints,
-  parseTranscriptWords,
-  updateTranscriptHints,
-  updateTranscriptWords,
-} from "~/stt/utils";
+import { applyLiveTranscriptDelta, parseTranscriptWords } from "~/stt/utils";
 
 const MIN_DURATION_SECONDS = 10;
 const MIN_WORD_COUNT = 5;
@@ -113,67 +107,17 @@ export function useStartListening(
       getEnhancerService()?.queueAutoEnhance(sessionId);
     };
 
-    const handlePersist: HandlePersistCallback = (words, hints) => {
-      if (words.length === 0) {
+    const handlePersist: LiveTranscriptPersistCallback = (delta) => {
+      if (
+        delta.new_words.length === 0 &&
+        delta.hints.length === 0 &&
+        delta.replaced_ids.length === 0
+      ) {
         return;
       }
 
       store.transaction(() => {
-        const existingWords = parseTranscriptWords(store, transcriptId);
-        const existingHints = parseTranscriptHints(store, transcriptId);
-
-        const newWords: WordWithId[] = [];
-        const newWordIds: string[] = [];
-
-        words.forEach((word) => {
-          const wordId = id();
-
-          newWords.push({
-            id: wordId,
-            text: word.text,
-            start_ms: word.start_ms,
-            end_ms: word.end_ms,
-            channel: word.channel,
-          });
-
-          newWordIds.push(wordId);
-        });
-
-        const newHints: SpeakerHintWithId[] = [];
-
-        if (conn.provider === "deepgram") {
-          hints.forEach((hint) => {
-            if (hint.data.type !== "provider_speaker_index") {
-              return;
-            }
-
-            const wordId = newWordIds[hint.wordIndex];
-            const word = words[hint.wordIndex];
-            if (!wordId || !word) {
-              return;
-            }
-
-            newHints.push({
-              id: id(),
-              word_id: wordId,
-              type: "provider_speaker_index",
-              value: JSON.stringify({
-                provider: hint.data.provider ?? conn.provider,
-                channel: hint.data.channel ?? word.channel,
-                speaker_index: hint.data.speaker_index,
-              }),
-            });
-          });
-        }
-
-        updateTranscriptWords(store, transcriptId, [
-          ...existingWords,
-          ...newWords,
-        ]);
-        updateTranscriptHints(store, transcriptId, [
-          ...existingHints,
-          ...newHints,
-        ]);
+        applyLiveTranscriptDelta(store, transcriptId, delta);
       });
     };
 

@@ -1,6 +1,6 @@
 use owhisper_interface::stream::StreamResponse;
 
-use crate::{DegradedError, TranscriptionMode};
+use crate::{DegradedError, LiveTranscriptDelta, TranscriptionMode};
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
@@ -76,5 +76,10 @@ pub enum SessionDataEvent {
     StreamResponse {
         session_id: String,
         response: Box<StreamResponse>,
+    },
+    #[serde(rename = "transcript_delta")]
+    TranscriptDelta {
+        session_id: String,
+        delta: Box<LiveTranscriptDelta>,
     },
 }
