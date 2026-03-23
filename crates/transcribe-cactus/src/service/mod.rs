@@ -6,6 +6,13 @@ use std::path::Path;
 
 use owhisper_interface::stream::{Extra, Metadata, ModelInfo};
 
+pub(crate) struct Segment<'a> {
+    pub text: &'a str,
+    pub start: f64,
+    pub duration: f64,
+    pub confidence: f64,
+}
+
 pub(crate) fn build_metadata(model_path: &Path) -> Metadata {
     let model_name = model_path
         .file_stem()

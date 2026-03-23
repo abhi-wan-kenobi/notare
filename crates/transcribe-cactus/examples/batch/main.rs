@@ -10,6 +10,7 @@ struct Args {
     model: PathBuf,
     file: PathBuf,
     sse: bool,
+    languages: Vec<String>,
 }
 
 impl Args {
@@ -32,7 +33,20 @@ impl Args {
         let no_sse: Option<String> = args.opt_value_from_str("--sse").unwrap_or(None);
         let sse = !matches!(no_sse.as_deref(), Some("0" | "false"));
 
-        Self { model, file, sse }
+        let mut languages: Vec<String> = Vec::new();
+        while let Ok(lang) = args.value_from_str::<_, String>("--language") {
+            languages.push(lang);
+        }
+        if languages.is_empty() {
+            languages.push("en".to_string());
+        }
+
+        Self {
+            model,
+            file,
+            sse,
+            languages,
+        }
     }
 }
 
@@ -48,7 +62,7 @@ fn content_type_for_path(path: &Path) -> &'static str {
     }
 }
 
-/// cargo run -p transcribe-cactus --example batch -- --sse --model ~/Library/Application\ Support/hyprnote/models/cactus/parakeet-tdt-0.6b-v3-int4 --file /Users/yujonglee/dev/char/crates/data/src/english_10/audio.mp3
+/// cargo run -p transcribe-cactus --example batch -- --sse --language en --language ko --model ~/Library/Application\ Support/hyprnote/models/cactus/parakeet-tdt-0.6b-v3-int4 --file /Users/yujonglee/dev/char/crates/data/src/english_10/audio.mp3
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
@@ -73,19 +87,27 @@ async fn main() {
         content_type,
         &args.model.display().to_string(),
         args.sse,
+        &args.languages,
     );
 
     let server = server::spawn(args.model).await;
-    let url = format!("http://{}/v1/listen?language=en", server.addr);
+    let t0 = std::time::Instant::now();
+    let lang_query: String = args
+        .languages
+        .iter()
+        .map(|l| format!("language={l}"))
+        .collect::<Vec<_>>()
+        .join("&");
+    let url = format!("http://{}/v1/listen?{}", server.addr, lang_query);
 
     if args.sse {
-        run_sse(&url, content_type, audio_bytes).await;
+        run_sse(&url, content_type, audio_bytes, t0).await;
     } else {
-        run_sync(&url, content_type, audio_bytes).await;
+        run_sync(&url, content_type, audio_bytes, t0).await;
     }
 }
 
-async fn run_sync(url: &str, content_type: &str, body: Vec<u8>) {
+async fn run_sync(url: &str, content_type: &str, body: Vec<u8>, t0: std::time::Instant) {
     let response = reqwest::Client::new()
         .post(url)
         .header("content-type", content_type)
@@ -103,10 +125,10 @@ async fn run_sync(url: &str, content_type: &str, body: Vec<u8>) {
 
     let result: owhisper_interface::batch::Response =
         response.json().await.expect("failed to parse response");
-    display::print_result(&result);
+    display::print_result(&result, t0);
 }
 
-async fn run_sse(url: &str, content_type: &str, body: Vec<u8>) {
+async fn run_sse(url: &str, content_type: &str, body: Vec<u8>, t0: std::time::Instant) {
     let response = reqwest::Client::new()
         .post(url)
         .header("content-type", content_type)
@@ -125,6 +147,7 @@ async fn run_sse(url: &str, content_type: &str, body: Vec<u8>) {
 
     let mut stream = response.bytes_stream();
     let mut buffer = Vec::new();
+    let mut last_was_segment = false;
 
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.expect("stream error");
@@ -137,15 +160,18 @@ async fn run_sse(url: &str, content_type: &str, body: Vec<u8>) {
             if let Some(msg) = parse_sse_block(&block) {
                 match msg {
                     BatchSseMessage::Progress { progress } => {
-                        display::print_progress(&progress);
+                        if !last_was_segment {
+                            display::print_progress(&progress, t0);
+                        }
+                        last_was_segment = false;
                     }
                     BatchSseMessage::Segment { response } => {
-                        display::print_segment(&response);
+                        display::print_segment(&response, t0);
+                        last_was_segment = true;
                     }
                     BatchSseMessage::Result { response } => {
                         eprintln!();
-                        eprintln!();
-                        display::print_result(&response);
+                        display::print_result(&response, t0);
                         return;
                     }
                     BatchSseMessage::Error { error, detail } => {

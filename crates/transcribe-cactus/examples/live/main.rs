@@ -64,7 +64,7 @@ impl Args {
 }
 
 /// Example:
-/// cargo run -p transcribe-cactus --example live --features live-example -- --model ~/Library/Application\ Support/hyprnote/models/cactus/parakeet-tdt-0.6b-v3-int4 --audio mock
+/// cargo run -p transcribe-cactus --example live -- --model ~/Library/Application\ Support/hyprnote/models/cactus/parakeet-tdt-0.6b-v3-int4 --audio mock
 #[tokio::main]
 async fn main() {
     let args = Args::parse();

@@ -3,10 +3,6 @@ name = "transcribe-cactus"
 version = "0.1.0"
 edition = "2024"
 
-[features]
-example-live = []
-example-batch = []
-
 [dependencies]
 hypr-audio-utils = { workspace = true }
 hypr-cactus = { workspace = true }
@@ -60,8 +56,6 @@ serde_json = { workspace = true }
 
 [[example]]
 name = "live"
-required-features = ["example-live"]
 
 [[example]]
 name = "batch"
-required-features = ["example-batch"]

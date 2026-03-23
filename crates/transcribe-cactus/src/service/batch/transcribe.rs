@@ -67,23 +67,14 @@ pub(super) fn transcribe_batch(
         .iter()
         .map(|samples| chunk_channel_audio(samples))
         .collect::<Result<Vec<_>, _>>()?;
-    let mut resolved_until = channel_chunks
+    let resolved_until = channel_chunks
         .iter()
         .zip(channel_durations.iter().copied())
         .map(|(chunks, channel_duration)| initial_resolved_until(chunks, channel_duration))
         .collect::<Vec<_>>();
     let mut response_channels = Vec::with_capacity(channel_samples.len().max(1));
-    let mut last_progress = 0.0;
-
-    if let Some(ref tx) = event_tx {
-        emit_progress_update(
-            tx,
-            &mut last_progress,
-            overall_resolved_audio(&resolved_until),
-            total_duration,
-            None,
-        );
-    }
+    let mut progress = ProgressTracker::new(resolved_until, total_duration, event_tx);
+    progress.emit(None);
 
     for (channel_idx, chunks) in channel_chunks.iter().enumerate() {
         let channel_index = [channel_idx as i32, channel_samples.len() as i32];
@@ -98,10 +89,7 @@ pub(super) fn transcribe_batch(
                 channel_duration,
                 &model,
                 &options,
-                &mut resolved_until,
-                total_duration,
-                &mut last_progress,
-                event_tx.clone(),
+                &mut progress,
                 &metadata,
                 &channel_index,
             )?
@@ -163,10 +151,7 @@ fn transcribe_chunks(
     channel_duration: f64,
     model: &hypr_cactus::Model,
     options: &hypr_cactus::TranscribeOptions,
-    resolved_until: &mut [f64],
-    total_duration: f64,
-    last_progress: &mut f64,
-    event_tx: Option<mpsc::UnboundedSender<BatchSseMessage>>,
+    progress: &mut ProgressTracker,
     metadata: &owhisper_interface::stream::Metadata,
     channel_index: &[i32],
 ) -> Result<(Vec<batch::Word>, String, f64), crate::Error> {
@@ -181,10 +166,9 @@ fn transcribe_chunks(
         let chunk_start_sec = chunk.start_timestamp_ms as f64 / 1000.0;
         let chunk_duration_sec =
             (chunk.end_timestamp_ms - chunk.start_timestamp_ms) as f64 / 1000.0;
-        resolved_until[channel_idx] = chunk_start_sec;
+        progress.update_channel(channel_idx, chunk_start_sec);
 
-        let cactus_response = if let Some(ref tx) = event_tx {
-            let tx = tx.clone();
+        let cactus_response = if progress.has_tx() {
             let completed_text: String = all_transcripts.join(" ");
 
             model.transcribe_pcm_with_callback(&pcm_bytes, options, |token| {
@@ -197,21 +181,12 @@ fn transcribe_chunks(
                     partial.push_str(token);
                 }
 
-                emit_progress_update(
-                    &tx,
-                    last_progress,
-                    overall_resolved_with_channel(
-                        resolved_until,
-                        channel_idx,
-                        resolved_audio_for_chunk_progress(
-                            chunk_start_sec,
-                            chunk_duration_sec,
-                            ChunkProgress::Start,
-                        ),
-                    ),
-                    total_duration,
-                    Some(partial),
+                let resolved = resolved_audio_for_chunk_progress(
+                    chunk_start_sec,
+                    chunk_duration_sec,
+                    ChunkProgress::Start,
                 );
+                progress.emit_for_channel(channel_idx, resolved, Some(partial));
 
                 true
             })?
@@ -232,33 +207,29 @@ fn transcribe_chunks(
             }
             all_words.extend(words);
 
-            if let Some(ref tx) = event_tx {
-                let segment_resp = build_segment_stream_response(
-                    &chunk_text,
-                    chunk_start_sec,
-                    chunk_duration_sec,
-                    cactus_response.confidence as f64,
-                    metadata,
-                    channel_index,
-                );
-                let _ = tx.send(BatchSseMessage::Segment {
-                    response: segment_resp,
-                });
+            if progress.has_tx() {
+                let seg = crate::service::Segment {
+                    text: &chunk_text,
+                    start: chunk_start_sec,
+                    duration: chunk_duration_sec,
+                    confidence: cactus_response.confidence as f64,
+                };
+                let segment_resp = build_segment_stream_response(&seg, metadata, channel_index);
+                if let Some(ref tx) = progress.event_tx {
+                    let _ = tx.send(BatchSseMessage::Segment {
+                        response: segment_resp,
+                    });
+                }
             }
 
             all_transcripts.push(chunk_text);
         }
 
-        resolved_until[channel_idx] = next_resolved_until(chunks, chunk_idx, channel_duration);
-        if let Some(ref tx) = event_tx {
-            emit_progress_update(
-                tx,
-                last_progress,
-                overall_resolved_audio(resolved_until),
-                total_duration,
-                Some(all_transcripts.join(" ")),
-            );
-        }
+        progress.update_channel(
+            channel_idx,
+            next_resolved_until(chunks, chunk_idx, channel_duration),
+        );
+        progress.emit(Some(all_transcripts.join(" ")));
 
         cumulative_confidence += cactus_response.confidence as f64;
     }
@@ -336,26 +307,72 @@ fn record_progress(resolved_audio: f64, total_duration: f64, last_progress: &mut
     progress
 }
 
-fn emit_progress_update(
-    tx: &mpsc::UnboundedSender<BatchSseMessage>,
-    last_progress: &mut f64,
-    resolved_audio: f64,
+struct ProgressTracker {
+    resolved_until: Vec<f64>,
     total_duration: f64,
-    partial_text: Option<String>,
-) {
-    let previous = *last_progress;
-    let percentage = record_progress(resolved_audio, total_duration, last_progress);
-    if percentage <= previous {
-        return;
+    last_progress: f64,
+    event_tx: Option<mpsc::UnboundedSender<BatchSseMessage>>,
+}
+
+impl ProgressTracker {
+    fn new(
+        resolved_until: Vec<f64>,
+        total_duration: f64,
+        event_tx: Option<mpsc::UnboundedSender<BatchSseMessage>>,
+    ) -> Self {
+        Self {
+            resolved_until,
+            total_duration,
+            last_progress: 0.0,
+            event_tx,
+        }
     }
 
-    let _ = tx.send(BatchSseMessage::Progress {
-        progress: InferenceProgress {
-            percentage,
-            partial_text,
-            phase: InferencePhase::Decoding,
-        },
-    });
+    fn update_channel(&mut self, channel_idx: usize, resolved: f64) {
+        self.resolved_until[channel_idx] = resolved;
+    }
+
+    fn emit(&mut self, partial_text: Option<String>) {
+        let Some(ref tx) = self.event_tx else { return };
+        let resolved_audio = overall_resolved_audio(&self.resolved_until);
+        self.emit_inner(tx.clone(), resolved_audio, partial_text);
+    }
+
+    fn emit_for_channel(
+        &mut self,
+        channel_idx: usize,
+        resolved: f64,
+        partial_text: Option<String>,
+    ) {
+        let Some(ref tx) = self.event_tx else { return };
+        let overall = overall_resolved_with_channel(&self.resolved_until, channel_idx, resolved);
+        self.emit_inner(tx.clone(), overall, partial_text);
+    }
+
+    fn emit_inner(
+        &mut self,
+        tx: mpsc::UnboundedSender<BatchSseMessage>,
+        resolved_audio: f64,
+        partial_text: Option<String>,
+    ) {
+        let previous = self.last_progress;
+        let percentage =
+            record_progress(resolved_audio, self.total_duration, &mut self.last_progress);
+        if percentage <= previous {
+            return;
+        }
+        let _ = tx.send(BatchSseMessage::Progress {
+            progress: InferenceProgress {
+                percentage,
+                partial_text,
+                phase: InferencePhase::Decoding,
+            },
+        });
+    }
+
+    fn has_tx(&self) -> bool {
+        self.event_tx.is_some()
+    }
 }
 
 #[cfg(test)]
