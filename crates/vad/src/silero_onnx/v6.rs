@@ -25,11 +25,15 @@ const MODEL_BYTES: &[u8] = include_bytes!("../../data/models/silero_v6.2.onnx");
 
 impl Default for SileroVad {
     fn default() -> Self {
-        Self::new_from_bytes(MODEL_BYTES).unwrap()
+        Self::new_embedded().unwrap()
     }
 }
 
 impl SileroVad {
+    pub fn new_embedded() -> Result<Self, Error> {
+        Self::new_from_bytes(MODEL_BYTES)
+    }
+
     pub fn new(model_path: impl AsRef<std::path::Path>) -> Result<Self, Error> {
         let session = hypr_onnx::load_model_from_path(model_path)?;
         Ok(Self {
