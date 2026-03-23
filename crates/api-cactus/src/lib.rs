@@ -8,11 +8,12 @@ use axum::{
 };
 use reqwest::Client;
 
-const UPSTREAM_BASE: &str = "https://104.198.76.3";
+const DEFAULT_UPSTREAM_BASE: &str = "https://104.198.76.3";
 
 #[derive(Clone)]
 pub struct CactusProxyConfig {
     pub api_key: String,
+    pub upstream_base: Option<String>,
 }
 
 #[derive(Clone)]
@@ -38,7 +39,12 @@ pub fn router(config: CactusProxyConfig) -> Router {
 }
 
 async fn proxy(state: &AppState, path: &str, body: bytes::Bytes) -> Response {
-    let url = format!("{UPSTREAM_BASE}/api/v1/{path}");
+    let base = state
+        .config
+        .upstream_base
+        .as_deref()
+        .unwrap_or(DEFAULT_UPSTREAM_BASE);
+    let url = format!("{base}/api/v1/{path}");
 
     let result = state
         .client
