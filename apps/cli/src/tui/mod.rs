@@ -9,7 +9,7 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::{Color, Style};
 use ratatui::text::Line;
-use ratatui::widgets::Paragraph;
+use ratatui::widgets::{Block, BorderType, Paragraph};
 use ratatui::{Terminal, TerminalOptions, Viewport};
 
 pub const SPINNER: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -84,12 +84,24 @@ impl InlineViewport {
     }
 
     fn draw_lines(&mut self, lines: &[String]) {
-        let lines: Vec<Line> = lines.iter().map(|s| Line::from(s.as_str())).collect();
-        let height = self.height;
+        let has_traces = self.traces.is_some();
+        let mut content: Vec<Line> = lines.iter().map(|s| Line::from(s.as_str())).collect();
+        if has_traces {
+            content.push(
+                Line::from("  press 'd' to toggle traces")
+                    .style(Style::default().fg(Color::DarkGray)),
+            );
+        }
+
         let _ = self.terminal.draw(|frame| {
+            let area = frame.area();
+            let block = Block::bordered().border_type(BorderType::Rounded);
+            let inner = block.inner(area);
+            frame.render_widget(block, area);
+
             let chunks =
-                Layout::vertical(vec![Constraint::Length(1); height as usize]).split(frame.area());
-            for (i, line) in lines.iter().enumerate() {
+                Layout::vertical(vec![Constraint::Length(1); inner.height as usize]).split(inner);
+            for (i, line) in content.iter().enumerate() {
                 if i < chunks.len() {
                     frame.render_widget(Paragraph::new(line.clone()), chunks[i]);
                 }
@@ -102,28 +114,34 @@ impl InlineViewport {
             Some(ref buf) => buf,
             None => return,
         };
-        let height = self.height as usize;
-        let trace_lines: Vec<String> = if let Ok(buf) = traces.lock() {
-            buf.iter()
-                .rev()
-                .take(height.saturating_sub(1))
-                .cloned()
-                .collect::<Vec<_>>()
-                .into_iter()
-                .rev()
-                .collect()
-        } else {
-            vec![]
-        };
 
-        let h = self.height;
         let _ = self.terminal.draw(|frame| {
-            let chunks =
-                Layout::vertical(vec![Constraint::Length(1); h as usize]).split(frame.area());
+            let area = frame.area();
+            let block = Block::bordered().border_type(BorderType::Rounded);
+            let inner = block.inner(area);
+            frame.render_widget(block, area);
+
+            let inner_height = inner.height as usize;
+            let trace_lines: Vec<String> = if let Ok(buf) = traces.lock() {
+                buf.iter()
+                    .rev()
+                    .take(inner_height.saturating_sub(1))
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .rev()
+                    .collect()
+            } else {
+                vec![]
+            };
+
+            let chunks = Layout::vertical(vec![Constraint::Length(1); inner_height]).split(inner);
 
             let header = Paragraph::new(Line::from("[traces] press 'd' to toggle"))
                 .style(Style::default().fg(Color::DarkGray));
-            frame.render_widget(header, chunks[0]);
+            if !chunks.is_empty() {
+                frame.render_widget(header, chunks[0]);
+            }
 
             for (i, line) in trace_lines.iter().enumerate() {
                 if i + 1 < chunks.len() {
@@ -160,13 +178,18 @@ mod tests {
     use super::*;
     use ratatui::backend::TestBackend;
 
-    fn draw_lines(terminal: &mut Terminal<TestBackend>, lines: &[String], height: u16) {
-        let lines: Vec<Line> = lines.iter().map(|s| Line::from(s.as_str())).collect();
+    fn draw_card(terminal: &mut Terminal<TestBackend>, lines: &[String]) {
+        let content: Vec<Line> = lines.iter().map(|s| Line::from(s.as_str())).collect();
         terminal
             .draw(|frame| {
-                let chunks = Layout::vertical(vec![Constraint::Length(1); height as usize])
-                    .split(frame.area());
-                for (i, line) in lines.iter().enumerate() {
+                let area = frame.area();
+                let block = Block::bordered().border_type(BorderType::Rounded);
+                let inner = block.inner(area);
+                frame.render_widget(block, area);
+
+                let chunks = Layout::vertical(vec![Constraint::Length(1); inner.height as usize])
+                    .split(inner);
+                for (i, line) in content.iter().enumerate() {
                     if i < chunks.len() {
                         frame.render_widget(Paragraph::new(line.clone()), chunks[i]);
                     }
@@ -176,12 +199,12 @@ mod tests {
     }
 
     #[test]
-    fn render_draws_three_lines() {
-        let backend = TestBackend::new(40, 3);
+    fn render_draws_card_with_three_lines() {
+        let backend = TestBackend::new(40, 5);
         let mut terminal = Terminal::with_options(
             backend,
             TerminalOptions {
-                viewport: Viewport::Inline(3),
+                viewport: Viewport::Inline(5),
             },
         )
         .unwrap();
@@ -191,12 +214,13 @@ mod tests {
             "16000 Hz  1 ch  5.0s audio".to_string(),
             "out.wav  lvl ||||....".to_string(),
         ];
-        draw_lines(&mut terminal, &lines, 3);
+        draw_card(&mut terminal, &lines);
 
         let buf = terminal.backend().buffer().clone();
-        let first_line: String = (0..buf.area.width)
-            .map(|x| buf[(x, 0)].symbol().chars().next().unwrap_or(' '))
+        // Row 1 is inside the top border
+        let content_line: String = (0..buf.area.width)
+            .map(|x| buf[(x, 1)].symbol().chars().next().unwrap_or(' '))
             .collect();
-        assert!(first_line.contains("recording mic"));
+        assert!(content_line.contains("recording mic"));
     }
 }

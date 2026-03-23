@@ -27,7 +27,7 @@ pub(super) async fn download(
     }
 
     let mut viewport = if trace_buffer.is_some() {
-        InlineViewport::stderr(3, trace_buffer).ok()
+        InlineViewport::stderr(5, trace_buffer).ok()
     } else {
         None
     };
@@ -106,7 +106,6 @@ fn draw_download(
                 SPINNER[spinner_idx], name, pct_str
             ),
             format_gauge(pct),
-            "  press 'd' to toggle traces".to_string(),
         ]);
     }
 }

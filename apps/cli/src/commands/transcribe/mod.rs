@@ -271,7 +271,7 @@ async fn run_pretty(
 
     #[cfg(feature = "standalone")]
     let mut viewport = if _trace_buffer.is_some() {
-        crate::tui::InlineViewport::stderr(3, _trace_buffer).ok()
+        crate::tui::InlineViewport::stderr(5, _trace_buffer).ok()
     } else {
         None
     };
@@ -301,7 +301,6 @@ async fn run_pretty(
                         vp.draw(&[
                             format!("{} Transcribing {}... {}", crate::tui::SPINNER[spinner_idx], file_name, pct_str),
                             format!("  {}", crate::tui::truncate_line(&last_transcript, 76)),
-                            "  press 'd' to toggle traces".to_string(),
                         ]);
                     }
                     continue;

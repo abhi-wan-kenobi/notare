@@ -114,7 +114,7 @@ async fn run_with_audio<A: AudioProvider>(args: Args, quiet: bool, audio: &A) ->
         None
     } else {
         Some(
-            InlineViewport::stderr(3, None)
+            InlineViewport::stderr(5, None)
                 .map_err(|e| CliError::operation_failed("init record viewport", e.to_string()))?,
         )
     };
