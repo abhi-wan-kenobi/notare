@@ -158,14 +158,8 @@
         {
           "name": "char models list",
           "about": "List available models and their download status",
-          "synopsis": "char models list [--kind] [--supported] [-f] [-h] [-V]",
+          "synopsis": "char models list [--supported] [-f] [-h] [-V]",
           "options": [
-            {
-              "flags": "--kind",
-              "value_name": "KIND",
-              "required": false,
-              "is_flag": false
-            },
             {
               "flags": "--supported",
               "required": false,

@@ -1,6 +1,5 @@
 mod app;
 mod runtime;
-mod ui;
 
 use std::fs;
 use std::io::{BufWriter, IsTerminal, Write};
@@ -15,7 +14,8 @@ use crate::error::{CliError, CliResult};
 
 pub(crate) use app::App;
 pub(crate) use runtime::{CaptureResult, ProgressUpdate};
-pub(crate) use ui::RecordViewport;
+
+use crate::tui::InlineViewport;
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum AudioMode {
@@ -70,26 +70,7 @@ enum RecordEvent {
     },
 }
 
-struct EventWriter<W: Write> {
-    writer: W,
-}
-
-impl<W: Write> EventWriter<W> {
-    fn new(writer: W) -> Self {
-        Self { writer }
-    }
-
-    fn emit(&mut self, event: &RecordEvent) -> CliResult<()> {
-        serde_json::to_writer(&mut self.writer, event)
-            .map_err(|e| CliError::operation_failed("serialize record event", e.to_string()))?;
-        self.writer
-            .write_all(b"\n")
-            .map_err(|e| CliError::operation_failed("write record event", e.to_string()))?;
-        self.writer
-            .flush()
-            .map_err(|e| CliError::operation_failed("flush record event", e.to_string()))
-    }
-}
+use crate::output::EventWriter;
 
 pub async fn run(args: Args, quiet: bool) -> CliResult<()> {
     run_with_audio(args, quiet, &ActualAudio).await
@@ -133,13 +114,12 @@ async fn run_with_audio<A: AudioProvider>(args: Args, quiet: bool, audio: &A) ->
         None
     } else {
         Some(
-            RecordViewport::stderr()
+            InlineViewport::stderr(3, None)
                 .map_err(|e| CliError::operation_failed("init record viewport", e.to_string()))?,
         )
     };
     if let Some(view) = viewport.as_mut() {
-        view.render(&app.lines())
-            .map_err(|e| CliError::operation_failed("render record viewport", e.to_string()))?;
+        view.draw(&app.lines());
     } else if !quiet {
         eprintln!(
             "recording {} -> {}",
@@ -168,9 +148,7 @@ async fn run_with_audio<A: AudioProvider>(args: Args, quiet: bool, audio: &A) ->
             }
             if progress.render_ui {
                 if let Some(view) = viewport.as_mut() {
-                    view.render(&app.lines()).map_err(|e| {
-                        CliError::operation_failed("render record viewport", e.to_string())
-                    })?;
+                    view.draw(&app.lines());
                 }
             }
             Ok(())
@@ -207,7 +185,7 @@ async fn run_with_audio<A: AudioProvider>(args: Args, quiet: bool, audio: &A) ->
 async fn finish_success<W2: Write>(
     result: CaptureResult,
     app: &mut App,
-    viewport: Option<&mut RecordViewport>,
+    viewport: Option<&mut InlineViewport>,
     event_writer: Option<&mut EventWriter<W2>>,
     quiet: bool,
 ) -> CliResult<()> {

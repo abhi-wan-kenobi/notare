@@ -8,10 +8,11 @@ use std::sync::Arc;
 
 use hypr_local_model::{LocalModel, LocalModelKind};
 use hypr_local_stt_core::SUPPORTED_MODELS as SUPPORTED_STT_MODELS;
+
 use hypr_model_downloader::ModelDownloadManager;
 use tokio::sync::mpsc;
 
-use clap::{Subcommand, ValueEnum};
+use clap::Subcommand;
 
 use crate::cli::OutputFormat;
 use crate::config::paths as config_paths;
@@ -24,8 +25,6 @@ pub enum Commands {
     Paths,
     /// List available models and their download status
     List {
-        #[arg(long, value_enum)]
-        kind: Option<ModelKind>,
         #[arg(long)]
         supported: bool,
         #[arg(short = 'f', long, value_enum, default_value = "pretty")]
@@ -65,12 +64,6 @@ pub enum CactusCommands {
     },
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum)]
-pub enum ModelKind {
-    Stt,
-    Llm,
-}
-
 struct ModelScope {
     models: Vec<LocalModel>,
     label: &'static str,
@@ -78,38 +71,26 @@ struct ModelScope {
 }
 
 impl ModelScope {
-    fn all(kind: Option<ModelKind>) -> Self {
+    fn all() -> Self {
         Self {
             models: LocalModel::all()
                 .into_iter()
-                .filter(|m| model_is_enabled(m) && matches_kind(m, kind))
+                .filter(|m| model_is_enabled(m) && m.model_kind() == LocalModelKind::Stt)
                 .collect(),
             label: "model",
             list_cmd: "char models list",
         }
     }
 
-    fn supported(kind: Option<ModelKind>) -> CliResult<Self> {
-        match kind {
-            Some(ModelKind::Stt) => Ok(Self {
-                models: SUPPORTED_STT_MODELS
-                    .iter()
-                    .filter(|m| model_is_enabled(m))
-                    .cloned()
-                    .collect(),
-                label: "model",
-                list_cmd: "char models list",
-            }),
-            Some(ModelKind::Llm) => Err(CliError::invalid_argument(
-                "--supported",
-                "true",
-                "Only STT has a shared supported model list right now; use `--kind stt`.",
-            )),
-            None => Err(CliError::invalid_argument(
-                "--supported",
-                "true",
-                "Pass `--kind stt` (supported list is STT-only right now).",
-            )),
+    fn supported() -> Self {
+        Self {
+            models: SUPPORTED_STT_MODELS
+                .iter()
+                .filter(|m| model_is_enabled(m))
+                .cloned()
+                .collect(),
+            label: "model",
+            list_cmd: "char models list",
         }
     }
 
@@ -118,7 +99,9 @@ impl ModelScope {
         Self {
             models: LocalModel::all()
                 .into_iter()
-                .filter(|m| m.cli_name().starts_with("cactus-"))
+                .filter(|m| {
+                    m.cli_name().starts_with("cactus-") && m.model_kind() == LocalModelKind::Stt
+                })
                 .collect(),
             label: "cactus model",
             list_cmd: "char models cactus list",
@@ -142,47 +125,47 @@ impl ModelScope {
     }
 }
 
-pub async fn run(command: Commands) -> CliResult<()> {
+pub async fn run(command: Commands, trace_buffer: crate::OptTraceBuffer) -> CliResult<()> {
     let resolved = config_paths::resolve_paths();
     let models_base = resolved.models_base.clone();
     let db_path = resolved.base.join("app.db");
 
     match command {
         Commands::Paths => paths::paths(&resolved.base, &db_path, &models_base),
-        Commands::List {
-            kind,
-            supported,
-            format,
-        } => {
+        Commands::List { supported, format } => {
             let scope = if supported {
-                ModelScope::supported(kind)?
+                ModelScope::supported()
             } else {
-                ModelScope::all(kind)
+                ModelScope::all()
             };
             list_models(&scope, &models_base, format).await
         }
         #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-        Commands::Cactus { command } => run_cactus(command, &models_base).await,
+        Commands::Cactus { command } => run_cactus(command, &models_base, trace_buffer).await,
         Commands::Download { name } => {
-            let model = ModelScope::all(None).resolve(&name)?;
-            download::download(model, &models_base).await
+            let model = ModelScope::all().resolve(&name)?;
+            download::download(model, &models_base, trace_buffer).await
         }
         Commands::Delete { name, force } => {
-            let model = ModelScope::all(None).resolve(&name)?;
+            let model = ModelScope::all().resolve(&name)?;
             delete::delete(model, &models_base, force).await
         }
     }
 }
 
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-async fn run_cactus(command: CactusCommands, models_base: &std::path::Path) -> CliResult<()> {
+async fn run_cactus(
+    command: CactusCommands,
+    models_base: &std::path::Path,
+    trace_buffer: crate::OptTraceBuffer,
+) -> CliResult<()> {
     let scope = ModelScope::cactus();
 
     match command {
         CactusCommands::List { format } => list_models(&scope, models_base, format).await,
         CactusCommands::Download { name } => {
             let name = normalize_cactus_name(&name);
-            download::download(scope.resolve(&name)?, models_base).await
+            download::download(scope.resolve(&name)?, models_base, trace_buffer).await
         }
         CactusCommands::Delete { name, force } => {
             let name = normalize_cactus_name(&name);
@@ -224,12 +207,4 @@ fn normalize_cactus_name(name: &str) -> String {
 pub(crate) fn model_is_enabled(model: &LocalModel) -> bool {
     cfg!(any(target_arch = "arm", target_arch = "aarch64"))
         || !matches!(model, LocalModel::Cactus(_) | LocalModel::CactusLlm(_))
-}
-
-fn matches_kind(model: &LocalModel, kind: Option<ModelKind>) -> bool {
-    match kind {
-        None => true,
-        Some(ModelKind::Stt) => model.model_kind() == LocalModelKind::Stt,
-        Some(ModelKind::Llm) => model.model_kind() == LocalModelKind::Llm,
-    }
 }

@@ -77,6 +77,27 @@ pub async fn write_json(output: Option<&Path>, value: &impl serde::Serialize) ->
     write_bytes_to(output, bytes).await
 }
 
+pub struct EventWriter<W: Write> {
+    writer: W,
+}
+
+impl<W: Write> EventWriter<W> {
+    pub fn new(writer: W) -> Self {
+        Self { writer }
+    }
+
+    pub fn emit(&mut self, event: &impl serde::Serialize) -> CliResult<()> {
+        serde_json::to_writer(&mut self.writer, event)
+            .map_err(|e| CliError::operation_failed("serialize event", e.to_string()))?;
+        self.writer
+            .write_all(b"\n")
+            .map_err(|e| CliError::operation_failed("write event", e.to_string()))?;
+        self.writer
+            .flush()
+            .map_err(|e| CliError::operation_failed("flush event", e.to_string()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::format_timestamp_secs;

@@ -4,6 +4,8 @@ mod config;
 mod error;
 mod output;
 mod stt;
+#[cfg(feature = "standalone")]
+pub(crate) mod tui;
 
 use crate::cli::{Cli, Commands};
 use crate::error::CliResult;
@@ -21,15 +23,60 @@ async fn main() {
         colored::control::set_override(false);
     }
 
-    init_tracing(cli.verbose.tracing_level_filter());
+    let trace_buffer = init_tracing(&cli);
 
-    if let Err(error) = run(cli).await {
+    if let Err(error) = run(cli, trace_buffer).await {
         eprintln!("error: {error}");
         std::process::exit(1);
     }
 }
 
-fn init_tracing(level: tracing_subscriber::filter::LevelFilter) {
+#[cfg(feature = "standalone")]
+type OptTraceBuffer = Option<tui::TraceBuffer>;
+#[cfg(not(feature = "standalone"))]
+type OptTraceBuffer = ();
+
+fn init_tracing(cli: &Cli) -> OptTraceBuffer {
+    let level = cli.verbose.tracing_level_filter();
+
+    let wants_json = matches!(
+        cli.command,
+        Some(Commands::Transcribe {
+            args: commands::transcribe::Args {
+                format: cli::OutputFormat::Json,
+                ..
+            },
+        })
+    );
+
+    #[cfg(feature = "standalone")]
+    let wants_capture = !wants_json
+        && std::io::IsTerminal::is_terminal(&std::io::stderr())
+        && matches!(
+            cli.command,
+            Some(Commands::Transcribe { .. } | Commands::Models { .. })
+        );
+
+    #[cfg(feature = "standalone")]
+    if wants_capture {
+        let buf = tui::new_trace_buffer();
+        init_tracing_capture(level, buf.clone());
+        return Some(buf);
+    }
+
+    if wants_json {
+        init_tracing_json(level);
+    } else {
+        init_tracing_stderr(level);
+    }
+
+    #[cfg(feature = "standalone")]
+    return None;
+    #[cfg(not(feature = "standalone"))]
+    return ();
+}
+
+fn init_tracing_stderr(level: tracing_subscriber::filter::LevelFilter) {
     use tracing_subscriber::EnvFilter;
     let filter = EnvFilter::builder()
         .with_default_directive(level.into())
@@ -37,6 +84,34 @@ fn init_tracing(level: tracing_subscriber::filter::LevelFilter) {
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_writer(std::io::stderr)
+        .init();
+}
+
+fn init_tracing_json(level: tracing_subscriber::filter::LevelFilter) {
+    use tracing_subscriber::EnvFilter;
+    let filter = EnvFilter::builder()
+        .with_default_directive(level.into())
+        .from_env_lossy();
+    tracing_subscriber::fmt()
+        .json()
+        .with_env_filter(filter)
+        .with_writer(std::io::stderr)
+        .init();
+}
+
+#[cfg(feature = "standalone")]
+fn init_tracing_capture(level: tracing_subscriber::filter::LevelFilter, buffer: tui::TraceBuffer) {
+    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+
+    let filter = EnvFilter::builder()
+        .with_default_directive(level.into())
+        .from_env_lossy();
+    let capture = tui::CaptureLayer::new(buffer);
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(capture)
         .init();
 }
 
@@ -98,7 +173,7 @@ fn stt_overrides(
     }
 }
 
-async fn run(cli: Cli) -> CliResult<()> {
+async fn run(cli: Cli, trace_buffer: OptTraceBuffer) -> CliResult<()> {
     let analytics = analytics_client();
 
     if let Some(ref command) = cli.command {
@@ -106,7 +181,7 @@ async fn run(cli: Cli) -> CliResult<()> {
         track_command(&analytics, subcommand);
     }
 
-    let quiet = cli.verbose.is_silent();
+    let _quiet = cli.verbose.is_silent();
     let Cli {
         command,
         global,
@@ -116,12 +191,12 @@ async fn run(cli: Cli) -> CliResult<()> {
     match command {
         Some(Commands::Transcribe { args }) => {
             let overrides = stt_overrides(&global, Some(args.provider));
-            commands::transcribe::run(args, overrides).await
+            commands::transcribe::run(args, overrides, trace_buffer).await
         }
         #[cfg(feature = "standalone")]
-        Some(Commands::Models { command }) => commands::model::run(command).await,
+        Some(Commands::Models { command }) => commands::model::run(command, trace_buffer).await,
         #[cfg(feature = "standalone")]
-        Some(Commands::Record { args }) => commands::record::run(args, quiet).await,
+        Some(Commands::Record { args }) => commands::record::run(args, _quiet).await,
         Some(Commands::Completions { shell }) => {
             cli::generate_completions(shell);
             Ok(())

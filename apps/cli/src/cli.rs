@@ -60,7 +60,6 @@ fn parse_base_url(value: &str) -> Result<String, String> {
 #[derive(Clone, Copy, Debug, ValueEnum)]
 pub enum OutputFormat {
     Pretty,
-    Text,
     Json,
 }
 
