@@ -97,9 +97,17 @@ async fn try_connect(
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
     crate::Error,
 > {
-    let req = req
+    let mut req = req
         .into_client_request()
         .map_err(|error| crate::Error::invalid_request(error.to_string()))?;
+
+    // AWS WAF and similar firewalls reject WebSocket upgrades without a User-Agent.
+    if !req.headers().contains_key("user-agent") {
+        req.headers_mut().insert(
+            "user-agent",
+            tokio_tungstenite::tungstenite::http::HeaderValue::from_static("ws-client/0.1.0"),
+        );
+    }
 
     tracing::info!("connect_async: {}", loggable_uri(req.uri()));
 
