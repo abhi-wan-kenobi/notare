@@ -444,6 +444,153 @@ mod tests {
     }
 
     #[test]
+    fn keeps_same_provider_speaker_index_isolated_per_channel() {
+        let segments = render_transcript_segments(RenderTranscriptRequest {
+            transcripts: vec![RenderTranscriptInput {
+                started_at: Some(0),
+                words: vec![
+                    RenderTranscriptWordInput {
+                        id: "w1".to_string(),
+                        text: " john".to_string(),
+                        start_ms: 0,
+                        end_ms: 100,
+                        channel: 0,
+                    },
+                    RenderTranscriptWordInput {
+                        id: "w1b".to_string(),
+                        text: " says".to_string(),
+                        start_ms: 120,
+                        end_ms: 220,
+                        channel: 0,
+                    },
+                    RenderTranscriptWordInput {
+                        id: "w1c".to_string(),
+                        text: " hi".to_string(),
+                        start_ms: 240,
+                        end_ms: 340,
+                        channel: 0,
+                    },
+                    RenderTranscriptWordInput {
+                        id: "w2".to_string(),
+                        text: " janet".to_string(),
+                        start_ms: 500,
+                        end_ms: 600,
+                        channel: 1,
+                    },
+                    RenderTranscriptWordInput {
+                        id: "w2b".to_string(),
+                        text: " replies".to_string(),
+                        start_ms: 620,
+                        end_ms: 720,
+                        channel: 1,
+                    },
+                    RenderTranscriptWordInput {
+                        id: "w2c".to_string(),
+                        text: " back".to_string(),
+                        start_ms: 740,
+                        end_ms: 840,
+                        channel: 1,
+                    },
+                    RenderTranscriptWordInput {
+                        id: "w3".to_string(),
+                        text: " again".to_string(),
+                        start_ms: 1_000,
+                        end_ms: 1_100,
+                        channel: 0,
+                    },
+                ],
+                speaker_hints: vec![
+                    RenderTranscriptSpeakerHint {
+                        word_id: "w1".to_string(),
+                        data: SpeakerHintData::ProviderSpeakerIndex {
+                            speaker_index: 0,
+                            provider: None,
+                            channel: Some(0),
+                        },
+                    },
+                    RenderTranscriptSpeakerHint {
+                        word_id: "w1".to_string(),
+                        data: SpeakerHintData::UserSpeakerAssignment {
+                            human_id: "john".to_string(),
+                        },
+                    },
+                    RenderTranscriptSpeakerHint {
+                        word_id: "w1b".to_string(),
+                        data: SpeakerHintData::ProviderSpeakerIndex {
+                            speaker_index: 0,
+                            provider: None,
+                            channel: Some(0),
+                        },
+                    },
+                    RenderTranscriptSpeakerHint {
+                        word_id: "w1c".to_string(),
+                        data: SpeakerHintData::ProviderSpeakerIndex {
+                            speaker_index: 0,
+                            provider: None,
+                            channel: Some(0),
+                        },
+                    },
+                    RenderTranscriptSpeakerHint {
+                        word_id: "w2".to_string(),
+                        data: SpeakerHintData::ProviderSpeakerIndex {
+                            speaker_index: 0,
+                            provider: None,
+                            channel: Some(1),
+                        },
+                    },
+                    RenderTranscriptSpeakerHint {
+                        word_id: "w2".to_string(),
+                        data: SpeakerHintData::UserSpeakerAssignment {
+                            human_id: "janet".to_string(),
+                        },
+                    },
+                    RenderTranscriptSpeakerHint {
+                        word_id: "w2b".to_string(),
+                        data: SpeakerHintData::ProviderSpeakerIndex {
+                            speaker_index: 0,
+                            provider: None,
+                            channel: Some(1),
+                        },
+                    },
+                    RenderTranscriptSpeakerHint {
+                        word_id: "w2c".to_string(),
+                        data: SpeakerHintData::ProviderSpeakerIndex {
+                            speaker_index: 0,
+                            provider: None,
+                            channel: Some(1),
+                        },
+                    },
+                    RenderTranscriptSpeakerHint {
+                        word_id: "w3".to_string(),
+                        data: SpeakerHintData::ProviderSpeakerIndex {
+                            speaker_index: 0,
+                            provider: None,
+                            channel: Some(0),
+                        },
+                    },
+                ],
+            }],
+            participant_human_ids: vec![],
+            self_human_id: None,
+            humans: vec![
+                RenderTranscriptHuman {
+                    human_id: "john".to_string(),
+                    name: "John".to_string(),
+                },
+                RenderTranscriptHuman {
+                    human_id: "janet".to_string(),
+                    name: "Janet".to_string(),
+                },
+            ],
+        });
+
+        assert_eq!(segments.len(), 3);
+        assert_eq!(segments[0].speaker_label, "John");
+        assert_eq!(segments[1].speaker_label, "Janet");
+        assert_eq!(segments[2].speaker_label, "John");
+    }
+
+    #[test]
     fn normalizes_multi_row_offsets_from_earliest_transcript() {
         let segments = render_transcript_segments(RenderTranscriptRequest {
             transcripts: vec![

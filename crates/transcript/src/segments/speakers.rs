@@ -25,7 +25,8 @@ pub(super) fn create_speaker_state(
         .collect();
 
     let mut assignment_by_word_index: HashMap<usize, SpeakerIdentity> = HashMap::new();
-    let mut human_id_by_speaker_index: HashMap<i32, String> = HashMap::new();
+    let mut human_id_by_scoped_speaker: HashMap<(crate::ChannelProfile, i32), String> =
+        HashMap::new();
 
     for hint in speaker_hints {
         if let Some(word_index) = resolve_hint_target(hint, normalized_words.len(), &id_to_index) {
@@ -43,14 +44,17 @@ pub(super) fn create_speaker_state(
             if let (Some(speaker_index), Some(human_id)) =
                 (entry.speaker_index, entry.human_id.as_ref())
             {
-                human_id_by_speaker_index.insert(speaker_index, human_id.clone());
+                human_id_by_scoped_speaker.insert(
+                    (normalized_words[word_index].channel, speaker_index),
+                    human_id.clone(),
+                );
             }
         }
     }
 
     SpeakerState {
         assignment_by_word_index,
-        human_id_by_speaker_index,
+        human_id_by_scoped_speaker,
         human_id_by_channel: HashMap::new(),
         last_speaker_by_channel: HashMap::new(),
         complete_channels,
@@ -118,7 +122,10 @@ fn apply_identity_rules(
     let mut identity = assignment.cloned().unwrap_or_default();
 
     if let (Some(speaker_index), None) = (identity.speaker_index, &identity.human_id) {
-        if let Some(human_id) = state.human_id_by_speaker_index.get(&speaker_index) {
+        if let Some(human_id) = state
+            .human_id_by_scoped_speaker
+            .get(&(word.channel, speaker_index))
+        {
             identity.human_id = Some(human_id.clone());
         }
     }
@@ -155,8 +162,8 @@ fn remember_identity(
 
     if let (Some(speaker_index), Some(human_id)) = (identity.speaker_index, &identity.human_id) {
         state
-            .human_id_by_speaker_index
-            .insert(speaker_index, human_id.clone());
+            .human_id_by_scoped_speaker
+            .insert((word.channel, speaker_index), human_id.clone());
     }
 
     if state.complete_channels.contains(&word.channel) && identity.speaker_index.is_none() {

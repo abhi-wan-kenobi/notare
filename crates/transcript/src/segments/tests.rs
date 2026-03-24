@@ -239,6 +239,28 @@ fn propagates_human_id_across_shared_speaker_index() {
 }
 
 #[test]
+fn does_not_leak_human_id_across_channels_with_same_speaker_index() {
+    let finals = vec![
+        fw("0", 0, 100, 0),
+        fw("1", 200, 300, 1),
+        fw("2", 400, 500, 0),
+    ];
+    let hints = vec![
+        hint_idx("w-0", 0),
+        hint_human_id(WordRef::FinalWordId("w-0".to_string()), "john"),
+        hint_idx("w-1", 0),
+        hint_human_id(WordRef::FinalWordId("w-1".to_string()), "janet"),
+        hint_idx("w-2", 0),
+    ];
+    let result = build_segments(&finals, &[], &hints, None);
+
+    assert_eq!(result.len(), 3);
+    assert_eq!(result[0].key.speaker_human_id.as_deref(), Some("john"));
+    assert_eq!(result[1].key.speaker_human_id.as_deref(), Some("janet"));
+    assert_eq!(result[2].key.speaker_human_id.as_deref(), Some("john"));
+}
+
+#[test]
 fn partial_word_inherits_previous_segment_key() {
     let finals = vec![fw("0", 0, 90, 0)];
     let partials = vec![pw("1", 140, 220, 0)];
