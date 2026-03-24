@@ -2,13 +2,14 @@ use axum::{
     Router,
     body::Body,
     extract::State,
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::post,
 };
 use reqwest::Client;
 
 const DEFAULT_UPSTREAM_BASE: &str = "https://104.198.76.3";
+const DEVICE_FINGERPRINT_HEADER: &str = "x-device-fingerprint";
 
 #[derive(Clone)]
 pub struct CactusProxyConfig {
@@ -38,7 +39,15 @@ pub fn router(config: CactusProxyConfig) -> Router {
         .with_state(state)
 }
 
-async fn proxy(state: &AppState, path: &str, body: bytes::Bytes) -> Response {
+async fn proxy(state: &AppState, path: &str, headers: &mut HeaderMap, body: bytes::Bytes) -> Response {
+    let fingerprint = headers
+        .remove(DEVICE_FINGERPRINT_HEADER)
+        .and_then(|v| v.to_str().ok().map(String::from));
+
+    if let Some(fp) = fingerprint {
+        tracing::info!(enduser.pseudo.id = %fp, "cactus_proxy_{}", path);
+    }
+
     let base = state
         .config
         .upstream_base
@@ -78,14 +87,26 @@ async fn proxy(state: &AppState, path: &str, body: bytes::Bytes) -> Response {
     }
 }
 
-async fn proxy_text(State(state): State<AppState>, body: bytes::Bytes) -> Response {
-    proxy(&state, "text", body).await
+async fn proxy_text(
+    State(state): State<AppState>,
+    mut headers: HeaderMap,
+    body: bytes::Bytes,
+) -> Response {
+    proxy(&state, "text", &mut headers, body).await
 }
 
-async fn proxy_vlm(State(state): State<AppState>, body: bytes::Bytes) -> Response {
-    proxy(&state, "vlm", body).await
+async fn proxy_vlm(
+    State(state): State<AppState>,
+    mut headers: HeaderMap,
+    body: bytes::Bytes,
+) -> Response {
+    proxy(&state, "vlm", &mut headers, body).await
 }
 
-async fn proxy_transcribe(State(state): State<AppState>, body: bytes::Bytes) -> Response {
-    proxy(&state, "transcribe", body).await
+async fn proxy_transcribe(
+    State(state): State<AppState>,
+    mut headers: HeaderMap,
+    body: bytes::Bytes,
+) -> Response {
+    proxy(&state, "transcribe", &mut headers, body).await
 }

@@ -28,6 +28,7 @@ pub struct CloudConfig {
     pub api_key: Option<String>,
     pub base_url: Option<String>,
     pub threshold: Option<f32>,
+    pub headers: Vec<(String, String)>,
 }
 
 impl CloudConfig {
@@ -38,6 +39,15 @@ impl CloudConfig {
         }
         if let Some(url) = &self.base_url {
             unsafe { std::env::set_var("CACTUS_CLOUD_API_BASE", url) };
+        }
+        if !self.headers.is_empty() {
+            let value = self
+                .headers
+                .iter()
+                .map(|(k, v)| format!("{k}={v}"))
+                .collect::<Vec<_>>()
+                .join(",");
+            unsafe { std::env::set_var("CACTUS_CLOUD_HEADERS", value) };
         }
     }
 }

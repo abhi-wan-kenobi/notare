@@ -170,6 +170,10 @@ impl<'a, R: Runtime, M: Manager<R>> LocalStt<'a, R, M> {
                     let cactus_config = CactusConfig {
                         cloud: hypr_transcribe_cactus::CloudConfig {
                             base_url: option_env!("CACTUS_CLOUD_API_BASE").map(ToString::to_string),
+                            headers: vec![(
+                                "x-device-fingerprint".to_string(),
+                                hypr_host::fingerprint(),
+                            )],
                             ..Default::default()
                         },
                         ..Default::default()
