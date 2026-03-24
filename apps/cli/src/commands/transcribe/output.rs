@@ -28,35 +28,48 @@ pub(super) fn format_pretty(response: &owhisper_interface::batch::Response) -> S
     let mut segments: Vec<Segment> = Vec::new();
     let num_channels = response.results.channels.len();
 
+    struct TaggedWord<'a> {
+        text: &'a str,
+        start: f64,
+        end: f64,
+        speaker: usize,
+    }
+
+    let mut all_words: Vec<TaggedWord> = Vec::new();
     for (ch_idx, channel) in response.results.channels.iter().enumerate() {
         let Some(alt) = channel.alternatives.first() else {
             continue;
         };
-
         for word in &alt.words {
-            let text = word
-                .punctuated_word
-                .as_deref()
-                .unwrap_or(word.word.as_str());
+            all_words.push(TaggedWord {
+                text: word
+                    .punctuated_word
+                    .as_deref()
+                    .unwrap_or(word.word.as_str()),
+                start: word.start,
+                end: word.end,
+                speaker: word.speaker.unwrap_or(ch_idx),
+            });
+        }
+    }
+    all_words.sort_by(|a, b| a.start.partial_cmp(&b.start).unwrap_or(std::cmp::Ordering::Equal));
 
-            let speaker = word.speaker.unwrap_or(ch_idx);
+    for word in &all_words {
+        let should_split = segments
+            .last()
+            .map(|seg| word.start - seg.end > PAUSE_THRESHOLD_SECS || word.speaker != seg.channel)
+            .unwrap_or(true);
 
-            let should_split = segments
-                .last()
-                .map(|seg| word.start - seg.end > PAUSE_THRESHOLD_SECS || speaker != seg.channel)
-                .unwrap_or(true);
-
-            if should_split {
-                segments.push(Segment {
-                    start: word.start,
-                    end: word.end,
-                    words: vec![text],
-                    channel: speaker,
-                });
-            } else if let Some(seg) = segments.last_mut() {
-                seg.end = word.end;
-                seg.words.push(text);
-            }
+        if should_split {
+            segments.push(Segment {
+                start: word.start,
+                end: word.end,
+                words: vec![word.text],
+                channel: word.speaker,
+            });
+        } else if let Some(seg) = segments.last_mut() {
+            seg.end = word.end;
+            seg.words.push(word.text);
         }
     }
 

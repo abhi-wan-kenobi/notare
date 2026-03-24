@@ -15,8 +15,13 @@ use ratatui::{Terminal, TerminalOptions, Viewport};
 pub const SPINNER: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
 pub fn truncate_line(s: &str, max: usize) -> &str {
-    match s.char_indices().nth(max) {
-        Some((byte_idx, _)) => &s[..byte_idx],
+    let char_count = s.chars().count();
+    if char_count <= max {
+        return s;
+    }
+    let skip = char_count - max;
+    match s.char_indices().nth(skip) {
+        Some((byte_idx, _)) => &s[byte_idx..],
         None => s,
     }
 }
@@ -154,10 +159,24 @@ impl InlineViewport {
     }
 
     pub fn clear(&mut self) -> io::Result<()> {
+        use crossterm::{cursor, execute, terminal};
+
+        let area = self.terminal.get_frame().area();
+        let height = area.height;
+
         self.terminal.draw(|frame| {
             let area = frame.area();
+            frame.render_widget(ratatui::widgets::Clear, area);
             frame.render_widget(Paragraph::new(""), area);
         })?;
+
+        let mut stderr = io::stderr();
+        execute!(
+            stderr,
+            cursor::MoveUp(height),
+            terminal::Clear(terminal::ClearType::FromCursorDown)
+        )?;
+
         if self.raw_mode {
             crossterm::terminal::disable_raw_mode()?;
         }
