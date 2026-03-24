@@ -22,13 +22,19 @@ pub struct Cli {
 
 #[derive(clap::Args)]
 pub struct GlobalArgs {
-    #[arg(long, global = true, env = "CHAR_BASE_URL", value_parser = parse_base_url)]
+    #[arg(long, global = true, env = "CHAR_BASE_URL", hide_env_values = true, value_parser = parse_base_url)]
     pub base_url: Option<String>,
 
     #[arg(long, global = true, env = "CHAR_API_KEY", hide_env_values = true)]
     pub api_key: Option<String>,
 
-    #[arg(short = 'm', long, global = true, env = "CHAR_MODEL")]
+    #[arg(
+        short = 'm',
+        long,
+        global = true,
+        env = "CHAR_MODEL",
+        hide_env_values = true
+    )]
     pub model: Option<String>,
 
     #[arg(
@@ -36,6 +42,7 @@ pub struct GlobalArgs {
         long,
         global = true,
         env = "CHAR_LANGUAGE",
+        hide_env_values = true,
         default_value = "en"
     )]
     pub language: String,
@@ -43,7 +50,13 @@ pub struct GlobalArgs {
     #[arg(long, global = true)]
     pub no_color: bool,
 
-    #[arg(long, global = true, env = "CHAR_BASE", value_name = "DIR")]
+    #[arg(
+        long,
+        global = true,
+        env = "CHAR_BASE",
+        hide_env_values = true,
+        value_name = "DIR"
+    )]
     pub base: Option<std::path::PathBuf>,
 }
 
@@ -83,7 +96,7 @@ pub enum Commands {
         shell: clap_complete::Shell,
     },
     #[cfg(feature = "standalone")]
-    /// Record audio to a WAV file
+    /// Record audio to an MP3 file
     Record {
         #[command(flatten)]
         args: crate::commands::record::Args,

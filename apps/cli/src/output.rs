@@ -56,9 +56,6 @@ async fn write_bytes_to(output: Option<&Path>, bytes: Vec<u8>) -> CliResult<()> 
     std::io::stdout()
         .write_all(&bytes)
         .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
-    std::io::stdout()
-        .write_all(b"\n")
-        .map_err(|e| CliError::operation_failed("write output", e.to_string()))?;
     Ok(())
 }
 
@@ -67,12 +64,14 @@ pub async fn write_text(output: Option<&Path>, text: String) -> CliResult<()> {
 }
 
 pub async fn write_json(output: Option<&Path>, value: &impl serde::Serialize) -> CliResult<()> {
-    let bytes: Vec<u8> = if std::io::stdout().is_terminal() {
+    let pretty = output.is_some() || std::io::stdout().is_terminal();
+    let mut bytes: Vec<u8> = if pretty {
         serde_json::to_vec_pretty(value)
     } else {
         serde_json::to_vec(value)
     }
     .map_err(|e| CliError::operation_failed("serialize response", e.to_string()))?;
+    bytes.push(b'\n');
 
     write_bytes_to(output, bytes).await
 }

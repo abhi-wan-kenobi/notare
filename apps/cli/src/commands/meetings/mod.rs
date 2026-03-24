@@ -33,11 +33,7 @@ pub enum Commands {
     },
 }
 
-pub async fn run(
-    pool: &SqlitePool,
-    command: Commands,
-    _global: &crate::cli::GlobalArgs,
-) -> CliResult<()> {
+pub async fn run(pool: &SqlitePool, command: Commands) -> CliResult<()> {
     match command {
         Commands::List => list(pool).await,
         Commands::View { id } => view(pool, &id).await,

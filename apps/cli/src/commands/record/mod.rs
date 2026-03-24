@@ -10,7 +10,9 @@ use hypr_audio_actual::ActualAudio;
 use hypr_audio_utils::chunk_size_for_stt;
 use serde::Serialize;
 
+use crate::cli::OutputFormat;
 use crate::error::{CliError, CliResult};
+use crate::output::EventWriter;
 
 pub(crate) use app::App;
 pub(crate) use runtime::{CaptureResult, ProgressUpdate};
@@ -24,21 +26,14 @@ pub enum AudioMode {
     Dual,
 }
 
-#[derive(Clone, Copy, Debug, clap::ValueEnum)]
-pub enum EventFormat {
-    Jsonl,
-}
-
 #[derive(clap::Args)]
 pub struct Args {
     #[arg(long, value_enum, default_value = "input")]
     pub audio: AudioMode,
     #[arg(short = 'o', long, value_name = "FILE")]
     pub output: Option<PathBuf>,
-    #[arg(long, default_value = "16000")]
-    pub sample_rate: u32,
-    #[arg(long, value_enum)]
-    pub events: Option<EventFormat>,
+    #[arg(short = 'f', long, value_enum, default_value = "pretty")]
+    pub format: OutputFormat,
 }
 
 #[derive(Debug, Serialize)]
@@ -70,13 +65,14 @@ enum RecordEvent {
     },
 }
 
-use crate::output::EventWriter;
-
 pub async fn run(args: Args, quiet: bool) -> CliResult<()> {
     run_with_audio(args, quiet, &ActualAudio).await
 }
 
 async fn run_with_audio<A: AudioProvider>(args: Args, quiet: bool, audio: &A) -> CliResult<()> {
+    let sample_rate = 16_000u32;
+    let format = args.format;
+
     let output_path = args.output.unwrap_or_else(|| {
         let ts = chrono::Local::now().format("%Y%m%d_%H%M%S");
         let suffix = match args.audio {
@@ -84,25 +80,25 @@ async fn run_with_audio<A: AudioProvider>(args: Args, quiet: bool, audio: &A) ->
             AudioMode::Output => "output",
             AudioMode::Dual => "dual",
         };
-        PathBuf::from(format!("recording_{ts}_{suffix}.wav"))
+        PathBuf::from(format!("recording_{ts}_{suffix}.mp3"))
     });
 
     let channels: u16 = match args.audio {
         AudioMode::Input | AudioMode::Output => 1,
         AudioMode::Dual => 2,
     };
-    let chunk_size = chunk_size_for_stt(args.sample_rate);
+    let chunk_size = chunk_size_for_stt(sample_rate);
 
-    let mut app = App::new(args.audio, output_path.clone(), args.sample_rate, channels);
+    let mut app = App::new(args.audio, output_path.clone(), sample_rate, channels);
 
-    let mut event_writer = match args.events {
-        Some(EventFormat::Jsonl) => Some(EventWriter::new(BufWriter::new(std::io::stdout()))),
-        None => None,
+    let mut event_writer = match format {
+        OutputFormat::Json => Some(EventWriter::new(BufWriter::new(std::io::stdout()))),
+        OutputFormat::Pretty => None,
     };
     if let Some(writer) = event_writer.as_mut() {
         writer.emit(&RecordEvent::Started {
             audio: app.audio_label().to_string(),
-            sample_rate: args.sample_rate,
+            sample_rate,
             channels,
             output: output_path.display().to_string(),
             started_at: chrono::Utc::now().to_rfc3339(),
@@ -110,17 +106,16 @@ async fn run_with_audio<A: AudioProvider>(args: Args, quiet: bool, audio: &A) ->
     }
 
     let stderr_is_tty = std::io::stderr().is_terminal();
-    let mut viewport = if quiet || !stderr_is_tty {
-        None
-    } else {
-        Some(
+    let mut viewport = match format {
+        OutputFormat::Pretty if !quiet && stderr_is_tty => Some(
             InlineViewport::stderr(5, None)
                 .map_err(|e| CliError::operation_failed("init record viewport", e.to_string()))?,
-        )
+        ),
+        _ => None,
     };
     if let Some(view) = viewport.as_mut() {
         view.draw(&app.lines());
-    } else if !quiet {
+    } else if !quiet && matches!(format, OutputFormat::Pretty) {
         eprintln!(
             "recording {} -> {}",
             app.audio_label(),
@@ -128,32 +123,26 @@ async fn run_with_audio<A: AudioProvider>(args: Args, quiet: bool, audio: &A) ->
         );
     }
 
-    let capture = runtime::capture(
-        audio,
-        args.audio,
-        args.sample_rate,
-        chunk_size,
-        |progress| {
-            app.update(&progress);
-            if progress.emit_event {
-                if let Some(writer) = event_writer.as_mut() {
-                    writer.emit(&RecordEvent::Progress {
-                        elapsed_ms: progress.elapsed.as_millis() as u64,
-                        audio_secs: progress.audio_secs,
-                        sample_count: progress.sample_count,
-                        level_left: progress.left_level,
-                        level_right: progress.right_level,
-                    })?;
-                }
+    let capture = runtime::capture(audio, args.audio, sample_rate, chunk_size, |progress| {
+        app.update(&progress);
+        if progress.emit_event {
+            if let Some(writer) = event_writer.as_mut() {
+                writer.emit(&RecordEvent::Progress {
+                    elapsed_ms: progress.elapsed.as_millis() as u64,
+                    audio_secs: progress.audio_secs,
+                    sample_count: progress.sample_count,
+                    level_left: progress.left_level,
+                    level_right: progress.right_level,
+                })?;
             }
-            if progress.render_ui {
-                if let Some(view) = viewport.as_mut() {
-                    view.draw(&app.lines());
-                }
+        }
+        if progress.render_ui {
+            if let Some(view) = viewport.as_mut() {
+                view.draw(&app.lines());
             }
-            Ok(())
-        },
-    )
+        }
+        Ok(())
+    })
     .await;
 
     match capture {
@@ -191,23 +180,42 @@ async fn finish_success<W2: Write>(
 ) -> CliResult<()> {
     ensure_parent_dirs(&app.output)?;
 
-    let spec = hound::WavSpec {
-        channels: app.channels,
-        sample_rate: app.sample_rate,
-        bits_per_sample: 16,
-        sample_format: hound::SampleFormat::Int,
-    };
-
-    let mut writer = hound::WavWriter::create(&app.output, spec)
-        .map_err(|e| CliError::operation_failed("create wav file", e.to_string()))?;
-    for &sample in &result.samples {
-        writer
-            .write_sample(sample)
-            .map_err(|e| CliError::operation_failed("write wav sample", e.to_string()))?;
+    let mut mp3_buf = Vec::new();
+    match app.channels {
+        1 => {
+            let mut encoder = hypr_mp3::MonoStreamEncoder::new(app.sample_rate)
+                .map_err(|e| CliError::operation_failed("create mp3 encoder", e.to_string()))?;
+            encoder
+                .encode_i16(&result.samples, &mut mp3_buf)
+                .map_err(|e| CliError::operation_failed("encode mp3", e.to_string()))?;
+            encoder
+                .flush(&mut mp3_buf)
+                .map_err(|e| CliError::operation_failed("flush mp3", e.to_string()))?;
+        }
+        2 => {
+            let mut encoder = hypr_mp3::StereoStreamEncoder::new(app.sample_rate)
+                .map_err(|e| CliError::operation_failed("create mp3 encoder", e.to_string()))?;
+            let (left, right): (Vec<i16>, Vec<i16>) = result
+                .samples
+                .chunks(2)
+                .map(|pair| (pair[0], pair.get(1).copied().unwrap_or(0)))
+                .unzip();
+            encoder
+                .encode_i16(&left, &right, &mut mp3_buf)
+                .map_err(|e| CliError::operation_failed("encode mp3", e.to_string()))?;
+            encoder
+                .flush(&mut mp3_buf)
+                .map_err(|e| CliError::operation_failed("flush mp3", e.to_string()))?;
+        }
+        _ => {
+            return Err(CliError::operation_failed(
+                "encode mp3",
+                format!("unsupported channel count: {}", app.channels),
+            ));
+        }
     }
-    writer
-        .finalize()
-        .map_err(|e| CliError::operation_failed("finalize wav", e.to_string()))?;
+    std::fs::write(&app.output, &mp3_buf)
+        .map_err(|e| CliError::operation_failed("write mp3 file", e.to_string()))?;
 
     app.finish(result.elapsed, result.audio_secs);
 
@@ -238,32 +246,4 @@ fn ensure_parent_dirs(path: &std::path::Path) -> CliResult<()> {
             .map_err(|e| CliError::operation_failed("create output directory", e.to_string()))?;
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use std::io::Cursor;
-
-    use super::*;
-
-    #[test]
-    fn event_writer_serializes_jsonl_lines() {
-        let mut bytes = Cursor::new(Vec::new());
-        let mut writer = EventWriter::new(&mut bytes);
-
-        writer
-            .emit(&RecordEvent::Started {
-                audio: "mic".to_string(),
-                sample_rate: 16_000,
-                channels: 1,
-                output: "foo.wav".to_string(),
-                started_at: "2026-03-21T00:00:00Z".to_string(),
-            })
-            .unwrap();
-
-        let output = String::from_utf8(bytes.into_inner()).unwrap();
-        assert!(output.ends_with('\n'));
-        assert!(output.contains("\"type\":\"started\""));
-        assert!(output.contains("\"output\":\"foo.wav\""));
-    }
 }

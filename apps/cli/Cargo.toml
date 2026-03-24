@@ -39,7 +39,7 @@ clio = { version = "0.3", features = ["clap-parse"] }
 colored = "3"
 crossterm = { workspace = true, optional = true }
 dirs = { workspace = true }
-hound = { workspace = true, optional = true }
+hypr-mp3 = { workspace = true, optional = true }
 open = { workspace = true }
 ratatui = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["json"] }
@@ -87,7 +87,7 @@ standalone = [
   "dep:hypr-audio",
   "dep:hypr-audio-actual",
   "dep:hypr-audio-utils",
-  "dep:hound",
+  "dep:hypr-mp3",
   "dep:hypr-local-stt-core",
   "dep:hypr-model-downloader",
   "dep:ratatui",

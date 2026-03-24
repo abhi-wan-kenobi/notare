@@ -62,6 +62,25 @@ main h3::before {
   color: #525252;
 }
 
+/* ---- Inline code ---- */
+
+main code {
+  color: #e5e5e5;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.05rem 0.15rem;
+  border-radius: 0.125rem;
+}
+
+main code::before {
+  content: "`";
+  color: #525252;
+}
+
+main code::after {
+  content: "`";
+  color: #525252;
+}
+
 /* ---- Blinking cursor ---- */
 
 @keyframes blink {

@@ -46,6 +46,11 @@ fn init_tracing(cli: &Cli) -> OptTraceBuffer {
                 format: cli::OutputFormat::Json,
                 ..
             },
+        }) | Some(Commands::Record {
+            args: commands::record::Args {
+                format: cli::OutputFormat::Json,
+                ..
+            },
         })
     );
 
@@ -181,7 +186,7 @@ async fn run(cli: Cli, trace_buffer: OptTraceBuffer) -> CliResult<()> {
         track_command(&analytics, subcommand);
     }
 
-    let _quiet = cli.verbose.is_silent();
+    let quiet = cli.verbose.is_silent();
     let Cli {
         command,
         global,
@@ -196,7 +201,7 @@ async fn run(cli: Cli, trace_buffer: OptTraceBuffer) -> CliResult<()> {
         #[cfg(feature = "standalone")]
         Some(Commands::Models { command }) => commands::model::run(command, trace_buffer).await,
         #[cfg(feature = "standalone")]
-        Some(Commands::Record { args }) => commands::record::run(args, _quiet).await,
+        Some(Commands::Record { args }) => commands::record::run(args, quiet).await,
         Some(Commands::Completions { shell }) => {
             cli::generate_completions(shell);
             Ok(())
@@ -234,7 +239,7 @@ async fn run(cli: Cli, trace_buffer: OptTraceBuffer) -> CliResult<()> {
         #[cfg(feature = "desktop")]
         Some(Commands::Meetings { command }) => {
             let pool = init_pool().await?;
-            commands::meetings::run(&pool, command, &global).await
+            commands::meetings::run(&pool, command).await
         }
         #[cfg(feature = "desktop")]
         Some(Commands::Humans { command }) => {
