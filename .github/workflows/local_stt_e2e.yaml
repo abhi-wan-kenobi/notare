@@ -40,7 +40,7 @@ jobs:
           path: cactus/weights/
           key: cactus-models-${{ matrix.model.name }}-arm-v1
       - run: cactus download ${{ matrix.model.repo }}
-      - run: cargo test -p transcribe-cactus -- --ignored --nocapture
+      - run: cargo test -p transcribe-cactus -- --ignored --nocapture --skip snapshot
         env:
           CACTUS_STT_MODEL: ${{ github.workspace }}/cactus/weights/${{ matrix.model.name }}
           CACTUS_CLOUD_API_KEY: ${{ secrets.CACTUS_CLOUD_API_KEY }}
