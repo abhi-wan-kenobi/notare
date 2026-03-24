@@ -2,7 +2,7 @@
 use std::time::Duration;
 
 use futures_util::StreamExt;
-use hypr_vad_chunking::VadExt;
+use vad_chunking::VadExt;
 
 #[tokio::main]
 async fn main() {
