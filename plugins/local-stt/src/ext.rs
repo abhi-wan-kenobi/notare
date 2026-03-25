@@ -33,12 +33,12 @@ impl<R: Runtime> ModelDownloaderRuntime<LocalModel> for TauriModelRuntime<R> {
             .unwrap_or_else(|_| dirs::data_dir().unwrap_or_default().join("models")))
     }
 
-    fn emit_progress(&self, model: &LocalModel, progress: i8) {
-        let _ = DownloadProgressPayload {
+    fn emit_progress(&self, model: &LocalModel, status: hypr_model_downloader::DownloadStatus) {
+        let payload = DownloadProgressPayload {
             model: model.clone(),
-            progress,
-        }
-        .emit(&self.app_handle);
+            status,
+        };
+        let _ = payload.emit(&self.app_handle);
     }
 }
 

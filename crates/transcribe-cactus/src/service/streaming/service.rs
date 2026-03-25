@@ -29,6 +29,7 @@ pub struct TranscribeService {
 
 pub const LISTEN_PATH: &str = "/v1/listen";
 pub const HEALTH_PATH: &str = "/health";
+pub const WARMUP_PATH: &str = "/warmup";
 
 impl TranscribeService {
     pub fn builder() -> TranscribeServiceBuilder {
@@ -40,9 +41,14 @@ impl TranscribeService {
         F: FnOnce(String) -> Fut + Clone + Send + Sync + 'static,
         Fut: std::future::Future<Output = (StatusCode, String)> + Send,
     {
+        let model_path = self.model_path.clone();
         let svc = axum::error_handling::HandleError::new(self, on_error);
         axum::Router::new()
             .route(HEALTH_PATH, axum::routing::get(|| async { "ok" }))
+            .route(
+                WARMUP_PATH,
+                axum::routing::post(move || warmup_handler(model_path)),
+            )
             .route_service(LISTEN_PATH, svc)
     }
 }
@@ -179,6 +185,20 @@ impl Service<Request<Body>> for TranscribeService {
                 }
             }
         })
+    }
+}
+
+async fn warmup_handler(model_path: PathBuf) -> Response {
+    match tokio::task::spawn_blocking(move || crate::service::build_model(&model_path)).await {
+        Ok(Ok(_model)) => StatusCode::OK.into_response(),
+        Ok(Err(e)) => {
+            tracing::warn!(error = %e, "warmup_failed");
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "warmup_join_error");
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
+        }
     }
 }
 

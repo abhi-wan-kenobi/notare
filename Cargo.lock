@@ -11093,6 +11093,8 @@ version = "0.1.0"
 dependencies = [
  "download-interface",
  "file",
+ "serde",
+ "specta",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
