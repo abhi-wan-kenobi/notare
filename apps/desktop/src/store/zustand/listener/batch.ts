@@ -5,11 +5,7 @@ import type { BatchResponse, StreamResponse } from "@hypr/plugin-listener2";
 import type { BatchPersistCallback } from "./transcript";
 import { transformWordEntries } from "./utils";
 
-import {
-  ChannelProfile,
-  type RuntimeSpeakerHint,
-  type WordLike,
-} from "~/stt/segment";
+import { type RuntimeSpeakerHint, type WordLike } from "~/stt/segment";
 
 export type BatchPhase = "importing" | "transcribing";
 
@@ -229,7 +225,7 @@ function transformBatch(
   const allHints: RuntimeSpeakerHint[] = [];
   let wordOffset = 0;
 
-  response.results.channels.forEach((channel) => {
+  response.results.channels.forEach((channel, channelIndex) => {
     const alternative = channel.alternatives[0];
     if (!alternative || !alternative.words || !alternative.words.length) {
       return;
@@ -238,7 +234,7 @@ function transformBatch(
     const [words, hints] = transformWordEntries(
       alternative.words,
       alternative.transcript,
-      ChannelProfile.MixedCapture,
+      channelIndex,
     );
 
     hints.forEach((hint) => {
