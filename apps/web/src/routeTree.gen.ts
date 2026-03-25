@@ -2852,7 +2852,6 @@ declare module '@tanstack/react-router' {
 interface ViewAppRouteRouteChildren {
   ViewAppAccountRoute: typeof ViewAppAccountRoute
   ViewAppCheckoutRoute: typeof ViewAppCheckoutRoute
-  ViewAppFileTranscriptionRoute: typeof ViewAppFileTranscriptionRoute
   ViewAppIntegrationRoute: typeof ViewAppIntegrationRoute
   ViewAppIndexRoute: typeof ViewAppIndexRoute
 }
@@ -2860,7 +2859,6 @@ interface ViewAppRouteRouteChildren {
 const ViewAppRouteRouteChildren: ViewAppRouteRouteChildren = {
   ViewAppAccountRoute: ViewAppAccountRoute,
   ViewAppCheckoutRoute: ViewAppCheckoutRoute,
-  ViewAppFileTranscriptionRoute: ViewAppFileTranscriptionRoute,
   ViewAppIntegrationRoute: ViewAppIntegrationRoute,
   ViewAppIndexRoute: ViewAppIndexRoute,
 }
@@ -2907,7 +2905,6 @@ interface ViewRouteRouteChildren {
   ViewBrandRoute: typeof ViewBrandRoute
   ViewChooseRoute: typeof ViewChooseRoute
   ViewEnterpriseRoute: typeof ViewEnterpriseRoute
-  ViewFileTranscriptionRoute: typeof ViewFileTranscriptionRoute
   ViewFreeRoute: typeof ViewFreeRoute
   ViewOpensourceRoute: typeof ViewOpensourceRoute
   ViewOssFriendsRoute: typeof ViewOssFriendsRoute
@@ -2993,7 +2990,6 @@ const ViewRouteRouteChildren: ViewRouteRouteChildren = {
   ViewBrandRoute: ViewBrandRoute,
   ViewChooseRoute: ViewChooseRoute,
   ViewEnterpriseRoute: ViewEnterpriseRoute,
-  ViewFileTranscriptionRoute: ViewFileTranscriptionRoute,
   ViewFreeRoute: ViewFreeRoute,
   ViewOpensourceRoute: ViewOpensourceRoute,
   ViewOssFriendsRoute: ViewOssFriendsRoute,
