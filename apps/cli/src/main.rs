@@ -193,7 +193,7 @@ async fn run(cli: Cli, trace_buffer: OptTraceBuffer) -> CliResult<()> {
         track_command(&analytics, subcommand);
     }
 
-    let quiet = cli.verbose.is_silent();
+    let _quiet = cli.verbose.is_silent();
     let Cli {
         command,
         global,

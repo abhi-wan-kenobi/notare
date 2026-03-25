@@ -7,11 +7,11 @@ pub(super) struct Segment {
 
 pub(super) fn build_segments(
     words: &[hypr_transcript::FinalizedWord],
-    hints: &[hypr_db_app::PersistableSpeakerHint],
+    hints: &[hypr_db_app::StorageSpeakerHint],
 ) -> Vec<Segment> {
-    use hypr_transcript::SpeakerHintData;
+    use hypr_db_app::StorageSpeakerHintData;
 
-    let hint_map: std::collections::HashMap<&str, &hypr_db_app::PersistableSpeakerHint> =
+    let hint_map: std::collections::HashMap<&str, &hypr_db_app::StorageSpeakerHint> =
         hints.iter().map(|h| (h.word_id.as_str(), h)).collect();
 
     let mut segments: Vec<Segment> = Vec::new();
@@ -20,8 +20,8 @@ pub(super) fn build_segments(
         let speaker = hint_map
             .get(word.id.as_str())
             .map(|h| match &h.data {
-                SpeakerHintData::UserSpeakerAssignment { human_id } => human_id.clone(),
-                SpeakerHintData::ProviderSpeakerIndex {
+                StorageSpeakerHintData::UserSpeakerAssignment { human_id } => human_id.clone(),
+                StorageSpeakerHintData::ProviderSpeakerIndex {
                     speaker_index,
                     channel,
                     ..
