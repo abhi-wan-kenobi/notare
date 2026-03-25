@@ -237,11 +237,11 @@ async fn run(cli: Cli, trace_buffer: OptTraceBuffer) -> CliResult<()> {
             Ok(())
         }
 
-        #[cfg(feature = "desktop")]
+        #[cfg(feature = "task")]
         Some(Commands::Claude { command }) => commands::claude::run(command).await,
-        #[cfg(feature = "desktop")]
+        #[cfg(feature = "task")]
         Some(Commands::Codex { command }) => commands::codex::run(command).await,
-        #[cfg(feature = "desktop")]
+        #[cfg(feature = "task")]
         Some(Commands::Opencode { command }) => commands::opencode::run(command).await,
         #[cfg(feature = "desktop")]
         Some(Commands::Meetings { command }) => {

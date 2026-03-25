@@ -72,10 +72,13 @@ vt100 = "0.15"
 
 [features]
 e2e = []
-desktop = [
+task = [
+  "desktop",
   "dep:hypr-claude",
   "dep:hypr-codex",
   "dep:hypr-opencode",
+]
+desktop = [
   "dep:hypr-db-app",
   "dep:hypr-db-core2",
   "dep:hypr-transcript",

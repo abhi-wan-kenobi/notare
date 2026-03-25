@@ -113,19 +113,19 @@ pub enum Commands {
     #[command(hide = true)]
     Hello,
 
-    #[cfg(feature = "desktop")]
+    #[cfg(feature = "task")]
     /// Claude Code integration
     Claude {
         #[command(subcommand)]
         command: crate::commands::claude::Commands,
     },
-    #[cfg(feature = "desktop")]
+    #[cfg(feature = "task")]
     /// Codex integration
     Codex {
         #[command(subcommand)]
         command: crate::commands::codex::Commands,
     },
-    #[cfg(feature = "desktop")]
+    #[cfg(feature = "task")]
     /// OpenCode integration
     Opencode {
         #[command(subcommand)]

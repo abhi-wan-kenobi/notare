@@ -1,8 +1,8 @@
 pub mod transcribe;
 
-#[cfg(feature = "desktop")]
+#[cfg(feature = "task")]
 pub mod claude;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "task")]
 pub mod codex;
 #[cfg(feature = "desktop")]
 pub mod export;
@@ -10,7 +10,7 @@ pub mod export;
 pub mod humans;
 #[cfg(feature = "desktop")]
 pub mod meetings;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "task")]
 pub mod opencode;
 #[cfg(feature = "desktop")]
 pub mod orgs;
