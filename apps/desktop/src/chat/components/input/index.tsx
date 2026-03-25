@@ -70,7 +70,7 @@ export function ChatMessageInput({
           chat.mode === "RightPanelOpen" ? "px-2" : "px-2",
         ])}
       >
-        <div className="mb-1 flex-1">
+        <div className="mb-1 min-h-0 flex-1">
           <ChatEditor
             ref={editorRef}
             className="max-h-[40vh] overflow-y-auto overscroll-contain"
@@ -142,10 +142,12 @@ function Container({
   isRightPanel?: boolean;
 }) {
   return (
-    <div className={cn(["relative shrink-0", !isRightPanel && "px-2 pb-2"])}>
+    <div
+      className={cn(["relative min-h-0 shrink", !isRightPanel && "px-2 pb-2"])}
+    >
       <div
         className={cn([
-          "flex flex-col border border-neutral-200 bg-white",
+          "flex max-h-full flex-col border border-neutral-200 bg-white",
           isRightPanel ? "rounded-t-xl rounded-b-none" : "rounded-b-xl",
           hasContextBar && "rounded-t-none border-t-0",
         ])}
