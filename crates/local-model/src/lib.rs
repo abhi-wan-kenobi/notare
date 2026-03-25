@@ -243,9 +243,7 @@ impl LocalModel {
         match self {
             LocalModel::Whisper(_) | LocalModel::Am(_) => is_apple_silicon,
             LocalModel::Cactus(model) => {
-                if model.is_cross_platform() {
-                    true
-                } else if model.is_apple() {
+                if model.is_apple() {
                     is_apple_silicon
                 } else {
                     !is_apple_silicon

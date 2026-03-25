@@ -100,7 +100,10 @@ impl CactusSttModel {
     pub fn is_cross_platform(&self) -> bool {
         matches!(
             self,
-            CactusSttModel::ParakeetTdt0_6bV3Int4 | CactusSttModel::ParakeetTdt0_6bV3Int8
+            CactusSttModel::WhisperSmallInt4
+                | CactusSttModel::WhisperSmallInt8
+                | CactusSttModel::ParakeetTdt0_6bV3Int4
+                | CactusSttModel::ParakeetTdt0_6bV3Int8
         )
     }
 
