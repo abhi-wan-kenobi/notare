@@ -7,10 +7,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@hypr/ui/components/ui/accordion";
+import { cn } from "@hypr/utils";
 
 import { AppleCalendarSelection } from "./apple/calendar-selection";
 import { AccessPermissionRow, TroubleShootingLink } from "./apple/permission";
-import { SyncProvider } from "./context";
 import {
   OAuthProviderContent,
   openIntegrationUrl,
@@ -22,6 +22,15 @@ import { useBillingAccess } from "~/auth/billing";
 import { useConnections } from "~/auth/useConnections";
 import { usePermission } from "~/shared/hooks/usePermissions";
 
+function getProviderBadgeClassName(badge: string) {
+  return cn([
+    "rounded-full px-2 text-xs",
+    badge === "Beta"
+      ? "bg-sky-100 py-0.5 font-medium text-sky-900"
+      : "border border-neutral-300 font-light text-neutral-500",
+  ]);
+}
+
 export function CalendarSidebarContent() {
   const isMacos = platform() === "macos";
   const calendar = usePermission("calendar");
@@ -31,34 +40,30 @@ export function CalendarSidebarContent() {
   );
 
   return (
-    <SyncProvider>
-      <Accordion type="single" collapsible defaultValue="apple">
-        {visibleProviders.map((provider) =>
-          provider.disabled ? (
-            <div
-              key={provider.id}
-              className="flex items-center gap-2 py-2 opacity-50"
-            >
-              {provider.icon}
-              <span className="text-sm font-medium">
-                {provider.displayName}
+    <Accordion type="multiple" defaultValue={["apple"]}>
+      {visibleProviders.map((provider) =>
+        provider.disabled ? (
+          <div
+            key={provider.id}
+            className="flex items-center gap-2 py-2 opacity-50"
+          >
+            {provider.icon}
+            <span className="text-sm font-medium">{provider.displayName}</span>
+            {provider.badge && (
+              <span className={getProviderBadgeClassName(provider.badge)}>
+                {provider.badge}
               </span>
-              {provider.badge && (
-                <span className="rounded-full border border-neutral-300 px-2 text-xs font-light text-neutral-500">
-                  {provider.badge}
-                </span>
-              )}
-            </div>
-          ) : (
-            <ProviderAccordionItem
-              key={provider.id}
-              provider={provider}
-              calendar={calendar}
-            />
-          ),
-        )}
-      </Accordion>
-    </SyncProvider>
+            )}
+          </div>
+        ) : (
+          <ProviderAccordionItem
+            key={provider.id}
+            provider={provider}
+            calendar={calendar}
+          />
+        ),
+      )}
+    </Accordion>
   );
 }
 
@@ -100,14 +105,14 @@ function ProviderAccordionItem({
   return (
     <AccordionItem value={provider.id} className="border-none">
       <AccordionTrigger
-        className="py-2 hover:no-underline"
+        className="py-2 hover:no-underline [&>svg]:opacity-0 [&>svg]:transition-opacity hover:[&>svg]:opacity-100 focus-visible:[&>svg]:opacity-100"
         onClick={handleTriggerClick}
       >
         <div className="flex items-center gap-2">
           {provider.icon}
           <span className="text-sm font-medium">{provider.displayName}</span>
           {provider.badge && (
-            <span className="rounded-full border border-neutral-300 px-2 text-xs font-light text-neutral-500">
+            <span className={getProviderBadgeClassName(provider.badge)}>
               {provider.badge}
             </span>
           )}

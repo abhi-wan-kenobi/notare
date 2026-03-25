@@ -11,20 +11,29 @@ import {
   subMonths,
 } from "date-fns";
 import {
-  CalendarCogIcon,
+  CalendarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  RefreshCwIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@hypr/ui/components/ui/button";
 import { ButtonGroup } from "@hypr/ui/components/ui/button-group";
+import { Spinner } from "@hypr/ui/components/ui/spinner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@hypr/ui/components/ui/tooltip";
 import { cn } from "@hypr/utils";
 
+import { SyncProvider, useSync } from "./context";
 import { DayCell } from "./day-cell";
 import { CalendarSidebarContent } from "./sidebar";
 
 import { useCalendarData, useNow, useWeekStartsOn } from "~/calendar/hooks";
+import { useMountEffect } from "~/shared/hooks/useMountEffect";
 
 const WEEKDAY_HEADERS_SUN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const WEEKDAY_HEADERS_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -58,6 +67,15 @@ function useVisibleCols(ref: React.RefObject<HTMLDivElement | null>) {
 }
 
 export function CalendarView() {
+  return (
+    <SyncProvider>
+      <CalendarViewContent />
+    </SyncProvider>
+  );
+}
+
+function CalendarViewContent() {
+  const { scheduleSync } = useSync();
   const now = useNow();
   const weekStartsOn = useWeekStartsOn();
   const weekOpts = useMemo(() => ({ weekStartsOn }), [weekStartsOn]);
@@ -67,6 +85,10 @@ export function CalendarView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const cols = useVisibleCols(containerRef);
   const calendarData = useCalendarData();
+
+  useMountEffect(() => {
+    scheduleSync();
+  });
 
   const isMonthView = cols === 7;
 
@@ -123,14 +145,14 @@ export function CalendarView() {
       >
         {showSettings && (
           <>
-            <div className="flex shrink-0 items-center gap-2 border-b border-neutral-200 px-2 pt-1 pb-1">
+            <div className="flex h-12 shrink-0 items-center gap-2 border-b border-neutral-200 py-2 pr-1 pl-3">
               <Button
                 variant="ghost"
                 size="icon"
                 className="bg-neutral-200"
                 onClick={() => setShowSettings(false)}
               >
-                <CalendarCogIcon className="h-4 w-4" />
+                <CalendarIcon className="h-4 w-4" />
               </Button>
               <span className="text-sm font-semibold text-neutral-900">
                 Calendars
@@ -156,7 +178,7 @@ export function CalendarView() {
                 size="icon"
                 onClick={() => setShowSettings(true)}
               >
-                <CalendarCogIcon className="h-4 w-4" />
+                <CalendarIcon className="h-4 w-4" />
               </Button>
             )}
             <h2 className="text-sm font-medium text-neutral-900">
@@ -166,6 +188,7 @@ export function CalendarView() {
                   ? format(days[0], "MMMM yyyy")
                   : ""}
             </h2>
+            <CalendarSyncHeaderControls />
           </div>
           <ButtonGroup>
             <Button
@@ -234,6 +257,68 @@ export function CalendarView() {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function CalendarSyncHeaderControls() {
+  const { status, cancelDebouncedSync, scheduleSync } = useSync();
+  const refreshFeedbackTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+  const [showManualRefreshFeedback, setShowManualRefreshFeedback] =
+    useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (refreshFeedbackTimeoutRef.current) {
+        clearTimeout(refreshFeedbackTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    if (refreshFeedbackTimeoutRef.current) {
+      clearTimeout(refreshFeedbackTimeoutRef.current);
+    }
+    setShowManualRefreshFeedback(true);
+    refreshFeedbackTimeoutRef.current = setTimeout(() => {
+      refreshFeedbackTimeoutRef.current = null;
+      setShowManualRefreshFeedback(false);
+    }, 1500);
+    cancelDebouncedSync();
+    scheduleSync();
+  }, [cancelDebouncedSync, scheduleSync]);
+
+  const showSyncIndicator = showManualRefreshFeedback || status !== "idle";
+  const statusText =
+    status === "scheduled"
+      ? "Sync scheduled"
+      : showSyncIndicator
+        ? "Syncing"
+        : null;
+
+  return (
+    <div className="flex items-center">
+      {showSyncIndicator ? (
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <span className="flex size-6 items-center justify-center text-neutral-500">
+              <Spinner size={12} />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{statusText}</TooltipContent>
+        </Tooltip>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-6"
+          onClick={handleRefresh}
+        >
+          <RefreshCwIcon className="size-3.5" />
+        </Button>
+      )}
     </div>
   );
 }
