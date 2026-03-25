@@ -242,7 +242,7 @@ export function SelectProviderAndModel() {
                             {showHeader && (
                               <div className="px-2 pt-2 pb-1 text-[11px] font-medium tracking-wide text-neutral-400 uppercase">
                                 {model.category === "latest"
-                                  ? "Latest"
+                                  ? "Recommended"
                                   : model.category === "experimental"
                                     ? "Experimental"
                                     : "Deprecated"}
@@ -363,7 +363,7 @@ function useConfiguredMapping(): Record<
 
       if (provider.id === "hyprnote") {
         const models: ModelEntry[] = [
-          { id: "cloud", isDownloaded: billing.isPro },
+          { id: "cloud", isDownloaded: billing.isPro, category: "latest" },
         ];
 
         if (isAppleSilicon) {

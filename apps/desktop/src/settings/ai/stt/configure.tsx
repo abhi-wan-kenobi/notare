@@ -166,16 +166,35 @@ function HyprProviderCard({
                 <div className="flex-1 border-t border-dashed border-neutral-300" />
               </div>
 
-              {cactusModels.length > 0 && (
+              {cactusModels.filter((m) => String(m.key).includes("whisper"))
+                .length > 0 && (
                 <>
-                  <ModelGroupLabel label="Latest" />
-                  {cactusModels.map((model) => (
-                    <CactusRow
-                      key={model.key as string}
-                      model={model.key}
-                      displayName={model.display_name}
-                    />
-                  ))}
+                  <ModelGroupLabel label="Recommended" />
+                  {cactusModels
+                    .filter((m) => String(m.key).includes("whisper"))
+                    .map((model) => (
+                      <CactusRow
+                        key={model.key as string}
+                        model={model.key}
+                        displayName={model.display_name}
+                      />
+                    ))}
+                </>
+              )}
+
+              {cactusModels.filter((m) => !String(m.key).includes("whisper"))
+                .length > 0 && (
+                <>
+                  <ModelGroupLabel label="Experimental" />
+                  {cactusModels
+                    .filter((m) => !String(m.key).includes("whisper"))
+                    .map((model) => (
+                      <CactusRow
+                        key={model.key as string}
+                        model={model.key}
+                        displayName={model.display_name}
+                      />
+                    ))}
                 </>
               )}
 
