@@ -1,10 +1,8 @@
-import type {
-  LiveTranscriptDelta,
-  PersistedSpeakerHint,
-  SpeakerHintData,
-} from "@hypr/plugin-listener";
+import type { LiveTranscriptDelta } from "@hypr/plugin-listener";
 
 import type { SpeakerHintWithId, WordWithId } from "./types";
+
+import type { SegmentKey } from "~/stt/live-segment";
 
 interface TranscriptStore {
   getCell(
@@ -104,43 +102,141 @@ export function applyLiveTranscriptDelta(
       const wordId = hint.word_id ?? "";
       return !replacedIds.has(wordId) && !newWordIds.has(wordId);
     })
-    .concat(delta.hints.map(toStorageSpeakerHint))
+    .concat(delta.new_words.flatMap(toStorageSpeakerHints))
     .sort((a, b) => (a.word_id ?? "").localeCompare(b.word_id ?? ""));
 
   updateTranscriptWords(store, transcriptId, nextWords);
   updateTranscriptHints(store, transcriptId, nextHints);
 }
 
-function toStorageSpeakerHint(hint: PersistedSpeakerHint): SpeakerHintWithId {
-  const { type, value } = unwrapSpeakerHintData(hint.data);
-
-  return {
-    id: `${hint.word_id}:${type}`,
-    word_id: hint.word_id,
-    type,
-    value: JSON.stringify(value),
+export function upsertSpeakerAssignment(
+  store: TranscriptStore,
+  transcriptId: string,
+  segmentKey: SegmentKey,
+  humanId: string,
+  anchorWordId: string,
+): void {
+  const hints = parseTranscriptHints(store, transcriptId);
+  const words = parseTranscriptWords(store, transcriptId);
+  const wordsById = new Map(words.map((word) => [word.id, word]));
+  const channel =
+    segmentKey.channel === "DirectMic"
+      ? 0
+      : segmentKey.channel === "RemoteParty"
+        ? 1
+        : 2;
+  const nextScope: SpeakerAssignmentScope = {
+    channel,
+    speakerIndex:
+      typeof segmentKey.speaker_index === "number"
+        ? segmentKey.speaker_index
+        : null,
   };
+
+  const newHint: SpeakerHintWithId = {
+    id: `${anchorWordId}:user_speaker_assignment`,
+    word_id: anchorWordId,
+    type: "user_speaker_assignment",
+    value: JSON.stringify({ human_id: humanId }),
+  };
+
+  const nextHints = hints.filter((hint) => {
+    if (hint.type !== "user_speaker_assignment") {
+      return true;
+    }
+
+    if (hint.id === newHint.id) {
+      return false;
+    }
+
+    const hintScope = getSpeakerAssignmentScopeForHint(hints, wordsById, hint);
+    if (!hintScope) {
+      return true;
+    }
+
+    return !speakerAssignmentScopesConflict(hintScope, nextScope);
+  });
+
+  nextHints.push(newHint);
+  updateTranscriptHints(store, transcriptId, nextHints);
 }
 
-function unwrapSpeakerHintData(data: SpeakerHintData): {
-  type: SpeakerHintWithId["type"];
-  value: Record<string, unknown>;
-} {
-  if ("provider_speaker_index" in data) {
-    return {
-      type: "provider_speaker_index",
-      value: {
-        provider: data.provider_speaker_index.provider ?? undefined,
-        channel: data.provider_speaker_index.channel ?? undefined,
-        speaker_index: data.provider_speaker_index.speaker_index,
-      },
-    };
+type SpeakerAssignmentScope = {
+  channel: number | null | undefined;
+  speakerIndex: number | null;
+};
+
+function getSpeakerAssignmentScopeForHint(
+  hints: SpeakerHintWithId[],
+  wordsById: Map<string, WordWithId>,
+  hint: SpeakerHintWithId,
+): SpeakerAssignmentScope | null {
+  const wordId = hint.word_id;
+  if (typeof wordId !== "string") {
+    return null;
+  }
+
+  const word = wordsById.get(wordId);
+  if (!word) {
+    return null;
   }
 
   return {
-    type: "user_speaker_assignment",
-    value: {
-      human_id: data.user_speaker_assignment.human_id,
-    },
+    channel: word.channel,
+    speakerIndex: findSpeakerIndexForWord(hints, wordId),
   };
+}
+
+function speakerAssignmentScopesConflict(
+  left: SpeakerAssignmentScope,
+  right: SpeakerAssignmentScope,
+): boolean {
+  if (left.channel !== right.channel) {
+    return false;
+  }
+
+  return (
+    left.speakerIndex == null ||
+    right.speakerIndex == null ||
+    left.speakerIndex === right.speakerIndex
+  );
+}
+
+function findSpeakerIndexForWord(
+  hints: SpeakerHintWithId[],
+  wordId: string,
+): number | null {
+  const providerHint = hints.find(
+    (h) => h.type === "provider_speaker_index" && h.word_id === wordId,
+  );
+  if (!providerHint) return null;
+  try {
+    const data =
+      typeof providerHint.value === "string"
+        ? JSON.parse(providerHint.value)
+        : providerHint.value;
+    return typeof data.speaker_index === "number" ? data.speaker_index : null;
+  } catch {
+    return null;
+  }
+}
+
+function toStorageSpeakerHints(
+  word: LiveTranscriptDelta["new_words"][number],
+): SpeakerHintWithId[] {
+  if (word.speaker_index == null) {
+    return [];
+  }
+
+  return [
+    {
+      id: `${word.id}:provider_speaker_index`,
+      word_id: word.id,
+      type: "provider_speaker_index",
+      value: JSON.stringify({
+        channel: word.channel,
+        speaker_index: word.speaker_index,
+      }),
+    },
+  ];
 }
