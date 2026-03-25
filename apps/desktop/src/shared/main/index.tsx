@@ -1125,6 +1125,19 @@ function useTabsShortcuts() {
     [openNew],
   );
 
+  const newNoteAndListen = useNewNoteAndListen();
+
+  useHotkeys(
+    "mod+shift+n",
+    () => newNoteAndListen(),
+    {
+      preventDefault: true,
+      enableOnFormTags: true,
+      enableOnContentEditable: true,
+    },
+    [newNoteAndListen],
+  );
+
   return {};
 }
 
