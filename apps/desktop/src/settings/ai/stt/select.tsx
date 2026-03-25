@@ -232,16 +232,32 @@ export function SelectProviderAndModel() {
                       )}
                     </SelectTrigger>
                     <SelectContent>
-                      {models.map((model) => (
-                        <ModelSelectItem
-                          key={model.id}
-                          model={model}
-                          onDownload={() =>
-                            startDownload(model.id as LocalModel)
-                          }
-                          onStartTrial={startTrial}
-                        />
-                      ))}
+                      {models.map((model, i) => {
+                        const prevCategory =
+                          i > 0 ? models[i - 1].category : null;
+                        const showHeader =
+                          model.category && model.category !== prevCategory;
+                        return (
+                          <span key={model.id}>
+                            {showHeader && (
+                              <div className="px-2 pt-2 pb-1 text-[11px] font-medium tracking-wide text-neutral-400 uppercase">
+                                {model.category === "latest"
+                                  ? "Latest"
+                                  : model.category === "experimental"
+                                    ? "Experimental"
+                                    : "Deprecated"}
+                              </div>
+                            )}
+                            <ModelSelectItem
+                              model={model}
+                              onDownload={() =>
+                                startDownload(model.id as LocalModel)
+                              }
+                              onStartTrial={startTrial}
+                            />
+                          </span>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -276,7 +292,13 @@ export function SelectProviderAndModel() {
   );
 }
 
-type ModelEntry = { id: string; isDownloaded: boolean; displayName?: string };
+type ModelCategory = "latest" | "experimental" | "deprecated" | null;
+type ModelEntry = {
+  id: string;
+  isDownloaded: boolean;
+  displayName?: string;
+  category?: ModelCategory;
+};
 
 function useConfiguredMapping(): Record<
   ProviderId,
@@ -345,26 +367,39 @@ function useConfiguredMapping(): Record<
         ];
 
         if (isAppleSilicon) {
+          const cactusWhisper: ModelEntry[] = [];
+          const cactusParakeet: ModelEntry[] = [];
+
           cactusModels.forEach((model, i) => {
-            models.push({
+            const entry: ModelEntry = {
               id: model.key,
               isDownloaded: cactusDownloaded[i]?.data ?? false,
               displayName: model.display_name,
-            });
+            };
+            if (String(model.key).includes("whisper")) {
+              cactusWhisper.push({ ...entry, category: "latest" });
+            } else {
+              cactusParakeet.push({ ...entry, category: "experimental" });
+            }
           });
+
+          models.push(...cactusWhisper, ...cactusParakeet);
 
           models.push(
             {
               id: "am-parakeet-v2",
               isDownloaded: p2.data ?? false,
+              category: "deprecated",
             },
             {
               id: "am-parakeet-v3",
               isDownloaded: p3.data ?? false,
+              category: "deprecated",
             },
             {
               id: "am-whisper-large-v3",
               isDownloaded: whisperLargeV3.data ?? false,
+              category: "deprecated",
             },
           );
         }
