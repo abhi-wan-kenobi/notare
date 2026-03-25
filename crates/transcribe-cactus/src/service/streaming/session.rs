@@ -83,13 +83,10 @@ pub(super) async fn handle_websocket(
     let (ws_sender, mut ws_receiver) = socket.split();
 
     let total_channels = (params.channels as i32).max(1) as usize;
-    let chunk_size_ms = 300;
+    let chunk_size_ms = 200;
 
-    let options = hypr_cactus::TranscribeOptions {
-        language: hypr_cactus::constrain_to(&params.languages),
-        min_chunk_size: Some((cactus_config.min_chunk_sec * SAMPLE_RATE as f32) as u32),
-        ..Default::default()
-    };
+    let options =
+        crate::service::build_transcribe_options(&params, Some(cactus_config.min_chunk_sec));
 
     type TaggedStream = Pin<Box<dyn Stream<Item = TaggedEvent> + Send>>;
 

@@ -45,7 +45,7 @@ pub(super) fn transcribe_batch(
         .map(|samples| channel_duration_sec(samples))
         .fold(0.0_f64, f64::max);
 
-    let model = match crate::service::build_model(model_path, &params.keywords) {
+    let model = match crate::service::build_model(model_path) {
         Ok(m) => m,
         Err(e) => {
             tracing::error!(error = %e, "failed_to_load_model");
@@ -53,10 +53,7 @@ pub(super) fn transcribe_batch(
         }
     };
 
-    let options = hypr_cactus::TranscribeOptions {
-        language: hypr_cactus::constrain_to(&params.languages),
-        ..Default::default()
-    };
+    let options = crate::service::build_transcribe_options(params, None);
 
     let metadata = crate::service::build_metadata(model_path);
     let channel_durations = channel_samples

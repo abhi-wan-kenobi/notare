@@ -93,7 +93,7 @@ impl Service<Request<Body>> for TranscribeService {
             };
 
             if is_ws {
-                let model = match crate::service::build_model(&model_path, &params.keywords) {
+                let model = match crate::service::build_model(&model_path) {
                     Ok(model) => std::sync::Arc::new(model),
                     Err(error) => {
                         tracing::error!(error = %error, "failed_to_load_model");
