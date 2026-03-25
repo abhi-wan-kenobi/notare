@@ -409,11 +409,10 @@ function ToolsLinks() {
         </li>
         <li>
           <Link
-            to="/file-transcription/"
-            search={{ id: undefined }}
+            to="/product/notepad/"
             className="text-sm text-neutral-600 no-underline transition-colors hover:text-stone-600 hover:underline hover:decoration-dotted"
           >
-            Audio Transcription
+            Notepad
           </Link>
         </li>
         <li>

@@ -35,7 +35,6 @@ import { Route as ViewPricingRouteImport } from './routes/_view/pricing'
 import { Route as ViewOssFriendsRouteImport } from './routes/_view/oss-friends'
 import { Route as ViewOpensourceRouteImport } from './routes/_view/opensource'
 import { Route as ViewFreeRouteImport } from './routes/_view/free'
-import { Route as ViewFileTranscriptionRouteImport } from './routes/_view/file-transcription'
 import { Route as ViewEnterpriseRouteImport } from './routes/_view/enterprise'
 import { Route as ViewChooseRouteImport } from './routes/_view/choose'
 import { Route as ViewBrandRouteImport } from './routes/_view/brand'
@@ -116,7 +115,6 @@ import { Route as ViewCallbackIntegrationRouteImport } from './routes/_view/call
 import { Route as ViewCallbackAuthRouteImport } from './routes/_view/callback/auth'
 import { Route as ViewBlogSlugRouteImport } from './routes/_view/blog/$slug'
 import { Route as ViewAppIntegrationRouteImport } from './routes/_view/app/integration'
-import { Route as ViewAppFileTranscriptionRouteImport } from './routes/_view/app/file-transcription'
 import { Route as ViewAppCheckoutRouteImport } from './routes/_view/app/checkout'
 import { Route as ViewAppAccountRouteImport } from './routes/_view/app/account'
 import { Route as ApiAdminStarsResearchRouteImport } from './routes/api/admin/stars/research'
@@ -284,11 +282,6 @@ const ViewOpensourceRoute = ViewOpensourceRouteImport.update({
 const ViewFreeRoute = ViewFreeRouteImport.update({
   id: '/free',
   path: '/free',
-  getParentRoute: () => ViewRouteRoute,
-} as any)
-const ViewFileTranscriptionRoute = ViewFileTranscriptionRouteImport.update({
-  id: '/file-transcription',
-  path: '/file-transcription',
   getParentRoute: () => ViewRouteRoute,
 } as any)
 const ViewEnterpriseRoute = ViewEnterpriseRouteImport.update({
@@ -701,12 +694,6 @@ const ViewAppIntegrationRoute = ViewAppIntegrationRouteImport.update({
   path: '/integration',
   getParentRoute: () => ViewAppRouteRoute,
 } as any)
-const ViewAppFileTranscriptionRoute =
-  ViewAppFileTranscriptionRouteImport.update({
-    id: '/file-transcription',
-    path: '/file-transcription',
-    getParentRoute: () => ViewAppRouteRoute,
-  } as any)
 const ViewAppCheckoutRoute = ViewAppCheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
@@ -938,7 +925,6 @@ export interface FileRoutesByFullPath {
   '/brand': typeof ViewBrandRoute
   '/choose': typeof ViewChooseRoute
   '/enterprise': typeof ViewEnterpriseRoute
-  '/file-transcription': typeof ViewFileTranscriptionRoute
   '/free': typeof ViewFreeRoute
   '/opensource': typeof ViewOpensourceRoute
   '/oss-friends': typeof ViewOssFriendsRoute
@@ -953,7 +939,6 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/app/account': typeof ViewAppAccountRoute
   '/app/checkout': typeof ViewAppCheckoutRoute
-  '/app/file-transcription': typeof ViewAppFileTranscriptionRoute
   '/app/integration': typeof ViewAppIntegrationRoute
   '/blog/$slug': typeof ViewBlogSlugRoute
   '/callback/auth': typeof ViewCallbackAuthRoute
@@ -1081,7 +1066,6 @@ export interface FileRoutesByTo {
   '/brand': typeof ViewBrandRoute
   '/choose': typeof ViewChooseRoute
   '/enterprise': typeof ViewEnterpriseRoute
-  '/file-transcription': typeof ViewFileTranscriptionRoute
   '/free': typeof ViewFreeRoute
   '/opensource': typeof ViewOpensourceRoute
   '/oss-friends': typeof ViewOssFriendsRoute
@@ -1097,7 +1081,6 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/app/account': typeof ViewAppAccountRoute
   '/app/checkout': typeof ViewAppCheckoutRoute
-  '/app/file-transcription': typeof ViewAppFileTranscriptionRoute
   '/app/integration': typeof ViewAppIntegrationRoute
   '/blog/$slug': typeof ViewBlogSlugRoute
   '/callback/auth': typeof ViewCallbackAuthRoute
@@ -1231,7 +1214,6 @@ export interface FileRoutesById {
   '/_view/brand': typeof ViewBrandRoute
   '/_view/choose': typeof ViewChooseRoute
   '/_view/enterprise': typeof ViewEnterpriseRoute
-  '/_view/file-transcription': typeof ViewFileTranscriptionRoute
   '/_view/free': typeof ViewFreeRoute
   '/_view/opensource': typeof ViewOpensourceRoute
   '/_view/oss-friends': typeof ViewOssFriendsRoute
@@ -1247,7 +1229,6 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/_view/app/account': typeof ViewAppAccountRoute
   '/_view/app/checkout': typeof ViewAppCheckoutRoute
-  '/_view/app/file-transcription': typeof ViewAppFileTranscriptionRoute
   '/_view/app/integration': typeof ViewAppIntegrationRoute
   '/_view/blog/$slug': typeof ViewBlogSlugRoute
   '/_view/callback/auth': typeof ViewCallbackAuthRoute
@@ -1382,7 +1363,6 @@ export interface FileRouteTypes {
     | '/brand'
     | '/choose'
     | '/enterprise'
-    | '/file-transcription'
     | '/free'
     | '/opensource'
     | '/oss-friends'
@@ -1397,7 +1377,6 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/app/account'
     | '/app/checkout'
-    | '/app/file-transcription'
     | '/app/integration'
     | '/blog/$slug'
     | '/callback/auth'
@@ -1525,7 +1504,6 @@ export interface FileRouteTypes {
     | '/brand'
     | '/choose'
     | '/enterprise'
-    | '/file-transcription'
     | '/free'
     | '/opensource'
     | '/oss-friends'
@@ -1541,7 +1519,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app/account'
     | '/app/checkout'
-    | '/app/file-transcription'
     | '/app/integration'
     | '/blog/$slug'
     | '/callback/auth'
@@ -1674,7 +1651,6 @@ export interface FileRouteTypes {
     | '/_view/brand'
     | '/_view/choose'
     | '/_view/enterprise'
-    | '/_view/file-transcription'
     | '/_view/free'
     | '/_view/opensource'
     | '/_view/oss-friends'
@@ -1690,7 +1666,6 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/_view/app/account'
     | '/_view/app/checkout'
-    | '/_view/app/file-transcription'
     | '/_view/app/integration'
     | '/_view/blog/$slug'
     | '/_view/callback/auth'
@@ -2036,13 +2011,6 @@ declare module '@tanstack/react-router' {
       path: '/free'
       fullPath: '/free'
       preLoaderRoute: typeof ViewFreeRouteImport
-      parentRoute: typeof ViewRouteRoute
-    }
-    '/_view/file-transcription': {
-      id: '/_view/file-transcription'
-      path: '/file-transcription'
-      fullPath: '/file-transcription'
-      preLoaderRoute: typeof ViewFileTranscriptionRouteImport
       parentRoute: typeof ViewRouteRoute
     }
     '/_view/enterprise': {
@@ -2603,13 +2571,6 @@ declare module '@tanstack/react-router' {
       path: '/integration'
       fullPath: '/app/integration'
       preLoaderRoute: typeof ViewAppIntegrationRouteImport
-      parentRoute: typeof ViewAppRouteRoute
-    }
-    '/_view/app/file-transcription': {
-      id: '/_view/app/file-transcription'
-      path: '/file-transcription'
-      fullPath: '/app/file-transcription'
-      preLoaderRoute: typeof ViewAppFileTranscriptionRouteImport
       parentRoute: typeof ViewAppRouteRoute
     }
     '/_view/app/checkout': {
