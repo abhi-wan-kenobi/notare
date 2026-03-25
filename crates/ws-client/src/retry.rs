@@ -89,6 +89,7 @@ pub(crate) async fn connect_with_retry(
     match result {
         Ok(stream) => Ok(stream),
         Err(error @ crate::Error::ConnectRetriesExhausted { .. }) => Err(error),
+        Err(error) if !error.is_retryable_connect_error() => Err(error),
         Err(error) => {
             let attempts = attempts_made.load(Ordering::SeqCst);
             Err(crate::Error::connect_retries_exhausted(

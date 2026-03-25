@@ -27,9 +27,23 @@ pub struct TranscribeService {
     connection_manager: ConnectionManager,
 }
 
+pub const LISTEN_PATH: &str = "/v1/listen";
+pub const HEALTH_PATH: &str = "/health";
+
 impl TranscribeService {
     pub fn builder() -> TranscribeServiceBuilder {
         TranscribeServiceBuilder::default()
+    }
+
+    pub fn into_router<F, Fut>(self, on_error: F) -> axum::Router
+    where
+        F: FnOnce(String) -> Fut + Clone + Send + Sync + 'static,
+        Fut: std::future::Future<Output = (StatusCode, String)> + Send,
+    {
+        let svc = axum::error_handling::HandleError::new(self, on_error);
+        axum::Router::new()
+            .route(HEALTH_PATH, axum::routing::get(|| async { "ok" }))
+            .route_service(LISTEN_PATH, svc)
     }
 }
 

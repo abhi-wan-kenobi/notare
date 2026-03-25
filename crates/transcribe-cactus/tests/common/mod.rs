@@ -1,8 +1,6 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-use axum::Router;
-use axum::error_handling::HandleError;
 use axum::http::StatusCode;
 use transcribe_cactus::{CactusConfig, TranscribeService};
 
@@ -33,16 +31,11 @@ pub fn invalid_model_path() -> PathBuf {
 pub async fn start_test_server(
     cactus_config: CactusConfig,
 ) -> (SocketAddr, tokio::sync::oneshot::Sender<()>) {
-    let app = Router::new().route_service(
-        "/v1/listen",
-        HandleError::new(
-            TranscribeService::builder()
-                .model_path(model_path())
-                .cactus_config(cactus_config)
-                .build(),
-            |err: String| async move { (StatusCode::INTERNAL_SERVER_ERROR, err) },
-        ),
-    );
+    let app = TranscribeService::builder()
+        .model_path(model_path())
+        .cactus_config(cactus_config)
+        .build()
+        .into_router(|err: String| async move { (StatusCode::INTERNAL_SERVER_ERROR, err) });
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();

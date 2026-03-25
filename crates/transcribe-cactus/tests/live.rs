@@ -14,8 +14,6 @@ fn scale_close_after(audio_secs: usize, default_audio: usize, default_close: u32
     ((default_close as f64 * ratio).ceil() as u32).max(1)
 }
 
-use axum::Router;
-use axum::error_handling::HandleError;
 use axum::http::StatusCode;
 use futures_util::{SinkExt, StreamExt};
 use sequential_test::sequential;
@@ -150,15 +148,10 @@ fn e2e_websocket_no_handoff() {
 
 #[tokio::test]
 async fn websocket_invalid_model_path_fails_before_upgrade() {
-    let app = Router::new().route_service(
-        "/v1/listen",
-        HandleError::new(
-            TranscribeService::builder()
-                .model_path(invalid_model_path())
-                .build(),
-            |err: String| async move { (StatusCode::INTERNAL_SERVER_ERROR, err) },
-        ),
-    );
+    let app = TranscribeService::builder()
+        .model_path(invalid_model_path())
+        .build()
+        .into_router(|err: String| async move { (StatusCode::INTERNAL_SERVER_ERROR, err) });
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
