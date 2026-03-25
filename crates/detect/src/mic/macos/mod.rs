@@ -81,12 +81,8 @@ impl crate::Observer for Detector {
                             if let Ok(mut device_guard) = data.ctx.current_device.lock() {
                                 *device_guard = Some(device);
                             }
-                            if let Ok(mut state_guard) = data.ctx.state.lock() {
-                                state_guard.last_state = mic_in_use;
-                                if mic_in_use {
-                                    state_guard.active_apps = crate::list_mic_using_apps();
-                                    data.ctx.polling_active.store(true, Ordering::SeqCst);
-                                }
+                            if let Some(mic_in_use) = mic_in_use {
+                                data.ctx.seed_running_state(mic_in_use);
                             }
                         } else {
                             tracing::error!("adding_device_listener_failed");

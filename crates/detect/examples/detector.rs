@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use detect::{new_callback, Detector};
+use detect::{Detector, new_callback};
 
 #[tokio::main]
 async fn main() {

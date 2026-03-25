@@ -8,11 +8,11 @@ pub(super) struct ListenerData {
     pub(super) device_listener_ptr: *mut (),
 }
 
-pub(super) fn is_mic_running(device: &ca::Device) -> bool {
+pub(super) fn is_mic_running(device: &ca::Device) -> Option<bool> {
     device
         .prop::<u32>(&DEVICE_IS_RUNNING_SOMEWHERE)
         .map(|v| v != 0)
-        .unwrap_or(false)
+        .ok()
 }
 
 pub(super) extern "C-unwind" fn device_listener(
@@ -29,7 +29,9 @@ pub(super) extern "C-unwind" fn device_listener(
             continue;
         }
         if let Ok(device) = ca::System::default_input_device() {
-            data.ctx.handle_mic_change(is_mic_running(&device));
+            if let Some(running) = is_mic_running(&device) {
+                data.ctx.handle_mic_change(running);
+            }
         }
     }
 
@@ -77,7 +79,10 @@ pub(super) extern "C-unwind" fn system_listener(
             let mic_in_use = is_mic_running(&new_device);
             *device_guard = Some(new_device);
             drop(device_guard);
-            data.ctx.handle_mic_change(mic_in_use);
+
+            if let Some(running) = mic_in_use {
+                data.ctx.handle_mic_change(running);
+            }
         }
     }
 

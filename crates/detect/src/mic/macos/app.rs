@@ -37,7 +37,9 @@ pub(super) fn spawn_polling_thread(ctx: SharedContext) {
                 continue;
             }
 
-            let current_apps = crate::list_mic_using_apps();
+            let Ok(current_apps) = crate::list_mic_using_apps() else {
+                continue;
+            };
             let Ok(mut state_guard) = ctx.state.lock() else {
                 continue;
             };
