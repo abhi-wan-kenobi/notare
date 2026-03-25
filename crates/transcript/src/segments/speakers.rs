@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::segment_types::{SegmentBuilderOptions, SegmentKey};
 use crate::types::{RuntimeSpeakerHint, SpeakerHintData, WordRef};
+use crate::types::{SegmentBuilderOptions, SegmentKey};
 
 use super::model::{
     NormalizedWord, ProtoSegment, ResolvedWordFrame, SpeakerIdentity, SpeakerState,

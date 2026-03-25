@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
-use crate::segment_types::{
-    ChannelProfile, Segment, SegmentBuilderOptions, SegmentKey, SegmentWord,
-};
+use crate::types::{ChannelProfile, Segment, SegmentBuilderOptions, SegmentKey, SegmentWord};
 
 use super::model::{ProtoSegment, ResolvedWordFrame, SpeakerIdentity, SpeakerState};
 use super::speakers::assign_complete_channel_human_id;

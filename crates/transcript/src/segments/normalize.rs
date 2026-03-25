@@ -1,4 +1,4 @@
-use crate::segment_types::ChannelProfile;
+use crate::types::ChannelProfile;
 use crate::types::{FinalizedWord, PartialWord};
 
 use super::model::NormalizedWord;

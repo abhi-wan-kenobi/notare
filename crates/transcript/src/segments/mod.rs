@@ -6,8 +6,8 @@ mod speakers;
 #[cfg(test)]
 mod tests;
 
-use crate::segment_types::{Segment, SegmentBuilderOptions};
 use crate::types::{FinalizedWord, PartialWord, RuntimeSpeakerHint};
+use crate::types::{Segment, SegmentBuilderOptions};
 
 use self::collect::{
     collect_segments, consolidate_micro_segments, finalize_segments, propagate_identity,

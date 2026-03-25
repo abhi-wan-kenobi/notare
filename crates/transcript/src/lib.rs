@@ -3,7 +3,6 @@ mod label;
 mod postprocessor;
 mod processor;
 mod render;
-mod segment_types;
 mod segments;
 mod types;
 mod words;
@@ -19,9 +18,9 @@ pub use render::{
     RenderTranscriptSpeakerHint, RenderTranscriptWordInput, RenderedTranscriptSegment,
     normalize_rendered_segment_words, render_transcript_segments, stable_segment_id,
 };
-pub use segment_types::{ChannelProfile, Segment, SegmentBuilderOptions, SegmentKey, SegmentWord};
 pub use segments::build_segments;
 pub use types::{
-    FinalizedWord, PartialWord, RawWord, RuntimeSpeakerHint, SpeakerHintData, TranscriptDelta,
-    WordRef, WordState,
+    ChannelProfile, FinalizedWord, PartialWord, RawWord, RuntimeSpeakerHint, Segment,
+    SegmentBuilderOptions, SegmentKey, SegmentWord, SpeakerHintData, TranscriptDelta, WordRef,
+    WordState,
 };

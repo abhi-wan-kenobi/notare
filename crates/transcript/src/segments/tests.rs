@@ -1,4 +1,4 @@
-use crate::segment_types::{ChannelProfile, Segment, SegmentBuilderOptions, SegmentKey};
+use crate::types::{ChannelProfile, Segment, SegmentBuilderOptions, SegmentKey};
 use crate::types::{
     FinalizedWord, PartialWord, RuntimeSpeakerHint, SpeakerHintData, WordRef, WordState,
 };
