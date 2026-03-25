@@ -46,13 +46,20 @@ fn init_tracing(cli: &Cli) -> OptTraceBuffer {
                 format: cli::OutputFormat::Json,
                 ..
             },
-        }) | Some(Commands::Record {
-            args: commands::record::Args {
-                format: cli::OutputFormat::Json,
-                ..
-            },
         })
     );
+
+    #[cfg(feature = "standalone")]
+    let wants_json = wants_json
+        || matches!(
+            cli.command,
+            Some(Commands::Record {
+                args: commands::record::Args {
+                    format: cli::OutputFormat::Json,
+                    ..
+                },
+            })
+        );
 
     #[cfg(feature = "standalone")]
     let wants_capture = !wants_json
