@@ -94,6 +94,7 @@ pub(crate) enum VadTransition {
         timestamp_ms: usize,
     },
     SpeechEnd {
+        detected_speech_samples: usize,
         start_timestamp_ms: usize,
         end_timestamp_ms: usize,
         samples: Vec<f32>,
@@ -180,11 +181,17 @@ impl AdaptiveVadSession {
         sample - self.retained_start_sample
     }
 
-    fn speech_end_transition(&self, start_sample: usize, end_sample: usize) -> VadTransition {
+    fn speech_end_transition(
+        &self,
+        start_sample: usize,
+        end_sample: usize,
+        detected_speech_samples: usize,
+    ) -> VadTransition {
         let start_idx = self.absolute_to_index(start_sample);
         let end_idx = self.absolute_to_index(end_sample);
 
         VadTransition::SpeechEnd {
+            detected_speech_samples,
             start_timestamp_ms: Self::samples_to_ms(start_sample),
             end_timestamp_ms: Self::samples_to_ms(end_sample),
             samples: self.retained_audio[start_idx..end_idx].to_vec(),
@@ -253,11 +260,11 @@ impl AdaptiveVadSession {
         if let VadState::Speech {
             start_sample,
             confirmed: true,
-            ..
+            speech_samples,
         } = self.state
         {
             let end_sample = self.session_end_sample();
-            transitions.push(self.speech_end_transition(start_sample, end_sample));
+            transitions.push(self.speech_end_transition(start_sample, end_sample, speech_samples));
         }
 
         self.reset_to_silence();
@@ -327,7 +334,11 @@ impl AdaptiveVadSession {
 
                 if confirmed && self.silent_samples >= redemption_samples {
                     let speech_end_sample = self.cursor_sample.saturating_sub(self.silent_samples);
-                    let transition = self.speech_end_transition(start_sample, speech_end_sample);
+                    let transition = self.speech_end_transition(
+                        start_sample,
+                        speech_end_sample,
+                        speech_samples.saturating_sub(self.silent_samples),
+                    );
                     self.reset_to_silence();
                     self.trim_buffer();
                     return Some(transition);
@@ -398,6 +409,7 @@ mod tests {
 
                 assert_eq!(transitions.len(), 1);
                 let VadTransition::SpeechEnd {
+                    detected_speech_samples,
                     start_timestamp_ms,
                     end_timestamp_ms,
                     samples,
@@ -406,6 +418,7 @@ mod tests {
                     panic!("expected speech end transition");
                 };
 
+                assert!(*detected_speech_samples >= CHUNK_SIZE_16KHZ);
                 assert!(*end_timestamp_ms > *start_timestamp_ms);
                 assert_eq!(&samples[samples.len() - tail.len()..], tail.as_slice());
 
@@ -414,6 +427,38 @@ mod tests {
         }
 
         panic!("did not observe speech start in fixture audio");
+    }
+
+    #[test]
+    fn test_detected_speech_samples_excludes_redeemed_trailing_silence() {
+        let mut session = AdaptiveVadSession::new(AdaptiveVadConfig {
+            redemption_time: Duration::from_millis(32),
+            pre_speech_pad: Duration::ZERO,
+            min_speech_time: Duration::from_millis(32),
+            ..Default::default()
+        })
+        .unwrap();
+
+        session.retained_audio = vec![1.0; CHUNK_SIZE_16KHZ * 3];
+        session.cursor_sample = CHUNK_SIZE_16KHZ * 3;
+        session.state = VadState::Speech {
+            start_sample: 0,
+            confirmed: true,
+            speech_samples: CHUNK_SIZE_16KHZ * 2,
+        };
+
+        let transition = session.advance(0.0).unwrap();
+        let VadTransition::SpeechEnd {
+            detected_speech_samples,
+            samples,
+            ..
+        } = transition
+        else {
+            panic!("expected speech end transition");
+        };
+
+        assert_eq!(detected_speech_samples, CHUNK_SIZE_16KHZ * 2);
+        assert_eq!(samples.len(), CHUNK_SIZE_16KHZ * 2);
     }
 
     #[test]

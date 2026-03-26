@@ -1,3 +1,4 @@
+mod chunk_policy;
 mod continuous;
 mod error;
 pub(crate) mod session;

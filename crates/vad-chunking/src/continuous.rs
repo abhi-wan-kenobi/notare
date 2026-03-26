@@ -10,7 +10,10 @@ use hypr_audio_interface::AsyncSource;
 use hypr_vad::silero_onnx::CHUNK_SIZE_16KHZ;
 use pin_project::pin_project;
 
-use crate::session::{AdaptiveVadConfig, AdaptiveVadSession, VadTransition};
+use crate::{
+    chunk_policy::{normalize_speech_chunks, speech_chunk_vad_config},
+    session::{AdaptiveVadConfig, AdaptiveVadSession, VadTransition},
+};
 
 #[derive(Debug, Clone)]
 pub(crate) enum VadStreamItem {
@@ -19,6 +22,7 @@ pub(crate) enum VadStreamItem {
     #[allow(dead_code)]
     SpeechStart { timestamp_ms: usize },
     SpeechEnd {
+        detected_speech_samples: usize,
         start_timestamp_ms: usize,
         end_timestamp_ms: usize,
         samples: Vec<f32>,
@@ -65,10 +69,12 @@ fn push_transitions(pending: &mut VecDeque<VadStreamItem>, transitions: Vec<VadT
                 VadStreamItem::SpeechStart { timestamp_ms }
             }
             VadTransition::SpeechEnd {
+                detected_speech_samples,
                 start_timestamp_ms,
                 end_timestamp_ms,
                 samples,
             } => VadStreamItem::SpeechEnd {
+                detected_speech_samples,
                 start_timestamp_ms,
                 end_timestamp_ms,
                 samples,
@@ -158,31 +164,10 @@ pub trait VadExt: AsyncSource + Sized {
     where
         Self: 'static,
     {
-        let config = AdaptiveVadConfig {
-            redemption_time,
-            pre_speech_pad: redemption_time,
-            min_speech_time: Duration::from_millis(50),
-            ..Default::default()
-        };
+        let config = speech_chunk_vad_config(redemption_time);
 
         match ContinuousVadStream::new(self, config) {
-            Ok(stream) => stream
-                .filter_map(|item| {
-                    future::ready(match item {
-                        Ok(VadStreamItem::SpeechEnd {
-                            samples,
-                            start_timestamp_ms,
-                            end_timestamp_ms,
-                        }) => Some(Ok(AudioChunk {
-                            samples,
-                            start_timestamp_ms,
-                            end_timestamp_ms,
-                        })),
-                        Ok(_) => None,
-                        Err(e) => Some(Err(e)),
-                    })
-                })
-                .left_stream(),
+            Ok(stream) => normalize_speech_chunks(stream, redemption_time).left_stream(),
             Err(e) => stream::once(future::ready(Err(e))).right_stream(),
         }
     }
