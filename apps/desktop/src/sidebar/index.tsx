@@ -12,6 +12,7 @@ import {
 } from "@hypr/ui/components/ui/tooltip";
 import { cn } from "@hypr/utils";
 
+import { CalendarNav } from "./calendar";
 import { ContactsNav } from "./contacts";
 import { ProfileSection } from "./profile";
 import { SidebarSearchInput } from "./search";
@@ -93,7 +94,9 @@ export function LeftSidebar() {
         </div>
       </header>
 
-      {!isSettingsMode && !isContactsMode && <SidebarSearchInput />}
+      {!isSettingsMode && !isCalendarMode && !isContactsMode && (
+        <SidebarSearchInput />
+      )}
 
       <div className="flex flex-1 flex-col gap-1 overflow-hidden">
         <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -103,6 +106,8 @@ export function LeftSidebar() {
             </Suspense>
           ) : isSettingsMode ? (
             <SettingsNav />
+          ) : isCalendarMode ? (
+            <CalendarNav />
           ) : isContactsMode ? (
             <ContactsNav />
           ) : (
@@ -115,9 +120,12 @@ export function LeftSidebar() {
               </div>
             </>
           )}
-          {!leftsidebar.showDevtool && !isSettingsMode && !isContactsMode && (
-            <ToastArea isProfileExpanded={isProfileExpanded} />
-          )}
+          {!leftsidebar.showDevtool &&
+            !isSettingsMode &&
+            !isCalendarMode &&
+            !isContactsMode && (
+              <ToastArea isProfileExpanded={isProfileExpanded} />
+            )}
         </div>
         <div className="relative z-30">
           <ProfileSection onExpandChange={setIsProfileExpanded} />
