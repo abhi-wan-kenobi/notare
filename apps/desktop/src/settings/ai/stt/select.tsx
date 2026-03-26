@@ -1,8 +1,7 @@
-import { useForm } from "@tanstack/react-form";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { arch } from "@tauri-apps/plugin-os";
 import { Check, Loader2 } from "lucide-react";
-import { useEffect } from "react";
+import { useRef } from "react";
 
 import { commands as listenerCommands } from "@hypr/plugin-listener";
 import {
@@ -22,6 +21,7 @@ import { cn } from "@hypr/utils";
 
 import { useSttSettings } from "./context";
 import { HealthStatusIndicator, useConnectionHealth } from "./health";
+import { getPreferredProviderModel } from "./selection";
 import {
   displayModelId,
   type ProviderId,
@@ -74,6 +74,10 @@ export function SelectProviderAndModel() {
 
   const hasLanguageWarning =
     isConfigured && languageSupport.data === false && !hasError;
+  const selectedProvider = current_stt_provider as ProviderId | undefined;
+  const selectedModels = selectedProvider
+    ? (configuredProviders[selectedProvider]?.models ?? [])
+    : [];
 
   const handleSelectProvider = settings.UI.useSetValueCallback(
     "current_stt_provider",
@@ -88,41 +92,43 @@ export function SelectProviderAndModel() {
     [],
     settings.STORE_ID,
   );
-
-  const form = useForm({
-    defaultValues: {
-      provider: current_stt_provider || "",
-      model: current_stt_model || "",
-    },
-    listeners: {
-      onChange: ({ formApi }) => {
-        const {
-          form: { errors },
-        } = formApi.getAllErrors();
-        if (errors.length > 0) {
-          console.log(errors);
-        }
-
-        void formApi.handleSubmit();
-      },
-    },
-    onSubmit: ({ value }) => {
-      handleSelectProvider(value.provider);
-      handleSelectModel(value.model);
-    },
-  });
-
-  useEffect(() => {
-    const storeProvider = current_stt_provider || "";
-    const storeModel = current_stt_model || "";
-    if (form.getFieldValue("provider") !== storeProvider) {
-      form.setFieldValue("provider", storeProvider);
+  const lastSelectedModelsRef = useRef<Record<string, string>>(
+    current_stt_provider && current_stt_model
+      ? { [current_stt_provider]: current_stt_model }
+      : {},
+  );
+  const rememberModel = (provider?: string, model?: string) => {
+    if (!provider || model === undefined) {
+      return;
     }
-    if (form.getFieldValue("model") !== storeModel) {
-      form.setFieldValue("model", storeModel);
-    }
-  }, [current_stt_provider, current_stt_model, form]);
 
+    lastSelectedModelsRef.current[provider] = model;
+  };
+
+  const handleProviderChange = (provider: string) => {
+    rememberModel(current_stt_provider, current_stt_model);
+
+    const providerId = provider as ProviderId;
+    const nextModels = configuredProviders[providerId]?.models ?? [];
+    const nextModel = getPreferredProviderModel(
+      lastSelectedModelsRef.current[provider],
+      nextModels,
+      { allowSavedModelWithoutChoices: providerId === "custom" },
+    );
+
+    rememberModel(provider, nextModel);
+    handleSelectProvider(provider);
+    handleSelectModel(nextModel);
+  };
+
+  const handleModelChange = (model: string) => {
+    if (!current_stt_provider) {
+      return;
+    }
+
+    rememberModel(current_stt_provider, model);
+    handleSelectModel(model);
+  };
   return (
     <div className="flex flex-col gap-3">
       <h3 className="text-md font-serif font-semibold">Model being used</h3>
@@ -138,144 +144,116 @@ export function SelectProviderAndModel() {
         ])}
       >
         <div className="flex flex-row items-center gap-4">
-          <form.Field
-            name="provider"
-            listeners={{
-              onChange: () => {
-                form.setFieldValue("model", "");
-              },
-            }}
-          >
-            {(field) => (
-              <div className="min-w-0 flex-2" data-stt-provider-selector>
-                <Select
-                  value={field.state.value}
-                  onValueChange={(value) => field.handleChange(value)}
-                >
-                  <SelectTrigger className="bg-white shadow-none focus:ring-0">
-                    <SelectValue placeholder="Select a provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PROVIDERS.filter(({ disabled }) => !disabled).map(
-                      (provider) => {
-                        const configured =
-                          configuredProviders[provider.id]?.configured ?? false;
-                        const requiresPro = requiresEntitlement(
-                          provider.requirements,
-                          "pro",
-                        );
-                        const locked = requiresPro && !billing.isPro;
-                        return (
-                          <SelectItem
-                            key={provider.id}
-                            value={provider.id}
-                            disabled={
-                              provider.disabled || !configured || locked
-                            }
-                          >
-                            <div className="flex flex-col gap-0.5">
-                              <div className="flex items-center gap-2">
-                                {provider.icon}
-                                <span>{provider.displayName}</span>
-                                {requiresPro ? (
-                                  <span className="rounded-full border border-neutral-200 px-2 py-0.5 text-[10px] tracking-wide text-neutral-500 uppercase">
-                                    Pro
-                                  </span>
-                                ) : null}
-                              </div>
-                              {locked ? (
-                                <span className="text-[11px] text-neutral-500">
-                                  Upgrade to Pro to use this provider.
-                                </span>
-                              ) : null}
-                            </div>
-                          </SelectItem>
-                        );
-                      },
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </form.Field>
+          <div className="min-w-0 flex-2" data-stt-provider-selector>
+            <Select
+              value={current_stt_provider || ""}
+              onValueChange={handleProviderChange}
+            >
+              <SelectTrigger className="bg-white shadow-none focus:ring-0">
+                <SelectValue placeholder="Select a provider" />
+              </SelectTrigger>
+              <SelectContent>
+                {PROVIDERS.filter(({ disabled }) => !disabled).map(
+                  (provider) => {
+                    const configured =
+                      configuredProviders[provider.id]?.configured ?? false;
+                    const requiresPro = requiresEntitlement(
+                      provider.requirements,
+                      "pro",
+                    );
+                    const locked = requiresPro && !billing.isPro;
+                    return (
+                      <SelectItem
+                        key={provider.id}
+                        value={provider.id}
+                        disabled={provider.disabled || !configured || locked}
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
+                            {provider.icon}
+                            <span>{provider.displayName}</span>
+                            {requiresPro ? (
+                              <span className="rounded-full border border-neutral-200 px-2 py-0.5 text-[10px] tracking-wide text-neutral-500 uppercase">
+                                Pro
+                              </span>
+                            ) : null}
+                          </div>
+                          {locked ? (
+                            <span className="text-[11px] text-neutral-500">
+                              Upgrade to Pro to use this provider.
+                            </span>
+                          ) : null}
+                        </div>
+                      </SelectItem>
+                    );
+                  },
+                )}
+              </SelectContent>
+            </Select>
+          </div>
 
           <span className="text-neutral-500">/</span>
 
-          <form.Field name="model">
-            {(field) => {
-              const providerId = field.form.getFieldValue(
-                "provider",
-              ) as ProviderId;
-              if (providerId === "custom") {
-                return (
-                  <div className="min-w-0 flex-3">
-                    <Input
-                      value={field.state.value}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      className="text-xs"
-                      placeholder="Enter a model identifier"
-                    />
-                  </div>
-                );
-              }
-
-              const models = configuredProviders?.[providerId]?.models ?? [];
-
-              return (
-                <div className="min-w-0 flex-3">
-                  <Select
-                    value={field.state.value}
-                    onValueChange={(value) => field.handleChange(value)}
-                    disabled={models.length === 0}
-                  >
-                    <SelectTrigger
-                      className={cn([
-                        "bg-white text-left shadow-none focus:ring-0",
-                        "[&>span]:flex [&>span]:w-full [&>span]:items-center [&>span]:justify-between [&>span]:gap-2",
-                        isConfigured && "[&>svg:last-child]:hidden",
-                      ])}
-                    >
-                      <SelectValue placeholder="Select a model" />
-                      {isConfigured && <HealthStatusIndicator />}
-                      {isConfigured && health.status === "success" && (
-                        <Check className="-mr-1 h-4 w-4 shrink-0 text-green-600" />
-                      )}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {models.map((model, i) => {
-                        const prevCategory =
-                          i > 0 ? models[i - 1].category : null;
-                        const showHeader =
-                          model.category && model.category !== prevCategory;
-                        return (
-                          <span key={model.id}>
-                            {showHeader && (
-                              <div className="px-2 pt-2 pb-1 text-[11px] font-medium tracking-wide text-neutral-400 uppercase">
-                                {model.category === "latest"
-                                  ? "Recommended"
-                                  : model.category === "experimental"
-                                    ? "Experimental"
-                                    : "Deprecated"}
-                              </div>
-                            )}
-                            <ModelSelectItem
-                              model={model}
-                              onDownload={() =>
-                                startDownload(model.id as LocalModel)
-                              }
-                              onStartTrial={startTrial}
-                            />
-                          </span>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            }}
-          </form.Field>
+          {current_stt_provider === "custom" ? (
+            <div className="min-w-0 flex-3">
+              <Input
+                value={current_stt_model || ""}
+                onChange={(event) => handleModelChange(event.target.value)}
+                className="text-xs"
+                placeholder="Enter a model identifier"
+              />
+            </div>
+          ) : (
+            <div className="min-w-0 flex-3">
+              <Select
+                value={current_stt_model || ""}
+                onValueChange={handleModelChange}
+                disabled={selectedModels.length === 0}
+              >
+                <SelectTrigger
+                  className={cn([
+                    "bg-white text-left shadow-none focus:ring-0",
+                    "[&>span]:flex [&>span]:w-full [&>span]:items-center [&>span]:justify-between [&>span]:gap-2",
+                    isConfigured && "[&>svg:last-child]:hidden",
+                  ])}
+                >
+                  <SelectValue placeholder="Select a model" />
+                  {isConfigured && <HealthStatusIndicator />}
+                  {isConfigured && health.status === "success" && (
+                    <Check className="-mr-1 h-4 w-4 shrink-0 text-green-600" />
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  {selectedModels.map((model, i) => {
+                    const prevCategory =
+                      i > 0 ? selectedModels[i - 1].category : null;
+                    const showHeader =
+                      model.category && model.category !== prevCategory;
+                    return (
+                      <span key={model.id}>
+                        {showHeader && (
+                          <div className="px-2 pt-2 pb-1 text-[11px] font-medium tracking-wide text-neutral-400 uppercase">
+                            {model.category === "latest"
+                              ? "Recommended"
+                              : model.category === "experimental"
+                                ? "Experimental"
+                                : "Deprecated"}
+                          </div>
+                        )}
+                        <ModelSelectItem
+                          model={model}
+                          onDownload={() =>
+                            startDownload(model.id as LocalModel)
+                          }
+                          onStartTrial={startTrial}
+                        />
+                      </span>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         {!isConfigured && (
