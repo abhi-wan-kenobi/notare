@@ -12,9 +12,10 @@ import {
 } from "@hypr/ui/components/ui/tooltip";
 import { cn } from "@hypr/utils";
 
+import { ContactsNav } from "./contacts";
 import { ProfileSection } from "./profile";
 import { SidebarSearchInput } from "./search";
-import { SettingsNav } from "./settings-nav";
+import { SettingsNav } from "./settings";
 import { TimelineView } from "./timeline";
 import { ToastArea } from "./toast";
 
@@ -42,7 +43,9 @@ export function LeftSidebar() {
   });
 
   const isSettingsMode = currentTab?.type === "settings";
-  const showSearchResults = !isSettingsMode && query.trim() !== "";
+  const isContactsMode = currentTab?.type === "contacts";
+  const showSearchResults =
+    !isSettingsMode && !isContactsMode && query.trim() !== "";
 
   return (
     <div className="flex h-full w-70 shrink-0 flex-col gap-1 overflow-hidden">
@@ -71,6 +74,7 @@ export function LeftSidebar() {
               <Button
                 size="icon"
                 variant="ghost"
+                disabled={leftsidebar.locked}
                 onClick={leftsidebar.toggleExpanded}
               >
                 <PanelLeftCloseIcon size={16} />
@@ -84,7 +88,7 @@ export function LeftSidebar() {
         </div>
       </header>
 
-      {!isSettingsMode && <SidebarSearchInput />}
+      {!isSettingsMode && !isContactsMode && <SidebarSearchInput />}
 
       <div className="flex flex-1 flex-col gap-1 overflow-hidden">
         <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -94,6 +98,8 @@ export function LeftSidebar() {
             </Suspense>
           ) : isSettingsMode ? (
             <SettingsNav />
+          ) : isContactsMode ? (
+            <ContactsNav />
           ) : (
             <>
               <div className={showSearchResults ? "h-full" : "hidden"}>
@@ -104,7 +110,7 @@ export function LeftSidebar() {
               </div>
             </>
           )}
-          {!leftsidebar.showDevtool && !isSettingsMode && (
+          {!leftsidebar.showDevtool && !isSettingsMode && !isContactsMode && (
             <ToastArea isProfileExpanded={isProfileExpanded} />
           )}
         </div>

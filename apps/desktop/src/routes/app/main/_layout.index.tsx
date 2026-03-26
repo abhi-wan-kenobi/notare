@@ -32,6 +32,10 @@ function Component() {
   const bodyPanelRef = useRef<ImperativePanelHandle>(null);
   const chatPanelContainerRef = useRef<HTMLDivElement>(null);
 
+  const isNavMode =
+    currentTab?.type === "settings" || currentTab?.type === "contacts";
+  const savedExpandedRef = useRef<boolean | null>(null);
+
   const isChatOpen = chat.mode === "RightPanelOpen";
 
   useEffect(() => {
@@ -39,6 +43,21 @@ function Component() {
       leftsidebar.setExpanded(false);
     }
   }, [isOnboarding, leftsidebar]);
+
+  useEffect(() => {
+    if (isNavMode) {
+      savedExpandedRef.current = leftsidebar.expanded;
+      if (!leftsidebar.expanded) {
+        leftsidebar.setExpanded(true);
+        commands.resizeWindowForSidebar().catch(console.error);
+      }
+      leftsidebar.setLocked(true);
+    } else if (savedExpandedRef.current !== null) {
+      leftsidebar.setLocked(false);
+      leftsidebar.setExpanded(savedExpandedRef.current);
+      savedExpandedRef.current = null;
+    }
+  }, [isNavMode, leftsidebar]);
 
   useEffect(() => {
     const isOpeningRightPanel =

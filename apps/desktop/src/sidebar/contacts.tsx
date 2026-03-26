@@ -1,22 +1,80 @@
-import { Facehash } from "facehash";
-import { Building2, CornerDownLeft, Pin } from "lucide-react";
 import { Reorder } from "motion/react";
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import type { ContactsSelection } from "@hypr/plugin-windows";
-import { cn } from "@hypr/utils";
 
-import { ColumnHeader, getContactBgClass, type SortOption } from "./shared";
-
-import { useNativeContextMenu } from "~/shared/hooks/useNativeContextMenu";
+import { NewPersonForm } from "~/contacts/new-person-form";
+import { OrganizationItem } from "~/contacts/organization-item";
+import { PersonItem } from "~/contacts/person-item";
+import { ColumnHeader, type SortOption } from "~/contacts/shared";
 import * as main from "~/store/tinybase/store/main";
+import { useTabs } from "~/store/zustand/tabs";
 
 type ContactItem =
   | { kind: "person"; id: string }
   | { kind: "organization"; id: string };
 
-export function ContactsListColumn({
+export function ContactsNav() {
+  const currentTab = useTabs((state) => state.currentTab);
+  const updateContactsTabState = useTabs(
+    (state) => state.updateContactsTabState,
+  );
+  const invalidateResource = useTabs((state) => state.invalidateResource);
+
+  const selected =
+    currentTab?.type === "contacts" ? currentTab.state.selected : null;
+
+  const setSelected = useCallback(
+    (value: ContactsSelection | null) => {
+      if (currentTab?.type === "contacts") {
+        updateContactsTabState(currentTab, { selected: value });
+      }
+    },
+    [currentTab, updateContactsTabState],
+  );
+
+  const deletePersonFromStore = main.UI.useDelRowCallback(
+    "humans",
+    (human_id: string) => human_id,
+    main.STORE_ID,
+  );
+
+  const handleDeletePerson = useCallback(
+    (id: string) => {
+      invalidateResource("humans", id);
+      deletePersonFromStore(id);
+      setSelected(null);
+    },
+    [invalidateResource, deletePersonFromStore, setSelected],
+  );
+
+  const deleteOrganizationFromStore = main.UI.useDelRowCallback(
+    "organizations",
+    (org_id: string) => org_id,
+    main.STORE_ID,
+  );
+
+  const handleDeleteOrganization = useCallback(
+    (id: string) => {
+      invalidateResource("organizations" as const, id);
+      deleteOrganizationFromStore(id);
+      setSelected(null);
+    },
+    [invalidateResource, deleteOrganizationFromStore, setSelected],
+  );
+
+  return (
+    <ContactsList
+      selected={selected}
+      setSelected={setSelected}
+      onDeletePerson={handleDeletePerson}
+      onDeleteOrganization={handleDeleteOrganization}
+    />
+  );
+}
+
+function ContactsList({
   selected,
   setSelected,
   onDeletePerson,
@@ -341,302 +399,6 @@ export function ContactsListColumn({
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function PersonItem({
-  humanId,
-  active,
-  onClick,
-  onDelete,
-}: {
-  humanId: string;
-  active: boolean;
-  onClick: () => void;
-  onDelete?: (id: string) => void;
-}) {
-  const person = main.UI.useRow("humans", humanId, main.STORE_ID);
-  const isPinned = Boolean(person.pinned);
-  const personName = String(person.name ?? "");
-  const personEmail = String(person.email ?? "");
-  const facehashName = personName || personEmail || humanId;
-  const bgClass = getContactBgClass(facehashName);
-
-  const store = main.UI.useStore(main.STORE_ID);
-
-  const showContextMenu = useNativeContextMenu([
-    {
-      id: "delete-person",
-      text: "Delete Contact",
-      action: () => onDelete?.(humanId),
-    },
-  ]);
-
-  const handleTogglePin = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (!store) return;
-
-      const currentPinned = store.getCell("humans", humanId, "pinned");
-      if (currentPinned) {
-        store.setPartialRow("humans", humanId, {
-          pinned: false,
-          pin_order: 0,
-        });
-      } else {
-        const allHumans = store.getTable("humans");
-        const allOrgs = store.getTable("organizations");
-        const maxHumanOrder = Object.values(allHumans).reduce((max, h) => {
-          const order = (h.pin_order as number | undefined) ?? 0;
-          return Math.max(max, order);
-        }, 0);
-        const maxOrgOrder = Object.values(allOrgs).reduce((max, o) => {
-          const order = (o.pin_order as number | undefined) ?? 0;
-          return Math.max(max, order);
-        }, 0);
-        store.setPartialRow("humans", humanId, {
-          pinned: true,
-          pin_order: Math.max(maxHumanOrder, maxOrgOrder) + 1,
-        });
-      }
-    },
-    [store, humanId],
-  );
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onContextMenu={showContextMenu}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      className={cn([
-        "group flex w-full items-center gap-2 overflow-hidden rounded-md border bg-white px-3 py-2 text-left text-sm transition-colors hover:bg-neutral-100",
-        active ? "border-neutral-500 bg-neutral-100" : "border-transparent",
-      ])}
-    >
-      <div className={cn(["shrink-0 rounded-full", bgClass])}>
-        <Facehash
-          name={facehashName}
-          size={32}
-          interactive={true}
-          showInitial={true}
-          colorClasses={[bgClass]}
-        />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1 truncate font-medium">
-          {personName || personEmail || "Unnamed"}
-        </div>
-        {personEmail && personName && (
-          <div className="truncate text-xs text-neutral-500">{personEmail}</div>
-        )}
-      </div>
-      <button
-        onClick={handleTogglePin}
-        className={cn([
-          "shrink-0 rounded-xs p-1 transition-colors",
-          isPinned
-            ? "text-blue-600 hover:text-blue-700"
-            : "text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-neutral-500",
-        ])}
-        aria-label={isPinned ? "Unpin contact" : "Pin contact"}
-      >
-        <Pin className="size-3.5" fill={isPinned ? "currentColor" : "none"} />
-      </button>
-    </div>
-  );
-}
-
-function OrganizationItem({
-  organizationId,
-  active,
-  onClick,
-  onDelete,
-}: {
-  organizationId: string;
-  active: boolean;
-  onClick: () => void;
-  onDelete?: (id: string) => void;
-}) {
-  const organization = main.UI.useRow(
-    "organizations",
-    organizationId,
-    main.STORE_ID,
-  );
-  const isPinned = Boolean(organization.pinned);
-  const store = main.UI.useStore(main.STORE_ID);
-
-  const showContextMenu = useNativeContextMenu([
-    {
-      id: "delete-org",
-      text: "Delete Organization",
-      action: () => onDelete?.(organizationId),
-    },
-  ]);
-
-  const handleTogglePin = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (!store) return;
-
-      const currentPinned = store.getCell(
-        "organizations",
-        organizationId,
-        "pinned",
-      );
-      if (currentPinned) {
-        store.setPartialRow("organizations", organizationId, {
-          pinned: false,
-          pin_order: 0,
-        });
-      } else {
-        const allOrgs = store.getTable("organizations");
-        const allHumans = store.getTable("humans");
-        const maxOrgOrder = Object.values(allOrgs).reduce((max, o) => {
-          const order = (o.pin_order as number | undefined) ?? 0;
-          return Math.max(max, order);
-        }, 0);
-        const maxHumanOrder = Object.values(allHumans).reduce((max, h) => {
-          const order = (h.pin_order as number | undefined) ?? 0;
-          return Math.max(max, order);
-        }, 0);
-        store.setPartialRow("organizations", organizationId, {
-          pinned: true,
-          pin_order: Math.max(maxOrgOrder, maxHumanOrder) + 1,
-        });
-      }
-    },
-    [store, organizationId],
-  );
-
-  if (!organization) {
-    return null;
-  }
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onContextMenu={showContextMenu}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      className={cn([
-        "group flex w-full items-center gap-2 overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors hover:bg-neutral-100",
-        active ? "border-neutral-500 bg-neutral-100" : "border-transparent",
-      ])}
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-100">
-        <Building2 className="h-4 w-4 text-neutral-500" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-medium">{organization.name}</div>
-      </div>
-      <button
-        onClick={handleTogglePin}
-        className={cn([
-          "shrink-0 rounded-xs p-1 transition-colors",
-          isPinned
-            ? "text-blue-600 hover:text-blue-700"
-            : "text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-neutral-500",
-        ])}
-        aria-label={isPinned ? "Unpin organization" : "Pin organization"}
-      >
-        <Pin className="size-3.5" fill={isPinned ? "currentColor" : "none"} />
-      </button>
-    </div>
-  );
-}
-
-function NewPersonForm({
-  onSave,
-  onCancel,
-}: {
-  onSave: (humanId: string) => void;
-  onCancel: () => void;
-}) {
-  const [name, setName] = useState("");
-  const userId = main.UI.useValue("user_id", main.STORE_ID);
-
-  const createHuman = main.UI.useSetRowCallback(
-    "humans",
-    (p: { name: string; humanId: string }) => p.humanId,
-    (p: { name: string; humanId: string }) => ({
-      user_id: userId || "",
-      created_at: new Date().toISOString(),
-      name: p.name,
-      email: "",
-      org_id: "",
-      job_title: "",
-      linkedin_username: "",
-      memo: "",
-      pinned: false,
-    }),
-    [userId],
-    main.STORE_ID,
-  );
-
-  const handleAdd = () => {
-    const humanId = crypto.randomUUID();
-    createHuman({ humanId, name: name.trim() });
-    setName("");
-    onSave(humanId);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (name.trim()) {
-      handleAdd();
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (name.trim()) {
-        handleAdd();
-      }
-    }
-    if (e.key === "Escape") {
-      onCancel();
-    }
-  };
-
-  return (
-    <div className="p-2">
-      <form onSubmit={handleSubmit}>
-        <div className="flex w-full items-center gap-2 rounded-xs border border-neutral-200 bg-neutral-50 px-2 py-1.5">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Add person"
-            className="w-full bg-transparent text-sm placeholder:text-neutral-400 focus:outline-hidden"
-            autoFocus
-          />
-          {name.trim() && (
-            <button
-              type="submit"
-              className="shrink-0 text-neutral-500 transition-colors hover:text-neutral-700"
-              aria-label="Add person"
-            >
-              <CornerDownLeft className="size-4" />
-            </button>
-          )}
-        </div>
-      </form>
     </div>
   );
 }
