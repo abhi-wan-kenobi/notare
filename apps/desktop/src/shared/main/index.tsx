@@ -41,7 +41,6 @@ import { TabContentFolder, TabItemFolder } from "~/folders";
 import { TabContentOnboarding, TabItemOnboarding } from "~/onboarding";
 import { TabContentPlugin, TabItemPlugin } from "~/plugins";
 import { loadPlugins } from "~/plugins/loader";
-import { TabContentSearch, TabItemSearch } from "~/search/advanced";
 import { TabContentNote, TabItemNote } from "~/session";
 import { useCaretPosition } from "~/session/components/caret-position-context";
 import { useShouldShowListeningFab } from "~/session/components/floating";
@@ -520,20 +519,6 @@ function TabItem({
       />
     );
   }
-  if (tab.type === "search") {
-    return (
-      <TabItemSearch
-        tab={tab}
-        tabIndex={tabIndex}
-        handleCloseThis={handleClose}
-        handleSelectThis={handleSelect}
-        handleCloseOthers={handleCloseOthers}
-        handleCloseAll={handleCloseAll}
-        handlePinThis={handlePinThis}
-        handleUnpinThis={handleUnpinThis}
-      />
-    );
-  }
   if (tab.type === "chat_support") {
     return (
       <TabItemChat
@@ -627,9 +612,6 @@ function ContentWrapper({ tab }: { tab: Tab }) {
   }
   if (tab.type === "chat_shortcuts") {
     return <TabContentChatShortcut tab={tab} />;
-  }
-  if (tab.type === "search") {
-    return <TabContentSearch tab={tab} />;
   }
   if (tab.type === "chat_support") {
     return <TabContentChat tab={tab} />;
@@ -1087,17 +1069,6 @@ function useTabsShortcuts() {
   useHotkeys(
     "mod+shift+l",
     () => openNew({ type: "folders", id: null }),
-    {
-      preventDefault: true,
-      enableOnFormTags: true,
-      enableOnContentEditable: true,
-    },
-    [openNew],
-  );
-
-  useHotkeys(
-    "mod+shift+f",
-    () => openNew({ type: "search" }),
     {
       preventDefault: true,
       enableOnFormTags: true,

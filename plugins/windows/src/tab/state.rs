@@ -80,14 +80,6 @@ crate::common_derives! {
 
 crate::common_derives! {
     #[derive(Default)]
-    pub struct SearchState {
-        pub selected_types: Option<Vec<String>>,
-        pub initial_query: Option<String>,
-    }
-}
-
-crate::common_derives! {
-    #[derive(Default)]
     pub struct ChatState {
         pub group_id: Option<String>,
         pub initial_message: Option<String>,

@@ -7,7 +7,6 @@ import type {
   EditorView,
   ExtensionsState,
   PromptsState,
-  SearchState,
   SessionsState,
   TabInput,
   TemplatesState,
@@ -22,7 +21,6 @@ export type {
   EditorView,
   ExtensionsState,
   PromptsState,
-  SearchState,
   SessionsState,
   TabInput,
   TemplatesState,
@@ -106,10 +104,6 @@ export type Tab =
       state: ChangelogState;
     })
   | (BaseTab & { type: "settings"; state: SettingsState })
-  | (BaseTab & {
-      type: "search";
-      state: SearchState;
-    })
   | (BaseTab & {
       type: "chat_support";
       state: ChatState;
@@ -201,12 +195,6 @@ export const getDefaultState = (tab: TabInput): Tab => {
         type: "settings",
         state: { tab: (tab.state?.tab as SettingsTab) ?? "app" },
       };
-    case "search":
-      return {
-        ...base,
-        type: "search",
-        state: tab.state ?? { selectedTypes: null, initialQuery: null },
-      };
     case "chat_support":
       return {
         ...base,
@@ -258,8 +246,6 @@ export const uniqueIdfromTab = (tab: Tab): string => {
       return "changelog";
     case "settings":
       return `settings`;
-    case "search":
-      return `search`;
     case "chat_support":
       return `chat_support`;
     case "onboarding":

@@ -70,11 +70,6 @@ function EmptyView() {
     () => openCurrent({ type: "settings" }),
     [openCurrent],
   );
-  const openAdvancedSearch = useCallback(
-    () => openCurrent({ type: "search" }),
-    [openCurrent],
-  );
-
   useHotkeys(
     "mod+o",
     () => setOpenNoteDialogOpen(true),
@@ -106,11 +101,6 @@ function EmptyView() {
           label="Calendar"
           shortcut={["⌘", "⇧", "C"]}
           onClick={openCalendar}
-        />
-        <ActionItem
-          label="Advanced Search"
-          shortcut={["⌘", "⇧", "F"]}
-          onClick={openAdvancedSearch}
         />
         <div className="my-1 h-px bg-neutral-200" />
         <ActionItem
