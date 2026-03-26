@@ -181,6 +181,12 @@ export function TabItemBase({
     ? active || (selected && !isEmptyTab)
       ? [
           { id: "close-tab", text: "Close", action: handleAttemptClose },
+          {
+            id: "close-others",
+            text: "Close others",
+            action: handleCloseOthers,
+          },
+          { id: "close-all", text: "Close all", action: handleCloseAll },
           ...(allowPin
             ? [
                 { separator: true as const },
