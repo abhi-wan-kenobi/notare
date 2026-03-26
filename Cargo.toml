@@ -96,6 +96,8 @@ hypr-google-drive = { path = "crates/google-drive", package = "google-drive" }
 hypr-google-mail = { path = "crates/google-mail", package = "google-mail" }
 hypr-granola = { path = "crates/granola", package = "granola" }
 hypr-hf = { path = "crates/hf", package = "hf" }
+hypr-hid-host = { path = "crates/hid-host", package = "hid-host" }
+hypr-hid-interface = { path = "crates/hid-interface", package = "hid-interface" }
 hypr-hooks = { path = "crates/hooks", package = "hooks" }
 hypr-host = { path = "crates/host", package = "host" }
 hypr-http = { path = "crates/http", package = "hypr-http-utils" }
@@ -372,6 +374,7 @@ vorbis_rs = "0.5.5"
 
 deepgram = { version = "0.7", default-features = false }
 hf-hub = { git = "https://github.com/huggingface/hf-hub", rev = "5510260", default-features = false, features = ["tokio"] }
+hidapi = { version = "2.6.5", features = ["macos-shared-device"] }
 libsql = "0.9.24"
 
 block2 = "0.6"
