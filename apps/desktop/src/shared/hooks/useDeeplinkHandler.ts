@@ -1,21 +1,36 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { isTauri } from "@tauri-apps/api/core";
 import { useEffect } from "react";
+import { useScheduleTaskRunCallback } from "tinytick/ui-react";
 
 import { events as deeplink2Events } from "@hypr/plugin-deeplink2";
 
 import { useAuth } from "~/auth";
+import { CALENDAR_SYNC_TASK_ID } from "~/services/calendar";
 import { useTabs } from "~/store/zustand/tabs";
 
 export function useDeeplinkHandler() {
   const auth = useAuth();
   const queryClient = useQueryClient();
   const openNew = useTabs((state) => state.openNew);
+  const scheduleCalendarSync = useScheduleTaskRunCallback(
+    CALENDAR_SYNC_TASK_ID,
+    undefined,
+    0,
+  );
 
   useEffect(() => {
     if (!isTauri()) {
       return;
     }
+
+    const timeoutIds = new Set<number>();
+    const refreshIntegrationState = () => {
+      void queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "integration-status",
+      });
+      scheduleCalendarSync();
+    };
 
     const unlisten = deeplink2Events.deepLinkEvent.listen(({ payload }) => {
       if (payload.to === "/auth/callback") {
@@ -31,9 +46,14 @@ export function useDeeplinkHandler() {
         const { integration_id, status, return_to } = payload.search;
         if (status === "success") {
           console.log(`[deeplink] integration updated: ${integration_id}`);
-          void queryClient.invalidateQueries({
-            predicate: (query) => query.queryKey[0] === "integration-status",
-          });
+          refreshIntegrationState();
+          for (const delay of [1000, 3000]) {
+            const timeoutId = window.setTimeout(() => {
+              timeoutIds.delete(timeoutId);
+              refreshIntegrationState();
+            }, delay);
+            timeoutIds.add(timeoutId);
+          }
           if (return_to === "calendar") {
             openNew({ type: "calendar" });
           }
@@ -42,7 +62,10 @@ export function useDeeplinkHandler() {
     });
 
     return () => {
+      for (const timeoutId of timeoutIds) {
+        window.clearTimeout(timeoutId);
+      }
       void unlisten.then((fn) => fn());
     };
-  }, [auth, openNew, queryClient]);
+  }, [auth, openNew, queryClient, scheduleCalendarSync]);
 }
