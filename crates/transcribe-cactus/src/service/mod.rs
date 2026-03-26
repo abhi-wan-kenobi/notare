@@ -31,11 +31,9 @@ pub(crate) fn build_metadata(model_path: &Path) -> Metadata {
     }
 }
 
-pub(crate) fn build_model(model_path: &Path) -> Result<hypr_cactus::Model, hypr_cactus::Error> {
+pub(crate) fn ensure_log_init() {
     static LOG_INIT: std::sync::Once = std::sync::Once::new();
     LOG_INIT.call_once(hypr_cactus::log::init);
-
-    hypr_cactus::Model::builder(model_path).build()
 }
 
 pub(crate) fn build_transcribe_options(

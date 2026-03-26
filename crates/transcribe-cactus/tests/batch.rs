@@ -113,12 +113,12 @@ async fn invalid_model_path_returns_http_500_json_error() {
 
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     let body: serde_json::Value = response.json().await.expect("response is not JSON");
-    assert_eq!(body["error"], "transcription_failed");
+    assert_eq!(body["error"], "model_load_failed");
     assert!(
         body["detail"]
             .as_str()
             .unwrap_or_default()
-            .contains("failed to initialize model"),
+            .contains("model file not found"),
         "unexpected detail: {body:?}"
     );
 
@@ -156,16 +156,15 @@ async fn invalid_model_path_returns_sse_error_event() {
         .await
         .expect("request failed");
 
-    assert_eq!(response.status(), StatusCode::OK);
-    let body = response.text().await.expect("failed to read SSE body");
-    assert!(body.contains("event: batch"), "unexpected SSE body: {body}");
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    let body: serde_json::Value = response.json().await.expect("response is not JSON");
+    assert_eq!(body["error"], "model_load_failed");
     assert!(
-        body.contains(r#""error":"transcription_failed""#),
-        "unexpected SSE body: {body}"
-    );
-    assert!(
-        body.contains("failed to initialize model"),
-        "unexpected SSE body: {body}"
+        body["detail"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("model file not found"),
+        "unexpected detail: {body:?}"
     );
 
     let _ = shutdown_tx.send(());

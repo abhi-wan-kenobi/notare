@@ -11,6 +11,7 @@ use axum::{
     http::{Request, StatusCode},
     response::{IntoResponse, Response},
 };
+use hypr_model_manager::{ModelManager, ModelManagerBuilder};
 use tower::Service;
 
 use hypr_ws_utils::ConnectionManager;
@@ -20,16 +21,18 @@ use super::super::batch;
 use super::session;
 use crate::CactusConfig;
 
+type CactusModelManager = ModelManager<hypr_cactus::Model>;
+
 #[derive(Clone)]
 pub struct TranscribeService {
     model_path: PathBuf,
+    manager: CactusModelManager,
     cactus_config: CactusConfig,
     connection_manager: ConnectionManager,
 }
 
 pub const LISTEN_PATH: &str = "/v1/listen";
 pub const HEALTH_PATH: &str = "/health";
-pub const WARMUP_PATH: &str = "/warmup";
 
 impl TranscribeService {
     pub fn builder() -> TranscribeServiceBuilder {
@@ -41,14 +44,9 @@ impl TranscribeService {
         F: FnOnce(String) -> Fut + Clone + Send + Sync + 'static,
         Fut: std::future::Future<Output = (StatusCode, String)> + Send,
     {
-        let model_path = self.model_path.clone();
         let svc = axum::error_handling::HandleError::new(self, on_error);
         axum::Router::new()
             .route(HEALTH_PATH, axum::routing::get(|| async { "ok" }))
-            .route(
-                WARMUP_PATH,
-                axum::routing::post(move || warmup_handler(model_path)),
-            )
             .route_service(LISTEN_PATH, svc)
     }
 }
@@ -72,10 +70,30 @@ impl TranscribeServiceBuilder {
     }
 
     pub fn build(self) -> TranscribeService {
+        crate::service::ensure_log_init();
+
+        tracing::info!("TODOTODOTO");
+
+        let model_path = self
+            .model_path
+            .expect("TranscribeServiceBuilder requires model_path");
+
+        let manager = ModelManagerBuilder::default()
+            .register("default", &model_path)
+            .default_model("default")
+            .build();
+
+        let warmup_manager = manager.clone();
+        tokio::spawn(async move {
+            match warmup_manager.get(None).await {
+                Ok(_) => tracing::info!("model warmup completed"),
+                Err(e) => tracing::warn!(error = %e, "model warmup failed"),
+            }
+        });
+
         TranscribeService {
-            model_path: self
-                .model_path
-                .expect("TranscribeServiceBuilder requires model_path"),
+            model_path,
+            manager,
             cactus_config: self.cactus_config,
             connection_manager: self.connection_manager.unwrap_or_default(),
         }
@@ -93,6 +111,7 @@ impl Service<Request<Body>> for TranscribeService {
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let model_path = self.model_path.clone();
+        let manager = self.manager.clone();
         let cactus_config = self.cactus_config.clone();
         let connection_manager = self.connection_manager.clone();
 
@@ -113,8 +132,8 @@ impl Service<Request<Body>> for TranscribeService {
             };
 
             if is_ws {
-                let model = match crate::service::build_model(&model_path) {
-                    Ok(model) => std::sync::Arc::new(model),
+                let model = match manager.get(None).await {
+                    Ok(model) => model,
                     Err(error) => {
                         tracing::error!(error = %error, "failed_to_load_model");
                         return Ok((
@@ -144,6 +163,7 @@ impl Service<Request<Body>> for TranscribeService {
                             metadata,
                             cactus_config,
                             guard,
+                            manager,
                         )
                         .await;
                     })
@@ -176,29 +196,26 @@ impl Service<Request<Body>> for TranscribeService {
                 }
 
                 if accept.contains("text/event-stream") {
-                    Ok(
-                        batch::handle_batch_sse(body_bytes, &content_type, &params, &model_path)
-                            .await,
+                    Ok(batch::handle_batch_sse(
+                        body_bytes,
+                        &content_type,
+                        &params,
+                        &manager,
+                        &model_path,
                     )
+                    .await)
                 } else {
-                    Ok(batch::handle_batch(body_bytes, &content_type, &params, &model_path).await)
+                    Ok(batch::handle_batch(
+                        body_bytes,
+                        &content_type,
+                        &params,
+                        &manager,
+                        &model_path,
+                    )
+                    .await)
                 }
             }
         })
-    }
-}
-
-async fn warmup_handler(model_path: PathBuf) -> Response {
-    match tokio::task::spawn_blocking(move || crate::service::build_model(&model_path)).await {
-        Ok(Ok(_model)) => StatusCode::OK.into_response(),
-        Ok(Err(e)) => {
-            tracing::warn!(error = %e, "warmup_failed");
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
-        }
-        Err(e) => {
-            tracing::warn!(error = %e, "warmup_join_error");
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
-        }
     }
 }
 

@@ -14,6 +14,7 @@ use axum::{
     },
 };
 use bytes::Bytes;
+use hypr_model_manager::ModelManager;
 use owhisper_interface::ListenParams;
 use owhisper_interface::batch_sse::{BatchSseMessage, EVENT_NAME};
 use tokio::sync::mpsc;
@@ -24,15 +25,31 @@ pub async fn handle_batch(
     body: Bytes,
     content_type: &str,
     params: &ListenParams,
+    manager: &ModelManager<hypr_cactus::Model>,
     model_path: &Path,
 ) -> Response {
+    let model = match manager.get(None).await {
+        Ok(m) => m,
+        Err(e) => {
+            tracing::error!(error = %e, "failed_to_load_model");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "model_load_failed",
+                    "detail": e.to_string()
+                })),
+            )
+                .into_response();
+        }
+    };
+
     let model_path = model_path.to_path_buf();
     let content_type = content_type.to_string();
     let params = params.clone();
 
     let result = tokio::task::spawn_blocking(move || {
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            transcribe_batch(&body, &content_type, &params, &model_path, None)
+            transcribe_batch(&body, &content_type, &params, &model, &model_path, None)
         }))
     })
     .await;
@@ -68,8 +85,24 @@ pub async fn handle_batch_sse(
     body: Bytes,
     content_type: &str,
     params: &ListenParams,
+    manager: &ModelManager<hypr_cactus::Model>,
     model_path: &Path,
 ) -> Response {
+    let model = match manager.get(None).await {
+        Ok(m) => m,
+        Err(e) => {
+            tracing::error!(error = %e, "failed_to_load_model");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "model_load_failed",
+                    "detail": e.to_string()
+                })),
+            )
+                .into_response();
+        }
+    };
+
     let model_path = model_path.to_path_buf();
     let content_type = content_type.to_string();
     let params = params.clone();
@@ -82,6 +115,7 @@ pub async fn handle_batch_sse(
                 &body,
                 &content_type,
                 &params,
+                &model,
                 &model_path,
                 Some(event_tx.clone()),
             )

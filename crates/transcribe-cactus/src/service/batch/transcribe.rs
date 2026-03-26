@@ -13,7 +13,7 @@ use super::response::{build_batch_words, build_segment_stream_response};
 use hypr_audio_utils::content_type_to_extension;
 
 #[tracing::instrument(
-    skip(audio_data, event_tx),
+    skip(audio_data, model, event_tx),
     fields(
         hyprnote.audio.size_bytes = audio_data.len(),
         hyprnote.file.mime_type = content_type,
@@ -24,6 +24,7 @@ pub(super) fn transcribe_batch(
     audio_data: &[u8],
     content_type: &str,
     params: &ListenParams,
+    model: &hypr_cactus::Model,
     model_path: &Path,
     event_tx: Option<mpsc::UnboundedSender<BatchSseMessage>>,
 ) -> Result<batch::Response, crate::Error> {
@@ -44,14 +45,6 @@ pub(super) fn transcribe_batch(
         .iter()
         .map(|samples| channel_duration_sec(samples))
         .fold(0.0_f64, f64::max);
-
-    let model = match crate::service::build_model(model_path) {
-        Ok(m) => m,
-        Err(e) => {
-            tracing::error!(error = %e, "failed_to_load_model");
-            return Err(e.into());
-        }
-    };
 
     let options = crate::service::build_transcribe_options(params, None);
 
@@ -505,7 +498,10 @@ mod tests {
             ..Default::default()
         };
 
-        let response = transcribe_batch(&wav_bytes, "audio/wav", &params, model_path, None)
+        let model = hypr_cactus::Model::new(model_path)
+            .unwrap_or_else(|e| panic!("failed to load model: {e}"));
+
+        let response = transcribe_batch(&wav_bytes, "audio/wav", &params, &model, model_path, None)
             .unwrap_or_else(|e| panic!("real-model batch transcription failed: {e}"));
 
         let Some(channel) = response.results.channels.first() else {

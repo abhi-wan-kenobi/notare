@@ -6,6 +6,7 @@ use futures_util::{SinkExt, Stream, StreamExt};
 use owhisper_interface::stream::{Metadata, StreamResponse};
 use owhisper_interface::{ControlMessage, ListenParams};
 
+use hypr_model_manager::ModelManager;
 use hypr_ws_utils::ConnectionGuard;
 
 use super::debug;
@@ -79,6 +80,7 @@ pub(super) async fn handle_websocket(
     metadata: Metadata,
     cactus_config: crate::CactusConfig,
     guard: ConnectionGuard,
+    manager: ModelManager<hypr_cactus::Model>,
 ) {
     let (ws_sender, mut ws_receiver) = socket.split();
 
@@ -132,6 +134,7 @@ pub(super) async fn handle_websocket(
                 session.handle_transcribe_event(event).await
             }
             msg = ws_receiver.next(), if receiving_input => {
+                manager.keep_alive().await;
                 session.handle_ws_message(
                     msg, params.channels, audio_txs.as_deref().unwrap_or(&[]),
                 ).await
