@@ -607,6 +607,13 @@ function ProviderContext({ providerId }: { providerId: ProviderId }) {
 }
 
 function useSafeSelectModel() {
+  const handleSelectProvider = settings.UI.useSetValueCallback(
+    "current_stt_provider",
+    (provider: string) => provider,
+    [],
+    settings.STORE_ID,
+  );
+
   const handleSelectModel = settings.UI.useSetValueCallback(
     "current_stt_model",
     (model: LocalModel) => model,
@@ -621,9 +628,10 @@ function useSafeSelectModel() {
       if (active) {
         return;
       }
+      handleSelectProvider("hyprnote");
       handleSelectModel(model);
     },
-    [active, handleSelectModel],
+    [active, handleSelectProvider, handleSelectModel],
   );
 
   return handler;

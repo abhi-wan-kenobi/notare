@@ -2,6 +2,7 @@ import { useForm } from "@tanstack/react-form";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { arch } from "@tauri-apps/plugin-os";
 import { Check, Loader2 } from "lucide-react";
+import { useEffect } from "react";
 
 import { commands as listenerCommands } from "@hypr/plugin-listener";
 import {
@@ -110,6 +111,17 @@ export function SelectProviderAndModel() {
       handleSelectModel(value.model);
     },
   });
+
+  useEffect(() => {
+    const storeProvider = current_stt_provider || "";
+    const storeModel = current_stt_model || "";
+    if (form.getFieldValue("provider") !== storeProvider) {
+      form.setFieldValue("provider", storeProvider);
+    }
+    if (form.getFieldValue("model") !== storeModel) {
+      form.setFieldValue("model", storeModel);
+    }
+  }, [current_stt_provider, current_stt_model, form]);
 
   return (
     <div className="flex flex-col gap-3">
