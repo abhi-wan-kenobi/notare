@@ -31,7 +31,13 @@ char [--base-url] [--api-key] [-m] [-l] [--no-color] [--base] [-v] [-q] [-h] [-V
 **Subcommands:**
 
 - `transcribe` — Transcribe an audio file
+- `models` — Manage local models
 - `completions` — Generate shell completions
+- `record` — Record audio to an MP3 file
+- `desktop` — Open the desktop app or download page
+- `claude` — Claude Code integration
+- `codex` — Codex integration
+- `opencode` — OpenCode integration
 - `meetings` — Browse past meetings
 - `humans` — Browse humans (contacts)
 - `orgs` — Browse organizations
@@ -57,6 +63,162 @@ char transcribe <--input> <-p> [-k] [-o] [-f] [-h] [-V]
 - `-h, --help` — Print help
 - `-V, --version` — Print version
 
+### char models
+
+Manage local models
+
+```
+char models [-h] [-V] <command>
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Subcommands:**
+
+- `paths` — Show resolved paths for settings and model storage
+- `list` — List available models and their download status
+- `cactus` — Manage downloadable Cactus models
+- `download` — Download a model by name
+- `delete` — Delete a downloaded model
+
+---
+
+### char models paths
+
+Show resolved paths for settings and model storage
+
+```
+char models paths [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char models list
+
+List available models and their download status
+
+```
+char models list [--supported] [-f] [-h] [-V]
+```
+
+**Options:**
+
+- `--supported`
+- `-f, --format <FORMAT>` (default: `pretty`)
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char models cactus
+
+Manage downloadable Cactus models
+
+```
+char models cactus [-h] [-V] <command>
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Subcommands:**
+
+- `list` — List available Cactus models
+- `download` — Download a Cactus model by name
+- `delete` — Delete a downloaded Cactus model
+
+---
+
+### char models cactus list
+
+List available Cactus models
+
+```
+char models cactus list [-f] [-h] [-V]
+```
+
+**Options:**
+
+- `-f, --format <FORMAT>` (default: `pretty`)
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char models cactus download
+
+Download a Cactus model by name
+
+```
+char models cactus download [-h] [-V] <name>
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Arguments:**
+
+- `<NAME>`
+
+### char models cactus delete
+
+Delete a downloaded Cactus model
+
+```
+char models cactus delete [-f] [-h] [-V] <name>
+```
+
+**Options:**
+
+- `-f, --force`
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Arguments:**
+
+- `<NAME>`
+
+### char models download
+
+Download a model by name
+
+```
+char models download [-h] [-V] <name>
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Arguments:**
+
+- `<NAME>`
+
+### char models delete
+
+Delete a downloaded model
+
+```
+char models delete [-f] [-h] [-V] <name>
+```
+
+**Options:**
+
+- `-f, --force`
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Arguments:**
+
+- `<NAME>`
+
 ### char completions
 
 Generate shell completions
@@ -73,6 +235,219 @@ char completions [-h] [-V] <shell>
 **Arguments:**
 
 - `<SHELL>`
+
+### char record
+
+Record audio to an MP3 file
+
+```
+char record [--audio] [-o] [-f] [-h] [-V]
+```
+
+**Options:**
+
+- `--audio <AUDIO>` (default: `input`)
+- `-o, --output <FILE>`
+- `-f, --format <FORMAT>` (default: `pretty`)
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char desktop
+
+Open the desktop app or download page
+
+```
+char desktop [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char claude
+
+Claude Code integration
+
+```
+char claude [-h] [-V] <command>
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Subcommands:**
+
+- `notify` — Receive a hook event from Claude Code (reads JSON from stdin)
+- `install` — Install char as a Claude Code hook handler
+- `uninstall` — Remove char from Claude Code hooks
+
+---
+
+### char claude notify
+
+Receive a hook event from Claude Code (reads JSON from stdin)
+
+```
+char claude notify [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char claude install
+
+Install char as a Claude Code hook handler
+
+```
+char claude install [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char claude uninstall
+
+Remove char from Claude Code hooks
+
+```
+char claude uninstall [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char codex
+
+Codex integration
+
+```
+char codex [-h] [-V] <command>
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Subcommands:**
+
+- `notify` — Receive a notification from Codex
+- `install` — Install char as the Codex notify handler
+- `uninstall` — Remove char from the Codex notify handler
+
+---
+
+### char codex notify
+
+Receive a notification from Codex
+
+```
+char codex notify [-h] [-V] <payload>
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Arguments:**
+
+- `<PAYLOAD>` — JSON payload from Codex
+
+### char codex install
+
+Install char as the Codex notify handler
+
+```
+char codex install [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char codex uninstall
+
+Remove char from the Codex notify handler
+
+```
+char codex uninstall [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char opencode
+
+OpenCode integration
+
+```
+char opencode [-h] [-V] <command>
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+**Subcommands:**
+
+- `notify` — Receive a hook event from OpenCode (reads JSON from stdin)
+- `install` — Install char as an OpenCode plugin
+- `uninstall` — Remove char from OpenCode plugins
+
+---
+
+### char opencode notify
+
+Receive a hook event from OpenCode (reads JSON from stdin)
+
+```
+char opencode notify [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char opencode install
+
+Install char as an OpenCode plugin
+
+```
+char opencode install [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
+
+### char opencode uninstall
+
+Remove char from OpenCode plugins
+
+```
+char opencode uninstall [-h] [-V]
+```
+
+**Options:**
+
+- `-h, --help` — Print help
+- `-V, --version` — Print version
 
 ### char meetings
 

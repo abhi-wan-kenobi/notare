@@ -55,10 +55,7 @@ impl App {
                 self.audio_label(),
                 format_elapsed(self.elapsed)
             ),
-            format!(
-                "{} Hz  {} ch  {:.1}s audio",
-                self.sample_rate, self.channels, self.audio_secs
-            ),
+            format!("{} Hz  {} ch", self.sample_rate, self.channels),
             match self.audio {
                 AudioMode::Dual => format!(
                     "{}  mic {}  sys {}",

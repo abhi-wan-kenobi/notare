@@ -3,6 +3,11 @@ mod capture;
 pub use capture::{CaptureLayer, TraceBuffer, new_trace_buffer};
 
 use std::io::{self, Stderr};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc;
+use std::thread::JoinHandle;
+use std::time::Duration;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::backend::CrosstermBackend;
@@ -13,6 +18,7 @@ use ratatui::widgets::{Block, BorderType, Paragraph};
 use ratatui::{Terminal, TerminalOptions, Viewport};
 
 pub const SPINNER: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+const INPUT_POLL_INTERVAL: Duration = Duration::from_millis(50);
 
 pub fn truncate_line(s: &str, max: usize) -> &str {
     let char_count = s.chars().count();
@@ -32,53 +38,150 @@ enum View {
     Traces,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum InputAction {
+    ToggleView,
+    Interrupt,
+}
+
+struct BackgroundInput {
+    rx: mpsc::Receiver<InputAction>,
+    running: Arc<AtomicBool>,
+    handle: Option<JoinHandle<()>>,
+}
+
+impl BackgroundInput {
+    fn spawn() -> Self {
+        let (tx, rx) = mpsc::channel();
+        let running = Arc::new(AtomicBool::new(true));
+        let thread_running = Arc::clone(&running);
+        let handle = std::thread::spawn(move || {
+            while thread_running.load(Ordering::Relaxed) {
+                if !event::poll(INPUT_POLL_INTERVAL).unwrap_or(false) {
+                    continue;
+                }
+
+                let Ok(Event::Key(key)) = event::read() else {
+                    continue;
+                };
+
+                match action_for_key(key) {
+                    Some(InputAction::ToggleView) => {
+                        let _ = tx.send(InputAction::ToggleView);
+                    }
+                    Some(InputAction::Interrupt) => {
+                        // Raw mode swallows Ctrl+C, so send SIGINT back to the
+                        // process and let the async runtime shut down naturally.
+                        unsafe {
+                            libc::kill(libc::getpid(), libc::SIGINT);
+                        }
+                    }
+                    None => {}
+                }
+            }
+        });
+
+        Self {
+            rx,
+            running,
+            handle: Some(handle),
+        }
+    }
+
+    fn try_recv(&self) -> Result<InputAction, mpsc::TryRecvError> {
+        self.rx.try_recv()
+    }
+
+    fn shutdown(&mut self) {
+        self.running.store(false, Ordering::Relaxed);
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+    }
+}
+
 pub struct InlineViewport {
     terminal: Terminal<CrosstermBackend<Stderr>>,
     traces: Option<TraceBuffer>,
     view: View,
-    height: u16,
     raw_mode: bool,
+    input: Option<BackgroundInput>,
 }
 
 impl InlineViewport {
     pub fn stderr(height: u16, traces: Option<TraceBuffer>) -> io::Result<Self> {
         let raw_mode = traces.is_some();
+        let mut input = None;
         if raw_mode {
             crossterm::terminal::enable_raw_mode()?;
+            input = Some(BackgroundInput::spawn());
         }
         let backend = CrosstermBackend::new(io::stderr());
-        let terminal = Terminal::with_options(
+        let terminal = match Terminal::with_options(
             backend,
             TerminalOptions {
                 viewport: Viewport::Inline(height),
             },
-        )?;
+        ) {
+            Ok(terminal) => terminal,
+            Err(error) => {
+                if let Some(mut input) = input {
+                    input.shutdown();
+                }
+                if raw_mode {
+                    let _ = crossterm::terminal::disable_raw_mode();
+                }
+                return Err(error);
+            }
+        };
         Ok(Self {
             terminal,
             traces,
             view: View::Progress,
-            height,
             raw_mode,
+            input,
         })
     }
 
-    pub fn poll_toggle(&mut self) {
+    pub fn poll_input(&mut self) {
         if !self.raw_mode {
             return;
         }
-        if event::poll(std::time::Duration::ZERO).unwrap_or(false) {
-            if let Ok(Event::Key(KeyEvent {
-                code: KeyCode::Char('d'),
-                modifiers: KeyModifiers::NONE,
-                ..
-            })) = event::read()
-            {
-                self.view = match self.view {
-                    View::Progress => View::Traces,
-                    View::Traces => View::Progress,
-                };
-            }
+        let Some(input) = self.input.as_ref() else {
+            return;
+        };
+        let mut actions = Vec::new();
+        while let Ok(action) = input.try_recv() {
+            actions.push(action);
         }
+        for action in actions {
+            self.apply_input_action(action);
+        }
+    }
+
+    fn shutdown_input(&mut self) {
+        if let Some(mut input) = self.input.take() {
+            input.shutdown();
+        }
+    }
+
+    fn apply_input_action(&mut self, action: InputAction) {
+        if action == InputAction::ToggleView {
+            self.view = match self.view {
+                View::Progress => View::Traces,
+                View::Traces => View::Progress,
+            };
+        }
+    }
+
+    fn teardown_raw_mode(&mut self) -> io::Result<()> {
+        if !self.raw_mode {
+            return Ok(());
+        }
+        self.shutdown_input();
+        crossterm::terminal::disable_raw_mode()?;
+        self.raw_mode = false;
+        Ok(())
     }
 
     pub fn draw(&mut self, lines: &[String]) {
@@ -89,9 +192,8 @@ impl InlineViewport {
     }
 
     fn draw_lines(&mut self, lines: &[String]) {
-        let has_traces = self.traces.is_some();
         let mut content: Vec<Line> = lines.iter().map(|s| Line::from(s.as_str())).collect();
-        if has_traces {
+        if self.traces.is_some() {
             content.push(
                 Line::from("  press 'd' to toggle traces")
                     .style(Style::default().fg(Color::DarkGray)),
@@ -177,18 +279,30 @@ impl InlineViewport {
             terminal::Clear(terminal::ClearType::FromCursorDown)
         )?;
 
-        if self.raw_mode {
-            crossterm::terminal::disable_raw_mode()?;
-        }
+        self.teardown_raw_mode()?;
         Ok(())
     }
 }
 
 impl Drop for InlineViewport {
     fn drop(&mut self) {
-        if self.raw_mode {
-            let _ = crossterm::terminal::disable_raw_mode();
-        }
+        let _ = self.teardown_raw_mode();
+    }
+}
+
+fn action_for_key(key: KeyEvent) -> Option<InputAction> {
+    match key {
+        KeyEvent {
+            code: KeyCode::Char('d'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => Some(InputAction::ToggleView),
+        KeyEvent {
+            code: KeyCode::Char('c'),
+            modifiers: KeyModifiers::CONTROL,
+            ..
+        } => Some(InputAction::Interrupt),
+        _ => None,
     }
 }
 
@@ -241,5 +355,17 @@ mod tests {
             .map(|x| buf[(x, 1)].symbol().chars().next().unwrap_or(' '))
             .collect();
         assert!(content_line.contains("recording mic"));
+    }
+
+    #[test]
+    fn ctrl_c_maps_to_interrupt_action() {
+        let key = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
+        assert_eq!(action_for_key(key), Some(InputAction::Interrupt));
+    }
+
+    #[test]
+    fn plain_d_maps_to_toggle_action() {
+        let key = KeyEvent::new(KeyCode::Char('d'), KeyModifiers::NONE);
+        assert_eq!(action_for_key(key), Some(InputAction::ToggleView));
     }
 }

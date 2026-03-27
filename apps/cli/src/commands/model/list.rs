@@ -42,7 +42,7 @@ pub(crate) async fn collect_model_rows(
 
 pub(super) async fn write_model_output(
     rows: &[ModelRow],
-    models_base: &Path,
+    _models_base: &Path,
     format: OutputFormat,
 ) -> CliResult<()> {
     match format {

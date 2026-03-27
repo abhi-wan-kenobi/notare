@@ -14,8 +14,8 @@ use tokio::sync::mpsc;
 
 use clap::Subcommand;
 
+use crate::app::AppContext;
 use crate::cli::OutputFormat;
-use crate::config::paths as config_paths;
 use crate::error::{CliError, CliResult, did_you_mean};
 use runtime::CliModelRuntime;
 
@@ -125,8 +125,8 @@ impl ModelScope {
     }
 }
 
-pub async fn run(command: Commands, trace_buffer: crate::OptTraceBuffer) -> CliResult<()> {
-    let resolved = config_paths::resolve_paths();
+pub async fn run(ctx: &AppContext, command: Commands) -> CliResult<()> {
+    let resolved = ctx.paths();
     let models_base = resolved.models_base.clone();
     let db_path = resolved.base.join("app.db");
 
@@ -141,10 +141,10 @@ pub async fn run(command: Commands, trace_buffer: crate::OptTraceBuffer) -> CliR
             list_models(&scope, &models_base, format).await
         }
         #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-        Commands::Cactus { command } => run_cactus(command, &models_base, trace_buffer).await,
+        Commands::Cactus { command } => run_cactus(command, &models_base, ctx.trace_buffer()).await,
         Commands::Download { name } => {
             let model = ModelScope::all().resolve(&name)?;
-            download::download(model, &models_base, trace_buffer).await
+            download::download(model, &models_base, ctx.trace_buffer()).await
         }
         Commands::Delete { name, force } => {
             let model = ModelScope::all().resolve(&name)?;

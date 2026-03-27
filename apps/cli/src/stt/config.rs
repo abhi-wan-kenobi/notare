@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use hypr_listener2_core::{BatchEvent, BatchParams, BatchProvider, BatchRuntime};
 use hypr_local_model::{CactusSttModel, LocalModel};
@@ -6,7 +6,6 @@ use hypr_local_model::{CactusSttModel, LocalModel};
 use hypr_local_stt_server::LocalSttServer;
 use tokio::sync::mpsc;
 
-use crate::config::paths;
 use crate::error::{CliError, CliResult, did_you_mean};
 
 use super::SttProvider;
@@ -23,6 +22,7 @@ pub struct SttOverrides {
     pub api_key: Option<String>,
     pub model: Option<String>,
     pub language: String,
+    pub models_base: PathBuf,
 }
 
 pub struct ChannelBatchRuntime {
@@ -98,7 +98,7 @@ pub async fn resolve_config(
         None => None,
     };
     #[cfg(not(feature = "desktop"))]
-    let settings: Option<()> = None;
+    let _settings: Option<()> = None;
 
     let (provider, saved_model) = match overrides.provider {
         Some(p) => (p, None),
@@ -122,7 +122,7 @@ pub async fn resolve_config(
         .as_ref()
         .and_then(|s| s.stt_providers.get(provider.id()));
     #[cfg(not(feature = "desktop"))]
-    let saved: Option<&()> = None;
+    let _saved: Option<&()> = None;
 
     let base_url = overrides.base_url.or_else(|| {
         #[cfg(feature = "desktop")]
@@ -150,7 +150,7 @@ pub async fn resolve_config(
 
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     if provider.is_local() {
-        let info = resolve_and_spawn_cactus(model.as_deref()).await?;
+        let info = resolve_and_spawn_cactus(&overrides.models_base, model.as_deref()).await?;
         return Ok(ResolvedSttConfig {
             provider: batch_provider,
             base_url: info.base_url,
@@ -232,6 +232,7 @@ fn resolve_provider_from_settings(
     Ok((provider, saved_model))
 }
 
+#[cfg(feature = "desktop")]
 fn resolve_hyprnote_provider(_model: Option<&str>) -> CliResult<(SttProvider, Option<String>)> {
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     if _model.is_some_and(|v| v.starts_with("cactus-")) {
@@ -244,8 +245,11 @@ fn resolve_hyprnote_provider(_model: Option<&str>) -> CliResult<(SttProvider, Op
 }
 
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-pub async fn resolve_and_spawn_cactus(model_name: Option<&str>) -> CliResult<CactusServerInfo> {
-    let (model, model_path) = resolve_cactus_model(model_name)?;
+pub async fn resolve_and_spawn_cactus(
+    models_base: &Path,
+    model_name: Option<&str>,
+) -> CliResult<CactusServerInfo> {
+    let (model, model_path) = resolve_cactus_model(models_base, model_name)?;
 
     let server = LocalSttServer::start(model_path)
         .await
@@ -282,12 +286,13 @@ fn default_cactus_model() -> CactusSttModel {
     }
 }
 
-fn resolve_cactus_model(name: Option<&str>) -> CliResult<(CactusSttModel, PathBuf)> {
+fn resolve_cactus_model(
+    models_base: &Path,
+    name: Option<&str>,
+) -> CliResult<(CactusSttModel, PathBuf)> {
     if !cactus_enabled() {
         return Err(unsupported_cactus_error());
     }
-
-    let models_base = paths::resolve_paths().models_base;
 
     let model = match name {
         Some(name) => {
@@ -302,12 +307,12 @@ fn resolve_cactus_model(name: Option<&str>) -> CliResult<(CactusSttModel, PathBu
                     }
                     _ => None,
                 })
-                .ok_or_else(|| not_found_cactus_model(name, false))?
+                .ok_or_else(|| not_found_cactus_model(models_base, name, false))?
         }
         None => default_cactus_model(),
     };
 
-    let model_path = LocalModel::Cactus(model.clone()).install_path(&models_base);
+    let model_path = LocalModel::Cactus(model.clone()).install_path(models_base);
     if !model_path.exists() {
         return Err(CliError::not_found(
             format!("cactus model files at '{}'", model_path.display()),
@@ -321,7 +326,11 @@ fn resolve_cactus_model(name: Option<&str>) -> CliResult<(CactusSttModel, PathBu
     Ok((model, model_path))
 }
 
-fn not_found_cactus_model(name: &str, include_downloaded_hint: bool) -> CliError {
+fn not_found_cactus_model(
+    models_base: &Path,
+    name: &str,
+    include_downloaded_hint: bool,
+) -> CliError {
     if !cactus_enabled() {
         return unsupported_cactus_error();
     }
@@ -342,7 +351,7 @@ fn not_found_cactus_model(name: &str, include_downloaded_hint: bool) -> CliError
         hint.push_str(&format!("Did you mean '{suggestion}'?\n\n"));
     }
     if include_downloaded_hint {
-        hint.push_str(&suggest_cactus_models());
+        hint.push_str(&suggest_cactus_models(models_base));
     } else {
         hint.push_str("Run `char models cactus list` to see available models.");
     }
@@ -350,12 +359,10 @@ fn not_found_cactus_model(name: &str, include_downloaded_hint: bool) -> CliError
     CliError::not_found(format!("cactus model '{name}'"), Some(hint))
 }
 
-fn suggest_cactus_models() -> String {
+fn suggest_cactus_models(models_base: &Path) -> String {
     if !cactus_enabled() {
         return "Cactus local models are only available on ARM devices.".to_string();
     }
-
-    let models_base = paths::resolve_paths().models_base;
     let mut downloaded = Vec::new();
     let mut available = Vec::new();
 
@@ -364,7 +371,7 @@ fn suggest_cactus_models() -> String {
             continue;
         };
 
-        if model.install_path(&models_base).exists() {
+        if model.install_path(models_base).exists() {
             downloaded.push(model.cli_name());
         } else {
             available.push(model.cli_name());

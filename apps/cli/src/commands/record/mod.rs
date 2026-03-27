@@ -10,6 +10,7 @@ use hypr_audio_actual::ActualAudio;
 use hypr_audio_utils::chunk_size_for_stt;
 use serde::Serialize;
 
+use crate::app::AppContext;
 use crate::cli::OutputFormat;
 use crate::error::{CliError, CliResult};
 use crate::output::EventWriter;
@@ -65,11 +66,16 @@ enum RecordEvent {
     },
 }
 
-pub async fn run(args: Args, quiet: bool) -> CliResult<()> {
-    run_with_audio(args, quiet, &ActualAudio).await
+pub async fn run(ctx: &AppContext, args: Args) -> CliResult<()> {
+    run_with_audio(args, ctx.quiet(), ctx.trace_buffer(), &ActualAudio).await
 }
 
-async fn run_with_audio<A: AudioProvider>(args: Args, quiet: bool, audio: &A) -> CliResult<()> {
+async fn run_with_audio<A: AudioProvider>(
+    args: Args,
+    quiet: bool,
+    trace_buffer: Option<crate::tui::TraceBuffer>,
+    audio: &A,
+) -> CliResult<()> {
     let sample_rate = 16_000u32;
     let format = args.format;
 
@@ -108,7 +114,7 @@ async fn run_with_audio<A: AudioProvider>(args: Args, quiet: bool, audio: &A) ->
     let stderr_is_tty = std::io::stderr().is_terminal();
     let mut viewport = match format {
         OutputFormat::Pretty if !quiet && stderr_is_tty => Some(
-            InlineViewport::stderr(5, None)
+            InlineViewport::stderr(5, trace_buffer)
                 .map_err(|e| CliError::operation_failed("init record viewport", e.to_string()))?,
         ),
         _ => None,
@@ -138,6 +144,7 @@ async fn run_with_audio<A: AudioProvider>(args: Args, quiet: bool, audio: &A) ->
         }
         if progress.render_ui {
             if let Some(view) = viewport.as_mut() {
+                view.poll_input();
                 view.draw(&app.lines());
             }
         }

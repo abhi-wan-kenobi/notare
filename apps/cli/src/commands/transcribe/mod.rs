@@ -12,6 +12,7 @@ use hypr_listener2_core::{BatchErrorCode, BatchEvent};
 use owhisper_interface::stream::StreamResponse;
 
 use crate::OptTraceBuffer;
+use crate::app::AppContext;
 use crate::cli::OutputFormat;
 use crate::error::{CliError, CliResult};
 use crate::stt::{ChannelBatchRuntime, SttOverrides, resolve_config};
@@ -67,22 +68,16 @@ struct BatchHandle {
     _server: crate::stt::ServerGuard,
 }
 
-async fn start_batch(input: &clio::InputPath, stt: SttOverrides) -> CliResult<BatchHandle> {
+async fn start_batch(
+    input: &clio::InputPath,
+    keywords: Vec<String>,
+    stt: SttOverrides,
+) -> CliResult<BatchHandle> {
     let resolved = resolve_config(None, stt).await?;
-
-    let file_path = input.path().to_str().ok_or_else(|| {
-        CliError::invalid_argument(
-            "--input",
-            input.path().display().to_string(),
-            "path must be valid utf-8",
-        )
-    })?;
-
-    let session_id = uuid::Uuid::new_v4().to_string();
+    let params = build_batch_params(&resolved, input.path(), keywords)?;
 
     let (batch_tx, batch_rx) = mpsc::unbounded_channel::<BatchEvent>();
     let runtime = Arc::new(ChannelBatchRuntime { tx: batch_tx });
-    let params = resolved.to_batch_params(session_id, file_path.to_string(), vec![]);
 
     let started = std::time::Instant::now();
     let task = tokio::spawn(async move { hypr_listener2_core::run_batch(runtime, params).await });
@@ -93,6 +88,26 @@ async fn start_batch(input: &clio::InputPath, stt: SttOverrides) -> CliResult<Ba
         started,
         _server: resolved.server,
     })
+}
+
+fn build_batch_params(
+    resolved: &crate::stt::ResolvedSttConfig,
+    input: &std::path::Path,
+    keywords: Vec<String>,
+) -> CliResult<hypr_listener2_core::BatchParams> {
+    let file_path = input.to_str().ok_or_else(|| {
+        CliError::invalid_argument(
+            "--input",
+            input.display().to_string(),
+            "path must be valid utf-8",
+        )
+    })?;
+
+    Ok(resolved.to_batch_params(
+        uuid::Uuid::new_v4().to_string(),
+        file_path.to_string(),
+        keywords,
+    ))
 }
 
 fn extract_stream_transcript(response: &StreamResponse) -> Option<&str> {
@@ -144,17 +159,18 @@ fn finish_batch(
 
 // -- Entry point --
 
-pub async fn run(args: Args, stt: SttOverrides, trace_buffer: OptTraceBuffer) -> CliResult<()> {
+pub async fn run(ctx: &AppContext, args: Args) -> CliResult<()> {
     let format = args.format;
     let output_path = args.output.clone();
     let input_display = args.input.path().display().to_string();
     let provider_display = format!("{:?}", args.provider).to_lowercase();
+    let stt = ctx.stt_overrides(Some(args.provider));
 
     match format {
         OutputFormat::Json => {
             run_json(args, stt, output_path, input_display, provider_display).await
         }
-        OutputFormat::Pretty => run_pretty(args, stt, output_path, trace_buffer).await,
+        OutputFormat::Pretty => run_pretty(args, stt, output_path, ctx.trace_buffer()).await,
     }
 }
 
@@ -174,7 +190,7 @@ async fn run_json(
         provider: provider_display,
     })?;
 
-    let mut handle = match start_batch(&args.input, stt).await {
+    let mut handle = match start_batch(&args.input, args.keywords.clone(), stt).await {
         Ok(h) => h,
         Err(e) => {
             let _ = writer.emit(&TranscribeEvent::Failed {
@@ -267,7 +283,7 @@ async fn run_pretty(
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| args.input.path().display().to_string());
 
-    let mut handle = start_batch(&args.input, stt).await?;
+    let mut handle = start_batch(&args.input, args.keywords.clone(), stt).await?;
 
     #[cfg(feature = "standalone")]
     let mut viewport = if _trace_buffer.is_some() {
@@ -296,7 +312,7 @@ async fn run_pretty(
                 _ = tick.tick() => {
                     spinner_idx = (spinner_idx + 1) % crate::tui::SPINNER.len();
                     if let Some(ref mut vp) = viewport {
-                        vp.poll_toggle();
+                        vp.poll_input();
                         let pct_str = format!("{:.0}%", last_pct * 100.0);
                         vp.draw(&[
                             format!("{} Transcribing {}... {}", crate::tui::SPINNER[spinner_idx], file_name, pct_str),
@@ -384,6 +400,7 @@ async fn run_pretty(
 #[cfg(test)]
 mod tests {
     use std::io::Cursor;
+    use std::path::Path;
 
     use super::*;
 
@@ -403,5 +420,26 @@ mod tests {
         assert!(output.ends_with('\n'));
         assert!(output.contains("\"type\":\"started\""));
         assert!(output.contains("\"input\":\"test.wav\""));
+    }
+
+    #[test]
+    fn build_batch_params_preserves_keywords() {
+        let resolved = crate::stt::ResolvedSttConfig {
+            provider: hypr_listener2_core::BatchProvider::Deepgram,
+            base_url: "https://example.com".to_string(),
+            api_key: "secret".to_string(),
+            model: "nova".to_string(),
+            language: "en".parse().unwrap(),
+            server: crate::stt::ServerGuard::default(),
+        };
+
+        let params = build_batch_params(
+            &resolved,
+            Path::new("/tmp/example.wav"),
+            vec!["roadmap".to_string(), "planning".to_string()],
+        )
+        .unwrap();
+
+        assert_eq!(params.keywords, vec!["roadmap", "planning"]);
     }
 }

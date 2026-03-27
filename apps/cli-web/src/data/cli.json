@@ -372,8 +372,8 @@
     },
     {
       "name": "char record",
-      "about": "Record audio to a WAV file",
-      "synopsis": "char record [--audio] [-o] [--sample-rate] [--events] [-h] [-V]",
+      "about": "Record audio to an MP3 file",
+      "synopsis": "char record [--audio] [-o] [-f] [-h] [-V]",
       "options": [
         {
           "flags": "--audio",
@@ -389,15 +389,9 @@
           "is_flag": false
         },
         {
-          "flags": "--sample-rate",
-          "value_name": "SAMPLE_RATE",
-          "default": "16000",
-          "required": false,
-          "is_flag": false
-        },
-        {
-          "flags": "--events",
-          "value_name": "EVENTS",
+          "flags": "-f, --format",
+          "value_name": "FORMAT",
+          "default": "pretty",
           "required": false,
           "is_flag": false
         },

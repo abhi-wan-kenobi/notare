@@ -97,7 +97,7 @@ fn draw_download(
     pct: u8,
 ) {
     if let Some(vp) = viewport {
-        vp.poll_toggle();
+        vp.poll_input();
         let name = model.display_name();
         let pct_str = format!("{}%", pct);
         vp.draw(&[

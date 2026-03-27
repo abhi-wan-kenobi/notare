@@ -21,19 +21,10 @@ pub async fn run(command: Commands) -> CliResult<()> {
 }
 
 fn notify() -> CliResult<()> {
-    let input = std::io::read_to_string(std::io::stdin())
-        .map_err(|e| CliError::operation_failed("read stdin", e.to_string()))?;
-
-    let event: serde_json::Value = serde_json::from_str(&input)
-        .map_err(|e| CliError::invalid_argument("stdin", input, e.to_string()))?;
+    let event = super::read_stdin_json()?;
 
     // TODO: write to app DB
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&event)
-            .map_err(|e| CliError::operation_failed("serialize", e.to_string()))?
-    );
-    Ok(())
+    super::print_pretty_json(&event)
 }
 
 fn install() -> CliResult<()> {

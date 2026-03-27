@@ -40,6 +40,7 @@ colored = "3"
 crossterm = { workspace = true, optional = true }
 dirs = { workspace = true }
 hypr-mp3 = { workspace = true, optional = true }
+libc = { version = "0.2", optional = true }
 open = { workspace = true }
 ratatui = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["json"] }
@@ -95,5 +96,6 @@ standalone = [
   "dep:hypr-model-downloader",
   "dep:ratatui",
   "dep:crossterm",
+  "dep:libc",
   "dep:tokio-stream",
 ]

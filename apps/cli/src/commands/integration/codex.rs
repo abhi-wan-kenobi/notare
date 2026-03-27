@@ -28,12 +28,7 @@ fn notify(payload: &str) -> CliResult<()> {
         .map_err(|e| CliError::invalid_argument("payload", payload.to_string(), e.to_string()))?;
 
     // TODO: write to app DB
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&event)
-            .map_err(|e| CliError::operation_failed("serialize", e.to_string()))?
-    );
-    Ok(())
+    super::print_pretty_json(&event)
 }
 
 fn install() -> CliResult<()> {
