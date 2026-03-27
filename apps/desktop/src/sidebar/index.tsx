@@ -44,12 +44,15 @@ export function LeftSidebar() {
   });
 
   const isSettingsMode = currentTab?.type === "settings";
-  const isContactsMode = currentTab?.type === "contacts";
   const isCalendarMode = currentTab?.type === "calendar";
+  const isContactsMode = currentTab?.type === "contacts";
   const showCollapseButton =
     !isSettingsMode && !isContactsMode && !isCalendarMode;
   const showSearchResults =
-    !isSettingsMode && !isContactsMode && query.trim() !== "";
+    !isSettingsMode &&
+    !isCalendarMode &&
+    !isContactsMode &&
+    query.trim() !== "";
 
   return (
     <div className="flex h-full w-70 shrink-0 flex-col gap-1 overflow-hidden">

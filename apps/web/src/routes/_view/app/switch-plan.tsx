@@ -1,20 +1,24 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { createCheckoutSession } from "@/functions/billing";
+import { createPlanSwitchSession } from "@/functions/billing";
 import { desktopSchemeSchema } from "@/functions/desktop-flow";
 
 const validateSearch = z.object({
-  period: z.enum(["monthly", "yearly"]).catch("monthly"),
-  plan: z.enum(["lite", "pro"]).catch("pro"),
+  targetPlan: z.enum(["lite", "pro"]),
+  targetPeriod: z.enum(["monthly", "yearly"]).catch("monthly"),
   scheme: desktopSchemeSchema.optional(),
 });
 
-export const Route = createFileRoute("/_view/app/checkout")({
+export const Route = createFileRoute("/_view/app/switch-plan")({
   validateSearch,
   beforeLoad: async ({ search }) => {
-    const { url } = await createCheckoutSession({
-      data: { period: search.period, plan: search.plan, scheme: search.scheme },
+    const { url } = await createPlanSwitchSession({
+      data: {
+        targetPlan: search.targetPlan,
+        targetPeriod: search.targetPeriod,
+        scheme: search.scheme,
+      },
     });
 
     if (url) {
