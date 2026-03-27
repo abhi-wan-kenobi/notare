@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   AlertCircleIcon,
   CheckIcon,
+  ChevronRightIcon,
   CopyIcon,
   HeartIcon,
   LightbulbIcon,
@@ -19,6 +20,7 @@ import {
 } from "@hypr/plugin-fs-sync";
 import { NoteTab } from "@hypr/ui/components/ui/note-tab";
 import {
+  AppFloatingPanel,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -525,6 +527,20 @@ function CreateOtherFormatButton({
     },
     [openNew, setRow, user_id],
   );
+  const handleSeeAllTemplates = useCallback(() => {
+    setOpen(false);
+    setSearch("");
+    resultRefs.current = [];
+    openNew({
+      type: "templates",
+      state: {
+        showHomepage: true,
+        isWebMode: null,
+        selectedMineId: null,
+        selectedWebIndex: null,
+      },
+    });
+  }, [openNew]);
 
   const trimmedSearch = search.trim();
   const searchQuery = search.trim().toLowerCase();
@@ -738,72 +754,85 @@ function CreateOtherFormatButton({
           <span>Use template</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start">
-        <div className="flex flex-col">
-          <div className="border-b border-neutral-200 py-2">
-            <div
-              className={cn([
-                "flex h-9 items-center gap-2 rounded-md bg-white px-3",
-              ])}
-            >
-              <SearchIcon className="h-4 w-4 text-neutral-400" />
-              <input
-                ref={searchInputRef}
-                autoFocus
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={handleSearchInputKeyDown}
-                placeholder="Search templates..."
-                className="flex-1 bg-transparent text-sm placeholder:text-neutral-400 focus:outline-hidden"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="rounded-xs p-0.5 hover:bg-neutral-100"
-                >
-                  <XIcon className="h-3 w-3 text-neutral-400" />
-                </button>
-              )}
+      <PopoverContent variant="app" className="w-80" align="start">
+        <div className="flex flex-col gap-1">
+          <AppFloatingPanel className="flex flex-col overflow-hidden">
+            <div className="border-b border-neutral-200 py-2">
+              <div
+                className={cn([
+                  "flex h-9 items-center gap-2 rounded-md bg-white px-3",
+                ])}
+              >
+                <SearchIcon className="h-4 w-4 text-neutral-400" />
+                <input
+                  ref={searchInputRef}
+                  autoFocus
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={handleSearchInputKeyDown}
+                  placeholder="Search templates..."
+                  className="flex-1 bg-transparent text-sm placeholder:text-neutral-400 focus:outline-hidden"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="rounded-xs p-0.5 hover:bg-neutral-100"
+                  >
+                    <XIcon className="h-3 w-3 text-neutral-400" />
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="max-h-80 overflow-y-auto p-2">
-            <div className="flex flex-col gap-3">
-              {resultSections.map((section) => (
-                <TemplateSection
-                  key={section.key}
-                  title={section.title}
-                  icon={section.icon}
-                  uppercase={section.uppercase}
-                >
-                  {section.items.length > 0 ? (
-                    section.items.map((item) => {
-                      const itemIndex = resultIndex;
-                      resultIndex += 1;
+            <div className="max-h-80 overflow-y-auto p-2">
+              <div className="flex flex-col gap-3">
+                {resultSections.map((section) => (
+                  <TemplateSection
+                    key={section.key}
+                    title={section.title}
+                    icon={section.icon}
+                    uppercase={section.uppercase}
+                  >
+                    {section.items.length > 0 ? (
+                      section.items.map((item) => {
+                        const itemIndex = resultIndex;
+                        resultIndex += 1;
 
-                      return (
-                        <TemplateResultButton
-                          key={item.key}
-                          buttonRef={(node) => {
-                            resultRefs.current[itemIndex] = node;
-                          }}
-                          title={item.title}
-                          description={item.description}
-                          onClick={item.onClick}
-                          onKeyDown={(e) => handleResultKeyDown(e, itemIndex)}
-                        />
-                      );
-                    })
-                  ) : (
-                    <div className="px-2 py-3 text-sm text-neutral-500">
-                      {section.emptyMessage}
-                    </div>
-                  )}
-                </TemplateSection>
-              ))}
+                        return (
+                          <TemplateResultButton
+                            key={item.key}
+                            buttonRef={(node) => {
+                              resultRefs.current[itemIndex] = node;
+                            }}
+                            title={item.title}
+                            description={item.description}
+                            onClick={item.onClick}
+                            onKeyDown={(e) => handleResultKeyDown(e, itemIndex)}
+                          />
+                        );
+                      })
+                    ) : (
+                      <div className="px-2 py-3 text-sm text-neutral-500">
+                        {section.emptyMessage}
+                      </div>
+                    )}
+                  </TemplateSection>
+                ))}
+              </div>
             </div>
-          </div>
+          </AppFloatingPanel>
+
+          <button
+            onClick={handleSeeAllTemplates}
+            className={cn([
+              "flex h-7 w-full items-center justify-center gap-1 rounded-lg px-3 text-xs font-medium",
+              "text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900",
+            ])}
+          >
+            See all templates
+            <ChevronRightIcon className="h-3.5 w-3.5" />
+          </button>
         </div>
       </PopoverContent>
     </Popover>
