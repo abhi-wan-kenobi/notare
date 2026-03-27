@@ -11,6 +11,8 @@ Default permissions for the plugin
 - `allow-create-todo`
 - `allow-complete-todo`
 - `allow-delete-todo`
+- `allow-linear-list-teams`
+- `allow-linear-list-tickets`
 
 ## Permission Table
 
@@ -147,6 +149,58 @@ Enables the fetch_todos command without any pre-configured scope.
 <td>
 
 Denies the fetch_todos command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`todo:allow-linear-list-teams`
+
+</td>
+<td>
+
+Enables the linear_list_teams command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`todo:deny-linear-list-teams`
+
+</td>
+<td>
+
+Denies the linear_list_teams command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`todo:allow-linear-list-tickets`
+
+</td>
+<td>
+
+Enables the linear_list_tickets command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`todo:deny-linear-list-tickets`
+
+</td>
+<td>
+
+Denies the linear_list_tickets command without any pre-configured scope.
 
 </td>
 </tr>

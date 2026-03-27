@@ -142,10 +142,18 @@ async fn app() -> Router {
         jina_api_key: env.jina_api_key.clone(),
     };
 
+    use hypr_api_nango::NangoIntegrationId;
+
+    let mut forward_handlers = hypr_api_nango::ForwardHandlerRegistry::new();
+    forward_handlers.insert(
+        hypr_api_nango::Linear::ID.to_string(),
+        hypr_api_nango::forward_handler(hypr_linear::webhook::handle),
+    );
+
     let webhook_routes = Router::new()
         .nest(
             "/nango",
-            hypr_api_nango::webhook_router(nango_config.clone()),
+            hypr_api_nango::webhook_router(nango_config.clone(), forward_handlers),
         )
         .nest(
             "/stt",

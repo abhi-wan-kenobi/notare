@@ -8,11 +8,16 @@ links = "tauri-plugin-todo"
 description = ""
 
 [dependencies]
+hypr-api-client = { workspace = true }
 hypr-apple-todo = { workspace = true, features = ["specta"] }
+hypr-ticket-interface = { workspace = true }
 
 tauri = { workspace = true, features = ["test"] }
+tauri-plugin-auth = { workspace = true }
 tauri-plugin-permissions = { workspace = true }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
+
+reqwest = { workspace = true }
 
 serde = { workspace = true, features = ["derive"] }
 specta = { workspace = true, features = ["chrono"] }

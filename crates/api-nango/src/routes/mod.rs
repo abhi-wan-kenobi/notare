@@ -15,7 +15,7 @@ use crate::state::AppState;
 pub use connect::{CreateSessionRequest, SessionMode, SessionResponse};
 pub use disconnect::{DeleteConnectionRequest, DeleteConnectionResponse};
 pub use status::{ConnectionItem, ListConnectionsResponse};
-pub use webhook::WebhookResponse;
+pub use webhook::{ForwardHandler, ForwardHandlerRegistry, WebhookResponse, forward_handler};
 pub use whoami::{WhoAmIItem, WhoAmIResponse};
 
 pub fn router(config: NangoConfig) -> Router {
@@ -31,8 +31,8 @@ pub fn router(config: NangoConfig) -> Router {
         .with_state(state)
 }
 
-pub fn webhook_router(config: NangoConfig) -> Router {
-    let state = AppState::new(config);
+pub fn webhook_router(config: NangoConfig, forward_handlers: ForwardHandlerRegistry) -> Router {
+    let state = AppState::with_forward_handlers(config, forward_handlers);
 
     Router::new()
         .route("/webhook", post(webhook::nango_webhook))

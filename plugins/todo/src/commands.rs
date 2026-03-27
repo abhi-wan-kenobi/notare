@@ -1,4 +1,8 @@
 use hypr_apple_todo::types::{CreateReminderInput, Reminder, ReminderFilter, ReminderList};
+use hypr_ticket_interface::{CollectionPage, TicketPage};
+
+use tauri::Manager;
+use tauri_plugin_auth::AuthPluginExt;
 
 use crate::error::Error;
 
@@ -107,5 +111,51 @@ pub fn delete_todo(id: String) -> Result<(), Error> {
     {
         let _ = id;
         Err(Error::UnsupportedPlatform)
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn linear_list_teams<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    connection_id: String,
+    limit: Option<u32>,
+    cursor: Option<String>,
+) -> Result<CollectionPage, Error> {
+    let config = app.state::<crate::PluginConfig>();
+    let token = require_access_token(&app)?;
+    crate::fetch::linear_list_teams(&config.api_base_url, &token, &connection_id, limit, cursor)
+        .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn linear_list_tickets<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    connection_id: String,
+    team_id: String,
+    query: Option<String>,
+    limit: Option<u32>,
+    cursor: Option<String>,
+) -> Result<TicketPage, Error> {
+    let config = app.state::<crate::PluginConfig>();
+    let token = require_access_token(&app)?;
+    crate::fetch::linear_list_tickets(
+        &config.api_base_url,
+        &token,
+        &connection_id,
+        &team_id,
+        query,
+        limit,
+        cursor,
+    )
+    .await
+}
+
+fn require_access_token<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<String, Error> {
+    let token = app.access_token().map_err(|e| Error::Auth(e.to_string()))?;
+    match token {
+        Some(t) if !t.is_empty() => Ok(t),
+        _ => Err(Error::Auth("not authenticated".to_string())),
     }
 }

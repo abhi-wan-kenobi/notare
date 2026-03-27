@@ -61,6 +61,22 @@ async deleteTodo(id: string) : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async linearListTeams(connectionId: string, limit: number | null, cursor: string | null) : Promise<Result<CollectionPage, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:todo|linear_list_teams", { connectionId, limit, cursor }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async linearListTickets(connectionId: string, teamId: string, query: string | null, limit: number | null, cursor: string | null) : Promise<Result<TicketPage, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:todo|linear_list_tickets", { connectionId, teamId, query, limit, cursor }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -86,9 +102,22 @@ export type CalendarColor = { red: number; green: number; blue: number; alpha: n
 export type CalendarSource = { identifier: string; title: string; source_type: CalendarSourceType }
 export type CalendarSourceType = "Local" | "Exchange" | "CalDav" | "MobileMe" | "Subscribed" | "Birthdays"
 export type CalendarType = "Local" | "CalDav" | "Exchange" | "Subscription" | "Birthday"
+export type CollectionPage = { items: CollectionRef[]; next_cursor: string | null }
+export type CollectionRef = { id: string; 
+/**
+ * Display name. GitHub: "owner/repo", Linear: team name.
+ */
+name: string; 
+/**
+ * Short identifier. GitHub: "owner/repo", Linear: team key (e.g., "ENG").
+ */
+key: string | null; url: string | null }
 export type CreateReminderInput = { title: string; list_id: string | null; notes: string | null; url: string | null; priority: ReminderPriority | null; due_date: string | null; start_date: string | null }
 export type DateComponents = { date: string | null; time: string | null; time_zone: string | null }
 export type GeoLocation = { latitude: number; longitude: number }
+export type LabelRef = { id: string; name: string; color: string | null }
+export type PersonRef = { id: string | null; name: string | null; email: string | null; avatar_url: string | null }
+export type PullRequestDetail = { is_draft: boolean; is_merged: boolean; source_branch: string | null; target_branch: string | null; merged_at: string | null; merged_by: PersonRef | null }
 export type RecurrenceDayOfWeek = { weekday: Weekday; week_number: number | null }
 export type RecurrenceEnd = { Count: number } | { Until: string }
 export type RecurrenceFrequency = "Daily" | "Weekly" | "Monthly" | "Yearly"
@@ -100,6 +129,44 @@ export type ReminderList = { id: string; title: string; calendar_type: CalendarT
 export type ReminderListRef = { id: string; title: string }
 export type ReminderPriority = "None" | "High" | "Medium" | "Low"
 export type StructuredLocation = { title: string; geo: GeoLocation | null; radius: number | null }
+export type TicketKind = "issue" | "pull_request"
+export type TicketPage = { items: TicketSummary[]; next_cursor: string | null }
+export type TicketPriority = "urgent" | "high" | "medium" | "low" | "none"
+export type TicketProviderType = "github" | "linear"
+export type TicketState = "backlog" | "open" | "in_progress" | "done" | "closed"
+export type TicketSummary = { provider: TicketProviderType; kind: TicketKind; 
+/**
+ * Provider-specific unique ID.
+ */
+id: string; 
+/**
+ * Numeric identifier (GitHub: number, Linear: number).
+ */
+number: number | null; collection: CollectionRef; title: string; state: TicketState; 
+/**
+ * Provider's original state string for display (e.g. "In Review", "merged").
+ */
+state_detail: string | null; priority: TicketPriority | null; author: PersonRef | null; assignees: PersonRef[]; labels: LabelRef[]; url: string; 
+/**
+ * ISO 8601.
+ */
+created_at: string; 
+/**
+ * ISO 8601.
+ */
+updated_at: string; 
+/**
+ * ISO 8601.
+ */
+closed_at: string | null; 
+/**
+ * Present only when kind == PullRequest.
+ */
+pull_request: PullRequestDetail | null; 
+/**
+ * Raw provider JSON for forward compatibility.
+ */
+raw: string }
 export type TodoChangedEvent = null
 export type Weekday = "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday"
 

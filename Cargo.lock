@@ -487,6 +487,7 @@ dependencies = [
  "envy",
  "governor",
  "jsonwebtoken",
+ "linear",
  "llm-proxy",
  "observability",
  "opentelemetry",
@@ -574,6 +575,7 @@ dependencies = [
  "reqwest 0.13.2",
  "serde",
  "serde_json",
+ "ticket-interface",
 ]
 
 [[package]]
@@ -10378,6 +10380,7 @@ dependencies = [
  "specta",
  "thiserror 2.0.18",
  "tokio",
+ "tracing",
  "utoipa",
 ]
 
@@ -18962,15 +18965,19 @@ dependencies = [
 name = "tauri-plugin-todo"
 version = "0.1.0"
 dependencies = [
+ "api-client",
  "apple-todo",
+ "reqwest 0.13.2",
  "serde",
  "specta",
  "specta-typescript",
  "tauri",
  "tauri-plugin",
+ "tauri-plugin-auth",
  "tauri-plugin-permissions",
  "tauri-specta",
  "thiserror 2.0.18",
+ "ticket-interface",
 ]
 
 [[package]]

@@ -13,4 +13,4 @@ pub use integrations::{
     GitHub, GoogleCalendar, GoogleDrive, GoogleMail, Linear, NangoIntegrationId, OutlookCalendar,
 };
 pub use openapi::openapi;
-pub use routes::{router, webhook_router};
+pub use routes::{ForwardHandler, ForwardHandlerRegistry, forward_handler, router, webhook_router};

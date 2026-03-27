@@ -1,3 +1,8 @@
+use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+
 use axum::{Json, extract::State, http::HeaderMap};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -6,6 +11,19 @@ use hypr_nango::{AuthOperation, WebhookType};
 
 use crate::error::{NangoError, Result};
 use crate::state::AppState;
+
+pub type ForwardHandler =
+    Arc<dyn Fn(serde_json::Value) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
+
+pub type ForwardHandlerRegistry = HashMap<String, ForwardHandler>;
+
+pub fn forward_handler<F, Fut>(f: F) -> ForwardHandler
+where
+    F: Fn(serde_json::Value) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = ()> + Send + 'static,
+{
+    Arc::new(move |payload| Box::pin(f(payload)))
+}
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct WebhookResponse {
@@ -50,6 +68,33 @@ pub async fn nango_webhook(
     let envelope: WebhookTypeEnvelope =
         serde_json::from_str(&body).map_err(|e| NangoError::BadRequest(e.to_string()))?;
     let webhook_type = envelope.webhook_type;
+
+    if webhook_type == WebhookType::Forward {
+        let forward: hypr_nango::NangoForwardWebhook =
+            serde_json::from_str(&body).map_err(|e| NangoError::BadRequest(e.to_string()))?;
+
+        tracing::info!(
+            provider = %forward.provider,
+            connection_id = %forward.connection_id,
+            "nango forward webhook received"
+        );
+
+        if let Some(handler) = state
+            .forward_handlers
+            .get(forward.provider_config_key.as_str())
+        {
+            handler(forward.payload).await;
+        } else {
+            tracing::info!(
+                provider_config_key = %forward.provider_config_key,
+                "unhandled forward webhook provider"
+            );
+        }
+
+        return Ok(Json(WebhookResponse {
+            status: "ok".to_string(),
+        }));
+    }
 
     if webhook_type != WebhookType::Auth {
         tracing::info!(webhook_type = ?webhook_type, "nango webhook received (ignored)");

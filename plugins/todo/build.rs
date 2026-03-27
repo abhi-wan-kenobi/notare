@@ -6,6 +6,8 @@ const COMMANDS: &[&str] = &[
     "create_todo",
     "complete_todo",
     "delete_todo",
+    "linear_list_teams",
+    "linear_list_tickets",
 ];
 
 fn main() {

@@ -72,9 +72,17 @@ pub async fn handler(
         "batch_transcription_request_received"
     );
 
-    match sync::transcribe_with_provider(&selected, listen_params, body, content_type).await {
-        Ok(response) => Json(response).into_response(),
-        Err(e) => {
+    let retry_config = state
+        .router
+        .as_ref()
+        .map(|r| r.retry_config().clone())
+        .unwrap_or_default();
+
+    match sync::transcribe_with_retry(&selected, listen_params, body, content_type, &retry_config)
+        .await
+    {
+        Ok((response, _retries)) => Json(response).into_response(),
+        Err((e, _retries)) => {
             tracing::error!(
                 error = %e,
                 hyprnote.stt.provider.name = ?selected.provider(),
