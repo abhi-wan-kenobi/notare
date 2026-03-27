@@ -24,12 +24,11 @@ import { usePermission } from "~/shared/hooks/usePermissions";
 import { openIntegrationUrl } from "~/shared/integration";
 
 function getProviderBadgeClassName(badge: string) {
-  return cn([
-    "rounded-full px-2 text-xs",
-    badge === "Beta"
-      ? "bg-sky-100 py-0.5 font-medium text-sky-900"
-      : "border border-neutral-300 font-light text-neutral-500",
-  ]);
+  if (badge === "Beta") {
+    return "text-xs font-medium text-stone-600";
+  }
+
+  return "rounded-full border border-neutral-300 px-2 text-xs font-light text-neutral-500";
 }
 
 export function CalendarSidebarContent() {
@@ -157,12 +156,11 @@ function ProviderAccordionItem({
         onContextMenu={
           providerMenuItems.length > 0 ? showProviderMenu : undefined
         }
-        className={cn([
-          "group -mx-2 grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 rounded-md px-2 hover:bg-neutral-50",
-          requiresPro && "opacity-60",
-        ])}
+        className="group -mx-2 grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 rounded-md px-2 hover:bg-neutral-50"
       >
-        <AccordionHeader className="min-w-0">
+        <AccordionHeader
+          className={cn(["min-w-0", requiresPro && "opacity-60"])}
+        >
           <AccordionTriggerPrimitive
             className="flex w-full min-w-0 items-center py-2 text-left text-sm font-medium transition-all hover:no-underline"
             onClick={handleTriggerClick}
@@ -185,7 +183,7 @@ function ProviderAccordionItem({
           <button
             type="button"
             onClick={upgradeToPro}
-            className="shrink-0 text-xs font-medium text-stone-600 transition-colors hover:text-stone-800"
+            className="shrink-0 rounded-full border-2 border-stone-600 bg-stone-800 px-3 py-1 text-xs font-medium text-white shadow-[0_4px_14px_rgba(87,83,78,0.18)] transition-all duration-200 hover:bg-stone-700"
           >
             Upgrade to Pro
           </button>
