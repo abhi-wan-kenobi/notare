@@ -72,8 +72,8 @@ export function SettingsNav() {
   });
 
   const isDev = identifierQuery.data === "com.hyprnote.dev";
-  const isNightly = identifierQuery.data === "com.hyprnote.nightly";
-  const showDontUseThis = isDev || isNightly;
+  const isStaging = identifierQuery.data === "com.hyprnote.staging";
+  const showDontUseThis = isDev || isStaging;
 
   const activeTab =
     currentTab?.type === "settings"
