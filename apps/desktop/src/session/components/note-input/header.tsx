@@ -3,8 +3,11 @@ import {
   AlertCircleIcon,
   CheckIcon,
   CopyIcon,
+  HeartIcon,
+  LightbulbIcon,
   PlusIcon,
   RefreshCwIcon,
+  SearchIcon,
   XIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -40,9 +43,11 @@ import {
 import { useAITaskTask } from "~/ai/hooks";
 import { useLanguageModel, useLLMConnectionStatus } from "~/ai/hooks";
 import { useAudioPlayer } from "~/audio-player";
+import { extractPlainText } from "~/search/contexts/engine/utils";
 import { getEnhancerService } from "~/services/enhancer";
 import { useHasTranscript } from "~/session/components/shared";
 import { useEnsureDefaultSummary } from "~/session/hooks/useEnhancedNotes";
+import { useWebResources } from "~/shared/ui/resource-list";
 import * as main from "~/store/tinybase/store/main";
 import { createTaskId } from "~/store/zustand/ai-task/task-configs";
 import { type TaskStepInfo } from "~/store/zustand/ai-task/tasks";
@@ -50,6 +55,7 @@ import { useTabs } from "~/store/zustand/tabs";
 import { type EditorView } from "~/store/zustand/tabs/schema";
 import { useListener } from "~/stt/contexts";
 import { useRunBatch } from "~/stt/useRunBatch";
+import { useUserTemplates } from "~/templates";
 
 function TruncatedTitle({
   title,
@@ -391,15 +397,61 @@ function CreateOtherFormatButton({
   handleTabChange: (view: EditorView) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const templates = main.UI.useResultTable(
-    main.QUERIES.visibleTemplates,
+  const [search, setSearch] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const resultRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const { user_id } = main.UI.useValues(main.STORE_ID);
+  const sessionTitle = main.UI.useCell(
+    "sessions",
+    sessionId,
+    "title",
+    main.STORE_ID,
+  ) as string | undefined;
+  const rawMd = main.UI.useCell(
+    "sessions",
+    sessionId,
+    "raw_md",
+    main.STORE_ID,
+  ) as string | undefined;
+  const { data: transcriptSegments } = useTranscriptExportSegments(sessionId);
+  const userTemplates = useUserTemplates();
+  const {
+    data: suggestedTemplates = [],
+    isLoading: isSuggestedTemplatesLoading,
+  } = useWebResources<WebTemplate>("templates");
+  const openNew = useTabs((state) => state.openNew);
+  const setRow = main.UI.useSetRowCallback(
+    "templates",
+    (p: {
+      id: string;
+      user_id: string;
+      created_at: string;
+      title: string;
+      description: string;
+      sections: Array<{ title: string; description: string }>;
+    }) => p.id,
+    (p: {
+      id: string;
+      user_id: string;
+      created_at: string;
+      title: string;
+      description: string;
+      sections: Array<{ title: string; description: string }>;
+    }) => ({
+      user_id: p.user_id,
+      title: p.title,
+      description: p.description,
+      sections: JSON.stringify(p.sections),
+    }),
+    [],
     main.STORE_ID,
   );
-  const openNew = useTabs((state) => state.openNew);
 
-  const handleTemplateClick = useCallback(
+  const handleUseTemplate = useCallback(
     (templateId: string) => {
       setOpen(false);
+      setSearch("");
+      resultRefs.current = [];
 
       const service = getEnhancerService();
       if (!service) return;
@@ -412,8 +464,267 @@ function CreateOtherFormatButton({
     [sessionId, handleTabChange],
   );
 
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      setSearch("");
+      resultRefs.current = [];
+    }
+  }, []);
+
+  const handleSuggestedTemplateClick = useCallback(
+    (template: WebTemplate) => {
+      if (!user_id) return;
+
+      const templateId = crypto.randomUUID();
+      const now = new Date().toISOString();
+
+      setRow({
+        id: templateId,
+        user_id,
+        created_at: now,
+        title: template.title,
+        description: template.description,
+        sections: template.sections ?? [],
+      });
+
+      handleUseTemplate(templateId);
+    },
+    [handleUseTemplate, setRow, user_id],
+  );
+
+  const handleCreateTemplate = useCallback(
+    (title?: string) => {
+      if (!user_id) return;
+
+      const templateId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const nextTitle = title?.trim() || "New Template";
+
+      setRow({
+        id: templateId,
+        user_id,
+        created_at: now,
+        title: nextTitle,
+        description: "",
+        sections: [],
+      });
+
+      setOpen(false);
+      setSearch("");
+      resultRefs.current = [];
+      openNew({
+        type: "templates",
+        state: {
+          selectedMineId: templateId,
+          selectedWebIndex: null,
+          isWebMode: false,
+          showHomepage: false,
+        },
+      });
+    },
+    [openNew, setRow, user_id],
+  );
+
+  const trimmedSearch = search.trim();
+  const searchQuery = search.trim().toLowerCase();
+  const transcriptText = useMemo(
+    () => formatTranscriptExportSegments(transcriptSegments),
+    [transcriptSegments],
+  );
+  const meetingContent = useMemo(
+    () =>
+      [sessionTitle ?? "", extractPlainText(rawMd), transcriptText]
+        .filter((value) => value.trim().length > 0)
+        .join("\n\n"),
+    [rawMd, sessionTitle, transcriptText],
+  );
+  const suggestedTemplateRecommendations = useMemo(
+    () => rankSuggestedTemplates(suggestedTemplates, meetingContent),
+    [meetingContent, suggestedTemplates],
+  );
+
+  const filteredFavoriteTemplates = useMemo(() => {
+    const sortedTemplates = [...userTemplates].sort((a, b) =>
+      (a.title || "").localeCompare(b.title || ""),
+    );
+
+    if (!searchQuery) {
+      return sortedTemplates;
+    }
+
+    return sortedTemplates.filter(
+      (template) =>
+        template.title?.toLowerCase().includes(searchQuery) ||
+        template.description?.toLowerCase().includes(searchQuery),
+    );
+  }, [searchQuery, userTemplates]);
+
+  const filteredSuggestedTemplates = useMemo(() => {
+    if (!searchQuery) {
+      return suggestedTemplateRecommendations;
+    }
+
+    return suggestedTemplates.filter(
+      (template) =>
+        template.title?.toLowerCase().includes(searchQuery) ||
+        template.description?.toLowerCase().includes(searchQuery) ||
+        template.category?.toLowerCase().includes(searchQuery) ||
+        template.targets?.some((target) =>
+          target.toLowerCase().includes(searchQuery),
+        ),
+    );
+  }, [searchQuery, suggestedTemplateRecommendations, suggestedTemplates]);
+
+  const hasSearch = searchQuery.length > 0;
+  const resultSections = useMemo<
+    Array<{
+      key: string;
+      title: string;
+      icon?: React.ReactNode;
+      uppercase?: boolean;
+      emptyMessage?: string;
+      items: Array<{
+        key: string;
+        title: string;
+        description?: string;
+        onClick: () => void;
+      }>;
+    }>
+  >(() => {
+    if (!hasSearch) {
+      return [
+        {
+          key: "suggested",
+          title: "Suggested templates",
+          items: filteredSuggestedTemplates.map((template, index) => ({
+            key: template.slug || `suggested-${index}`,
+            title: template.title || "Untitled",
+            description: template.description,
+            onClick: () => handleSuggestedTemplateClick(template),
+          })),
+          emptyMessage: isSuggestedTemplatesLoading
+            ? "Loading suggestions..."
+            : "No suggested templates yet",
+        },
+        {
+          key: "favorite",
+          title: "Favorite templates",
+          items: filteredFavoriteTemplates.map((template) => ({
+            key: template.id,
+            title: template.title || "Untitled",
+            description: template.description,
+            onClick: () => handleUseTemplate(template.id),
+          })),
+          emptyMessage: "No favorite templates yet",
+        },
+      ];
+    }
+
+    return [
+      {
+        key: "create",
+        title: "Create new template",
+        icon: <PlusIcon className="h-3.5 w-3.5 text-blue-500" />,
+        uppercase: false,
+        items: [
+          {
+            key: `create-${trimmedSearch}`,
+            title: trimmedSearch,
+            onClick: () => handleCreateTemplate(trimmedSearch),
+          },
+        ],
+      },
+      ...(filteredSuggestedTemplates.length > 0
+        ? [
+            {
+              key: "suggested",
+              title: "Suggested templates",
+              items: filteredSuggestedTemplates.map((template, index) => ({
+                key: template.slug || `suggested-${index}`,
+                title: template.title || "Untitled",
+                description: template.description,
+                onClick: () => handleSuggestedTemplateClick(template),
+              })),
+            },
+          ]
+        : []),
+      ...(filteredFavoriteTemplates.length > 0
+        ? [
+            {
+              key: "favorite",
+              title: "Favorite templates",
+              items: filteredFavoriteTemplates.map((template) => ({
+                key: template.id,
+                title: template.title || "Untitled",
+                description: template.description,
+                onClick: () => handleUseTemplate(template.id),
+              })),
+            },
+          ]
+        : []),
+    ];
+  }, [
+    filteredFavoriteTemplates,
+    filteredSuggestedTemplates,
+    handleCreateTemplate,
+    handleSuggestedTemplateClick,
+    handleUseTemplate,
+    hasSearch,
+    isSuggestedTemplatesLoading,
+    trimmedSearch,
+  ]);
+  const navigableResults = useMemo(
+    () => resultSections.flatMap((section) => section.items),
+    [resultSections],
+  );
+  const focusSearchInput = useCallback(() => {
+    searchInputRef.current?.focus();
+  }, []);
+  const focusResult = useCallback((index: number) => {
+    resultRefs.current[index]?.focus();
+  }, []);
+  const handleSearchInputKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (navigableResults.length === 0) {
+        return;
+      }
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        focusResult(0);
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        focusResult(navigableResults.length - 1);
+      }
+    },
+    [focusResult, navigableResults.length],
+  );
+  const handleResultKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        focusResult(Math.min(index + 1, navigableResults.length - 1));
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (index === 0) {
+          focusSearchInput();
+          return;
+        }
+
+        focusResult(index - 1);
+      }
+    },
+    [focusResult, focusSearchInput, navigableResults.length],
+  );
+  let resultIndex = 0;
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
           className={cn([
@@ -424,47 +735,75 @@ function CreateOtherFormatButton({
           ])}
         >
           <PlusIcon size={14} />
-          <span>Create other format</span>
+          <span>Use template</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-64" align="start">
-        <div className="flex flex-col gap-2">
-          {Object.entries(templates).length > 0 ? (
-            <>
-              {Object.entries(templates).map(([templateId, template]) => (
-                <TemplateButton
-                  key={templateId}
-                  onClick={() => handleTemplateClick(templateId)}
+      <PopoverContent className="w-80 p-0" align="start">
+        <div className="flex flex-col">
+          <div className="border-b border-neutral-200 py-2">
+            <div
+              className={cn([
+                "flex h-9 items-center gap-2 rounded-md bg-white px-3",
+              ])}
+            >
+              <SearchIcon className="h-4 w-4 text-neutral-400" />
+              <input
+                ref={searchInputRef}
+                autoFocus
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={handleSearchInputKeyDown}
+                placeholder="Search templates..."
+                className="flex-1 bg-transparent text-sm placeholder:text-neutral-400 focus:outline-hidden"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="rounded-xs p-0.5 hover:bg-neutral-100"
                 >
-                  {template.title}
-                </TemplateButton>
+                  <XIcon className="h-3 w-3 text-neutral-400" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="max-h-80 overflow-y-auto p-2">
+            <div className="flex flex-col gap-3">
+              {resultSections.map((section) => (
+                <TemplateSection
+                  key={section.key}
+                  title={section.title}
+                  icon={section.icon}
+                  uppercase={section.uppercase}
+                >
+                  {section.items.length > 0 ? (
+                    section.items.map((item) => {
+                      const itemIndex = resultIndex;
+                      resultIndex += 1;
+
+                      return (
+                        <TemplateResultButton
+                          key={item.key}
+                          buttonRef={(node) => {
+                            resultRefs.current[itemIndex] = node;
+                          }}
+                          title={item.title}
+                          description={item.description}
+                          onClick={item.onClick}
+                          onKeyDown={(e) => handleResultKeyDown(e, itemIndex)}
+                        />
+                      );
+                    })
+                  ) : (
+                    <div className="px-2 py-3 text-sm text-neutral-500">
+                      {section.emptyMessage}
+                    </div>
+                  )}
+                </TemplateSection>
               ))}
-              <TemplateButton
-                className="text-neutral-500 italic hover:bg-neutral-50 hover:text-neutral-700"
-                onClick={() => {
-                  setOpen(false);
-                  openNew({ type: "settings", state: { tab: "templates" } });
-                }}
-              >
-                Manage templates
-              </TemplateButton>
-            </>
-          ) : (
-            <>
-              <p className="mb-2 text-center text-sm text-neutral-600">
-                No templates yet
-              </p>
-              <button
-                onClick={() => {
-                  setOpen(false);
-                  openNew({ type: "settings", state: { tab: "templates" } });
-                }}
-                className="rounded-full bg-linear-to-t from-stone-600 to-stone-500 px-6 py-2 text-sm font-medium text-white transition-opacity duration-150 hover:opacity-90"
-              >
-                Create templates
-              </button>
-            </>
-          )}
+            </div>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
@@ -715,24 +1054,228 @@ function useEnhanceLogic(sessionId: string, enhancedNoteId: string) {
   };
 }
 
-function TemplateButton({
+type WebTemplate = {
+  slug: string;
+  title: string;
+  description: string;
+  category: string;
+  targets?: string[];
+  sections: Array<{ title: string; description: string }>;
+};
+
+const TEMPLATE_SUGGESTION_STOP_WORDS = new Set([
+  "about",
+  "after",
+  "agenda",
+  "also",
+  "and",
+  "before",
+  "between",
+  "call",
+  "customer",
+  "discussion",
+  "discussions",
+  "follow",
+  "for",
+  "from",
+  "have",
+  "into",
+  "meeting",
+  "meetings",
+  "notes",
+  "plan",
+  "review",
+  "session",
+  "sessions",
+  "template",
+  "templates",
+  "that",
+  "their",
+  "them",
+  "this",
+  "with",
+  "your",
+]);
+
+function rankSuggestedTemplates(
+  templates: WebTemplate[],
+  meetingContent: string,
+) {
+  if (templates.length <= 3) {
+    return templates;
+  }
+
+  const normalizedContent = normalizeTemplateSuggestionText(meetingContent);
+  if (!normalizedContent) {
+    return templates.slice(0, 3);
+  }
+
+  const rankedTemplates = templates
+    .map((template, index) => ({
+      template,
+      index,
+      score: getSuggestedTemplateScore(template, normalizedContent),
+    }))
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return a.index - b.index;
+    });
+
+  if (rankedTemplates[0]?.score === 0) {
+    return templates.slice(0, 3);
+  }
+
+  return rankedTemplates.slice(0, 3).map(({ template }) => template);
+}
+
+function getSuggestedTemplateScore(
+  template: WebTemplate,
+  normalizedContent: string,
+) {
+  let score = 0;
+
+  const title = normalizeTemplateSuggestionText(template.title);
+  const category = normalizeTemplateSuggestionText(template.category);
+
+  if (title && normalizedContent.includes(title)) {
+    score += 12;
+  }
+
+  if (category && normalizedContent.includes(category)) {
+    score += 6;
+  }
+
+  template.targets?.forEach((target) => {
+    const normalizedTarget = normalizeTemplateSuggestionText(target);
+    if (normalizedTarget && normalizedContent.includes(normalizedTarget)) {
+      score += 4;
+    }
+  });
+
+  score += getTemplateSuggestionTokenMatches(
+    normalizedContent,
+    template.title,
+    3,
+  );
+  score += getTemplateSuggestionTokenMatches(
+    normalizedContent,
+    template.category,
+    2,
+  );
+  score += getTemplateSuggestionTokenMatches(
+    normalizedContent,
+    template.description,
+    1,
+  );
+
+  template.targets?.forEach((target) => {
+    score += getTemplateSuggestionTokenMatches(normalizedContent, target, 2);
+  });
+
+  return score;
+}
+
+function getTemplateSuggestionTokenMatches(
+  normalizedContent: string,
+  value: string | undefined,
+  weight: number,
+) {
+  return tokenizeTemplateSuggestionText(value).reduce((score, token) => {
+    if (normalizedContent.includes(token)) {
+      return score + weight;
+    }
+    return score;
+  }, 0);
+}
+
+function tokenizeTemplateSuggestionText(value: string | undefined) {
+  return Array.from(
+    new Set(
+      normalizeTemplateSuggestionText(value)
+        .split(/\s+/)
+        .filter(
+          (token) =>
+            token.length > 2 && !TEMPLATE_SUGGESTION_STOP_WORDS.has(token),
+        ),
+    ),
+  );
+}
+
+function normalizeTemplateSuggestionText(value: string | undefined) {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function TemplateSection({
+  title,
   children,
-  onClick,
-  className,
+  icon,
+  uppercase = true,
 }: {
+  title: string;
   children: React.ReactNode;
+  icon?: React.ReactNode;
+  uppercase?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2 px-2">
+        {icon ??
+          (title === "Suggested templates" ? (
+            <LightbulbIcon className="h-3.5 w-3.5 text-amber-500" />
+          ) : title === "Favorite templates" ? (
+            <HeartIcon className="h-3.5 w-3.5 text-rose-500" />
+          ) : null)}
+        <p
+          className={cn([
+            "font-mono text-[11px] font-medium tracking-wide text-neutral-500",
+            uppercase && "uppercase",
+          ])}
+        >
+          {title}
+        </p>
+      </div>
+      <div className="flex flex-col gap-1">{children}</div>
+    </div>
+  );
+}
+
+function TemplateResultButton({
+  buttonRef,
+  title,
+  description,
+  onClick,
+  onKeyDown,
+}: {
+  buttonRef?: React.Ref<HTMLButtonElement>;
+  title: string;
+  description?: string;
   onClick: () => void;
-  className?: string;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLButtonElement>) => void;
 }) {
   return (
     <button
+      ref={buttonRef}
       className={cn([
-        "rounded-md px-3 py-2 text-center text-sm transition-colors hover:bg-neutral-100",
-        className,
+        "w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-neutral-100 focus:bg-neutral-100 focus:outline-hidden",
+        "flex flex-col gap-0.5",
       ])}
       onClick={onClick}
+      onKeyDown={onKeyDown}
     >
-      {children}
+      <span className="truncate text-sm font-medium text-neutral-900">
+        {title}
+      </span>
+      {description ? (
+        <span className="line-clamp-2 text-xs text-neutral-500">
+          {description}
+        </span>
+      ) : null}
     </button>
   );
 }
