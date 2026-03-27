@@ -1488,6 +1488,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "audio-norm"
+version = "0.1.0"
+dependencies = [
+ "afconvert",
+ "assert_fs",
+ "audio-utils",
+ "audioadapter-buffers",
+ "data",
+ "mp3",
+ "resampler",
+ "rodio",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "audio-snapshot"
 version = "0.1.0"
 dependencies = [
@@ -2376,26 +2391,6 @@ dependencies = [
  "shlex",
  "syn 2.0.117",
  "which",
-]
-
-[[package]]
-name = "bindgen"
-version = "0.71.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f58bf3d7db68cfbac37cfc485a8d711e87e064c3d0fe0435b92f7a407f9d6b3"
-dependencies = [
- "bitflags 2.11.0",
- "cexpr",
- "clang-sys",
- "itertools 0.13.0",
- "log",
- "prettyplease",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash 2.1.1",
- "shlex",
- "syn 2.0.117",
 ]
 
 [[package]]
@@ -3332,6 +3327,7 @@ dependencies = [
  "analytics",
  "audio",
  "audio-actual",
+ "audio-norm",
  "audio-utils",
  "chrono",
  "clap",
@@ -3342,6 +3338,7 @@ dependencies = [
  "clio",
  "codex 0.1.0",
  "colored",
+ "comfy-table",
  "crossterm",
  "db-app",
  "db-core2",
@@ -3580,6 +3577,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "comfy-table"
+version = "7.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "958c5d6ecf1f214b4c2bbbbf6ab9523a864bd136dcf71a7e8904799acfe1ad47"
+dependencies = [
+ "crossterm",
+ "unicode-segmentation",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -5990,21 +5998,17 @@ dependencies = [
 name = "fs-sync-core"
 version = "0.1.0"
 dependencies = [
- "afconvert",
  "assert_fs",
+ "audio-norm",
  "audio-utils",
- "audioadapter-buffers",
  "chrono",
  "criterion",
  "data",
  "frontmatter",
  "fs-format",
  "glob",
- "mp3",
  "predicates",
  "rayon",
- "resampler",
- "rodio",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -10616,6 +10620,7 @@ dependencies = [
  "tower-http 0.6.8",
  "tracing",
  "transcribe-cactus",
+ "transcribe-whisper-local",
 ]
 
 [[package]]
@@ -11167,6 +11172,7 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "uuid",
+ "whisper-local",
 ]
 
 [[package]]
@@ -20384,9 +20390,25 @@ dependencies = [
  "tokio-tungstenite 0.28.0",
  "tower 0.5.3",
  "tracing",
+ "transcribe-core",
  "uuid",
  "vad-chunking",
  "ws-utils",
+]
+
+[[package]]
+name = "transcribe-core"
+version = "0.1.0"
+dependencies = [
+ "audio-utils",
+ "axum 0.8.8",
+ "futures-util",
+ "owhisper-interface",
+ "rodio",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "vad-chunking",
 ]
 
 [[package]]
@@ -20439,22 +20461,29 @@ dependencies = [
 name = "transcribe-whisper-local"
 version = "0.1.0"
 dependencies = [
+ "audio-interface",
  "audio-utils",
  "axum 0.8.8",
+ "bytes",
  "data",
  "dirs 6.0.0",
  "futures-util",
+ "model-manager",
  "owhisper-client",
  "owhisper-interface",
  "pyannote-local",
+ "reqwest 0.13.2",
  "rodio",
+ "serde_html_form 0.4.0",
  "serde_json",
- "serde_qs",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
+ "tokio-tungstenite 0.28.0",
  "tokio-util",
  "tower 0.5.3",
  "tracing",
+ "transcribe-core",
  "vad-chunking",
  "whisper",
  "whisper-local",
@@ -22408,8 +22437,8 @@ dependencies = [
 
 [[package]]
 name = "whisper-rs"
-version = "0.15.1"
-source = "git+https://codeberg.org/tazz4843/whisper-rs?rev=a23990c#a23990c563330251c37c9a83fd5fab5e472fcb1f"
+version = "0.16.0"
+source = "git+https://codeberg.org/tazz4843/whisper-rs?rev=129b982#129b9826dc8c385f6a28198bdc4f8a275385fe85"
 dependencies = [
  "libc",
  "tracing",
@@ -22418,13 +22447,14 @@ dependencies = [
 
 [[package]]
 name = "whisper-rs-sys"
-version = "0.14.1"
-source = "git+https://codeberg.org/tazz4843/whisper-rs?rev=a23990c#a23990c563330251c37c9a83fd5fab5e472fcb1f"
+version = "0.15.0"
+source = "git+https://codeberg.org/tazz4843/whisper-rs?rev=129b982#129b9826dc8c385f6a28198bdc4f8a275385fe85"
 dependencies = [
- "bindgen 0.71.1",
+ "bindgen 0.72.1",
  "cfg-if",
  "cmake",
  "fs_extra",
+ "semver",
 ]
 
 [[package]]

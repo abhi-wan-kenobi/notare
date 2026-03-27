@@ -1,12 +1,6 @@
-mod encode;
-mod file_move;
-
-use std::fs::File;
-use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
-use crate::error::{AudioImportError, AudioProcessingError};
+use crate::error::AudioImportError;
 use crate::runtime::{AudioImportEvent, AudioImportRuntime};
 use chrono::{DateTime, Utc};
 
@@ -79,10 +73,6 @@ pub fn import_to_session(
     let target_path = session_dir.join("audio.mp3");
     let tmp_path = session_dir.join("audio.mp3.tmp");
 
-    if tmp_path.exists() {
-        std::fs::remove_file(&tmp_path)?;
-    }
-
     let on_progress = {
         let session_id = session_id.to_string();
         let mut last_emitted: f64 = 0.0;
@@ -102,8 +92,14 @@ pub fn import_to_session(
         }
     };
 
-    let result = decode_to_mp3_file(source_path, &tmp_path, None, Some(on_progress))
-        .and_then(|()| file_move::atomic_move(&tmp_path, &target_path).map_err(Into::into));
+    let result = hypr_audio_norm::normalize_file(
+        source_path,
+        &tmp_path,
+        &target_path,
+        None,
+        Some(on_progress),
+    )
+    .map(|_| ());
     match result {
         Ok(()) => {
             let final_path = target_path;
@@ -129,70 +125,8 @@ pub fn import_audio(
     source_path: &Path,
     tmp_path: &Path,
     target_path: &Path,
-) -> Result<PathBuf, AudioProcessingError> {
-    decode_to_mp3_file(source_path, tmp_path, None, None::<fn(f64)>)?;
-    file_move::atomic_move(tmp_path, target_path)?;
-    Ok(target_path.to_path_buf())
-}
-
-fn decode_to_mp3_file(
-    path: &Path,
-    tmp_path: &Path,
-    max_duration: Option<Duration>,
-    on_progress: Option<impl FnMut(f64)>,
-) -> Result<(), AudioProcessingError> {
-    with_afconvert_fallback(path, on_progress, |path, on_progress| {
-        let file = File::create(tmp_path)?;
-        let writer = BufWriter::new(file);
-        let bytes_written = decode_with_rodio(path, max_duration, writer, on_progress)?;
-        if bytes_written == 0 {
-            let _ = std::fs::remove_file(tmp_path);
-            return Err(AudioProcessingError::EmptyInput);
-        }
-        Ok(())
-    })
-}
-
-fn with_afconvert_fallback<F, T>(
-    source_path: &Path,
-    mut on_progress: Option<impl FnMut(f64)>,
-    mut try_fn: F,
-) -> Result<T, AudioProcessingError>
-where
-    F: FnMut(&Path, Option<&mut dyn FnMut(f64)>) -> Result<T, AudioProcessingError>,
-{
-    match try_fn(
-        source_path,
-        on_progress.as_mut().map(|p| p as &mut dyn FnMut(f64)),
-    ) {
-        Ok(val) => Ok(val),
-        Err(_first_err) => {
-            #[cfg(target_os = "macos")]
-            {
-                let wav_path = hypr_afconvert::to_wav(source_path)
-                    .map_err(|e| AudioProcessingError::AfconvertFailed(e.to_string()))?;
-                let result = try_fn(
-                    &wav_path,
-                    on_progress.as_mut().map(|p| p as &mut dyn FnMut(f64)),
-                );
-                let _ = std::fs::remove_file(&wav_path);
-                result
-            }
-            #[cfg(not(target_os = "macos"))]
-            Err(_first_err)
-        }
-    }
-}
-
-fn decode_with_rodio<W: Write>(
-    path: &Path,
-    max_duration: Option<Duration>,
-    output: W,
-    on_progress: Option<&mut dyn FnMut(f64)>,
-) -> Result<usize, AudioProcessingError> {
-    let file = File::open(path)?;
-    let decoder = rodio::Decoder::try_from(file)?;
-    encode::encode_source_to_mp3(decoder, max_duration, output, on_progress)
+) -> Result<PathBuf, hypr_audio_norm::Error> {
+    hypr_audio_norm::normalize_file(source_path, tmp_path, target_path, None, None::<fn(f64)>)
 }
 
 fn system_time_to_iso(time: std::time::SystemTime) -> String {
@@ -260,8 +194,7 @@ mod tests {
             "Output too small ({size} bytes), likely empty audio"
         );
 
-        let file = File::open(&target_path).unwrap();
-        let decoder = rodio::Decoder::try_from(file).unwrap();
+        let decoder = hypr_audio_utils::source_from_path(&target_path).unwrap();
         let channels: u16 = decoder.channels().into();
         assert_eq!(channels, 2, "stereo input should produce stereo output");
     }

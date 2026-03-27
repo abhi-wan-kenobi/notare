@@ -8,6 +8,7 @@ hypr-audio-utils = { workspace = true }
 hypr-cactus = { workspace = true }
 hypr-language = { workspace = true }
 hypr-model-manager = { workspace = true, features = ["cactus"] }
+hypr-transcribe-core = { workspace = true }
 hypr-vad-chunking = { workspace = true }
 hypr-ws-utils = { workspace = true }
 owhisper-interface = { workspace = true }

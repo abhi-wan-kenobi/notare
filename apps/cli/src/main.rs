@@ -16,7 +16,7 @@ use clap::Parser;
 async fn main() {
     let cli = Cli::parse();
 
-    if cli.global.no_color || std::env::var_os("NO_COLOR").is_some() {
+    if cli.no_color || std::env::var_os("NO_COLOR").is_some() {
         colored::control::set_override(false);
     }
 
@@ -125,13 +125,16 @@ fn init_tracing_capture(level: tracing_subscriber::filter::LevelFilter, buffer: 
 }
 
 async fn run(cli: Cli, trace_buffer: OptTraceBuffer) -> CliResult<()> {
+    let base = cli
+        .command
+        .as_ref()
+        .and_then(Commands::base_override)
+        .map(std::path::Path::to_path_buf);
     let tracked = cli.command.as_ref().map(Into::into);
     let Cli {
-        command,
-        global,
-        verbose,
+        command, verbose, ..
     } = cli;
-    let ctx = app::AppContext::new(global, verbose.is_silent(), trace_buffer);
+    let ctx = app::AppContext::new(base.as_deref(), verbose.is_silent(), trace_buffer);
 
     if let Some(subcommand) = tracked {
         ctx.track_command(subcommand);

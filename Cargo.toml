@@ -57,6 +57,7 @@ hypr-audio-device = { path = "crates/audio-device", package = "audio-device" }
 hypr-audio-interface = { path = "crates/audio-interface", package = "audio-interface" }
 hypr-audio-mime = { path = "crates/audio-mime", package = "audio-mime" }
 hypr-audio-mock = { path = "crates/audio-mock", package = "audio-mock" }
+hypr-audio-norm = { path = "crates/audio-norm", package = "audio-norm" }
 hypr-audio-snapshot = { path = "crates/audio-snapshot", package = "audio-snapshot" }
 hypr-audio-sync = { path = "crates/audio-sync", package = "audio-sync" }
 hypr-audio-utils = { path = "crates/audio-utils", package = "audio-utils" }
@@ -157,6 +158,7 @@ hypr-template-support = { path = "crates/template-support", package = "template-
 hypr-ticket-interface = { path = "crates/ticket-interface", package = "ticket-interface" }
 hypr-tiptap = { path = "crates/tiptap", package = "tiptap" }
 hypr-transcribe-cactus = { path = "crates/transcribe-cactus", package = "transcribe-cactus" }
+hypr-transcribe-core = { path = "crates/transcribe-core", package = "transcribe-core" }
 hypr-transcribe-proxy = { path = "crates/transcribe-proxy", package = "transcribe-proxy" }
 hypr-transcribe-whisper-local = { path = "crates/transcribe-whisper-local", package = "transcribe-whisper-local" }
 hypr-transcript = { path = "crates/transcript", package = "transcript" }

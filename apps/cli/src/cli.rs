@@ -13,54 +13,14 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Commands>,
 
-    #[command(flatten)]
-    pub global: GlobalArgs,
+    #[arg(long)]
+    pub no_color: bool,
 
     #[command(flatten)]
     pub verbose: Verbosity<InfoLevel>,
 }
 
-#[derive(clap::Args)]
-pub struct GlobalArgs {
-    #[arg(long, global = true, env = "CHAR_BASE_URL", hide_env_values = true, value_parser = parse_base_url)]
-    pub base_url: Option<String>,
-
-    #[arg(long, global = true, env = "CHAR_API_KEY", hide_env_values = true)]
-    pub api_key: Option<String>,
-
-    #[arg(
-        short = 'm',
-        long,
-        global = true,
-        env = "CHAR_MODEL",
-        hide_env_values = true
-    )]
-    pub model: Option<String>,
-
-    #[arg(
-        short = 'l',
-        long,
-        global = true,
-        env = "CHAR_LANGUAGE",
-        hide_env_values = true,
-        default_value = "en"
-    )]
-    pub language: String,
-
-    #[arg(long, global = true)]
-    pub no_color: bool,
-
-    #[arg(
-        long,
-        global = true,
-        env = "CHAR_BASE",
-        hide_env_values = true,
-        value_name = "DIR"
-    )]
-    pub base: Option<std::path::PathBuf>,
-}
-
-fn parse_base_url(value: &str) -> Result<String, String> {
+pub(crate) fn parse_base_url(value: &str) -> Result<String, String> {
     let parsed = url::Url::parse(value).map_err(|e| format!("invalid URL '{value}': {e}"))?;
     if parsed.scheme() != "http" && parsed.scheme() != "https" {
         return Err(format!(
@@ -87,8 +47,8 @@ pub enum Commands {
     #[cfg(feature = "standalone")]
     /// Manage local models
     Models {
-        #[command(subcommand)]
-        command: crate::commands::model::Commands,
+        #[command(flatten)]
+        args: crate::commands::model::Args,
     },
     /// Generate shell completions
     Completions {
@@ -157,6 +117,17 @@ pub enum Commands {
     },
 }
 
+impl Commands {
+    pub fn base_override(&self) -> Option<&std::path::Path> {
+        match self {
+            Commands::Transcribe { args } => args.base.as_deref(),
+            #[cfg(feature = "standalone")]
+            Commands::Models { args } => args.base.as_deref(),
+            _ => None,
+        }
+    }
+}
+
 pub fn generate_completions(shell: clap_complete::Shell) {
     let mut cmd = Cli::command();
     clap_complete::generate(shell, &mut cmd, "char", &mut std::io::stdout());
@@ -166,9 +137,132 @@ pub fn generate_completions(shell: clap_complete::Shell) {
 mod tests {
     use super::*;
 
+    fn render_help(command: &mut clap::Command) -> String {
+        let mut bytes = Vec::new();
+        command.write_long_help(&mut bytes).unwrap();
+        String::from_utf8(bytes).unwrap()
+    }
+
     #[test]
     fn verify_cli() {
         Cli::command().debug_assert();
+    }
+
+    #[test]
+    #[cfg(feature = "standalone")]
+    fn root_help_only_shows_truly_global_options() {
+        let mut command = Cli::command();
+        let help = render_help(&mut command);
+
+        assert!(help.contains("--no-color"));
+        assert!(!help.contains("--base-url"));
+        assert!(!help.contains("--api-key"));
+        assert!(!help.contains("--model <MODEL>"));
+        assert!(!help.contains("--language <LANGUAGE>"));
+        assert!(!help.contains("--base <DIR>"));
+    }
+
+    #[test]
+    #[cfg(feature = "standalone")]
+    fn transcribe_help_keeps_stt_config() {
+        let mut command = Cli::command();
+        let mut transcribe = command.find_subcommand_mut("transcribe").unwrap().clone();
+        let help = render_help(&mut transcribe);
+
+        assert!(help.contains("--base-url"));
+        assert!(help.contains("--api-key"));
+        assert!(help.contains("--model <MODEL>"));
+        assert!(help.contains("--language <LANGUAGE>"));
+        assert!(help.contains("--base <DIR>"));
+    }
+
+    #[test]
+    #[cfg(all(feature = "standalone", target_os = "macos"))]
+    fn transcribe_accepts_whispercpp_provider() {
+        let input = tempfile::NamedTempFile::new().unwrap();
+        Cli::try_parse_from([
+            "char",
+            "transcribe",
+            "--input",
+            input.path().to_str().unwrap(),
+            "--provider",
+            "whispercpp",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    #[cfg(all(
+        feature = "standalone",
+        target_os = "macos",
+        any(target_arch = "arm", target_arch = "aarch64")
+    ))]
+    fn transcribe_accepts_cactus_provider_on_apple_silicon() {
+        let input = tempfile::NamedTempFile::new().unwrap();
+        Cli::try_parse_from([
+            "char",
+            "transcribe",
+            "--input",
+            input.path().to_str().unwrap(),
+            "--provider",
+            "cactus",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    #[cfg(feature = "standalone")]
+    fn models_help_only_shows_base_override() {
+        let mut command = Cli::command();
+        let mut models = command.find_subcommand_mut("models").unwrap().clone();
+        let help = render_help(&mut models);
+
+        assert!(help.contains("--base <DIR>"));
+        assert!(help.contains("list"));
+        assert!(help.contains("download"));
+        assert!(help.contains("delete"));
+        assert!(!help.contains("paths"));
+        assert!(!help.contains("cactus"));
+        assert!(!help.contains("--supported"));
+        assert!(!help.contains("--base-url"));
+        assert!(!help.contains("--api-key"));
+        assert!(!help.contains("--model <MODEL>"));
+        assert!(!help.contains("--language <LANGUAGE>"));
+    }
+
+    #[test]
+    #[cfg(feature = "standalone")]
+    fn record_rejects_stt_only_flags() {
+        match Cli::try_parse_from(["char", "record", "--api-key", "secret"]) {
+            Ok(_) => panic!("record unexpectedly accepted --api-key"),
+            Err(error) => assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument),
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "standalone")]
+    fn model_delete_uses_long_only_force() {
+        Cli::try_parse_from(["char", "models", "delete", "tiny", "--force"]).unwrap();
+
+        match Cli::try_parse_from(["char", "models", "delete", "tiny", "-f"]) {
+            Ok(_) => panic!("models delete unexpectedly accepted -f"),
+            Err(error) => assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument),
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "standalone")]
+    fn models_list_accepts_json_format() {
+        let mut command = Cli::command();
+        let mut list = command
+            .find_subcommand_mut("models")
+            .unwrap()
+            .find_subcommand_mut("list")
+            .unwrap()
+            .clone();
+        let help = render_help(&mut list);
+
+        assert!(help.contains("json"));
     }
 
     #[test]
@@ -177,8 +271,8 @@ mod tests {
         let cmd = Cli::command();
         let json = cli_docs::generate_json(&cmd);
 
-        let json_path =
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../cli-web/src/data/cli.json");
+        let json_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../cli-web/src/data/cli.gen.json");
         std::fs::create_dir_all(json_path.parent().unwrap()).unwrap();
         std::fs::write(&json_path, json).unwrap();
     }

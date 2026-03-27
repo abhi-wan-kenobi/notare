@@ -2,13 +2,14 @@ use std::fs::{copy, remove_file, rename};
 use std::io::ErrorKind;
 use std::path::Path;
 
-fn is_cross_device(_err: &std::io::Error) -> bool {
+fn is_cross_device(err: &std::io::Error) -> bool {
     #[cfg(unix)]
     {
-        _err.raw_os_error() == Some(18)
+        err.raw_os_error() == Some(18)
     }
     #[cfg(not(unix))]
     {
+        let _ = err;
         false
     }
 }
@@ -25,7 +26,7 @@ fn rename_or_copy(from: &Path, to: &Path) -> Result<(), std::io::Error> {
     }
 }
 
-pub(super) fn atomic_move(from: &Path, to: &Path) -> Result<(), std::io::Error> {
+pub(crate) fn atomic_move(from: &Path, to: &Path) -> Result<(), std::io::Error> {
     match rename_or_copy(from, to) {
         Ok(()) => Ok(()),
         Err(err) if err.kind() == ErrorKind::AlreadyExists => {

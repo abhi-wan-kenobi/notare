@@ -238,10 +238,12 @@ impl LocalModel {
     }
 
     pub fn is_available_on_current_platform(&self) -> bool {
+        let is_macos = cfg!(target_os = "macos");
         let is_apple_silicon = cfg!(target_arch = "aarch64") && cfg!(target_os = "macos");
 
         match self {
-            LocalModel::Whisper(_) | LocalModel::Am(_) => is_apple_silicon,
+            LocalModel::Whisper(_) => is_macos,
+            LocalModel::Am(_) => is_apple_silicon,
             LocalModel::Cactus(model) => {
                 if model.is_apple() {
                     is_apple_silicon

@@ -12,40 +12,41 @@ pub use axum_server::LocalAxumServer;
 
 use runtime::{LocalServerRuntime, NoopRuntime};
 
+const WHISPER_LISTEN_PATH: &str = "/v1";
+
 pub struct LocalSttServer {
     inner: LocalAxumServer,
 }
 
 impl LocalSttServer {
-    pub async fn start(model_path: PathBuf) -> std::io::Result<Self> {
-        Self::start_with_config(model_path, hypr_transcribe_cactus::CactusConfig::default()).await
+    #[cfg(feature = "cactus")]
+    pub async fn start_cactus(model_path: PathBuf) -> std::io::Result<Self> {
+        Self::start_cactus_with_config(model_path, hypr_transcribe_cactus::CactusConfig::default())
+            .await
     }
 
-    pub async fn start_with_config(
+    #[cfg(feature = "cactus")]
+    pub async fn start_cactus_with_config(
         model_path: PathBuf,
         cactus_config: hypr_transcribe_cactus::CactusConfig,
     ) -> std::io::Result<Self> {
-        Self::start_with_runtime(Arc::new(NoopRuntime), model_path, cactus_config).await
+        Self::start_cactus_with_runtime(Arc::new(NoopRuntime), model_path, cactus_config).await
     }
 
-    pub async fn start_with_runtime(
+    #[cfg(feature = "cactus")]
+    pub async fn start_cactus_with_runtime(
         runtime: Arc<dyn LocalServerRuntime>,
         model_path: PathBuf,
         cactus_config: hypr_transcribe_cactus::CactusConfig,
     ) -> std::io::Result<Self> {
-        tracing::info!(model_path = %model_path.display(), "starting local STT server");
+        tracing::info!(model_path = %model_path.display(), "starting local cactus server");
 
         let router = hypr_transcribe_cactus::TranscribeService::builder()
             .model_path(model_path)
             .cactus_config(cactus_config)
             .build()
             .into_router(|err: String| async move { (StatusCode::INTERNAL_SERVER_ERROR, err) })
-            .layer(
-                CorsLayer::new()
-                    .allow_origin(cors::Any)
-                    .allow_methods(cors::Any)
-                    .allow_headers(cors::Any),
-            );
+            .layer(cors_layer());
 
         let inner = LocalAxumServer::start_with_runtime(
             runtime,
@@ -53,6 +54,39 @@ impl LocalSttServer {
             hypr_transcribe_cactus::LISTEN_PATH,
         )
         .await?;
+
+        tracing::info!(base_url = %inner.base_url(), "local STT server ready");
+
+        Ok(Self { inner })
+    }
+
+    #[cfg(feature = "whisper-cpp")]
+    pub async fn start_whisper(model_path: PathBuf) -> std::io::Result<Self> {
+        Self::start_whisper_with_runtime(Arc::new(NoopRuntime), model_path).await
+    }
+
+    #[cfg(feature = "whisper-cpp")]
+    pub async fn start_whisper_with_runtime(
+        runtime: Arc<dyn LocalServerRuntime>,
+        model_path: PathBuf,
+    ) -> std::io::Result<Self> {
+        use axum::{Router, error_handling::HandleError};
+
+        tracing::info!(model_path = %model_path.display(), "starting local whisper server");
+
+        let service = HandleError::new(
+            hypr_transcribe_whisper_local::TranscribeService::builder()
+                .model_path(model_path)
+                .build(),
+            move |err: String| async move { (StatusCode::INTERNAL_SERVER_ERROR, err) },
+        );
+
+        let router = Router::new()
+            .route_service("/v1/listen", service)
+            .layer(cors_layer());
+
+        let inner =
+            LocalAxumServer::start_with_runtime(runtime, router, WHISPER_LISTEN_PATH).await?;
 
         tracing::info!(base_url = %inner.base_url(), "local STT server ready");
 
@@ -72,4 +106,11 @@ impl Drop for LocalSttServer {
     fn drop(&mut self) {
         self.stop();
     }
+}
+
+fn cors_layer() -> CorsLayer {
+    CorsLayer::new()
+        .allow_origin(cors::Any)
+        .allow_methods(cors::Any)
+        .allow_headers(cors::Any)
 }

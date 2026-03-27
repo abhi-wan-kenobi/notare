@@ -15,6 +15,7 @@ path = "src/main.rs"
 hypr-analytics = { workspace = true }
 hypr-audio = { workspace = true, optional = true }
 hypr-audio-actual = { workspace = true, optional = true }
+hypr-audio-norm = { workspace = true }
 hypr-audio-utils = { workspace = true, optional = true }
 hypr-claude = { workspace = true, optional = true }
 hypr-codex = { workspace = true, optional = true }
@@ -37,6 +38,7 @@ clap-verbosity-flag = { version = "3", features = ["tracing"] }
 clap_complete = { workspace = true }
 clio = { version = "0.3", features = ["clap-parse"] }
 colored = "3"
+comfy-table = "7"
 crossterm = { workspace = true, optional = true }
 dirs = { workspace = true }
 hypr-mp3 = { workspace = true, optional = true }
@@ -49,6 +51,7 @@ serde_json = { workspace = true }
 sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"], optional = true }
 strsim = "0.11"
 strum = { workspace = true, features = ["derive"] }
+tempfile = { workspace = true }
 textwrap = { version = "0.16", features = ["terminal_size"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal", "sync", "time"] }
@@ -58,8 +61,11 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "json", "regi
 url = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
-[target.'cfg(any(target_arch = "arm", target_arch = "aarch64"))'.dependencies]
-hypr-local-stt-server = { workspace = true }
+[target.'cfg(target_os = "macos")'.dependencies]
+hypr-local-stt-server = { workspace = true, features = ["whisper-cpp"] }
+
+[target.'cfg(all(target_os = "macos", any(target_arch = "arm", target_arch = "aarch64")))'.dependencies]
+hypr-local-stt-server = { workspace = true, features = ["cactus", "whisper-cpp"] }
 
 [dev-dependencies]
 clap_complete = { workspace = true }
@@ -67,7 +73,6 @@ cli-docs = { path = "../../crates/cli-docs" }
 clio = { version = "0.3", features = ["clap-parse"] }
 portable-pty = "0.9"
 strum = { workspace = true, features = ["derive"] }
-tempfile = { workspace = true }
 url = { workspace = true }
 vt100 = "0.15"
 

@@ -30,7 +30,7 @@ pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()>
     match command {
         Some(CliCommand::Transcribe { args }) => transcribe::run(ctx, args).await,
         #[cfg(feature = "standalone")]
-        Some(CliCommand::Models { command }) => model::run(ctx, command).await,
+        Some(CliCommand::Models { args }) => model::run(ctx, args).await,
         #[cfg(feature = "standalone")]
         Some(CliCommand::Record { args }) => record::run(ctx, args).await,
         Some(CliCommand::Completions { shell }) => {

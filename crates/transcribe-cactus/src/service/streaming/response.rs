@@ -1,41 +1,16 @@
 #[cfg(test)]
 use std::path::Path;
 
-use axum::extract::ws::{Message, WebSocket};
-use futures_util::{SinkExt, stream::SplitSink};
+pub(super) use hypr_transcribe_core::{
+    WsSender, format_timestamp_now, send_ws, send_ws_best_effort,
+};
 use owhisper_interface::stream::{Alternatives, Channel, Metadata, StreamResponse, Word};
-
-pub(super) type WsSender = SplitSink<WebSocket, Message>;
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum TranscriptKind {
     Confirmed,
     Pending,
     Finalized,
-}
-
-pub(super) async fn send_ws(sender: &mut WsSender, value: &StreamResponse) -> bool {
-    let payload = match serde_json::to_string(value) {
-        Ok(payload) => payload,
-        Err(error) => {
-            tracing::warn!("failed to serialize ws response: {error}");
-            return false;
-        }
-    };
-
-    sender.send(Message::Text(payload.into())).await.is_ok()
-}
-
-pub(super) async fn send_ws_best_effort(sender: &mut WsSender, value: &StreamResponse) {
-    let payload = match serde_json::to_string(value) {
-        Ok(payload) => payload,
-        Err(error) => {
-            tracing::warn!("failed to serialize ws response: {error}");
-            return;
-        }
-    };
-
-    let _ = sender.send(Message::Text(payload.into())).await;
 }
 
 #[cfg(test)]
@@ -114,64 +89,6 @@ pub(super) fn build_transcript_response(
         metadata: meta,
         channel_index: channel_index.to_vec(),
     }
-}
-
-pub(super) fn format_timestamp_now() -> String {
-    let d = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default();
-    let total_secs = d.as_secs();
-    let millis = d.subsec_millis();
-
-    let mut days = total_secs / 86400;
-    let day_secs = (total_secs % 86400) as u32;
-    let hours = day_secs / 3600;
-    let minutes = (day_secs % 3600) / 60;
-    let seconds = day_secs % 60;
-
-    let mut year = 1970i32;
-    loop {
-        let ydays = if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) {
-            366u64
-        } else {
-            365
-        };
-        if days < ydays {
-            break;
-        }
-        days -= ydays;
-        year += 1;
-    }
-
-    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
-    let mdays = [
-        31,
-        if leap { 29 } else { 28 },
-        31,
-        30,
-        31,
-        30,
-        31,
-        31,
-        30,
-        31,
-        30,
-        31,
-    ];
-    let mut month = 1u32;
-    for &md in &mdays {
-        if days < md {
-            break;
-        }
-        days -= md;
-        month += 1;
-    }
-    let day = days + 1;
-
-    format!(
-        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z",
-        year, month, day, hours, minutes, seconds, millis
-    )
 }
 
 #[cfg(test)]

@@ -2,6 +2,7 @@ mod output;
 mod response;
 
 use std::io::BufWriter;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -29,6 +30,22 @@ pub struct Args {
     pub output: Option<std::path::PathBuf>,
     #[arg(short = 'f', long, value_enum, default_value = "pretty")]
     pub format: OutputFormat,
+    #[arg(long, env = "CHAR_BASE", hide_env_values = true, value_name = "DIR")]
+    pub base: Option<std::path::PathBuf>,
+    #[arg(long, env = "CHAR_BASE_URL", hide_env_values = true, value_parser = crate::cli::parse_base_url)]
+    pub base_url: Option<String>,
+    #[arg(long, env = "CHAR_API_KEY", hide_env_values = true)]
+    pub api_key: Option<String>,
+    #[arg(short = 'm', long, env = "CHAR_MODEL", hide_env_values = true)]
+    pub model: Option<String>,
+    #[arg(
+        short = 'l',
+        long,
+        env = "CHAR_LANGUAGE",
+        hide_env_values = true,
+        default_value = "en"
+    )]
+    pub language: String,
 }
 
 // -- JSONL event types (for --format json) --
@@ -65,6 +82,7 @@ struct BatchHandle {
         Result<hypr_listener2_core::BatchRunOutput, hypr_listener2_core::Error>,
     >,
     started: std::time::Instant,
+    _normalized_input_dir: tempfile::TempDir,
     _server: crate::stt::ServerGuard,
 }
 
@@ -72,9 +90,12 @@ async fn start_batch(
     input: &clio::InputPath,
     keywords: Vec<String>,
     stt: SttOverrides,
+    on_normalize_progress: Option<&mut dyn FnMut(f64)>,
 ) -> CliResult<BatchHandle> {
+    let (normalized_input_dir, normalized_input_path) =
+        normalize_input_file(input.path(), on_normalize_progress)?;
     let resolved = resolve_config(None, stt).await?;
-    let params = build_batch_params(&resolved, input.path(), keywords)?;
+    let params = build_batch_params(&resolved, &normalized_input_path, keywords)?;
 
     let (batch_tx, batch_rx) = mpsc::unbounded_channel::<BatchEvent>();
     let runtime = Arc::new(ChannelBatchRuntime { tx: batch_tx });
@@ -86,8 +107,26 @@ async fn start_batch(
         rx: batch_rx,
         task,
         started,
+        _normalized_input_dir: normalized_input_dir,
         _server: resolved.server,
     })
+}
+
+fn normalize_input_file(
+    input: &Path,
+    on_progress: Option<&mut dyn FnMut(f64)>,
+) -> CliResult<(tempfile::TempDir, PathBuf)> {
+    let temp_dir = tempfile::Builder::new()
+        .prefix("char-transcribe-")
+        .tempdir()
+        .map_err(|e| CliError::operation_failed("create normalization tempdir", e.to_string()))?;
+    let tmp_path = temp_dir.path().join("input.mp3.tmp");
+    let target_path = temp_dir.path().join("input.mp3");
+
+    hypr_audio_norm::normalize_file(input, &tmp_path, &target_path, None, on_progress)
+        .map_err(|e| CliError::operation_failed("normalize audio input", e.to_string()))?;
+
+    Ok((temp_dir, target_path))
 }
 
 fn build_batch_params(
@@ -164,7 +203,13 @@ pub async fn run(ctx: &AppContext, args: Args) -> CliResult<()> {
     let output_path = args.output.clone();
     let input_display = args.input.path().display().to_string();
     let provider_display = format!("{:?}", args.provider).to_lowercase();
-    let stt = ctx.stt_overrides(Some(args.provider));
+    let stt = ctx.stt_overrides(
+        Some(args.provider),
+        args.base_url.clone(),
+        args.api_key.clone(),
+        args.model.clone(),
+        args.language.clone(),
+    );
 
     match format {
         OutputFormat::Json => {
@@ -190,7 +235,7 @@ async fn run_json(
         provider: provider_display,
     })?;
 
-    let mut handle = match start_batch(&args.input, args.keywords.clone(), stt).await {
+    let mut handle = match start_batch(&args.input, args.keywords.clone(), stt, None).await {
         Ok(h) => h,
         Err(e) => {
             let _ = writer.emit(&TranscribeEvent::Failed {
@@ -283,14 +328,46 @@ async fn run_pretty(
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| args.input.path().display().to_string());
 
-    let mut handle = start_batch(&args.input, args.keywords.clone(), stt).await?;
-
     #[cfg(feature = "standalone")]
     let mut viewport = if _trace_buffer.is_some() {
         crate::tui::InlineViewport::stderr(5, _trace_buffer).ok()
     } else {
         None
     };
+
+    #[cfg(feature = "standalone")]
+    let mut normalize_spinner_idx = 0usize;
+    #[cfg(feature = "standalone")]
+    let mut normalize_progress = |percentage: f64| {
+        normalize_spinner_idx = (normalize_spinner_idx + 1) % crate::tui::SPINNER.len();
+        draw_normalization(
+            &mut viewport,
+            &file_name,
+            normalize_spinner_idx,
+            percentage.clamp(0.0, 1.0),
+        );
+    };
+
+    #[cfg(feature = "standalone")]
+    let mut handle = match start_batch(
+        &args.input,
+        args.keywords.clone(),
+        stt,
+        Some(&mut normalize_progress),
+    )
+    .await
+    {
+        Ok(handle) => handle,
+        Err(error) => {
+            if let Some(ref mut vp) = viewport {
+                let _ = vp.clear();
+            }
+            return Err(error);
+        }
+    };
+
+    #[cfg(not(feature = "standalone"))]
+    let mut handle = start_batch(&args.input, args.keywords.clone(), stt, None).await?;
 
     let mut batch_response: Option<owhisper_interface::batch::Response> = None;
     let mut streamed_segments: Vec<StreamResponse> = Vec::new();
@@ -397,6 +474,36 @@ async fn run_pretty(
     Ok(())
 }
 
+#[cfg(feature = "standalone")]
+fn draw_normalization(
+    viewport: &mut Option<crate::tui::InlineViewport>,
+    file_name: &str,
+    spinner_idx: usize,
+    percentage: f64,
+) {
+    if let Some(vp) = viewport {
+        vp.poll_input();
+        let pct = (percentage * 100.0).round().clamp(0.0, 100.0) as u8;
+        vp.draw(&[
+            format!(
+                "{} Normalizing {}... {}%",
+                crate::tui::SPINNER[spinner_idx],
+                file_name,
+                pct
+            ),
+            format_gauge(pct),
+        ]);
+    }
+}
+
+#[cfg(feature = "standalone")]
+fn format_gauge(pct: u8) -> String {
+    let width = 40;
+    let filled = (pct as usize * width) / 100;
+    let empty = width - filled;
+    format!("  [{}{}]", "█".repeat(filled), "░".repeat(empty))
+}
+
 #[cfg(test)]
 mod tests {
     use std::io::Cursor;
@@ -435,7 +542,7 @@ mod tests {
 
         let params = build_batch_params(
             &resolved,
-            Path::new("/tmp/example.wav"),
+            Path::new("/tmp/example.mp3"),
             vec!["roadmap".to_string(), "planning".to_string()],
         )
         .unwrap();

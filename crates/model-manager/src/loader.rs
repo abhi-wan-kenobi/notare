@@ -16,3 +16,14 @@ impl ModelLoader for hypr_cactus::Model {
         hypr_cactus::Model::new(path)
     }
 }
+
+#[cfg(feature = "whisper-local")]
+impl ModelLoader for hypr_whisper_local::LoadedWhisper {
+    type Error = hypr_whisper_local::Error;
+
+    fn load(path: &Path) -> Result<Self, Self::Error> {
+        hypr_whisper_local::LoadedWhisper::builder()
+            .model_path(path.to_string_lossy().into_owned())
+            .build()
+    }
+}

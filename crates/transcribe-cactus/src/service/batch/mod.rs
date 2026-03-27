@@ -1,23 +1,20 @@
-mod chunk;
 mod response;
 mod transcribe;
 
-use std::convert::Infallible;
 use std::path::Path;
 
 use axum::{
     Json,
     http::StatusCode,
-    response::{
-        IntoResponse, Response,
-        sse::{Event, Sse},
-    },
+    response::{IntoResponse, Response},
 };
 use bytes::Bytes;
-use hypr_model_manager::ModelManager;
-use owhisper_interface::ListenParams;
-use owhisper_interface::batch_sse::{BatchSseMessage, EVENT_NAME};
 use tokio::sync::mpsc;
+
+use hypr_model_manager::ModelManager;
+use hypr_transcribe_core::{batch_sse_response, json_error_response};
+use owhisper_interface::ListenParams;
+use owhisper_interface::batch_sse::BatchSseMessage;
 
 use transcribe::transcribe_batch;
 
@@ -32,14 +29,11 @@ pub async fn handle_batch(
         Ok(m) => m,
         Err(e) => {
             tracing::error!(error = %e, "failed_to_load_model");
-            return (
+            return json_error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "model_load_failed",
-                    "detail": e.to_string()
-                })),
-            )
-                .into_response();
+                "model_load_failed",
+                e.to_string(),
+            );
         }
     };
 
@@ -58,25 +52,19 @@ pub async fn handle_batch(
         Ok(Ok(Ok(response))) => Json(response).into_response(),
         Ok(Ok(Err(e))) => {
             tracing::error!(error = %e, "batch_transcription_failed");
-            (
+            json_error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "transcription_failed",
-                    "detail": e.to_string()
-                })),
+                "transcription_failed",
+                e.to_string(),
             )
-                .into_response()
         }
         Ok(Err(_)) | Err(_) => {
             tracing::error!("batch_task_panicked");
-            (
+            json_error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "transcription_failed",
-                    "detail": "task panicked"
-                })),
+                "transcription_failed",
+                "task panicked",
             )
-                .into_response()
         }
     }
 }
@@ -92,14 +80,11 @@ pub async fn handle_batch_sse(
         Ok(m) => m,
         Err(e) => {
             tracing::error!(error = %e, "failed_to_load_model");
-            return (
+            return json_error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "model_load_failed",
-                    "detail": e.to_string()
-                })),
-            )
-                .into_response();
+                "model_load_failed",
+                e.to_string(),
+            );
         }
     };
 
@@ -140,20 +125,5 @@ pub async fn handle_batch_sse(
         let _ = event_tx.send(message);
     });
 
-    let events_stream = futures_util::stream::unfold(event_rx, |mut rx| async move {
-        rx.recv().await.map(|message| {
-            let event = match Event::default().event(EVENT_NAME).json_data(&message) {
-                Ok(event) => event,
-                Err(error) => {
-                    tracing::warn!("failed to serialize batch SSE event: {error}");
-                    Event::default()
-                        .event(EVENT_NAME)
-                        .data(r#"{"error":"transcription_failed","detail":"failed to serialize SSE event"}"#)
-                }
-            };
-            (Ok::<_, Infallible>(event), rx)
-        })
-    });
-
-    Sse::new(events_stream).into_response()
+    batch_sse_response(event_rx)
 }

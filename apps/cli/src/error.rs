@@ -164,9 +164,10 @@ mod tests {
 
     #[test]
     fn did_you_mean_finds_close_match() {
-        let candidates = &["deepgram", "soniox", "cactus"];
+        let candidates = &["deepgram", "soniox", "whispercpp", "cactus"];
         assert_eq!(did_you_mean("deepgran", candidates), Some("deepgram"));
         assert_eq!(did_you_mean("sonix", candidates), Some("soniox"));
+        assert_eq!(did_you_mean("whispr", candidates), Some("whispercpp"));
         assert_eq!(did_you_mean("completely-wrong", candidates), None);
     }
 

@@ -1,14 +1,11 @@
 mod delete;
 mod download;
 pub(crate) mod list;
-mod paths;
 pub(crate) mod runtime;
 
 use std::sync::Arc;
 
 use hypr_local_model::{LocalModel, LocalModelKind};
-use hypr_local_stt_core::SUPPORTED_MODELS as SUPPORTED_STT_MODELS;
-
 use hypr_model_downloader::ModelDownloadManager;
 use tokio::sync::mpsc;
 
@@ -19,47 +16,28 @@ use crate::cli::OutputFormat;
 use crate::error::{CliError, CliResult, did_you_mean};
 use runtime::CliModelRuntime;
 
+#[derive(clap::Args, Debug)]
+pub struct Args {
+    #[arg(long, env = "CHAR_BASE", hide_env_values = true, value_name = "DIR")]
+    pub base: Option<std::path::PathBuf>,
+
+    #[command(subcommand)]
+    pub command: Commands,
+}
+
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Show resolved paths for settings and model storage
-    Paths,
-    /// List available models and their download status
+    /// List local models and their status
     List {
-        #[arg(long)]
-        supported: bool,
         #[arg(short = 'f', long, value_enum, default_value = "pretty")]
         format: OutputFormat,
-    },
-    /// Manage downloadable Cactus models
-    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    Cactus {
-        #[command(subcommand)]
-        command: CactusCommands,
     },
     /// Download a model by name
     Download { name: String },
     /// Delete a downloaded model
     Delete {
         name: String,
-        #[arg(short = 'f', long)]
-        force: bool,
-    },
-}
-
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-#[derive(Subcommand, Debug)]
-pub enum CactusCommands {
-    /// List available Cactus models
-    List {
-        #[arg(short = 'f', long, value_enum, default_value = "pretty")]
-        format: OutputFormat,
-    },
-    /// Download a Cactus model by name
-    Download { name: String },
-    /// Delete a downloaded Cactus model
-    Delete {
-        name: String,
-        #[arg(short = 'f', long)]
+        #[arg(long)]
         force: bool,
     },
 }
@@ -75,36 +53,11 @@ impl ModelScope {
         Self {
             models: LocalModel::all()
                 .into_iter()
-                .filter(|m| model_is_enabled(m) && m.model_kind() == LocalModelKind::Stt)
+                .filter(|m| m.model_kind() == LocalModelKind::Stt)
+                .filter(model_is_enabled)
                 .collect(),
             label: "model",
             list_cmd: "char models list",
-        }
-    }
-
-    fn supported() -> Self {
-        Self {
-            models: SUPPORTED_STT_MODELS
-                .iter()
-                .filter(|m| model_is_enabled(m))
-                .cloned()
-                .collect(),
-            label: "model",
-            list_cmd: "char models list",
-        }
-    }
-
-    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    fn cactus() -> Self {
-        Self {
-            models: LocalModel::all()
-                .into_iter()
-                .filter(|m| {
-                    m.cli_name().starts_with("cactus-") && m.model_kind() == LocalModelKind::Stt
-                })
-                .collect(),
-            label: "cactus model",
-            list_cmd: "char models cactus list",
         }
     }
 
@@ -112,6 +65,14 @@ impl ModelScope {
         self.models
             .iter()
             .find(|m| m.cli_name() == name)
+            .or_else(|| {
+                if name.starts_with("cactus-") {
+                    None
+                } else {
+                    let cactus_name = format!("cactus-{name}");
+                    self.models.iter().find(|m| m.cli_name() == cactus_name)
+                }
+            })
             .cloned()
             .ok_or_else(|| {
                 let names: Vec<&str> = self.models.iter().map(|m| m.cli_name()).collect();
@@ -125,23 +86,12 @@ impl ModelScope {
     }
 }
 
-pub async fn run(ctx: &AppContext, command: Commands) -> CliResult<()> {
+pub async fn run(ctx: &AppContext, args: Args) -> CliResult<()> {
     let resolved = ctx.paths();
     let models_base = resolved.models_base.clone();
-    let db_path = resolved.base.join("app.db");
 
-    match command {
-        Commands::Paths => paths::paths(&resolved.base, &db_path, &models_base),
-        Commands::List { supported, format } => {
-            let scope = if supported {
-                ModelScope::supported()
-            } else {
-                ModelScope::all()
-            };
-            list_models(&scope, &models_base, format).await
-        }
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-        Commands::Cactus { command } => run_cactus(command, &models_base, ctx.trace_buffer()).await,
+    match args.command {
+        Commands::List { format } => list_models(&ModelScope::all(), &models_base, format).await,
         Commands::Download { name } => {
             let model = ModelScope::all().resolve(&name)?;
             download::download(model, &models_base, ctx.trace_buffer()).await
@@ -149,27 +99,6 @@ pub async fn run(ctx: &AppContext, command: Commands) -> CliResult<()> {
         Commands::Delete { name, force } => {
             let model = ModelScope::all().resolve(&name)?;
             delete::delete(model, &models_base, force).await
-        }
-    }
-}
-
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-async fn run_cactus(
-    command: CactusCommands,
-    models_base: &std::path::Path,
-    trace_buffer: crate::OptTraceBuffer,
-) -> CliResult<()> {
-    let scope = ModelScope::cactus();
-
-    match command {
-        CactusCommands::List { format } => list_models(&scope, models_base, format).await,
-        CactusCommands::Download { name } => {
-            let name = normalize_cactus_name(&name);
-            download::download(scope.resolve(&name)?, models_base, trace_buffer).await
-        }
-        CactusCommands::Delete { name, force } => {
-            let name = normalize_cactus_name(&name);
-            delete::delete(scope.resolve(&name)?, models_base, force).await
         }
     }
 }
@@ -195,16 +124,9 @@ fn make_manager(
     ModelDownloadManager::new(runtime)
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-fn normalize_cactus_name(name: &str) -> String {
-    if name.starts_with("cactus-") {
-        name.to_string()
-    } else {
-        format!("cactus-{name}")
-    }
-}
-
 pub(crate) fn model_is_enabled(model: &LocalModel) -> bool {
-    cfg!(any(target_arch = "arm", target_arch = "aarch64"))
-        || !matches!(model, LocalModel::Cactus(_) | LocalModel::CactusLlm(_))
+    cfg!(all(
+        target_os = "macos",
+        any(target_arch = "arm", target_arch = "aarch64")
+    )) || !matches!(model, LocalModel::Cactus(_) | LocalModel::CactusLlm(_))
 }

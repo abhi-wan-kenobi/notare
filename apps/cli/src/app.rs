@@ -1,4 +1,3 @@
-use crate::cli;
 use crate::config::paths::{self, AppPaths};
 #[cfg(feature = "desktop")]
 use crate::error::{CliError, CliResult};
@@ -6,7 +5,6 @@ use crate::stt;
 
 pub struct AppContext {
     analytics: hypr_analytics::AnalyticsClient,
-    global: cli::GlobalArgs,
     paths: AppPaths,
     #[cfg(feature = "standalone")]
     quiet: bool,
@@ -16,15 +14,18 @@ pub struct AppContext {
 }
 
 impl AppContext {
-    pub fn new(global: cli::GlobalArgs, quiet: bool, trace_buffer: crate::OptTraceBuffer) -> Self {
+    pub fn new(
+        base: Option<&std::path::Path>,
+        quiet: bool,
+        trace_buffer: crate::OptTraceBuffer,
+    ) -> Self {
         #[cfg(not(feature = "standalone"))]
         let _ = quiet;
 
-        let paths = paths::resolve_paths(global.base.as_deref());
+        let paths = paths::resolve_paths(base);
 
         Self {
             analytics: analytics_client(),
-            global,
             paths,
             #[cfg(feature = "standalone")]
             quiet,
@@ -57,13 +58,20 @@ impl AppContext {
         &self.paths
     }
 
-    pub fn stt_overrides(&self, provider: Option<stt::SttProvider>) -> stt::SttOverrides {
+    pub fn stt_overrides(
+        &self,
+        provider: Option<stt::SttProvider>,
+        base_url: Option<String>,
+        api_key: Option<String>,
+        model: Option<String>,
+        language: String,
+    ) -> stt::SttOverrides {
         stt::SttOverrides {
             provider,
-            base_url: self.global.base_url.clone(),
-            api_key: self.global.api_key.clone(),
-            model: self.global.model.clone(),
-            language: self.global.language.clone(),
+            base_url,
+            api_key,
+            model,
+            language,
             models_base: self.paths.models_base.clone(),
         }
     }

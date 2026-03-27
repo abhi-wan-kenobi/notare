@@ -10,6 +10,7 @@ import GithubMention from "../components/GithubMention.astro";
 import CharRepoDir from "../components/CharRepoDir.astro";
 import Install from "../components/Install.astro";
 import CommandReference from "../components/CommandReference.astro";
+import CommandDescription from "../components/CommandDescription.astro";
 import Faq from "../components/Faq.astro";
 
 <Logo stagger={1} />
@@ -20,27 +21,29 @@ import Faq from "../components/Faq.astro";
 
 ## Installation
 
-<Install command="npx char --help" label="Run this to get started" />
+Available for macOS (`x86` and `arm`).
 
-Currently published for `x86` and `arm` macs.
+Want other platforms? PRs welcome at <CharRepoDir name="apps/cli" />.
+
+<Install command="npx char --help" label="Run this to get started" />
 
 ## char record
 
-TODO
+<CommandDescription command="record" />
 
 <Faq question="Why not just record my mic? Shouldn't be hard, no?">
 </Faq>
 
 ## char transcribe
 
-TODO
+<CommandDescription command="transcribe" />
 
 <Faq question="Looking for realtime transcription, calendar syncing, etc?">
 </Faq>
 
 ## char models
 
-TODO
+<CommandDescription command="models" />
 
 <Faq question="Is it Whisper.cpp?">
 </Faq>
@@ -50,6 +53,9 @@ TODO
 
 <CommandReference />
 
+
 </div>
 
-<Byline stagger={5}>Brought to you by <GithubMention name="@fastrepl/char" />, under <CharRepoDir name="apps/cli" />.</Byline>
+<div class="mt-36">
+<Byline stagger={5}>Brought to you by <GithubMention name="@fastrepl/char" /></Byline>
+</div>

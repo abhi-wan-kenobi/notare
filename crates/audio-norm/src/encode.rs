@@ -9,21 +9,21 @@ use hypr_resampler::{
     WindowFunction,
 };
 
-use crate::error::AudioProcessingError;
+use crate::Error;
 
-pub(super) const TARGET_SAMPLE_RATE_HZ: u32 = 16_000;
+pub const TARGET_SAMPLE_RATE_HZ: u32 = 16_000;
 const RESAMPLE_CHUNK_SIZE: usize = 1024;
 const MONO_ENCODE_CHUNK_SIZE: usize = 4096;
 const TARGET_MP3_BYTES_PER_SECOND_MONO: usize = 64_000 / 8;
 const TARGET_MP3_BYTES_PER_SECOND_STEREO: usize = 128_000 / 8;
 const MP3_BUFFER_OVERHEAD_BYTES: usize = 4096;
 
-pub(super) fn encode_source_to_mp3<S, W>(
+pub(crate) fn encode_source_to_mp3<S, W>(
     source: S,
     max_duration: Option<Duration>,
     output: W,
     mut on_progress: Option<&mut dyn FnMut(f64)>,
-) -> Result<usize, AudioProcessingError>
+) -> Result<usize, Error>
 where
     S: Source<Item = f32>,
     W: Write,
@@ -32,13 +32,11 @@ where
     let channel_count_raw: u16 = source.channels().into();
     let input_duration = source.total_duration();
     let channel_count_raw = channel_count_raw.max(1);
-    let channel_count_u8 = u8::try_from(channel_count_raw).map_err(|_| {
-        AudioProcessingError::UnsupportedChannelCount {
+    let channel_count_u8 =
+        u8::try_from(channel_count_raw).map_err(|_| Error::UnsupportedChannelCount {
             count: channel_count_raw,
-        }
-    })?;
-    let channel_count =
-        NonZeroU8::new(channel_count_u8).ok_or(AudioProcessingError::InvalidChannelCount)?;
+        })?;
+    let channel_count = NonZeroU8::new(channel_count_u8).ok_or(Error::InvalidChannelCount)?;
 
     let effective_duration = max_duration
         .map(|max| input_duration.map_or(max, |inp| inp.min(max)))
@@ -104,10 +102,10 @@ where
                     )?;
                 }
 
-                if let Some(total) = total_frames {
-                    if let Some(ref mut cb) = on_progress {
-                        cb(processed_frames as f64 / total as f64);
-                    }
+                if let Some(total) = total_frames
+                    && let Some(ref mut cb) = on_progress
+                {
+                    cb(processed_frames as f64 / total as f64);
                 }
             }
 
@@ -184,10 +182,10 @@ where
                 left_chunk.clear();
                 right_chunk.clear();
 
-                if let Some(total) = total_frames {
-                    if let Some(ref mut cb) = on_progress {
-                        cb(processed_frames as f64 / total as f64);
-                    }
+                if let Some(total) = total_frames
+                    && let Some(ref mut cb) = on_progress
+                {
+                    cb(processed_frames as f64 / total as f64);
                 }
             }
 
@@ -241,10 +239,10 @@ where
 
                 state.encode_chunk(&mut encoder, &mut output, None)?;
 
-                if let Some(total) = total_frames {
-                    if let Some(ref mut cb) = on_progress {
-                        cb(processed_frames as f64 / total as f64);
-                    }
+                if let Some(total) = total_frames
+                    && let Some(ref mut cb) = on_progress
+                {
+                    cb(processed_frames as f64 / total as f64);
                 }
             }
 
@@ -284,10 +282,10 @@ where
                 encode_mono_chunk(&mut encoder, &mono_chunk, &mut mono_pcm, &mut output)?;
                 mono_chunk.clear();
 
-                if let Some(total) = total_frames {
-                    if let Some(ref mut cb) = on_progress {
-                        cb(processed_frames as f64 / total as f64);
-                    }
+                if let Some(total) = total_frames
+                    && let Some(ref mut cb) = on_progress
+                {
+                    cb(processed_frames as f64 / total as f64);
                 }
             }
 
@@ -309,8 +307,8 @@ where
     }
 }
 
-fn mp3_err(e: hypr_mp3::Error) -> AudioProcessingError {
-    AudioProcessingError::Mp3Encode(e.to_string())
+fn mp3_err(e: hypr_mp3::Error) -> Error {
+    Error::Mp3Encode(e.to_string())
 }
 
 fn estimated_mp3_capacity(duration: Option<Duration>, bytes_per_second: usize) -> usize {
@@ -337,7 +335,7 @@ fn max_frames_for_duration(source_rate: u32, duration: Duration) -> usize {
     total_frames.min(usize::MAX as u128) as usize
 }
 
-fn create_mono_resampler(source_rate: u32) -> Result<Async<f32>, AudioProcessingError> {
+fn create_mono_resampler(source_rate: u32) -> Result<Async<f32>, Error> {
     let params = SincInterpolationParameters {
         sinc_len: 256,
         f_cutoff: 0.95,
@@ -367,7 +365,7 @@ struct ResamplerState {
 }
 
 impl ResamplerState {
-    fn new(source_rate: u32) -> Result<Self, AudioProcessingError> {
+    fn new(source_rate: u32) -> Result<Self, Error> {
         let resampler = create_mono_resampler(source_rate)?;
         let output_max = resampler.output_frames_max();
         Ok(Self {
@@ -380,10 +378,7 @@ impl ResamplerState {
         })
     }
 
-    fn process_resample(
-        &mut self,
-        partial_len: Option<usize>,
-    ) -> Result<Vec<f32>, AudioProcessingError> {
+    fn process_resample(&mut self, partial_len: Option<usize>) -> Result<Vec<f32>, Error> {
         let frames_needed = self.resampler.input_frames_next();
         if self.input_buf[0].len() < frames_needed {
             self.input_buf[0].resize(frames_needed, 0.0);
@@ -425,7 +420,7 @@ impl ResamplerState {
         encoder: &mut hypr_mp3::MonoStreamEncoder,
         output: &mut Mp3Output<impl Write>,
         partial_len: Option<usize>,
-    ) -> Result<(), AudioProcessingError> {
+    ) -> Result<(), Error> {
         let frames = self.process_resample(partial_len)?;
         if !frames.is_empty() {
             encode_mono_chunk(encoder, &frames, &mut self.mono_pcm, output)?;
@@ -439,7 +434,7 @@ fn encode_mono_chunk<W: Write>(
     samples: &[f32],
     mono_pcm: &mut Vec<i16>,
     output: &mut Mp3Output<W>,
-) -> Result<(), AudioProcessingError> {
+) -> Result<(), Error> {
     if samples.is_empty() {
         return Ok(());
     }
@@ -459,7 +454,7 @@ fn encode_stereo_chunk<W: Write>(
     left_pcm: &mut Vec<i16>,
     right_pcm: &mut Vec<i16>,
     output: &mut Mp3Output<W>,
-) -> Result<(), AudioProcessingError> {
+) -> Result<(), Error> {
     if left.is_empty() && right.is_empty() {
         return Ok(());
     }
@@ -493,7 +488,7 @@ impl<W: Write> Mp3Output<W> {
         &mut self.buffer
     }
 
-    fn flush(&mut self) -> Result<(), AudioProcessingError> {
+    fn flush(&mut self) -> Result<(), Error> {
         if self.buffer.is_empty() {
             return Ok(());
         }
