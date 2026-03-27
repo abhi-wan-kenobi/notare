@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod ext;
+mod overlay;
 
 pub use error::{Error, Result};
 pub use ext::*;
