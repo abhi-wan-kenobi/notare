@@ -22,6 +22,7 @@ tauri-build = { workspace = true, features = [] }
 [dependencies]
 tauri = { workspace = true, features = ["specta", "macos-private-api", "protocol-asset"] }
 
+tauri-plugin-activity-capture = { workspace = true }
 tauri-plugin-analytics = { workspace = true }
 tauri-plugin-audio-priority = { workspace = true }
 tauri-plugin-auth = { workspace = true }

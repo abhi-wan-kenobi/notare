@@ -9,6 +9,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
 
 [[package]]
+name = "activity-capture-interface"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "futures-core",
+ "serde",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "activity-capture-macos"
+version = "0.1.0"
+dependencies = [
+ "activity-capture-interface",
+ "block2",
+ "futures-core",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-application-services",
+ "objc2-core-foundation",
+ "objc2-foundation",
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
 name = "actix-codec"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4771,6 +4797,7 @@ dependencies = [
  "supervisor",
  "tauri",
  "tauri-build",
+ "tauri-plugin-activity-capture",
  "tauri-plugin-analytics",
  "tauri-plugin-audio-priority",
  "tauri-plugin-auth",
@@ -17920,6 +17947,24 @@ dependencies = [
  "tauri-utils",
  "toml 0.9.12+spec-1.1.0",
  "walkdir",
+]
+
+[[package]]
+name = "tauri-plugin-activity-capture"
+version = "0.1.0"
+dependencies = [
+ "activity-capture-interface",
+ "activity-capture-macos",
+ "futures-util",
+ "serde",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-plugin",
+ "tauri-plugin-activity-capture",
+ "tauri-specta",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]

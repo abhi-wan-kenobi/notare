@@ -9,6 +9,7 @@ pub(crate) fn assemble(raw: &[Word], transcript: &str, channel: i32) -> Vec<RawW
             punctuated_word: word.punctuated_word.as_deref(),
             start_ms: (word.start * 1000.0).round() as i64,
             end_ms: (word.end * 1000.0).round() as i64,
+            channel,
             speaker: word.speaker,
         }),
         transcript,
@@ -16,17 +17,18 @@ pub(crate) fn assemble(raw: &[Word], transcript: &str, channel: i32) -> Vec<RawW
     )
 }
 
-pub(crate) fn assemble_batch(raw: &[batch::Word], transcript: &str, channel: i32) -> Vec<RawWord> {
+pub(crate) fn assemble_batch(raw: &[batch::Word], transcript: &str) -> Vec<RawWord> {
     assemble_words(
         raw.iter().map(|word| AssemblyToken {
             word: word.word.as_str(),
             punctuated_word: word.punctuated_word.as_deref(),
             start_ms: (word.start * 1000.0).round() as i64,
             end_ms: (word.end * 1000.0).round() as i64,
+            channel: word.channel,
             speaker: word.speaker.map(|speaker| speaker as i32),
         }),
         transcript,
-        channel,
+        0,
     )
 }
 
@@ -36,13 +38,14 @@ struct AssemblyToken<'a> {
     punctuated_word: Option<&'a str>,
     start_ms: i64,
     end_ms: i64,
+    channel: i32,
     speaker: Option<i32>,
 }
 
 fn assemble_words<'a>(
     tokens: impl Iterator<Item = AssemblyToken<'a>>,
     transcript: &str,
-    channel: i32,
+    _channel: i32,
 ) -> Vec<RawWord> {
     let tokens: Vec<AssemblyToken<'a>> = tokens.collect();
     let spaced = spacing_from_slice(
@@ -54,18 +57,13 @@ fn assemble_words<'a>(
     let mut result = Vec::new();
 
     for (token, text) in tokens.into_iter().zip(spaced) {
-        push_assembled_word(&mut result, token, text, channel);
+        push_assembled_word(&mut result, token, text);
     }
 
     result
 }
 
-fn push_assembled_word(
-    result: &mut Vec<RawWord>,
-    token: AssemblyToken<'_>,
-    text: String,
-    channel: i32,
-) {
+fn push_assembled_word(result: &mut Vec<RawWord>, token: AssemblyToken<'_>, text: String) {
     let should_merge = !text.starts_with(' ')
         && result.last().is_some()
         && !should_insert_boundary_space(
@@ -95,7 +93,7 @@ fn push_assembled_word(
         text,
         start_ms: token.start_ms,
         end_ms: token.end_ms,
-        channel,
+        channel: token.channel,
         speaker: token.speaker,
     });
 }
@@ -210,6 +208,7 @@ mod tests {
             punctuated_word: punctuated,
             start_ms: start,
             end_ms: end,
+            channel: 0,
             speaker: None,
         }
     }

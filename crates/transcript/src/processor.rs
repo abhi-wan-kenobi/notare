@@ -164,7 +164,7 @@ impl TranscriptProcessor {
     pub fn process_batch_response(response: &BatchResponse) -> TranscriptDelta {
         let mut new_words = Vec::new();
 
-        for (channel_idx, channel) in response.results.channels.iter().enumerate() {
+        for channel in &response.results.channels {
             let Some(alt) = channel.alternatives.first() else {
                 continue;
             };
@@ -172,8 +172,7 @@ impl TranscriptProcessor {
                 continue;
             }
 
-            let ch = channel_idx as i32;
-            let raw = assemble_batch(&alt.words, &alt.transcript, ch);
+            let raw = assemble_batch(&alt.words, &alt.transcript);
             new_words.extend(finalize_words(raw, WordState::Final));
         }
 

@@ -25,6 +25,8 @@ exclude = [
 ]
 
 [workspace.dependencies]
+hypr-activity-capture-interface = { path = "crates/activity-capture-interface", package = "activity-capture-interface" }
+hypr-activity-capture-macos = { path = "crates/activity-capture-macos", package = "activity-capture-macos" }
 hypr-aec = { path = "crates/aec", package = "aec" }
 hypr-afconvert = { path = "crates/afconvert", package = "afconvert" }
 hypr-agc = { path = "crates/agc", package = "agc" }
@@ -199,6 +201,7 @@ tauri-plugin-store = "2.4"
 tauri-plugin-updater = "2.10"
 tauri-plugin-window-state = "2.4"
 
+tauri-plugin-activity-capture = { path = "plugins/activity-capture" }
 tauri-plugin-analytics = { path = "plugins/analytics" }
 tauri-plugin-audio-priority = { path = "plugins/audio-priority" }
 tauri-plugin-auth = { path = "plugins/auth" }
