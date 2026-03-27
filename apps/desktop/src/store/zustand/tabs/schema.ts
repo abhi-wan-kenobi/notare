@@ -36,7 +36,8 @@ export type SettingsTab =
   | "transcription"
   | "intelligence"
   | "templates"
-  | "memory";
+  | "memory"
+  | "dont-use-this";
 
 export type SettingsState = {
   tab: SettingsTab | null;

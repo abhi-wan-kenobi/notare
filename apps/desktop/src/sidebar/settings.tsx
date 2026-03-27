@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { getIdentifier } from "@tauri-apps/api/app";
 import {
   AudioLinesIcon,
   BellIcon,
@@ -8,6 +10,7 @@ import {
   MonitorIcon,
   SmartphoneIcon,
   SparklesIcon,
+  TriangleAlertIcon,
 } from "lucide-react";
 import { useCallback } from "react";
 
@@ -43,11 +46,27 @@ const GROUPS: {
   },
 ];
 
+const DONT_USE_THIS_ITEM = {
+  id: "dont-use-this" as SettingsTab,
+  label: "Don't use this",
+  icon: TriangleAlertIcon,
+};
+
 export function SettingsNav() {
   const currentTab = useTabs((state) => state.currentTab);
   const updateSettingsTabState = useTabs(
     (state) => state.updateSettingsTabState,
   );
+
+  const identifierQuery = useQuery({
+    queryKey: ["app-identifier"],
+    queryFn: () => getIdentifier(),
+    staleTime: Infinity,
+  });
+
+  const isDev = identifierQuery.data === "com.hyprnote.dev";
+  const isNightly = identifierQuery.data === "com.hyprnote.nightly";
+  const showDontUseThis = isDev || isNightly;
 
   const activeTab =
     currentTab?.type === "settings"
@@ -65,9 +84,17 @@ export function SettingsNav() {
     [currentTab, updateSettingsTabState],
   );
 
+  const groups = showDontUseThis
+    ? GROUPS.map((g) =>
+        g.label === "Advanced"
+          ? { ...g, items: [...g.items, DONT_USE_THIS_ITEM] }
+          : g,
+      )
+    : GROUPS;
+
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto px-3 py-2">
-      {GROUPS.map((group) => (
+      {groups.map((group) => (
         <div key={group.label} className="flex flex-col gap-0.5">
           <span className="px-2 pb-1 text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
             {group.label}
@@ -82,10 +109,6 @@ export function SettingsNav() {
                 activeTab === id
                   ? "bg-neutral-200/70 font-medium text-neutral-900"
                   : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-800",
-                id === "lab" && activeTab !== id && "text-amber-600",
-                id === "lab" &&
-                  activeTab === id &&
-                  "bg-amber-100 text-amber-800",
               ])}
             >
               <Icon size={15} />

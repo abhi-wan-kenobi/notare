@@ -7,6 +7,7 @@ import {
 } from "@hypr/ui/components/ui/scroll-fade";
 
 import { SettingsCalendar } from "./calendar";
+import { SettingsDontUseThis } from "./dont-use-this";
 import { SettingsApp, SettingsNotifications, SettingsSystem } from "./general";
 import { SettingsLab } from "./lab";
 import { TemplatesContent } from "./templates-content";
@@ -83,6 +84,8 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
         return <TemplatesContent />;
       case "memory":
         return <SettingsMemory />;
+      case "dont-use-this":
+        return <SettingsDontUseThis />;
     }
   };
 
