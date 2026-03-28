@@ -17,8 +17,9 @@ import Faq from "../components/Faq.astro";
 <Logo stagger={1} />
 <Title stagger={2}>Composable CLI for your meeting workflow</Title>
 <CyclingTools stagger={3} />
+<Byline stagger={4}>Brought to you by <GithubMention name="@fastrepl/char" /></Byline>
 
-<div class="stagger-4">
+<div class="stagger-5">
 
 ## Installation
 
@@ -33,19 +34,21 @@ Want other platforms? PRs welcome at <CharRepoDir name="apps/cli" />.
 <CommandDescription command="record" />
 
 <Faq question="Why not just use default voice recorder app?">
-It can record microphone(`--audio input`), system audio(`--audio output`) or both with `Echo Cancellation` applied(`--audio dual`).
+It can record microphone (`--audio input`), system audio (`--audio output`), or both with `Echo Cancellation` applied (`--audio dual`).
 </Faq>
 
 ## char transcribe
 
 <CommandDescription command="transcribe" />
 
-<Command command="char transcribe -i v.mp3 -p deepgram --api-key <KEY>" label="DEEPGRAM_API_KEY env needed. We support many other providers." />
+<Command command="curl -LO https://github.com/fastrepl/char/raw/refs/heads/main/crates/data/src/english_10/audio.mp3 && mv audio.mp3 /tmp/v.mp3" label="Use it for example input" />
 
-<Command command="char transcribe -i v.mp3 -p whispercpp --model whisper-small-en" label="`char models download whisper-small-en` needed" />
+<Command command="char transcribe -i /tmp/v.mp3 -p deepgram --api-key DEEPGRAM_API_KEY" label="Key needed. Deepgram/Soniox/AssemblyAI are considered stable. Others are in beta." />
+
+<Command command="char transcribe -i /tmp/v.mp3 -p whispercpp --model whisper-small-en" label="`char models download whisper-small-en` needed" />
 
 <Faq question="Looking for realtime transcription, calendar syncing, etc?">
-We have desktop app with all of it. Run `char desktop`.
+We have a desktop app with all of that. Run `char desktop`.
 </Faq>
 
 ## char models
@@ -58,8 +61,17 @@ We have desktop app with all of it. Run `char desktop`.
 
 
 <Faq question="Is it Whisper.cpp?">
-`Whisper.cpp` for all platforms, and additionally `Cactus` for `ARM`(e,g Apple Silicon).
+`Whisper.cpp` for all platforms, and additionally `Cactus` for `ARM`(e.g. Apple Silicon).
 </Faq>
+
+## Is it vibe coded?
+
+We used a bunch of AI tokens for sure. But we have been putting out open-source work in this space for pretty long — definitely more than what a month of $200 subscription can do.
+
+- Char [github.com/fastrepl/char](https://github.com/fastrepl/char) (Formerly Hyprnote, Primary maintaining org)
+- Cactus [github.com/cactus-compute/cactus](https://github.com/cactus-compute/cactus/blob/b631a0980787db5757d7e539c994b44ca2657c41/README.md?plain=1#L280) (One of the maintaining orgs)
+
+Genuinely want to put out something useful. More exciting work coming to both our desktop & CLI soon. [Join our Discord](https://char.com/discord).
 
 ## Reference
 
@@ -67,6 +79,3 @@ We have desktop app with all of it. Run `char desktop`.
 
 </div>
 
-<div class="mt-36">
-<Byline stagger={5}>Brought to you by <GithubMention name="@fastrepl/char" /></Byline>
-</div>

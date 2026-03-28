@@ -62,6 +62,36 @@ main h3::before {
   color: #525252;
 }
 
+/* ---- Prose links ---- */
+
+main a {
+  color: #a3a3a3;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: #525252;
+  transition: color 0.15s, text-decoration-color 0.15s;
+}
+
+main a:hover {
+  color: #e5e5e5;
+  text-decoration-color: #a3a3a3;
+}
+
+/* ---- Prose lists ---- */
+
+main ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+main li {
+  margin-top: 0.25rem;
+  color: #a3a3a3;
+  font-size: 0.875rem;
+}
+
 /* ---- Inline code ---- */
 
 main code {
