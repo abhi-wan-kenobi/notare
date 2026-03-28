@@ -42,7 +42,10 @@ impl AppContext {
             let payload = hypr_analytics::AnalyticsPayload::builder("cli_command_invoked")
                 .with("subcommand", subcommand)
                 .with("app_identifier", "com.char.cli")
-                .with("app_version", option_env!("APP_VERSION").unwrap_or("dev"))
+                .with(
+                    "app_version",
+                    option_env!("APP_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
+                )
                 .build();
             let _ = client.event(machine_id, payload).await;
         });

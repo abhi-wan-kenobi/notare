@@ -5,7 +5,7 @@ use clap_verbosity_flag::{InfoLevel, Verbosity};
 #[derive(Parser)]
 #[command(
     name = "char",
-    version,
+    version = option_env!("APP_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
     propagate_version = true,
     after_help = "Docs:        https://cli.char.com\nDiscussions: https://github.com/fastrepl/char/discussions/4788\nBugs:        https://github.com/fastrepl/char/issues"
 )]
