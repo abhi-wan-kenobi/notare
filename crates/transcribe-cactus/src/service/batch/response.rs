@@ -4,6 +4,7 @@ pub(super) fn build_batch_words(
     transcript: &str,
     total_duration: f64,
     confidence: f64,
+    channel: i32,
 ) -> Vec<batch::Word> {
     let word_strs: Vec<&str> = transcript.split_whitespace().collect();
     if word_strs.is_empty() || total_duration <= 0.0 {
@@ -19,6 +20,7 @@ pub(super) fn build_batch_words(
             start: i as f64 * word_duration,
             end: (i + 1) as f64 * word_duration,
             confidence,
+            channel,
             speaker: None,
             punctuated_word: Some(w.to_string()),
         })
@@ -93,7 +95,7 @@ mod tests {
 
     #[test]
     fn batch_words_evenly_distributed() {
-        let words = build_batch_words("hello beautiful world", 3.0, 0.9);
+        let words = build_batch_words("hello beautiful world", 3.0, 0.9, 0);
         assert_eq!(words.len(), 3);
 
         assert_eq!(words[0].word, "hello");
@@ -117,19 +119,19 @@ mod tests {
 
     #[test]
     fn batch_words_empty_transcript() {
-        let words = build_batch_words("", 5.0, 0.9);
+        let words = build_batch_words("", 5.0, 0.9, 0);
         assert!(words.is_empty());
     }
 
     #[test]
     fn batch_words_zero_duration() {
-        let words = build_batch_words("hello world", 0.0, 0.9);
+        let words = build_batch_words("hello world", 0.0, 0.9, 0);
         assert!(words.is_empty());
     }
 
     #[test]
     fn batch_response_deepgram_shape() {
-        let words = build_batch_words("hello world", 2.0, 0.95);
+        let words = build_batch_words("hello world", 2.0, 0.95, 0);
         let meta = Metadata {
             model_info: ModelInfo {
                 name: "test".to_string(),
@@ -205,14 +207,14 @@ mod tests {
                         alternatives: vec![batch::Alternatives {
                             transcript: "left".to_string(),
                             confidence: 0.9,
-                            words: build_batch_words("left", 1.0, 0.9),
+                            words: build_batch_words("left", 1.0, 0.9, 0),
                         }],
                     },
                     batch::Channel {
                         alternatives: vec![batch::Alternatives {
                             transcript: "right".to_string(),
                             confidence: 0.8,
-                            words: build_batch_words("right", 1.0, 0.8),
+                            words: build_batch_words("right", 1.0, 0.8, 1),
                         }],
                     },
                 ],
