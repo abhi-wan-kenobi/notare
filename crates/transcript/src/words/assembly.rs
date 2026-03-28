@@ -216,11 +216,7 @@ mod tests {
     #[test]
     fn merges_punctuation_into_previous_word() {
         let mut result = Vec::new();
-        push_assembled_word(
-            &mut result,
-            token("look", None, 0, 100),
-            "look".to_string(),
-        );
+        push_assembled_word(&mut result, token("look", None, 0, 100), "look".to_string());
         push_assembled_word(&mut result, token(".", None, 100, 110), ".".to_string());
 
         assert_eq!(result.len(), 1);
@@ -290,11 +286,7 @@ mod tests {
     fn merges_contraction_into_previous_word() {
         let mut result = Vec::new();
         push_assembled_word(&mut result, token("it", None, 0, 100), " it".to_string());
-        push_assembled_word(
-            &mut result,
-            token("'s", None, 100, 150),
-            "'s".to_string(),
-        );
+        push_assembled_word(&mut result, token("'s", None, 100, 150), "'s".to_string());
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].text, " it's");
