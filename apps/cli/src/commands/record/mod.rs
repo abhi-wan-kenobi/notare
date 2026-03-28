@@ -29,7 +29,7 @@ pub enum AudioMode {
 
 #[derive(clap::Args)]
 pub struct Args {
-    #[arg(long, value_enum, default_value = "input")]
+    #[arg(long, value_enum, default_value = "dual")]
     pub audio: AudioMode,
     #[arg(short = 'o', long, value_name = "FILE")]
     pub output: Option<PathBuf>,

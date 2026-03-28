@@ -9,6 +9,7 @@ import Byline from "../components/Byline.astro";
 import GithubMention from "../components/GithubMention.astro";
 import CharRepoDir from "../components/CharRepoDir.astro";
 import Install from "../components/Install.astro";
+import Command from "../components/Command.astro";
 import CommandReference from "../components/CommandReference.astro";
 import CommandDescription from "../components/CommandDescription.astro";
 import Faq from "../components/Faq.astro";
@@ -25,34 +26,44 @@ Available for macOS (`x86` and `arm`).
 
 Want other platforms? PRs welcome at <CharRepoDir name="apps/cli" />.
 
-<Install command="npx char --help" label="Run this to get started" />
+<Install command="npm i -g char" label="Or `npx char@latest --help`" />
 
 ## char record
 
 <CommandDescription command="record" />
 
-<Faq question="Why not just record my mic? Shouldn't be hard, no?">
+<Faq question="Why not just use default voice recorder app?">
+It can record microphone(`--audio input`), system audio(`--audio output`) or both with `Echo Cancellation` applied(`--audio dual`).
 </Faq>
 
 ## char transcribe
 
 <CommandDescription command="transcribe" />
 
+<Command command="char transcribe -i v.mp3 -p deepgram --api-key <KEY>" label="DEEPGRAM_API_KEY env needed. We support many other providers." />
+
+<Command command="char transcribe -i v.mp3 -p whispercpp --model whisper-small-en" label="`char models download whisper-small-en` needed" />
+
 <Faq question="Looking for realtime transcription, calendar syncing, etc?">
+We have desktop app with all of it. Run `char desktop`.
 </Faq>
 
 ## char models
 
 <CommandDescription command="models" />
 
-<Faq question="Is it Whisper.cpp?">
-</Faq>
+<Command command="char models download whisper-small-en" />
 
+<Command command="char models list" label="try with `--format json` too" />
+
+
+<Faq question="Is it Whisper.cpp?">
+`Whisper.cpp` for all platforms, and additionally `Cactus` for `ARM`(e,g Apple Silicon).
+</Faq>
 
 ## Reference
 
 <CommandReference />
-
 
 </div>
 

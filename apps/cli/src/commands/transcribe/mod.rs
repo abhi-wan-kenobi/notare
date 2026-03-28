@@ -19,7 +19,7 @@ use crate::stt::{ChannelBatchRuntime, SttOverrides, resolve_config};
 
 #[derive(clap::Args)]
 pub struct Args {
-    #[arg(long, value_name = "FILE", visible_alias = "file")]
+    #[arg(short = 'i', long, value_name = "FILE", visible_alias = "file")]
     pub input: clio::InputPath,
     #[arg(short = 'p', long, value_enum)]
     pub provider: crate::stt::SttProvider,
