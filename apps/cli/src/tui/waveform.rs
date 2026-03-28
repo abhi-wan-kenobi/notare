@@ -7,8 +7,8 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{StatefulWidget, Widget};
 
 const BLOCKS: [char; 9] = [' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
-pub const MIC_COLOR: Color = Color::Cyan;
-pub const SYS_COLOR: Color = Color::Magenta;
+pub const MIC_COLOR: Color = Color::Rgb(0xFD, 0xE6, 0xAE);
+pub const SYS_COLOR: Color = Color::Rgb(0xE0, 0xC0, 0x80);
 
 fn to_perceptual(level: f32) -> f32 {
     if level <= 0.0 {
@@ -98,8 +98,34 @@ impl Widget for PlaybackWaveform<'_> {
 }
 
 impl<'a> PlaybackWaveform<'a> {
-    pub fn spans(peaks: &[f32], fraction: f64, color: Color, width: usize) -> Vec<Span<'static>> {
-        playback_spans(peaks, fraction, color, width)
+    pub fn lines(
+        peaks: &[f32],
+        fraction: f64,
+        color: Color,
+        width: usize,
+        rows: usize,
+    ) -> Vec<Line<'static>> {
+        playback_multirow(peaks, fraction, color, width, rows)
+    }
+
+    pub fn lines_dual(
+        left_peaks: &[f32],
+        right_peaks: &[f32],
+        fraction: f64,
+        left_color: Color,
+        right_color: Color,
+        width: usize,
+        rows: usize,
+    ) -> Vec<Line<'static>> {
+        playback_multirow_dual(
+            left_peaks,
+            right_peaks,
+            fraction,
+            left_color,
+            right_color,
+            width,
+            rows,
+        )
     }
 }
 
@@ -187,15 +213,28 @@ fn overlaid_spans(mic: &VecDeque<f32>, sys: &VecDeque<f32>, width: usize) -> Vec
     spans
 }
 
-fn playback_spans(peaks: &[f32], fraction: f64, color: Color, width: usize) -> Vec<Span<'static>> {
+const MIN_BAR: f32 = 0.125;
+
+fn normalize_peaks(peaks: &[f32], width: usize) -> (Vec<f32>, usize) {
     let resampled = resample_peaks(peaks, width);
     let max_peak = resampled.iter().cloned().fold(0.0_f32, f32::max);
     let norm = if max_peak > 0.0 { 1.0 / max_peak } else { 1.0 };
+    let normalized: Vec<f32> = resampled
+        .iter()
+        .map(|&p| {
+            let n = (p * norm).clamp(0.0, 1.0);
+            if n > 0.0 { n.max(MIN_BAR) } else { n }
+        })
+        .collect();
+    (normalized, width)
+}
+
+fn playback_spans(peaks: &[f32], fraction: f64, color: Color, width: usize) -> Vec<Span<'static>> {
+    let (normalized, width) = normalize_peaks(peaks, width);
     let played_cols = (fraction * width as f64).round() as usize;
     let mut spans = Vec::with_capacity(width);
-    for (i, &peak) in resampled.iter().enumerate() {
-        let normalized = (peak * norm).clamp(0.0, 1.0);
-        let ch = block_char(normalized);
+    for (i, &n) in normalized.iter().enumerate() {
+        let ch = block_char(n);
         let fg = if i < played_cols {
             color
         } else {
@@ -204,6 +243,84 @@ fn playback_spans(peaks: &[f32], fraction: f64, color: Color, width: usize) -> V
         spans.push(Span::styled(String::from(ch), Style::default().fg(fg)));
     }
     spans
+}
+
+fn playback_multirow(
+    peaks: &[f32],
+    fraction: f64,
+    color: Color,
+    width: usize,
+    rows: usize,
+) -> Vec<Line<'static>> {
+    let (normalized, width) = normalize_peaks(peaks, width);
+    let played_cols = (fraction * width as f64).round() as usize;
+    let total_levels = rows as f32 * 8.0;
+
+    let mut result = Vec::with_capacity(rows);
+    for row in 0..rows {
+        let row_base = (rows - 1 - row) as f32 * 8.0;
+        let mut spans = Vec::with_capacity(width);
+        for (i, &n) in normalized.iter().enumerate() {
+            let filled = (n * total_levels - row_base).clamp(0.0, 8.0);
+            let ch = block_char(filled / 8.0);
+            let fg = if i < played_cols {
+                color
+            } else {
+                Color::DarkGray
+            };
+            spans.push(Span::styled(String::from(ch), Style::default().fg(fg)));
+        }
+        result.push(Line::from(spans));
+    }
+    result
+}
+
+fn playback_multirow_dual(
+    left_peaks: &[f32],
+    right_peaks: &[f32],
+    fraction: f64,
+    left_color: Color,
+    right_color: Color,
+    width: usize,
+    rows: usize,
+) -> Vec<Line<'static>> {
+    let (left_norm, width) = normalize_peaks(left_peaks, width);
+    let (right_norm, _) = normalize_peaks(right_peaks, width);
+    let played_cols = (fraction * width as f64).round() as usize;
+    let total_levels = rows as f32 * 8.0;
+
+    let mut result = Vec::with_capacity(rows);
+    for row in 0..rows {
+        let row_base = (rows - 1 - row) as f32 * 8.0;
+        let mut spans = Vec::with_capacity(width);
+        for i in 0..width {
+            let l = *left_norm.get(i).unwrap_or(&0.0);
+            let r = *right_norm.get(i).unwrap_or(&0.0);
+            let level = l.max(r);
+            let filled = (level * total_levels - row_base).clamp(0.0, 8.0);
+            let ch = block_char(filled / 8.0);
+            let fg = if i < played_cols {
+                if l >= r { left_color } else { right_color }
+            } else {
+                Color::DarkGray
+            };
+            spans.push(Span::styled(String::from(ch), Style::default().fg(fg)));
+        }
+        result.push(Line::from(spans));
+    }
+    result
+}
+
+/// Deinterleave stereo samples into separate left and right channel vectors.
+pub fn deinterleave_stereo(samples: &[f32]) -> (Vec<f32>, Vec<f32>) {
+    let len = samples.len() / 2;
+    let mut left = Vec::with_capacity(len);
+    let mut right = Vec::with_capacity(len);
+    for pair in samples.chunks_exact(2) {
+        left.push(pair[0]);
+        right.push(pair[1]);
+    }
+    (left, right)
 }
 
 fn resample_peaks(peaks: &[f32], width: usize) -> Vec<f32> {

@@ -21,6 +21,9 @@ pub(crate) enum InputAction {
     SeekForward,
     SeekBackward,
     TogglePause,
+    Up,
+    Down,
+    Confirm,
 }
 
 pub(crate) struct BackgroundInput {
@@ -107,6 +110,31 @@ fn action_for_key(key: KeyEvent) -> Option<InputAction> {
             modifiers: KeyModifiers::NONE,
             ..
         } => Some(InputAction::TogglePause),
+        KeyEvent {
+            code: KeyCode::Up,
+            modifiers: KeyModifiers::NONE,
+            ..
+        }
+        | KeyEvent {
+            code: KeyCode::Char('k'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => Some(InputAction::Up),
+        KeyEvent {
+            code: KeyCode::Down,
+            modifiers: KeyModifiers::NONE,
+            ..
+        }
+        | KeyEvent {
+            code: KeyCode::Char('j'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => Some(InputAction::Down),
+        KeyEvent {
+            code: KeyCode::Enter,
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => Some(InputAction::Confirm),
         _ => None,
     }
 }

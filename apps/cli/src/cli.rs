@@ -68,6 +68,12 @@ pub enum Commands {
         args: crate::commands::record::Args,
     },
     #[cfg(feature = "standalone")]
+    /// Install char skill for AI coding agents
+    Skill {
+        #[command(subcommand)]
+        command: crate::commands::skill::Commands,
+    },
+    #[cfg(feature = "standalone")]
     /// Open the desktop app or download page
     Desktop,
     #[cfg(feature = "standalone")]

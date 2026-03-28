@@ -24,6 +24,8 @@ pub mod model;
 pub mod play;
 #[cfg(feature = "standalone")]
 pub mod record;
+#[cfg(feature = "standalone")]
+pub mod skill;
 
 use std::path::{Path, PathBuf};
 
@@ -67,6 +69,8 @@ pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()>
         Some(CliCommand::Play { args }) => play::run(ctx, args).await,
         #[cfg(feature = "standalone")]
         Some(CliCommand::Record { args }) => record::run(ctx, args).await,
+        #[cfg(feature = "standalone")]
+        Some(CliCommand::Skill { command }) => skill::run(ctx, command).await,
         Some(CliCommand::Completions { shell }) => {
             crate::cli::generate_completions(shell);
             Ok(())

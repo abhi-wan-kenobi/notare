@@ -7,7 +7,9 @@ use rodio::source::Source;
 
 use crate::app::AppContext;
 use crate::error::{CliError, CliResult};
-use crate::tui::waveform::{MIC_COLOR, PlaybackWaveform, compute_peaks};
+use crate::tui::waveform::{
+    MIC_COLOR, PlaybackWaveform, SYS_COLOR, compute_peaks, deinterleave_stereo,
+};
 use crate::tui::{InlineViewport, InputAction};
 
 const WAVEFORM_WIDTH: usize = 46;
@@ -52,7 +54,8 @@ fn resolve_audio_path(target: &str, base: Option<&std::path::Path>) -> CliResult
 struct PlayState {
     file_name: String,
     total: Duration,
-    peaks: Vec<f32>,
+    left_peaks: Vec<f32>,
+    right_peaks: Option<Vec<f32>>,
     pos: Duration,
     paused: bool,
 }
@@ -66,37 +69,46 @@ impl PlayState {
         }
     }
 
-    fn lines(&self) -> Vec<Line<'static>> {
-        let status = if self.paused { "paused " } else { "playing" };
+    fn waveform_lines(&self, fraction: f64) -> Vec<Line<'static>> {
+        match &self.right_peaks {
+            Some(right) => PlaybackWaveform::lines_dual(
+                &self.left_peaks,
+                right,
+                fraction,
+                MIC_COLOR,
+                SYS_COLOR,
+                WAVEFORM_WIDTH,
+                2,
+            ),
+            None => {
+                PlaybackWaveform::lines(&self.left_peaks, fraction, MIC_COLOR, WAVEFORM_WIDTH, 2)
+            }
+        }
+    }
 
-        let line0 = Line::from(format!(
-            "{}  {} / {}",
+    fn lines(&self) -> Vec<Line<'static>> {
+        let mut lines = self.waveform_lines(self.fraction());
+
+        let status = if self.paused { "paused " } else { "playing" };
+        lines.push(Line::from(format!(
+            "{}  {} / {}  {}",
             status,
             format_duration(self.pos),
-            format_duration(self.total)
-        ));
-        let line1 = Line::from(self.file_name.clone());
-        let line2 = Line::from(PlaybackWaveform::spans(
-            &self.peaks,
-            self.fraction(),
-            MIC_COLOR,
-            WAVEFORM_WIDTH,
-        ));
+            format_duration(self.total),
+            self.file_name,
+        )));
 
-        vec![line0, line1, line2]
+        lines
     }
 
     fn completion_lines(&self) -> Vec<Line<'static>> {
-        vec![
-            Line::from(format!("played  {}", format_duration(self.pos))),
-            Line::from(self.file_name.clone()),
-            Line::from(PlaybackWaveform::spans(
-                &self.peaks,
-                1.0,
-                MIC_COLOR,
-                WAVEFORM_WIDTH,
-            )),
-        ]
+        let mut lines = self.waveform_lines(1.0);
+        lines.push(Line::from(format!(
+            "played  {}  {}",
+            format_duration(self.total),
+            self.file_name,
+        )));
+        lines
     }
 }
 
@@ -117,10 +129,20 @@ pub async fn run(ctx: &AppContext, args: Args) -> CliResult<()> {
     let analyze = Decoder::try_from(std::io::Cursor::new(bytes.clone()))
         .map_err(|e| CliError::operation_failed("decode audio file", e.to_string()))?;
     let sample_rate = analyze.sample_rate().get() as f64;
-    let channels = analyze.channels().get() as f64;
+    let num_channels = analyze.channels().get() as usize;
     let samples: Vec<f32> = analyze.collect();
-    let peaks = compute_peaks(&samples, WAVEFORM_WIDTH);
-    let duration = Duration::from_secs_f64(samples.len() as f64 / (sample_rate * channels));
+    let duration =
+        Duration::from_secs_f64(samples.len() as f64 / (sample_rate * num_channels as f64));
+
+    let (left_peaks, right_peaks) = if num_channels >= 2 {
+        let (left, right) = deinterleave_stereo(&samples);
+        (
+            compute_peaks(&left, WAVEFORM_WIDTH),
+            Some(compute_peaks(&right, WAVEFORM_WIDTH)),
+        )
+    } else {
+        (compute_peaks(&samples, WAVEFORM_WIDTH), None)
+    };
 
     // Decode again for playback.
     let source = Decoder::try_from(std::io::Cursor::new(bytes))
@@ -138,7 +160,8 @@ pub async fn run(ctx: &AppContext, args: Args) -> CliResult<()> {
     let mut state = PlayState {
         file_name,
         total: duration,
-        peaks,
+        left_peaks,
+        right_peaks,
         pos: Duration::ZERO,
         paused: false,
     };
@@ -187,7 +210,8 @@ pub async fn run(ctx: &AppContext, args: Args) -> CliResult<()> {
                                 }
                             }
                             InputAction::SeekForward => {
-                                let target = player.get_pos() + SEEK_STEP;
+                                let target =
+                                    (player.get_pos() + SEEK_STEP).min(state.total);
                                 let _ = player.try_seek(target);
                             }
                             InputAction::SeekBackward => {

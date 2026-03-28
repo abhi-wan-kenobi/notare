@@ -29,6 +29,10 @@ Want other platforms? PRs welcome at <CharRepoDir name="apps/cli" />.
 
 <Install command="npm i -g char@latest" label="Or `npx char@latest --help`" />
 
+Or install `SKILL`, and let an agent install and set it up for you.
+
+<Command command="npx skills add fastrepl/char@cli" label="Or use skills.sh without installing char first" />
+
 ## char record
 
 <CommandDescription command="record" />
@@ -61,17 +65,13 @@ We have a desktop app with all of that. Run `char desktop`.
 
 
 <Faq question="Is it Whisper.cpp?">
-`Whisper.cpp` for all platforms, and additionally `Cactus` for `ARM`(e.g. Apple Silicon).
+`Whisper.cpp` for all platforms, and additionally `Cactus` for `ARM` (e.g. Apple Silicon).
 </Faq>
 
-## Is it vibe coded?
+## For Agents
 
-We used a bunch of AI tokens for sure. But we have been putting out open-source work in this space for pretty long — definitely more than what a month of $200 subscription can do.
-
-- Char [github.com/fastrepl/char](https://github.com/fastrepl/char) (Formerly Hyprnote, Primary maintaining org)
-- Cactus [github.com/cactus-compute/cactus](https://github.com/cactus-compute/cactus/blob/b631a0980787db5757d7e539c994b44ca2657c41/README.md?plain=1#L280) (One of the maintaining orgs)
-
-Genuinely want to put out something useful. More exciting work coming to both our desktop & CLI soon. [Join our Discord](https://char.com/discord).
+- `char skill install` or `npx skills add fastrepl/char@cli` to install skill.
+- Use `--format json` instead, if it is not intended for human reading.
 
 ## Reference
 

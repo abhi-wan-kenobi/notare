@@ -1,7 +1,7 @@
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 
-const LOGO_COLOR: Color = Color::Rgb(0xFD, 0xE6, 0xAE);
+pub const LOGO_COLOR: Color = Color::Rgb(0xFD, 0xE6, 0xAE);
 
 const LOGO: [&str; 3] = [" █▌  ▐█ ", "▐▌    ▐▌", " █▌  ▐█ "];
 

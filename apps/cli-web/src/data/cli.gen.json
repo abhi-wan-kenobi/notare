@@ -336,6 +336,53 @@
       ]
     },
     {
+      "name": "char skill",
+      "about": "Install char skill for AI coding agents",
+      "synopsis": "char skill [-h] [-V] <command>",
+      "options": [
+        {
+          "flags": "-h, --help",
+          "help": "Print help",
+          "required": false,
+          "is_flag": false
+        },
+        {
+          "flags": "-V, --version",
+          "help": "Print version",
+          "required": false,
+          "is_flag": false
+        }
+      ],
+      "subcommands": [
+        {
+          "name": "char skill install",
+          "about": "Install char skill for AI coding agents",
+          "synopsis": "char skill install [-f] [-h] [-V]",
+          "options": [
+            {
+              "flags": "-f, --format",
+              "value_name": "FORMAT",
+              "help": "Skip interactive selection: claude, codex, github-copilot",
+              "required": false,
+              "is_flag": false
+            },
+            {
+              "flags": "-h, --help",
+              "help": "Print help",
+              "required": false,
+              "is_flag": false
+            },
+            {
+              "flags": "-V, --version",
+              "help": "Print version",
+              "required": false,
+              "is_flag": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "char desktop",
       "about": "Open the desktop app or download page",
       "synopsis": "char desktop [-h] [-V]",
