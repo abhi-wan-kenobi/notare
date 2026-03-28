@@ -21,6 +21,7 @@ struct ScreenState {
     selected: usize,
     status: DaemonStatus,
     accessibility: bool,
+    input_monitoring: bool,
 }
 
 fn detect_status() -> DaemonStatus {
@@ -44,6 +45,13 @@ fn check_accessibility() -> bool {
     unsafe { AXIsProcessTrusted() }
 }
 
+fn check_input_monitoring() -> bool {
+    matches!(
+        super::hotkey::probe_event_tap(),
+        super::hotkey::ProbeResult::Ok
+    )
+}
+
 fn render_lines(state: &ScreenState) -> Vec<Line<'static>> {
     let (status_dot, status_text, status_color) = match state.status {
         DaemonStatus::Running => ("●", "Running", Color::Green),
@@ -51,6 +59,12 @@ fn render_lines(state: &ScreenState) -> Vec<Line<'static>> {
     };
 
     let acc_span = if state.accessibility {
+        Span::styled("✓", Style::default().fg(Color::Green))
+    } else {
+        Span::styled("✗", Style::default().fg(Color::Red))
+    };
+
+    let input_span = if state.input_monitoring {
         Span::styled("✓", Style::default().fg(Color::Green))
     } else {
         Span::styled("✗", Style::default().fg(Color::Red))
@@ -69,6 +83,9 @@ fn render_lines(state: &ScreenState) -> Vec<Line<'static>> {
             format!("{status_dot} {status_text}"),
             Style::default().fg(status_color),
         ),
+        Span::raw("  "),
+        Span::styled("input ", Style::default().fg(Color::DarkGray)),
+        input_span,
         Span::raw("  "),
         Span::styled("access ", Style::default().fg(Color::DarkGray)),
         acc_span,
@@ -117,6 +134,7 @@ pub fn run() -> CliResult<()> {
         selected: 0,
         status: detect_status(),
         accessibility: check_accessibility(),
+        input_monitoring: check_input_monitoring(),
     };
 
     let mut viewport = InlineViewport::stderr_interactive(5, None, true)
@@ -124,8 +142,19 @@ pub fn run() -> CliResult<()> {
 
     viewport.draw(&render_lines(&state));
 
+    let mut refresh_counter: u32 = 0;
+
     loop {
         std::thread::sleep(Duration::from_millis(30));
+
+        // Refresh permission/status every ~1s (33 * 30ms)
+        refresh_counter += 1;
+        if refresh_counter >= 33 {
+            refresh_counter = 0;
+            state.status = detect_status();
+            state.accessibility = check_accessibility();
+            state.input_monitoring = check_input_monitoring();
+        }
 
         for action in viewport.poll_input() {
             match action {

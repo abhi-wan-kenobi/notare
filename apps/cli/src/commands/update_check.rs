@@ -28,20 +28,28 @@ impl UpdateHandle {
 }
 
 async fn fetch_latest_cli_release(client: &reqwest::Client) -> Option<String> {
+    let mut best: Option<((u64, u64, u64), String)> = None;
     let mut page = 1;
 
     loop {
         let releases = fetch_release_page(client, page).await?;
-        if let Some(version) = find_latest_cli_release_on_page(&releases) {
-            return Some(version);
+        let is_last = releases.len() < RELEASES_PER_PAGE as usize;
+
+        for release in &releases {
+            if let Some((triple, version)) = parse_cli_release(release) {
+                if best.as_ref().is_none_or(|(b, _)| triple > *b) {
+                    best = Some((triple, version.to_string()));
+                }
+            }
         }
 
-        if releases.len() < RELEASES_PER_PAGE as usize {
-            return None;
+        if is_last {
+            break;
         }
-
         page += 1;
     }
+
+    best.map(|(_, version)| version)
 }
 
 async fn fetch_release_page(client: &reqwest::Client, page: u32) -> Option<Vec<Release>> {
@@ -57,10 +65,11 @@ async fn fetch_release_page(client: &reqwest::Client, page: u32) -> Option<Vec<R
 }
 
 fn find_latest_cli_release_on_page(releases: &[Release]) -> Option<String> {
-    releases.iter().find_map(|release| {
-        let (_, version) = parse_cli_release(release)?;
-        Some(version.to_string())
-    })
+    releases
+        .iter()
+        .filter_map(|release| parse_cli_release(release))
+        .max_by_key(|(triple, _)| *triple)
+        .map(|(_, version)| version.to_string())
 }
 
 fn parse_cli_release(release: &Release) -> Option<((u64, u64, u64), &str)> {
@@ -113,7 +122,7 @@ mod tests {
     }
 
     #[test]
-    fn selects_first_stable_cli_release_on_page() {
+    fn selects_highest_stable_cli_release_on_page() {
         assert_eq!(
             find_latest_cli_release_on_page(&[
                 release("desktop_v9.9.9", false),
@@ -126,22 +135,23 @@ mod tests {
     }
 
     #[test]
-    fn returns_none_when_page_has_no_stable_cli_release() {
+    fn picks_highest_version_regardless_of_order() {
         assert_eq!(
-            find_latest_cli_release_on_page(&[release("desktop_v9.9.9", false)]),
-            None
+            find_latest_cli_release_on_page(&[
+                release("cli_v1.0.9", false),
+                release("cli_v1.0.8", false),
+                release("cli_v1.0.11", false),
+                release("cli_v1.0.10", false),
+            ]),
+            Some("1.0.11".to_string())
         );
     }
 
     #[test]
-    fn ignores_later_stable_cli_releases_on_same_page() {
+    fn returns_none_when_page_has_no_stable_cli_release() {
         assert_eq!(
-            find_latest_cli_release_on_page(&[
-                release("desktop_v9.9.9", false),
-                release("cli_v1.0.3", false),
-                release("cli_v1.0.2", false),
-            ]),
-            Some("1.0.3".to_string())
+            find_latest_cli_release_on_page(&[release("desktop_v9.9.9", false)]),
+            None
         );
     }
 }

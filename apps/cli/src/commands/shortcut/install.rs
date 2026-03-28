@@ -7,10 +7,10 @@ use super::plist;
 
 pub(crate) fn run() -> CliResult<()> {
     if !check_input_monitoring() {
-        eprintln!("Input Monitoring permission is required for global hotkey listening.");
+        eprintln!("Input Monitoring permission is required for the global hotkey.");
         eprintln!();
         eprintln!("Opening System Settings → Privacy & Security → Input Monitoring…");
-        eprintln!("Grant access to the char binary, then re-run: char shortcut install");
+        eprintln!("Enable the toggle for char, then re-run: char shortcut install");
         let _ = Command::new("open")
             .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
             .status();
