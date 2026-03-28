@@ -39,10 +39,10 @@
     {
       "name": "char transcribe",
       "about": "Transcribe an audio file",
-      "synopsis": "char transcribe <--input> <-p> [-k] [-o] [-f] [--base] [--base-url] [--api-key] [-m] [-l] [-h] [-V]",
+      "synopsis": "char transcribe <-i> <-p> [-k] [-o] [-f] [--base] [--base-url] [--api-key] [-m] [-l] [-h] [-V]",
       "options": [
         {
-          "flags": "--input",
+          "flags": "-i, --input",
           "value_name": "FILE",
           "required": true,
           "is_flag": false
@@ -145,7 +145,7 @@
         {
           "name": "char models list",
           "about": "List local models and their status",
-          "synopsis": "char models list [-f] [-v] [-h] [-V]",
+          "synopsis": "char models list [-f] [-h] [-V]",
           "options": [
             {
               "flags": "-f, --format",
@@ -153,12 +153,6 @@
               "default": "pretty",
               "required": false,
               "is_flag": false
-            },
-            {
-              "flags": "-v, --verbose",
-              "help": "Show install paths",
-              "required": false,
-              "is_flag": true
             },
             {
               "flags": "-h, --help",
@@ -264,7 +258,7 @@
         {
           "flags": "--audio",
           "value_name": "AUDIO",
-          "default": "input",
+          "default": "dual",
           "required": false,
           "is_flag": false
         },
