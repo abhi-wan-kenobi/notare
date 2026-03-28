@@ -87,6 +87,15 @@ pub enum Commands {
     #[cfg(feature = "standalone")]
     /// Update char to the latest version
     Update,
+    #[cfg(all(feature = "standalone", target_os = "macos"))]
+    /// Manage global shortcut
+    Shortcut {
+        #[command(subcommand)]
+        command: Option<crate::commands::shortcut::Commands>,
+    },
+    #[cfg(all(feature = "standalone", target_os = "macos"))]
+    #[command(hide = true)]
+    ShortcutDaemon,
 
     #[cfg(feature = "task")]
     /// Claude Code integration

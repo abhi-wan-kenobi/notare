@@ -62,10 +62,14 @@ jobs:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           APP_VERSION: ${{ needs.compute-version.outputs.version }}
       - run: |
+          cd apps/cli-ui
+          swift build -c release --arch arm64 --arch x86_64
+          cp .build/apple/Products/Release/char-cli-ui ../../target/${{ matrix.target }}/release/
+      - run: |
           BIN="target/${{ matrix.target }}/release/char"
           strip -x "$BIN"
           ARCHIVE="char-${{ needs.compute-version.outputs.version }}-${{ matrix.target }}.tar.xz"
-          tar -cJf "$ARCHIVE" -C "target/${{ matrix.target }}/release" char
+          tar -cJf "$ARCHIVE" -C "target/${{ matrix.target }}/release" char char-cli-ui
           echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:

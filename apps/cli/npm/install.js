@@ -29,6 +29,7 @@ if (!existsSync(binDir)) {
 
 const dest = join(binDir, "char");
 if (existsSync(dest)) {
+  downloadCliUI();
   process.exit(0);
 }
 
@@ -38,3 +39,28 @@ execSync(`curl -fsSL -o "${tmp}" "${url}"`, { stdio: "inherit" });
 execSync(`tar -xf "${tmp}" -C "${binDir}"`, { stdio: "inherit" });
 execSync(`rm -f "${tmp}"`);
 execSync(`chmod +x "${dest}"`);
+
+downloadCliUI();
+
+function downloadCliUI() {
+  if (process.platform !== "darwin") return;
+
+  const uiDest = join(binDir, "char-cli-ui");
+  if (existsSync(uiDest)) return;
+
+  const uiArchive = `char-cli-ui-${version}-${target}.tar.xz`;
+  const uiUrl = `https://github.com/${REPO}/releases/download/${tag}/${uiArchive}`;
+
+  console.error(`Downloading char-cli-ui from ${uiUrl}`);
+  try {
+    const uiTmp = join(require("node:os").tmpdir(), uiArchive);
+    execSync(`curl -fsSL -o "${uiTmp}" "${uiUrl}"`, { stdio: "inherit" });
+    execSync(`tar -xf "${uiTmp}" -C "${binDir}"`, { stdio: "inherit" });
+    execSync(`rm -f "${uiTmp}"`);
+    execSync(`chmod +x "${uiDest}"`);
+  } catch {
+    console.error(
+      "Warning: failed to download char-cli-ui (shortcut will not work)",
+    );
+  }
+}

@@ -24,6 +24,8 @@ pub mod model;
 pub mod play;
 #[cfg(feature = "standalone")]
 pub mod record;
+#[cfg(all(feature = "standalone", target_os = "macos"))]
+pub mod shortcut;
 #[cfg(feature = "standalone")]
 pub mod skill;
 #[cfg(feature = "standalone")]
@@ -102,6 +104,10 @@ pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()>
         }
         #[cfg(feature = "standalone")]
         Some(CliCommand::Update) => update::run(),
+        #[cfg(all(feature = "standalone", target_os = "macos"))]
+        Some(CliCommand::Shortcut { command }) => shortcut::run(command).await,
+        #[cfg(all(feature = "standalone", target_os = "macos"))]
+        Some(CliCommand::ShortcutDaemon) => shortcut::daemon::run().await,
         #[cfg(feature = "task")]
         Some(CliCommand::Claude { command }) => integration::claude::run(command).await,
         #[cfg(feature = "task")]
