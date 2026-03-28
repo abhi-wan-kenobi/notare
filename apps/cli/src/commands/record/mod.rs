@@ -35,6 +35,8 @@ pub struct Args {
     pub output: Option<PathBuf>,
     #[arg(short = 'f', long, value_enum, default_value = "pretty")]
     pub format: OutputFormat,
+    #[arg(long, env = "CHAR_BASE", hide_env_values = true, value_name = "DIR")]
+    pub base: Option<PathBuf>,
 }
 
 #[derive(Debug, Serialize)]
@@ -76,18 +78,18 @@ async fn run_with_audio<A: AudioProvider>(
     trace_buffer: Option<crate::tui::TraceBuffer>,
     audio: &A,
 ) -> CliResult<()> {
+    let update_check = super::update_check::UpdateHandle::spawn();
     let sample_rate = 16_000u32;
     let format = args.format;
 
-    let output_path = args.output.unwrap_or_else(|| {
-        let ts = chrono::Local::now().format("%Y%m%d_%H%M%S");
-        let suffix = match args.audio {
-            AudioMode::Input => "input",
-            AudioMode::Output => "output",
-            AudioMode::Dual => "dual",
-        };
-        PathBuf::from(format!("recording_{ts}_{suffix}.mp3"))
-    });
+    let output_path = match args.output {
+        Some(output) => output,
+        None => {
+            let ts = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
+            let dir = super::resolve_session_dir(args.base.as_deref(), &ts)?;
+            dir.join("audio.mp3")
+        }
+    };
 
     let channels: u16 = match args.audio {
         AudioMode::Input | AudioMode::Output => 1,
@@ -160,6 +162,7 @@ async fn run_with_audio<A: AudioProvider>(
                 viewport.as_mut(),
                 event_writer.as_mut(),
                 quiet,
+                update_check,
             )
             .await
         }
@@ -184,6 +187,7 @@ async fn finish_success<W2: Write>(
     viewport: Option<&mut InlineViewport>,
     event_writer: Option<&mut EventWriter<W2>>,
     quiet: bool,
+    update_check: super::update_check::UpdateHandle,
 ) -> CliResult<()> {
     ensure_parent_dirs(&app.output)?;
 
@@ -226,11 +230,6 @@ async fn finish_success<W2: Write>(
 
     app.finish(result.elapsed, result.audio_secs);
 
-    if let Some(view) = viewport {
-        view.clear()
-            .map_err(|e| CliError::operation_failed("clear record viewport", e.to_string()))?;
-    }
-
     if let Some(writer) = event_writer {
         writer.emit(&RecordEvent::Stopped {
             reason: result.stop_reason.as_str().to_string(),
@@ -240,8 +239,16 @@ async fn finish_success<W2: Write>(
         })?;
     }
 
-    if !quiet {
+    if let Some(view) = viewport {
+        view.draw(&app.completion_lines());
+        view.finish()
+            .map_err(|e| CliError::operation_failed("finish record viewport", e.to_string()))?;
+    } else if !quiet {
         eprintln!("{}", app.summary_line());
+    }
+
+    if let Some(version) = update_check.result().await {
+        eprintln!("  update available: npm i -g char@{version}");
     }
 
     Ok(())

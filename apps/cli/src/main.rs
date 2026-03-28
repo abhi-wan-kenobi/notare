@@ -64,7 +64,12 @@ fn init_tracing(cli: &Cli) -> OptTraceBuffer {
         && std::io::IsTerminal::is_terminal(&std::io::stderr())
         && matches!(
             cli.command,
-            Some(Commands::Transcribe { .. } | Commands::Models { .. } | Commands::Record { .. })
+            Some(
+                Commands::Transcribe { .. }
+                    | Commands::Models { .. }
+                    | Commands::Record { .. }
+                    | Commands::Play { .. },
+            )
         );
 
     #[cfg(feature = "standalone")]

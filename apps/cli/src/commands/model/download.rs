@@ -100,7 +100,7 @@ fn draw_download(
         vp.poll_input();
         let name = model.display_name();
         let pct_str = format!("{}%", pct);
-        vp.draw(&[
+        vp.draw_strings(&[
             format!(
                 "{} Downloading {}... {}",
                 SPINNER[spinner_idx], name, pct_str

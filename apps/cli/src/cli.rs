@@ -56,6 +56,12 @@ pub enum Commands {
         shell: clap_complete::Shell,
     },
     #[cfg(feature = "standalone")]
+    /// Play an audio file
+    Play {
+        #[command(flatten)]
+        args: crate::commands::play::Args,
+    },
+    #[cfg(feature = "standalone")]
     /// Record audio to an MP3 file
     Record {
         #[command(flatten)]
@@ -123,6 +129,10 @@ impl Commands {
             Commands::Transcribe { args } => args.base.as_deref(),
             #[cfg(feature = "standalone")]
             Commands::Models { args } => args.base.as_deref(),
+            #[cfg(feature = "standalone")]
+            Commands::Play { args } => args.base.as_deref(),
+            #[cfg(feature = "standalone")]
+            Commands::Record { args } => args.base.as_deref(),
             _ => None,
         }
     }

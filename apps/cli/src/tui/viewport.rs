@@ -23,7 +23,15 @@ pub struct InlineViewport {
 
 impl InlineViewport {
     pub fn stderr(height: u16, traces: Option<TraceBuffer>) -> io::Result<Self> {
-        let raw_mode = traces.is_some();
+        Self::stderr_interactive(height, traces, false)
+    }
+
+    pub fn stderr_interactive(
+        height: u16,
+        traces: Option<TraceBuffer>,
+        interactive: bool,
+    ) -> io::Result<Self> {
+        let raw_mode = interactive || traces.is_some();
         let mut input = None;
         if raw_mode {
             crossterm::terminal::enable_raw_mode()?;
@@ -56,34 +64,32 @@ impl InlineViewport {
         })
     }
 
-    pub fn poll_input(&mut self) {
+    /// Poll keyboard input. Handles view-toggle internally and returns
+    /// any actions the caller should handle (seek, pause, etc.).
+    pub fn poll_input(&mut self) -> Vec<InputAction> {
         if !self.raw_mode {
-            return;
+            return Vec::new();
         }
         let Some(input) = self.input.as_ref() else {
-            return;
+            return Vec::new();
         };
-        let mut actions = Vec::new();
+        let mut passthrough = Vec::new();
         while let Ok(action) = input.try_recv() {
-            actions.push(action);
+            if action == InputAction::ToggleView {
+                self.view = match self.view {
+                    View::Progress => View::Traces,
+                    View::Traces => View::Progress,
+                };
+            } else {
+                passthrough.push(action);
+            }
         }
-        for action in actions {
-            self.apply_input_action(action);
-        }
+        passthrough
     }
 
     fn shutdown_input(&mut self) {
         if let Some(mut input) = self.input.take() {
             input.shutdown();
-        }
-    }
-
-    fn apply_input_action(&mut self, action: InputAction) {
-        if action == InputAction::ToggleView {
-            self.view = match self.view {
-                View::Progress => View::Traces,
-                View::Traces => View::Progress,
-            };
         }
     }
 
@@ -97,14 +103,19 @@ impl InlineViewport {
         Ok(())
     }
 
-    pub fn draw(&mut self, lines: &[String]) {
+    pub fn draw(&mut self, lines: &[Line]) {
         match self.view {
             View::Progress => self.draw_lines(lines),
             View::Traces => self.draw_traces(),
         }
     }
 
-    fn draw_lines(&mut self, lines: &[String]) {
+    pub fn draw_strings(&mut self, lines: &[String]) {
+        let styled: Vec<Line> = lines.iter().map(|s| Line::from(s.clone())).collect();
+        self.draw(&styled);
+    }
+
+    fn draw_lines(&mut self, lines: &[Line]) {
         let logo = logo_lines();
         let logo_width = 10;
 
@@ -119,7 +130,7 @@ impl InlineViewport {
                 spans.push(Span::raw(" ".repeat(logo_width + 2)));
             }
             if i < lines.len() {
-                spans.push(Span::raw(lines[i].clone()));
+                spans.extend(lines[i].spans.iter().cloned());
             }
             content.push(Line::from(spans));
         }
@@ -204,6 +215,20 @@ impl InlineViewport {
                 }
             }
         });
+    }
+
+    /// Tear down raw mode but leave the last-drawn content visible.
+    /// The caller must have called `draw()` with the final content
+    /// immediately before calling this.
+    pub fn finish(&mut self) -> io::Result<()> {
+        self.teardown_raw_mode()?;
+        // After an inline draw, ratatui leaves the cursor on the last
+        // viewport row (the bottom border).  We need to move past it
+        // so the shell prompt doesn't overwrite the border.
+        let mut stderr = io::stderr();
+        crossterm::execute!(stderr, crossterm::cursor::MoveDown(1))?;
+        eprintln!();
+        Ok(())
     }
 
     pub fn clear(&mut self) -> io::Result<()> {

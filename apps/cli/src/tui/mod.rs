@@ -2,8 +2,10 @@ mod capture;
 mod input;
 mod logo;
 mod viewport;
+pub mod waveform;
 
 pub use capture::{CaptureLayer, TraceBuffer, new_trace_buffer};
+pub(crate) use input::InputAction;
 pub use viewport::InlineViewport;
 
 pub const SPINNER: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];

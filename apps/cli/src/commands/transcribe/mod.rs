@@ -19,8 +19,11 @@ use crate::stt::{ChannelBatchRuntime, SttOverrides, resolve_config};
 
 #[derive(clap::Args)]
 pub struct Args {
+    /// Timestamp (e.g. 20260327_143022) or path to an audio file
+    #[arg(value_name = "INPUT")]
+    pub target: Option<String>,
     #[arg(short = 'i', long, value_name = "FILE", visible_alias = "file")]
-    pub input: clio::InputPath,
+    pub input: Option<String>,
     #[arg(short = 'p', long, value_enum)]
     pub provider: crate::stt::SttProvider,
     #[arg(long = "keyword", short = 'k', value_name = "KEYWORD")]
@@ -81,19 +84,20 @@ struct BatchHandle {
         Result<hypr_listener2_core::BatchRunOutput, hypr_listener2_core::Error>,
     >,
     started: std::time::Instant,
-    _normalized_input_dir: tempfile::TempDir,
+    _normalized_input_dir: Option<tempfile::TempDir>,
     _server: crate::stt::ServerGuard,
 }
 
 async fn start_batch(
-    input: &clio::InputPath,
+    input: &Path,
     keywords: Vec<String>,
     stt: SttOverrides,
+    audio_dest: Option<&Path>,
     on_normalize_progress: Option<&mut dyn FnMut(f64)>,
 ) -> CliResult<BatchHandle> {
     let resolved = resolve_config(None, stt).await?;
-    let (normalized_input_dir, normalized_input_path) =
-        normalize_input_file(input.path(), on_normalize_progress)?;
+    let (temp_dir, normalized_input_path) =
+        normalize_input_file(input, audio_dest, on_normalize_progress)?;
     let params = build_batch_params(&resolved, &normalized_input_path, keywords)?;
 
     let (batch_tx, batch_rx) = mpsc::unbounded_channel::<BatchEvent>();
@@ -106,21 +110,30 @@ async fn start_batch(
         rx: batch_rx,
         task,
         started,
-        _normalized_input_dir: normalized_input_dir,
+        _normalized_input_dir: temp_dir,
         _server: resolved.server,
     })
 }
 
 fn normalize_input_file(
     input: &Path,
+    dest: Option<&Path>,
     on_progress: Option<&mut dyn FnMut(f64)>,
-) -> CliResult<(tempfile::TempDir, PathBuf)> {
-    let temp_dir = tempfile::Builder::new()
-        .prefix("char-transcribe-")
-        .tempdir()
-        .map_err(|e| CliError::operation_failed("create normalization tempdir", e.to_string()))?;
-    let tmp_path = temp_dir.path().join("input.mp3.tmp");
-    let target_path = temp_dir.path().join("input.mp3");
+) -> CliResult<(Option<tempfile::TempDir>, PathBuf)> {
+    let (temp_dir, tmp_path, target_path) = if let Some(dest) = dest {
+        let tmp_path = dest.with_extension("mp3.tmp");
+        (None, tmp_path, dest.to_path_buf())
+    } else {
+        let td = tempfile::Builder::new()
+            .prefix("char-transcribe-")
+            .tempdir()
+            .map_err(|e| {
+                CliError::operation_failed("create normalization tempdir", e.to_string())
+            })?;
+        let tmp_path = td.path().join("input.mp3.tmp");
+        let target_path = td.path().join("input.mp3");
+        (Some(td), tmp_path, target_path)
+    };
 
     hypr_audio_norm::normalize_file(input, &tmp_path, &target_path, None, on_progress)
         .map_err(|e| CliError::operation_failed("normalize audio input", e.to_string()))?;
@@ -146,6 +159,44 @@ fn build_batch_params(
         file_path.to_string(),
         keywords,
     ))
+}
+
+fn input_timestamp(path: &Path) -> String {
+    let system_time = std::fs::metadata(path)
+        .and_then(|m| m.modified())
+        .unwrap_or_else(|_| std::time::SystemTime::now());
+    format_timestamp(system_time)
+}
+
+fn format_timestamp(t: std::time::SystemTime) -> String {
+    let secs = t
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let days = secs / 86400;
+    let time_of_day = secs % 86400;
+    let hour = time_of_day / 3600;
+    let min = (time_of_day % 3600) / 60;
+    let sec = time_of_day % 60;
+
+    // days since epoch to y/m/d (civil calendar)
+    let (y, m, d) = days_to_ymd(days as i64);
+    format!("{y:04}{m:02}{d:02}_{hour:02}{min:02}{sec:02}")
+}
+
+fn days_to_ymd(days: i64) -> (i64, u32, u32) {
+    // Algorithm from http://howardhinnant.github.io/date_algorithms.html
+    let z = days + 719468;
+    let era = z.div_euclid(146097);
+    let doe = z.rem_euclid(146097) as u64;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe as i64 + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
+    let y = if m <= 2 { y + 1 } else { y };
+    (y, m, d)
 }
 
 fn extract_stream_transcript(event: &BatchStreamEvent) -> Option<&str> {
@@ -185,13 +236,67 @@ fn finish_batch(
     })
 }
 
+fn resolve_input(
+    target: Option<&str>,
+    input: Option<&str>,
+    base: Option<&Path>,
+) -> CliResult<PathBuf> {
+    let raw = match (target, input) {
+        (Some(t), _) => t,
+        (None, Some(i)) => i,
+        (None, None) => {
+            return Err(CliError::invalid_argument(
+                "INPUT",
+                "(missing)",
+                "provide an audio file or session timestamp",
+            ));
+        }
+    };
+
+    let as_path = PathBuf::from(raw);
+    if as_path.is_file() {
+        return Ok(as_path);
+    }
+
+    let base_dir = base.map(Path::to_path_buf).unwrap_or_else(|| {
+        dirs::data_dir()
+            .unwrap_or_else(std::env::temp_dir)
+            .join("char")
+    });
+
+    let session_audio = base_dir.join(raw).join("audio.mp3");
+    if session_audio.is_file() {
+        return Ok(session_audio);
+    }
+
+    Err(CliError::not_found(
+        format!("audio file for '{raw}'"),
+        Some(format!(
+            "Pass a file path or a session timestamp.\nLooked in: {}",
+            session_audio.display()
+        )),
+    ))
+}
+
 // -- Entry point --
 
 #[allow(clippy::unit_arg)]
 pub async fn run(ctx: &AppContext, args: Args) -> CliResult<()> {
+    let input_path = resolve_input(
+        args.target.as_deref(),
+        args.input.as_deref(),
+        args.base.as_deref(),
+    )?;
     let format = args.format;
-    let output_path = args.output.clone();
-    let input_display = args.input.path().display().to_string();
+    let (output_path, audio_dest) = if let Some(output) = args.output.clone() {
+        (output, None)
+    } else {
+        let ts = input_timestamp(&input_path);
+        let dir = super::resolve_session_dir(args.base.as_deref(), &ts)?;
+        (dir.join("transcript.json"), Some(dir.join("audio.mp3")))
+    };
+    let output_path = Some(output_path);
+    let input_display = input_path.display().to_string();
     let provider_display = format!("{:?}", args.provider).to_lowercase();
     let stt = ctx.stt_overrides(
         Some(args.provider),
@@ -203,18 +308,39 @@ pub async fn run(ctx: &AppContext, args: Args) -> CliResult<()> {
 
     match format {
         OutputFormat::Json => {
-            run_json(args, stt, output_path, input_display, provider_display).await
+            run_json(
+                &input_path,
+                args,
+                stt,
+                output_path,
+                audio_dest,
+                input_display,
+                provider_display,
+            )
+            .await
         }
-        OutputFormat::Pretty => run_pretty(args, stt, output_path, ctx.trace_buffer()).await,
+        OutputFormat::Pretty => {
+            run_pretty(
+                &input_path,
+                args,
+                stt,
+                output_path,
+                audio_dest,
+                ctx.trace_buffer(),
+            )
+            .await
+        }
     }
 }
 
 // -- JSON mode --
 
 async fn run_json(
+    input_path: &Path,
     args: Args,
     stt: SttOverrides,
     output_path: Option<std::path::PathBuf>,
+    audio_dest: Option<PathBuf>,
     input_display: String,
     provider_display: String,
 ) -> CliResult<()> {
@@ -225,7 +351,15 @@ async fn run_json(
         provider: provider_display,
     })?;
 
-    let mut handle = match start_batch(&args.input, args.keywords.clone(), stt, None).await {
+    let mut handle = match start_batch(
+        input_path,
+        args.keywords.clone(),
+        stt,
+        audio_dest.as_deref(),
+        None,
+    )
+    .await
+    {
         Ok(h) => h,
         Err(e) => {
             let _ = writer.emit(&TranscribeEvent::Failed {
@@ -292,18 +426,20 @@ async fn run_json(
 // -- Pretty mode --
 
 async fn run_pretty(
+    input_path: &Path,
     args: Args,
     stt: SttOverrides,
     output_path: Option<std::path::PathBuf>,
+    audio_dest: Option<PathBuf>,
     _trace_buffer: OptTraceBuffer,
 ) -> CliResult<()> {
+    let update_check = super::update_check::UpdateHandle::spawn();
+
     #[cfg(feature = "standalone")]
-    let file_name = args
-        .input
-        .path()
+    let file_name = input_path
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_else(|| args.input.path().display().to_string());
+        .unwrap_or_else(|| input_path.display().to_string());
 
     #[cfg(feature = "standalone")]
     let mut viewport = if _trace_buffer.is_some() {
@@ -327,9 +463,10 @@ async fn run_pretty(
 
     #[cfg(feature = "standalone")]
     let mut handle = match start_batch(
-        &args.input,
+        input_path,
         args.keywords.clone(),
         stt,
+        audio_dest.as_deref(),
         Some(&mut normalize_progress),
     )
     .await
@@ -344,7 +481,14 @@ async fn run_pretty(
     };
 
     #[cfg(not(feature = "standalone"))]
-    let mut handle = start_batch(&args.input, args.keywords.clone(), stt, None).await?;
+    let mut handle = start_batch(
+        input_path,
+        args.keywords.clone(),
+        stt,
+        audio_dest.as_deref(),
+        None,
+    )
+    .await?;
 
     let mut failure: Option<(BatchErrorCode, String)> = None;
 
@@ -366,7 +510,7 @@ async fn run_pretty(
                     if let Some(ref mut vp) = viewport {
                         vp.poll_input();
                         let pct_str = format!("{:.0}%", last_pct * 100.0);
-                        vp.draw(&[
+                        vp.draw_strings(&[
                             format!("{} Transcribing {}... {}", crate::tui::SPINNER[spinner_idx], file_name, pct_str),
                             format!("  {}", crate::tui::truncate_line(&last_transcript, 76)),
                         ]);
@@ -409,12 +553,6 @@ async fn run_pretty(
         }
     }
 
-    #[cfg(feature = "standalone")]
-    if let Some(ref mut vp) = viewport {
-        vp.clear()
-            .map_err(|e| CliError::operation_failed("clear viewport", e.to_string()))?;
-    }
-
     let result = finish_batch(handle.task.await, failure, handle.started)?;
     let response = &result.response;
 
@@ -432,11 +570,36 @@ async fn run_pretty(
         parts.push(format!("{:.1}s audio", audio_duration));
     }
     parts.push(format!("in {:.1}s", result.elapsed.as_secs_f64()));
-    if let Some(path) = &output_path {
-        parts.push(format!("-> {}", path.display()));
+
+    #[cfg(feature = "standalone")]
+    if let Some(ref mut vp) = viewport {
+        let mut lines = vec![format!("saved  {}", parts.join("  "))];
+        if let Some(path) = &output_path {
+            lines.push(format!("{}", path.display()));
+        }
+        vp.draw_strings(&lines);
+        vp.finish()
+            .map_err(|e| CliError::operation_failed("finish viewport", e.to_string()))?;
+    } else {
+        if let Some(path) = &output_path {
+            parts.push(format!("-> {}", path.display()));
+        }
+        use colored::Colorize;
+        eprintln!("{}", parts.join(", ").dimmed());
     }
-    use colored::Colorize;
-    eprintln!("{}", parts.join(", ").dimmed());
+
+    #[cfg(not(feature = "standalone"))]
+    {
+        if let Some(path) = &output_path {
+            parts.push(format!("-> {}", path.display()));
+        }
+        use colored::Colorize;
+        eprintln!("{}", parts.join(", ").dimmed());
+    }
+
+    if let Some(version) = update_check.result().await {
+        eprintln!("  update available: npm i -g char@{version}");
+    }
 
     Ok(())
 }
@@ -451,7 +614,7 @@ fn draw_normalization(
     if let Some(vp) = viewport {
         vp.poll_input();
         let pct = (percentage * 100.0).round().clamp(0.0, 100.0) as u8;
-        vp.draw(&[
+        vp.draw_strings(&[
             format!(
                 "{} Normalizing {}... {}%",
                 crate::tui::SPINNER[spinner_idx],

@@ -1527,7 +1527,6 @@ dependencies = [
  "resampler",
  "rodio",
  "thiserror 2.0.18",
- "tracing",
 ]
 
 [[package]]
@@ -3387,6 +3386,7 @@ dependencies = [
  "portable-pty",
  "ratatui",
  "reqwest 0.13.2",
+ "rodio",
  "serde",
  "serde_json",
  "sqlx",
@@ -4830,6 +4830,7 @@ dependencies = [
  "tauri-plugin-local-stt",
  "tauri-plugin-mcp",
  "tauri-plugin-misc",
+ "tauri-plugin-network",
  "tauri-plugin-notification",
  "tauri-plugin-notify",
  "tauri-plugin-opener",
@@ -11924,10 +11925,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca347214e24bc973fc025fd0d36ebb179ff30536ed1f80252706db19ee452009"
 dependencies = [
- "block2",
- "dispatch2",
  "objc2",
- "objc2-contacts",
  "objc2-foundation",
 ]
 
@@ -17959,12 +17957,7 @@ version = "0.1.0"
 dependencies = [
  "activity-capture-interface",
  "activity-capture-macos",
- "block2",
  "futures-util",
- "objc2",
- "objc2-core-location",
- "objc2-foundation",
- "reqwest 0.13.2",
  "serde",
  "specta",
  "specta-typescript",
@@ -17973,7 +17966,6 @@ dependencies = [
  "tauri-plugin-activity-capture",
  "tauri-specta",
  "thiserror 2.0.18",
- "tokio",
  "tracing",
 ]
 
@@ -18780,7 +18772,6 @@ dependencies = [
  "objc2",
  "objc2-av-foundation",
  "objc2-contacts",
- "objc2-core-location",
  "objc2-event-kit",
  "objc2-foundation",
  "serde",

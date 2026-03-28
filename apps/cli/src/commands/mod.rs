@@ -1,4 +1,5 @@
 pub mod transcribe;
+pub(crate) mod update_check;
 
 #[cfg(feature = "desktop")]
 pub mod export;
@@ -20,17 +21,50 @@ pub mod hello;
 #[cfg(feature = "standalone")]
 pub mod model;
 #[cfg(feature = "standalone")]
+pub mod play;
+#[cfg(feature = "standalone")]
 pub mod record;
+
+use std::path::{Path, PathBuf};
 
 use crate::app::AppContext;
 use crate::cli::{Cli, Commands as CliCommand};
-use crate::error::CliResult;
+use crate::error::{CliError, CliResult};
+
+pub(crate) fn resolve_session_dir(base: Option<&Path>, timestamp: &str) -> CliResult<PathBuf> {
+    let base = base.map(Path::to_path_buf).unwrap_or_else(|| {
+        dirs::data_dir()
+            .unwrap_or_else(std::env::temp_dir)
+            .join("char")
+    });
+
+    let mut dir = base.join(timestamp);
+    if !dir.exists() {
+        std::fs::create_dir_all(&dir)
+            .map_err(|e| CliError::operation_failed("create session directory", e.to_string()))?;
+        return Ok(dir);
+    }
+
+    for i in 1.. {
+        dir = base.join(format!("{timestamp}-{i}"));
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir).map_err(|e| {
+                CliError::operation_failed("create session directory", e.to_string())
+            })?;
+            return Ok(dir);
+        }
+    }
+
+    unreachable!()
+}
 
 pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()> {
     match command {
         Some(CliCommand::Transcribe { args }) => transcribe::run(ctx, args).await,
         #[cfg(feature = "standalone")]
         Some(CliCommand::Models { args }) => model::run(ctx, args).await,
+        #[cfg(feature = "standalone")]
+        Some(CliCommand::Play { args }) => play::run(ctx, args).await,
         #[cfg(feature = "standalone")]
         Some(CliCommand::Record { args }) => record::run(ctx, args).await,
         Some(CliCommand::Completions { shell }) => {

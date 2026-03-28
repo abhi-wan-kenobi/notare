@@ -46,6 +46,7 @@ libc = { version = "0.2", optional = true }
 open = { workspace = true }
 ratatui = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["json"] }
+rodio = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"], optional = true }
@@ -102,5 +103,6 @@ standalone = [
   "dep:ratatui",
   "dep:crossterm",
   "dep:libc",
+  "dep:rodio",
   "dep:tokio-stream",
 ]

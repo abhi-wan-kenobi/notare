@@ -18,6 +18,9 @@ pub(crate) enum View {
 pub(crate) enum InputAction {
     ToggleView,
     Interrupt,
+    SeekForward,
+    SeekBackward,
+    TogglePause,
 }
 
 pub(crate) struct BackgroundInput {
@@ -42,9 +45,6 @@ impl BackgroundInput {
                 };
 
                 match action_for_key(key) {
-                    Some(InputAction::ToggleView) => {
-                        let _ = tx.send(InputAction::ToggleView);
-                    }
                     Some(InputAction::Interrupt) => {
                         #[cfg(unix)]
                         unsafe {
@@ -52,6 +52,9 @@ impl BackgroundInput {
                         }
                         #[cfg(not(unix))]
                         std::process::exit(130);
+                    }
+                    Some(action) => {
+                        let _ = tx.send(action);
                     }
                     None => {}
                 }
@@ -89,6 +92,21 @@ fn action_for_key(key: KeyEvent) -> Option<InputAction> {
             modifiers: KeyModifiers::CONTROL,
             ..
         } => Some(InputAction::Interrupt),
+        KeyEvent {
+            code: KeyCode::Right,
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => Some(InputAction::SeekForward),
+        KeyEvent {
+            code: KeyCode::Left,
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => Some(InputAction::SeekBackward),
+        KeyEvent {
+            code: KeyCode::Char(' '),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => Some(InputAction::TogglePause),
         _ => None,
     }
 }
@@ -107,5 +125,19 @@ mod tests {
     fn plain_d_maps_to_toggle_action() {
         let key = KeyEvent::new(KeyCode::Char('d'), KeyModifiers::NONE);
         assert_eq!(action_for_key(key), Some(InputAction::ToggleView));
+    }
+
+    #[test]
+    fn arrow_keys_map_to_seek() {
+        let right = KeyEvent::new(KeyCode::Right, KeyModifiers::NONE);
+        assert_eq!(action_for_key(right), Some(InputAction::SeekForward));
+        let left = KeyEvent::new(KeyCode::Left, KeyModifiers::NONE);
+        assert_eq!(action_for_key(left), Some(InputAction::SeekBackward));
+    }
+
+    #[test]
+    fn space_maps_to_toggle_pause() {
+        let key = KeyEvent::new(KeyCode::Char(' '), KeyModifiers::NONE);
+        assert_eq!(action_for_key(key), Some(InputAction::TogglePause));
     }
 }
