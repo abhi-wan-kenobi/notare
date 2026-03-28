@@ -4,6 +4,14 @@ use hypr_activity_capture_interface as core;
 
 #[derive(Debug, Clone, Copy, serde::Serialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
+pub enum ActivityCaptureContentLevel {
+    Metadata,
+    Url,
+    Full,
+}
+
+#[derive(Debug, Clone, Copy, serde::Serialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
 pub enum ActivityCaptureSource {
     Accessibility,
     Workspace,
@@ -16,9 +24,10 @@ pub struct ActivityCaptureSnapshot {
     pub pid: i32,
     pub app_name: String,
     pub bundle_id: Option<String>,
-    pub window_title: String,
+    pub window_title: Option<String>,
     pub url: Option<String>,
-    pub visible_text: String,
+    pub visible_text: Option<String>,
+    pub content_level: ActivityCaptureContentLevel,
     pub source: ActivityCaptureSource,
 }
 
@@ -81,6 +90,16 @@ impl From<core::Capabilities> for ActivityCaptureCapabilities {
     }
 }
 
+impl From<core::ContentLevel> for ActivityCaptureContentLevel {
+    fn from(value: core::ContentLevel) -> Self {
+        match value {
+            core::ContentLevel::Metadata => Self::Metadata,
+            core::ContentLevel::Url => Self::Url,
+            core::ContentLevel::Full => Self::Full,
+        }
+    }
+}
+
 impl From<core::SnapshotSource> for ActivityCaptureSource {
     fn from(value: core::SnapshotSource) -> Self {
         match value {
@@ -100,6 +119,7 @@ impl From<core::Snapshot> for ActivityCaptureSnapshot {
             window_title: value.window_title,
             url: value.url,
             visible_text: value.visible_text,
+            content_level: value.content_level.into(),
             source: value.source.into(),
         }
     }

@@ -1,5 +1,6 @@
 use crate::{
-    ActivityCapturePluginExt, events::ActivityCaptureCapabilities, events::ActivityCaptureSnapshot,
+    ActivityCapturePluginExt,
+    events::{ActivityCaptureCapabilities, ActivityCaptureSnapshot},
 };
 
 #[tauri::command]

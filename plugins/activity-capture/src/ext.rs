@@ -1,8 +1,11 @@
 use std::sync::Arc;
 
-use hypr_activity_capture_interface::ActivityCapture;
+use hypr_activity_capture_interface::{ActivityCapture, CapturePolicy};
 
-use crate::{ManagedState, events::ActivityCaptureCapabilities, events::ActivityCaptureSnapshot};
+use crate::{
+    ManagedState,
+    events::{ActivityCaptureCapabilities, ActivityCaptureSnapshot},
+};
 
 pub struct ActivityCaptureExt<'a, R: tauri::Runtime, M: tauri::Manager<R>> {
     manager: &'a M,
@@ -11,13 +14,13 @@ pub struct ActivityCaptureExt<'a, R: tauri::Runtime, M: tauri::Manager<R>> {
 
 impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> ActivityCaptureExt<'a, R, M> {
     pub fn capabilities(&self) -> ActivityCaptureCapabilities {
-        hypr_activity_capture_macos::MacosCapture::new()
+        hypr_activity_capture_macos::MacosCapture::with_policy(self.runtime().policy())
             .capabilities()
             .into()
     }
 
     pub fn snapshot(&self) -> Result<Option<ActivityCaptureSnapshot>, crate::Error> {
-        hypr_activity_capture_macos::MacosCapture::new()
+        hypr_activity_capture_macos::MacosCapture::with_policy(self.runtime().policy())
             .snapshot()
             .map(|value| value.map(Into::into))
             .map_err(Into::into)
@@ -33,6 +36,18 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> ActivityCaptureExt<'a, R, M> {
 
     pub fn is_running(&self) -> bool {
         self.runtime().is_running()
+    }
+
+    pub fn policy(&self) -> CapturePolicy {
+        self.runtime().policy()
+    }
+
+    pub fn set_policy(&self, policy: CapturePolicy) -> Result<(), crate::Error> {
+        self.runtime().set_policy(policy)
+    }
+
+    pub fn reset_policy(&self) -> Result<(), crate::Error> {
+        self.runtime().reset_policy()
     }
 
     fn runtime(&self) -> Arc<crate::runtime::ActivityCaptureRuntime<R>> {

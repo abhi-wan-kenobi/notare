@@ -7,11 +7,18 @@ use objc2_foundation::{NSAppleScript, NSString};
 pub struct BrowserUrlResolver;
 
 impl BrowserUrlResolver {
-    pub fn current_url(self, bundle_id: &str, window_title: &str) -> Option<String> {
-        if is_private_window(window_title) {
-            return None;
-        }
+    pub fn supports_bundle_id(self, bundle_id: &str) -> bool {
+        matches!(
+            bundle_id,
+            "com.apple.Safari"
+                | "com.google.Chrome"
+                | "company.thebrowser.Browser"
+                | "com.brave.Browser"
+                | "com.microsoft.edgemac"
+        )
+    }
 
+    pub fn current_url(self, bundle_id: &str, _window_title: &str) -> Option<String> {
         let script = match bundle_id {
             "com.apple.Safari" => Some(
                 r#"
@@ -39,6 +46,26 @@ impl BrowserUrlResolver {
         self.run(&script)
     }
 
+    pub fn front_window_is_private(self, bundle_id: &str) -> Option<bool> {
+        let script = match bundle_id {
+            "com.google.Chrome"
+            | "company.thebrowser.Browser"
+            | "com.brave.Browser"
+            | "com.microsoft.edgemac" => Some(format!(
+                r#"
+                tell application id "{bundle_id}"
+                    if (count of windows) is 0 then return ""
+                    return mode of front window
+                end tell
+                "#
+            )),
+            _ => None,
+        }?;
+
+        self.run(&script)
+            .and_then(|value| parse_private_window_mode(&value))
+    }
+
     fn run(self, source: &str) -> Option<String> {
         let source = NSString::from_str(source);
         let script = NSAppleScript::initWithSource(NSAppleScript::alloc(), &source)?;
@@ -60,19 +87,24 @@ impl BrowserUrlResolver {
     }
 }
 
-fn is_private_window(title: &str) -> bool {
-    let lowered = title.to_ascii_lowercase();
-    lowered.contains("private") || lowered.contains("incognito")
+fn parse_private_window_mode(mode: &str) -> Option<bool> {
+    let normalized = mode.trim().to_ascii_lowercase();
+    match normalized.as_str() {
+        "incognito" | "private" => Some(true),
+        "normal" => Some(false),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::is_private_window;
+    use super::parse_private_window_mode;
 
     #[test]
-    fn private_window_titles_are_filtered() {
-        assert!(is_private_window("Private Browsing"));
-        assert!(is_private_window("Incognito - Example"));
-        assert!(!is_private_window("Normal Window"));
+    fn parse_private_window_mode_detects_private_states() {
+        assert_eq!(parse_private_window_mode("incognito"), Some(true));
+        assert_eq!(parse_private_window_mode("private"), Some(true));
+        assert_eq!(parse_private_window_mode("normal"), Some(false));
+        assert_eq!(parse_private_window_mode(""), None);
     }
 }

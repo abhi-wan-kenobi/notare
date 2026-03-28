@@ -3,8 +3,8 @@
 use std::{ptr::NonNull, time::SystemTime};
 
 use hypr_activity_capture_interface::{
-    ActivityCapture, Capabilities, CaptureError, CaptureStream, Snapshot, SnapshotSource,
-    WatchOptions,
+    ActivityCapture, Capabilities, CaptureAccess, CaptureError, CapturePolicy, CaptureStream,
+    ContentLevel, Snapshot, SnapshotSource, WatchOptions,
 };
 use objc2::rc::autoreleasepool;
 use objc2_app_kit::{NSRunningApplication, NSWorkspace};
@@ -12,7 +12,10 @@ use objc2_application_services::{AXError, AXIsProcessTrusted, AXUIElement};
 use objc2_core_foundation::{CFArray, CFBoolean, CFRetained, CFString, CFType};
 use objc2_foundation::NSString;
 
-use crate::{browser_url::BrowserUrlResolver, runtime::spawn_watch_stream};
+use crate::{
+    handlers::{CaptureContext, CaptureTextMode, resolve_capture_plan},
+    runtime::spawn_watch_stream,
+};
 
 const WINDOW_DEPTH_LIMIT: usize = 7;
 const WINDOW_NODE_LIMIT: usize = 120;
@@ -60,17 +63,21 @@ const PREFERRED_CONTENT_ROLES: [&str; 16] = [
     "AXWebArea",
 ];
 
-#[derive(Debug, Clone, Copy, Default)]
-pub struct MacosCapture;
+#[derive(Debug, Clone, Default)]
+pub struct MacosCapture {
+    policy: CapturePolicy,
+}
 
 impl MacosCapture {
     pub fn new() -> Self {
-        Self
+        Self::default()
     }
 
-    pub(crate) fn capture_snapshot(self) -> Result<Option<Snapshot>, CaptureError> {
-        ensure_trusted()?;
+    pub fn with_policy(policy: CapturePolicy) -> Self {
+        Self { policy }
+    }
 
+    pub(crate) fn capture_snapshot(&self) -> Result<Option<Snapshot>, CaptureError> {
         autoreleasepool(|_| {
             let workspace = NSWorkspace::sharedWorkspace();
             let Some(application) = workspace.frontmostApplication() else {
@@ -85,16 +92,38 @@ impl MacosCapture {
             let bundle_id = application
                 .bundleIdentifier()
                 .map(|value| value.to_string());
-            let ax_application = unsafe { AXUIElement::new_application(pid) };
+            let app_access = self.policy.access_for_bundle(bundle_id.as_deref());
+            if !app_access.allows_snapshot() {
+                return Ok(None);
+            }
+            if app_access == CaptureAccess::Metadata {
+                return Ok(Some(snapshot_for_access(
+                    pid,
+                    app_name,
+                    bundle_id,
+                    app_access,
+                    None,
+                    None,
+                    None,
+                    SnapshotSource::Workspace,
+                )));
+            }
 
+            ensure_trusted()?;
+
+            let ax_application = unsafe { AXUIElement::new_application(pid) };
             let focused_window = copy_element_attribute(&ax_application, "AXFocusedWindow")
                 .or_else(|_| copy_element_attribute(&ax_application, "AXMainWindow"))?;
 
             let Some(focused_window) = focused_window else {
-                return Ok(Some(minimal_snapshot(
+                return Ok(Some(snapshot_for_access(
                     pid,
                     app_name,
                     bundle_id,
+                    app_access,
+                    None,
+                    None,
+                    None,
                     SnapshotSource::Workspace,
                 )));
             };
@@ -109,35 +138,63 @@ impl MacosCapture {
                 .filter(|value| !value.is_empty())
                 .unwrap_or_else(|| default_window_title.clone());
 
-            let url = bundle_id
-                .as_deref()
-                .and_then(|bundle| BrowserUrlResolver.current_url(bundle, &window_title))
-                .or(string_attribute(&focused_window, "AXURL")?);
+            let mut plan = resolve_capture_plan(&CaptureContext {
+                policy: &self.policy,
+                bundle_id: bundle_id.as_deref(),
+                window_title: &window_title,
+                focused_window: &focused_window,
+            })?;
+            if plan.url.is_none() && plan.access == CaptureAccess::Url {
+                plan.access = CaptureAccess::Metadata;
+            }
+            if plan.skip || !plan.access.allows_snapshot() {
+                return Ok(None);
+            }
+            if !plan.access.allows_text() {
+                return Ok(Some(snapshot_for_access(
+                    pid,
+                    app_name,
+                    bundle_id,
+                    plan.access,
+                    Some(window_title),
+                    plan.url,
+                    None,
+                    SnapshotSource::Accessibility,
+                )));
+            }
 
-            let window_text = collect_visible_text(
-                &focused_window,
-                0,
-                WINDOW_NODE_LIMIT,
-                WINDOW_CHARACTER_LIMIT,
-            )?;
-            let focused_text = copy_element_attribute(&ax_application, "AXFocusedUIElement")?
-                .map(|value| {
-                    collect_visible_text(&value, 0, FOCUSED_NODE_LIMIT, FOCUSED_CHARACTER_LIMIT)
-                })
-                .transpose()?
-                .unwrap_or_default();
-            let visible_text = merge_fragments([window_text, focused_text]);
+            let visible_text = match plan.text_mode {
+                CaptureTextMode::Generic => {
+                    collect_generic_visible_text(&ax_application, &focused_window)?
+                }
+                CaptureTextMode::Slack => {
+                    let visible_text = crate::slack::collect_visible_text(&focused_window)?;
+                    if visible_text.is_empty() {
+                        collect_generic_visible_text(&ax_application, &focused_window)?
+                    } else {
+                        visible_text
+                    }
+                }
+                CaptureTextMode::Spotify => {
+                    let visible_text = crate::spotify::collect_visible_text()?;
+                    if visible_text.is_empty() {
+                        collect_generic_visible_text(&ax_application, &focused_window)?
+                    } else {
+                        visible_text
+                    }
+                }
+            };
 
-            Ok(Some(Snapshot {
-                captured_at: SystemTime::now(),
+            Ok(Some(snapshot_for_access(
                 pid,
                 app_name,
                 bundle_id,
-                window_title,
-                url,
-                visible_text,
-                source: SnapshotSource::Accessibility,
-            }))
+                plan.access,
+                Some(window_title),
+                plan.url,
+                Some(visible_text),
+                SnapshotSource::Accessibility,
+            )))
         })
     }
 }
@@ -157,8 +214,7 @@ impl ActivityCapture for MacosCapture {
     }
 
     fn watch(&self, options: WatchOptions) -> Result<CaptureStream, CaptureError> {
-        ensure_trusted()?;
-        spawn_watch_stream(*self, options)
+        spawn_watch_stream(self.clone(), options)
     }
 }
 
@@ -172,21 +228,43 @@ fn ensure_trusted() -> Result<(), CaptureError> {
     }
 }
 
-fn minimal_snapshot(
+fn snapshot_for_access(
     pid: i32,
     app_name: String,
     bundle_id: Option<String>,
+    access: CaptureAccess,
+    window_title: Option<String>,
+    url: Option<String>,
+    visible_text: Option<String>,
     source: SnapshotSource,
 ) -> Snapshot {
+    let content_level = match access {
+        CaptureAccess::Metadata => ContentLevel::Metadata,
+        CaptureAccess::Url => ContentLevel::Url,
+        CaptureAccess::Full => ContentLevel::Full,
+        CaptureAccess::None => ContentLevel::Metadata,
+    };
+
     Snapshot {
         captured_at: SystemTime::now(),
         pid,
         app_name: app_name.clone(),
         bundle_id,
-        window_title: app_name,
-        url: None,
-        visible_text: String::new(),
-        source,
+        window_title: access
+            .allows_text()
+            .then_some(window_title.filter(|value| !value.is_empty()))
+            .flatten(),
+        url: access.allows_url().then_some(url).flatten(),
+        visible_text: access
+            .allows_text()
+            .then_some(visible_text.filter(|value| !value.is_empty()))
+            .flatten(),
+        content_level,
+        source: if access == CaptureAccess::Metadata {
+            SnapshotSource::Workspace
+        } else {
+            source
+        },
     }
 }
 
@@ -238,10 +316,9 @@ fn collect_visible_text(
     }
 }
 
-fn prioritized_children(
+pub(crate) fn child_elements(
     element: &AXUIElement,
 ) -> Result<Vec<CFRetained<AXUIElement>>, CaptureError> {
-    let mut children = Vec::new();
     for attribute in ATTR_CHILDREN {
         let Some(value) = copy_attribute_value(element, attribute)? else {
             continue;
@@ -263,10 +340,17 @@ fn prioritized_children(
         }
 
         if !elements.is_empty() {
-            children = elements;
-            break;
+            return Ok(elements);
         }
     }
+
+    Ok(Vec::new())
+}
+
+fn prioritized_children(
+    element: &AXUIElement,
+) -> Result<Vec<CFRetained<AXUIElement>>, CaptureError> {
+    let mut children = child_elements(element)?;
 
     children.sort_by_key(|child| std::cmp::Reverse(child_priority(child)));
     Ok(children)
@@ -312,7 +396,7 @@ fn copy_element_attribute(
     }
 }
 
-fn string_attribute(
+pub(crate) fn string_attribute(
     element: &AXUIElement,
     attribute: &str,
 ) -> Result<Option<String>, CaptureError> {
@@ -370,7 +454,7 @@ fn copy_attribute_value(
     }
 }
 
-fn merge_fragments<I>(fragments: I) -> String
+pub(crate) fn merge_fragments<I>(fragments: I) -> String
 where
     I: IntoIterator<Item = String>,
 {
@@ -390,6 +474,20 @@ where
     }
 
     lines.join("\n")
+}
+
+fn collect_generic_visible_text(
+    ax_application: &AXUIElement,
+    focused_window: &AXUIElement,
+) -> Result<String, CaptureError> {
+    let window_text =
+        collect_visible_text(focused_window, 0, WINDOW_NODE_LIMIT, WINDOW_CHARACTER_LIMIT)?;
+    let focused_text = copy_element_attribute(ax_application, "AXFocusedUIElement")?
+        .map(|value| collect_visible_text(&value, 0, FOCUSED_NODE_LIMIT, FOCUSED_CHARACTER_LIMIT))
+        .transpose()?
+        .unwrap_or_default();
+
+    Ok(merge_fragments([window_text, focused_text]))
 }
 
 #[cfg(test)]

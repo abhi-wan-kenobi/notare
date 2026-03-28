@@ -4,7 +4,7 @@ use std::sync::{
 };
 
 use futures_util::StreamExt;
-use hypr_activity_capture_interface::ActivityCapture;
+use hypr_activity_capture_interface::{ActivityCapture, CapturePolicy};
 use tauri_specta::Event;
 
 use crate::events::{
@@ -13,6 +13,7 @@ use crate::events::{
 
 pub struct ActivityCaptureRuntime<R: tauri::Runtime> {
     app: tauri::AppHandle<R>,
+    policy: Mutex<CapturePolicy>,
     running: AtomicBool,
     task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
 }
@@ -21,9 +22,29 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
     pub fn new(app: tauri::AppHandle<R>) -> Self {
         Self {
             app,
+            policy: Mutex::new(CapturePolicy::default()),
             running: AtomicBool::new(false),
             task: Mutex::new(None),
         }
+    }
+
+    pub fn policy(&self) -> CapturePolicy {
+        self.policy
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
+    pub fn set_policy(self: &Arc<Self>, policy: CapturePolicy) -> Result<(), crate::Error> {
+        *self.policy.lock().unwrap_or_else(|e| e.into_inner()) = policy;
+        if self.is_running() {
+            self.restart()?;
+        }
+        Ok(())
+    }
+
+    pub fn reset_policy(self: &Arc<Self>) -> Result<(), crate::Error> {
+        self.set_policy(CapturePolicy::default())
     }
 
     pub fn is_running(&self) -> bool {
@@ -35,7 +56,7 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
             return Ok(());
         }
 
-        let capture = hypr_activity_capture_macos::MacosCapture::new();
+        let capture = hypr_activity_capture_macos::MacosCapture::with_policy(self.policy());
         let mut stream = capture.watch(Default::default())?;
 
         self.running.store(true, Ordering::SeqCst);
@@ -73,6 +94,11 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
 
         *self.task.lock().unwrap_or_else(|e| e.into_inner()) = Some(handle);
         Ok(())
+    }
+
+    fn restart(self: &Arc<Self>) -> Result<(), crate::Error> {
+        self.stop();
+        self.start()
     }
 
     pub fn stop(&self) {
