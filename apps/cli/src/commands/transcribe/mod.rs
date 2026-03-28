@@ -598,7 +598,7 @@ async fn run_pretty(
     }
 
     if let Some(version) = update_check.result().await {
-        eprintln!("  update available: npm i -g char@{version}");
+        eprintln!("  update available ({version}): char update");
     }
 
     Ok(())

@@ -26,6 +26,8 @@ pub mod play;
 pub mod record;
 #[cfg(feature = "standalone")]
 pub mod skill;
+#[cfg(feature = "standalone")]
+pub mod update;
 
 use std::path::{Path, PathBuf};
 
@@ -98,6 +100,8 @@ pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()>
             eprintln!("Opened char.com in browser");
             Ok(())
         }
+        #[cfg(feature = "standalone")]
+        Some(CliCommand::Update) => update::run(),
         #[cfg(feature = "task")]
         Some(CliCommand::Claude { command }) => integration::claude::run(command).await,
         #[cfg(feature = "task")]

@@ -84,6 +84,9 @@ pub enum Commands {
     /// Open char.com
     #[command(hide = true)]
     Hello,
+    #[cfg(feature = "standalone")]
+    /// Update char to the latest version
+    Update,
 
     #[cfg(feature = "task")]
     /// Claude Code integration
