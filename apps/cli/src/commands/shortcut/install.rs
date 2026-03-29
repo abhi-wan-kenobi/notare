@@ -15,6 +15,13 @@ pub(crate) fn run() -> CliResult<()> {
             let _ = Command::new("open")
                 .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
                 .status();
+        } else if blocker.kind() == hotkey::HotkeyErrorKind::AccessibilityDenied {
+            eprintln!("Opening System Settings → Privacy & Security → Accessibility…");
+            let _ = Command::new("open")
+                .arg(
+                    "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+                )
+                .status();
         }
         eprintln!("  Recovery: {}", blocker.recovery());
         return Ok(());
@@ -80,7 +87,14 @@ fn wait_for_service() -> service::ServiceStatus {
     loop {
         let status = service::query();
         if status.running {
-            return status;
+            // launchd can briefly report a PID before the daemon crashes, so only
+            // accept "ready" after a second settled query.
+            std::thread::sleep(Duration::from_millis(300));
+            let settled = service::query();
+            if settled.running {
+                return settled;
+            }
+            return settled;
         }
         if status.last_exit_code.is_some() || !status.bootstrapped {
             return status;
@@ -99,6 +113,6 @@ fn print_recovery_guidance() {
         return;
     }
     eprintln!(
-        "  Recovery: Open System Settings → Privacy & Security → Input Monitoring. If Secure Keyboard Entry is enabled, disable it and retry. If macOS is stuck, run `tccutil reset ListenEvent` and then `char shortcut install`."
+        "  Recovery: Open System Settings → Privacy & Security → Accessibility and Input Monitoring. If Secure Keyboard Entry is enabled, disable it and retry. If macOS is stuck, run `tccutil reset ListenEvent` and then `char shortcut install`."
     );
 }

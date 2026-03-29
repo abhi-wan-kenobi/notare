@@ -259,3 +259,54 @@ fn domain_target() -> String {
 fn service_target(label: &str) -> String {
     format!("{}/{}", domain_target(), label)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn plist_contents_encode_interactive_launch_agent() {
+        let config = ShortcutServiceConfig {
+            label: "com.char.shortcut".to_string(),
+            program_args: vec!["/tmp/char".to_string(), "shortcut-daemon".to_string()],
+            stdout_path: PathBuf::from("/tmp/char.out.log"),
+            stderr_path: PathBuf::from("/tmp/char.err.log"),
+        };
+
+        let plist = config.plist_contents();
+        assert!(plist.contains("<string>Interactive</string>"));
+        assert!(plist.contains("<key>RunAtLoad</key>"));
+        assert!(plist.contains("shortcut-daemon"));
+    }
+
+    #[test]
+    fn reason_prefers_disabled_state() {
+        let status = ShortcutServiceStatus {
+            installed: true,
+            enabled: false,
+            bootstrapped: false,
+            running: false,
+            pid: None,
+            last_exit_code: None,
+        };
+
+        assert_eq!(status.reason().as_deref(), Some("LaunchAgent is disabled."));
+    }
+
+    #[test]
+    fn reason_reports_startup_exit_code() {
+        let status = ShortcutServiceStatus {
+            installed: true,
+            enabled: true,
+            bootstrapped: true,
+            running: false,
+            pid: None,
+            last_exit_code: Some(1),
+        };
+
+        assert_eq!(
+            status.reason().as_deref(),
+            Some("Daemon exited during startup (last exit code: 1).")
+        );
+    }
+}

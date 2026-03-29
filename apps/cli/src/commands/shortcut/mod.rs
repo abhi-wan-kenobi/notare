@@ -67,7 +67,7 @@ fn status() -> CliResult<()> {
         eprintln!("  Recovery: {}", blocker.recovery());
     } else if !ready && (status.bootstrapped || status.installed) {
         eprintln!(
-            "  Recovery: Open System Settings → Privacy & Security → Input Monitoring. If macOS is stuck, run `tccutil reset ListenEvent` and then `char shortcut install`."
+            "  Recovery: Open System Settings → Privacy & Security → Accessibility and Input Monitoring. If macOS is stuck, run `tccutil reset ListenEvent` and then `char shortcut install`."
         );
     }
 

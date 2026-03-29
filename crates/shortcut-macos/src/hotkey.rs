@@ -11,6 +11,7 @@ pub enum ShortcutEvent {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShortcutErrorKind {
     Unsupported,
+    AccessibilityDenied,
     InputMonitoringDenied,
     SecureKeyboardEntry,
     TapDisabled,
@@ -39,6 +40,9 @@ impl ShortcutError {
     pub fn recovery(self) -> &'static str {
         match self.kind {
             ShortcutErrorKind::Unsupported => "This feature is only available on macOS.",
+            ShortcutErrorKind::AccessibilityDenied => {
+                "Open System Settings → Privacy & Security → Accessibility, enable char, and retry."
+            }
             ShortcutErrorKind::InputMonitoringDenied => {
                 "Open System Settings → Privacy & Security → Input Monitoring, enable char, and retry."
             }
@@ -56,6 +60,9 @@ impl ShortcutError {
 pub fn current_blocker() -> Option<ShortcutError> {
     #[cfg(target_os = "macos")]
     {
+        if !accessibility_trusted() {
+            return Some(accessibility_error());
+        }
         if secure_keyboard_entry_enabled() {
             return Some(secure_keyboard_entry_error());
         }
@@ -84,11 +91,11 @@ pub fn run_listener_on_main_thread(
     event_tx: mpsc::UnboundedSender<ShortcutEvent>,
 ) -> Result<(), ShortcutError> {
     #[cfg(target_os = "macos")]
-    {
-        if let Some(blocker) = current_blocker() {
-            return Err(blocker);
-        }
-        unsafe { run_event_tap_on_main_thread(event_tx) }
+    // The daemon path must enter the real main-thread/AppKit listener directly.
+    // A lighter preflight probe before this point produced false negatives under
+    // launchd, because macOS would reject the tap before AppKit/main-run-loop bootstrap.
+    unsafe {
+        run_event_tap_on_main_thread(event_tx)
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -102,6 +109,13 @@ fn secure_keyboard_entry_error() -> ShortcutError {
     ShortcutError {
         kind: ShortcutErrorKind::SecureKeyboardEntry,
         message: "Secure Keyboard Entry is enabled and blocks the global hotkey.",
+    }
+}
+
+fn accessibility_error() -> ShortcutError {
+    ShortcutError {
+        kind: ShortcutErrorKind::AccessibilityDenied,
+        message: "Accessibility permission is required for the global hotkey daemon.",
     }
 }
 
@@ -212,6 +226,14 @@ unsafe fn run_event_tap_on_main_thread(
     }
 
     bootstrap_appkit();
+
+    if !accessibility_trusted() {
+        return Err(accessibility_error());
+    }
+
+    if secure_keyboard_entry_enabled() {
+        return Err(secure_keyboard_entry_error());
+    }
 
     let mut state = TapState::Idle;
     let mut was_pressed = false;
@@ -345,6 +367,11 @@ fn secure_keyboard_entry_enabled() -> bool {
 }
 
 #[cfg(target_os = "macos")]
+fn accessibility_trusted() -> bool {
+    unsafe { AXIsProcessTrusted() }
+}
+
+#[cfg(target_os = "macos")]
 fn bootstrap_appkit() {
     unsafe {
         let _ = NSApplicationLoad();
@@ -420,10 +447,44 @@ unsafe extern "C" {
 
     fn CFRelease(cf: *mut std::ffi::c_void);
     fn CGSIsSecureEventInputSet() -> bool;
+    fn AXIsProcessTrusted() -> bool;
 }
 
 #[cfg(target_os = "macos")]
 #[link(name = "AppKit", kind = "framework")]
 unsafe extern "C" {
     fn NSApplicationLoad() -> libc::c_char;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accessibility_recovery_points_to_accessibility_settings() {
+        let error = accessibility_error();
+        assert_eq!(error.kind(), ShortcutErrorKind::AccessibilityDenied);
+        assert!(error.recovery().contains("Accessibility"));
+    }
+
+    #[test]
+    fn input_monitoring_recovery_points_to_input_monitoring() {
+        let error = input_monitoring_error();
+        assert_eq!(error.kind(), ShortcutErrorKind::InputMonitoringDenied);
+        assert!(error.recovery().contains("Input Monitoring"));
+    }
+
+    #[test]
+    fn secure_keyboard_entry_recovery_mentions_secure_keyboard_entry() {
+        let error = secure_keyboard_entry_error();
+        assert_eq!(error.kind(), ShortcutErrorKind::SecureKeyboardEntry);
+        assert!(error.recovery().contains("Secure Keyboard Entry"));
+    }
+
+    #[test]
+    fn internal_recovery_stays_generic() {
+        let error = ShortcutError::internal("boom");
+        assert_eq!(error.kind(), ShortcutErrorKind::Internal);
+        assert!(error.recovery().contains("Inspect the shortcut stderr log"));
+    }
 }
