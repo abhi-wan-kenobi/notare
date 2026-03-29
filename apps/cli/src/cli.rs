@@ -88,32 +88,14 @@ pub enum Commands {
     /// Update char to the latest version
     Update,
     #[cfg(all(feature = "standalone", target_os = "macos"))]
-    /// Manage global shortcut
-    Shortcut {
-        #[command(subcommand)]
-        command: Option<crate::commands::shortcut::Commands>,
-    },
-    #[cfg(all(feature = "standalone", target_os = "macos"))]
     #[command(hide = true)]
     ShortcutDaemon,
 
-    #[cfg(feature = "task")]
-    /// Claude Code integration
-    Claude {
+    #[cfg(feature = "todo")]
+    /// Manage todos and automations
+    Todo {
         #[command(subcommand)]
-        command: crate::commands::integration::claude::Commands,
-    },
-    #[cfg(feature = "task")]
-    /// Codex integration
-    Codex {
-        #[command(subcommand)]
-        command: crate::commands::integration::codex::Commands,
-    },
-    #[cfg(feature = "task")]
-    /// OpenCode integration
-    Opencode {
-        #[command(subcommand)]
-        command: crate::commands::integration::opencode::Commands,
+        command: Option<crate::commands::todo::Commands>,
     },
     #[cfg(feature = "desktop")]
     /// Browse past meetings

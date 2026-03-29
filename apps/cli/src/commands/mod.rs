@@ -5,12 +5,14 @@ pub(crate) mod update_check;
 pub mod export;
 #[cfg(feature = "desktop")]
 pub mod humans;
-#[cfg(feature = "task")]
+#[cfg(feature = "todo")]
 pub mod integration;
 #[cfg(feature = "desktop")]
 pub mod meetings;
 #[cfg(feature = "desktop")]
 pub mod orgs;
+#[cfg(feature = "todo")]
+pub mod todo;
 
 #[cfg(feature = "standalone")]
 pub mod bug;
@@ -105,15 +107,9 @@ pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()>
         #[cfg(feature = "standalone")]
         Some(CliCommand::Update) => update::run(),
         #[cfg(all(feature = "standalone", target_os = "macos"))]
-        Some(CliCommand::Shortcut { command }) => shortcut::run(command).await,
-        #[cfg(all(feature = "standalone", target_os = "macos"))]
         Some(CliCommand::ShortcutDaemon) => shortcut::daemon::run().await,
-        #[cfg(feature = "task")]
-        Some(CliCommand::Claude { command }) => integration::claude::run(command).await,
-        #[cfg(feature = "task")]
-        Some(CliCommand::Codex { command }) => integration::codex::run(command).await,
-        #[cfg(feature = "task")]
-        Some(CliCommand::Opencode { command }) => integration::opencode::run(command).await,
+        #[cfg(feature = "todo")]
+        Some(CliCommand::Todo { command }) => todo::run(command).await,
         #[cfg(feature = "desktop")]
         Some(CliCommand::Meetings { command }) => meetings::run(ctx, command).await,
         #[cfg(feature = "desktop")]

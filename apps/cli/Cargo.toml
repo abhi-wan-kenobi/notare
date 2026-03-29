@@ -28,7 +28,7 @@ hypr-local-model = { workspace = true }
 hypr-local-stt-core = { workspace = true, optional = true }
 hypr-model-downloader = { workspace = true, optional = true }
 hypr-opencode = { workspace = true, optional = true }
-hypr-shortcut-macos = { workspace = true }
+hypr-shortcut-macos = { workspace = true, optional = true }
 hypr-transcript = { workspace = true, optional = true }
 owhisper-client = { workspace = true }
 owhisper-interface = { workspace = true }
@@ -80,11 +80,12 @@ vt100 = "0.15"
 
 [features]
 e2e = []
-task = [
+todo = [
   "desktop",
   "dep:hypr-claude",
   "dep:hypr-codex",
   "dep:hypr-opencode",
+  "dep:hypr-shortcut-macos",
 ]
 desktop = [
   "dep:hypr-db-app",
@@ -101,6 +102,7 @@ standalone = [
   "dep:hypr-mp3",
   "dep:hypr-local-stt-core",
   "dep:hypr-model-downloader",
+  "dep:hypr-shortcut-macos",
   "dep:ratatui",
   "dep:crossterm",
   "dep:libc",

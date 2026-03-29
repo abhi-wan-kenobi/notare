@@ -400,6 +400,25 @@
           "is_flag": false
         }
       ]
+    },
+    {
+      "name": "char update",
+      "about": "Update char to the latest version",
+      "synopsis": "char update [-h] [-V]",
+      "options": [
+        {
+          "flags": "-h, --help",
+          "help": "Print help",
+          "required": false,
+          "is_flag": false
+        },
+        {
+          "flags": "-V, --version",
+          "help": "Print version",
+          "required": false,
+          "is_flag": false
+        }
+      ]
     }
   ]
 }
