@@ -11,13 +11,7 @@ use tokio_stream::StreamExt;
 
 use crate::error::{CliError, CliResult};
 
-use super::hotkey::{self, HotkeyError, HotkeyEvent};
-
-enum DaemonEvent {
-    Hotkey(HotkeyEvent),
-    HotkeyFailure(HotkeyError),
-    UiAction(UiAction),
-}
+use super::hotkey::{self, HotkeyEvent};
 
 enum UiAction {
     Cancel,
@@ -27,123 +21,153 @@ enum UiAction {
 const SAMPLE_RATE: u32 = 16_000;
 const LEVEL_TICK: Duration = Duration::from_millis(100);
 
-pub async fn run() -> CliResult<()> {
+pub fn run_blocking() -> CliResult<()> {
     tracing::info!("Shortcut daemon starting");
 
     let ui_binary = resolve_ui_binary()?;
     tracing::info!(path = %ui_binary.display(), "UI binary resolved");
 
-    let audio = ActualAudio;
-    let chunk_size = chunk_size_for_stt(SAMPLE_RATE);
+    let (hotkey_tx, hotkey_rx) = tokio::sync::mpsc::unbounded_channel::<HotkeyEvent>();
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+    let worker = std::thread::spawn(move || worker_main(ui_binary, hotkey_rx, shutdown_rx));
 
-    let listener = hotkey::listen()
-        .map_err(|error| CliError::operation_failed("start hotkey listener", error.message()))?;
-    let mut hotkey_rx = listener.events;
-    let mut hotkey_failure_rx = listener.failures;
-    let (ui_tx, mut ui_rx) = tokio::sync::mpsc::unbounded_channel::<UiAction>();
-    let mut ui_process: Option<UiProcess> = None;
+    let listener_result = hotkey::run_listener_on_main_thread(hotkey_tx)
+        .map_err(|error| CliError::operation_failed("start hotkey listener", error.message()));
 
-    loop {
-        let event = tokio::select! {
-            Some(hk) = hotkey_rx.recv() => DaemonEvent::Hotkey(hk),
-            Some(error) = hotkey_failure_rx.recv() => DaemonEvent::HotkeyFailure(error),
-            Some(action) = ui_rx.recv() => DaemonEvent::UiAction(action),
-            else => DaemonEvent::HotkeyFailure(hotkey::HotkeyError::internal("Hotkey listener exited unexpectedly.")),
-        };
-
-        match event {
-            DaemonEvent::Hotkey(HotkeyEvent::RecordStart) => {
-                tracing::info!("Hotkey: record start");
-
-                if let Some(mut proc) = ui_process.take() {
-                    proc.dismiss();
-                }
-
-                match UiProcess::spawn(&ui_binary, ui_tx.clone()) {
-                    Ok(proc) => ui_process = Some(proc),
-                    Err(e) => {
-                        tracing::error!("Failed to spawn UI: {e}");
-                        continue;
-                    }
-                }
-
-                let stream = audio.open_mic_capture(None, SAMPLE_RATE, chunk_size);
-                match stream {
-                    Ok(stream) => {
-                        if let Some(listener_health) = outcome_to_health(
-                            run_capture(
-                                stream,
-                                ui_process.as_mut().unwrap(),
-                                &mut hotkey_rx,
-                                &mut hotkey_failure_rx,
-                                &mut ui_rx,
-                            )
-                            .await,
-                        ) {
-                            if let Some(mut proc) = ui_process.take() {
-                                proc.dismiss();
-                            }
-                            return Err(CliError::operation_failed(
-                                "shortcut daemon",
-                                listener_health.message(),
-                            ));
-                        }
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to open mic capture: {e}");
-                    }
-                }
-
-                if let Some(mut proc) = ui_process.take() {
-                    proc.dismiss();
-                }
-
-                // TODO: transcribe, copy to clipboard (separate PR)
+    let _ = shutdown_tx.send(true);
+    match worker.join() {
+        Ok(Ok(())) => {}
+        Ok(Err(error)) => {
+            if listener_result.is_ok() {
+                return Err(error);
             }
-            DaemonEvent::HotkeyFailure(listener_error) => {
-                if let Some(mut proc) = ui_process.take() {
-                    proc.dismiss();
-                }
+        }
+        Err(_) => {
+            if listener_result.is_ok() {
                 return Err(CliError::operation_failed(
-                    "shortcut daemon",
-                    listener_error.message(),
+                    "shortcut daemon worker",
+                    "worker thread panicked",
                 ));
-            }
-            DaemonEvent::Hotkey(HotkeyEvent::RecordStop)
-            | DaemonEvent::UiAction(UiAction::Cancel)
-            | DaemonEvent::UiAction(UiAction::Stop) => {
-                tracing::info!("Recording stopped (no active capture)");
-
-                if let Some(mut proc) = ui_process.take() {
-                    proc.dismiss();
-                }
             }
         }
     }
+
+    listener_result
 }
 
-enum CaptureOutcome {
-    Finished,
-    ListenerLost(HotkeyError),
+pub async fn run() -> CliResult<()> {
+    Err(CliError::operation_failed(
+        "shortcut daemon",
+        "must be started directly on the process main thread",
+    ))
+}
+
+fn worker_main(
+    ui_binary: PathBuf,
+    hotkey_rx: tokio::sync::mpsc::UnboundedReceiver<HotkeyEvent>,
+    shutdown_rx: tokio::sync::watch::Receiver<bool>,
+) -> CliResult<()> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| CliError::operation_failed("build shortcut runtime", e.to_string()))?;
+    runtime.block_on(worker_loop(ui_binary, hotkey_rx, shutdown_rx))
+}
+
+async fn worker_loop(
+    ui_binary: PathBuf,
+    mut hotkey_rx: tokio::sync::mpsc::UnboundedReceiver<HotkeyEvent>,
+    shutdown_rx: tokio::sync::watch::Receiver<bool>,
+) -> CliResult<()> {
+    let audio = ActualAudio;
+    let chunk_size = chunk_size_for_stt(SAMPLE_RATE);
+    let (ui_tx, mut ui_rx) = tokio::sync::mpsc::unbounded_channel::<UiAction>();
+    let mut ui_process: Option<UiProcess> = None;
+    let mut shutdown_rx = shutdown_rx;
+
+    loop {
+        tokio::select! {
+            changed = shutdown_rx.changed() => {
+                if changed.is_err() || *shutdown_rx.borrow() {
+                    if let Some(mut proc) = ui_process.take() {
+                        proc.dismiss();
+                    }
+                    return Ok(());
+                }
+            }
+            Some(hk) = hotkey_rx.recv() => {
+                match hk {
+                    HotkeyEvent::RecordStart => {
+                        tracing::info!("Hotkey: record start");
+
+                        if let Some(mut proc) = ui_process.take() {
+                            proc.dismiss();
+                        }
+
+                        match UiProcess::spawn(&ui_binary, ui_tx.clone()) {
+                            Ok(proc) => ui_process = Some(proc),
+                            Err(e) => {
+                                tracing::error!("Failed to spawn UI: {e}");
+                                continue;
+                            }
+                        }
+
+                        let stream = audio.open_mic_capture(None, SAMPLE_RATE, chunk_size);
+                        match stream {
+                            Ok(stream) => {
+                                run_capture(
+                                    stream,
+                                    ui_process.as_mut().unwrap(),
+                                    &mut hotkey_rx,
+                                    &mut shutdown_rx,
+                                    &mut ui_rx,
+                                )
+                                .await;
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to open mic capture: {e}");
+                            }
+                        }
+
+                        if let Some(mut proc) = ui_process.take() {
+                            proc.dismiss();
+                        }
+                    }
+                    HotkeyEvent::RecordStop => {
+                        tracing::info!("Recording stopped (no active capture)");
+                        if let Some(mut proc) = ui_process.take() {
+                            proc.dismiss();
+                        }
+                    }
+                }
+            }
+            else => {
+                if let Some(mut proc) = ui_process.take() {
+                    proc.dismiss();
+                }
+                return Ok(());
+            }
+        }
+    }
 }
 
 async fn run_capture(
     stream: hypr_audio::CaptureStream,
     ui: &mut UiProcess,
     hotkey_rx: &mut tokio::sync::mpsc::UnboundedReceiver<HotkeyEvent>,
-    hotkey_failure_rx: &mut tokio::sync::mpsc::UnboundedReceiver<HotkeyError>,
+    shutdown_rx: &mut tokio::sync::watch::Receiver<bool>,
     ui_rx: &mut tokio::sync::mpsc::UnboundedReceiver<UiAction>,
-) -> CaptureOutcome {
+) {
     let mut stream = pin!(stream);
     let mut last_level = Instant::now() - LEVEL_TICK;
 
     loop {
         tokio::select! {
             frame = stream.next() => {
-                let Some(result) = frame else { return CaptureOutcome::Finished };
+                let Some(result) = frame else { return; };
                 let Ok(frame) = result else {
                     tracing::error!("Audio capture error");
-                    return CaptureOutcome::Finished;
+                    return;
                 };
 
                 let now = Instant::now();
@@ -157,20 +181,22 @@ async fn run_capture(
             Some(hk) = hotkey_rx.recv() => {
                 if matches!(hk, HotkeyEvent::RecordStop) {
                     tracing::info!("Hotkey: record stop");
-                    return CaptureOutcome::Finished;
+                    return;
                 }
             }
-            Some(listener_error) = hotkey_failure_rx.recv() => {
-                return CaptureOutcome::ListenerLost(listener_error);
+            changed = shutdown_rx.changed() => {
+                if changed.is_err() || *shutdown_rx.borrow() {
+                    return;
+                }
             }
             Some(action) = ui_rx.recv() => {
                 tracing::info!("UI action: {:?}", match &action {
                     UiAction::Cancel => "cancel",
                     UiAction::Stop => "stop",
                 });
-                return CaptureOutcome::Finished;
+                return;
             }
-            else => return CaptureOutcome::ListenerLost(hotkey::HotkeyError::internal("Hotkey listener exited unexpectedly.")),
+            else => return,
         }
     }
 }
@@ -285,12 +311,5 @@ fn parse_ui_action(line: &str) -> Option<UiAction> {
         "cancel" => Some(UiAction::Cancel),
         "stop" => Some(UiAction::Stop),
         _ => None,
-    }
-}
-
-fn outcome_to_health(outcome: CaptureOutcome) -> Option<HotkeyError> {
-    match outcome {
-        CaptureOutcome::Finished => None,
-        CaptureOutcome::ListenerLost(health) => Some(health),
     }
 }

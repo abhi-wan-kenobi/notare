@@ -53,11 +53,6 @@ impl ShortcutError {
     }
 }
 
-pub struct ShortcutListener {
-    pub events: mpsc::UnboundedReceiver<ShortcutEvent>,
-    pub failures: mpsc::UnboundedReceiver<ShortcutError>,
-}
-
 pub fn current_blocker() -> Option<ShortcutError> {
     #[cfg(target_os = "macos")]
     {
@@ -85,33 +80,20 @@ pub fn input_monitoring_granted() -> bool {
     }
 }
 
-pub fn listen() -> Result<ShortcutListener, ShortcutError> {
+pub fn run_listener_on_main_thread(
+    event_tx: mpsc::UnboundedSender<ShortcutEvent>,
+) -> Result<(), ShortcutError> {
     #[cfg(target_os = "macos")]
     {
         if let Some(blocker) = current_blocker() {
             return Err(blocker);
         }
-
-        let (event_tx, event_rx) = mpsc::unbounded_channel();
-        let (failure_tx, failure_rx) = mpsc::unbounded_channel();
-        let (startup_tx, startup_rx) = std::sync::mpsc::channel::<Result<(), ShortcutError>>();
-
-        std::thread::spawn(move || {
-            unsafe { run_event_tap(event_tx, failure_tx, startup_tx) };
-        });
-
-        match startup_rx.recv() {
-            Ok(Ok(())) => Ok(ShortcutListener {
-                events: event_rx,
-                failures: failure_rx,
-            }),
-            Ok(Err(error)) => Err(error),
-            Err(_) => Err(internal_error("Hotkey listener exited during startup.")),
-        }
+        unsafe { run_event_tap_on_main_thread(event_tx) }
     }
 
     #[cfg(not(target_os = "macos"))]
     {
+        let _ = event_tx;
         Err(unsupported_error())
     }
 }
@@ -220,35 +202,38 @@ fn probe_event_tap() -> Result<(), ShortcutError> {
 }
 
 #[cfg(target_os = "macos")]
-unsafe fn run_event_tap(
+unsafe fn run_event_tap_on_main_thread(
     event_tx: mpsc::UnboundedSender<ShortcutEvent>,
-    failure_tx: mpsc::UnboundedSender<ShortcutError>,
-    startup_tx: std::sync::mpsc::Sender<Result<(), ShortcutError>>,
-) {
+) -> Result<(), ShortcutError> {
+    if unsafe { pthread_main_np() } != 1 {
+        return Err(internal_error(
+            "Shortcut listener must run on the process main thread.",
+        ));
+    }
+
+    bootstrap_appkit();
+
     let mut state = TapState::Idle;
     let mut was_pressed = false;
-    let mut tap_disabled = false;
+    let mut runtime_error: Option<ShortcutError> = None;
 
     let state_ptr = &mut state as *mut TapState;
     let was_pressed_ptr = &mut was_pressed as *mut bool;
     let event_tx_ptr = &event_tx as *const mpsc::UnboundedSender<ShortcutEvent>;
-    let failure_tx_ptr = &failure_tx as *const mpsc::UnboundedSender<ShortcutError>;
-    let tap_disabled_ptr = &mut tap_disabled as *mut bool;
+    let runtime_error_ptr = &mut runtime_error as *mut Option<ShortcutError>;
 
     struct CallbackData {
         state: *mut TapState,
         was_pressed: *mut bool,
         event_tx: *const mpsc::UnboundedSender<ShortcutEvent>,
-        failure_tx: *const mpsc::UnboundedSender<ShortcutError>,
-        tap_disabled: *mut bool,
+        runtime_error: *mut Option<ShortcutError>,
     }
 
     let mut data = CallbackData {
         state: state_ptr,
         was_pressed: was_pressed_ptr,
         event_tx: event_tx_ptr,
-        failure_tx: failure_tx_ptr,
-        tap_disabled: tap_disabled_ptr,
+        runtime_error: runtime_error_ptr,
     };
 
     unsafe extern "C" fn callback(
@@ -262,15 +247,13 @@ unsafe fn run_event_tap(
         if event_type == CGEVENT_TAP_DISABLED_BY_TIMEOUT
             || event_type == CGEVENT_TAP_DISABLED_BY_USER
         {
-            let already_disabled = unsafe { *data.tap_disabled };
-            if !already_disabled {
-                unsafe { *data.tap_disabled = true };
-                let failure_tx = unsafe { &*data.failure_tx };
-                let _ = failure_tx.send(tap_disabled_error(
+            let runtime_error = unsafe { &mut *data.runtime_error };
+            if runtime_error.is_none() {
+                *runtime_error = Some(tap_disabled_error(
                     "macOS disabled the event tap while the daemon was running.",
                 ));
             }
-            unsafe { CFRunLoopStop(CFRunLoopGetCurrent()) };
+            unsafe { CFRunLoopStop(CFRunLoopGetMain()) };
             return event;
         }
 
@@ -316,36 +299,32 @@ unsafe fn run_event_tap(
     };
 
     if tap.is_null() {
-        let _ = startup_tx.send(Err(input_monitoring_error()));
-        return;
+        return Err(input_monitoring_error());
     }
 
     let run_loop_source = unsafe { CFMachPortCreateRunLoopSource(std::ptr::null(), tap, 0) };
     if run_loop_source.is_null() {
-        let _ = startup_tx.send(Err(tap_disabled_error(
-            "Failed to create a run loop source for the event tap.",
-        )));
         unsafe { CFRelease(tap) };
-        return;
+        return Err(tap_disabled_error(
+            "Failed to create a run loop source for the event tap.",
+        ));
     }
 
     unsafe {
-        let run_loop = CFRunLoopGetCurrent();
+        let run_loop = CFRunLoopGetMain();
         CFRunLoopAddSource(run_loop, run_loop_source, kCFRunLoopCommonModes);
         CGEventTapEnable(tap, true);
 
         if !CGEventTapIsEnabled(tap) {
-            let _ = startup_tx.send(Err(tap_disabled_error(
-                "macOS created the event tap but left it disabled.",
-            )));
             CFRunLoopRemoveSource(run_loop, run_loop_source, kCFRunLoopCommonModes);
             CFMachPortInvalidate(tap);
             CFRelease(run_loop_source);
             CFRelease(tap);
-            return;
+            return Err(tap_disabled_error(
+                "macOS created the event tap but left it disabled.",
+            ));
         }
 
-        let _ = startup_tx.send(Ok(()));
         CFRunLoopRun();
         CFRunLoopRemoveSource(run_loop, run_loop_source, kCFRunLoopCommonModes);
         CFMachPortInvalidate(tap);
@@ -353,14 +332,23 @@ unsafe fn run_event_tap(
         CFRelease(tap);
     }
 
-    if !tap_disabled {
-        let _ = failure_tx.send(internal_error("Hotkey listener exited unexpectedly."));
+    if let Some(error) = runtime_error {
+        return Err(error);
     }
+
+    Err(internal_error("Hotkey listener exited unexpectedly."))
 }
 
 #[cfg(target_os = "macos")]
 fn secure_keyboard_entry_enabled() -> bool {
     unsafe { CGSIsSecureEventInputSet() }
+}
+
+#[cfg(target_os = "macos")]
+fn bootstrap_appkit() {
+    unsafe {
+        let _ = NSApplicationLoad();
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -420,14 +408,22 @@ unsafe extern "C" {
         order: CFIndex,
     ) -> CFRunLoopSourceRef;
     fn CFMachPortInvalidate(port: CFMachPortRef);
+    fn CFRunLoopGetMain() -> CFRunLoopRef;
     fn CFRunLoopGetCurrent() -> CFRunLoopRef;
     fn CFRunLoopAddSource(rl: CFRunLoopRef, source: CFRunLoopSourceRef, mode: CFStringRef);
     fn CFRunLoopRemoveSource(rl: CFRunLoopRef, source: CFRunLoopSourceRef, mode: CFStringRef);
     fn CFRunLoopRun();
     fn CFRunLoopStop(rl: CFRunLoopRef);
+    fn pthread_main_np() -> i32;
 
     static kCFRunLoopCommonModes: CFStringRef;
 
     fn CFRelease(cf: *mut std::ffi::c_void);
     fn CGSIsSecureEventInputSet() -> bool;
+}
+
+#[cfg(target_os = "macos")]
+#[link(name = "AppKit", kind = "framework")]
+unsafe extern "C" {
+    fn NSApplicationLoad() -> libc::c_char;
 }

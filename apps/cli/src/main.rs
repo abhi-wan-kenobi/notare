@@ -12,9 +12,8 @@ use crate::cli::{Cli, Commands};
 use crate::error::CliResult;
 use clap::Parser;
 
-#[tokio::main]
 #[allow(clippy::let_unit_value)]
-async fn main() {
+fn main() {
     let cli = Cli::parse();
 
     if cli.no_color || std::env::var_os("NO_COLOR").is_some() {
@@ -23,7 +22,27 @@ async fn main() {
 
     let trace_buffer = init_tracing(&cli);
 
-    if let Err(error) = run(cli, trace_buffer).await {
+    #[cfg(all(feature = "standalone", target_os = "macos"))]
+    let result = if matches!(&cli.command, Some(Commands::ShortcutDaemon)) {
+        crate::commands::shortcut::daemon::run_blocking()
+    } else {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("failed to build tokio runtime");
+        runtime.block_on(run(cli, trace_buffer))
+    };
+
+    #[cfg(not(all(feature = "standalone", target_os = "macos")))]
+    let result = {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("failed to build tokio runtime");
+        runtime.block_on(run(cli, trace_buffer))
+    };
+
+    if let Err(error) = result {
         eprintln!("error: {error}");
         std::process::exit(1);
     }
