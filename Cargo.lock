@@ -2895,11 +2895,9 @@ version = "0.1.0"
 dependencies = [
  "api-client",
  "apple-calendar",
- "async-trait",
  "calendar-interface",
  "chrono",
  "chrono-tz 0.10.4",
- "futures-util",
  "google-calendar",
  "outlook-calendar",
  "regex",
@@ -2909,7 +2907,6 @@ dependencies = [
  "specta",
  "thiserror 2.0.18",
  "tracing",
- "uuid",
 ]
 
 [[package]]
