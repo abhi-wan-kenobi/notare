@@ -62,10 +62,7 @@ impl SkillFormat {
 const HIGHLIGHT: Color = Color::Rgb(0xFD, 0xE6, 0xAE);
 
 fn selector_lines(selected: usize) -> Vec<Line<'static>> {
-    let mut lines = vec![Line::from(Span::styled(
-        "Select a skill format:",
-        Style::default().fg(Color::White),
-    ))];
+    let mut lines = vec![];
 
     for (i, format) in SkillFormat::ALL.iter().enumerate() {
         let marker = if i == selected { "> " } else { "  " };
@@ -132,7 +129,7 @@ pub fn run(format_arg: Option<&str>) -> CliResult<()> {
     let mut selected: usize = 0;
     let count = SkillFormat::ALL.len();
 
-    let mut viewport = InlineViewport::stderr_interactive(6, None, true)
+    let mut viewport = InlineViewport::stderr_interactive(3, None, true)
         .map_err(|e| CliError::operation_failed("create viewport", e.to_string()))?;
 
     viewport.draw(&selector_lines(selected));

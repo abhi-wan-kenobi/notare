@@ -1,19 +1,22 @@
 use std::fs;
 use std::process::Command;
+use std::time::{Duration, Instant};
 
 use crate::error::{CliError, CliResult};
 
-use super::plist;
+use super::{hotkey, plist, service};
 
 pub(crate) fn run() -> CliResult<()> {
-    if !check_input_monitoring() {
-        eprintln!("Input Monitoring permission is required for the global hotkey.");
-        eprintln!();
-        eprintln!("Opening System Settings → Privacy & Security → Input Monitoring…");
-        eprintln!("Enable the toggle for char, then re-run: char shortcut install");
-        let _ = Command::new("open")
-            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
-            .status();
+    if let Some(blocker) = hotkey::current_blocker() {
+        eprintln!("Shortcut daemon cannot start yet.");
+        eprintln!("  Reason: {}", blocker.message());
+        if blocker.kind() == hotkey::HotkeyErrorKind::InputMonitoringDenied {
+            eprintln!("Opening System Settings → Privacy & Security → Input Monitoring…");
+            let _ = Command::new("open")
+                .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
+                .status();
+        }
+        eprintln!("  Recovery: {}", blocker.recovery());
         return Ok(());
     }
 
@@ -21,7 +24,7 @@ pub(crate) fn run() -> CliResult<()> {
         .and_then(|p| p.canonicalize())
         .map_err(|e| CliError::operation_failed("resolve binary path", e.to_string()))?;
 
-    let plist_content = plist::generate(&binary_path);
+    let plist_content = plist::service_config(&binary_path).plist_contents();
     let plist_path = plist::plist_path();
 
     if let Some(parent) = plist_path.parent() {
@@ -37,40 +40,65 @@ pub(crate) fn run() -> CliResult<()> {
 
     // Unload existing agent if present
     if plist_path.exists() {
-        let _ = Command::new("launchctl")
-            .args(["unload", plist_path.to_str().unwrap_or_default()])
-            .output();
+        let _ = service::stop(&plist_path);
     }
 
     fs::write(&plist_path, plist_content)
         .map_err(|e| CliError::operation_failed("write plist", e.to_string()))?;
 
-    let status = Command::new("launchctl")
-        .args(["load", plist_path.to_str().unwrap_or_default()])
-        .status()
-        .map_err(|e| CliError::operation_failed("launchctl load", e.to_string()))?;
+    service::start(&plist_path)?;
+    let status = wait_for_service();
 
-    if !status.success() {
-        return Err(CliError::operation_failed(
-            "launchctl load",
-            "failed to load LaunchAgent",
-        ));
-    }
-
-    eprintln!("Shortcut daemon installed and running.");
+    eprintln!("Shortcut daemon installed.");
     eprintln!("  Plist: {}", plist_path.display());
     eprintln!("  Binary: {}", binary_path.display());
+    eprintln!("  Logs: {}", plist::stderr_log_path().display());
     eprintln!();
-    eprintln!("Double-tap Right Option to start recording.");
+
+    if status.running {
+        eprintln!("Shortcut daemon is ready.");
+        eprintln!("Double-tap Right Option to start recording.");
+    } else if let Some(code) = status.last_exit_code {
+        eprintln!("Shortcut daemon failed to start.");
+        eprintln!("  Last exit code: {code}");
+        print_recovery_guidance();
+    } else if status.bootstrapped {
+        eprintln!("Shortcut daemon is bootstrapped, but startup is ambiguous.");
+        print_recovery_guidance();
+    } else {
+        eprintln!("Shortcut daemon did not bootstrap.");
+        print_recovery_guidance();
+    }
+
     eprintln!("Run `char shortcut uninstall` to remove.");
 
     Ok(())
 }
 
-fn check_input_monitoring() -> bool {
-    use super::hotkey::{ProbeResult, probe_event_tap};
-    match probe_event_tap() {
-        ProbeResult::Ok => true,
-        ProbeResult::Denied => false,
+fn wait_for_service() -> service::ServiceStatus {
+    let deadline = Instant::now() + Duration::from_secs(3);
+    loop {
+        let status = service::query();
+        if status.running {
+            return status;
+        }
+        if status.last_exit_code.is_some() || !status.bootstrapped {
+            return status;
+        }
+        if Instant::now() >= deadline {
+            return status;
+        }
+        std::thread::sleep(Duration::from_millis(100));
     }
+}
+
+fn print_recovery_guidance() {
+    if let Some(blocker) = hotkey::current_blocker() {
+        eprintln!("  Reason: {}", blocker.message());
+        eprintln!("  Recovery: {}", blocker.recovery());
+        return;
+    }
+    eprintln!(
+        "  Recovery: Open System Settings → Privacy & Security → Input Monitoring. If Secure Keyboard Entry is enabled, disable it and retry. If macOS is stuck, run `tccutil reset ListenEvent` and then `char shortcut install`."
+    );
 }

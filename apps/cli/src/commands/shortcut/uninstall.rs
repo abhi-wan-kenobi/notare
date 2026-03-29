@@ -1,9 +1,8 @@
 use std::fs;
-use std::process::Command;
 
 use crate::error::{CliError, CliResult};
 
-use super::plist;
+use super::{plist, service};
 
 pub(crate) fn run() -> CliResult<()> {
     let plist_path = plist::plist_path();
@@ -13,13 +12,8 @@ pub(crate) fn run() -> CliResult<()> {
         return Ok(());
     }
 
-    let status = Command::new("launchctl")
-        .args(["unload", plist_path.to_str().unwrap_or_default()])
-        .status()
-        .map_err(|e| CliError::operation_failed("launchctl unload", e.to_string()))?;
-
-    if !status.success() {
-        eprintln!("Warning: launchctl unload returned non-zero (daemon may not have been running)");
+    if let Err(error) = service::stop(&plist_path) {
+        eprintln!("Warning: {error}");
     }
 
     fs::remove_file(&plist_path)

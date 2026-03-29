@@ -7,13 +7,14 @@ use ratatui::text::{Line, Span};
 use crate::error::{CliError, CliResult};
 use crate::tui::{InlineViewport, InputAction};
 
-use super::plist;
+use super::{hotkey, service};
 
 const HIGHLIGHT: Color = Color::Rgb(0xFD, 0xE6, 0xAE);
 
 #[derive(Clone, Copy, PartialEq)]
 enum DaemonStatus {
-    Running,
+    Ready,
+    Degraded,
     NotInstalled,
 }
 
@@ -22,19 +23,22 @@ struct ScreenState {
     status: DaemonStatus,
     accessibility: bool,
     input_monitoring: bool,
+    reason: Option<String>,
 }
 
-fn detect_status() -> DaemonStatus {
-    let running = std::process::Command::new("launchctl")
-        .args(["list", plist::LAUNCHD_LABEL])
-        .output()
-        .map(|out| out.status.success())
-        .unwrap_or(false);
+fn detect_status() -> (DaemonStatus, Option<String>) {
+    let status = service::query();
+    let local_blocker = hotkey::current_blocker();
+    let reason = status
+        .reason()
+        .or_else(|| local_blocker.map(|error| error.message().to_string()));
 
-    if running {
-        DaemonStatus::Running
+    if status.running && local_blocker.is_none() {
+        (DaemonStatus::Ready, None)
+    } else if status.installed || status.bootstrapped {
+        (DaemonStatus::Degraded, reason)
     } else {
-        DaemonStatus::NotInstalled
+        (DaemonStatus::NotInstalled, reason)
     }
 }
 
@@ -46,15 +50,13 @@ fn check_accessibility() -> bool {
 }
 
 fn check_input_monitoring() -> bool {
-    matches!(
-        super::hotkey::probe_event_tap(),
-        super::hotkey::ProbeResult::Ok
-    )
+    hotkey::input_monitoring_granted()
 }
 
 fn render_lines(state: &ScreenState) -> Vec<Line<'static>> {
     let (status_dot, status_text, status_color) = match state.status {
-        DaemonStatus::Running => ("●", "Running", Color::Green),
+        DaemonStatus::Ready => ("●", "Ready", Color::Green),
+        DaemonStatus::Degraded => ("◐", "Degraded", Color::Yellow),
         DaemonStatus::NotInstalled => ("○", "Not installed", Color::DarkGray),
     };
 
@@ -70,7 +72,7 @@ fn render_lines(state: &ScreenState) -> Vec<Line<'static>> {
         Span::styled("✗", Style::default().fg(Color::Red))
     };
 
-    let install_label = if state.status == DaemonStatus::Running {
+    let install_label = if state.status != DaemonStatus::NotInstalled {
         "Reinstall"
     } else {
         "Install"
@@ -112,14 +114,22 @@ fn render_lines(state: &ScreenState) -> Vec<Line<'static>> {
     }
 
     let line1 = Line::from(vec![
+        Span::styled("reason ", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            state.reason.clone().unwrap_or_else(|| "none".to_string()),
+            Style::default().fg(Color::DarkGray),
+        ),
+    ]);
+
+    let line2 = Line::from(vec![
         Span::styled("hotkey ", Style::default().fg(Color::DarkGray)),
         Span::styled("⌥⌥", Style::default().fg(Color::White)),
         Span::styled(" double-tap", Style::default().fg(Color::DarkGray)),
     ]);
 
-    let line2 = Line::from(action_spans);
+    let line3 = Line::from(action_spans);
 
-    vec![line0, line1, line2]
+    vec![line0, line1, line2, line3]
 }
 
 pub fn run() -> CliResult<()> {
@@ -130,14 +140,16 @@ pub fn run() -> CliResult<()> {
         ));
     }
 
+    let (status, reason) = detect_status();
     let mut state = ScreenState {
         selected: 0,
-        status: detect_status(),
+        status,
         accessibility: check_accessibility(),
         input_monitoring: check_input_monitoring(),
+        reason,
     };
 
-    let mut viewport = InlineViewport::stderr_interactive(5, None, true)
+    let mut viewport = InlineViewport::stderr_interactive(6, None, true)
         .map_err(|e| CliError::operation_failed("create viewport", e.to_string()))?;
 
     viewport.draw(&render_lines(&state));
@@ -151,9 +163,11 @@ pub fn run() -> CliResult<()> {
         refresh_counter += 1;
         if refresh_counter >= 33 {
             refresh_counter = 0;
-            state.status = detect_status();
+            let (status, reason) = detect_status();
+            state.status = status;
             state.accessibility = check_accessibility();
             state.input_monitoring = check_input_monitoring();
+            state.reason = reason;
         }
 
         for action in viewport.poll_input() {

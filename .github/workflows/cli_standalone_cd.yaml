@@ -56,6 +56,12 @@ jobs:
       - uses: ./.github/actions/rust_install
         with:
           platform: macos
+      - id: apple-cert
+        uses: ./.github/actions/apple_cert
+        with:
+          apple-certificate: ${{ secrets.APPLE_CERTIFICATE }}
+          apple-certificate-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
       - run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
       - run: cargo build --release -p cli --features standalone --target ${{ matrix.target }}
         env:
@@ -67,7 +73,12 @@ jobs:
           cp .build/apple/Products/Release/char-cli-ui ../../target/${{ matrix.target }}/release/
       - run: |
           BIN="target/${{ matrix.target }}/release/char"
+          UI_BIN="target/${{ matrix.target }}/release/char-cli-ui"
           strip -x "$BIN"
+          codesign -s "${{ steps.apple-cert.outputs.cert-id }}" -f --identifier com.char.cli --options runtime "$BIN"
+          codesign -s "${{ steps.apple-cert.outputs.cert-id }}" -f --identifier com.char.cli-ui --options runtime "$UI_BIN"
+          codesign --verify --verbose=4 "$BIN"
+          codesign --verify --verbose=4 "$UI_BIN"
           ARCHIVE="char-${{ needs.compute-version.outputs.version }}-${{ matrix.target }}.tar.xz"
           tar -cJf "$ARCHIVE" -C "target/${{ matrix.target }}/release" char char-cli-ui
           echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV

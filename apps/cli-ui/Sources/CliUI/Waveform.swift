@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WaveformView: View {
   let level: Float
+  let tick: UInt64
 
   private let barCount = 9
   @State private var animatedBars: [CGFloat] = Array(repeating: 0.15, count: 9)
@@ -15,12 +16,12 @@ struct WaveformView: View {
       }
     }
     .frame(height: 18)
-    .onChange(of: level) { _, newLevel in
+    .onChange(of: tick) { _, _ in
       withAnimation(.easeInOut(duration: 0.1)) {
         for i in 0..<barCount {
           let centerDistance = abs(Float(i) - Float(barCount / 2)) / Float(barCount / 2)
           let variation = Float.random(in: 0.7...1.3)
-          let height = max(0.15, newLevel * (1.0 - centerDistance * 0.4) * variation)
+          let height = max(0.15, level * (1.0 - centerDistance * 0.4) * variation)
           animatedBars[i] = CGFloat(min(1.0, height))
         }
       }

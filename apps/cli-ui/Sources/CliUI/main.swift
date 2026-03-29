@@ -26,6 +26,7 @@ let stdinThread = Thread {
         state.status = msg.status
       case .levels(let msg):
         state.audioLevel = msg.left
+        state.levelTick &+= 1
       case .dismiss:
         app.terminate(nil)
       }

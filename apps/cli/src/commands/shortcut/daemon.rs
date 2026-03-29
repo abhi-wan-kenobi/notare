@@ -11,10 +11,11 @@ use tokio_stream::StreamExt;
 
 use crate::error::{CliError, CliResult};
 
-use super::hotkey::{self, HotkeyEvent};
+use super::hotkey::{self, HotkeyError, HotkeyEvent};
 
 enum DaemonEvent {
     Hotkey(HotkeyEvent),
+    HotkeyFailure(HotkeyError),
     UiAction(UiAction),
 }
 
@@ -35,15 +36,19 @@ pub async fn run() -> CliResult<()> {
     let audio = ActualAudio;
     let chunk_size = chunk_size_for_stt(SAMPLE_RATE);
 
-    let mut hotkey_rx = hotkey::listen();
+    let listener = hotkey::listen()
+        .map_err(|error| CliError::operation_failed("start hotkey listener", error.message()))?;
+    let mut hotkey_rx = listener.events;
+    let mut hotkey_failure_rx = listener.failures;
     let (ui_tx, mut ui_rx) = tokio::sync::mpsc::unbounded_channel::<UiAction>();
     let mut ui_process: Option<UiProcess> = None;
 
     loop {
         let event = tokio::select! {
             Some(hk) = hotkey_rx.recv() => DaemonEvent::Hotkey(hk),
+            Some(error) = hotkey_failure_rx.recv() => DaemonEvent::HotkeyFailure(error),
             Some(action) = ui_rx.recv() => DaemonEvent::UiAction(action),
-            else => break,
+            else => DaemonEvent::HotkeyFailure(hotkey::HotkeyError::internal("Hotkey listener exited unexpectedly.")),
         };
 
         match event {
@@ -65,13 +70,24 @@ pub async fn run() -> CliResult<()> {
                 let stream = audio.open_mic_capture(None, SAMPLE_RATE, chunk_size);
                 match stream {
                     Ok(stream) => {
-                        run_capture(
-                            stream,
-                            ui_process.as_mut().unwrap(),
-                            &mut hotkey_rx,
-                            &mut ui_rx,
-                        )
-                        .await;
+                        if let Some(listener_health) = outcome_to_health(
+                            run_capture(
+                                stream,
+                                ui_process.as_mut().unwrap(),
+                                &mut hotkey_rx,
+                                &mut hotkey_failure_rx,
+                                &mut ui_rx,
+                            )
+                            .await,
+                        ) {
+                            if let Some(mut proc) = ui_process.take() {
+                                proc.dismiss();
+                            }
+                            return Err(CliError::operation_failed(
+                                "shortcut daemon",
+                                listener_health.message(),
+                            ));
+                        }
                     }
                     Err(e) => {
                         tracing::error!("Failed to open mic capture: {e}");
@@ -84,6 +100,15 @@ pub async fn run() -> CliResult<()> {
 
                 // TODO: transcribe, copy to clipboard (separate PR)
             }
+            DaemonEvent::HotkeyFailure(listener_error) => {
+                if let Some(mut proc) = ui_process.take() {
+                    proc.dismiss();
+                }
+                return Err(CliError::operation_failed(
+                    "shortcut daemon",
+                    listener_error.message(),
+                ));
+            }
             DaemonEvent::Hotkey(HotkeyEvent::RecordStop)
             | DaemonEvent::UiAction(UiAction::Cancel)
             | DaemonEvent::UiAction(UiAction::Stop) => {
@@ -95,26 +120,30 @@ pub async fn run() -> CliResult<()> {
             }
         }
     }
+}
 
-    Ok(())
+enum CaptureOutcome {
+    Finished,
+    ListenerLost(HotkeyError),
 }
 
 async fn run_capture(
     stream: hypr_audio::CaptureStream,
     ui: &mut UiProcess,
     hotkey_rx: &mut tokio::sync::mpsc::UnboundedReceiver<HotkeyEvent>,
+    hotkey_failure_rx: &mut tokio::sync::mpsc::UnboundedReceiver<HotkeyError>,
     ui_rx: &mut tokio::sync::mpsc::UnboundedReceiver<UiAction>,
-) {
+) -> CaptureOutcome {
     let mut stream = pin!(stream);
     let mut last_level = Instant::now() - LEVEL_TICK;
 
     loop {
         tokio::select! {
             frame = stream.next() => {
-                let Some(result) = frame else { break };
+                let Some(result) = frame else { return CaptureOutcome::Finished };
                 let Ok(frame) = result else {
                     tracing::error!("Audio capture error");
-                    break;
+                    return CaptureOutcome::Finished;
                 };
 
                 let now = Instant::now();
@@ -128,26 +157,42 @@ async fn run_capture(
             Some(hk) = hotkey_rx.recv() => {
                 if matches!(hk, HotkeyEvent::RecordStop) {
                     tracing::info!("Hotkey: record stop");
-                    break;
+                    return CaptureOutcome::Finished;
                 }
+            }
+            Some(listener_error) = hotkey_failure_rx.recv() => {
+                return CaptureOutcome::ListenerLost(listener_error);
             }
             Some(action) = ui_rx.recv() => {
                 tracing::info!("UI action: {:?}", match &action {
                     UiAction::Cancel => "cancel",
                     UiAction::Stop => "stop",
                 });
-                break;
+                return CaptureOutcome::Finished;
             }
+            else => return CaptureOutcome::ListenerLost(hotkey::HotkeyError::internal("Hotkey listener exited unexpectedly.")),
         }
     }
 }
 
 fn peak_level(samples: &[f32]) -> f32 {
-    samples
+    let raw = samples
         .iter()
         .map(|s| s.abs())
         .fold(0.0_f32, f32::max)
-        .clamp(0.0, 1.0)
+        .clamp(0.0, 1.0);
+    to_perceptual(raw)
+}
+
+/// Map linear amplitude to perceptual 0.0–1.0 using a dB scale.
+/// Quiet speech (~0.01–0.05 linear) maps to ~0.3–0.6 perceptual.
+fn to_perceptual(level: f32) -> f32 {
+    if level <= 0.0 {
+        return 0.0;
+    }
+    let db = 20.0 * level.log10();
+    // -48 dB floor, 0 dB ceiling
+    ((db + 48.0) / 48.0).clamp(0.0, 1.0)
 }
 
 fn resolve_ui_binary() -> CliResult<PathBuf> {
@@ -240,5 +285,12 @@ fn parse_ui_action(line: &str) -> Option<UiAction> {
         "cancel" => Some(UiAction::Cancel),
         "stop" => Some(UiAction::Stop),
         _ => None,
+    }
+}
+
+fn outcome_to_health(outcome: CaptureOutcome) -> Option<HotkeyError> {
+    match outcome {
+        CaptureOutcome::Finished => None,
+        CaptureOutcome::ListenerLost(health) => Some(health),
     }
 }

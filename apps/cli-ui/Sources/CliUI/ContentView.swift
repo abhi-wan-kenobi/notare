@@ -22,7 +22,7 @@ struct ContentView: View {
           .fill(state.isRecording ? Color.blue : Color.gray)
           .frame(width: 8, height: 8)
 
-        WaveformView(level: state.audioLevel)
+        WaveformView(level: state.audioLevel, tick: state.levelTick)
       }
 
       // Stop button
@@ -53,5 +53,6 @@ struct ContentView: View {
 final class CliUIState: ObservableObject {
   @Published var isRecording = true
   @Published var audioLevel: Float = 0
+  @Published var levelTick: UInt64 = 0
   @Published var status: String?
 }
