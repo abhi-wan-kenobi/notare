@@ -1,6 +1,7 @@
 mod convert;
 mod error;
 mod fetch;
+pub mod runtime;
 pub mod sync;
 
 pub use error::Error;
@@ -8,8 +9,18 @@ pub use hypr_calendar_interface::{
     CalendarEvent, CalendarListItem, CalendarProviderType, CreateEventInput, EventFilter,
 };
 
-#[cfg(target_os = "macos")]
-pub use hypr_apple_calendar::setup_change_notification;
+pub fn start(runtime: impl runtime::CalendarRuntime) {
+    #[cfg(target_os = "macos")]
+    {
+        use std::sync::Arc;
+        let runtime = Arc::new(runtime);
+        hypr_apple_calendar::setup_change_notification(move || {
+            runtime.emit_changed();
+        });
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = runtime;
+}
 
 #[cfg(target_os = "macos")]
 use chrono::{DateTime, Utc};
