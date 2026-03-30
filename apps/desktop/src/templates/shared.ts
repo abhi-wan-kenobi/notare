@@ -18,6 +18,8 @@ export type UserTemplate = Template & { id: string };
 type TemplateDraft = {
   title: string;
   description: string;
+  category?: string;
+  targets?: string[];
   sections: TemplateSection[];
 };
 
@@ -104,6 +106,27 @@ export function useUserTemplates(): UserTemplate[] {
   }, [templates]);
 }
 
+export function useTemplateCreatorName() {
+  const userId = main.UI.useValue("user_id", main.STORE_ID);
+  const name = main.UI.useCell("humans", userId ?? "", "name", main.STORE_ID);
+
+  return typeof name === "string" && name.trim().length > 0
+    ? name.trim()
+    : "user";
+}
+
+export function getTemplateCreatorLabel({
+  isUserTemplate,
+  creatorName,
+}: {
+  isUserTemplate: boolean;
+  creatorName?: string | null;
+}) {
+  return isUserTemplate
+    ? `Created by ${creatorName?.trim() || "user"}`
+    : "Created by Char";
+}
+
 export function useCreateTemplate() {
   const { user_id } = main.UI.useValues(main.STORE_ID);
 
@@ -115,6 +138,8 @@ export function useCreateTemplate() {
       created_at: string;
       title: string;
       description: string;
+      category?: string;
+      targets?: string[];
       sections: TemplateSection[];
     }) => p.id,
     (p: {
@@ -123,12 +148,18 @@ export function useCreateTemplate() {
       created_at: string;
       title: string;
       description: string;
+      category?: string;
+      targets?: string[];
       sections: TemplateSection[];
     }) =>
       ({
         user_id: p.user_id,
         title: p.title,
         description: p.description,
+        pinned: false,
+        pin_order: undefined,
+        category: p.category,
+        targets: p.targets ? JSON.stringify(p.targets) : undefined,
         sections: JSON.stringify(p.sections),
       }) satisfies TemplateStorage,
     [],
@@ -148,6 +179,8 @@ export function useCreateTemplate() {
         created_at: now,
         title: template.title,
         description: template.description,
+        category: template.category,
+        targets: template.targets,
         sections: template.sections.map((section) => ({ ...section })),
       });
 
@@ -157,7 +190,46 @@ export function useCreateTemplate() {
   );
 }
 
-function normalizeTemplatePayload(template: unknown): Template {
+export function useToggleTemplateFavorite() {
+  const store = main.UI.useStore(main.STORE_ID);
+
+  return useCallback(
+    (templateId: string) => {
+      if (!store) return;
+
+      const isPinned = Boolean(
+        store.getCell("templates", templateId, "pinned"),
+      );
+      if (isPinned) {
+        store.setPartialRow("templates", templateId, {
+          pinned: false,
+          pin_order: 0,
+        });
+        return;
+      }
+
+      const allTemplates = store.getTable("templates");
+      const maxPinOrder = Object.entries(allTemplates).reduce(
+        (max, [id, template]) => {
+          if (id === templateId) return max;
+
+          const order =
+            typeof template.pin_order === "number" ? template.pin_order : 0;
+          return Math.max(max, order);
+        },
+        0,
+      );
+
+      store.setPartialRow("templates", templateId, {
+        pinned: true,
+        pin_order: maxPinOrder + 1,
+      });
+    },
+    [store],
+  );
+}
+
+export function normalizeTemplatePayload(template: unknown): Template {
   const record = (
     template && typeof template === "object" ? template : {}
   ) as Record<string, unknown>;
@@ -178,6 +250,29 @@ function normalizeTemplatePayload(template: unknown): Template {
     title: typeof record.title === "string" ? record.title : "",
     description:
       typeof record.description === "string" ? record.description : "",
+    pinned: Boolean(record.pinned),
+    pin_order:
+      typeof record.pin_order === "number" ? record.pin_order : undefined,
+    category: typeof record.category === "string" ? record.category : undefined,
+    targets:
+      typeof record.targets === "string"
+        ? (() => {
+            try {
+              const parsed = JSON.parse(record.targets);
+              return Array.isArray(parsed)
+                ? parsed.filter(
+                    (target): target is string => typeof target === "string",
+                  )
+                : undefined;
+            } catch {
+              return undefined;
+            }
+          })()
+        : Array.isArray(record.targets)
+          ? record.targets.filter(
+              (target): target is string => typeof target === "string",
+            )
+          : undefined,
     sections,
   };
 }

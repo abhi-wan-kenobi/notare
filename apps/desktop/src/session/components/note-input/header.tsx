@@ -57,7 +57,11 @@ import { type Tab, useTabs } from "~/store/zustand/tabs";
 import { type EditorView } from "~/store/zustand/tabs/schema";
 import { useListener } from "~/stt/contexts";
 import { useRunBatch } from "~/stt/useRunBatch";
-import { useUserTemplates } from "~/templates";
+import {
+  getTemplateCreatorLabel,
+  useTemplateCreatorName,
+  useUserTemplates,
+} from "~/templates";
 
 function TruncatedTitle({
   title,
@@ -402,6 +406,7 @@ function CreateOtherFormatButton({
   const [search, setSearch] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const resultRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const resultsScrollRef = useRef<HTMLDivElement>(null);
   const { user_id } = main.UI.useValues(main.STORE_ID);
   const sessionTitle = main.UI.useCell(
     "sessions",
@@ -417,6 +422,7 @@ function CreateOtherFormatButton({
   ) as string | undefined;
   const { data: transcriptSegments } = useTranscriptExportSegments(sessionId);
   const userTemplates = useUserTemplates();
+  const creatorName = useTemplateCreatorName();
   const {
     data: suggestedTemplates = [],
     isLoading: isSuggestedTemplatesLoading,
@@ -434,6 +440,8 @@ function CreateOtherFormatButton({
       created_at: string;
       title: string;
       description: string;
+      category?: string;
+      targets?: string[];
       sections: Array<{ title: string; description: string }>;
     }) => p.id,
     (p: {
@@ -442,11 +450,15 @@ function CreateOtherFormatButton({
       created_at: string;
       title: string;
       description: string;
+      category?: string;
+      targets?: string[];
       sections: Array<{ title: string; description: string }>;
     }) => ({
       user_id: p.user_id,
       title: p.title,
       description: p.description,
+      category: p.category,
+      targets: p.targets ? JSON.stringify(p.targets) : undefined,
       sections: JSON.stringify(p.sections),
     }),
     [],
@@ -511,6 +523,8 @@ function CreateOtherFormatButton({
         created_at: now,
         title: template.title,
         description: template.description,
+        category: template.category,
+        targets: template.targets,
         sections: template.sections ?? [],
       });
 
@@ -578,21 +592,34 @@ function CreateOtherFormatButton({
     [meetingContent, suggestedTemplates],
   );
 
-  const filteredFavoriteTemplates = useMemo(() => {
-    const sortedTemplates = [...userTemplates].sort((a, b) =>
-      (a.title || "").localeCompare(b.title || ""),
-    );
+  const favoriteTemplates = useMemo(
+    () => sortFavoriteTemplates(userTemplates),
+    [userTemplates],
+  );
+  const otherTemplates = useMemo(
+    () => sortOtherTemplates(userTemplates),
+    [userTemplates],
+  );
 
+  const filteredFavoriteTemplates = useMemo(() => {
     if (!searchQuery) {
-      return sortedTemplates;
+      return favoriteTemplates;
     }
 
-    return sortedTemplates.filter(
-      (template) =>
-        template.title?.toLowerCase().includes(searchQuery) ||
-        template.description?.toLowerCase().includes(searchQuery),
+    return favoriteTemplates.filter((template) =>
+      matchesTemplateSearch(template, searchQuery),
     );
-  }, [searchQuery, userTemplates]);
+  }, [favoriteTemplates, searchQuery]);
+
+  const filteredOtherTemplates = useMemo(() => {
+    if (!searchQuery) {
+      return otherTemplates;
+    }
+
+    return otherTemplates.filter((template) =>
+      matchesTemplateSearch(template, searchQuery),
+    );
+  }, [otherTemplates, searchQuery]);
 
   const filteredSuggestedTemplates = useMemo(() => {
     if (!searchQuery) {
@@ -611,6 +638,80 @@ function CreateOtherFormatButton({
   }, [searchQuery, suggestedTemplateRecommendations, suggestedTemplates]);
 
   const hasSearch = searchQuery.length > 0;
+  const filteredWebTemplates = useMemo(() => {
+    if (!searchQuery) {
+      return suggestedTemplates;
+    }
+
+    return suggestedTemplates.filter(
+      (template) =>
+        template.title?.toLowerCase().includes(searchQuery) ||
+        template.description?.toLowerCase().includes(searchQuery) ||
+        template.category?.toLowerCase().includes(searchQuery) ||
+        template.targets?.some((target) =>
+          target.toLowerCase().includes(searchQuery),
+        ),
+    );
+  }, [searchQuery, suggestedTemplates]);
+  const libraryTemplates = useMemo<
+    Array<{
+      key: string;
+      title: string;
+      description?: string;
+      creatorLabel: string;
+      tags?: string[];
+      onClick: () => void;
+    }>
+  >(() => {
+    const userItems = filteredOtherTemplates.map((template) => ({
+      key: template.id,
+      title: template.title || "Untitled",
+      description: template.description,
+      creatorLabel: getTemplateCreatorLabel({
+        isUserTemplate: true,
+        creatorName,
+      }),
+      tags: getTemplateTags(template),
+      onClick: () => handleUseTemplate(template.id),
+    }));
+
+    const suggestedSlugs = new Set(
+      !hasSearch
+        ? filteredSuggestedTemplates.map(
+            (template, index) => template.slug || `suggested-${index}`,
+          )
+        : [],
+    );
+
+    const webItems = filteredWebTemplates
+      .filter((template, index) => {
+        if (hasSearch) {
+          return true;
+        }
+
+        return !suggestedSlugs.has(template.slug || `suggested-${index}`);
+      })
+      .map((template, index) => ({
+        key: template.slug || `library-${index}`,
+        title: template.title || "Untitled",
+        description: template.description,
+        creatorLabel: getTemplateCreatorLabel({ isUserTemplate: false }),
+        tags: getTemplateTags(template),
+        onClick: () => handleSuggestedTemplateClick(template),
+      }));
+
+    return [...userItems, ...webItems].sort((a, b) =>
+      a.title.localeCompare(b.title),
+    );
+  }, [
+    creatorName,
+    filteredOtherTemplates,
+    filteredSuggestedTemplates,
+    filteredWebTemplates,
+    handleSuggestedTemplateClick,
+    handleUseTemplate,
+    hasSearch,
+  ]);
   const resultSections = useMemo<
     Array<{
       key: string;
@@ -622,6 +723,8 @@ function CreateOtherFormatButton({
         key: string;
         title: string;
         description?: string;
+        creatorLabel?: string;
+        tags?: string[];
         onClick: () => void;
       }>;
     }>
@@ -629,28 +732,35 @@ function CreateOtherFormatButton({
     if (!hasSearch) {
       return [
         {
+          key: "favorite",
+          title: "Favorites",
+          items: filteredFavoriteTemplates.map((template) => ({
+            key: template.id,
+            title: template.title || "Untitled",
+            description: template.description,
+            creatorLabel: getTemplateCreatorLabel({
+              isUserTemplate: true,
+              creatorName,
+            }),
+            tags: getTemplateTags(template),
+            onClick: () => handleUseTemplate(template.id),
+          })),
+          emptyMessage: "No favorite templates yet",
+        },
+        {
           key: "suggested",
-          title: "Suggested templates",
+          title: "Suggested",
           items: filteredSuggestedTemplates.map((template, index) => ({
             key: template.slug || `suggested-${index}`,
             title: template.title || "Untitled",
             description: template.description,
+            creatorLabel: getTemplateCreatorLabel({ isUserTemplate: false }),
+            tags: getTemplateTags(template),
             onClick: () => handleSuggestedTemplateClick(template),
           })),
           emptyMessage: isSuggestedTemplatesLoading
             ? "Loading suggestions..."
             : "No suggested templates yet",
-        },
-        {
-          key: "favorite",
-          title: "Favorite templates",
-          items: filteredFavoriteTemplates.map((template) => ({
-            key: template.id,
-            title: template.title || "Untitled",
-            description: template.description,
-            onClick: () => handleUseTemplate(template.id),
-          })),
-          emptyMessage: "No favorite templates yet",
         },
       ];
     }
@@ -669,36 +779,37 @@ function CreateOtherFormatButton({
           },
         ],
       },
-      ...(filteredSuggestedTemplates.length > 0
-        ? [
-            {
-              key: "suggested",
-              title: "Suggested templates",
-              items: filteredSuggestedTemplates.map((template, index) => ({
-                key: template.slug || `suggested-${index}`,
-                title: template.title || "Untitled",
-                description: template.description,
-                onClick: () => handleSuggestedTemplateClick(template),
-              })),
-            },
-          ]
-        : []),
       ...(filteredFavoriteTemplates.length > 0
         ? [
             {
               key: "favorite",
-              title: "Favorite templates",
+              title: "Favorites",
               items: filteredFavoriteTemplates.map((template) => ({
                 key: template.id,
                 title: template.title || "Untitled",
                 description: template.description,
+                creatorLabel: getTemplateCreatorLabel({
+                  isUserTemplate: true,
+                  creatorName,
+                }),
+                tags: getTemplateTags(template),
                 onClick: () => handleUseTemplate(template.id),
               })),
             },
           ]
         : []),
+      ...(libraryTemplates.length > 0
+        ? [
+            {
+              key: "library",
+              title: "Templates",
+              items: libraryTemplates,
+            },
+          ]
+        : []),
     ];
   }, [
+    creatorName,
     filteredFavoriteTemplates,
     filteredSuggestedTemplates,
     handleCreateTemplate,
@@ -706,12 +817,16 @@ function CreateOtherFormatButton({
     handleUseTemplate,
     hasSearch,
     isSuggestedTemplatesLoading,
+    libraryTemplates,
     trimmedSearch,
   ]);
   const navigableResults = useMemo(
     () => resultSections.flatMap((section) => section.items),
     [resultSections],
   );
+  const { atStart, atEnd } = useScrollFade(resultsScrollRef, "vertical", [
+    resultSections,
+  ]);
   const focusSearchInput = useCallback(() => {
     searchInputRef.current?.focus();
   }, []);
@@ -803,41 +918,52 @@ function CreateOtherFormatButton({
               </div>
             </div>
 
-            <div className="max-h-80 overflow-y-auto p-2">
-              <div className="flex flex-col gap-3">
-                {resultSections.map((section) => (
-                  <TemplateSection
-                    key={section.key}
-                    title={section.title}
-                    icon={section.icon}
-                    uppercase={section.uppercase}
-                  >
-                    {section.items.length > 0 ? (
-                      section.items.map((item) => {
-                        const itemIndex = resultIndex;
-                        resultIndex += 1;
+            <div className="relative">
+              <div
+                ref={resultsScrollRef}
+                className="scrollbar-hide max-h-80 overflow-y-auto p-2"
+              >
+                <div className="flex flex-col gap-3">
+                  {resultSections.map((section) => (
+                    <TemplateSection
+                      key={section.key}
+                      title={section.title}
+                      icon={section.icon}
+                      uppercase={section.uppercase}
+                    >
+                      {section.items.length > 0 ? (
+                        section.items.map((item) => {
+                          const itemIndex = resultIndex;
+                          resultIndex += 1;
 
-                        return (
-                          <TemplateResultButton
-                            key={item.key}
-                            buttonRef={(node) => {
-                              resultRefs.current[itemIndex] = node;
-                            }}
-                            title={item.title}
-                            description={item.description}
-                            onClick={item.onClick}
-                            onKeyDown={(e) => handleResultKeyDown(e, itemIndex)}
-                          />
-                        );
-                      })
-                    ) : (
-                      <div className="px-2 py-3 text-sm text-neutral-500">
-                        {section.emptyMessage}
-                      </div>
-                    )}
-                  </TemplateSection>
-                ))}
+                          return (
+                            <TemplateResultButton
+                              key={item.key}
+                              buttonRef={(node) => {
+                                resultRefs.current[itemIndex] = node;
+                              }}
+                              title={item.title}
+                              description={item.description}
+                              creatorLabel={item.creatorLabel}
+                              tags={item.tags}
+                              onClick={item.onClick}
+                              onKeyDown={(e) =>
+                                handleResultKeyDown(e, itemIndex)
+                              }
+                            />
+                          );
+                        })
+                      ) : (
+                        <div className="px-2 py-3 text-sm text-neutral-500">
+                          {section.emptyMessage}
+                        </div>
+                      )}
+                    </TemplateSection>
+                  ))}
+                </div>
               </div>
+              {!atStart && <ScrollFadeOverlay position="top" />}
+              {!atEnd && <ScrollFadeOverlay position="bottom" />}
             </div>
           </AppFloatingPanel>
 
@@ -1111,6 +1237,55 @@ type WebTemplate = {
   sections: Array<{ title: string; description: string }>;
 };
 
+function getTemplateTags(template: { category?: string; targets?: string[] }) {
+  return [
+    ...new Set([
+      ...(template.category ? [template.category] : []),
+      ...(template.targets ?? []),
+    ]),
+  ];
+}
+
+function matchesTemplateSearch(
+  template: {
+    title?: string;
+    description?: string;
+    category?: string;
+    targets?: string[];
+  },
+  query: string,
+) {
+  return (
+    template.title?.toLowerCase().includes(query) ||
+    template.description?.toLowerCase().includes(query) ||
+    template.category?.toLowerCase().includes(query) ||
+    template.targets?.some((target) => target.toLowerCase().includes(query))
+  );
+}
+
+function sortFavoriteTemplates<
+  T extends { pinned?: boolean; pin_order?: number; title?: string },
+>(templates: T[]) {
+  return [...templates]
+    .filter((template) => template.pinned)
+    .sort((a, b) => {
+      const orderA = a.pin_order ?? Infinity;
+      const orderB = b.pin_order ?? Infinity;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      return (a.title || "").localeCompare(b.title || "");
+    });
+}
+
+function sortOtherTemplates<T extends { pinned?: boolean; title?: string }>(
+  templates: T[],
+) {
+  return [...templates]
+    .filter((template) => !template.pinned)
+    .sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+}
+
 const TEMPLATE_SUGGESTION_STOP_WORDS = new Set([
   "about",
   "after",
@@ -1297,12 +1472,16 @@ function TemplateResultButton({
   buttonRef,
   title,
   description,
+  creatorLabel,
+  tags,
   onClick,
   onKeyDown,
 }: {
   buttonRef?: React.Ref<HTMLButtonElement>;
   title: string;
   description?: string;
+  creatorLabel?: string;
+  tags?: string[];
   onClick: () => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLButtonElement>) => void;
 }) {
@@ -1322,6 +1501,21 @@ function TemplateResultButton({
       {description ? (
         <span className="line-clamp-2 text-xs text-neutral-500">
           {description}
+        </span>
+      ) : null}
+      {creatorLabel ? (
+        <span className="text-[11px] text-neutral-400">{creatorLabel}</span>
+      ) : null}
+      {tags && tags.length > 0 ? (
+        <span className="mt-1 flex flex-wrap gap-1">
+          {tags.map((tag, index) => (
+            <span
+              key={`${tag}-${index}`}
+              className="rounded-xs bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-500"
+            >
+              {tag}
+            </span>
+          ))}
         </span>
       ) : null}
     </button>

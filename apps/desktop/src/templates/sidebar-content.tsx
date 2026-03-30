@@ -1,5 +1,5 @@
 import { ArrowDownUp, BookText, Plus, Search, X } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@hypr/ui/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import { cn } from "@hypr/utils";
 import {
   resolveTemplateTabSelection,
   useCreateTemplate,
+  useToggleTemplateFavorite,
   useUserTemplates,
   type UserTemplate,
   type WebTemplate,
@@ -32,10 +33,12 @@ export function TemplatesSidebarContent({
   tab: Extract<Tab, { type: "templates" }>;
 }) {
   const updateTabState = useTabs((state) => state.updateTemplatesTabState);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
   const [sortOption, setSortOption] = useState<SortOption>("alphabetical");
   const userTemplates = useUserTemplates();
   const createTemplate = useCreateTemplate();
+  const toggleTemplateFavorite = useToggleTemplateFavorite();
   const { data: webTemplates = [], isLoading: isWebLoading } =
     useWebResources<WebTemplate>("templates");
   const deleteTemplateFromStore = main.UI.useDelRowCallback(
@@ -97,6 +100,8 @@ export function TemplatesSidebarContent({
       const id = createTemplate({
         title: getDuplicatedTemplateTitle(template.title),
         description: template.description ?? "",
+        category: template.category,
+        targets: template.targets,
         sections: template.sections.map((section) => ({ ...section })),
       });
 
@@ -118,19 +123,37 @@ export function TemplatesSidebarContent({
     [deleteTemplateFromStore, effectiveSelectedMineId, setSelectedMineId],
   );
 
+  const handleToggleFavorite = useCallback(
+    (id: string) => {
+      toggleTemplateFavorite(id);
+    },
+    [toggleTemplateFavorite],
+  );
+
   const sortedUserTemplates = useMemo(() => {
-    const sorted = [...userTemplates];
+    const favorites = userTemplates
+      .filter((template) => template.pinned)
+      .sort((a, b) => {
+        const orderA = a.pin_order ?? Infinity;
+        const orderB = b.pin_order ?? Infinity;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        return (a.title || "").localeCompare(b.title || "");
+      });
+
+    const others = userTemplates.filter((template) => !template.pinned);
     switch (sortOption) {
       case "alphabetical":
-        return sorted.sort((a, b) =>
-          (a.title || "").localeCompare(b.title || ""),
-        );
+        others.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+        break;
       case "reverse-alphabetical":
       default:
-        return sorted.sort((a, b) =>
-          (b.title || "").localeCompare(a.title || ""),
-        );
+        others.sort((a, b) => (b.title || "").localeCompare(a.title || ""));
+        break;
     }
+
+    return [...favorites, ...others];
   }, [userTemplates, sortOption]);
 
   const filteredMine = useMemo(() => {
@@ -139,7 +162,9 @@ export function TemplatesSidebarContent({
     return sortedUserTemplates.filter(
       (template) =>
         template.title?.toLowerCase().includes(q) ||
-        template.description?.toLowerCase().includes(q),
+        template.description?.toLowerCase().includes(q) ||
+        template.category?.toLowerCase().includes(q) ||
+        template.targets?.some((target) => target.toLowerCase().includes(q)),
     );
   }, [sortedUserTemplates, search]);
 
@@ -160,9 +185,158 @@ export function TemplatesSidebarContent({
     });
   }, [webTemplates, search]);
 
-  const hasWebResults = filteredWeb.length > 0;
-  const hasMineResults = filteredMine.length > 0;
-  const isEmpty = !isWebLoading && !hasWebResults && !hasMineResults;
+  const combinedTemplates = useMemo<
+    Array<
+      | {
+          key: string;
+          title: string;
+          selected: boolean;
+          pinned: boolean;
+          source: "user";
+          template: UserTemplate;
+        }
+      | {
+          key: string;
+          title: string;
+          selected: boolean;
+          pinned: false;
+          source: "web";
+          index: number;
+          template: WebTemplate;
+        }
+    >
+  >(() => {
+    const mine = filteredMine.map((template) => ({
+      key: template.id,
+      title: template.title?.trim() || "Untitled",
+      selected: !isWebMode && effectiveSelectedMineId === template.id,
+      pinned: Boolean(template.pinned),
+      source: "user" as const,
+      template,
+    }));
+
+    const web = filteredWeb.map(({ template, index }) => ({
+      key: template.slug || `web-${index}`,
+      title: template.title?.trim() || "Untitled",
+      selected: isWebMode && effectiveSelectedWebIndex === index,
+      pinned: false as const,
+      source: "web" as const,
+      index,
+      template,
+    }));
+
+    const direction = sortOption === "reverse-alphabetical" ? -1 : 1;
+
+    return [...mine, ...web].sort((a, b) => {
+      if (a.pinned !== b.pinned) {
+        return a.pinned ? -1 : 1;
+      }
+
+      return direction * a.title.localeCompare(b.title);
+    });
+  }, [
+    effectiveSelectedMineId,
+    effectiveSelectedWebIndex,
+    filteredMine,
+    filteredWeb,
+    isWebMode,
+    sortOption,
+  ]);
+
+  const hasResults = combinedTemplates.length > 0;
+  const isEmpty = !isWebLoading && !hasResults;
+
+  const selectCombinedTemplate = useCallback(
+    (
+      item:
+        | {
+            source: "user";
+            template: UserTemplate;
+          }
+        | {
+            source: "web";
+            index: number;
+          },
+    ) => {
+      if (item.source === "user") {
+        setSelectedMineId(item.template.id);
+        return;
+      }
+
+      setSelectedWebIndex(item.index);
+    },
+    [setSelectedMineId, setSelectedWebIndex],
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        !event.altKey ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        (event.key !== "ArrowUp" && event.key !== "ArrowDown")
+      ) {
+        return;
+      }
+
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target.closest("input, textarea, select, [contenteditable='true']"))
+      ) {
+        return;
+      }
+
+      if (combinedTemplates.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const currentIndex = combinedTemplates.findIndex((item) => item.selected);
+      const nextIndex =
+        currentIndex === -1
+          ? event.key === "ArrowDown"
+            ? 0
+            : combinedTemplates.length - 1
+          : Math.max(
+              0,
+              Math.min(
+                combinedTemplates.length - 1,
+                currentIndex + (event.key === "ArrowDown" ? 1 : -1),
+              ),
+            );
+
+      const nextItem = combinedTemplates[nextIndex];
+      if (!nextItem || nextIndex === currentIndex) {
+        return;
+      }
+
+      selectCombinedTemplate(nextItem);
+    };
+
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+    };
+  }, [combinedTemplates, selectCombinedTemplate]);
+
+  useEffect(() => {
+    const selectedElement = scrollContainerRef.current?.querySelector(
+      "[data-template-selected='true']",
+    );
+
+    if (!(selectedElement instanceof HTMLElement)) {
+      return;
+    }
+
+    selectedElement.scrollIntoView({
+      block: "nearest",
+    });
+  }, [effectiveSelectedMineId, effectiveSelectedWebIndex]);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
@@ -246,7 +420,10 @@ export function TemplatesSidebarContent({
         </div>
       </div>
 
-      <div className="scrollbar-hide flex-1 overflow-y-auto">
+      <div
+        ref={scrollContainerRef}
+        className="scrollbar-hide flex-1 overflow-y-auto"
+      >
         {isEmpty ? (
           <div className="px-3 py-8 text-center text-neutral-500">
             <BookText size={32} className="mx-auto mb-2 text-neutral-300" />
@@ -264,27 +441,47 @@ export function TemplatesSidebarContent({
           </div>
         ) : (
           <>
-            {hasMineResults && (
+            {hasResults && (
               <div className="pt-3">
-                <ListSectionTitle>My templates</ListSectionTitle>
-                {filteredMine.map((template) => (
-                  <TemplateListItem
-                    key={template.id}
-                    template={template}
-                    selected={
-                      !isWebMode && effectiveSelectedMineId === template.id
-                    }
-                    onSelect={setSelectedMineId}
-                    onDuplicate={handleDuplicateTemplate}
-                    onDelete={handleDeleteTemplate}
-                  />
-                ))}
+                {combinedTemplates.map((item) =>
+                  item.source === "user" ? (
+                    <TemplateListItem
+                      key={item.key}
+                      template={item.template}
+                      selected={item.selected}
+                      onSelect={setSelectedMineId}
+                      onToggleFavorite={handleToggleFavorite}
+                      onDuplicate={handleDuplicateTemplate}
+                      onDelete={handleDeleteTemplate}
+                    />
+                  ) : (
+                    <button
+                      key={item.key}
+                      onClick={() => setSelectedWebIndex(item.index)}
+                      data-template-selected={item.selected}
+                      className={cn([
+                        "w-full rounded-lg px-3 py-2 text-left text-sm transition-colors select-none",
+                        item.selected
+                          ? "bg-neutral-200"
+                          : "hover:bg-neutral-200/50",
+                      ])}
+                    >
+                      <div className="flex items-center gap-2">
+                        <BookText className="h-4 w-4 shrink-0 text-neutral-500" />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">
+                            {item.title}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ),
+                )}
               </div>
             )}
 
-            {isWebLoading && !hasWebResults && (
+            {isWebLoading && !hasResults && (
               <div className="pt-3">
-                <ListSectionTitle>Provided by Char</ListSectionTitle>
                 <div className="flex flex-col gap-1">
                   {[0, 1, 2, 3].map((index) => (
                     <div
@@ -292,37 +489,10 @@ export function TemplatesSidebarContent({
                       className="animate-pulse rounded-lg px-3 py-2"
                     >
                       <div className="h-4 w-3/4 rounded-xs bg-neutral-200" />
-                      <div className="mt-1.5 h-3 w-1/2 rounded-xs bg-neutral-100" />
+                      <div className="mt-1.5 h-3 w-1/3 rounded-xs bg-neutral-100" />
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {hasWebResults && (
-              <div className="pt-3">
-                <ListSectionTitle>Provided by Char</ListSectionTitle>
-                {filteredWeb.map(({ template, index }) => (
-                  <button
-                    key={template.slug || index}
-                    onClick={() => setSelectedWebIndex(index)}
-                    className={cn([
-                      "w-full rounded-lg px-3 py-2 text-left text-sm transition-colors select-none",
-                      isWebMode && effectiveSelectedWebIndex === index
-                        ? "bg-neutral-200"
-                        : "hover:bg-neutral-200/50",
-                    ])}
-                  >
-                    <div className="flex items-center gap-2">
-                      <BookText className="h-4 w-4 shrink-0 text-neutral-500" />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate font-medium">
-                          {template.title || "Untitled"}
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
               </div>
             )}
           </>
@@ -332,29 +502,29 @@ export function TemplatesSidebarContent({
   );
 }
 
-function ListSectionTitle({ children }: { children: string }) {
-  return (
-    <div className="px-3 pb-1 text-xs font-medium text-neutral-400 uppercase">
-      {children}
-    </div>
-  );
-}
-
 function TemplateListItem({
   template,
   selected,
   onSelect,
+  onToggleFavorite,
   onDuplicate,
   onDelete,
 }: {
   template: UserTemplate;
   selected: boolean;
   onSelect: (id: string) => void;
+  onToggleFavorite: (id: string) => void;
   onDuplicate: (template: UserTemplate) => void;
   onDelete: (id: string) => void;
 }) {
   const contextMenu = useMemo(
     () => [
+      {
+        id: `favorite-template-${template.id}`,
+        text: template.pinned ? "Unfavorite" : "Favorite",
+        action: () => onToggleFavorite(template.id),
+      },
+      { separator: true as const },
       {
         id: `duplicate-template-${template.id}`,
         text: "Duplicate",
@@ -366,7 +536,7 @@ function TemplateListItem({
         action: () => onDelete(template.id),
       },
     ],
-    [onDelete, onDuplicate, template],
+    [onDelete, onDuplicate, onToggleFavorite, template],
   );
   const showContextMenu = useNativeContextMenu(contextMenu);
 
@@ -377,6 +547,7 @@ function TemplateListItem({
         onSelect(template.id);
         void showContextMenu(e);
       }}
+      data-template-selected={selected}
       className={cn([
         "w-full rounded-lg px-3 py-2 text-left text-sm transition-colors select-none",
         selected ? "bg-neutral-200" : "hover:bg-neutral-200/50",

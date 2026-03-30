@@ -17,7 +17,11 @@ import { useWebResources } from "~/shared/ui/resource-list";
 import * as main from "~/store/tinybase/store/main";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 
-export { useUserTemplates } from "./shared";
+export {
+  getTemplateCreatorLabel,
+  useTemplateCreatorName,
+  useUserTemplates,
+} from "./shared";
 
 export const TabItemTemplate: TabItem<Extract<Tab, { type: "templates" }>> = ({
   tab,
@@ -107,6 +111,8 @@ function TemplateView({ tab }: { tab: Extract<Tab, { type: "templates" }> }) {
     (template: {
       title: string;
       description: string;
+      category?: string;
+      targets?: string[];
       sections: TemplateSection[];
     }) => {
       const id = createTemplate({
@@ -120,6 +126,22 @@ function TemplateView({ tab }: { tab: Extract<Tab, { type: "templates" }> }) {
     [createTemplate, setSelectedMineId],
   );
 
+  const handleDuplicateTemplate = useCallback(
+    (id: string) => {
+      const template = userTemplates.find((item) => item.id === id);
+      if (!template) return;
+
+      handleCloneTemplate({
+        title: template.title,
+        description: template.description,
+        category: template.category,
+        targets: template.targets,
+        sections: template.sections,
+      });
+    },
+    [handleCloneTemplate, userTemplates],
+  );
+
   return (
     <div className="h-full">
       <TemplateDetailsColumn
@@ -127,6 +149,7 @@ function TemplateView({ tab }: { tab: Extract<Tab, { type: "templates" }> }) {
         selectedMineId={selectedMineId}
         selectedWebTemplate={selectedWebTemplate}
         handleDeleteTemplate={handleDeleteTemplate}
+        handleDuplicateTemplate={handleDuplicateTemplate}
         handleCloneTemplate={handleCloneTemplate}
       />
     </div>
