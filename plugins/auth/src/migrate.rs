@@ -50,10 +50,6 @@ fn migrate_auth_state(
     legacy_store_json_path: &Path,
     new_auth_path: &Path,
 ) -> std::io::Result<()> {
-    if new_auth_path.exists() {
-        return Ok(());
-    }
-
     if let Some(parent) = new_auth_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
@@ -123,7 +119,7 @@ mod test {
     }
 
     #[test]
-    fn migration_is_noop_when_new_auth_path_exists() {
+    fn migration_overwrites_new_auth_path_when_legacy_exists() {
         let temp = tempdir().unwrap();
         let legacy_auth_path = temp.path().join("hyprnote").join(FILENAME);
         let legacy_store_json_path = temp.path().join("hyprnote").join("store.json");
@@ -132,17 +128,14 @@ mod test {
         std::fs::create_dir_all(legacy_auth_path.parent().unwrap()).unwrap();
         std::fs::create_dir_all(new_auth_path.parent().unwrap()).unwrap();
         std::fs::write(&legacy_auth_path, auth_json("legacy-token")).unwrap();
-        std::fs::write(&new_auth_path, auth_json("new-token")).unwrap();
+        std::fs::write(&new_auth_path, "{}").unwrap();
 
         migrate_auth_state(&legacy_auth_path, &legacy_store_json_path, &new_auth_path).unwrap();
 
-        assert_eq!(
-            std::fs::read_to_string(&legacy_auth_path).unwrap(),
-            auth_json("legacy-token")
-        );
+        assert!(!legacy_auth_path.exists());
         assert_eq!(
             std::fs::read_to_string(&new_auth_path).unwrap(),
-            auth_json("new-token")
+            auth_json("legacy-token")
         );
     }
 
