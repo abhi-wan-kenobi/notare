@@ -385,14 +385,7 @@ function PlanBillingSection({
 
       <div className="mb-4 flex items-center gap-2">
         <p className="text-sm text-neutral-600">{statusText}</p>
-        <button
-          type="button"
-          onClick={() => auth?.refreshSession()}
-          className="text-neutral-400 transition-colors hover:text-neutral-600"
-          aria-label="Refresh billing status"
-        >
-          <RefreshCw className="size-3" />
-        </button>
+        <RefreshBillingButton />
       </div>
 
       <PlanTierList
@@ -663,6 +656,24 @@ function FeatureSpotlight() {
         ) : null}
       </AnimatePresence>
     </div>
+  );
+}
+
+function RefreshBillingButton() {
+  const auth = useAuth();
+  const handleClick = useCallback(() => {
+    auth.refreshSession();
+  }, [auth]);
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className="text-neutral-400 transition-colors hover:text-neutral-600"
+      aria-label="Refresh billing status"
+    >
+      <RefreshCw className="size-3" />
+    </button>
   );
 }
 
