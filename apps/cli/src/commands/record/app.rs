@@ -85,37 +85,20 @@ impl App {
 
     pub(crate) fn completion_lines(&self) -> Vec<Line<'static>> {
         let short = short_output_path(&self.output);
-        let session_dir = self
-            .output
-            .parent()
-            .map(|p| {
-                p.file_name()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| p.display().to_string())
-            })
-            .unwrap_or_default();
+        let session_dir = session_dir_name(&self.output);
 
         vec![
             Line::from(format!("saved  {:.1}s  {}", self.audio_secs, short)),
-            Line::from(""),
-            Line::from(format!("  char play {session_dir}")),
-            Line::from(format!("  char transcribe {session_dir}")),
+            Line::from(format!("char play {session_dir}")),
+            Line::from(format!("char transcribe {session_dir}")),
         ]
     }
 
     pub(crate) fn summary_line(&self) -> String {
-        let session_dir = self
-            .output
-            .parent()
-            .map(|p| {
-                p.file_name()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| p.display().to_string())
-            })
-            .unwrap_or_default();
+        let session_dir = session_dir_name(&self.output);
 
         format!(
-            "{:.1}s  {}\n\n  char play {session_dir}\n  char transcribe {session_dir}",
+            "{:.1}s  {}\n\nchar play {session_dir}\nchar transcribe {session_dir}",
             self.audio_secs,
             self.output.display(),
         )
@@ -123,16 +106,20 @@ impl App {
 }
 
 fn short_output_path(path: &std::path::Path) -> String {
-    let mut parts: Vec<&std::ffi::OsStr> = path.iter().collect();
-    let n = parts.len();
-    if n >= 2 {
-        parts = parts[n - 2..].to_vec();
+    if let Some(home) = dirs::home_dir() {
+        if let Ok(rel) = path.strip_prefix(&home) {
+            return format!("~/{}", rel.display());
+        }
     }
-    parts
-        .iter()
-        .map(|p| p.to_string_lossy())
-        .collect::<Vec<_>>()
-        .join("/")
+    path.display().to_string()
+}
+
+fn session_dir_name(output: &std::path::Path) -> String {
+    output
+        .parent()
+        .and_then(|p| p.file_name())
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default()
 }
 
 fn format_elapsed(duration: Duration) -> String {
