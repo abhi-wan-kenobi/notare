@@ -18045,6 +18045,7 @@ dependencies = [
  "tauri-plugin",
  "tauri-plugin-settings",
  "tauri-specta",
+ "tempfile",
  "template-support",
  "thiserror 2.0.18",
 ]
