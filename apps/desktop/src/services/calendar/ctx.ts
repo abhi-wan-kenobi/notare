@@ -113,6 +113,10 @@ export async function syncCalendars(
       perConnection.push({ connectionId, calendars: result.data });
     }
 
+    const successfulConnectionIds = new Set(
+      perConnection.map(({ connectionId }) => connectionId),
+    );
+
     const incomingKeys = new Set(
       perConnection.flatMap(({ connectionId, calendars }) =>
         calendars.map((cal) =>
@@ -132,6 +136,7 @@ export async function syncCalendars(
         const row = store.getRow("calendars", rowId);
         if (
           row.provider === provider &&
+          successfulConnectionIds.has(row.connection_id as string) &&
           !incomingKeys.has(
             getCalendarTrackingKey({
               provider: row.provider as string | undefined,

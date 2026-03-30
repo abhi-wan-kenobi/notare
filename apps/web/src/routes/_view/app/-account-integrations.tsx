@@ -148,7 +148,7 @@ function ConnectionRow({
                 search: {
                   flow: "web",
                   integration_id: integrationId,
-                  action: "connect",
+                  action: "reconnect",
                   connection_id: connection.connection_id,
                 },
               })
