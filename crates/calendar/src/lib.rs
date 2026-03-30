@@ -76,7 +76,7 @@ pub async fn list_connection_ids(
                 for (integration_id, connection_ids) in all {
                     let provider = match integration_id.as_str() {
                         "google-calendar" => CalendarProviderType::Google,
-                        "outlook-calendar" => CalendarProviderType::Outlook,
+                        "outlook" => CalendarProviderType::Outlook,
                         _ => continue,
                     };
                     map.insert(provider, connection_ids);

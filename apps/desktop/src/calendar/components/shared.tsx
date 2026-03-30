@@ -42,14 +42,14 @@ const _PROVIDERS = [
     nangoIntegrationId: "google-calendar",
   },
   {
-    disabled: true,
+    disabled: false,
     id: "outlook",
     displayName: "Outlook",
-    badge: "Coming soon",
+    badge: "Beta",
     icon: <OutlookIcon size={20} />,
     platform: "all",
     docsPath: "https://char.com/docs/calendar/outlook",
-    nangoIntegrationId: undefined,
+    nangoIntegrationId: "outlook",
   },
 ] as const satisfies readonly CalendarProvider[];
 

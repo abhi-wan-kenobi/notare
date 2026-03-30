@@ -64,7 +64,7 @@ async fn fetch_identity(
         }
 
         // https://learn.microsoft.com/en-us/graph/api/user-get
-        "outlook-calendar" => {
+        "outlook" => {
             let resp = proxy
                 .get("/v1.0/me?$select=mail,userPrincipalName,displayName")
                 .map_err(|e| e.to_string())?

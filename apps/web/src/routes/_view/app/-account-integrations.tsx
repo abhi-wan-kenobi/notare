@@ -15,6 +15,7 @@ import { useWhoAmI } from "@/hooks/use-whoami";
 
 const INTEGRATIONS = [
   { id: "google-calendar", name: "Google Calendar" },
+  { id: "outlook", name: "Outlook Calendar" },
 ] as const;
 
 export function IntegrationsSettingsCard() {
