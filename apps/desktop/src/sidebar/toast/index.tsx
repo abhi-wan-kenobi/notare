@@ -31,6 +31,7 @@ export function ToastArea({
   } = useNotifications();
 
   const isAuthenticated = !!auth?.session;
+  const isAuthLoading = auth.session === undefined;
   const {
     current_llm_provider,
     current_llm_model,
@@ -90,6 +91,7 @@ export function ToastArea({
     () =>
       createToastRegistry({
         isAuthenticated,
+        isAuthLoading,
         hasLLMConfigured,
         hasSttConfigured,
         hasProSttConfigured,
@@ -108,6 +110,7 @@ export function ToastArea({
       }),
     [
       isAuthenticated,
+      isAuthLoading,
       hasLLMConfigured,
       hasSttConfigured,
       hasProSttConfigured,

@@ -35,7 +35,8 @@ import {
 
 type AuthState = {
   supabase: SupabaseClient | null;
-  session: Session | null;
+  // undefined = initial load in progress, null = known unauthenticated
+  session: Session | null | undefined;
   isRefreshingSession: boolean;
 };
 
@@ -95,16 +96,19 @@ async function initSession(
     if (error) {
       if (isFatalSessionError(error)) {
         await onClear();
+      } else {
+        setSession(null);
       }
       return;
     }
 
-    if (data.session) {
-      setSession(data.session);
-    }
+    // Always resolve to null so session never stays undefined after init
+    setSession(data.session ?? null);
   } catch (e) {
     if (isFatalSessionError(e)) {
       await onClear();
+    } else {
+      setSession(null);
     }
   }
 }
@@ -145,7 +149,7 @@ async function trackAuthEvent(
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [fingerprint, setFingerprint] = useState<string | null>(null);
   // Prevents double initSession in React StrictMode, which can cause refresh token races
   const initStartedRef = useRef(false);
