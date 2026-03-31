@@ -4,9 +4,8 @@ use hypr_activity_capture_interface::CaptureError;
 use objc2_application_services::AXUIElement;
 use objc2_core_foundation::CFRetained;
 
-use crate::platform::{child_elements, merge_fragments, string_attribute};
+use crate::ax::{child_elements, merge_fragments, string_attribute};
 
-const SLACK_BUNDLE_IDS: [&str; 2] = ["com.tinyspeck.slackmacgap", "com.slack.Slack"];
 const SEARCH_DEPTH_LIMIT: usize = 14;
 const TEXT_DEPTH_LIMIT: usize = 12;
 const NODE_LIMIT: usize = 240;
@@ -47,10 +46,6 @@ struct ScoredElement {
     element: CFRetained<AXUIElement>,
     score: usize,
     depth: usize,
-}
-
-pub(crate) fn supports_bundle_id(bundle_id: &str) -> bool {
-    SLACK_BUNDLE_IDS.contains(&bundle_id)
 }
 
 pub(crate) fn collect_visible_text(focused_window: &AXUIElement) -> Result<String, CaptureError> {
@@ -309,14 +304,7 @@ fn should_prefer_current_candidate(
 
 #[cfg(test)]
 mod tests {
-    use super::{ATTRIBUTE_TEXT_LIMIT, sanitize_text, supports_bundle_id, text_weight};
-
-    #[test]
-    fn slack_bundle_ids_are_supported() {
-        assert!(supports_bundle_id("com.tinyspeck.slackmacgap"));
-        assert!(supports_bundle_id("com.slack.Slack"));
-        assert!(!supports_bundle_id("com.apple.Safari"));
-    }
+    use super::{ATTRIBUTE_TEXT_LIMIT, sanitize_text, text_weight};
 
     #[test]
     fn sanitize_text_trims_and_truncates_unicode_safely() {

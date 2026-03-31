@@ -1,4 +1,10 @@
 #[cfg(target_os = "macos")]
+mod app_profile;
+#[cfg(target_os = "macos")]
+mod apple_script;
+#[cfg(target_os = "macos")]
+mod ax;
+#[cfg(target_os = "macos")]
 mod browser_url;
 #[cfg(target_os = "macos")]
 mod handlers;
@@ -6,6 +12,8 @@ mod handlers;
 mod platform;
 #[cfg(target_os = "macos")]
 mod runtime;
+#[cfg(target_os = "macos")]
+mod sanitize;
 #[cfg(target_os = "macos")]
 mod slack;
 #[cfg(target_os = "macos")]

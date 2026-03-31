@@ -1,26 +1,18 @@
 #![cfg(target_os = "macos")]
 
-use objc2::AnyThread;
-use objc2_foundation::{NSAppleScript, NSString};
+use crate::{app_profile::AppProfile, apple_script};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct BrowserUrlResolver;
 
 impl BrowserUrlResolver {
-    pub fn supports_bundle_id(self, bundle_id: &str) -> bool {
-        matches!(
-            bundle_id,
-            "com.apple.Safari"
-                | "com.google.Chrome"
-                | "company.thebrowser.Browser"
-                | "com.brave.Browser"
-                | "com.microsoft.edgemac"
-        )
+    pub fn supports_profile(self, profile: AppProfile) -> bool {
+        profile.is_browser()
     }
 
-    pub fn current_url(self, bundle_id: &str, _window_title: &str) -> Option<String> {
-        let script = match bundle_id {
-            "com.apple.Safari" => Some(
+    pub fn current_url(self, profile: AppProfile) -> Option<String> {
+        let script = match profile {
+            AppProfile::Safari => Some(
                 r#"
                 tell application "Safari"
                     if (count of windows) is 0 then return ""
@@ -29,61 +21,38 @@ impl BrowserUrlResolver {
                 "#,
             )
             .map(str::to_string),
-            "com.google.Chrome"
-            | "company.thebrowser.Browser"
-            | "com.brave.Browser"
-            | "com.microsoft.edgemac" => Some(format!(
-                r#"
+            AppProfile::Chrome | AppProfile::Arc | AppProfile::Brave | AppProfile::Edge => {
+                let bundle_id = profile.browser_bundle_id()?;
+                Some(format!(
+                    r#"
                 tell application id "{bundle_id}"
                     if (count of windows) is 0 then return ""
                     return URL of active tab of front window
                 end tell
                 "#
-            )),
+                ))
+            }
             _ => None,
         }?;
 
-        self.run(&script)
+        apple_script::run(&script)
     }
 
-    pub fn front_window_is_private(self, bundle_id: &str) -> Option<bool> {
-        let script = match bundle_id {
-            "com.google.Chrome"
-            | "company.thebrowser.Browser"
-            | "com.brave.Browser"
-            | "com.microsoft.edgemac" => Some(format!(
-                r#"
-                tell application id "{bundle_id}"
-                    if (count of windows) is 0 then return ""
-                    return mode of front window
-                end tell
-                "#
-            )),
-            _ => None,
-        }?;
-
-        self.run(&script)
-            .and_then(|value| parse_private_window_mode(&value))
-    }
-
-    fn run(self, source: &str) -> Option<String> {
-        let source = NSString::from_str(source);
-        let script = NSAppleScript::initWithSource(NSAppleScript::alloc(), &source)?;
-        let mut error = None;
-        let result = unsafe { script.executeAndReturnError(Some(&mut error)) };
-        if error.is_some() {
+    pub fn front_window_is_private(self, profile: AppProfile) -> Option<bool> {
+        if !profile.supports_private_window_detection() {
             return None;
         }
+        let bundle_id = profile.browser_bundle_id()?;
+        let script = format!(
+            r#"
+            tell application id "{bundle_id}"
+                if (count of windows) is 0 then return ""
+                return mode of front window
+            end tell
+            "#
+        );
 
-        result.stringValue().and_then(|value| {
-            let value = value.to_string();
-            let trimmed = value.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed.to_string())
-            }
-        })
+        apple_script::run(&script).and_then(|value| parse_private_window_mode(&value))
     }
 }
 

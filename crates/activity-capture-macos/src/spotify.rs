@@ -1,13 +1,11 @@
 #![cfg(target_os = "macos")]
 
 use hypr_activity_capture_interface::CaptureError;
-use objc2::AnyThread;
-use objc2_foundation::{NSAppleScript, NSString};
 
-use crate::platform::merge_fragments;
+use crate::{apple_script, ax::merge_fragments};
 
-const SPOTIFY_BUNDLE_ID: &str = "com.spotify.client";
 const FIELD_LIMIT: usize = 300;
+const SPOTIFY_BUNDLE_ID: &str = "com.spotify.client";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct NowPlaying {
@@ -15,10 +13,6 @@ struct NowPlaying {
     track: Option<String>,
     artist: Option<String>,
     album: Option<String>,
-}
-
-pub(crate) fn supports_bundle_id(bundle_id: &str) -> bool {
-    bundle_id == SPOTIFY_BUNDLE_ID
 }
 
 pub(crate) fn collect_visible_text() -> Result<String, CaptureError> {
@@ -88,37 +82,12 @@ fn sanitize_text(value: &str) -> Option<String> {
 }
 
 fn run_script(source: &str) -> Option<String> {
-    let source = NSString::from_str(source);
-    let script = NSAppleScript::initWithSource(NSAppleScript::alloc(), &source)?;
-    let mut error = None;
-    let result = unsafe { script.executeAndReturnError(Some(&mut error)) };
-    if error.is_some() {
-        return None;
-    }
-
-    result.stringValue().and_then(|value| {
-        let value = value.to_string();
-        let trimmed = value.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_string())
-        }
-    })
+    apple_script::run(source)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        FIELD_LIMIT, NowPlaying, format_visible_text, parse_now_playing, sanitize_text,
-        supports_bundle_id,
-    };
-
-    #[test]
-    fn spotify_bundle_id_is_supported() {
-        assert!(supports_bundle_id("com.spotify.client"));
-        assert!(!supports_bundle_id("com.apple.Music"));
-    }
+    use super::{FIELD_LIMIT, NowPlaying, format_visible_text, parse_now_playing, sanitize_text};
 
     #[test]
     fn parse_now_playing_reads_track_metadata() {
