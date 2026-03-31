@@ -37,9 +37,8 @@ import { useAuth } from "~/auth";
 import { useBillingAccess } from "~/auth/billing";
 import { env } from "~/env";
 import { configureProSettings } from "~/shared/config/configure-pro-settings";
+import { buildWebAppUrl } from "~/shared/utils";
 import * as settings from "~/store/tinybase/store/settings";
-
-const WEB_APP_BASE_URL = env.VITE_APP_URL ?? "http://localhost:3000";
 const ACCOUNT_FEATURES = [
   {
     label: "Cloud Services",
@@ -299,7 +298,7 @@ function PlanBillingSection({
 
     const isUpgrade = action.style === "upgrade";
 
-    const handleClick = () => {
+    const handleClick = async () => {
       if (action.label === "Start free trial") {
         startTrialMutation.mutate();
         return;
@@ -312,13 +311,17 @@ function PlanBillingSection({
       });
 
       if (isPaid && action.targetPlan) {
-        openUrl(
-          `${WEB_APP_BASE_URL}/app/switch-plan?targetPlan=${action.targetPlan}&targetPeriod=monthly`,
-        );
+        const url = await buildWebAppUrl("/app/switch-plan", {
+          targetPlan: action.targetPlan,
+          targetPeriod: "monthly",
+        });
+        openUrl(url);
       } else {
-        openUrl(
-          `${WEB_APP_BASE_URL}/app/checkout?plan=${action.targetPlan}&period=monthly`,
-        );
+        const url = await buildWebAppUrl("/app/checkout", {
+          plan: action.targetPlan,
+          period: "monthly",
+        });
+        openUrl(url);
       }
     };
 
@@ -375,7 +378,10 @@ function PlanBillingSection({
         {isPaid && (
           <button
             type="button"
-            onClick={() => openUrl(`${WEB_APP_BASE_URL}/app/account`)}
+            onClick={async () => {
+              const url = await buildWebAppUrl("/app/portal");
+              openUrl(url);
+            }}
             className="text-xs text-neutral-500 transition-colors hover:text-neutral-700"
           >
             Manage billing

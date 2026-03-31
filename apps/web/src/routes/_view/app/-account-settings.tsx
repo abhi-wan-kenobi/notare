@@ -26,7 +26,7 @@ export function AccountSettingsCard() {
 
   const manageBillingMutation = useMutation({
     mutationFn: async () => {
-      const { url } = await createPortalSession();
+      const { url } = await createPortalSession({ data: {} });
       if (url) {
         window.location.href = url;
       }

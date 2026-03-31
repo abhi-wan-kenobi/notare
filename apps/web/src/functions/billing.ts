@@ -57,6 +57,14 @@ const getStripeCustomerIdForUser = async (
   return stripeCustomerId;
 };
 
+const getBillingReturnUrl = (scheme?: z.infer<typeof desktopSchemeSchema>) => {
+  if (scheme) {
+    return `${env.VITE_APP_URL}/callback/billing?scheme=${scheme}`;
+  }
+
+  return `${env.VITE_APP_URL}/app/account`;
+};
+
 const createCheckoutSessionInput = z.object({
   period: z.enum(["monthly", "yearly"]),
   plan: z.enum(["lite", "pro"]).default("pro"),
@@ -96,7 +104,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       if (activeSubscription) {
         const portalSession = await stripe.billingPortal.sessions.create({
           customer: stripeCustomerId,
-          return_url: `${env.VITE_APP_URL}/app/account`,
+          return_url: getBillingReturnUrl(data.scheme),
         });
         return { url: portalSession.url };
       }
@@ -140,9 +148,13 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       successParams.set("scheme", data.scheme);
     }
 
+    const successUrl = data.scheme
+      ? getBillingReturnUrl(data.scheme)
+      : `${env.VITE_APP_URL}/app/account?${successParams.toString()}`;
+
     const checkout = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
-      success_url: `${env.VITE_APP_URL}/app/account?${successParams.toString()}`,
+      success_url: successUrl,
       cancel_url: `${env.VITE_APP_URL}/app/account`,
       line_items: [
         {
@@ -211,9 +223,7 @@ export const createPlanSwitchSession = createServerFn({ method: "POST" })
           ? requireEnv(env.STRIPE_YEARLY_PRICE_ID, "STRIPE_YEARLY_PRICE_ID")
           : requireEnv(env.STRIPE_MONTHLY_PRICE_ID, "STRIPE_MONTHLY_PRICE_ID");
 
-    const returnUrl = data.scheme
-      ? `${env.VITE_APP_URL}/app/account?scheme=${data.scheme}`
-      : `${env.VITE_APP_URL}/app/account`;
+    const returnUrl = getBillingReturnUrl(data.scheme);
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
@@ -239,8 +249,13 @@ export const createPlanSwitchSession = createServerFn({ method: "POST" })
     return { url: portalSession.url };
   });
 
-export const createPortalSession = createServerFn({ method: "POST" }).handler(
-  async () => {
+const createPortalSessionInput = z.object({
+  scheme: desktopSchemeSchema.optional(),
+});
+
+export const createPortalSession = createServerFn({ method: "POST" })
+  .inputValidator(createPortalSessionInput)
+  .handler(async ({ data }) => {
     const supabase = getSupabaseServerClient();
     const {
       data: { user },
@@ -263,12 +278,11 @@ export const createPortalSession = createServerFn({ method: "POST" }).handler(
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
-      return_url: `${env.VITE_APP_URL}/app/account`,
+      return_url: getBillingReturnUrl(data.scheme),
     });
 
     return { url: portalSession.url };
-  },
-);
+  });
 
 export const syncAfterSuccess = createServerFn({ method: "POST" }).handler(
   async () => {
