@@ -124,6 +124,14 @@ pub async fn window_set_frame_animated(
         .map_err(|e| e.to_string())?;
 
     if let Some(screen) = visible_frame {
+        if matches!(window, AppWindow::Main) {
+            if let Some(window_handle) = window.get(&app) {
+                window_handle
+                    .set_always_on_top(true)
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+
         let margin = 8.0_f64;
         let (x, y) = match anchor {
             Anchor::TopRight => (
@@ -192,8 +200,16 @@ pub async fn window_restore_frame_animated(
 
     if let Some(saved) = saved {
         app.windows()
-            .set_frame_animated(window, saved)
+            .set_frame_animated(window.clone(), saved)
             .map_err(|e| e.to_string())?;
+    }
+
+    if matches!(window, AppWindow::Main) {
+        if let Some(window_handle) = window.get(&app) {
+            window_handle
+                .set_always_on_top(false)
+                .map_err(|e| e.to_string())?;
+        }
     }
 
     Ok(())

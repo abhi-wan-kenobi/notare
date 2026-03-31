@@ -22,6 +22,7 @@ import {
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as miscCommands } from "@hypr/plugin-misc";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
+import { openUrlWithInstruction } from "@hypr/plugin-windows";
 
 import { supabase } from "./client";
 import { clearAuthStorage, isFatalSessionError } from "./errors";
@@ -276,7 +277,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async () => {
     const url = await buildWebAppUrl("/auth");
-    await openerCommands.openUrl(url, null);
+    await openUrlWithInstruction(url, "sign-in", (u) =>
+      openerCommands.openUrl(u, null),
+    );
   }, []);
 
   const signOut = useCallback(async () => {

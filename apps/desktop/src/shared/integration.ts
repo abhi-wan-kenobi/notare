@@ -1,4 +1,5 @@
 import { commands as openerCommands } from "@hypr/plugin-opener2";
+import { openUrlWithInstruction } from "@hypr/plugin-windows";
 
 import { buildWebAppUrl } from "~/shared/utils";
 
@@ -20,5 +21,7 @@ export async function openIntegrationUrl(
     params.connection_id = connectionId;
   }
   const url = await buildWebAppUrl("/app/integration", params);
-  await openerCommands.openUrl(url, null);
+  await openUrlWithInstruction(url, "integration", (u) =>
+    openerCommands.openUrl(u, null),
+  );
 }

@@ -12,6 +12,7 @@ import { canStartTrial as canStartTrialApi } from "@hypr/api-client";
 import { createClient } from "@hypr/api-client/client";
 import { commands as authCommands } from "@hypr/plugin-auth";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
+import { openUrlWithInstruction } from "@hypr/plugin-windows";
 import {
   type BillingInfo,
   deriveBillingInfo,
@@ -91,7 +92,9 @@ export function BillingProvider({ children }: { children: ReactNode }) {
 
   const upgradeToPro = useCallback(async () => {
     const url = await buildWebAppUrl("/app/checkout", { period: "monthly" });
-    void openerCommands.openUrl(url, null);
+    await openUrlWithInstruction(url, "billing", (u) =>
+      openerCommands.openUrl(u, null),
+    );
   }, []);
 
   useEffect(() => {

@@ -143,6 +143,18 @@ describe("Basic Tab Actions", () => {
     ]);
   });
 
+  test("openNew preserves account settings tab requests", () => {
+    useTabs.getState().openNew({ type: "settings", state: { tab: "account" } });
+
+    expect(useTabs.getState()).toHaveCurrentTab({
+      type: "settings",
+      state: { tab: "account" },
+    });
+    expect(useTabs.getState()).toMatchTabsInOrder([
+      { type: "settings", active: true, state: { tab: "account" } },
+    ]);
+  });
+
   test("select toggles active flag without changing history", () => {
     const tabA = createSessionTab({ active: true });
     const tabB = createSessionTab({ active: false });

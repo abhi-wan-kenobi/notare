@@ -16,6 +16,7 @@ import {
 import { createClient } from "@hypr/api-client/client";
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
+import { openUrlWithInstruction } from "@hypr/plugin-windows";
 import {
   getActionForTier,
   PlanFeatureList,
@@ -24,7 +25,6 @@ import {
   type TierAction,
 } from "@hypr/pricing";
 import { Button } from "@hypr/ui/components/ui/button";
-import { Input } from "@hypr/ui/components/ui/input";
 import { cn } from "@hypr/utils";
 
 import { useAuth } from "~/auth";
@@ -62,7 +62,6 @@ export function SettingsAccount() {
 
   const isAuthenticated = !!auth?.session;
   const [isPending, setIsPending] = useState(false);
-  const [callbackUrl, setCallbackUrl] = useState("");
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -109,26 +108,10 @@ export function SettingsAccount() {
                 </Button>
               }
             >
-              <div className="flex flex-col gap-3">
-                <p className="text-xs text-neutral-500">
-                  Having trouble? Paste the callback URL manually.
-                </p>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    type="text"
-                    className="flex-1 font-mono text-xs"
-                    placeholder="hyprnote://deeplink/auth?access_token=..."
-                    value={callbackUrl}
-                    onChange={(e) => setCallbackUrl(e.target.value)}
-                  />
-                  <Button
-                    onClick={() => auth?.handleAuthCallback(callbackUrl)}
-                    disabled={!callbackUrl}
-                  >
-                    Submit
-                  </Button>
-                </div>
-              </div>
+              <p className="text-xs text-neutral-500">
+                If the browser does not reopen Char, use the paste-link fallback
+                in the sign-in instruction window.
+              </p>
             </Container>
           </div>
         </div>
@@ -257,9 +240,13 @@ function PlanBillingSection({
     },
   });
 
-  const openUrl = useCallback((url: string) => {
-    void openerCommands.openUrl(url, null);
-  }, []);
+  const openBillingUrl = useCallback(
+    (url: string) =>
+      openUrlWithInstruction(url, "billing", (u) =>
+        openerCommands.openUrl(u, null),
+      ),
+    [],
+  );
 
   const planLabel =
     currentTier === "free" ? "Free" : currentTier === "lite" ? "Lite" : "Pro";
@@ -293,7 +280,7 @@ function PlanBillingSection({
               type="button"
               onClick={async () => {
                 const url = await buildWebAppUrl("/app/portal");
-                openUrl(url);
+                void openBillingUrl(url);
               }}
               className="text-[11px] text-neutral-400 transition-colors hover:text-neutral-600"
             >
@@ -323,13 +310,13 @@ function PlanBillingSection({
           targetPlan: action.targetPlan,
           targetPeriod: "monthly",
         });
-        openUrl(url);
+        void openBillingUrl(url);
       } else {
         const url = await buildWebAppUrl("/app/checkout", {
           plan: action.targetPlan,
           period: "monthly",
         });
-        openUrl(url);
+        void openBillingUrl(url);
       }
     };
 
@@ -388,7 +375,7 @@ function PlanBillingSection({
             type="button"
             onClick={async () => {
               const url = await buildWebAppUrl("/app/portal");
-              openUrl(url);
+              void openBillingUrl(url);
             }}
             className="text-xs text-neutral-500 transition-colors hover:text-neutral-700"
           >

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useScheduleTaskRunCallback } from "tinytick/ui-react";
 
 import { events as deeplink2Events } from "@hypr/plugin-deeplink2";
+import { dismissInstruction } from "@hypr/plugin-windows";
 
 import { useAuth } from "~/auth";
 import { CALENDAR_SYNC_TASK_ID } from "~/services/calendar";
@@ -42,6 +43,7 @@ export function useDeeplinkHandler() {
         if (auth) {
           void auth.refreshSession();
         }
+        void dismissInstruction();
       } else if (payload.to === "/integration/callback") {
         const { integration_id, status, return_to } = payload.search;
         if (status === "success") {
@@ -54,11 +56,14 @@ export function useDeeplinkHandler() {
             }, delay);
             timeoutIds.add(timeoutId);
           }
-          if (return_to === "calendar") {
-            openNew({ type: "calendar" });
-          } else if (return_to === "todo") {
-            openNew({ type: "settings", state: { tab: "todo" } });
-          }
+
+          void dismissInstruction().then(() => {
+            if (return_to === "calendar") {
+              openNew({ type: "calendar" });
+            } else if (return_to === "todo") {
+              openNew({ type: "settings", state: { tab: "todo" } });
+            }
+          });
         }
       }
     });

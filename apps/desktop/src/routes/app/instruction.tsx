@@ -1,22 +1,14 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { commands as windowsCommands } from "@hypr/plugin-windows";
+import { dismissInstruction } from "@hypr/plugin-windows";
+import { Button } from "@hypr/ui/components/ui/button";
+import { Input } from "@hypr/ui/components/ui/input";
 
-const INSTRUCTIONS = {
-  "sign-in": {
-    title: "Sign in to your account",
-    description: "Complete sign-in in your browser, then return to Char.",
-  },
-  "calendar-connect": {
-    title: "Connect your calendar",
-    description:
-      "Authorize calendar access in your browser, then return to Char.",
-  },
-} satisfies Record<string, { title: string; description: string }>;
+import { useAuth } from "~/auth";
 
-export type InstructionType = keyof typeof INSTRUCTIONS;
+type InstructionType = "sign-in" | "billing" | "integration";
 
 export const Route = createFileRoute("/app/instruction")({
   validateSearch: (search): { type: InstructionType } => ({
@@ -25,17 +17,105 @@ export const Route = createFileRoute("/app/instruction")({
   component: InstructionRoute,
 });
 
-function InstructionRoute() {
-  const { type } = Route.useSearch();
-  const { title, description } = INSTRUCTIONS[type] ?? INSTRUCTIONS["sign-in"];
-  const navigate = useNavigate();
+function useHandleBack() {
+  return useCallback(() => dismissInstruction(), []);
+}
 
-  const handleBack = useCallback(async () => {
-    await navigate({ to: "/app/main" });
-    await new Promise((resolve) => window.setTimeout(resolve, 100));
-    await windowsCommands.windowRestoreFrameAnimated({ type: "main" });
-  }, [navigate]);
+function SignInInstruction({ onBack }: { onBack: () => void }) {
+  const auth = useAuth();
+  const [callbackUrl, setCallbackUrl] = useState("");
+  const [showCallbackInput, setShowCallbackInput] = useState(false);
 
+  useEffect(() => {
+    if (!auth?.session) {
+      return;
+    }
+
+    onBack();
+  }, [auth?.session, onBack]);
+
+  const handleManualCallback = useCallback(async () => {
+    if (!callbackUrl) {
+      return;
+    }
+
+    await auth?.handleAuthCallback(callbackUrl);
+  }, [auth, callbackUrl]);
+
+  return (
+    <InstructionLayout
+      title="Sign in to your account"
+      description="Complete sign-in in your browser, then return to Char."
+      onBack={onBack}
+    >
+      <div className="flex w-full max-w-[260px] flex-col items-center gap-3">
+        {showCallbackInput ? (
+          <>
+            <div className="flex w-full flex-col gap-2">
+              <Input
+                type="text"
+                className="font-mono text-xs"
+                placeholder="hyprnote://deeplink/auth?access_token=..."
+                value={callbackUrl}
+                onChange={(e) => setCallbackUrl(e.target.value)}
+              />
+              <Button
+                onClick={() => void handleManualCallback()}
+                disabled={!callbackUrl}
+              >
+                Submit
+              </Button>
+            </div>
+            <p className="text-center text-xs text-neutral-500">
+              Paste the browser URL here if the button in your browser did not
+              reopen Char.
+            </p>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowCallbackInput(true)}
+            className="text-xs text-neutral-500 underline underline-offset-2 hover:text-neutral-700"
+          >
+            Button not working? Paste the link instead
+          </button>
+        )}
+      </div>
+    </InstructionLayout>
+  );
+}
+
+function BillingInstruction({ onBack }: { onBack: () => void }) {
+  return (
+    <InstructionLayout
+      title="Complete your purchase"
+      description="Finish checkout in your browser, then return to Char."
+      onBack={onBack}
+    />
+  );
+}
+
+function IntegrationInstruction({ onBack }: { onBack: () => void }) {
+  return (
+    <InstructionLayout
+      title="Connect your integration"
+      description="Authorize access in your browser, then return to Char."
+      onBack={onBack}
+    />
+  );
+}
+
+function InstructionLayout({
+  title,
+  description,
+  onBack,
+  children,
+}: {
+  title: string;
+  description: string;
+  onBack: () => void;
+  children?: React.ReactNode;
+}) {
   return (
     <div className="flex h-full flex-col select-none">
       <div
@@ -44,7 +124,7 @@ function InstructionRoute() {
       >
         <button
           type="button"
-          onClick={() => void handleBack()}
+          onClick={onBack}
           className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -71,7 +151,24 @@ function InstructionRoute() {
           <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-400 [animation-delay:-0.15s]" />
           <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-neutral-400" />
         </div>
+
+        {children}
       </div>
     </div>
   );
+}
+
+function InstructionRoute() {
+  const { type } = Route.useSearch();
+  const handleBack = useHandleBack();
+  const onBack = useCallback(() => void handleBack(), [handleBack]);
+
+  switch (type) {
+    case "sign-in":
+      return <SignInInstruction onBack={onBack} />;
+    case "billing":
+      return <BillingInstruction onBack={onBack} />;
+    case "integration":
+      return <IntegrationInstruction onBack={onBack} />;
+  }
 }
