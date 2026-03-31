@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CheckCircle2, Construction, XCircle } from "lucide-react";
 
+import { MARKETING_PLAN_TIERS, type MarketingPlanData } from "@hypr/pricing";
+import { PlanFeatureList } from "@hypr/pricing/ui";
 import { cn } from "@hypr/utils";
 
 import { Image } from "@/components/image";
@@ -9,104 +10,6 @@ import { SlashSeparator } from "@/components/slash-separator";
 export const Route = createFileRoute("/_view/pricing")({
   component: Component,
 });
-
-interface PricingPlan {
-  name: string;
-  price: { monthly: number; yearly: number | null } | null;
-  description: string;
-  popular?: boolean;
-  features: Array<{
-    label: string;
-    included: boolean | "partial";
-    tooltip?: string;
-  }>;
-}
-
-const pricingPlans: PricingPlan[] = [
-  {
-    name: "Free",
-    price: null,
-    description:
-      "Fully functional with your own API keys. Perfect for individuals who want complete control.",
-    features: [
-      { label: "On-device Transcription", included: true },
-      { label: "Save Audio Recordings", included: true },
-      { label: "Audio Player", included: true },
-      { label: "Bring Your Own Key", included: true },
-      { label: "Export to Various Formats", included: true },
-      {
-        label: "Custom Default Folder",
-        included: true,
-        tooltip: "Move your default folder location to anywhere you prefer.",
-      },
-      { label: "Chat", included: true },
-      { label: "Contacts View", included: true },
-      { label: "Calendar View", included: true },
-      { label: "Transcript Editor", included: "partial" },
-      { label: "Templates", included: "partial" },
-      { label: "Shortcuts", included: "partial" },
-      { label: "Cloud Services (STT & LLM)", included: false },
-      { label: "Speaker Identification", included: false },
-    ],
-  },
-  {
-    name: "Lite",
-    price: {
-      monthly: 8,
-      yearly: null,
-    },
-    description:
-      "Unlimited cloud transcription and AI models without the complexity. No API keys needed — just sign in and go.",
-    features: [
-      { label: "Everything in Free", included: true },
-      { label: "Cloud Services (STT & LLM)", included: true },
-      { label: "Speaker Identification", included: "partial" },
-      { label: "Change Playback Rates", included: false },
-      { label: "Integrations", included: false },
-      { label: "Advanced Templates", included: false },
-      { label: "Folders View", included: false },
-      { label: "Cloud Sync", included: false },
-      { label: "Shareable Links", included: false },
-    ],
-  },
-  {
-    name: "Pro",
-    price: {
-      monthly: 25,
-      yearly: 250,
-    },
-    description:
-      "Everything in Lite, plus advanced sharing and team features out of the box.",
-    popular: true,
-    features: [
-      { label: "Everything in Lite", included: true },
-      { label: "Change Playback Rates", included: true },
-      {
-        label: "Integrations",
-        included: true,
-        tooltip:
-          "Google Calendar is available now. Additional integrations are in progress.",
-      },
-      { label: "Advanced Templates", included: "partial" },
-      { label: "Folders View", included: "partial" },
-      {
-        label: "Connect to OpenClaw",
-        included: "partial",
-        tooltip: "Select which notes to sync",
-      },
-      {
-        label: "Cloud Sync",
-        included: "partial",
-        tooltip: "Select which notes to sync",
-      },
-      {
-        label: "Shareable Links",
-        included: "partial",
-        tooltip: "DocSend-like: view tracking, expiration, revocation",
-      },
-    ],
-  },
-];
 
 function Component() {
   return (
@@ -135,7 +38,8 @@ function HeroSection() {
           Pricing
         </h1>
         <p className="text-lg text-neutral-600 sm:text-xl">
-          Start for free, upgrade when you need cloud features.
+          Download the app, then upgrade in desktop when you need cloud
+          features.
         </p>
       </div>
     </section>
@@ -146,15 +50,15 @@ function PricingCardsSection() {
   return (
     <section className="laptop:px-0 px-4 py-16">
       <div className="mx-auto grid max-w-5xl grid-cols-1 items-stretch gap-8 md:grid-cols-3">
-        {pricingPlans.map((plan) => (
-          <PricingCard key={plan.name} plan={plan} />
+        {MARKETING_PLAN_TIERS.map((plan) => (
+          <PricingCard key={plan.id} plan={plan} />
         ))}
       </div>
     </section>
   );
 }
 
-function PricingCard({ plan }: { plan: PricingPlan }) {
+function PricingCard({ plan }: { plan: MarketingPlanData }) {
   return (
     <div
       className={cn([
@@ -205,87 +109,20 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3">
-          {plan.features.map((feature, idx) => {
-            const IconComponent =
-              feature.included === true
-                ? CheckCircle2
-                : feature.included === "partial"
-                  ? Construction
-                  : XCircle;
-            const hoverTitle =
-              feature.included === "partial"
-                ? "Currently in development"
-                : undefined;
-
-            return (
-              <div
-                key={idx}
-                className="flex items-start gap-3"
-                title={hoverTitle}
-              >
-                <IconComponent
-                  className={cn([
-                    "mt-0.5 size-4.5 shrink-0",
-                    feature.included === true
-                      ? "text-green-700"
-                      : feature.included === "partial"
-                        ? "text-yellow-600"
-                        : "text-red-500",
-                  ])}
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn([
-                        "text-sm",
-                        feature.included === false
-                          ? "text-neutral-700"
-                          : "text-neutral-900",
-                      ])}
-                    >
-                      {feature.label}
-                    </span>
-                  </div>
-                  {feature.tooltip && (
-                    <div className="mt-0.5 text-xs text-neutral-500 italic">
-                      {feature.tooltip}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <PlanFeatureList features={plan.features} />
 
         <div className="mt-auto pt-8">
-          {plan.price ? (
-            <Link
-              to="/app/checkout/"
-              search={{
-                plan: plan.name.toLowerCase() as "lite" | "pro",
-                period: "monthly",
-              }}
-              className={cn([
-                "flex h-10 w-full cursor-pointer items-center justify-center text-sm font-medium transition-all",
-                plan.popular
-                  ? "rounded-full bg-linear-to-t from-stone-600 to-stone-500 text-white shadow-md hover:scale-[102%] hover:shadow-lg active:scale-[98%]"
-                  : "rounded-full bg-linear-to-t from-neutral-200 to-neutral-100 text-neutral-900 shadow-xs hover:scale-[102%] hover:shadow-md active:scale-[98%]",
-              ])}
-            >
-              Get Started
-            </Link>
-          ) : (
-            <Link
-              to="/download/"
-              className={cn([
-                "flex h-10 w-full cursor-pointer items-center justify-center text-sm font-medium transition-all",
-                "rounded-full bg-linear-to-t from-neutral-200 to-neutral-100 text-neutral-900 shadow-xs hover:scale-[102%] hover:shadow-md active:scale-[98%]",
-              ])}
-            >
-              Download for free
-            </Link>
-          )}
+          <Link
+            to="/download/"
+            className={cn([
+              "flex h-10 w-full cursor-pointer items-center justify-center text-sm font-medium transition-all",
+              plan.popular
+                ? "rounded-full bg-linear-to-t from-stone-600 to-stone-500 text-white shadow-md hover:scale-[102%] hover:shadow-lg active:scale-[98%]"
+                : "rounded-full bg-linear-to-t from-neutral-200 to-neutral-100 text-neutral-900 shadow-xs hover:scale-[102%] hover:shadow-md active:scale-[98%]",
+            ])}
+          >
+            {plan.price ? "Get Started on Desktop" : "Download for free"}
+          </Link>
         </div>
       </div>
     </div>

@@ -1,12 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import {
-  CheckCircle2,
-  Construction,
-  Puzzle,
-  RefreshCw,
-  Sparkle,
-  XCircle,
-} from "lucide-react";
+import { Puzzle, RefreshCw, Sparkle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   type ReactNode,
@@ -25,6 +18,7 @@ import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
 import {
   getActionForTier,
+  PlanFeatureList,
   PLAN_TIERS,
   type PlanTier,
   type TierAction,
@@ -290,8 +284,22 @@ function PlanBillingSection({
         return <span className="text-xs text-neutral-400">{action.label}</span>;
       }
       return (
-        <div className="flex h-8 items-center justify-center rounded-full border border-neutral-200 bg-neutral-50 text-xs text-neutral-500">
-          {action.label}
+        <div className="flex flex-col items-center gap-1">
+          <div className="flex h-8 w-full items-center justify-center rounded-full border border-neutral-200 bg-neutral-50 text-xs text-neutral-500">
+            {action.label}
+          </div>
+          {isPaid && (
+            <button
+              type="button"
+              onClick={async () => {
+                const url = await buildWebAppUrl("/app/portal");
+                openUrl(url);
+              }}
+              className="text-[11px] text-neutral-400 transition-colors hover:text-neutral-600"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       );
     }
@@ -476,48 +484,8 @@ function PlanTierList({
                   )}
                 </div>
 
-                <div className="mb-3 flex flex-col gap-1">
-                  {tier.features.map((feature) => {
-                    const Icon =
-                      feature.included === true
-                        ? CheckCircle2
-                        : feature.included === "partial"
-                          ? Construction
-                          : XCircle;
-                    const hoverTitle =
-                      feature.included === "partial"
-                        ? "Currently in development"
-                        : undefined;
-
-                    return (
-                      <div
-                        key={feature.label}
-                        className="flex items-start gap-1.5"
-                        title={hoverTitle}
-                      >
-                        <Icon
-                          className={cn([
-                            "mt-0.5 size-3.5 shrink-0",
-                            feature.included === true
-                              ? "text-green-700"
-                              : feature.included === "partial"
-                                ? "text-yellow-600"
-                                : "text-red-500",
-                          ])}
-                        />
-                        <span
-                          className={cn([
-                            "text-xs",
-                            feature.included === false
-                              ? "text-neutral-700"
-                              : "text-neutral-900",
-                          ])}
-                        >
-                          {feature.label}
-                        </span>
-                      </div>
-                    );
-                  })}
+                <div className="mb-3">
+                  <PlanFeatureList features={tier.features} dense />
                 </div>
 
                 <div className="mt-auto">{renderAction(action, false)}</div>

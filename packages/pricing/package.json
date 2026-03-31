@@ -4,7 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./ui": "./src/plan-grid.tsx"
+    "./ui": "./src/plan-feature-list.tsx"
   },
   "dependencies": {
     "@hypr/utils": "workspace:^"

@@ -73,6 +73,20 @@ function NavigationCard() {
     void windowsCommands.windowShow({ type: "control" });
   }, []);
 
+  const handleShowInstruction = useCallback(async () => {
+    await windowsCommands.windowSaveFrame({ type: "main" });
+    await windowsCommands.windowEmitNavigate(
+      { type: "main" },
+      { path: "/app/instruction", search: { type: "sign-in" } },
+    );
+    await windowsCommands.windowSetFrameAnimated(
+      { type: "main" },
+      "TopRight",
+      340,
+      500,
+    );
+  }, []);
+
   const handleShowChangelog = useCallback(() => {
     const latestVersion = getLatestVersion();
     if (latestVersion) {
@@ -124,6 +138,19 @@ function NavigationCard() {
           ])}
         >
           Control
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleShowInstruction()}
+          className={cn([
+            "w-full rounded-md px-2.5 py-1.5",
+            "text-left text-xs font-medium",
+            "border border-neutral-200 text-neutral-700",
+            "cursor-pointer transition-colors",
+            "hover:border-neutral-300 hover:bg-neutral-50",
+          ])}
+        >
+          Instruction
         </button>
         <button
           type="button"
