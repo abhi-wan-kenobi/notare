@@ -113,6 +113,7 @@ export async function syncCalendars(
       perConnection.push({ connectionId, calendars: result.data });
     }
 
+    const requestedConnectionIds = new Set(connection_ids);
     const successfulConnectionIds = new Set(
       perConnection.map(({ connectionId }) => connectionId),
     );
@@ -136,14 +137,15 @@ export async function syncCalendars(
         const row = store.getRow("calendars", rowId);
         if (
           row.provider === provider &&
-          successfulConnectionIds.has(row.connection_id as string) &&
-          !incomingKeys.has(
-            getCalendarTrackingKey({
-              provider: row.provider as string | undefined,
-              connectionId: row.connection_id as string | undefined,
-              trackingId: row.tracking_id_calendar as string | undefined,
-            }),
-          )
+          (!requestedConnectionIds.has(row.connection_id as string) ||
+            (successfulConnectionIds.has(row.connection_id as string) &&
+              !incomingKeys.has(
+                getCalendarTrackingKey({
+                  provider: row.provider as string | undefined,
+                  connectionId: row.connection_id as string | undefined,
+                  trackingId: row.tracking_id_calendar as string | undefined,
+                }),
+              )))
         ) {
           disabledCalendarIds.add(rowId);
           store.delRow("calendars", rowId);
