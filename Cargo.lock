@@ -661,16 +661,20 @@ dependencies = [
  "axum 0.8.8",
  "chrono",
  "futures-util",
+ "hex",
+ "hmac",
  "nango",
  "reqwest 0.13.2",
  "sentry",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
  "urlencoding",
  "utoipa",
+ "wiremock",
 ]
 
 [[package]]

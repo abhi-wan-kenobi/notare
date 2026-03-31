@@ -1,5 +1,6 @@
 pub(crate) mod connect;
 pub(crate) mod disconnect;
+pub(crate) mod identity;
 pub(crate) mod status;
 pub(crate) mod webhook;
 pub(crate) mod whoami;
