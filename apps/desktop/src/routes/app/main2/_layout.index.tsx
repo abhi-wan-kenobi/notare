@@ -2,23 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { platform } from "@tauri-apps/plugin-os";
 import { ArrowLeftIcon, ArrowRightIcon, HouseIcon } from "lucide-react";
 import { Reorder } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import { useShallow } from "zustand/shallow";
 
 import { Button } from "@hypr/ui/components/ui/button";
-import {
-  type ImperativePanelHandle,
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@hypr/ui/components/ui/resizable";
 import { cn } from "@hypr/utils";
 
-import { PersistentChatPanel } from "~/chat/components/persistent-chat";
 import { useShell } from "~/contexts/shell";
 import {
+  MainShellBodyFrame,
+  MainShellScaffold,
   MainTabContent,
   MainTabItem,
+  useScrollActiveTabIntoView,
   useMainTabsShortcuts,
 } from "~/shared/main";
 import { useNewNoteAndListen } from "~/shared/main/useNewNote";
@@ -27,12 +23,10 @@ import { type Tab, uniqueIdfromTab, useTabs } from "~/store/zustand/tabs";
 import { useListener } from "~/stt/contexts";
 
 export const Route = createFileRoute("/app/main2/_layout/")({
-  component: Component,
+  component: Main2Layout,
 });
 
-const CHAT_MIN_WIDTH_PX = 280;
-
-function Component() {
+export function Main2Layout() {
   const currentPlatform = platform();
   const isLinux = currentPlatform === "linux";
   const {
@@ -82,9 +76,6 @@ function Component() {
   );
   const setTabRef = useScrollActiveTabIntoView(visibleTabs);
   const { chat } = useShell();
-  const previousModeRef = useRef(chat.mode);
-  const bodyPanelRef = useRef<ImperativePanelHandle>(null);
-  const chatPanelContainerRef = useRef<HTMLDivElement>(null);
   const stop = useListener((state) => state.stop);
   const isRecording = useListener((state) => {
     return state.live.status === "active" || state.live.status === "finalizing";
@@ -93,22 +84,8 @@ function Component() {
   const isHomeActive = currentTab?.type === "daily";
   const isChatOpen =
     chat.mode === "FloatingOpen" || chat.mode === "RightPanelOpen";
-  const isRightPanelOpen = chat.mode === "RightPanelOpen";
 
   useMainTabsShortcuts();
-
-  useEffect(() => {
-    const isOpeningRightPanel =
-      chat.mode === "RightPanelOpen" &&
-      previousModeRef.current !== "RightPanelOpen";
-
-    if (isOpeningRightPanel && bodyPanelRef.current) {
-      const currentSize = bodyPanelRef.current.getSize();
-      bodyPanelRef.current.resize(currentSize);
-    }
-
-    previousModeRef.current = chat.mode;
-  }, [chat.mode]);
 
   const handleHome = useCallback(() => {
     openNew({ type: "daily" }, { position: "start" });
@@ -152,7 +129,7 @@ function Component() {
   }
 
   return (
-    <div className="flex h-full overflow-hidden bg-stone-50 p-1">
+    <MainShellScaffold>
       <div className="flex h-full min-w-0 flex-1 flex-col">
         <div
           data-tauri-drag-region
@@ -298,74 +275,15 @@ function Component() {
           </div>
         </div>
 
-        <ResizablePanelGroup
-          direction="horizontal"
-          className="flex min-h-0 flex-1 overflow-hidden"
-          autoSaveId="main2-chat"
-        >
-          <ResizablePanel
-            ref={bodyPanelRef}
-            className="min-h-0 flex-1 overflow-hidden"
-          >
-            <div className="h-full min-h-0 overflow-auto">
-              <MainTabContent
-                key={uniqueIdfromTab(currentTab)}
-                tab={currentTab}
-              />
-            </div>
-          </ResizablePanel>
-          {isRightPanelOpen && (
-            <>
-              <ResizableHandle className="w-0" />
-              <ResizablePanel
-                defaultSize={30}
-                minSize={20}
-                maxSize={50}
-                className="min-h-0 overflow-hidden"
-                style={{ minWidth: CHAT_MIN_WIDTH_PX }}
-              >
-                <div
-                  ref={chatPanelContainerRef}
-                  className="mx-2 -mb-1 h-[calc(100%+0.25rem)] min-h-0 overflow-hidden"
-                />
-              </ResizablePanel>
-            </>
-          )}
-        </ResizablePanelGroup>
+        <MainShellBodyFrame autoSaveId="main2-chat">
+          <div className="h-full min-h-0 overflow-auto">
+            <MainTabContent
+              key={uniqueIdfromTab(currentTab)}
+              tab={currentTab}
+            />
+          </div>
+        </MainShellBodyFrame>
       </div>
-      <PersistentChatPanel panelContainerRef={chatPanelContainerRef} />
-    </div>
+    </MainShellScaffold>
   );
-}
-
-function useScrollActiveTabIntoView(tabs: Tab[]) {
-  const tabRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
-  const activeTab = tabs.find((tab) => tab.active);
-  const activeTabKey = activeTab ? uniqueIdfromTab(activeTab) : null;
-
-  useEffect(() => {
-    if (!activeTabKey) {
-      return;
-    }
-
-    const tabElement = tabRefsMap.current.get(activeTabKey);
-    if (!tabElement) {
-      return;
-    }
-
-    tabElement.scrollIntoView({
-      behavior: "smooth",
-      inline: "nearest",
-      block: "nearest",
-    });
-  }, [activeTabKey]);
-
-  return useCallback((tab: Tab, el: HTMLDivElement | null) => {
-    const key = uniqueIdfromTab(tab);
-    if (el) {
-      tabRefsMap.current.set(key, el);
-    } else {
-      tabRefsMap.current.delete(key);
-    }
-  }, []);
 }

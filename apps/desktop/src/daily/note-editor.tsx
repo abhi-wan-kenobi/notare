@@ -4,35 +4,19 @@ import { parseJsonContent } from "@hypr/tiptap/shared";
 
 import { useCalendarData } from "~/calendar/hooks";
 import { type JSONContent, NoteEditor } from "~/editor/session";
+import {
+  getNodeTextContent,
+  mergeLinkedSessionsIntoContent,
+} from "~/editor/session/linked-session-content";
 import { findSessionByEventId } from "~/session/utils";
 import * as main from "~/store/tinybase/store/main";
 import { getOrCreateSessionForEventId } from "~/store/tinybase/store/sessions";
 
 type Store = NonNullable<ReturnType<typeof main.UI.useStore>>;
 
-function getNodeTextContent(node: JSONContent): string {
-  if (typeof node.text === "string") {
-    return node.text;
-  }
-
-  return (node.content ?? []).map(getNodeTextContent).join("");
-}
-
-function buildTextContent(text: string): JSONContent[] | undefined {
-  return text ? [{ type: "text", text }] : undefined;
-}
-
 function getSessionTitle(store: Store, sessionId: string): string {
   const title = store.getCell("sessions", sessionId, "title");
   return typeof title === "string" ? title : "";
-}
-
-function buildSessionNode(sessionId: string, title: string): JSONContent {
-  return {
-    type: "session",
-    attrs: { sessionId },
-    content: buildTextContent(title),
-  };
 }
 
 function resolveEventSessionId(store: Store, eventId: string): string | null {
@@ -55,78 +39,13 @@ function buildInitialContent(
   eventIds: string[],
   sessionIds: string[],
 ): JSONContent {
-  const parsed = parseJsonContent(content as string);
-  const existingContent = parsed.content ?? [];
-  const seenSessionIds = new Set<string>();
-  const linkedSessionNodes: JSONContent[] = [];
-
-  const pushSessionNode = (sessionId: string, preferredTitle?: string) => {
-    if (!sessionId || seenSessionIds.has(sessionId)) {
-      return;
-    }
-
-    seenSessionIds.add(sessionId);
-    linkedSessionNodes.push(
-      buildSessionNode(
-        sessionId,
-        preferredTitle ?? getSessionTitle(store, sessionId),
-      ),
-    );
-  };
-
-  for (const node of existingContent) {
-    if (node.type === "session") {
-      const sessionId = node.attrs?.sessionId;
-      if (typeof sessionId !== "string" || sessionId === "") {
-        continue;
-      }
-
-      pushSessionNode(
-        sessionId,
-        getNodeTextContent(node) || getSessionTitle(store, sessionId),
-      );
-      continue;
-    }
-
-    if (node.type === "event") {
-      const eventId = node.attrs?.eventId;
-      if (typeof eventId !== "string" || eventId === "") {
-        continue;
-      }
-
-      const sessionId = resolveEventSessionId(store, eventId);
-      if (!sessionId) {
-        continue;
-      }
-
-      pushSessionNode(
-        sessionId,
-        getNodeTextContent(node) || getSessionTitle(store, sessionId),
-      );
-    }
-  }
-
-  for (const eventId of eventIds) {
-    const sessionId = resolveEventSessionId(store, eventId);
-    if (sessionId) {
-      pushSessionNode(sessionId);
-    }
-  }
-
-  for (const sessionId of sessionIds) {
-    pushSessionNode(sessionId);
-  }
-
-  const userContent = existingContent.filter(
-    (node) => node.type !== "event" && node.type !== "session",
-  );
-  const merged = [...linkedSessionNodes, ...userContent];
-
-  if (merged.length === 0) {
-    merged.push({ type: "paragraph" });
-  }
-
-  return { type: "doc", content: merged };
+  return mergeLinkedSessionsIntoContent({
+    content: parseJsonContent(content as string),
+    eventIds,
+    sessionIds,
+    resolveEventSessionId: (eventId) => resolveEventSessionId(store, eventId),
+    getSessionTitle: (sessionId) => getSessionTitle(store, sessionId),
+  });
 }
 
 export function DailyNoteEditor({ date }: { date: string }) {
