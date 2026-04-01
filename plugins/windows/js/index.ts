@@ -22,7 +22,7 @@ export async function openUrlWithInstruction(
   await commands.windowSaveFrame({ type: "main" });
   await commands.windowEmitNavigate(
     { type: "main" },
-    { path: "/app/instruction", search: { type: instructionType } },
+    { path: "/app/instruction", search: { type: instructionType, url } },
   );
   await commands.windowSetFrameAnimated({ type: "main" }, "TopRight", 340, 500);
 

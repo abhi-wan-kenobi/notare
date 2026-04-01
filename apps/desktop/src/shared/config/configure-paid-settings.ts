@@ -2,7 +2,7 @@ import * as settings from "~/store/tinybase/store/settings";
 
 type SettingsStore = NonNullable<ReturnType<typeof settings.UI.useStore>>;
 
-export function configureProSettings(store: SettingsStore): void {
+export function configurePaidSettings(store: SettingsStore): void {
   const currentSttProvider = store.getValue("current_stt_provider");
   const currentLlmProvider = store.getValue("current_llm_provider");
 

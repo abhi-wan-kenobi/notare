@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { commands as openerCommands } from "@hypr/plugin-opener2";
 import { dismissInstruction } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { Input } from "@hypr/ui/components/ui/input";
@@ -11,8 +12,9 @@ import { useAuth } from "~/auth";
 type InstructionType = "sign-in" | "billing" | "integration";
 
 export const Route = createFileRoute("/app/instruction")({
-  validateSearch: (search): { type: InstructionType } => ({
+  validateSearch: (search): { type: InstructionType; url?: string } => ({
     type: ((search as { type?: string }).type ?? "sign-in") as InstructionType,
+    url: (search as { url?: string }).url,
   }),
   component: InstructionRoute,
 });
@@ -85,23 +87,53 @@ function SignInInstruction({ onBack }: { onBack: () => void }) {
   );
 }
 
-function BillingInstruction({ onBack }: { onBack: () => void }) {
+function BillingInstruction({
+  onBack,
+  url,
+}: {
+  onBack: () => void;
+  url?: string;
+}) {
   return (
     <InstructionLayout
       title="Complete your purchase"
       description="Finish checkout in your browser, then return to Char."
       onBack={onBack}
-    />
+    >
+      {url && (
+        <Button
+          variant="outline"
+          onClick={() => void openerCommands.openUrl(url, null)}
+        >
+          Reopen checkout page
+        </Button>
+      )}
+    </InstructionLayout>
   );
 }
 
-function IntegrationInstruction({ onBack }: { onBack: () => void }) {
+function IntegrationInstruction({
+  onBack,
+  url,
+}: {
+  onBack: () => void;
+  url?: string;
+}) {
   return (
     <InstructionLayout
       title="Connect your integration"
       description="Authorize access in your browser, then return to Char."
       onBack={onBack}
-    />
+    >
+      {url && (
+        <Button
+          variant="outline"
+          onClick={() => void openerCommands.openUrl(url, null)}
+        >
+          Reopen in browser
+        </Button>
+      )}
+    </InstructionLayout>
   );
 }
 
@@ -125,9 +157,10 @@ function InstructionLayout({
         <button
           type="button"
           onClick={onBack}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+          className="flex h-8 items-center gap-1 rounded-lg px-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
         >
-          <ChevronLeft className="h-5 w-5" />
+          <ChevronLeft className="h-4 w-4" />
+          <span className="text-xs">Go back</span>
         </button>
       </div>
 
@@ -159,7 +192,7 @@ function InstructionLayout({
 }
 
 function InstructionRoute() {
-  const { type } = Route.useSearch();
+  const { type, url } = Route.useSearch();
   const handleBack = useHandleBack();
   const onBack = useCallback(() => void handleBack(), [handleBack]);
 
@@ -167,8 +200,8 @@ function InstructionRoute() {
     case "sign-in":
       return <SignInInstruction onBack={onBack} />;
     case "billing":
-      return <BillingInstruction onBack={onBack} />;
+      return <BillingInstruction onBack={onBack} url={url} />;
     case "integration":
-      return <IntegrationInstruction onBack={onBack} />;
+      return <IntegrationInstruction onBack={onBack} url={url} />;
   }
 }

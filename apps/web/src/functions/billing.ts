@@ -211,6 +211,10 @@ export const createPlanSwitchSession = createServerFn({ method: "POST" })
       return { url: null };
     }
 
+    if (!activeSubscription.items.data[0]) {
+      return { url: null };
+    }
+
     const subscriptionItemId = activeSubscription.items.data[0].id;
 
     const targetPriceId =
@@ -324,7 +328,7 @@ export const syncAfterSuccess = createServerFn({ method: "POST" }).handler(
     return {
       subscriptionId: subscription.id,
       status: subscription.status,
-      priceId: subscription.items.data[0].price.id,
+      priceId: subscription.items.data[0]?.price.id ?? null,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
     };
   },

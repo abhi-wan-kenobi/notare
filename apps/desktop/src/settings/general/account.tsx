@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Puzzle, RefreshCw, Sparkle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -9,10 +9,7 @@ import {
   useState,
 } from "react";
 
-import {
-  canStartTrial as canStartTrialApi,
-  startTrial,
-} from "@hypr/api-client";
+import { startTrial } from "@hypr/api-client";
 import { createClient } from "@hypr/api-client/client";
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
@@ -30,9 +27,8 @@ import { cn } from "@hypr/utils";
 import { useAuth } from "~/auth";
 import { useBillingAccess } from "~/auth/billing";
 import { env } from "~/env";
-import { configureProSettings } from "~/shared/config/configure-pro-settings";
+import { waitForBillingUpdate } from "~/shared/billing";
 import { buildWebAppUrl } from "~/shared/utils";
-import * as settings from "~/store/tinybase/store/settings";
 const ACCOUNT_FEATURES = [
   {
     label: "Cloud Services",
@@ -57,8 +53,7 @@ const ACCOUNT_FEATURES = [
 
 export function SettingsAccount() {
   const auth = useAuth();
-  const { plan, isPaid, isPro, isTrialing, trialDaysRemaining } =
-    useBillingAccess();
+  const { plan, isPaid, isTrialing, trialDaysRemaining } = useBillingAccess();
 
   const isAuthenticated = !!auth?.session;
   const [isPending, setIsPending] = useState(false);
@@ -177,7 +172,6 @@ export function SettingsAccount() {
         isTrialing={isTrialing}
         trialDaysRemaining={trialDaysRemaining}
         isPaid={isPaid}
-        isPro={isPro}
       />
     </div>
   );
@@ -188,33 +182,14 @@ function PlanBillingSection({
   isTrialing,
   trialDaysRemaining,
   isPaid,
-  isPro,
 }: {
   currentTier: PlanTier;
   isTrialing: boolean;
   trialDaysRemaining: number | null;
   isPaid: boolean;
-  isPro: boolean;
 }) {
   const auth = useAuth();
-  const store = settings.UI.useStore(settings.STORE_ID);
-
-  const canTrialQuery = useQuery({
-    enabled: !!auth?.session && !isPro,
-    queryKey: [auth?.session?.user.id ?? "", "canStartTrial"],
-    queryFn: async () => {
-      const headers = auth?.getHeaders();
-      if (!headers) {
-        return false;
-      }
-      const client = createClient({ baseUrl: env.VITE_API_URL, headers });
-      const { data, error } = await canStartTrialApi({ client });
-      if (error) {
-        throw error;
-      }
-      return data?.canStartTrial ?? false;
-    },
-  });
+  const { canStartTrial: canStartTrialQuery } = useBillingAccess();
 
   const startTrialMutation = useMutation({
     mutationFn: async () => {
@@ -230,23 +205,26 @@ function PlanBillingSection({
       if (error) {
         throw error;
       }
-      await new Promise((resolve) => setTimeout(resolve, 3000));
     },
     onSuccess: async () => {
-      if (store) {
-        configureProSettings(store);
-      }
-      await auth?.refreshSession();
+      await waitForBillingUpdate(
+        () => auth?.refreshSession() ?? Promise.resolve(),
+      );
     },
   });
 
-  const openBillingUrl = useCallback(
-    (url: string) =>
-      openUrlWithInstruction(url, "billing", (u) =>
+  const [actionPending, setActionPending] = useState(false);
+
+  const openBillingUrl = useCallback(async (url: string) => {
+    setActionPending(true);
+    try {
+      await openUrlWithInstruction(url, "billing", (u) =>
         openerCommands.openUrl(u, null),
-      ),
-    [],
-  );
+      );
+    } finally {
+      setActionPending(false);
+    }
+  }, []);
 
   const planLabel =
     currentTier === "free" ? "Free" : currentTier === "lite" ? "Lite" : "Pro";
@@ -310,15 +288,17 @@ function PlanBillingSection({
           targetPlan: action.targetPlan,
           targetPeriod: "monthly",
         });
-        void openBillingUrl(url);
+        await openBillingUrl(url);
       } else {
         const url = await buildWebAppUrl("/app/checkout", {
           plan: action.targetPlan,
           period: "monthly",
         });
-        void openBillingUrl(url);
+        await openBillingUrl(url);
       }
     };
+
+    const isBusy = actionPending || startTrialMutation.isPending;
 
     const label =
       action.label === "Start free trial" && startTrialMutation.isPending
@@ -330,9 +310,7 @@ function PlanBillingSection({
         <button
           type="button"
           onClick={handleClick}
-          disabled={
-            action.label === "Start free trial" && startTrialMutation.isPending
-          }
+          disabled={isBusy}
           className={cn([
             "text-xs font-medium transition-colors",
             isUpgrade
@@ -356,9 +334,7 @@ function PlanBillingSection({
       <button
         type="button"
         onClick={handleClick}
-        disabled={
-          action.label === "Start free trial" && startTrialMutation.isPending
-        }
+        disabled={isBusy}
         className={buttonClass}
       >
         {label}
@@ -392,7 +368,7 @@ function PlanBillingSection({
       <PlanTierList
         currentTier={currentTier}
         isTrialing={isTrialing}
-        canStartTrial={canTrialQuery.data ?? false}
+        canStartTrial={canStartTrialQuery.data}
         renderAction={renderAction}
       />
     </div>

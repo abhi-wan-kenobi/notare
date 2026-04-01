@@ -13,13 +13,18 @@ const validateSearch = z.object({
 export const Route = createFileRoute("/_view/app/switch-plan")({
   validateSearch,
   beforeLoad: async ({ search }) => {
-    const { url } = await createPlanSwitchSession({
-      data: {
-        targetPlan: search.targetPlan,
-        targetPeriod: search.targetPeriod,
-        scheme: search.scheme,
-      },
-    });
+    let url: string | null | undefined;
+    try {
+      ({ url } = await createPlanSwitchSession({
+        data: {
+          targetPlan: search.targetPlan,
+          targetPeriod: search.targetPeriod,
+          scheme: search.scheme,
+        },
+      }));
+    } catch (e) {
+      console.error("Plan switch error:", e);
+    }
 
     if (url) {
       throw redirect({ href: url } as any);

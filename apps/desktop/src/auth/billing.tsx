@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
 } from "react";
 
 import { canStartTrial as canStartTrialApi } from "@hypr/api-client";
@@ -20,6 +21,7 @@ import {
 } from "@hypr/supabase";
 
 import { env } from "../env";
+import { configurePaidSettings } from "../shared/config/configure-paid-settings";
 import { buildWebAppUrl } from "../shared/utils";
 import { useAuth } from "./context";
 
@@ -63,7 +65,7 @@ export function BillingProvider({ children }: { children: ReactNode }) {
   });
 
   const billing = deriveBillingInfo(claimsQuery.data ?? null);
-  const isReady = !claimsQuery.isPending;
+  const isReady = !claimsQuery.isPending && !claimsQuery.isError;
 
   const canTrialQuery = useQuery({
     enabled: !!auth?.session && !billing.isPaid,
@@ -115,6 +117,16 @@ export function BillingProvider({ children }: { children: ReactNode }) {
     isReady,
     settingsStore,
   ]);
+
+  const prevIsPaidRef = useRef(billing.isPaid);
+  useEffect(() => {
+    const wasPaid = prevIsPaidRef.current;
+    prevIsPaidRef.current = billing.isPaid;
+
+    if (!wasPaid && billing.isPaid && isReady && settingsStore) {
+      configurePaidSettings(settingsStore);
+    }
+  }, [billing.isPaid, isReady, settingsStore]);
 
   const value = useMemo<BillingContextValue>(
     () => ({

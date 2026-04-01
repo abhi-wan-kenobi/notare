@@ -11,9 +11,14 @@ const validateSearch = z.object({
 export const Route = createFileRoute("/_view/app/portal")({
   validateSearch,
   beforeLoad: async ({ search }) => {
-    const { url } = await createPortalSession({
-      data: { scheme: search.scheme },
-    });
+    let url: string | null | undefined;
+    try {
+      ({ url } = await createPortalSession({
+        data: { scheme: search.scheme },
+      }));
+    } catch (e) {
+      console.error("Portal error:", e);
+    }
 
     if (url) {
       throw redirect({ href: url } as any);

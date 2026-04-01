@@ -10,7 +10,8 @@ import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { useAuth } from "~/auth";
 import { useBillingAccess } from "~/auth/billing";
 import { env } from "~/env";
-import { configureProSettings } from "~/shared/config/configure-pro-settings";
+import { waitForBillingUpdate } from "~/shared/billing";
+import { configurePaidSettings } from "~/shared/config/configure-paid-settings";
 import * as settings from "~/store/tinybase/store/settings";
 
 export type TrialPhase =
@@ -39,11 +40,10 @@ export function useTrialFlow(onContinue: () => void) {
       return data;
     },
     onSuccess: async (data) => {
-      if (data?.started && store) {
-        configureProSettings(store);
-      }
-      await auth.refreshSession();
-      await new Promise((r) => setTimeout(r, data?.started ? 3000 : 1500));
+      await waitForBillingUpdate(
+        () => auth.refreshSession(),
+        data?.started ? 3000 : 1500,
+      );
       onContinue();
     },
     onError: async (e) => {
@@ -66,7 +66,7 @@ export function useTrialFlow(onContinue: () => void) {
         event: "trial_flow_skipped",
         properties: { reason: "already_paid" },
       });
-      if (store) configureProSettings(store);
+      if (store) configurePaidSettings(store);
       setTimeout(onContinue, 1500);
       return;
     }
@@ -77,7 +77,7 @@ export function useTrialFlow(onContinue: () => void) {
         event: "trial_flow_skipped",
         properties: { reason: "already_trialing" },
       });
-      if (store) configureProSettings(store);
+      if (store) configurePaidSettings(store);
       setTimeout(onContinue, 1500);
       return;
     }
