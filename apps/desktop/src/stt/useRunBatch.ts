@@ -27,6 +27,7 @@ type RunOptions = {
   apiKey?: string;
   keywords?: string[];
   languages?: string[];
+  numSpeakers?: number;
 };
 
 const BATCH_PROVIDER_MAP: Record<string, BatchParams["provider"]> = {
@@ -191,6 +192,7 @@ export const useRunBatch = (sessionId: string) => {
         api_key: options?.apiKey ?? conn.apiKey,
         keywords: options?.keywords ?? keywords ?? [],
         languages: options?.languages ?? languages ?? [],
+        num_speakers: options?.numSpeakers,
       };
 
       await runBatch(params, { handlePersist: persist });

@@ -44,6 +44,7 @@ fn build_upstream_url_with_adapter(
         Provider::ElevenLabs => ElevenLabsAdapter.build_ws_url(api_base, params, channels),
         Provider::DashScope => DashScopeAdapter.build_ws_url(api_base, params, channels),
         Provider::Mistral => MistralAdapter::default().build_ws_url(api_base, params, channels),
+        Provider::Pyannote => unreachable!("pyannote only supports batch transcription"),
     }
 }
 
@@ -63,6 +64,7 @@ fn build_initial_message_with_adapter(
         Provider::ElevenLabs => ElevenLabsAdapter.initial_message(api_key, params, channels),
         Provider::DashScope => DashScopeAdapter.initial_message(api_key, params, channels),
         Provider::Mistral => MistralAdapter::default().initial_message(api_key, params, channels),
+        Provider::Pyannote => unreachable!("pyannote only supports batch transcription"),
     };
 
     msg.and_then(|m| match m {
@@ -86,6 +88,7 @@ fn build_response_transformer(
             Provider::ElevenLabs => ElevenLabsAdapter.parse_response(raw),
             Provider::DashScope => DashScopeAdapter.parse_response(raw),
             Provider::Mistral => mistral_adapter.parse_response(raw),
+            Provider::Pyannote => unreachable!("pyannote only supports batch transcription"),
         };
 
         if provider == Provider::Soniox && proxy_debug_enabled() {
@@ -162,6 +165,11 @@ fn build_proxy_with_adapter(
 ) -> Result<StreamingProxy, crate::ProxyError> {
     let mut listen_params = build_listen_params(client_params);
     let channels: u8 = parse_param(client_params, "channels", 1);
+    if provider == Provider::Pyannote {
+        return Err(crate::ProxyError::InvalidRequest(
+            "pyannote only supports batch transcription".to_string(),
+        ));
+    }
     resolve_model_live(provider, &mut listen_params);
     let upstream_channels = plan.upstream_request_channels(channels);
 

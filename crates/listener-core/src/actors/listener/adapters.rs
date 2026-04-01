@@ -104,6 +104,11 @@ pub(super) async fn spawn_rx_task(
         (AdapterKind::Cactus, true) => {
             spawn_rx_task_dual_with_adapter::<CactusAdapter>(args, myself).await
         }
+        (AdapterKind::Pyannote, _) => {
+            return Err(actor_error(
+                "provider_batch_only: pyannote only supports batch transcription",
+            ));
+        }
     }?;
 
     Ok((result.0, result.1, result.2, adapter_kind.to_string()))

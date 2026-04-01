@@ -3,23 +3,25 @@ use std::time::Duration;
 
 use owhisper_client::StreamingBatchStream;
 use owhisper_interface::batch_stream::BatchStreamEvent;
-use owhisper_interface::stream::StreamResponse;
 use ractor::{Actor, ActorName, ActorProcessingErr, ActorRef, SpawnErr};
 use tracing::Instrument;
 
-use super::accumulator::StreamBatchAccumulator;
-use super::bootstrap::{notify_start_result, spawn_batch_task};
-use super::{BatchParams, BatchRunOutput, format_user_friendly_error, session_span};
+use super::super::accumulator::StreamBatchAccumulator;
+use super::super::{BatchParams, BatchRunOutput, format_user_friendly_error, session_span};
+use super::ProgressiveProvider;
+use super::bootstrap::{notify_start_result, spawn_progressive_batch_task};
 use crate::{BatchEvent, BatchRuntime};
 
 const BATCH_STREAM_TIMEOUT_SECS: u64 = 30;
 
-pub(super) async fn run_batch_streaming(
+pub(super) async fn run_progressive_batch(
     runtime: Arc<dyn BatchRuntime>,
     params: BatchParams,
     listen_params: owhisper_interface::ListenParams,
+    progressive_provider: ProgressiveProvider,
 ) -> crate::Result<BatchRunOutput> {
     let span = session_span(&params.session_id);
+    let provider_label = progressive_provider.label().to_string();
 
     async {
         let (start_tx, start_rx) = tokio::sync::oneshot::channel::<crate::Result<()>>();
@@ -30,7 +32,8 @@ pub(super) async fn run_batch_streaming(
 
         let args = BatchArgs {
             runtime: runtime.clone(),
-            provider: params.provider,
+            progressive_provider,
+            provider_label: provider_label.clone(),
             file_path: params.file_path,
             base_url: params.base_url,
             api_key: params.api_key,
@@ -53,7 +56,11 @@ pub(super) async fn run_batch_streaming(
                     hyprnote.error.user_message = %message,
                     "batch supervisor spawn failed"
                 );
-                return Err(crate::BatchFailure::ActorSpawnFailed { message }.into());
+                return Err(crate::BatchFailure::ProgressiveActorSpawnFailed {
+                    provider: provider_label.clone(),
+                    message,
+                }
+                .into());
             }
         };
 
@@ -77,7 +84,7 @@ pub(super) async fn run_batch_streaming(
             }
             Err(_) => {
                 tracing::error!("batch actor start notifier dropped before reporting result");
-                return Err(crate::BatchFailure::StreamStartCancelled.into());
+                return Err(crate::BatchFailure::ProgressiveStartCancelled.into());
             }
         }
 
@@ -87,7 +94,7 @@ pub(super) async fn run_batch_streaming(
                 Ok(output)
             }
             Ok(Err(err)) => Err(err),
-            Err(_) => Err(crate::BatchFailure::StreamFinishedWithoutStatus.into()),
+            Err(_) => Err(crate::BatchFailure::ProgressiveFinishedWithoutStatus.into()),
         }
     }
     .instrument(span)
@@ -130,7 +137,8 @@ type BatchDoneNotifier =
 #[derive(Clone)]
 pub(super) struct BatchArgs {
     pub(super) runtime: Arc<dyn BatchRuntime>,
-    pub(super) provider: super::BatchProvider,
+    pub(super) progressive_provider: ProgressiveProvider,
+    pub(super) provider_label: String,
     pub(super) file_path: String,
     pub(super) base_url: String,
     pub(super) api_key: String,
@@ -183,7 +191,7 @@ impl Actor for BatchActor {
         myself: ActorRef<Self::Msg>,
         args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        let (rx_task, shutdown_tx) = spawn_batch_task(args.clone(), myself).await?;
+        let (rx_task, shutdown_tx) = spawn_progressive_batch_task(args.clone(), myself).await?;
 
         Ok(BatchState {
             runtime: args.runtime,
@@ -207,7 +215,7 @@ impl Actor for BatchActor {
         }
 
         let final_result = state.final_result.take().unwrap_or_else(|| {
-            Err(crate::BatchFailure::StreamStoppedWithoutCompletionSignal.into())
+            Err(crate::BatchFailure::ProgressiveStoppedWithoutCompletionSignal.into())
         });
         notify_done_result(&state.done_notifier, final_result);
 
@@ -259,12 +267,14 @@ fn notify_done_result(notifier: &BatchDoneNotifier, result: crate::Result<BatchR
 pub(super) fn report_stream_start_failure(
     myself: &ActorRef<BatchMsg>,
     notifier: &BatchStartNotifier,
+    provider: &str,
     error: &impl std::fmt::Debug,
     context: &str,
 ) {
     let raw_error = format!("{error:?}");
     let message = format_user_friendly_error(&raw_error);
-    let failure = crate::BatchFailure::StreamStartFailed {
+    let failure = crate::BatchFailure::ProgressiveStartFailed {
+        provider: provider.to_string(),
         message: message.clone(),
     };
 
@@ -281,6 +291,7 @@ pub(super) async fn process_provider_stream(
     stream: StreamingBatchStream,
     myself: ActorRef<BatchMsg>,
     shutdown_rx: tokio::sync::oneshot::Receiver<()>,
+    provider: &str,
     context: &str,
 ) {
     futures_util::pin_mut!(stream);
@@ -288,30 +299,10 @@ pub(super) async fn process_provider_stream(
         &mut stream,
         myself,
         shutdown_rx,
+        provider,
         context,
         1,
         std::convert::identity,
-    )
-    .await;
-}
-
-pub(super) async fn process_batch_stream<S, E>(
-    mut listen_stream: std::pin::Pin<&mut S>,
-    myself: ActorRef<BatchMsg>,
-    shutdown_rx: tokio::sync::oneshot::Receiver<()>,
-    audio_duration_secs: f64,
-    expected_completions: usize,
-) where
-    S: futures_util::Stream<Item = Result<StreamResponse, E>>,
-    E: std::fmt::Debug,
-{
-    process_stream_loop(
-        &mut listen_stream,
-        myself,
-        shutdown_rx,
-        "batch stream",
-        expected_completions,
-        |response| batch_event_from_stream_response(response, audio_duration_secs),
     )
     .await;
 }
@@ -320,6 +311,7 @@ async fn process_stream_loop<S, Item, E, F>(
     stream: &mut std::pin::Pin<&mut S>,
     myself: ActorRef<BatchMsg>,
     mut shutdown_rx: tokio::sync::oneshot::Receiver<()>,
+    provider: &str,
     context: &str,
     expected_completions: usize,
     mut into_response: F,
@@ -378,7 +370,10 @@ async fn process_stream_loop<S, Item, E, F>(
                             let message = format_user_friendly_error(error_message);
                             send_actor_message(
                                 &myself,
-                                BatchMsg::StreamError(crate::BatchFailure::StreamError { message }),
+                                BatchMsg::StreamError(crate::BatchFailure::ProgressiveStreamError {
+                                    provider: provider.to_string(),
+                                    message,
+                                }),
                                 context,
                                 "stream error",
                             );
@@ -412,7 +407,10 @@ async fn process_stream_loop<S, Item, E, F>(
                         );
                         send_actor_message(
                             &myself,
-                            BatchMsg::StreamError(crate::BatchFailure::StreamError { message }),
+                            BatchMsg::StreamError(crate::BatchFailure::ProgressiveStreamError {
+                                provider: provider.to_string(),
+                                message,
+                            }),
                             context,
                             "stream error",
                         );
@@ -436,7 +434,7 @@ async fn process_stream_loop<S, Item, E, F>(
                         send_actor_message(
                             &myself,
                             BatchMsg::StreamError(
-                                crate::BatchFailure::StreamStoppedWithoutCompletionSignal,
+                                crate::BatchFailure::ProgressiveStoppedWithoutCompletionSignal,
                             ),
                             context,
                             "stream error",
@@ -451,7 +449,7 @@ async fn process_stream_loop<S, Item, E, F>(
                         );
                         send_actor_message(
                             &myself,
-                            BatchMsg::StreamError(crate::BatchFailure::StreamTimeout),
+                            BatchMsg::StreamError(crate::BatchFailure::ProgressiveStreamTimeout),
                             context,
                             "timeout error",
                         );
@@ -482,75 +480,6 @@ fn send_actor_message(
     }
 }
 
-fn compute_percentage(response: &StreamResponse, audio_duration_secs: f64) -> f64 {
-    match transcript_end_from_response(response) {
-        Some(end) if audio_duration_secs > 0.0 => (end / audio_duration_secs).clamp(0.0, 1.0),
-        _ => 0.0,
-    }
-}
-
-fn batch_event_from_stream_response(
-    response: StreamResponse,
-    audio_duration_secs: f64,
-) -> BatchStreamEvent {
-    let percentage = compute_percentage(&response, audio_duration_secs);
-
-    match response {
-        StreamResponse::TranscriptResponse { .. } => BatchStreamEvent::Segment {
-            response,
-            percentage,
-        },
-        StreamResponse::TerminalResponse {
-            request_id,
-            created,
-            duration,
-            channels,
-        } => BatchStreamEvent::Terminal {
-            request_id,
-            created,
-            duration,
-            channels,
-        },
-        StreamResponse::ErrorResponse {
-            error_code,
-            error_message,
-            provider,
-        } => BatchStreamEvent::Error {
-            error_code,
-            error_message,
-            provider,
-        },
-        other => BatchStreamEvent::Segment {
-            response: other,
-            percentage,
-        },
-    }
-}
-
-fn transcript_end_from_response(response: &StreamResponse) -> Option<f64> {
-    let StreamResponse::TranscriptResponse {
-        start,
-        duration,
-        channel,
-        ..
-    } = response
-    else {
-        return None;
-    };
-
-    let mut end = (*start + *duration).max(0.0);
-
-    for alternative in &channel.alternatives {
-        for word in &alternative.words {
-            if word.end.is_finite() {
-                end = end.max(word.end);
-            }
-        }
-    }
-
-    if end.is_finite() { Some(end) } else { None }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -559,35 +488,34 @@ mod test {
     fn completion_event_result() {
         let event = BatchStreamEvent::Result {
             response: owhisper_interface::batch::Response {
-                metadata: serde_json::json!({ "duration": 0.1 }),
+                metadata: serde_json::json!({}),
                 results: owhisper_interface::batch::Results { channels: vec![] },
             },
         };
-
         assert!(is_completion_event(&event));
     }
 
     #[test]
     fn completion_event_terminal() {
         let event = BatchStreamEvent::Terminal {
-            request_id: "r".to_string(),
-            created: "now".to_string(),
+            request_id: "req".into(),
+            created: "now".into(),
             duration: 1.0,
             channels: 1,
         };
-
         assert!(is_completion_event(&event));
     }
 
     #[test]
     fn provider_error_extracts_fields() {
         let event = BatchStreamEvent::Error {
-            error_code: Some(42),
-            error_message: "nope".to_string(),
-            provider: "x".to_string(),
+            provider: "deepgram".into(),
+            error_message: "boom".into(),
+            error_code: Some(429),
         };
-
-        let extracted = provider_error_from_event(&event);
-        assert_eq!(extracted, Some(("x", "nope", Some(42))));
+        assert_eq!(
+            provider_error_from_event(&event),
+            Some(("deepgram", "boom", Some(429)))
+        );
     }
 }

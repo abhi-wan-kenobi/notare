@@ -83,10 +83,10 @@ denoiseEvent: "plugin:listener2:denoise-event"
 
 export type BatchAlternatives = { transcript: string; confidence: number; words?: BatchWord[] }
 export type BatchChannel = { alternatives: BatchAlternatives[] }
-export type BatchErrorCode = "unknown" | "audio_metadata_join_failed" | "audio_metadata_read_failed" | "provider_request_failed" | "actor_spawn_failed" | "stream_start_cancelled" | "stream_stopped_without_completion_signal" | "stream_finished_without_status" | "stream_start_failed" | "stream_error" | "stream_timeout"
+export type BatchErrorCode = "unknown" | "audio_metadata_join_failed" | "audio_metadata_read_failed" | "batch_capability_unsupported" | "direct_batch_unsupported" | "progressive_batch_unsupported" | "direct_request_failed" | "progressive_actor_spawn_failed" | "progressive_start_cancelled" | "progressive_stopped_without_completion_signal" | "progressive_finished_without_status" | "progressive_start_failed" | "progressive_stream_error" | "progressive_stream_timeout"
 export type BatchEvent = { type: "batchStarted"; session_id: string } | { type: "batchCompleted"; session_id: string } | { type: "batchResponse"; session_id: string; response: BatchResponse; mode: BatchRunMode } | { type: "batchProgress"; session_id: string; event: BatchStreamEvent } | { type: "batchFailed"; session_id: string; code: BatchErrorCode; error: string }
-export type BatchParams = { session_id: string; provider: BatchProvider; file_path: string; model?: string | null; base_url: string; api_key: string; languages?: string[]; keywords?: string[] }
-export type BatchProvider = "argmax" | "whispercpp" | "deepgram" | "soniox" | "assemblyai" | "fireworks" | "openai" | "gladia" | "elevenlabs" | "dashscope" | "mistral" | "hyprnote" | "am" | "cactus"
+export type BatchParams = { session_id: string; provider: BatchProvider; file_path: string; model?: string | null; base_url: string; api_key: string; languages?: string[]; keywords?: string[]; num_speakers?: number | null }
+export type BatchProvider = "argmax" | "whispercpp" | "deepgram" | "soniox" | "assemblyai" | "fireworks" | "openai" | "gladia" | "elevenlabs" | "pyannote" | "dashscope" | "mistral" | "hyprnote" | "am" | "cactus"
 export type BatchResponse = { metadata: JsonValue; results: BatchResults }
 export type BatchResults = { channels: BatchChannel[] }
 export type BatchRunMode = "direct" | "streamed"
