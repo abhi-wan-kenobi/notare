@@ -14,6 +14,7 @@ use utoipa::{Modify, OpenApi};
     tags(
         (name = "stt", description = "Speech-to-text transcription endpoints"),
         (name = "llm", description = "LLM chat completions endpoints"),
+        (name = "pyannote", description = "Pyannote speaker diarization and voice processing"),
         (name = "calendar", description = "Calendar management"),
         (name = "mail", description = "Mail management"),
         (name = "ticket", description = "Ticket management"),
@@ -29,6 +30,7 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
 
     let stt_doc = hypr_transcribe_proxy::openapi();
     let llm_doc = hypr_llm_proxy::openapi();
+    let pyannote_doc = with_path_prefix(hypr_api_pyannote::openapi(), "/pyannote");
     let calendar_doc = with_path_prefix(hypr_api_calendar::openapi(), "/calendar");
     let mail_doc = with_path_prefix(hypr_api_mail::openapi(), "/mail");
     let ticket_doc = with_path_prefix(hypr_api_ticket::openapi(), "/ticket");
@@ -38,6 +40,7 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
 
     doc.merge(stt_doc);
     doc.merge(llm_doc);
+    doc.merge(pyannote_doc);
     doc.merge(calendar_doc);
     doc.merge(mail_doc);
     doc.merge(ticket_doc);
@@ -110,6 +113,7 @@ fn apply_bearer_auth_to_protected_paths(doc: &mut utoipa::openapi::OpenApi) {
             || path.starts_with("/ticket")
             || path.starts_with("/subscription")
             || path.starts_with("/nango")
+            || path.starts_with("/pyannote")
         {
             set_operation_security(item);
         }
@@ -162,6 +166,21 @@ fn with_each_operation(item: &mut PathItem, mut f: impl FnMut(&mut Operation)) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn pyannote_paths_are_prefixed_and_protected() {
+        let doc = super::openapi();
+        let path = doc.paths.paths.get("/pyannote/v1/test").unwrap();
+        let operation = path.get.as_ref().unwrap();
+        let security = operation.security.as_ref().unwrap();
+
+        assert!(security.iter().any(|item| {
+            serde_json::to_value(item)
+                .unwrap()
+                .get("bearer_auth")
+                .is_some()
+        }));
+    }
+
     #[test]
     fn gen_openapi_json() {
         super::write_openapi_json().unwrap();

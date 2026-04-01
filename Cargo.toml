@@ -42,6 +42,7 @@ hypr-api-error = { path = "crates/api-error", package = "api-error" }
 hypr-api-mail = { path = "crates/api-mail", package = "api-mail" }
 hypr-api-messenger = { path = "crates/api-messenger", package = "api-messenger" }
 hypr-api-nango = { path = "crates/api-nango", package = "api-nango" }
+hypr-api-pyannote = { path = "crates/api-pyannote", package = "api-pyannote" }
 hypr-api-research = { path = "crates/api-research", package = "api-research" }
 hypr-api-storage = { path = "crates/api-storage", package = "api-storage" }
 hypr-api-subscription = { path = "crates/api-subscription", package = "api-subscription" }

@@ -26,6 +26,8 @@ pub struct Env {
     #[serde(flatten)]
     pub stripe: hypr_api_env::StripeEnv,
     #[serde(flatten)]
+    pub pyannote: hypr_api_env::PyannoteEnv,
+    #[serde(flatten)]
     pub github_app: hypr_api_support::GitHubAppEnv,
     #[serde(flatten)]
     pub support_database: hypr_api_support::SupportDatabaseEnv,

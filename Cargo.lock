@@ -504,6 +504,7 @@ dependencies = [
  "api-env",
  "api-mail",
  "api-nango",
+ "api-pyannote",
  "api-research",
  "api-subscription",
  "api-support",
@@ -673,6 +674,24 @@ dependencies = [
  "tokio",
  "tracing",
  "urlencoding",
+ "utoipa",
+ "wiremock",
+]
+
+[[package]]
+name = "api-pyannote"
+version = "0.1.0"
+dependencies = [
+ "api-env",
+ "api-error",
+ "axum 0.8.8",
+ "pyannote-cloud",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower 0.5.3",
+ "tracing",
  "utoipa",
  "wiremock",
 ]
@@ -13939,6 +13958,9 @@ dependencies = [
  "reqwest 0.13.2",
  "serde",
  "serde_json",
+ "tokio",
+ "utoipa",
+ "wiremock",
 ]
 
 [[package]]
