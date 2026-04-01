@@ -12,9 +12,9 @@ import { env } from "./env";
 import { PostHogProvider } from "./providers/posthog";
 import { routeTree } from "./routeTree.gen";
 
-const ZENDESK_SNIPPET_ID = "ze-snippet";
-const ZENDESK_SNIPPET_SRC =
-  "https://static.zdassets.com/ekr/snippet.js?key=15949e47-ed5a-4e52-846e-200dd0b8f4b9";
+const CHATWOOT_SNIPPET_ID = "chatwoot-snippet";
+const CHATWOOT_BASE_URL = "https://app.chatwoot.com";
+const CHATWOOT_WEBSITE_TOKEN = "FH1mNsxrXPZLcgi3Rfgrb13R";
 const GOOGLE_TAG_ID = "google-tag";
 const GOOGLE_ANALYTICS_ID = "G-4CDGPKJ8JB";
 
@@ -59,7 +59,14 @@ function MaybeGoogleAnalytics({ enabled }: { enabled: boolean }) {
   return null;
 }
 
-function MaybeZendeskWidget({ enabled }: { enabled: boolean }) {
+type ChatwootWindow = Window &
+  typeof globalThis & {
+    chatwootSDK?: {
+      run: (config: { websiteToken: string; baseUrl: string }) => void;
+    };
+  };
+
+function MaybeChatwootWidget({ enabled }: { enabled: boolean }) {
   useEffect(() => {
     if (
       typeof document === "undefined" ||
@@ -70,14 +77,20 @@ function MaybeZendeskWidget({ enabled }: { enabled: boolean }) {
       return;
     }
 
-    if (document.getElementById(ZENDESK_SNIPPET_ID)) {
+    if (document.getElementById(CHATWOOT_SNIPPET_ID)) {
       return;
     }
 
     const script = document.createElement("script");
-    script.id = ZENDESK_SNIPPET_ID;
-    script.src = ZENDESK_SNIPPET_SRC;
+    script.id = CHATWOOT_SNIPPET_ID;
+    script.src = `${CHATWOOT_BASE_URL}/packs/js/sdk.js`;
     script.async = true;
+    script.onload = () => {
+      (window as ChatwootWindow).chatwootSDK?.run({
+        websiteToken: CHATWOOT_WEBSITE_TOKEN,
+        baseUrl: CHATWOOT_BASE_URL,
+      });
+    };
     document.body.appendChild(script);
   }, [enabled]);
 
@@ -98,7 +111,7 @@ function ConsentAwareProviders({
       <QueryClientProvider client={queryClient}>
         {children}
         <MaybeGoogleAnalytics enabled={analyticsEnabled} />
-        <MaybeZendeskWidget enabled={analyticsEnabled} />
+        <MaybeChatwootWidget enabled={analyticsEnabled} />
       </QueryClientProvider>
     </PostHogProvider>
   );
