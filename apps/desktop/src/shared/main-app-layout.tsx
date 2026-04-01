@@ -13,7 +13,7 @@ import {
   UndoDeleteKeyboardHandler,
   UndoDeleteToast,
 } from "~/sidebar/toast/undo-delete-toast";
-import { useTabs } from "~/store/zustand/tabs";
+import { isTabInputSupported, useTabs } from "~/store/zustand/tabs";
 
 export default function MainAppLayout() {
   useNavigationEvents();
@@ -94,6 +94,8 @@ const useNavigationEvents = () => {
       .listen(({ payload }) => {
         if (payload.tab.type === "sessions" && payload.tab.id === "new") {
           openNewNote();
+        } else if (!isTabInputSupported(payload.tab)) {
+          return;
         } else {
           openNew(payload.tab);
           if (payload.tab.type === "chat_support") {

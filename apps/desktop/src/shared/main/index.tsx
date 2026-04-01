@@ -7,7 +7,15 @@ import {
   PlusIcon,
 } from "lucide-react";
 import { Reorder } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useResizeObserver } from "usehooks-ts";
 import { useShallow } from "zustand/shallow";
@@ -40,8 +48,6 @@ import { TabContentDaily, TabItemDaily } from "~/daily";
 import { TabContentEdit, TabItemEdit } from "~/edit";
 import { TabContentFolder, TabItemFolder } from "~/folders";
 import { TabContentOnboarding, TabItemOnboarding } from "~/onboarding";
-import { TabContentPlugin, TabItemPlugin } from "~/plugins";
-import { loadPlugins } from "~/plugins/loader";
 import { TabContentNote, TabItemNote } from "~/session";
 import { useCaretPosition } from "~/session/components/caret-position-context";
 import { useShouldShowListeningFab } from "~/session/components/floating";
@@ -54,6 +60,24 @@ import { type Tab, uniqueIdfromTab, useTabs } from "~/store/zustand/tabs";
 import { useListener } from "~/stt/contexts";
 import { TabContentTemplate, TabItemTemplate } from "~/templates";
 
+const MainChromeContext = createContext({
+  showFloatingChatButton: true,
+});
+
+export function MainChromeProvider({
+  children,
+  showFloatingChatButton = true,
+}: {
+  children: React.ReactNode;
+  showFloatingChatButton?: boolean;
+}) {
+  return (
+    <MainChromeContext.Provider value={{ showFloatingChatButton }}>
+      {children}
+    </MainChromeContext.Provider>
+  );
+}
+
 export function Body() {
   const { tabs, currentTab } = useTabs(
     useShallow((state) => ({
@@ -61,10 +85,6 @@ export function Body() {
       currentTab: state.currentTab,
     })),
   );
-
-  useEffect(() => {
-    void loadPlugins();
-  }, []);
 
   if (!currentTab) {
     return null;
@@ -74,7 +94,7 @@ export function Body() {
     <div className="relative flex h-full flex-1 flex-col gap-1">
       <Header tabs={tabs} />
       <div className="flex-1 overflow-auto">
-        <ContentWrapper key={uniqueIdfromTab(currentTab)} tab={currentTab} />
+        <MainTabContent key={uniqueIdfromTab(currentTab)} tab={currentTab} />
       </div>
     </div>
   );
@@ -165,7 +185,7 @@ function Header({ tabs }: { tabs: Tab[] }) {
   );
 
   const setTabRef = useScrollActiveTabIntoView(regularTabs);
-  useTabsShortcuts();
+  useMainTabsShortcuts();
 
   return (
     <div
@@ -221,7 +241,7 @@ function Header({ tabs }: { tabs: Tab[] }) {
 
       {listeningTab && (
         <div className="mr-1 flex h-full shrink-0 items-center">
-          <TabItem
+          <MainTabItem
             tab={listeningTab}
             handleClose={close}
             handleSelect={select}
@@ -277,7 +297,7 @@ function Header({ tabs }: { tabs: Tab[] }) {
                   className="z-10 h-full"
                   transition={{ layout: { duration: 0.15 } }}
                 >
-                  <TabItem
+                  <MainTabItem
                     tab={tab}
                     handleClose={close}
                     handleSelect={select}
@@ -336,7 +356,7 @@ function Header({ tabs }: { tabs: Tab[] }) {
   );
 }
 
-function TabItem({
+export function MainTabItem({
   tab,
   handleClose,
   handleSelect,
@@ -439,20 +459,6 @@ function TabItem({
   if (tab.type === "calendar") {
     return (
       <TabItemCalendar
-        tab={tab}
-        tabIndex={tabIndex}
-        handleCloseThis={handleClose}
-        handleSelectThis={handleSelect}
-        handleCloseOthers={handleCloseOthers}
-        handleCloseAll={handleCloseAll}
-        handlePinThis={handlePinThis}
-        handleUnpinThis={handleUnpinThis}
-      />
-    );
-  }
-  if (tab.type === "extension") {
-    return (
-      <TabItemPlugin
         tab={tab}
         tabIndex={tabIndex}
         handleCloseThis={handleClose}
@@ -579,7 +585,7 @@ function TabItem({
   return null;
 }
 
-function ContentWrapper({ tab }: { tab: Tab }) {
+export function MainTabContent({ tab }: { tab: Tab }) {
   if (tab.type === "sessions") {
     return <TabContentNote tab={tab} />;
   }
@@ -598,9 +604,6 @@ function ContentWrapper({ tab }: { tab: Tab }) {
   }
   if (tab.type === "calendar") {
     return <TabContentCalendar />;
-  }
-  if (tab.type === "extension") {
-    return <TabContentPlugin tab={tab} />;
   }
   if (tab.type === "changelog") {
     return <TabContentChangelog tab={tab} />;
@@ -757,12 +760,16 @@ export function StandardTabWrapper({
   floatingButton?: React.ReactNode;
   showTimeline?: boolean;
 }) {
+  const { showFloatingChatButton } = useContext(MainChromeContext);
+
   return (
     <div className="flex h-full flex-col">
       <div className="relative flex flex-1 flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white">
         {children}
         {floatingButton}
-        <StandardTabChatButton showTimeline={showTimeline} />
+        {showFloatingChatButton && (
+          <StandardTabChatButton showTimeline={showTimeline} />
+        )}
       </div>
       {afterBorder && <div className="mt-1">{afterBorder}</div>}
     </div>
@@ -898,7 +905,7 @@ function useScrollActiveTabIntoView(tabs: Tab[]) {
   return setTabRef;
 }
 
-function useTabsShortcuts() {
+export function useMainTabsShortcuts() {
   const {
     tabs,
     currentTab,

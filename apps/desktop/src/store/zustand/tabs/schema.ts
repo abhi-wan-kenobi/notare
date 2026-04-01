@@ -5,10 +5,9 @@ import type {
   ContactsSelection,
   ContactsState,
   EditorView,
-  ExtensionsState,
   PromptsState,
   SessionsState,
-  TabInput,
+  TabInput as WindowsTabInput,
   TemplatesState,
 } from "@hypr/plugin-windows";
 
@@ -19,11 +18,18 @@ export type {
   ContactsSelection,
   ContactsState,
   EditorView,
-  ExtensionsState,
   PromptsState,
   SessionsState,
-  TabInput,
   TemplatesState,
+};
+
+export type TabInput = Exclude<
+  WindowsTabInput,
+  { type: "extension" } | { type: "extensions" }
+>;
+
+export const isTabInputSupported = (tab: WindowsTabInput): tab is TabInput => {
+  return tab.type !== "extension" && tab.type !== "extensions";
 };
 
 export type SettingsTab =
@@ -110,15 +116,6 @@ export type Tab =
   | (BaseTab & { type: "organizations"; id: string })
   | (BaseTab & { type: "folders"; id: string | null })
   | (BaseTab & { type: "empty" })
-  | (BaseTab & {
-      type: "extension";
-      extensionId: string;
-      state: Record<string, unknown>;
-    })
-  | (BaseTab & {
-      type: "extensions";
-      state: ExtensionsState;
-    })
   | (BaseTab & { type: "calendar" })
   | (BaseTab & {
       type: "changelog";
@@ -189,19 +186,6 @@ export const getDefaultState = (tab: TabInput): Tab => {
       return { ...base, type: "folders", id: tab.id };
     case "empty":
       return { ...base, type: "empty" };
-    case "extension":
-      return {
-        ...base,
-        type: "extension",
-        extensionId: tab.extensionId,
-        state: tab.state ?? {},
-      };
-    case "extensions":
-      return {
-        ...base,
-        type: "extensions",
-        state: tab.state ?? { selectedExtension: null },
-      };
     case "calendar":
       return { ...base, type: "calendar" };
     case "changelog":
@@ -257,10 +241,6 @@ export const uniqueIdfromTab = (tab: Tab): string => {
       return `folders-${tab.id ?? "all"}`;
     case "empty":
       return `empty-${tab.slotId}`;
-    case "extension":
-      return `extension-${tab.extensionId}`;
-    case "extensions":
-      return `extensions`;
     case "calendar":
       return `calendar`;
     case "changelog":

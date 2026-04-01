@@ -72,7 +72,6 @@
     "@hypr/plugin-permissions": "workspace:*",
     "@hypr/plugin-relay": "workspace:*",
     "@hypr/plugin-screen": "workspace:*",
-    "@hypr/plugin-sdk": "workspace:*",
     "@hypr/plugin-settings": "workspace:*",
     "@hypr/plugin-sfx": "workspace:*",
     "@hypr/plugin-store2": "workspace:*",
