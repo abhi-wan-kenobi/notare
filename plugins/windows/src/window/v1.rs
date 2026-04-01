@@ -114,10 +114,11 @@ impl WindowImpl for AppWindow {
 
         let window = match self {
             Self::Main => {
-                let is_new =
-                    cfg!(feature = "new") || app.config().identifier == "com.hyprnote.nightly";
-
-                let url = if is_new { "/app/main2" } else { "/app/main" };
+                let url = if cfg!(feature = "new") {
+                    "/app/main2"
+                } else {
+                    "/app/main"
+                };
 
                 let builder = self
                     .window_builder(app, url)
