@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CanStartTrialData, CanStartTrialErrors, CanStartTrialResponses, CreateContactData, CreateContactErrors, CreateContactResponses, CreateConversationData, CreateConversationErrors, CreateConversationResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, DeleteAccountData, DeleteAccountErrors, DeleteAccountResponses, DeleteConnectionData, DeleteConnectionErrors, DeleteConnectionResponses, DiarizeData, DiarizeErrors, DiarizeResponses, GetJobByIdData, GetJobByIdErrors, GetJobByIdResponses, GetJobsByTeamData, GetJobsByTeamErrors, GetJobsByTeamResponses, GetMediaDownloadUrlData, GetMediaDownloadUrlErrors, GetMediaDownloadUrlResponses, GetMediaUploadUrlData, GetMediaUploadUrlErrors, GetMediaUploadUrlResponses, GetMessagesData, GetMessagesErrors, GetMessagesResponses, GithubListReposData, GithubListReposErrors, GithubListReposResponses, GithubListTicketsData, GithubListTicketsErrors, GithubListTicketsResponses, GoogleGetAttachmentData, GoogleGetAttachmentErrors, GoogleGetAttachmentResponses, GoogleGetMessageData, GoogleGetMessageErrors, GoogleGetMessageResponses, GoogleGetProfileData, GoogleGetProfileErrors, GoogleGetProfileResponses, GoogleGetThreadData, GoogleGetThreadErrors, GoogleGetThreadResponses, GoogleListCalendarsData, GoogleListCalendarsErrors, GoogleListCalendarsResponses, GoogleListEventsData, GoogleListEventsErrors, GoogleListEventsResponses, GoogleListHistoryData, GoogleListHistoryErrors, GoogleListHistoryResponses, GoogleListLabelsData, GoogleListLabelsErrors, GoogleListLabelsResponses, GoogleListMessagesData, GoogleListMessagesErrors, GoogleListMessagesResponses, GoogleListThreadsData, GoogleListThreadsErrors, GoogleListThreadsResponses, IdentifyData, IdentifyErrors, IdentifyResponses, LinearListTeamsData, LinearListTeamsErrors, LinearListTeamsResponses, LinearListTicketsData, LinearListTicketsErrors, LinearListTicketsResponses, ListConnectionsData, ListConnectionsErrors, ListConnectionsResponses, ListConversationsData, ListConversationsErrors, ListConversationsResponses, LlmChatCompletionsData, LlmChatCompletionsErrors, LlmChatCompletionsResponses, NangoWebhookData, NangoWebhookErrors, NangoWebhookResponses, OutlookListCalendarsData, OutlookListCalendarsErrors, OutlookListCalendarsResponses, OutlookListEventsData, OutlookListEventsErrors, OutlookListEventsResponses, SendMessageData, SendMessageErrors, SendMessageResponses, StartTrialData, StartTrialErrors, StartTrialResponses, SttListenBatchData, SttListenBatchErrors, SttListenBatchResponses, SttListenStreamData, SttListenStreamErrors, SttStatusData, SttStatusErrors, SttStatusResponses, SubmitData, SubmitErrors, SubmitResponses, TestKeyData, TestKeyErrors, TestKeyResponses, VoiceprintData, VoiceprintErrors, VoiceprintResponses, WhoamiData, WhoamiErrors, WhoamiResponses } from './types.gen';
+import type { CanStartTrialData, CanStartTrialErrors, CanStartTrialResponses, CreateContactData, CreateContactErrors, CreateContactResponses, CreateConversationData, CreateConversationErrors, CreateConversationResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, DeleteAccountData, DeleteAccountErrors, DeleteAccountResponses, DeleteConnectionData, DeleteConnectionErrors, DeleteConnectionResponses, DiarizeData, DiarizeErrors, DiarizeResponses, GetMessagesData, GetMessagesErrors, GetMessagesResponses, GithubListReposData, GithubListReposErrors, GithubListReposResponses, GithubListTicketsData, GithubListTicketsErrors, GithubListTicketsResponses, GoogleGetAttachmentData, GoogleGetAttachmentErrors, GoogleGetAttachmentResponses, GoogleGetMessageData, GoogleGetMessageErrors, GoogleGetMessageResponses, GoogleGetProfileData, GoogleGetProfileErrors, GoogleGetProfileResponses, GoogleGetThreadData, GoogleGetThreadErrors, GoogleGetThreadResponses, GoogleListCalendarsData, GoogleListCalendarsErrors, GoogleListCalendarsResponses, GoogleListEventsData, GoogleListEventsErrors, GoogleListEventsResponses, GoogleListHistoryData, GoogleListHistoryErrors, GoogleListHistoryResponses, GoogleListLabelsData, GoogleListLabelsErrors, GoogleListLabelsResponses, GoogleListMessagesData, GoogleListMessagesErrors, GoogleListMessagesResponses, GoogleListThreadsData, GoogleListThreadsErrors, GoogleListThreadsResponses, IdentifyData, IdentifyErrors, IdentifyResponses, LinearListTeamsData, LinearListTeamsErrors, LinearListTeamsResponses, LinearListTicketsData, LinearListTicketsErrors, LinearListTicketsResponses, ListConnectionsData, ListConnectionsErrors, ListConnectionsResponses, ListConversationsData, ListConversationsErrors, ListConversationsResponses, LlmChatCompletionsData, LlmChatCompletionsErrors, LlmChatCompletionsResponses, NangoWebhookData, NangoWebhookErrors, NangoWebhookResponses, OutlookListCalendarsData, OutlookListCalendarsErrors, OutlookListCalendarsResponses, OutlookListEventsData, OutlookListEventsErrors, OutlookListEventsResponses, SendMessageData, SendMessageErrors, SendMessageResponses, StartTrialData, StartTrialErrors, StartTrialResponses, SttListenBatchData, SttListenBatchErrors, SttListenBatchResponses, SttListenStreamData, SttListenStreamErrors, SttStatusData, SttStatusErrors, SttStatusResponses, SubmitData, SubmitErrors, SubmitResponses, VoiceprintData, VoiceprintErrors, VoiceprintResponses, WhoamiData, WhoamiErrors, WhoamiResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -207,66 +207,6 @@ export const identify = <ThrowOnError extends boolean = false>(options: Options<
         'Content-Type': 'application/json',
         ...options.headers
     }
-});
-
-/**
- * Get all jobs.
- */
-export const getJobsByTeam = <ThrowOnError extends boolean = false>(options?: Options<GetJobsByTeamData, ThrowOnError>) => (options?.client ?? client).get<GetJobsByTeamResponses, GetJobsByTeamErrors, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/pyannote/v1/jobs',
-    ...options
-});
-
-/**
- * Get job by ID
- */
-export const getJobById = <ThrowOnError extends boolean = false>(options: Options<GetJobByIdData, ThrowOnError>) => (options.client ?? client).get<GetJobByIdResponses, GetJobByIdErrors, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/pyannote/v1/jobs/{jobId}',
-    ...options
-});
-
-/**
- * Get upload URL
- *
- * To use the provided temporary storage is a two step process.
- * You start by declaring a media:// url that you can reference in any other API calls. The response will provide a url where you can put your media. This allows you to use the media:// url as a short-cut for a temporary storage location.
- * You'll be returned a pre-signed url you can use to PUT and upload your media file. The temporary storage should allow you to read and write to the media:// locations for a period of at least 24 hours before it is removed.
- */
-export const getMediaUploadUrl = <ThrowOnError extends boolean = false>(options: Options<GetMediaUploadUrlData, ThrowOnError>) => (options.client ?? client).post<GetMediaUploadUrlResponses, GetMediaUploadUrlErrors, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/pyannote/v1/media/input',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Get download URL
- *
- * You can download media you previously uploaded with /media/input or media that was generated through another API call.
- * The temporary storage should allow you to read and write to the media:// locations for a period of at least 24 hours before it is removed.
- */
-export const getMediaDownloadUrl = <ThrowOnError extends boolean = false>(options: Options<GetMediaDownloadUrlData, ThrowOnError>) => (options.client ?? client).post<GetMediaDownloadUrlResponses, GetMediaDownloadUrlErrors, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/pyannote/v1/media/output',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Test API endpoint
- */
-export const testKey = <ThrowOnError extends boolean = false>(options?: Options<TestKeyData, ThrowOnError>) => (options?.client ?? client).get<TestKeyResponses, TestKeyErrors, ThrowOnError>({
-    security: [{ scheme: 'bearer', type: 'http' }],
-    url: '/pyannote/v1/test',
-    ...options
 });
 
 /**

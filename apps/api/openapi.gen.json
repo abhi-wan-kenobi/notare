@@ -863,283 +863,6 @@
         ]
       }
     },
-    "/pyannote/v1/jobs": {
-      "get": {
-        "tags": [
-          "pyannote"
-        ],
-        "summary": "Get all jobs.",
-        "operationId": "getJobsByTeam",
-        "parameters": [
-          {
-            "name": "take",
-            "in": "query",
-            "description": "Number of jobs to return",
-            "required": false,
-            "schema": {
-              "type": "number",
-              "default": 10,
-              "example": 10,
-              "maximum": 100,
-              "minimum": 1
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "description": "Status of the jobs to return",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "pending",
-                "created",
-                "succeeded",
-                "canceled",
-                "failed",
-                "running"
-              ],
-              "example": "succeeded"
-            }
-          },
-          {
-            "name": "skip",
-            "in": "query",
-            "description": "Number of jobs to skip",
-            "required": false,
-            "schema": {
-              "type": "number",
-              "example": 1,
-              "minimum": 0
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GetJobsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request"
-          },
-          "402": {
-            "description": "Subscription is required"
-          },
-          "429": {
-            "description": "Too many requests"
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ],
-        "x-api-key-permissions": [
-          "jobs:read"
-        ]
-      }
-    },
-    "/pyannote/v1/jobs/{jobId}": {
-      "get": {
-        "tags": [
-          "pyannote"
-        ],
-        "summary": "Get job by ID",
-        "operationId": "getJobById",
-        "parameters": [
-          {
-            "name": "jobId",
-            "in": "path",
-            "description": "Job ID to track the progress",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/DiarizationJob"
-                    },
-                    {
-                      "$ref": "#/components/schemas/VoiceprintJob"
-                    },
-                    {
-                      "$ref": "#/components/schemas/IdentifyJob"
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request"
-          },
-          "402": {
-            "description": "Subscription is required"
-          },
-          "429": {
-            "description": "Too many requests"
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ],
-        "x-api-key-permissions": [
-          "jobs:read"
-        ]
-      }
-    },
-    "/pyannote/v1/media/input": {
-      "post": {
-        "tags": [
-          "pyannote"
-        ],
-        "summary": "Get upload URL",
-        "description": "To use the provided temporary storage is a two step process.\n    You start by declaring a media:// url that you can reference in any other API calls. The response will provide a url where you can put your media. This allows you to use the media:// url as a short-cut for a temporary storage location.\n    You'll be returned a pre-signed url you can use to PUT and upload your media file. The temporary storage should allow you to read and write to the media:// locations for a period of at least 24 hours before it is removed.",
-        "operationId": "getMediaUploadURL",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GetMediaUploadUrl"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MediaResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request"
-          },
-          "402": {
-            "description": "Subscription is required"
-          },
-          "429": {
-            "description": "Too many requests"
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ],
-        "x-api-key-permissions": [
-          "media:write"
-        ]
-      }
-    },
-    "/pyannote/v1/media/output": {
-      "post": {
-        "tags": [
-          "pyannote"
-        ],
-        "summary": "Get download URL",
-        "description": "You can download media you previously uploaded with /media/input or media that was generated through another API call.\nThe temporary storage should allow you to read and write to the media:// locations for a period of at least 24 hours before it is removed.",
-        "operationId": "getMediaDownloadURL",
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GetMediaUploadUrl"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MediaResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request"
-          },
-          "402": {
-            "description": "Subscription is required"
-          },
-          "429": {
-            "description": "Too many requests"
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ],
-        "x-api-key-permissions": [
-          "media:read"
-        ]
-      }
-    },
-    "/pyannote/v1/test": {
-      "get": {
-        "tags": [
-          "pyannote"
-        ],
-        "summary": "Test API endpoint",
-        "operationId": "testKey",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TestResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request"
-          },
-          "402": {
-            "description": "Subscription is required"
-          },
-          "429": {
-            "description": "Too many requests"
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
-      }
-    },
     "/pyannote/v1/voiceprint": {
       "post": {
         "tags": [
@@ -3226,75 +2949,73 @@
         ],
         "properties": {
           "confidence": {
-            "type": "boolean",
-            "description": "Include confidence values in the output. Output is considerably larger when this option is enabled. Output includes a list of confidence scores with a resolution.",
-            "default": false,
-            "example": true
+            "type": "boolean"
           },
           "exclusive": {
-            "type": "boolean",
-            "description": "Includes exclusive diarization values in the output in `exclusiveDiarization` key (equivalent to diarization but without overlapping speech).",
-            "default": false,
-            "example": true
+            "type": "boolean"
           },
           "maxSpeakers": {
-            "type": "number",
-            "description": "Maximum number of speakers (must be >= minSpeakers if both are set)",
-            "example": 4,
-            "minimum": 1
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
           },
           "minSpeakers": {
-            "type": "number",
-            "description": "Minimum number of speakers (must be <= maxSpeakers if both are set)",
-            "example": 1,
-            "minimum": 1
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
           },
           "model": {
-            "type": "string",
-            "default": "precision-2",
-            "enum": [
-              "precision-2",
-              "community-1"
-            ],
-            "example": "precision-2"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DiarizeRequestModel"
+              }
+            ]
           },
           "numSpeakers": {
-            "type": "number",
-            "description": "Number of speakers. Only use if the number of speakers is known in advance. Number of speakers is detected automatically if not provided. Setting this value results in better overall diarization performance. In rare cases where we cannot honor this request (e.g. short files and large number of speakers), a warning will be added to the output. Equivalent to sending minSpeakers==maxSpeakers",
-            "example": 2,
-            "minimum": 1
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
           },
           "transcription": {
-            "type": "boolean",
-            "description": "Enable speaker attributed transcription. Only available for the `precision-2` diarization model.",
-            "default": false
+            "type": "boolean"
           },
           "transcriptionConfig": {
-            "$ref": "#/components/schemas/TranscriptionConfiguration"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TranscriptionConfiguration"
+              }
+            ]
           },
           "turnLevelConfidence": {
-            "type": "boolean",
-            "description": "Includes turn-level confidence values in the output.",
-            "default": false,
-            "example": true
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "url": {
-            "type": "string",
-            "description": "URL of the audio file to be processed",
-            "example": "https://example.com/audio.wav"
-          },
-          "webhook": {
-            "type": "string",
-            "description": "Webhook URL to receive results when job is completed (optional)",
-            "example": "https://example.com/webhook"
-          },
-          "webhookStatusOnly": {
-            "type": "boolean",
-            "description": "When true, webhook payload only includes jobId and status (excludes output). Useful for large payloads.",
-            "default": false,
-            "example": true
+            "type": "string"
           }
-        }
+        },
+        "additionalProperties": false
+      },
+      "DiarizeRequestModel": {
+        "type": "string",
+        "enum": [
+          "precision-2",
+          "community-1"
+        ]
       },
       "EmailAddress": {
         "type": "object",
@@ -4412,82 +4133,80 @@
       "IdentifyRequest": {
         "type": "object",
         "required": [
+          "url",
           "voiceprints"
         ],
         "properties": {
           "confidence": {
-            "type": "boolean",
-            "description": "Include confidence values in the output. Output is considerably larger when this option is enabled. Output includes a list of confidence scores with a resolution.",
-            "default": false,
-            "example": true
+            "type": "boolean"
           },
           "exclusive": {
-            "type": "boolean",
-            "description": "Includes exclusive diarization values in the output in `exclusiveDiarization` key (equivalent to diarization but without overlapping speech).",
-            "default": false,
-            "example": true
+            "type": "boolean"
           },
           "matching": {
-            "$ref": "#/components/schemas/MatchingOptions"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MatchingOptions"
+              }
+            ]
           },
           "maxSpeakers": {
-            "type": "number",
-            "description": "Maximum number of speakers (must be >= minSpeakers if both are set)",
-            "example": 4,
-            "minimum": 1
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
           },
           "minSpeakers": {
-            "type": "number",
-            "description": "Minimum number of speakers (must be <= maxSpeakers if both are set)",
-            "example": 1,
-            "minimum": 1
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
           },
           "model": {
-            "type": "string",
-            "default": "precision-2",
-            "enum": [
-              "precision-2"
-            ],
-            "example": "precision-2"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/IdentifyRequestModel"
+              }
+            ]
           },
           "numSpeakers": {
-            "type": "number",
-            "description": "Number of speakers. Only use if the number of speakers is known in advance. Number of speakers is detected automatically if not provided. Setting this value results in better overall diarization performance. In rare cases where we cannot honor this request (e.g. short files and large number of speakers), a warning will be added to the output. Equivalent to sending minSpeakers==maxSpeakers",
-            "example": 2,
-            "minimum": 1
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
           },
           "turnLevelConfidence": {
-            "type": "boolean",
-            "description": "Includes turn-level confidence values in the output.",
-            "default": false,
-            "example": true
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "url": {
-            "type": "string",
-            "description": "URL of the audio file to be processed",
-            "example": "https://example.com/audio.wav"
+            "type": "string"
           },
           "voiceprints": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Voiceprint"
-            },
-            "description": "List of voiceprints to identify against",
-            "maxItems": 50,
-            "minItems": 1
-          },
-          "webhook": {
-            "type": "string",
-            "description": "Webhook URL to receive results when job is completed (optional)",
-            "example": "https://example.com/webhook"
-          },
-          "webhookStatusOnly": {
-            "type": "boolean",
-            "description": "When true, webhook payload only includes jobId and status (excludes output). Useful for large payloads.",
-            "default": false,
-            "example": true
+            }
           }
-        }
+        },
+        "additionalProperties": false
+      },
+      "IdentifyRequestModel": {
+        "type": "string",
+        "enum": [
+          "precision-2"
+        ]
       },
       "Importance": {
         "type": "string",
@@ -5222,17 +4941,17 @@
         "type": "object",
         "properties": {
           "exclusive": {
-            "type": "boolean",
-            "description": "Prevent multiple speakers from being matched to the same voiceprint. Default to true",
-            "default": true
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "threshold": {
-            "type": "number",
-            "format": "float",
-            "description": "Prevent matching if confidence score is below this threshold. Value is between 0 and 100. Default is 0, meaning all voiceprints are matched",
-            "default": 0,
-            "maximum": 100,
-            "minimum": 0
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
           }
         }
       },
@@ -6749,18 +6468,21 @@
       },
       "TranscriptionConfiguration": {
         "type": "object",
+        "required": [
+          "model"
+        ],
         "properties": {
           "model": {
-            "type": "string",
-            "description": "Transcription model to use. Supported languages depend on the chosen model:\n  - `parakeet-tdt-0.6b-v3`: Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese, Polish, Portuguese, Romanian, Slovak, Slovenian, Spanish, Swedish, Russian or Ukrainian.\n  - `faster-whisper-large-v3-turbo`: Afrikaans, Albanian, Amharic, Arabic, Armenian, Assamese, Azerbaijani, Bashkir, Basque, Belarusian, Bengali, Bosnian, Breton, Bulgarian, Cantonese, Catalan, Chinese, Croatian, Czech, Danish, Dutch, English, Estonian, Faroese, Finnish, French, Galician, Georgian, German, Greek, Gujarati, HaitianCreole, Hausa, Hawaiian, Hebrew, Hindi, Hungarian, Icelandic, Indonesian, Italian, Japanese, Javanese, Kannada, Kazakh, Khmer, Korean, Lao, Latin, Latvian, Lingala, Lithuanian, Luxembourgish, Macedonian, Malagasy, Malay, Malayalam, Maltese, Maori, Marathi, Mongolian, Myanmar, Nepali, Norwegian, Nynorsk, Occitan, Pashto, Persian, Polish, Portuguese, Punjabi, Romanian, Russian, Sanskrit, Serbian, Shona, Sindhi, Sinhala, Slovak, Slovenian, Somali, Spanish, Sundanese, Swahili, Swedish, Tagalog, Tajik, Tamil, Tatar, Telugu, Thai, Tibetan, Turkish, Turkmen, Ukrainian, Urdu, Uzbek, Vietnamese, Welsh, Yiddish or Yoruba.",
-            "default": "parakeet-tdt-0.6b-v3",
-            "enum": [
-              "parakeet-tdt-0.6b-v3",
-              "faster-whisper-large-v3-turbo"
-            ],
-            "example": "faster-whisper-large-v3-turbo"
+            "$ref": "#/components/schemas/TranscriptionConfigurationModel"
           }
         }
+      },
+      "TranscriptionConfigurationModel": {
+        "type": "string",
+        "enum": [
+          "parakeet-tdt-0.6b-v3",
+          "faster-whisper-large-v3-turbo"
+        ]
       },
       "TranscriptionSegment": {
         "type": "object",
@@ -6815,18 +6537,10 @@
         ],
         "properties": {
           "label": {
-            "type": "string",
-            "description": "Label for the speaker. Labels can't start with \"SPEAKER_\"",
-            "example": "John Doe",
-            "maxLength": 100,
-            "pattern": "^(?!speaker_).*"
+            "type": "string"
           },
           "voiceprint": {
-            "type": "string",
-            "format": "base64",
-            "description": "Voiceprint of a speaker",
-            "example": "U29tZUJhc2U2NERhdGE",
-            "maxLength": 20000
+            "type": "string"
           }
         }
       },
@@ -6886,30 +6600,26 @@
         ],
         "properties": {
           "model": {
-            "type": "string",
-            "default": "precision-2",
-            "enum": [
-              "precision-2"
-            ],
-            "example": "precision-2"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/VoiceprintRequestModel"
+              }
+            ]
           },
           "url": {
-            "type": "string",
-            "description": "URL of the voiceprint audio file",
-            "example": "https://example.com/voice.wav"
-          },
-          "webhook": {
-            "type": "string",
-            "description": "Webhook URL to receive voiceprint results (optional)",
-            "example": "https://example.com/webhook"
-          },
-          "webhookStatusOnly": {
-            "type": "boolean",
-            "description": "When true, webhook payload only includes jobId and status (excludes output). Useful for large payloads.",
-            "default": false,
-            "example": true
+            "type": "string"
           }
-        }
+        },
+        "additionalProperties": false
+      },
+      "VoiceprintRequestModel": {
+        "type": "string",
+        "enum": [
+          "precision-2"
+        ]
       },
       "WebhookResponse": {
         "type": "object",

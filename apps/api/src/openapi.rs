@@ -166,11 +166,12 @@ fn with_each_operation(item: &mut PathItem, mut f: impl FnMut(&mut Operation)) {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn pyannote_paths_are_prefixed_and_protected() {
-        let doc = super::openapi();
-        let path = doc.paths.paths.get("/pyannote/v1/test").unwrap();
-        let operation = path.get.as_ref().unwrap();
+    fn assert_bearer(path: &utoipa::openapi::path::PathItem, method: &str) {
+        let operation = match method {
+            "get" => path.get.as_ref().unwrap(),
+            "post" => path.post.as_ref().unwrap(),
+            _ => unreachable!("unsupported method"),
+        };
         let security = operation.security.as_ref().unwrap();
 
         assert!(security.iter().any(|item| {
@@ -179,6 +180,25 @@ mod tests {
                 .get("bearer_auth")
                 .is_some()
         }));
+    }
+
+    #[test]
+    fn pyannote_paths_are_prefixed_and_protected() {
+        let doc = super::openapi();
+        assert_bearer(doc.paths.paths.get("/pyannote/v1/diarize").unwrap(), "post");
+        assert_bearer(
+            doc.paths.paths.get("/pyannote/v1/identify").unwrap(),
+            "post",
+        );
+        assert_bearer(
+            doc.paths.paths.get("/pyannote/v1/voiceprint").unwrap(),
+            "post",
+        );
+        assert!(!doc.paths.paths.contains_key("/pyannote/v1/jobs"));
+        assert!(!doc.paths.paths.contains_key("/pyannote/v1/jobs/{jobId}"));
+        assert!(!doc.paths.paths.contains_key("/pyannote/v1/media/input"));
+        assert!(!doc.paths.paths.contains_key("/pyannote/v1/media/output"));
+        assert!(!doc.paths.paths.contains_key("/pyannote/v1/test"));
     }
 
     #[test]

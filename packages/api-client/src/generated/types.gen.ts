@@ -361,49 +361,19 @@ export type DiarizationSegment = {
 };
 
 export type DiarizeRequest = {
-    /**
-     * Include confidence values in the output. Output is considerably larger when this option is enabled. Output includes a list of confidence scores with a resolution.
-     */
     confidence?: boolean;
-    /**
-     * Includes exclusive diarization values in the output in `exclusiveDiarization` key (equivalent to diarization but without overlapping speech).
-     */
     exclusive?: boolean;
-    /**
-     * Maximum number of speakers (must be >= minSpeakers if both are set)
-     */
-    maxSpeakers?: number;
-    /**
-     * Minimum number of speakers (must be <= maxSpeakers if both are set)
-     */
-    minSpeakers?: number;
-    model?: 'precision-2' | 'community-1';
-    /**
-     * Number of speakers. Only use if the number of speakers is known in advance. Number of speakers is detected automatically if not provided. Setting this value results in better overall diarization performance. In rare cases where we cannot honor this request (e.g. short files and large number of speakers), a warning will be added to the output. Equivalent to sending minSpeakers==maxSpeakers
-     */
-    numSpeakers?: number;
-    /**
-     * Enable speaker attributed transcription. Only available for the `precision-2` diarization model.
-     */
+    maxSpeakers?: number | null;
+    minSpeakers?: number | null;
+    model?: null | DiarizeRequestModel;
+    numSpeakers?: number | null;
     transcription?: boolean;
-    transcriptionConfig?: TranscriptionConfiguration;
-    /**
-     * Includes turn-level confidence values in the output.
-     */
-    turnLevelConfidence?: boolean;
-    /**
-     * URL of the audio file to be processed
-     */
+    transcriptionConfig?: null | TranscriptionConfiguration;
+    turnLevelConfidence?: boolean | null;
     url: string;
-    /**
-     * Webhook URL to receive results when job is completed (optional)
-     */
-    webhook?: string;
-    /**
-     * When true, webhook payload only includes jobId and status (excludes output). Useful for large payloads.
-     */
-    webhookStatusOnly?: boolean;
 };
+
+export type DiarizeRequestModel = 'precision-2' | 'community-1';
 
 export type EmailAddress = {
     address?: string | null;
@@ -734,49 +704,19 @@ export type IdentifyJob = {
 };
 
 export type IdentifyRequest = {
-    /**
-     * Include confidence values in the output. Output is considerably larger when this option is enabled. Output includes a list of confidence scores with a resolution.
-     */
     confidence?: boolean;
-    /**
-     * Includes exclusive diarization values in the output in `exclusiveDiarization` key (equivalent to diarization but without overlapping speech).
-     */
     exclusive?: boolean;
-    matching?: MatchingOptions;
-    /**
-     * Maximum number of speakers (must be >= minSpeakers if both are set)
-     */
-    maxSpeakers?: number;
-    /**
-     * Minimum number of speakers (must be <= maxSpeakers if both are set)
-     */
-    minSpeakers?: number;
-    model?: 'precision-2';
-    /**
-     * Number of speakers. Only use if the number of speakers is known in advance. Number of speakers is detected automatically if not provided. Setting this value results in better overall diarization performance. In rare cases where we cannot honor this request (e.g. short files and large number of speakers), a warning will be added to the output. Equivalent to sending minSpeakers==maxSpeakers
-     */
-    numSpeakers?: number;
-    /**
-     * Includes turn-level confidence values in the output.
-     */
-    turnLevelConfidence?: boolean;
-    /**
-     * URL of the audio file to be processed
-     */
-    url?: string;
-    /**
-     * List of voiceprints to identify against
-     */
+    matching?: null | MatchingOptions;
+    maxSpeakers?: number | null;
+    minSpeakers?: number | null;
+    model?: null | IdentifyRequestModel;
+    numSpeakers?: number | null;
+    turnLevelConfidence?: boolean | null;
+    url: string;
     voiceprints: Array<Voiceprint>;
-    /**
-     * Webhook URL to receive results when job is completed (optional)
-     */
-    webhook?: string;
-    /**
-     * When true, webhook payload only includes jobId and status (excludes output). Useful for large payloads.
-     */
-    webhookStatusOnly?: boolean;
 };
+
+export type IdentifyRequestModel = 'precision-2';
 
 export type Importance = 'low' | 'normal' | 'high' | 'unknown';
 
@@ -947,14 +887,8 @@ export type Location = {
 export type LocationType = 'default' | 'conferenceRoom' | 'homeAddress' | 'businessAddress' | 'geoCoordinates' | 'streetAddress' | 'hotel' | 'restaurant' | 'localBusiness' | 'postalAddress' | 'unknown';
 
 export type MatchingOptions = {
-    /**
-     * Prevent multiple speakers from being matched to the same voiceprint. Default to true
-     */
-    exclusive?: boolean;
-    /**
-     * Prevent matching if confidence score is below this threshold. Value is between 0 and 100. Default is 0, meaning all voiceprints are matched
-     */
-    threshold?: number;
+    exclusive?: boolean | null;
+    threshold?: number | null;
 };
 
 export type MediaResponse = {
@@ -1324,13 +1258,10 @@ export type TicketSummary = {
 };
 
 export type TranscriptionConfiguration = {
-    /**
-     * Transcription model to use. Supported languages depend on the chosen model:
-     * - `parakeet-tdt-0.6b-v3`: Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish, French, German, Greek, Hungarian, Italian, Latvian, Lithuanian, Maltese, Polish, Portuguese, Romanian, Slovak, Slovenian, Spanish, Swedish, Russian or Ukrainian.
-     * - `faster-whisper-large-v3-turbo`: Afrikaans, Albanian, Amharic, Arabic, Armenian, Assamese, Azerbaijani, Bashkir, Basque, Belarusian, Bengali, Bosnian, Breton, Bulgarian, Cantonese, Catalan, Chinese, Croatian, Czech, Danish, Dutch, English, Estonian, Faroese, Finnish, French, Galician, Georgian, German, Greek, Gujarati, HaitianCreole, Hausa, Hawaiian, Hebrew, Hindi, Hungarian, Icelandic, Indonesian, Italian, Japanese, Javanese, Kannada, Kazakh, Khmer, Korean, Lao, Latin, Latvian, Lingala, Lithuanian, Luxembourgish, Macedonian, Malagasy, Malay, Malayalam, Maltese, Maori, Marathi, Mongolian, Myanmar, Nepali, Norwegian, Nynorsk, Occitan, Pashto, Persian, Polish, Portuguese, Punjabi, Romanian, Russian, Sanskrit, Serbian, Shona, Sindhi, Sinhala, Slovak, Slovenian, Somali, Spanish, Sundanese, Swahili, Swedish, Tagalog, Tajik, Tamil, Tatar, Telugu, Thai, Tibetan, Turkish, Turkmen, Ukrainian, Urdu, Uzbek, Vietnamese, Welsh, Yiddish or Yoruba.
-     */
-    model?: 'parakeet-tdt-0.6b-v3' | 'faster-whisper-large-v3-turbo';
+    model: TranscriptionConfigurationModel;
 };
+
+export type TranscriptionConfigurationModel = 'parakeet-tdt-0.6b-v3' | 'faster-whisper-large-v3-turbo';
 
 export type TranscriptionSegment = {
     /**
@@ -1356,13 +1287,7 @@ export type Transparency = 'opaque' | 'transparent' | 'unknown';
 export type Visibility = 'default' | 'public' | 'private' | 'confidential' | 'unknown';
 
 export type Voiceprint = {
-    /**
-     * Label for the speaker. Labels can't start with "SPEAKER_"
-     */
     label: string;
-    /**
-     * Voiceprint of a speaker
-     */
     voiceprint: string;
 };
 
@@ -1399,20 +1324,11 @@ export type VoiceprintJobResults = {
 };
 
 export type VoiceprintRequest = {
-    model?: 'precision-2';
-    /**
-     * URL of the voiceprint audio file
-     */
+    model?: null | VoiceprintRequestModel;
     url: string;
-    /**
-     * Webhook URL to receive voiceprint results (optional)
-     */
-    webhook?: string;
-    /**
-     * When true, webhook payload only includes jobId and status (excludes output). Useful for large payloads.
-     */
-    webhookStatusOnly?: boolean;
 };
+
+export type VoiceprintRequestModel = 'precision-2';
 
 export type WebhookResponse = {
     status: string;
@@ -2216,164 +2132,6 @@ export type IdentifyResponses = {
 };
 
 export type IdentifyResponse = IdentifyResponses[keyof IdentifyResponses];
-
-export type GetJobsByTeamData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Number of jobs to return
-         */
-        take?: number;
-        /**
-         * Status of the jobs to return
-         */
-        status?: 'pending' | 'created' | 'succeeded' | 'canceled' | 'failed' | 'running';
-        /**
-         * Number of jobs to skip
-         */
-        skip?: number;
-    };
-    url: '/pyannote/v1/jobs';
-};
-
-export type GetJobsByTeamErrors = {
-    /**
-     * Invalid request
-     */
-    400: unknown;
-    /**
-     * Subscription is required
-     */
-    402: unknown;
-    /**
-     * Too many requests
-     */
-    429: unknown;
-};
-
-export type GetJobsByTeamResponses = {
-    200: GetJobsResponse;
-};
-
-export type GetJobsByTeamResponse = GetJobsByTeamResponses[keyof GetJobsByTeamResponses];
-
-export type GetJobByIdData = {
-    body?: never;
-    path: {
-        /**
-         * Job ID to track the progress
-         */
-        jobId: string;
-    };
-    query?: never;
-    url: '/pyannote/v1/jobs/{jobId}';
-};
-
-export type GetJobByIdErrors = {
-    /**
-     * Invalid request
-     */
-    400: unknown;
-    /**
-     * Subscription is required
-     */
-    402: unknown;
-    /**
-     * Too many requests
-     */
-    429: unknown;
-};
-
-export type GetJobByIdResponses = {
-    200: DiarizationJob | VoiceprintJob | IdentifyJob;
-};
-
-export type GetJobByIdResponse = GetJobByIdResponses[keyof GetJobByIdResponses];
-
-export type GetMediaUploadUrlData = {
-    body: GetMediaUploadUrl;
-    path?: never;
-    query?: never;
-    url: '/pyannote/v1/media/input';
-};
-
-export type GetMediaUploadUrlErrors = {
-    /**
-     * Invalid request
-     */
-    400: unknown;
-    /**
-     * Subscription is required
-     */
-    402: unknown;
-    /**
-     * Too many requests
-     */
-    429: unknown;
-};
-
-export type GetMediaUploadUrlResponses = {
-    201: MediaResponse;
-};
-
-export type GetMediaUploadUrlResponse = GetMediaUploadUrlResponses[keyof GetMediaUploadUrlResponses];
-
-export type GetMediaDownloadUrlData = {
-    body: GetMediaUploadUrl;
-    path?: never;
-    query?: never;
-    url: '/pyannote/v1/media/output';
-};
-
-export type GetMediaDownloadUrlErrors = {
-    /**
-     * Invalid request
-     */
-    400: unknown;
-    /**
-     * Subscription is required
-     */
-    402: unknown;
-    /**
-     * Too many requests
-     */
-    429: unknown;
-};
-
-export type GetMediaDownloadUrlResponses = {
-    201: MediaResponse;
-};
-
-export type GetMediaDownloadUrlResponse = GetMediaDownloadUrlResponses[keyof GetMediaDownloadUrlResponses];
-
-export type TestKeyData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/pyannote/v1/test';
-};
-
-export type TestKeyErrors = {
-    /**
-     * Invalid request
-     */
-    400: unknown;
-    /**
-     * Subscription is required
-     */
-    402: unknown;
-    /**
-     * Too many requests
-     */
-    429: unknown;
-};
-
-export type TestKeyResponses = {
-    200: TestResponse;
-};
-
-export type TestKeyResponse = TestKeyResponses[keyof TestKeyResponses];
 
 export type VoiceprintData = {
     body: VoiceprintRequest;
