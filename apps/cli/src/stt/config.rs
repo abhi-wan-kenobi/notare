@@ -75,6 +75,7 @@ impl ResolvedSttConfig {
             api_key: self.api_key.clone(),
             languages: vec![self.language.clone()],
             keywords,
+            num_speakers: None,
         }
     }
 }
