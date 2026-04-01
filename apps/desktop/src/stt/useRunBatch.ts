@@ -28,6 +28,8 @@ type RunOptions = {
   keywords?: string[];
   languages?: string[];
   numSpeakers?: number;
+  minSpeakers?: number;
+  maxSpeakers?: number;
 };
 
 const BATCH_PROVIDER_MAP: Record<string, BatchParams["provider"]> = {
@@ -193,6 +195,8 @@ export const useRunBatch = (sessionId: string) => {
         keywords: options?.keywords ?? keywords ?? [],
         languages: options?.languages ?? languages ?? [],
         num_speakers: options?.numSpeakers,
+        min_speakers: options?.minSpeakers,
+        max_speakers: options?.maxSpeakers,
       };
 
       await runBatch(params, { handlePersist: persist });

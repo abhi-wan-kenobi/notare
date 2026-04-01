@@ -62,7 +62,13 @@ struct DiarizeRequest {
     transcription: bool,
     transcription_config: TranscriptionConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
+    max_speakers: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    min_speakers: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     num_speakers: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    turn_level_confidence: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -90,11 +96,15 @@ struct JobResponse {
 #[serde(rename_all = "camelCase")]
 struct DiarizationJobOutput {
     #[serde(default)]
+    confidence: Option<serde_json::Value>,
+    #[serde(default)]
     error: Option<String>,
     #[serde(default)]
     warning: Option<String>,
     #[serde(default)]
     diarization: Vec<DiarizationSegment>,
+    #[serde(default)]
+    exclusive_diarization: Vec<DiarizationSegment>,
     #[serde(default)]
     turn_level_transcription: Vec<TranscriptionSegment>,
     #[serde(default)]
@@ -106,6 +116,8 @@ struct DiarizationSegment {
     speaker: String,
     start: f64,
     end: f64,
+    #[serde(default)]
+    confidence: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -217,7 +229,10 @@ impl PyannoteAdapter {
                 transcription_config: TranscriptionConfig {
                     model: Self::resolve_transcription_model(params.model.as_deref()),
                 },
+                max_speakers: Self::pyannote_u32_option(params, "pyannote_max_speakers"),
+                min_speakers: Self::pyannote_u32_option(params, "pyannote_min_speakers"),
                 num_speakers: params.num_speakers,
+                turn_level_confidence: None,
             })
             .send()
             .await?;
@@ -277,9 +292,11 @@ impl PyannoteAdapter {
 
     fn convert_to_batch_response(job: JobResponse) -> BatchResponse {
         let output = job.output.unwrap_or(DiarizationJobOutput {
+            confidence: None,
             error: None,
             warning: None,
             diarization: Vec::new(),
+            exclusive_diarization: Vec::new(),
             turn_level_transcription: Vec::new(),
             word_level_transcription: Vec::new(),
         });
@@ -319,7 +336,9 @@ impl PyannoteAdapter {
                 "job_id": job.job_id,
                 "status": job.status,
                 "warning": output.warning,
+                "confidence": output.confidence,
                 "diarization": output.diarization,
+                "exclusive_diarization": output.exclusive_diarization,
             }),
             results: BatchResults {
                 channels: vec![BatchChannel {
@@ -338,6 +357,14 @@ impl PyannoteAdapter {
             .as_ref()
             .and_then(|output| output.error.clone())
             .unwrap_or_else(|| format!("pyannote job {}", job.status))
+    }
+
+    fn pyannote_u32_option(params: &ListenParams, key: &str) -> Option<u32> {
+        params
+            .custom_query
+            .as_ref()
+            .and_then(|query| query.get(key))
+            .and_then(|value| value.parse::<u32>().ok())
     }
 }
 
@@ -376,12 +403,23 @@ mod tests {
             job_id: "job-123".to_string(),
             status: "succeeded".to_string(),
             output: Some(DiarizationJobOutput {
+                confidence: Some(serde_json::json!({
+                    "score": [95, 90],
+                    "resolution": 0.02,
+                })),
                 error: None,
                 warning: Some("warning".to_string()),
                 diarization: vec![DiarizationSegment {
                     speaker: "SPEAKER_00".to_string(),
                     start: 0.0,
                     end: 1.0,
+                    confidence: Some(serde_json::json!({"SPEAKER_00": 93})),
+                }],
+                exclusive_diarization: vec![DiarizationSegment {
+                    speaker: "SPEAKER_00".to_string(),
+                    start: 0.0,
+                    end: 1.0,
+                    confidence: None,
                 }],
                 turn_level_transcription: vec![TranscriptionSegment {
                     speaker: "SPEAKER_00".to_string(),
@@ -412,10 +450,15 @@ mod tests {
         assert_eq!(alternative.words[0].speaker, Some(0));
         assert_eq!(alternative.words[1].speaker, Some(1));
         assert_eq!(response.metadata["job_id"], "job-123");
+        assert_eq!(response.metadata["confidence"]["resolution"], 0.02);
+        assert_eq!(
+            response.metadata["exclusive_diarization"][0]["speaker"],
+            "SPEAKER_00"
+        );
     }
 
     #[test]
-    fn diarize_request_serializes_num_speakers_when_present() {
+    fn diarize_request_serializes_speaker_range_options() {
         let value = serde_json::to_value(DiarizeRequest {
             url: "media://audio".to_string(),
             model: PyannoteDiarizationModel::Precision2,
@@ -423,15 +466,20 @@ mod tests {
             transcription_config: TranscriptionConfig {
                 model: PyannoteTranscriptionModel::ParakeetTdt06bV3,
             },
+            max_speakers: Some(4),
+            min_speakers: Some(2),
             num_speakers: Some(2),
+            turn_level_confidence: None,
         })
         .unwrap();
 
+        assert_eq!(value["maxSpeakers"], 4);
+        assert_eq!(value["minSpeakers"], 2);
         assert_eq!(value["numSpeakers"], 2);
     }
 
     #[test]
-    fn diarize_request_omits_num_speakers_when_absent() {
+    fn diarize_request_omits_optional_speaker_controls_when_absent() {
         let value = serde_json::to_value(DiarizeRequest {
             url: "media://audio".to_string(),
             model: PyannoteDiarizationModel::Precision2,
@@ -439,10 +487,16 @@ mod tests {
             transcription_config: TranscriptionConfig {
                 model: PyannoteTranscriptionModel::ParakeetTdt06bV3,
             },
+            max_speakers: None,
+            min_speakers: None,
             num_speakers: None,
+            turn_level_confidence: None,
         })
         .unwrap();
 
+        assert!(value.get("maxSpeakers").is_none());
+        assert!(value.get("minSpeakers").is_none());
         assert!(value.get("numSpeakers").is_none());
+        assert!(value.get("turnLevelConfidence").is_none());
     }
 }

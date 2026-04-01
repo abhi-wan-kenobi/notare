@@ -51,6 +51,10 @@ pub struct BatchParams {
     pub keywords: Vec<String>,
     #[serde(default)]
     pub num_speakers: Option<u32>,
+    #[serde(default)]
+    pub min_speakers: Option<u32>,
+    #[serde(default)]
+    pub max_speakers: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -214,6 +218,8 @@ fn build_listen_params(
     channels: u8,
     sample_rate: u32,
 ) -> owhisper_interface::ListenParams {
+    let custom_query = build_custom_query(params);
+
     owhisper_interface::ListenParams {
         model: params.model.clone(),
         channels,
@@ -221,8 +227,28 @@ fn build_listen_params(
         languages: params.languages.clone(),
         keywords: params.keywords.clone(),
         num_speakers: params.num_speakers,
-        custom_query: None,
+        custom_query,
     }
+}
+
+fn build_custom_query(params: &BatchParams) -> Option<std::collections::HashMap<String, String>> {
+    let mut query = std::collections::HashMap::new();
+
+    if let Some(min_speakers) = params.min_speakers {
+        query.insert(
+            "pyannote_min_speakers".to_string(),
+            min_speakers.to_string(),
+        );
+    }
+
+    if let Some(max_speakers) = params.max_speakers {
+        query.insert(
+            "pyannote_max_speakers".to_string(),
+            max_speakers.to_string(),
+        );
+    }
+
+    (!query.is_empty()).then_some(query)
 }
 
 pub(super) fn batch_provider_label(provider: BatchProvider) -> String {
@@ -310,6 +336,8 @@ mod tests {
             languages: vec![hypr_language::ISO639::En.into()],
             keywords: vec![],
             num_speakers: None,
+            min_speakers: None,
+            max_speakers: None,
         }
     }
 
@@ -323,6 +351,29 @@ mod tests {
         assert_eq!(listen_params.num_speakers, Some(3));
         assert_eq!(listen_params.channels, 2);
         assert_eq!(listen_params.sample_rate, 48_000);
+    }
+
+    #[test]
+    fn build_listen_params_preserves_speaker_range_options() {
+        let mut params = batch_params(BatchProvider::Pyannote, "https://api.pyannote.ai");
+        params.min_speakers = Some(2);
+        params.max_speakers = Some(4);
+
+        let listen_params = build_listen_params(&params, 1, 16_000);
+        let custom_query = listen_params.custom_query.expect("missing custom query");
+
+        assert_eq!(
+            custom_query
+                .get("pyannote_min_speakers")
+                .map(String::as_str),
+            Some("2")
+        );
+        assert_eq!(
+            custom_query
+                .get("pyannote_max_speakers")
+                .map(String::as_str),
+            Some("4")
+        );
     }
 
     #[test]

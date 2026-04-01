@@ -76,6 +76,8 @@ impl ResolvedSttConfig {
             languages: vec![self.language.clone()],
             keywords,
             num_speakers: None,
+            min_speakers: None,
+            max_speakers: None,
         }
     }
 }
