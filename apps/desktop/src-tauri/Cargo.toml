@@ -106,6 +106,7 @@ hypr-audio-mock = { workspace = true, optional = true }
 [features]
 default = []
 dev = ["dep:hypr-audio-mock"]
+new = ["tauri-plugin-windows/new"]
 devtools = ["tauri/devtools"]
 automation = ["tauri-plugin-automation"]
 
