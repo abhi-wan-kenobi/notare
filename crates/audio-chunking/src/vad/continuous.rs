@@ -2,17 +2,18 @@ use std::{
     collections::VecDeque,
     pin::Pin,
     task::{Context, Poll},
-    time::Duration,
 };
 
-use futures_util::{Stream, StreamExt, future, stream};
+use futures_util::Stream;
 use hypr_audio_interface::AsyncSource;
 use hypr_vad::silero_onnx::CHUNK_SIZE_16KHZ;
 use pin_project::pin_project;
 
-use crate::{
-    chunk_policy::{normalize_speech_chunks, speech_chunk_vad_config},
-    session::{AdaptiveVadConfig, AdaptiveVadSession, VadTransition},
+use crate::AudioChunk;
+
+use super::{
+    chunk_policy::normalize_speech_chunk_stream,
+    session::{VadChunkerConfig, VadSession, VadTransition},
 };
 
 #[derive(Debug, Clone)]
@@ -20,33 +21,26 @@ pub(crate) enum VadStreamItem {
     #[allow(dead_code)]
     AudioSamples(Vec<f32>),
     #[allow(dead_code)]
-    SpeechStart { timestamp_ms: usize },
+    SpeechStart { sample_start: usize },
     SpeechEnd {
         detected_speech_samples: usize,
-        start_timestamp_ms: usize,
-        end_timestamp_ms: usize,
+        sample_start: usize,
+        sample_end: usize,
         samples: Vec<f32>,
     },
-}
-
-#[derive(Debug, Clone)]
-pub struct AudioChunk {
-    pub samples: Vec<f32>,
-    pub start_timestamp_ms: usize,
-    pub end_timestamp_ms: usize,
 }
 
 #[pin_project]
 pub(crate) struct ContinuousVadStream<S: AsyncSource> {
     source: S,
-    vad_session: AdaptiveVadSession,
+    vad_session: VadSession,
     buffer: Vec<f32>,
     pending_items: VecDeque<VadStreamItem>,
     finalized: bool,
 }
 
 impl<S: AsyncSource> ContinuousVadStream<S> {
-    pub(crate) fn new(source: S, config: AdaptiveVadConfig) -> Result<Self, crate::Error> {
+    pub(crate) fn new(source: S, config: VadChunkerConfig) -> Result<Self, crate::Error> {
         let sample_rate = source.sample_rate();
         if sample_rate != 16000 {
             return Err(crate::Error::UnsupportedSampleRate(sample_rate));
@@ -54,7 +48,7 @@ impl<S: AsyncSource> ContinuousVadStream<S> {
 
         Ok(Self {
             source,
-            vad_session: AdaptiveVadSession::new(config)?,
+            vad_session: VadSession::new(config)?,
             buffer: Vec::with_capacity(CHUNK_SIZE_16KHZ),
             pending_items: VecDeque::new(),
             finalized: false,
@@ -65,18 +59,18 @@ impl<S: AsyncSource> ContinuousVadStream<S> {
 fn push_transitions(pending: &mut VecDeque<VadStreamItem>, transitions: Vec<VadTransition>) {
     for transition in transitions {
         let item = match transition {
-            VadTransition::SpeechStart { timestamp_ms } => {
-                VadStreamItem::SpeechStart { timestamp_ms }
+            VadTransition::SpeechStart { sample_start } => {
+                VadStreamItem::SpeechStart { sample_start }
             }
             VadTransition::SpeechEnd {
                 detected_speech_samples,
-                start_timestamp_ms,
-                end_timestamp_ms,
+                sample_start,
+                sample_end,
                 samples,
             } => VadStreamItem::SpeechEnd {
                 detected_speech_samples,
-                start_timestamp_ms,
-                end_timestamp_ms,
+                sample_start,
+                sample_end,
                 samples,
             },
         };
@@ -103,12 +97,8 @@ impl<S: AsyncSource> Stream for ContinuousVadStream<S> {
 
         while this.buffer.len() < CHUNK_SIZE_16KHZ {
             match stream.as_mut().poll_next(cx) {
-                Poll::Pending => {
-                    return Poll::Pending;
-                }
-                Poll::Ready(Some(sample)) => {
-                    this.buffer.push(sample);
-                }
+                Poll::Pending => return Poll::Pending,
+                Poll::Ready(Some(sample)) => this.buffer.push(sample),
                 Poll::Ready(None) => {
                     let trailing_audio = std::mem::take(&mut this.buffer);
                     match this.vad_session.finish(&trailing_audio) {
@@ -142,7 +132,6 @@ impl<S: AsyncSource> Stream for ContinuousVadStream<S> {
             Ok(transitions) => {
                 this.pending_items
                     .push_back(VadStreamItem::AudioSamples(chunk));
-
                 push_transitions(&mut this.pending_items, transitions);
 
                 if let Some(item) = this.pending_items.pop_front() {
@@ -156,24 +145,14 @@ impl<S: AsyncSource> Stream for ContinuousVadStream<S> {
     }
 }
 
-pub trait VadExt: AsyncSource + Sized {
-    fn speech_chunks(
-        self,
-        redemption_time: Duration,
-    ) -> impl Stream<Item = Result<AudioChunk, crate::Error>>
-    where
-        Self: 'static,
-    {
-        let config = speech_chunk_vad_config(redemption_time);
-
-        match ContinuousVadStream::new(self, config) {
-            Ok(stream) => normalize_speech_chunks(stream, redemption_time).left_stream(),
-            Err(e) => stream::once(future::ready(Err(e))).right_stream(),
-        }
-    }
+pub(crate) fn speech_chunks<S: AsyncSource + 'static>(
+    source: S,
+    config: VadChunkerConfig,
+) -> Result<impl Stream<Item = Result<AudioChunk, crate::Error>>, crate::Error> {
+    let redemption_time = config.redemption_time;
+    let stream = ContinuousVadStream::new(source, config)?;
+    Ok(normalize_speech_chunk_stream(stream, redemption_time))
 }
-
-impl<T: AsyncSource> VadExt for T {}
 
 #[cfg(test)]
 mod tests {
@@ -183,6 +162,7 @@ mod tests {
     use rodio::nz;
 
     use super::*;
+    use crate::SpeechChunkExt;
 
     fn sample_source(sample_rate: u32, samples: Vec<f32>) -> rodio::buffer::SamplesBuffer {
         rodio::buffer::SamplesBuffer::new(nz!(1u16), NonZero::new(sample_rate).unwrap(), samples)
@@ -201,7 +181,7 @@ mod tests {
                 std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
             ))
             .unwrap(),
-            AdaptiveVadConfig::default(),
+            VadChunkerConfig::default(),
         )
         .unwrap();
 
@@ -227,7 +207,9 @@ mod tests {
             std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
         ))
         .unwrap()
-        .speech_chunks(std::time::Duration::from_millis(50));
+        .speech_chunks(crate::SpeechChunkingConfig::speech(
+            std::time::Duration::from_millis(50),
+        ));
 
         let all_audio_from_vad = vad
             .filter_map(|item| async move {
@@ -248,8 +230,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_invalid_sample_rate_returns_stream_error() {
-        let mut stream = sample_source(8_000, vec![0.0; CHUNK_SIZE_16KHZ])
-            .speech_chunks(std::time::Duration::from_millis(50));
+        let mut stream = sample_source(8_000, vec![0.0; CHUNK_SIZE_16KHZ]).speech_chunks(
+            crate::SpeechChunkingConfig::speech(std::time::Duration::from_millis(50)),
+        );
 
         let first = stream.next().await;
         assert!(matches!(
@@ -265,7 +248,9 @@ mod tests {
             std::fs::File::open(hypr_data::english_1::AUDIO_PATH).unwrap(),
         ))
         .unwrap()
-        .speech_chunks(std::time::Duration::from_millis(50))
+        .speech_chunks(crate::SpeechChunkingConfig::speech(
+            std::time::Duration::from_millis(50),
+        ))
         .collect::<Vec<_>>()
         .await
         .into_iter()
@@ -274,9 +259,9 @@ mod tests {
 
         let mut previous_end = 0usize;
         for chunk in chunks {
-            assert!(chunk.start_timestamp_ms < chunk.end_timestamp_ms);
-            assert!(previous_end <= chunk.start_timestamp_ms);
-            previous_end = chunk.end_timestamp_ms;
+            assert!(chunk.sample_start < chunk.sample_end);
+            assert!(previous_end <= chunk.sample_start);
+            previous_end = chunk.sample_end;
         }
     }
 }

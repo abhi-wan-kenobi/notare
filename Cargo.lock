@@ -1469,6 +1469,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "audio-chunking"
+version = "0.1.0"
+dependencies = [
+ "audio-interface",
+ "data",
+ "futures-util",
+ "hound",
+ "onnx",
+ "pin-project",
+ "rodio",
+ "thiserror 2.0.18",
+ "tokio",
+ "vad",
+]
+
+[[package]]
 name = "audio-core"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -20422,6 +20438,7 @@ version = "0.1.0"
 dependencies = [
  "audio",
  "audio-actual",
+ "audio-chunking",
  "audio-mock",
  "audio-utils",
  "axum 0.8.8",
@@ -20452,7 +20469,6 @@ dependencies = [
  "tracing",
  "transcribe-core",
  "uuid",
- "vad-chunking",
  "ws-utils",
 ]
 
@@ -20460,6 +20476,7 @@ dependencies = [
 name = "transcribe-core"
 version = "0.1.0"
 dependencies = [
+ "audio-chunking",
  "audio-utils",
  "axum 0.8.8",
  "futures-util",
@@ -20468,7 +20485,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
- "vad-chunking",
 ]
 
 [[package]]
@@ -20521,6 +20537,7 @@ dependencies = [
 name = "transcribe-whisper-local"
 version = "0.1.0"
 dependencies = [
+ "audio-chunking",
  "audio-interface",
  "audio-utils",
  "axum 0.8.8",
@@ -20544,7 +20561,6 @@ dependencies = [
  "tower 0.5.3",
  "tracing",
  "transcribe-core",
- "vad-chunking",
  "whisper",
  "whisper-local",
  "ws-utils",
@@ -21675,22 +21691,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.18",
-]
-
-[[package]]
-name = "vad-chunking"
-version = "0.1.0"
-dependencies = [
- "audio-interface",
- "data",
- "futures-util",
- "hound",
- "onnx",
- "pin-project",
- "rodio",
- "thiserror 2.0.18",
- "tokio",
- "vad",
 ]
 
 [[package]]

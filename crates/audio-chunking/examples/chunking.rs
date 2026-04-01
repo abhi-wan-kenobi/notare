@@ -1,8 +1,8 @@
-/// cargo run -p hypr_vad-chunking --example chunking
+/// cargo run -p audio-chunking --example chunking
 use std::time::Duration;
 
+use audio_chunking::{SpeechChunkExt, SpeechChunkingConfig};
 use futures_util::StreamExt;
-use vad_chunking::VadExt;
 
 #[tokio::main]
 async fn main() {
@@ -14,7 +14,9 @@ async fn main() {
     ))
     .unwrap();
 
-    let mut chunks = std::pin::pin!(decoder.speech_chunks(Duration::from_millis(600)));
+    let mut chunks = std::pin::pin!(
+        decoder.speech_chunks(SpeechChunkingConfig::speech(Duration::from_millis(600,)))
+    );
 
     let spec = hound::WavSpec {
         channels: 1,
@@ -32,7 +34,7 @@ async fn main() {
         }
         writer.finalize().unwrap();
 
-        let duration_ms = chunk.end_timestamp_ms - chunk.start_timestamp_ms;
+        let duration_ms = (chunk.sample_end - chunk.sample_start) * 1000 / 16_000;
         println!(
             "{i:03}.wav  {duration_ms:>6}ms  ({} samples)",
             chunk.samples.len()

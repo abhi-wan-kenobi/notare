@@ -6,7 +6,7 @@ use hypr_vad::silero_onnx::{CHUNK_SIZE_16KHZ, SileroVad};
 const SAMPLE_RATE: usize = 16000;
 
 #[derive(Debug, Clone)]
-pub struct AdaptiveVadConfig {
+pub struct VadChunkerConfig {
     pub positive_speech_threshold: f32,
     pub negative_speech_threshold: f32,
     pub redemption_time: Duration,
@@ -17,7 +17,7 @@ pub struct AdaptiveVadConfig {
     pub max_negative_threshold: f32,
 }
 
-impl Default for AdaptiveVadConfig {
+impl Default for VadChunkerConfig {
     fn default() -> Self {
         Self {
             positive_speech_threshold: 0.5,
@@ -32,7 +32,16 @@ impl Default for AdaptiveVadConfig {
     }
 }
 
-impl AdaptiveVadConfig {
+impl VadChunkerConfig {
+    pub fn speech(redemption_time: Duration) -> Self {
+        Self {
+            redemption_time,
+            pre_speech_pad: redemption_time,
+            min_speech_time: Duration::from_millis(150),
+            ..Default::default()
+        }
+    }
+
     pub fn validate(&self) -> Result<(), crate::Error> {
         validate_threshold("positive_speech_threshold", self.positive_speech_threshold)?;
         validate_threshold("negative_speech_threshold", self.negative_speech_threshold)?;
@@ -91,12 +100,12 @@ fn validate_threshold(name: &str, value: f32) -> Result<(), crate::Error> {
 #[derive(Debug, Clone)]
 pub(crate) enum VadTransition {
     SpeechStart {
-        timestamp_ms: usize,
+        sample_start: usize,
     },
     SpeechEnd {
         detected_speech_samples: usize,
-        start_timestamp_ms: usize,
-        end_timestamp_ms: usize,
+        sample_start: usize,
+        sample_end: usize,
         samples: Vec<f32>,
     },
 }
@@ -111,9 +120,9 @@ enum VadState {
     },
 }
 
-pub struct AdaptiveVadSession {
+pub struct VadSession {
     silero: SileroVad,
-    config: AdaptiveVadConfig,
+    config: VadChunkerConfig,
     state: VadState,
     retained_audio: Vec<f32>,
     retained_start_sample: usize,
@@ -122,12 +131,12 @@ pub struct AdaptiveVadSession {
     last_prob: f32,
 }
 
-impl AdaptiveVadSession {
-    pub fn new(config: AdaptiveVadConfig) -> Result<Self, crate::Error> {
+impl VadSession {
+    pub fn new(config: VadChunkerConfig) -> Result<Self, crate::Error> {
         config.validate()?;
 
         let silero = SileroVad::new_embedded()
-            .map_err(|e| crate::Error::VadSessionCreationFailed(e.to_string()))?;
+            .map_err(|e| crate::Error::SessionCreationFailed(e.to_string()))?;
         Ok(Self {
             silero,
             config,
@@ -140,35 +149,8 @@ impl AdaptiveVadSession {
         })
     }
 
-    pub fn last_probability(&self) -> f32 {
-        self.last_prob
-    }
-
-    pub fn is_speaking(&self) -> bool {
-        matches!(
-            self.state,
-            VadState::Speech {
-                confirmed: true,
-                ..
-            }
-        )
-    }
-
-    pub fn speech_duration(&self) -> Duration {
-        match &self.state {
-            VadState::Speech { speech_samples, .. } => {
-                Duration::from_millis((*speech_samples * 1000 / SAMPLE_RATE) as u64)
-            }
-            VadState::Silence => Duration::ZERO,
-        }
-    }
-
     fn duration_to_samples(duration: Duration) -> usize {
         ((duration.as_millis() * SAMPLE_RATE as u128) / 1000) as usize
-    }
-
-    fn samples_to_ms(samples: usize) -> usize {
-        samples * 1000 / SAMPLE_RATE
     }
 
     fn session_end_sample(&self) -> usize {
@@ -192,8 +174,8 @@ impl AdaptiveVadSession {
 
         VadTransition::SpeechEnd {
             detected_speech_samples,
-            start_timestamp_ms: Self::samples_to_ms(start_sample),
-            end_timestamp_ms: Self::samples_to_ms(end_sample),
+            sample_start: start_sample,
+            sample_end: end_sample,
             samples: self.retained_audio[start_idx..end_idx].to_vec(),
         }
     }
@@ -237,7 +219,7 @@ impl AdaptiveVadSession {
             let prob = self
                 .silero
                 .process_chunk(&chunk, 16000)
-                .map_err(|e| crate::Error::VadProcessingFailed(e.to_string()))?;
+                .map_err(|e| crate::Error::ProcessingFailed(e.to_string()))?;
             self.last_prob = prob;
             self.cursor_sample += CHUNK_SIZE_16KHZ;
 
@@ -328,7 +310,7 @@ impl AdaptiveVadSession {
                         speech_samples,
                     };
                     return Some(VadTransition::SpeechStart {
-                        timestamp_ms: Self::samples_to_ms(start_sample),
+                        sample_start: start_sample,
                     });
                 }
 
@@ -377,14 +359,14 @@ mod tests {
 
     #[test]
     fn test_invalid_config_rejected() {
-        let config = AdaptiveVadConfig {
+        let config = VadChunkerConfig {
             target_chunk_duration: Duration::from_secs(3),
             min_chunk_duration: Duration::from_secs(3),
             ..Default::default()
         };
 
         assert!(matches!(
-            AdaptiveVadSession::new(config),
+            VadSession::new(config),
             Err(crate::Error::InvalidConfig(_))
         ));
     }
@@ -392,7 +374,7 @@ mod tests {
     #[test]
     fn test_finish_emits_confirmed_speech_with_partial_tail() {
         let audio = decode_audio();
-        let mut session = AdaptiveVadSession::new(AdaptiveVadConfig::default()).unwrap();
+        let mut session = VadSession::new(VadChunkerConfig::default()).unwrap();
         let mut processed = 0usize;
 
         while processed + CHUNK_SIZE_16KHZ + 100 <= audio.len() {
@@ -410,8 +392,8 @@ mod tests {
                 assert_eq!(transitions.len(), 1);
                 let VadTransition::SpeechEnd {
                     detected_speech_samples,
-                    start_timestamp_ms,
-                    end_timestamp_ms,
+                    sample_start,
+                    sample_end,
                     samples,
                 } = &transitions[0]
                 else {
@@ -419,7 +401,7 @@ mod tests {
                 };
 
                 assert!(*detected_speech_samples >= CHUNK_SIZE_16KHZ);
-                assert!(*end_timestamp_ms > *start_timestamp_ms);
+                assert!(*sample_end > *sample_start);
                 assert_eq!(&samples[samples.len() - tail.len()..], tail.as_slice());
 
                 return;
@@ -431,7 +413,7 @@ mod tests {
 
     #[test]
     fn test_detected_speech_samples_excludes_redeemed_trailing_silence() {
-        let mut session = AdaptiveVadSession::new(AdaptiveVadConfig {
+        let mut session = VadSession::new(VadChunkerConfig {
             redemption_time: Duration::from_millis(32),
             pre_speech_pad: Duration::ZERO,
             min_speech_time: Duration::from_millis(32),
@@ -463,15 +445,15 @@ mod tests {
 
     #[test]
     fn test_retained_buffer_is_bounded_for_long_silence() {
-        let mut session = AdaptiveVadSession::new(AdaptiveVadConfig::default()).unwrap();
+        let mut session = VadSession::new(VadChunkerConfig::default()).unwrap();
         let silence = vec![0.0; CHUNK_SIZE_16KHZ];
 
         for _ in 0..5000 {
             session.process(&silence).unwrap();
         }
 
-        let max_expected = AdaptiveVadSession::duration_to_samples(session.config.pre_speech_pad)
-            + CHUNK_SIZE_16KHZ;
+        let max_expected =
+            VadSession::duration_to_samples(session.config.pre_speech_pad) + CHUNK_SIZE_16KHZ;
         assert!(session.retained_audio.len() <= max_expected);
     }
 }
