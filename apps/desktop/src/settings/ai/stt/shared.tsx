@@ -73,6 +73,14 @@ export const displayModelId = (model: string) => {
     return "Voxtral Mini Transcribe 2";
   }
 
+  if (model === "parakeet-tdt-0.6b-v3") {
+    return "Parakeet TDT 0.6B V3";
+  }
+
+  if (model === "faster-whisper-large-v3-turbo") {
+    return "Faster Whisper Large V3 Turbo";
+  }
+
   if (model.startsWith("am-")) {
     const am = model as AmModel;
     if (am == "am-parakeet-v2") {
@@ -199,6 +207,22 @@ const _PROVIDERS = [
     icon: <Mistral size={16} />,
     baseUrl: "https://api.mistral.ai/v1",
     models: ["voxtral-mini-2602"],
+    requirements: [{ kind: "requires_config", fields: ["api_key"] }],
+  },
+  {
+    disabled: true,
+    id: "pyannote",
+    displayName: "pyannoteAI",
+    badge: "Batch only",
+    icon: (
+      <img
+        src="/assets/pyannote-logo-black.png"
+        alt="pyannoteAI"
+        className="size-4"
+      />
+    ),
+    baseUrl: "https://api.pyannote.ai",
+    models: ["parakeet-tdt-0.6b-v3", "faster-whisper-large-v3-turbo"],
     requirements: [{ kind: "requires_config", fields: ["api_key"] }],
   },
   {
