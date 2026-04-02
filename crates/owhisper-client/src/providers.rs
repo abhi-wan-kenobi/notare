@@ -309,7 +309,7 @@ impl Provider {
             Self::Soniox => "stt-async-v3",
             Self::AssemblyAI => "universal",
             Self::Fireworks => "whisper-v3-turbo",
-            Self::OpenAI => "whisper-1",
+            Self::OpenAI => "gpt-4o-transcribe-diarize",
             Self::Gladia => "solaria-1",
             Self::ElevenLabs => "scribe_v2",
             Self::DashScope => "qwen3-asr-flash-filetrans",

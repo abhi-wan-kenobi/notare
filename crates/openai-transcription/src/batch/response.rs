@@ -1,6 +1,91 @@
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumString};
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum ParsedTranscriptionStreamEvent {
+    TextDelta {
+        delta: String,
+        partial_text: String,
+        logprobs: Vec<TranscriptionLogprob>,
+    },
+    TextDone {
+        text: String,
+        logprobs: Vec<TranscriptionLogprob>,
+        usage: Option<TranscriptionUsage>,
+    },
+}
+
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct TranscriptionStreamEventParser {
+    partial_text: String,
+}
+
+impl TranscriptionStreamEventParser {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn partial_text(&self) -> &str {
+        &self.partial_text
+    }
+
+    pub fn parse_sse_block(
+        &mut self,
+        block: &str,
+    ) -> Result<Option<ParsedTranscriptionStreamEvent>, serde_json::Error> {
+        let mut data = String::new();
+
+        for line in block.lines() {
+            if let Some(rest) = line.strip_prefix("data:") {
+                if !data.is_empty() {
+                    data.push('\n');
+                }
+                data.push_str(rest.trim());
+            }
+        }
+
+        if data.is_empty() || data == "[DONE]" {
+            return Ok(None);
+        }
+
+        let event: TranscriptionStreamEvent = serde_json::from_str(&data)?;
+
+        Ok(match event {
+            TranscriptionStreamEvent::TextDelta {
+                delta, logprobs, ..
+            } => {
+                if delta.is_empty() {
+                    None
+                } else {
+                    self.partial_text.push_str(&delta);
+                    Some(ParsedTranscriptionStreamEvent::TextDelta {
+                        delta,
+                        partial_text: self.partial_text.clone(),
+                        logprobs,
+                    })
+                }
+            }
+            TranscriptionStreamEvent::TextDone {
+                text,
+                logprobs,
+                usage,
+            } => {
+                let text = if text.is_empty() {
+                    self.partial_text.clone()
+                } else {
+                    self.partial_text = text.clone();
+                    text
+                };
+                Some(ParsedTranscriptionStreamEvent::TextDone {
+                    text,
+                    logprobs,
+                    usage,
+                })
+            }
+        })
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum CreateTranscriptionResponse {
@@ -298,5 +383,31 @@ mod tests {
 
         assert!(matches!(delta, TranscriptionStreamEvent::TextDelta { .. }));
         assert!(matches!(done, TranscriptionStreamEvent::TextDone { .. }));
+    }
+
+    #[test]
+    fn parser_accumulates_partial_text_across_sse_blocks() {
+        let mut parser = TranscriptionStreamEventParser::new();
+
+        let delta = parser
+            .parse_sse_block(r#"data: {"type":"transcript.text.delta","delta":"hello"}"#)
+            .expect("parse delta")
+            .expect("expected delta");
+
+        let done = parser
+            .parse_sse_block(
+                r#"data: {"type":"transcript.text.done","text":"","usage":{"type":"tokens","input_tokens":1,"output_tokens":1,"total_tokens":2}}"#,
+            )
+            .expect("parse done")
+            .expect("expected done");
+
+        assert!(matches!(
+            delta,
+            ParsedTranscriptionStreamEvent::TextDelta { partial_text, .. } if partial_text == "hello"
+        ));
+        assert!(matches!(
+            done,
+            ParsedTranscriptionStreamEvent::TextDone { text, .. } if text == "hello"
+        ));
     }
 }

@@ -1,4 +1,4 @@
-use owhisper_client::{ArgmaxAdapter, CactusAdapter, WhisperCppAdapter};
+use owhisper_client::{ArgmaxAdapter, CactusAdapter, OpenAIAdapter, WhisperCppAdapter};
 use ractor::{ActorProcessingErr, ActorRef};
 use tracing::Instrument;
 
@@ -20,6 +20,7 @@ pub(super) async fn spawn_progressive_batch_task(
     match args.progressive_provider {
         ProgressiveProvider::Argmax => spawn_argmax_progressive_batch_task(args, myself).await,
         ProgressiveProvider::Cactus => spawn_cactus_batch_task(args, myself).await,
+        ProgressiveProvider::OpenAI => spawn_openai_batch_task(args, myself).await,
         ProgressiveProvider::WhisperCpp => spawn_whispercpp_batch_task(args, myself).await,
     }
 }
@@ -197,6 +198,66 @@ async fn spawn_whispercpp_batch_task(
                 shutdown_rx,
                 &args.provider_label,
                 "whispercpp progressive batch",
+            )
+            .await;
+        }
+        .instrument(span),
+    );
+
+    Ok((rx_task, shutdown_tx))
+}
+
+async fn spawn_openai_batch_task(
+    args: BatchArgs,
+    myself: ActorRef<BatchMsg>,
+) -> Result<
+    (
+        tokio::task::JoinHandle<()>,
+        tokio::sync::oneshot::Sender<()>,
+    ),
+    ActorProcessingErr,
+> {
+    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+
+    let span = tracing::info_span!(
+        "openai_progressive_batch",
+        hyprnote.session.id = %args.session_id,
+        url.full = %args.base_url,
+        hyprnote.file.path = %args.file_path,
+    );
+
+    let rx_task = tokio::spawn(
+        async move {
+            let stream = match OpenAIAdapter::transcribe_file_streaming(
+                &args.base_url,
+                &args.api_key,
+                &args.listen_params,
+                &args.file_path,
+            )
+            .await
+            {
+                Ok(stream) => {
+                    notify_start_result(&args.start_notifier, Ok(()));
+                    stream
+                }
+                Err(err) => {
+                    report_stream_start_failure(
+                        &myself,
+                        &args.start_notifier,
+                        &args.provider_label,
+                        &err,
+                        "openai progressive batch failed to start",
+                    );
+                    return;
+                }
+            };
+
+            process_provider_stream(
+                stream,
+                myself,
+                shutdown_rx,
+                &args.provider_label,
+                "openai progressive batch",
             )
             .await;
         }

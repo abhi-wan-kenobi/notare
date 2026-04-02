@@ -1,16 +1,20 @@
 use hypr_ws_client::client::Message;
+use openai_transcription::realtime::{
+    AudioConfig, AudioFormat, AudioFormatType, AudioInputConfig, ClientEventType,
+    InputAudioBufferAppendEvent, InputAudioBufferCommitEvent, ServerEvent, SessionConfig,
+    SessionInclude, SessionType, SessionUpdateEvent, TranscriptionConfig, TurnDetectionConfig,
+    TurnDetectionType,
+};
 use owhisper_interface::ListenParams;
 use owhisper_interface::stream::{Alternatives, Channel, Metadata, StreamResponse};
-use serde::{Deserialize, Serialize};
 
 use super::OpenAIAdapter;
 use crate::adapter::RealtimeSttAdapter;
 use crate::adapter::parsing::{WordBuilder, calculate_time_span};
 
-const VAD_DETECTION_TYPE: &str = "server_vad";
-const VAD_THRESHOLD: f32 = 0.5;
+const VAD_THRESHOLD: f32 = 0.4;
 const VAD_PREFIX_PADDING_MS: u32 = 300;
-const VAD_SILENCE_DURATION_MS: u32 = 500;
+const VAD_SILENCE_DURATION_MS: u32 = 350;
 
 impl RealtimeSttAdapter for OpenAIAdapter {
     fn provider_name(&self) -> &'static str {
@@ -53,8 +57,9 @@ impl RealtimeSttAdapter for OpenAIAdapter {
     fn audio_to_message(&self, audio: bytes::Bytes) -> Message {
         use base64::Engine;
         let base64_audio = base64::engine::general_purpose::STANDARD.encode(&audio);
-        let event = InputAudioBufferAppend {
-            event_type: "input_audio_buffer.append".to_string(),
+        let event = InputAudioBufferAppendEvent {
+            event_id: None,
+            event_type: ClientEventType::InputAudioBufferAppend,
             audio: base64_audio,
         };
         Message::Text(serde_json::to_string(&event).unwrap().into())
@@ -79,28 +84,35 @@ impl RealtimeSttAdapter for OpenAIAdapter {
         };
 
         let session_config = SessionUpdateEvent {
-            event_type: "session.update".to_string(),
+            event_id: None,
+            event_type: ClientEventType::SessionUpdate,
             session: SessionConfig {
-                session_type: "transcription".to_string(),
+                session_type: SessionType::Transcription,
                 audio: Some(AudioConfig {
                     input: Some(AudioInputConfig {
                         format: Some(AudioFormat {
-                            format_type: "audio/pcm".to_string(),
-                            rate: params.sample_rate,
+                            format_type: AudioFormatType::AudioPcm,
+                            rate: Some(params.sample_rate),
                         }),
                         transcription: Some(TranscriptionConfig {
                             model: model.to_string(),
                             language,
+                            prompt: None,
                         }),
-                        turn_detection: Some(TurnDetection {
-                            detection_type: VAD_DETECTION_TYPE.to_string(),
+                        turn_detection: Some(TurnDetectionConfig {
+                            detection_type: TurnDetectionType::ServerVad,
+                            create_response: None,
+                            interrupt_response: None,
+                            idle_timeout_ms: None,
+                            eagerness: None,
                             threshold: Some(VAD_THRESHOLD),
                             prefix_padding_ms: Some(VAD_PREFIX_PADDING_MS),
                             silence_duration_ms: Some(VAD_SILENCE_DURATION_MS),
                         }),
+                        noise_reduction: None,
                     }),
                 }),
-                include: Some(vec!["item.input_audio_transcription.logprobs".to_string()]),
+                include: Some(vec![SessionInclude::InputAudioTranscriptionLogprobs]),
             },
         };
 
@@ -113,14 +125,15 @@ impl RealtimeSttAdapter for OpenAIAdapter {
     }
 
     fn finalize_message(&self) -> Message {
-        let commit = InputAudioBufferCommit {
-            event_type: "input_audio_buffer.commit".to_string(),
+        let commit = InputAudioBufferCommitEvent {
+            event_id: None,
+            event_type: ClientEventType::InputAudioBufferCommit,
         };
         Message::Text(serde_json::to_string(&commit).unwrap().into())
     }
 
     fn parse_response(&self, raw: &str) -> Vec<StreamResponse> {
-        let event: OpenAIEvent = match serde_json::from_str(raw) {
+        let event: ServerEvent = match serde_json::from_str(raw) {
             Ok(e) => e,
             Err(e) => {
                 tracing::warn!(
@@ -133,40 +146,71 @@ impl RealtimeSttAdapter for OpenAIAdapter {
         };
 
         match event {
-            OpenAIEvent::SessionCreated { session } => {
+            ServerEvent::SessionCreated { session, .. } => {
                 tracing::debug!(
                     hyprnote.stt.provider_session.id = %session.id,
                     "openai_session_created"
                 );
                 vec![]
             }
-            OpenAIEvent::SessionUpdated { session } => {
+            ServerEvent::SessionUpdated { session, .. } => {
                 tracing::debug!(
                     hyprnote.stt.provider_session.id = %session.id,
                     "openai_session_updated"
                 );
                 vec![]
             }
-            OpenAIEvent::InputAudioBufferCommitted { item_id } => {
+            ServerEvent::InputAudioBufferCommitted { item_id, .. } => {
                 tracing::debug!(hyprnote.stt.item.id = %item_id, "openai_audio_buffer_committed");
                 vec![]
             }
-            OpenAIEvent::InputAudioBufferCleared => {
+            ServerEvent::InputAudioBufferCleared { .. } => {
                 tracing::debug!("openai_audio_buffer_cleared");
                 vec![]
             }
-            OpenAIEvent::InputAudioBufferSpeechStarted { item_id } => {
-                tracing::debug!(hyprnote.stt.item.id = %item_id, "openai_speech_started");
+            ServerEvent::InputAudioBufferSpeechStarted {
+                item_id,
+                audio_start_ms,
+                ..
+            } => {
+                tracing::debug!(
+                    hyprnote.stt.item.id = %item_id,
+                    hyprnote.stt.audio_start_ms = audio_start_ms,
+                    "openai_speech_started"
+                );
                 vec![]
             }
-            OpenAIEvent::InputAudioBufferSpeechStopped { item_id } => {
-                tracing::debug!(hyprnote.stt.item.id = %item_id, "openai_speech_stopped");
+            ServerEvent::InputAudioBufferSpeechStopped {
+                item_id,
+                audio_end_ms,
+                ..
+            } => {
+                tracing::debug!(
+                    hyprnote.stt.item.id = %item_id,
+                    hyprnote.stt.audio_end_ms = audio_end_ms,
+                    "openai_speech_stopped"
+                );
                 vec![]
             }
-            OpenAIEvent::ConversationItemInputAudioTranscriptionCompleted {
+            ServerEvent::InputAudioBufferTimeoutTriggered {
+                item_id,
+                audio_start_ms,
+                audio_end_ms,
+                ..
+            } => {
+                tracing::debug!(
+                    hyprnote.stt.item.id = %item_id,
+                    hyprnote.stt.audio_start_ms = audio_start_ms,
+                    hyprnote.stt.audio_end_ms = audio_end_ms,
+                    "openai_audio_buffer_timeout_triggered"
+                );
+                vec![]
+            }
+            ServerEvent::ConversationItemInputAudioTranscriptionCompleted {
                 item_id,
                 content_index,
                 transcript,
+                ..
             } => {
                 tracing::debug!(
                     hyprnote.stt.item.id = %item_id,
@@ -176,47 +220,57 @@ impl RealtimeSttAdapter for OpenAIAdapter {
                 );
                 Self::build_transcript_response(&transcript, true, true)
             }
-            OpenAIEvent::ConversationItemInputAudioTranscriptionDelta {
+            ServerEvent::ConversationItemInputAudioTranscriptionDelta {
                 item_id,
                 content_index,
                 delta,
+                obfuscation,
+                ..
             } => {
                 tracing::debug!(
                     hyprnote.stt.item.id = %item_id,
-                    hyprnote.stt.content_index = content_index,
+                    hyprnote.stt.content_index = content_index.unwrap_or_default(),
                     hyprnote.transcript.char_count = delta.chars().count() as u64,
                     "openai_transcription_delta"
                 );
+                if let Some(obfuscation) = obfuscation {
+                    tracing::trace!(hyprnote.stt.obfuscation = %obfuscation);
+                }
                 Self::build_transcript_response(&delta, false, false)
             }
-            OpenAIEvent::ConversationItemInputAudioTranscriptionFailed {
+            ServerEvent::ConversationItemInputAudioTranscriptionFailed {
                 item_id, error, ..
             } => {
+                let error_type = error.error_type.as_deref().unwrap_or("unknown_error");
+                let message = error.message.as_deref().unwrap_or("unknown error");
                 tracing::error!(
                     hyprnote.stt.item.id = %item_id,
-                    error.type = %error.error_type,
-                    error = %error.message,
+                    error.type = %error_type,
+                    error = %message,
                     "openai_transcription_failed"
                 );
                 vec![StreamResponse::ErrorResponse {
                     error_code: None,
-                    error_message: format!("{}: {}", error.error_type, error.message),
+                    error_message: format!("{}: {}", error_type, message),
                     provider: "openai".to_string(),
                 }]
             }
-            OpenAIEvent::Error { error } => {
+            ServerEvent::ConversationItemInputAudioTranscriptionSegment { .. } => vec![],
+            ServerEvent::Error { error, .. } => {
+                let error_type = error.error_type.as_deref().unwrap_or("unknown_error");
+                let message = error.message.as_deref().unwrap_or("unknown error");
                 tracing::error!(
-                    error.type = %error.error_type,
-                    error = %error.message,
+                    error.type = %error_type,
+                    error = %message,
                     "openai_error"
                 );
                 vec![StreamResponse::ErrorResponse {
                     error_code: None,
-                    error_message: format!("{}: {}", error.error_type, error.message),
+                    error_message: format!("{}: {}", error_type, message),
                     provider: "openai".to_string(),
                 }]
             }
-            OpenAIEvent::Unknown => {
+            ServerEvent::Unknown => {
                 tracing::debug!(
                     hyprnote.payload.size_bytes = raw.len() as u64,
                     "openai_unknown_event"
@@ -225,130 +279,6 @@ impl RealtimeSttAdapter for OpenAIAdapter {
             }
         }
     }
-}
-
-#[derive(Debug, Serialize)]
-struct SessionUpdateEvent {
-    #[serde(rename = "type")]
-    event_type: String,
-    session: SessionConfig,
-}
-
-#[derive(Debug, Serialize)]
-struct SessionConfig {
-    #[serde(rename = "type")]
-    session_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    audio: Option<AudioConfig>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    include: Option<Vec<String>>,
-}
-
-#[derive(Debug, Serialize)]
-struct AudioConfig {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    input: Option<AudioInputConfig>,
-}
-
-#[derive(Debug, Serialize)]
-struct AudioInputConfig {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    format: Option<AudioFormat>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    transcription: Option<TranscriptionConfig>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    turn_detection: Option<TurnDetection>,
-}
-
-#[derive(Debug, Serialize)]
-struct AudioFormat {
-    #[serde(rename = "type")]
-    format_type: String,
-    rate: u32,
-}
-
-#[derive(Debug, Serialize)]
-struct TranscriptionConfig {
-    model: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    language: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-struct TurnDetection {
-    #[serde(rename = "type")]
-    detection_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    threshold: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    prefix_padding_ms: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    silence_duration_ms: Option<u32>,
-}
-
-#[derive(Debug, Serialize)]
-struct InputAudioBufferAppend {
-    #[serde(rename = "type")]
-    event_type: String,
-    audio: String,
-}
-
-#[derive(Debug, Serialize)]
-struct InputAudioBufferCommit {
-    #[serde(rename = "type")]
-    event_type: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(tag = "type")]
-#[allow(dead_code)]
-enum OpenAIEvent {
-    #[serde(rename = "session.created")]
-    SessionCreated { session: SessionInfo },
-    #[serde(rename = "session.updated")]
-    SessionUpdated { session: SessionInfo },
-    #[serde(rename = "input_audio_buffer.committed")]
-    InputAudioBufferCommitted { item_id: String },
-    #[serde(rename = "input_audio_buffer.cleared")]
-    InputAudioBufferCleared,
-    #[serde(rename = "input_audio_buffer.speech_started")]
-    InputAudioBufferSpeechStarted { item_id: String },
-    #[serde(rename = "input_audio_buffer.speech_stopped")]
-    InputAudioBufferSpeechStopped { item_id: String },
-    #[serde(rename = "conversation.item.input_audio_transcription.completed")]
-    ConversationItemInputAudioTranscriptionCompleted {
-        item_id: String,
-        content_index: u32,
-        transcript: String,
-    },
-    #[serde(rename = "conversation.item.input_audio_transcription.delta")]
-    ConversationItemInputAudioTranscriptionDelta {
-        item_id: String,
-        content_index: u32,
-        delta: String,
-    },
-    #[serde(rename = "conversation.item.input_audio_transcription.failed")]
-    ConversationItemInputAudioTranscriptionFailed {
-        item_id: String,
-        content_index: u32,
-        error: OpenAIError,
-    },
-    #[serde(rename = "error")]
-    Error { error: OpenAIError },
-    #[serde(other)]
-    Unknown,
-}
-
-#[derive(Debug, Deserialize)]
-struct SessionInfo {
-    id: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct OpenAIError {
-    #[serde(rename = "type")]
-    error_type: String,
-    message: String,
 }
 
 impl OpenAIAdapter {

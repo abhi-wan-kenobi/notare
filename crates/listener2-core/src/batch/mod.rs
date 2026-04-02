@@ -4,7 +4,7 @@ mod simple;
 
 use std::sync::Arc;
 
-use owhisper_client::AdapterKind;
+use owhisper_client::{AdapterKind, OpenAIAdapter};
 
 use crate::{BatchEvent, BatchRuntime};
 
@@ -149,7 +149,7 @@ async fn run_batch_inner(
     match params.provider {
         BatchProvider::Am => {
             let adapter_kind = resolve_batch_adapter_kind(&params, &listen_params);
-            if supports_progressive_batch(adapter_kind) {
+            if supports_progressive_batch(adapter_kind, listen_params.model.as_deref()) {
                 run_progressive_batch_session(runtime, params, listen_params).await
             } else {
                 run_direct_batch_for_adapter_kind(adapter_kind, params, listen_params).await
@@ -174,7 +174,11 @@ async fn run_batch_inner(
             run_direct_batch_for_adapter_kind(AdapterKind::Fireworks, params, listen_params).await
         }
         BatchProvider::OpenAI => {
-            run_direct_batch_for_adapter_kind(AdapterKind::OpenAI, params, listen_params).await
+            if OpenAIAdapter::supports_progressive_batch_model(listen_params.model.as_deref()) {
+                run_progressive_batch_session(runtime, params, listen_params).await
+            } else {
+                run_direct_batch_for_adapter_kind(AdapterKind::OpenAI, params, listen_params).await
+            }
         }
         BatchProvider::Gladia => {
             run_direct_batch_for_adapter_kind(AdapterKind::Gladia, params, listen_params).await
@@ -209,8 +213,12 @@ fn resolve_batch_adapter_kind(
     )
 }
 
-fn supports_progressive_batch(adapter_kind: AdapterKind) -> bool {
-    matches!(adapter_kind, AdapterKind::Argmax | AdapterKind::Cactus)
+fn supports_progressive_batch(adapter_kind: AdapterKind, model: Option<&str>) -> bool {
+    match adapter_kind {
+        AdapterKind::Argmax | AdapterKind::Cactus => true,
+        AdapterKind::OpenAI => OpenAIAdapter::supports_progressive_batch_model(model),
+        _ => false,
+    }
 }
 
 fn build_listen_params(
@@ -382,7 +390,7 @@ mod tests {
         let adapter_kind = resolve_batch_adapter_kind(&params, &listen_params(None));
 
         assert_eq!(adapter_kind, AdapterKind::Pyannote);
-        assert!(!supports_progressive_batch(adapter_kind));
+        assert!(!supports_progressive_batch(adapter_kind, None));
     }
 
     #[test]
@@ -391,7 +399,7 @@ mod tests {
         let adapter_kind = resolve_batch_adapter_kind(&params, &listen_params(None));
 
         assert_eq!(adapter_kind, AdapterKind::Deepgram);
-        assert!(!supports_progressive_batch(adapter_kind));
+        assert!(!supports_progressive_batch(adapter_kind, None));
     }
 
     #[test]
@@ -400,7 +408,7 @@ mod tests {
         let adapter_kind = resolve_batch_adapter_kind(&params, &listen_params(None));
 
         assert_eq!(adapter_kind, AdapterKind::Argmax);
-        assert!(supports_progressive_batch(adapter_kind));
+        assert!(supports_progressive_batch(adapter_kind, None));
     }
 
     #[test]
@@ -410,6 +418,35 @@ mod tests {
             resolve_batch_adapter_kind(&params, &listen_params(Some("cactus-whisper-small-int4")));
 
         assert_eq!(adapter_kind, AdapterKind::Cactus);
-        assert!(supports_progressive_batch(adapter_kind));
+        assert!(supports_progressive_batch(
+            adapter_kind,
+            Some("cactus-whisper-small-int4"),
+        ));
+    }
+
+    #[test]
+    fn am_routes_openai_gpt_batch_to_progressive_batch() {
+        let params = batch_params(BatchProvider::Am, "https://api.openai.com/v1");
+        let adapter_kind =
+            resolve_batch_adapter_kind(&params, &listen_params(Some("gpt-4o-transcribe")));
+
+        assert_eq!(adapter_kind, AdapterKind::OpenAI);
+        assert!(supports_progressive_batch(
+            adapter_kind,
+            Some("gpt-4o-transcribe"),
+        ));
+    }
+
+    #[test]
+    fn am_routes_openai_diarized_batch_to_direct_batch() {
+        let params = batch_params(BatchProvider::Am, "https://api.openai.com/v1");
+        let adapter_kind =
+            resolve_batch_adapter_kind(&params, &listen_params(Some("gpt-4o-transcribe-diarize")));
+
+        assert_eq!(adapter_kind, AdapterKind::OpenAI);
+        assert!(!supports_progressive_batch(
+            adapter_kind,
+            Some("gpt-4o-transcribe-diarize"),
+        ));
     }
 }

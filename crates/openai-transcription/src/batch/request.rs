@@ -3,6 +3,12 @@ use strum::{AsRefStr, Display, EnumString};
 
 use super::model::{AudioModel, GptTranscriptionModel};
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MultipartTextField {
+    pub name: &'static str,
+    pub value: String,
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CommonTranscriptionOptions {
     pub chunking_strategy: Option<ChunkingStrategy>,
@@ -79,6 +85,39 @@ pub enum CreateTranscriptionOptions {
 }
 
 impl CreateTranscriptionOptions {
+    pub fn for_model(model: AudioModel, use_response_format: bool, enable_streaming: bool) -> Self {
+        match model {
+            AudioModel::Whisper1 => Self::Whisper(CreateWhisperTranscriptionOptions {
+                response_format: use_response_format.then_some(WhisperResponseFormat::VerboseJson),
+                ..Default::default()
+            }),
+            AudioModel::Gpt4oTranscribe | AudioModel::Gpt4oMiniTranscribe => {
+                let model = GptTranscriptionModel::try_from(model)
+                    .expect("resolved OpenAI GPT transcription model should be typed");
+                Self::Gpt(CreateGptTranscriptionOptions {
+                    model,
+                    response_format: use_response_format.then_some(GptResponseFormat::Json),
+                    stream: enable_streaming.then_some(true),
+                    ..Default::default()
+                })
+            }
+            AudioModel::Gpt4oMiniTranscribe20251215 => Self::Gpt(CreateGptTranscriptionOptions {
+                model: GptTranscriptionModel::Gpt4oMiniTranscribe20251215,
+                response_format: use_response_format.then_some(GptResponseFormat::Json),
+                stream: enable_streaming.then_some(true),
+                ..Default::default()
+            }),
+            AudioModel::Gpt4oTranscribeDiarize => {
+                Self::Diarize(CreateDiarizedTranscriptionOptions {
+                    response_format: use_response_format
+                        .then_some(DiarizedResponseFormat::DiarizedJson),
+                    stream: enable_streaming.then_some(true),
+                    ..Default::default()
+                })
+            }
+        }
+    }
+
     pub fn whisper() -> Self {
         Self::Whisper(CreateWhisperTranscriptionOptions::default())
     }
@@ -117,12 +156,142 @@ impl CreateTranscriptionOptions {
             Self::Diarize(options) => &mut options.common,
         }
     }
+
+    pub fn push_language(&mut self, language: impl Into<String>) {
+        self.common_mut().language = Some(language.into());
+    }
+
+    pub fn multipart_text_fields(&self) -> Result<Vec<MultipartTextField>, serde_json::Error> {
+        let mut fields = vec![MultipartTextField {
+            name: "model",
+            value: self.model().to_string(),
+        }];
+
+        append_common_fields(&mut fields, self.common())?;
+
+        match self {
+            Self::Whisper(options) => {
+                if let Some(prompt) = &options.prompt {
+                    fields.push(MultipartTextField {
+                        name: "prompt",
+                        value: prompt.clone(),
+                    });
+                }
+
+                if let Some(response_format) = options.response_format {
+                    fields.push(MultipartTextField {
+                        name: "response_format",
+                        value: AudioResponseFormat::from(response_format).to_string(),
+                    });
+                }
+
+                for granularity in &options.timestamp_granularities {
+                    fields.push(MultipartTextField {
+                        name: "timestamp_granularities[]",
+                        value: granularity.to_string(),
+                    });
+                }
+            }
+            Self::Gpt(options) => {
+                for include in &options.include {
+                    fields.push(MultipartTextField {
+                        name: "include[]",
+                        value: include.to_string(),
+                    });
+                }
+
+                if let Some(prompt) = &options.prompt {
+                    fields.push(MultipartTextField {
+                        name: "prompt",
+                        value: prompt.clone(),
+                    });
+                }
+
+                if let Some(response_format) = options.response_format {
+                    fields.push(MultipartTextField {
+                        name: "response_format",
+                        value: AudioResponseFormat::from(response_format).to_string(),
+                    });
+                }
+
+                if let Some(stream) = options.stream {
+                    fields.push(MultipartTextField {
+                        name: "stream",
+                        value: stream.to_string(),
+                    });
+                }
+            }
+            Self::Diarize(options) => {
+                if let Some(response_format) = options.response_format {
+                    fields.push(MultipartTextField {
+                        name: "response_format",
+                        value: AudioResponseFormat::from(response_format).to_string(),
+                    });
+                }
+
+                if let Some(stream) = options.stream {
+                    fields.push(MultipartTextField {
+                        name: "stream",
+                        value: stream.to_string(),
+                    });
+                }
+            }
+        }
+
+        Ok(fields)
+    }
 }
 
 impl Default for CreateTranscriptionOptions {
     fn default() -> Self {
         Self::gpt(GptTranscriptionModel::Gpt4oTranscribe)
     }
+}
+
+fn append_common_fields(
+    fields: &mut Vec<MultipartTextField>,
+    common: &CommonTranscriptionOptions,
+) -> Result<(), serde_json::Error> {
+    if let Some(chunking_strategy) = &common.chunking_strategy {
+        let value = match chunking_strategy {
+            ChunkingStrategy::Auto(_) => "auto".to_string(),
+            strategy => serde_json::to_string(strategy)?,
+        };
+        fields.push(MultipartTextField {
+            name: "chunking_strategy",
+            value,
+        });
+    }
+
+    for speaker_name in &common.known_speaker_names {
+        fields.push(MultipartTextField {
+            name: "known_speaker_names[]",
+            value: speaker_name.clone(),
+        });
+    }
+
+    for speaker_reference in &common.known_speaker_references {
+        fields.push(MultipartTextField {
+            name: "known_speaker_references[]",
+            value: speaker_reference.clone(),
+        });
+    }
+
+    if let Some(language) = &common.language {
+        fields.push(MultipartTextField {
+            name: "language",
+            value: language.clone(),
+        });
+    }
+
+    if let Some(temperature) = common.temperature {
+        fields.push(MultipartTextField {
+            name: "temperature",
+            value: temperature.to_string(),
+        });
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -292,6 +461,82 @@ mod tests {
         assert_eq!(
             CreateTranscriptionOptions::diarize().model(),
             AudioModel::Gpt4oTranscribeDiarize
+        );
+    }
+
+    #[test]
+    fn for_model_applies_openai_defaults() {
+        let whisper = CreateTranscriptionOptions::for_model(AudioModel::Whisper1, true, true);
+        let diarize =
+            CreateTranscriptionOptions::for_model(AudioModel::Gpt4oTranscribeDiarize, true, false);
+
+        match whisper {
+            CreateTranscriptionOptions::Whisper(options) => {
+                assert_eq!(
+                    options.response_format,
+                    Some(WhisperResponseFormat::VerboseJson)
+                );
+            }
+            other => panic!("expected whisper options, got {other:?}"),
+        }
+
+        match diarize {
+            CreateTranscriptionOptions::Diarize(options) => {
+                assert_eq!(
+                    options.response_format,
+                    Some(DiarizedResponseFormat::DiarizedJson)
+                );
+                assert_eq!(options.stream, None);
+            }
+            other => panic!("expected diarized options, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn multipart_text_fields_match_api_shape() {
+        let mut options =
+            CreateTranscriptionOptions::for_model(AudioModel::Gpt4oTranscribe, true, true);
+        options.push_language("en");
+
+        let CreateTranscriptionOptions::Gpt(gpt) = &mut options else {
+            panic!("expected gpt options");
+        };
+        gpt.include.push(TranscriptionInclude::Logprobs);
+        gpt.prompt = Some("expect domain terms".to_string());
+
+        let fields = options
+            .multipart_text_fields()
+            .expect("serialize multipart");
+
+        assert!(
+            fields
+                .iter()
+                .any(|field| field.name == "model" && field.value == "gpt-4o-transcribe")
+        );
+        assert!(
+            fields
+                .iter()
+                .any(|field| field.name == "language" && field.value == "en")
+        );
+        assert!(
+            fields
+                .iter()
+                .any(|field| field.name == "include[]" && field.value == "logprobs")
+        );
+        assert!(
+            fields
+                .iter()
+                .any(|field| field.name == "prompt" && field.value == "expect domain terms")
+        );
+        assert!(
+            fields
+                .iter()
+                .any(|field| field.name == "response_format" && field.value == "json")
+        );
+        assert!(
+            fields
+                .iter()
+                .any(|field| field.name == "stream" && field.value == "true")
         );
     }
 }

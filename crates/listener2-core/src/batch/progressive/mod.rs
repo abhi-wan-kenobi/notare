@@ -3,7 +3,7 @@ mod bootstrap;
 
 use std::sync::Arc;
 
-use owhisper_client::AdapterKind;
+use owhisper_client::{AdapterKind, OpenAIAdapter};
 
 use crate::BatchRuntime;
 
@@ -15,6 +15,8 @@ pub(super) enum ProgressiveProvider {
     Argmax,
     #[strum(serialize = "cactus")]
     Cactus,
+    #[strum(serialize = "openai")]
+    OpenAI,
     #[strum(serialize = "whispercpp")]
     WhisperCpp,
 }
@@ -41,6 +43,11 @@ fn resolve_progressive_provider(
     match params.provider {
         super::BatchProvider::WhisperLocal => return Ok(ProgressiveProvider::WhisperCpp),
         super::BatchProvider::Cactus => return Ok(ProgressiveProvider::Cactus),
+        super::BatchProvider::OpenAI
+            if OpenAIAdapter::supports_progressive_batch_model(listen_params.model.as_deref()) =>
+        {
+            return Ok(ProgressiveProvider::OpenAI);
+        }
         _ => {}
     }
 
@@ -53,6 +60,11 @@ fn resolve_progressive_provider(
     match adapter_kind {
         AdapterKind::Argmax => Ok(ProgressiveProvider::Argmax),
         AdapterKind::Cactus => Ok(ProgressiveProvider::Cactus),
+        AdapterKind::OpenAI
+            if OpenAIAdapter::supports_progressive_batch_model(listen_params.model.as_deref()) =>
+        {
+            Ok(ProgressiveProvider::OpenAI)
+        }
         AdapterKind::DashScope => Err(crate::BatchFailure::BatchCapabilityUnsupported {
             provider: adapter_kind_label(adapter_kind).to_string(),
         }
