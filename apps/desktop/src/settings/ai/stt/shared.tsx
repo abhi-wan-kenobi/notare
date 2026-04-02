@@ -8,7 +8,7 @@ import {
 } from "@lobehub/icons";
 import type { ReactNode } from "react";
 
-import type { AmModel, LocalModel } from "@hypr/plugin-local-stt";
+import type { LocalModel } from "@hypr/plugin-local-stt";
 
 import { env } from "~/env";
 import { CharProviderIcon } from "~/settings/ai/shared";
@@ -81,19 +81,6 @@ export const displayModelId = (model: string) => {
     return "Faster Whisper Large V3 Turbo";
   }
 
-  if (model.startsWith("am-")) {
-    const am = model as AmModel;
-    if (am == "am-parakeet-v2") {
-      return "Parakeet V2";
-    }
-    if (am == "am-parakeet-v3") {
-      return "Parakeet V3";
-    }
-    if (am == "am-whisper-large-v3") {
-      return "Whisper Large V3";
-    }
-  }
-
   return model;
 };
 
@@ -105,12 +92,7 @@ const _PROVIDERS = [
     badge: "Recommended",
     icon: <CharProviderIcon />,
     baseUrl: new URL("/stt", env.VITE_API_URL).toString(),
-    models: [
-      "cloud",
-      "am-parakeet-v2",
-      "am-parakeet-v3",
-      "am-whisper-large-v3",
-    ],
+    models: ["cloud"],
     requirements: [],
   },
   {
