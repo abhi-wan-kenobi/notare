@@ -87,7 +87,7 @@ extension NotificationManager {
   }
 
   private func animateToCompact(notification: NotificationInstance, frame: NSRect) {
-    notification.stopCountdown()
+    notification.clearExpandedTimerLabel()
     notification.expandedContentView?.removeFromSuperview()
     notification.expandedContentView = nil
     notification.compactContentView?.alphaValue = 0

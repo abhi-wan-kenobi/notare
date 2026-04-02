@@ -22,6 +22,7 @@ class NotificationInstance {
   var dismissTimer: Timer?
   var meetingStartTime: Date?
   weak var timerLabel: NSTextField?
+  weak var compactMessageLabel: NSTextField?
 
   init(
     payload: NotificationPayload, panel: NSPanel, clickableView: ClickableView, creationIndex: Int
@@ -43,40 +44,65 @@ class NotificationInstance {
     NotificationManager.shared.animateExpansion(notification: self, isExpanded: isExpanded)
   }
 
-  func startCountdown(label: NSTextField) {
-    timerLabel = label
-    updateCountdown()
-
-    countdownTimer?.invalidate()
-    countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-      self?.updateCountdown()
-    }
+  func bindCompactMessageLabel(_ label: NSTextField) {
+    compactMessageLabel = label
+    updateScheduleLabels()
+    startScheduleUpdates()
   }
 
-  func stopCountdown() {
-    countdownTimer?.invalidate()
-    countdownTimer = nil
+  func bindExpandedTimerLabel(_ label: NSTextField) {
+    timerLabel = label
+    updateScheduleLabels()
+    startScheduleUpdates()
+  }
+
+  func clearExpandedTimerLabel() {
     timerLabel = nil
   }
 
-  private func updateCountdown() {
-    guard let startTime = meetingStartTime, let label = timerLabel else { return }
+  func startScheduleUpdates() {
+    guard let meetingStartTime else { return }
+    updateScheduleLabels()
+
+    guard meetingStartTime.timeIntervalSinceNow > 0 else { return }
+    guard countdownTimer == nil else { return }
+    countdownTimer?.invalidate()
+    countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+      self?.updateScheduleLabels()
+    }
+  }
+
+  func stopScheduleUpdates() {
+    countdownTimer?.invalidate()
+    countdownTimer = nil
+    timerLabel = nil
+    compactMessageLabel = nil
+  }
+
+  private func updateScheduleLabels() {
+    guard let startTime = meetingStartTime else { return }
     let remaining = startTime.timeIntervalSinceNow
 
     if remaining <= 0 {
-      label.stringValue = "Started"
+      compactMessageLabel?.stringValue = "Started"
+      timerLabel?.stringValue = "Started"
       countdownTimer?.invalidate()
       countdownTimer = nil
-
-      if isExpanded {
-        RustBridge.onExpandedStartTimeReached(key: key)
-        dismiss()
-      }
     } else {
-      let minutes = Int(remaining) / 60
-      let seconds = Int(remaining) % 60
-      label.stringValue = "Begins in \(minutes):\(String(format: "%02d", seconds))"
+      compactMessageLabel?.stringValue = compactScheduleText(remaining)
+      timerLabel?.stringValue = expandedScheduleText(remaining)
     }
+  }
+
+  private func compactScheduleText(_ remaining: TimeInterval) -> String {
+    let minutes = max(1, Int(ceil(remaining / 60)))
+    return "Starting in \(minutes) minute\(minutes == 1 ? "" : "s")"
+  }
+
+  private func expandedScheduleText(_ remaining: TimeInterval) -> String {
+    let minutes = Int(remaining) / 60
+    let seconds = Int(remaining) % 60
+    return "Begins in \(minutes):\(String(format: "%02d", seconds))"
   }
 
   func startDismissTimer(timeoutSeconds: Double) {
@@ -134,7 +160,7 @@ class NotificationInstance {
     dismissStartTime = nil
     remainingDismissSeconds = 0
     compactActionButton?.resetProgress()
-    stopCountdown()
+    stopScheduleUpdates()
 
     NSAnimationContext.runAnimationGroup({ context in
       context.duration = Timing.dismiss

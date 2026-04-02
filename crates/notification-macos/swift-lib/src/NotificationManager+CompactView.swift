@@ -57,8 +57,13 @@ extension NotificationManager {
     titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
     textStack.addArrangedSubview(titleLabel)
-    if !notification.payload.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-      let bodyLabel = NSTextField(labelWithString: notification.payload.message)
+
+    let compactMessage =
+      notification.meetingStartTime != nil
+      ? "Starting soon"
+      : notification.payload.message
+    if !compactMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      let bodyLabel = NSTextField(labelWithString: compactMessage)
       bodyLabel.font = NSFont.systemFont(ofSize: Fonts.bodySize, weight: Fonts.bodyWeight)
       bodyLabel.textColor = NSColor.secondaryLabelColor
       bodyLabel.lineBreakMode = .byTruncatingTail
@@ -68,6 +73,10 @@ extension NotificationManager {
 
       bodyLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
       textStack.addArrangedSubview(bodyLabel)
+
+      if notification.meetingStartTime != nil {
+        notification.bindCompactMessageLabel(bodyLabel)
+      }
     }
 
     if let iconImageView = createNotificationIconView(for: notification.payload) {

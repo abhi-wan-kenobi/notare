@@ -54,7 +54,7 @@ fn main() {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs() as i64
-            + 120;
+            + 70;
 
         let notification = Notification::builder()
             .key("event:apple-discovery-call")
@@ -70,7 +70,7 @@ fn main() {
             .build();
 
         show(&notification);
-        std::thread::sleep(Duration::from_secs(60));
+        std::thread::sleep(Duration::from_secs(100));
         std::process::exit(0);
     });
 }
