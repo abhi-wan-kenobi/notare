@@ -3,11 +3,11 @@ import { arch } from "@tauri-apps/plugin-os";
 import { Check, Loader2 } from "lucide-react";
 import { useRef } from "react";
 
-import { commands as listenerCommands } from "@hypr/plugin-listener";
 import {
   commands as localSttCommands,
   type LocalModel,
 } from "@hypr/plugin-local-stt";
+import { commands as listenerCommands } from "@hypr/plugin-transcription";
 import type { AIProviderStorage } from "@hypr/store";
 import { Input } from "@hypr/ui/components/ui/input";
 import {

@@ -4862,8 +4862,6 @@ dependencies = [
  "tauri-plugin-icon",
  "tauri-plugin-importer",
  "tauri-plugin-js",
- "tauri-plugin-listener",
- "tauri-plugin-listener2",
  "tauri-plugin-local-stt",
  "tauri-plugin-mcp",
  "tauri-plugin-misc",
@@ -4892,6 +4890,7 @@ dependencies = [
  "tauri-plugin-template",
  "tauri-plugin-todo",
  "tauri-plugin-tracing",
+ "tauri-plugin-transcription",
  "tauri-plugin-tray",
  "tauri-plugin-updater",
  "tauri-plugin-updater2",
@@ -18507,56 +18506,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tauri-plugin-listener"
-version = "0.1.0"
-dependencies = [
- "audio",
- "dirs 6.0.0",
- "insta",
- "language",
- "listener-core",
- "owhisper-client",
- "owhisper-interface",
- "quickcheck",
- "quickcheck_macros",
- "ractor",
- "rodio",
- "serde",
- "serde_json",
- "specta",
- "specta-typescript",
- "storage",
- "tauri",
- "tauri-plugin",
- "tauri-plugin-hooks",
- "tauri-plugin-local-stt",
- "tauri-plugin-settings",
- "tauri-plugin-tray",
- "tauri-specta",
- "thiserror 2.0.18",
- "tracing",
- "transcript",
- "uuid",
-]
-
-[[package]]
-name = "tauri-plugin-listener2"
-version = "0.1.0"
-dependencies = [
- "language",
- "listener2-core",
- "owhisper-interface",
- "serde",
- "specta",
- "specta-typescript",
- "tauri",
- "tauri-plugin",
- "tauri-plugin-settings",
- "tauri-specta",
- "tokio",
-]
-
-[[package]]
 name = "tauri-plugin-local-llm"
 version = "0.1.0"
 dependencies = [
@@ -18699,7 +18648,6 @@ dependencies = [
  "tauri-plugin",
  "tauri-plugin-analytics",
  "tauri-plugin-dialog",
- "tauri-plugin-listener",
  "tauri-plugin-windows",
  "tauri-specta",
  "thiserror 2.0.18",
@@ -19108,6 +19056,32 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "tauri-plugin-transcription"
+version = "0.1.0"
+dependencies = [
+ "audio",
+ "language",
+ "owhisper-client",
+ "ractor",
+ "serde",
+ "specta",
+ "specta-typescript",
+ "storage",
+ "tauri",
+ "tauri-plugin",
+ "tauri-plugin-hooks",
+ "tauri-plugin-local-stt",
+ "tauri-plugin-settings",
+ "tauri-plugin-tray",
+ "tauri-specta",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "transcript",
+ "transcription-core",
 ]
 
 [[package]]
@@ -20601,6 +20575,14 @@ dependencies = [
  "template-app",
  "thiserror 2.0.18",
  "uuid",
+]
+
+[[package]]
+name = "transcription-core"
+version = "0.1.0"
+dependencies = [
+ "listener-core",
+ "listener2-core",
 ]
 
 [[package]]

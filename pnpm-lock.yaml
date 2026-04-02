@@ -278,12 +278,6 @@ importers:
       '@hypr/plugin-js':
         specifier: workspace:*
         version: link:../../plugins/js
-      '@hypr/plugin-listener':
-        specifier: workspace:*
-        version: link:../../plugins/listener
-      '@hypr/plugin-listener2':
-        specifier: workspace:*
-        version: link:../../plugins/listener2
       '@hypr/plugin-local-stt':
         specifier: workspace:*
         version: link:../../plugins/local-stt
@@ -341,6 +335,9 @@ importers:
       '@hypr/plugin-tracing':
         specifier: workspace:*
         version: link:../../plugins/tracing
+      '@hypr/plugin-transcription':
+        specifier: workspace:*
+        version: link:../../plugins/transcription
       '@hypr/plugin-updater2':
         specifier: workspace:*
         version: link:../../plugins/updater2
@@ -1743,9 +1740,9 @@ importers:
       '@date-fns/tz':
         specifier: ^1.4.1
         version: 1.4.1
-      '@hypr/plugin-listener':
+      '@hypr/plugin-transcription':
         specifier: workspace:^
-        version: link:../../plugins/listener
+        version: link:../../plugins/transcription
       '@hypr/plugin-windows':
         specifier: workspace:^
         version: link:../../plugins/windows
@@ -1907,18 +1904,6 @@ importers:
         specifier: ^2.10.1
         version: 2.10.1
 
-  plugins/listener:
-    dependencies:
-      '@tauri-apps/api':
-        specifier: ^2.10.1
-        version: 2.10.1
-
-  plugins/listener2:
-    dependencies:
-      '@tauri-apps/api':
-        specifier: ^2.10.1
-        version: 2.10.1
-
   plugins/local-llm:
     dependencies:
       '@tauri-apps/api':
@@ -2036,6 +2021,12 @@ importers:
         version: 2.10.1
 
   plugins/tracing:
+    dependencies:
+      '@tauri-apps/api':
+        specifier: ^2.10.1
+        version: 2.10.1
+
+  plugins/transcription:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.10.1

@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 
-import type { BatchParams } from "@hypr/plugin-listener2";
+import type { BatchParams } from "@hypr/plugin-transcription";
 import type { TranscriptStorage } from "@hypr/store";
 
 import { useListener } from "./contexts";

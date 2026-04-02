@@ -167,6 +167,7 @@ hypr-transcribe-core = { path = "crates/transcribe-core", package = "transcribe-
 hypr-transcribe-proxy = { path = "crates/transcribe-proxy", package = "transcribe-proxy" }
 hypr-transcribe-whisper-local = { path = "crates/transcribe-whisper-local", package = "transcribe-whisper-local" }
 hypr-transcript = { path = "crates/transcript", package = "transcript" }
+hypr-transcription-core = { path = "crates/transcription-core", package = "transcription-core" }
 hypr-updater-core = { path = "crates/updater-core", package = "updater-core" }
 hypr-vad = { path = "crates/vad", package = "vad" }
 hypr-vad-masking = { path = "crates/vad-masking", package = "vad-masking" }
@@ -223,8 +224,6 @@ tauri-plugin-hooks = { path = "plugins/hooks" }
 tauri-plugin-icon = { path = "plugins/icon" }
 tauri-plugin-importer = { path = "plugins/importer" }
 tauri-plugin-js = { path = "plugins/js" }
-tauri-plugin-listener = { path = "plugins/listener" }
-tauri-plugin-listener2 = { path = "plugins/listener2" }
 tauri-plugin-local-llm = { path = "plugins/local-llm" }
 tauri-plugin-local-stt = { path = "plugins/local-stt" }
 tauri-plugin-mcp = { path = "plugins/mcp" }
@@ -246,6 +245,7 @@ tauri-plugin-tantivy = { path = "plugins/tantivy" }
 tauri-plugin-template = { path = "plugins/template" }
 tauri-plugin-todo = { path = "plugins/todo" }
 tauri-plugin-tracing = { path = "plugins/tracing" }
+tauri-plugin-transcription = { path = "plugins/transcription" }
 tauri-plugin-tray = { path = "plugins/tray" }
 tauri-plugin-updater2 = { path = "plugins/updater2" }
 tauri-plugin-webhook = { path = "plugins/webhook" }
