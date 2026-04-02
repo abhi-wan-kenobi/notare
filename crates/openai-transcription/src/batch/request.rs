@@ -70,7 +70,10 @@ pub struct CreateDiarizedTranscriptionOptions {
 impl Default for CreateDiarizedTranscriptionOptions {
     fn default() -> Self {
         Self {
-            common: CommonTranscriptionOptions::default(),
+            common: CommonTranscriptionOptions {
+                chunking_strategy: Some(ChunkingStrategy::auto()),
+                ..Default::default()
+            },
             response_format: None,
             stream: None,
         }
@@ -483,6 +486,10 @@ mod tests {
         match diarize {
             CreateTranscriptionOptions::Diarize(options) => {
                 assert_eq!(
+                    options.common.chunking_strategy,
+                    Some(ChunkingStrategy::auto())
+                );
+                assert_eq!(
                     options.response_format,
                     Some(DiarizedResponseFormat::DiarizedJson)
                 );
@@ -537,6 +544,22 @@ mod tests {
             fields
                 .iter()
                 .any(|field| field.name == "stream" && field.value == "true")
+        );
+    }
+
+    #[test]
+    fn diarized_requests_emit_chunking_strategy_auto() {
+        let options =
+            CreateTranscriptionOptions::for_model(AudioModel::Gpt4oTranscribeDiarize, true, false);
+
+        let fields = options
+            .multipart_text_fields()
+            .expect("serialize multipart");
+
+        assert!(
+            fields
+                .iter()
+                .any(|field| { field.name == "chunking_strategy" && field.value == "auto" })
         );
     }
 }
