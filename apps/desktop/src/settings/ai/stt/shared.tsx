@@ -130,10 +130,10 @@ const _PROVIDERS = [
     requirements: [{ kind: "requires_config", fields: ["api_key"] }],
   },
   {
-    disabled: false,
+    disabled: true,
     id: "openai",
     displayName: "OpenAI",
-    badge: "Beta",
+    badge: "Batch only",
     icon: <OpenAI size={16} />,
     baseUrl: "https://api.openai.com/v1",
     models: ["gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1"],
@@ -162,7 +162,7 @@ const _PROVIDERS = [
     badge: null,
     icon: (
       <img
-        src="/assets/soniox.jpeg"
+        src="/assets/soniox-black.png"
         alt="Soniox"
         className="size-5 rounded-xs"
       />
