@@ -12353,6 +12353,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "openai-transcription"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "openapi31to30"
 version = "0.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -12668,6 +12676,7 @@ dependencies = [
  "futures-util",
  "language",
  "observability",
+ "openai-transcription",
  "owhisper-interface",
  "reqwest 0.13.2",
  "reqwest-middleware",

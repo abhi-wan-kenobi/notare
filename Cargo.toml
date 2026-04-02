@@ -180,6 +180,7 @@ hypr-ws-utils = { path = "crates/ws-utils", package = "ws-utils" }
 posthog-rs = "0.4.1"
 progenitor-client = "0.13"
 
+openai-transcription = { path = "crates/openai-transcription", package = "openai-transcription" }
 owhisper-client = { path = "crates/owhisper-client", package = "owhisper-client" }
 owhisper-config = { path = "crates/owhisper-config", package = "owhisper-config" }
 owhisper-interface = { path = "crates/owhisper-interface", package = "owhisper-interface" }
