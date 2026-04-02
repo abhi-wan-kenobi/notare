@@ -26,12 +26,16 @@ export function mergeLinkedSessionsIntoContent({
   sessionIds,
   resolveEventSessionId,
   getSessionTitle,
+  normalizeSessionId,
+  keepLinkedSession,
 }: {
   content: JSONContent;
   eventIds: string[];
   sessionIds: string[];
   resolveEventSessionId: (eventId: string) => string | null;
   getSessionTitle: (sessionId: string) => string;
+  normalizeSessionId?: (sessionId: string) => string;
+  keepLinkedSession?: (sessionId: string) => boolean;
 }): JSONContent {
   const existingContent =
     content.type === "doc" ? (content.content ?? []) : ([] as JSONContent[]);
@@ -39,13 +43,21 @@ export function mergeLinkedSessionsIntoContent({
   const linkedSessionNodes: JSONContent[] = [];
 
   const pushSessionNode = (sessionId: string, preferredTitle?: string) => {
-    if (!sessionId || seenSessionIds.has(sessionId)) {
+    const normalizedSessionId = normalizeSessionId?.(sessionId) ?? sessionId;
+    if (
+      !normalizedSessionId ||
+      seenSessionIds.has(normalizedSessionId) ||
+      (keepLinkedSession && !keepLinkedSession(normalizedSessionId))
+    ) {
       return;
     }
 
-    seenSessionIds.add(sessionId);
+    seenSessionIds.add(normalizedSessionId);
     linkedSessionNodes.push(
-      buildSessionNode(sessionId, preferredTitle ?? getSessionTitle(sessionId)),
+      buildSessionNode(
+        normalizedSessionId,
+        preferredTitle ?? getSessionTitle(normalizedSessionId),
+      ),
     );
   };
 

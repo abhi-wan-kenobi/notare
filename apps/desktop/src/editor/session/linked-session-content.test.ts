@@ -86,4 +86,95 @@ describe("mergeLinkedSessionsIntoContent", () => {
       content: [{ type: "paragraph" }],
     });
   });
+
+  it("deduplicates event-backed sessions after normalizing stale session ids", () => {
+    const result = mergeLinkedSessionsIntoContent({
+      content: {
+        type: "doc",
+        content: [
+          {
+            type: "session",
+            attrs: { sessionId: "stale-session-1" },
+            content: [{ type: "text", text: "Existing title" }],
+          },
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Body content" }],
+          },
+        ],
+      },
+      eventIds: ["event-1"],
+      sessionIds: ["stale-session-2"],
+      resolveEventSessionId: () => "canonical-session",
+      getSessionTitle: (sessionId) =>
+        ({
+          "canonical-session": "Canonical title",
+        })[sessionId] ?? "",
+      normalizeSessionId: (sessionId) =>
+        sessionId.startsWith("stale-") ? "canonical-session" : sessionId,
+    });
+
+    expect(result).toEqual({
+      type: "doc",
+      content: [
+        {
+          type: "session",
+          attrs: { sessionId: "canonical-session" },
+          content: [{ type: "text", text: "Existing title" }],
+        },
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Body content" }],
+        },
+      ],
+    });
+  });
+
+  it("drops stale linked sessions that are no longer part of the canonical day set", () => {
+    const result = mergeLinkedSessionsIntoContent({
+      content: {
+        type: "doc",
+        content: [
+          {
+            type: "session",
+            attrs: { sessionId: "stale-session" },
+            content: [{ type: "text", text: "Stale title" }],
+          },
+          {
+            type: "session",
+            attrs: { sessionId: "canonical-session" },
+            content: [{ type: "text", text: "Kept title" }],
+          },
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Body content" }],
+          },
+        ],
+      },
+      eventIds: [],
+      sessionIds: ["canonical-session"],
+      resolveEventSessionId: () => null,
+      getSessionTitle: (sessionId) =>
+        ({
+          "canonical-session": "Canonical title",
+          "stale-session": "Stale title",
+        })[sessionId] ?? "",
+      keepLinkedSession: (sessionId) => sessionId === "canonical-session",
+    });
+
+    expect(result).toEqual({
+      type: "doc",
+      content: [
+        {
+          type: "session",
+          attrs: { sessionId: "canonical-session" },
+          content: [{ type: "text", text: "Kept title" }],
+        },
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Body content" }],
+        },
+      ],
+    });
+  });
 });

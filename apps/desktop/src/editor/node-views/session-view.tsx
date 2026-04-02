@@ -1,5 +1,6 @@
 import type { NodeViewComponentProps } from "@handlewithcare/react-prosemirror";
 import { format } from "date-fns";
+import { ArrowUpRightIcon } from "lucide-react";
 import type { NodeSpec } from "prosemirror-model";
 import { forwardRef, type ReactNode, useCallback } from "react";
 
@@ -57,38 +58,37 @@ export const SessionNodeView = forwardRef<
   const openCurrent = useTabs((state) => state.openCurrent);
   const openNew = useTabs((state) => state.openNew);
 
-  const handleMouseDown = useCallback(
+  const openSession = useCallback(() => {
+    const tab = { id: sessionId, type: "sessions" as const };
+    if (linkedItemOpenBehavior === "new") {
+      openNew(tab);
+      return;
+    }
+
+    openCurrent(tab);
+  }, [linkedItemOpenBehavior, openCurrent, openNew, sessionId]);
+
+  const handleOpenMouseDown = useCallback((event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
+
+  const handleOpenClick = useCallback(
     (event: React.MouseEvent) => {
-      const target =
-        event.target instanceof HTMLElement
-          ? event.target
-          : event.target instanceof Text
-            ? event.target.parentElement
-            : null;
-
-      if (target?.closest("[data-session-title]")) {
-        return;
-      }
-
-      event.stopPropagation();
       event.preventDefault();
-
-      const tab = { id: sessionId, type: "sessions" as const };
-      if (linkedItemOpenBehavior === "new") {
-        openNew(tab);
-        return;
-      }
-
-      openCurrent(tab);
+      event.stopPropagation();
+      openSession();
     },
-    [linkedItemOpenBehavior, openCurrent, openNew, sessionId],
+    [openSession],
   );
 
   return (
     <div ref={ref} {...htmlAttrs}>
       <div
-        onMouseDown={handleMouseDown}
-        className={cn(["flex items-center gap-2 py-1", "cursor-pointer"])}
+        className={cn([
+          "group flex items-center gap-2 rounded-md px-2 py-1 transition-colors",
+          "-mx-2 focus-within:bg-neutral-50 hover:bg-neutral-50",
+        ])}
       >
         {isRecording ? (
           <div
@@ -104,19 +104,47 @@ export const SessionNodeView = forwardRef<
           data-session-title
           className={cn([
             "min-w-0 flex-1 cursor-text truncate text-sm text-neutral-900",
+            "rounded-sm outline-none focus:bg-white/80",
             !isRecording && "line-through opacity-60",
           ])}
         >
           {children}
         </span>
-        {createdAt && (
-          <span
-            className="ml-auto shrink-0 font-mono text-xs text-neutral-400"
-            contentEditable={false}
+        <div
+          className="ml-auto flex shrink-0 items-center gap-1.5"
+          contentEditable={false}
+        >
+          {createdAt && (
+            <span className="font-mono text-xs text-neutral-400">
+              {format(createdAt, "h:mm a")}
+            </span>
+          )}
+          <button
+            type="button"
+            onMouseDown={handleOpenMouseDown}
+            onClick={handleOpenClick}
+            className={cn([
+              "flex items-center gap-1 rounded-full border border-neutral-200 bg-white/90 px-2 py-1",
+              "cursor-pointer text-[11px] font-medium text-neutral-500 transition-all",
+              "opacity-40 hover:border-neutral-300 hover:text-neutral-800",
+              "group-focus-within:opacity-100 group-hover:opacity-100",
+              "focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:outline-none",
+            ])}
+            title={
+              linkedItemOpenBehavior === "new"
+                ? "Open note in new tab"
+                : "Open note"
+            }
+            aria-label={
+              linkedItemOpenBehavior === "new"
+                ? "Open note in new tab"
+                : "Open note"
+            }
           >
-            {format(createdAt, "h:mm a")}
-          </span>
-        )}
+            <span>Open</span>
+            <ArrowUpRightIcon size={12} />
+          </button>
+        </div>
       </div>
     </div>
   );

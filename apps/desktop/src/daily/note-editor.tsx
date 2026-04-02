@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { parseJsonContent } from "@hypr/tiptap/shared";
 
@@ -8,11 +8,21 @@ import {
   getNodeTextContent,
   mergeLinkedSessionsIntoContent,
 } from "~/editor/session/linked-session-content";
-import { findSessionByEventId } from "~/session/utils";
+import {
+  findSessionByEventId,
+  findSessionByTrackingId,
+  getSessionEventById,
+} from "~/session/utils";
 import * as main from "~/store/tinybase/store/main";
 import { getOrCreateSessionForEventId } from "~/store/tinybase/store/sessions";
 
 type Store = NonNullable<ReturnType<typeof main.UI.useStore>>;
+
+function hasLinkedSessionContent(content: JSONContent): boolean {
+  return (content.content ?? []).some(
+    (node) => node.type === "event" || node.type === "session",
+  );
+}
 
 function getSessionTitle(store: Store, sessionId: string): string {
   const title = store.getCell("sessions", sessionId, "title");
@@ -33,18 +43,65 @@ function resolveEventSessionId(store: Store, eventId: string): string | null {
   return getOrCreateSessionForEventId(store, eventId, event.title as string);
 }
 
+function normalizeSessionId(store: Store, sessionId: string): string {
+  const trackingId = getSessionEventById(store, sessionId)?.tracking_id;
+  if (!trackingId) {
+    return sessionId;
+  }
+
+  return findSessionByTrackingId(store, trackingId) ?? sessionId;
+}
+
+function buildLinkedSessionIds(
+  store: Store,
+  eventIds: string[],
+  sessionIds: string[],
+): string[] {
+  const linkedSessionIds: string[] = [];
+  const seenSessionIds = new Set<string>();
+
+  const pushSessionId = (sessionId: string | null) => {
+    if (!sessionId) {
+      return;
+    }
+
+    const normalizedSessionId = normalizeSessionId(store, sessionId);
+    if (!normalizedSessionId || seenSessionIds.has(normalizedSessionId)) {
+      return;
+    }
+
+    seenSessionIds.add(normalizedSessionId);
+    linkedSessionIds.push(normalizedSessionId);
+  };
+
+  for (const eventId of eventIds) {
+    pushSessionId(resolveEventSessionId(store, eventId));
+  }
+
+  for (const sessionId of sessionIds) {
+    pushSessionId(sessionId);
+  }
+
+  return linkedSessionIds;
+}
+
 function buildInitialContent(
   store: Store,
-  content: unknown,
+  content: JSONContent,
   eventIds: string[],
   sessionIds: string[],
 ): JSONContent {
+  const linkedSessionIds = buildLinkedSessionIds(store, eventIds, sessionIds);
+  const linkedSessionIdSet = new Set(linkedSessionIds);
+
   return mergeLinkedSessionsIntoContent({
-    content: parseJsonContent(content as string),
+    content,
     eventIds,
     sessionIds,
     resolveEventSessionId: (eventId) => resolveEventSessionId(store, eventId),
     getSessionTitle: (sessionId) => getSessionTitle(store, sessionId),
+    normalizeSessionId: (sessionId) => normalizeSessionId(store, sessionId),
+    keepLinkedSession: (sessionId) => linkedSessionIdSet.has(sessionId),
   });
 }
 
@@ -58,20 +115,49 @@ export function DailyNoteEditor({ date }: { date: string }) {
   );
 
   const { eventIdsByDate, sessionIdsByDate } = useCalendarData();
-  const initialContentRef = useRef<JSONContent | null>(null);
-  const initialContentDateRef = useRef<string | null>(null);
+  const rawContent = useMemo(
+    () => parseJsonContent(content as string),
+    [content],
+  );
+  const initialContent = useMemo(() => {
+    if (!store) {
+      return null;
+    }
 
-  if (
-    (initialContentDateRef.current !== date || !initialContentRef.current) &&
-    store
-  ) {
-    initialContentRef.current = buildInitialContent(
+    return buildInitialContent(
       store,
-      content,
+      rawContent,
       eventIdsByDate[date] ?? [],
       sessionIdsByDate[date] ?? [],
     );
-    initialContentDateRef.current = date;
+  }, [date, eventIdsByDate, rawContent, sessionIdsByDate, store]);
+  const rawContentHasLinkedNodes = useMemo(
+    () => hasLinkedSessionContent(rawContent),
+    [rawContent],
+  );
+  const shouldPersistNormalizedContent = useMemo(() => {
+    if (!initialContent || !rawContentHasLinkedNodes) {
+      return false;
+    }
+
+    return JSON.stringify(initialContent) !== JSON.stringify(rawContent);
+  }, [initialContent, rawContent, rawContentHasLinkedNodes]);
+  const initialContentRef = useRef<JSONContent | null>(null);
+  const initialContentKeyRef = useRef<string | null>(null);
+  const initialContentKey = useMemo(
+    () =>
+      JSON.stringify({
+        date,
+        content,
+        eventIds: eventIdsByDate[date] ?? [],
+        sessionIds: sessionIdsByDate[date] ?? [],
+      }),
+    [content, date, eventIdsByDate, sessionIdsByDate],
+  );
+
+  if (initialContent && initialContentKeyRef.current !== initialContentKey) {
+    initialContentRef.current = initialContent;
+    initialContentKeyRef.current = initialContentKey;
   }
 
   const persistDailyNote = main.UI.useSetPartialRowCallback(
@@ -81,6 +167,14 @@ export function DailyNoteEditor({ date }: { date: string }) {
     [date],
     main.STORE_ID,
   );
+
+  useEffect(() => {
+    if (!initialContent || !shouldPersistNormalizedContent) {
+      return;
+    }
+
+    persistDailyNote(initialContent);
+  }, [initialContent, persistDailyNote, shouldPersistNormalizedContent]);
 
   const handleChange = useCallback(
     (input: JSONContent) => {
