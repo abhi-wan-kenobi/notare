@@ -7,7 +7,6 @@ import { AnimatedTitle } from "@/components/animated-title";
 import { Image } from "@/components/image";
 import { MDXLink } from "@/components/mdx";
 import { jobsMdxComponents } from "@/components/mdx-jobs";
-import { SlashSeparator } from "@/components/slash-separator";
 
 export const Route = createFileRoute("/_view/jobs/$slug")({
   beforeLoad: () => {
@@ -64,14 +63,10 @@ function JobPage() {
   const { job } = Route.useLoaderData();
 
   return (
-    <div
-      className="min-h-screen bg-linear-to-b from-white via-stone-50/20 to-white"
-      style={{ backgroundImage: "url(/patterns/dots.svg)" }}
-    >
-      <div className="mx-auto max-w-6xl border-x border-neutral-100 bg-white">
+    <div className="min-h-screen">
+      <div className="mx-auto">
         <HeroSection job={job} />
         <JobDetailsSection job={job} />
-        <SlashSeparator />
         <CTASection job={job} />
       </div>
     </div>
@@ -107,10 +102,10 @@ function HeroSection({ job }: { job: (typeof allJobs)[0] }) {
       />
       <div className="absolute inset-0 bg-linear-to-b from-white/60 via-white/70 to-white" />
       <div className="relative px-6 py-24 lg:py-40">
-        <div className="mx-auto max-w-3xl text-center">
+        <div className="mx-auto max-w-3xl text-left">
           <AnimatedTitle
             text={job.title.toLowerCase()}
-            className="mb-4 font-serif text-4xl tracking-tight text-stone-800 sm:text-5xl"
+            className="mb-4 font-mono text-4xl tracking-tight text-stone-800 sm:text-5xl"
           />
           <p className="mb-8 flex items-center justify-center gap-3 font-mono text-sm text-neutral-600">
             full-time, remote
@@ -136,7 +131,7 @@ function JobDetailsSection({ job }: { job: (typeof allJobs)[0] }) {
           components={{
             a: MDXLink,
             h2: ({ children }) => (
-              <h2 className="mt-12 mb-6 font-serif text-lg tracking-widest text-neutral-400 uppercase first:mt-0">
+              <h2 className="mt-12 mb-6 font-mono text-lg tracking-widest text-neutral-400 uppercase first:mt-0">
                 {stripLinks(children)}
               </h2>
             ),
@@ -183,7 +178,7 @@ function stripLinks(children: ReactNode): ReactNode {
 function CTASection({ job }: { job: (typeof allJobs)[0] }) {
   return (
     <section className="laptop:px-0 bg-linear-to-t from-stone-50/30 to-stone-100/30 px-4 py-16">
-      <div className="flex flex-col items-center gap-6 text-center">
+      <div className="flex flex-col items-center gap-6 text-left">
         <div className="mb-4 flex size-40 items-center justify-center rounded-[48px] border border-neutral-100 bg-transparent shadow-2xl">
           <Image
             src="/api/images/hyprnote/icon.png"
@@ -193,7 +188,7 @@ function CTASection({ job }: { job: (typeof allJobs)[0] }) {
             className="mx-auto size-36 rounded-[40px] border border-neutral-100"
           />
         </div>
-        <h2 className="font-serif text-2xl sm:text-3xl">Interested?</h2>
+        <h2 className="font-mono text-2xl sm:text-3xl">Interested?</h2>
         <p className="mx-auto max-w-2xl text-lg text-neutral-600">
           We'd love to hear from you.
         </p>
