@@ -2869,6 +2869,7 @@ name = "cactus"
 version = "0.1.0"
 dependencies = [
  "cactus-sys",
+ "colored",
  "criterion",
  "data",
  "futures-util",

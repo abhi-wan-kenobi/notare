@@ -17,6 +17,24 @@ pub enum ActivityCaptureSource {
     Workspace,
 }
 
+#[derive(Debug, Clone, Copy, serde::Serialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum ActivityCaptureTextAnchorKind {
+    FocusedEdit,
+    SelectedText,
+    FocusedElement,
+    Document,
+    None,
+}
+
+#[derive(Debug, Clone, Copy, serde::Serialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum ActivityCaptureTextAnchorConfidence {
+    High,
+    Medium,
+    Low,
+}
+
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivityCaptureSnapshot {
@@ -27,6 +45,13 @@ pub struct ActivityCaptureSnapshot {
     pub window_title: Option<String>,
     pub url: Option<String>,
     pub visible_text: Option<String>,
+    pub text_anchor_kind: Option<ActivityCaptureTextAnchorKind>,
+    pub text_anchor_identity: Option<String>,
+    pub text_anchor_text: Option<String>,
+    pub text_anchor_prefix: Option<String>,
+    pub text_anchor_suffix: Option<String>,
+    pub text_anchor_selected_text: Option<String>,
+    pub text_anchor_confidence: Option<ActivityCaptureTextAnchorConfidence>,
     pub content_level: ActivityCaptureContentLevel,
     pub source: ActivityCaptureSource,
 }
@@ -110,6 +135,28 @@ impl From<core::SnapshotSource> for ActivityCaptureSource {
     }
 }
 
+impl From<core::TextAnchorKind> for ActivityCaptureTextAnchorKind {
+    fn from(value: core::TextAnchorKind) -> Self {
+        match value {
+            core::TextAnchorKind::FocusedEdit => Self::FocusedEdit,
+            core::TextAnchorKind::SelectedText => Self::SelectedText,
+            core::TextAnchorKind::FocusedElement => Self::FocusedElement,
+            core::TextAnchorKind::Document => Self::Document,
+            core::TextAnchorKind::None => Self::None,
+        }
+    }
+}
+
+impl From<core::TextAnchorConfidence> for ActivityCaptureTextAnchorConfidence {
+    fn from(value: core::TextAnchorConfidence) -> Self {
+        match value {
+            core::TextAnchorConfidence::High => Self::High,
+            core::TextAnchorConfidence::Medium => Self::Medium,
+            core::TextAnchorConfidence::Low => Self::Low,
+        }
+    }
+}
+
 impl From<core::Snapshot> for ActivityCaptureSnapshot {
     fn from(value: core::Snapshot) -> Self {
         Self {
@@ -120,6 +167,13 @@ impl From<core::Snapshot> for ActivityCaptureSnapshot {
             window_title: value.window_title,
             url: value.url,
             visible_text: value.visible_text,
+            text_anchor_kind: value.text_anchor_kind.map(Into::into),
+            text_anchor_identity: value.text_anchor_identity,
+            text_anchor_text: value.text_anchor_text,
+            text_anchor_prefix: value.text_anchor_prefix,
+            text_anchor_suffix: value.text_anchor_suffix,
+            text_anchor_selected_text: value.text_anchor_selected_text,
+            text_anchor_confidence: value.text_anchor_confidence.map(Into::into),
             content_level: value.content_level.into(),
             source: value.source.into(),
         }

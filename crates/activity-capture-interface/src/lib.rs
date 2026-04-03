@@ -184,6 +184,24 @@ pub enum SnapshotSource {
     Workspace,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TextAnchorKind {
+    FocusedEdit,
+    SelectedText,
+    FocusedElement,
+    Document,
+    None,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TextAnchorConfidence {
+    High,
+    Medium,
+    Low,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Snapshot {
     pub captured_at: SystemTime,
@@ -193,6 +211,13 @@ pub struct Snapshot {
     pub window_title: Option<String>,
     pub url: Option<String>,
     pub visible_text: Option<String>,
+    pub text_anchor_kind: Option<TextAnchorKind>,
+    pub text_anchor_identity: Option<String>,
+    pub text_anchor_text: Option<String>,
+    pub text_anchor_prefix: Option<String>,
+    pub text_anchor_suffix: Option<String>,
+    pub text_anchor_selected_text: Option<String>,
+    pub text_anchor_confidence: Option<TextAnchorConfidence>,
     pub content_level: ContentLevel,
     pub source: SnapshotSource,
 }
@@ -204,6 +229,14 @@ impl Snapshot {
             ContentLevel::Url => "url",
             ContentLevel::Full => "full",
         };
+        let has_anchor = self.text_anchor_identity.is_some()
+            || self.text_anchor_text.is_some()
+            || self.text_anchor_selected_text.is_some();
+        let ambient_text = if has_anchor {
+            ""
+        } else {
+            self.visible_text.as_deref().unwrap_or_default()
+        };
 
         STANDARD_NO_PAD.encode(
             [
@@ -211,7 +244,12 @@ impl Snapshot {
                 self.bundle_id.as_deref().unwrap_or_default(),
                 self.window_title.as_deref().unwrap_or_default(),
                 self.url.as_deref().unwrap_or_default(),
-                self.visible_text.as_deref().unwrap_or_default(),
+                self.text_anchor_identity.as_deref().unwrap_or_default(),
+                self.text_anchor_text.as_deref().unwrap_or_default(),
+                self.text_anchor_selected_text
+                    .as_deref()
+                    .unwrap_or_default(),
+                ambient_text,
             ]
             .join("|"),
         )
@@ -376,6 +414,13 @@ mod tests {
             window_title: Some(title.to_string()),
             url: None,
             visible_text: Some("hello".to_string()),
+            text_anchor_kind: Some(TextAnchorKind::FocusedEdit),
+            text_anchor_identity: Some("editor:notes".to_string()),
+            text_anchor_text: Some("hello".to_string()),
+            text_anchor_prefix: None,
+            text_anchor_suffix: None,
+            text_anchor_selected_text: None,
+            text_anchor_confidence: Some(TextAnchorConfidence::High),
             content_level: ContentLevel::Full,
             source: SnapshotSource::Accessibility,
         }
@@ -453,6 +498,46 @@ mod tests {
             Some("Notes")
         );
         assert!(transition.current.is_none());
+    }
+
+    #[test]
+    fn fingerprint_prefers_anchor_text_over_ambient_text() {
+        let mut left = snapshot("Notes");
+        let mut right = snapshot("Notes");
+
+        left.visible_text = Some("ambient one".to_string());
+        right.visible_text = Some("ambient two".to_string());
+
+        assert_eq!(left.fingerprint(), right.fingerprint());
+
+        right.text_anchor_text = Some("changed".to_string());
+
+        assert_ne!(left.fingerprint(), right.fingerprint());
+    }
+
+    #[test]
+    fn fingerprint_falls_back_to_visible_text_when_anchor_is_missing() {
+        let mut left = snapshot("Notes");
+        let mut right = snapshot("Notes");
+
+        left.text_anchor_kind = None;
+        left.text_anchor_identity = None;
+        left.text_anchor_text = None;
+        left.text_anchor_prefix = None;
+        left.text_anchor_suffix = None;
+        left.text_anchor_selected_text = None;
+        left.text_anchor_confidence = None;
+
+        right.text_anchor_kind = None;
+        right.text_anchor_identity = None;
+        right.text_anchor_text = None;
+        right.text_anchor_prefix = None;
+        right.text_anchor_suffix = None;
+        right.text_anchor_selected_text = None;
+        right.text_anchor_confidence = None;
+        right.visible_text = Some("different".to_string());
+
+        assert_ne!(left.fingerprint(), right.fingerprint());
     }
 
     #[test]

@@ -7,12 +7,15 @@ use hypr_activity_capture_interface::{
     ContentLevel, Snapshot, SnapshotSource, WatchOptions,
 };
 use objc2::rc::autoreleasepool;
-use objc2_app_kit::{NSRunningApplication, NSWorkspace};
 use objc2_application_services::{AXIsProcessTrusted, AXUIElement};
 
 use crate::{
     app_profile::AppProfile,
-    ax::{bool_attribute, collect_generic_visible_text, copy_element_attribute, string_attribute},
+    ax::{
+        TextAnchorCapture, bool_attribute, collect_generic_visible_text, collect_text_anchor,
+        copy_element_attribute, string_attribute,
+    },
+    frontmost,
     handlers::{CaptureContext, CaptureTextMode, resolve_capture_plan},
     runtime::spawn_watch_stream,
     sanitize::sanitize_snapshot_fields,
@@ -34,19 +37,12 @@ impl MacosCapture {
 
     pub(crate) fn capture_snapshot(&self) -> Result<Option<Snapshot>, CaptureError> {
         autoreleasepool(|_| {
-            let workspace = NSWorkspace::sharedWorkspace();
-            let Some(application) = workspace.frontmostApplication() else {
+            let Some(application) = frontmost::resolve() else {
                 return Ok(None);
             };
-            if application.isHidden() {
-                return Ok(None);
-            }
-
-            let pid = application.processIdentifier();
-            let app_name = application_name(&application);
-            let bundle_id = application
-                .bundleIdentifier()
-                .map(|value| value.to_string());
+            let pid = application.pid;
+            let app_name = application.app_name;
+            let bundle_id = application.bundle_id;
             let app_profile = AppProfile::from_bundle_id(bundle_id.as_deref());
             let app_access = self.policy.access_for_bundle(bundle_id.as_deref());
             if !app_access.allows_snapshot() {
@@ -58,6 +54,7 @@ impl MacosCapture {
                     app_name,
                     bundle_id,
                     app_access,
+                    None,
                     None,
                     None,
                     None,
@@ -77,6 +74,7 @@ impl MacosCapture {
                     app_name,
                     bundle_id,
                     app_access,
+                    None,
                     None,
                     None,
                     None,
@@ -115,10 +113,13 @@ impl MacosCapture {
                     Some(window_title),
                     plan.url,
                     None,
+                    None,
                     SnapshotSource::Accessibility,
                 )));
             }
 
+            let text_anchor =
+                collect_text_anchor(&ax_application, &focused_window, &app_name, &window_title)?;
             let visible_text = match plan.text_mode {
                 CaptureTextMode::Generic => {
                     collect_generic_visible_text(&ax_application, &focused_window)?
@@ -149,6 +150,7 @@ impl MacosCapture {
                 Some(window_title),
                 plan.url,
                 Some(visible_text),
+                text_anchor,
                 SnapshotSource::Accessibility,
             )))
         })
@@ -193,10 +195,16 @@ fn snapshot_for_access(
     window_title: Option<String>,
     url: Option<String>,
     visible_text: Option<String>,
+    text_anchor: Option<TextAnchorCapture>,
     source: SnapshotSource,
 ) -> Snapshot {
-    let (window_title, visible_text) =
-        sanitize_snapshot_fields(&app_name, bundle_id.as_deref(), window_title, visible_text);
+    let fields = sanitize_snapshot_fields(
+        &app_name,
+        bundle_id.as_deref(),
+        window_title,
+        visible_text,
+        text_anchor,
+    );
     let content_level = match access {
         CaptureAccess::Metadata => ContentLevel::Metadata,
         CaptureAccess::Url => ContentLevel::Url,
@@ -211,12 +219,65 @@ fn snapshot_for_access(
         bundle_id,
         window_title: access
             .allows_text()
-            .then_some(window_title.filter(|value| !value.is_empty()))
+            .then_some(fields.window_title.filter(|value| !value.is_empty()))
             .flatten(),
         url: access.allows_url().then_some(url).flatten(),
         visible_text: access
             .allows_text()
-            .then_some(visible_text.filter(|value| !value.is_empty()))
+            .then_some(fields.visible_text.filter(|value| !value.is_empty()))
+            .flatten(),
+        text_anchor_kind: access
+            .allows_text()
+            .then_some(fields.text_anchor.as_ref().map(|anchor| anchor.kind))
+            .flatten(),
+        text_anchor_identity: access
+            .allows_text()
+            .then_some(
+                fields
+                    .text_anchor
+                    .as_ref()
+                    .map(|anchor| anchor.identity.clone()),
+            )
+            .flatten(),
+        text_anchor_text: access
+            .allows_text()
+            .then_some(
+                fields
+                    .text_anchor
+                    .as_ref()
+                    .and_then(|anchor| anchor.text.clone()),
+            )
+            .flatten(),
+        text_anchor_prefix: access
+            .allows_text()
+            .then_some(
+                fields
+                    .text_anchor
+                    .as_ref()
+                    .and_then(|anchor| anchor.prefix.clone()),
+            )
+            .flatten(),
+        text_anchor_suffix: access
+            .allows_text()
+            .then_some(
+                fields
+                    .text_anchor
+                    .as_ref()
+                    .and_then(|anchor| anchor.suffix.clone()),
+            )
+            .flatten(),
+        text_anchor_selected_text: access
+            .allows_text()
+            .then_some(
+                fields
+                    .text_anchor
+                    .as_ref()
+                    .and_then(|anchor| anchor.selected_text.clone()),
+            )
+            .flatten(),
+        text_anchor_confidence: access
+            .allows_text()
+            .then_some(fields.text_anchor.as_ref().map(|anchor| anchor.confidence))
             .flatten(),
         content_level,
         source: if access == CaptureAccess::Metadata {
@@ -225,17 +286,4 @@ fn snapshot_for_access(
             source
         },
     }
-}
-
-fn application_name(application: &NSRunningApplication) -> String {
-    application
-        .localizedName()
-        .map(|value| value.to_string())
-        .filter(|value| !value.is_empty())
-        .or_else(|| {
-            application
-                .bundleIdentifier()
-                .map(|value| value.to_string())
-        })
-        .unwrap_or_else(|| application.processIdentifier().to_string())
 }
