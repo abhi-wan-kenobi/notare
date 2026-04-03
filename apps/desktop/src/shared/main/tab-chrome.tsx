@@ -7,9 +7,8 @@ import {
   PlusIcon,
 } from "lucide-react";
 import { Reorder } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { useResizeObserver } from "usehooks-ts";
 import { useShallow } from "zustand/shallow";
 
 import { commands as flagCommands } from "@hypr/plugin-flag";
@@ -135,11 +134,6 @@ export function MainTabChrome({ tabs }: { tabs: Tab[] }) {
     },
   ]);
 
-  const scrollState = useScrollState(
-    tabsScrollContainerRef,
-    regularTabs.length,
-  );
-
   const setTabRef = useScrollActiveTabIntoView(regularTabs);
   useMainTabsShortcuts();
 
@@ -218,6 +212,7 @@ export function MainTabChrome({ tabs }: { tabs: Tab[] }) {
           ref={tabsScrollContainerRef}
           data-tauri-drag-region
           className={cn([
+            "scroll-fade-x",
             "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
             "h-full w-full overflow-x-auto overflow-y-hidden",
           ])}
@@ -273,12 +268,6 @@ export function MainTabChrome({ tabs }: { tabs: Tab[] }) {
             })}
           </Reorder.Group>
         </div>
-        {!scrollState.atStart && (
-          <div className="pointer-events-none absolute top-0 left-0 z-20 h-full w-8 bg-linear-to-r from-stone-50 to-transparent" />
-        )}
-        {!scrollState.atEnd && (
-          <div className="pointer-events-none absolute top-0 right-0 z-20 h-full w-8 bg-linear-to-l from-stone-50 to-transparent" />
-        )}
       </div>
 
       <div
@@ -707,59 +696,6 @@ function SessionTabFloatingChatButton({
       showTimeline={showTimeline}
     />
   );
-}
-
-function useScrollState(
-  ref: React.RefObject<HTMLDivElement | null>,
-  tabCount: number,
-) {
-  const [scrollState, setScrollState] = useState({
-    atStart: true,
-    atEnd: true,
-  });
-
-  const updateScrollState = useCallback(() => {
-    const container = ref.current;
-    if (!container) return;
-
-    const { scrollLeft, scrollWidth, clientWidth } = container;
-    const hasOverflow = scrollWidth > clientWidth + 1;
-    const nextState = {
-      atStart: !hasOverflow || scrollLeft <= 1,
-      atEnd: !hasOverflow || scrollLeft + clientWidth >= scrollWidth - 1,
-    };
-    setScrollState((previousState) => {
-      if (
-        previousState.atStart === nextState.atStart &&
-        previousState.atEnd === nextState.atEnd
-      ) {
-        return previousState;
-      }
-      return nextState;
-    });
-  }, [ref]);
-
-  useResizeObserver({
-    ref: ref as React.RefObject<HTMLDivElement>,
-    onResize: updateScrollState,
-  });
-
-  useEffect(() => {
-    const container = ref.current;
-    if (!container) return;
-
-    updateScrollState();
-    requestAnimationFrame(updateScrollState);
-    const timerId = setTimeout(updateScrollState, 200);
-    container.addEventListener("scroll", updateScrollState);
-
-    return () => {
-      container.removeEventListener("scroll", updateScrollState);
-      clearTimeout(timerId);
-    };
-  }, [updateScrollState, tabCount]);
-
-  return scrollState;
 }
 
 export function useMainTabsShortcuts() {
