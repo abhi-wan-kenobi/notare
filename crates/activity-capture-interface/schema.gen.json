@@ -1,0 +1,358 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ActivityCaptureInterfaceSchema",
+  "type": "object",
+  "properties": {
+    "capabilities": {
+      "$ref": "#/$defs/Capabilities"
+    },
+    "capture_policy": {
+      "$ref": "#/$defs/CapturePolicy"
+    },
+    "event": {
+      "$ref": "#/$defs/Event"
+    },
+    "snapshot": {
+      "$ref": "#/$defs/Snapshot"
+    },
+    "transition": {
+      "$ref": "#/$defs/Transition"
+    }
+  },
+  "required": [
+    "capture_policy",
+    "snapshot",
+    "event",
+    "transition",
+    "capabilities"
+  ],
+  "$defs": {
+    "BrowserPolicy": {
+      "type": "object",
+      "properties": {
+        "block_private_browsing": {
+          "type": "boolean"
+        },
+        "require_url_for_text_access": {
+          "type": "boolean"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DomainRule"
+          }
+        },
+        "strip_fragment": {
+          "type": "boolean"
+        },
+        "strip_query": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "rules",
+        "require_url_for_text_access",
+        "block_private_browsing",
+        "strip_query",
+        "strip_fragment"
+      ]
+    },
+    "BundleRule": {
+      "type": "object",
+      "properties": {
+        "access": {
+          "$ref": "#/$defs/CaptureAccess"
+        },
+        "bundle_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "bundle_id",
+        "access"
+      ]
+    },
+    "Capabilities": {
+      "type": "object",
+      "properties": {
+        "can_capture_browser_url": {
+          "type": "boolean"
+        },
+        "can_capture_visible_text": {
+          "type": "boolean"
+        },
+        "can_watch": {
+          "type": "boolean"
+        },
+        "requires_accessibility_permission": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "can_watch",
+        "can_capture_visible_text",
+        "can_capture_browser_url",
+        "requires_accessibility_permission"
+      ]
+    },
+    "CaptureAccess": {
+      "type": "string",
+      "enum": [
+        "none",
+        "metadata",
+        "url",
+        "full"
+      ]
+    },
+    "CapturePolicy": {
+      "type": "object",
+      "properties": {
+        "app_rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BundleRule"
+          }
+        },
+        "browser": {
+          "$ref": "#/$defs/BrowserPolicy"
+        },
+        "mode": {
+          "$ref": "#/$defs/PolicyMode"
+        }
+      },
+      "required": [
+        "mode",
+        "app_rules",
+        "browser"
+      ]
+    },
+    "ContentLevel": {
+      "type": "string",
+      "enum": [
+        "metadata",
+        "url",
+        "full"
+      ]
+    },
+    "DomainRule": {
+      "type": "object",
+      "properties": {
+        "access": {
+          "$ref": "#/$defs/CaptureAccess"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "include_subdomains": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "domain",
+        "include_subdomains",
+        "access"
+      ]
+    },
+    "Event": {
+      "type": "object",
+      "properties": {
+        "ended_at": {
+          "$ref": "#/$defs/SystemTime"
+        },
+        "fingerprint": {
+          "type": "string"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/Snapshot"
+        },
+        "started_at": {
+          "$ref": "#/$defs/SystemTime"
+        }
+      },
+      "required": [
+        "started_at",
+        "ended_at",
+        "fingerprint",
+        "snapshot"
+      ]
+    },
+    "PolicyMode": {
+      "type": "string",
+      "enum": [
+        "opt_in",
+        "opt_out"
+      ]
+    },
+    "Snapshot": {
+      "type": "object",
+      "properties": {
+        "app_name": {
+          "type": "string"
+        },
+        "bundle_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "captured_at": {
+          "$ref": "#/$defs/SystemTime"
+        },
+        "content_level": {
+          "$ref": "#/$defs/ContentLevel"
+        },
+        "pid": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "source": {
+          "$ref": "#/$defs/SnapshotSource"
+        },
+        "text_anchor_confidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TextAnchorConfidence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text_anchor_identity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text_anchor_kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TextAnchorKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text_anchor_prefix": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text_anchor_selected_text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text_anchor_suffix": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text_anchor_text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "visible_text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "window_title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "captured_at",
+        "pid",
+        "app_name",
+        "content_level",
+        "source"
+      ]
+    },
+    "SnapshotSource": {
+      "type": "string",
+      "enum": [
+        "accessibility",
+        "workspace"
+      ]
+    },
+    "SystemTime": {
+      "type": "object",
+      "properties": {
+        "nanos_since_epoch": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "secs_since_epoch": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "secs_since_epoch",
+        "nanos_since_epoch"
+      ]
+    },
+    "TextAnchorConfidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "TextAnchorKind": {
+      "type": "string",
+      "enum": [
+        "focused_edit",
+        "selected_text",
+        "focused_element",
+        "document",
+        "none"
+      ]
+    },
+    "Transition": {
+      "type": "object",
+      "properties": {
+        "current": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Event"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "previous": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Event"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
