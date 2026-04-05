@@ -192,7 +192,7 @@ function TranscriptSegmentRow({
   return (
     <div className="grid min-w-0 grid-cols-[92px_1fr] items-start gap-x-3">
       <span
-        className="mt-0.5 inline-flex min-h-5 items-center justify-end rounded-full px-2 text-[11px] font-medium whitespace-nowrap"
+        className="mt-0.5 inline-flex min-h-5 items-center justify-start rounded-full px-2 text-[11px] font-medium whitespace-nowrap"
         style={{
           backgroundColor: `${color}1A`,
           color,
