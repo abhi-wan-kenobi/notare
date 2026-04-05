@@ -4587,6 +4587,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "db-app2"
+version = "0.1.0"
+dependencies = [
+ "db-core2",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "db-core"
 version = "0.1.0"
 dependencies = [
