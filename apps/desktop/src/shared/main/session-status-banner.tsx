@@ -13,12 +13,12 @@ import { cn } from "@hypr/utils";
 
 import { useMainContentCenterOffset } from "./content-offset";
 
+import type { BottomAccessoryState } from "~/session/components/bottom-accessory";
 import { useUndoDelete } from "~/store/zustand/undo-delete";
 
 type SessionStatusBannerState = {
   skipReason: string | null;
-  showConsentBanner: boolean;
-  showTimeline: boolean;
+  bottomAccessoryState: BottomAccessoryState;
 } | null;
 
 const SessionStatusBannerStateContext =
@@ -45,12 +45,10 @@ export function SessionStatusBannerProvider({
 
 export function useSessionStatusBanner({
   skipReason,
-  showConsentBanner,
-  showTimeline,
+  bottomAccessoryState = null,
 }: {
   skipReason: string | null;
-  showConsentBanner: boolean;
-  showTimeline: boolean;
+  bottomAccessoryState?: BottomAccessoryState;
 }) {
   const setBanner = useContext(SessionStatusBannerSetterContext);
 
@@ -59,12 +57,12 @@ export function useSessionStatusBanner({
       return;
     }
 
-    setBanner({ skipReason, showConsentBanner, showTimeline });
+    setBanner({ skipReason, bottomAccessoryState });
 
     return () => {
       setBanner(null);
     };
-  }, [setBanner, showConsentBanner, showTimeline, skipReason]);
+  }, [setBanner, bottomAccessoryState, skipReason]);
 }
 
 export function MainSessionStatusBannerHost() {
@@ -74,18 +72,14 @@ export function MainSessionStatusBannerHost() {
   );
   const contentOffset = useMainContentCenterOffset();
 
-  if (
-    typeof document === "undefined" ||
-    !banner ||
-    (!banner.skipReason && !banner.showConsentBanner)
-  ) {
+  if (typeof document === "undefined" || !banner || !banner.skipReason) {
     return null;
   }
 
   return createPortal(
     <AnimatePresence>
       <motion.div
-        key={banner.skipReason ?? "consent"}
+        key={banner.skipReason}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -94,15 +88,17 @@ export function MainSessionStatusBannerHost() {
         className={cn([
           "fixed z-50 -translate-x-1/2",
           "text-center text-xs whitespace-nowrap",
-          banner.skipReason ? "text-red-400" : "text-stone-300",
+          "text-red-400",
           hasUndoDeleteToast
             ? "bottom-1"
-            : banner.showTimeline
-              ? "bottom-[76px]"
-              : "bottom-6",
+            : banner.bottomAccessoryState?.expanded
+              ? "bottom-[224px]"
+              : banner.bottomAccessoryState
+                ? "bottom-[76px]"
+                : "bottom-6",
         ])}
       >
-        {banner.skipReason || "Ask for consent when using Char"}
+        {banner.skipReason}
       </motion.div>
     </AnimatePresence>,
     document.body,

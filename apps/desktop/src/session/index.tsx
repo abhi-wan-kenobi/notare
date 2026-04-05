@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { StickyNoteIcon } from "lucide-react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 
 import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
 
+import { useSessionBottomAccessory } from "./components/bottom-accessory";
 import { CaretPositionProvider } from "./components/caret-position-context";
 import { FloatingActionButton } from "./components/floating";
 import { NoteInput, type NoteInputHandle } from "./components/note-input";
@@ -26,8 +27,10 @@ import * as main from "~/store/tinybase/store/main";
 import { useSessionTitle } from "~/store/zustand/live-title";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 import { useListener } from "~/stt/contexts";
+import { consumePendingUpload } from "~/stt/pending-upload";
 import { useStartListening } from "~/stt/useStartListening";
 import { useSTTConnection } from "~/stt/useSTTConnection";
+import { useUploadFile } from "~/stt/useUploadFile";
 
 export const TabItemNote: TabItem<Extract<Tab, { type: "sessions" }>> = ({
   tab,
@@ -108,23 +111,10 @@ export function TabContentNote({
   tab: Extract<Tab, { type: "sessions" }>;
 }) {
   const listenerStatus = useListener((state) => state.live.status);
-  const sessionMode = useListener((state) => state.getSessionMode(tab.id));
   const updateSessionTabState = useTabs((state) => state.updateSessionTabState);
   const { conn } = useSTTConnection();
   const startListening = useStartListening(tab.id);
   const hasAttemptedAutoStart = useRef(false);
-
-  useEffect(() => {
-    if (
-      sessionMode === "running_batch" &&
-      tab.state.view?.type !== "transcript"
-    ) {
-      updateSessionTabState(tab, {
-        ...tab.state,
-        view: { type: "transcript" },
-      });
-    }
-  }, [sessionMode, tab, updateSessionTabState]);
 
   useEffect(() => {
     if (!tab.state.autoStart) {
@@ -169,16 +159,11 @@ export function TabContentNote({
     },
   });
 
-  const showTimeline =
-    tab.state.view?.type === "transcript" &&
-    Boolean(audioUrl) &&
-    listenerStatus === "inactive";
-
   return (
     <CaretPositionProvider>
       <SearchProvider>
         <AudioPlayer.Provider sessionId={tab.id} url={audioUrl ?? ""}>
-          <TabContentNoteInner tab={tab} showTimeline={showTimeline} />
+          <TabContentNoteInner tab={tab} audioUrl={audioUrl} />
         </AudioPlayer.Provider>
       </SearchProvider>
     </CaretPositionProvider>
@@ -187,10 +172,10 @@ export function TabContentNote({
 
 function TabContentNoteInner({
   tab,
-  showTimeline,
+  audioUrl,
 }: {
   tab: Extract<Tab, { type: "sessions" }>;
-  showTimeline: boolean;
+  audioUrl: string | null | undefined;
 }) {
   const titleInputRef = React.useRef<TitleInputHandle>(null);
   const noteInputRef = React.useRef<NoteInputHandle>(null);
@@ -201,39 +186,17 @@ function TabContentNoteInner({
 
   const sessionId = tab.id;
   const { skipReason } = useAutoEnhance(tab);
-  const [showConsentBanner, setShowConsentBanner] = useState(false);
-
   const sessionMode = useListener((state) => state.getSessionMode(sessionId));
-  const prevSessionMode = useRef<string | null>(sessionMode);
 
   useAutoFocusTitle({ sessionId, titleInputRef });
+  usePendingUpload(sessionId);
 
-  useEffect(() => {
-    const justStartedListening =
-      prevSessionMode.current !== "active" && sessionMode === "active";
-    const justStoppedListening =
-      prevSessionMode.current === "active" && sessionMode !== "active";
-
-    prevSessionMode.current = sessionMode;
-
-    if (justStartedListening) {
-      setShowConsentBanner(true);
-    } else if (justStoppedListening) {
-      setShowConsentBanner(false);
-    }
-  }, [sessionMode]);
-
-  useEffect(() => {
-    if (!showConsentBanner) {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setShowConsentBanner(false);
-    }, 5000);
-
-    return () => clearTimeout(timer);
-  }, [showConsentBanner]);
+  const { bottomAccessory, bottomAccessoryState } = useSessionBottomAccessory({
+    sessionId,
+    sessionMode,
+    audioUrl,
+    hasTranscript,
+  });
 
   const handleNavigateToTitle = React.useCallback((pixelWidth?: number) => {
     if (pixelWidth !== undefined) {
@@ -260,8 +223,7 @@ function TabContentNoteInner({
 
   useSessionStatusBanner({
     skipReason,
-    showConsentBanner,
-    showTimeline,
+    bottomAccessoryState,
   });
 
   return (
@@ -277,9 +239,8 @@ function TabContentNoteInner({
           onGenerateTitle={hasTranscript ? generateTitle : undefined}
         />
       }
-      afterBorder={showTimeline && <AudioPlayer.Timeline />}
+      afterBorder={bottomAccessory}
       floatingButton={<FloatingActionButton tab={tab} />}
-      showTimeline={showTimeline}
     >
       <NoteInput
         ref={noteInputRef}
@@ -288,6 +249,19 @@ function TabContentNoteInner({
       />
     </SessionSurface>
   );
+}
+
+function usePendingUpload(sessionId: string) {
+  const { processFile } = useUploadFile(sessionId);
+  const processFileRef = useRef(processFile);
+  processFileRef.current = processFile;
+
+  useEffect(() => {
+    const pending = consumePendingUpload(sessionId);
+    if (pending) {
+      processFileRef.current(pending.filePath, pending.kind);
+    }
+  }, [sessionId]);
 }
 
 function useAutoFocusTitle({
