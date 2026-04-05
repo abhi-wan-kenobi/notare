@@ -18,6 +18,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "activity-capture-dev"
+version = "0.1.0"
+dependencies = [
+ "activity-capture",
+ "chrono",
+ "clap",
+ "crossterm",
+ "ratatui",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "activity-capture-interface"
 version = "0.1.0"
 dependencies = [
