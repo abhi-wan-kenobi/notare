@@ -6,7 +6,12 @@ use ratatui::{
 };
 use std::ops::RangeInclusive;
 
-use crate::{app::View, event_row::EventRow, options::Options, theme::Theme};
+use crate::{
+    app::{DetailTab, SessionStats, View},
+    event_row::EventRow,
+    options::Options,
+    theme::Theme,
+};
 
 use super::{details::EventDetails, footer::Footer, header::SessionHeader, list::EventList};
 
@@ -15,11 +20,17 @@ pub(crate) struct ActivityScreen<'a> {
     capabilities: Capabilities,
     theme: Theme,
     view: View,
+    detail_tab: DetailTab,
+    runtime_summary: &'a str,
+    policy_label: &'a str,
+    browser_policy_label: &'a str,
+    session_stats: SessionStats,
     events: &'a [EventRow],
     selected_index: Option<usize>,
     selected_range: Option<RangeInclusive<usize>>,
     selection_summary: Option<&'a str>,
     status_message: Option<&'a str>,
+    selected_raw_json: Option<&'a str>,
     list_state: &'a mut ListState,
     list_inner_area: &'a mut Rect,
 }
@@ -30,11 +41,17 @@ impl<'a> ActivityScreen<'a> {
         capabilities: Capabilities,
         theme: Theme,
         view: View,
+        detail_tab: DetailTab,
+        runtime_summary: &'a str,
+        policy_label: &'a str,
+        browser_policy_label: &'a str,
+        session_stats: SessionStats,
         events: &'a [EventRow],
         selected_index: Option<usize>,
         selected_range: Option<RangeInclusive<usize>>,
         selection_summary: Option<&'a str>,
         status_message: Option<&'a str>,
+        selected_raw_json: Option<&'a str>,
         list_state: &'a mut ListState,
         list_inner_area: &'a mut Rect,
     ) -> Self {
@@ -43,11 +60,17 @@ impl<'a> ActivityScreen<'a> {
             capabilities,
             theme,
             view,
+            detail_tab,
+            runtime_summary,
+            policy_label,
+            browser_policy_label,
+            session_stats,
             events,
             selected_index,
             selected_range,
             selection_summary,
             status_message,
+            selected_raw_json,
             list_state,
             list_inner_area,
         }
@@ -57,7 +80,7 @@ impl<'a> ActivityScreen<'a> {
 impl Widget for ActivityScreen<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let layout = Layout::vertical([
-            Constraint::Length(4),
+            Constraint::Length(7),
             Constraint::Min(1),
             Constraint::Length(1),
         ]);
@@ -68,6 +91,10 @@ impl Widget for ActivityScreen<'_> {
             self.capabilities,
             self.theme,
             self.view,
+            self.runtime_summary,
+            self.policy_label,
+            self.browser_policy_label,
+            self.session_stats,
             self.selection_summary,
             self.status_message,
         )
@@ -85,11 +112,17 @@ impl Widget for ActivityScreen<'_> {
             .render(body_area, buf, self.list_state),
             View::Details => {
                 *self.list_inner_area = Rect::default();
-                EventDetails::new(self.events, self.selected_index, self.theme)
-                    .render(body_area, buf);
+                EventDetails::new(
+                    self.events,
+                    self.selected_index,
+                    self.detail_tab,
+                    self.selected_raw_json,
+                    self.theme,
+                )
+                .render(body_area, buf);
             }
         }
 
-        Footer::new(self.view).render(footer_area, buf);
+        Footer::new(self.view, self.detail_tab).render(footer_area, buf);
     }
 }

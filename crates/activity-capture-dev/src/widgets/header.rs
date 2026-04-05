@@ -6,13 +6,21 @@ use ratatui::{
     widgets::{Block, Paragraph, Widget},
 };
 
-use crate::{app::View, options::Options, theme::Theme};
+use crate::{
+    app::{SessionStats, View},
+    options::Options,
+    theme::Theme,
+};
 
 pub(super) struct SessionHeader<'a> {
     options: &'a Options,
     capabilities: Capabilities,
     theme: Theme,
     view: View,
+    runtime_summary: &'a str,
+    policy_label: &'a str,
+    browser_policy_label: &'a str,
+    session_stats: SessionStats,
     selection_summary: Option<&'a str>,
     status_message: Option<&'a str>,
 }
@@ -23,6 +31,10 @@ impl<'a> SessionHeader<'a> {
         capabilities: Capabilities,
         theme: Theme,
         view: View,
+        runtime_summary: &'a str,
+        policy_label: &'a str,
+        browser_policy_label: &'a str,
+        session_stats: SessionStats,
         selection_summary: Option<&'a str>,
         status_message: Option<&'a str>,
     ) -> Self {
@@ -31,6 +43,10 @@ impl<'a> SessionHeader<'a> {
             capabilities,
             theme,
             view,
+            runtime_summary,
+            policy_label,
+            browser_policy_label,
+            session_stats,
             selection_summary,
             status_message,
         }
@@ -39,23 +55,39 @@ impl<'a> SessionHeader<'a> {
 
 impl Widget for SessionHeader<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let note = match self.selection_summary {
-            Some(summary) => format!("  one line per event; press v to mark a range  {summary}"),
-            None => "  one line per event; press v to mark a range".to_string(),
-        };
-        let export = self.status_message.map(str::to_string).unwrap_or_else(|| {
-            "  y copy JSON  s save selection/current  S save full session".to_string()
-        });
+        let selection = self.selection_summary.unwrap_or("single row");
+        let export = self.status_message.unwrap_or(
+            "y copy JSON  s save selection/current  S save full session  r raw JSON  v range",
+        );
 
         let lines = vec![
             Line::from(vec![
                 Span::styled("activity-capture", self.theme.title()),
                 Span::raw(format!("  poll={}ms", self.options.poll_ms)),
-                Span::raw(format!("  policy={}", self.options.policy_label())),
+                Span::raw(format!("  runtime={}", self.runtime_summary)),
                 Span::raw(match self.view {
                     View::List => "  view=list",
                     View::Details => "  view=details",
                 }),
+            ]),
+            Line::from(vec![
+                Span::styled("session", self.theme.label()),
+                Span::raw(format!(
+                    "  events={}  apps={}  focus={}  update={}  idle={}  selected={selection}",
+                    self.session_stats.event_count,
+                    self.session_stats.distinct_apps,
+                    self.session_stats.focus_count,
+                    self.session_stats.update_count,
+                    self.session_stats.idle_count,
+                )),
+            ]),
+            Line::from(vec![
+                Span::styled("policy", self.theme.label()),
+                Span::raw(format!("  {}", self.policy_label)),
+            ]),
+            Line::from(vec![
+                Span::styled("browser", self.theme.label()),
+                Span::raw(format!("  {}", self.browser_policy_label)),
             ]),
             Line::from(vec![
                 Span::styled("capabilities", self.theme.label()),
@@ -68,12 +100,8 @@ impl Widget for SessionHeader<'_> {
                 )),
             ]),
             Line::from(vec![
-                Span::styled("note", self.theme.label()),
-                Span::raw(note),
-            ]),
-            Line::from(vec![
                 Span::styled("export", self.theme.label()),
-                Span::raw(export),
+                Span::raw(format!("  {export}")),
             ]),
         ];
 

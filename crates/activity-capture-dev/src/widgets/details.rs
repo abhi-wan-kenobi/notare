@@ -5,21 +5,31 @@ use ratatui::{
     widgets::{Block, Paragraph, Widget, Wrap},
 };
 
-use crate::{event_row::EventRow, theme::Theme};
+use crate::{app::DetailTab, event_row::EventRow, theme::Theme};
 
 use super::row::{app_width, row_line, selected_row};
 
 pub(super) struct EventDetails<'a> {
     events: &'a [EventRow],
     selected_index: Option<usize>,
+    detail_tab: DetailTab,
+    selected_raw_json: Option<&'a str>,
     theme: Theme,
 }
 
 impl<'a> EventDetails<'a> {
-    pub(super) fn new(events: &'a [EventRow], selected_index: Option<usize>, theme: Theme) -> Self {
+    pub(super) fn new(
+        events: &'a [EventRow],
+        selected_index: Option<usize>,
+        detail_tab: DetailTab,
+        selected_raw_json: Option<&'a str>,
+        theme: Theme,
+    ) -> Self {
         Self {
             events,
             selected_index,
+            detail_tab,
+            selected_raw_json,
             theme,
         }
     }
@@ -42,20 +52,33 @@ impl Widget for EventDetails<'_> {
             .block(Block::bordered().title("Selected Event"))
             .render(summary_area, buf);
 
-        let detail_lines = row
-            .details
-            .iter()
-            .map(|detail| {
-                Line::from(vec![
-                    Span::styled(format!("{:>14}: ", detail.label), self.theme.label()),
-                    Span::raw(detail.value.clone()),
-                ])
-            })
-            .collect::<Vec<_>>();
+        match self.detail_tab {
+            DetailTab::Details => {
+                let detail_lines = row
+                    .details
+                    .iter()
+                    .map(|detail| {
+                        Line::from(vec![
+                            Span::styled(format!("{:>14}: ", detail.label), self.theme.label()),
+                            Span::raw(detail.value.clone()),
+                        ])
+                    })
+                    .collect::<Vec<_>>();
 
-        Paragraph::new(Text::from(detail_lines))
-            .block(Block::bordered().title("Details"))
-            .wrap(Wrap { trim: false })
-            .render(details_area, buf);
+                Paragraph::new(Text::from(detail_lines))
+                    .block(Block::bordered().title("Details"))
+                    .wrap(Wrap { trim: false })
+                    .render(details_area, buf);
+            }
+            DetailTab::Raw => {
+                let raw = self
+                    .selected_raw_json
+                    .unwrap_or("{\"error\":\"no record selected\"}");
+                Paragraph::new(raw)
+                    .block(Block::bordered().title("Raw JSON"))
+                    .wrap(Wrap { trim: false })
+                    .render(details_area, buf);
+            }
+        }
     }
 }

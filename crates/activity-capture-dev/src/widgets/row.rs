@@ -29,6 +29,8 @@ pub(super) fn row_line(row: &EventRow, app_width: usize, theme: Theme) -> Line<'
             theme.status(row.status),
         ),
         Span::raw("  "),
+        Span::styled(format!("[{}]", row.context), theme.label()),
+        Span::raw("  "),
         Span::raw(row.summary.clone()),
     ])
 }

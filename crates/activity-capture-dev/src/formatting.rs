@@ -1,4 +1,4 @@
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use chrono::{DateTime, Local};
 use url::Url;
@@ -43,4 +43,38 @@ pub fn compact_url(value: &str, limit: usize) -> String {
 pub fn format_timestamp(time: SystemTime) -> String {
     let local: DateTime<Local> = time.into();
     local.format("%H:%M:%S").to_string()
+}
+
+pub fn format_duration(duration: Duration) -> String {
+    if duration.as_millis() < 1_000 {
+        return format!("{}ms", duration.as_millis());
+    }
+
+    if duration.as_secs() < 60 {
+        return format!("{:.1}s", duration.as_secs_f64());
+    }
+
+    let minutes = duration.as_secs() / 60;
+    let seconds = duration.as_secs() % 60;
+    format!("{minutes}m{seconds:02}s")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn formats_short_duration_in_millis() {
+        assert_eq!(format_duration(Duration::from_millis(275)), "275ms");
+    }
+
+    #[test]
+    fn formats_second_duration_with_fraction() {
+        assert_eq!(format_duration(Duration::from_millis(1_500)), "1.5s");
+    }
+
+    #[test]
+    fn formats_minute_duration() {
+        assert_eq!(format_duration(Duration::from_secs(125)), "2m05s");
+    }
 }

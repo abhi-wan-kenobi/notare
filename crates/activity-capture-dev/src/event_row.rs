@@ -1,11 +1,12 @@
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use hypr_activity_capture::{
-    ContentLevel, Event, Snapshot, SnapshotSource, TextAnchorConfidence, TextAnchorKind, Transition,
+    ActivityKind, ContentLevel, Event, Snapshot, SnapshotSource, TextAnchorConfidence,
+    TextAnchorKind, Transition,
 };
 
 use crate::{
-    formatting::{compact, compact_url, format_timestamp},
+    formatting::{compact, compact_url, format_duration, format_timestamp},
     ui::{
         APP_PREVIEW_LIMIT, DIFF_PREVIEW_LIMIT, TEXT_PREVIEW_LIMIT, TITLE_PREVIEW_LIMIT,
         URL_PREVIEW_LIMIT,
@@ -40,6 +41,7 @@ pub(crate) struct EventRow {
     pub(crate) captured_at: SystemTime,
     pub(crate) app_name: String,
     pub(crate) status: RowStatus,
+    pub(crate) context: String,
     pub(crate) summary: String,
     pub(crate) details: Vec<DetailField>,
 }
@@ -47,23 +49,12 @@ pub(crate) struct EventRow {
 impl EventRow {
     pub(crate) fn from_transition(transition: &Transition) -> Option<Self> {
         match (transition.previous.as_ref(), transition.current.as_ref()) {
-            (None, Some(current)) => Some(Self::focus(
-                current.snapshot.captured_at,
-                &current.snapshot,
-                None,
-            )),
+            (None, Some(current)) => Some(Self::focus(current, None)),
             (Some(previous), Some(current)) if same_app(previous, current) => {
                 Some(Self::update(previous, current))
             }
-            (Some(previous), Some(current)) => Some(Self::focus(
-                current.snapshot.captured_at,
-                &current.snapshot,
-                Some(previous.snapshot.app_name.as_str()),
-            )),
-            (Some(previous), None) => Some(Self::idle(
-                previous.snapshot.captured_at,
-                Some(previous.snapshot.app_name.as_str()),
-            )),
+            (Some(previous), Some(current)) => Some(Self::focus(current, Some(previous))),
+            (Some(previous), None) => Some(Self::idle_after(previous)),
             (None, None) => None,
         }
     }
@@ -82,6 +73,7 @@ impl EventRow {
             captured_at,
             app_name: "-".to_string(),
             status: RowStatus::Idle,
+            context: "idle".to_string(),
             summary: previous_app
                 .map(|value| format!("from={}", compact(value, APP_PREVIEW_LIMIT)))
                 .unwrap_or_else(|| "-".to_string()),
@@ -89,10 +81,21 @@ impl EventRow {
         }
     }
 
-    fn focus(captured_at: SystemTime, snapshot: &Snapshot, previous_app: Option<&str>) -> Self {
+    fn idle_after(previous: &Event) -> Self {
+        let mut row = Self::idle(previous.ended_at, Some(previous.snapshot.app_name.as_str()));
+        row.details
+            .push(detail("Last span", event_span_label(previous)));
+        row.details
+            .push(detail("Last fingerprint", previous.fingerprint.clone()));
+        row
+    }
+
+    fn focus(current: &Event, previous: Option<&Event>) -> Self {
+        let snapshot = &current.snapshot;
+        let previous_app = previous.map(|value| value.snapshot.app_name.as_str());
         let mut details = vec![
             detail("Event", "focus"),
-            detail("Captured", format_timestamp(captured_at)),
+            detail("Captured", format_timestamp(current.ended_at)),
             detail("App", detail_value(&snapshot.app_name)),
         ];
 
@@ -100,12 +103,14 @@ impl EventRow {
             details.push(detail("From", detail_value(previous_app)));
         }
 
+        push_event_details(&mut details, current);
         push_snapshot_details(&mut details, snapshot);
 
         Self {
-            captured_at,
+            captured_at: current.ended_at,
             app_name: snapshot.app_name.clone(),
             status: RowStatus::Focus,
+            context: context_label(snapshot),
             summary: focus_summary(snapshot, previous_app),
             details,
         }
@@ -114,10 +119,12 @@ impl EventRow {
     fn update(previous: &Event, current: &Event) -> Self {
         let mut details = vec![
             detail("Event", "update"),
-            detail("Captured", format_timestamp(current.snapshot.captured_at)),
+            detail("Captured", format_timestamp(current.ended_at)),
             detail("App", detail_value(&current.snapshot.app_name)),
+            detail("Previous span", event_span_label(previous)),
         ];
 
+        push_event_details(&mut details, current);
         push_change_details(
             &mut details,
             "Title",
@@ -137,16 +144,17 @@ impl EventRow {
             primary_text(&current.snapshot),
         );
 
-        if details.len() == 3 {
+        if details.len() == 5 {
             details.push(detail("Change", "metadata changed"));
         }
 
         push_snapshot_details(&mut details, &current.snapshot);
 
         Self {
-            captured_at: current.snapshot.captured_at,
+            captured_at: current.ended_at,
             app_name: current.snapshot.app_name.clone(),
             status: RowStatus::Update,
+            context: context_label(&current.snapshot),
             summary: update_summary(&previous.snapshot, &current.snapshot),
             details,
         }
@@ -173,11 +181,7 @@ fn focus_summary(snapshot: &Snapshot, previous_app: Option<&str>) -> String {
         parts.push(format!("text={}", display_value("text", text)));
     }
 
-    if parts.is_empty() {
-        "-".to_string()
-    } else {
-        parts.join("  ")
-    }
+    parts.join("  ")
 }
 
 fn update_summary(previous: &Snapshot, current: &Snapshot) -> String {
@@ -203,10 +207,10 @@ fn update_summary(previous: &Snapshot, current: &Snapshot) -> String {
     );
 
     if changes.is_empty() {
-        "metadata changed".to_string()
-    } else {
-        changes.join("  ")
+        changes.push("metadata changed".to_string());
     }
+
+    changes.join("  ")
 }
 
 fn primary_text(snapshot: &Snapshot) -> Option<&str> {
@@ -253,8 +257,19 @@ fn diff_value(label: &str, value: &str) -> String {
     }
 }
 
+fn push_event_details(details: &mut Vec<DetailField>, event: &Event) {
+    details.push(detail("Started", format_timestamp(event.started_at)));
+    details.push(detail("Ended", format_timestamp(event.ended_at)));
+    details.push(detail("Span", event_span_label(event)));
+    details.push(detail("Fingerprint", event.fingerprint.clone()));
+}
+
 fn push_snapshot_details(details: &mut Vec<DetailField>, snapshot: &Snapshot) {
     details.push(detail("PID", snapshot.pid.to_string()));
+    details.push(detail(
+        "Activity",
+        activity_kind_label(snapshot.activity_kind),
+    ));
     if let Some(bundle_id) = snapshot.bundle_id.as_deref() {
         details.push(detail("Bundle", detail_value(bundle_id)));
     }
@@ -332,11 +347,59 @@ fn detail_value(value: &str) -> String {
     }
 }
 
+fn event_span_label(event: &Event) -> String {
+    let span = event
+        .ended_at
+        .duration_since(event.started_at)
+        .unwrap_or(Duration::ZERO);
+    format_duration(span)
+}
+
+fn context_label(snapshot: &Snapshot) -> String {
+    format!(
+        "{}/{}/{}",
+        activity_kind_tag(snapshot.activity_kind),
+        content_level_tag(snapshot.content_level),
+        source_tag(snapshot.source),
+    )
+}
+
+fn activity_kind_tag(kind: ActivityKind) -> &'static str {
+    match kind {
+        ActivityKind::ForegroundWindow => "win",
+        ActivityKind::Browser => "browser",
+        ActivityKind::AudioSession => "audio",
+    }
+}
+
+fn activity_kind_label(kind: ActivityKind) -> &'static str {
+    match kind {
+        ActivityKind::ForegroundWindow => "foreground_window",
+        ActivityKind::Browser => "browser",
+        ActivityKind::AudioSession => "audio_session",
+    }
+}
+
+fn content_level_tag(level: ContentLevel) -> &'static str {
+    match level {
+        ContentLevel::Metadata => "meta",
+        ContentLevel::Url => "url",
+        ContentLevel::Full => "full",
+    }
+}
+
 fn content_level_label(level: ContentLevel) -> &'static str {
     match level {
         ContentLevel::Metadata => "metadata",
         ContentLevel::Url => "url",
         ContentLevel::Full => "full",
+    }
+}
+
+fn source_tag(source: SnapshotSource) -> &'static str {
+    match source {
+        SnapshotSource::Accessibility => "ax",
+        SnapshotSource::Workspace => "ws",
     }
 }
 

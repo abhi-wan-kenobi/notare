@@ -65,6 +65,15 @@ impl RawRecord {
             },
         }
     }
+
+    pub(crate) fn pretty_json(&self) -> String {
+        serde_json::to_string_pretty(self).unwrap_or_else(|error| {
+            format!(
+                "{{\"error\":\"failed to serialize selected record\",\"detail\":\"{}\"}}",
+                error
+            )
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -122,22 +131,8 @@ pub(crate) fn copy_records(
     scope: ExportScope,
 ) -> io::Result<usize> {
     let (json, count) = serialize_records(records, range, scope)?;
-
-    let mut child = Command::new("pbcopy").stdin(Stdio::piped()).spawn()?;
-    let Some(mut stdin) = child.stdin.take() else {
-        return Err(io::Error::other("clipboard stdin is unavailable"));
-    };
-    stdin.write_all(json.as_bytes())?;
-    drop(stdin);
-
-    let status = child.wait()?;
-    if status.success() {
-        Ok(count)
-    } else {
-        Err(io::Error::other(format!(
-            "pbcopy failed with status {status}"
-        )))
-    }
+    copy_to_clipboard(&json)?;
+    Ok(count)
 }
 
 pub(crate) fn save_records(
@@ -220,4 +215,70 @@ fn unique_path(directory: &Path, file_name: &str) -> PathBuf {
 
 fn export_directory() -> io::Result<PathBuf> {
     Ok(Path::new(env!("CARGO_MANIFEST_DIR")).join("out"))
+}
+
+fn copy_to_clipboard(contents: &str) -> io::Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        return copy_with_command("pbcopy", &[], contents);
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        return copy_with_command("cmd", &["/C", "clip"], contents);
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        let candidates = [
+            ("wl-copy", Vec::<&str>::new()),
+            ("xclip", vec!["-selection", "clipboard"]),
+            ("xsel", vec!["--clipboard", "--input"]),
+        ];
+
+        let mut last_error = None;
+        for (command, args) in candidates {
+            match copy_with_command(command, &args, contents) {
+                Ok(()) => return Ok(()),
+                Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                    last_error = Some(error);
+                }
+                Err(error) => return Err(error),
+            }
+        }
+
+        return Err(last_error.unwrap_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                "no supported clipboard command found (tried wl-copy, xclip, xsel)",
+            )
+        }));
+    }
+
+    #[allow(unreachable_code)]
+    Err(io::Error::new(
+        io::ErrorKind::Unsupported,
+        "clipboard export is not supported on this platform",
+    ))
+}
+
+fn copy_with_command(command: &str, args: &[&str], contents: &str) -> io::Result<()> {
+    let mut child = Command::new(command)
+        .args(args)
+        .stdin(Stdio::piped())
+        .spawn()?;
+    let Some(mut stdin) = child.stdin.take() else {
+        return Err(io::Error::other("clipboard stdin is unavailable"));
+    };
+    stdin.write_all(contents.as_bytes())?;
+    drop(stdin);
+
+    let status = child.wait()?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(io::Error::other(format!(
+            "{command} failed with status {status}"
+        )))
+    }
 }

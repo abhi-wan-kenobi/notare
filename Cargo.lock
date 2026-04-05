@@ -25,9 +25,11 @@ dependencies = [
  "chrono",
  "clap",
  "crossterm",
+ "futures-util",
  "ratatui",
  "serde",
  "serde_json",
+ "tokio",
  "url",
 ]
 

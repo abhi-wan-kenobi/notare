@@ -1,7 +1,10 @@
 use std::{
+    collections::BTreeSet,
     io,
     ops::RangeInclusive,
     path::Path,
+    sync::mpsc::{self, Receiver, TryRecvError},
+    thread,
     time::{Duration, Instant, SystemTime},
 };
 
@@ -11,15 +14,18 @@ use crossterm::{
     },
     execute,
 };
+use futures_util::StreamExt;
 use hypr_activity_capture::{
-    ActivityCapture, Capabilities, EventCoalescer, PlatformCapture, Transition,
+    ActivityCapture, Capabilities, CaptureError, CaptureStream, EventCoalescer, PlatformCapture,
+    Transition, WatchOptions,
 };
 use ratatui::{DefaultTerminal, Frame, layout::Rect, widgets::ListState};
+use tokio::sync::oneshot;
 
 use crate::{
-    event_row::EventRow,
+    event_row::{EventRow, RowStatus},
     export::{ExportScope, RawRecord, copy_records, save_records},
-    options::Options,
+    options::{CaptureRuntimeMode, Options},
     theme::Theme,
     widgets::ActivityScreen,
 };
@@ -30,6 +36,21 @@ const UI_IDLE_POLL: Duration = Duration::from_millis(250);
 pub(crate) enum View {
     List,
     Details,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DetailTab {
+    Details,
+    Raw,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct SessionStats {
+    pub(crate) event_count: usize,
+    pub(crate) distinct_apps: usize,
+    pub(crate) focus_count: usize,
+    pub(crate) update_count: usize,
+    pub(crate) idle_count: usize,
 }
 
 pub(crate) fn run(options: Options, color_enabled: bool) -> io::Result<()> {
@@ -55,70 +76,285 @@ impl Drop for MouseCaptureGuard {
     }
 }
 
+enum RuntimeEvent {
+    Transition(Transition),
+    Error(CaptureError),
+    Ended,
+}
+
+enum CaptureDriver {
+    Once,
+    Polling {
+        next_capture_at: Option<Instant>,
+    },
+    Watch {
+        receiver: Receiver<RuntimeEvent>,
+        stop_tx: Option<oneshot::Sender<()>>,
+        handle: Option<thread::JoinHandle<()>>,
+        active: bool,
+    },
+    Stopped,
+}
+
+impl CaptureDriver {
+    fn polling(next_capture_at: Option<Instant>) -> Self {
+        Self::Polling { next_capture_at }
+    }
+
+    fn watch(stream: CaptureStream) -> io::Result<Self> {
+        let (event_tx, receiver) = mpsc::channel();
+        let (stop_tx, stop_rx) = oneshot::channel();
+
+        let handle = thread::Builder::new()
+            .name("activity-capture-dev-watch".to_string())
+            .spawn(move || {
+                let runtime = match tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                {
+                    Ok(runtime) => runtime,
+                    Err(error) => {
+                        let _ = event_tx.send(RuntimeEvent::Error(CaptureError::platform(
+                            error.to_string(),
+                        )));
+                        return;
+                    }
+                };
+
+                runtime.block_on(async move {
+                    let mut stop_rx = stop_rx;
+                    let mut stream = stream;
+
+                    loop {
+                        tokio::select! {
+                            _ = &mut stop_rx => break,
+                            item = stream.next() => {
+                                match item {
+                                    Some(Ok(transition)) => {
+                                        if event_tx.send(RuntimeEvent::Transition(transition)).is_err() {
+                                            break;
+                                        }
+                                    }
+                                    Some(Err(error)) => {
+                                        let _ = event_tx.send(RuntimeEvent::Error(error));
+                                        break;
+                                    }
+                                    None => break,
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .map_err(io::Error::other)?;
+
+        Ok(Self::Watch {
+            receiver,
+            stop_tx: Some(stop_tx),
+            handle: Some(handle),
+            active: true,
+        })
+    }
+
+    fn poll_timeout(&self) -> Duration {
+        match self {
+            Self::Polling {
+                next_capture_at: Some(deadline),
+            } => deadline.saturating_duration_since(Instant::now()),
+            Self::Polling {
+                next_capture_at: None,
+            }
+            | Self::Watch { .. }
+            | Self::Once
+            | Self::Stopped => UI_IDLE_POLL,
+        }
+    }
+
+    fn tick(&mut self) -> bool {
+        match self {
+            Self::Polling { next_capture_at } => {
+                next_capture_at.is_some_and(|deadline| Instant::now() >= deadline)
+            }
+            _ => false,
+        }
+    }
+
+    fn schedule_next_poll(&mut self, interval: Duration) {
+        if let Self::Polling { next_capture_at } = self {
+            *next_capture_at = Some(Instant::now() + interval);
+        }
+    }
+
+    fn runtime_events(&mut self) -> Vec<RuntimeEvent> {
+        let mut ready = Vec::new();
+        let Self::Watch {
+            receiver, active, ..
+        } = self
+        else {
+            return ready;
+        };
+
+        loop {
+            match receiver.try_recv() {
+                Ok(event) => ready.push(event),
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => {
+                    if *active {
+                        *active = false;
+                        ready.push(RuntimeEvent::Ended);
+                    }
+                    break;
+                }
+            }
+        }
+
+        ready
+    }
+
+    fn is_watch_live(&self) -> bool {
+        matches!(self, Self::Watch { active: true, .. })
+    }
+
+    fn stop(&mut self) {
+        let mut driver = CaptureDriver::Stopped;
+        std::mem::swap(self, &mut driver);
+
+        if let CaptureDriver::Watch {
+            stop_tx,
+            handle,
+            active: _,
+            receiver: _,
+        } = driver
+        {
+            if let Some(stop_tx) = stop_tx {
+                let _ = stop_tx.send(());
+            }
+            if let Some(handle) = handle {
+                let _ = handle.join();
+            }
+        }
+    }
+}
+
 struct ActivityApp {
     capture: PlatformCapture,
     options: Options,
     capabilities: Capabilities,
     theme: Theme,
     coalescer: EventCoalescer,
+    capture_driver: CaptureDriver,
+    runtime_label: String,
     events: Vec<EventRow>,
     raw_records: Vec<RawRecord>,
     list_state: ListState,
     selection_anchor: Option<usize>,
     status_message: Option<String>,
     view: View,
+    detail_tab: DetailTab,
     should_exit: bool,
-    next_capture_at: Option<Instant>,
     list_inner_area: Rect,
+}
+
+impl Drop for ActivityApp {
+    fn drop(&mut self) {
+        self.capture_driver.stop();
+    }
 }
 
 impl ActivityApp {
     fn new(options: Options, theme: Theme) -> io::Result<Self> {
         let capture = PlatformCapture::with_policy(options.policy());
         let capabilities = capture.capabilities();
+        let resolved_runtime = if options.once {
+            CaptureRuntimeMode::Poll
+        } else {
+            options
+                .resolve_runtime_mode(capabilities)
+                .map_err(io::Error::other)?
+        };
+        let runtime_label = if options.once {
+            "once".to_string()
+        } else {
+            options.runtime_label(resolved_runtime)
+        };
         let mut app = Self {
             capture,
             options,
             capabilities,
             theme,
             coalescer: EventCoalescer::default(),
+            capture_driver: CaptureDriver::Once,
+            runtime_label,
             events: Vec::new(),
             raw_records: Vec::new(),
             list_state: ListState::default(),
             selection_anchor: None,
             status_message: None,
             view: View::List,
+            detail_tab: DetailTab::Details,
             should_exit: false,
-            next_capture_at: None,
             list_inner_area: Rect::default(),
         };
 
-        app.capture_once()?;
-        app.next_capture_at =
-            (!app.options.once).then_some(Instant::now() + app.options.poll_interval());
+        if app.options.once {
+            app.capture_once()?;
+            return Ok(app);
+        }
+
+        match resolved_runtime {
+            CaptureRuntimeMode::Watch => {
+                let stream = app
+                    .capture
+                    .watch(WatchOptions {
+                        poll_interval: app.options.poll_interval(),
+                        emit_initial: !app.options.no_emit_initial,
+                    })
+                    .map_err(|error| io::Error::other(error.to_string()))?;
+                app.capture_driver = CaptureDriver::watch(stream)?;
+            }
+            CaptureRuntimeMode::Poll => {
+                app.capture_once()?;
+                app.capture_driver =
+                    CaptureDriver::polling(Some(Instant::now() + app.options.poll_interval()));
+            }
+        }
+
         Ok(app)
     }
 
     fn run(mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.should_exit {
+            self.drain_runtime_events();
             terminal.draw(|frame| self.render(frame))?;
 
-            let timeout = self.poll_timeout();
+            let timeout = self.capture_driver.poll_timeout();
             if event::poll(timeout)? {
                 self.handle_terminal_event(event::read()?);
-            } else if self.next_capture_at.is_some() {
+            } else if self.capture_driver.tick() {
                 self.capture_once()?;
-                self.next_capture_at = Some(Instant::now() + self.options.poll_interval());
+                self.capture_driver
+                    .schedule_next_poll(self.options.poll_interval());
             }
         }
 
         Ok(())
     }
 
-    fn poll_timeout(&self) -> Duration {
-        match self.next_capture_at {
-            Some(deadline) => deadline.saturating_duration_since(Instant::now()),
-            None => UI_IDLE_POLL,
+    fn drain_runtime_events(&mut self) {
+        for event in self.capture_driver.runtime_events() {
+            match event {
+                RuntimeEvent::Transition(transition) => self.push_transition(transition),
+                RuntimeEvent::Error(error) => {
+                    self.status_message = Some(format!(
+                        "capture error ({:?}): {}",
+                        error.kind, error.message
+                    ));
+                    self.capture_driver.stop();
+                }
+                RuntimeEvent::Ended => {
+                    self.status_message = Some("watch stream ended".to_string());
+                }
+            }
         }
     }
 
@@ -176,7 +412,14 @@ impl ActivityApp {
             KeyCode::Char('y') => self.copy_selection(),
             KeyCode::Char('s') => self.save_selection(),
             KeyCode::Char('S') => self.save_session(),
-            KeyCode::Char('l') | KeyCode::Right | KeyCode::Enter => self.view = View::Details,
+            KeyCode::Char('r') => {
+                self.detail_tab = DetailTab::Raw;
+                self.view = View::Details;
+            }
+            KeyCode::Char('l') | KeyCode::Right | KeyCode::Enter => {
+                self.detail_tab = DetailTab::Details;
+                self.view = View::Details;
+            }
             _ => {}
         }
     }
@@ -191,11 +434,20 @@ impl ActivityApp {
             KeyCode::Char('k') | KeyCode::Up => self.select_previous(),
             KeyCode::Char('g') | KeyCode::Home => self.select_first(),
             KeyCode::Char('G') | KeyCode::End => self.select_last(),
+            KeyCode::Char('d') => self.detail_tab = DetailTab::Details,
+            KeyCode::Char('r') | KeyCode::Tab => self.toggle_detail_tab(),
             KeyCode::Char('y') => self.copy_selection(),
             KeyCode::Char('s') => self.save_selection(),
             KeyCode::Char('S') => self.save_session(),
             _ => {}
         }
+    }
+
+    fn toggle_detail_tab(&mut self) {
+        self.detail_tab = match self.detail_tab {
+            DetailTab::Details => DetailTab::Raw,
+            DetailTab::Raw => DetailTab::Details,
+        };
     }
 
     fn handle_mouse(&mut self, mouse: MouseEvent) {
@@ -207,6 +459,7 @@ impl ActivityApp {
             MouseEventKind::Down(_) => {
                 if let Some(index) = self.row_at(mouse.column, mouse.row) {
                     self.select_index(index);
+                    self.detail_tab = DetailTab::Details;
                     self.view = View::Details;
                 }
             }
@@ -404,19 +657,81 @@ impl ActivityApp {
         })
     }
 
+    fn runtime_summary(&self) -> String {
+        if self.options.once {
+            return self.runtime_label.clone();
+        }
+
+        let live = if self.capture_driver.is_watch_live() {
+            "live"
+        } else if matches!(self.capture_driver, CaptureDriver::Watch { .. }) {
+            "stopped"
+        } else {
+            "active"
+        };
+
+        format!("{} {live}", self.runtime_label)
+    }
+
+    fn session_stats(&self) -> SessionStats {
+        let mut apps = BTreeSet::new();
+        let mut focus_count = 0;
+        let mut update_count = 0;
+        let mut idle_count = 0;
+
+        for row in &self.events {
+            if row.app_name != "-" {
+                apps.insert(row.app_name.as_str());
+            }
+
+            match row.status {
+                RowStatus::Focus => focus_count += 1,
+                RowStatus::Update => update_count += 1,
+                RowStatus::Idle => idle_count += 1,
+            }
+        }
+
+        SessionStats {
+            event_count: self.events.len(),
+            distinct_apps: apps.len(),
+            focus_count,
+            update_count,
+            idle_count,
+        }
+    }
+
+    fn selected_raw_json(&self) -> Option<String> {
+        self.selected_index()
+            .and_then(|index| self.raw_records.get(index))
+            .map(RawRecord::pretty_json)
+    }
+
     fn render(&mut self, frame: &mut Frame) {
         let selected_index = self.selected_index();
+        let selected_raw_json = self.selected_raw_json();
+        let selection_summary = self.selection_summary();
+        let policy_label = self.options.policy_label();
+        let browser_policy_label = self.options.browser_policy_label();
+        let runtime_summary = self.runtime_summary();
+        let session_stats = self.session_stats();
+
         frame.render_widget(
             ActivityScreen::new(
                 &self.options,
                 self.capabilities,
                 self.theme,
                 self.view,
+                self.detail_tab,
+                &runtime_summary,
+                &policy_label,
+                &browser_policy_label,
+                session_stats,
                 &self.events,
                 selected_index,
                 self.export_range(),
-                self.selection_summary().as_deref(),
+                selection_summary.as_deref(),
                 self.status_message.as_deref(),
+                selected_raw_json.as_deref(),
                 &mut self.list_state,
                 &mut self.list_inner_area,
             ),
