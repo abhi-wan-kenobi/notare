@@ -4,7 +4,7 @@ use std::sync::{
 };
 
 use futures_util::StreamExt;
-use hypr_activity_capture_interface::{ActivityCapture, CapturePolicy};
+use hypr_activity_capture::{ActivityCapture, CapturePolicy, PlatformCapture};
 use tauri_specta::Event;
 
 use crate::events::{
@@ -56,7 +56,7 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
             return Ok(());
         }
 
-        let capture = hypr_activity_capture_macos::MacosCapture::with_policy(self.policy());
+        let capture = PlatformCapture::with_policy(self.policy());
         let mut stream = capture.watch(Default::default())?;
 
         self.running.store(true, Ordering::SeqCst);

@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use hypr_activity_capture_interface as core;
+use hypr_activity_capture as core;
 
 #[derive(Debug, Clone, Copy, serde::Serialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
@@ -15,6 +15,23 @@ pub enum ActivityCaptureContentLevel {
 pub enum ActivityCaptureSource {
     Accessibility,
     Workspace,
+}
+
+#[derive(Debug, Clone, Copy, serde::Serialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum ActivityCaptureAppIdKind {
+    BundleId,
+    ExecutablePath,
+    ProcessName,
+    Pid,
+}
+
+#[derive(Debug, Clone, Copy, serde::Serialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum ActivityCaptureKind {
+    ForegroundWindow,
+    Browser,
+    AudioSession,
 }
 
 #[derive(Debug, Clone, Copy, serde::Serialize, specta::Type)]
@@ -38,6 +55,8 @@ pub enum ActivityCaptureTextAnchorConfidence {
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivityCaptureSnapshot {
+    pub app: ActivityCaptureAppIdentity,
+    pub activity_kind: ActivityCaptureKind,
     pub captured_at_ms: i64,
     pub pid: i32,
     pub app_name: String,
@@ -54,6 +73,17 @@ pub struct ActivityCaptureSnapshot {
     pub text_anchor_confidence: Option<ActivityCaptureTextAnchorConfidence>,
     pub content_level: ActivityCaptureContentLevel,
     pub source: ActivityCaptureSource,
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityCaptureAppIdentity {
+    pub pid: i32,
+    pub app_name: String,
+    pub app_id: String,
+    pub app_id_kind: ActivityCaptureAppIdKind,
+    pub bundle_id: Option<String>,
+    pub executable_path: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
@@ -135,6 +165,27 @@ impl From<core::SnapshotSource> for ActivityCaptureSource {
     }
 }
 
+impl From<core::AppIdKind> for ActivityCaptureAppIdKind {
+    fn from(value: core::AppIdKind) -> Self {
+        match value {
+            core::AppIdKind::BundleId => Self::BundleId,
+            core::AppIdKind::ExecutablePath => Self::ExecutablePath,
+            core::AppIdKind::ProcessName => Self::ProcessName,
+            core::AppIdKind::Pid => Self::Pid,
+        }
+    }
+}
+
+impl From<core::ActivityKind> for ActivityCaptureKind {
+    fn from(value: core::ActivityKind) -> Self {
+        match value {
+            core::ActivityKind::ForegroundWindow => Self::ForegroundWindow,
+            core::ActivityKind::Browser => Self::Browser,
+            core::ActivityKind::AudioSession => Self::AudioSession,
+        }
+    }
+}
+
 impl From<core::TextAnchorKind> for ActivityCaptureTextAnchorKind {
     fn from(value: core::TextAnchorKind) -> Self {
         match value {
@@ -157,9 +208,24 @@ impl From<core::TextAnchorConfidence> for ActivityCaptureTextAnchorConfidence {
     }
 }
 
+impl From<core::AppIdentity> for ActivityCaptureAppIdentity {
+    fn from(value: core::AppIdentity) -> Self {
+        Self {
+            pid: value.pid,
+            app_name: value.app_name,
+            app_id: value.app_id,
+            app_id_kind: value.app_id_kind.into(),
+            bundle_id: value.bundle_id,
+            executable_path: value.executable_path,
+        }
+    }
+}
+
 impl From<core::Snapshot> for ActivityCaptureSnapshot {
     fn from(value: core::Snapshot) -> Self {
         Self {
+            app: value.app.clone().into(),
+            activity_kind: value.activity_kind.into(),
             captured_at_ms: system_time_to_unix_ms(value.captured_at),
             pid: value.pid,
             app_name: value.app_name,

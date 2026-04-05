@@ -63,12 +63,15 @@ activityCapturePluginEvent: "plugin:activity-capture:activity-capture-plugin-eve
 
 /** user-defined types **/
 
+export type ActivityCaptureAppIdKind = "bundle_id" | "executable_path" | "process_name" | "pid"
+export type ActivityCaptureAppIdentity = { pid: number; appName: string; appId: string; appIdKind: ActivityCaptureAppIdKind; bundleId: string | null; executablePath: string | null }
 export type ActivityCaptureCapabilities = { canWatch: boolean; canCaptureVisibleText: boolean; canCaptureBrowserUrl: boolean; requiresAccessibilityPermission: boolean }
 export type ActivityCaptureContentLevel = "metadata" | "url" | "full"
 export type ActivityCaptureErrorKind = "permission_denied" | "unsupported" | "temporarily_unavailable" | "platform"
 export type ActivityCaptureEvent = { startedAtMs: number; endedAtMs: number; fingerprint: string; snapshot: ActivityCaptureSnapshot }
+export type ActivityCaptureKind = "foreground_window" | "browser" | "audio_session"
 export type ActivityCapturePluginEvent = { type: "activityCaptureTransition"; transition: ActivityCaptureTransition } | { type: "activityCaptureError"; kind: ActivityCaptureErrorKind; message: string }
-export type ActivityCaptureSnapshot = { capturedAtMs: number; pid: number; appName: string; bundleId: string | null; windowTitle: string | null; url: string | null; visibleText: string | null; textAnchorKind: ActivityCaptureTextAnchorKind | null; textAnchorIdentity: string | null; textAnchorText: string | null; textAnchorPrefix: string | null; textAnchorSuffix: string | null; textAnchorSelectedText: string | null; textAnchorConfidence: ActivityCaptureTextAnchorConfidence | null; contentLevel: ActivityCaptureContentLevel; source: ActivityCaptureSource }
+export type ActivityCaptureSnapshot = { app: ActivityCaptureAppIdentity; activityKind: ActivityCaptureKind; capturedAtMs: number; pid: number; appName: string; bundleId: string | null; windowTitle: string | null; url: string | null; visibleText: string | null; textAnchorKind: ActivityCaptureTextAnchorKind | null; textAnchorIdentity: string | null; textAnchorText: string | null; textAnchorPrefix: string | null; textAnchorSuffix: string | null; textAnchorSelectedText: string | null; textAnchorConfidence: ActivityCaptureTextAnchorConfidence | null; contentLevel: ActivityCaptureContentLevel; source: ActivityCaptureSource }
 export type ActivityCaptureSource = "accessibility" | "workspace"
 export type ActivityCaptureTextAnchorConfidence = "high" | "medium" | "low"
 export type ActivityCaptureTextAnchorKind = "focused_edit" | "selected_text" | "focused_element" | "document" | "none"
