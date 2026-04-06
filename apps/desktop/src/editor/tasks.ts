@@ -1,3 +1,5 @@
+import type { TaskStatus } from "@hypr/store";
+
 import type { JSONContent } from "./session";
 
 import { id } from "~/shared/utils";
@@ -7,7 +9,7 @@ export interface TaskSource {
   id: string;
 }
 
-export type TaskStatus = "todo" | "done";
+export type { TaskStatus } from "@hypr/store";
 
 export interface TaskRecord {
   taskId: string;
@@ -24,12 +26,92 @@ export function createTaskId(): string {
   return id();
 }
 
-export function createTaskItemAttrs(checked = false, taskId = createTaskId()) {
-  return { checked, taskId };
+export const DEFAULT_TASK_STATUS: TaskStatus = "todo";
+
+export function isTaskStatus(value: unknown): value is TaskStatus {
+  return value === "todo" || value === "in_progress" || value === "done";
 }
 
-export function getTaskStatus(checked: boolean): TaskStatus {
-  return checked ? "done" : "todo";
+export function normalizeTaskStatus(
+  status: unknown,
+  checked?: unknown,
+  fallback: TaskStatus = DEFAULT_TASK_STATUS,
+): TaskStatus {
+  if (status === true) {
+    return "done";
+  }
+
+  if (status === false) {
+    return "todo";
+  }
+
+  if (isTaskStatus(status)) {
+    return status;
+  }
+
+  if (checked === true) {
+    return "done";
+  }
+
+  if (checked === false) {
+    return "todo";
+  }
+
+  return fallback;
+}
+
+export function getOptionalTaskStatus(
+  status: unknown,
+  checked?: unknown,
+): TaskStatus | null {
+  if (status === true) {
+    return "done";
+  }
+
+  if (status === false) {
+    return "todo";
+  }
+
+  if (isTaskStatus(status)) {
+    return status;
+  }
+
+  if (checked === true) {
+    return "done";
+  }
+
+  if (checked === false) {
+    return "todo";
+  }
+
+  return null;
+}
+
+export function createTaskStatusAttrs(status: TaskStatus) {
+  return { status, checked: status === "done" };
+}
+
+export function createTaskItemAttrs(
+  status: TaskStatus | boolean = DEFAULT_TASK_STATUS,
+  taskId = createTaskId(),
+) {
+  const normalizedStatus = normalizeTaskStatus(status);
+  return { ...createTaskStatusAttrs(normalizedStatus), taskId };
+}
+
+export function getNextTaskStatus(status: TaskStatus): TaskStatus {
+  switch (status) {
+    case "todo":
+      return "in_progress";
+    case "in_progress":
+      return "done";
+    case "done":
+      return "todo";
+  }
+}
+
+export function isTaskDone(status: TaskStatus): boolean {
+  return status === "done";
 }
 
 export function createTaskSourceKey(source: TaskSource): string {
@@ -72,7 +154,7 @@ export function extractTasksFromContent(
       sourceId: source.id,
       sourceType: source.type,
       sourceOrder: tasks.length,
-      status: getTaskStatus(node.attrs?.checked === true),
+      status: normalizeTaskStatus(node.attrs?.status, node.attrs?.checked),
       textPreview: getTaskItemTextContent(node),
       body: cloneContentArray(node.content),
       dueDate: previousTask?.dueDate,
@@ -85,7 +167,7 @@ export function extractTasksFromContent(
 export function createTaskItemNode(task: TaskRecord): JSONContent {
   return {
     type: "taskItem",
-    attrs: createTaskItemAttrs(task.status === "done", task.taskId),
+    attrs: createTaskItemAttrs(task.status, task.taskId),
     content: cloneContentArray(task.body),
   };
 }
@@ -134,7 +216,7 @@ export function moveOpenTasksBetweenContents(args: {
 } | null {
   const currentTaskIds = new Set(args.currentTasks.map((task) => task.taskId));
   const tasksToMove = args.previousTasks.filter(
-    (task) => task.status !== "done" && !currentTaskIds.has(task.taskId),
+    (task) => !isTaskDone(task.status) && !currentTaskIds.has(task.taskId),
   );
 
   if (tasksToMove.length === 0) {
@@ -288,6 +370,7 @@ function normalizeNode(
 } {
   let changed = false;
   let nextAttrs = node.attrs;
+  let nextContent = node.content;
 
   if (node.type === "taskItem") {
     let nextTaskId =
@@ -307,7 +390,6 @@ function normalizeNode(
     }
   }
 
-  let nextContent = node.content;
   if (node.content?.length) {
     const normalizedChildren = node.content.map((child) =>
       normalizeNode(child, seenTaskIds),

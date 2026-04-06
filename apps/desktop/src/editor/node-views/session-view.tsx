@@ -9,6 +9,12 @@ import { forwardRef, type ReactNode, useCallback, useMemo } from "react";
 
 import { cn, safeParseDate } from "@hypr/utils";
 
+import {
+  createTaskStatusAttrs,
+  getNextTaskStatus,
+  getOptionalTaskStatus,
+  normalizeTaskStatus,
+} from "../tasks";
 import { TaskCheckbox } from "./task-checkbox";
 
 import { useLinkedItemOpenBehavior } from "~/editor/session/linked-item-open-behavior";
@@ -19,11 +25,14 @@ import { useListener } from "~/stt/contexts";
 
 export const sessionNodeSpec: NodeSpec = {
   group: "block",
-  content: "text*",
+  content: "paragraph",
   marks: "",
+  defining: true,
+  isolating: true,
   selectable: false,
   attrs: {
     sessionId: { default: null },
+    status: { default: null },
     checked: { default: null },
   },
   parseDOM: [
@@ -31,26 +40,32 @@ export const sessionNodeSpec: NodeSpec = {
       tag: 'div[data-type="session"]',
       getAttrs(dom) {
         const el = dom as HTMLElement;
-        const checked = el.getAttribute("data-checked");
+        const status = getOptionalTaskStatus(
+          el.getAttribute("data-status"),
+          el.getAttribute("data-checked") === "true"
+            ? true
+            : el.getAttribute("data-checked") === "false"
+              ? false
+              : undefined,
+        );
 
         return {
           sessionId: el.getAttribute("data-session-id"),
-          checked:
-            checked === "true" ? true : checked === "false" ? false : null,
+          status,
+          checked: status === null ? null : status === "done",
         };
       },
     },
   ],
   toDOM(node) {
+    const status = getOptionalTaskStatus(node.attrs.status, node.attrs.checked);
     return [
       "div",
       {
         "data-type": "session",
         "data-session-id": node.attrs.sessionId,
-        "data-checked":
-          typeof node.attrs.checked === "boolean"
-            ? String(node.attrs.checked)
-            : undefined,
+        "data-status": status ?? undefined,
+        "data-checked": status ? String(status === "done") : undefined,
       },
       0,
     ];
@@ -110,17 +125,20 @@ export const SessionNodeView = forwardRef<
   );
 
   const derivedChecked = !isRecording && isMeetingOver;
-  const checked =
-    typeof node.attrs.checked === "boolean"
-      ? node.attrs.checked
-      : derivedChecked;
+  const explicitStatus = getOptionalTaskStatus(
+    node.attrs.status,
+    node.attrs.checked,
+  );
+  const status =
+    explicitStatus ?? normalizeTaskStatus(undefined, derivedChecked);
 
   const handleToggle = useEditorEventCallback((view) => {
     if (!view) return;
     const pos = getPos();
+    const nextStatus = getNextTaskStatus(status);
     const tr = view.state.tr.setNodeMarkup(pos, undefined, {
       ...node.attrs,
-      checked: !checked,
+      ...createTaskStatusAttrs(nextStatus),
     });
     view.dispatch(tr);
   });
@@ -129,10 +147,9 @@ export const SessionNodeView = forwardRef<
     <div
       ref={ref}
       {...htmlAttrs}
+      data-status={explicitStatus ?? undefined}
       data-checked={
-        typeof node.attrs.checked === "boolean"
-          ? String(node.attrs.checked)
-          : undefined
+        explicitStatus ? String(explicitStatus === "done") : undefined
       }
     >
       <div
@@ -149,22 +166,20 @@ export const SessionNodeView = forwardRef<
             <div className="size-2.5 animate-pulse rounded-full bg-red-500" />
           </div>
         ) : (
-          <TaskCheckbox
-            checked={checked}
-            isInteractive
-            onToggle={handleToggle}
-          />
+          <TaskCheckbox status={status} isInteractive onToggle={handleToggle} />
         )}
-        <span
+        <div
           data-session-title
           className={cn([
-            "min-w-0 flex-1 cursor-text truncate text-sm text-neutral-900",
-            "rounded-sm outline-none focus:bg-white/80",
-            checked && "line-through opacity-60",
+            "min-w-0 flex-1 cursor-text text-sm text-neutral-900",
+            "[&>p]:m-0 [&>p]:min-w-0 [&>p]:truncate",
+            "[&>p]:rounded-sm [&>p]:outline-none",
+            "[&>p:focus]:bg-white/80",
+            status === "done" && "[&>p]:line-through [&>p]:opacity-60",
           ])}
         >
           {children}
-        </span>
+        </div>
         <div
           className="ml-auto flex shrink-0 items-center gap-1.5"
           contentEditable={false}

@@ -1,3 +1,5 @@
+import type { TaskStatus } from "../tasks";
+import { createTaskStatusAttrs, getOptionalTaskStatus } from "../tasks";
 import type { JSONContent } from "./index";
 
 export function getNodeTextContent(node: JSONContent): string {
@@ -8,20 +10,26 @@ export function getNodeTextContent(node: JSONContent): string {
   return (node.content ?? []).map(getNodeTextContent).join("");
 }
 
-function buildTextContent(text: string): JSONContent[] | undefined {
-  return text ? [{ type: "text", text }] : undefined;
+function buildSessionTitleContent(text: string): JSONContent[] {
+  return [
+    {
+      type: "paragraph",
+      content: text ? [{ type: "text", text }] : undefined,
+    },
+  ];
 }
 
 function buildSessionNode(
   sessionId: string,
   title: string,
-  checked?: boolean,
+  status?: TaskStatus,
 ): JSONContent {
   return {
     type: "session",
-    attrs:
-      typeof checked === "boolean" ? { sessionId, checked } : { sessionId },
-    content: buildTextContent(title),
+    attrs: status
+      ? { sessionId, ...createTaskStatusAttrs(status) }
+      : { sessionId },
+    content: buildSessionTitleContent(title),
   };
 }
 
@@ -50,7 +58,7 @@ export function mergeLinkedSessionsIntoContent({
   const pushSessionNode = (
     sessionId: string,
     preferredTitle?: string,
-    preferredChecked?: boolean,
+    preferredStatus?: TaskStatus,
   ) => {
     const normalizedSessionId = normalizeSessionId?.(sessionId) ?? sessionId;
     if (
@@ -66,7 +74,7 @@ export function mergeLinkedSessionsIntoContent({
       buildSessionNode(
         normalizedSessionId,
         preferredTitle ?? getSessionTitle(normalizedSessionId),
-        preferredChecked,
+        preferredStatus,
       ),
     );
   };
@@ -81,9 +89,8 @@ export function mergeLinkedSessionsIntoContent({
       pushSessionNode(
         sessionId,
         getNodeTextContent(node) || getSessionTitle(sessionId),
-        typeof node.attrs?.checked === "boolean"
-          ? node.attrs.checked
-          : undefined,
+        getOptionalTaskStatus(node.attrs?.status, node.attrs?.checked) ??
+          undefined,
       );
       continue;
     }

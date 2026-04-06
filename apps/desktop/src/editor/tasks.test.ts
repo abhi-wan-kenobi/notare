@@ -123,6 +123,50 @@ describe("task content", () => {
     });
   });
 
+  it("preserves in-progress status when extracting and rebuilding tasks", () => {
+    const source = { type: "daily_note", id: "2026-04-06" };
+    const content = normalizeTaskContent({
+      type: "doc",
+      content: [
+        {
+          type: "taskList",
+          content: [
+            {
+              type: "taskItem",
+              attrs: {
+                status: "in_progress",
+                checked: false,
+                taskId: "task-2",
+              },
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Working on it" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const [task] = extractTasksFromContent(content!, source);
+
+    expect(task).toMatchObject({
+      taskId: "task-2",
+      status: "in_progress",
+      textPreview: "Working on it",
+    });
+    expect(createTaskItemNode(task!)).toMatchObject({
+      type: "taskItem",
+      attrs: {
+        status: "in_progress",
+        checked: false,
+        taskId: "task-2",
+      },
+    });
+  });
+
   it("hydrates a source from canonical tasks and removes moved-away tasks", () => {
     const source = { type: "daily_note", id: "2026-04-06" };
     const foreignTask = {
