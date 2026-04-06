@@ -8,7 +8,7 @@ use std::{
 };
 
 use chrono::Local;
-use hypr_activity_capture::{Event, Transition};
+use hypr_activity_capture::{ActivityScreenshotCapture, Event, Transition};
 use serde::Serialize;
 
 use crate::event_row::{DetailField, EventRow};
@@ -49,6 +49,28 @@ impl RawRecord {
             raw: RawPayload::Transition {
                 previous: transition.previous,
                 current: transition.current,
+            },
+        }
+    }
+
+    pub(crate) fn screenshot(row: &EventRow, capture: &ActivityScreenshotCapture) -> Self {
+        Self {
+            captured_at: row.captured_at,
+            status: row.status.label().to_string(),
+            app_name: row.app_name.clone(),
+            summary: row.summary.clone(),
+            details: row.details.iter().map(RawDetailField::from).collect(),
+            raw: RawPayload::Screenshot {
+                fingerprint: capture.fingerprint.clone(),
+                reason: format!("{:?}", capture.reason),
+                scheduled_at_ms: capture.scheduled_at_ms,
+                captured_at_ms: capture.captured_at_ms,
+                pid: capture.target.pid,
+                app_name: capture.target.app_name.clone(),
+                title: capture.target.title.clone(),
+                image_width: capture.image.width,
+                image_height: capture.image.height,
+                image_bytes_len: capture.image.image_bytes.len(),
             },
         }
     }
@@ -101,6 +123,18 @@ enum RawPayload {
     Placeholder {
         reason: String,
     },
+    Screenshot {
+        fingerprint: String,
+        reason: String,
+        scheduled_at_ms: i64,
+        captured_at_ms: i64,
+        pid: u32,
+        app_name: String,
+        title: Option<String>,
+        image_width: u32,
+        image_height: u32,
+        image_bytes_len: usize,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -151,6 +185,32 @@ pub(crate) fn save_records(
     fs::create_dir_all(&directory)?;
     let path = unique_path(&directory, &file_name);
     fs::write(&path, json)?;
+    Ok(path)
+}
+
+pub(crate) fn save_screenshot_image(capture: &ActivityScreenshotCapture) -> io::Result<PathBuf> {
+    let app_slug: String = capture
+        .target
+        .app_name
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    let file_name = format!(
+        "screenshot-{}-{}.webp",
+        Local::now().format("%H%M%S"),
+        app_slug,
+    );
+
+    let directory = export_directory()?;
+    fs::create_dir_all(&directory)?;
+    let path = unique_path(&directory, &file_name);
+    fs::write(&path, &capture.image.image_bytes)?;
     Ok(path)
 }
 

@@ -3,9 +3,12 @@ use std::{
     io,
     ops::RangeInclusive,
     path::Path,
-    sync::mpsc::{self, Receiver, TryRecvError},
+    sync::{
+        Arc,
+        mpsc::{self, Receiver, TryRecvError},
+    },
     thread,
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use crossterm::{
@@ -16,15 +19,16 @@ use crossterm::{
 };
 use futures_util::StreamExt;
 use hypr_activity_capture::{
-    ActivityCapture, Capabilities, CaptureError, CaptureStream, EventCoalescer, PlatformCapture,
-    Transition, WatchOptions,
+    ActivityCapture, ActivityScreenshotCoordinator, Capabilities, CaptureError, CaptureStream,
+    EventCoalescer, LatestCaptureSink, LatestCaptureState, PendingCapture, PlatformCapture,
+    PolicyUpdate, ScreenCoreCapturer, StableSegmentScreenshotPolicy, Transition, WatchOptions,
 };
 use ratatui::{DefaultTerminal, Frame, layout::Rect, widgets::ListState};
 use tokio::sync::oneshot;
 
 use crate::{
     event_row::{EventRow, RowStatus},
-    export::{ExportScope, RawRecord, copy_records, save_records},
+    export::{ExportScope, RawRecord, copy_records, save_records, save_screenshot_image},
     options::{CaptureRuntimeMode, Options},
     theme::Theme,
     widgets::ActivityScreen,
@@ -51,6 +55,7 @@ pub(crate) struct SessionStats {
     pub(crate) focus_count: usize,
     pub(crate) update_count: usize,
     pub(crate) idle_count: usize,
+    pub(crate) screenshot_count: usize,
 }
 
 pub(crate) fn run(options: Options, color_enabled: bool) -> io::Result<()> {
@@ -253,6 +258,9 @@ struct ActivityApp {
     detail_tab: DetailTab,
     should_exit: bool,
     list_inner_area: Rect,
+    screenshot_coordinator: ActivityScreenshotCoordinator,
+    screenshot_state: Arc<LatestCaptureState>,
+    pending_screenshot: Option<PendingCapture>,
 }
 
 impl Drop for ActivityApp {
@@ -277,6 +285,7 @@ impl ActivityApp {
         } else {
             options.runtime_label(resolved_runtime)
         };
+        let screenshot_state = Arc::new(LatestCaptureState::default());
         let mut app = Self {
             capture,
             options,
@@ -294,6 +303,13 @@ impl ActivityApp {
             detail_tab: DetailTab::Details,
             should_exit: false,
             list_inner_area: Rect::default(),
+            screenshot_coordinator: ActivityScreenshotCoordinator::new(
+                Box::new(StableSegmentScreenshotPolicy::default()),
+                Arc::new(LatestCaptureSink::new(Arc::clone(&screenshot_state))),
+                Arc::new(ScreenCoreCapturer),
+            ),
+            screenshot_state,
+            pending_screenshot: None,
         };
 
         if app.options.once {
@@ -325,9 +341,10 @@ impl ActivityApp {
     fn run(mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.should_exit {
             self.drain_runtime_events();
+            self.check_pending_screenshot();
             terminal.draw(|frame| self.render(frame))?;
 
-            let timeout = self.capture_driver.poll_timeout();
+            let timeout = self.screenshot_poll_timeout();
             if event::poll(timeout)? {
                 self.handle_terminal_event(event::read()?);
             } else if self.capture_driver.tick() {
@@ -496,10 +513,85 @@ impl ActivityApp {
     }
 
     fn push_transition(&mut self, transition: Transition) {
+        let update = self
+            .screenshot_coordinator
+            .handle_transition(&transition, unix_ms_now());
+        self.apply_screenshot_update(update);
+
         if let Some(row) = EventRow::from_transition(&transition) {
             let record = RawRecord::from_transition(&row, transition);
             self.push_row(row, record);
         }
+    }
+
+    fn apply_screenshot_update(&mut self, update: PolicyUpdate) {
+        match update {
+            PolicyUpdate::None => {}
+            PolicyUpdate::CancelPending => {
+                self.pending_screenshot = None;
+            }
+            PolicyUpdate::Schedule(pending) => {
+                self.pending_screenshot = Some(pending);
+            }
+            PolicyUpdate::CancelAndSchedule(pending) => {
+                self.pending_screenshot = Some(pending);
+            }
+        }
+    }
+
+    fn check_pending_screenshot(&mut self) {
+        let Some(pending) = self.pending_screenshot.as_ref() else {
+            return;
+        };
+        let now = unix_ms_now();
+        if now < pending.due_at_ms {
+            return;
+        }
+        let pending_id = pending.pending_id;
+        match self
+            .screenshot_coordinator
+            .fire_pending_capture(pending_id, now)
+        {
+            Ok(true) => {
+                self.pending_screenshot = None;
+                if let Some(capture) = self.screenshot_state.latest() {
+                    let saved_path = match save_screenshot_image(&capture) {
+                        Ok(path) => {
+                            let label = file_label(&path);
+                            self.status_message = Some(format!("screenshot saved to {label}"));
+                            Some(label)
+                        }
+                        Err(error) => {
+                            self.status_message = Some(format!("screenshot save failed: {error}"));
+                            None
+                        }
+                    };
+                    let row = EventRow::screenshot(&capture, saved_path.as_deref());
+                    let record = RawRecord::screenshot(&row, &capture);
+                    self.push_row(row, record);
+                }
+            }
+            Ok(false) => {
+                self.pending_screenshot = None;
+            }
+            Err(error) => {
+                self.pending_screenshot = None;
+                self.status_message = Some(format!("screenshot capture failed: {error}"));
+            }
+        }
+    }
+
+    fn screenshot_poll_timeout(&self) -> Duration {
+        let base = self.capture_driver.poll_timeout();
+        let Some(pending) = self.pending_screenshot.as_ref() else {
+            return base;
+        };
+        let now = unix_ms_now();
+        if now >= pending.due_at_ms {
+            return Duration::ZERO;
+        }
+        let remaining = Duration::from_millis((pending.due_at_ms - now) as u64);
+        base.min(remaining)
     }
 
     fn push_row(&mut self, row: EventRow, raw_record: RawRecord) {
@@ -678,6 +770,7 @@ impl ActivityApp {
         let mut focus_count = 0;
         let mut update_count = 0;
         let mut idle_count = 0;
+        let mut screenshot_count = 0;
 
         for row in &self.events {
             if row.app_name != "-" {
@@ -688,6 +781,7 @@ impl ActivityApp {
                 RowStatus::Focus => focus_count += 1,
                 RowStatus::Update => update_count += 1,
                 RowStatus::Idle => idle_count += 1,
+                RowStatus::Screenshot => screenshot_count += 1,
             }
         }
 
@@ -697,6 +791,7 @@ impl ActivityApp {
             focus_count,
             update_count,
             idle_count,
+            screenshot_count,
         }
     }
 
@@ -749,4 +844,11 @@ fn file_label(path: &Path) -> String {
         .and_then(|value| value.to_str())
         .map(str::to_owned)
         .unwrap_or_else(|| path.to_string_lossy().into_owned())
+}
+
+fn unix_ms_now() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis().min(i64::MAX as u128) as i64)
+        .unwrap_or(0)
 }

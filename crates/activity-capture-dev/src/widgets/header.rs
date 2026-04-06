@@ -73,12 +73,13 @@ impl Widget for SessionHeader<'_> {
             Line::from(vec![
                 Span::styled("session", self.theme.label()),
                 Span::raw(format!(
-                    "  events={}  apps={}  focus={}  update={}  idle={}  selected={selection}",
+                    "  events={}  apps={}  focus={}  update={}  idle={}  snap={}  selected={selection}",
                     self.session_stats.event_count,
                     self.session_stats.distinct_apps,
                     self.session_stats.focus_count,
                     self.session_stats.update_count,
                     self.session_stats.idle_count,
+                    self.session_stats.screenshot_count,
                 )),
             ]),
             Line::from(vec![

@@ -2939,7 +2939,7 @@ dependencies = [
 [[package]]
 name = "cactus-sys"
 version = "0.1.0"
-source = "git+https://github.com/cactus-compute/cactus?rev=a5acad3#a5acad3238643da779dabcd4597f1552348543b5"
+source = "git+https://github.com/cactus-compute/cactus?rev=aa21354#aa21354254f4b897454541571f184284a686c62f"
 dependencies = [
  "bindgen 0.72.1",
  "cmake",
@@ -20686,6 +20686,7 @@ dependencies = [
  "tokio-tungstenite 0.28.0",
  "tower 0.5.3",
  "tracing",
+ "tracing-subscriber",
  "transcribe-core",
  "uuid",
  "ws-utils",

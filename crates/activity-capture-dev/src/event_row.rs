@@ -1,8 +1,8 @@
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use hypr_activity_capture::{
-    ActivityKind, ContentLevel, Event, Snapshot, SnapshotSource, TextAnchorConfidence,
-    TextAnchorKind, Transition,
+    ActivityKind, ActivityScreenshotCapture, ContentLevel, Event, Snapshot, SnapshotSource,
+    TextAnchorConfidence, TextAnchorKind, Transition,
 };
 
 use crate::{
@@ -18,6 +18,7 @@ pub(crate) enum RowStatus {
     Focus,
     Update,
     Idle,
+    Screenshot,
 }
 
 impl RowStatus {
@@ -26,6 +27,7 @@ impl RowStatus {
             Self::Focus => "focus",
             Self::Update => "update",
             Self::Idle => "idle",
+            Self::Screenshot => "snap",
         }
     }
 }
@@ -112,6 +114,61 @@ impl EventRow {
             status: RowStatus::Focus,
             context: context_label(snapshot),
             summary: focus_summary(snapshot, previous_app),
+            details,
+        }
+    }
+
+    pub(crate) fn screenshot(
+        capture: &ActivityScreenshotCapture,
+        saved_path: Option<&str>,
+    ) -> Self {
+        let captured_at = UNIX_EPOCH + Duration::from_millis(capture.captured_at_ms as u64);
+        let scheduled_at = UNIX_EPOCH + Duration::from_millis(capture.scheduled_at_ms as u64);
+        let dwell = Duration::from_millis(
+            capture
+                .captured_at_ms
+                .saturating_sub(capture.scheduled_at_ms) as u64,
+        );
+        let image = &capture.image;
+
+        let mut details = vec![
+            detail("Event", "screenshot"),
+            detail("Captured", format_timestamp(captured_at)),
+            detail("Scheduled", format_timestamp(scheduled_at)),
+            detail("Dwell", format_duration(dwell)),
+            detail("App", detail_value(&capture.target.app_name)),
+        ];
+        if let Some(title) = capture.target.title.as_deref() {
+            details.push(detail("Window", detail_value(title)));
+        }
+        details.push(detail("Reason", format!("{:?}", capture.reason)));
+        details.push(detail("Fingerprint", capture.fingerprint.clone()));
+        details.push(detail("PID", capture.target.pid.to_string()));
+        details.push(detail(
+            "Image",
+            format!("{}x{} {}", image.width, image.height, image.mime_type),
+        ));
+        details.push(detail(
+            "Size",
+            format!("{:.1} KB", image.image_bytes.len() as f64 / 1024.0),
+        ));
+        if let Some(path) = saved_path {
+            details.push(detail("Saved", path.to_string()));
+        }
+
+        let title_preview = capture
+            .target
+            .title
+            .as_deref()
+            .map(|t| format!("  title={}", compact(t, TITLE_PREVIEW_LIMIT)))
+            .unwrap_or_default();
+
+        Self {
+            captured_at,
+            app_name: capture.target.app_name.clone(),
+            status: RowStatus::Screenshot,
+            context: format!("{}x{}", image.width, image.height),
+            summary: format!("reason={:?}{title_preview}", capture.reason,),
             details,
         }
     }
