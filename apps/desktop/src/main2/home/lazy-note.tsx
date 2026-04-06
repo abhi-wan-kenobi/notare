@@ -29,7 +29,7 @@ export function LazyNote({ date, muted }: { date: string; muted?: boolean }) {
     <div ref={ref} className="min-h-[400px]">
       {visible && (
         <>
-          <DateHeader date={date} isToday={false} muted={muted} />
+          <DateHeader date={date} muted={muted} />
           <DailyNoteEditor date={date} />
         </>
       )}

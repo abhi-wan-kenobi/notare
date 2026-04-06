@@ -59,18 +59,13 @@ export function Main2Home() {
         <div ref={scrollRef} className="h-full overflow-y-auto">
           <div className="mx-auto w-full max-w-3xl">
             <div className="opacity-40">
-              <DateHeader date={tomorrow} isToday={false} muted />
-              <div className="px-6 pb-4">
-                <p className="text-sm text-neutral-400">
-                  write your plans, ideas and tasks
-                </p>
-              </div>
+              <DateHeader date={tomorrow} muted />
             </div>
 
             <div className="mx-6 border-t border-neutral-200" />
 
             <div ref={todayRef} className="min-h-[400px]">
-              <DateHeader date={today} isToday={true} />
+              <DateHeader date={today} />
               <DailyNoteEditor date={today} isToday />
             </div>
 

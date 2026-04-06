@@ -1,3 +1,5 @@
+import "./note-editor.css";
+
 import { Node as PMNode } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -319,7 +321,7 @@ export function DailyNoteEditor({
   }
 
   return (
-    <div className="px-6">
+    <div className="main2-daily-note-editor px-6">
       <NoteEditor
         ref={editorRef}
         key={`daily-${date}`}
