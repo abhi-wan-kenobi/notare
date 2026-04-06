@@ -171,13 +171,22 @@ function getSegmentText(segment: Segment): string {
 }
 
 function getTranscriptPreview(segments: Segment[]): string | null {
-  const transcript = segments.map(getSegmentText).join(" ").trim();
+  const transcript = segments
+    .map((segment) =>
+      segment.words
+        .map((word) => word.text)
+        .join("")
+        .trim(),
+    )
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 
   if (!transcript) {
     return null;
   }
 
-  return transcript;
+  return transcript.length > 500 ? transcript.slice(-500) : transcript;
 }
 
 function TranscriptSegmentRow({

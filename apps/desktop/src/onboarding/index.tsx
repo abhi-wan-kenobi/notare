@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as sfxCommands } from "@hypr/plugin-sfx";
+import { cn } from "@hypr/utils";
 
 import { LoginSection } from "./account";
 import { CalendarSection } from "./calendar";
@@ -22,6 +23,7 @@ import { OnboardingSection } from "./shared";
 import { useAuth } from "~/auth";
 import { StandardTabWrapper } from "~/shared/main";
 import { type TabItem, TabItemBase } from "~/shared/tabs";
+import { StandaloneWindowShell } from "~/shared/window-shell";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 
 export const TabItemOnboarding: TabItem<
@@ -76,12 +78,45 @@ export function TabContentOnboarding({
 }
 
 export function OnboardingScreen({ onFinish }: { onFinish: () => void }) {
+  return (
+    <OnboardingScreenContent onFinish={onFinish} headerClassName="px-6 pt-4" />
+  );
+}
+
+export function StandaloneOnboardingScreen({
+  onFinish,
+}: {
+  onFinish: () => void;
+}) {
+  const isMacOS = platform() === "macos";
+
+  return (
+    <StandaloneWindowShell>
+      <OnboardingScreenContent
+        onFinish={onFinish}
+        headerClassName={isMacOS ? "pt-12 pr-6 pl-20" : "px-6 pt-4"}
+        headerDragRegion
+      />
+    </StandaloneWindowShell>
+  );
+}
+
+function OnboardingScreenContent({
+  onFinish,
+  headerClassName,
+  headerDragRegion = false,
+}: {
+  onFinish: () => void;
+  headerClassName: string;
+  headerDragRegion?: boolean;
+}) {
   const queryClient = useQueryClient();
   const auth = useAuth();
   const [isMuted, setIsMuted] = useState(false);
   const [currentStep, setCurrentStep] = useState(getInitialStep);
   const [didSkipLogin, setDidSkipLogin] = useState(false);
   const onboardingVideoRef = useRef<HTMLVideoElement>(null);
+  const currentPlatform = platform();
 
   const goNext = useCallback(() => {
     const next = getNextStep(currentStep);
@@ -102,9 +137,9 @@ export function OnboardingScreen({ onFinish }: { onFinish: () => void }) {
     void analyticsCommands.event({
       event: "onboarding_step_viewed",
       step: currentStep,
-      platform: platform(),
+      platform: currentPlatform,
     });
-  }, [currentStep]);
+  }, [currentPlatform, currentStep]);
 
   useEffect(() => {
     sfxCommands
@@ -153,12 +188,19 @@ export function OnboardingScreen({ onFinish }: { onFinish: () => void }) {
           <div className="absolute inset-x-0 top-0 h-[84%] bg-linear-to-b from-stone-50 via-stone-50/82 via-stone-50/97 via-18% via-42% to-stone-50/0" />
         </div>
 
-        <div className="sticky top-0 z-10 flex items-center justify-between px-6 pt-4 pb-3">
+        <div
+          data-tauri-drag-region={headerDragRegion || undefined}
+          className={cn([
+            "sticky top-0 z-10 flex items-center justify-between pb-3",
+            headerClassName,
+          ])}
+        >
           <h1 className="font-serif text-2xl font-semibold text-neutral-900">
             Welcome to Char
           </h1>
           <button
             onClick={() => setIsMuted((prev) => !prev)}
+            data-tauri-drag-region="false"
             className="rounded-full p-1.5 transition-colors hover:bg-neutral-100"
             aria-label={isMuted ? "Unmute" : "Mute"}
           >

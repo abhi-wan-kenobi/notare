@@ -3,7 +3,7 @@ import { useCallback } from "react";
 
 import { resolveShellEntryPath } from "./-resolve-entry-path";
 
-import { OnboardingScreen } from "~/onboarding";
+import { StandaloneOnboardingScreen } from "~/onboarding";
 
 export const Route = createFileRoute("/app/onboarding")({
   component: Component,
@@ -18,5 +18,5 @@ function Component() {
     })();
   }, [navigate]);
 
-  return <OnboardingScreen onFinish={handleFinish} />;
+  return <StandaloneOnboardingScreen onFinish={handleFinish} />;
 }
