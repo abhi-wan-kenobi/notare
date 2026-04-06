@@ -7,8 +7,10 @@ use std::{
 use axum::{
     body::Body,
     http::{Request, StatusCode},
+    response::Json,
     response::{IntoResponse, Response},
 };
+use hypr_cactus_model::{CactusHealthResponse, CactusHealthStatus};
 use tower::Service;
 
 use crate::ModelManager;
@@ -25,6 +27,9 @@ mod response;
 
 type CactusModelManager = ModelManager<hypr_cactus::Model>;
 
+pub const COMPLETE_PATH: &str = "/v1/chat/completions";
+pub const HEALTH_PATH: &str = "/health";
+
 #[derive(Clone)]
 pub struct CompleteService {
     manager: CactusModelManager,
@@ -34,6 +39,28 @@ impl CompleteService {
     pub fn new(manager: CactusModelManager) -> Self {
         Self { manager }
     }
+
+    pub fn into_router<F, Fut>(self, on_error: F) -> axum::Router
+    where
+        F: FnOnce(crate::Error) -> Fut + Clone + Send + Sync + 'static,
+        Fut: Future<Output = (StatusCode, String)> + Send,
+    {
+        let service = axum::error_handling::HandleError::new(self, on_error);
+
+        axum::Router::new()
+            .route(HEALTH_PATH, axum::routing::get(health))
+            .route_service(COMPLETE_PATH, service)
+    }
+}
+
+async fn health() -> Json<CactusHealthResponse> {
+    Json(CactusHealthResponse {
+        service: "llm".to_string(),
+        live: true,
+        ready: true,
+        status: CactusHealthStatus::Ready,
+        error: None,
+    })
 }
 
 impl Service<Request<Body>> for CompleteService {
