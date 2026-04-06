@@ -1,11 +1,11 @@
 import { useShallow } from "zustand/shallow";
 
-import { MainTabChrome } from "./tab-chrome";
-import { MainTabContent } from "./tab-content";
+import { ClassicMainTabChrome } from "./tab-chrome";
+import { ClassicMainTabContent } from "./tab-content";
 
 import { type Tab, uniqueIdfromTab, useTabs } from "~/store/zustand/tabs";
 
-export function Body() {
+export function ClassicMainBody() {
   const { tabs, currentTab } = useTabs(
     useShallow((state) => ({
       tabs: state.tabs,
@@ -19,9 +19,9 @@ export function Body() {
 
   return (
     <div className="relative flex h-full flex-1 flex-col gap-1">
-      <MainTabChrome tabs={tabs} />
+      <ClassicMainTabChrome tabs={tabs} />
       <div className="flex-1 overflow-auto">
-        <MainTabContent
+        <ClassicMainTabContent
           key={uniqueIdfromTab(currentTab)}
           tab={currentTab as Tab}
         />

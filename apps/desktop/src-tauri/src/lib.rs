@@ -270,9 +270,6 @@ pub async fn main() {
     }
 
     {
-        let use_new = app.get_char_v1p1_preview().unwrap_or(false) || cfg!(feature = "new");
-        app.manage(tauri_plugin_windows::UseNewLayout(use_new));
-
         let app_handle = app.handle().clone();
         AppWindow::Main.show(&app_handle).unwrap();
     }

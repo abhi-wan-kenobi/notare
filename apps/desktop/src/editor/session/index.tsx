@@ -100,6 +100,7 @@ export interface EditorCommands {
   focusAtStart: () => void;
   focusAtPixelWidth: (pixelWidth: number) => void;
   insertAtStartAndFocus: (content: string) => void;
+  replaceContent: (content: JSONContent) => void;
   setSearch: (query: string, caseSensitive: boolean) => void;
   replace: (params: SearchReplaceParams) => void;
 }
@@ -148,6 +149,7 @@ const noopCommands: EditorCommands = {
   focusAtStart: () => {},
   focusAtPixelWidth: () => {},
   insertAtStartAndFocus: () => {},
+  replaceContent: () => {},
   setSearch: () => {},
   replace: () => {},
 };
@@ -224,6 +226,29 @@ function EditorCommandsBridge({
       tr.setSelection(TextSelection.create(tr.doc, pos));
       view.dispatch(tr);
       view.focus();
+    },
+  );
+
+  commandsRef.current.replaceContent = useEditorEventCallback(
+    (view, content: JSONContent) => {
+      if (!view || content.type !== "doc") return;
+
+      try {
+        const nextDoc = PMNode.fromJSON(schema, content);
+        if (nextDoc.eq(view.state.doc)) {
+          return;
+        }
+
+        view.dispatch(
+          view.state.tr.replaceWith(
+            0,
+            view.state.doc.content.size,
+            nextDoc.content,
+          ),
+        );
+      } catch {
+        // invalid content
+      }
     },
   );
 

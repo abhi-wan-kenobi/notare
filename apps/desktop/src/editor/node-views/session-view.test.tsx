@@ -50,7 +50,7 @@ vi.mock("~/editor/session/linked-item-open-behavior", () => ({
 import { SessionNodeView } from "./session-view";
 
 describe("SessionNodeView", () => {
-  it("toggles the linked session checkbox when clicked", () => {
+  it("cycles the linked session status when clicked", () => {
     hoisted.transaction.setNodeMarkup.mockImplementation(
       (_pos, _type, attrs) => ({ attrs }),
     );
@@ -61,7 +61,7 @@ describe("SessionNodeView", () => {
         nodeProps={
           {
             node: {
-              attrs: { sessionId: "session-1", checked: true },
+              attrs: { sessionId: "session-1", status: "done", checked: true },
             },
             getPos: () => 7,
           } as any
@@ -78,12 +78,14 @@ describe("SessionNodeView", () => {
       undefined,
       {
         sessionId: "session-1",
+        status: "todo",
         checked: false,
       },
     );
     expect(hoisted.view.dispatch).toHaveBeenCalledWith({
       attrs: {
         sessionId: "session-1",
+        status: "todo",
         checked: false,
       },
     });

@@ -56,8 +56,10 @@ describe("buildInputRules", () => {
             {
               type: "taskItem",
               attrs: {
+                status: "todo",
                 checked: false,
                 taskId: expect.any(String),
+                taskItemId: expect.any(String),
               },
               content: [{ type: "paragraph" }],
             },

@@ -6,7 +6,7 @@ import { LeftSidebar } from "~/sidebar";
 import { useTabs } from "~/store/zustand/tabs";
 import { commands } from "~/types/tauri.gen";
 
-export function MainShellSidebar() {
+export function ClassicMainSidebar() {
   const { leftsidebar } = useShell();
   const { query } = useSearch();
   const currentTab = useTabs((state) => state.currentTab);

@@ -7,19 +7,29 @@ describe("TaskCheckbox", () => {
   it("calls onToggle when interactive", () => {
     const onToggle = vi.fn();
 
-    render(<TaskCheckbox checked={false} isInteractive onToggle={onToggle} />);
+    render(<TaskCheckbox status="todo" isInteractive onToggle={onToggle} />);
 
     fireEvent.click(screen.getByRole("checkbox"));
 
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
+  it("exposes the mixed state for in-progress tasks", () => {
+    const view = render(<TaskCheckbox status="in_progress" />);
+
+    expect(
+      view.container
+        .querySelector('[role="checkbox"]')
+        ?.getAttribute("aria-checked"),
+    ).toBe("mixed");
+  });
+
   it("does not call onToggle when read-only", () => {
-    const view = render(<TaskCheckbox checked />);
+    const view = render(<TaskCheckbox status="done" />);
 
     const checkbox = view.container.querySelector(
-      'input[type="checkbox"]',
-    ) as HTMLInputElement | null;
+      '[role="checkbox"]',
+    ) as HTMLButtonElement | null;
 
     expect(checkbox).not.toBeNull();
     if (!checkbox) {

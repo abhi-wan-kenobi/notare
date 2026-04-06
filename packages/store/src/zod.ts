@@ -233,7 +233,7 @@ export const enhancedNoteSchema = z.object({
   title: z.preprocess((val) => val ?? undefined, z.string().optional()),
 });
 
-export const taskStatusSchema = z.enum(["todo", "done"]);
+export const taskStatusSchema = z.enum(["todo", "in_progress", "done"]);
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
 
 export const taskSchema = z.object({

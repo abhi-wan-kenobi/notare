@@ -11,14 +11,18 @@ import { useToday } from "./use-today";
 import { useTimezone, toTz } from "~/calendar/hooks";
 import { StandardTabWrapper } from "~/shared/main";
 
-export { TabItemDaily } from "./tab-item";
-
-export function TabContentDaily() {
+export function Main2Home() {
   const today = useToday();
   const tz = useTimezone();
   const scrollRef = useRef<HTMLDivElement>(null);
   const todayRef = useRef<HTMLDivElement>(null);
   const [showTodayButton, setShowTodayButton] = useState(false);
+
+  const tomorrow = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return format(toTz(d, tz), "yyyy-MM-dd");
+  }, [today, tz]);
 
   const pastDates = useMemo(() => {
     return Array.from({ length: 30 }, (_, i) => {
@@ -54,15 +58,26 @@ export function TabContentDaily() {
         <TodayButton onClick={scrollToToday} visible={showTodayButton} />
         <div ref={scrollRef} className="h-full overflow-y-auto">
           <div className="mx-auto w-full max-w-3xl">
+            <div className="opacity-40">
+              <DateHeader date={tomorrow} isToday={false} muted />
+              <div className="px-6 pb-4">
+                <p className="text-sm text-neutral-400">
+                  write your plans, ideas and tasks
+                </p>
+              </div>
+            </div>
+
+            <div className="mx-6 border-t border-neutral-200" />
+
             <div ref={todayRef} className="min-h-[400px]">
               <DateHeader date={today} isToday={true} />
-              <DailyNoteEditor date={today} />
+              <DailyNoteEditor date={today} isToday />
             </div>
 
             {pastDates.map((date) => (
               <div key={date}>
                 <div className="mx-6 border-t border-neutral-200" />
-                <LazyNote date={date} />
+                <LazyNote date={date} muted />
               </div>
             ))}
           </div>

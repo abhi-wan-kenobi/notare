@@ -26,6 +26,10 @@ export function createTaskId(): string {
   return id();
 }
 
+export function createTaskItemId(): string {
+  return id();
+}
+
 export const DEFAULT_TASK_STATUS: TaskStatus = "todo";
 
 export function isTaskStatus(value: unknown): value is TaskStatus {
@@ -94,9 +98,10 @@ export function createTaskStatusAttrs(status: TaskStatus) {
 export function createTaskItemAttrs(
   status: TaskStatus | boolean = DEFAULT_TASK_STATUS,
   taskId = createTaskId(),
+  taskItemId = createTaskItemId(),
 ) {
   const normalizedStatus = normalizeTaskStatus(status);
-  return { ...createTaskStatusAttrs(normalizedStatus), taskId };
+  return { ...createTaskStatusAttrs(normalizedStatus), taskId, taskItemId };
 }
 
 export function getNextTaskStatus(status: TaskStatus): TaskStatus {
@@ -125,7 +130,7 @@ export function normalizeTaskContent(
     return content;
   }
 
-  return normalizeNode(content, new Set<string>()).node;
+  return normalizeNode(content, new Set<string>(), new Set<string>()).node;
 }
 
 export function extractTasksFromContent(
@@ -364,6 +369,7 @@ function removeTaskNodes(
 function normalizeNode(
   node: JSONContent,
   seenTaskIds: Set<string>,
+  seenTaskItemIds: Set<string>,
 ): {
   node: JSONContent;
   changed: boolean;
@@ -377,22 +383,38 @@ function normalizeNode(
       typeof node.attrs?.taskId === "string" && node.attrs.taskId.trim()
         ? node.attrs.taskId
         : "";
+    let nextTaskItemId =
+      typeof node.attrs?.taskItemId === "string" && node.attrs.taskItemId.trim()
+        ? node.attrs.taskItemId
+        : "";
 
     while (!nextTaskId || seenTaskIds.has(nextTaskId)) {
       nextTaskId = createTaskId();
     }
 
-    seenTaskIds.add(nextTaskId);
+    while (!nextTaskItemId || seenTaskItemIds.has(nextTaskItemId)) {
+      nextTaskItemId = createTaskItemId();
+    }
 
-    if (node.attrs?.taskId !== nextTaskId) {
-      nextAttrs = { ...(node.attrs ?? {}), taskId: nextTaskId };
+    seenTaskIds.add(nextTaskId);
+    seenTaskItemIds.add(nextTaskItemId);
+
+    if (
+      node.attrs?.taskId !== nextTaskId ||
+      node.attrs?.taskItemId !== nextTaskItemId
+    ) {
+      nextAttrs = {
+        ...(node.attrs ?? {}),
+        taskId: nextTaskId,
+        taskItemId: nextTaskItemId,
+      };
       changed = true;
     }
   }
 
   if (node.content?.length) {
     const normalizedChildren = node.content.map((child) =>
-      normalizeNode(child, seenTaskIds),
+      normalizeNode(child, seenTaskIds, seenTaskItemIds),
     );
     if (normalizedChildren.some((child) => child.changed)) {
       nextContent = normalizedChildren.map((child) => child.node);

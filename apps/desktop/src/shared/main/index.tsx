@@ -1,5 +1,4 @@
 export { MainShellBodyFrame } from "./body-frame";
-export { Body } from "./body";
 export { MainChatPanels } from "./chat-panels";
 export { useMainContentCenterOffset } from "./content-offset";
 export {
@@ -8,9 +7,7 @@ export {
   useSessionStatusBanner,
 } from "./session-status-banner";
 export { MainShellScaffold } from "./shell-scaffold";
-export { MainShellSidebar } from "./shell-sidebar";
-export { MainShellFrame } from "./shell-frame";
-export { MainTabChrome, MainTabItem, useMainTabsShortcuts } from "./tab-chrome";
+export { MainTabItem } from "./tab-item";
 export { MainTabContent } from "./tab-content";
 export { useScrollActiveTabIntoView } from "./tab-scroll";
 

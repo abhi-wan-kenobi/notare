@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { DateHeader } from "./date-header";
 import { DailyNoteEditor } from "./note-editor";
 
-export function LazyNote({ date }: { date: string }) {
+export function LazyNote({ date, muted }: { date: string; muted?: boolean }) {
   const [visible, setVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -29,7 +29,7 @@ export function LazyNote({ date }: { date: string }) {
     <div ref={ref} className="min-h-[400px]">
       {visible && (
         <>
-          <DateHeader date={date} isToday={false} />
+          <DateHeader date={date} isToday={false} muted={muted} />
           <DailyNoteEditor date={date} />
         </>
       )}

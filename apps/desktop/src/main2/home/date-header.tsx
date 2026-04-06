@@ -22,13 +22,21 @@ function formatDateHeader(dateStr: string): string {
 export function DateHeader({
   date,
   isToday,
+  muted,
 }: {
   date: string;
   isToday: boolean;
+  muted?: boolean;
 }) {
   return (
     <div className="flex items-center gap-3 px-6 pt-6 pb-3">
-      <h2 className="text-xl font-semibold text-neutral-900">
+      <h2
+        className={
+          muted
+            ? "text-lg font-medium text-neutral-400"
+            : "text-xl font-semibold text-neutral-900"
+        }
+      >
         {formatDateHeader(date)}
       </h2>
       {isToday && (

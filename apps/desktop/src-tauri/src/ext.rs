@@ -117,6 +117,9 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> AppExt<R> for T {
 
     #[tracing::instrument(skip_all)]
     fn get_char_v1p1_preview(&self) -> Result<bool, String> {
+        if cfg!(feature = "new") {
+            return Ok(true);
+        }
         let store = self.desktop_store()?;
         store
             .get(StoreKey::CharV1p1Preview)

@@ -541,7 +541,7 @@ function taskRowToRecord(
     typeof sourceId !== "string" ||
     typeof sourceType !== "string" ||
     typeof sourceOrder !== "number" ||
-    (status !== "todo" && status !== "done")
+    (status !== "todo" && status !== "in_progress" && status !== "done")
   ) {
     return null;
   }

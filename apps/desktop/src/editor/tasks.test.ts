@@ -10,7 +10,7 @@ import {
 } from "./tasks";
 
 describe("task content", () => {
-  it("assigns unique task ids to missing and duplicated task items", () => {
+  it("assigns unique task ids and task item ids to missing and duplicated task items", () => {
     const content = normalizeTaskContent({
       type: "doc",
       content: [
@@ -57,12 +57,18 @@ describe("task content", () => {
         (node) => node.type === "taskItem",
       ) ?? [];
     const taskIds = taskItems.map((node) => node.attrs?.taskId);
+    const taskItemIds = taskItems.map((node) => node.attrs?.taskItemId);
 
     expect(taskIds).toHaveLength(3);
     expect(taskIds[0]).toBe("duplicate-task");
     expect(taskIds[1]).toEqual(expect.any(String));
     expect(taskIds[2]).toEqual(expect.any(String));
     expect(new Set(taskIds).size).toBe(3);
+    expect(taskItemIds).toHaveLength(3);
+    expect(taskItemIds[0]).toEqual(expect.any(String));
+    expect(taskItemIds[1]).toEqual(expect.any(String));
+    expect(taskItemIds[2]).toEqual(expect.any(String));
+    expect(new Set(taskItemIds).size).toBe(3);
   });
 
   it("extracts canonical task rows with full body content", () => {
@@ -118,7 +124,11 @@ describe("task content", () => {
     });
     expect(createTaskItemNode(tasks[0]!)).toMatchObject({
       type: "taskItem",
-      attrs: { checked: false, taskId: "task-1" },
+      attrs: {
+        checked: false,
+        taskId: "task-1",
+        taskItemId: expect.any(String),
+      },
       content: tasks[0]?.body,
     });
   });
@@ -163,6 +173,7 @@ describe("task content", () => {
         status: "in_progress",
         checked: false,
         taskId: "task-2",
+        taskItemId: expect.any(String),
       },
     });
   });

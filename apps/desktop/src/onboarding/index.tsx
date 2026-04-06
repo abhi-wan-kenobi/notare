@@ -63,9 +63,20 @@ export function TabContentOnboarding({
 }: {
   tab: Extract<Tab, { type: "onboarding" }>;
 }) {
-  const queryClient = useQueryClient();
   const close = useTabs((state) => state.close);
   const currentTab = useTabs((state) => state.currentTab);
+
+  const handleFinish = useCallback(() => {
+    if (currentTab) {
+      close(currentTab);
+    }
+  }, [close, currentTab]);
+
+  return <OnboardingScreen onFinish={handleFinish} />;
+}
+
+export function OnboardingScreen({ onFinish }: { onFinish: () => void }) {
+  const queryClient = useQueryClient();
   const auth = useAuth();
   const [isMuted, setIsMuted] = useState(false);
   const [currentStep, setCurrentStep] = useState(getInitialStep);
@@ -117,10 +128,8 @@ export function TabContentOnboarding({
 
   const handleFinish = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["onboarding-needed"] });
-    if (currentTab) {
-      close(currentTab);
-    }
-  }, [close, currentTab, queryClient]);
+    onFinish();
+  }, [onFinish, queryClient]);
 
   return (
     <StandardTabWrapper>

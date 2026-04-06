@@ -5,11 +5,10 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { Kbd } from "@hypr/ui/components/ui/kbd";
 import { cn } from "@hypr/utils";
 
-import { useNewNote, useNewNoteAndListen } from "../useNewNote";
-import { OpenNoteDialog } from "./open-note-dialog";
-
 import { StandardTabWrapper } from "~/shared/main";
+import { OpenNoteDialog } from "~/shared/open-note-dialog";
 import { type TabItem, TabItemBase } from "~/shared/tabs";
+import { useNewNote, useNewNoteAndListen } from "~/shared/useNewNote";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 
 export const TabItemEmpty: TabItem<Extract<Tab, { type: "empty" }>> = ({

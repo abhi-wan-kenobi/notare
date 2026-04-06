@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 import { events as windowsEvents } from "@hypr/plugin-windows";
 
-import { useNewNote } from "./main/useNewNote";
+import { useNewNote } from "./useNewNote";
 
 import { AuthProvider } from "~/auth";
 import { BillingProvider } from "~/auth/billing";

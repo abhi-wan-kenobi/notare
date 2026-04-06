@@ -121,7 +121,6 @@ export type Tab =
       state: ChatState;
     })
   | (BaseTab & { type: "onboarding" })
-  | (BaseTab & { type: "daily" })
   | (BaseTab & { type: "edit"; requestId: string });
 
 export const getDefaultState = (tab: TabInput): Tab => {
@@ -205,8 +204,6 @@ export const getDefaultState = (tab: TabInput): Tab => {
       };
     case "onboarding":
       return { ...base, type: "onboarding" };
-    case "daily":
-      return { ...base, type: "daily" };
     case "edit":
       return { ...base, type: "edit", requestId: tab.requestId };
     default:
@@ -245,8 +242,6 @@ export const uniqueIdfromTab = (tab: Tab): string => {
       return `chat_support`;
     case "onboarding":
       return `onboarding`;
-    case "daily":
-      return `daily`;
     case "edit":
       return `edit-${tab.requestId}`;
   }

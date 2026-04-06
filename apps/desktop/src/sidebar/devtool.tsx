@@ -59,6 +59,10 @@ function DevtoolCard({
 
 function NavigationCard() {
   const openNew = useTabs((s) => s.openNew);
+  const isClassicMain =
+    typeof window !== "undefined" &&
+    (window.location.pathname === "/app/main" ||
+      window.location.pathname.startsWith("/app/main/"));
 
   const showMainWindow = useCallback(async () => {
     await windowsCommands.windowShow({ type: "main" });
@@ -112,19 +116,21 @@ function NavigationCard() {
         >
           Onboarding Tab
         </button>
-        <button
-          type="button"
-          onClick={() => void handleShowEmptyTab()}
-          className={cn([
-            "w-full rounded-md px-2.5 py-1.5",
-            "text-left text-xs font-medium",
-            "border border-neutral-200 text-neutral-700",
-            "cursor-pointer transition-colors",
-            "hover:border-neutral-300 hover:bg-neutral-50",
-          ])}
-        >
-          Empty Tab
-        </button>
+        {isClassicMain && (
+          <button
+            type="button"
+            onClick={() => void handleShowEmptyTab()}
+            className={cn([
+              "w-full rounded-md px-2.5 py-1.5",
+              "text-left text-xs font-medium",
+              "border border-neutral-200 text-neutral-700",
+              "cursor-pointer transition-colors",
+              "hover:border-neutral-300 hover:bg-neutral-50",
+            ])}
+          >
+            Empty Tab
+          </button>
+        )}
         <button
           type="button"
           onClick={handleShowControl}

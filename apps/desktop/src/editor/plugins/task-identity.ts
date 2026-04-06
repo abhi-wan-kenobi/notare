@@ -1,6 +1,6 @@
 import { Plugin } from "prosemirror-state";
 
-import { createTaskId } from "../tasks";
+import { createTaskId, createTaskItemId } from "../tasks";
 
 export function taskIdentityPlugin() {
   return new Plugin({
@@ -10,7 +10,12 @@ export function taskIdentityPlugin() {
       }
 
       const seenTaskIds = new Set<string>();
-      const updates: { pos: number; taskId: string }[] = [];
+      const seenTaskItemIds = new Set<string>();
+      const updates: {
+        pos: number;
+        taskId: string;
+        taskItemId: string;
+      }[] = [];
 
       newState.doc.descendants((node, pos) => {
         if (node.type.name !== "taskItem") {
@@ -26,10 +31,24 @@ export function taskIdentityPlugin() {
           taskId = createTaskId();
         }
 
-        seenTaskIds.add(taskId);
+        let taskItemId =
+          typeof node.attrs.taskItemId === "string" &&
+          node.attrs.taskItemId.trim()
+            ? node.attrs.taskItemId
+            : "";
 
-        if (node.attrs.taskId !== taskId) {
-          updates.push({ pos, taskId });
+        while (!taskItemId || seenTaskItemIds.has(taskItemId)) {
+          taskItemId = createTaskItemId();
+        }
+
+        seenTaskIds.add(taskId);
+        seenTaskItemIds.add(taskItemId);
+
+        if (
+          node.attrs.taskId !== taskId ||
+          node.attrs.taskItemId !== taskItemId
+        ) {
+          updates.push({ pos, taskId, taskItemId });
         }
       });
 
@@ -38,7 +57,7 @@ export function taskIdentityPlugin() {
       }
 
       let tr = newState.tr;
-      updates.forEach(({ pos, taskId }) => {
+      updates.forEach(({ pos, taskId, taskItemId }) => {
         const node = tr.doc.nodeAt(pos);
         if (!node) {
           return;
@@ -47,7 +66,7 @@ export function taskIdentityPlugin() {
         tr = tr.setNodeMarkup(
           pos,
           undefined,
-          { ...node.attrs, taskId },
+          { ...node.attrs, taskId, taskItemId },
           node.marks,
         );
       });

@@ -34,7 +34,7 @@ vi.mock("../task-storage", () => ({
 import { TaskItemView } from "./task-item-view";
 
 describe("TaskItemView", () => {
-  it("toggles the task when the checkbox is clicked", () => {
+  it("advances the task status when the checkbox is clicked", () => {
     hoisted.transaction.setNodeMarkup.mockImplementation(
       (_pos, _type, attrs) => ({ attrs }),
     );
@@ -45,7 +45,12 @@ describe("TaskItemView", () => {
         nodeProps={
           {
             node: {
-              attrs: { checked: false, taskId: null },
+              attrs: {
+                status: "todo",
+                checked: false,
+                taskId: null,
+                taskItemId: null,
+              },
               nodeSize: 2,
             },
             getPos: () => 4,
@@ -62,14 +67,18 @@ describe("TaskItemView", () => {
       4,
       undefined,
       {
-        checked: true,
+        status: "in_progress",
+        checked: false,
         taskId: null,
+        taskItemId: null,
       },
     );
     expect(hoisted.view.dispatch).toHaveBeenCalledWith({
       attrs: {
-        checked: true,
+        status: "in_progress",
+        checked: false,
         taskId: null,
+        taskItemId: null,
       },
     });
   });
