@@ -5,7 +5,6 @@ mod formatting;
 mod options;
 mod theme;
 mod ui;
-mod widgets;
 
 use std::{io::IsTerminal, process};
 

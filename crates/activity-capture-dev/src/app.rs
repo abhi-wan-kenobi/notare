@@ -23,7 +23,7 @@ use hypr_activity_capture::{
     EventCoalescer, LatestCaptureSink, LatestCaptureState, PendingCapture, PlatformCapture,
     PolicyUpdate, ScreenCoreCapturer, StableSegmentScreenshotPolicy, Transition, WatchOptions,
 };
-use ratatui::{DefaultTerminal, Frame, layout::Rect, widgets::ListState};
+use ratatui::{DefaultTerminal, layout::Rect, widgets::ListState};
 use tokio::sync::oneshot;
 
 use crate::{
@@ -31,7 +31,7 @@ use crate::{
     export::{ExportScope, RawRecord, copy_records, save_records, save_screenshot_image},
     options::{CaptureRuntimeMode, Options},
     theme::Theme,
-    widgets::ActivityScreen,
+    ui::{self, ScreenData},
 };
 
 const UI_IDLE_POLL: Duration = Duration::from_millis(250);
@@ -342,7 +342,7 @@ impl ActivityApp {
         while !self.should_exit {
             self.drain_runtime_events();
             self.check_pending_screenshot();
-            terminal.draw(|frame| self.render(frame))?;
+            ui::render(terminal, self.screen_data())?;
 
             let timeout = self.screenshot_poll_timeout();
             if event::poll(timeout)? {
@@ -801,7 +801,7 @@ impl ActivityApp {
             .map(RawRecord::pretty_json)
     }
 
-    fn render(&mut self, frame: &mut Frame) {
+    fn screen_data(&mut self) -> ScreenData<'_> {
         let selected_index = self.selected_index();
         let selected_raw_json = self.selected_raw_json();
         let selection_summary = self.selection_summary();
@@ -810,28 +810,25 @@ impl ActivityApp {
         let runtime_summary = self.runtime_summary();
         let session_stats = self.session_stats();
 
-        frame.render_widget(
-            ActivityScreen::new(
-                &self.options,
-                self.capabilities,
-                self.theme,
-                self.view,
-                self.detail_tab,
-                &runtime_summary,
-                &policy_label,
-                &browser_policy_label,
-                session_stats,
-                &self.events,
-                selected_index,
-                self.export_range(),
-                selection_summary.as_deref(),
-                self.status_message.as_deref(),
-                selected_raw_json.as_deref(),
-                &mut self.list_state,
-                &mut self.list_inner_area,
-            ),
-            frame.area(),
-        );
+        ScreenData {
+            options: &self.options,
+            capabilities: self.capabilities,
+            theme: self.theme,
+            view: self.view,
+            detail_tab: self.detail_tab,
+            runtime_summary,
+            policy_label,
+            browser_policy_label,
+            session_stats,
+            events: &self.events,
+            selected_index,
+            selected_range: self.export_range(),
+            selection_summary,
+            status_message: self.status_message.clone(),
+            selected_raw_json,
+            list_state: &mut self.list_state,
+            list_inner_area: &mut self.list_inner_area,
+        }
     }
 }
 
