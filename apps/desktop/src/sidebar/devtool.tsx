@@ -78,10 +78,6 @@ function NavigationCard() {
     openNew({ type: "onboarding" });
   }, [openNew, showMainWindow]);
 
-  const handleShowControl = useCallback(() => {
-    void windowsCommands.windowShow({ type: "control" });
-  }, []);
-
   const showInstruction = useCallback(
     (type: string) =>
       openUrlWithInstruction(`https://example.com/${type}`, type, async () => ({
@@ -131,19 +127,6 @@ function NavigationCard() {
             Empty Tab
           </button>
         )}
-        <button
-          type="button"
-          onClick={handleShowControl}
-          className={cn([
-            "w-full rounded-md px-2.5 py-1.5",
-            "text-left text-xs font-medium",
-            "border border-neutral-200 text-neutral-700",
-            "cursor-pointer transition-colors",
-            "hover:border-neutral-300 hover:bg-neutral-50",
-          ])}
-        >
-          Control
-        </button>
         {["sign-in", "billing", "integration"].map((type) => (
           <button
             key={type}

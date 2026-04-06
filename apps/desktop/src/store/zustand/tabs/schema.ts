@@ -42,8 +42,7 @@ export type SettingsTab =
   | "transcription"
   | "intelligence"
   | "memory"
-  | "todo"
-  | "dont-use-this";
+  | "todo";
 
 export const normalizeSettingsTab = (
   tab: string | null | undefined,
@@ -57,7 +56,7 @@ export const normalizeSettingsTab = (
     case "transcription":
     case "intelligence":
     case "memory":
-    case "dont-use-this":
+    case "todo":
       return tab;
     case "account":
     default:

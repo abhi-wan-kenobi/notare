@@ -46,22 +46,6 @@ async windowIsExists(window: AppWindow) : Promise<Result<boolean, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async controlSetAlwaysOnTop(alwaysOnTop: boolean) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:windows|control_set_always_on_top", { alwaysOnTop }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async controlSetOpacity(opacity: number) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:windows|control_set_opacity", { opacity }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async windowSetFrameAnimated(window: AppWindow, anchor: Anchor, width: number, height: number) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:windows|window_set_frame_animated", { window, anchor, width, height }) };
@@ -110,7 +94,7 @@ windowDestroyed: "plugin:windows:window-destroyed"
 /** user-defined types **/
 
 export type Anchor = "TopRight" | "TopLeft" | "BottomRight" | "BottomLeft" | "Center"
-export type AppWindow = { type: "main" } | { type: "control" }
+export type AppWindow = { type: "main" }
 export type ChangelogState = { previous: string | null; current: string }
 export type ChatShortcutsState = { isWebMode: boolean | null; selectedMineId: string | null; selectedWebIndex: number | null }
 export type ChatState = { groupId: string | null; initialMessage: string | null }

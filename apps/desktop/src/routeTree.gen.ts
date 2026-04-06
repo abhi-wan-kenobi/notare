@@ -13,7 +13,6 @@ import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppOnboardingRouteImport } from './routes/app/onboarding'
 import { Route as AppInstructionRouteImport } from './routes/app/instruction'
-import { Route as AppControlRouteImport } from './routes/app/control'
 import { Route as AppMain2LayoutRouteImport } from './routes/app/main2/_layout'
 import { Route as AppMainLayoutRouteImport } from './routes/app/main/_layout'
 import { Route as AppMainLayoutIndexRouteImport } from './routes/app/main/_layout.index'
@@ -38,11 +37,6 @@ const AppInstructionRoute = AppInstructionRouteImport.update({
   path: '/instruction',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const AppControlRoute = AppControlRouteImport.update({
-  id: '/control',
-  path: '/control',
-  getParentRoute: () => AppRouteRoute,
-} as any)
 const AppMain2LayoutRoute = AppMain2LayoutRouteImport.update({
   id: '/main2/_layout',
   path: '/main2',
@@ -61,7 +55,6 @@ const AppMainLayoutIndexRoute = AppMainLayoutIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/app': typeof AppRouteRouteWithChildren
-  '/app/control': typeof AppControlRoute
   '/app/instruction': typeof AppInstructionRoute
   '/app/onboarding': typeof AppOnboardingRoute
   '/app/': typeof AppIndexRoute
@@ -70,7 +63,6 @@ export interface FileRoutesByFullPath {
   '/app/main/': typeof AppMainLayoutIndexRoute
 }
 export interface FileRoutesByTo {
-  '/app/control': typeof AppControlRoute
   '/app/instruction': typeof AppInstructionRoute
   '/app/onboarding': typeof AppOnboardingRoute
   '/app': typeof AppIndexRoute
@@ -80,7 +72,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/app': typeof AppRouteRouteWithChildren
-  '/app/control': typeof AppControlRoute
   '/app/instruction': typeof AppInstructionRoute
   '/app/onboarding': typeof AppOnboardingRoute
   '/app/': typeof AppIndexRoute
@@ -92,7 +83,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/app'
-    | '/app/control'
     | '/app/instruction'
     | '/app/onboarding'
     | '/app/'
@@ -101,7 +91,6 @@ export interface FileRouteTypes {
     | '/app/main/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/app/control'
     | '/app/instruction'
     | '/app/onboarding'
     | '/app'
@@ -110,7 +99,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/app'
-    | '/app/control'
     | '/app/instruction'
     | '/app/onboarding'
     | '/app/'
@@ -153,13 +141,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInstructionRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/app/control': {
-      id: '/app/control'
-      path: '/control'
-      fullPath: '/app/control'
-      preLoaderRoute: typeof AppControlRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
     '/app/main2/_layout': {
       id: '/app/main2/_layout'
       path: '/main2'
@@ -197,7 +178,6 @@ const AppMainLayoutRouteWithChildren = AppMainLayoutRoute._addFileChildren(
 )
 
 interface AppRouteRouteChildren {
-  AppControlRoute: typeof AppControlRoute
   AppInstructionRoute: typeof AppInstructionRoute
   AppOnboardingRoute: typeof AppOnboardingRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -206,7 +186,6 @@ interface AppRouteRouteChildren {
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
-  AppControlRoute: AppControlRoute,
   AppInstructionRoute: AppInstructionRoute,
   AppOnboardingRoute: AppOnboardingRoute,
   AppIndexRoute: AppIndexRoute,
