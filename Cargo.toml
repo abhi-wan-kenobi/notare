@@ -291,6 +291,7 @@ dotenvy = "0.15.7"
 envy = "0.4"
 governor = "0.10.4"
 http = "1"
+image = { version = "0.25.10", default-features = false, features = ["webp"] }
 include_url_macro = "0.1.0"
 indoc = "2"
 isolang = "2.4"
