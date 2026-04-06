@@ -15,6 +15,7 @@ dependencies = [
  "activity-capture-interface",
  "activity-capture-macos",
  "activity-capture-windows",
+ "screen-core",
 ]
 
 [[package]]
@@ -18233,6 +18234,7 @@ dependencies = [
  "tauri-plugin-activity-capture",
  "tauri-specta",
  "thiserror 2.0.18",
+ "tokio",
  "tracing",
 ]
 
