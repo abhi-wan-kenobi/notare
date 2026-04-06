@@ -149,6 +149,7 @@ hypr-pyannote-local = { path = "crates/pyannote-local", package = "pyannote-loca
 hypr-recall = { path = "crates/recall", package = "recall" }
 hypr-resampler = { path = "crates/resampler", package = "resampler" }
 hypr-s3 = { path = "crates/s3", package = "s3" }
+hypr-screen-core = { path = "crates/screen-core", package = "screen-core" }
 hypr-segmentation = { path = "crates/segmentation", package = "segmentation" }
 hypr-shortcut-macos = { path = "crates/shortcut-macos", package = "shortcut-macos" }
 hypr-slack-web = { path = "crates/slack-web", package = "slack-web" }
@@ -414,6 +415,7 @@ swift-rs = { git = "https://github.com/yujonglee/swift-rs", rev = "41a1605" }
 wasapi = "0.23.0"
 windows = "0.62.2"
 windows-core = "0.62.2"
+xcap = "0.9.3"
 
 rmcp = "0.14"
 rustls = { version = "0.23", default-features = false }

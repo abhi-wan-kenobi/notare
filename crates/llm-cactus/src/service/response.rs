@@ -1,129 +1,12 @@
-use std::{
-    future::Future,
-    pin::Pin,
-    task::{Context, Poll},
-};
-
-use axum::{
-    body::Body,
-    http::{Request, StatusCode},
-    response::{IntoResponse, Response, sse},
-};
+use axum::response::{IntoResponse, Response, sse};
 use futures_util::{StreamExt, stream};
 use hypr_llm_types::{Response as LlmResponse, StreamingParser};
-use tower::Service;
 
-use crate::ModelManager;
-
-type CactusModelManager = ModelManager<hypr_cactus::Model>;
-
-#[derive(Clone)]
-pub struct CompleteService {
-    manager: CactusModelManager,
-}
-
-impl CompleteService {
-    pub fn new(manager: CactusModelManager) -> Self {
-        Self { manager }
-    }
-}
-
-impl Service<Request<Body>> for CompleteService {
-    type Response = Response;
-    type Error = crate::Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
-
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let manager = self.manager.clone();
-
-        Box::pin(async move {
-            let body_bytes = match axum::body::to_bytes(req.into_body(), 10 * 1024 * 1024).await {
-                Ok(b) => b,
-                Err(e) => {
-                    return Ok((StatusCode::BAD_REQUEST, e.to_string()).into_response());
-                }
-            };
-
-            let request: ChatCompletionRequest = match serde_json::from_slice(&body_bytes) {
-                Ok(r) => r,
-                Err(e) => {
-                    return Ok((StatusCode::BAD_REQUEST, e.to_string()).into_response());
-                }
-            };
-
-            let model = match manager.get(request.model.as_deref()).await {
-                Ok(m) => m,
-                Err(e) => {
-                    return Ok((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response());
-                }
-            };
-
-            let messages = convert_messages(&request.messages);
-            let options = build_options(&request);
-
-            if request.stream.unwrap_or(false) {
-                let completion_stream =
-                    match hypr_cactus::complete_stream(&model, messages, options) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            return Ok(
-                                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
-                            );
-                        }
-                    };
-
-                Ok(build_streaming_response(completion_stream, &request.model))
-            } else {
-                Ok(build_non_streaming_response(&model, messages, options, &request.model).await)
-            }
-        })
-    }
-}
-
-#[derive(serde::Deserialize)]
-struct ChatCompletionRequest {
-    #[serde(default)]
-    model: Option<String>,
-    messages: Vec<ChatMessage>,
-    #[serde(default)]
-    stream: Option<bool>,
-    #[serde(default)]
-    temperature: Option<f32>,
-    #[serde(default)]
-    top_p: Option<f32>,
-    #[serde(default)]
-    max_tokens: Option<u32>,
-    #[serde(default)]
-    max_completion_tokens: Option<u32>,
-}
-
-#[derive(serde::Deserialize)]
-struct ChatMessage {
-    role: String,
-    #[serde(default)]
-    content: Option<String>,
-}
-
-fn convert_messages(messages: &[ChatMessage]) -> Vec<hypr_llm_types::Message> {
-    messages
-        .iter()
-        .map(|m| hypr_llm_types::Message {
-            role: m.role.clone(),
-            content: m.content.clone().unwrap_or_default(),
-        })
-        .collect()
-}
-
-fn build_options(request: &ChatCompletionRequest) -> hypr_cactus::CompleteOptions {
-    hypr_cactus::CompleteOptions {
-        temperature: request.temperature,
-        top_p: request.top_p,
-        max_tokens: request.max_completion_tokens.or(request.max_tokens),
-        ..Default::default()
+pub(super) fn status_code_for_model_error(error: &hypr_cactus::Error) -> axum::http::StatusCode {
+    if error.is_invalid_request() {
+        axum::http::StatusCode::BAD_REQUEST
+    } else {
+        axum::http::StatusCode::INTERNAL_SERVER_ERROR
     }
 }
 
@@ -131,7 +14,7 @@ fn model_name(model: &Option<String>) -> &str {
     model.as_deref().unwrap_or("cactus")
 }
 
-fn build_streaming_response(
+pub(super) fn build_streaming_response(
     completion_stream: hypr_cactus::CompletionStream,
     model: &Option<String>,
 ) -> Response {
@@ -211,7 +94,7 @@ fn build_streaming_response(
     sse::Sse::new(event_stream).into_response()
 }
 
-async fn build_non_streaming_response(
+pub(super) async fn build_non_streaming_response(
     model: &std::sync::Arc<hypr_cactus::Model>,
     messages: Vec<hypr_llm_types::Message>,
     options: hypr_cactus::CompleteOptions,
@@ -224,11 +107,11 @@ async fn build_non_streaming_response(
     let completion = match result {
         Ok(Ok(r)) => r,
         Ok(Err(e)) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response();
+            return (status_code_for_model_error(&e), e.to_string()).into_response();
         }
         Err(_) => {
             return (
-                StatusCode::INTERNAL_SERVER_ERROR,
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
                 "worker task panicked".to_string(),
             )
                 .into_response();
