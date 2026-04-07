@@ -131,7 +131,7 @@ function RecordOnlyFooter({
   isFallbackFromLive: boolean;
 }) {
   return (
-    <div className="flex min-h-8 items-center justify-center px-4 py-1">
+    <div className="flex min-h-8 items-center justify-center px-4">
       <p className="text-[11px] leading-none text-neutral-400">
         {isFallbackFromLive
           ? "Live transcription stopped. Transcript will be created after you stop."

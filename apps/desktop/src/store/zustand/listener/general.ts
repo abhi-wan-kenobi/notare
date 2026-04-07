@@ -119,25 +119,22 @@ export const createGeneralSlice = <
     const sessionId = params.session_id;
 
     if (!sessionId) {
-      console.error(
-        "[listener] 'startTranscription' requires params.session_id",
+      throw new Error(
+        "[listener] startTranscription requires params.session_id",
       );
-      return;
     }
 
     const mode = get().getSessionMode(sessionId);
     if (mode === "active" || mode === "finalizing") {
-      console.warn(
+      throw new Error(
         `[listener] cannot start batch processing while session ${sessionId} is live`,
       );
-      return;
     }
 
     if (mode === "running_batch") {
-      console.warn(
+      throw new Error(
         `[listener] session ${sessionId} is already processing in batch mode`,
       );
-      return;
     }
 
     if (options?.handlePersist) {

@@ -227,5 +227,22 @@ describe("General Listener Slice", () => {
 
       expect(store.getState().getSessionMode("session-a")).toBe("finalizing");
     });
+
+    test("startTranscription rejects when the session is already running batch", async () => {
+      const sessionId = "session-batch";
+      store.getState().handleBatchStarted(sessionId);
+
+      await expect(
+        store.getState().startTranscription({
+          session_id: sessionId,
+          provider: "hyprnote",
+          file_path: "/tmp/session.wav",
+          base_url: "",
+          api_key: "",
+        }),
+      ).rejects.toThrow(
+        `[listener] session ${sessionId} is already processing in batch mode`,
+      );
+    });
   });
 });

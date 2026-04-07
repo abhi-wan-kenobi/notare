@@ -16,7 +16,6 @@ import { ExpandToggle } from "./expand-toggle";
 import * as AudioPlayer from "~/audio-player";
 import { Transcript } from "~/session/components/note-input/transcript";
 import { useTranscriptScreen } from "~/session/components/note-input/transcript/state";
-import * as main from "~/store/tinybase/store/main";
 import { useListener } from "~/stt/contexts";
 import { isStoppedTranscriptionError, useRunBatch } from "~/stt/useRunBatch";
 import { useUploadFile } from "~/stt/useUploadFile";
@@ -99,33 +98,14 @@ function TranscriptPanel({
 }
 
 function useRegenerateTranscript(sessionId: string) {
-  const store = main.UI.useStore(main.STORE_ID);
-  const indexes = main.UI.useIndexes(main.STORE_ID);
   const runBatch = useRunBatch(sessionId);
-  const handleBatchStarted = useListener((state) => state.handleBatchStarted);
   const handleBatchFailed = useListener((state) => state.handleBatchFailed);
 
   return useCallback(async () => {
-    if (!store) return;
-
     const result = await fsSyncCommands.audioPath(sessionId);
     if (result.status === "error") return;
 
     const audioPath = result.data;
-
-    if (indexes) {
-      const transcriptIds = indexes.getSliceRowIds(
-        main.INDEXES.transcriptBySession,
-        sessionId,
-      );
-      store.transaction(() => {
-        for (const id of transcriptIds) {
-          store.delRow("transcripts", id);
-        }
-      });
-    }
-
-    handleBatchStarted(sessionId, "transcribing");
 
     try {
       await runBatch(audioPath);
@@ -136,14 +116,7 @@ function useRegenerateTranscript(sessionId: string) {
       const msg = error instanceof Error ? error.message : String(error);
       handleBatchFailed(sessionId, msg);
     }
-  }, [
-    handleBatchFailed,
-    handleBatchStarted,
-    indexes,
-    runBatch,
-    sessionId,
-    store,
-  ]);
+  }, [handleBatchFailed, runBatch, sessionId]);
 }
 
 function BatchingTranscriptPanel({
@@ -170,6 +143,7 @@ function BatchingTranscriptPanel({
   }, [sessionId, stopTranscription]);
   const { percentage, phase } = screen;
   const phaseLabel = phase === "importing" ? "Importing..." : "Transcribing...";
+  const canStopTranscription = phase !== "importing";
 
   return (
     <div className="relative w-full pt-1 select-none">
@@ -195,7 +169,9 @@ function BatchingTranscriptPanel({
                   </span>
                 )}
               </span>
-              <StopTranscriptionButton onClick={handleStop} compact />
+              {canStopTranscription ? (
+                <StopTranscriptionButton onClick={handleStop} compact />
+              ) : null}
             </div>
           </div>
 
@@ -236,6 +212,7 @@ function BatchProgressTimeline({
   }, [sessionId, stopTranscription]);
   const phaseLabel =
     screen.phase === "importing" ? "Importing" : "Transcribing";
+  const canStopTranscription = screen.phase !== "importing";
   const progress = Math.max(0, Math.min(screen.percentage ?? 0, 1));
   const progressText =
     typeof screen.percentage === "number" && screen.percentage > 0
@@ -258,14 +235,16 @@ function BatchProgressTimeline({
       meta={
         <AudioPlayer.TimelineMeta>
           <span>{progressText}</span>
-          <StopTranscriptionButton onClick={handleStop} />
+          {canStopTranscription ? (
+            <StopTranscriptionButton onClick={handleStop} />
+          ) : null}
         </AudioPlayer.TimelineMeta>
       }
       main={
         <div className="flex h-[30px] items-center">
           <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-neutral-200/80">
             <div
-              className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(90deg,#cbdcf5_0%,#ecd2d2_100%)] transition-[width] duration-300 ease-out"
+              className="absolute inset-y-0 left-0 rounded-full bg-neutral-400 transition-[width] duration-300 ease-out"
               style={{ width: `${Math.max(progress * 100, 8)}%` }}
             />
             <div className="absolute inset-0 flex items-center justify-center">
