@@ -234,7 +234,7 @@ export function SelectProviderAndModel() {
                         {showHeader && (
                           <div className="px-2 pt-2 pb-1 text-[11px] font-medium tracking-wide text-neutral-400 uppercase">
                             {model.category === "experimental"
-                              ? "Experimental"
+                              ? "Others"
                               : "Recommended"}
                           </div>
                         )}
@@ -350,8 +350,12 @@ function useConfiguredMapping(): Record<
         ];
 
         if (isAppleSilicon) {
-          cactusModels.forEach((model, i) => {
-            const isRecommended = String(model.key).includes("whisper");
+          const sorted = [...cactusModels].sort((a) =>
+            String(a.key).includes("parakeet") ? -1 : 1,
+          );
+          sorted.forEach((model) => {
+            const i = cactusModels.indexOf(model);
+            const isRecommended = String(model.key).includes("parakeet");
             models.push({
               id: model.key,
               isDownloaded: cactusDownloaded[i]?.data ?? false,
