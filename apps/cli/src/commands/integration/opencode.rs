@@ -4,8 +4,11 @@ use crate::error::{CliError, CliResult};
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Receive a hook event from OpenCode (reads JSON from stdin)
-    Notify,
+    /// Receive a hook event from OpenCode
+    Notify {
+        /// JSON payload from OpenCode
+        payload: String,
+    },
     /// Install char as an OpenCode plugin
     Install,
     /// Remove char from OpenCode plugins
@@ -14,14 +17,15 @@ pub enum Commands {
 
 pub async fn run(command: Commands) -> CliResult<()> {
     match command {
-        Commands::Notify => notify(),
+        Commands::Notify { payload } => notify(&payload),
         Commands::Install => install(),
         Commands::Uninstall => uninstall(),
     }
 }
 
-fn notify() -> CliResult<()> {
-    let event = super::read_stdin_json()?;
+fn notify(payload: &str) -> CliResult<()> {
+    let event: serde_json::Value = serde_json::from_str(payload)
+        .map_err(|e| CliError::invalid_argument("payload", payload.to_string(), e.to_string()))?;
 
     // TODO: write to app DB
     super::print_pretty_json(&event)

@@ -3676,6 +3676,7 @@ dependencies = [
  "tokio-stream",
  "tokio-util",
  "toml 0.8.2",
+ "url",
 ]
 
 [[package]]
@@ -12700,7 +12701,16 @@ dependencies = [
 name = "opencode"
 version = "0.1.0"
 dependencies = [
+ "cli-process",
  "dirs 6.0.0",
+ "futures-util",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "url",
 ]
 
 [[package]]
