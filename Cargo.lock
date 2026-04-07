@@ -19449,7 +19449,6 @@ dependencies = [
  "audio",
  "language",
  "owhisper-client",
- "owhisper-interface",
  "ractor",
  "serde",
  "specta",
