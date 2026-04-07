@@ -16,6 +16,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
         .commands(tauri_specta::collect_commands![
             commands::health_check::<Wry>,
             commands::install_cli::<Wry>,
+            commands::uninstall_cli::<Wry>,
         ])
         .typ::<hypr_agent_core::ProviderKind>()
         .typ::<hypr_agent_core::ProviderHealthStatus>()
@@ -24,6 +25,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
         .typ::<hypr_agent_core::HealthCheckResponse>()
         .typ::<hypr_agent_core::InstallCliRequest>()
         .typ::<hypr_agent_core::InstallCliResponse>()
+        .typ::<hypr_agent_core::UninstallCliRequest>()
+        .typ::<hypr_agent_core::UninstallCliResponse>()
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }
 

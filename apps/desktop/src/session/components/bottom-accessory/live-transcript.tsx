@@ -62,15 +62,17 @@ export function LiveTranscriptFooter({
             "w-full max-w-full",
           ])}
         >
-          <div className="min-w-0 flex-1 select-none">
-            {previewText ? (
-              <p className="truncate text-left text-xs text-neutral-600 [direction:rtl]">
-                {previewText}
-              </p>
-            ) : (
-              <span className="text-xs text-neutral-400">Listening...</span>
-            )}
-          </div>
+          {!isExpanded && (
+            <div className="min-w-0 flex-1 select-none">
+              {previewText ? (
+                <p className="truncate text-left text-xs text-neutral-600 [direction:rtl]">
+                  {previewText}
+                </p>
+              ) : (
+                <span className="text-xs text-neutral-400">Listening...</span>
+              )}
+            </div>
+          )}
         </div>
 
         {isExpanded && (

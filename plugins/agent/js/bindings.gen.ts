@@ -21,6 +21,14 @@ async installCli(payload: InstallCliRequest) : Promise<Result<InstallCliResponse
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async uninstallCli(payload: UninstallCliRequest) : Promise<Result<UninstallCliResponse, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:agent|uninstall_cli", { payload }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -41,6 +49,8 @@ export type ProviderAuthStatus = "authenticated" | "unauthenticated" | "unknown"
 export type ProviderHealth = { provider: ProviderKind; binaryPath: string; installed: boolean; integrationInstalled: boolean; version: string | null; status: ProviderHealthStatus; authStatus: ProviderAuthStatus; message: string | null }
 export type ProviderHealthStatus = "ready" | "warning" | "error"
 export type ProviderKind = "codex" | "claude" | "opencode"
+export type UninstallCliRequest = { provider: ProviderKind }
+export type UninstallCliResponse = { provider: ProviderKind; targetPath: string; message: string }
 
 /** tauri-specta globals **/
 

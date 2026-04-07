@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2Icon, RefreshCwIcon, WrenchIcon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  RefreshCwIcon,
+  Trash2Icon,
+  WrenchIcon,
+} from "lucide-react";
 
 import {
   type ProviderHealth,
@@ -23,16 +28,20 @@ function providerLabel(provider: ProviderKind) {
 
 function AgentIntegrationRow({
   provider,
-  onInstalled,
+  onUpdated,
 }: {
   provider: ProviderHealth;
-  onInstalled: () => Promise<void>;
+  onUpdated: () => Promise<void>;
 }) {
-  const installMutation = useMutation({
+  const integrationMutation = useMutation({
     mutationFn: async () => {
-      const result = await agentCommands.installCli({
-        provider: provider.provider,
-      });
+      const result = provider.integrationInstalled
+        ? await agentCommands.uninstallCli({
+            provider: provider.provider,
+          })
+        : await agentCommands.installCli({
+            provider: provider.provider,
+          });
       if (result.status === "error") {
         throw new Error(result.error);
       }
@@ -40,7 +49,7 @@ function AgentIntegrationRow({
     },
     onSuccess: async (data) => {
       sonnerToast.success(data.message);
-      await onInstalled();
+      await onUpdated();
     },
     onError: (error) => {
       sonnerToast.error(error.message);
@@ -88,17 +97,23 @@ function AgentIntegrationRow({
       </div>
       <Button
         size="sm"
-        variant="outline"
-        onClick={() => installMutation.mutate()}
-        disabled={installMutation.isPending}
+        variant={provider.integrationInstalled ? "destructive" : "outline"}
+        onClick={() => integrationMutation.mutate()}
+        disabled={integrationMutation.isPending}
         type="button"
         className="shrink-0"
       >
-        <WrenchIcon className="mr-2 h-4 w-4" />
-        {installMutation.isPending
-          ? "Installing..."
+        {provider.integrationInstalled ? (
+          <Trash2Icon className="mr-2 h-4 w-4" />
+        ) : (
+          <WrenchIcon className="mr-2 h-4 w-4" />
+        )}
+        {integrationMutation.isPending
+          ? provider.integrationInstalled
+            ? "Uninstalling..."
+            : "Installing..."
           : provider.integrationInstalled
-            ? "Reinstall"
+            ? "Uninstall"
             : "Install"}
       </Button>
     </div>
@@ -168,7 +183,7 @@ export function AgentIntegrations() {
             <AgentIntegrationRow
               key={provider.provider}
               provider={provider}
-              onInstalled={refresh}
+              onUpdated={refresh}
             />
           ))}
         </div>

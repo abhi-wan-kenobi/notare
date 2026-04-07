@@ -319,10 +319,22 @@
           "markdownDescription": "Denies the install_cli command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-health-check`\n- `allow-install-cli`",
+          "description": "Enables the uninstall_cli command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-uninstall-cli",
+          "markdownDescription": "Enables the uninstall_cli command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the uninstall_cli command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-uninstall-cli",
+          "markdownDescription": "Denies the uninstall_cli command without any pre-configured scope."
+        },
+        {
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-health-check`\n- `allow-install-cli`\n- `allow-uninstall-cli`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-health-check`\n- `allow-install-cli`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-health-check`\n- `allow-install-cli`\n- `allow-uninstall-cli`"
         }
       ]
     }

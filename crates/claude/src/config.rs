@@ -76,6 +76,19 @@ pub fn upsert_command_hook(
     Ok(())
 }
 
+pub fn has_command_hook(settings: &serde_json::Value, event_name: &str, command: &str) -> bool {
+    settings
+        .get("hooks")
+        .and_then(serde_json::Value::as_object)
+        .and_then(|hooks| hooks.get(event_name))
+        .and_then(serde_json::Value::as_array)
+        .is_some_and(|event_hooks| {
+            event_hooks
+                .iter()
+                .any(|matcher| hook_matcher_has_command(matcher, command))
+        })
+}
+
 pub fn remove_command_hook(
     settings: &mut serde_json::Value,
     event_name: &str,
@@ -148,7 +161,7 @@ fn hook_entry_matches_command(entry: &serde_json::Value, command: &str) -> bool 
 mod tests {
     use serde_json::json;
 
-    use super::{remove_command_hook, upsert_command_hook};
+    use super::{has_command_hook, remove_command_hook, upsert_command_hook};
 
     #[test]
     fn upsert_command_hook_is_idempotent() {
@@ -214,5 +227,23 @@ mod tests {
                 }
             })
         );
+    }
+
+    #[test]
+    fn detects_matching_command_hook() {
+        let settings = json!({
+            "hooks": {
+                "Stop": [
+                    {
+                        "hooks": [
+                            { "type": "command", "command": "char claude notify" }
+                        ]
+                    }
+                ]
+            }
+        });
+
+        assert!(has_command_hook(&settings, "Stop", "char claude notify"));
+        assert!(!has_command_hook(&settings, "Stop", "other command"));
     }
 }

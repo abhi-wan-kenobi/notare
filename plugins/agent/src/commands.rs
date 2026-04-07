@@ -16,3 +16,12 @@ pub fn install_cli<R: tauri::Runtime>(
 ) -> Result<hypr_agent_core::InstallCliResponse, String> {
     app.agent().install_cli(payload)
 }
+
+#[tauri::command]
+#[specta::specta]
+pub fn uninstall_cli<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    payload: hypr_agent_core::UninstallCliRequest,
+) -> Result<hypr_agent_core::UninstallCliResponse, String> {
+    app.agent().uninstall_cli(payload)
+}

@@ -7,8 +7,8 @@ mod options;
 mod session;
 
 pub use config::{
-    HookEntry, HookMatcher, HooksConfig, read_settings, remove_command_hook, settings_path,
-    upsert_command_hook, write_settings,
+    HookEntry, HookMatcher, HooksConfig, has_command_hook, read_settings, remove_command_hook,
+    settings_path, upsert_command_hook, write_settings,
 };
 pub use error::Error;
 pub use events::{ClaudeEvent, EventStream, RunStreamedResult, Turn, Usage};

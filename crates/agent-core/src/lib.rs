@@ -36,6 +36,7 @@ pub struct ProviderHealth {
     pub provider: ProviderKind,
     pub binary_path: PathBuf,
     pub installed: bool,
+    pub integration_installed: bool,
     pub version: Option<String>,
     pub status: ProviderHealthStatus,
     pub auth_status: ProviderAuthStatus,
@@ -81,10 +82,13 @@ pub fn health_check_with_options(options: &HealthCheckOptions) -> HealthCheckRes
 
 impl From<hypr_codex::HealthCheck> for ProviderHealth {
     fn from(value: hypr_codex::HealthCheck) -> Self {
+        let integration_installed = codex_integration_installed().unwrap_or(false);
+
         Self {
             provider: ProviderKind::Codex,
             binary_path: value.binary_path,
             installed: value.installed,
+            integration_installed,
             version: value.version,
             status: value.status.into(),
             auth_status: value.auth_status.into(),
@@ -95,10 +99,13 @@ impl From<hypr_codex::HealthCheck> for ProviderHealth {
 
 impl From<hypr_claude::HealthCheck> for ProviderHealth {
     fn from(value: hypr_claude::HealthCheck) -> Self {
+        let integration_installed = claude_integration_installed().unwrap_or(false);
+
         Self {
             provider: ProviderKind::Claude,
             binary_path: value.binary_path,
             installed: value.installed,
+            integration_installed,
             version: value.version,
             status: value.status.into(),
             auth_status: value.auth_status.into(),
@@ -109,10 +116,13 @@ impl From<hypr_claude::HealthCheck> for ProviderHealth {
 
 impl From<hypr_opencode::HealthCheck> for ProviderHealth {
     fn from(value: hypr_opencode::HealthCheck) -> Self {
+        let integration_installed = opencode_integration_installed().unwrap_or(false);
+
         Self {
             provider: ProviderKind::Opencode,
             binary_path: value.binary_path,
             installed: value.installed,
+            integration_installed,
             version: value.version,
             status: value.status.into(),
             auth_status: value.auth_status.into(),
@@ -197,11 +207,35 @@ pub struct InstallCliResponse {
     pub message: String,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct UninstallCliRequest {
+    pub provider: ProviderKind,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct UninstallCliResponse {
+    pub provider: ProviderKind,
+    pub target_path: PathBuf,
+    pub message: String,
+}
+
 pub fn install_cli(request: InstallCliRequest) -> Result<InstallCliResponse, String> {
     match request.provider {
         ProviderKind::Codex => install_codex_cli(),
         ProviderKind::Claude => install_claude_cli(),
         ProviderKind::Opencode => install_opencode_cli(),
+    }
+}
+
+pub fn uninstall_cli(request: UninstallCliRequest) -> Result<UninstallCliResponse, String> {
+    match request.provider {
+        ProviderKind::Codex => uninstall_codex_cli(),
+        ProviderKind::Claude => uninstall_claude_cli(),
+        ProviderKind::Opencode => uninstall_opencode_cli(),
     }
 }
 
@@ -270,4 +304,94 @@ fn install_opencode_cli() -> Result<InstallCliResponse, String> {
             plugin_path.display()
         ),
     })
+}
+
+fn uninstall_codex_cli() -> Result<UninstallCliResponse, String> {
+    let config_path = hypr_codex::config_path();
+    let command = hypr_codex::notify_command();
+    let mut table = hypr_codex::read_config(&config_path)?;
+
+    if table.contains_key("notify") && !hypr_codex::has_notify(&table, &command) {
+        return Err(format!(
+            "refusing to remove existing notify handler in {}",
+            config_path.display()
+        ));
+    }
+
+    hypr_codex::remove_notify(&mut table);
+    hypr_codex::write_config(&config_path, &table)?;
+
+    Ok(UninstallCliResponse {
+        provider: ProviderKind::Codex,
+        target_path: config_path.clone(),
+        message: format!(
+            "Removed char as Codex notify handler from {}",
+            config_path.display()
+        ),
+    })
+}
+
+fn uninstall_claude_cli() -> Result<UninstallCliResponse, String> {
+    const COMMAND: &str = "char claude notify";
+
+    let settings_path = hypr_claude::settings_path();
+    let mut settings = hypr_claude::read_settings(&settings_path)?;
+
+    hypr_claude::remove_command_hook(&mut settings, "Stop", COMMAND)?;
+    hypr_claude::write_settings(&settings_path, &settings)?;
+
+    Ok(UninstallCliResponse {
+        provider: ProviderKind::Claude,
+        target_path: settings_path.clone(),
+        message: format!(
+            "Removed char as Claude Code hook handler from {}",
+            settings_path.display()
+        ),
+    })
+}
+
+fn uninstall_opencode_cli() -> Result<UninstallCliResponse, String> {
+    let plugin_path = hypr_opencode::plugin_path();
+
+    if plugin_path.exists() && !hypr_opencode::has_char_plugin(&plugin_path)? {
+        return Err(format!(
+            "refusing to remove existing plugin at {}",
+            plugin_path.display()
+        ));
+    }
+
+    hypr_opencode::remove_plugin(&plugin_path)?;
+
+    Ok(UninstallCliResponse {
+        provider: ProviderKind::Opencode,
+        target_path: plugin_path.clone(),
+        message: format!(
+            "Removed char as OpenCode plugin from {}",
+            plugin_path.display()
+        ),
+    })
+}
+
+fn codex_integration_installed() -> Result<bool, String> {
+    let config_path = hypr_codex::config_path();
+    let table = hypr_codex::read_config(&config_path)?;
+    Ok(hypr_codex::has_notify(
+        &table,
+        &hypr_codex::notify_command(),
+    ))
+}
+
+fn claude_integration_installed() -> Result<bool, String> {
+    let settings_path = hypr_claude::settings_path();
+    let settings = hypr_claude::read_settings(&settings_path)?;
+    Ok(hypr_claude::has_command_hook(
+        &settings,
+        "Stop",
+        "char claude notify",
+    ))
+}
+
+fn opencode_integration_installed() -> Result<bool, String> {
+    let plugin_path = hypr_opencode::plugin_path();
+    hypr_opencode::has_char_plugin(&plugin_path)
 }

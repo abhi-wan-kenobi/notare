@@ -15,6 +15,13 @@ impl<R: tauri::Runtime, M: tauri::Manager<R>> Agent<'_, R, M> {
     ) -> Result<hypr_agent_core::InstallCliResponse, String> {
         hypr_agent_core::install_cli(payload)
     }
+
+    pub fn uninstall_cli(
+        &self,
+        payload: hypr_agent_core::UninstallCliRequest,
+    ) -> Result<hypr_agent_core::UninstallCliResponse, String> {
+        hypr_agent_core::uninstall_cli(payload)
+    }
 }
 
 pub trait AgentPluginExt<R: tauri::Runtime> {
