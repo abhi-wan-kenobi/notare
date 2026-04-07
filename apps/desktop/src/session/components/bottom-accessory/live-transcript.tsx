@@ -56,13 +56,13 @@ export function LiveTranscriptFooter({
       )}
 
       <div className="rounded-xl bg-neutral-50">
-        <div
-          className={cn([
-            "flex min-h-12 items-center gap-2 p-2",
-            "w-full max-w-full",
-          ])}
-        >
-          {!isExpanded && (
+        {!isExpanded && (
+          <div
+            className={cn([
+              "flex min-h-12 items-center gap-2 p-2",
+              "w-full max-w-full",
+            ])}
+          >
             <div className="min-w-0 flex-1 select-none">
               {previewText ? (
                 <p className="truncate text-left text-xs text-neutral-600 [direction:rtl]">
@@ -72,13 +72,13 @@ export function LiveTranscriptFooter({
                 <span className="text-xs text-neutral-400">Listening...</span>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {isExpanded && (
           <div
             ref={scrollRef}
-            className="flex max-h-[180px] flex-col gap-1 overflow-y-auto border-t border-neutral-200/60 px-3 pt-2 pb-2.5"
+            className="flex max-h-[180px] flex-col gap-1 overflow-y-auto px-3 pt-2 pb-2.5"
           >
             {segments.length === 0 ? (
               <span className="py-4 text-center text-xs text-neutral-400">
