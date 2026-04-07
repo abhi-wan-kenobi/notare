@@ -4,6 +4,7 @@ import {
   useCurrentNoteTab,
   useHasTranscript,
 } from "~/session/components/shared";
+import { ChatCTA } from "~/shared/chat-cta";
 import type { Tab } from "~/store/zustand/tabs/schema";
 
 export function FloatingActionButton({
@@ -11,15 +12,11 @@ export function FloatingActionButton({
 }: {
   tab: Extract<Tab, { type: "sessions" }>;
 }) {
-  const shouldShow = useShouldShowListeningFab(tab);
-
-  if (!shouldShow) {
-    return null;
-  }
+  const shouldShowListen = useShouldShowListeningFab(tab);
 
   return (
     <div className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2">
-      <ListenButton tab={tab} />
+      {shouldShowListen ? <ListenButton tab={tab} /> : <ChatCTA />}
     </div>
   );
 }
