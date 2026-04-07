@@ -17,6 +17,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.channel }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     uses: ./.github/workflows/desktop_build.yaml
