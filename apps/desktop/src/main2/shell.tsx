@@ -116,8 +116,12 @@ export function Main2Shell() {
   );
 
   const handleHome = useCallback(() => {
-    clearSelection();
-  }, [clearSelection]);
+    if (isHomeActive) {
+      window.dispatchEvent(new CustomEvent("scroll-to-today"));
+    } else {
+      clearSelection();
+    }
+  }, [isHomeActive, clearSelection]);
 
   const handleRecord = useCallback(() => {
     if (isRecording) {
