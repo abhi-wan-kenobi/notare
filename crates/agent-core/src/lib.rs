@@ -2,32 +2,13 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
-#[cfg_attr(feature = "specta", derive(specta::Type))]
-#[serde(rename_all = "camelCase")]
-pub struct PingRequest {
-    pub value: Option<String>,
-}
-
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
-#[cfg_attr(feature = "specta", derive(specta::Type))]
-#[serde(rename_all = "camelCase")]
-pub struct PingResponse {
-    pub value: Option<String>,
-}
-
-pub fn ping(payload: PingRequest) -> PingResponse {
-    PingResponse {
-        value: payload.value,
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub enum ProviderKind {
     Codex,
     Claude,
+    Opencode,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -65,6 +46,7 @@ pub struct ProviderHealth {
 pub struct HealthCheckOptions {
     pub codex_path_override: Option<PathBuf>,
     pub claude_path_override: Option<PathBuf>,
+    pub opencode_path_override: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -87,9 +69,13 @@ pub fn health_check_with_options(options: &HealthCheckOptions) -> HealthCheckRes
         claude_path_override: options.claude_path_override.clone(),
         ..Default::default()
     });
+    let opencode = hypr_opencode::health_check_with_options(&hypr_opencode::OpencodeOptions {
+        opencode_path_override: options.opencode_path_override.clone(),
+        ..Default::default()
+    });
 
     HealthCheckResponse {
-        providers: vec![codex.into(), claude.into()],
+        providers: vec![codex.into(), claude.into(), opencode.into()],
     }
 }
 
@@ -121,6 +107,20 @@ impl From<hypr_claude::HealthCheck> for ProviderHealth {
     }
 }
 
+impl From<hypr_opencode::HealthCheck> for ProviderHealth {
+    fn from(value: hypr_opencode::HealthCheck) -> Self {
+        Self {
+            provider: ProviderKind::Opencode,
+            binary_path: value.binary_path,
+            installed: value.installed,
+            version: value.version,
+            status: value.status.into(),
+            auth_status: value.auth_status.into(),
+            message: value.message,
+        }
+    }
+}
+
 impl From<hypr_codex::HealthStatus> for ProviderHealthStatus {
     fn from(value: hypr_codex::HealthStatus) -> Self {
         match value {
@@ -137,6 +137,16 @@ impl From<hypr_claude::HealthStatus> for ProviderHealthStatus {
             hypr_claude::HealthStatus::Ready => Self::Ready,
             hypr_claude::HealthStatus::Warning => Self::Warning,
             hypr_claude::HealthStatus::Error => Self::Error,
+        }
+    }
+}
+
+impl From<hypr_opencode::HealthStatus> for ProviderHealthStatus {
+    fn from(value: hypr_opencode::HealthStatus) -> Self {
+        match value {
+            hypr_opencode::HealthStatus::Ready => Self::Ready,
+            hypr_opencode::HealthStatus::Warning => Self::Warning,
+            hypr_opencode::HealthStatus::Error => Self::Error,
         }
     }
 }
@@ -159,4 +169,105 @@ impl From<hypr_claude::HealthAuthStatus> for ProviderAuthStatus {
             hypr_claude::HealthAuthStatus::Unknown => Self::Unknown,
         }
     }
+}
+
+impl From<hypr_opencode::HealthAuthStatus> for ProviderAuthStatus {
+    fn from(value: hypr_opencode::HealthAuthStatus) -> Self {
+        match value {
+            hypr_opencode::HealthAuthStatus::Authenticated => Self::Authenticated,
+            hypr_opencode::HealthAuthStatus::Unauthenticated => Self::Unauthenticated,
+            hypr_opencode::HealthAuthStatus::Unknown => Self::Unknown,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct InstallCliRequest {
+    pub provider: ProviderKind,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct InstallCliResponse {
+    pub provider: ProviderKind,
+    pub target_path: PathBuf,
+    pub message: String,
+}
+
+pub fn install_cli(request: InstallCliRequest) -> Result<InstallCliResponse, String> {
+    match request.provider {
+        ProviderKind::Codex => install_codex_cli(),
+        ProviderKind::Claude => install_claude_cli(),
+        ProviderKind::Opencode => install_opencode_cli(),
+    }
+}
+
+fn install_codex_cli() -> Result<InstallCliResponse, String> {
+    let config_path = hypr_codex::config_path();
+    let command = hypr_codex::notify_command();
+
+    let mut table = hypr_codex::read_config(&config_path)?;
+
+    if table.contains_key("notify") && !hypr_codex::has_notify(&table, &command) {
+        return Err(format!(
+            "refusing to replace existing notify handler in {}",
+            config_path.display()
+        ));
+    }
+
+    hypr_codex::set_notify(&mut table, command);
+    hypr_codex::write_config(&config_path, &table)?;
+
+    Ok(InstallCliResponse {
+        provider: ProviderKind::Codex,
+        target_path: config_path.clone(),
+        message: format!(
+            "Installed char as Codex notify handler in {}",
+            config_path.display()
+        ),
+    })
+}
+
+fn install_claude_cli() -> Result<InstallCliResponse, String> {
+    const COMMAND: &str = "char claude notify";
+
+    let settings_path = hypr_claude::settings_path();
+    let mut settings = hypr_claude::read_settings(&settings_path)?;
+
+    hypr_claude::upsert_command_hook(&mut settings, "Stop", COMMAND)?;
+    hypr_claude::write_settings(&settings_path, &settings)?;
+
+    Ok(InstallCliResponse {
+        provider: ProviderKind::Claude,
+        target_path: settings_path.clone(),
+        message: format!(
+            "Installed char as Claude Code hook handler in {}",
+            settings_path.display()
+        ),
+    })
+}
+
+fn install_opencode_cli() -> Result<InstallCliResponse, String> {
+    let plugin_path = hypr_opencode::plugin_path();
+
+    if plugin_path.exists() && !hypr_opencode::has_char_plugin(&plugin_path)? {
+        return Err(format!(
+            "refusing to replace existing plugin at {}",
+            plugin_path.display()
+        ));
+    }
+
+    hypr_opencode::write_plugin(&plugin_path)?;
+
+    Ok(InstallCliResponse {
+        provider: ProviderKind::Opencode,
+        target_path: plugin_path.clone(),
+        message: format!(
+            "Installed char as OpenCode plugin at {}",
+            plugin_path.display()
+        ),
+    })
 }

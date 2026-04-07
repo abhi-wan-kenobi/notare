@@ -4,7 +4,8 @@ Default permissions for the plugin
 
 #### This default permission set includes the following:
 
-- `allow-ping`
+- `allow-health-check`
+- `allow-install-cli`
 
 ## Permission Table
 
@@ -18,12 +19,12 @@ Default permissions for the plugin
 <tr>
 <td>
 
-`agent:allow-ping`
+`agent:allow-health-check`
 
 </td>
 <td>
 
-Enables the ping command without any pre-configured scope.
+Enables the health_check command without any pre-configured scope.
 
 </td>
 </tr>
@@ -31,12 +32,38 @@ Enables the ping command without any pre-configured scope.
 <tr>
 <td>
 
-`agent:deny-ping`
+`agent:deny-health-check`
 
 </td>
 <td>
 
-Denies the ping command without any pre-configured scope.
+Denies the health_check command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`agent:allow-install-cli`
+
+</td>
+<td>
+
+Enables the install_cli command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`agent:deny-install-cli`
+
+</td>
+<td>
+
+Denies the install_cli command without any pre-configured scope.
 
 </td>
 </tr>

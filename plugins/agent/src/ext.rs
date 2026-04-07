@@ -5,8 +5,15 @@ pub struct Agent<'a, R: tauri::Runtime, M: tauri::Manager<R>> {
 }
 
 impl<R: tauri::Runtime, M: tauri::Manager<R>> Agent<'_, R, M> {
-    pub fn ping(&self, payload: hypr_agent_core::PingRequest) -> hypr_agent_core::PingResponse {
-        hypr_agent_core::ping(payload)
+    pub fn health_check(&self) -> hypr_agent_core::HealthCheckResponse {
+        hypr_agent_core::health_check()
+    }
+
+    pub fn install_cli(
+        &self,
+        payload: hypr_agent_core::InstallCliRequest,
+    ) -> Result<hypr_agent_core::InstallCliResponse, String> {
+        hypr_agent_core::install_cli(payload)
     }
 }
 

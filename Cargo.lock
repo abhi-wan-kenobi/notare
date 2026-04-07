@@ -293,6 +293,7 @@ version = "0.1.0"
 dependencies = [
  "claude",
  "codex 0.1.0",
+ "opencode",
  "serde",
  "specta",
 ]
@@ -19448,6 +19449,7 @@ dependencies = [
  "audio",
  "language",
  "owhisper-client",
+ "owhisper-interface",
  "ractor",
  "serde",
  "specta",

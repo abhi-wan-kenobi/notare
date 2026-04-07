@@ -13,9 +13,17 @@ const PLUGIN_NAME: &str = "agent";
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
-        .commands(tauri_specta::collect_commands![commands::ping::<Wry>,])
-        .typ::<hypr_agent_core::PingRequest>()
-        .typ::<hypr_agent_core::PingResponse>()
+        .commands(tauri_specta::collect_commands![
+            commands::health_check::<Wry>,
+            commands::install_cli::<Wry>,
+        ])
+        .typ::<hypr_agent_core::ProviderKind>()
+        .typ::<hypr_agent_core::ProviderHealthStatus>()
+        .typ::<hypr_agent_core::ProviderAuthStatus>()
+        .typ::<hypr_agent_core::ProviderHealth>()
+        .typ::<hypr_agent_core::HealthCheckResponse>()
+        .typ::<hypr_agent_core::InstallCliRequest>()
+        .typ::<hypr_agent_core::InstallCliResponse>()
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }
 

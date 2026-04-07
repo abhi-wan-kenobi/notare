@@ -2,9 +2,17 @@ use crate::AgentPluginExt;
 
 #[tauri::command]
 #[specta::specta]
-pub fn ping<R: tauri::Runtime>(
+pub fn health_check<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
-    payload: hypr_agent_core::PingRequest,
-) -> Result<hypr_agent_core::PingResponse, String> {
-    Ok(app.agent().ping(payload))
+) -> Result<hypr_agent_core::HealthCheckResponse, String> {
+    Ok(app.agent().health_check())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn install_cli<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    payload: hypr_agent_core::InstallCliRequest,
+) -> Result<hypr_agent_core::InstallCliResponse, String> {
+    app.agent().install_cli(payload)
 }

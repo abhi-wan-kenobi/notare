@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 hypr-claude = { workspace = true }
 hypr-codex = { workspace = true }
+hypr-opencode = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 

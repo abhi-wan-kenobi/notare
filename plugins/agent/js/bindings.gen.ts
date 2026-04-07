@@ -6,9 +6,17 @@
 
 
 export const commands = {
-async ping(payload: PingRequest) : Promise<Result<PingResponse, string>> {
+async healthCheck() : Promise<Result<HealthCheckResponse, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:agent|ping", { payload }) };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:agent|health_check") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async installCli(payload: InstallCliRequest) : Promise<Result<InstallCliResponse, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:agent|install_cli", { payload }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -26,8 +34,13 @@ async ping(payload: PingRequest) : Promise<Result<PingResponse, string>> {
 
 /** user-defined types **/
 
-export type PingRequest = { value: string | null }
-export type PingResponse = { value: string | null }
+export type HealthCheckResponse = { providers: ProviderHealth[] }
+export type InstallCliRequest = { provider: ProviderKind }
+export type InstallCliResponse = { provider: ProviderKind; targetPath: string; message: string }
+export type ProviderAuthStatus = "authenticated" | "unauthenticated" | "unknown"
+export type ProviderHealth = { provider: ProviderKind; binaryPath: string; installed: boolean; integrationInstalled: boolean; version: string | null; status: ProviderHealthStatus; authStatus: ProviderAuthStatus; message: string | null }
+export type ProviderHealthStatus = "ready" | "warning" | "error"
+export type ProviderKind = "codex" | "claude" | "opencode"
 
 /** tauri-specta globals **/
 
