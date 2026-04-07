@@ -163,8 +163,8 @@ jobs:
           apple-team-id: ${{ secrets.APPLE_TEAM_ID }}
       - if: ${{ inputs.channel != 'staging' }}
         run: |
-          tar -cf "desktop-release-${{ matrix.target }}.tar" \
-            "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle"
+          COPYFILE_DISABLE=1 tar -cf "desktop-release-${{ matrix.target }}.tar" \
+            "apps/desktop/src-tauri/target/${{ matrix.target }}/release"
       - if: ${{ inputs.channel != 'staging' }}
         uses: actions/upload-artifact@v4
         with:
