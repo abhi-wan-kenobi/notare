@@ -72,9 +72,7 @@ impl Model {
                 options_c.as_ptr(),
                 std::ptr::null(),
                 callback,
-                user_data,
-                std::ptr::null(),
-                0,
+                user_data
             )
         };
 
