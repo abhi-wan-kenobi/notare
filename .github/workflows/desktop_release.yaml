@@ -11,9 +11,9 @@ on:
         required: false
         type: boolean
         default: true
-      release_assets:
+      platforms:
         required: true
-        type: string # JSON array, e.g. '[{"platform":"dmg-aarch64","output":"hyprnote-macos-aarch64.dmg"}]'
+        type: string # JSON array, e.g. '["macos-aarch64","macos-x86_64"]'
 
 env:
   CN_APPLICATION: "fastrepl/hyprnote2"
@@ -38,13 +38,56 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: desktop-release-*
-          path: apps/desktop/src-tauri/target/release
+          path: .
           merge-multiple: true
       - run: |
-          if ! find apps/desktop/src-tauri/target/release -maxdepth 1 -type f | grep -q .; then
-            echo "::error::No desktop release artifacts were downloaded"
+          shopt -s nullglob
+          ARCHIVES=(desktop-release-*.tar)
+          if [[ "${#ARCHIVES[@]}" -eq 0 ]]; then
+            echo "::error::No desktop release archives were downloaded"
             exit 1
           fi
+
+          for archive in "${ARCHIVES[@]}"; do
+            tar -xf "$archive"
+          done
+
+          mapfile -t REQUIRED_PLATFORMS < <(jq -r '.[]' <<< '${{ inputs.platforms }}')
+          if [[ "${#REQUIRED_PLATFORMS[@]}" -eq 0 ]]; then
+            echo "::error::No desktop platforms were provided"
+            exit 1
+          fi
+
+          for platform in "${REQUIRED_PLATFORMS[@]}"; do
+            case "$platform" in
+              macos-aarch64)
+                TARGET="aarch64-apple-darwin"
+                ;;
+              macos-x86_64)
+                TARGET="x86_64-apple-darwin"
+                ;;
+              *)
+                echo "::error::Unsupported desktop release platform: $platform"
+                exit 1
+                ;;
+            esac
+
+            BUNDLE_DIR="apps/desktop/src-tauri/target/${TARGET}/release/bundle/dmg"
+            if [[ ! -d "$BUNDLE_DIR" ]]; then
+              echo "::error::Missing restored bundle directory for $TARGET at $BUNDLE_DIR"
+              exit 1
+            fi
+
+            if ! find "$BUNDLE_DIR" -maxdepth 1 -type f -name '*.dmg' | grep -q .; then
+              echo "::error::Missing DMG asset for $TARGET in $BUNDLE_DIR"
+              exit 1
+            fi
+
+            if ! find "apps/desktop/src-tauri/target/${TARGET}/release" -maxdepth 1 -type f -name '*.sig' | grep -q .; then
+              echo "::error::Missing signature for $TARGET in apps/desktop/src-tauri/target/${TARGET}/release"
+              exit 1
+            fi
+          done
       - uses: ./.github/actions/cn_release
         with:
           cmd: upload
@@ -79,49 +122,54 @@ jobs:
           channel: ${{ env.RELEASE_CHANNEL }}
           framework: tauri
           working-directory: ./apps/desktop
-      - id: release-json
-        uses: ./.github/actions/cn_release
+      - id: download-macos-aarch64
+        if: ${{ contains(inputs.platforms, 'macos-aarch64') }}
+        uses: ./.github/actions/cn_download
         with:
-          raw: >-
-            release show ${{ env.CN_APPLICATION }} ${{ inputs.version }}
-            --channel ${{ env.RELEASE_CHANNEL }}
+          app: ${{ env.CN_APPLICATION }}
+          version: ${{ inputs.version }}
+          channel: ${{ env.RELEASE_CHANNEL }}
+          platform: dmg-aarch64
+          output: hyprnote-macos-aarch64.dmg
           key: ${{ secrets.CN_API_KEY }}
-      - id: download-assets
-        env:
-          RELEASE_ASSETS: ${{ inputs.release_assets }}
-          RELEASE_JSON: ${{ steps.release-json.outputs.raw }}
+      - id: download-macos-x86_64
+        if: ${{ contains(inputs.platforms, 'macos-x86_64') }}
+        uses: ./.github/actions/cn_download
+        with:
+          app: ${{ env.CN_APPLICATION }}
+          version: ${{ inputs.version }}
+          channel: ${{ env.RELEASE_CHANNEL }}
+          platform: dmg-x86_64
+          output: hyprnote-macos-x86_64.dmg
+          key: ${{ secrets.CN_API_KEY }}
+      - id: release-artifacts
         run: |
-          ARTIFACTS=()
-          CHECKSUM_INPUTS=()
+          FILES=()
+          if [[ -f hyprnote-macos-aarch64.dmg ]]; then
+            FILES+=("hyprnote-macos-aarch64.dmg")
+          fi
+          if [[ -f hyprnote-macos-x86_64.dmg ]]; then
+            FILES+=("hyprnote-macos-x86_64.dmg")
+          fi
 
-          while IFS= read -r asset; do
-            PLATFORM=$(jq -r '.platform' <<< "$asset")
-            OUTPUT=$(jq -r '.output' <<< "$asset")
-            ASSET_ID=$(jq -r --arg platform "$PLATFORM" '.assets[] | select(.publicPlatform == $platform) | .id' <<< "$RELEASE_JSON" | head -n1)
+          if [[ "${#FILES[@]}" -eq 0 ]]; then
+            echo "::error::No desktop release assets were downloaded"
+            exit 1
+          fi
 
-            if [[ -z "$ASSET_ID" || "$ASSET_ID" == "null" ]]; then
-              echo "::error::Asset not found for platform $PLATFORM"
-              exit 1
-            fi
-
-            curl -fL "https://cdn.crabnebula.app/asset/$ASSET_ID" -o "$OUTPUT"
-            ARTIFACTS+=("$OUTPUT")
-            CHECKSUM_INPUTS+=("$OUTPUT")
-          done < <(jq -c '.[]' <<< "$RELEASE_ASSETS")
-
-          echo "files=$(IFS=,; echo "${ARTIFACTS[*]}")" >> "$GITHUB_OUTPUT"
           {
             echo "checksum_inputs<<EOF"
-            printf '%s\n' "${CHECKSUM_INPUTS[@]}"
+            printf '%s\n' "${FILES[@]}"
             echo "EOF"
+            echo "artifacts=$(IFS=,; echo "${FILES[*]}")"
           } >> "$GITHUB_OUTPUT"
       - id: checksums
         uses: ./.github/actions/generate_checksums
         with:
-          files: ${{ steps.download-assets.outputs.checksum_inputs }}
+          files: ${{ steps.release-artifacts.outputs.checksum_inputs }}
       - id: artifacts
         env:
-          DOWNLOADED_FILES: ${{ steps.download-assets.outputs.files }}
+          DOWNLOADED_FILES: ${{ steps.release-artifacts.outputs.artifacts }}
           CHECKSUM_FILES: ${{ steps.checksums.outputs.checksum_files }}
         run: |
           ARTIFACTS="$DOWNLOADED_FILES"

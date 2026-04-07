@@ -17,6 +17,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.channel }}
   cancel-in-progress: true
 
+env:
+  DESKTOP_RELEASE_PLATFORMS: '["macos-aarch64","macos-x86_64"]'
+
 permissions:
   contents: write
 
@@ -25,7 +28,7 @@ jobs:
     uses: ./.github/workflows/desktop_build.yaml
     with:
       channel: ${{ inputs.channel }}
-      platforms: '["macos-aarch64", "macos-x86_64"]'
+      platforms: ${{ env.DESKTOP_RELEASE_PLATFORMS }}
     secrets: inherit
   release:
     needs: build
@@ -34,5 +37,5 @@ jobs:
       channel: ${{ inputs.channel }}
       version: ${{ needs.build.outputs.version }}
       publish: ${{ inputs.publish }}
-      release_assets: '[{"platform":"dmg-aarch64","output":"hyprnote-macos-aarch64.dmg"},{"platform":"dmg-x86_64","output":"hyprnote-macos-x86_64.dmg"}]'
+      platforms: ${{ env.DESKTOP_RELEASE_PLATFORMS }}
     secrets: inherit

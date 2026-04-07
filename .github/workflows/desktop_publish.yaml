@@ -114,6 +114,14 @@ jobs:
           files: |
             char-macos-aarch64.dmg
             char-macos-x86_64.dmg
+      - id: artifacts
+        run: |
+          ARTIFACTS="char-macos-aarch64.dmg,char-macos-x86_64.dmg"
+          CHECKSUM_FILES="${{ steps.checksums.outputs.checksum_files }}"
+          if [[ -n "$CHECKSUM_FILES" ]]; then
+            ARTIFACTS="$ARTIFACTS,$CHECKSUM_FILES"
+          fi
+          echo "list=$ARTIFACTS" >> "$GITHUB_OUTPUT"
       - id: release-body
         env:
           CHANNEL: ${{ needs.parse.outputs.channel }}
@@ -156,7 +164,7 @@ jobs:
           name: desktop_v${{ needs.parse.outputs.version }}
           body: ${{ steps.release-body.outputs.value }}
           prerelease: ${{ needs.parse.outputs.channel == 'nightly' }}
-          artifacts: char-macos-aarch64.dmg,char-macos-x86_64.dmg,${{ steps.checksums.outputs.checksum_files }}
+          artifacts: ${{ steps.artifacts.outputs.list }}
           allowUpdates: true
           makeLatest: ${{ needs.parse.outputs.channel == 'nightly' && 'false' || 'true' }}
           replacesArtifacts: true
