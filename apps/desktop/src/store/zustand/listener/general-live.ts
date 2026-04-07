@@ -267,8 +267,6 @@ export const startLiveSession = <T extends LiveStore>(
       live.status = "active";
       live.loading = false;
       live.sessionId = targetSessionId;
-      live.requestedLiveTranscription = params.live_transcription;
-      live.liveTranscriptionActive = params.live_transcription;
     });
   });
 

@@ -40,6 +40,7 @@ const BATCH_PROVIDER_MAP: Record<string, TranscriptionParams["provider"]> = {
   elevenlabs: "elevenlabs",
   mistral: "mistral",
   fireworks: "fireworks",
+  pyannote: "pyannote",
 };
 
 export const STOPPED_TRANSCRIPTION_ERROR_MESSAGE = "Transcription stopped.";

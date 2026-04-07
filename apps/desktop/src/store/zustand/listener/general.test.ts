@@ -207,7 +207,6 @@ describe("General Listener Slice", () => {
         session_id: "session-b",
         languages: [],
         onboarding: false,
-        live_transcription: true,
         model: "test-model",
         base_url: "http://localhost",
         api_key: "test-key",

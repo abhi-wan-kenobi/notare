@@ -82,7 +82,7 @@ export const createGeneralSlice = <
     }
 
     setLiveState(set, (live) => {
-      markLiveStartRequested(live, targetSessionId, params.live_transcription);
+      markLiveStartRequested(live, targetSessionId);
     });
 
     if (options?.handlePersist) {

@@ -73,16 +73,12 @@ export const setLiveState = <T extends GeneralState>(
   );
 };
 
-export const markLiveStartRequested = (
-  live: LiveState,
-  sessionId: string,
-  requestedLiveTranscription: boolean,
-) => {
+export const markLiveStartRequested = (live: LiveState, sessionId: string) => {
   live.loading = true;
   live.status = "inactive";
   live.sessionId = sessionId;
-  live.requestedLiveTranscription = requestedLiveTranscription;
-  live.liveTranscriptionActive = requestedLiveTranscription;
+  live.requestedLiveTranscription = null;
+  live.liveTranscriptionActive = null;
 };
 
 export const markLiveActive = (

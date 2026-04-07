@@ -1,4 +1,5 @@
 use hypr_transcription_core::{listener, listener2};
+use owhisper_client::AdapterKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -13,7 +14,6 @@ pub struct CaptureParams {
     pub session_id: String,
     pub languages: Vec<hypr_language::Language>,
     pub onboarding: bool,
-    pub live_transcription: bool,
     pub model: String,
     pub base_url: String,
     pub api_key: String,
@@ -22,6 +22,23 @@ pub struct CaptureParams {
     pub participant_human_ids: Vec<String>,
     #[serde(default)]
     pub self_human_id: Option<String>,
+}
+
+impl CaptureParams {
+    fn default_transcription_mode(&self) -> listener::TranscriptionMode {
+        let adapter_kind =
+            AdapterKind::from_url_and_languages(&self.base_url, &[], Some(&self.model));
+
+        if matches!(adapter_kind, AdapterKind::Argmax | AdapterKind::Cactus) {
+            return listener::TranscriptionMode::Batch;
+        }
+
+        if adapter_kind.is_supported_languages_live(&[], Some(&self.model)) {
+            listener::TranscriptionMode::Live
+        } else {
+            listener::TranscriptionMode::Batch
+        }
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, specta::Type, tauri_specta::Event)]
@@ -155,15 +172,13 @@ pub enum TranscriptionEvent {
 
 impl From<CaptureParams> for listener::actors::SessionParams {
     fn from(value: CaptureParams) -> Self {
+        let transcription_mode = value.default_transcription_mode();
+
         Self {
             session_id: value.session_id,
             languages: value.languages,
             onboarding: value.onboarding,
-            transcription_mode: if value.live_transcription {
-                listener::TranscriptionMode::Live
-            } else {
-                listener::TranscriptionMode::Batch
-            },
+            transcription_mode,
             model: value.model,
             base_url: value.base_url,
             api_key: value.api_key,
@@ -268,6 +283,66 @@ impl From<TranscriptionParams> for listener2::BatchParams {
             min_speakers: value.min_speakers,
             max_speakers: value.max_speakers,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CaptureParams;
+    use hypr_transcription_core::listener::TranscriptionMode;
+
+    fn capture_params(base_url: &str, model: &str) -> CaptureParams {
+        CaptureParams {
+            session_id: "session-1".to_string(),
+            languages: vec![],
+            onboarding: false,
+            model: model.to_string(),
+            base_url: base_url.to_string(),
+            api_key: "test-key".to_string(),
+            keywords: vec![],
+            participant_human_ids: vec![],
+            self_human_id: None,
+        }
+    }
+
+    #[test]
+    fn defaults_realtime_provider_to_live_mode() {
+        let params = capture_params("https://api.deepgram.com/v1", "nova-3-general");
+
+        assert_eq!(params.default_transcription_mode(), TranscriptionMode::Live);
+    }
+
+    #[test]
+    fn defaults_openai_capture_to_batch_mode() {
+        let params = capture_params("https://api.openai.com/v1", "gpt-4o-transcribe");
+
+        assert_eq!(
+            params.default_transcription_mode(),
+            TranscriptionMode::Batch
+        );
+    }
+
+    #[test]
+    fn defaults_pyannote_capture_to_batch_mode() {
+        let params = capture_params("https://api.pyannote.ai", "parakeet-tdt-0.6b-v3");
+
+        assert_eq!(
+            params.default_transcription_mode(),
+            TranscriptionMode::Batch
+        );
+    }
+
+    #[test]
+    fn defaults_local_cactus_capture_to_batch_mode() {
+        let params = capture_params(
+            "http://localhost:50060/v1",
+            "cactus-parakeet-tdt-0.6b-v3-int8",
+        );
+
+        assert_eq!(
+            params.default_transcription_mode(),
+            TranscriptionMode::Batch
+        );
     }
 }
 

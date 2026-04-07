@@ -25,7 +25,7 @@ import type {
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 import { applyLiveTranscriptDelta, parseTranscriptWords } from "~/stt/utils";
 
-const MIN_DURATION_SECONDS = 10;
+const MIN_DURATION_SECONDS = 3;
 const MIN_WORD_COUNT = 5;
 
 export function getPostCaptureAction(
@@ -46,12 +46,7 @@ export function getPostCaptureAction(
   return "none" as const;
 }
 
-export function useStartListening(
-  sessionId: string,
-  options?: {
-    liveTranscription?: boolean;
-  },
-) {
+export function useStartListening(sessionId: string) {
   const { user_id } = main.UI.useValues(main.STORE_ID);
   const store = main.UI.useStore(main.STORE_ID);
   const indexes = main.UI.useIndexes(main.STORE_ID);
@@ -59,13 +54,10 @@ export function useStartListening(
   const languages = useConfigValue("spoken_languages");
 
   const start = useListener((state) => state.start);
-  const { conn, isLocalModel } = useSTTConnection();
+  const { conn } = useSTTConnection();
   const runBatch = useRunBatch(sessionId);
 
   const keywords = useKeywords(sessionId);
-  const requestedLiveTranscription =
-    options?.liveTranscription ?? !isLocalModel;
-  const liveTranscription = requestedLiveTranscription && !!conn;
   const runBatchRef = useRef(runBatch);
   const canRunBatchRef = useRef(canRunBatchTranscription(conn));
   runBatchRef.current = runBatch;
@@ -199,7 +191,6 @@ export function useStartListening(
         session_id: sessionId,
         languages,
         onboarding: false,
-        live_transcription: liveTranscription,
         model: conn?.model ?? "",
         base_url: conn?.baseUrl ?? "",
         api_key: conn?.apiKey ?? "",
@@ -230,17 +221,7 @@ export function useStartListening(
           }
         : {}),
     });
-  }, [
-    conn,
-    store,
-    indexes,
-    sessionId,
-    start,
-    keywords,
-    user_id,
-    languages,
-    liveTranscription,
-  ]);
+  }, [conn, store, indexes, sessionId, start, keywords, user_id, languages]);
 
   return startListening;
 }

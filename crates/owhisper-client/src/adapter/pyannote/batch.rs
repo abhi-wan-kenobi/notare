@@ -13,7 +13,10 @@ use super::model::PyannoteDiarizationModel;
 use super::{PyannoteAdapter, PyannoteTranscriptionModel};
 use crate::adapter::http::{ensure_success, mime_type_from_extension};
 use crate::adapter::parsing::parse_speaker_id;
-use crate::adapter::{BatchFuture, BatchSttAdapter, ClientWithMiddleware, append_path_if_missing};
+use crate::adapter::{
+    BatchFuture, BatchSttAdapter, ClientWithMiddleware, MIXED_CAPTURE_CHANNEL,
+    append_path_if_missing,
+};
 use crate::error::Error;
 use crate::polling::{PollingConfig, PollingResult, poll_until};
 
@@ -334,7 +337,7 @@ impl PyannoteAdapter {
                 start: segment.start,
                 end: segment.end,
                 confidence: 1.0,
-                channel: 0,
+                channel: MIXED_CAPTURE_CHANNEL,
                 speaker: parse_speaker_id(&segment.speaker),
                 punctuated_word: Some(segment.text.clone()),
             })
@@ -509,6 +512,7 @@ mod tests {
         let alternative = &response.results.channels[0].alternatives[0];
         assert_eq!(alternative.transcript, "Hello world");
         assert_eq!(alternative.words.len(), 2);
+        assert_eq!(alternative.words[0].channel, MIXED_CAPTURE_CHANNEL);
         assert_eq!(alternative.words[0].speaker, Some(0));
         assert_eq!(alternative.words[1].speaker, Some(1));
         assert_eq!(response.metadata["job_id"], "job-123");

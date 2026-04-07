@@ -138,7 +138,7 @@ const _PROVIDERS = [
     requirements: [{ kind: "requires_config", fields: ["api_key"] }],
   },
   {
-    disabled: true,
+    disabled: false,
     id: "openai",
     displayName: "OpenAI",
     badge: "Batch only",
@@ -200,7 +200,7 @@ const _PROVIDERS = [
     requirements: [{ kind: "requires_config", fields: ["api_key"] }],
   },
   {
-    disabled: true,
+    disabled: false,
     id: "pyannote",
     displayName: "pyannoteAI",
     badge: "Batch only",
