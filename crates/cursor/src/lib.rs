@@ -34,6 +34,8 @@ mod tests {
                 pr_url: None,
             },
             target: Some(AgentTargetInput {
+                url: None,
+                pr_url: None,
                 auto_create_pr: Some(true),
                 open_as_cursor_github_app: None,
                 skip_reviewer_request: None,
