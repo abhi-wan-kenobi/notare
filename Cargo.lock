@@ -837,6 +837,7 @@ dependencies = [
  "mcp",
  "octocrab",
  "openrouter",
+ "regex",
  "reqwest 0.13.2",
  "rmcp",
  "sentry",

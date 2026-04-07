@@ -17,9 +17,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.channel }}
   cancel-in-progress: true
 
-env:
-  DESKTOP_RELEASE_PLATFORMS: '["macos-aarch64","macos-x86_64"]'
-
 permissions:
   contents: write
 
@@ -28,7 +25,7 @@ jobs:
     uses: ./.github/workflows/desktop_build.yaml
     with:
       channel: ${{ inputs.channel }}
-      platforms: ${{ env.DESKTOP_RELEASE_PLATFORMS }}
+      platforms: '["macos-aarch64","macos-x86_64"]'
     secrets: inherit
   release:
     needs: build
@@ -37,5 +34,5 @@ jobs:
       channel: ${{ inputs.channel }}
       version: ${{ needs.build.outputs.version }}
       publish: ${{ inputs.publish }}
-      platforms: ${{ env.DESKTOP_RELEASE_PLATFORMS }}
+      platforms: '["macos-aarch64","macos-x86_64"]'
     secrets: inherit
