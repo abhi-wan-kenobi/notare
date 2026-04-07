@@ -3,10 +3,7 @@ use std::process::{Command, Output};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default)]
-pub struct ClaudeHealthCheckOptions {
-    pub claude_path_override: Option<PathBuf>,
-}
+use crate::options::ClaudeOptions;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -36,16 +33,16 @@ pub struct HealthCheck {
 }
 
 pub fn health_check() -> HealthCheck {
-    health_check_with_options(&ClaudeHealthCheckOptions::default())
+    health_check_with_options(&ClaudeOptions::default())
 }
 
-pub fn health_check_with_options(options: &ClaudeHealthCheckOptions) -> HealthCheck {
+pub fn health_check_with_options(options: &ClaudeOptions) -> HealthCheck {
     let binary_path = options
         .claude_path_override
         .clone()
         .unwrap_or_else(|| PathBuf::from("claude"));
 
-    let version_output = match Command::new(&binary_path).arg("--version").output() {
+    let version_output = match run_command(&binary_path, options, &["--version"]) {
         Ok(output) => output,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             return HealthCheck {
@@ -90,7 +87,7 @@ pub fn health_check_with_options(options: &ClaudeHealthCheckOptions) -> HealthCh
         };
     }
 
-    let auth_output = match Command::new(&binary_path).args(["auth", "status"]).output() {
+    let auth_output = match run_command(&binary_path, options, &["auth", "status"]) {
         Ok(output) => output,
         Err(error) => {
             return HealthCheck {
@@ -115,6 +112,22 @@ pub fn health_check_with_options(options: &ClaudeHealthCheckOptions) -> HealthCh
         auth_status,
         message,
     }
+}
+
+fn run_command(
+    binary_path: &PathBuf,
+    options: &ClaudeOptions,
+    args: &[&str],
+) -> Result<Output, std::io::Error> {
+    let mut command = Command::new(binary_path);
+    command.args(args);
+
+    if let Some(env) = &options.env {
+        command.env_clear();
+        command.envs(env);
+    }
+
+    command.output()
 }
 
 fn combined_output(output: &Output) -> String {
@@ -248,9 +261,32 @@ fn extract_auth_boolean_from_value(value: &serde_json::Value) -> Option<bool> {
 
 #[cfg(test)]
 mod tests {
-    use super::{AuthStatus, HealthStatus, extract_auth_boolean, parse_auth_status};
+    use std::collections::BTreeMap;
+    use std::fs;
     use std::os::unix::process::ExitStatusExt;
+    use std::path::PathBuf;
     use std::process::{ExitStatus, Output};
+    use std::sync::Mutex;
+
+    use tempfile::TempDir;
+
+    use super::{
+        AuthStatus, HealthStatus, extract_auth_boolean, health_check_with_options,
+        normalize_semver_token, parse_auth_status,
+    };
+    use crate::options::ClaudeOptions;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn parses_semver_tokens() {
+        assert_eq!(normalize_semver_token("claude-2.1.92"), None);
+        assert_eq!(
+            normalize_semver_token("v2.1.92"),
+            Some("2.1.92".to_string())
+        );
+        assert_eq!(normalize_semver_token("2.1.92"), Some("2.1.92".to_string()));
+    }
 
     #[test]
     fn extracts_auth_boolean_from_json() {
@@ -259,7 +295,7 @@ mod tests {
             Some(true)
         );
         assert_eq!(
-            extract_auth_boolean(r#"{"session":{"loggedIn":false}}"#),
+            extract_auth_boolean(r#"{"status":{"loggedIn":false}}"#),
             Some(false)
         );
     }
@@ -276,5 +312,66 @@ mod tests {
         assert_eq!(status, HealthStatus::Error);
         assert_eq!(auth_status, AuthStatus::Unauthenticated);
         assert!(message.is_some());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn health_check_respects_env_override_without_leaking_parent_env() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let script = write_fake_claude_script(
+            &temp_dir,
+            r#"
+case "${1-} ${2-}" in
+  "--version " )
+    [ -z "${PARENT_ONLY:-}" ] || exit 11
+    [ "${CUSTOM_ENV:-}" = "custom" ] || exit 12
+    printf '2.1.92 (Claude Code)\n'
+    ;;
+  "auth status" )
+    [ -z "${PARENT_ONLY:-}" ] || exit 13
+    [ "${CUSTOM_ENV:-}" = "custom" ] || exit 14
+    printf '{"authenticated":true}\n'
+    ;;
+  * )
+    exit 15
+    ;;
+esac
+"#,
+        );
+
+        unsafe {
+            std::env::set_var("PARENT_ONLY", "leak");
+        }
+
+        let health = health_check_with_options(&ClaudeOptions {
+            claude_path_override: Some(script),
+            env: Some(BTreeMap::from([(
+                "CUSTOM_ENV".to_string(),
+                "custom".to_string(),
+            )])),
+            ..ClaudeOptions::default()
+        });
+
+        unsafe {
+            std::env::remove_var("PARENT_ONLY");
+        }
+
+        assert_eq!(health.status, HealthStatus::Ready);
+        assert_eq!(health.auth_status, AuthStatus::Authenticated);
+        assert_eq!(health.version.as_deref(), Some("2.1.92"));
+    }
+
+    #[cfg(unix)]
+    fn write_fake_claude_script(temp_dir: &TempDir, body: &str) -> PathBuf {
+        use std::os::unix::fs::PermissionsExt;
+
+        let path = temp_dir.path().join("claude");
+        let script = format!("#!/bin/sh\nset -eu\n{body}");
+        fs::write(&path, script).expect("write fake claude");
+        let mut permissions = fs::metadata(&path).expect("metadata").permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&path, permissions).expect("chmod");
+        path
     }
 }

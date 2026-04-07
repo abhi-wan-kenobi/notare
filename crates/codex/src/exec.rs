@@ -2,12 +2,9 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 
+use hypr_cli_process::spawn_streaming_lines;
 use serde::Serialize;
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
-use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
-use tokio_stream::wrappers::ReceiverStream;
 use tokio_util::sync::CancellationToken;
 
 use crate::error::Error;
@@ -63,95 +60,7 @@ impl CodexExec {
     }
 
     pub(crate) fn run(&self, args: CodexExecArgs) -> Result<CodexExecRun, Error> {
-        if args
-            .cancellation_token
-            .as_ref()
-            .is_some_and(CancellationToken::is_cancelled)
-        {
-            return Err(Error::Cancelled);
-        }
-
-        let mut command_args = vec!["exec".to_string(), "--experimental-json".to_string()];
-
-        for override_arg in serialize_config_overrides(&self.config_overrides)? {
-            command_args.push("--config".to_string());
-            command_args.push(override_arg);
-        }
-
-        if let Some(base_url) = &args.base_url {
-            command_args.push("--config".to_string());
-            command_args.push(format!("openai_base_url={}", toml_string(base_url)));
-        }
-
-        if let Some(model) = &args.model {
-            command_args.push("--model".to_string());
-            command_args.push(model.clone());
-        }
-
-        if let Some(sandbox_mode) = args.sandbox_mode {
-            command_args.push("--sandbox".to_string());
-            command_args.push(serde_variant(&sandbox_mode)?);
-        }
-
-        if let Some(working_directory) = &args.working_directory {
-            command_args.push("--cd".to_string());
-            command_args.push(working_directory.display().to_string());
-        }
-
-        for dir in &args.additional_directories {
-            command_args.push("--add-dir".to_string());
-            command_args.push(dir.display().to_string());
-        }
-
-        if args.skip_git_repo_check {
-            command_args.push("--skip-git-repo-check".to_string());
-        }
-
-        if let Some(output_schema_file) = &args.output_schema_file {
-            command_args.push("--output-schema".to_string());
-            command_args.push(output_schema_file.display().to_string());
-        }
-
-        if let Some(reasoning_effort) = args.model_reasoning_effort {
-            command_args.push("--config".to_string());
-            command_args.push(format!(
-                "model_reasoning_effort={}",
-                toml_string(&serde_variant(&reasoning_effort)?)
-            ));
-        }
-
-        if let Some(network_access_enabled) = args.network_access_enabled {
-            command_args.push("--config".to_string());
-            command_args.push(format!(
-                "sandbox_workspace_write.network_access={network_access_enabled}"
-            ));
-        }
-
-        if let Some(web_search_mode) = args.web_search_mode {
-            command_args.push("--config".to_string());
-            command_args.push(format!(
-                "web_search={}",
-                toml_string(&serde_variant(&web_search_mode)?)
-            ));
-        }
-
-        if let Some(approval_mode) = args.approval_mode {
-            command_args.push("--config".to_string());
-            command_args.push(format!(
-                "approval_policy={}",
-                toml_string(&serde_variant(&approval_mode)?)
-            ));
-        }
-
-        if let Some(thread_id) = &args.thread_id {
-            command_args.push("resume".to_string());
-            command_args.push(thread_id.clone());
-        }
-
-        for image in &args.images {
-            command_args.push("--image".to_string());
-            command_args.push(image.display().to_string());
-        }
+        let command_args = self.command_args(&args)?;
 
         let mut command = Command::new(&self.executable_path);
         command.args(command_args);
@@ -172,120 +81,142 @@ impl CodexExec {
             command.env("CODEX_API_KEY", api_key);
         }
 
-        let mut child = command.spawn().map_err(Error::Spawn)?;
-        let mut stdin = child.stdin.take().ok_or(Error::MissingStdin)?;
-        let stdout = child.stdout.take().ok_or(Error::MissingStdout)?;
-        let stderr = child.stderr.take();
+        let child = command.spawn().map_err(Error::Spawn)?;
         let prompt = args.input;
-        let cancellation_token = args.cancellation_token;
-        let shutdown = CancellationToken::new();
-        let task_shutdown = shutdown.clone();
-
-        let (tx, rx) = mpsc::channel(64);
-
-        tokio::spawn(async move {
-            let result = async {
-                stdin
-                    .write_all(prompt.as_bytes())
-                    .await
-                    .map_err(Error::StdinWrite)?;
-                stdin.shutdown().await.map_err(Error::StdinWrite)?;
-
-                let stderr_task = stderr.map(spawn_stderr_reader);
-                let mut lines = BufReader::new(stdout).lines();
-                loop {
-                    let next_line = async { lines.next_line().await.map_err(Error::StdoutRead) };
-                    let line = match cancellation_token.as_ref() {
-                        Some(token) => tokio::select! {
-                            _ = token.cancelled() => {
-                                kill_child(&mut child).await?;
-                                let _ = collect_stderr(stderr_task).await;
-                                return Err(Error::Cancelled);
-                            }
-                            _ = task_shutdown.cancelled() => {
-                                kill_child(&mut child).await?;
-                                let _ = collect_stderr(stderr_task).await;
-                                return Ok(());
-                            }
-                            line = next_line => line?,
-                        },
-                        None => tokio::select! {
-                            _ = task_shutdown.cancelled() => {
-                                kill_child(&mut child).await?;
-                                let _ = collect_stderr(stderr_task).await;
-                                return Ok(());
-                            }
-                            line = next_line => line?,
-                        },
-                    };
-
-                    let Some(line) = line else {
-                        break;
-                    };
-
-                    let event = serde_json::from_str::<ThreadEvent>(&line)?;
-                    if tx.send(Ok(event)).await.is_err() {
-                        kill_child(&mut child).await?;
-                        let _ = collect_stderr(stderr_task).await;
-                        return Ok(());
-                    }
-                }
-
-                let status = child.wait().await.map_err(Error::Wait)?;
-                let stderr_output = collect_stderr(stderr_task).await;
-                if !status.success() {
-                    let detail = if let Some(code) = status.code() {
-                        format!("code {code}: {}", stderr_output.trim())
-                    } else {
-                        stderr_output.trim().to_string()
-                    };
-                    return Err(Error::ProcessFailed { detail });
-                }
-
-                Ok(())
-            }
-            .await;
-
-            if let Err(error) = result {
-                let _ = tx.send(Err(error)).await;
-            }
-        });
+        let stream = spawn_streaming_lines(child, Some(prompt), args.cancellation_token, |line| {
+            Ok(serde_json::from_str::<ThreadEvent>(&line)?)
+        })?;
 
         Ok(CodexExecRun {
-            events: Box::pin(ReceiverStream::new(rx)),
-            shutdown,
+            events: stream.events,
+            shutdown: stream.shutdown,
         })
     }
-}
 
-async fn kill_child(child: &mut tokio::process::Child) -> Result<(), Error> {
-    if child.try_wait().map_err(Error::Wait)?.is_some() {
-        return Ok(());
+    fn command_args(&self, args: &CodexExecArgs) -> Result<Vec<String>, Error> {
+        let mut command_args = vec!["exec".to_string(), "--experimental-json".to_string()];
+
+        append_flagged_values(
+            &mut command_args,
+            "--config",
+            serialize_config_overrides(&self.config_overrides)?,
+        );
+
+        if let Some(base_url) = &args.base_url {
+            push_flagged_value(
+                &mut command_args,
+                "--config",
+                format!("openai_base_url={}", toml_string(base_url)),
+            );
+        }
+
+        if let Some(model) = &args.model {
+            push_flagged_value(&mut command_args, "--model", model.clone());
+        }
+
+        if let Some(sandbox_mode) = args.sandbox_mode {
+            push_flagged_value(
+                &mut command_args,
+                "--sandbox",
+                serde_variant(&sandbox_mode)?,
+            );
+        }
+
+        if let Some(working_directory) = &args.working_directory {
+            push_flagged_value(
+                &mut command_args,
+                "--cd",
+                working_directory.display().to_string(),
+            );
+        }
+
+        append_flagged_values(
+            &mut command_args,
+            "--add-dir",
+            args.additional_directories
+                .iter()
+                .map(|dir| dir.display().to_string()),
+        );
+
+        if args.skip_git_repo_check {
+            command_args.push("--skip-git-repo-check".to_string());
+        }
+
+        if let Some(output_schema_file) = &args.output_schema_file {
+            push_flagged_value(
+                &mut command_args,
+                "--output-schema",
+                output_schema_file.display().to_string(),
+            );
+        }
+
+        if let Some(reasoning_effort) = args.model_reasoning_effort {
+            push_flagged_value(
+                &mut command_args,
+                "--config",
+                format!(
+                    "model_reasoning_effort={}",
+                    toml_string(&serde_variant(&reasoning_effort)?)
+                ),
+            );
+        }
+
+        if let Some(network_access_enabled) = args.network_access_enabled {
+            push_flagged_value(
+                &mut command_args,
+                "--config",
+                format!("sandbox_workspace_write.network_access={network_access_enabled}"),
+            );
+        }
+
+        if let Some(web_search_mode) = args.web_search_mode {
+            push_flagged_value(
+                &mut command_args,
+                "--config",
+                format!(
+                    "web_search={}",
+                    toml_string(&serde_variant(&web_search_mode)?)
+                ),
+            );
+        }
+
+        if let Some(approval_mode) = args.approval_mode {
+            push_flagged_value(
+                &mut command_args,
+                "--config",
+                format!(
+                    "approval_policy={}",
+                    toml_string(&serde_variant(&approval_mode)?)
+                ),
+            );
+        }
+
+        if let Some(thread_id) = &args.thread_id {
+            command_args.push("resume".to_string());
+            command_args.push(thread_id.clone());
+        }
+
+        append_flagged_values(
+            &mut command_args,
+            "--image",
+            args.images.iter().map(|image| image.display().to_string()),
+        );
+
+        Ok(command_args)
     }
-
-    match child.kill().await {
-        Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::InvalidInput => {}
-        Err(error) => return Err(Error::Kill(error)),
-    }
-
-    child.wait().await.map_err(Error::Wait)?;
-    Ok(())
 }
 
-fn spawn_stderr_reader(stderr: tokio::process::ChildStderr) -> JoinHandle<String> {
-    tokio::spawn(async move {
-        let mut reader = BufReader::new(stderr);
-        let mut buf = String::new();
-        reader.read_to_string(&mut buf).await.ok();
-        buf
-    })
+fn push_flagged_value(command_args: &mut Vec<String>, flag: &str, value: String) {
+    command_args.push(flag.to_string());
+    command_args.push(value);
 }
 
-async fn collect_stderr(stderr_task: Option<JoinHandle<String>>) -> String {
-    match stderr_task {
-        Some(task) => task.await.unwrap_or_default(),
-        None => String::new(),
+fn append_flagged_values<I>(command_args: &mut Vec<String>, flag: &str, values: I)
+where
+    I: IntoIterator<Item = String>,
+{
+    for value in values {
+        push_flagged_value(command_args, flag, value);
     }
 }
 
@@ -360,7 +291,13 @@ fn toml_string(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::serialize_config_overrides;
+    use std::collections::BTreeMap;
+    use std::path::PathBuf;
+
+    use tokio_util::sync::CancellationToken;
+
+    use super::{CodexExec, CodexExecArgs, serialize_config_overrides};
+    use crate::options::{ApprovalMode, ModelReasoningEffort, SandboxMode, WebSearchMode};
 
     #[test]
     fn preserves_empty_nested_table_overrides() {
@@ -373,6 +310,77 @@ mod tests {
         assert_eq!(
             serialize_config_overrides(&config).expect("overrides"),
             vec!["parent.child={}".to_string()]
+        );
+    }
+
+    #[test]
+    fn preserves_command_arg_shape() {
+        let mut config_overrides = toml::Table::new();
+        config_overrides.insert(
+            "provider".to_string(),
+            toml::Value::String("openai".to_string()),
+        );
+
+        let exec = CodexExec::new(
+            Some(PathBuf::from("/bin/codex")),
+            Some(BTreeMap::new()),
+            config_overrides,
+        );
+
+        let args = CodexExecArgs {
+            input: "hello".to_string(),
+            base_url: Some("https://example.com/v1".to_string()),
+            api_key: Some("key".to_string()),
+            thread_id: Some("thread-1".to_string()),
+            images: vec![PathBuf::from("/tmp/image.png")],
+            model: Some("gpt-5".to_string()),
+            sandbox_mode: Some(SandboxMode::WorkspaceWrite),
+            working_directory: Some(PathBuf::from("/tmp/workspace")),
+            additional_directories: vec![PathBuf::from("/tmp/a"), PathBuf::from("/tmp/b")],
+            skip_git_repo_check: true,
+            output_schema_file: Some(PathBuf::from("/tmp/schema.json")),
+            model_reasoning_effort: Some(ModelReasoningEffort::High),
+            network_access_enabled: Some(true),
+            web_search_mode: Some(WebSearchMode::Live),
+            approval_mode: Some(ApprovalMode::OnRequest),
+            cancellation_token: Some(CancellationToken::new()),
+        };
+
+        assert_eq!(
+            exec.command_args(&args).expect("command args"),
+            vec![
+                "exec".to_string(),
+                "--experimental-json".to_string(),
+                "--config".to_string(),
+                "provider=\"openai\"".to_string(),
+                "--config".to_string(),
+                "openai_base_url=\"https://example.com/v1\"".to_string(),
+                "--model".to_string(),
+                "gpt-5".to_string(),
+                "--sandbox".to_string(),
+                "workspace-write".to_string(),
+                "--cd".to_string(),
+                "/tmp/workspace".to_string(),
+                "--add-dir".to_string(),
+                "/tmp/a".to_string(),
+                "--add-dir".to_string(),
+                "/tmp/b".to_string(),
+                "--skip-git-repo-check".to_string(),
+                "--output-schema".to_string(),
+                "/tmp/schema.json".to_string(),
+                "--config".to_string(),
+                "model_reasoning_effort=\"high\"".to_string(),
+                "--config".to_string(),
+                "sandbox_workspace_write.network_access=true".to_string(),
+                "--config".to_string(),
+                "web_search=\"live\"".to_string(),
+                "--config".to_string(),
+                "approval_policy=\"on-request\"".to_string(),
+                "resume".to_string(),
+                "thread-1".to_string(),
+                "--image".to_string(),
+                "/tmp/image.png".to_string(),
+            ]
         );
     }
 }

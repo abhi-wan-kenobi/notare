@@ -34,6 +34,7 @@ hypr-afconvert = { path = "crates/afconvert", package = "afconvert" }
 hypr-agc = { path = "crates/agc", package = "agc" }
 hypr-agent-core = { path = "crates/agent-core", package = "agent-core" }
 hypr-am = { path = "crates/am", package = "am" }
+hypr-amp = { path = "crates/amp", package = "amp" }
 hypr-analytics = { path = "crates/analytics", package = "analytics" }
 hypr-api-agent = { path = "crates/api-agent", package = "api-agent" }
 hypr-api-auth = { path = "crates/api-auth", package = "api-auth" }
@@ -77,6 +78,7 @@ hypr-calendar = { path = "crates/calendar", package = "calendar" }
 hypr-calendar-interface = { path = "crates/calendar-interface", package = "calendar-interface" }
 hypr-chatwoot = { path = "crates/chatwoot", package = "chatwoot" }
 hypr-claude = { path = "crates/claude", package = "claude" }
+hypr-cli-process = { path = "crates/cli-process", package = "cli-process" }
 hypr-cloudsync = { path = "crates/cloudsync", package = "cloudsync" }
 hypr-codex = { path = "crates/codex", package = "codex" }
 hypr-cursor = { path = "crates/cursor", package = "cursor" }

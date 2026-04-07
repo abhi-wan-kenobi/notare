@@ -393,6 +393,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "amp"
+version = "0.1.0"
+dependencies = [
+ "cli-process",
+ "dirs 6.0.0",
+ "futures-util",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+]
+
+[[package]]
 name = "analytics"
 version = "0.1.0"
 dependencies = [
@@ -3453,9 +3469,16 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 name = "claude"
 version = "0.1.0"
 dependencies = [
+ "cli-process",
  "dirs 6.0.0",
+ "futures-util",
  "serde",
  "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
 ]
 
 [[package]]
@@ -3524,6 +3547,17 @@ dependencies = [
  "clap",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "cli-process"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
 ]
 
 [[package]]
@@ -3631,6 +3665,7 @@ dependencies = [
 name = "codex"
 version = "0.1.0"
 dependencies = [
+ "cli-process",
  "dirs 6.0.0",
  "futures-util",
  "serde",

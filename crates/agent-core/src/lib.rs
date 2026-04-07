@@ -83,8 +83,9 @@ pub fn health_check_with_options(options: &HealthCheckOptions) -> HealthCheckRes
         codex_path_override: options.codex_path_override.clone(),
         ..Default::default()
     });
-    let claude = hypr_claude::health_check_with_options(&hypr_claude::ClaudeHealthCheckOptions {
+    let claude = hypr_claude::health_check_with_options(&hypr_claude::ClaudeOptions {
         claude_path_override: options.claude_path_override.clone(),
+        ..Default::default()
     });
 
     HealthCheckResponse {
