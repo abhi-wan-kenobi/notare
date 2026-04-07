@@ -28,6 +28,7 @@
     "tracing:default",
     "tray:default",
     "analytics:default",
+    "agent:default",
     "activity-capture:default",
     "bedrock:default",
     "updater:default",

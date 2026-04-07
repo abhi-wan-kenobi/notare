@@ -1,7 +1,14 @@
+mod health;
+
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+
+pub use health::{
+    AuthStatus as HealthAuthStatus, ClaudeHealthCheckOptions, HealthCheck, HealthStatus,
+    health_check, health_check_with_options,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HookEntry {

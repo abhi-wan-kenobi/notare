@@ -102,6 +102,7 @@ pub async fn main() {
         .plugin(tauri_plugin_opener2::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_analytics::init())
+        .plugin(tauri_plugin_agent::init())
         .plugin(tauri_plugin_activity_capture::init())
         .plugin(tauri_plugin_bedrock::init())
         .plugin(tauri_plugin_importer::init())

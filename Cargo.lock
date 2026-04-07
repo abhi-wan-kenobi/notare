@@ -288,6 +288,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "agent-core"
+version = "0.1.0"
+dependencies = [
+ "claude",
+ "codex 0.1.0",
+ "serde",
+ "specta",
+]
+
+[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -575,6 +585,18 @@ dependencies = [
  "transcribe-proxy",
  "url",
  "utoipa",
+]
+
+[[package]]
+name = "api-agent"
+version = "0.1.0"
+dependencies = [
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "url",
 ]
 
 [[package]]
@@ -3609,8 +3631,14 @@ name = "codex"
 version = "0.1.0"
 dependencies = [
  "dirs 6.0.0",
+ "futures-util",
  "serde",
  "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
  "toml 0.8.2",
 ]
 
@@ -4329,6 +4357,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cursor"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "curve25519-dalek"
 version = "4.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4898,6 +4939,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-activity-capture",
+ "tauri-plugin-agent",
  "tauri-plugin-analytics",
  "tauri-plugin-audio-priority",
  "tauri-plugin-auth",
@@ -5004,6 +5046,18 @@ dependencies = [
  "cidre",
  "libpulse-binding",
  "tracing",
+]
+
+[[package]]
+name = "devin"
+version = "0.1.0"
+dependencies = [
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "url",
 ]
 
 [[package]]
@@ -18280,6 +18334,20 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "tauri-plugin-agent"
+version = "0.1.0"
+dependencies = [
+ "agent-core",
+ "serde",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-plugin",
+ "tauri-specta",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
