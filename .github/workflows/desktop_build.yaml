@@ -163,16 +163,8 @@ jobs:
           apple-team-id: ${{ secrets.APPLE_TEAM_ID }}
       - if: ${{ inputs.channel != 'staging' }}
         run: |
-          shopt -s nullglob
-          SIG_FILES=(apps/desktop/src-tauri/target/${{ matrix.target }}/release/*.sig)
-          if [[ "${#SIG_FILES[@]}" -eq 0 ]]; then
-            echo "::error::No signature files found for ${{ matrix.target }}"
-            exit 1
-          fi
-
           tar -cf "desktop-release-${{ matrix.target }}.tar" \
-            "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle" \
-            "${SIG_FILES[@]}"
+            "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle"
       - if: ${{ inputs.channel != 'staging' }}
         uses: actions/upload-artifact@v4
         with:
