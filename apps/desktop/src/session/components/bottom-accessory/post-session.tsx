@@ -139,7 +139,7 @@ function TranscriptReadyPanel({
   const phase = isBatching ? screen.phase : undefined;
 
   return (
-    <div className="relative w-full pt-3 select-none">
+    <div className="relative w-full pt-1 select-none">
       <ExpandToggle
         isExpanded={isExpanded}
         onToggle={onToggleExpand}
@@ -231,7 +231,7 @@ function TranscriptEmptyPanel({
   const hasAudio = screen.kind === "empty" ? screen.hasAudio : false;
 
   return (
-    <div className="relative w-full pt-3 select-none">
+    <div className="relative w-full pt-1 select-none">
       <ExpandToggle
         isExpanded={isExpanded}
         onToggle={onToggleExpand}

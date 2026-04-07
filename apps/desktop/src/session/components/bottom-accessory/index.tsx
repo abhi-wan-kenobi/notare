@@ -76,7 +76,7 @@ export function useSessionBottomAccessory({
   if (isFinalizing) {
     return {
       bottomAccessory: (
-        <div className="relative w-full pt-3 select-none">
+        <div className="relative w-full pt-1 select-none">
           <div className="rounded-xl bg-neutral-50">
             <div className="flex min-h-12 items-center gap-2 p-2">
               <div className="min-w-0 flex-1">
