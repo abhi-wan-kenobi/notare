@@ -28,6 +28,14 @@ pub fn remove_plugin(path: &Path) -> Result<(), String> {
     }
 }
 
+pub fn has_char_plugin(path: &Path) -> Result<bool, String> {
+    match std::fs::read_to_string(path) {
+        Ok(contents) => Ok(contents == PLUGIN_CONTENTS),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(e) => Err(format!("failed to read {}: {e}", path.display())),
+    }
+}
+
 const PLUGIN_CONTENTS: &str = r#"import type { Plugin } from "@opencode-ai/plugin";
 
 export const CharPlugin: Plugin = async () => {
@@ -50,3 +58,28 @@ export const CharPlugin: Plugin = async () => {
   };
 };
 "#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_exact_char_plugin_contents() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("char.ts");
+
+        std::fs::write(&path, PLUGIN_CONTENTS).unwrap();
+
+        assert!(has_char_plugin(&path).unwrap());
+    }
+
+    #[test]
+    fn ignores_different_plugin_contents() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("char.ts");
+
+        std::fs::write(&path, "export const plugin = {};\n").unwrap();
+
+        assert!(!has_char_plugin(&path).unwrap());
+    }
+}

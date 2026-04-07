@@ -15,5 +15,5 @@ pub use health::{
     health_check_with_options,
 };
 pub use options::{OpencodeOptions, SessionOptions, TurnOptions};
-pub use plugin::{plugin_path, plugins_dir, remove_plugin, write_plugin};
+pub use plugin::{has_char_plugin, plugin_path, plugins_dir, remove_plugin, write_plugin};
 pub use session::{Opencode, Session};

@@ -34,6 +34,19 @@ fn notify(payload: &str) -> CliResult<()> {
 fn install() -> CliResult<()> {
     let plugin_path = hypr_opencode::plugin_path();
 
+    if plugin_path.exists()
+        && !hypr_opencode::has_char_plugin(&plugin_path)
+            .map_err(|e| CliError::operation_failed("read opencode plugin", e))?
+    {
+        return Err(CliError::operation_failed(
+            "install opencode plugin",
+            format!(
+                "refusing to replace existing plugin at {}",
+                plugin_path.display()
+            ),
+        ));
+    }
+
     hypr_opencode::write_plugin(&plugin_path)
         .map_err(|e| CliError::operation_failed("write opencode plugin", e))?;
 
@@ -47,8 +60,12 @@ fn install() -> CliResult<()> {
 fn uninstall() -> CliResult<()> {
     let plugin_path = hypr_opencode::plugin_path();
 
-    hypr_opencode::remove_plugin(&plugin_path)
-        .map_err(|e| CliError::operation_failed("remove opencode plugin", e))?;
+    if hypr_opencode::has_char_plugin(&plugin_path)
+        .map_err(|e| CliError::operation_failed("read opencode plugin", e))?
+    {
+        hypr_opencode::remove_plugin(&plugin_path)
+            .map_err(|e| CliError::operation_failed("remove opencode plugin", e))?;
+    }
 
     eprintln!(
         "Removed char OpenCode plugin from {}",

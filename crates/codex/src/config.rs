@@ -2,6 +2,8 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+pub const NOTIFY_COMMAND: &[&str] = &["char", "codex", "notify"];
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NotifyEvent {
     #[serde(rename = "type")]
@@ -60,11 +62,27 @@ pub fn remove_notify(table: &mut toml::Table) {
     table.remove("notify");
 }
 
+pub fn notify_command() -> Vec<String> {
+    NOTIFY_COMMAND.iter().map(|part| part.to_string()).collect()
+}
+
+pub fn has_notify(table: &toml::Table, command: &[String]) -> bool {
+    let Some(values) = table.get("notify").and_then(|value| value.as_array()) else {
+        return false;
+    };
+
+    values.len() == command.len()
+        && values
+            .iter()
+            .zip(command)
+            .all(|(value, expected)| value.as_str() == Some(expected.as_str()))
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Mutex;
 
-    use super::config_path;
+    use super::{config_path, has_notify, notify_command, set_notify};
 
     static ENV_LOCK: Mutex<()> = Mutex::new(());
 
@@ -84,5 +102,32 @@ mod tests {
         unsafe {
             std::env::remove_var("CODEX_HOME");
         }
+    }
+
+    #[test]
+    fn detects_matching_notify_command() {
+        let mut table = toml::Table::new();
+        let command = notify_command();
+
+        set_notify(&mut table, command.clone());
+
+        assert!(has_notify(&table, &command));
+    }
+
+    #[test]
+    fn ignores_different_notify_command() {
+        let mut table = toml::Table::new();
+        let command = notify_command();
+
+        set_notify(
+            &mut table,
+            vec![
+                "other".to_string(),
+                "notify".to_string(),
+                "handler".to_string(),
+            ],
+        );
+
+        assert!(!has_notify(&table, &command));
     }
 }
