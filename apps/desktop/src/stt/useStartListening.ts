@@ -1,7 +1,6 @@
 import { useCallback, useRef } from "react";
 
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
-import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
 import type { TranscriptStorage } from "@hypr/store";
 
 import { useListener } from "./contexts";
@@ -22,11 +21,7 @@ import type {
   LiveTranscriptPersistCallback,
   OnStoppedCallback,
 } from "~/store/zustand/listener/transcript";
-import { type Tab, useTabs } from "~/store/zustand/tabs";
 import { applyLiveTranscriptDelta, parseTranscriptWords } from "~/stt/utils";
-
-const MIN_DURATION_SECONDS = 3;
-const MIN_WORD_COUNT = 5;
 
 export function getPostCaptureAction(
   details: {
@@ -77,44 +72,11 @@ export function useStartListening(sessionId: string) {
       const words =
         transcriptId == null ? [] : parseTranscriptWords(store, transcriptId);
 
-      if (
-        details.durationSeconds < MIN_DURATION_SECONDS &&
-        words.length < MIN_WORD_COUNT
-      ) {
-        store.transaction(() => {
-          if (transcriptId) {
-            store.delRow("transcripts", transcriptId);
-          }
-
-          if (indexes) {
-            const enhancedNoteIds = indexes.getSliceRowIds(
-              main.INDEXES.enhancedNotesBySession,
-              sessionId,
-            );
-            for (const noteId of enhancedNoteIds) {
-              store.delRow("enhanced_notes", noteId);
-            }
-          }
-        });
-
-        void fsSyncCommands.audioDelete(sessionId);
-
-        const tabsState = useTabs.getState();
-        const sessionTab = tabsState.tabs.find(
-          (t): t is Extract<Tab, { type: "sessions" }> =>
-            t.type === "sessions" && t.id === sessionId,
-        );
-        if (sessionTab) {
-          tabsState.updateSessionTabState(sessionTab, {
-            ...sessionTab.state,
-            view: null,
-          });
-        }
-        return;
-      }
-
       const postCaptureAction = getPostCaptureAction(
-        details,
+        {
+          ...details,
+          audioPath: words.length > 0 ? details.audioPath : null,
+        },
         canRunBatchRef.current,
       );
 
