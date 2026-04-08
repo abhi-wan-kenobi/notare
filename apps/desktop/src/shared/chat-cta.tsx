@@ -22,7 +22,7 @@ export function ChatCTA() {
         alt=""
         className="size-4 shrink-0 object-contain invert"
       />
-      <span>Ask about this session...</span>
+      <span>Ask about this session</span>
     </button>
   );
 }
