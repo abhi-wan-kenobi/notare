@@ -1,5 +1,36 @@
 import Cocoa
 
+private enum ParticipantStatusDisplay {
+  case accepted
+  case maybe
+  case declined
+
+  init(from string: String) {
+    switch string.lowercased() {
+    case "accepted": self = .accepted
+    case "maybe": self = .maybe
+    case "declined": self = .declined
+    default: self = .accepted
+    }
+  }
+
+  var icon: String {
+    switch self {
+    case .accepted: return "✓"
+    case .maybe: return "?"
+    case .declined: return "✗"
+    }
+  }
+
+  var color: NSColor {
+    switch self {
+    case .accepted: return NSColor.systemGreen
+    case .maybe: return NSColor.systemYellow
+    case .declined: return NSColor.systemRed
+    }
+  }
+}
+
 extension NotificationManager {
   func createExpandedNotificationView(notification: NotificationInstance) -> NSView {
     let container = NSStackView()

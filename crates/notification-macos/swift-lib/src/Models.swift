@@ -1,4 +1,4 @@
-import Cocoa
+import Foundation
 
 struct Participant: Codable {
   let name: String?
@@ -130,7 +130,7 @@ enum NotificationIcon: Codable {
 
 enum NotificationSource: Codable {
   case calendarEvent(eventId: String)
-  case micDetected(appNames: [String], appIds: [String]?, eventIds: [String]?)
+  case micDetected(appNames: [String], appIds: [String], eventIds: [String])
 
   private enum CodingKeys: String, CodingKey {
     case type
@@ -154,8 +154,8 @@ enum NotificationSource: Codable {
     case .micDetected:
       self = .micDetected(
         appNames: try container.decode([String].self, forKey: .appNames),
-        appIds: try container.decodeIfPresent([String].self, forKey: .appIds),
-        eventIds: try container.decodeIfPresent([String].self, forKey: .eventIds)
+        appIds: try container.decodeIfPresent([String].self, forKey: .appIds) ?? [],
+        eventIds: try container.decodeIfPresent([String].self, forKey: .eventIds) ?? []
       )
     }
   }
@@ -170,8 +170,8 @@ enum NotificationSource: Codable {
     case .micDetected(let appNames, let appIds, let eventIds):
       try container.encode(SourceType.micDetected, forKey: .type)
       try container.encode(appNames, forKey: .appNames)
-      try container.encodeIfPresent(appIds, forKey: .appIds)
-      try container.encodeIfPresent(eventIds, forKey: .eventIds)
+      try container.encode(appIds, forKey: .appIds)
+      try container.encode(eventIds, forKey: .eventIds)
     }
   }
 
@@ -203,36 +203,5 @@ struct NotificationPayload: Codable {
   var hasExpandableContent: Bool {
     let hasParticipants = participants?.isEmpty == false
     return hasParticipants || eventDetails != nil
-  }
-}
-
-enum ParticipantStatusDisplay {
-  case accepted
-  case maybe
-  case declined
-
-  init(from string: String) {
-    switch string.lowercased() {
-    case "accepted": self = .accepted
-    case "maybe": self = .maybe
-    case "declined": self = .declined
-    default: self = .accepted
-    }
-  }
-
-  var icon: String {
-    switch self {
-    case .accepted: return "✓"
-    case .maybe: return "?"
-    case .declined: return "✗"
-    }
-  }
-
-  var color: NSColor {
-    switch self {
-    case .accepted: return NSColor.systemGreen
-    case .maybe: return NSColor.systemYellow
-    case .declined: return NSColor.systemRed
-    }
   }
 }
