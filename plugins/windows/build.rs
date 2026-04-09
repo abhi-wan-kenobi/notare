@@ -7,6 +7,8 @@ const COMMANDS: &[&str] = &[
     "window_set_frame_animated",
     "window_save_frame",
     "window_restore_frame_animated",
+    "window_expand_width",
+    "window_restore_width",
 ];
 
 fn main() {

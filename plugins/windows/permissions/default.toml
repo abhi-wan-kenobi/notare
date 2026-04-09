@@ -9,4 +9,6 @@ permissions = [
     "allow-window-set-frame-animated",
     "allow-window-save-frame",
     "allow-window-restore-frame-animated",
+    "allow-window-expand-width",
+    "allow-window-restore-width",
 ]

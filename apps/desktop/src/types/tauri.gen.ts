@@ -44,22 +44,6 @@ async getEnv(key: string) : Promise<string> {
 async showDevtool() : Promise<boolean> {
     return await TAURI_INVOKE("show_devtool");
 },
-async resizeWindowForChat() : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("resize_window_for_chat") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async resizeWindowForSidebar() : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("resize_window_for_sidebar") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async getTinybaseValues() : Promise<Result<string | null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_tinybase_values") };

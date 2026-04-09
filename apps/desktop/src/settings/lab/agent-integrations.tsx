@@ -148,7 +148,9 @@ export function AgentIntegrations() {
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1">
-          <h3 className="mb-1 text-sm font-medium">Agent Integrations</h3>
+          <h2 className="mb-1 font-serif text-lg font-semibold">
+            Agent Integrations
+          </h2>
           <p className="text-xs text-neutral-600">
             Install Char hooks into your coding agents.
           </p>

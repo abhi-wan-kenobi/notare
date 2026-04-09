@@ -12,6 +12,8 @@ Default permissions for the plugin
 - `allow-window-set-frame-animated`
 - `allow-window-save-frame`
 - `allow-window-restore-frame-animated`
+- `allow-window-expand-width`
+- `allow-window-restore-width`
 
 ## Permission Table
 
@@ -129,6 +131,32 @@ Denies the window_emit_navigate command without any pre-configured scope.
 <tr>
 <td>
 
+`windows:allow-window-expand-width`
+
+</td>
+<td>
+
+Enables the window_expand_width command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:deny-window-expand-width`
+
+</td>
+<td>
+
+Denies the window_expand_width command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `windows:allow-window-is-exists`
 
 </td>
@@ -200,6 +228,32 @@ Enables the window_restore_frame_animated command without any pre-configured sco
 <td>
 
 Denies the window_restore_frame_animated command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:allow-window-restore-width`
+
+</td>
+<td>
+
+Enables the window_restore_width command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:deny-window-restore-width`
+
+</td>
+<td>
+
+Denies the window_restore_width command without any pre-configured scope.
 
 </td>
 </tr>

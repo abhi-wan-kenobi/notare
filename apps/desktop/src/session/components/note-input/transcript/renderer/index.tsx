@@ -1,4 +1,10 @@
-import { type RefObject, useCallback, useRef, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useDeferredValue,
+  useRef,
+  useState,
+} from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import { cn } from "@hypr/utils";
@@ -52,7 +58,7 @@ export function TranscriptViewer({
     audioExists,
   } = useAudioPlayer();
   const time = useAudioTime();
-  const currentMs = time.current * 1000;
+  const deferredCurrentMs = useDeferredValue(time.current * 1000);
   const isPlaying = playerState === "playing";
 
   useHotkeys(
@@ -70,7 +76,7 @@ export function TranscriptViewer({
     { enableOnFormTags: false },
   );
 
-  usePlaybackAutoScroll(containerRef, currentMs, isPlaying);
+  usePlaybackAutoScroll(containerRef, deferredCurrentMs, isPlaying);
   const shouldAutoScroll = currentActive && autoScrollEnabled;
   useAutoScroll(
     containerRef,
@@ -108,7 +114,7 @@ export function TranscriptViewer({
                   ? liveSegments
                   : []
               }
-              currentMs={currentMs}
+              currentMs={deferredCurrentMs}
               seek={seek}
               startPlayback={start}
               audioExists={audioExists}

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 
+import { commands as windowsCommands } from "@hypr/plugin-windows";
 import {
   type ImperativePanelHandle,
   ResizableHandle,
@@ -30,10 +31,20 @@ export function MainChatPanels({
     const isOpeningRightPanel =
       rightPanelMode === "RightPanelOpen" &&
       previousModeRef.current !== "RightPanelOpen";
+    const isClosingRightPanel =
+      rightPanelMode !== "RightPanelOpen" &&
+      previousModeRef.current === "RightPanelOpen";
 
-    if (isOpeningRightPanel && bodyPanelRef.current) {
-      const currentSize = bodyPanelRef.current.getSize();
-      bodyPanelRef.current.resize(currentSize);
+    if (isOpeningRightPanel) {
+      if (bodyPanelRef.current) {
+        const currentSize = bodyPanelRef.current.getSize();
+        bodyPanelRef.current.resize(currentSize);
+      }
+      windowsCommands
+        .windowExpandWidth(400, null, true, false)
+        .catch(console.error);
+    } else if (isClosingRightPanel) {
+      windowsCommands.windowRestoreWidth().catch(console.error);
     }
 
     previousModeRef.current = rightPanelMode;

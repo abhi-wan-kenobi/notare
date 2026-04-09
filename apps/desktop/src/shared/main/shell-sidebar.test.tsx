@@ -2,7 +2,10 @@ import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
-  resizeWindowForSidebar: vi.fn().mockResolvedValue(undefined),
+  windowExpandWidth: vi
+    .fn()
+    .mockResolvedValue({ status: "ok", data: [800, 1080] }),
+  windowRestoreWidth: vi.fn().mockResolvedValue(undefined),
   setExpanded: vi.fn(),
   setLocked: vi.fn(),
 }));
@@ -37,9 +40,10 @@ vi.mock("~/store/zustand/tabs", () => ({
   ) => selector({ currentTab: mockCurrentTab }),
 }));
 
-vi.mock("~/types/tauri.gen", () => ({
+vi.mock("@hypr/plugin-windows", () => ({
   commands: {
-    resizeWindowForSidebar: hoisted.resizeWindowForSidebar,
+    windowExpandWidth: hoisted.windowExpandWidth,
+    windowRestoreWidth: hoisted.windowRestoreWidth,
   },
 }));
 
@@ -56,17 +60,20 @@ describe("ClassicMainSidebar", () => {
     mockLeftSidebar.expanded = false;
     setExpanded.mockClear();
     setLocked.mockClear();
-    hoisted.resizeWindowForSidebar.mockClear();
+    hoisted.windowExpandWidth.mockClear();
+    hoisted.windowRestoreWidth.mockClear();
   });
 
-  it("forces custom-sidebar tabs open and restores the previous sidebar state", () => {
+  it("forces custom-sidebar tabs open and restores the previous sidebar state", async () => {
     mockCurrentTab = { type: "settings" };
 
     const { rerender } = render(<ClassicMainSidebar />);
 
     expect(setExpanded).toHaveBeenCalledWith(true);
     expect(setLocked).toHaveBeenCalledWith(true);
-    expect(hoisted.resizeWindowForSidebar).toHaveBeenCalledTimes(1);
+    expect(hoisted.windowExpandWidth).toHaveBeenCalledTimes(1);
+
+    await vi.waitFor(() => expect(hoisted.windowExpandWidth).toHaveResolved());
 
     mockCurrentTab = { type: "empty" };
 
@@ -74,19 +81,20 @@ describe("ClassicMainSidebar", () => {
 
     expect(setLocked).toHaveBeenLastCalledWith(false);
     expect(setExpanded).toHaveBeenLastCalledWith(false);
+    expect(hoisted.windowRestoreWidth).toHaveBeenCalledTimes(1);
   });
 
   it("expands the sidebar when search starts from an empty query", () => {
     const { rerender } = render(<ClassicMainSidebar />);
 
     setExpanded.mockClear();
-    hoisted.resizeWindowForSidebar.mockClear();
+    hoisted.windowExpandWidth.mockClear();
 
     mockQuery = "meeting";
 
     rerender(<ClassicMainSidebar />);
 
     expect(setExpanded).toHaveBeenCalledWith(true);
-    expect(hoisted.resizeWindowForSidebar).toHaveBeenCalledTimes(1);
+    expect(hoisted.windowExpandWidth).toHaveBeenCalledTimes(1);
   });
 });

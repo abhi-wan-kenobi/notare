@@ -27,6 +27,9 @@ pub struct SavedFrame {
 #[derive(Default)]
 pub struct SavedFrames(pub Mutex<HashMap<String, SavedFrame>>);
 
+#[derive(Default)]
+pub struct WindowExpansions(pub Mutex<HashMap<String, Vec<(f64, f64, bool)>>>);
+
 use tauri::Manager;
 use tokio::sync::oneshot;
 
@@ -71,6 +74,8 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::window_set_frame_animated,
             commands::window_save_frame,
             commands::window_restore_frame_animated,
+            commands::window_expand_width,
+            commands::window_restore_width,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }
@@ -91,6 +96,11 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             {
                 let saved_frames = SavedFrames::default();
                 app.manage(saved_frames);
+            }
+
+            {
+                let window_expansions = WindowExpansions::default();
+                app.manage(window_expansions);
             }
 
             Ok(())

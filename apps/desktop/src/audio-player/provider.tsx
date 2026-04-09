@@ -16,6 +16,8 @@ import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
 
 import { useBillingAccess } from "~/auth/billing";
 
+const TIME_UPDATE_STEP_SECONDS = 0.1;
+
 type AudioPlayerState = "playing" | "paused" | "stopped";
 
 interface TimeSnapshot {
@@ -110,6 +112,7 @@ export function AudioPlayerProvider({
   const [state, setState] = useState<AudioPlayerState>("stopped");
   const [playbackRate, setPlaybackRateState] = useState(1);
   const timeStoreRef = useRef(new TimeStore());
+  const stopRequestedRef = useRef(false);
 
   const audioExists = useQuery({
     queryKey: ["audio", sessionId, "exist"],
@@ -133,8 +136,10 @@ export function AudioPlayerProvider({
 
     const store = timeStoreRef.current;
     store.reset();
+    stopRequestedRef.current = false;
 
     const audio = new Audio(url);
+    let lastReportedTime = 0;
 
     const ws = WaveSurfer.create({
       container,
@@ -156,38 +161,55 @@ export function AudioPlayerProvider({
       ],
     });
 
-    let audioContext: AudioContext | null = null;
-
-    const handleReady = async () => {
-      const dur = ws.getDuration();
-      if (dur && isFinite(dur)) {
-        store.setTotal(dur);
-      }
-
-      const media = ws.getMediaElement();
-      if (!media) {
+    const syncCurrentTime = (currentTime: number, force = false) => {
+      if (
+        !force &&
+        Math.abs(currentTime - lastReportedTime) < TIME_UPDATE_STEP_SECONDS
+      ) {
         return;
       }
 
-      audioContext = new AudioContext();
-      if (audioContext.state === "suspended") {
-        await audioContext.resume();
-      }
-
-      const source = audioContext.createMediaElementSource(media);
-      const merger = audioContext.createChannelMerger(2);
-      const splitter = audioContext.createChannelSplitter(2);
-
-      source.connect(splitter);
-      splitter.connect(merger, 0, 0);
-      splitter.connect(merger, 0, 1);
-      splitter.connect(merger, 1, 0);
-      splitter.connect(merger, 1, 1);
-      merger.connect(audioContext.destination);
+      lastReportedTime = currentTime;
+      store.setCurrent(currentTime);
     };
 
-    const handleTimeupdate = () => {
-      store.setCurrent(ws.getCurrentTime());
+    const handleReady = (dur: number) => {
+      if (dur && isFinite(dur)) {
+        store.setTotal(dur);
+      }
+    };
+
+    const handlePlay = () => {
+      stopRequestedRef.current = false;
+      syncCurrentTime(ws.getCurrentTime(), true);
+      setState("playing");
+    };
+
+    const handlePause = () => {
+      const currentTime = ws.getCurrentTime();
+      syncCurrentTime(currentTime, true);
+
+      if (stopRequestedRef.current) {
+        stopRequestedRef.current = false;
+        setState("stopped");
+        return;
+      }
+
+      setState("paused");
+    };
+
+    const handleFinish = () => {
+      stopRequestedRef.current = false;
+      syncCurrentTime(ws.getDuration(), true);
+      setState("stopped");
+    };
+
+    const handleTimeupdate = (currentTime: number) => {
+      syncCurrentTime(currentTime);
+    };
+
+    const handleInteraction = (currentTime: number) => {
+      syncCurrentTime(currentTime, true);
     };
 
     const handleDecode = (dur: number) => {
@@ -197,55 +219,58 @@ export function AudioPlayerProvider({
     };
 
     const handleDestroy = () => {
+      stopRequestedRef.current = false;
       setState("stopped");
     };
 
     ws.on("decode", handleDecode);
+    ws.on("play", handlePlay);
+    ws.on("pause", handlePause);
+    ws.on("finish", handleFinish);
     ws.on("ready", handleReady);
     ws.on("timeupdate", handleTimeupdate);
-
-    // Listening to the "pause" event is problematic. Not sure why, but it is even called when I stop the player.
+    ws.on("interaction", handleInteraction);
     ws.on("destroy", handleDestroy);
 
     setWavesurfer(ws);
 
     return () => {
+      stopRequestedRef.current = false;
       ws.destroy();
       setWavesurfer(null);
       audio.pause();
       audio.src = "";
       audio.load();
-      if (audioContext) {
-        audioContext.close();
-      }
     };
   }, [container, url]);
 
   const start = useCallback(() => {
     if (wavesurfer) {
       void wavesurfer.play();
-      setState("playing");
     }
   }, [wavesurfer]);
 
   const pause = useCallback(() => {
     if (wavesurfer) {
       wavesurfer.pause();
-      setState("paused");
     }
   }, [wavesurfer]);
 
   const resume = useCallback(() => {
     if (wavesurfer) {
       void wavesurfer.play();
-      setState("playing");
     }
   }, [wavesurfer]);
 
   const stop = useCallback(() => {
     if (wavesurfer) {
+      const wasPlaying = wavesurfer.isPlaying();
+      stopRequestedRef.current = wasPlaying;
       wavesurfer.stop();
-      setState("stopped");
+      timeStoreRef.current.setCurrent(0);
+      if (!wasPlaying) {
+        setState("stopped");
+      }
     }
   }, [wavesurfer]);
 
@@ -264,7 +289,7 @@ export function AudioPlayerProvider({
         return;
       }
       if (wavesurfer) {
-        wavesurfer.setPlaybackRate(rate);
+        wavesurfer.setPlaybackRate(rate, false);
       }
       setPlaybackRateState(rate);
     },
@@ -272,13 +297,16 @@ export function AudioPlayerProvider({
   );
 
   useEffect(() => {
-    if (isPro || playbackRate === 1) {
+    if (!wavesurfer) {
       return;
     }
-    if (wavesurfer) {
-      wavesurfer.setPlaybackRate(1);
+
+    const nextRate = isPro ? playbackRate : 1;
+    wavesurfer.setPlaybackRate(nextRate, false);
+
+    if (nextRate !== playbackRate) {
+      setPlaybackRateState(1);
     }
-    setPlaybackRateState(1);
   }, [isPro, playbackRate, wavesurfer]);
 
   const deleteRecordingMutation = useMutation({

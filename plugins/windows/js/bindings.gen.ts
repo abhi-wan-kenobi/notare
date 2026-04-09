@@ -69,6 +69,22 @@ async windowRestoreFrameAnimated(window: AppWindow) : Promise<Result<null, strin
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async windowExpandWidth(expansionPx: number, maxCurrentWidth: number | null, checkMonitorSpace: boolean, expandLeft: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:windows|window_expand_width", { expansionPx, maxCurrentWidth, checkMonitorSpace, expandLeft }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async windowRestoreWidth() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:windows|window_restore_width") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 

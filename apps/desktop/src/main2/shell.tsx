@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useShallow } from "zustand/shallow";
 
+import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { cn } from "@hypr/utils";
 
@@ -31,7 +32,6 @@ import { TrafficLights } from "~/shared/ui/traffic-lights";
 import { id } from "~/shared/utils";
 import { LeftSidebar } from "~/sidebar";
 import { uniqueIdfromTab, useTabs } from "~/store/zustand/tabs";
-import { commands } from "~/types/tauri.gen";
 
 export function Main2Shell() {
   const currentPlatform = platform();
@@ -92,10 +92,13 @@ export function Main2Shell() {
     if (showSidebar && !wasSidebarVisibleRef.current) {
       leftsidebar.setExpanded(true);
       leftsidebar.setLocked(true);
-      commands.resizeWindowForSidebar().catch(console.error);
+      windowsCommands
+        .windowExpandWidth(280, null, false, true)
+        .catch(console.error);
     } else if (!showSidebar && wasSidebarVisibleRef.current) {
       leftsidebar.setLocked(false);
       leftsidebar.setExpanded(false);
+      windowsCommands.windowRestoreWidth().catch(console.error);
     }
     wasSidebarVisibleRef.current = showSidebar;
   }, [showSidebar, leftsidebar]);

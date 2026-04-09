@@ -147,7 +147,13 @@ pub async fn main() {
         .plugin(tauri_plugin_transcription::init())
         .plugin(tauri_plugin_tantivy::init())
         .plugin(tauri_plugin_audio_priority::init())
-        .plugin(tauri_plugin_local_llm::init())
+        .plugin(tauri_plugin_local_llm::init(
+            tauri_plugin_local_llm::InitOptions {
+                parent_supervisor: root_supervisor_ctx
+                    .as_ref()
+                    .map(|ctx| ctx.supervisor.get_cell()),
+            },
+        ))
         .plugin(tauri_plugin_local_stt::init(
             tauri_plugin_local_stt::InitOptions {
                 parent_supervisor: root_supervisor_ctx
@@ -357,8 +363,6 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::set_dismissed_toasts::<tauri::Wry>,
             commands::get_env::<tauri::Wry>,
             commands::show_devtool,
-            commands::resize_window_for_chat::<tauri::Wry>,
-            commands::resize_window_for_sidebar::<tauri::Wry>,
             commands::get_tinybase_values::<tauri::Wry>,
             commands::set_tinybase_values::<tauri::Wry>,
             commands::get_pinned_tabs::<tauri::Wry>,
