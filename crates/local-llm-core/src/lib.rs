@@ -1,12 +1,10 @@
 mod error;
 mod model;
 mod server;
-mod store;
 
 pub use error::*;
 pub use model::*;
 pub use server::*;
-pub use store::*;
 
 use std::path::Path;
 
@@ -85,67 +83,4 @@ pub fn list_custom_models() -> Result<Vec<CustomModelInfo>, Error> {
     {
         Ok(Vec::new())
     }
-}
-
-pub fn get_current_model(
-    store: &dyn ModelStore,
-    models_dir: &Path,
-) -> Result<SupportedModel, Error> {
-    let model = store.get_model()?;
-
-    match model {
-        Some(existing_model) => Ok(existing_model),
-        None => {
-            let is_migrated = store.is_default_model_migrated()?;
-
-            if is_migrated {
-                Ok(SupportedModel::HyprLLM)
-            } else {
-                let old_model_path = models_dir.join(SupportedModel::Llama3p2_3bQ4.file_name());
-
-                if old_model_path.exists() {
-                    let _ = store.set_model(&SupportedModel::Llama3p2_3bQ4);
-                    let _ = store.set_default_model_migrated(true);
-                    Ok(SupportedModel::Llama3p2_3bQ4)
-                } else {
-                    let _ = store.set_default_model_migrated(true);
-                    Ok(SupportedModel::HyprLLM)
-                }
-            }
-        }
-    }
-}
-
-pub fn set_current_model(store: &dyn ModelStore, model: SupportedModel) -> Result<(), Error> {
-    store.set_model(&model)
-}
-
-pub fn get_current_model_selection(
-    store: &dyn ModelStore,
-    models_dir: &Path,
-) -> Result<ModelSelection, Error> {
-    if let Ok(Some(selection)) = store.get_model_selection()
-        && selection.ensure_supported().is_ok()
-    {
-        return Ok(selection);
-    }
-
-    let current_model = get_current_model(store, models_dir)?;
-    let selection = ModelSelection::Predefined { key: current_model };
-
-    let _ = store.set_model_selection(&selection);
-    Ok(selection)
-}
-
-pub fn set_current_model_selection(
-    store: &dyn ModelStore,
-    model: ModelSelection,
-) -> Result<(), Error> {
-    model.ensure_supported()?;
-
-    if let ModelSelection::Predefined { key } = &model {
-        let _ = store.set_model(key);
-    }
-
-    store.set_model_selection(&model)
 }

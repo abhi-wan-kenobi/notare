@@ -1,11 +1,7 @@
 use std::{collections::HashMap, future::Future, path::PathBuf, sync::Arc};
-
 use tauri::{Manager, Runtime, ipc::Channel};
-use tauri_plugin_store2::Store2PluginExt;
 
 use hypr_model_downloader::{DownloadableModel, ModelDownloadManager, ModelDownloaderRuntime};
-
-use crate::store::TauriModelStore;
 
 struct TauriModelRuntime<R: Runtime> {
     app_handle: tauri::AppHandle<R>,
@@ -102,9 +98,28 @@ fn resolve_resource_path<R: Runtime, T: Manager<R>>(
     Ok(None)
 }
 
-pub trait LocalLlmPluginExt<R: Runtime> {
-    fn local_llm_store(&self) -> tauri_plugin_store2::ScopedStore<R, crate::StoreKey>;
+#[cfg(target_arch = "aarch64")]
+pub(crate) fn resolve_embedded_llm_args<R: Runtime, T: Manager<R>>(
+    manager: &T,
+) -> Result<(String, PathBuf), crate::Error> {
+    let model = hypr_local_model::CactusLlmModel::Lfm2Vl450mApple;
+    let hypr_local_model::CactusModelSource::BundledResource { relative_path } = model.source()
+    else {
+        return Err(crate::Error::Other(format!(
+            "embedded local LLM resource is unavailable for {}",
+            model.asset_id()
+        )));
+    };
+    let model_path = resolve_resource_path(manager, relative_path)?.ok_or_else(|| {
+        crate::Error::Other(format!(
+            "embedded local LLM resource not found: {relative_path}"
+        ))
+    })?;
 
+    Ok((model.display_name().to_string(), model_path))
+}
+
+pub trait LocalLlmPluginExt<R: Runtime> {
     fn models_dir(&self) -> PathBuf;
 
     fn list_downloaded_model(
@@ -114,11 +129,6 @@ pub trait LocalLlmPluginExt<R: Runtime> {
     fn list_custom_models(
         &self,
     ) -> impl Future<Output = Result<Vec<crate::CustomModelInfo>, crate::Error>>;
-    fn get_current_model(&self) -> Result<crate::SupportedModel, crate::Error>;
-    fn set_current_model(&self, model: crate::SupportedModel) -> Result<(), crate::Error>;
-    fn get_current_model_selection(&self) -> Result<crate::ModelSelection, crate::Error>;
-    fn set_current_model_selection(&self, model: crate::ModelSelection)
-    -> Result<(), crate::Error>;
 
     fn download_model(
         &self,
@@ -138,17 +148,10 @@ pub trait LocalLlmPluginExt<R: Runtime> {
         &self,
         model: &crate::SupportedModel,
     ) -> impl Future<Output = Result<bool, crate::Error>>;
-
-    fn start_server(&self) -> impl Future<Output = Result<String, crate::Error>>;
-    fn stop_server(&self) -> impl Future<Output = Result<(), crate::Error>>;
     fn server_url(&self) -> impl Future<Output = Result<Option<String>, crate::Error>>;
 }
 
 impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
-    fn local_llm_store(&self) -> tauri_plugin_store2::ScopedStore<R, crate::StoreKey> {
-        self.store2().scoped_store(crate::PLUGIN_NAME).unwrap()
-    }
-
     fn models_dir(&self) -> PathBuf {
         hypr_local_llm_core::llm_models_dir(&models_base(self))
     }
@@ -175,6 +178,14 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
             guard.model_downloader.clone()
         };
         Ok(downloader.is_downloaded(model).await?)
+    }
+
+    #[tracing::instrument(skip_all)]
+    async fn server_url(&self) -> Result<Option<String>, crate::Error> {
+        let state = self.state::<crate::SharedState>();
+        let guard = state.lock().await;
+
+        Ok(guard.server.as_ref().map(|server| server.url().to_string()))
     }
 
     #[tracing::instrument(skip_all)]
@@ -246,103 +257,8 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
     }
 
     #[tracing::instrument(skip_all)]
-    fn get_current_model(&self) -> Result<crate::SupportedModel, crate::Error> {
-        let store = self.local_llm_store();
-        let tauri_store = TauriModelStore::new(&store);
-        Ok(hypr_local_llm_core::get_current_model(
-            &tauri_store,
-            &self.models_dir(),
-        )?)
-    }
-
-    #[tracing::instrument(skip_all)]
-    fn set_current_model(&self, model: crate::SupportedModel) -> Result<(), crate::Error> {
-        let store = self.local_llm_store();
-        let tauri_store = TauriModelStore::new(&store);
-        Ok(hypr_local_llm_core::set_current_model(&tauri_store, model)?)
-    }
-
-    #[tracing::instrument(skip_all)]
     async fn list_custom_models(&self) -> Result<Vec<crate::CustomModelInfo>, crate::Error> {
         Ok(hypr_local_llm_core::list_custom_models()?)
-    }
-
-    #[tracing::instrument(skip_all)]
-    fn get_current_model_selection(&self) -> Result<crate::ModelSelection, crate::Error> {
-        let store = self.local_llm_store();
-        let tauri_store = TauriModelStore::new(&store);
-        Ok(hypr_local_llm_core::get_current_model_selection(
-            &tauri_store,
-            &self.models_dir(),
-        )?)
-    }
-
-    #[tracing::instrument(skip_all)]
-    fn set_current_model_selection(
-        &self,
-        model: crate::ModelSelection,
-    ) -> Result<(), crate::Error> {
-        let store = self.local_llm_store();
-        let tauri_store = TauriModelStore::new(&store);
-        Ok(hypr_local_llm_core::set_current_model_selection(
-            &tauri_store,
-            model,
-        )?)
-    }
-
-    #[tracing::instrument(skip_all)]
-    async fn start_server(&self) -> Result<String, crate::Error> {
-        let state = self.state::<crate::SharedState>();
-
-        let existing_server = {
-            let mut guard = state.lock().await;
-            guard.server.take()
-        };
-
-        if let Some(server) = existing_server {
-            server.stop().await;
-        }
-
-        let selection = self.get_current_model_selection()?;
-        let models_base = models_base(self);
-        let server = hypr_local_llm_core::LlmServer::start_with_resolver(
-            &selection,
-            &models_base,
-            |relative_path| resolve_resource_path(self, relative_path),
-        )
-        .await?;
-        let url = server.url().to_string();
-
-        {
-            let mut guard = state.lock().await;
-            guard.server = Some(server);
-        }
-
-        Ok(url)
-    }
-
-    #[tracing::instrument(skip_all)]
-    async fn stop_server(&self) -> Result<(), crate::Error> {
-        let state = self.state::<crate::SharedState>();
-
-        let existing_server = {
-            let mut guard = state.lock().await;
-            guard.server.take()
-        };
-
-        if let Some(server) = existing_server {
-            server.stop().await;
-        }
-
-        Ok(())
-    }
-
-    #[tracing::instrument(skip_all)]
-    async fn server_url(&self) -> Result<Option<String>, crate::Error> {
-        let state = self.state::<crate::SharedState>();
-        let guard = state.lock().await;
-
-        Ok(guard.server.as_ref().map(|s| s.url().to_string()))
     }
 }
 

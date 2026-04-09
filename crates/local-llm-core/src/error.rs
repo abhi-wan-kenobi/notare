@@ -11,8 +11,6 @@ pub enum Error {
     InferenceError(#[from] hypr_llm_cactus::Error),
     #[error("Model not downloaded")]
     ModelNotDownloaded,
-    #[error("Store error: {0}")]
-    StoreError(String),
     #[error("Other error: {0}")]
     Other(String),
 }

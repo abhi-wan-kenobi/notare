@@ -62,22 +62,6 @@ async deleteModel(model: GgufLlmModel) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async getCurrentModel() : Promise<Result<GgufLlmModel, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:local-llm|get_current_model") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async setCurrentModel(model: GgufLlmModel) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:local-llm|set_current_model", { model }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async listDownloadedModel() : Promise<Result<GgufLlmModel[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:local-llm|list_downloaded_model") };
@@ -89,38 +73,6 @@ async listDownloadedModel() : Promise<Result<GgufLlmModel[], string>> {
 async listCustomModels() : Promise<Result<CustomModelInfo[], string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:local-llm|list_custom_models") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async getCurrentModelSelection() : Promise<Result<ModelSelection, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:local-llm|get_current_model_selection") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async setCurrentModelSelection(model: ModelSelection) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:local-llm|set_current_model_selection", { model }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async startServer() : Promise<Result<string, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:local-llm|start_server") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async stopServer() : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:local-llm|stop_server") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -146,11 +98,9 @@ async serverUrl() : Promise<Result<string | null, string>> {
 
 /** user-defined types **/
 
-export type CactusLlmModel = "cactus-gemma3-270m" | "cactus-lfm2-350m" | "cactus-qwen3-0.6b" | "cactus-lfm2-700m" | "cactus-gemma3-1b" | "cactus-lfm2.5-1.2b-instruct" | "cactus-qwen3-1.7b" | "cactus-lfm2-vl-450m-apple" | "cactus-lfm2.5-vl-1.6b-apple"
 export type CustomModelInfo = { path: string; name: string }
 export type GgufLlmModel = "Llama3p2_3bQ4" | "Gemma3_4bQ4" | "HyprLLM"
 export type ModelInfo = { key: GgufLlmModel; name: string; description: string; size_bytes: number }
-export type ModelSelection = { type: "Predefined"; content: { key: GgufLlmModel } } | { type: "Cactus"; content: { key: CactusLlmModel } } | { type: "Custom"; content: { path: string } }
 export type TAURI_CHANNEL<TSend> = null
 
 /** tauri-specta globals **/

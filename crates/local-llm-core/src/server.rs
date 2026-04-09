@@ -8,34 +8,16 @@ mod inner {
     use tokio::net::TcpListener;
     use tower_http::cors::CorsLayer;
 
-    use crate::{Error, ModelSelection};
+    use crate::Error;
 
     pub struct LlmServer {
         base_url: String,
         shutdown_tx: tokio::sync::watch::Sender<()>,
+        exit_rx: tokio::sync::watch::Receiver<bool>,
         task: tokio::task::JoinHandle<()>,
     }
 
     impl LlmServer {
-        pub async fn start(selection: &ModelSelection, models_dir: &Path) -> Result<Self, Error> {
-            let models_base = models_dir.parent().unwrap_or(models_dir);
-            let file_path = selection.install_path(models_base);
-            let name = selection.display_name();
-
-            Self::start_with_model_path(name, file_path).await
-        }
-
-        pub async fn start_with_resolver(
-            selection: &ModelSelection,
-            models_base: &Path,
-            resolve_resource: impl FnMut(&str) -> Result<Option<std::path::PathBuf>, Error>,
-        ) -> Result<Self, Error> {
-            let file_path = selection.resolve_path(models_base, resolve_resource)?;
-            let name = selection.display_name();
-
-            Self::start_with_model_path(name, file_path).await
-        }
-
         pub async fn start_with_model_path(
             name: String,
             file_path: impl AsRef<Path>,
@@ -59,14 +41,22 @@ mod inner {
             let base_url = format!("http://{}/v1", addr);
 
             let (shutdown_tx, mut shutdown_rx) = tokio::sync::watch::channel(());
+            let (exit_tx, exit_rx) = tokio::sync::watch::channel(false);
 
-            let task = tokio::spawn(async move {
-                axum::serve(listener, router)
+            let server_task = tokio::spawn(async move {
+                let _ = axum::serve(listener, router)
                     .with_graceful_shutdown(async move {
                         let _ = shutdown_rx.changed().await;
                     })
-                    .await
-                    .ok();
+                    .await;
+            });
+
+            let task = tokio::spawn(async move {
+                if let Err(error) = server_task.await {
+                    tracing::error!(error = %error, "local LLM server task crashed");
+                }
+
+                let _ = exit_tx.send(true);
             });
 
             tracing::info!(url = %base_url, "local LLM server started");
@@ -74,12 +64,17 @@ mod inner {
             Ok(Self {
                 base_url,
                 shutdown_tx,
+                exit_rx,
                 task,
             })
         }
 
         pub fn url(&self) -> &str {
             &self.base_url
+        }
+
+        pub fn exit_receiver(&self) -> tokio::sync::watch::Receiver<bool> {
+            self.exit_rx.clone()
         }
 
         pub async fn stop(self) {
@@ -98,29 +93,13 @@ mod inner {
 mod inner {
     use std::path::Path;
 
-    use crate::{Error, ModelSelection};
+    use crate::Error;
 
     pub struct LlmServer {
         _private: (),
     }
 
     impl LlmServer {
-        pub async fn start(_selection: &ModelSelection, _models_dir: &Path) -> Result<Self, Error> {
-            Err(Error::Other(
-                "Local LLM is not supported on this platform".to_string(),
-            ))
-        }
-
-        pub async fn start_with_resolver(
-            _selection: &ModelSelection,
-            _models_base: &Path,
-            _resolve_resource: impl FnMut(&str) -> Result<Option<std::path::PathBuf>, Error>,
-        ) -> Result<Self, Error> {
-            Err(Error::Other(
-                "Local LLM is not supported on this platform".to_string(),
-            ))
-        }
-
         pub async fn start_with_model_path(
             _name: String,
             _file_path: impl AsRef<Path>,
@@ -131,6 +110,10 @@ mod inner {
         }
 
         pub fn url(&self) -> &str {
+            unreachable!()
+        }
+
+        pub fn exit_receiver(&self) -> tokio::sync::watch::Receiver<bool> {
             unreachable!()
         }
 

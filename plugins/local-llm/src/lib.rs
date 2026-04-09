@@ -10,14 +10,12 @@ use hypr_model_downloader::ModelDownloadManager;
 mod commands;
 mod error;
 mod ext;
-mod store;
 
 pub use error::*;
 pub use ext::*;
 pub use hypr_local_llm_core::{
-    CustomModelInfo, ModelIdentifier, ModelInfo, ModelSelection, SUPPORTED_MODELS, SupportedModel,
+    CustomModelInfo, ModelIdentifier, ModelInfo, SUPPORTED_MODELS, SupportedModel,
 };
-pub use store::*;
 
 const PLUGIN_NAME: &str = "local-llm";
 
@@ -40,14 +38,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::download_model::<Wry>,
             commands::cancel_download::<Wry>,
             commands::delete_model::<Wry>,
-            commands::get_current_model::<Wry>,
-            commands::set_current_model::<Wry>,
             commands::list_downloaded_model::<Wry>,
             commands::list_custom_models::<Wry>,
-            commands::get_current_model_selection::<Wry>,
-            commands::set_current_model_selection::<Wry>,
-            commands::start_server::<Wry>,
-            commands::stop_server::<Wry>,
             commands::server_url::<Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
@@ -60,7 +52,6 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
         .invoke_handler(specta_builder.invoke_handler())
         .setup(move |app, _api| {
             use tauri::Manager as _;
-            use tauri::path::BaseDirectory;
             use tauri_plugin_settings::SettingsPluginExt;
 
             specta_builder.mount_events(app);
@@ -83,24 +74,54 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
                 }
             }
 
+            let download_channels = Arc::new(Mutex::new(HashMap::new()));
+            let model_downloader =
+                ext::create_model_downloader(app.app_handle(), download_channels.clone());
+
+            let state = State {
+                model_downloader,
+                download_channels,
+                server: None,
+            };
+            let state = Arc::new(TokioMutex::new(state));
+            app.manage(state.clone());
+
+            #[cfg(target_arch = "aarch64")]
             {
-                let _model_path = if cfg!(debug_assertions) {
-                    app.path()
-                        .resolve("resources/llm.gguf", BaseDirectory::Resource)?
-                } else {
-                    app.path().resolve("llm.gguf", BaseDirectory::Resource)?
-                };
+                let state = state.clone();
+                let app_handle = app.app_handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let (model_name, model_path) = match ext::resolve_embedded_llm_args(&app_handle)
+                    {
+                        Ok(args) => args,
+                        Err(error) => {
+                            tracing::warn!(
+                                error = %error,
+                                "failed to resolve local LLM startup configuration"
+                            );
+                            return;
+                        }
+                    };
 
-                let download_channels = Arc::new(Mutex::new(HashMap::new()));
-                let model_downloader =
-                    ext::create_model_downloader(app.app_handle(), download_channels.clone());
-
-                let state = State {
-                    model_downloader,
-                    download_channels,
-                    server: None,
-                };
-                app.manage(Arc::new(TokioMutex::new(state)));
+                    match hypr_local_llm_core::LlmServer::start_with_model_path(
+                        model_name,
+                        &model_path,
+                    )
+                    .await
+                    {
+                        Ok(server) => {
+                            let mut guard = state.lock().await;
+                            guard.server = Some(server);
+                            tracing::info!("local_llm_server_started");
+                        }
+                        Err(error) => {
+                            tracing::error!(
+                                error = %error,
+                                "failed_to_start_local_llm_server"
+                            );
+                        }
+                    }
+                });
             }
 
             Ok(())

@@ -7,8 +7,6 @@ pub enum Error {
     #[error(transparent)]
     CoreError(#[from] hypr_local_llm_core::Error),
     #[error(transparent)]
-    StoreError(#[from] tauri_plugin_store2::Error),
-    #[error(transparent)]
     ModelDownloaderError(#[from] hypr_model_downloader::Error),
     #[error("Other error: {0}")]
     Other(String),
