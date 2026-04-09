@@ -5006,6 +5006,7 @@ dependencies = [
  "tauri-plugin-local-llm",
  "tauri-plugin-local-stt",
  "tauri-plugin-mcp",
+ "tauri-plugin-messenger",
  "tauri-plugin-misc",
  "tauri-plugin-network",
  "tauri-plugin-notification",
@@ -18982,6 +18983,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-messenger"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-plugin",
+ "tauri-specta",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
 name = "tauri-plugin-misc"
 version = "0.1.0"
 dependencies = [
@@ -19407,6 +19423,8 @@ version = "0.1.0"
 dependencies = [
  "api-client",
  "apple-todo",
+ "github-issues",
+ "hypr-http-utils",
  "reqwest 0.13.2",
  "serde",
  "specta",

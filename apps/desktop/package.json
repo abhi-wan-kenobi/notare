@@ -62,6 +62,7 @@
     "@hypr/plugin-transcription": "workspace:*",
     "@hypr/plugin-local-stt": "workspace:*",
     "@hypr/plugin-mcp": "workspace:*",
+    "@hypr/plugin-messenger": "workspace:*",
     "@hypr/plugin-misc": "workspace:*",
     "@hypr/plugin-network": "workspace:*",
     "@hypr/plugin-notification": "workspace:*",
