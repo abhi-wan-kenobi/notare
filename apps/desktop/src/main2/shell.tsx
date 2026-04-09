@@ -321,7 +321,7 @@ export function Main2Shell() {
           </div>
         </div>
 
-        <UpdateBanner />
+        {isHomeActive && <UpdateBanner />}
         <MainShellBodyFrame autoSaveId="main2-chat">
           <div className="h-full min-h-0 overflow-auto">
             {currentTab ? (

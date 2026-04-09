@@ -8,11 +8,13 @@ import { cn } from "@hypr/utils";
 
 export function Update() {
   const { version } = useUpdate();
+  const [installing, setInstalling] = useState(false);
 
   const handleInstallUpdate = useCallback(async () => {
     if (!version) {
       return;
     }
+    setInstalling(true);
     const installResult = await commands.install(version);
     if (installResult.status !== "ok") {
       await message(`Failed to install update: ${installResult.error}`, {
@@ -29,6 +31,7 @@ export function Update() {
         kind: "error",
       });
     }
+    setInstalling(false);
   }, [version]);
 
   if (!version) {
@@ -39,13 +42,14 @@ export function Update() {
     <Button
       size="sm"
       onClick={handleInstallUpdate}
+      disabled={installing}
       className={cn([
         "rounded-full px-3",
         "bg-linear-to-t from-stone-600 to-stone-500",
         "hover:from-stone-500 hover:to-stone-400",
       ])}
     >
-      Install Update
+      {installing ? "Installing..." : "Install Update"}
     </Button>
   );
 }

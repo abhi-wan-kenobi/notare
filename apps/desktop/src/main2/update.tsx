@@ -10,11 +10,13 @@ import { cn } from "@hypr/utils";
 export function UpdateBanner() {
   const { version } = useUpdate();
   const [dismissed, setDismissed] = useState(false);
+  const [installing, setInstalling] = useState(false);
 
   const handleInstallUpdate = useCallback(async () => {
     if (!version) {
       return;
     }
+    setInstalling(true);
     const installResult = await commands.install(version);
     if (installResult.status !== "ok") {
       await message(`Failed to install update: ${installResult.error}`, {
@@ -31,6 +33,7 @@ export function UpdateBanner() {
         kind: "error",
       });
     }
+    setInstalling(false);
   }, [version]);
 
   if (!version || dismissed) {
@@ -49,9 +52,10 @@ export function UpdateBanner() {
         size="sm"
         variant="outline"
         onClick={handleInstallUpdate}
+        disabled={installing}
         className="h-7 px-3 text-xs font-medium"
       >
-        Update & Restart
+        {installing ? "Installing..." : "Update & Restart"}
       </Button>
       <button
         type="button"
