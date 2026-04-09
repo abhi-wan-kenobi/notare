@@ -81,6 +81,8 @@ mod test {
 
     // cargo test --package tauri-plugin-permissions --lib -- test::test_request_calendar --exact --nocapture
     permission_request_test!(test_request_calendar, Calendar);
+    // cargo test --package tauri-plugin-permissions --lib -- test::test_request_reminders --exact --nocapture
+    permission_request_test!(test_request_reminders, Reminders);
     // cargo test --package tauri-plugin-permissions --lib -- test::test_request_contacts --exact --nocapture
     permission_request_test!(test_request_contacts, Contacts);
     // cargo test --package tauri-plugin-permissions --lib -- test::test_request_microphone --exact --nocapture
@@ -92,6 +94,8 @@ mod test {
 
     // cargo test --package tauri-plugin-permissions --lib -- test::test_reset_calendar --exact --nocapture
     permission_reset_test!(test_reset_calendar, Calendar);
+    // cargo test --package tauri-plugin-permissions --lib -- test::test_reset_reminders --exact --nocapture
+    permission_reset_test!(test_reset_reminders, Reminders);
     // cargo test --package tauri-plugin-permissions --lib -- test::test_reset_contacts --exact --nocapture
     permission_reset_test!(test_reset_contacts, Contacts);
     // cargo test --package tauri-plugin-permissions --lib -- test::test_reset_microphone --exact --nocapture
