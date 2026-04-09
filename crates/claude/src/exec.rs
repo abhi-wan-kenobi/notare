@@ -9,6 +9,8 @@ use tokio::task::JoinHandle;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_util::sync::CancellationToken;
 
+use hypr_cli_process::spawn_with_retry;
+
 use crate::error::Error;
 use crate::events::{ClaudeEvent, EventStream};
 use crate::options::{PermissionMode, SettingSource};
@@ -83,7 +85,7 @@ impl ClaudeExec {
         }
 
         let mut command = self.build_command(&args, OutputFormat::Json)?;
-        let mut child = command.spawn().map_err(Error::Spawn)?;
+        let mut child = spawn_with_retry(&mut command).map_err(Error::Spawn)?;
         let stdout = child.stdout.take().ok_or(Error::MissingStdout)?;
         let stderr = child.stderr.take();
         let cancellation_token = args.cancellation_token;
@@ -149,7 +151,7 @@ impl ClaudeExec {
         }
 
         let mut command = self.build_command(&args, OutputFormat::StreamJson)?;
-        let mut child = command.spawn().map_err(Error::Spawn)?;
+        let mut child = spawn_with_retry(&mut command).map_err(Error::Spawn)?;
         let stdout = child.stdout.take().ok_or(Error::MissingStdout)?;
         let stderr = child.stderr.take();
         let cancellation_token = args.cancellation_token;

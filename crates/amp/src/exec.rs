@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 
-use hypr_cli_process::spawn_streaming_lines;
+use hypr_cli_process::{spawn_streaming_lines, spawn_with_retry};
 use tokio::process::Command;
 use tokio_util::sync::CancellationToken;
 
@@ -43,6 +43,14 @@ impl AmpExec {
     }
 
     pub(crate) fn run(&self, args: AmpExecArgs) -> Result<AmpExecRun, Error> {
+        if args
+            .cancellation_token
+            .as_ref()
+            .is_some_and(CancellationToken::is_cancelled)
+        {
+            return Err(Error::Cancelled);
+        }
+
         let command_args = self.command_args(&args);
         let mut command = Command::new(&self.executable_path);
         command.args(command_args);
@@ -66,7 +74,7 @@ impl AmpExec {
             command.current_dir(working_directory);
         }
 
-        let child = command.spawn().map_err(Error::Spawn)?;
+        let child = spawn_with_retry(&mut command).map_err(Error::Spawn)?;
         let prompt = match args.input {
             NormalizedInput::Text(text) => text,
             NormalizedInput::StreamJson(text) => text,

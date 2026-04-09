@@ -1,4 +1,5 @@
 use std::pin::Pin;
+use std::time::Duration;
 
 use futures_util::Stream;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
@@ -33,6 +34,26 @@ pub enum ProcessError {
 pub struct StreamProcess<T, E> {
     pub events: EventStream<T, E>,
     pub shutdown: CancellationToken,
+}
+
+pub fn spawn_with_retry(command: &mut tokio::process::Command) -> std::io::Result<Child> {
+    const MAX_EXECUTABLE_BUSY_RETRIES: usize = 5;
+    const EXECUTABLE_BUSY_RETRY_DELAY: Duration = Duration::from_millis(20);
+
+    let mut attempts = 0;
+    loop {
+        match command.spawn() {
+            Ok(child) => return Ok(child),
+            Err(error)
+                if error.kind() == std::io::ErrorKind::ExecutableFileBusy
+                    && attempts < MAX_EXECUTABLE_BUSY_RETRIES =>
+            {
+                attempts += 1;
+                std::thread::sleep(EXECUTABLE_BUSY_RETRY_DELAY);
+            }
+            Err(error) => return Err(error),
+        }
+    }
 }
 
 pub async fn run_to_string(

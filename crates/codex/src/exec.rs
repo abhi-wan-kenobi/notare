@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 
-use hypr_cli_process::spawn_streaming_lines;
+use hypr_cli_process::{spawn_streaming_lines, spawn_with_retry};
 use serde::Serialize;
 use tokio::process::Command;
 use tokio_util::sync::CancellationToken;
@@ -60,6 +60,14 @@ impl CodexExec {
     }
 
     pub(crate) fn run(&self, args: CodexExecArgs) -> Result<CodexExecRun, Error> {
+        if args
+            .cancellation_token
+            .as_ref()
+            .is_some_and(CancellationToken::is_cancelled)
+        {
+            return Err(Error::Cancelled);
+        }
+
         let command_args = self.command_args(&args)?;
 
         let mut command = Command::new(&self.executable_path);
@@ -81,7 +89,7 @@ impl CodexExec {
             command.env("CODEX_API_KEY", api_key);
         }
 
-        let child = command.spawn().map_err(Error::Spawn)?;
+        let child = spawn_with_retry(&mut command).map_err(Error::Spawn)?;
         let prompt = args.input;
         let stream = spawn_streaming_lines(child, Some(prompt), args.cancellation_token, |line| {
             Ok(serde_json::from_str::<ThreadEvent>(&line)?)
