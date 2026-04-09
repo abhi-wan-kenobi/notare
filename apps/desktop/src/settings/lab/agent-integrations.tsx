@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2Icon,
   RefreshCwIcon,
@@ -121,7 +121,6 @@ function AgentIntegrationRow({
 }
 
 export function AgentIntegrations() {
-  const queryClient = useQueryClient();
   const healthQuery = useQuery({
     queryKey: ["agent-integrations-health"],
     queryFn: async () => {
@@ -131,13 +130,12 @@ export function AgentIntegrations() {
       }
       return result.data.providers;
     },
+    enabled: false,
     refetchInterval: 30_000,
   });
 
   const refresh = async () => {
-    await queryClient.invalidateQueries({
-      queryKey: ["agent-integrations-health"],
-    });
+    await healthQuery.refetch();
   };
 
   const installedProviders = (healthQuery.data ?? []).filter(
@@ -173,6 +171,11 @@ export function AgentIntegrations() {
       {healthQuery.isError ? (
         <p className="text-xs text-red-600">
           Failed to load agent integration status.
+        </p>
+      ) : healthQuery.data === undefined ? (
+        <p className="text-xs text-neutral-400">
+          Scan installed CLIs to check Claude Code, Codex, and OpenCode
+          integrations.
         </p>
       ) : !healthQuery.isPending && installedProviders.length === 0 ? (
         <p className="text-xs text-neutral-400">
