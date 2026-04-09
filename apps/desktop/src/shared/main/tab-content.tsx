@@ -10,6 +10,7 @@ import { TabContentOnboarding } from "~/onboarding";
 import { TabContentNote } from "~/session";
 import { TabContentSettings } from "~/settings";
 import { type Tab } from "~/store/zustand/tabs";
+import { TabContentTask } from "~/task";
 import { TabContentTemplate } from "~/templates";
 
 export function MainTabContent({ tab }: { tab: Tab }) {
@@ -48,6 +49,9 @@ export function MainTabContent({ tab }: { tab: Tab }) {
   }
   if (tab.type === "edit") {
     return <TabContentEdit tab={tab} />;
+  }
+  if (tab.type === "task") {
+    return <TabContentTask tab={tab} />;
   }
   return null;
 }

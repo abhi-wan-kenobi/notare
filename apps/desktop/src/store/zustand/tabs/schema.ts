@@ -122,7 +122,16 @@ export type Tab =
       state: ChatState;
     })
   | (BaseTab & { type: "onboarding" })
-  | (BaseTab & { type: "edit"; requestId: string });
+  | (BaseTab & { type: "edit"; requestId: string })
+  | (BaseTab & {
+      type: "task";
+      id: string;
+      resources: TaskResource[];
+    });
+
+export type TaskResource =
+  | { type: "github_issue"; owner: string; repo: string; number: number }
+  | { type: "github_pr"; owner: string; repo: string; number: number };
 
 export const getDefaultState = (tab: TabInput): Tab => {
   const base = { active: false, slotId: "", pinned: false };
@@ -245,6 +254,8 @@ export const uniqueIdfromTab = (tab: Tab): string => {
       return `onboarding`;
     case "edit":
       return `edit-${tab.requestId}`;
+    case "task":
+      return `task-${tab.id}`;
   }
 };
 

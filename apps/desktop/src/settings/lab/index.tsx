@@ -1,5 +1,6 @@
 import { CommandLineSettings } from "./command-line";
 import { DownloadButtons } from "./download-buttons";
+import { LinkIntegrations } from "./link-integrations";
 import { V1p1PreviewToggle } from "./v1p1-preview-toggle";
 
 import { SettingsPageTitle } from "~/settings/page-title";
@@ -17,6 +18,15 @@ export function SettingsLab() {
       </div>
 
       <CommandLineSettings />
+
+      <div>
+        <h2 className="mb-4 font-serif text-lg font-semibold">
+          Link Integrations
+        </h2>
+        <div className="flex flex-col gap-6">
+          <LinkIntegrations />
+        </div>
+      </div>
 
       <div>
         <h2 className="mb-4 font-serif text-lg font-semibold">Preview</h2>

@@ -31,12 +31,14 @@ import { useDebounceCallback } from "usehooks-ts";
 import "@hypr/tiptap/styles.css";
 
 import {
+  AppLinkView,
   MentionNodeView,
   ResizableImageView,
   SessionNodeView,
   TaskItemView,
 } from "../node-views";
 import {
+  appLinkPastePlugin,
   type FileHandlerConfig,
   type PlaceholderFunction,
   SearchQuery,
@@ -122,6 +124,7 @@ interface EditorProps {
 }
 
 const nodeViews = {
+  appLink: AppLinkView,
   image: ResizableImageView,
   "mention-@": MentionNodeView,
   session: SessionNodeView,
@@ -393,6 +396,7 @@ export const NoteEditor = forwardRef<NoteEditorRef, EditorProps>(
         placeholderPlugin(placeholderComponent),
         clearMarksOnEnterPlugin(),
         clipPastePlugin(),
+        appLinkPastePlugin(),
         linkBoundaryGuardPlugin(),
         ...(mentionConfig ? [mentionSkipPlugin()] : []),
         ...(fileHandlerConfig ? [fileHandlerPlugin(fileHandlerConfig)] : []),

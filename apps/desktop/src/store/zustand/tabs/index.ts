@@ -40,7 +40,13 @@ import { createStateUpdaterSlice, type StateBasicActions } from "./state";
 import { wrapSliceWithLogging } from "~/store/zustand/shared";
 
 export type { ChatEvent, ChatMode } from "./chat-mode";
-export type { SettingsState, SettingsTab, Tab, TabInput } from "./schema";
+export type {
+  SettingsState,
+  SettingsTab,
+  Tab,
+  TabInput,
+  TaskResource,
+} from "./schema";
 export type { StateBasicActions } from "./state";
 export {
   isSameTab,

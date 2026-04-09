@@ -10,6 +10,7 @@ import { TabItemOnboarding } from "~/onboarding";
 import { TabItemNote } from "~/session";
 import { TabItemSettings } from "~/settings";
 import { type Tab } from "~/store/zustand/tabs";
+import { TabItemTask } from "~/task";
 import { TabItemTemplate } from "~/templates";
 
 export function MainTabItem({
@@ -198,6 +199,20 @@ export function MainTabItem({
   if (tab.type === "edit") {
     return (
       <TabItemEdit
+        tab={tab}
+        tabIndex={tabIndex}
+        handleCloseThis={handleClose}
+        handleSelectThis={handleSelect}
+        handleCloseOthers={handleCloseOthers}
+        handleCloseAll={handleCloseAll}
+        handlePinThis={handlePinThis}
+        handleUnpinThis={handleUnpinThis}
+      />
+    );
+  }
+  if (tab.type === "task") {
+    return (
+      <TabItemTask
         tab={tab}
         tabIndex={tabIndex}
         handleCloseThis={handleClose}

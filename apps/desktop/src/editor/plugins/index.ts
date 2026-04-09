@@ -1,3 +1,4 @@
+export { appLinkPastePlugin } from "./app-link-paste";
 export { clearMarksOnEnterPlugin } from "./clear-marks-on-enter";
 export {
   clipNodeSpec,

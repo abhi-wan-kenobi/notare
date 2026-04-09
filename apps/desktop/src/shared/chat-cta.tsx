@@ -2,7 +2,11 @@ import { useCallback } from "react";
 
 import { useShell } from "~/contexts/shell";
 
-export function ChatCTA() {
+export function ChatCTA({
+  label = "Ask about this session",
+}: {
+  label?: string;
+}) {
   const { chat } = useShell();
 
   const handleClick = useCallback(() => {
@@ -22,7 +26,7 @@ export function ChatCTA() {
         alt=""
         className="size-4 shrink-0 object-contain invert"
       />
-      <span>Ask about this session</span>
+      <span>{label}</span>
     </button>
   );
 }
