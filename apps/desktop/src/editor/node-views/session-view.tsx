@@ -3,7 +3,6 @@ import {
   useEditorEventCallback,
 } from "@handlewithcare/react-prosemirror";
 import { format } from "date-fns";
-import { ArrowUpRightIcon } from "lucide-react";
 import type { NodeSpec } from "prosemirror-model";
 import { forwardRef, type ReactNode, useCallback, useMemo } from "react";
 
@@ -110,12 +109,12 @@ export const SessionNodeView = forwardRef<
     openCurrent(tab);
   }, [linkedItemOpenBehavior, openCurrent, openNew, sessionId]);
 
-  const handleOpenMouseDown = useCallback((event: React.MouseEvent) => {
+  const handleRowMouseDown = useCallback((event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
   }, []);
 
-  const handleOpenClick = useCallback(
+  const handleRowClick = useCallback(
     (event: React.MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
@@ -153,9 +152,13 @@ export const SessionNodeView = forwardRef<
       }
     >
       <div
+        data-session-row
+        onMouseDown={handleRowMouseDown}
+        onClick={handleRowClick}
         className={cn([
           "group flex items-start rounded-md px-2 py-1 transition-colors",
           "-mx-2 focus-within:bg-neutral-50 hover:bg-neutral-50",
+          "cursor-pointer",
         ])}
       >
         {isRecording ? (
@@ -168,52 +171,25 @@ export const SessionNodeView = forwardRef<
         ) : (
           <TaskCheckbox status={status} isInteractive onToggle={handleToggle} />
         )}
-        <div
-          data-session-title
-          className={cn([
-            "min-w-0 flex-1 cursor-text text-sm text-neutral-900",
-            "[&>p]:m-0 [&>p]:min-w-0 [&>p]:truncate",
-            "[&>p]:rounded-sm [&>p]:outline-none",
-            "[&>p:focus]:bg-white/80",
-            status === "done" && "[&>p]:line-through [&>p]:opacity-60",
-          ])}
-        >
-          {children}
-        </div>
-        <div
-          className="ml-auto flex shrink-0 items-center gap-1.5"
-          contentEditable={false}
-        >
+        <div className="flex min-w-0 flex-1 items-baseline gap-2">
+          <div
+            data-session-title
+            className={cn([
+              "min-w-0 text-sm text-neutral-900",
+              "[&>p]:m-0 [&>p]:min-w-0 [&>p]:truncate",
+              status === "done" && "[&>p]:line-through [&>p]:opacity-60",
+            ])}
+          >
+            {children}
+          </div>
           {createdAt && (
-            <span className="font-mono text-xs text-neutral-400">
+            <span
+              className="shrink-0 font-mono text-xs text-neutral-400"
+              contentEditable={false}
+            >
               {format(createdAt, "h:mm a")}
             </span>
           )}
-          <button
-            type="button"
-            onMouseDown={handleOpenMouseDown}
-            onClick={handleOpenClick}
-            className={cn([
-              "flex items-center gap-1 rounded-full border border-neutral-200 bg-white/90 px-2 py-1",
-              "cursor-pointer text-[11px] font-medium text-neutral-500 transition-all",
-              "opacity-40 hover:border-neutral-300 hover:text-neutral-800",
-              "group-focus-within:opacity-100 group-hover:opacity-100",
-              "focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:outline-none",
-            ])}
-            title={
-              linkedItemOpenBehavior === "new"
-                ? "Open note in new tab"
-                : "Open note"
-            }
-            aria-label={
-              linkedItemOpenBehavior === "new"
-                ? "Open note in new tab"
-                : "Open note"
-            }
-          >
-            <span>Open</span>
-            <ArrowUpRightIcon size={12} />
-          </button>
         </div>
       </div>
     </div>

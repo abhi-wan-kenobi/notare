@@ -9,8 +9,10 @@ const hoisted = vi.hoisted(() => {
     state: { tr: transaction },
     dispatch: vi.fn(),
   };
+  const openCurrent = vi.fn();
+  const openNew = vi.fn();
 
-  return { transaction, view };
+  return { transaction, view, openCurrent, openNew };
 });
 
 vi.mock("@handlewithcare/react-prosemirror", () => ({
@@ -40,7 +42,16 @@ vi.mock("~/stt/contexts", () => ({
 }));
 
 vi.mock("~/store/zustand/tabs", () => ({
-  useTabs: () => vi.fn(),
+  useTabs: (
+    selector: (state: {
+      openCurrent: typeof hoisted.openCurrent;
+      openNew: typeof hoisted.openNew;
+    }) => unknown,
+  ) =>
+    selector({
+      openCurrent: hoisted.openCurrent,
+      openNew: hoisted.openNew,
+    }),
 }));
 
 vi.mock("~/editor/session/linked-item-open-behavior", () => ({
@@ -88,6 +99,66 @@ describe("SessionNodeView", () => {
         status: "todo",
         checked: false,
       },
+    });
+  });
+
+  it("opens the linked session when clicking outside the editable title", () => {
+    hoisted.openCurrent.mockClear();
+
+    const { container } = render(
+      <SessionNodeView
+        nodeProps={
+          {
+            node: {
+              attrs: { sessionId: "session-1", status: "todo", checked: false },
+            },
+            getPos: () => 7,
+          } as any
+        }
+      >
+        Meeting
+      </SessionNodeView>,
+    );
+
+    const row = container.querySelector("[data-session-row]");
+
+    expect(row).not.toBeNull();
+
+    fireEvent.click(row!);
+
+    expect(hoisted.openCurrent).toHaveBeenCalledWith({
+      id: "session-1",
+      type: "sessions",
+    });
+  });
+
+  it("opens the linked session when clicking the title", () => {
+    hoisted.openCurrent.mockClear();
+
+    const { container } = render(
+      <SessionNodeView
+        nodeProps={
+          {
+            node: {
+              attrs: { sessionId: "session-1", status: "todo", checked: false },
+            },
+            getPos: () => 7,
+          } as any
+        }
+      >
+        Meeting
+      </SessionNodeView>,
+    );
+
+    const title = container.querySelector("[data-session-title]");
+
+    expect(title).not.toBeNull();
+
+    fireEvent.click(title!);
+
+    expect(hoisted.openCurrent).toHaveBeenCalledWith({
+      id: "session-1",
+      type: "sessions",
     });
   });
 });
