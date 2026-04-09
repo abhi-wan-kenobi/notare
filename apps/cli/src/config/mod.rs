@@ -1,3 +1,3 @@
 pub mod paths;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "desktop-db")]
 pub mod settings;

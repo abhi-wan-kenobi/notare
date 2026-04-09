@@ -1,3 +1,4 @@
+import { CommandLineSettings } from "./command-line";
 import { DownloadButtons } from "./download-buttons";
 import { V1p1PreviewToggle } from "./v1p1-preview-toggle";
 
@@ -14,6 +15,8 @@ export function SettingsLab() {
           <DownloadButtons />
         </div>
       </div>
+
+      <CommandLineSettings />
 
       <div>
         <h2 className="mb-4 font-serif text-lg font-semibold">Preview</h2>

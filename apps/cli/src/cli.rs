@@ -40,6 +40,7 @@ pub enum OutputFormat {
 #[strum(serialize_all = "snake_case")]
 #[allow(clippy::large_enum_variant)]
 pub enum Commands {
+    #[cfg(feature = "standalone")]
     /// Transcribe an audio file
     Transcribe {
         #[command(flatten)]
@@ -74,14 +75,14 @@ pub enum Commands {
         #[command(subcommand)]
         command: crate::commands::skill::Commands,
     },
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "desktop")]
     /// Open the desktop app or download page
     Desktop,
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "desktop")]
     /// Report a bug on GitHub
     #[command(hide = true)]
     Bug,
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "desktop")]
     /// Open char.com
     #[command(hide = true)]
     Hello,
@@ -98,25 +99,25 @@ pub enum Commands {
         #[command(subcommand)]
         command: Option<crate::commands::todo::Commands>,
     },
-    #[cfg(feature = "desktop")]
+    #[cfg(feature = "desktop-db")]
     /// Browse past meetings
     Meetings {
         #[command(subcommand)]
         command: crate::commands::meetings::Commands,
     },
-    #[cfg(feature = "desktop")]
+    #[cfg(feature = "desktop-db")]
     /// Browse humans (contacts)
     Humans {
         #[command(subcommand)]
         command: Option<crate::commands::humans::Commands>,
     },
-    #[cfg(feature = "desktop")]
+    #[cfg(feature = "desktop-db")]
     /// Browse organizations
     Orgs {
         #[command(subcommand)]
         command: Option<crate::commands::orgs::Commands>,
     },
-    #[cfg(feature = "desktop")]
+    #[cfg(feature = "desktop-db")]
     /// Export data in various formats
     Export {
         #[command(subcommand)]
@@ -127,6 +128,7 @@ pub enum Commands {
 impl Commands {
     pub fn base_override(&self) -> Option<&std::path::Path> {
         match self {
+            #[cfg(feature = "standalone")]
             Commands::Transcribe { args } => args.base.as_deref(),
             #[cfg(feature = "standalone")]
             Commands::Models { args } => args.base.as_deref(),
@@ -171,6 +173,28 @@ mod tests {
         assert!(!help.contains("--model <MODEL>"));
         assert!(!help.contains("--language <LANGUAGE>"));
         assert!(!help.contains("--base <DIR>"));
+    }
+
+    #[test]
+    #[cfg(all(
+        feature = "desktop",
+        not(feature = "desktop-db"),
+        not(feature = "standalone"),
+        not(feature = "todo")
+    ))]
+    fn desktop_help_stays_lightweight() {
+        let mut command = Cli::command();
+        let help = render_help(&mut command);
+
+        assert!(help.contains("desktop"));
+        assert!(help.contains("completions"));
+        assert!(!help.contains("transcribe"));
+        assert!(!help.contains("models"));
+        assert!(!help.contains("record"));
+        assert!(!help.contains("play"));
+        assert!(!help.contains("update"));
+        assert!(!help.contains("meetings"));
+        assert!(!help.contains("export"));
     }
 
     #[test]
@@ -289,7 +313,12 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "desktop")]
+    #[cfg(all(
+        feature = "desktop",
+        not(feature = "desktop-db"),
+        not(feature = "standalone"),
+        not(feature = "todo")
+    ))]
     fn generate_docs_desktop() {
         let cmd = Cli::command();
         let md = cli_docs::generate(&cmd);

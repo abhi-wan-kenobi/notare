@@ -1,6 +1,7 @@
 use crate::config::paths::{self, AppPaths};
-#[cfg(feature = "desktop")]
+#[cfg(feature = "desktop-db")]
 use crate::error::{CliError, CliResult};
+#[cfg(feature = "standalone")]
 use crate::stt;
 
 pub struct AppContext {
@@ -9,7 +10,7 @@ pub struct AppContext {
     #[cfg(feature = "standalone")]
     quiet: bool,
     trace_buffer: crate::OptTraceBuffer,
-    #[cfg(feature = "desktop")]
+    #[cfg(feature = "desktop-db")]
     pool: tokio::sync::OnceCell<sqlx::SqlitePool>,
 }
 
@@ -30,7 +31,7 @@ impl AppContext {
             #[cfg(feature = "standalone")]
             quiet,
             trace_buffer,
-            #[cfg(feature = "desktop")]
+            #[cfg(feature = "desktop-db")]
             pool: tokio::sync::OnceCell::new(),
         }
     }
@@ -61,6 +62,7 @@ impl AppContext {
         &self.paths
     }
 
+    #[cfg(feature = "standalone")]
     pub fn stt_overrides(
         &self,
         provider: Option<stt::SttProvider>,
@@ -89,7 +91,7 @@ impl AppContext {
         self.trace_buffer
     }
 
-    #[cfg(feature = "desktop")]
+    #[cfg(feature = "desktop-db")]
     pub async fn pool(&self) -> CliResult<sqlx::SqlitePool> {
         let pool = self.pool.get_or_try_init(|| init_pool(&self.paths)).await?;
 
@@ -107,7 +109,7 @@ fn analytics_client() -> hypr_analytics::AnalyticsClient {
     builder.build()
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(feature = "desktop-db")]
 async fn init_pool(paths: &AppPaths) -> CliResult<sqlx::SqlitePool> {
     let db = if cfg!(debug_assertions) {
         hypr_db_core2::Db3::connect_memory_plain()

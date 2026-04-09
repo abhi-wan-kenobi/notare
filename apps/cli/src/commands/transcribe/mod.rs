@@ -95,7 +95,7 @@ async fn start_batch(
     audio_dest: Option<&Path>,
     on_normalize_progress: Option<&mut dyn FnMut(f64)>,
 ) -> CliResult<BatchHandle> {
-    let resolved = resolve_config(None, stt).await?;
+    let resolved = resolve_config(stt).await?;
     let (temp_dir, normalized_input_path) =
         normalize_input_file(input, audio_dest, on_normalize_progress)?;
     let params = build_batch_params(&resolved, &normalized_input_path, keywords)?;

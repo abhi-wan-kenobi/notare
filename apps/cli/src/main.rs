@@ -4,6 +4,7 @@ mod commands;
 mod config;
 mod error;
 mod output;
+#[cfg(feature = "standalone")]
 mod stt;
 #[cfg(feature = "standalone")]
 pub(crate) mod tui;
@@ -56,6 +57,7 @@ type OptTraceBuffer = ();
 fn init_tracing(cli: &Cli) -> OptTraceBuffer {
     let level = cli.verbose.tracing_level_filter();
 
+    #[cfg(feature = "standalone")]
     let wants_json = matches!(
         cli.command,
         Some(Commands::Transcribe {
@@ -65,6 +67,8 @@ fn init_tracing(cli: &Cli) -> OptTraceBuffer {
             },
         })
     );
+    #[cfg(not(feature = "standalone"))]
+    let wants_json = false;
 
     #[cfg(feature = "standalone")]
     let wants_json = wants_json

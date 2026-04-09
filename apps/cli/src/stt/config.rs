@@ -82,11 +82,7 @@ impl ResolvedSttConfig {
     }
 }
 
-pub async fn resolve_config(
-    #[cfg(feature = "desktop")] _pool: Option<&sqlx::SqlitePool>,
-    #[cfg(not(feature = "desktop"))] _pool: Option<()>,
-    overrides: SttOverrides,
-) -> CliResult<ResolvedSttConfig> {
+pub async fn resolve_config(overrides: SttOverrides) -> CliResult<ResolvedSttConfig> {
     let language_code = overrides.language;
     let language = language_code
         .parse::<hypr_language::Language>()

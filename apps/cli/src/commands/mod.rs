@@ -1,24 +1,26 @@
+#[cfg(feature = "standalone")]
 pub mod transcribe;
+#[cfg(feature = "standalone")]
 pub(crate) mod update_check;
 
-#[cfg(feature = "desktop")]
+#[cfg(feature = "desktop-db")]
 pub mod export;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "desktop-db")]
 pub mod humans;
 #[cfg(feature = "todo")]
 pub mod integration;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "desktop-db")]
 pub mod meetings;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "desktop-db")]
 pub mod orgs;
 #[cfg(feature = "todo")]
 pub mod todo;
 
-#[cfg(feature = "standalone")]
+#[cfg(feature = "desktop")]
 pub mod bug;
-#[cfg(feature = "standalone")]
+#[cfg(feature = "desktop")]
 pub mod desktop;
-#[cfg(feature = "standalone")]
+#[cfg(feature = "desktop")]
 pub mod hello;
 #[cfg(feature = "standalone")]
 pub mod model;
@@ -67,7 +69,11 @@ pub(crate) fn resolve_session_dir(base: Option<&Path>, timestamp: &str) -> CliRe
 }
 
 pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()> {
+    #[cfg(not(any(feature = "standalone", feature = "desktop-db")))]
+    let _ = ctx;
+
     match command {
+        #[cfg(feature = "standalone")]
         Some(CliCommand::Transcribe { args }) => transcribe::run(ctx, args).await,
         #[cfg(feature = "standalone")]
         Some(CliCommand::Models { args }) => model::run(ctx, args).await,
@@ -81,7 +87,7 @@ pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()>
             crate::cli::generate_completions(shell);
             Ok(())
         }
-        #[cfg(feature = "standalone")]
+        #[cfg(feature = "desktop")]
         Some(CliCommand::Desktop) => {
             use desktop::DesktopAction;
             match desktop::run()? {
@@ -92,13 +98,13 @@ pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()>
             }
             Ok(())
         }
-        #[cfg(feature = "standalone")]
+        #[cfg(feature = "desktop")]
         Some(CliCommand::Bug) => {
             bug::run()?;
             eprintln!("Opened bug report page in browser");
             Ok(())
         }
-        #[cfg(feature = "standalone")]
+        #[cfg(feature = "desktop")]
         Some(CliCommand::Hello) => {
             hello::run()?;
             eprintln!("Opened char.com in browser");
@@ -110,13 +116,13 @@ pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()>
         Some(CliCommand::ShortcutDaemon) => shortcut::daemon::run().await,
         #[cfg(feature = "todo")]
         Some(CliCommand::Todo { command }) => todo::run(command).await,
-        #[cfg(feature = "desktop")]
+        #[cfg(feature = "desktop-db")]
         Some(CliCommand::Meetings { command }) => meetings::run(ctx, command).await,
-        #[cfg(feature = "desktop")]
+        #[cfg(feature = "desktop-db")]
         Some(CliCommand::Humans { command }) => humans::run(ctx, command).await,
-        #[cfg(feature = "desktop")]
+        #[cfg(feature = "desktop-db")]
         Some(CliCommand::Orgs { command }) => orgs::run(ctx, command).await,
-        #[cfg(feature = "desktop")]
+        #[cfg(feature = "desktop-db")]
         Some(CliCommand::Export { command }) => export::run(ctx, command).await,
         None => {
             use clap::CommandFactory;

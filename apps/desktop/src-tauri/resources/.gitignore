@@ -2,3 +2,5 @@ stt-aarch64-apple-darwin
 passthrough-aarch64-apple-darwin
 stt
 ttt
+cli/*
+!cli/.gitkeep

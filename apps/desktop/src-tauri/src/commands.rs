@@ -1,4 +1,5 @@
 use crate::AppExt;
+use crate::embedded_cli::EmbeddedCliStatus;
 
 #[tauri::command]
 #[specta::specta]
@@ -124,4 +125,28 @@ pub async fn set_char_v1p1_preview<R: tauri::Runtime>(
     v: bool,
 ) -> Result<(), String> {
     app.set_char_v1p1_preview(v)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn check_embedded_cli<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<EmbeddedCliStatus, String> {
+    Ok(crate::embedded_cli::check(&app))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn install_embedded_cli<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<EmbeddedCliStatus, String> {
+    crate::embedded_cli::install(&app)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn uninstall_embedded_cli<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<EmbeddedCliStatus, String> {
+    crate::embedded_cli::uninstall(&app)
 }

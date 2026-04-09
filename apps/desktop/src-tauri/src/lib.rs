@@ -1,5 +1,6 @@
 mod agents;
 mod commands;
+mod embedded_cli;
 mod ext;
 mod store;
 mod supervisor;
@@ -11,11 +12,13 @@ use tauri::Manager;
 use tauri_plugin_permissions::{Permission, PermissionsPluginExt};
 use tauri_plugin_windows::{AppWindow, WindowsPluginExt};
 
+#[cfg(any(feature = "dev", feature = "devtools"))]
 const STAGING_BUNDLE_ID: &str = "com.hyprnote.staging";
 
-fn create_audio_provider(bundle_id: &str) -> std::sync::Arc<dyn hypr_audio_actual::AudioProvider> {
+fn create_audio_provider(_bundle_id: &str) -> std::sync::Arc<dyn hypr_audio_actual::AudioProvider> {
     #[cfg(any(feature = "dev", feature = "devtools"))]
     {
+        let bundle_id = _bundle_id;
         let selection: u32 = std::env::var("MOCK_AUDIO")
             .ok()
             .and_then(|v| v.parse().ok())
@@ -147,13 +150,7 @@ pub async fn main() {
         .plugin(tauri_plugin_transcription::init())
         .plugin(tauri_plugin_tantivy::init())
         .plugin(tauri_plugin_audio_priority::init())
-        .plugin(tauri_plugin_local_llm::init(
-            tauri_plugin_local_llm::InitOptions {
-                parent_supervisor: root_supervisor_ctx
-                    .as_ref()
-                    .map(|ctx| ctx.supervisor.get_cell()),
-            },
-        ))
+        .plugin(tauri_plugin_local_llm::init())
         .plugin(tauri_plugin_local_stt::init(
             tauri_plugin_local_stt::InitOptions {
                 parent_supervisor: root_supervisor_ctx
@@ -372,6 +369,9 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::set_recently_opened_sessions::<tauri::Wry>,
             commands::get_char_v1p1_preview::<tauri::Wry>,
             commands::set_char_v1p1_preview::<tauri::Wry>,
+            commands::check_embedded_cli::<tauri::Wry>,
+            commands::install_embedded_cli::<tauri::Wry>,
+            commands::uninstall_embedded_cli::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }

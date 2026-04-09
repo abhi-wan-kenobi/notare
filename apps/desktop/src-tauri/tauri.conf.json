@@ -41,6 +41,7 @@
       "icons/nightly/icon.icns": "icons/nightly.icns",
       "icons/staging/icon.icns": "icons/staging.icns",
       "icons/pro/icon.icns": "icons/pro.icns",
+      "resources/cli/": "cli/",
       "resources/models/cactus/char-vlm/": "models/cactus/char-vlm/"
     },
     "macOS": {
