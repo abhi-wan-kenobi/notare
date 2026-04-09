@@ -81,7 +81,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        include: ${{ inputs.channel == 'staging' && fromJSON('[{"target":"aarch64-apple-darwin","arch":"aarch64","artifact_name":"silicon","include_am":true}]') || fromJSON('[{"target":"aarch64-apple-darwin","arch":"aarch64","artifact_name":"silicon","include_am":true},{"target":"x86_64-apple-darwin","arch":"x86_64","artifact_name":"intel","include_am":false}]') }}
+        include: ${{ inputs.channel == 'staging' && fromJSON('[{"target":"aarch64-apple-darwin","arch":"aarch64","artifact_name":"silicon"}]') || fromJSON('[{"target":"aarch64-apple-darwin","arch":"aarch64","artifact_name":"silicon"},{"target":"x86_64-apple-darwin","arch":"x86_64","artifact_name":"intel"}]') }}
     defaults:
       run:
         shell: bash
@@ -114,21 +114,10 @@ jobs:
           local-dir: apps/desktop/src-tauri/resources/models/cactus/_downloads
           output-dir: apps/desktop/src-tauri/resources/models/cactus/char-vlm/weight
           token: ${{ secrets.HF_TOKEN }}
-      - if: ${{ matrix.include_am }}
-        run: |
-          aws s3 cp s3://argmax/stt apps/desktop/src-tauri/binaries/char-sidecar-stt-${{ matrix.target }} \
-            --endpoint-url ${{ secrets.CLOUDFLARE_R2_ENDPOINT_URL }} \
-            --region auto
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
-      - if: ${{ matrix.include_am }}
-        run: |
-          chmod +x ./apps/desktop/src-tauri/binaries/char-sidecar-stt-${{ matrix.target }}
-          ./scripts/sidecar.sh "./apps/desktop/${{ env.TAURI_CONF_PATH }}" "binaries/char-sidecar-stt"
       - run: |
           TAURI_ENV_TARGET_TRIPLE=${{ matrix.target }} cargo xtask prepare-binaries
           ./scripts/sidecar.sh "./apps/desktop/${{ env.TAURI_CONF_PATH }}" "binaries/char-chrome-native-host"
+          ./scripts/sidecar.sh "./apps/desktop/${{ env.TAURI_CONF_PATH }}" "binaries/char-cli"
           ./scripts/sidecar.sh "./apps/desktop/${{ env.TAURI_CONF_PATH }}" "binaries/check-permissions"
       # - run: ./scripts/resource.sh "./apps/desktop/${{ env.TAURI_CONF_PATH }}" "resources/libonnxruntime.dylib"
       - uses: ./.github/actions/apple_cert
@@ -147,7 +136,6 @@ jobs:
           # https://v2.tauri.app/reference/environment-variables/
           CI: false
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          AM_API_KEY: ${{ matrix.include_am && secrets.AM_API_KEY || '' }}
           CACTUS_CLOUD_API_BASE: "https://api.char.com/cactus"
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           VITE_POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}

@@ -141,13 +141,31 @@ fn install_path_for_command(command_name: &str) -> PathBuf {
 fn resolve_resource_path<R: tauri::Runtime, T: tauri::Manager<R>>(manager: &T) -> Option<PathBuf> {
     use tauri::path::BaseDirectory;
 
+    if let Some(bundled_path) = manager
+        .path()
+        .resolve("char-cli", BaseDirectory::Executable)
+        .ok()
+        .filter(|path| path.exists())
+    {
+        return Some(bundled_path);
+    }
+
     let file_name = bundled_binary_name()?;
-    let bundled_path = manager
+
+    if let Some(bundled_resource_path) = manager
         .path()
         .resolve(format!("cli/{file_name}"), BaseDirectory::Resource)
-        .ok()?;
-    if bundled_path.exists() {
-        return Some(bundled_path);
+        .ok()
+        .filter(|path| path.exists())
+    {
+        return Some(bundled_resource_path);
+    }
+
+    let debug_binary_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("binaries")
+        .join(file_name);
+    if debug_binary_path.exists() {
+        return Some(debug_binary_path);
     }
 
     let debug_path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -446,14 +464,14 @@ mod tests {
     #[test]
     fn build_install_script_quotes_paths() {
         let script = build_install_script(
-            Path::new(
-                "/Applications/Char Dev.app/Contents/Resources/cli/char-cli-aarch64-apple-darwin",
-            ),
+            Path::new("/Applications/Char Dev.app/Contents/MacOS/char-cli"),
             Path::new("/usr/local/bin/char-dev"),
         );
 
         assert!(script.contains("mkdir -p '/usr/local/bin'"));
-        assert!(script.contains("ln -s '/Applications/Char Dev.app/Contents/Resources/cli/char-cli-aarch64-apple-darwin' '/usr/local/bin/char-dev'"));
+        assert!(script.contains(
+            "ln -s '/Applications/Char Dev.app/Contents/MacOS/char-cli' '/usr/local/bin/char-dev'"
+        ));
     }
 
     #[cfg(target_os = "macos")]
