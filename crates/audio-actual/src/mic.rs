@@ -44,7 +44,13 @@ impl MicInput {
     pub fn list_devices() -> Vec<String> {
         cpal::default_host()
             .input_devices()
-            .unwrap()
+            .map_err(|err| {
+                tracing::error!(error = %err, "mic_list_devices_failed");
+                err
+            })
+            .ok()
+            .into_iter()
+            .flatten()
             .filter_map(|d| {
                 let name = d
                     .description()
@@ -97,9 +103,14 @@ impl MicInput {
                 .ok_or(crate::Error::NoInputDevice)?,
         };
 
-        let config = device.default_input_config().unwrap();
+        let device_name = get_device_name(&device);
+        let config = device.default_input_config().map_err(|err| {
+            tracing::error!(error = %err, device_name, "mic_default_input_config_failed");
+            crate::Error::MicOpenFailed
+        })?;
         tracing::info!(
             hyprnote.audio.sample_rate_hz = ?config.sample_rate(),
+            device_name,
             "mic_input_initialized"
         );
 
