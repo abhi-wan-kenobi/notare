@@ -141,16 +141,25 @@ fn install_path_for_command(command_name: &str) -> PathBuf {
 fn resolve_resource_path<R: tauri::Runtime, T: tauri::Manager<R>>(manager: &T) -> Option<PathBuf> {
     use tauri::path::BaseDirectory;
 
+    let file_name = bundled_binary_name()?;
+
     if let Some(bundled_path) = manager
         .path()
-        .resolve("char-cli", BaseDirectory::Executable)
+        .resolve(file_name, BaseDirectory::Executable)
         .ok()
         .filter(|path| path.exists())
     {
         return Some(bundled_path);
     }
 
-    let file_name = bundled_binary_name()?;
+    if let Some(legacy_bundled_path) = manager
+        .path()
+        .resolve("char-cli", BaseDirectory::Executable)
+        .ok()
+        .filter(|path| path.exists())
+    {
+        return Some(legacy_bundled_path);
+    }
 
     if let Some(bundled_resource_path) = manager
         .path()
