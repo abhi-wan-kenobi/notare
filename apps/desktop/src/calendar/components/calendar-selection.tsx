@@ -4,6 +4,7 @@ import {
   CheckIcon,
   EllipsisIcon,
   Loader2Icon,
+  RefreshCwIcon,
 } from "lucide-react";
 import { type MouseEvent, useMemo } from "react";
 
@@ -38,6 +39,7 @@ export interface CalendarGroup {
 interface CalendarSelectionProps {
   groups: CalendarGroup[];
   onToggle: (calendar: CalendarItem, enabled: boolean) => void;
+  onRefresh?: () => void;
   className?: string;
   isLoading?: boolean;
   disableHoverTone?: boolean;
@@ -46,6 +48,7 @@ interface CalendarSelectionProps {
 export function CalendarSelection({
   groups,
   onToggle,
+  onRefresh,
   className,
   isLoading,
   disableHoverTone,
@@ -72,7 +75,19 @@ export function CalendarSelection({
         ) : (
           <>
             <CalendarOffIcon className="mb-2 size-6 text-neutral-300" />
-            <p className="text-xs text-neutral-500">No calendars found</p>
+            <div className="flex items-center gap-1 text-xs text-neutral-500">
+              <p>No calendars found</p>
+              {onRefresh ? (
+                <button
+                  type="button"
+                  onClick={onRefresh}
+                  className="rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+                  aria-label="Refresh calendars"
+                >
+                  <RefreshCwIcon className="size-3" />
+                </button>
+              ) : null}
+            </div>
           </>
         )}
       </div>

@@ -60,7 +60,8 @@ function getCalendarSelectionKey(groups: CalendarGroup[]) {
 
 function AppleCalendarList() {
   const { scheduleSync } = useSync();
-  const { groups, handleToggle, isLoading } = useAppleCalendarSelection();
+  const { groups, handleRefresh, handleToggle, isLoading } =
+    useAppleCalendarSelection();
 
   useMountEffect(() => {
     scheduleSync();
@@ -71,6 +72,7 @@ function AppleCalendarList() {
       key={getCalendarSelectionKey(groups)}
       groups={groups}
       onToggle={handleToggle}
+      onRefresh={handleRefresh}
       isLoading={isLoading}
       disableHoverTone
       className="rounded-xl border border-white/45 bg-white/28 shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_8px_24px_-20px_rgba(87,83,78,0.35)] backdrop-blur-md backdrop-saturate-150"
@@ -121,8 +123,13 @@ function GoogleCalendarConnectedContent({
   providerConnections: ConnectionItem[];
 }) {
   const { scheduleSync } = useSync();
-  const { groups, connectionSourceMap, handleToggle, isLoading } =
-    useOAuthCalendarSelection(GOOGLE_PROVIDER!);
+  const {
+    groups,
+    connectionSourceMap,
+    handleRefresh,
+    handleToggle,
+    isLoading,
+  } = useOAuthCalendarSelection(GOOGLE_PROVIDER!);
   const reconnectRequiredConnections = useMemo(
     () =>
       providerConnections.filter(
@@ -163,6 +170,7 @@ function GoogleCalendarConnectedContent({
         key={getCalendarSelectionKey(groupsWithMenus)}
         groups={groupsWithMenus}
         onToggle={handleToggle}
+        onRefresh={handleRefresh}
         isLoading={isLoading}
         disableHoverTone
         className="rounded-xl border border-white/45 bg-white/28 shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_8px_24px_-20px_rgba(87,83,78,0.35)] backdrop-blur-md backdrop-saturate-150"
@@ -240,8 +248,13 @@ function OutlookCalendarConnectedContent({
   providerConnections: ConnectionItem[];
 }) {
   const { scheduleSync } = useSync();
-  const { groups, connectionSourceMap, handleToggle, isLoading } =
-    useOAuthCalendarSelection(OUTLOOK_PROVIDER!);
+  const {
+    groups,
+    connectionSourceMap,
+    handleRefresh,
+    handleToggle,
+    isLoading,
+  } = useOAuthCalendarSelection(OUTLOOK_PROVIDER!);
   const reconnectRequiredConnections = useMemo(
     () =>
       providerConnections.filter(
@@ -282,6 +295,7 @@ function OutlookCalendarConnectedContent({
         key={getCalendarSelectionKey(groupsWithMenus)}
         groups={groupsWithMenus}
         onToggle={handleToggle}
+        onRefresh={handleRefresh}
         isLoading={isLoading}
         disableHoverTone
         className="rounded-xl border border-white/45 bg-white/28 shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_8px_24px_-20px_rgba(87,83,78,0.35)] backdrop-blur-md backdrop-saturate-150"

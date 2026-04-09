@@ -1,4 +1,3 @@
-import { AgentIntegrations } from "./agent-integrations";
 import { DownloadButtons } from "./download-buttons";
 import { V1p1PreviewToggle } from "./v1p1-preview-toggle";
 
@@ -7,7 +6,7 @@ import { SettingsPageTitle } from "~/settings/page-title";
 export function SettingsLab() {
   return (
     <div className="flex flex-col gap-8">
-      <SettingsPageTitle title="Lab" />
+      <SettingsPageTitle title="General" />
 
       <div>
         <h2 className="mb-4 font-serif text-lg font-semibold">Updates</h2>
@@ -22,8 +21,6 @@ export function SettingsLab() {
           <V1p1PreviewToggle />
         </div>
       </div>
-
-      <AgentIntegrations />
     </div>
   );
 }

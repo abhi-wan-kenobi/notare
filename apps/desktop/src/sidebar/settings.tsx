@@ -1,10 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { getIdentifier } from "@tauri-apps/api/app";
 import {
   AudioLinesIcon,
   ArrowUpRightIcon,
   BellIcon,
   BookText,
+  BotIcon,
   BrainIcon,
   CalendarIcon,
   FlaskConical,
@@ -55,15 +54,14 @@ const GROUPS: {
     ],
   },
   {
-    label: "Advanced",
-    items: [{ id: "lab", label: "Lab", icon: FlaskConical }],
+    label: "Lab",
+    items: [
+      { id: "lab", label: "General", icon: FlaskConical },
+      { id: "agent", label: "Agent", icon: BotIcon },
+      { id: "todo", label: "Ticket", icon: TicketIcon },
+    ],
   },
 ];
-
-const DONT_USE_THIS_GROUP = {
-  label: "Do not use",
-  items: [{ id: "todo" as SettingsTab, label: "Ticket", icon: TicketIcon }],
-};
 
 export function SettingsNav() {
   const currentTab = useTabs((state) => state.currentTab);
@@ -71,16 +69,6 @@ export function SettingsNav() {
   const updateSettingsTabState = useTabs(
     (state) => state.updateSettingsTabState,
   );
-
-  const identifierQuery = useQuery({
-    queryKey: ["app-identifier"],
-    queryFn: () => getIdentifier(),
-    staleTime: Infinity,
-  });
-
-  const isDev = identifierQuery.data === "com.hyprnote.dev";
-  const isStaging = identifierQuery.data === "com.hyprnote.staging";
-  const showDontUseThis = isDev || isStaging;
 
   const activeTab =
     currentTab?.type === "settings" ? (currentTab.state.tab ?? "app") : "app";
@@ -98,8 +86,6 @@ export function SettingsNav() {
     openNew({ type: "templates" });
   }, [openNew]);
 
-  const groups = showDontUseThis ? [...GROUPS, DONT_USE_THIS_GROUP] : GROUPS;
-
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       <div className="flex h-12 items-center py-2 pr-1 pl-3">
@@ -107,7 +93,7 @@ export function SettingsNav() {
       </div>
       <div className="scrollbar-hide flex-1 overflow-y-auto">
         <div className="flex flex-col gap-4 pb-2">
-          {groups.map((group) => (
+          {GROUPS.map((group) => (
             <div key={group.label} className="flex flex-col gap-0.5">
               <span className="px-3 pb-1 text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
                 {group.label}

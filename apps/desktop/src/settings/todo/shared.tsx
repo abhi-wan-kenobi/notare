@@ -4,20 +4,14 @@ export type TodoProvider = {
   id: string;
   displayName: string;
   icon: ReactNode;
-  nangoIntegrationId: string;
-  filterLabel: string;
-  filterPlaceholder: string;
+  nangoIntegrationId?: string;
+  filterLabel?: string;
+  filterPlaceholder?: string;
+  permission?: "reminders";
+  platform?: "macos" | "all";
 };
 
 export const TODO_PROVIDERS: TodoProvider[] = [
-  {
-    id: "linear",
-    displayName: "Linear",
-    icon: <img src="/assets/linear-icon.svg" alt="Linear" className="size-5" />,
-    nangoIntegrationId: "linear",
-    filterLabel: "Team / Project",
-    filterPlaceholder: "e.g. Team name or project",
-  },
   {
     id: "github",
     displayName: "GitHub",
@@ -25,5 +19,19 @@ export const TODO_PROVIDERS: TodoProvider[] = [
     nangoIntegrationId: "github",
     filterLabel: "Repository",
     filterPlaceholder: "e.g. owner/repo",
+    platform: "all",
+  },
+  {
+    id: "apple-reminders",
+    displayName: "Apple Reminders",
+    icon: (
+      <img
+        src="/assets/apple-reminders.png"
+        alt="Apple Reminders"
+        className="size-5 rounded-[4px] object-cover"
+      />
+    ),
+    permission: "reminders",
+    platform: "macos",
   },
 ];

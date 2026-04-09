@@ -16,7 +16,8 @@ export function AppleCalendarSelection({
   calendarClassName,
   leftAction,
 }: { calendarClassName?: string; leftAction?: React.ReactNode } = {}) {
-  const { groups, handleToggle, scheduleSync } = useAppleCalendarSelection();
+  const { groups, handleRefresh, handleToggle, scheduleSync } =
+    useAppleCalendarSelection();
 
   useMountEffect(() => {
     if (groups.length === 0) {
@@ -31,6 +32,7 @@ export function AppleCalendarSelection({
       <CalendarSelection
         groups={groups}
         onToggle={handleToggle}
+        onRefresh={handleRefresh}
         className={calendarClassName}
       />
     </div>
@@ -38,7 +40,8 @@ export function AppleCalendarSelection({
 }
 
 export function useAppleCalendarSelection() {
-  const { status, scheduleDebouncedSync, scheduleSync } = useSync();
+  const { cancelDebouncedSync, status, scheduleDebouncedSync, scheduleSync } =
+    useSync();
 
   const store = main.UI.useStore(main.STORE_ID);
   const calendars = main.UI.useTable("calendars", main.STORE_ID);
@@ -80,8 +83,14 @@ export function useAppleCalendarSelection() {
     [store, scheduleDebouncedSync],
   );
 
+  const handleRefresh = useCallback(() => {
+    cancelDebouncedSync();
+    scheduleSync();
+  }, [cancelDebouncedSync, scheduleSync]);
+
   return {
     groups,
+    handleRefresh,
     handleToggle,
     isLoading: status === "syncing",
     scheduleSync,

@@ -181,8 +181,13 @@ function ConnectedContent({
   config: CalendarProvider;
   connections: ConnectionItem[];
 }) {
-  const { groups, connectionSourceMap, handleToggle, isLoading } =
-    useOAuthCalendarSelection(config);
+  const {
+    groups,
+    connectionSourceMap,
+    handleRefresh,
+    handleToggle,
+    isLoading,
+  } = useOAuthCalendarSelection(config);
 
   const groupsWithMenus = useMemo(
     () =>
@@ -230,6 +235,7 @@ function ConnectedContent({
     <OAuthCalendarSelection
       groups={groupsWithMenus}
       onToggle={handleToggle}
+      onRefresh={handleRefresh}
       isLoading={isLoading}
     />
   );

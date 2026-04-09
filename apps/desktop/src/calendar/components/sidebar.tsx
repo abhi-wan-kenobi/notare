@@ -112,7 +112,7 @@ export function CalendarSidebarContent() {
         provider.disabled ? (
           <div
             key={provider.id}
-            className="flex items-center gap-2 py-2 opacity-50"
+            className="flex items-center gap-2 border-b border-neutral-100 py-3 opacity-50 last:border-none"
           >
             {provider.icon}
             <span className="text-sm font-medium">{provider.displayName}</span>
@@ -218,18 +218,21 @@ function ProviderAccordionItem({
   const showProviderMenu = useNativeContextMenu(providerMenuItems);
 
   return (
-    <AccordionItem value={provider.id} className="group/provider border-none">
+    <AccordionItem
+      value={provider.id}
+      className="group/provider border-b border-neutral-100 last:border-none"
+    >
       <div
         onContextMenu={
           providerMenuItems.length > 0 ? showProviderMenu : undefined
         }
-        className="group -mx-2 grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 rounded-md px-2 hover:bg-neutral-50"
+        className="group grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 rounded-md hover:bg-neutral-50"
       >
         <AccordionHeader
           className={cn(["min-w-0", requiresPro && "opacity-60"])}
         >
           <AccordionTriggerPrimitive
-            className="flex w-full min-w-0 items-center py-2 text-left text-sm font-medium transition-all hover:no-underline"
+            className="flex w-full min-w-0 items-center py-3 text-left text-sm font-medium transition-all hover:no-underline"
             onClick={handleTriggerClick}
           >
             <div className="flex min-w-0 items-center gap-2">
@@ -275,7 +278,7 @@ function ProviderAccordionItem({
         )}
       </div>
       {!requiresPro && (
-        <AccordionContent className="pb-2">
+        <AccordionContent className="pb-3">
           {provider.id === "apple" && (
             <div className="flex flex-col gap-3">
               {calendar.status !== "authorized" ? (

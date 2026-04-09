@@ -1,29 +1,50 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
-import { Input } from "@hypr/ui/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@hypr/ui/components/ui/tooltip";
 
+import { TodoFilterField, TODO_FILTER_SETTING_KEYS } from "./filter-field";
+import { GitHubTodoProviderContent } from "./github";
 import type { TodoProvider } from "./shared";
 
 import { useAuth } from "~/auth";
 import { useBillingAccess } from "~/auth/billing";
 import { useConnections } from "~/auth/useConnections";
+import {
+  AccessPermissionRow,
+  TroubleShootingLink,
+} from "~/calendar/components/apple/permission";
+import { usePermission } from "~/shared/hooks/usePermissions";
 import { openIntegrationUrl } from "~/shared/integration";
 
 export function TodoProviderContent({ config }: { config: TodoProvider }) {
+  if (config.permission === "reminders") {
+    return <AppleRemindersProviderContent />;
+  }
+
+  if (config.id === "github") {
+    return <GitHubTodoProviderContent config={config} />;
+  }
+
+  return <OAuthTodoProviderContent config={config} />;
+}
+
+function OAuthTodoProviderContent({ config }: { config: TodoProvider }) {
+  if (!config.nangoIntegrationId) {
+    return null;
+  }
+
   const auth = useAuth();
   const { isPaid, upgradeToPro } = useBillingAccess();
   const { data: connections, isError } = useConnections(isPaid);
-  const [filter, setFilter] = useState("");
 
   const providerConnections = useMemo(
     () =>
       connections?.filter(
-        (c) => c.integration_id === config.nangoIntegrationId,
+        (connection) => connection.integration_id === config.nangoIntegrationId,
       ) ?? [],
     [connections, config.nangoIntegrationId],
   );
@@ -63,6 +84,7 @@ export function TodoProviderContent({ config }: { config: TodoProvider }) {
     return (
       <div className="pt-1 pb-2">
         <button
+          type="button"
           onClick={upgradeToPro}
           className="cursor-pointer text-xs text-neutral-600 underline transition-colors hover:text-neutral-900"
         >
@@ -86,6 +108,7 @@ export function TodoProviderContent({ config }: { config: TodoProvider }) {
     return (
       <div className="pt-1 pb-2">
         <button
+          type="button"
           onClick={handleConnect}
           className="cursor-pointer text-xs text-neutral-600 underline transition-colors hover:text-neutral-900"
         >
@@ -95,70 +118,124 @@ export function TodoProviderContent({ config }: { config: TodoProvider }) {
     );
   }
 
+  const filterSettingKey =
+    TODO_FILTER_SETTING_KEYS[
+      config.id as keyof typeof TODO_FILTER_SETTING_KEYS
+    ];
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 pb-1">
-        {providerConnections.some((c) => c.status === "reconnect_required") ? (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() =>
-                openIntegrationUrl(
-                  config.nangoIntegrationId,
-                  providerConnections[0].connection_id,
-                  "reconnect",
-                  "todo",
-                )
-              }
-              className="cursor-pointer text-xs text-amber-700 underline transition-colors hover:text-amber-900"
-            >
-              Reconnect required
-            </button>
-            <span className="text-xs text-neutral-400">or</span>
-            <button
-              onClick={() =>
-                openIntegrationUrl(
-                  config.nangoIntegrationId,
-                  providerConnections[0].connection_id,
-                  "disconnect",
-                  "todo",
-                )
-              }
-              className="cursor-pointer text-xs text-red-500 underline transition-colors hover:text-red-700"
-            >
-              Disconnect
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() =>
-              openIntegrationUrl(
-                config.nangoIntegrationId,
-                providerConnections[0].connection_id,
-                "disconnect",
-                "todo",
-              )
-            }
-            className="cursor-pointer text-xs text-neutral-500 underline transition-colors hover:text-neutral-700"
-          >
-            Disconnect
-          </button>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex-1">
-          <h3 className="mb-1 text-sm font-medium">{config.filterLabel}</h3>
-          <p className="text-xs text-neutral-500">
-            Filter synced items by {config.filterLabel.toLowerCase()}.
-          </p>
-        </div>
-        <Input
-          className="w-52"
-          placeholder={config.filterPlaceholder}
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+      <ConnectionActions
+        config={config}
+        providerConnections={providerConnections}
+      />
+      {filterSettingKey ? (
+        <TodoFilterField
+          settingKey={filterSettingKey}
+          label={config.filterLabel ?? "Repository"}
+          description={`Filter synced items by ${(config.filterLabel ?? "repository").toLowerCase()}.`}
+          placeholder={config.filterPlaceholder ?? ""}
         />
-      </div>
+      ) : null}
     </div>
+  );
+}
+
+function ConnectionActions({
+  config,
+  providerConnections,
+}: {
+  config: TodoProvider;
+  providerConnections: { connection_id: string; status?: string | null }[];
+}) {
+  if (!config.nangoIntegrationId || providerConnections.length === 0) {
+    return null;
+  }
+
+  const reconnectRequiredConnection = providerConnections.find(
+    (connection) => connection.status === "reconnect_required",
+  );
+  const activeConnection =
+    reconnectRequiredConnection ?? providerConnections[0];
+
+  if (reconnectRequiredConnection) {
+    return (
+      <div className="flex items-center gap-2 pb-1">
+        <button
+          type="button"
+          onClick={() =>
+            openIntegrationUrl(
+              config.nangoIntegrationId,
+              activeConnection.connection_id,
+              "reconnect",
+              "todo",
+            )
+          }
+          className="cursor-pointer text-xs text-amber-700 underline transition-colors hover:text-amber-900"
+        >
+          Reconnect required
+        </button>
+        <span className="text-xs text-neutral-400">or</span>
+        <button
+          type="button"
+          onClick={() =>
+            openIntegrationUrl(
+              config.nangoIntegrationId,
+              activeConnection.connection_id,
+              "disconnect",
+              "todo",
+            )
+          }
+          className="cursor-pointer text-xs text-red-500 underline transition-colors hover:text-red-700"
+        >
+          Disconnect
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 pb-1">
+      <button
+        type="button"
+        onClick={() =>
+          openIntegrationUrl(
+            config.nangoIntegrationId,
+            activeConnection.connection_id,
+            "disconnect",
+            "todo",
+          )
+        }
+        className="cursor-pointer text-xs text-neutral-500 underline transition-colors hover:text-neutral-700"
+      >
+        Disconnect
+      </button>
+    </div>
+  );
+}
+
+function AppleRemindersProviderContent() {
+  const reminders = usePermission("reminders");
+
+  if (reminders.status !== "authorized") {
+    return (
+      <AccessPermissionRow
+        title="Reminders"
+        status={reminders.status}
+        isPending={reminders.isPending}
+        onOpen={reminders.open}
+        onRequest={reminders.request}
+        onReset={reminders.reset}
+      />
+    );
+  }
+
+  return (
+    <TroubleShootingLink
+      onRequest={reminders.request}
+      onReset={reminders.reset}
+      onOpen={reminders.open}
+      isPending={reminders.isPending}
+    />
   );
 }

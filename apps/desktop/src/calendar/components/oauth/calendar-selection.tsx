@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 
 import { useSync } from "../context";
@@ -13,25 +14,30 @@ import * as main from "~/store/tinybase/store/main";
 export function OAuthCalendarSelection({
   groups,
   onToggle,
+  onRefresh,
   isLoading,
 }: {
   groups: CalendarGroup[];
   onToggle: (calendar: CalendarItem, enabled: boolean) => void;
+  onRefresh?: () => void;
   isLoading: boolean;
 }) {
   return (
     <CalendarSelection
       groups={groups}
       onToggle={onToggle}
+      onRefresh={onRefresh}
       isLoading={isLoading}
     />
   );
 }
 
 export function useOAuthCalendarSelection(config: CalendarProvider) {
+  const queryClient = useQueryClient();
   const store = main.UI.useStore(main.STORE_ID);
   const calendars = main.UI.useTable("calendars", main.STORE_ID);
-  const { status, scheduleDebouncedSync } = useSync();
+  const { cancelDebouncedSync, status, scheduleDebouncedSync, scheduleSync } =
+    useSync();
 
   const { groups, connectionSourceMap } = useMemo(() => {
     const providerCalendars = Object.entries(calendars).filter(
@@ -109,9 +115,18 @@ export function useOAuthCalendarSelection(config: CalendarProvider) {
     [store, scheduleDebouncedSync],
   );
 
+  const handleRefresh = useCallback(() => {
+    cancelDebouncedSync();
+    void queryClient.invalidateQueries({
+      queryKey: ["integration-status"],
+    });
+    scheduleSync();
+  }, [cancelDebouncedSync, queryClient, scheduleSync]);
+
   return {
     groups,
     connectionSourceMap,
+    handleRefresh,
     handleToggle,
     isLoading: status === "syncing",
   };

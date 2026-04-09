@@ -118,6 +118,16 @@ export const SETTINGS_MAPPING = {
       type: "string",
       path: ["general", "selected_template_id"],
     },
+    todo_linear_filter: {
+      type: "string",
+      path: ["todo", "linear_filter"],
+      default: "" as string,
+    },
+    todo_github_repository: {
+      type: "string",
+      path: ["todo", "github_repository"],
+      default: "" as string,
+    },
   },
   tables: {
     ai_providers: {
