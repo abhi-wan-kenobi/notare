@@ -17,6 +17,7 @@ specta-typescript = { workspace = true }
 objc2 = { workspace = true }
 objc2-app-kit = { workspace = true, features = ["NSWindow", "NSColor", "NSScreen"] }
 objc2-foundation = { workspace = true }
+tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2.1" }
 
 [dependencies]
 serde = { workspace = true }

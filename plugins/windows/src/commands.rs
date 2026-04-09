@@ -17,6 +17,16 @@ pub async fn window_show(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn window_hide(
+    app: tauri::AppHandle<tauri::Wry>,
+    window: AppWindow,
+) -> Result<(), String> {
+    app.windows().hide(window).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn window_destroy(
     app: tauri::AppHandle<tauri::Wry>,
     window: AppWindow,

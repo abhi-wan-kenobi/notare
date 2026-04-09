@@ -18355,6 +18355,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-nspanel"
+version = "2.1.0"
+source = "git+https://github.com/ahkohd/tauri-nspanel?branch=v2.1#a3122e894383aa068ec5365a42994e3ac94ba1b6"
+dependencies = [
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "pastey",
+ "tauri",
+]
+
+[[package]]
 name = "tauri-plugin"
 version = "2.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -19608,6 +19620,7 @@ dependencies = [
  "specta-typescript",
  "strum 0.27.2",
  "tauri",
+ "tauri-nspanel",
  "tauri-plugin",
  "tauri-plugin-analytics",
  "tauri-plugin-os",

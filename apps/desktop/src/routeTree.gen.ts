@@ -13,6 +13,7 @@ import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppOnboardingRouteImport } from './routes/app/onboarding'
 import { Route as AppInstructionRouteImport } from './routes/app/instruction'
+import { Route as AppComposerRouteImport } from './routes/app/composer'
 import { Route as AppMain2LayoutRouteImport } from './routes/app/main2/_layout'
 import { Route as AppMainLayoutRouteImport } from './routes/app/main/_layout'
 import { Route as AppMain2LayoutIndexRouteImport } from './routes/app/main2/_layout.index'
@@ -38,6 +39,11 @@ const AppInstructionRoute = AppInstructionRouteImport.update({
   path: '/instruction',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppComposerRoute = AppComposerRouteImport.update({
+  id: '/composer',
+  path: '/composer',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppMain2LayoutRoute = AppMain2LayoutRouteImport.update({
   id: '/main2/_layout',
   path: '/main2',
@@ -61,6 +67,7 @@ const AppMainLayoutIndexRoute = AppMainLayoutIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/app': typeof AppRouteRouteWithChildren
+  '/app/composer': typeof AppComposerRoute
   '/app/instruction': typeof AppInstructionRoute
   '/app/onboarding': typeof AppOnboardingRoute
   '/app/': typeof AppIndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/app/main2/': typeof AppMain2LayoutIndexRoute
 }
 export interface FileRoutesByTo {
+  '/app/composer': typeof AppComposerRoute
   '/app/instruction': typeof AppInstructionRoute
   '/app/onboarding': typeof AppOnboardingRoute
   '/app': typeof AppIndexRoute
@@ -79,6 +87,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/app': typeof AppRouteRouteWithChildren
+  '/app/composer': typeof AppComposerRoute
   '/app/instruction': typeof AppInstructionRoute
   '/app/onboarding': typeof AppOnboardingRoute
   '/app/': typeof AppIndexRoute
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/app'
+    | '/app/composer'
     | '/app/instruction'
     | '/app/onboarding'
     | '/app/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/app/main2/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/app/composer'
     | '/app/instruction'
     | '/app/onboarding'
     | '/app'
@@ -108,6 +119,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/app'
+    | '/app/composer'
     | '/app/instruction'
     | '/app/onboarding'
     | '/app/'
@@ -149,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/instruction'
       fullPath: '/app/instruction'
       preLoaderRoute: typeof AppInstructionRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/composer': {
+      id: '/app/composer'
+      path: '/composer'
+      fullPath: '/app/composer'
+      preLoaderRoute: typeof AppComposerRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/main2/_layout': {
@@ -207,6 +226,7 @@ const AppMain2LayoutRouteWithChildren = AppMain2LayoutRoute._addFileChildren(
 )
 
 interface AppRouteRouteChildren {
+  AppComposerRoute: typeof AppComposerRoute
   AppInstructionRoute: typeof AppInstructionRoute
   AppOnboardingRoute: typeof AppOnboardingRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -215,6 +235,7 @@ interface AppRouteRouteChildren {
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppComposerRoute: AppComposerRoute,
   AppInstructionRoute: AppInstructionRoute,
   AppOnboardingRoute: AppOnboardingRoute,
   AppIndexRoute: AppIndexRoute,

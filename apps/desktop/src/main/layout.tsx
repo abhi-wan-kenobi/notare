@@ -10,7 +10,13 @@ import { TaskStorageProvider } from "~/editor/task-storage";
 import { SearchEngineProvider } from "~/search/contexts/engine";
 import { SearchUIProvider } from "~/search/contexts/ui";
 
-export function ClassicMainLayout({ children }: { children: React.ReactNode }) {
+export function ClassicMainLayout({
+  children,
+  includeServices = true,
+}: {
+  children: React.ReactNode;
+  includeServices?: boolean;
+}) {
   const { persistedStore, aiTaskStore, toolRegistry } = useRouteContext({
     from: "__root__",
   });
@@ -27,7 +33,7 @@ export function ClassicMainLayout({ children }: { children: React.ReactNode }) {
             <ToolRegistryProvider registry={toolRegistry}>
               <AITaskProvider store={aiTaskStore}>
                 <NotificationProvider>
-                  <ClassicMainServices />
+                  {includeServices ? <ClassicMainServices /> : null}
                   {children}
                 </NotificationProvider>
               </AITaskProvider>

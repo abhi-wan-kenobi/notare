@@ -12,7 +12,10 @@ import {
   useCreateManager,
 } from "tinytick/ui-react";
 
-import { init as initWindowsPlugin } from "@hypr/plugin-windows";
+import {
+  getCurrentWebviewWindowLabel,
+  init as initWindowsPlugin,
+} from "@hypr/plugin-windows";
 import { Toaster } from "@hypr/ui/components/ui/toast";
 import "@hypr/ui/globals.css";
 
@@ -96,10 +99,31 @@ if (env.VITE_SENTRY_DSN) {
   });
 }
 
+async function initDevTools() {
+  if (!import.meta.env.DEV || getCurrentWebviewWindowLabel() === "composer") {
+    return;
+  }
+
+  const [{ scan }] = await Promise.all([
+    import("react-scan"),
+    import("react-grab"),
+  ]);
+
+  scan();
+  (
+    window as typeof window & {
+      __REACT_GRAB__?: {
+        setToolbarState: (state: { collapsed: boolean; edge: "right" }) => void;
+      };
+    }
+  ).__REACT_GRAB__?.setToolbarState({ collapsed: true, edge: "right" });
+}
+
 function AppWithTiny() {
   const manager = useCreateManager(() => {
     return createManager().start();
   });
+  const isMainWindow = getCurrentWebviewWindowLabel() === "main";
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -108,8 +132,8 @@ function AppWithTiny() {
           <StoreComponent />
           <SettingsStoreComponent />
           <App />
-          <TaskManager />
-          <EventListeners />
+          {isMainWindow ? <TaskManager /> : null}
+          {isMainWindow ? <EventListeners /> : null}
           <Toaster />
         </TinyBaseProvider>
       </TinyTickProvider>
@@ -118,6 +142,7 @@ function AppWithTiny() {
 }
 
 initWindowsPlugin();
+void initDevTools();
 
 const rootElement = document.getElementById("root")!;
 if (!rootElement.innerHTML) {

@@ -5,6 +5,7 @@ Default permissions for the plugin
 #### This default permission set includes the following:
 
 - `allow-window-show`
+- `allow-window-hide`
 - `allow-window-destroy`
 - `allow-window-navigate`
 - `allow-window-emit-navigate`
@@ -150,6 +151,32 @@ Enables the window_expand_width command without any pre-configured scope.
 <td>
 
 Denies the window_expand_width command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:allow-window-hide`
+
+</td>
+<td>
+
+Enables the window_hide command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`windows:deny-window-hide`
+
+</td>
+<td>
+
+Denies the window_hide command without any pre-configured scope.
 
 </td>
 </tr>

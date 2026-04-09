@@ -1,3 +1,4 @@
+pub(crate) mod composer;
 mod v1;
 
 pub type AppWindow = v1::AppWindow;

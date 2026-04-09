@@ -84,7 +84,7 @@ pub async fn main() {
     let audio: std::sync::Arc<dyn hypr_audio_actual::AudioProvider> =
         create_audio_provider(&context.config().identifier);
 
-    let mut builder = tauri::Builder::default().manage(audio);
+    let mut builder = tauri_plugin_windows::extend_builder(tauri::Builder::default()).manage(audio);
 
     // https://docs.crabnebula.dev/plugins/tauri-e2e-tests/#macos-support
     #[cfg(all(target_os = "macos", feature = "automation"))]
@@ -187,7 +187,7 @@ pub async fn main() {
         builder = builder.plugin(plugin);
     }
 
-    let specta_builder = make_specta_builder();
+    let specta_builder = make_specta_builder::<tauri::Wry>();
 
     let root_supervisor_ctx_for_run = root_supervisor_ctx.clone();
 

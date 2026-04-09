@@ -1,4 +1,5 @@
 import { CommandLineSettings } from "./command-line";
+import { ComposerSettings } from "./composer";
 import { DownloadButtons } from "./download-buttons";
 import { LinkIntegrations } from "./link-integrations";
 import { V1p1PreviewToggle } from "./v1p1-preview-toggle";
@@ -31,6 +32,7 @@ export function SettingsLab() {
       <div>
         <h2 className="mb-4 font-serif text-lg font-semibold">Preview</h2>
         <div className="flex flex-col gap-6">
+          <ComposerSettings />
           <V1p1PreviewToggle />
         </div>
       </div>

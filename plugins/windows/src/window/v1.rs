@@ -5,12 +5,15 @@ use crate::WindowImpl;
 pub enum AppWindow {
     #[serde(rename = "main")]
     Main,
+    #[serde(rename = "composer")]
+    Composer,
 }
 
 impl std::fmt::Display for AppWindow {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Main => write!(f, "main"),
+            Self::Composer => write!(f, "composer"),
         }
     }
 }
@@ -21,6 +24,7 @@ impl std::str::FromStr for AppWindow {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "main" => return Ok(Self::Main),
+            "composer" => return Ok(Self::Composer),
             _ => {}
         }
 
@@ -95,6 +99,7 @@ impl WindowImpl for AppWindow {
     fn title(&self) -> String {
         match self {
             Self::Main => "Char".into(),
+            Self::Composer => "Composer".into(),
         }
     }
 
@@ -113,6 +118,19 @@ impl WindowImpl for AppWindow {
                     .min_inner_size(620.0, 500.0);
                 let window = builder.build()?;
                 window.set_size(LogicalSize::new(910.0, 600.0))?;
+                window
+            }
+            Self::Composer => {
+                let builder = self
+                    .window_builder(app, "/app/composer")
+                    .maximizable(false)
+                    .minimizable(false)
+                    .resizable(false);
+                let window = builder.build()?;
+                window.set_size(LogicalSize::new(
+                    crate::window::composer::WIDTH,
+                    crate::window::composer::HEIGHT,
+                ))?;
                 window
             }
         };

@@ -14,6 +14,14 @@ async windowShow(window: AppWindow) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async windowHide(window: AppWindow) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:windows|window_hide", { window }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async windowDestroy(window: AppWindow) : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:windows|window_destroy", { window }) };
@@ -110,7 +118,7 @@ windowDestroyed: "plugin:windows:window-destroyed"
 /** user-defined types **/
 
 export type Anchor = "TopRight" | "TopLeft" | "BottomRight" | "BottomLeft" | "Center"
-export type AppWindow = { type: "main" }
+export type AppWindow = { type: "main" } | { type: "composer" }
 export type ChangelogState = { previous: string | null; current: string }
 export type ChatShortcutsState = { isWebMode: boolean | null; selectedMineId: string | null; selectedWebIndex: number | null }
 export type ChatState = { groupId: string | null; initialMessage: string | null }

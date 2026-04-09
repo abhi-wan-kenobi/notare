@@ -5,7 +5,12 @@ import { commands } from "./bindings.gen";
 
 type UUID = `${string}-${string}-${string}-${string}-${string}`;
 
-export type WindowLabel = "main" | `note-${UUID}` | "calendar" | "settings";
+export type WindowLabel =
+  | "main"
+  | "composer"
+  | `note-${UUID}`
+  | "calendar"
+  | "settings";
 
 export const getCurrentWebviewWindowLabel = () => {
   const window = getCurrentWebviewWindow();

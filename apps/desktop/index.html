@@ -14,17 +14,6 @@
       }
     </style>
     <script src="/relay-shim.js"></script>
-    <script type="module">
-      if (import.meta.env.DEV) {
-        import("react-scan").then(({ scan }) => {
-          scan();
-        });
-
-        import("react-grab").then(() => {
-          window.__REACT_GRAB__?.setToolbarState({ collapsed: true, edge: "right" });
-        });
-      }
-    </script>
   </head>
   <body spellcheck="false">
     <div id="root"></div>

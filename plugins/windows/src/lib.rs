@@ -67,6 +67,7 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
         ])
         .commands(tauri_specta::collect_commands![
             commands::window_show,
+            commands::window_hide,
             commands::window_destroy,
             commands::window_navigate,
             commands::window_emit_navigate,
@@ -117,6 +118,18 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             }
         })
         .build()
+}
+
+pub fn extend_builder(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
+    #[cfg(target_os = "macos")]
+    {
+        builder.plugin(tauri_nspanel::init())
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        builder
+    }
 }
 
 #[cfg(test)]
