@@ -10,7 +10,8 @@ mod supabase;
 pub use config::NangoConfig;
 pub use extractor::{NangoConnection, NangoConnectionError, NangoConnectionState};
 pub use integrations::{
-    GitHub, GoogleCalendar, GoogleDrive, GoogleMail, Linear, NangoIntegrationId, Outlook,
+    Discord, GitHub, GoogleCalendar, GoogleDrive, GoogleMail, Linear, NangoIntegrationId, Outlook,
+    Slack,
 };
 pub use openapi::openapi;
 pub use routes::{ForwardHandler, ForwardHandlerRegistry, forward_handler, router, webhook_router};

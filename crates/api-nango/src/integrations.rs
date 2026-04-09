@@ -37,3 +37,15 @@ pub struct Linear;
 impl NangoIntegrationId for Linear {
     const ID: &'static str = "linear";
 }
+
+pub struct Slack;
+
+impl NangoIntegrationId for Slack {
+    const ID: &'static str = "slack";
+}
+
+pub struct Discord;
+
+impl NangoIntegrationId for Discord {
+    const ID: &'static str = "discord";
+}

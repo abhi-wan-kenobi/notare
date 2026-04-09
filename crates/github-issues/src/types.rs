@@ -147,6 +147,20 @@ pub struct Milestone {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "specta", derive(Type))]
 #[cfg_attr(feature = "utoipa", derive(ToSchema))]
+pub struct IssueComment {
+    pub id: u64,
+    #[serde(default)]
+    pub body: Option<String>,
+    #[serde(default)]
+    pub user: Option<User>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub html_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(Type))]
+#[cfg_attr(feature = "utoipa", derive(ToSchema))]
 pub struct Repository {
     pub id: u64,
     pub name: String,

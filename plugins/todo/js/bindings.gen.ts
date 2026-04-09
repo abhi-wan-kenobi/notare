@@ -85,6 +85,30 @@ async linearListTickets(connectionId: string, teamId: string, query: string | nu
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async githubIssueState(owner: string, repo: string, number: number) : Promise<Result<GitHubIssueState, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:todo|github_issue_state", { owner, repo, number }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async githubIssueDetail(owner: string, repo: string, number: number) : Promise<Result<Issue, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:todo|github_issue_detail", { owner, repo, number }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async githubIssueComments(owner: string, repo: string, number: number) : Promise<Result<IssueComment[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:todo|github_issue_comments", { owner, repo, number }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -123,7 +147,13 @@ key: string | null; url: string | null }
 export type CreateReminderInput = { title: string; list_id: string | null; notes: string | null; url: string | null; priority: ReminderPriority | null; due_date: DateComponents | null; start_date: DateComponents | null }
 export type DateComponents = { date: string | null; time: string | null; time_zone: string | null }
 export type GeoLocation = { latitude: number; longitude: number }
+export type GitHubIssueState = "Open" | "Closed" | "Merged"
+export type Issue = { id: number; number: number; title: string; body?: string | null; state: string; state_reason?: string | null; html_url: string; url: string; user?: User | null; assignees?: User[] | null; labels?: Label[] | null; milestone?: Milestone | null; pull_request?: IssuePullRequest | null; locked?: boolean | null; comments?: number | null; created_at: string; updated_at: string; closed_at?: string | null; closed_by?: User | null; draft?: boolean | null }
+export type IssueComment = { id: number; body?: string | null; user?: User | null; created_at: string; updated_at: string; html_url: string }
+export type IssuePullRequest = { url?: string | null; html_url?: string | null; diff_url?: string | null; patch_url?: string | null; merged_at?: string | null }
+export type Label = { id: number; name: string; color?: string | null; description?: string | null }
 export type LabelRef = { id: string; name: string; color: string | null }
+export type Milestone = { id: number; number: number; title: string; description?: string | null; state: string }
 export type PersonRef = { id: string | null; name: string | null; email: string | null; avatar_url: string | null }
 export type PullRequestDetail = { is_draft: boolean; is_merged: boolean; source_branch: string | null; target_branch: string | null; merged_at: string | null; merged_by: PersonRef | null }
 export type ReadPathResult = { kind: "reminder_lists"; data: ReminderList[] } | { kind: "reminders"; data: Reminder[] } | { kind: "collections"; data: CollectionPage } | { kind: "tickets"; data: TicketPage }
@@ -178,6 +208,7 @@ pull_request: PullRequestDetail | null;
  */
 raw: string }
 export type TodoChangedEvent = null
+export type User = { id: number; login: string; avatar_url?: string | null; html_url: string }
 export type Weekday = "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday"
 
 /** tauri-specta globals **/

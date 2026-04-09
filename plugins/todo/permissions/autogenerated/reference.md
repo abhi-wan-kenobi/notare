@@ -14,6 +14,8 @@ Default permissions for the plugin
 - `allow-delete-todo`
 - `allow-linear-list-teams`
 - `allow-linear-list-tickets`
+- `allow-github-issue-state`
+- `allow-github-issue-detail`
 
 ## Permission Table
 
@@ -150,6 +152,58 @@ Enables the fetch_todos command without any pre-configured scope.
 <td>
 
 Denies the fetch_todos command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`todo:allow-github-issue-detail`
+
+</td>
+<td>
+
+Enables the github_issue_detail command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`todo:deny-github-issue-detail`
+
+</td>
+<td>
+
+Denies the github_issue_detail command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`todo:allow-github-issue-state`
+
+</td>
+<td>
+
+Enables the github_issue_state command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`todo:deny-github-issue-state`
+
+</td>
+<td>
+
+Denies the github_issue_state command without any pre-configured scope.
 
 </td>
 </tr>

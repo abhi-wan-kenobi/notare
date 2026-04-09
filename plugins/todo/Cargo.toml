@@ -10,6 +10,8 @@ description = ""
 [dependencies]
 hypr-api-client = { workspace = true }
 hypr-apple-todo = { workspace = true, features = ["specta"] }
+hypr-github-issues = { workspace = true, features = ["specta"] }
+hypr-http = { workspace = true }
 hypr-ticket-interface = { workspace = true }
 
 tauri = { workspace = true, features = ["test"] }

@@ -11,4 +11,6 @@ permissions = [
     "allow-delete-todo",
     "allow-linear-list-teams",
     "allow-linear-list-tickets",
+    "allow-github-issue-state",
+    "allow-github-issue-detail",
 ]

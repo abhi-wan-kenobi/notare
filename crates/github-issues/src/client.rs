@@ -1,7 +1,7 @@
 use hypr_http::HttpClient;
 
 use crate::error::Error;
-use crate::types::{Issue, ListIssuesRequest, ListReposRequest, Repository};
+use crate::types::{Issue, IssueComment, ListIssuesRequest, ListReposRequest, Repository};
 
 pub struct GitHubIssuesClient<C> {
     http: C,
@@ -34,6 +34,25 @@ impl<C: HttpClient> GitHubIssuesClient<C> {
         let bytes = self.http.get(&path).await.map_err(Error::Http)?;
         let repos: Vec<Repository> = serde_json::from_slice(&bytes)?;
         Ok(repos)
+    }
+
+    pub async fn get_issue(&self, owner: &str, repo: &str, number: u64) -> Result<Issue, Error> {
+        let path = format!("/repos/{owner}/{repo}/issues/{number}");
+        let bytes = self.http.get(&path).await.map_err(Error::Http)?;
+        let issue: Issue = serde_json::from_slice(&bytes)?;
+        Ok(issue)
+    }
+
+    pub async fn list_comments(
+        &self,
+        owner: &str,
+        repo: &str,
+        number: u64,
+    ) -> Result<Vec<IssueComment>, Error> {
+        let path = format!("/repos/{owner}/{repo}/issues/{number}/comments?per_page=100");
+        let bytes = self.http.get(&path).await.map_err(Error::Http)?;
+        let comments: Vec<IssueComment> = serde_json::from_slice(&bytes)?;
+        Ok(comments)
     }
 
     pub async fn list_issues(&self, req: ListIssuesRequest) -> Result<Vec<Issue>, Error> {

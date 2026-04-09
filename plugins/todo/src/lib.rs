@@ -2,6 +2,7 @@ mod commands;
 mod error;
 mod events;
 mod fetch;
+mod github_state;
 mod read_path;
 
 pub use error::Error;
@@ -27,6 +28,9 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::delete_todo,
             commands::linear_list_teams::<tauri::Wry>,
             commands::linear_list_tickets::<tauri::Wry>,
+            commands::github_issue_state,
+            commands::github_issue_detail,
+            commands::github_issue_comments,
         ])
         .events(tauri_specta::collect_events![TodoChangedEvent])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
