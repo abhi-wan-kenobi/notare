@@ -143,22 +143,18 @@ fn resolve_resource_path<R: tauri::Runtime, T: tauri::Manager<R>>(manager: &T) -
 
     let file_name = bundled_binary_name()?;
 
-    if let Some(bundled_path) = manager
-        .path()
-        .resolve(file_name, BaseDirectory::Executable)
-        .ok()
-        .filter(|path| path.exists())
-    {
-        return Some(bundled_path);
-    }
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let bundled_path = exe_dir.join(file_name);
+            if bundled_path.exists() {
+                return Some(bundled_path);
+            }
 
-    if let Some(legacy_bundled_path) = manager
-        .path()
-        .resolve("char-cli", BaseDirectory::Executable)
-        .ok()
-        .filter(|path| path.exists())
-    {
-        return Some(legacy_bundled_path);
+            let legacy_bundled_path = exe_dir.join("char-cli");
+            if legacy_bundled_path.exists() {
+                return Some(legacy_bundled_path);
+            }
+        }
     }
 
     if let Some(bundled_resource_path) = manager
