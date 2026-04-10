@@ -3,10 +3,7 @@ use std::{
     io,
     ops::RangeInclusive,
     path::Path,
-    sync::{
-        Arc,
-        mpsc::{self, Receiver, TryRecvError},
-    },
+    sync::mpsc::{self, Receiver, TryRecvError},
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -19,10 +16,9 @@ use crossterm::{
 };
 use futures_util::StreamExt;
 use hypr_activity_capture::{
-    ActivityCapture, ActivityScreenshotCoordinator, Capabilities, CaptureError, CaptureStream,
-    EventCoalescer, LatestCaptureSink, LatestCaptureState, PendingCapture, PlatformCapture,
-    PolicyUpdate, ScreenCoreCapturer, StableSegmentScreenshotPolicy,
-    StableSegmentScreenshotPolicyConfig, Transition, WatchOptions,
+    ActivityCapture, ActivityScreenshotCapture, Capabilities, CaptureError, CaptureStream,
+    EventCoalescer, PendingCapture, PlatformCapture, ScreenshotConfig, ScreenshotDecision,
+    ScreenshotPolicy, Transition, WatchOptions, capture_screenshot,
 };
 use ratatui::{DefaultTerminal, layout::Rect, widgets::ListState};
 use tokio::sync::oneshot;
@@ -261,8 +257,8 @@ struct ActivityApp {
     detail_tab: DetailTab,
     should_exit: bool,
     list_inner_area: Rect,
-    screenshot_coordinator: ActivityScreenshotCoordinator,
-    screenshot_state: Arc<LatestCaptureState>,
+    screenshot_policy: ScreenshotPolicy,
+    latest_capture: Option<ActivityScreenshotCapture>,
     pending_screenshot: Option<PendingCapture>,
     vlm: Option<VlmRuntime>,
 }
@@ -290,7 +286,6 @@ impl ActivityApp {
             options.runtime_label(resolved_runtime)
         };
         let screenshot_dwell_ms = options.screenshot_dwell_ms;
-        let screenshot_state = Arc::new(LatestCaptureState::default());
         let vlm = options.vlm_settings().map(VlmRuntime::spawn).transpose()?;
         let mut app = Self {
             capture,
@@ -309,16 +304,11 @@ impl ActivityApp {
             detail_tab: DetailTab::Details,
             should_exit: false,
             list_inner_area: Rect::default(),
-            screenshot_coordinator: ActivityScreenshotCoordinator::new(
-                Box::new(StableSegmentScreenshotPolicy::new(
-                    StableSegmentScreenshotPolicyConfig {
-                        dwell_ms: screenshot_dwell_ms,
-                    },
-                )),
-                Arc::new(LatestCaptureSink::new(Arc::clone(&screenshot_state))),
-                Arc::new(ScreenCoreCapturer),
-            ),
-            screenshot_state,
+            screenshot_policy: ScreenshotPolicy::new(ScreenshotConfig {
+                dwell_ms: screenshot_dwell_ms,
+                ..ScreenshotConfig::default()
+            }),
+            latest_capture: None,
             pending_screenshot: None,
             vlm,
         };
@@ -532,10 +522,10 @@ impl ActivityApp {
     }
 
     fn push_transition(&mut self, transition: Transition) {
-        let update = self
-            .screenshot_coordinator
-            .handle_transition(&transition, unix_ms_now());
-        self.apply_screenshot_update(update);
+        let decision = self
+            .screenshot_policy
+            .on_transition(&transition, unix_ms_now());
+        self.apply_screenshot_decision(decision);
 
         if let Some(row) = EventRow::from_transition(&transition) {
             let record = RawRecord::from_transition(&row, transition);
@@ -543,16 +533,16 @@ impl ActivityApp {
         }
     }
 
-    fn apply_screenshot_update(&mut self, update: PolicyUpdate) {
-        match update {
-            PolicyUpdate::None => {}
-            PolicyUpdate::CancelPending => {
+    fn apply_screenshot_decision(&mut self, decision: ScreenshotDecision) {
+        match decision {
+            ScreenshotDecision::None => {}
+            ScreenshotDecision::CancelPending => {
                 self.pending_screenshot = None;
             }
-            PolicyUpdate::Schedule(pending) => {
+            ScreenshotDecision::Schedule(pending) => {
                 self.pending_screenshot = Some(pending);
             }
-            PolicyUpdate::CancelAndSchedule(pending) => {
+            ScreenshotDecision::CancelAndSchedule(pending) => {
                 self.pending_screenshot = Some(pending);
             }
         }
@@ -566,45 +556,50 @@ impl ActivityApp {
         if now < pending.due_at_ms {
             return;
         }
-        let pending_id = pending.pending_id;
-        match self
-            .screenshot_coordinator
-            .fire_pending_capture(pending_id, now)
-        {
-            Ok(true) => {
-                self.pending_screenshot = None;
-                if let Some(capture) = self.screenshot_state.latest() {
-                    let saved_path = match save_screenshot_image(&capture) {
-                        Ok(path) => {
-                            self.status_message =
-                                Some(format!("screenshot saved to {}", file_label(&path)));
-                            Some(path)
-                        }
-                        Err(error) => {
-                            self.status_message = Some(format!("screenshot save failed: {error}"));
-                            None
-                        }
-                    };
-                    if let (Some(vlm), Some(path)) = (self.vlm.as_ref(), saved_path.as_ref()) {
-                        if let Err(error) = vlm.enqueue(capture.clone(), path.clone()) {
-                            self.status_message = Some(format!("vlm queue failed: {error}"));
-                        } else {
-                            self.status_message = Some(format!(
-                                "screenshot saved to {} and queued vlm",
-                                file_label(path)
-                            ));
-                        }
+        let pending_id = pending.id;
+        let Some(fired) = self.screenshot_policy.fire(pending_id, now) else {
+            self.pending_screenshot = None;
+            return;
+        };
+        self.pending_screenshot = None;
+
+        match capture_screenshot(&fired.target) {
+            Ok(image) => {
+                let capture = ActivityScreenshotCapture {
+                    fingerprint: fired.fingerprint,
+                    reason: fired.reason,
+                    scheduled_at_ms: fired.scheduled_at_ms,
+                    captured_at_ms: now,
+                    target: fired.target,
+                    image,
+                };
+                let saved_path = match save_screenshot_image(&capture) {
+                    Ok(path) => {
+                        self.status_message =
+                            Some(format!("screenshot saved to {}", file_label(&path)));
+                        Some(path)
                     }
-                    let row = EventRow::screenshot(&capture, saved_path.as_deref());
-                    let record = RawRecord::screenshot(&row, &capture, saved_path.as_deref());
-                    self.push_row(row, record);
+                    Err(error) => {
+                        self.status_message = Some(format!("screenshot save failed: {error}"));
+                        None
+                    }
+                };
+                if let (Some(vlm), Some(path)) = (self.vlm.as_ref(), saved_path.as_ref()) {
+                    if let Err(error) = vlm.enqueue(capture.clone(), path.clone()) {
+                        self.status_message = Some(format!("vlm queue failed: {error}"));
+                    } else {
+                        self.status_message = Some(format!(
+                            "screenshot saved to {} and queued vlm",
+                            file_label(path)
+                        ));
+                    }
                 }
-            }
-            Ok(false) => {
-                self.pending_screenshot = None;
+                let row = EventRow::screenshot(&capture, saved_path.as_deref());
+                let record = RawRecord::screenshot(&row, &capture, saved_path.as_deref());
+                self.push_row(row, record);
+                self.latest_capture = Some(capture);
             }
             Err(error) => {
-                self.pending_screenshot = None;
                 self.status_message = Some(format!("screenshot capture failed: {error}"));
             }
         }
