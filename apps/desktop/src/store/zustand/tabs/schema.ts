@@ -40,6 +40,7 @@ export type SettingsTab =
   | "system"
   | "lab"
   | "agent"
+  | "developer"
   | "transcription"
   | "intelligence"
   | "memory"
@@ -55,6 +56,7 @@ export const normalizeSettingsTab = (
     case "system":
     case "lab":
     case "agent":
+    case "developer":
     case "transcription":
     case "intelligence":
     case "memory":

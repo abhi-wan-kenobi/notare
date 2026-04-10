@@ -6,6 +6,7 @@ import {
   BotIcon,
   BrainIcon,
   CalendarIcon,
+  CodeIcon,
   FlaskConical,
   MonitorIcon,
   SmartphoneIcon,
@@ -58,6 +59,7 @@ const GROUPS: {
     items: [
       { id: "lab", label: "General", icon: FlaskConical },
       { id: "agent", label: "Agent", icon: BotIcon },
+      { id: "developer", label: "Developer", icon: CodeIcon },
       { id: "todo", label: "Ticket", icon: TicketIcon },
     ],
   },
