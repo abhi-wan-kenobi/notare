@@ -119,6 +119,8 @@ pub struct StreamResult {
     pub decode_tps: f64,
     #[serde(default)]
     pub ram_usage_mb: f64,
+    #[serde(default)]
+    pub raw_decoder_tps: f64,
     #[serde(default, deserialize_with = "deserialize_number_as_u64")]
     pub prefill_tokens: u64,
     #[serde(default, deserialize_with = "deserialize_number_as_u64")]

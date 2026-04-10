@@ -1,4 +1,14 @@
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct TranscriptionSegment {
+    #[serde(default)]
+    pub start: f32,
+    #[serde(default)]
+    pub end: f32,
+    #[serde(default)]
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct TranscriptionResult {
     #[serde(default, rename = "response")]
     pub text: String,
@@ -6,6 +16,8 @@ pub struct TranscriptionResult {
     pub cloud_handoff: bool,
     #[serde(default)]
     pub confidence: f32,
+    #[serde(default)]
+    pub segments: Vec<TranscriptionSegment>,
     #[serde(default)]
     pub time_to_first_token_ms: f64,
     #[serde(default)]

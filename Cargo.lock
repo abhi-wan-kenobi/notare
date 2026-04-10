@@ -23,11 +23,15 @@ name = "activity-capture-dev"
 version = "0.1.0"
 dependencies = [
  "activity-capture",
+ "axum 0.8.8",
  "chrono",
  "clap",
  "crossterm",
  "futures-util",
+ "llm-cactus",
  "ratatui",
+ "reqwest 0.13.2",
+ "screen-core",
  "serde",
  "serde_json",
  "tokio",
@@ -2550,7 +2554,7 @@ dependencies = [
  "bitflags 2.11.0",
  "cexpr",
  "clang-sys",
- "itertools 0.13.0",
+ "itertools 0.12.1",
  "log",
  "prettyplease",
  "proc-macro2",
@@ -2989,7 +2993,7 @@ dependencies = [
 [[package]]
 name = "cactus-sys"
 version = "0.1.0"
-source = "git+https://github.com/cactus-compute/cactus?rev=a5acad3#a5acad3238643da779dabcd4597f1552348543b5"
+source = "git+https://github.com/cactus-compute/cactus?rev=e9cc468#e9cc4684e389a689002c27d7478f8b2d5024f8b7"
 dependencies = [
  "bindgen 0.72.1",
  "cmake",
@@ -5201,7 +5205,7 @@ version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab8ecd87370524b461f8557c119c405552c396ed91fc0a8eec68679eab26f94a"
 dependencies = [
- "libloading 0.8.9",
+ "libloading 0.7.4",
 ]
 
 [[package]]
@@ -14195,7 +14199,7 @@ version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
- "heck 0.5.0",
+ "heck 0.4.1",
  "itertools 0.14.0",
  "log",
  "multimap",
@@ -16877,7 +16881,7 @@ version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1c97747dbf44bb1ca44a561ece23508e99cb592e862f22222dcf42f51d1e451"
 dependencies = [
- "heck 0.5.0",
+ "heck 0.4.1",
  "proc-macro2",
  "quote",
  "syn 2.0.117",
@@ -18921,6 +18925,7 @@ dependencies = [
  "tauri-plugin-settings",
  "tauri-plugin-store",
  "tauri-specta",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tracing",

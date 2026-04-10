@@ -39,6 +39,9 @@ impl FromOpenAI for Message {
             ChatCompletionRequestMessage::Developer(developer) => Ok(Message {
                 role: "developer".into(),
                 content: convert_developer_content(&developer.content),
+                name: None,
+                audio: None,
+                tool_calls: None,
             }),
             ChatCompletionRequestMessage::System(system) => {
                 Ok(Message::system(convert_system_content(&system.content)))
@@ -57,10 +60,16 @@ impl FromOpenAI for Message {
             ChatCompletionRequestMessage::Tool(tool) => Ok(Message {
                 role: "tool".into(),
                 content: convert_tool_content(&tool.content),
+                name: None,
+                audio: None,
+                tool_calls: None,
             }),
             ChatCompletionRequestMessage::Function(function) => Ok(Message {
                 role: "function".into(),
                 content: function.content.clone().unwrap_or_default().into(),
+                name: None,
+                audio: None,
+                tool_calls: None,
             }),
         }
     }

@@ -1,5 +1,7 @@
 use hypr_llm_types::{ImageDetail, MessageContent, MessagePart};
 
+const TEXT_TEMPERATURE: f32 = 0.1;
+
 #[derive(serde::Deserialize)]
 pub(super) struct ChatCompletionRequest {
     #[serde(default)]
@@ -7,10 +9,6 @@ pub(super) struct ChatCompletionRequest {
     pub(super) messages: Vec<ChatMessage>,
     #[serde(default)]
     pub(super) stream: Option<bool>,
-    #[serde(default)]
-    temperature: Option<f32>,
-    #[serde(default)]
-    top_p: Option<f32>,
     #[serde(default)]
     max_tokens: Option<u32>,
     #[serde(default)]
@@ -82,13 +80,15 @@ fn convert_message(message: &ChatMessage) -> Result<hypr_llm_types::Message, Str
     Ok(hypr_llm_types::Message {
         role: message.role.clone(),
         content,
+        name: None,
+        audio: None,
+        tool_calls: None,
     })
 }
 
 pub(super) fn build_options(request: &ChatCompletionRequest) -> hypr_cactus::CompleteOptions {
     hypr_cactus::CompleteOptions {
-        temperature: request.temperature,
-        top_p: request.top_p,
+        temperature: Some(TEXT_TEMPERATURE),
         max_tokens: request.max_completion_tokens.or(request.max_tokens),
         ..Default::default()
     }
@@ -229,6 +229,30 @@ mod tests {
         let error = convert_messages(&request).unwrap_err();
 
         assert!(error.contains("only supported for user messages"));
+    }
+
+    #[test]
+    fn builds_hardcoded_generation_options() {
+        let request = ChatCompletionRequest {
+            model: None,
+            messages: vec![ChatMessage {
+                role: "user".into(),
+                content: Some(ChatMessageContent::Text("hello".into())),
+            }],
+            stream: None,
+            max_tokens: Some(123),
+            max_completion_tokens: None,
+        };
+
+        let options = build_options(&request);
+
+        assert_eq!(options.temperature, Some(TEXT_TEMPERATURE));
+        assert_eq!(options.min_p, Some(TEXT_MIN_P));
+        assert_eq!(options.repetition_penalty, Some(TEXT_REPETITION_PENALTY));
+        assert_eq!(options.max_tokens, Some(123));
+        assert_eq!(options.min_image_tokens, Some(VISION_MIN_IMAGE_TOKENS));
+        assert_eq!(options.max_image_tokens, Some(VISION_MAX_IMAGE_TOKENS));
+        assert_eq!(options.do_image_splitting, Some(true));
     }
 
     #[tokio::test]

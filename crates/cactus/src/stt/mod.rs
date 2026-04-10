@@ -4,7 +4,7 @@ mod stream;
 mod transcriber;
 mod whisper;
 
-pub use result::TranscriptionResult;
+pub use result::{TranscriptionResult, TranscriptionSegment};
 pub use stream::{TranscribeEvent, TranscriptionSession, transcribe_stream};
 pub use transcriber::{CloudConfig, StreamResult, StreamSegment, Transcriber};
 
@@ -35,6 +35,8 @@ pub struct TranscribeOptions {
     pub initial_prompt: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub min_chunk_size: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloud_handoff_threshold: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom_vocabulary: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]

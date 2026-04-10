@@ -2,6 +2,12 @@
 pub struct Message {
     pub role: String,
     pub content: MessageContent,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub audio: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<ToolCall>>,
 }
 
 impl Message {
@@ -9,6 +15,9 @@ impl Message {
         Self {
             role: "system".into(),
             content: content.into(),
+            name: None,
+            audio: None,
+            tool_calls: None,
         }
     }
 
@@ -16,6 +25,9 @@ impl Message {
         Self {
             role: "user".into(),
             content: content.into(),
+            name: None,
+            audio: None,
+            tool_calls: None,
         }
     }
 
@@ -23,7 +35,35 @@ impl Message {
         Self {
             role: "assistant".into(),
             content: content.into(),
+            name: None,
+            audio: None,
+            tool_calls: None,
         }
+    }
+
+    pub fn tool(content: impl Into<MessageContent>) -> Self {
+        Self {
+            role: "tool".into(),
+            content: content.into(),
+            name: None,
+            audio: None,
+            tool_calls: None,
+        }
+    }
+
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    pub fn with_audio(mut self, audio: Vec<String>) -> Self {
+        self.audio = Some(audio);
+        self
+    }
+
+    pub fn with_tool_calls(mut self, tool_calls: Vec<ToolCall>) -> Self {
+        self.tool_calls = Some(tool_calls);
+        self
     }
 }
 
@@ -119,6 +159,21 @@ pub enum ImageDetail {
     High,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ToolCall {
+    pub name: String,
+    pub arguments: serde_json::Value,
+}
+
+impl ToolCall {
+    pub fn new(name: impl Into<String>, arguments: serde_json::Value) -> Self {
+        Self {
+            name: name.into(),
+            arguments,
+        }
+    }
+}
+
 mod openai;
 
 pub use openai::{FromOpenAI, FromOpenAIError};
@@ -137,6 +192,35 @@ mod tests {
             serde_json::json!({
                 "role": "user",
                 "content": "hello"
+            })
+        );
+    }
+
+    #[test]
+    fn serializes_optional_native_cactus_fields_when_present() {
+        let message = Message::assistant("hello")
+            .with_name("assistant-tool")
+            .with_audio(vec!["/tmp/audio.wav".into()])
+            .with_tool_calls(vec![ToolCall::new(
+                "lookup",
+                serde_json::json!({ "id": 1 }),
+            )]);
+
+        let json = serde_json::to_value(message).unwrap();
+
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "role": "assistant",
+                "content": "hello",
+                "name": "assistant-tool",
+                "audio": ["/tmp/audio.wav"],
+                "tool_calls": [
+                    {
+                        "name": "lookup",
+                        "arguments": { "id": 1 }
+                    }
+                ]
             })
         );
     }

@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use super::ToolCall;
+
 fn deserialize_null_as_default<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -21,6 +23,10 @@ pub struct CompletionResult {
     #[serde(default)]
     pub confidence: f32,
     #[serde(default)]
+    pub thinking: Option<String>,
+    #[serde(default)]
+    pub function_calls: Vec<ToolCall>,
+    #[serde(default)]
     pub time_to_first_token_ms: f64,
     #[serde(default)]
     pub total_time_ms: f64,
@@ -28,6 +34,8 @@ pub struct CompletionResult {
     pub prefill_tps: f64,
     #[serde(default)]
     pub decode_tps: f64,
+    #[serde(default)]
+    pub ram_usage_mb: f64,
     #[serde(default)]
     pub prefill_tokens: u64,
     #[serde(default)]
