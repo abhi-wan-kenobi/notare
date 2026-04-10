@@ -4,6 +4,7 @@ import { TabItemChat } from "~/chat/tab/tab-item";
 import { TabItemChatShortcut } from "~/chat_shortcuts";
 import { TabItemContact } from "~/contacts";
 import { TabItemHuman } from "~/contacts/humans";
+import { TabItemDailySummary } from "~/daily-summary";
 import { TabItemEdit } from "~/edit";
 import { TabItemFolder } from "~/folders";
 import { TabItemOnboarding } from "~/onboarding";
@@ -213,6 +214,20 @@ export function MainTabItem({
   if (tab.type === "task") {
     return (
       <TabItemTask
+        tab={tab}
+        tabIndex={tabIndex}
+        handleCloseThis={handleClose}
+        handleSelectThis={handleSelect}
+        handleCloseOthers={handleCloseOthers}
+        handleCloseAll={handleCloseAll}
+        handlePinThis={handlePinThis}
+        handleUnpinThis={handleUnpinThis}
+      />
+    );
+  }
+  if (tab.type === "daily_summary") {
+    return (
+      <TabItemDailySummary
         tab={tab}
         tabIndex={tabIndex}
         handleCloseThis={handleClose}

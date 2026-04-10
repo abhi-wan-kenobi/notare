@@ -4,6 +4,7 @@ import { TabContentChat } from "~/chat/tab/tab-content";
 import { TabContentChatShortcut } from "~/chat_shortcuts";
 import { TabContentContact } from "~/contacts";
 import { TabContentHuman } from "~/contacts/humans";
+import { TabContentDailySummary } from "~/daily-summary";
 import { TabContentEdit } from "~/edit";
 import { TabContentFolder } from "~/folders";
 import { TabContentOnboarding } from "~/onboarding";
@@ -52,6 +53,9 @@ export function MainTabContent({ tab }: { tab: Tab }) {
   }
   if (tab.type === "task") {
     return <TabContentTask tab={tab} />;
+  }
+  if (tab.type === "daily_summary") {
+    return <TabContentDailySummary tab={tab} />;
   }
   return null;
 }

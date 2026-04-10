@@ -110,7 +110,7 @@ jobs:
         uses: ./.github/actions/hf_unzip_resource
         with:
           repo: Cactus-Compute/LFM2-VL-450M
-          path: weights/lfm2-vl-450m-int8-apple.zip
+          path: weights/lfm2-vl-450m-int8.zip
           local-dir: apps/desktop/src-tauri/resources/models/cactus/_downloads
           output-dir: apps/desktop/src-tauri/resources/models/cactus/char-vlm/weight
           token: ${{ secrets.HF_TOKEN }}

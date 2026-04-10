@@ -129,6 +129,10 @@ export type Tab =
       type: "task";
       id: string;
       resources: TaskResource[];
+    })
+  | (BaseTab & {
+      type: "daily_summary";
+      id: string;
     });
 
 export type TaskResource =
@@ -258,6 +262,8 @@ export const uniqueIdfromTab = (tab: Tab): string => {
       return `edit-${tab.requestId}`;
     case "task":
       return `task-${tab.id}`;
+    case "daily_summary":
+      return `daily_summary-${tab.id}`;
   }
 };
 

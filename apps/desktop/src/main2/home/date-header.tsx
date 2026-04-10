@@ -1,3 +1,5 @@
+import { openDailySummaryTab } from "~/daily-summary";
+
 function ordinalSuffix(day: number): string {
   if (day >= 11 && day <= 13) return "th";
   switch (day % 10) {
@@ -28,15 +30,17 @@ export function DateHeader({ date, muted }: { date: string; muted?: boolean }) {
   const isToday = date === getTodayString();
   return (
     <div className="flex items-center gap-3 px-6 pt-6 pb-3">
-      <h2
+      <button
+        type="button"
+        onClick={() => openDailySummaryTab(date)}
         className={
           muted
-            ? "text-lg font-medium text-neutral-400"
-            : "text-xl font-semibold text-neutral-900"
+            ? "text-lg font-medium text-neutral-400 hover:text-neutral-600"
+            : "text-xl font-semibold text-neutral-900 hover:text-neutral-600"
         }
       >
         {formatDateHeader(date)}
-      </h2>
+      </button>
       {isToday && (
         <span className="rounded-full bg-neutral-900 px-2 py-0.5 text-xs font-medium text-white">
           Today
