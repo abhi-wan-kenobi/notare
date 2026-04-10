@@ -19,7 +19,7 @@
     - koyeb_was
     request:
       method: GET
-      url: https://hyprnote.com
+      url: https://char.com
     retry: 3
 "8351":
   ID: 8351
@@ -42,7 +42,7 @@
     - bom
     request:
       method: GET
-      url: https://api.hyprnote.com/health
+      url: https://api.char.com/health
     retry: 3
 "8354":
   ID: 8354
@@ -65,7 +65,7 @@
     - koyeb_was
     request:
       method: GET
-      url: https://hyprnote.com
+      url: https://char.com
     retry: 3
 "8355":
   ID: 8355
@@ -88,5 +88,5 @@
     - bom
     request:
       method: GET
-      url: https://api.hyprnote.com/health
+      url: https://api.char.com/health
     retry: 3
