@@ -10,13 +10,7 @@ struct TauriModelRuntime<R: Runtime> {
 
 impl<R: Runtime> ModelDownloaderRuntime<crate::SupportedModel> for TauriModelRuntime<R> {
     fn models_base(&self) -> Result<PathBuf, hypr_model_downloader::Error> {
-        use tauri_plugin_settings::SettingsPluginExt;
-        Ok(self
-            .app_handle
-            .settings()
-            .global_base()
-            .map(|base| base.join("models").into_std_path_buf())
-            .unwrap_or_else(|_| dirs::data_dir().unwrap_or_default().join("models")))
+        Ok(models_base(&self.app_handle))
     }
 
     fn emit_progress(
@@ -69,54 +63,6 @@ fn models_base<R: Runtime, T: Manager<R>>(manager: &T) -> PathBuf {
         .global_base()
         .map(|base| base.join("models").into_std_path_buf())
         .unwrap_or_else(|_| dirs::data_dir().unwrap_or_default().join("models"))
-}
-
-fn bundled_resource_candidates(relative_path: &str) -> Vec<String> {
-    let mut candidates = vec![relative_path.to_string()];
-    if cfg!(debug_assertions) {
-        candidates.push(format!("resources/{relative_path}"));
-    }
-    candidates
-}
-
-fn resolve_resource_path<R: Runtime, T: Manager<R>>(
-    manager: &T,
-    relative_path: &str,
-) -> Result<Option<PathBuf>, hypr_local_llm_core::Error> {
-    use tauri::path::BaseDirectory;
-
-    for candidate in bundled_resource_candidates(relative_path) {
-        let path = manager
-            .path()
-            .resolve(&candidate, BaseDirectory::Resource)
-            .map_err(|error| hypr_local_llm_core::Error::Other(error.to_string()))?;
-        if path.exists() {
-            return Ok(Some(path));
-        }
-    }
-
-    Ok(None)
-}
-
-#[cfg(target_arch = "aarch64")]
-pub(crate) fn resolve_embedded_llm_args<R: Runtime, T: Manager<R>>(
-    manager: &T,
-) -> Result<(String, PathBuf), crate::Error> {
-    let model = hypr_local_model::CactusLlmModel::Lfm2Vl450mApple;
-    let hypr_local_model::CactusModelSource::BundledResource { relative_path } = model.source()
-    else {
-        return Err(crate::Error::Other(format!(
-            "embedded local LLM resource is unavailable for {}",
-            model.asset_id()
-        )));
-    };
-    let model_path = resolve_resource_path(manager, relative_path)?.ok_or_else(|| {
-        crate::Error::Other(format!(
-            "embedded local LLM resource not found: {relative_path}"
-        ))
-    })?;
-
-    Ok((model.display_name().to_string(), model_path))
 }
 
 pub trait LocalLlmPluginExt<R: Runtime> {
@@ -259,20 +205,5 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
     #[tracing::instrument(skip_all)]
     async fn list_custom_models(&self) -> Result<Vec<crate::CustomModelInfo>, crate::Error> {
         Ok(hypr_local_llm_core::list_custom_models()?)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn bundled_resource_candidates_include_dev_fallback() {
-        let candidates = bundled_resource_candidates("models/cactus/char-vlm/weight");
-
-        assert_eq!(candidates[0], "models/cactus/char-vlm/weight");
-        if cfg!(debug_assertions) {
-            assert_eq!(candidates[1], "resources/models/cactus/char-vlm/weight");
-        }
     }
 }

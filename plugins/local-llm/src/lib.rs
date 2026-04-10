@@ -11,6 +11,7 @@ mod commands;
 mod error;
 mod ext;
 mod patch;
+mod resource;
 
 pub use error::*;
 pub use ext::*;
@@ -101,17 +102,17 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
                 let state = state.clone();
                 let app_handle = app.app_handle().clone();
                 tauri::async_runtime::spawn(async move {
-                    let (model_name, model_path) = match ext::resolve_embedded_llm_args(&app_handle)
-                    {
-                        Ok(args) => args,
-                        Err(error) => {
-                            tracing::warn!(
-                                error = %error,
-                                "failed to resolve local LLM startup configuration"
-                            );
-                            return;
-                        }
-                    };
+                    let (model_name, model_path) =
+                        match resource::resolve_embedded_llm_args(&app_handle) {
+                            Ok(args) => args,
+                            Err(error) => {
+                                tracing::warn!(
+                                    error = %error,
+                                    "failed to resolve local LLM startup configuration"
+                                );
+                                return;
+                            }
+                        };
 
                     match hypr_local_llm_core::LlmServer::start_with_model_path(
                         model_name,
