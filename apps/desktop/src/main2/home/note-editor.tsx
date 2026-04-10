@@ -160,6 +160,12 @@ function readRawContent(store: Store, date: string): JSONContent {
   return normalizeTaskContent(parseJsonContent(cell as string)) ?? emptyDoc;
 }
 
+function isEditorTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement && target.closest(".ProseMirror") !== null
+  );
+}
+
 export function DailyNoteEditor({
   date,
   isToday,
@@ -316,12 +322,43 @@ export function DailyNoteEditor({
     [persistDailyNote, store],
   );
 
+  const focusEditor = useCallback(() => {
+    editorRef.current?.commands.focus();
+  }, []);
+
+  const handleContainerMouseDownCapture = useCallback(
+    (event: React.MouseEvent) => {
+      if (isEditorTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      focusEditor();
+    },
+    [focusEditor],
+  );
+
+  const handleContainerClick = useCallback(
+    (event: React.MouseEvent) => {
+      if (isEditorTarget(event.target)) {
+        return;
+      }
+
+      focusEditor();
+    },
+    [focusEditor],
+  );
+
   if (!initialContentRef.current) {
     return null;
   }
 
   return (
-    <div className="main2-daily-note-editor px-6">
+    <div
+      className="main2-daily-note-editor flex-1 px-6"
+      onMouseDownCapture={handleContainerMouseDownCapture}
+      onClick={handleContainerClick}
+    >
       <NoteEditor
         ref={editorRef}
         key={`daily-${date}`}

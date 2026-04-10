@@ -1,3 +1,17 @@
+.main2-daily-note-editor {
+  display: flex;
+  flex-direction: column;
+}
+
+.main2-daily-note-editor > .tiptap {
+  flex: 1 1 auto;
+  min-height: 100%;
+}
+
+.main2-daily-note-editor .ProseMirror {
+  min-height: 100%;
+}
+
 .main2-daily-note-editor [data-session-title] {
   position: relative;
   padding-left: 28px;
