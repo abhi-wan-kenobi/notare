@@ -13,7 +13,25 @@ import {
   createSession,
   getOrCreateSessionForEventId,
 } from "~/store/tinybase/store/sessions";
+import * as settings from "~/store/tinybase/store/settings";
 import { useTabs } from "~/store/zustand/tabs";
+
+function parseIgnoredPlatforms(value: unknown) {
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter(
+          (bundleId): bundleId is string => typeof bundleId === "string",
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 function useUpdaterEvents() {
   const openNew = useTabs((state) => state.openNew);
@@ -45,15 +63,18 @@ function useUpdaterEvents() {
 
 function useNotificationEvents() {
   const store = main.UI.useStore(main.STORE_ID);
+  const settingsStore = settings.UI.useStore(settings.STORE_ID);
   const openNew = useTabs((state) => state.openNew);
   const pendingAutoStart = useRef<{ eventId: string | null } | null>(null);
   const storeRef = useRef(store);
+  const settingsStoreRef = useRef(settingsStore);
   const openNewRef = useRef(openNew);
 
   useEffect(() => {
     storeRef.current = store;
+    settingsStoreRef.current = settingsStore;
     openNewRef.current = openNew;
-  }, [store, openNew]);
+  }, [store, settingsStore, openNew]);
 
   useEffect(() => {
     if (pendingAutoStart.current && store) {
@@ -124,6 +145,36 @@ function useNotificationEvents() {
             id: sessionId,
             state: { view: null, autoStart: true },
           });
+        } else if (payload.type === "notification_footer_action") {
+          if (payload.source?.type !== "mic_detected") {
+            return;
+          }
+
+          const currentSettingsStore = settingsStoreRef.current;
+          if (!currentSettingsStore) {
+            return;
+          }
+
+          const appIds = payload.source.app_ids ?? [];
+          if (appIds.length === 0) {
+            return;
+          }
+
+          const ignoredPlatforms = parseIgnoredPlatforms(
+            currentSettingsStore.getValue("ignored_platforms"),
+          );
+          const nextIgnoredPlatforms = [
+            ...new Set([...ignoredPlatforms, ...appIds]),
+          ];
+
+          if (nextIgnoredPlatforms.length === ignoredPlatforms.length) {
+            return;
+          }
+
+          currentSettingsStore.setValue(
+            "ignored_platforms",
+            JSON.stringify(nextIgnoredPlatforms),
+          );
         }
       })
       .then((f) => {

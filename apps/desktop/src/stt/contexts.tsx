@@ -13,6 +13,14 @@ import {
 
 const ListenerContext = createContext<ListenerStore | null>(null);
 
+function getIgnorableAppIds(apps: { id: string }[]) {
+  return [
+    ...new Set(
+      apps.map((app) => app.id).filter((id) => id && !id.startsWith("pid:")),
+    ),
+  ];
+}
+
 export const ListenerProvider = ({
   children,
   store,
@@ -101,9 +109,20 @@ const useHandleDetectEvents = (store: ListenerStore) => {
           const nearbyEvents = currentTinybaseStore
             ? getNearbyEvents(currentTinybaseStore)
             : [];
+          const ignorableAppIds = getIgnorableAppIds(payload.apps);
 
           const options =
             nearbyEvents.length > 0 ? nearbyEvents.map((e) => e.title) : null;
+          const footer =
+            ignorableAppIds.length > 0
+              ? {
+                  text:
+                    ignorableAppIds.length === 1
+                      ? "Ignore this app?"
+                      : "Ignore these apps?",
+                  actionLabel: "Yes",
+                }
+              : null;
 
           void notificationCommands.showNotification({
             key: payload.key,
@@ -113,7 +132,7 @@ const useHandleDetectEvents = (store: ListenerStore) => {
             source: {
               type: "mic_detected",
               app_names: payload.apps.map((a) => a.name),
-              app_ids: payload.apps.map((a) => a.id),
+              app_ids: ignorableAppIds,
               event_ids: nearbyEvents.map((e) => e.id),
             },
             start_time: null,
@@ -121,7 +140,7 @@ const useHandleDetectEvents = (store: ListenerStore) => {
             event_details: null,
             action_label: null,
             options,
-            footer: null,
+            footer,
             icon: null,
           });
         } else if (payload.type === "micStopped") {

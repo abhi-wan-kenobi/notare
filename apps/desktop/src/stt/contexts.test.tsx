@@ -68,7 +68,7 @@ describe("ListenerProvider detect events", () => {
     expect(stopSpy).toHaveBeenCalledTimes(1);
   });
 
-  test("passes detected app ids through notification source metadata", async () => {
+  test("passes ignorable app ids and footer metadata through mic-detected notifications", async () => {
     const store = createListenerStore();
 
     render(
@@ -86,7 +86,10 @@ describe("ListenerProvider detect events", () => {
       payload: {
         type: "micDetected",
         key: "mic-1",
-        apps: [{ id: "us.zoom.xos", name: "Zoom" }],
+        apps: [
+          { id: "pid:42", name: "Zoom" },
+          { id: "us.zoom.xos", name: "Zoom" },
+        ],
         duration_secs: 15,
       },
     });
@@ -95,9 +98,13 @@ describe("ListenerProvider detect events", () => {
       expect.objectContaining({
         source: {
           type: "mic_detected",
-          app_names: ["Zoom"],
+          app_names: ["Zoom", "Zoom"],
           app_ids: ["us.zoom.xos"],
           event_ids: [],
+        },
+        footer: {
+          text: "Ignore this app?",
+          actionLabel: "Yes",
         },
         icon: null,
       }),
