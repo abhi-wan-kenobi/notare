@@ -21,7 +21,7 @@ import type {
   LiveTranscriptPersistCallback,
   OnStoppedCallback,
 } from "~/store/zustand/listener/transcript";
-import { applyLiveTranscriptDelta, parseTranscriptWords } from "~/stt/utils";
+import { applyLiveTranscriptDelta } from "~/stt/utils";
 
 export function getPostCaptureAction(
   details: {
@@ -69,14 +69,8 @@ export function useStartListening(sessionId: string) {
     const createdAt = new Date().toISOString();
 
     const onStopped: OnStoppedCallback = async (_sessionId, details) => {
-      const words =
-        transcriptId == null ? [] : parseTranscriptWords(store, transcriptId);
-
       const postCaptureAction = getPostCaptureAction(
-        {
-          ...details,
-          audioPath: words.length > 0 ? details.audioPath : null,
-        },
+        details,
         canRunBatchRef.current,
       );
 
