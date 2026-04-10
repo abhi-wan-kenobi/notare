@@ -314,6 +314,21 @@ class CompactActionButton: ActionButton {
 }
 
 class FooterActionButton: NotificationButton {
+  override init(frame frameRect: NSRect) {
+    super.init(frame: frameRect)
+    customizeAppearance()
+  }
+
+  required init?(coder: NSCoder) {
+    super.init(coder: coder)
+    customizeAppearance()
+  }
+
+  private func customizeAppearance() {
+    layer?.backgroundColor = NSColor.clear.cgColor
+    layer?.borderWidth = 0
+  }
+
   override func performAction() {
     guard let notification = notification else { return }
     RustBridge.onFooterAction(key: notification.key)
