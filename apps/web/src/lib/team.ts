@@ -2,7 +2,7 @@ export const TEAM_MEMBERS = {
   john: {
     id: "john",
     name: "John Jeong",
-    email: "john@hyprnote.com",
+    email: "founders@char.com",
     avatar: "/api/assets/team/john.png",
     role: "Chief Wisdom Seeker",
     bio: "I love designing simple and intuitive user interfaces.",
@@ -15,7 +15,7 @@ export const TEAM_MEMBERS = {
   yujong: {
     id: "yujong",
     name: "Yujong Lee",
-    email: "yujonglee@hyprnote.com",
+    email: "founders@char.com",
     avatar: "/api/assets/team/yujong.png",
     role: "Chief OSS Lover",
     bio: "I am super bullish about open-source software.",

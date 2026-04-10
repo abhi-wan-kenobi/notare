@@ -439,7 +439,7 @@ function SocialTestimonialsSection() {
           author="Tom Yang"
           username="tomyang11_"
           avatar="/avatars/tom.jpg"
-          body="I love the flexibility that @tryhyprnote gives me to integrate personal notes with AI summaries. I can quickly jot down important points during the meeting without getting distracted, then trust that the AI will capture them in full detail for review afterwards."
+          body="I love the flexibility that @getcharnotes gives me to integrate personal notes with AI summaries. I can quickly jot down important points during the meeting without getting distracted, then trust that the AI will capture them in full detail for review afterwards."
           url="https://twitter.com/tomyang11_/status/1956395933538902092"
         />
       </div>
@@ -452,7 +452,7 @@ function SocialTestimonialsSection() {
           avatar="/avatars/tobi.jpg"
           body={`I'm actually very pro meeting recording and ai summarization. But I'm not ok with bots joining as fake humans accomplish this. It's a meeting between you and me. Not you and me and some startup's viral growth strategy.
 
-Granola is great. Gemini does this well in Google Meet. Hyprnote is great and fully local. But use them with consent.
+Granola is great. Gemini does this well in Google Meet. Char is great and fully local. But use them with consent.
 
 My tweet is about how ridiculous and self important it looks when you show up to a meeting with random bots as entourage.`}
           url="https://x.com/tobi/status/1983892259230699921"
@@ -462,15 +462,15 @@ My tweet is about how ridiculous and self important it looks when you show up to
           author="Anand Chowdhary"
           username="AnandChowdhary"
           avatar="/avatars/anand.jpg"
-          body={`Hyprnote has been on my radar since their time in YC S25 as “that local-first meeting notes thing,” and I finally took a closer look today. It immediately hit a nerve I’ve had with AI note tools for years. I love the idea of getting help with meetings. I really don’t love bots joining every Zoom call or my audio being streamed to some mystery server “for quality purposes”.
+          body={`Char has been on my radar since their time in YC S25 as “that local-first meeting notes thing,” and I finally took a closer look today. It immediately hit a nerve I’ve had with AI note tools for years. I love the idea of getting help with meetings. I really don’t love bots joining every Zoom call or my audio being streamed to some mystery server “for quality purposes”.
 
-@tryhyprnote leans into that tension in a pretty honest way. It calls itself a local-first AI notepad for private meetings, and the “private” bit is not just a tagline. There are no meeting bots and no calendar guests. It just listens directly to the audio going in and out of your computer, gives you a realtime transcript, and lets you stay in the conversation instead of turning into a court reporter.
+@getcharnotes leans into that tension in a pretty honest way. It calls itself a local-first AI notepad for private meetings, and the “private” bit is not just a tagline. There are no meeting bots and no calendar guests. It just listens directly to the audio going in and out of your computer, gives you a realtime transcript, and lets you stay in the conversation instead of turning into a court reporter.
 
-You still have a simple notepad to jot quick memos during the call. Those act more like hints than homework. After the meeting, Hyprnote can use your memos to shape a personalized summary, but that part is optional. If you forget to take notes altogether, it can still generate a recap from the transcript.
+You still have a simple notepad to jot quick memos during the call. Those act more like hints than homework. After the meeting, Char can use your memos to shape a personalized summary, but that part is optional. If you forget to take notes altogether, it can still generate a recap from the transcript.
 
 The tech stack is pretty nice if you are into that sort of thing. TypeScript and React on the UI, Rust and Tauri for the desktop app. The cool part is what that enables. You can run the whole thing offline with LM Studio or Ollama. No Wi‑Fi, no outbound requests. That makes it genuinely interesting for teams that care a lot about compliance or even air‑gapped environments. And if you do want cloud models, it does the “bring your own LLM” thing with Gemini, Claude, Azure‑hosted GPT, etc., so it can fit into whatever your company’s approved stack is.
 
-If you have been waiting for an AI meeting assistant that behaves like a real desktop app and respects the fact that you might not want to ship your raw meeting audio to the cloud, Hyprnote is worth a look`}
+If you have been waiting for an AI meeting assistant that behaves like a real desktop app and respects the fact that you might not want to ship your raw meeting audio to the cloud, Char is worth a look`}
           url="https://x.com/AnandChowdhary/status/1997980479698723119"
         />
         <div className="flex flex-col gap-8">

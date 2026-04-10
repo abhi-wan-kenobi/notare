@@ -108,7 +108,7 @@ The `ListenerArgs` passed to the STT adapter contain the following — this is a
 
 **Where it goes depends on your setup:**
 
-- **Pro curated models:** Audio is proxied through `pro.hyprnote.com` (our server) and forwarded to a curated STT provider. The proxy does not store your audio.
+- **Pro curated models:** Audio is proxied through the Char cloud proxy and forwarded to a curated STT provider. The proxy does not store your audio.
 - **BYOK (Bring Your Own Key):** Audio is sent directly from your device to the provider you selected.
 
 **Supported cloud STT providers:**
@@ -156,7 +156,7 @@ An analytics event is also fired when auto-enhance runs — it includes only the
 
 **Where it goes depends on your setup:**
 
-- **Pro curated models:** Requests are proxied through `pro.hyprnote.com` and forwarded to a curated LLM provider via [OpenRouter](https://openrouter.ai). Nothing is stored by our proxy. We have [Zero Data Retention (ZDR)](https://openrouter.ai/docs/guides/features/zdr) enabled on our OpenRouter account, so all requests are routed exclusively to endpoints where the provider does not store your data.
+- **Pro curated models:** Requests are proxied through the Char cloud proxy and forwarded to a curated LLM provider via [OpenRouter](https://openrouter.ai). Nothing is stored by our proxy. We have [Zero Data Retention (ZDR)](https://openrouter.ai/docs/guides/features/zdr) enabled on our OpenRouter account, so all requests are routed exclusively to endpoints where the provider does not store your data.
 - **BYOK providers:** Requests are sent directly to the provider you selected (OpenAI, Anthropic, Google, or Mistral).
 - **Local LLMs:** Everything stays on your device. See [Local LLM Setup](/docs/faq/local-llm-setup).
 
@@ -169,7 +169,7 @@ Pro users have access to MCP tools for web search and URL reading during AI-assi
 - URLs (for content extraction)
 
 **Where it goes:**
-- Proxied through `pro.hyprnote.com`
+- Proxied through the Char cloud proxy
 - [Exa](https://exa.ai) — web search
 - [Jina AI](https://jina.ai) — URL content reading
 
@@ -266,7 +266,7 @@ When you sign in for Pro or cloud features, Char authenticates via Supabase.
 
 **What is sent:**
 - Authentication requests to Supabase during sign-in
-- Auth tokens to `pro.hyprnote.com` when using Pro features
+- Auth tokens to the Char cloud proxy when using Pro features
 
 ## Summary
 
