@@ -19,15 +19,13 @@ function formatDateHeader(dateStr: string): string {
   return `${month} ${day}${ordinalSuffix(day)}`;
 }
 
-export function DateHeader({
-  date,
-  muted,
-  isToday,
-}: {
-  date: string;
-  muted?: boolean;
-  isToday?: boolean;
-}) {
+function getTodayString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function DateHeader({ date, muted }: { date: string; muted?: boolean }) {
+  const isToday = date === getTodayString();
   return (
     <div className="flex items-center gap-3 px-6 pt-6 pb-3">
       <h2
