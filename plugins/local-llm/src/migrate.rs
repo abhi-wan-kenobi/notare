@@ -3,16 +3,28 @@ use std::path::Path;
 const SPECIAL_TOKENS: &str = include_str!("../assets/special_tokens.gen.json");
 const SPECIAL_TOKENS_FILE: &str = "special_tokens.json";
 
-pub fn apply_whisper_small_special_tokens(cactus_models_dir: &Path) -> crate::Result<()> {
+pub fn legacy_gguf_files(data_dir: &Path, models_dir: &Path) {
+    let _ = std::fs::create_dir_all(models_dir);
+
+    if let Ok(entries) = std::fs::read_dir(data_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|ext| ext.to_str()) == Some("gguf") {
+                if let Some(name) = path.file_name() {
+                    let _ = std::fs::rename(&path, models_dir.join(name));
+                }
+            }
+        }
+    }
+}
+
+pub fn whisper_small_special_tokens(cactus_models_dir: &Path) -> crate::Result<()> {
     if !cactus_models_dir.exists() {
         return Ok(());
     }
 
-    for entry in std::fs::read_dir(cactus_models_dir)
-        .map_err(|error| crate::Error::Other(error.to_string()))?
-    {
-        let entry = entry.map_err(|error| crate::Error::Other(error.to_string()))?;
-        let path = entry.path();
+    for entry in std::fs::read_dir(cactus_models_dir)? {
+        let path = entry?.path();
 
         if !path.is_dir() {
             continue;
@@ -31,8 +43,7 @@ pub fn apply_whisper_small_special_tokens(cactus_models_dir: &Path) -> crate::Re
             continue;
         }
 
-        std::fs::write(&target, SPECIAL_TOKENS)
-            .map_err(|error| crate::Error::Other(error.to_string()))?;
+        std::fs::write(&target, SPECIAL_TOKENS)?;
     }
 
     Ok(())
@@ -49,7 +60,7 @@ mod tests {
         std::fs::create_dir_all(cactus_models_dir.join("whisper-small-int8-apple")).unwrap();
         std::fs::create_dir_all(cactus_models_dir.join("whisper-medium-int8-apple")).unwrap();
 
-        apply_whisper_small_special_tokens(&cactus_models_dir).unwrap();
+        whisper_small_special_tokens(&cactus_models_dir).unwrap();
 
         let patched = std::fs::read_to_string(
             cactus_models_dir
@@ -74,7 +85,7 @@ mod tests {
         std::fs::create_dir_all(&model_dir).unwrap();
         std::fs::write(model_dir.join(SPECIAL_TOKENS_FILE), "{}").unwrap();
 
-        apply_whisper_small_special_tokens(temp.path().join("cactus").as_path()).unwrap();
+        whisper_small_special_tokens(temp.path().join("cactus").as_path()).unwrap();
 
         let patched = std::fs::read_to_string(model_dir.join(SPECIAL_TOKENS_FILE)).unwrap();
         assert_eq!(patched, SPECIAL_TOKENS);

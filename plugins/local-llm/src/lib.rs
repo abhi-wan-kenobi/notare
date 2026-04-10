@@ -10,7 +10,7 @@ use hypr_model_downloader::ModelDownloadManager;
 mod commands;
 mod error;
 mod ext;
-mod patch;
+mod migrate;
 mod resource;
 
 pub use error::*;
@@ -47,6 +47,37 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }
 
+#[cfg(target_arch = "aarch64")]
+fn spawn_llm_server<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, state: SharedState) {
+    let app_handle = app_handle.clone();
+    tauri::async_runtime::spawn(async move {
+        let (model_name, model_path) = match resource::resolve_embedded_llm_args(&app_handle) {
+            Ok(args) => args,
+            Err(error) => {
+                tracing::warn!(
+                    error = %error,
+                    "failed to resolve local LLM startup configuration"
+                );
+                return;
+            }
+        };
+
+        match hypr_local_llm_core::LlmServer::start_with_model_path(model_name, &model_path).await {
+            Ok(server) => {
+                let mut guard = state.lock().await;
+                guard.server = Some(server);
+                tracing::info!("local_llm_server_started");
+            }
+            Err(error) => {
+                tracing::error!(
+                    error = %error,
+                    "failed_to_start_local_llm_server"
+                );
+            }
+        }
+    });
+}
+
 pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
     let specta_builder = make_specta_builder();
 
@@ -62,22 +93,9 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             let models_dir = app.models_dir();
             let cactus_models_dir = data_dir.join("models").join("cactus");
 
-            // for backward compatibility
-            {
-                let _ = std::fs::create_dir_all(&models_dir);
+            migrate::legacy_gguf_files(&data_dir, &models_dir);
 
-                if let Ok(entries) = std::fs::read_dir(&data_dir) {
-                    for entry in entries.flatten() {
-                        let path = entry.path();
-                        if path.extension().and_then(|ext| ext.to_str()) == Some("gguf") {
-                            let new_path = models_dir.join(path.file_name().unwrap());
-                            let _ = std::fs::rename(path, new_path);
-                        }
-                    }
-                }
-            }
-
-            if let Err(error) = patch::apply_whisper_small_special_tokens(&cactus_models_dir) {
+            if let Err(error) = migrate::whisper_small_special_tokens(&cactus_models_dir) {
                 tracing::warn!(
                     error = %error,
                     path = %cactus_models_dir.display(),
@@ -98,42 +116,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             app.manage(state.clone());
 
             #[cfg(target_arch = "aarch64")]
-            {
-                let state = state.clone();
-                let app_handle = app.app_handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    let (model_name, model_path) =
-                        match resource::resolve_embedded_llm_args(&app_handle) {
-                            Ok(args) => args,
-                            Err(error) => {
-                                tracing::warn!(
-                                    error = %error,
-                                    "failed to resolve local LLM startup configuration"
-                                );
-                                return;
-                            }
-                        };
-
-                    match hypr_local_llm_core::LlmServer::start_with_model_path(
-                        model_name,
-                        &model_path,
-                    )
-                    .await
-                    {
-                        Ok(server) => {
-                            let mut guard = state.lock().await;
-                            guard.server = Some(server);
-                            tracing::info!("local_llm_server_started");
-                        }
-                        Err(error) => {
-                            tracing::error!(
-                                error = %error,
-                                "failed_to_start_local_llm_server"
-                            );
-                        }
-                    }
-                });
-            }
+            spawn_llm_server(app.app_handle(), state);
 
             Ok(())
         })

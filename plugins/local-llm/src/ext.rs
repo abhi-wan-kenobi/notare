@@ -65,6 +65,13 @@ fn models_base<R: Runtime, T: Manager<R>>(manager: &T) -> PathBuf {
         .unwrap_or_else(|_| dirs::data_dir().unwrap_or_default().join("models"))
 }
 
+async fn downloader<R: Runtime>(
+    manager: &impl Manager<R>,
+) -> ModelDownloadManager<crate::SupportedModel> {
+    let state = manager.state::<crate::SharedState>();
+    state.lock().await.model_downloader.clone()
+}
+
 pub trait LocalLlmPluginExt<R: Runtime> {
     fn models_dir(&self) -> PathBuf;
 
@@ -104,13 +111,7 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
 
     #[tracing::instrument(skip_all)]
     async fn is_model_downloading(&self, model: &crate::SupportedModel) -> bool {
-        let downloader = {
-            let state = self.state::<crate::SharedState>();
-            let guard = state.lock().await;
-            guard.model_downloader.clone()
-        };
-
-        downloader.is_downloading(model).await
+        downloader(self).await.is_downloading(model).await
     }
 
     #[tracing::instrument(skip_all)]
@@ -118,12 +119,7 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
         &self,
         model: &crate::SupportedModel,
     ) -> Result<bool, crate::Error> {
-        let downloader = {
-            let state = self.state::<crate::SharedState>();
-            let guard = state.lock().await;
-            guard.model_downloader.clone()
-        };
-        Ok(downloader.is_downloaded(model).await?)
+        Ok(downloader(self).await.is_downloaded(model).await?)
     }
 
     #[tracing::instrument(skip_all)]
@@ -140,10 +136,9 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
         model: crate::SupportedModel,
         channel: Channel<i8>,
     ) -> Result<(), crate::Error> {
-        let download_model = model;
-        let key = download_model.download_key();
+        let key = model.download_key();
 
-        let (downloader, channels) = {
+        let (dl, channels) = {
             let state = self.state::<crate::SharedState>();
             let guard = state.lock().await;
             (
@@ -152,7 +147,7 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
             )
         };
 
-        downloader.cancel_download(&download_model).await?;
+        dl.cancel_download(&model).await?;
 
         {
             let mut guard = channels.lock().unwrap();
@@ -161,7 +156,7 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
             }
         }
 
-        if let Err(e) = downloader.download(&download_model).await {
+        if let Err(e) = dl.download(&model).await {
             let mut guard = channels.lock().unwrap();
             if let Some(channel) = guard.remove(&key) {
                 let _ = channel.send(-1);
@@ -174,24 +169,12 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
 
     #[tracing::instrument(skip_all)]
     async fn cancel_download(&self, model: crate::SupportedModel) -> Result<bool, crate::Error> {
-        let downloader = {
-            let state = self.state::<crate::SharedState>();
-            let guard = state.lock().await;
-            guard.model_downloader.clone()
-        };
-
-        Ok(downloader.cancel_download(&model).await?)
+        Ok(downloader(self).await.cancel_download(&model).await?)
     }
 
     #[tracing::instrument(skip_all)]
     async fn delete_model(&self, model: &crate::SupportedModel) -> Result<(), crate::Error> {
-        let downloader = {
-            let state = self.state::<crate::SharedState>();
-            let guard = state.lock().await;
-            guard.model_downloader.clone()
-        };
-
-        downloader.delete(model).await?;
+        downloader(self).await.delete(model).await?;
         Ok(())
     }
 
