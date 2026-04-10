@@ -104,12 +104,7 @@ async function initDevTools() {
     return;
   }
 
-  const [{ scan }] = await Promise.all([
-    import("react-scan"),
-    import("react-grab"),
-  ]);
-
-  scan();
+  await import("react-grab");
   (
     window as typeof window & {
       __REACT_GRAB__?: {
