@@ -409,7 +409,7 @@ mod tests {
                 width: 320,
                 height: 200,
             },
-            window: hypr_screen_core::WindowMetadata {
+            subject: hypr_screen_core::CaptureSubject::Window(hypr_screen_core::WindowMetadata {
                 id: 1,
                 pid: 42,
                 app_name: "Code".to_string(),
@@ -420,7 +420,7 @@ mod tests {
                     width: 320,
                     height: 200,
                 },
-            },
+            }),
         }
     }
 

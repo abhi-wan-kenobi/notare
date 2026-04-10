@@ -9,9 +9,13 @@ use std::{
 
 use chrono::Local;
 use hypr_activity_capture::{ActivityScreenshotCapture, Event, Transition};
+use hypr_screen_core::CaptureSubject;
 use serde::Serialize;
 
-use crate::event_row::{DetailField, EventRow};
+use crate::{
+    event_row::{DetailField, EventRow},
+    vlm::InferenceResult,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum ExportScope {
@@ -53,7 +57,11 @@ impl RawRecord {
         }
     }
 
-    pub(crate) fn screenshot(row: &EventRow, capture: &ActivityScreenshotCapture) -> Self {
+    pub(crate) fn screenshot(
+        row: &EventRow,
+        capture: &ActivityScreenshotCapture,
+        saved_path: Option<&Path>,
+    ) -> Self {
         Self {
             captured_at: row.captured_at,
             status: row.status.label().to_string(),
@@ -71,6 +79,36 @@ impl RawRecord {
                 image_width: capture.image.width,
                 image_height: capture.image.height,
                 image_bytes_len: capture.image.image_bytes.len(),
+                subject: screenshot_subject(&capture.image.subject),
+                saved_path: saved_path.map(|path| path.display().to_string()),
+            },
+        }
+    }
+
+    pub(crate) fn vlm(row: &EventRow, result: &InferenceResult) -> Self {
+        let (response_text, error) = match &result.response {
+            Ok(response) => (Some(response.clone()), None),
+            Err(error) => (None, Some(error.clone())),
+        };
+
+        Self {
+            captured_at: row.captured_at,
+            status: row.status.label().to_string(),
+            app_name: row.app_name.clone(),
+            summary: row.summary.clone(),
+            details: row.details.iter().map(RawDetailField::from).collect(),
+            raw: RawPayload::VlmInference {
+                finished_at_ms: unix_ms(result.finished_at),
+                latency_ms: result.latency().as_millis().min(u64::MAX as u128) as u64,
+                fingerprint: result.screenshot.fingerprint.clone(),
+                pid: result.screenshot.target.pid,
+                app_name: result.screenshot.target.app_name.clone(),
+                title: result.screenshot.target.title.clone(),
+                screenshot_path: result.screenshot_path.display().to_string(),
+                model_name: result.model_name.clone(),
+                prompt: result.prompt.clone(),
+                response_text,
+                error,
             },
         }
     }
@@ -134,7 +172,48 @@ enum RawPayload {
         image_width: u32,
         image_height: u32,
         image_bytes_len: usize,
+        subject: ScreenshotSubjectPayload,
+        saved_path: Option<String>,
     },
+    VlmInference {
+        finished_at_ms: u64,
+        latency_ms: u64,
+        fingerprint: String,
+        pid: u32,
+        app_name: String,
+        title: Option<String>,
+        screenshot_path: String,
+        model_name: String,
+        prompt: String,
+        response_text: Option<String>,
+        error: Option<String>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum ScreenshotSubjectPayload {
+    Window {
+        id: u32,
+        pid: u32,
+        app_name: String,
+        title: String,
+        rect: ScreenshotRectPayload,
+    },
+    Display {
+        id: u32,
+        name: String,
+        rect: ScreenshotRectPayload,
+        is_primary: bool,
+    },
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct ScreenshotRectPayload {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
 }
 
 #[derive(Debug, Serialize)]
@@ -201,10 +280,12 @@ pub(crate) fn save_screenshot_image(capture: &ActivityScreenshotCapture) -> io::
             }
         })
         .collect();
+    let extension = screenshot_extension(&capture.image.mime_type);
     let file_name = format!(
-        "screenshot-{}-{}.webp",
+        "screenshot-{}-{}.{}",
         Local::now().format("%H%M%S"),
         app_slug,
+        extension,
     );
 
     let directory = export_directory()?;
@@ -271,6 +352,49 @@ fn unique_path(directory: &Path, file_name: &str) -> PathBuf {
     }
 
     unreachable!("infinite suffix range should always find a free path")
+}
+
+fn screenshot_subject(subject: &CaptureSubject) -> ScreenshotSubjectPayload {
+    match subject {
+        CaptureSubject::Window(window) => ScreenshotSubjectPayload::Window {
+            id: window.id,
+            pid: window.pid,
+            app_name: window.app_name.clone(),
+            title: window.title.clone(),
+            rect: screenshot_rect(window.rect),
+        },
+        CaptureSubject::Display(display) => ScreenshotSubjectPayload::Display {
+            id: display.id,
+            name: display.name.clone(),
+            rect: screenshot_rect(display.rect),
+            is_primary: display.is_primary,
+        },
+    }
+}
+
+fn screenshot_rect(rect: hypr_screen_core::CaptureRect) -> ScreenshotRectPayload {
+    ScreenshotRectPayload {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+    }
+}
+
+fn screenshot_extension(mime_type: &str) -> &'static str {
+    match mime_type {
+        "image/png" => "png",
+        "image/webp" => "webp",
+        "image/jpeg" => "jpg",
+        _ => "img",
+    }
+}
+
+fn unix_ms(value: SystemTime) -> u64 {
+    value
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|duration| duration.as_millis().min(u64::MAX as u128) as u64)
+        .unwrap_or(0)
 }
 
 fn export_directory() -> io::Result<PathBuf> {

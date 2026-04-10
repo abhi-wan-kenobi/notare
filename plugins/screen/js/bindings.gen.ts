@@ -35,9 +35,11 @@ async captureTargetWindowContext(target: WindowCaptureTarget, options: WindowCon
 /** user-defined types **/
 
 export type CaptureRect = { x: number; y: number; width: number; height: number }
-export type CaptureStrategy = "window_only" | "window_with_context"
+export type CaptureStrategy = "window_only" | "window_with_context" | "display"
+export type CaptureSubject = { kind: "window"; window: WindowContextMetadata } | { kind: "display"; display: DisplayContextMetadata }
+export type DisplayContextMetadata = { id: number; name: string; rect: CaptureRect; isPrimary: boolean }
 export type WindowCaptureTarget = { pid: number; appName: string | null; title: string | null }
-export type WindowContextCapture = { mimeType: string; dataBase64: string; capturedAtMs: number; width: number; height: number; strategy: CaptureStrategy; crop: CaptureRect; window: WindowContextMetadata }
+export type WindowContextCapture = { mimeType: string; dataBase64: string; capturedAtMs: number; width: number; height: number; strategy: CaptureStrategy; crop: CaptureRect; subject: CaptureSubject }
 export type WindowContextCaptureOptions = { imagePolicy: WindowContextImagePolicy | null }
 export type WindowContextImagePolicy = { maxLongSide: number | null }
 export type WindowContextMetadata = { id: number; pid: number; appName: string; title: string; rect: CaptureRect }

@@ -571,8 +571,8 @@ mod tests {
     #[test]
     fn batch_routing_uses_batch_language_support() {
         let router = HyprnoteRouter::default();
-        let languages = langs(&[ISO639::Ja]);
-        let available: HashSet<Provider> = [Provider::AssemblyAI].into_iter().collect();
+        let languages = langs(&[ISO639::En]);
+        let available: HashSet<Provider> = [Provider::OpenAI].into_iter().collect();
 
         assert_eq!(
             router.select_provider_chain_with_mode(RoutingMode::Live, &languages, &available),
@@ -580,7 +580,7 @@ mod tests {
         );
         assert_eq!(
             router.select_provider_chain_with_mode(RoutingMode::Batch, &languages, &available),
-            vec![Provider::AssemblyAI]
+            vec![Provider::OpenAI]
         );
     }
 

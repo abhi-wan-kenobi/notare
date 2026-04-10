@@ -19,7 +19,15 @@ function formatDateHeader(dateStr: string): string {
   return `${month} ${day}${ordinalSuffix(day)}`;
 }
 
-export function DateHeader({ date, muted }: { date: string; muted?: boolean }) {
+export function DateHeader({
+  date,
+  muted,
+  isToday,
+}: {
+  date: string;
+  muted?: boolean;
+  isToday?: boolean;
+}) {
   return (
     <div className="flex items-center gap-3 px-6 pt-6 pb-3">
       <h2
@@ -31,6 +39,11 @@ export function DateHeader({ date, muted }: { date: string; muted?: boolean }) {
       >
         {formatDateHeader(date)}
       </h2>
+      {isToday && (
+        <span className="rounded-full bg-neutral-900 px-2 py-0.5 text-xs font-medium text-white">
+          Today
+        </span>
+      )}
     </div>
   );
 }

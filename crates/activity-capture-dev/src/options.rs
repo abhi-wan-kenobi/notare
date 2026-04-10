@@ -1,11 +1,16 @@
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 
 use clap::{Parser, ValueEnum};
 use hypr_activity_capture::{
     BrowserPolicy, BundleRule, Capabilities, CaptureAccess, CapturePolicy, DomainRule, PolicyMode,
 };
 
+use crate::vlm::{
+    DEFAULT_VLM_MODEL_NAME, DEFAULT_VLM_PROMPT, DEFAULT_VLM_TIMEOUT_SECS, VlmSettings,
+};
+
 const DEFAULT_POLL_INTERVAL_MS: u64 = 750;
+const DEFAULT_SCREENSHOT_DWELL_MS: u64 = 10_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub(crate) enum RuntimePreference {
@@ -106,6 +111,29 @@ pub struct Options {
 
     #[arg(long)]
     pub once: bool,
+
+    #[arg(
+        long = "screenshot-dwell-ms",
+        default_value_t = DEFAULT_SCREENSHOT_DWELL_MS,
+        value_parser = clap::value_parser!(u64).range(0..)
+    )]
+    pub screenshot_dwell_ms: u64,
+
+    #[arg(long = "vlm-model", value_name = "PATH")]
+    pub vlm_model: Option<PathBuf>,
+
+    #[arg(long = "vlm-model-name", default_value = DEFAULT_VLM_MODEL_NAME)]
+    pub vlm_model_name: String,
+
+    #[arg(long = "vlm-prompt", default_value = DEFAULT_VLM_PROMPT)]
+    pub vlm_prompt: String,
+
+    #[arg(
+        long = "vlm-timeout-secs",
+        default_value_t = DEFAULT_VLM_TIMEOUT_SECS,
+        value_parser = clap::value_parser!(u64).range(1..)
+    )]
+    pub vlm_timeout_secs: u64,
 }
 
 impl Options {
@@ -176,6 +204,15 @@ impl Options {
             if self.keep_fragment { "keep" } else { "strip" },
             yes_no(!self.allow_text_without_url),
         )
+    }
+
+    pub fn vlm_settings(&self) -> Option<VlmSettings> {
+        self.vlm_model.as_ref().map(|model_path| VlmSettings {
+            model_path: model_path.clone(),
+            model_name: self.vlm_model_name.clone(),
+            prompt: self.vlm_prompt.clone(),
+            timeout: Duration::from_secs(self.vlm_timeout_secs),
+        })
     }
 
     fn effective_policy_mode(&self) -> PolicyMode {
@@ -263,6 +300,11 @@ mod tests {
             no_emit_initial: false,
             no_color: false,
             once: false,
+            screenshot_dwell_ms: DEFAULT_SCREENSHOT_DWELL_MS,
+            vlm_model: None,
+            vlm_model_name: DEFAULT_VLM_MODEL_NAME.to_string(),
+            vlm_prompt: DEFAULT_VLM_PROMPT.to_string(),
+            vlm_timeout_secs: DEFAULT_VLM_TIMEOUT_SECS,
         }
     }
 

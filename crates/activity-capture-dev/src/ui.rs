@@ -36,6 +36,7 @@ pub(crate) struct ScreenData<'a> {
     pub(crate) runtime_summary: String,
     pub(crate) policy_label: String,
     pub(crate) browser_policy_label: String,
+    pub(crate) capture_summary: String,
     pub(crate) session_stats: SessionStats,
     pub(crate) events: &'a [EventRow],
     pub(crate) selected_index: Option<usize>,
@@ -110,11 +111,12 @@ fn render_header(screen: &ScreenData<'_>, area: Rect, frame: &mut Frame) {
         Line::from(vec![
             Span::styled("focus", screen.theme.label()),
             Span::raw(format!(
-                "  {}  update  {}  idle  {}  snap  {}",
+                "  {}  update  {}  idle  {}  snap  {}  vlm  {}",
                 screen.session_stats.focus_count,
                 screen.session_stats.update_count,
                 screen.session_stats.idle_count,
                 screen.session_stats.screenshot_count,
+                screen.session_stats.vlm_count,
             )),
         ]),
         Line::from(vec![
@@ -133,6 +135,10 @@ fn render_header(screen: &ScreenData<'_>, area: Rect, frame: &mut Frame) {
         Line::from(vec![
             Span::styled("browser", screen.theme.label()),
             Span::raw(format!("  {}", screen.browser_policy_label)),
+        ]),
+        Line::from(vec![
+            Span::styled("capture", screen.theme.label()),
+            Span::raw(format!("  {}", screen.capture_summary)),
         ]),
         Line::from(vec![
             Span::styled("caps", screen.theme.label()),

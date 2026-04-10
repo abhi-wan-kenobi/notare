@@ -21,7 +21,8 @@ use futures_util::StreamExt;
 use hypr_activity_capture::{
     ActivityCapture, ActivityScreenshotCoordinator, Capabilities, CaptureError, CaptureStream,
     EventCoalescer, LatestCaptureSink, LatestCaptureState, PendingCapture, PlatformCapture,
-    PolicyUpdate, ScreenCoreCapturer, StableSegmentScreenshotPolicy, Transition, WatchOptions,
+    PolicyUpdate, ScreenCoreCapturer, StableSegmentScreenshotPolicy,
+    StableSegmentScreenshotPolicyConfig, Transition, WatchOptions,
 };
 use ratatui::{DefaultTerminal, layout::Rect, widgets::ListState};
 use tokio::sync::oneshot;
@@ -32,6 +33,7 @@ use crate::{
     options::{CaptureRuntimeMode, Options},
     theme::Theme,
     ui::{self, ScreenData},
+    vlm::VlmRuntime,
 };
 
 const UI_IDLE_POLL: Duration = Duration::from_millis(250);
@@ -56,6 +58,7 @@ pub(crate) struct SessionStats {
     pub(crate) update_count: usize,
     pub(crate) idle_count: usize,
     pub(crate) screenshot_count: usize,
+    pub(crate) vlm_count: usize,
 }
 
 pub(crate) fn run(options: Options, color_enabled: bool) -> io::Result<()> {
@@ -261,6 +264,7 @@ struct ActivityApp {
     screenshot_coordinator: ActivityScreenshotCoordinator,
     screenshot_state: Arc<LatestCaptureState>,
     pending_screenshot: Option<PendingCapture>,
+    vlm: Option<VlmRuntime>,
 }
 
 impl Drop for ActivityApp {
@@ -285,7 +289,9 @@ impl ActivityApp {
         } else {
             options.runtime_label(resolved_runtime)
         };
+        let screenshot_dwell_ms = options.screenshot_dwell_ms;
         let screenshot_state = Arc::new(LatestCaptureState::default());
+        let vlm = options.vlm_settings().map(VlmRuntime::spawn).transpose()?;
         let mut app = Self {
             capture,
             options,
@@ -304,13 +310,22 @@ impl ActivityApp {
             should_exit: false,
             list_inner_area: Rect::default(),
             screenshot_coordinator: ActivityScreenshotCoordinator::new(
-                Box::new(StableSegmentScreenshotPolicy::default()),
+                Box::new(StableSegmentScreenshotPolicy::new(
+                    StableSegmentScreenshotPolicyConfig {
+                        dwell_ms: screenshot_dwell_ms,
+                    },
+                )),
                 Arc::new(LatestCaptureSink::new(Arc::clone(&screenshot_state))),
                 Arc::new(ScreenCoreCapturer),
             ),
             screenshot_state,
             pending_screenshot: None,
+            vlm,
         };
+
+        if let Some(vlm) = app.vlm.as_ref() {
+            app.status_message = Some(format!("vlm ready: {}", vlm.model_name()));
+        }
 
         if app.options.once {
             app.capture_once()?;
@@ -319,6 +334,9 @@ impl ActivityApp {
 
         match resolved_runtime {
             CaptureRuntimeMode::Watch => {
+                app.capture
+                    .snapshot()
+                    .map_err(|error| io::Error::other(error.to_string()))?;
                 let stream = app
                     .capture
                     .watch(WatchOptions {
@@ -342,6 +360,7 @@ impl ActivityApp {
         while !self.should_exit {
             self.drain_runtime_events();
             self.check_pending_screenshot();
+            self.drain_vlm_results();
             ui::render(terminal, self.screen_data())?;
 
             let timeout = self.screenshot_poll_timeout();
@@ -557,17 +576,27 @@ impl ActivityApp {
                 if let Some(capture) = self.screenshot_state.latest() {
                     let saved_path = match save_screenshot_image(&capture) {
                         Ok(path) => {
-                            let label = file_label(&path);
-                            self.status_message = Some(format!("screenshot saved to {label}"));
-                            Some(label)
+                            self.status_message =
+                                Some(format!("screenshot saved to {}", file_label(&path)));
+                            Some(path)
                         }
                         Err(error) => {
                             self.status_message = Some(format!("screenshot save failed: {error}"));
                             None
                         }
                     };
+                    if let (Some(vlm), Some(path)) = (self.vlm.as_ref(), saved_path.as_ref()) {
+                        if let Err(error) = vlm.enqueue(capture.clone(), path.clone()) {
+                            self.status_message = Some(format!("vlm queue failed: {error}"));
+                        } else {
+                            self.status_message = Some(format!(
+                                "screenshot saved to {} and queued vlm",
+                                file_label(path)
+                            ));
+                        }
+                    }
                     let row = EventRow::screenshot(&capture, saved_path.as_deref());
-                    let record = RawRecord::screenshot(&row, &capture);
+                    let record = RawRecord::screenshot(&row, &capture, saved_path.as_deref());
                     self.push_row(row, record);
                 }
             }
@@ -578,6 +607,25 @@ impl ActivityApp {
                 self.pending_screenshot = None;
                 self.status_message = Some(format!("screenshot capture failed: {error}"));
             }
+        }
+    }
+
+    fn drain_vlm_results(&mut self) {
+        let Some(vlm) = self.vlm.as_mut() else {
+            return;
+        };
+
+        for result in vlm.drain_results() {
+            self.status_message = Some(match &result.response {
+                Ok(_) => format!("vlm completed for {}", file_label(&result.screenshot_path)),
+                Err(error) => format!(
+                    "vlm failed for {}: {error}",
+                    file_label(&result.screenshot_path)
+                ),
+            });
+            let row = EventRow::vlm(&result);
+            let record = RawRecord::vlm(&row, &result);
+            self.push_row(row, record);
         }
     }
 
@@ -751,7 +799,11 @@ impl ActivityApp {
 
     fn runtime_summary(&self) -> String {
         if self.options.once {
-            return self.runtime_label.clone();
+            let mut summary = self.runtime_label.clone();
+            if let Some(vlm) = self.vlm.as_ref() {
+                summary.push_str(&format!(" vlm={}", vlm.model_name()));
+            }
+            return summary;
         }
 
         let live = if self.capture_driver.is_watch_live() {
@@ -762,7 +814,11 @@ impl ActivityApp {
             "active"
         };
 
-        format!("{} {live}", self.runtime_label)
+        let mut summary = format!("{} {live}", self.runtime_label);
+        if let Some(vlm) = self.vlm.as_ref() {
+            summary.push_str(&format!(" vlm={}", vlm.model_name()));
+        }
+        summary
     }
 
     fn session_stats(&self) -> SessionStats {
@@ -771,6 +827,7 @@ impl ActivityApp {
         let mut update_count = 0;
         let mut idle_count = 0;
         let mut screenshot_count = 0;
+        let mut vlm_count = 0;
 
         for row in &self.events {
             if row.app_name != "-" {
@@ -782,6 +839,7 @@ impl ActivityApp {
                 RowStatus::Update => update_count += 1,
                 RowStatus::Idle => idle_count += 1,
                 RowStatus::Screenshot => screenshot_count += 1,
+                RowStatus::Vlm => vlm_count += 1,
             }
         }
 
@@ -792,6 +850,7 @@ impl ActivityApp {
             update_count,
             idle_count,
             screenshot_count,
+            vlm_count,
         }
     }
 
@@ -807,6 +866,7 @@ impl ActivityApp {
         let selection_summary = self.selection_summary();
         let policy_label = self.options.policy_label();
         let browser_policy_label = self.options.browser_policy_label();
+        let capture_summary = self.capture_summary();
         let runtime_summary = self.runtime_summary();
         let session_stats = self.session_stats();
 
@@ -819,6 +879,7 @@ impl ActivityApp {
             runtime_summary,
             policy_label,
             browser_policy_label,
+            capture_summary,
             session_stats,
             events: &self.events,
             selected_index,
@@ -829,6 +890,21 @@ impl ActivityApp {
             list_state: &mut self.list_state,
             list_inner_area: &mut self.list_inner_area,
         }
+    }
+
+    fn capture_summary(&self) -> String {
+        let mut summary = format!("dwell={}ms", self.options.screenshot_dwell_ms);
+        if let Some(pending) = self.pending_screenshot.as_ref() {
+            let now = unix_ms_now();
+            let remaining_ms = pending.due_at_ms.saturating_sub(now).max(0);
+            summary.push_str(&format!(
+                " pending={}ms target={}",
+                remaining_ms, pending.target.app_name
+            ));
+        } else {
+            summary.push_str(" pending=none");
+        }
+        summary
     }
 }
 

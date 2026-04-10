@@ -23,6 +23,7 @@ tower = { workspace = true }
 [dev-dependencies]
 reqwest = { workspace = true, features = ["json"] }
 tokio = { workspace = true }
+url = { workspace = true }
 
 pico-args = { workspace = true }
 

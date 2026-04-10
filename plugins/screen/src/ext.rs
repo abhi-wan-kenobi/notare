@@ -31,6 +31,7 @@ impl Default for WindowContextCaptureOptions {
 pub enum CaptureStrategy {
     WindowOnly,
     WindowWithContext,
+    Display,
 }
 
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
@@ -52,6 +53,22 @@ pub struct WindowContextMetadata {
     pub rect: CaptureRect,
 }
 
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DisplayContextMetadata {
+    pub id: u32,
+    pub name: String,
+    pub rect: CaptureRect,
+    pub is_primary: bool,
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum CaptureSubject {
+    Window { window: WindowContextMetadata },
+    Display { display: DisplayContextMetadata },
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowCaptureTarget {
@@ -70,7 +87,7 @@ pub struct WindowContextCapture {
     pub height: u32,
     pub strategy: CaptureStrategy,
     pub crop: CaptureRect,
-    pub window: WindowContextMetadata,
+    pub subject: CaptureSubject,
 }
 
 pub struct Screen<'a, R: tauri::Runtime, M: tauri::Manager<R>> {
@@ -134,6 +151,7 @@ fn map_capture(capture: hypr_screen_core::WindowContextImage) -> WindowContextCa
             hypr_screen_core::CaptureStrategy::WindowWithContext => {
                 CaptureStrategy::WindowWithContext
             }
+            hypr_screen_core::CaptureStrategy::Display => CaptureStrategy::Display,
         },
         crop: CaptureRect {
             x: capture.crop.x,
@@ -141,16 +159,33 @@ fn map_capture(capture: hypr_screen_core::WindowContextImage) -> WindowContextCa
             width: capture.crop.width,
             height: capture.crop.height,
         },
-        window: WindowContextMetadata {
-            id: capture.window.id,
-            pid: capture.window.pid,
-            app_name: capture.window.app_name,
-            title: capture.window.title,
-            rect: CaptureRect {
-                x: capture.window.rect.x,
-                y: capture.window.rect.y,
-                width: capture.window.rect.width,
-                height: capture.window.rect.height,
+        subject: match capture.subject {
+            hypr_screen_core::CaptureSubject::Window(window) => CaptureSubject::Window {
+                window: WindowContextMetadata {
+                    id: window.id,
+                    pid: window.pid,
+                    app_name: window.app_name,
+                    title: window.title,
+                    rect: CaptureRect {
+                        x: window.rect.x,
+                        y: window.rect.y,
+                        width: window.rect.width,
+                        height: window.rect.height,
+                    },
+                },
+            },
+            hypr_screen_core::CaptureSubject::Display(display) => CaptureSubject::Display {
+                display: DisplayContextMetadata {
+                    id: display.id,
+                    name: display.name,
+                    rect: CaptureRect {
+                        x: display.rect.x,
+                        y: display.rect.y,
+                        width: display.rect.width,
+                        height: display.rect.height,
+                    },
+                    is_primary: display.is_primary,
+                },
             },
         },
     }
@@ -171,5 +206,77 @@ impl<R: tauri::Runtime, T: tauri::Manager<R>> ScreenPluginExt<R> for T {
             manager: self,
             _runtime: std::marker::PhantomData,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rect() -> hypr_screen_core::CaptureRect {
+        hypr_screen_core::CaptureRect {
+            x: 1,
+            y: 2,
+            width: 300,
+            height: 200,
+        }
+    }
+
+    #[test]
+    fn maps_window_subject_capture() {
+        let capture = map_capture(hypr_screen_core::WindowContextImage {
+            image_bytes: vec![1, 2, 3],
+            mime_type: "image/png".to_string(),
+            captured_at_ms: 10,
+            width: 300,
+            height: 200,
+            strategy: hypr_screen_core::CaptureStrategy::WindowWithContext,
+            crop: rect(),
+            subject: hypr_screen_core::CaptureSubject::Window(hypr_screen_core::WindowMetadata {
+                id: 7,
+                pid: 42,
+                app_name: "Ghostty".to_string(),
+                title: "cargo run".to_string(),
+                rect: rect(),
+            }),
+        });
+
+        assert!(matches!(
+            capture.strategy,
+            CaptureStrategy::WindowWithContext
+        ));
+        assert!(matches!(
+            capture.subject,
+            CaptureSubject::Window { window }
+                if window.id == 7 && window.pid == 42 && window.app_name == "Ghostty"
+        ));
+    }
+
+    #[test]
+    fn maps_display_subject_capture() {
+        let capture = map_capture(hypr_screen_core::WindowContextImage {
+            image_bytes: vec![1, 2, 3],
+            mime_type: "image/png".to_string(),
+            captured_at_ms: 10,
+            width: 400,
+            height: 300,
+            strategy: hypr_screen_core::CaptureStrategy::Display,
+            crop: rect(),
+            subject: hypr_screen_core::CaptureSubject::Display(hypr_screen_core::DisplayMetadata {
+                id: 3,
+                name: "Built-in Retina Display".to_string(),
+                rect: rect(),
+                is_primary: true,
+            }),
+        });
+
+        assert!(matches!(capture.strategy, CaptureStrategy::Display));
+        assert!(matches!(
+            capture.subject,
+            CaptureSubject::Display { display }
+                if display.id == 3
+                    && display.name == "Built-in Retina Display"
+                    && display.is_primary
+        ));
     }
 }

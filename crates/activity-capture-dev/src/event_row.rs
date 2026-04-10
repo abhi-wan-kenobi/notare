@@ -1,9 +1,13 @@
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    path::Path,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use hypr_activity_capture::{
     ActivityKind, ActivityScreenshotCapture, ContentLevel, Event, Snapshot, SnapshotSource,
     TextAnchorConfidence, TextAnchorKind, Transition,
 };
+use hypr_screen_core::CaptureSubject;
 
 use crate::{
     formatting::{compact, compact_url, format_duration, format_timestamp},
@@ -11,6 +15,7 @@ use crate::{
         APP_PREVIEW_LIMIT, DIFF_PREVIEW_LIMIT, TEXT_PREVIEW_LIMIT, TITLE_PREVIEW_LIMIT,
         URL_PREVIEW_LIMIT,
     },
+    vlm::InferenceResult,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,6 +24,7 @@ pub(crate) enum RowStatus {
     Update,
     Idle,
     Screenshot,
+    Vlm,
 }
 
 impl RowStatus {
@@ -28,6 +34,7 @@ impl RowStatus {
             Self::Update => "update",
             Self::Idle => "idle",
             Self::Screenshot => "snap",
+            Self::Vlm => "vlm",
         }
     }
 }
@@ -120,7 +127,7 @@ impl EventRow {
 
     pub(crate) fn screenshot(
         capture: &ActivityScreenshotCapture,
-        saved_path: Option<&str>,
+        saved_path: Option<&Path>,
     ) -> Self {
         let captured_at = UNIX_EPOCH + Duration::from_millis(capture.captured_at_ms as u64);
         let scheduled_at = UNIX_EPOCH + Duration::from_millis(capture.scheduled_at_ms as u64);
@@ -148,12 +155,26 @@ impl EventRow {
             "Image",
             format!("{}x{} {}", image.width, image.height, image.mime_type),
         ));
+        match &image.subject {
+            CaptureSubject::Window(window) => details.push(detail(
+                "Source",
+                format!("window {} ({})", window.title, window.app_name),
+            )),
+            CaptureSubject::Display(display) => details.push(detail(
+                "Source",
+                format!(
+                    "display {}{}",
+                    display.name,
+                    if display.is_primary { " (primary)" } else { "" }
+                ),
+            )),
+        }
         details.push(detail(
             "Size",
             format!("{:.1} KB", image.image_bytes.len() as f64 / 1024.0),
         ));
         if let Some(path) = saved_path {
-            details.push(detail("Saved", path.to_string()));
+            details.push(detail("Saved", path.display().to_string()));
         }
 
         let title_preview = capture
@@ -169,6 +190,49 @@ impl EventRow {
             status: RowStatus::Screenshot,
             context: format!("{}x{}", image.width, image.height),
             summary: format!("reason={:?}{title_preview}", capture.reason,),
+            details,
+        }
+    }
+
+    pub(crate) fn vlm(result: &InferenceResult) -> Self {
+        let mut details = vec![
+            detail("Event", "vlm"),
+            detail("Captured", format_timestamp(result.finished_at)),
+            detail("App", detail_value(&result.screenshot.target.app_name)),
+            detail("Model", detail_value(&result.model_name)),
+            detail("Latency", format_duration(result.latency())),
+            detail("Prompt", detail_value(&result.prompt)),
+            detail("Screenshot", result.screenshot_path.display().to_string()),
+            detail("Fingerprint", result.screenshot.fingerprint.clone()),
+        ];
+
+        if let Some(title) = result.screenshot.target.title.as_deref() {
+            details.push(detail("Window", detail_value(title)));
+        }
+
+        let (context, summary) = match &result.response {
+            Ok(response) => {
+                details.push(detail("Response", detail_value(response)));
+                (
+                    result.model_name.clone(),
+                    format!("ok={}", compact(response, TEXT_PREVIEW_LIMIT * 2)),
+                )
+            }
+            Err(error) => {
+                details.push(detail("Error", detail_value(error)));
+                (
+                    result.model_name.clone(),
+                    format!("error={}", compact(error, TEXT_PREVIEW_LIMIT)),
+                )
+            }
+        };
+
+        Self {
+            captured_at: result.finished_at,
+            app_name: result.screenshot.target.app_name.clone(),
+            status: RowStatus::Vlm,
+            context,
+            summary,
             details,
         }
     }

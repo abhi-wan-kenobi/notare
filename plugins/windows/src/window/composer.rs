@@ -1,13 +1,16 @@
-use tauri::{
-    AppHandle, LogicalPosition, LogicalSize, Manager, Position, Size, WebviewUrl, WebviewWindow,
-};
+use tauri::{AppHandle, LogicalPosition, Manager, Position, WebviewWindow};
 
 #[cfg(target_os = "macos")]
 use tauri_nspanel::{
     CollectionBehavior, ManagerExt, PanelBuilder, PanelHandle, PanelLevel, StyleMask, tauri_panel,
 };
 
-use crate::{AppWindow, Error, WindowImpl, ext::run_on_main_thread};
+#[cfg(target_os = "macos")]
+use tauri::{LogicalSize, Size, WebviewUrl};
+
+#[cfg(target_os = "macos")]
+use crate::ext::run_on_main_thread;
+use crate::{AppWindow, Error, WindowImpl};
 
 pub const WIDTH: f64 = 720.0;
 pub const HEIGHT: f64 = 204.0;

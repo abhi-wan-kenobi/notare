@@ -48,6 +48,7 @@ impl Theme {
             RowStatus::Update => self.style(Color::Yellow, true),
             RowStatus::Idle => self.style(Color::DarkGray, true),
             RowStatus::Screenshot => self.style(Color::Green, true),
+            RowStatus::Vlm => self.style(Color::Magenta, true),
         }
     }
 

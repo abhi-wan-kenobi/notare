@@ -1,3 +1,4 @@
+import { useRouterState } from "@tanstack/react-router";
 import { type UnlistenFn } from "@tauri-apps/api/event";
 import { message } from "@tauri-apps/plugin-dialog";
 import { XIcon } from "lucide-react";
@@ -7,8 +8,11 @@ import { commands, events } from "@hypr/plugin-updater2";
 import { Button } from "@hypr/ui/components/ui/button";
 import { cn } from "@hypr/utils";
 
+import { useTabs } from "~/store/zustand/tabs";
+
 export function UpdateBanner() {
   const { version } = useUpdate();
+  const isHomeOnly = useShouldShowUpdateBanner();
   const [dismissed, setDismissed] = useState(false);
   const [installing, setInstalling] = useState(false);
 
@@ -36,7 +40,7 @@ export function UpdateBanner() {
     setInstalling(false);
   }, [version]);
 
-  if (!version || dismissed) {
+  if (!version || dismissed || !isHomeOnly) {
     return null;
   }
 
@@ -66,6 +70,18 @@ export function UpdateBanner() {
       </button>
     </div>
   );
+}
+
+export function useShouldShowUpdateBanner() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+
+  return useTabs((state) => {
+    const isMain2Home = pathname === "/app/main2" || pathname === "/app/main2/";
+
+    return isMain2Home && state.currentTab === null && state.tabs.length === 0;
+  });
 }
 
 function useUpdate() {

@@ -1,61 +1,112 @@
 use std::net::{Ipv4Addr, SocketAddr};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use axum::http::StatusCode;
+use hypr_llm_types::ImageDetail;
 use llm_cactus::{CompleteService, ModelManagerBuilder};
+use url::Url;
 
 struct Args {
     model: PathBuf,
-    prompt: String,
+    prompt: Option<String>,
+    images: Vec<PathBuf>,
+    image_detail: Option<ImageDetail>,
     system: Option<String>,
     model_name: String,
     temperature: Option<f32>,
 }
 
 impl Args {
-    fn parse() -> Self {
+    fn parse() -> Result<Self, String> {
         let mut args = pico_args::Arguments::from_env();
 
-        let model = args.value_from_str("--model").unwrap_or_else(|_| {
-            eprintln!("error: --model <PATH> is required");
-            std::process::exit(1);
-        });
+        if args.contains(["-h", "--help"]) {
+            print_usage();
+            std::process::exit(0);
+        }
 
-        let prompt = args.value_from_str("--prompt").unwrap_or_else(|_| {
-            eprintln!("error: --prompt <TEXT> is required");
-            std::process::exit(1);
-        });
-
-        let system = args.opt_value_from_str("--system").unwrap_or_else(|e| {
-            eprintln!("error: {e}");
-            std::process::exit(1);
-        });
-
+        let model = args
+            .value_from_str("--model")
+            .map_err(|_| "--model <PATH> is required".to_string())?;
+        let prompt = args
+            .opt_value_from_str("--prompt")
+            .map_err(|error| error.to_string())?;
+        let system = args
+            .opt_value_from_str("--system")
+            .map_err(|error| error.to_string())?;
         let model_name = args
             .opt_value_from_str("--model-name")
-            .unwrap_or_else(|e| {
-                eprintln!("error: {e}");
-                std::process::exit(1);
-            })
+            .map_err(|error| error.to_string())?
             .unwrap_or_else(|| "cactus".to_string());
-
         let temperature = args
             .opt_value_from_str("--temperature")
-            .unwrap_or_else(|e| {
-                eprintln!("error: {e}");
-                std::process::exit(1);
-            });
+            .map_err(|error| error.to_string())?;
+        let image_detail = args
+            .opt_value_from_str::<_, String>("--image-detail")
+            .map_err(|error| error.to_string())?
+            .map(|value| parse_image_detail(&value))
+            .transpose()?;
+        let mut images = Vec::new();
+        while let Ok(image) = args.value_from_str("--image") {
+            images.push(image);
+        }
 
-        let _ = args.finish();
+        let remaining = args.finish();
+        if !remaining.is_empty() {
+            return Err(format!(
+                "unexpected arguments: {}",
+                remaining
+                    .iter()
+                    .map(|value| value.to_string_lossy())
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            ));
+        }
 
-        Self {
+        if prompt.is_none() && images.is_empty() {
+            return Err("at least one of --prompt <TEXT> or --image <PATH> is required".into());
+        }
+
+        Ok(Self {
             model,
             prompt,
+            images,
+            image_detail,
             system,
             model_name,
             temperature,
-        }
+        })
     }
+}
+
+fn parse_image_detail(value: &str) -> Result<ImageDetail, String> {
+    match value {
+        "auto" => Ok(ImageDetail::Auto),
+        "low" => Ok(ImageDetail::Low),
+        "high" => Ok(ImageDetail::High),
+        _ => Err(format!(
+            "invalid --image-detail '{value}', expected one of: auto, low, high"
+        )),
+    }
+}
+
+fn print_usage() {
+    eprintln!(
+        "\
+Usage:
+  cargo run -p llm-cactus --example complete -- --model <PATH> [options]
+
+Options:
+  --model <PATH>            Model path
+  --prompt <TEXT>           User text prompt
+  --image <PATH>            User image path (repeatable)
+  --image-detail <VALUE>    Image detail: auto, low, high
+  --system <TEXT>           System prompt
+  --model-name <NAME>       Request model name (default: cactus)
+  --temperature <FLOAT>     Sampling temperature
+  -h, --help                Show this help
+"
+    );
 }
 
 struct LocalServer {
@@ -100,23 +151,63 @@ impl Drop for LocalServer {
     }
 }
 
-/// cargo run -p llm-cactus --example complete -- --model ~/Library/Application\ Support/hyprnote/models/cactus/qwen2.5-3b-instruct-q4km --prompt "Write a haiku about note taking"
-#[tokio::main(flavor = "current_thread")]
-async fn main() {
-    let args = Args::parse();
+fn image_url(path: &Path) -> Result<String, String> {
+    let path = std::fs::canonicalize(path)
+        .map_err(|error| format!("failed to resolve image path {}: {error}", path.display()))?;
+    let metadata = std::fs::metadata(&path)
+        .map_err(|error| format!("failed to read image path {}: {error}", path.display()))?;
+    if !metadata.is_file() {
+        return Err(format!(
+            "image path must point to a file: {}",
+            path.display()
+        ));
+    }
 
-    assert!(
-        args.model.exists(),
-        "model not found: {}",
-        args.model.display()
-    );
+    Url::from_file_path(&path)
+        .map(|url| url.to_string())
+        .map_err(|_| {
+            format!(
+                "failed to convert image path to file URL: {}",
+                path.display()
+            )
+        })
+}
 
-    let server = LocalServer::spawn(args.model.clone(), args.model_name.clone()).await;
-    let client = reqwest::Client::new();
-    let url = format!("http://{}/v1/chat/completions", server.addr);
+fn build_user_content(args: &Args) -> Result<serde_json::Value, String> {
+    if args.images.is_empty() {
+        return Ok(serde_json::Value::String(
+            args.prompt.clone().unwrap_or_default(),
+        ));
+    }
 
+    let mut parts = Vec::new();
+
+    if let Some(prompt) = args.prompt.as_deref().filter(|prompt| !prompt.is_empty()) {
+        parts.push(serde_json::json!({
+            "type": "text",
+            "text": prompt,
+        }));
+    }
+
+    for image in &args.images {
+        let mut image_url = serde_json::json!({
+            "url": image_url(image)?,
+        });
+        if let Some(detail) = &args.image_detail {
+            image_url["detail"] = serde_json::to_value(detail).expect("image detail serializes");
+        }
+        parts.push(serde_json::json!({
+            "type": "image_url",
+            "image_url": image_url,
+        }));
+    }
+
+    Ok(serde_json::Value::Array(parts))
+}
+
+fn build_messages(args: &Args) -> Result<Vec<serde_json::Value>, String> {
     let mut messages = Vec::new();
-    if let Some(system) = args.system {
+    if let Some(system) = &args.system {
         messages.push(serde_json::json!({
             "role": "system",
             "content": system,
@@ -124,8 +215,21 @@ async fn main() {
     }
     messages.push(serde_json::json!({
         "role": "user",
-        "content": args.prompt,
+        "content": build_user_content(args)?,
     }));
+    Ok(messages)
+}
+
+async fn run() -> Result<(), String> {
+    let args = Args::parse()?;
+    if !args.model.exists() {
+        return Err(format!("model not found: {}", args.model.display()));
+    }
+
+    let server = LocalServer::spawn(args.model.clone(), args.model_name.clone()).await;
+    let client = reqwest::Client::new();
+    let url = format!("http://{}/v1/chat/completions", server.addr);
+    let messages = build_messages(&args)?;
 
     let response = client
         .post(url)
@@ -137,20 +241,38 @@ async fn main() {
         }))
         .send()
         .await
-        .expect("request failed");
+        .map_err(|error| format!("request failed: {error}"))?;
 
     let status = response.status();
-    let body = response.text().await.expect("failed to read response body");
+    let body = response
+        .text()
+        .await
+        .map_err(|error| format!("failed to read response body: {error}"))?;
 
     if !status.is_success() {
-        eprintln!("request failed: HTTP {status}");
-        eprintln!("{body}");
-        std::process::exit(1);
+        return Err(format!("request failed: HTTP {status}\n{body}"));
     }
 
-    let json: serde_json::Value = serde_json::from_str(&body).expect("invalid JSON response");
+    let json: serde_json::Value =
+        serde_json::from_str(&body).map_err(|error| format!("invalid JSON response: {error}"))?;
     println!(
         "{}",
-        serde_json::to_string_pretty(&json).expect("failed to format response")
+        serde_json::to_string_pretty(&json)
+            .map_err(|error| format!("failed to format response: {error}"))?
     );
+
+    Ok(())
+}
+
+/// Text only:
+/// cargo run -p llm-cactus --example complete -- --model ~/Library/Application\ Support/hyprnote/models/cactus/qwen2.5-3b-instruct-q4km --prompt "Write a haiku about note taking"
+///
+/// Text + image:
+/// cargo run -p llm-cactus --example complete -- --model ~/Library/Application\ Support/hyprnote/models/cactus/qwen2.5-3b-instruct-q4km --prompt "Describe this image" --image /tmp/example.png --image-detail high
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
+    if let Err(error) = run().await {
+        eprintln!("error: {error}");
+        std::process::exit(1);
+    }
 }

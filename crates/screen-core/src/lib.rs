@@ -1,9 +1,10 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
-use std::cmp::{max, min};
+use std::{
+    cmp::{max, min},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use image::{
-    ExtendedColorType, ImageEncoder, RgbaImage, codecs::webp::WebPEncoder, imageops::FilterType,
+    ExtendedColorType, ImageEncoder, RgbaImage, codecs::png::PngEncoder, imageops::FilterType,
 };
 use xcap::{Monitor, Window, XCapError};
 
@@ -11,6 +12,7 @@ use xcap::{Monitor, Window, XCapError};
 pub enum CaptureStrategy {
     WindowOnly,
     WindowWithContext,
+    Display,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,6 +30,20 @@ pub struct WindowMetadata {
     pub app_name: String,
     pub title: String,
     pub rect: CaptureRect,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DisplayMetadata {
+    pub id: u32,
+    pub name: String,
+    pub rect: CaptureRect,
+    pub is_primary: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CaptureSubject {
+    Window(WindowMetadata),
+    Display(DisplayMetadata),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -77,7 +93,7 @@ pub struct WindowContextImage {
     pub height: u32,
     pub strategy: CaptureStrategy,
     pub crop: CaptureRect,
-    pub window: WindowMetadata,
+    pub subject: CaptureSubject,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -89,8 +105,8 @@ pub struct WindowCaptureTarget {
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("no focused window is available for capture")]
-    NoFocusedWindow,
+    #[error("no capture source is available")]
+    NoCaptureSource,
     #[error("focused window has invalid bounds")]
     InvalidWindowBounds,
     #[error("window is outside the bounds of its current monitor")]
@@ -103,26 +119,237 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CaptureStage {
+    ExactTargetWindow,
+    SamePidWindow,
+    FrontmostWindow,
+    PrimaryDisplay,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct WindowCandidate {
+    pid: u32,
+    app_name: Option<String>,
+    title: Option<String>,
+    is_minimized: bool,
+    width: u32,
+    height: u32,
+    is_focused: Option<bool>,
+}
+
 pub fn capture_frontmost_window_context(
     options: WindowContextCaptureOptions,
 ) -> Result<WindowContextImage> {
-    capture_window_context(None, options)
+    capture_with_plan(
+        None,
+        options,
+        [CaptureStage::FrontmostWindow, CaptureStage::PrimaryDisplay],
+    )
 }
 
 pub fn capture_target_window_context(
     target: &WindowCaptureTarget,
     options: WindowContextCaptureOptions,
 ) -> Result<WindowContextImage> {
-    capture_window_context(Some(target), options)
+    capture_with_plan(
+        Some(target),
+        options,
+        [
+            CaptureStage::ExactTargetWindow,
+            CaptureStage::SamePidWindow,
+            CaptureStage::FrontmostWindow,
+            CaptureStage::PrimaryDisplay,
+        ],
+    )
 }
 
-fn capture_window_context(
+fn capture_with_plan<I>(
     target: Option<&WindowCaptureTarget>,
     options: WindowContextCaptureOptions,
-) -> Result<WindowContextImage> {
+    stages: I,
+) -> Result<WindowContextImage>
+where
+    I: IntoIterator<Item = CaptureStage>,
+{
     let image_policy = options.image_policy.normalized();
-    let window = resolve_window(target)?;
-    let metadata = window_metadata(&window)?;
+    execute_capture_plan(stages, |stage| match stage {
+        CaptureStage::ExactTargetWindow => {
+            let Some(target) = target else {
+                return Ok(None);
+            };
+            let Some(window) = resolve_exact_target_window(target)? else {
+                return Ok(None);
+            };
+            capture_window_source(&window, image_policy.clone()).map(Some)
+        }
+        CaptureStage::SamePidWindow => {
+            let Some(target) = target else {
+                return Ok(None);
+            };
+            let Some(window) = resolve_same_pid_window(target)? else {
+                return Ok(None);
+            };
+            capture_window_source(&window, image_policy.clone()).map(Some)
+        }
+        CaptureStage::FrontmostWindow => {
+            let Some(window) = resolve_frontmost_window()? else {
+                return Ok(None);
+            };
+            capture_window_source(&window, image_policy.clone()).map(Some)
+        }
+        CaptureStage::PrimaryDisplay => {
+            let Some(monitor) = resolve_primary_monitor()? else {
+                return Ok(None);
+            };
+            capture_display_source(&monitor, image_policy.clone()).map(Some)
+        }
+    })
+}
+
+fn execute_capture_plan<I, F, T>(stages: I, mut attempt: F) -> Result<T>
+where
+    I: IntoIterator<Item = CaptureStage>,
+    F: FnMut(CaptureStage) -> Result<Option<T>>,
+{
+    let mut last_error = None;
+
+    for stage in stages {
+        match attempt(stage) {
+            Ok(Some(value)) => return Ok(value),
+            Ok(None) => {}
+            Err(error) => last_error = Some(error),
+        }
+    }
+
+    Err(last_error.unwrap_or(Error::NoCaptureSource))
+}
+
+fn resolve_exact_target_window(target: &WindowCaptureTarget) -> Result<Option<Window>> {
+    let Some(target_title) = target.title.as_deref().filter(|value| !value.is_empty()) else {
+        return Ok(None);
+    };
+    let windows = Window::all()?;
+    let candidates = collect_window_candidates(&windows);
+    Ok(select_exact_target_candidate(
+        &candidates,
+        target.pid,
+        target_title,
+    ))
+}
+
+fn resolve_same_pid_window(target: &WindowCaptureTarget) -> Result<Option<Window>> {
+    let windows = Window::all()?;
+    let candidates = collect_window_candidates(&windows);
+    Ok(select_same_pid_best_match_candidate(&candidates, target))
+}
+
+fn resolve_frontmost_window() -> Result<Option<Window>> {
+    let windows = Window::all()?;
+    let candidates = collect_window_candidates(&windows);
+    Ok(select_frontmost_candidate(&candidates))
+}
+
+fn resolve_primary_monitor() -> Result<Option<Monitor>> {
+    let monitors = Monitor::all()?;
+    Ok(select_primary_monitor(&monitors))
+}
+
+fn collect_window_candidates(windows: &[Window]) -> Vec<(WindowCandidate, Window)> {
+    windows
+        .iter()
+        .filter_map(|window| {
+            Some((
+                WindowCandidate {
+                    pid: window.pid().ok()?,
+                    app_name: window.app_name().ok(),
+                    title: window.title().ok(),
+                    is_minimized: window.is_minimized().ok()?,
+                    width: window.width().ok()?,
+                    height: window.height().ok()?,
+                    is_focused: window.is_focused().ok(),
+                },
+                window.clone(),
+            ))
+        })
+        .collect()
+}
+
+fn select_exact_target_candidate<T: Clone>(
+    candidates: &[(WindowCandidate, T)],
+    target_pid: u32,
+    target_title: &str,
+) -> Option<T> {
+    candidates
+        .iter()
+        .find(|(candidate, _)| {
+            is_usable_candidate(candidate)
+                && candidate.pid == target_pid
+                && candidate.title.as_deref() == Some(target_title)
+        })
+        .map(|(_, value)| value.clone())
+}
+
+fn select_same_pid_best_match_candidate<T: Clone>(
+    candidates: &[(WindowCandidate, T)],
+    target: &WindowCaptureTarget,
+) -> Option<T> {
+    candidates
+        .iter()
+        .filter_map(|(candidate, value)| {
+            same_pid_match_score(target, candidate).map(|score| (score, value))
+        })
+        .min_by_key(|(score, _)| *score)
+        .map(|(_, value)| value.clone())
+}
+
+fn select_frontmost_candidate<T: Clone>(candidates: &[(WindowCandidate, T)]) -> Option<T> {
+    candidates
+        .iter()
+        .find(|(candidate, _)| is_usable_candidate(candidate) && candidate.is_focused == Some(true))
+        .map(|(_, value)| value.clone())
+}
+
+fn select_primary_monitor(monitors: &[Monitor]) -> Option<Monitor> {
+    monitors
+        .iter()
+        .find(|monitor| monitor.is_primary().ok() == Some(true))
+        .cloned()
+        .or_else(|| monitors.first().cloned())
+}
+
+fn is_usable_candidate(candidate: &WindowCandidate) -> bool {
+    !candidate.is_minimized && candidate.width > 0 && candidate.height > 0
+}
+
+fn same_pid_match_score(target: &WindowCaptureTarget, candidate: &WindowCandidate) -> Option<u8> {
+    if !is_usable_candidate(candidate) || candidate.pid != target.pid {
+        return None;
+    }
+
+    let normalized_target_app_name = target.app_name.as_deref().filter(|value| !value.is_empty());
+    let normalized_target_title = target.title.as_deref().filter(|value| !value.is_empty());
+
+    if let Some(target_app_name) = normalized_target_app_name
+        && candidate.app_name.as_deref() == Some(target_app_name)
+    {
+        return Some(0);
+    }
+
+    if let Some(target_title) = normalized_target_title
+        && candidate.title.as_deref() == Some(target_title)
+    {
+        return Some(1);
+    }
+
+    Some(2)
+}
+
+fn capture_window_source(
+    window: &Window,
+    image_policy: WindowContextImagePolicy,
+) -> Result<WindowContextImage> {
+    let metadata = window_metadata(window)?;
     let monitor = window.current_monitor()?;
     let monitor_rect = monitor_rect(&monitor)?;
 
@@ -135,9 +362,42 @@ fn capture_window_context(
     let local_y = (crop.y - monitor_rect.y) as u32;
 
     let image = monitor.capture_region(local_x, local_y, crop.width, crop.height)?;
+    build_capture_image(
+        image,
+        image_policy,
+        strategy,
+        crop,
+        CaptureSubject::Window(metadata),
+    )
+}
+
+fn capture_display_source(
+    monitor: &Monitor,
+    image_policy: WindowContextImagePolicy,
+) -> Result<WindowContextImage> {
+    let metadata = display_metadata(monitor)?;
+    let crop = metadata.rect;
+    let image = monitor.capture_image()?;
+
+    build_capture_image(
+        image,
+        image_policy,
+        CaptureStrategy::Display,
+        crop,
+        CaptureSubject::Display(metadata),
+    )
+}
+
+fn build_capture_image(
+    image: RgbaImage,
+    image_policy: WindowContextImagePolicy,
+    strategy: CaptureStrategy,
+    crop: CaptureRect,
+    subject: CaptureSubject,
+) -> Result<WindowContextImage> {
     let image = resize_for_model(image, image_policy.max_long_side);
     let (width, height) = image.dimensions();
-    let encoded = encode_webp_lossless(&image)?;
+    let encoded = encode_png(&image)?;
 
     Ok(WindowContextImage {
         image_bytes: encoded.bytes,
@@ -147,96 +407,8 @@ fn capture_window_context(
         height,
         strategy,
         crop,
-        window: metadata,
+        subject,
     })
-}
-
-fn resolve_window(target: Option<&WindowCaptureTarget>) -> Result<Window> {
-    let windows = Window::all()?;
-    if let Some(target) = target {
-        return select_matching_window(&windows, target).ok_or(Error::NoFocusedWindow);
-    }
-
-    resolve_focused_window(&windows)
-}
-
-fn resolve_focused_window(windows: &[Window]) -> Result<Window> {
-    let Some(frontmost_pid) = windows.iter().find_map(|window| {
-        let is_minimized = window.is_minimized().ok()?;
-        let is_focused = window.is_focused().ok()?;
-        (!is_minimized && is_focused)
-            .then(|| window.pid().ok())
-            .flatten()
-    }) else {
-        return Err(Error::NoFocusedWindow);
-    };
-
-    select_matching_window(
-        windows,
-        &WindowCaptureTarget {
-            pid: frontmost_pid,
-            app_name: None,
-            title: None,
-        },
-    )
-    .ok_or(Error::NoFocusedWindow)
-}
-
-fn select_matching_window(windows: &[Window], target: &WindowCaptureTarget) -> Option<Window> {
-    windows
-        .iter()
-        .filter_map(|window| {
-            let pid = window.pid().ok()?;
-            let is_minimized = window.is_minimized().ok()?;
-            let width = window.width().ok()?;
-            let height = window.height().ok()?;
-            if is_minimized || width == 0 || height == 0 {
-                return None;
-            }
-
-            Some((
-                candidate_match_score(
-                    target,
-                    pid,
-                    window.app_name().ok().as_deref(),
-                    window.title().ok().as_deref(),
-                )?,
-                window,
-            ))
-        })
-        .min_by_key(|(score, _)| *score)
-        .map(|(_, window)| window.clone())
-}
-
-fn candidate_match_score(
-    target: &WindowCaptureTarget,
-    pid: u32,
-    app_name: Option<&str>,
-    title: Option<&str>,
-) -> Option<u8> {
-    if pid != target.pid {
-        return None;
-    }
-
-    let normalized_target_title = target.title.as_deref().filter(|value| !value.is_empty());
-    let normalized_target_app_name = target.app_name.as_deref().filter(|value| !value.is_empty());
-
-    if let Some(target_title) = normalized_target_title {
-        if title == Some(target_title) {
-            return Some(0);
-        }
-        if normalized_target_app_name.is_none() {
-            return Some(2);
-        }
-    }
-
-    if let Some(target_app_name) = normalized_target_app_name
-        && app_name == Some(target_app_name)
-    {
-        return Some(1);
-    }
-
-    Some(2)
 }
 
 fn window_metadata(window: &Window) -> Result<WindowMetadata> {
@@ -251,6 +423,21 @@ fn window_metadata(window: &Window) -> Result<WindowMetadata> {
             width: window.width()?,
             height: window.height()?,
         },
+    })
+}
+
+fn display_metadata(monitor: &Monitor) -> Result<DisplayMetadata> {
+    let id = monitor.id()?;
+    let name = monitor
+        .friendly_name()
+        .or_else(|_| monitor.name())
+        .unwrap_or_else(|_| format!("display-{id}"));
+
+    Ok(DisplayMetadata {
+        id,
+        name,
+        rect: monitor_rect(monitor)?,
+        is_primary: monitor.is_primary()?,
     })
 }
 
@@ -367,9 +554,9 @@ struct EncodedImage {
     mime_type: &'static str,
 }
 
-fn encode_webp_lossless(image: &RgbaImage) -> Result<EncodedImage> {
+fn encode_png(image: &RgbaImage) -> Result<EncodedImage> {
     let mut bytes = Vec::new();
-    WebPEncoder::new_lossless(&mut bytes).write_image(
+    PngEncoder::new(&mut bytes).write_image(
         image.as_raw(),
         image.width(),
         image.height(),
@@ -377,7 +564,7 @@ fn encode_webp_lossless(image: &RgbaImage) -> Result<EncodedImage> {
     )?;
     Ok(EncodedImage {
         bytes,
-        mime_type: "image/webp",
+        mime_type: "image/png",
     })
 }
 
@@ -391,11 +578,29 @@ fn unix_ms(value: SystemTime) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::{
-        CaptureRect, CaptureStrategy, WindowCaptureTarget, WindowContextImagePolicy,
-        candidate_match_score, clamp_rect_around_window, compute_capture_rect,
-        encode_webp_lossless,
+        CaptureRect, CaptureStage, CaptureStrategy, Error, WindowCandidate, WindowCaptureTarget,
+        WindowContextImagePolicy, clamp_rect_around_window, compute_capture_rect, encode_png,
+        execute_capture_plan, same_pid_match_score, select_exact_target_candidate,
+        select_frontmost_candidate, select_same_pid_best_match_candidate,
     };
     use image::RgbaImage;
+
+    fn candidate(
+        pid: u32,
+        app_name: Option<&str>,
+        title: Option<&str>,
+        is_focused: Option<bool>,
+    ) -> WindowCandidate {
+        WindowCandidate {
+            pid,
+            app_name: app_name.map(str::to_string),
+            title: title.map(str::to_string),
+            is_minimized: false,
+            width: 800,
+            height: 600,
+            is_focused,
+        }
+    }
 
     #[test]
     fn small_window_gets_context() {
@@ -471,39 +676,148 @@ mod tests {
             app_name: Some("Arc".to_string()),
             title: Some("PR Review".to_string()),
         };
+        let candidates = vec![
+            (
+                candidate(42, Some("Arc"), Some("Inbox"), Some(false)),
+                1usize,
+            ),
+            (
+                candidate(42, Some("Arc"), Some("PR Review"), Some(false)),
+                2usize,
+            ),
+            (
+                candidate(99, Some("Arc"), Some("PR Review"), Some(false)),
+                3usize,
+            ),
+        ];
 
         assert_eq!(
-            candidate_match_score(&target, 42, Some("Arc"), Some("PR Review")),
-            Some(0)
-        );
-        assert_eq!(
-            candidate_match_score(&target, 42, Some("Arc"), Some("Inbox")),
-            Some(1)
-        );
-        assert_eq!(
-            candidate_match_score(&target, 42, Some("Other"), Some("Inbox")),
+            select_exact_target_candidate(&candidates, target.pid, "PR Review"),
             Some(2)
         );
         assert_eq!(
-            candidate_match_score(&target, 99, Some("Arc"), Some("PR Review")),
-            None
+            select_same_pid_best_match_candidate(&candidates, &target),
+            Some(1)
         );
     }
 
     #[test]
-    fn default_policy_prefers_lossless_webp() {
+    fn same_pid_matching_prefers_app_name_then_title() {
+        let target = WindowCaptureTarget {
+            pid: 42,
+            app_name: Some("Arc".to_string()),
+            title: Some("PR Review".to_string()),
+        };
+        let app_match = candidate(42, Some("Arc"), Some("Inbox"), Some(false));
+        let title_match = candidate(42, Some("Other"), Some("PR Review"), Some(false));
+        let weak_match = candidate(42, Some("Other"), Some("Else"), Some(false));
+
+        assert_eq!(same_pid_match_score(&target, &app_match), Some(0));
+        assert_eq!(same_pid_match_score(&target, &title_match), Some(1));
+        assert_eq!(same_pid_match_score(&target, &weak_match), Some(2));
+    }
+
+    #[test]
+    fn frontmost_candidate_requires_focus_flag() {
+        let candidates = vec![
+            (candidate(1, Some("Arc"), Some("A"), None), 1usize),
+            (
+                candidate(2, Some("Ghostty"), Some("B"), Some(false)),
+                2usize,
+            ),
+        ];
+
+        assert_eq!(select_frontmost_candidate(&candidates), None);
+    }
+
+    #[test]
+    fn capture_plan_returns_target_window_without_fallback() {
+        let result = execute_capture_plan(
+            [
+                CaptureStage::ExactTargetWindow,
+                CaptureStage::SamePidWindow,
+                CaptureStage::FrontmostWindow,
+                CaptureStage::PrimaryDisplay,
+            ],
+            |stage| match stage {
+                CaptureStage::ExactTargetWindow => Ok(Some("exact")),
+                _ => panic!("later stages should not run"),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result, "exact");
+    }
+
+    #[test]
+    fn capture_plan_falls_back_when_target_resolution_returns_none() {
+        let result = execute_capture_plan(
+            [
+                CaptureStage::ExactTargetWindow,
+                CaptureStage::SamePidWindow,
+                CaptureStage::FrontmostWindow,
+                CaptureStage::PrimaryDisplay,
+            ],
+            |stage| match stage {
+                CaptureStage::ExactTargetWindow => Ok(None),
+                CaptureStage::SamePidWindow => Ok(None),
+                CaptureStage::FrontmostWindow => Ok(Some("frontmost")),
+                CaptureStage::PrimaryDisplay => panic!("display should not run"),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result, "frontmost");
+    }
+
+    #[test]
+    fn capture_plan_falls_back_to_display_when_frontmost_fails() {
+        let result = execute_capture_plan(
+            [CaptureStage::FrontmostWindow, CaptureStage::PrimaryDisplay],
+            |stage| match stage {
+                CaptureStage::FrontmostWindow => Ok(None),
+                CaptureStage::PrimaryDisplay => Ok(Some("display")),
+                _ => unreachable!(),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result, "display");
+    }
+
+    #[test]
+    fn capture_plan_retries_after_capture_error() {
+        let result = execute_capture_plan(
+            [
+                CaptureStage::ExactTargetWindow,
+                CaptureStage::SamePidWindow,
+                CaptureStage::FrontmostWindow,
+            ],
+            |stage| match stage {
+                CaptureStage::ExactTargetWindow => Err(Error::InvalidWindowBounds),
+                CaptureStage::SamePidWindow => Ok(None),
+                CaptureStage::FrontmostWindow => Ok(Some("frontmost")),
+                CaptureStage::PrimaryDisplay => unreachable!(),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result, "frontmost");
+    }
+
+    #[test]
+    fn default_policy_uses_siglip_text_heavy_defaults() {
         let policy = WindowContextImagePolicy::default();
 
         assert_eq!(policy.max_long_side, 1920);
     }
 
     #[test]
-    fn encode_webp_uses_webp_container() {
+    fn encode_png_uses_png_container() {
         let image = RgbaImage::from_raw(1, 1, vec![0, 0, 0, 255]).unwrap();
-        let encoded = encode_webp_lossless(&image).unwrap();
+        let encoded = encode_png(&image).unwrap();
 
-        assert_eq!(encoded.mime_type, "image/webp");
-        assert_eq!(&encoded.bytes[..4], b"RIFF");
-        assert_eq!(&encoded.bytes[8..12], b"WEBP");
+        assert_eq!(encoded.mime_type, "image/png");
+        assert_eq!(&encoded.bytes[..8], b"\x89PNG\r\n\x1a\n");
     }
 }
