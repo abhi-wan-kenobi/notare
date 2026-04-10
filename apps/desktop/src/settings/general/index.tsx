@@ -8,7 +8,6 @@ import type { General, GeneralStorage } from "@hypr/store";
 
 export { SettingsAccount } from "./account";
 import { AppSettingsView } from "./app-settings";
-import { Audio } from "./audio";
 import { MainLanguageView } from "./main-language";
 import { NotificationSettingsView } from "./notification";
 import { Permissions } from "./permissions";
@@ -190,11 +189,10 @@ export function SettingsNotifications() {
   );
 }
 
-export function SettingsSystem() {
+export function SettingsPermissions() {
   return (
     <div className="flex flex-col gap-8">
       <Permissions />
-      <Audio />
     </div>
   );
 }

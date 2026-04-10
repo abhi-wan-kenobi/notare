@@ -7,7 +7,7 @@ import {
   SettingsAccount,
   SettingsApp,
   SettingsNotifications,
-  SettingsSystem,
+  SettingsPermissions,
 } from "./general";
 import { SettingsLab } from "./lab";
 import { AgentIntegrations } from "./lab/agent-integrations";
@@ -73,8 +73,8 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
         return <SettingsNotifications />;
       case "calendar":
         return <SettingsCalendar />;
-      case "system":
-        return <SettingsSystem />;
+      case "permissions":
+        return <SettingsPermissions />;
       case "lab":
         return <SettingsLab />;
       case "agent":

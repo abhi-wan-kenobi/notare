@@ -1,3 +1,4 @@
+import { platform } from "@tauri-apps/plugin-os";
 import {
   AudioLinesIcon,
   ArrowUpRightIcon,
@@ -8,7 +9,7 @@ import {
   CalendarIcon,
   CodeIcon,
   FlaskConical,
-  MonitorIcon,
+  LockIcon,
   SmartphoneIcon,
   SparklesIcon,
   TicketIcon,
@@ -20,50 +21,48 @@ import { cn } from "@hypr/utils";
 
 import { type SettingsTab, useTabs } from "~/store/zustand/tabs";
 
-const GROUPS: {
-  label: string;
-  items: (
-    | { id: SettingsTab; label: string; icon: typeof SmartphoneIcon }
-    | {
-        action: "open-templates";
-        label: string;
-        icon: typeof SmartphoneIcon;
-      }
-  )[];
-}[] = [
-  {
-    label: "General",
-    items: [
-      { id: "app", label: "App", icon: SmartphoneIcon },
-      { id: "account", label: "Account", icon: UserIcon },
-      { id: "calendar", label: "Calendar", icon: CalendarIcon },
-      { id: "notifications", label: "Notifications", icon: BellIcon },
-      { id: "system", label: "System", icon: MonitorIcon },
-    ],
-  },
-  {
-    label: "AI",
-    items: [
-      { id: "transcription", label: "Transcription", icon: AudioLinesIcon },
-      { id: "intelligence", label: "Intelligence", icon: SparklesIcon },
-      { id: "memory", label: "Memory", icon: BrainIcon },
-      {
-        action: "open-templates",
-        label: "Templates",
-        icon: BookText,
-      },
-    ],
-  },
-  {
-    label: "Lab",
-    items: [
-      { id: "lab", label: "General", icon: FlaskConical },
-      { id: "agent", label: "Agent", icon: BotIcon },
-      { id: "developer", label: "Developer", icon: CodeIcon },
-      { id: "todo", label: "Ticket", icon: TicketIcon },
-    ],
-  },
-];
+function getBaseGroups() {
+  return [
+    {
+      label: "General",
+      items: [
+        { id: "app", label: "App", icon: SmartphoneIcon },
+        { id: "account", label: "Account", icon: UserIcon },
+        { id: "calendar", label: "Calendar", icon: CalendarIcon },
+        { id: "notifications", label: "Notifications", icon: BellIcon },
+      ] as (
+        | { id: SettingsTab; label: string; icon: typeof SmartphoneIcon }
+        | {
+            action: "open-templates";
+            label: string;
+            icon: typeof SmartphoneIcon;
+          }
+      )[],
+    },
+    {
+      label: "AI",
+      items: [
+        { id: "transcription", label: "Transcription", icon: AudioLinesIcon },
+        { id: "intelligence", label: "Intelligence", icon: SparklesIcon },
+        { id: "memory", label: "Memory", icon: BrainIcon },
+        {
+          action: "open-templates",
+          label: "Templates",
+          icon: BookText,
+        },
+      ],
+    },
+    {
+      label: "Lab",
+      items: [
+        { id: "lab", label: "General", icon: FlaskConical },
+        { id: "agent", label: "Agent", icon: BotIcon },
+        { id: "developer", label: "Developer", icon: CodeIcon },
+        { id: "todo", label: "Ticket", icon: TicketIcon },
+      ],
+    },
+  ];
+}
 
 export function SettingsNav() {
   const currentTab = useTabs((state) => state.currentTab);
@@ -88,6 +87,16 @@ export function SettingsNav() {
     openNew({ type: "templates" });
   }, [openNew]);
 
+  const groups = getBaseGroups();
+  const isMacos = platform() === "macos";
+  if (isMacos) {
+    groups[0].items.push({
+      id: "permissions" as const,
+      label: "Permissions",
+      icon: LockIcon,
+    });
+  }
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
       <div className="flex h-12 items-center py-2 pr-1 pl-3">
@@ -95,7 +104,7 @@ export function SettingsNav() {
       </div>
       <div className="scrollbar-hide flex-1 overflow-y-auto">
         <div className="flex flex-col gap-4 pb-2">
-          {GROUPS.map((group) => (
+          {groups.map((group) => (
             <div key={group.label} className="flex flex-col gap-0.5">
               <span className="px-3 pb-1 text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
                 {group.label}
@@ -108,7 +117,7 @@ export function SettingsNav() {
                     key={isSettingsItem ? item.id : item.action}
                     onClick={() => {
                       if (isSettingsItem) {
-                        setActiveTab(item.id);
+                        setActiveTab(item.id as SettingsTab);
                         return;
                       }
 

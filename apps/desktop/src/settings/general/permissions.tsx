@@ -1,4 +1,3 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { AlertCircleIcon, ArrowRightIcon, CheckIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -128,9 +127,26 @@ function PermissionRow({
   );
 }
 
+function PermissionGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <h3 className="mb-3 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
+        {title}
+      </h3>
+      <div className="flex flex-col gap-4">{children}</div>
+    </div>
+  );
+}
+
 export function Permissions() {
-  const isMacos = platform() === "macos";
   const calendar = usePermission("calendar");
+  const reminders = usePermission("reminders");
   const mic = usePermission("microphone");
   const systemAudio = usePermission("systemAudio");
   const screenRecording = usePermission("screenRecording");
@@ -138,27 +154,39 @@ export function Permissions() {
 
   return (
     <div>
-      <h2 className="mb-4 font-serif text-lg font-semibold">Permissions</h2>
-      <div className="flex flex-col gap-4">
-        <PermissionRow
-          title="Microphone"
-          description="Required to record your voice during meetings and calls"
-          status={mic.status}
-          isPending={mic.isPending}
-          onRequest={mic.request}
-          onReset={mic.reset}
-          onOpen={mic.open}
-        />
-        <PermissionRow
-          title="System audio"
-          description="Required to capture other participants' voices in meetings"
-          status={systemAudio.status}
-          isPending={systemAudio.isPending}
-          onRequest={systemAudio.request}
-          onReset={systemAudio.reset}
-          onOpen={systemAudio.open}
-        />
-        {isMacos && (
+      <h2 className="mb-6 font-serif text-lg font-semibold">Permissions</h2>
+      <div className="flex flex-col gap-8">
+        <PermissionGroup title="Audio">
+          <PermissionRow
+            title="Microphone"
+            description="Required to record your voice during meetings and calls"
+            status={mic.status}
+            isPending={mic.isPending}
+            onRequest={mic.request}
+            onReset={mic.reset}
+            onOpen={mic.open}
+          />
+          <PermissionRow
+            title="System audio"
+            description="Required to capture other participants' voices in meetings"
+            status={systemAudio.status}
+            isPending={systemAudio.isPending}
+            onRequest={systemAudio.request}
+            onReset={systemAudio.reset}
+            onOpen={systemAudio.open}
+          />
+        </PermissionGroup>
+
+        <PermissionGroup title="Dailynote">
+          <PermissionRow
+            title="Accessibility"
+            description="Required to detect meeting apps and sync mute status"
+            status={accessibility.status}
+            isPending={accessibility.isPending}
+            onRequest={accessibility.request}
+            onReset={accessibility.reset}
+            onOpen={accessibility.open}
+          />
           <PermissionRow
             title="Screen recording"
             description="Required to capture screenshots and on-screen context for vision and activity features"
@@ -168,17 +196,9 @@ export function Permissions() {
             onReset={screenRecording.reset}
             onOpen={screenRecording.open}
           />
-        )}
-        <PermissionRow
-          title="Accessibility"
-          description="Required to detect meeting apps and sync mute status"
-          status={accessibility.status}
-          isPending={accessibility.isPending}
-          onRequest={accessibility.request}
-          onReset={accessibility.reset}
-          onOpen={accessibility.open}
-        />
-        {isMacos && (
+        </PermissionGroup>
+
+        <PermissionGroup title="Others">
           <PermissionRow
             title="Calendar"
             description="Required to sync Apple Calendar events into Char"
@@ -188,7 +208,16 @@ export function Permissions() {
             onReset={calendar.reset}
             onOpen={calendar.open}
           />
-        )}
+          <PermissionRow
+            title="Reminders"
+            description="Required to sync Apple Reminders into Char"
+            status={reminders.status}
+            isPending={reminders.isPending}
+            onRequest={reminders.request}
+            onReset={reminders.reset}
+            onOpen={reminders.open}
+          />
+        </PermissionGroup>
       </div>
     </div>
   );
