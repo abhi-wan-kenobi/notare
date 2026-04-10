@@ -16,6 +16,7 @@ dependencies = [
  "activity-capture-macos",
  "activity-capture-windows",
  "screen-core",
+ "serde",
 ]
 
 [[package]]
@@ -47,6 +48,7 @@ dependencies = [
  "schemars 1.2.1",
  "serde",
  "serde_json",
+ "specta",
  "thiserror 2.0.18",
  "tokio",
  "tokio-stream",
@@ -4666,6 +4668,15 @@ name = "data-url"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be1e0bca6c3637f992fc1cc7cbc52a78c1ef6db076dbf1059c4323d6a2048376"
+
+[[package]]
+name = "db-activity"
+version = "0.1.0"
+dependencies = [
+ "db-core2",
+ "sqlx",
+ "tokio",
+]
 
 [[package]]
 name = "db-app"
@@ -18393,17 +18404,24 @@ name = "tauri-plugin-activity-capture"
 version = "0.1.0"
 dependencies = [
  "activity-capture",
+ "db-activity",
  "futures-util",
+ "reqwest 0.13.2",
  "serde",
+ "serde_json",
  "specta",
  "specta-typescript",
+ "sqlx",
  "tauri",
  "tauri-plugin",
  "tauri-plugin-activity-capture",
+ "tauri-plugin-local-llm",
  "tauri-specta",
+ "template-app",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+ "url",
 ]
 
 [[package]]

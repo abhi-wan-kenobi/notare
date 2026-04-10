@@ -1,5 +1,5 @@
-import { type Tab, useTabs } from "~/store/zustand/tabs";
 import { id } from "~/shared/utils";
+import { type Tab, useTabs } from "~/store/zustand/tabs";
 
 export function openDailySummaryTab(date: string) {
   const state = useTabs.getState();

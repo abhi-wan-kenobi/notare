@@ -26,10 +26,18 @@ function getTodayString(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export function DateHeader({ date, muted }: { date: string; muted?: boolean }) {
+export function DateHeader({
+  date,
+  muted,
+  inline,
+}: {
+  date: string;
+  muted?: boolean;
+  inline?: boolean;
+}) {
   const isToday = date === getTodayString();
-  return (
-    <div className="flex items-center gap-3 px-6 pt-6 pb-3">
+  const content = (
+    <>
       <button
         type="button"
         onClick={() => openDailySummaryTab(date)}
@@ -46,6 +54,14 @@ export function DateHeader({ date, muted }: { date: string; muted?: boolean }) {
           Today
         </span>
       )}
-    </div>
+    </>
+  );
+
+  if (inline) {
+    return <div className="flex items-center gap-3">{content}</div>;
+  }
+
+  return (
+    <div className="flex items-center gap-3 px-6 pt-6 pb-3">{content}</div>
   );
 }

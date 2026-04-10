@@ -4,7 +4,10 @@ use hypr_activity_capture::{ActivityCapture, CapturePolicy, PlatformCapture};
 
 use crate::{
     ManagedState,
-    events::{ActivityCaptureCapabilities, ActivityCaptureSnapshot},
+    events::{
+        ActivityCaptureBudget, ActivityCaptureCapabilities, ActivityCaptureScreenshotAnalysis,
+        ActivityCaptureSnapshot, ActivityCaptureStatus,
+    },
 };
 
 pub struct ActivityCaptureExt<'a, R: tauri::Runtime, M: tauri::Manager<R>> {
@@ -38,6 +41,14 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> ActivityCaptureExt<'a, R, M> {
         self.runtime().is_running()
     }
 
+    pub fn latest_screenshot_analysis(&self) -> Option<ActivityCaptureScreenshotAnalysis> {
+        self.runtime().latest_screenshot_analysis()
+    }
+
+    pub async fn status(&self) -> ActivityCaptureStatus {
+        self.runtime().status().await
+    }
+
     pub fn policy(&self) -> CapturePolicy {
         self.runtime().policy()
     }
@@ -48,6 +59,24 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> ActivityCaptureExt<'a, R, M> {
 
     pub fn reset_policy(&self) -> Result<(), crate::Error> {
         self.runtime().reset_policy()
+    }
+
+    pub async fn list_analyses_in_range(
+        &self,
+        start_ms: i64,
+        end_ms: i64,
+    ) -> Result<Vec<ActivityCaptureScreenshotAnalysis>, String> {
+        self.runtime()
+            .list_analyses_in_range(start_ms, end_ms)
+            .await
+    }
+
+    pub fn configure(
+        &self,
+        budget: Option<ActivityCaptureBudget>,
+        analyze_screenshots: Option<bool>,
+    ) -> Result<(), crate::Error> {
+        self.runtime().configure(budget, analyze_screenshots)
     }
 
     fn runtime(&self) -> Arc<crate::runtime::ActivityCaptureRuntime<R>> {

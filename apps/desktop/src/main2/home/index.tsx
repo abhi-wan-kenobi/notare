@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { format } from "@hypr/utils";
 
+import { dailyNoteSectionClassName } from "./constants";
 import { DateHeader } from "./date-header";
 import { LazyNote } from "./lazy-note";
 import { DailyNoteEditor } from "./note-editor";
@@ -69,7 +70,7 @@ export function Main2Home() {
 
             <div className="mx-6 border-t border-neutral-200" />
 
-            <div ref={todayRef} className="min-h-[400px]">
+            <div ref={todayRef} className={dailyNoteSectionClassName}>
               <DateHeader date={today} />
               <DailyNoteEditor date={today} isToday />
             </div>

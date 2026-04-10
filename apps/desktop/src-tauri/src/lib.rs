@@ -245,6 +245,15 @@ pub async fn main() {
 
             // control::setup(&app_handle);
 
+            {
+                use tauri_plugin_activity_capture::ActivityCapturePluginExt;
+                if app_handle.get_char_v1p1_preview().unwrap_or(false) {
+                    if let Err(e) = app_handle.activity_capture().start() {
+                        tracing::error!("failed to auto-start activity capture: {}", e);
+                    }
+                }
+            }
+
             Ok(())
         })
         .build(context)

@@ -343,6 +343,18 @@
           "markdownDescription": "Denies the start command without any pre-configured scope."
         },
         {
+          "description": "Enables the status command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-status",
+          "markdownDescription": "Enables the status command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the status command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-status",
+          "markdownDescription": "Denies the status command without any pre-configured scope."
+        },
+        {
           "description": "Enables the stop command without any pre-configured scope.",
           "type": "string",
           "const": "allow-stop",
@@ -355,10 +367,10 @@
           "markdownDescription": "Denies the stop command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-capabilities`\n- `allow-snapshot`\n- `allow-start`\n- `allow-stop`\n- `allow-is-running`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-capabilities`\n- `allow-snapshot`\n- `allow-status`\n- `allow-start`\n- `allow-stop`\n- `allow-is-running`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-capabilities`\n- `allow-snapshot`\n- `allow-start`\n- `allow-stop`\n- `allow-is-running`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-capabilities`\n- `allow-snapshot`\n- `allow-status`\n- `allow-start`\n- `allow-stop`\n- `allow-is-running`"
         }
       ]
     }

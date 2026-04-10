@@ -3,6 +3,7 @@ description = "Default permissions for the plugin"
 permissions = [
     "allow-capabilities",
     "allow-snapshot",
+    "allow-status",
     "allow-start",
     "allow-stop",
     "allow-is-running",

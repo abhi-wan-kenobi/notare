@@ -14,6 +14,7 @@ use std::time::SystemTime;
     serde::Deserialize,
     schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum CaptureAccess {
     None,
@@ -35,6 +36,7 @@ pub enum CaptureAccess {
     serde::Deserialize,
     schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum PolicyMode {
     #[default]
@@ -45,6 +47,7 @@ pub enum PolicyMode {
 #[derive(
     Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct BundleRule {
     pub bundle_id: String,
     pub access: CaptureAccess,
@@ -53,6 +56,7 @@ pub struct BundleRule {
 #[derive(
     Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct DomainRule {
     pub domain: String,
     pub include_subdomains: bool,
@@ -62,6 +66,7 @@ pub struct DomainRule {
 #[derive(
     Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct BrowserPolicy {
     pub rules: Vec<DomainRule>,
     pub require_url_for_text_access: bool,
@@ -73,6 +78,7 @@ pub struct BrowserPolicy {
 #[derive(
     Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct CapturePolicy {
     pub mode: PolicyMode,
     pub app_rules: Vec<BundleRule>,
@@ -90,6 +96,7 @@ pub struct CapturePolicy {
     serde::Deserialize,
     schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum AppIdKind {
     BundleId,
@@ -109,6 +116,7 @@ pub enum AppIdKind {
     serde::Deserialize,
     schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum ContentLevel {
     Metadata,
@@ -116,21 +124,14 @@ pub enum ContentLevel {
     Full,
 }
 
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-    serde::Serialize,
-    serde::Deserialize,
-    schemars::JsonSchema,
-)]
-#[serde(rename_all = "snake_case")]
-pub enum SnapshotSource {
-    Accessibility,
-    Workspace,
+impl ContentLevel {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Metadata => "metadata",
+            Self::Url => "url",
+            Self::Full => "full",
+        }
+    }
 }
 
 #[derive(
@@ -144,6 +145,34 @@ pub enum SnapshotSource {
     serde::Deserialize,
     schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
+#[serde(rename_all = "snake_case")]
+pub enum SnapshotSource {
+    Accessibility,
+    Workspace,
+}
+
+impl SnapshotSource {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Accessibility => "accessibility",
+            Self::Workspace => "workspace",
+        }
+    }
+}
+
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    schemars::JsonSchema,
+)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum ActivityKind {
     ForegroundWindow,
@@ -151,6 +180,16 @@ pub enum ActivityKind {
     AudioSession,
 }
 
+impl ActivityKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ForegroundWindow => "foreground_window",
+            Self::Browser => "browser",
+            Self::AudioSession => "audio_session",
+        }
+    }
+}
+
 #[derive(
     Debug,
     Clone,
@@ -162,6 +201,7 @@ pub enum ActivityKind {
     serde::Deserialize,
     schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum TextAnchorKind {
     FocusedEdit,
@@ -182,6 +222,7 @@ pub enum TextAnchorKind {
     serde::Deserialize,
     schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum TextAnchorConfidence {
     High,
@@ -192,6 +233,7 @@ pub enum TextAnchorConfidence {
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct AppIdentity {
     pub pid: i32,
     pub app_name: String,
@@ -204,6 +246,7 @@ pub struct AppIdentity {
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct BrowserContext {
     pub raw_url: Option<String>,
     pub is_private: bool,
@@ -212,6 +255,7 @@ pub struct BrowserContext {
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct CaptureCandidate {
     pub app: AppIdentity,
     pub activity_kind: ActivityKind,
@@ -222,6 +266,7 @@ pub struct CaptureCandidate {
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct SanitizedBrowserUrl {
     pub url: String,
     pub host: Option<String>,
@@ -230,6 +275,7 @@ pub struct SanitizedBrowserUrl {
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct CaptureDecision {
     pub access: CaptureAccess,
     pub skip: bool,
@@ -241,6 +287,7 @@ pub struct CaptureDecision {
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct TextAnchor {
     pub kind: TextAnchorKind,
     pub identity: String,
@@ -254,6 +301,7 @@ pub struct TextAnchor {
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct SnapshotSpec {
     pub captured_at: SystemTime,
     pub app: AppIdentity,
@@ -269,6 +317,7 @@ pub struct SnapshotSpec {
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Snapshot {
     pub app: AppIdentity,
     pub activity_kind: ActivityKind,
@@ -293,6 +342,7 @@ pub struct Snapshot {
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Event {
     pub started_at: SystemTime,
     pub ended_at: SystemTime,
@@ -311,6 +361,7 @@ pub struct Event {
     serde::Deserialize,
     schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(rename_all = "snake_case")]
 pub enum TransitionReason {
     Started,
@@ -323,9 +374,39 @@ pub enum TransitionReason {
     ContentChanged,
 }
 
+impl TransitionReason {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Started => "started",
+            Self::Idle => "idle",
+            Self::AppChanged => "app_changed",
+            Self::ActivityKindChanged => "activity_kind_changed",
+            Self::UrlChanged => "url_changed",
+            Self::TitleChanged => "title_changed",
+            Self::TextAnchorChanged => "text_anchor_changed",
+            Self::ContentChanged => "content_changed",
+        }
+    }
+
+    pub fn parse(s: &str) -> Self {
+        match s {
+            "started" => Self::Started,
+            "idle" => Self::Idle,
+            "app_changed" => Self::AppChanged,
+            "activity_kind_changed" => Self::ActivityKindChanged,
+            "url_changed" => Self::UrlChanged,
+            "title_changed" => Self::TitleChanged,
+            "text_anchor_changed" => Self::TextAnchorChanged,
+            "content_changed" => Self::ContentChanged,
+            _ => Self::Started,
+        }
+    }
+}
+
 #[derive(
     Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Transition {
     pub previous: Option<Event>,
     pub current: Option<Event>,
@@ -345,6 +426,7 @@ pub struct Transition {
     serde::Deserialize,
     schemars::JsonSchema,
 )]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Capabilities {
     pub can_watch: bool,
     pub can_capture_visible_text: bool,

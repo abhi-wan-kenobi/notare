@@ -22,6 +22,30 @@ async snapshot() : Promise<Result<ActivityCaptureSnapshot | null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
+async latestScreenshotAnalysis() : Promise<Result<ActivityCaptureScreenshotAnalysis | null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:activity-capture|latest_screenshot_analysis") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listAnalysesInRange(startMs: number, endMs: number) : Promise<Result<ActivityCaptureScreenshotAnalysis[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:activity-capture|list_analyses_in_range", { startMs, endMs }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async status() : Promise<Result<ActivityCaptureStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:activity-capture|status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async start() : Promise<Result<null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:activity-capture|start") };
@@ -45,6 +69,14 @@ async isRunning() : Promise<Result<boolean, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async configure(input: ConfigureInput) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:activity-capture|configure", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -63,19 +95,26 @@ activityCapturePluginEvent: "plugin:activity-capture:activity-capture-plugin-eve
 
 /** user-defined types **/
 
-export type ActivityCaptureAppIdKind = "bundle_id" | "executable_path" | "process_name" | "pid"
-export type ActivityCaptureAppIdentity = { pid: number; appName: string; appId: string; appIdKind: ActivityCaptureAppIdKind; bundleId: string | null; executablePath: string | null }
+export type ActivityCaptureAppIdentity = { pid: number; appName: string; appId: string; appIdKind: AppIdKind; bundleId: string | null; executablePath: string | null }
+export type ActivityCaptureBudget = { minIntervalSecs: number }
 export type ActivityCaptureCapabilities = { canWatch: boolean; canCaptureVisibleText: boolean; canCaptureBrowserUrl: boolean; requiresAccessibilityPermission: boolean }
-export type ActivityCaptureContentLevel = "metadata" | "url" | "full"
-export type ActivityCaptureErrorKind = "permission_denied" | "unsupported" | "temporarily_unavailable" | "platform"
-export type ActivityCaptureKind = "foreground_window" | "browser" | "audio_session"
-export type ActivityCapturePluginEvent = { type: "activityCaptureSignal"; signal: ActivityCaptureSignal } | { type: "activityCaptureError"; kind: ActivityCaptureErrorKind; message: string }
-export type ActivityCaptureSignal = { sequence: number; occurredAtMs: number; reason: ActivityCaptureTransitionReason; suppressedSnapshotCount: number; fingerprint: string | null; snapshot: ActivityCaptureSnapshot | null }
-export type ActivityCaptureSnapshot = { app: ActivityCaptureAppIdentity; activityKind: ActivityCaptureKind; capturedAtMs: number; pid: number; appName: string; bundleId: string | null; windowTitle: string | null; url: string | null; visibleText: string | null; textAnchorKind: ActivityCaptureTextAnchorKind | null; textAnchorIdentity: string | null; textAnchorText: string | null; textAnchorPrefix: string | null; textAnchorSuffix: string | null; textAnchorSelectedText: string | null; textAnchorConfidence: ActivityCaptureTextAnchorConfidence | null; contentLevel: ActivityCaptureContentLevel; source: ActivityCaptureSource }
-export type ActivityCaptureSource = "accessibility" | "workspace"
-export type ActivityCaptureTextAnchorConfidence = "high" | "medium" | "low"
-export type ActivityCaptureTextAnchorKind = "focused_edit" | "selected_text" | "focused_element" | "document" | "none"
-export type ActivityCaptureTransitionReason = "started" | "idle" | "app_changed" | "activity_kind_changed" | "url_changed" | "title_changed" | "text_anchor_changed" | "content_changed"
+export type ActivityCapturePluginEvent = { type: "activityCaptureStateChanged"; state: ActivityCaptureStateChanged } | { type: "activityCaptureSignal"; signal: ActivityCaptureSignal } | { type: "activityCaptureError"; error: ActivityCaptureRuntimeError } | { type: "activityCaptureScreenshotAnalysis"; analysis: ActivityCaptureScreenshotAnalysis } | { type: "activityCaptureScreenshotAnalysisError"; error: ActivityCaptureScreenshotAnalysisError }
+export type ActivityCaptureRuntimeError = { kind: CaptureErrorKind; message: string; occurredAtMs: number }
+export type ActivityCaptureScreenshotAnalysis = { fingerprint: string; reason: TransitionReason; capturedAtMs: number; appName: string; windowTitle: string | null; summary: string }
+export type ActivityCaptureScreenshotAnalysisError = { fingerprint: string; capturedAtMs: number; appName: string; windowTitle: string | null; message: string }
+export type ActivityCaptureSignal = { sequence: number; occurredAtMs: number; reason: TransitionReason; suppressedSnapshotCount: number; fingerprint: string | null; snapshot: ActivityCaptureSnapshot | null }
+export type ActivityCaptureSnapshot = { app: ActivityCaptureAppIdentity; activityKind: ActivityKind; capturedAtMs: number; pid: number; appName: string; bundleId: string | null; windowTitle: string | null; url: string | null; visibleText: string | null; textAnchorKind: TextAnchorKind | null; textAnchorIdentity: string | null; textAnchorText: string | null; textAnchorPrefix: string | null; textAnchorSuffix: string | null; textAnchorSelectedText: string | null; textAnchorConfidence: TextAnchorConfidence | null; contentLevel: ContentLevel; source: SnapshotSource }
+export type ActivityCaptureStateChanged = { isRunning: boolean; changedAtMs: number }
+export type ActivityCaptureStatus = { isRunning: boolean; lastStateChangedAtMs: number | null; lastSignal: ActivityCaptureSignal | null; lastError: ActivityCaptureRuntimeError | null; lastScreenshotAnalysis: ActivityCaptureScreenshotAnalysis | null; lastScreenshotAnalysisError: ActivityCaptureScreenshotAnalysisError | null; budget: ActivityCaptureBudget; analyzeScreenshots: boolean; screenshotsToday: number; screenshotsThisHour: number; storageUsedMb: number }
+export type ActivityKind = "foreground_window" | "browser" | "audio_session"
+export type AppIdKind = "bundle_id" | "executable_path" | "process_name" | "pid"
+export type CaptureErrorKind = "permission_denied" | "unsupported" | "temporarily_unavailable" | "platform"
+export type ConfigureInput = { budget: ActivityCaptureBudget | null; analyzeScreenshots: boolean | null }
+export type ContentLevel = "metadata" | "url" | "full"
+export type SnapshotSource = "accessibility" | "workspace"
+export type TextAnchorConfidence = "high" | "medium" | "low"
+export type TextAnchorKind = "focused_edit" | "selected_text" | "focused_element" | "document" | "none"
+export type TransitionReason = "started" | "idle" | "app_changed" | "activity_kind_changed" | "url_changed" | "title_changed" | "text_anchor_changed" | "content_changed"
 
 /** tauri-specta globals **/
 

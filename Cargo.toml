@@ -83,6 +83,7 @@ hypr-cloudsync = { path = "crates/cloudsync", package = "cloudsync" }
 hypr-codex = { path = "crates/codex", package = "codex" }
 hypr-cursor = { path = "crates/cursor", package = "cursor" }
 hypr-data = { path = "crates/data", package = "data" }
+hypr-db-activity = { path = "crates/db-activity", package = "db-activity" }
 hypr-db-app = { path = "crates/db-app", package = "db-app" }
 hypr-db-app2 = { path = "crates/db-app2", package = "db-app2" }
 hypr-db-core = { path = "crates/db-core", package = "db-core" }

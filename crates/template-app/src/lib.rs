@@ -1,3 +1,4 @@
+mod activity_capture;
 mod chat;
 mod enhance;
 mod title;
@@ -6,6 +7,7 @@ mod transcript_patch;
 mod types;
 mod validate;
 
+pub use activity_capture::*;
 pub use chat::*;
 pub use enhance::*;
 pub use title::*;
@@ -25,6 +27,8 @@ macro_rules! common_derives {
 
 common_derives! {
     pub enum Template {
+        ActivityCaptureSystem(ActivityCaptureSystem),
+        ActivityCaptureUser(Box<ActivityCaptureUser>),
         EnhanceSystem(EnhanceSystem),
         EnhanceUser(Box<EnhanceUser>),
         TitleSystem(TitleSystem),
@@ -49,6 +53,8 @@ pub enum Error {
 
 pub fn render(t: Template) -> Result<String, Error> {
     let value = match t {
+        Template::ActivityCaptureSystem(t) => askama::Template::render(&t),
+        Template::ActivityCaptureUser(t) => askama::Template::render(&*t),
         Template::EnhanceSystem(t) => askama::Template::render(&t),
         Template::EnhanceUser(t) => askama::Template::render(&*t),
         Template::TitleSystem(t) => askama::Template::render(&t),

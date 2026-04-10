@@ -43,6 +43,8 @@ async renderSupport(tpl: SupportTemplate) : Promise<Result<string, string>> {
 /** user-defined types **/
 
 export type AccountInfo = { userId: string; email: string | null; fullName: string | null; avatarUrl: string | null; stripeCustomerId: string | null }
+export type ActivityCaptureSystem = { language: string | null }
+export type ActivityCaptureUser = { appName: string; windowTitle: string | null; reason: string; fingerprint: string }
 export type BugReport = { description: string; platform: string; arch: string; osVersion: string; appVersion: string; source: string }
 export type ChatSystem = { language: string | null }
 export type ContextBlock = { contexts: SessionContext[] }
@@ -62,13 +64,15 @@ export type Session = { title: string | null; startedAt: string | null; endedAt:
 export type SessionContext = { title: string | null; date: string | null; rawContent: string | null; enhancedContent: string | null; transcript: Transcript | null; participants: Participant[]; event: Event | null }
 export type SupportContext = { account: AccountInfo | null; device: DeviceInfo; models?: ModelInfo | null }
 export type SupportTemplate = { supportContext: SupportContext } | { bugReport: BugReport } | { featureRequest: FeatureRequest } | { logAnalysis: LogAnalysis }
-export type Template = { enhanceSystem: EnhanceSystem } | { enhanceUser: EnhanceUser } | { titleSystem: TitleSystem } | { titleUser: TitleUser } | { chatSystem: ChatSystem } | { contextBlock: ContextBlock } | { toolSearchSessions: ToolSearchSessions }
+export type Template = { activityCaptureSystem: ActivityCaptureSystem } | { activityCaptureUser: ActivityCaptureUser } | { enhanceSystem: EnhanceSystem } | { enhanceUser: EnhanceUser } | { titleSystem: TitleSystem } | { titleUser: TitleUser } | { chatSystem: ChatSystem } | { contextBlock: ContextBlock } | { toolSearchSessions: ToolSearchSessions } | { transcriptPatchSystem: TranscriptPatchSystem } | { transcriptPatchUser: TranscriptPatchUser }
 export type TemplateSection = { title: string; description: string | null }
 export type TitleSystem = { language: string | null }
 export type TitleUser = { enhancedNote: string }
 export type ToolSearchSessionItem = { id: string; title: string | null; excerpt: string | null; score: number; createdAt: number | null; sessionContext: SessionContext | null }
 export type ToolSearchSessions = { query: string; results: ToolSearchSessionItem[] }
 export type Transcript = { segments: Segment[]; startedAt: number | null; endedAt: number | null }
+export type TranscriptPatchSystem = { language: string | null }
+export type TranscriptPatchUser = { transcriptJson: string }
 
 /** tauri-specta globals **/
 

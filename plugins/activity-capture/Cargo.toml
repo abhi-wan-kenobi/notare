@@ -15,15 +15,23 @@ specta-typescript = { workspace = true }
 tauri-plugin-activity-capture = { path = "." }
 
 [dependencies]
-futures-util = { workspace = true }
-hypr-activity-capture = { workspace = true }
+hypr-activity-capture = { workspace = true, features = ["specta"] }
+hypr-db-activity = { workspace = true }
+hypr-template-app = { workspace = true }
 
 tauri = { workspace = true, features = ["specta", "test"] }
+tauri-plugin-local-llm = { workspace = true }
 
 specta = { workspace = true }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 
 serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbundled"] }
 thiserror = { workspace = true }
+url = { workspace = true }
+
+futures-util = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
 tokio = { workspace = true, features = ["time"] }
 tracing = { workspace = true }

@@ -6,6 +6,7 @@ Default permissions for the plugin
 
 - `allow-capabilities`
 - `allow-snapshot`
+- `allow-status`
 - `allow-start`
 - `allow-stop`
 - `allow-is-running`
@@ -119,6 +120,32 @@ Enables the start command without any pre-configured scope.
 <td>
 
 Denies the start command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`activity-capture:allow-status`
+
+</td>
+<td>
+
+Enables the status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`activity-capture:deny-status`
+
+</td>
+<td>
+
+Denies the status command without any pre-configured scope.
 
 </td>
 </tr>
