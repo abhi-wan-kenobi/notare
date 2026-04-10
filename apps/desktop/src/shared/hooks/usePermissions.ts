@@ -25,7 +25,7 @@ export function usePermission(type: Permission) {
   const requestMutation = useMutation({
     mutationFn: () => permissionsCommands.requestPermission(type),
     onSuccess: async () => {
-      if (type === "systemAudio") {
+      if (type === "systemAudio" || type === "screenRecording") {
         setOptimisticStatus("authorized");
         setTimeout(() => void status.refetch(), 1000);
         return;
@@ -103,6 +103,18 @@ export function usePermissions() {
     },
   });
 
+  const screenRecordingPermissionStatus = useQuery({
+    queryKey: ["screenRecordingPermission"],
+    queryFn: () => permissionsCommands.checkPermission("screenRecording"),
+    refetchInterval: 1000,
+    select: (result) => {
+      if (result.status === "error") {
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+  });
+
   const micPermission = useMutation({
     mutationFn: () => permissionsCommands.requestPermission("microphone"),
     onSuccess: () => {
@@ -130,6 +142,16 @@ export function usePermissions() {
     onSuccess: () => {
       setTimeout(() => {
         void accessibilityPermissionStatus.refetch();
+      }, 1000);
+    },
+    onError: console.error,
+  });
+
+  const screenRecordingPermission = useMutation({
+    mutationFn: () => permissionsCommands.requestPermission("screenRecording"),
+    onSuccess: () => {
+      setTimeout(() => {
+        void screenRecordingPermissionStatus.refetch();
       }, 1000);
     },
     onError: console.error,
@@ -165,6 +187,16 @@ export function usePermissions() {
     onError: console.error,
   });
 
+  const screenRecordingResetPermission = useMutation({
+    mutationFn: () => permissionsCommands.resetPermission("screenRecording"),
+    onSuccess: () => {
+      setTimeout(() => {
+        void screenRecordingPermissionStatus.refetch();
+      }, 1000);
+    },
+    onError: console.error,
+  });
+
   const openMicrophoneSettings = async () => {
     await permissionsCommands.openPermission("microphone");
   };
@@ -175,6 +207,10 @@ export function usePermissions() {
 
   const openAccessibilitySettings = async () => {
     await permissionsCommands.openPermission("accessibility");
+  };
+
+  const openScreenRecordingSettings = async () => {
+    await permissionsCommands.openPermission("screenRecording");
   };
 
   const handleMicPermissionAction = async () => {
@@ -201,21 +237,34 @@ export function usePermissions() {
     }
   };
 
+  const handleScreenRecordingPermissionAction = async () => {
+    if (screenRecordingPermissionStatus.data === "denied") {
+      await openScreenRecordingSettings();
+    } else {
+      screenRecordingPermission.mutate(undefined);
+    }
+  };
+
   return {
     micPermissionStatus,
     systemAudioPermissionStatus,
     accessibilityPermissionStatus,
+    screenRecordingPermissionStatus,
     micPermission,
     systemAudioPermission,
     accessibilityPermission,
+    screenRecordingPermission,
     micResetPermission,
     systemAudioResetPermission,
     accessibilityResetPermission,
+    screenRecordingResetPermission,
     openMicrophoneSettings,
     openSystemAudioSettings,
     openAccessibilitySettings,
+    openScreenRecordingSettings,
     handleMicPermissionAction,
     handleSystemAudioPermissionAction,
     handleAccessibilityPermissionAction,
+    handleScreenRecordingPermissionAction,
   };
 }

@@ -268,6 +268,7 @@ pub async fn main() {
                 let permissions = app_handle.permissions();
                 let _ = permissions.reset(Permission::Microphone).await;
                 let _ = permissions.reset(Permission::SystemAudio).await;
+                let _ = permissions.reset(Permission::ScreenRecording).await;
                 let _ = permissions.reset(Permission::Accessibility).await;
                 let _ = permissions.reset(Permission::Calendar).await;
                 let _ = permissions.reset(Permission::Reminders).await;

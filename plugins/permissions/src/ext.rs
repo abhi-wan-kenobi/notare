@@ -29,6 +29,7 @@ pub enum Permission {
     Contacts,
     Microphone,
     SystemAudio,
+    ScreenRecording,
     Accessibility,
 }
 
@@ -57,6 +58,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
             Permission::Contacts => self.open_contacts().await,
             Permission::Microphone => self.open_microphone().await,
             Permission::SystemAudio => self.open_system_audio().await,
+            Permission::ScreenRecording => self.open_screen_recording().await,
             Permission::Accessibility => self.open_accessibility().await,
         }
     }
@@ -80,6 +82,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
             Permission::Contacts => self.check_contacts().await,
             Permission::Microphone => self.check_microphone().await,
             Permission::SystemAudio => self.check_system_audio().await,
+            Permission::ScreenRecording => self.check_screen_recording().await,
             Permission::Accessibility => self.check_accessibility().await,
         }
     }
@@ -94,6 +97,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
             Permission::Contacts => "contacts",
             Permission::Microphone => "microphone",
             Permission::SystemAudio => "systemAudio",
+            Permission::ScreenRecording => "screenRecording",
             Permission::Accessibility => "accessibility",
         };
 
@@ -144,6 +148,11 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
                 "authorized" => PermissionStatus::Authorized,
                 _ => PermissionStatus::Denied,
             },
+            Permission::ScreenRecording => match value {
+                "notDetermined" => PermissionStatus::NeverRequested,
+                "authorized" => PermissionStatus::Authorized,
+                _ => PermissionStatus::Denied,
+            },
             Permission::Accessibility => match value {
                 "trusted" => PermissionStatus::Authorized,
                 _ => PermissionStatus::Denied,
@@ -161,6 +170,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
             Permission::Contacts => self.request_contacts().await,
             Permission::Microphone => self.request_microphone().await,
             Permission::SystemAudio => self.request_system_audio().await,
+            Permission::ScreenRecording => self.request_screen_recording().await,
             Permission::Accessibility => self.request_accessibility().await,
         }
     }
@@ -172,6 +182,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
             Permission::Contacts => self.reset_contacts().await,
             Permission::Microphone => self.reset_microphone().await,
             Permission::SystemAudio => self.reset_system_audio().await,
+            Permission::ScreenRecording => self.reset_screen_recording().await,
             Permission::Accessibility => self.reset_accessibility().await,
         }
     }
@@ -255,6 +266,15 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
         Ok(())
     }
 
+    async fn open_screen_recording(&self) -> Result<(), crate::Error> {
+        #[cfg(target_os = "macos")]
+        {
+            self.open_privacy_settings("Privacy_ScreenCapture")?;
+        }
+
+        Ok(())
+    }
+
     async fn open_accessibility(&self) -> Result<(), crate::Error> {
         #[cfg(target_os = "macos")]
         {
@@ -328,6 +348,19 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
                 Ok(()) => Ok(PermissionStatus::Authorized),
                 Err(_) => Ok(PermissionStatus::Denied),
             }
+        }
+    }
+
+    async fn check_screen_recording(&self) -> Result<PermissionStatus, crate::Error> {
+        #[cfg(target_os = "macos")]
+        return check!(
+            "screen_recording",
+            hypr_tcc::screen_capture_permission_status()
+        );
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            Ok(PermissionStatus::Denied)
         }
     }
 
@@ -443,6 +476,15 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
         Ok(())
     }
 
+    async fn request_screen_recording(&self) -> Result<(), crate::Error> {
+        #[cfg(target_os = "macos")]
+        {
+            let _ = hypr_tcc::request_screen_capture_permission();
+        }
+
+        Ok(())
+    }
+
     async fn request_accessibility(&self) -> Result<(), crate::Error> {
         #[cfg(target_os = "macos")]
         {
@@ -483,6 +525,13 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
     async fn reset_system_audio(&self) -> Result<(), crate::Error> {
         #[cfg(target_os = "macos")]
         self.reset_tcc("AudioCapture").await;
+
+        Ok(())
+    }
+
+    async fn reset_screen_recording(&self) -> Result<(), crate::Error> {
+        #[cfg(target_os = "macos")]
+        self.reset_tcc("ScreenCapture").await;
 
         Ok(())
     }

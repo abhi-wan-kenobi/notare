@@ -133,6 +133,7 @@ export function Permissions() {
   const calendar = usePermission("calendar");
   const mic = usePermission("microphone");
   const systemAudio = usePermission("systemAudio");
+  const screenRecording = usePermission("screenRecording");
   const accessibility = usePermission("accessibility");
 
   return (
@@ -157,6 +158,17 @@ export function Permissions() {
           onReset={systemAudio.reset}
           onOpen={systemAudio.open}
         />
+        {isMacos && (
+          <PermissionRow
+            title="Screen recording"
+            description="Required to capture screenshots and on-screen context for vision and activity features"
+            status={screenRecording.status}
+            isPending={screenRecording.isPending}
+            onRequest={screenRecording.request}
+            onReset={screenRecording.reset}
+            onOpen={screenRecording.open}
+          />
+        )}
         <PermissionRow
           title="Accessibility"
           description="Required to detect meeting apps and sync mute status"

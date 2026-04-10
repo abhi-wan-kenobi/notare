@@ -1,11 +1,12 @@
 import AVFoundation
+import CoreGraphics
 import Contacts
 import EventKit
 import Foundation
 
 guard CommandLine.arguments.count > 1 else {
   fputs(
-    "Usage: check-permissions <calendar|reminders|contacts|microphone|systemAudio|accessibility>\n",
+    "Usage: check-permissions <calendar|reminders|contacts|microphone|systemAudio|screenRecording|accessibility>\n",
     stderr)
   exit(1)
 }
@@ -58,6 +59,23 @@ case "systemAudio":
   typealias PreflightFunc = @convention(c) (CFString, CFDictionary?) -> Int
   let preflight = unsafeBitCast(sym, to: PreflightFunc.self)
   let result = preflight("kTCCServiceAudioCapture" as CFString, nil)
+  switch result {
+  case 0: print("authorized")
+  case 1: print("denied")
+  case 2: print("notDetermined")
+  default: print("unknown")
+  }
+case "screenRecording":
+  let TCC_PATH = "/System/Library/PrivateFrameworks/TCC.framework/Versions/A/TCC"
+  guard let handle = dlopen(TCC_PATH, RTLD_NOW),
+    let sym = dlsym(handle, "TCCAccessPreflight")
+  else {
+    print("error")
+    exit(1)
+  }
+  typealias PreflightFunc = @convention(c) (CFString, CFDictionary?) -> Int
+  let preflight = unsafeBitCast(sym, to: PreflightFunc.self)
+  let result = preflight("kTCCServiceScreenCapture" as CFString, nil)
   switch result {
   case 0: print("authorized")
   case 1: print("denied")
