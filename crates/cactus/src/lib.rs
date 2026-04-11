@@ -3,6 +3,7 @@ mod ffi_utils;
 mod llm;
 pub mod log;
 mod model;
+mod pyannote;
 mod stt;
 mod vad;
 
@@ -13,6 +14,9 @@ pub use llm::{
     validate_messages,
 };
 pub use model::{Model, ModelBuilder, ModelKind};
+pub use pyannote::{
+    DiarizeOptions, DiarizeResult, SpeakerEmbeddingOptions, SpeakerEmbeddingResult,
+};
 pub use stt::{
     CloudConfig, StreamResult, StreamSegment, TranscribeEvent, TranscribeOptions, Transcriber,
     TranscriptionResult, TranscriptionSegment, TranscriptionSession, constrain_to,

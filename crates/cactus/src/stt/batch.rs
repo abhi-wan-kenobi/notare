@@ -70,7 +70,10 @@ impl Model {
         let guard = self.lock_inference();
         let options = self.transcribe_options(options);
         let prompt = match self.kind() {
-            ModelKind::Moonshine | ModelKind::Parakeet => String::new(),
+            ModelKind::Moonshine
+            | ModelKind::Parakeet
+            | ModelKind::Pyannote
+            | ModelKind::WeSpeaker => String::new(),
             ModelKind::Whisper => build_whisper_prompt(&options),
         };
         let prompt_c = CString::new(prompt)?;

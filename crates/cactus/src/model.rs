@@ -12,6 +12,8 @@ pub enum ModelKind {
     Whisper,
     Moonshine,
     Parakeet,
+    Pyannote,
+    WeSpeaker,
 }
 
 pub struct Model {
