@@ -9,7 +9,7 @@ tauri-event = ["dep:tauri-specta"]
 [dependencies]
 apalis = { workspace = true }
 apalis-cron = { workspace = true }
-cron = "0.15"
+cron = "0.16"
 
 chrono = { workspace = true }
 tokio = { workspace = true, features = ["fs"] }

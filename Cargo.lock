@@ -560,7 +560,7 @@ checksum = "623a80caf0a084acf22cc3f43e49b984214e1c00b79779b16683ab55d46fa764"
 dependencies = [
  "apalis-core",
  "chrono",
- "cron 0.16.0",
+ "cron",
  "futures-util",
  "serde",
  "ulid",
@@ -4174,17 +4174,6 @@ checksum = "d8d80a2f4f5b554395e47b5d8305bc3d27813bacb73493eb1001e8f76dae29ea"
 dependencies = [
  "cast",
  "itertools 0.13.0",
-]
-
-[[package]]
-name = "cron"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5877d3fbf742507b66bc2a1945106bd30dd8504019d596901ddd012a4dd01740"
-dependencies = [
- "chrono",
- "once_cell",
- "winnow 0.6.26",
 ]
 
 [[package]]
@@ -11898,7 +11887,7 @@ dependencies = [
  "apalis",
  "apalis-cron",
  "chrono",
- "cron 0.15.0",
+ "cron",
  "serde",
  "serde_json",
  "specta",
@@ -23626,15 +23615,6 @@ name = "winnow"
 version = "0.5.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
-dependencies = [
- "memchr",
-]
-
-[[package]]
-name = "winnow"
-version = "0.6.26"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e90edd2ac1aa278a5c4599b1d89cf03074b610800f866d4026dc199d7929a28"
 dependencies = [
  "memchr",
 ]
