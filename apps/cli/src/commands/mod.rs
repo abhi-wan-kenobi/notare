@@ -3,16 +3,8 @@ pub mod transcribe;
 #[cfg(feature = "standalone")]
 pub(crate) mod update_check;
 
-#[cfg(feature = "desktop-db")]
-pub mod export;
-#[cfg(feature = "desktop-db")]
-pub mod humans;
 #[cfg(feature = "todo")]
 pub mod integration;
-#[cfg(feature = "desktop-db")]
-pub mod meetings;
-#[cfg(feature = "desktop-db")]
-pub mod orgs;
 #[cfg(feature = "todo")]
 pub mod todo;
 
@@ -69,7 +61,7 @@ pub(crate) fn resolve_session_dir(base: Option<&Path>, timestamp: &str) -> CliRe
 }
 
 pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()> {
-    #[cfg(not(any(feature = "standalone", feature = "desktop-db")))]
+    #[cfg(not(feature = "standalone"))]
     let _ = ctx;
 
     match command {
@@ -116,14 +108,6 @@ pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()>
         Some(CliCommand::ShortcutDaemon) => shortcut::daemon::run().await,
         #[cfg(feature = "todo")]
         Some(CliCommand::Todo { command }) => todo::run(command).await,
-        #[cfg(feature = "desktop-db")]
-        Some(CliCommand::Meetings { command }) => meetings::run(ctx, command).await,
-        #[cfg(feature = "desktop-db")]
-        Some(CliCommand::Humans { command }) => humans::run(ctx, command).await,
-        #[cfg(feature = "desktop-db")]
-        Some(CliCommand::Orgs { command }) => orgs::run(ctx, command).await,
-        #[cfg(feature = "desktop-db")]
-        Some(CliCommand::Export { command }) => export::run(ctx, command).await,
         None => {
             use clap::CommandFactory;
 

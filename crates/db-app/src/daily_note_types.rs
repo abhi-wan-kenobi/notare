@@ -1,4 +1,5 @@
-pub struct DailyRow {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DailyNoteRow {
     pub id: String,
     pub date: String,
     pub body: String,

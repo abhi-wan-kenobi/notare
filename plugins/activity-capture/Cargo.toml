@@ -17,6 +17,8 @@ tauri-plugin-activity-capture = { path = "." }
 [dependencies]
 hypr-activity-capture = { workspace = true, features = ["specta"] }
 hypr-db-activity = { workspace = true }
+hypr-db-app = { workspace = true }
+hypr-db-core2 = { workspace = true }
 hypr-template-app = { workspace = true }
 
 tauri = { workspace = true, features = ["specta", "test"] }

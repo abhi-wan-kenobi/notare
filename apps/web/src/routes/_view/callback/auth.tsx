@@ -1,12 +1,14 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 import { CheckIcon, CopyIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
 import { deriveBillingInfo, type SupabaseJwtPayload } from "@hypr/supabase";
 import { cn } from "@hypr/utils";
 
+import { CharLogo } from "@/components/sidebar";
 import { exchangeOAuthCode, exchangeOtpToken } from "@/functions/auth";
 import { desktopSchemeSchema } from "@/functions/desktop-flow";
 import { useAnalytics } from "@/hooks/use-posthog";
@@ -130,6 +132,57 @@ export const Route = createFileRoute("/_view/callback/auth")({
   },
 });
 
+function Container({ children }: { children: React.ReactNode }) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | "auto">("auto");
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setHeight(entry.contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      className={cn([
+        "flex min-h-screen items-center justify-center",
+        "bg-page",
+        "bg-dotted-dark",
+      ])}
+    >
+      <div className="border-color-brand surface mx-auto w-md min-w-[320px] overflow-hidden rounded-xl border shadow-md">
+        <motion.div
+          animate={{ height }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+        >
+          <div ref={contentRef}>{children}</div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+function Header({ title }: { title: string }) {
+  return (
+    <div className="mb-8 text-center">
+      <div
+        className={cn([
+          "mx-auto mb-8 p-8",
+          "flex items-center justify-between",
+          "border-color-brand border-b",
+        ])}
+      >
+        <CharLogo compact className="text-fg h-10 w-auto" />
+        <h1 className="text-fg py-4 font-mono text-xl">{title}</h1>
+      </div>
+    </div>
+  );
+}
+
 function Component() {
   const search = Route.useSearch();
   const navigate = useNavigate();
@@ -200,30 +253,29 @@ function Component() {
 
   if (search.error) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
-        <div className="flex w-full max-w-md flex-col gap-8 text-center">
-          <div className="flex flex-col gap-3">
-            <h1 className="font-serif text-3xl tracking-tight text-stone-700">
-              Sign-in failed
-            </h1>
-            <p className="text-neutral-600">
-              {search.error_description
-                ? search.error_description.replaceAll("+", " ")
-                : "Something went wrong during sign-in"}
-            </p>
-          </div>
+      <Container>
+        <Header title="Sign-in failed" />
+        <div className="flex flex-col gap-4 px-8 pb-8">
+          <p className="text-fg-muted text-center">
+            {search.error_description
+              ? search.error_description.replaceAll("+", " ")
+              : "Something went wrong during sign-in"}
+          </p>
 
           <a
             href={`/auth?flow=${search.flow}&scheme=${search.scheme}`}
             className={cn([
-              "flex h-12 w-full cursor-pointer items-center justify-center text-base font-medium transition-all",
-              "rounded-full bg-linear-to-t from-stone-600 to-stone-500 text-white shadow-md hover:scale-[102%] hover:shadow-lg active:scale-[98%]",
+              "w-full cursor-pointer px-4 py-2",
+              "bg-fg hover:bg-fg/80 rounded-full font-sans text-white",
+              "focus:ring-2 focus:ring-stone-500 focus:ring-offset-2 focus:outline-hidden",
+              "transition-colors",
+              "flex items-center justify-center",
             ])}
           >
             Try again
           </a>
         </div>
-      </div>
+      </Container>
     );
   }
 
@@ -231,26 +283,25 @@ function Component() {
     const hasTokens = search.access_token && search.refresh_token;
 
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
-        <div className="flex w-full max-w-md flex-col gap-8 text-center">
-          <div className="flex flex-col gap-3">
-            <h1 className="font-serif text-3xl tracking-tight text-stone-700">
-              {hasTokens ? "Sign-in successful" : "Signing in..."}
-            </h1>
-            <p className="text-neutral-600">
-              {hasTokens
-                ? "Click the button below to return to the app"
-                : "Please wait while we complete the sign-in"}
-            </p>
-          </div>
+      <Container>
+        <Header title={hasTokens ? "Sign-in successful" : "Signing in..."} />
+        <div className="flex flex-col gap-4 px-8 pb-8">
+          <p className="text-fg-muted text-center">
+            {hasTokens
+              ? "Click the button below to return to the app"
+              : "Please wait while we complete the sign-in"}
+          </p>
 
           {hasTokens && (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               <button
                 onClick={handleDeeplink}
                 className={cn([
-                  "flex h-12 w-full cursor-pointer items-center justify-center text-base font-medium transition-all",
-                  "rounded-full bg-linear-to-t from-stone-600 to-stone-500 text-white shadow-md hover:scale-[102%] hover:shadow-lg active:scale-[98%]",
+                  "w-full cursor-pointer px-4 py-2",
+                  "bg-fg hover:bg-fg/80 rounded-full font-sans text-white",
+                  "focus:ring-2 focus:ring-stone-500 focus:ring-offset-2 focus:outline-hidden",
+                  "transition-colors",
+                  "flex items-center justify-center",
                 ])}
               >
                 Open Char
@@ -259,17 +310,19 @@ function Component() {
               <button
                 onClick={handleCopy}
                 className={cn([
-                  "flex w-full cursor-pointer flex-col items-center gap-3 p-4 text-left transition-all",
-                  "rounded-lg border border-stone-100 bg-stone-50 hover:bg-stone-100 active:scale-[99%]",
+                  "flex w-full cursor-pointer flex-col items-center gap-3 p-4 text-left",
+                  "border-color-brand rounded-lg border",
+                  "hover:bg-brand-dark/10 transition-colors",
                 ])}
               >
-                <p className="text-sm text-stone-500">
+                <p className="text-fg-muted text-sm">
                   Button not working? Copy the link instead
                 </p>
                 <span
                   className={cn([
-                    "flex h-10 w-full items-center justify-center gap-2 text-sm font-medium",
-                    "rounded-full bg-linear-to-t from-neutral-200 to-neutral-100 text-neutral-900 shadow-xs",
+                    "flex w-full items-center justify-center gap-2 px-4 py-2 font-sans text-sm",
+                    "border-color-brand text-fg rounded-full border",
+                    "hover:bg-brand-dark/10 transition-colors",
                   ])}
                 >
                   {copied ? (
@@ -288,11 +341,18 @@ function Component() {
             </div>
           )}
         </div>
-      </div>
+      </Container>
     );
   }
 
   if (search.flow === "web") {
-    return <div>Redirecting...</div>;
+    return (
+      <Container>
+        <Header title="Redirecting..." />
+        <div className="px-8 pb-8 text-center">
+          <p className="text-fg-muted">Taking you to your account...</p>
+        </div>
+      </Container>
+    );
   }
 }

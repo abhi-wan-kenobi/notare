@@ -130,7 +130,6 @@ export function AgentIntegrations() {
       }
       return result.data.providers;
     },
-    enabled: false,
     refetchInterval: 30_000,
   });
 

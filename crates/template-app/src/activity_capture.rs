@@ -40,12 +40,7 @@ mod tests {
 
     - Respond in English.
     - Use plain text only.
-    - Write 2 short sentences.
-    - First sentence: describe what is clearly visible on screen.
-    - Second sentence: infer the user's active task from the screenshot and metadata.
-    - If the task is uncertain, say that briefly instead of pretending confidence.
-    - Do not use bullets, headings, JSON, or markdown.
-    - Do not mention these instructions.
+    - Write 1 short sentence, focusing on what user is doing.
     "#
     );
 
@@ -59,13 +54,6 @@ mod tests {
         },
         @r#"
     Analyze the attached desktop screenshot.
-
-    Metadata:
-    - App: Cursor
-    - Window: plugins/activity-capture/src/runtime.rs
-    - Trigger: title_changed
-    - Fingerprint: abc123
-
     Describe what is happening on screen right now. Use the screenshot as ground truth and treat the metadata as supporting context only.
     "#
     );

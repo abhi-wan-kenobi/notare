@@ -103,16 +103,6 @@ macro_rules! db {
     };
 }
 
-#[cfg(feature = "desktop-db")]
-impl From<hypr_db_app::CrudCliError> for CliError {
-    fn from(e: hypr_db_app::CrudCliError) -> Self {
-        Self::OperationFailed {
-            action: e.action,
-            reason: e.message,
-        }
-    }
-}
-
 impl From<String> for CliError {
     fn from(message: String) -> Self {
         Self::Message(message)

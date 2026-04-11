@@ -144,6 +144,21 @@ pub async fn count_screenshots_since(pool: &SqlitePool, since_ms: i64) -> Result
     Ok(count as u32)
 }
 
+pub async fn count_screenshots_in_range(
+    pool: &SqlitePool,
+    start_ms: i64,
+    end_ms: i64,
+) -> Result<u32, sqlx::Error> {
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM activity_screenshots WHERE captured_at_ms >= ? AND captured_at_ms < ?",
+    )
+    .bind(start_ms)
+    .bind(end_ms)
+    .fetch_one(pool)
+    .await?;
+    Ok(count as u32)
+}
+
 pub async fn total_screenshot_storage_bytes(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
     let total: i64 =
         sqlx::query_scalar("SELECT COALESCE(SUM(LENGTH(image_png)), 0) FROM activity_screenshots")

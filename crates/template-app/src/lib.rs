@@ -1,5 +1,6 @@
 mod activity_capture;
 mod chat;
+mod daily_summary;
 mod enhance;
 mod title;
 mod tool;
@@ -9,6 +10,7 @@ mod validate;
 
 pub use activity_capture::*;
 pub use chat::*;
+pub use daily_summary::*;
 pub use enhance::*;
 pub use title::*;
 pub use tool::*;
@@ -29,6 +31,8 @@ common_derives! {
     pub enum Template {
         ActivityCaptureSystem(ActivityCaptureSystem),
         ActivityCaptureUser(Box<ActivityCaptureUser>),
+        DailySummarySystem(DailySummarySystem),
+        DailySummaryUser(Box<DailySummaryUser>),
         EnhanceSystem(EnhanceSystem),
         EnhanceUser(Box<EnhanceUser>),
         TitleSystem(TitleSystem),
@@ -55,6 +59,8 @@ pub fn render(t: Template) -> Result<String, Error> {
     let value = match t {
         Template::ActivityCaptureSystem(t) => askama::Template::render(&t),
         Template::ActivityCaptureUser(t) => askama::Template::render(&*t),
+        Template::DailySummarySystem(t) => askama::Template::render(&t),
+        Template::DailySummaryUser(t) => askama::Template::render(&*t),
         Template::EnhanceSystem(t) => askama::Template::render(&t),
         Template::EnhanceUser(t) => askama::Template::render(&*t),
         Template::TitleSystem(t) => askama::Template::render(&t),

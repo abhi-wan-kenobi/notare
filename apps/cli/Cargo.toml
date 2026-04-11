@@ -19,8 +19,6 @@ hypr-audio-norm = { workspace = true, optional = true }
 hypr-audio-utils = { workspace = true, optional = true }
 hypr-claude = { workspace = true, optional = true }
 hypr-codex = { workspace = true, optional = true }
-hypr-db-app = { workspace = true, features = ["cli"], optional = true }
-hypr-db-core2 = { workspace = true, optional = true }
 hypr-host = { workspace = true }
 hypr-language = { workspace = true, optional = true }
 hypr-listener2-core = { workspace = true, optional = true }
@@ -50,7 +48,6 @@ reqwest = { workspace = true, features = ["json"] }
 rodio = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"], optional = true }
 strsim = "0.11"
 strum = { workspace = true, features = ["derive"] }
 tempfile = { workspace = true, optional = true }
@@ -81,13 +78,7 @@ vt100 = "0.15"
 
 [features]
 desktop = []
-desktop-db = [
-  "desktop",
-  "dep:hypr-db-app",
-  "dep:hypr-db-core2",
-  "dep:hypr-transcript",
-  "dep:sqlx",
-]
+desktop-db = ["desktop"]
 e2e = []
 todo = [
   "desktop",

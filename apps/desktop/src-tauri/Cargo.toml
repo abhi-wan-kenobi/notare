@@ -104,6 +104,7 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 hypr-audio-actual = { workspace = true }
 hypr-audio-mock = { workspace = true, optional = true }
+hypr-db-core2 = { workspace = true }
 
 [features]
 default = []

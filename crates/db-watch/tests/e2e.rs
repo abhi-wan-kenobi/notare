@@ -10,15 +10,15 @@ async fn test_pool() -> SqlitePool {
 #[tokio::test]
 async fn full_cycle() {
     let pool = test_pool().await;
-    let tables = extract_tables(&pool, "SELECT id FROM meetings WHERE id = ?")
+    let tables = extract_tables(&pool, "SELECT id FROM daily_notes WHERE id = ?")
         .await
         .unwrap();
 
     let mut deps = TableDeps::new();
     let w = deps.register(tables);
 
-    assert!(deps.affected(&["meetings"]).contains(&w));
-    assert!(!deps.affected(&["words"]).contains(&w));
+    assert!(deps.affected(&["daily_notes"]).contains(&w));
+    assert!(!deps.affected(&["daily_summaries"]).contains(&w));
 }
 
 #[tokio::test]
@@ -26,7 +26,7 @@ async fn multi_table_join() {
     let pool = test_pool().await;
     let tables = extract_tables(
         &pool,
-        "SELECT w.id FROM words w JOIN meetings m ON w.meeting_id = m.id",
+        "SELECT ds.id FROM daily_summaries ds JOIN daily_notes dn ON ds.daily_note_id = dn.id",
     )
     .await
     .unwrap();
@@ -34,25 +34,25 @@ async fn multi_table_join() {
     let mut deps = TableDeps::new();
     let w = deps.register(tables);
 
-    assert!(deps.affected(&["meetings"]).contains(&w));
-    assert!(deps.affected(&["words"]).contains(&w));
-    assert!(!deps.affected(&["chat_messages"]).contains(&w));
+    assert!(deps.affected(&["daily_notes"]).contains(&w));
+    assert!(deps.affected(&["daily_summaries"]).contains(&w));
+    assert!(!deps.affected(&["missing"]).contains(&w));
 }
 
 #[tokio::test]
 async fn unregister_stops_notifications() {
     let pool = test_pool().await;
-    let tables = extract_tables(&pool, "SELECT id FROM meetings WHERE id = ?")
+    let tables = extract_tables(&pool, "SELECT id FROM daily_notes WHERE id = ?")
         .await
         .unwrap();
 
     let mut deps = TableDeps::new();
     let w = deps.register(tables);
 
-    assert!(deps.affected(&["meetings"]).contains(&w));
+    assert!(deps.affected(&["daily_notes"]).contains(&w));
 
     deps.unregister(w);
-    assert!(!deps.affected(&["meetings"]).contains(&w));
+    assert!(!deps.affected(&["daily_notes"]).contains(&w));
 }
 
 #[tokio::test]
@@ -61,14 +61,18 @@ async fn overlapping_watches() {
 
     let tables_a = extract_tables(
         &pool,
-        "SELECT w.id FROM words w JOIN meetings m ON w.meeting_id = m.id",
+        "SELECT ds.id FROM daily_summaries ds JOIN daily_notes dn ON ds.daily_note_id = dn.id",
     )
     .await
     .unwrap();
 
     let tables_b = extract_tables(
         &pool,
-        "SELECT c.id FROM chat_messages c JOIN meetings m ON c.meeting_id = m.id",
+        "SELECT id FROM daily_notes \
+         WHERE EXISTS ( \
+           SELECT 1 FROM daily_summaries \
+           WHERE daily_summaries.daily_note_id = daily_notes.id \
+         )",
     )
     .await
     .unwrap();
@@ -77,25 +81,21 @@ async fn overlapping_watches() {
     let a = deps.register(tables_a);
     let b = deps.register(tables_b);
 
-    let words_hit = deps.affected(&["words"]);
-    assert!(words_hit.contains(&a));
-    assert!(!words_hit.contains(&b));
+    let summaries_hit = deps.affected(&["daily_summaries"]);
+    assert!(summaries_hit.contains(&a));
+    assert!(summaries_hit.contains(&b));
 
-    let chat_hit = deps.affected(&["chat_messages"]);
-    assert!(!chat_hit.contains(&a));
-    assert!(chat_hit.contains(&b));
-
-    let meetings_hit = deps.affected(&["meetings"]);
-    assert!(meetings_hit.contains(&a));
-    assert!(meetings_hit.contains(&b));
+    let notes_hit = deps.affected(&["daily_notes"]);
+    assert!(notes_hit.contains(&a));
+    assert!(notes_hit.contains(&b));
 }
 
 #[tokio::test]
-async fn fts_watch_cycle() {
+async fn alias_watch_cycle() {
     let pool = test_pool().await;
     let tables = extract_tables(
         &pool,
-        "SELECT rowid FROM meetings_fts WHERE meetings_fts MATCH 'test'",
+        "SELECT dn.id FROM daily_notes AS dn WHERE dn.date = '2026-04-11'",
     )
     .await
     .unwrap();
@@ -105,6 +105,6 @@ async fn fts_watch_cycle() {
     let mut deps = TableDeps::new();
     let w = deps.register(tables);
 
-    assert!(deps.affected(&["meetings_fts"]).contains(&w));
-    assert!(!deps.affected(&["meetings"]).contains(&w));
+    assert!(deps.affected(&["daily_notes"]).contains(&w));
+    assert!(!deps.affected(&["daily_summaries"]).contains(&w));
 }

@@ -6,6 +6,8 @@ edition = "2024"
 [dependencies]
 hypr-cloudsync = { workspace = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

@@ -99,30 +99,6 @@ pub enum Commands {
         #[command(subcommand)]
         command: Option<crate::commands::todo::Commands>,
     },
-    #[cfg(feature = "desktop-db")]
-    /// Browse past meetings
-    Meetings {
-        #[command(subcommand)]
-        command: crate::commands::meetings::Commands,
-    },
-    #[cfg(feature = "desktop-db")]
-    /// Browse humans (contacts)
-    Humans {
-        #[command(subcommand)]
-        command: Option<crate::commands::humans::Commands>,
-    },
-    #[cfg(feature = "desktop-db")]
-    /// Browse organizations
-    Orgs {
-        #[command(subcommand)]
-        command: Option<crate::commands::orgs::Commands>,
-    },
-    #[cfg(feature = "desktop-db")]
-    /// Export data in various formats
-    Export {
-        #[command(subcommand)]
-        command: crate::commands::export::Commands,
-    },
 }
 
 impl Commands {
@@ -178,7 +154,6 @@ mod tests {
     #[test]
     #[cfg(all(
         feature = "desktop",
-        not(feature = "desktop-db"),
         not(feature = "standalone"),
         not(feature = "todo")
     ))]
@@ -315,7 +290,6 @@ mod tests {
     #[test]
     #[cfg(all(
         feature = "desktop",
-        not(feature = "desktop-db"),
         not(feature = "standalone"),
         not(feature = "todo")
     ))]

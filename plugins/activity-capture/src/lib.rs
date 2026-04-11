@@ -1,8 +1,6 @@
-use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use sqlx::SqlitePool;
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+use hypr_db_core2::{Db3, DbOpenOptions, DbStorage, MigrationFailurePolicy};
 use tauri::Manager;
 
 mod analysis;
@@ -33,6 +31,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::stop::<tauri::Wry>,
             commands::is_running::<tauri::Wry>,
             commands::configure::<tauri::Wry>,
+            commands::get_daily_summary_snapshot::<tauri::Wry>,
+            commands::save_daily_summary::<tauri::Wry>,
         ])
         .events(tauri_specta::collect_events![ActivityCapturePluginEvent])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
@@ -52,69 +52,34 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
                 .expect("app_data_dir must be available")
                 .join("activity.db");
 
-            let pool = std::thread::spawn(move || {
+            let db = std::thread::spawn(move || {
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()
                     .build()
                     .expect("failed to create db init runtime");
-                rt.block_on(open_or_recreate(&db_path))
+                rt.block_on(Db3::open_with_migrate(
+                    DbOpenOptions {
+                        storage: DbStorage::Local(&db_path),
+                        cloudsync: false,
+                        journal_mode_wal: true,
+                        foreign_keys: true,
+                        max_connections: None,
+                        migration_failure_policy: MigrationFailurePolicy::Recreate,
+                    },
+                    |pool| Box::pin(hypr_db_activity::migrate(pool)),
+                ))
             })
             .join()
-            .expect("db init thread panicked");
+            .expect("db init thread panicked")
+            .expect("failed to initialize activity database");
 
             app.manage(Arc::new(runtime::ActivityCaptureRuntime::new(
                 app.app_handle().clone(),
-                Arc::new(pool),
+                Arc::new(db.pool().clone()),
             )));
             Ok(())
         })
         .build()
-}
-
-async fn connect(path: &Path) -> std::result::Result<SqlitePool, sqlx::Error> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(sqlx::Error::Io)?;
-    }
-    let options = SqliteConnectOptions::new()
-        .filename(path)
-        .create_if_missing(true)
-        .pragma("journal_mode", "WAL")
-        .pragma("foreign_keys", "ON");
-    SqlitePoolOptions::new().connect_with(options).await
-}
-
-async fn open_or_recreate(path: &PathBuf) -> SqlitePool {
-    match try_open(path).await {
-        Ok(pool) => pool,
-        Err(error) => {
-            tracing::warn!(
-                %error,
-                path = %path.display(),
-                "activity db migration failed, wiping and recreating"
-            );
-            wipe_db_files(path);
-            try_open(path)
-                .await
-                .expect("failed to create fresh activity db")
-        }
-    }
-}
-
-async fn try_open(path: &Path) -> std::result::Result<SqlitePool, Box<dyn std::error::Error>> {
-    let pool = connect(path).await?;
-    hypr_db_activity::migrate(&pool).await?;
-    Ok(pool)
-}
-
-fn wipe_db_files(path: &Path) {
-    for suffix in &["", "-wal", "-shm", "-journal"] {
-        let file = PathBuf::from(format!("{}{suffix}", path.display()));
-        if file.exists() {
-            if let Err(error) = std::fs::remove_file(&file) {
-                tracing::warn!(%error, path = %file.display(), "failed to remove db file");
-            }
-        }
-    }
 }
 
 #[cfg(test)]

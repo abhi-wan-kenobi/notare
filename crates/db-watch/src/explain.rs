@@ -140,10 +140,10 @@ mod tests {
     #[tokio::test]
     async fn single_table() {
         let pool = test_pool().await;
-        let tables = extract_tables(&pool, "SELECT id FROM meetings WHERE id = ?")
+        let tables = extract_tables(&pool, "SELECT id FROM daily_notes WHERE id = ?")
             .await
             .unwrap();
-        assert_eq!(tables, HashSet::from(["meetings".to_string()]));
+        assert_eq!(tables, HashSet::from(["daily_notes".to_string()]));
     }
 
     #[tokio::test]
@@ -151,25 +151,25 @@ mod tests {
         let pool = test_pool().await;
         let tables = extract_tables(
             &pool,
-            "SELECT w.id FROM words w JOIN meetings m ON w.meeting_id = m.id",
+            "SELECT ds.id FROM daily_summaries ds JOIN daily_notes dn ON ds.daily_note_id = dn.id",
         )
         .await
         .unwrap();
-        assert!(tables.contains("words"));
-        assert!(tables.contains("meetings"));
+        assert!(tables.contains("daily_summaries"));
+        assert!(tables.contains("daily_notes"));
         assert_eq!(tables.len(), 2);
     }
 
     #[tokio::test]
-    async fn fts_virtual_table() {
+    async fn alias_query() {
         let pool = test_pool().await;
         let tables = extract_tables(
             &pool,
-            "SELECT rowid FROM meetings_fts WHERE meetings_fts MATCH 'test'",
+            "SELECT dn.id FROM daily_notes AS dn WHERE dn.date = '2026-04-11'",
         )
         .await
         .unwrap();
-        assert!(tables.contains("meetings_fts"));
+        assert_eq!(tables, HashSet::from(["daily_notes".to_string()]));
     }
 
     #[tokio::test]
@@ -177,12 +177,16 @@ mod tests {
         let pool = test_pool().await;
         let tables = extract_tables(
             &pool,
-            "SELECT id FROM meetings WHERE id IN (SELECT meeting_id FROM words)",
+            "SELECT id FROM daily_notes \
+             WHERE EXISTS ( \
+               SELECT 1 FROM daily_summaries \
+               WHERE daily_summaries.daily_note_id = daily_notes.id \
+             )",
         )
         .await
         .unwrap();
-        assert!(tables.contains("meetings"));
-        assert!(tables.contains("words"));
+        assert!(tables.contains("daily_notes"));
+        assert!(tables.contains("daily_summaries"));
         assert_eq!(tables.len(), 2);
     }
 }
