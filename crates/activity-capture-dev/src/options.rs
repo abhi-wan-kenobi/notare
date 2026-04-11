@@ -10,7 +10,7 @@ use crate::vlm::{
 };
 
 const DEFAULT_POLL_INTERVAL_MS: u64 = 750;
-const DEFAULT_SCREENSHOT_DWELL_MS: u64 = 10_000;
+const DEFAULT_SCREENSHOT_DWELL_MS: u64 = 2_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub(crate) enum RuntimePreference {

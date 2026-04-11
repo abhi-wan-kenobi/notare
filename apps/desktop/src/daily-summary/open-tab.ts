@@ -16,6 +16,7 @@ export function openDailySummaryTab(date: string) {
   const newTab: Tab = {
     type: "daily_summary",
     id: date,
+    state: { activeTab: "timeline" },
     active: true,
     slotId: id(),
     pinned: false,

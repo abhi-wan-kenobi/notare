@@ -100,27 +100,17 @@ fn normalize_anchor_text(value: &str) -> String {
 fn normalize_window_title(
     window_title: Option<&str>,
     app_name: &str,
-    profile: AppProfile,
+    _profile: AppProfile,
 ) -> Option<String> {
     let trimmed = window_title
         .map(str::trim)
         .filter(|value| !value.is_empty())?;
 
-    match profile {
-        AppProfile::Slack => Some(normalize_slack_title(trimmed)),
-        AppProfile::Generic
-        | AppProfile::Safari
-        | AppProfile::Chrome
-        | AppProfile::Arc
-        | AppProfile::Brave
-        | AppProfile::Edge
-        | AppProfile::VsCode => Some(
-            strip_app_name_suffix(trimmed, app_name)
-                .unwrap_or(trimmed)
-                .to_string(),
-        ),
-        AppProfile::Spotify => Some(trimmed.to_string()),
-    }
+    Some(
+        strip_app_name_suffix(trimmed, app_name)
+            .unwrap_or(trimmed)
+            .to_string(),
+    )
 }
 
 fn fallback_title(
@@ -133,20 +123,6 @@ fn fallback_title(
         Some(title) => filtered_lines.first().cloned().or(Some(title)),
         None => filtered_lines.first().cloned(),
     }
-}
-
-fn normalize_slack_title(title: &str) -> String {
-    if !title.ends_with(" - Slack") {
-        return title.to_string();
-    }
-
-    let without_suffix = &title[..title.len() - " - Slack".len()];
-    without_suffix
-        .split(" - ")
-        .next()
-        .filter(|value| !value.is_empty())
-        .unwrap_or(without_suffix)
-        .to_string()
 }
 
 fn strip_app_name_suffix<'a>(title: &'a str, app_name: &str) -> Option<&'a str> {
@@ -233,7 +209,7 @@ fn is_generic_title(title: &str, app_name: &str) -> bool {
     !title.is_empty() && title == normalized_comparison_key(app_name)
 }
 
-fn is_low_signal_line(line: &str, profile: AppProfile) -> bool {
+fn is_low_signal_line(line: &str, _profile: AppProfile) -> bool {
     const BOILERPLATE_LINES: [&str; 10] = [
         "add page to reading list",
         "downloads window",
@@ -251,7 +227,7 @@ fn is_low_signal_line(line: &str, profile: AppProfile) -> bool {
         return true;
     }
 
-    profile.is_slack() && line == "slack"
+    false
 }
 
 fn normalized_comparison_key(value: &str) -> String {
@@ -271,16 +247,16 @@ mod tests {
     use crate::ax::TextAnchorCapture;
 
     #[test]
-    fn normalizes_slack_title_and_removes_duplicate_visible_text() {
+    fn removes_duplicate_visible_text_when_title_matches() {
         let fields = sanitize_snapshot_fields(
             "Slack",
             Some("com.tinyspeck.slackmacgap"),
-            Some("product (Channel) - Fastrepl - Slack".to_string()),
-            Some("product (Channel) - Fastrepl - Slack".to_string()),
+            Some("Roadmap".to_string()),
+            Some("Roadmap".to_string()),
             None,
         );
 
-        assert_eq!(fields.window_title.as_deref(), Some("product (Channel)"));
+        assert_eq!(fields.window_title.as_deref(), Some("Roadmap"));
         assert_eq!(fields.visible_text.as_deref(), None);
     }
 

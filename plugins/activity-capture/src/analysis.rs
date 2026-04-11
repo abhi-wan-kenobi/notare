@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use hypr_activity_capture::ActivityScreenshotCapture;
+use hypr_screen_core::CaptureSubject;
 use reqwest::Client;
 use serde_json::json;
 use tauri_plugin_local_llm::LocalLlmPluginExt;
@@ -22,30 +23,48 @@ pub async fn analyze_screenshot<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     screenshot: &ActivityScreenshotCapture,
 ) -> Result<ActivityCaptureScreenshotAnalysis, ActivityCaptureScreenshotAnalysisError> {
+    let (app_name, window_title) = analysis_identity(screenshot);
     let server_url = app
         .server_url()
         .await
-        .map_err(|error| analysis_error(screenshot, error.to_string()))?
-        .ok_or_else(|| analysis_error(screenshot, "local-llm server is unavailable".to_string()))?;
+        .map_err(|error| {
+            analysis_error(
+                screenshot,
+                &app_name,
+                window_title.clone(),
+                error.to_string(),
+            )
+        })?
+        .ok_or_else(|| {
+            analysis_error(
+                screenshot,
+                &app_name,
+                window_title.clone(),
+                "local-llm server is unavailable".to_string(),
+            )
+        })?;
 
-    let request = build_request(screenshot).map_err(|error| analysis_error(screenshot, error))?;
+    let request = build_request(screenshot, &app_name, window_title.clone())
+        .map_err(|error| analysis_error(screenshot, &app_name, window_title.clone(), error))?;
 
     let summary = call_local_llm(&server_url, &request)
         .await
-        .map_err(|error| analysis_error(screenshot, error))?;
+        .map_err(|error| analysis_error(screenshot, &app_name, window_title.clone(), error))?;
 
     Ok(ActivityCaptureScreenshotAnalysis {
         fingerprint: screenshot.fingerprint.clone(),
         reason: screenshot.reason,
         captured_at_ms: screenshot.captured_at_ms,
-        app_name: screenshot.target.app_name.clone(),
-        window_title: screenshot.target.title.clone(),
+        app_name,
+        window_title,
         summary,
     })
 }
 
 fn build_request(
     screenshot: &ActivityScreenshotCapture,
+    app_name: &str,
+    window_title: Option<String>,
 ) -> Result<ScreenshotAnalysisRequest, String> {
     let system_prompt =
         hypr_template_app::render(hypr_template_app::Template::ActivityCaptureSystem(
@@ -56,8 +75,8 @@ fn build_request(
     let reason: TransitionReason = screenshot.reason;
     let user_prompt = hypr_template_app::render(hypr_template_app::Template::ActivityCaptureUser(
         Box::new(hypr_template_app::ActivityCaptureUser {
-            app_name: screenshot.target.app_name.clone(),
-            window_title: screenshot.target.title.clone(),
+            app_name: app_name.to_string(),
+            window_title,
             reason: reason.as_str().to_string(),
             fingerprint: screenshot.fingerprint.clone(),
         }),
@@ -131,14 +150,29 @@ fn parse_response_text(body: &str) -> Result<String, String> {
 
 fn analysis_error(
     screenshot: &ActivityScreenshotCapture,
+    app_name: &str,
+    window_title: Option<String>,
     message: impl Into<String>,
 ) -> ActivityCaptureScreenshotAnalysisError {
     ActivityCaptureScreenshotAnalysisError {
         fingerprint: screenshot.fingerprint.clone(),
         captured_at_ms: screenshot.captured_at_ms,
-        app_name: screenshot.target.app_name.clone(),
-        window_title: screenshot.target.title.clone(),
+        app_name: app_name.to_string(),
+        window_title,
         message: message.into(),
+    }
+}
+
+fn analysis_identity(screenshot: &ActivityScreenshotCapture) -> (String, Option<String>) {
+    match &screenshot.image.subject {
+        CaptureSubject::Window(window) => (
+            window.app_name.clone(),
+            (!window.title.is_empty()).then(|| window.title.clone()),
+        ),
+        CaptureSubject::Display(_) => (
+            screenshot.target.app_name.clone(),
+            screenshot.target.title.clone(),
+        ),
     }
 }
 

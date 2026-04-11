@@ -4,11 +4,12 @@ use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
 };
+use std::time::Duration;
 
 use futures_util::StreamExt;
 use hypr_activity_capture::{
     ActivityCapture, ActivityScreenshotCapture, CapturePolicy, PlatformCapture, ScreenshotConfig,
-    ScreenshotDecision, ScreenshotPolicy, capture_screenshot,
+    ScreenshotDecision, ScreenshotPolicy, WatchOptions, capture_screenshot,
 };
 use sqlx::SqlitePool;
 use tauri_specta::Event;
@@ -39,6 +40,7 @@ const KNOWN_DESKTOP_APP_IDS: &[&str] = &[
     "com.hyprnote.nightly",
     "com.hyprnote.Hyprnote",
 ];
+const WATCH_POLL_INTERVAL_MS: u64 = 750;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct SelfIdentity {
@@ -306,7 +308,10 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         }
 
         let capture = PlatformCapture::with_policy(self.policy());
-        let mut stream = capture.watch(Default::default())?;
+        let mut stream = capture.watch(WatchOptions {
+            poll_interval: Duration::from_millis(WATCH_POLL_INTERVAL_MS),
+            emit_initial: true,
+        })?;
 
         let changed_at_ms = unix_ms_now();
         self.last_known

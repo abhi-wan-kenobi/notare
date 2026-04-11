@@ -264,6 +264,7 @@ impl Snapshot {
             pid: spec.app.pid,
             app_name: spec.app.app_name.clone(),
             bundle_id: spec.app.bundle_id.clone(),
+            focused_window_id: spec.focused_window_id,
             window_title: spec
                 .access
                 .allows_text()
@@ -313,6 +314,10 @@ impl Snapshot {
                     ActivityKind::Browser => "browser",
                     ActivityKind::AudioSession => "audio_session",
                 },
+                &self
+                    .focused_window_id
+                    .map(|id| id.to_string())
+                    .unwrap_or_default(),
                 self.window_title.as_deref().unwrap_or_default(),
                 self.url.as_deref().unwrap_or_default(),
                 self.text_anchor_identity.as_deref().unwrap_or_default(),
@@ -534,6 +539,10 @@ fn transition_reason(previous: &Snapshot, current: &Snapshot) -> TransitionReaso
         return TransitionReason::AppChanged;
     }
 
+    if previous.focused_window_id != current.focused_window_id {
+        return TransitionReason::WindowChanged;
+    }
+
     if previous.activity_kind != current.activity_kind {
         return TransitionReason::ActivityKindChanged;
     }
@@ -705,6 +714,7 @@ mod tests {
             pid: 42,
             app_name: "TextEdit".to_string(),
             bundle_id: Some("com.apple.TextEdit".to_string()),
+            focused_window_id: Some(101),
             window_title: Some(title.to_string()),
             url: None,
             visible_text: Some("hello".to_string()),
@@ -837,6 +847,19 @@ mod tests {
         let transition = coalescer.push(Some(next)).unwrap();
 
         assert_eq!(transition.reason, TransitionReason::AppChanged);
+    }
+
+    #[test]
+    fn coalescer_detects_window_change() {
+        let mut coalescer = EventCoalescer::default();
+        let _ = coalescer.push(Some(snapshot("Notes")));
+
+        let mut next = snapshot("Notes");
+        next.focused_window_id = Some(202);
+
+        let transition = coalescer.push(Some(next)).unwrap();
+
+        assert_eq!(transition.reason, TransitionReason::WindowChanged);
     }
 
     #[test]

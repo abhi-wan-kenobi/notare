@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { commands as activityCaptureCommands } from "@hypr/plugin-activity-capture";
 
 export type DailyActivityAppStat = {
   appName: string;
@@ -61,9 +61,13 @@ export async function getDailySummarySnapshot(params: {
   startMs: number;
   endMs: number;
 }): Promise<DailySummarySnapshot> {
-  return invoke("get_daily_summary_snapshot", {
-    input: params,
-  });
+  const result = await activityCaptureCommands.getDailySummarySnapshot(params);
+
+  if (result.status === "error") {
+    throw new Error(String(result.error));
+  }
+
+  return result.data;
 }
 
 export async function saveDailySummary(params: {
@@ -75,7 +79,11 @@ export async function saveDailySummary(params: {
   sourceFingerprint: string;
   generatedAt: string;
 }): Promise<StoredDailySummary> {
-  return invoke("save_daily_summary", {
-    input: params,
-  });
+  const result = await activityCaptureCommands.saveDailySummary(params);
+
+  if (result.status === "error") {
+    throw new Error(String(result.error));
+  }
+
+  return result.data;
 }

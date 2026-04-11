@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use hypr_activity_capture_interface::{ActivityKind, Snapshot, Transition, TransitionReason};
 use hypr_screen_core::{WindowCaptureTarget, WindowContextCaptureOptions, WindowContextImage};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActivityScreenshotTarget {
+    pub window_id: Option<u32>,
     pub pid: u32,
     pub app_name: String,
     pub title: Option<String>,
@@ -28,8 +31,8 @@ pub struct ScreenshotConfig {
 impl Default for ScreenshotConfig {
     fn default() -> Self {
         Self {
-            dwell_ms: 10_000,
-            min_interval_secs: 30,
+            dwell_ms: 2_000,
+            min_interval_secs: 6,
             excluded_app_ids: Vec::new(),
         }
     }
@@ -40,6 +43,7 @@ pub struct PendingCapture {
     pub id: u64,
     pub fingerprint: String,
     pub reason: TransitionReason,
+    pub cooldown_scope: String,
     pub scheduled_at_ms: i64,
     pub due_at_ms: i64,
     pub target: ActivityScreenshotTarget,
@@ -57,7 +61,7 @@ pub struct ScreenshotPolicy {
     config: ScreenshotConfig,
     next_id: u64,
     pending: Option<PendingCapture>,
-    last_capture_ms: Option<i64>,
+    last_capture_ms_by_scope: HashMap<String, i64>,
 }
 
 impl ScreenshotPolicy {
@@ -66,7 +70,7 @@ impl ScreenshotPolicy {
             config,
             next_id: 0,
             pending: None,
-            last_capture_ms: None,
+            last_capture_ms_by_scope: HashMap::new(),
         }
     }
 
@@ -85,15 +89,20 @@ impl ScreenshotPolicy {
         };
 
         let snapshot = &current.snapshot;
-        if !is_supported_kind(snapshot.activity_kind) || !is_eligible_reason(transition.reason) {
+        if !is_supported_kind(snapshot.activity_kind) {
             return self.clear_pending();
+        }
+
+        if !is_focus_trigger(transition.reason) {
+            return ScreenshotDecision::None;
         }
 
         if is_excluded_snapshot(snapshot, &self.config.excluded_app_ids) {
             return self.clear_pending();
         }
 
-        if let Some(last) = self.last_capture_ms {
+        let cooldown_scope = cooldown_scope(snapshot);
+        if let Some(last) = self.last_capture_ms_by_scope.get(&cooldown_scope).copied() {
             let min_interval_ms = self.config.min_interval_secs as i64 * 1000;
             if now_ms - last < min_interval_ms {
                 return self.clear_pending();
@@ -111,6 +120,7 @@ impl ScreenshotPolicy {
             id: self.next_id,
             fingerprint: current.fingerprint.clone(),
             reason: transition.reason,
+            cooldown_scope,
             scheduled_at_ms: now_ms,
             due_at_ms: now_ms.saturating_add(dwell_ms),
             target,
@@ -125,7 +135,8 @@ impl ScreenshotPolicy {
             _ => return None,
         };
         self.pending = None;
-        self.last_capture_ms = Some(now_ms);
+        self.last_capture_ms_by_scope
+            .insert(pending.cooldown_scope.clone(), now_ms);
         Some(pending)
     }
 
@@ -147,14 +158,10 @@ impl ScreenshotPolicy {
     }
 }
 
-fn is_eligible_reason(reason: TransitionReason) -> bool {
+fn is_focus_trigger(reason: TransitionReason) -> bool {
     matches!(
         reason,
-        TransitionReason::Started
-            | TransitionReason::AppChanged
-            | TransitionReason::ActivityKindChanged
-            | TransitionReason::UrlChanged
-            | TransitionReason::TitleChanged
+        TransitionReason::Started | TransitionReason::AppChanged | TransitionReason::WindowChanged
     )
 }
 
@@ -165,6 +172,7 @@ fn is_supported_kind(kind: ActivityKind) -> bool {
 pub fn capture_screenshot(target: &ActivityScreenshotTarget) -> Result<WindowContextImage, String> {
     hypr_screen_core::capture_target_window_context(
         &WindowCaptureTarget {
+            window_id: target.window_id,
             pid: target.pid,
             app_name: Some(target.app_name.clone()),
             title: target.title.clone(),
@@ -176,6 +184,7 @@ pub fn capture_screenshot(target: &ActivityScreenshotTarget) -> Result<WindowCon
 
 fn target_from_snapshot(snapshot: &Snapshot) -> Option<ActivityScreenshotTarget> {
     Some(ActivityScreenshotTarget {
+        window_id: snapshot.focused_window_id,
         pid: u32::try_from(snapshot.pid).ok()?,
         app_name: snapshot.app_name.clone(),
         title: snapshot
@@ -208,6 +217,16 @@ fn is_excluded_snapshot(snapshot: &Snapshot, excluded_app_ids: &[String]) -> boo
         })
 }
 
+fn cooldown_scope(snapshot: &Snapshot) -> String {
+    snapshot
+        .app
+        .bundle_id
+        .as_deref()
+        .filter(|value| !value.is_empty())
+        .unwrap_or(snapshot.app.app_id.as_str())
+        .to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -230,6 +249,7 @@ mod tests {
             activity_kind: kind,
             access: CaptureAccess::Full,
             source: SnapshotSource::Accessibility,
+            focused_window_id: Some(101),
             window_title: Some(title.to_string()),
             url: None,
             visible_text: None,
@@ -261,6 +281,13 @@ mod tests {
         let mut snapshot = snapshot(kind, pid, title);
         snapshot.app.bundle_id = Some(bundle_id.to_string());
         snapshot.app.app_id = bundle_id.to_string();
+        snapshot
+    }
+
+    fn snapshot_with_app_id(kind: ActivityKind, pid: i32, title: &str, app_id: &str) -> Snapshot {
+        let mut snapshot = snapshot(kind, pid, title);
+        snapshot.app.bundle_id = None;
+        snapshot.app.app_id = app_id.to_string();
         snapshot
     }
 
@@ -301,7 +328,7 @@ mod tests {
         match decision {
             ScreenshotDecision::Schedule(pending) => {
                 assert_eq!(pending.fingerprint, "fp1");
-                assert_eq!(pending.due_at_ms, 11_000);
+                assert_eq!(pending.due_at_ms, 3_000);
             }
             other => panic!("expected Schedule, got {other:?}"),
         }
@@ -404,10 +431,10 @@ mod tests {
     }
 
     #[test]
-    fn respects_min_interval() {
+    fn respects_min_interval_within_same_app_scope() {
         let mut policy = ScreenshotPolicy::new(ScreenshotConfig {
             dwell_ms: 0,
-            min_interval_secs: 30,
+            min_interval_secs: 6,
             excluded_app_ids: Vec::new(),
         });
 
@@ -436,6 +463,87 @@ mod tests {
     }
 
     #[test]
+    fn min_interval_does_not_block_different_app_scope() {
+        let mut policy = ScreenshotPolicy::new(ScreenshotConfig {
+            dwell_ms: 0,
+            min_interval_secs: 6,
+            excluded_app_ids: Vec::new(),
+        });
+
+        let p = match policy.on_transition(
+            &transition(
+                TransitionReason::Started,
+                "fp1",
+                snapshot_with_bundle_id(
+                    ActivityKind::ForegroundWindow,
+                    42,
+                    "main.rs",
+                    "com.microsoft.VSCode",
+                ),
+            ),
+            1_000,
+        ) {
+            ScreenshotDecision::Schedule(p) => p,
+            other => panic!("expected Schedule, got {other:?}"),
+        };
+        assert!(policy.fire(p.id, 1_000).is_some());
+
+        let decision = policy.on_transition(
+            &transition(
+                TransitionReason::AppChanged,
+                "fp2",
+                snapshot_with_bundle_id(
+                    ActivityKind::ForegroundWindow,
+                    43,
+                    "KakaoTalk",
+                    "com.kakao.KakaoTalkMac",
+                ),
+            ),
+            2_000,
+        );
+
+        match decision {
+            ScreenshotDecision::Schedule(pending) => {
+                assert_eq!(pending.cooldown_scope, "com.kakao.KakaoTalkMac");
+            }
+            other => panic!("expected Schedule, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn min_interval_falls_back_to_app_id_when_bundle_id_is_missing() {
+        let mut policy = ScreenshotPolicy::new(ScreenshotConfig {
+            dwell_ms: 0,
+            min_interval_secs: 6,
+            excluded_app_ids: Vec::new(),
+        });
+
+        let p = match policy.on_transition(
+            &transition(
+                TransitionReason::Started,
+                "fp1",
+                snapshot_with_app_id(ActivityKind::ForegroundWindow, 42, "Draft", "pid:42"),
+            ),
+            1_000,
+        ) {
+            ScreenshotDecision::Schedule(p) => p,
+            other => panic!("expected Schedule, got {other:?}"),
+        };
+        assert!(policy.fire(p.id, 1_000).is_some());
+
+        let decision = policy.on_transition(
+            &transition(
+                TransitionReason::AppChanged,
+                "fp2",
+                snapshot_with_app_id(ActivityKind::ForegroundWindow, 42, "Draft 2", "pid:42"),
+            ),
+            2_000,
+        );
+
+        assert_eq!(decision, ScreenshotDecision::None);
+    }
+
+    #[test]
     fn fire_returns_none_before_due() {
         let mut policy = ScreenshotPolicy::new(ScreenshotConfig::default());
         let p = match policy.on_transition(
@@ -450,8 +558,109 @@ mod tests {
             other => panic!("expected Schedule, got {other:?}"),
         };
 
-        assert!(policy.fire(p.id, 10_999).is_none());
-        assert!(policy.fire(p.id, 11_000).is_some());
+        assert!(policy.fire(p.id, 2_999).is_none());
+        assert!(policy.fire(p.id, 3_000).is_some());
+    }
+
+    #[test]
+    fn title_changed_does_not_schedule_without_pending() {
+        let mut policy = ScreenshotPolicy::new(ScreenshotConfig::default());
+        let decision = policy.on_transition(
+            &transition(
+                TransitionReason::TitleChanged,
+                "fp1",
+                snapshot(ActivityKind::ForegroundWindow, 42, "renamed.rs"),
+            ),
+            1_000,
+        );
+
+        assert_eq!(decision, ScreenshotDecision::None);
+    }
+
+    #[test]
+    fn content_updates_do_not_cancel_pending_focus_capture() {
+        let mut policy = ScreenshotPolicy::new(ScreenshotConfig::default());
+        let pending = match policy.on_transition(
+            &transition(
+                TransitionReason::Started,
+                "fp1",
+                snapshot(ActivityKind::ForegroundWindow, 42, "main.rs"),
+            ),
+            1_000,
+        ) {
+            ScreenshotDecision::Schedule(pending) => pending,
+            other => panic!("expected Schedule, got {other:?}"),
+        };
+
+        let decision = policy.on_transition(
+            &transition(
+                TransitionReason::TitleChanged,
+                "fp2",
+                snapshot(ActivityKind::ForegroundWindow, 42, "main.rs (edited)"),
+            ),
+            2_000,
+        );
+
+        assert_eq!(decision, ScreenshotDecision::None);
+        assert!(policy.fire(pending.id, pending.due_at_ms).is_some());
+    }
+
+    #[test]
+    fn app_changed_replaces_pending_capture() {
+        let mut policy = ScreenshotPolicy::new(ScreenshotConfig::default());
+        let _ = policy.on_transition(
+            &transition(
+                TransitionReason::Started,
+                "fp1",
+                snapshot(ActivityKind::ForegroundWindow, 42, "main.rs"),
+            ),
+            1_000,
+        );
+
+        let decision = policy.on_transition(
+            &transition(
+                TransitionReason::AppChanged,
+                "fp2",
+                snapshot(ActivityKind::ForegroundWindow, 43, "Inbox"),
+            ),
+            2_000,
+        );
+
+        match decision {
+            ScreenshotDecision::CancelAndSchedule(pending) => {
+                assert_eq!(pending.fingerprint, "fp2");
+                assert_eq!(pending.target.pid, 43);
+            }
+            other => panic!("expected CancelAndSchedule, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn window_changed_replaces_pending_capture() {
+        let mut policy = ScreenshotPolicy::new(ScreenshotConfig::default());
+        let _ = policy.on_transition(
+            &transition(
+                TransitionReason::Started,
+                "fp1",
+                snapshot(ActivityKind::ForegroundWindow, 42, "main.rs"),
+            ),
+            1_000,
+        );
+
+        let mut next = snapshot(ActivityKind::ForegroundWindow, 42, "Inbox");
+        next.focused_window_id = Some(202);
+        let decision = policy.on_transition(
+            &transition(TransitionReason::WindowChanged, "fp2", next),
+            2_000,
+        );
+
+        match decision {
+            ScreenshotDecision::CancelAndSchedule(pending) => {
+                assert_eq!(pending.fingerprint, "fp2");
+                assert_eq!(pending.target.window_id, Some(202));
+            }
+            other => panic!("expected CancelAndSchedule, got {other:?}"),
+        }
     }
 
     #[test]

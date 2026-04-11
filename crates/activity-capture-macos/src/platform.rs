@@ -11,10 +11,10 @@ use crate::{
     app_profile::AppProfile,
     ax::{
         TextAnchorCapture, bool_attribute, collect_generic_visible_text, collect_text_anchor,
-        copy_element_attribute, enable_manual_accessibility, string_attribute,
+        copy_element_attribute, enable_manual_accessibility, string_attribute, u32_attribute,
     },
     frontmost,
-    handlers::{CaptureContext, CaptureTextMode, resolve_capture_plan},
+    handlers::{CaptureContext, resolve_capture_plan},
     runtime::spawn_watch_stream,
     sanitize::sanitize_snapshot_fields,
 };
@@ -65,6 +65,7 @@ impl MacosCapture {
                     activity_kind: hypr_activity_capture_interface::ActivityKind::ForegroundWindow,
                     access: app_access,
                     source: SnapshotSource::Workspace,
+                    focused_window_id: None,
                     window_title: None,
                     url: None,
                     visible_text: None,
@@ -88,6 +89,7 @@ impl MacosCapture {
                     activity_kind: hypr_activity_capture_interface::ActivityKind::ForegroundWindow,
                     access: app_access,
                     source: SnapshotSource::Workspace,
+                    focused_window_id: None,
                     window_title: None,
                     url: None,
                     visible_text: None,
@@ -100,6 +102,7 @@ impl MacosCapture {
             }
 
             let bundle_id = bundle_id.filter(|value| !value.is_empty());
+            let focused_window_id = u32_attribute(&focused_window, "AXWindowNumber")?;
             let default_window_title = bundle_id.clone().unwrap_or_else(|| app_name.clone());
             let window_title = string_attribute(&focused_window, "AXTitle")?
                 .filter(|value| !value.is_empty())
@@ -118,6 +121,7 @@ impl MacosCapture {
                 return Ok(Some(build_snapshot(
                     app,
                     decision,
+                    focused_window_id,
                     Some(window_title),
                     None,
                     None,
@@ -127,31 +131,12 @@ impl MacosCapture {
 
             let text_anchor =
                 collect_text_anchor(&ax_application, &focused_window, &app_name, &window_title)?;
-            let visible_text = match plan.text_mode {
-                CaptureTextMode::Generic => {
-                    collect_generic_visible_text(&ax_application, &focused_window)?
-                }
-                CaptureTextMode::Slack => {
-                    let visible_text = crate::slack::collect_visible_text(&focused_window)?;
-                    if visible_text.is_empty() {
-                        collect_generic_visible_text(&ax_application, &focused_window)?
-                    } else {
-                        visible_text
-                    }
-                }
-                CaptureTextMode::Spotify => {
-                    let visible_text = crate::spotify::collect_visible_text()?;
-                    if visible_text.is_empty() {
-                        collect_generic_visible_text(&ax_application, &focused_window)?
-                    } else {
-                        visible_text
-                    }
-                }
-            };
+            let visible_text = collect_generic_visible_text(&ax_application, &focused_window)?;
 
             Ok(Some(build_snapshot(
                 app,
                 decision,
+                focused_window_id,
                 Some(window_title),
                 Some(visible_text),
                 text_anchor,
@@ -193,6 +178,7 @@ fn ensure_trusted() -> Result<(), CaptureError> {
 fn build_snapshot(
     app: AppIdentity,
     decision: hypr_activity_capture_interface::CaptureDecision,
+    focused_window_id: Option<u32>,
     window_title: Option<String>,
     visible_text: Option<String>,
     text_anchor: Option<TextAnchorCapture>,
@@ -211,6 +197,7 @@ fn build_snapshot(
         activity_kind: decision.activity_kind,
         access: decision.access,
         source: decision.source,
+        focused_window_id,
         url: url_override.or(decision.url),
         app,
         window_title: fields.window_title.filter(|value| !value.is_empty()),

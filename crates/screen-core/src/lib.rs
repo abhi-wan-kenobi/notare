@@ -98,6 +98,7 @@ pub struct WindowContextImage {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WindowCaptureTarget {
+    pub window_id: Option<u32>,
     pub pid: u32,
     pub app_name: Option<String>,
     pub title: Option<String>,
@@ -129,6 +130,7 @@ enum CaptureStage {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct WindowCandidate {
+    id: u32,
     pid: u32,
     app_name: Option<String>,
     title: Option<String>,
@@ -155,12 +157,7 @@ pub fn capture_target_window_context(
     capture_with_plan(
         Some(target),
         options,
-        [
-            CaptureStage::ExactTargetWindow,
-            CaptureStage::SamePidWindow,
-            CaptureStage::FrontmostWindow,
-            CaptureStage::PrimaryDisplay,
-        ],
+        [CaptureStage::ExactTargetWindow, CaptureStage::SamePidWindow],
     )
 }
 
@@ -226,19 +223,24 @@ where
 }
 
 fn resolve_exact_target_window(target: &WindowCaptureTarget) -> Result<Option<Window>> {
-    let Some(target_title) = target.title.as_deref().filter(|value| !value.is_empty()) else {
+    if target.window_id.is_none()
+        && target
+            .title
+            .as_deref()
+            .filter(|value| !value.is_empty())
+            .is_none()
+    {
         return Ok(None);
-    };
+    }
     let windows = Window::all()?;
     let candidates = collect_window_candidates(&windows);
-    Ok(select_exact_target_candidate(
-        &candidates,
-        target.pid,
-        target_title,
-    ))
+    Ok(select_exact_target_candidate(&candidates, target))
 }
 
 fn resolve_same_pid_window(target: &WindowCaptureTarget) -> Result<Option<Window>> {
+    if target.window_id.is_some() {
+        return Ok(None);
+    }
     let windows = Window::all()?;
     let candidates = collect_window_candidates(&windows);
     Ok(select_same_pid_best_match_candidate(&candidates, target))
@@ -261,6 +263,7 @@ fn collect_window_candidates(windows: &[Window]) -> Vec<(WindowCandidate, Window
         .filter_map(|window| {
             Some((
                 WindowCandidate {
+                    id: window.id().ok()?,
                     pid: window.pid().ok()?,
                     app_name: window.app_name().ok(),
                     title: window.title().ok(),
@@ -277,15 +280,25 @@ fn collect_window_candidates(windows: &[Window]) -> Vec<(WindowCandidate, Window
 
 fn select_exact_target_candidate<T: Clone>(
     candidates: &[(WindowCandidate, T)],
-    target_pid: u32,
-    target_title: &str,
+    target: &WindowCaptureTarget,
 ) -> Option<T> {
     candidates
         .iter()
         .find(|(candidate, _)| {
-            is_usable_candidate(candidate)
-                && candidate.pid == target_pid
-                && candidate.title.as_deref() == Some(target_title)
+            if !is_usable_candidate(candidate) {
+                return false;
+            }
+
+            if let Some(window_id) = target.window_id {
+                return candidate.id == window_id;
+            }
+
+            let Some(target_title) = target.title.as_deref().filter(|value| !value.is_empty())
+            else {
+                return false;
+            };
+
+            candidate.pid == target.pid && candidate.title.as_deref() == Some(target_title)
         })
         .map(|(_, value)| value.clone())
 }
@@ -323,6 +336,10 @@ fn is_usable_candidate(candidate: &WindowCandidate) -> bool {
 }
 
 fn same_pid_match_score(target: &WindowCaptureTarget, candidate: &WindowCandidate) -> Option<u8> {
+    if target.window_id.is_some() {
+        return None;
+    }
+
     if !is_usable_candidate(candidate) || candidate.pid != target.pid {
         return None;
     }
@@ -586,12 +603,14 @@ mod tests {
     use image::RgbaImage;
 
     fn candidate(
+        id: u32,
         pid: u32,
         app_name: Option<&str>,
         title: Option<&str>,
         is_focused: Option<bool>,
     ) -> WindowCandidate {
         WindowCandidate {
+            id,
             pid,
             app_name: app_name.map(str::to_string),
             title: title.map(str::to_string),
@@ -672,29 +691,27 @@ mod tests {
     #[test]
     fn target_matching_prefers_exact_title() {
         let target = WindowCaptureTarget {
+            window_id: None,
             pid: 42,
             app_name: Some("Arc".to_string()),
             title: Some("PR Review".to_string()),
         };
         let candidates = vec![
             (
-                candidate(42, Some("Arc"), Some("Inbox"), Some(false)),
+                candidate(1, 42, Some("Arc"), Some("Inbox"), Some(false)),
                 1usize,
             ),
             (
-                candidate(42, Some("Arc"), Some("PR Review"), Some(false)),
+                candidate(2, 42, Some("Arc"), Some("PR Review"), Some(false)),
                 2usize,
             ),
             (
-                candidate(99, Some("Arc"), Some("PR Review"), Some(false)),
+                candidate(3, 99, Some("Arc"), Some("PR Review"), Some(false)),
                 3usize,
             ),
         ];
 
-        assert_eq!(
-            select_exact_target_candidate(&candidates, target.pid, "PR Review"),
-            Some(2)
-        );
+        assert_eq!(select_exact_target_candidate(&candidates, &target), Some(2));
         assert_eq!(
             select_same_pid_best_match_candidate(&candidates, &target),
             Some(1)
@@ -704,13 +721,14 @@ mod tests {
     #[test]
     fn same_pid_matching_prefers_app_name_then_title() {
         let target = WindowCaptureTarget {
+            window_id: None,
             pid: 42,
             app_name: Some("Arc".to_string()),
             title: Some("PR Review".to_string()),
         };
-        let app_match = candidate(42, Some("Arc"), Some("Inbox"), Some(false));
-        let title_match = candidate(42, Some("Other"), Some("PR Review"), Some(false));
-        let weak_match = candidate(42, Some("Other"), Some("Else"), Some(false));
+        let app_match = candidate(1, 42, Some("Arc"), Some("Inbox"), Some(false));
+        let title_match = candidate(2, 42, Some("Other"), Some("PR Review"), Some(false));
+        let weak_match = candidate(3, 42, Some("Other"), Some("Else"), Some(false));
 
         assert_eq!(same_pid_match_score(&target, &app_match), Some(0));
         assert_eq!(same_pid_match_score(&target, &title_match), Some(1));
@@ -718,11 +736,37 @@ mod tests {
     }
 
     #[test]
+    fn exact_target_matching_prefers_window_id_when_available() {
+        let target = WindowCaptureTarget {
+            window_id: Some(7),
+            pid: 42,
+            app_name: Some("Arc".to_string()),
+            title: Some("PR Review".to_string()),
+        };
+        let candidates = vec![
+            (
+                candidate(6, 42, Some("Arc"), Some("PR Review"), Some(false)),
+                1usize,
+            ),
+            (
+                candidate(7, 99, Some("Other"), Some("Else"), Some(false)),
+                2usize,
+            ),
+        ];
+
+        assert_eq!(select_exact_target_candidate(&candidates, &target), Some(2));
+        assert_eq!(
+            select_same_pid_best_match_candidate(&candidates, &target),
+            None
+        );
+    }
+
+    #[test]
     fn frontmost_candidate_requires_focus_flag() {
         let candidates = vec![
-            (candidate(1, Some("Arc"), Some("A"), None), 1usize),
+            (candidate(1, 1, Some("Arc"), Some("A"), None), 1usize),
             (
-                candidate(2, Some("Ghostty"), Some("B"), Some(false)),
+                candidate(2, 2, Some("Ghostty"), Some("B"), Some(false)),
                 2usize,
             ),
         ];
@@ -752,22 +796,30 @@ mod tests {
     #[test]
     fn capture_plan_falls_back_when_target_resolution_returns_none() {
         let result = execute_capture_plan(
-            [
-                CaptureStage::ExactTargetWindow,
-                CaptureStage::SamePidWindow,
-                CaptureStage::FrontmostWindow,
-                CaptureStage::PrimaryDisplay,
-            ],
+            [CaptureStage::ExactTargetWindow, CaptureStage::SamePidWindow],
             |stage| match stage {
                 CaptureStage::ExactTargetWindow => Ok(None),
-                CaptureStage::SamePidWindow => Ok(None),
-                CaptureStage::FrontmostWindow => Ok(Some("frontmost")),
-                CaptureStage::PrimaryDisplay => panic!("display should not run"),
+                CaptureStage::SamePidWindow => Ok(Some("same-pid")),
+                _ => panic!("unexpected fallback stage"),
             },
         )
         .unwrap();
 
-        assert_eq!(result, "frontmost");
+        assert_eq!(result, "same-pid");
+    }
+
+    #[test]
+    fn target_capture_plan_stops_when_target_cannot_be_resolved() {
+        let result = execute_capture_plan(
+            [CaptureStage::ExactTargetWindow, CaptureStage::SamePidWindow],
+            |stage| match stage {
+                CaptureStage::ExactTargetWindow => Ok(None::<&str>),
+                CaptureStage::SamePidWindow => Ok(None::<&str>),
+                _ => panic!("unexpected fallback stage"),
+            },
+        );
+
+        assert!(matches!(result, Err(Error::NoCaptureSource)));
     }
 
     #[test]

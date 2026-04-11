@@ -8,7 +8,9 @@ use std::{
 
 use hypr_activity_capture_interface::{CaptureError, TextAnchorConfidence, TextAnchorKind};
 use objc2_application_services::{AXError, AXUIElement};
-use objc2_core_foundation::{CFArray, CFBoolean, CFRetained, CFString, CFType};
+use objc2_core_foundation::{
+    CFArray, CFBoolean, CFNumber, CFNumberType, CFRetained, CFString, CFType,
+};
 use objc2_foundation::NSString;
 
 const WINDOW_DEPTH_LIMIT: usize = 7;
@@ -165,6 +167,31 @@ pub(crate) fn bool_attribute(
 
 pub(crate) fn best_effort_bool_attribute(element: &AXUIElement, attribute: &str) -> Option<bool> {
     bool_attribute(element, attribute).ok().flatten()
+}
+
+pub(crate) fn u32_attribute(
+    element: &AXUIElement,
+    attribute: &str,
+) -> Result<Option<u32>, CaptureError> {
+    let Some(value) = copy_attribute_value(element, attribute)? else {
+        return Ok(None);
+    };
+    let Some(number) = value.downcast_ref::<CFNumber>() else {
+        return Ok(None);
+    };
+
+    let mut raw: i64 = 0;
+    let ok = unsafe {
+        number.value(
+            CFNumberType::SInt64Type,
+            (&mut raw as *mut i64).cast::<core::ffi::c_void>(),
+        )
+    };
+    if !ok || raw < 0 || raw > u32::MAX as i64 {
+        return Ok(None);
+    }
+
+    Ok(Some(raw as u32))
 }
 
 pub(crate) fn enable_manual_accessibility(element: &AXUIElement) {

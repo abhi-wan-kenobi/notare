@@ -72,6 +72,10 @@ export type SettingsState = {
   tab: SettingsTab | null;
 };
 
+export type DailySummaryState = {
+  activeTab: "timeline" | "raw" | null;
+};
+
 export const isEnhancedView = (
   view: EditorView,
 ): view is { type: "enhanced"; id: string } => view.type === "enhanced";
@@ -133,6 +137,7 @@ export type Tab =
   | (BaseTab & {
       type: "daily_summary";
       id: string;
+      state: DailySummaryState;
     });
 
 export type TaskResource =

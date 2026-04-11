@@ -72,6 +72,7 @@ pub enum CaptureSubject {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowCaptureTarget {
+    pub window_id: Option<u32>,
     pub pid: u32,
     pub app_name: Option<String>,
     pub title: Option<String>,
@@ -114,6 +115,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Screen<'a, R, M> {
         let _ = self.manager;
         let capture = hypr_screen_core::capture_target_window_context(
             &hypr_screen_core::WindowCaptureTarget {
+                window_id: target.window_id,
                 pid: target.pid,
                 app_name: target.app_name,
                 title: target.title,

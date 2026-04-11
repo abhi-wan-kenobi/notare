@@ -41,6 +41,7 @@ import { wrapSliceWithLogging } from "~/store/zustand/shared";
 
 export type { ChatEvent, ChatMode } from "./chat-mode";
 export type {
+  DailySummaryState,
   SettingsState,
   SettingsTab,
   Tab,

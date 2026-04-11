@@ -376,6 +376,14 @@
         "content_level": {
           "$ref": "#/$defs/ContentLevel"
         },
+        "focused_window_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
         "pid": {
           "type": "integer",
           "format": "int32"
@@ -483,6 +491,14 @@
         },
         "captured_at": {
           "$ref": "#/$defs/SystemTime"
+        },
+        "focused_window_id": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
         },
         "source": {
           "$ref": "#/$defs/SnapshotSource"
@@ -653,6 +669,7 @@
         "started",
         "idle",
         "app_changed",
+        "window_changed",
         "activity_kind_changed",
         "url_changed",
         "title_changed",

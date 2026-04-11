@@ -16,10 +16,6 @@ mod platform;
 mod runtime;
 #[cfg(target_os = "macos")]
 mod sanitize;
-#[cfg(target_os = "macos")]
-mod slack;
-#[cfg(target_os = "macos")]
-mod spotify;
 
 #[cfg(target_os = "macos")]
 pub use platform::MacosCapture;

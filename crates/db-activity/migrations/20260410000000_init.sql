@@ -38,18 +38,3 @@ CREATE TABLE IF NOT EXISTS activity_screenshots (
 CREATE INDEX IF NOT EXISTS idx_activity_screenshots_captured_at ON activity_screenshots(captured_at_ms);
 CREATE INDEX IF NOT EXISTS idx_activity_screenshots_signal_id ON activity_screenshots(signal_id);
 CREATE INDEX IF NOT EXISTS idx_activity_screenshots_fingerprint ON activity_screenshots(fingerprint);
-
-CREATE TABLE IF NOT EXISTS activity_analyses (
-  id             TEXT PRIMARY KEY NOT NULL,
-  subject_type   TEXT NOT NULL DEFAULT '',
-  subject_id     TEXT NOT NULL DEFAULT '',
-  analyzer       TEXT NOT NULL DEFAULT '',
-  prompt_version TEXT NOT NULL DEFAULT '',
-  summary        TEXT NOT NULL DEFAULT '',
-  payload_json   TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(payload_json)),
-  created_at_ms  INTEGER NOT NULL DEFAULT 0,
-  created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_activity_analyses_subject ON activity_analyses(subject_type, subject_id, created_at_ms);
-CREATE INDEX IF NOT EXISTS idx_activity_analyses_created_at_ms ON activity_analyses(created_at_ms);

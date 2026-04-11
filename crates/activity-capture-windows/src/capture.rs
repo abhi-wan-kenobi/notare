@@ -121,6 +121,7 @@ fn resolve_active_session_snapshot(
         activity_kind: decision.activity_kind,
         access: decision.access,
         source: decision.source,
+        focused_window_id: None,
         window_title: None,
         url: decision.url,
         visible_text: None,
