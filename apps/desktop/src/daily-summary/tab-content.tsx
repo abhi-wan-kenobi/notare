@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { generateText, Output } from "ai";
 import { format } from "date-fns";
 import { RefreshCwIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import {
@@ -822,6 +822,9 @@ export function TabContentDailySummary({ tab }: { tab: DailySummaryTab }) {
   });
   const [, forceRender] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const handleGenerateStateChange = useCallback(() => {
+    forceRender((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -847,7 +850,7 @@ export function TabContentDailySummary({ tab }: { tab: DailySummaryTab }) {
           date={tab.id}
           activeTab={activeTab}
           generateRef={generateRef}
-          onGenerateStateChange={() => forceRender((n) => n + 1)}
+          onGenerateStateChange={handleGenerateStateChange}
         />
       </div>
     </StandardTabWrapper>

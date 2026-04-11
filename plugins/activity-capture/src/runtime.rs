@@ -1,4 +1,5 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
@@ -31,6 +32,69 @@ struct LastKnown {
     screenshot_analysis_error: Option<ActivityCaptureScreenshotAnalysisError>,
 }
 
+const KNOWN_DESKTOP_APP_IDS: &[&str] = &[
+    "com.hyprnote.dev",
+    "com.hyprnote.stable",
+    "com.hyprnote.staging",
+    "com.hyprnote.nightly",
+    "com.hyprnote.Hyprnote",
+];
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct SelfIdentity {
+    excluded_app_ids: Vec<String>,
+}
+
+impl SelfIdentity {
+    fn resolve<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Self {
+        Self::from_parts(
+            Some(app.config().identifier.clone()),
+            std::env::current_exe().ok(),
+        )
+    }
+
+    fn from_parts(app_identifier: Option<String>, executable_path: Option<PathBuf>) -> Self {
+        let mut excluded_app_ids = Vec::new();
+
+        if let Some(app_identifier) = normalize_identity(app_identifier) {
+            excluded_app_ids.push(app_identifier.clone());
+            if is_known_desktop_app_id(&app_identifier) {
+                excluded_app_ids
+                    .extend(KNOWN_DESKTOP_APP_IDS.iter().map(|value| value.to_string()));
+            }
+        }
+
+        if let Some(executable_path) = executable_path
+            .map(|value| value.to_string_lossy().trim().to_string())
+            .filter(|value| !value.is_empty())
+        {
+            excluded_app_ids.push(executable_path);
+        }
+
+        Self {
+            excluded_app_ids: dedupe_identities(excluded_app_ids),
+        }
+    }
+}
+
+fn normalize_identity(value: Option<String>) -> Option<String> {
+    value
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn is_known_desktop_app_id(app_id: &str) -> bool {
+    KNOWN_DESKTOP_APP_IDS.contains(&app_id)
+}
+
+fn dedupe_identities(values: Vec<String>) -> Vec<String> {
+    let mut seen = HashSet::new();
+    values
+        .into_iter()
+        .filter(|value| seen.insert(value.clone()))
+        .collect()
+}
+
 pub struct ActivityCaptureRuntime<R: tauri::Runtime> {
     app: tauri::AppHandle<R>,
     pool: Arc<SqlitePool>,
@@ -48,12 +112,15 @@ pub struct ActivityCaptureRuntime<R: tauri::Runtime> {
 
 impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
     pub fn new(app: tauri::AppHandle<R>, pool: Arc<SqlitePool>) -> Self {
-        let screenshot_config = ScreenshotConfig::default();
+        let screenshot_config = ScreenshotConfig {
+            excluded_app_ids: SelfIdentity::resolve(&app).excluded_app_ids,
+            ..ScreenshotConfig::default()
+        };
         Self {
             app,
             pool,
             policy: Mutex::new(CapturePolicy::default()),
-            screenshot_config,
+            screenshot_config: screenshot_config.clone(),
             analyze_screenshots: AtomicBool::new(true),
             running: AtomicBool::new(false),
             task: Mutex::new(None),
@@ -63,6 +130,11 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
             screenshot_task: Mutex::new(ScreenshotTaskState::default()),
             recent_analyses: Mutex::new(HashMap::new()),
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn excluded_app_ids(&self) -> &[String] {
+        &self.screenshot_config.excluded_app_ids
     }
 
     pub fn pool(&self) -> &SqlitePool {
@@ -591,4 +663,79 @@ async fn persist_screenshot(
         },
     )
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ActivityCaptureRuntime, SelfIdentity};
+    use std::path::PathBuf;
+    use std::sync::Arc;
+
+    #[test]
+    fn self_identity_includes_app_identifier() {
+        let identity = SelfIdentity::from_parts(Some("com.hyprnote.stable".to_string()), None);
+
+        assert!(
+            identity
+                .excluded_app_ids
+                .contains(&"com.hyprnote.stable".to_string())
+        );
+    }
+
+    #[test]
+    fn self_identity_includes_executable_path() {
+        let identity = SelfIdentity::from_parts(
+            Some("com.hyprnote.stable".to_string()),
+            Some(PathBuf::from("/Applications/Char.app/Contents/MacOS/Char")),
+        );
+
+        assert!(
+            identity
+                .excluded_app_ids
+                .contains(&"/Applications/Char.app/Contents/MacOS/Char".to_string())
+        );
+    }
+
+    #[test]
+    fn self_identity_adds_known_desktop_aliases() {
+        let identity = SelfIdentity::from_parts(Some("com.hyprnote.Hyprnote".to_string()), None);
+
+        assert!(
+            identity
+                .excluded_app_ids
+                .contains(&"com.hyprnote.dev".to_string())
+        );
+        assert!(
+            identity
+                .excluded_app_ids
+                .contains(&"com.hyprnote.stable".to_string())
+        );
+        assert!(
+            identity
+                .excluded_app_ids
+                .contains(&"com.hyprnote.Hyprnote".to_string())
+        );
+    }
+
+    #[test]
+    fn runtime_initializes_self_exclusions_from_app_identity() {
+        let app = tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let expected = SelfIdentity::resolve(&app.handle().clone());
+        let runtime = ActivityCaptureRuntime::new(
+            app.handle().clone(),
+            Arc::new(
+                rt.block_on(async { sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap() }),
+            ),
+        );
+
+        assert_eq!(runtime.excluded_app_ids(), expected.excluded_app_ids);
+        if let Ok(current_exe) = std::env::current_exe() {
+            let current_exe = current_exe.to_string_lossy().to_string();
+            assert!(runtime.excluded_app_ids().contains(&current_exe));
+        }
+        drop(rt);
+    }
 }

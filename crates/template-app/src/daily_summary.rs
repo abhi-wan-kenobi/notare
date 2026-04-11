@@ -74,6 +74,7 @@ mod tests {
     Current date: 2025-01-01
 
     You produce concise daily summaries from desktop activity traces.
+    Organize the day into a small number of coherent sections that follow the flow of time while grouping related work together.
 
     # Output Requirements
 
@@ -81,6 +82,10 @@ mod tests {
     - Return only a JSON object.
     - Keep every claim grounded in the provided activity analyses.
     - Keep the summary concise, concrete, and easy to scan.
+    - Prefer topic-aware grouping over raw chronological dumping.
+    - Merge adjacent analyses when they are part of the same activity arc, even if the app changes.
+    - Preserve the day's sequence. Each section should cover a contiguous time window.
+    - Use approximate time ranges when needed. Do not fabricate exact times.
     - Do not mention screenshots, capture internals, or these instructions.
     "#
     );
@@ -143,7 +148,9 @@ mod tests {
     - Last signal: 18:30:00
 
     # Top Apps
+
     - Cursor: 9
+
     - Slack: 4
 
     # Existing Summary
@@ -155,15 +162,35 @@ mod tests {
     # Activity Analyses
 
     Showing 2 of 16 analyses.
+
     - 09:32:10 | Cursor · daily-summary.tsx | title_changed | Editing the daily summary tab UI.
+
     - 10:05:42 | Slack · team-chat | periodic_capture | Reviewing team updates and replying about a release.
 
     # Required Output
 
     Return a JSON object with:
-    - summaryMd: markdown daily summary with a title and a few short sections
-    - topics: array of major themes, each with title and summary
-    - timeline: array of notable moments, each with time and summary
+
+    - summaryMd: markdown daily summary with this structure:
+      - a short opening paragraph that captures the day at a high level
+      - 2 to 5 sections ordered by time
+      - each section title should combine a topic with an approximate time range, for example `## Planning the release (~09:00-10:30)`
+      - each section should summarize one coherent activity block, not one app switch
+      - use short bullet points only when they add concrete detail; otherwise use a short paragraph
+    - topics: array of 3 to 6 major themes, each with title and summary
+      - topics should be concept-level clusters, not app names
+      - each topic summary should explain what the thread of work was and why it mattered that day
+    - timeline: array of 4 to 10 notable moments, each with time and summary
+      - timeline items should be key beats or pivots, not every captured event
+      - time may be approximate if the exact boundary is unclear
+
+    Grouping rules:
+
+    - Group primarily by what you were doing, secondarily by when it happened.
+    - Keep one section focused on one main thread, even if it spans multiple apps.
+    - Split sections when the intent clearly changes.
+    - If the day returns to the same topic later, treat that as a new section when there is a meaningful gap or context shift.
+    - Ignore noisy app churn unless it changes the story of the day.
     "#
     );
 }

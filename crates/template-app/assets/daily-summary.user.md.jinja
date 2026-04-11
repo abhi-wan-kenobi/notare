@@ -44,6 +44,23 @@ Showing {{ analyses.len() }} of {{ total_analysis_count }} analyses.
 
 Return a JSON object with:
 
-- summaryMd: markdown daily summary with a title and a few short sections
-- topics: array of major themes, each with title and summary
-- timeline: array of notable moments, each with time and summary
+- summaryMd: markdown daily summary with this structure:
+  - a short opening paragraph that captures the day at a high level
+  - 2 to 5 sections ordered by time
+  - each section title should combine a topic with an approximate time range, for example `## Planning the release (~09:00-10:30)`
+  - each section should summarize one coherent activity block, not one app switch
+  - use short bullet points only when they add concrete detail; otherwise use a short paragraph
+- topics: array of 3 to 6 major themes, each with title and summary
+  - topics should be concept-level clusters, not app names
+  - each topic summary should explain what the thread of work was and why it mattered that day
+- timeline: array of 4 to 10 notable moments, each with time and summary
+  - timeline items should be key beats or pivots, not every captured event
+  - time may be approximate if the exact boundary is unclear
+
+Grouping rules:
+
+- Group primarily by what you were doing, secondarily by when it happened.
+- Keep one section focused on one main thread, even if it spans multiple apps.
+- Split sections when the intent clearly changes.
+- If the day returns to the same topic later, treat that as a new section when there is a meaningful gap or context shift.
+- Ignore noisy app churn unless it changes the story of the day.

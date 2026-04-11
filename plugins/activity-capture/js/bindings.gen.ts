@@ -77,6 +77,22 @@ async configure(input: ConfigureInput) : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async getDailySummarySnapshot(input: LoadDailySummarySnapshotInput) : Promise<Result<DailySummarySnapshot, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:activity-capture|get_daily_summary_snapshot", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async saveDailySummary(input: SaveDailySummaryInput) : Promise<Result<StoredDailySummary, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:activity-capture|save_daily_summary", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -111,7 +127,16 @@ export type AppIdKind = "bundle_id" | "executable_path" | "process_name" | "pid"
 export type CaptureErrorKind = "permission_denied" | "unsupported" | "temporarily_unavailable" | "platform"
 export type ConfigureInput = { budget: ActivityCaptureBudget | null; analyzeScreenshots: boolean | null }
 export type ContentLevel = "metadata" | "url" | "full"
+export type DailyActivityAnalysis = { capturedAtMs: number; fingerprint: string; appName: string; windowTitle: string | null; reason: string; summary: string }
+export type DailyActivityAppStat = { appName: string; count: number }
+export type DailyActivityStats = { signalCount: number; screenshotCount: number; analysisCount: number; uniqueAppCount: number; firstSignalAtMs: number | null; lastSignalAtMs: number | null; topApps: DailyActivityAppStat[] }
+export type DailySummarySnapshot = { stats: DailyActivityStats; analyses: DailyActivityAnalysis[]; summary: StoredDailySummary | null; sourceCursorMs: number; sourceFingerprint: string }
+export type DailySummaryTimelineItem = { time: string; summary: string }
+export type DailySummaryTopic = { title: string; summary: string }
+export type LoadDailySummarySnapshotInput = { date: string; startMs: number; endMs: number }
+export type SaveDailySummaryInput = { date: string; content: string; timeline: DailySummaryTimelineItem[]; topics: DailySummaryTopic[]; sourceCursorMs: number; sourceFingerprint: string; generatedAt: string }
 export type SnapshotSource = "accessibility" | "workspace"
+export type StoredDailySummary = { id: string; date: string; content: string; timeline: DailySummaryTimelineItem[]; topics: DailySummaryTopic[]; status: string; sourceCursorMs: number; sourceFingerprint: string; generatedAt: string; generationError: string; updatedAt: string }
 export type TextAnchorConfidence = "high" | "medium" | "low"
 export type TextAnchorKind = "focused_edit" | "selected_text" | "focused_element" | "document" | "none"
 export type TransitionReason = "started" | "idle" | "app_changed" | "activity_kind_changed" | "url_changed" | "title_changed" | "text_anchor_changed" | "content_changed"

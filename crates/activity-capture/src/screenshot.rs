@@ -18,10 +18,11 @@ pub struct ActivityScreenshotCapture {
     pub image: hypr_screen_core::WindowContextImage,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ScreenshotConfig {
     pub dwell_ms: u64,
     pub min_interval_secs: u32,
+    pub excluded_app_ids: Vec<String>,
 }
 
 impl Default for ScreenshotConfig {
@@ -29,6 +30,7 @@ impl Default for ScreenshotConfig {
         Self {
             dwell_ms: 10_000,
             min_interval_secs: 30,
+            excluded_app_ids: Vec::new(),
         }
     }
 }
@@ -84,6 +86,10 @@ impl ScreenshotPolicy {
 
         let snapshot = &current.snapshot;
         if !is_supported_kind(snapshot.activity_kind) || !is_eligible_reason(transition.reason) {
+            return self.clear_pending();
+        }
+
+        if is_excluded_snapshot(snapshot, &self.config.excluded_app_ids) {
             return self.clear_pending();
         }
 
@@ -179,6 +185,29 @@ fn target_from_snapshot(snapshot: &Snapshot) -> Option<ActivityScreenshotTarget>
     })
 }
 
+fn is_excluded_snapshot(snapshot: &Snapshot, excluded_app_ids: &[String]) -> bool {
+    if excluded_app_ids.is_empty() {
+        return false;
+    }
+
+    let candidates = [
+        snapshot.app.bundle_id.as_deref(),
+        Some(snapshot.app.app_id.as_str()),
+        snapshot.app.executable_path.as_deref(),
+    ];
+
+    candidates
+        .into_iter()
+        .flatten()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .any(|candidate| {
+            excluded_app_ids
+                .iter()
+                .any(|excluded| excluded.trim() == candidate)
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -221,6 +250,30 @@ mod tests {
             sequence: 1,
             suppressed_snapshot_count: 0,
         }
+    }
+
+    fn snapshot_with_bundle_id(
+        kind: ActivityKind,
+        pid: i32,
+        title: &str,
+        bundle_id: &str,
+    ) -> Snapshot {
+        let mut snapshot = snapshot(kind, pid, title);
+        snapshot.app.bundle_id = Some(bundle_id.to_string());
+        snapshot.app.app_id = bundle_id.to_string();
+        snapshot
+    }
+
+    fn snapshot_with_executable_path(
+        kind: ActivityKind,
+        pid: i32,
+        title: &str,
+        executable_path: &str,
+    ) -> Snapshot {
+        let mut snapshot = snapshot(kind, pid, title);
+        snapshot.app.executable_path = Some(executable_path.to_string());
+        snapshot.app.app_id = executable_path.to_string();
+        snapshot
     }
 
     fn idle_transition() -> Transition {
@@ -270,10 +323,92 @@ mod tests {
     }
 
     #[test]
+    fn excludes_configured_app_ids() {
+        let mut policy = ScreenshotPolicy::new(ScreenshotConfig {
+            dwell_ms: ScreenshotConfig::default().dwell_ms,
+            min_interval_secs: ScreenshotConfig::default().min_interval_secs,
+            excluded_app_ids: vec!["com.hyprnote.stable".to_string()],
+        });
+
+        let decision = policy.on_transition(
+            &transition(
+                TransitionReason::Started,
+                "fp-self",
+                snapshot_with_bundle_id(
+                    ActivityKind::ForegroundWindow,
+                    42,
+                    "main.rs",
+                    "com.hyprnote.stable",
+                ),
+            ),
+            1_000,
+        );
+
+        assert_eq!(decision, ScreenshotDecision::None);
+    }
+
+    #[test]
+    fn excludes_matching_executable_paths() {
+        let executable_path = "/Applications/Char.app/Contents/MacOS/Char";
+        let mut policy = ScreenshotPolicy::new(ScreenshotConfig {
+            dwell_ms: ScreenshotConfig::default().dwell_ms,
+            min_interval_secs: ScreenshotConfig::default().min_interval_secs,
+            excluded_app_ids: vec![executable_path.to_string()],
+        });
+
+        let decision = policy.on_transition(
+            &transition(
+                TransitionReason::Started,
+                "fp-self-exe",
+                snapshot_with_executable_path(
+                    ActivityKind::ForegroundWindow,
+                    42,
+                    "main.rs",
+                    executable_path,
+                ),
+            ),
+            1_000,
+        );
+
+        assert_eq!(decision, ScreenshotDecision::None);
+    }
+
+    #[test]
+    fn unrelated_app_still_schedules_when_exclusions_exist() {
+        let mut policy = ScreenshotPolicy::new(ScreenshotConfig {
+            dwell_ms: ScreenshotConfig::default().dwell_ms,
+            min_interval_secs: ScreenshotConfig::default().min_interval_secs,
+            excluded_app_ids: vec!["com.hyprnote.stable".to_string()],
+        });
+
+        let decision = policy.on_transition(
+            &transition(
+                TransitionReason::Started,
+                "fp-other",
+                snapshot_with_bundle_id(
+                    ActivityKind::ForegroundWindow,
+                    42,
+                    "main.rs",
+                    "com.microsoft.VSCode",
+                ),
+            ),
+            1_000,
+        );
+
+        match decision {
+            ScreenshotDecision::Schedule(pending) => {
+                assert_eq!(pending.fingerprint, "fp-other");
+            }
+            other => panic!("expected Schedule, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn respects_min_interval() {
         let mut policy = ScreenshotPolicy::new(ScreenshotConfig {
             dwell_ms: 0,
             min_interval_secs: 30,
+            excluded_app_ids: Vec::new(),
         });
 
         let p = match policy.on_transition(
