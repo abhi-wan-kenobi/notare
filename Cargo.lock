@@ -13932,8 +13932,7 @@ dependencies = [
 name = "power"
 version = "0.1.0"
 dependencies = [
- "core-foundation 0.10.1",
- "objc2-foundation",
+ "cidre",
  "thiserror 2.0.18",
  "windows 0.62.2",
 ]

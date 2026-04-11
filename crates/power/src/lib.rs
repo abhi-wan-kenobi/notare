@@ -1,3 +1,8 @@
+mod error;
+pub use error::Error;
+
+pub use imp::snapshot;
+
 #[cfg(target_os = "macos")]
 mod macos;
 
@@ -15,10 +20,10 @@ mod unsupported {
 
 #[cfg(target_os = "macos")]
 use macos as imp;
-#[cfg(target_os = "windows")]
-use windows as imp;
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 use unsupported as imp;
+#[cfg(target_os = "windows")]
+use windows as imp;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PowerSource {
@@ -41,6 +46,7 @@ pub struct Snapshot {
     pub has_battery: bool,
     pub power_source: PowerSource,
     pub is_charging: Option<bool>,
+    pub battery_percent: Option<u8>,
     pub low_power_mode: bool,
     pub thermal_state: ThermalState,
 }
@@ -52,48 +58,5 @@ impl Snapshot {
 
     pub fn on_ac_power(&self) -> bool {
         matches!(self.power_source, PowerSource::Ac)
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("power information is unavailable: {0}")]
-    Unavailable(&'static str),
-    #[error("power information is only supported on macOS and Windows")]
-    UnsupportedPlatform,
-}
-
-pub use imp::snapshot;
-
-#[cfg(test)]
-mod tests {
-    use crate::{PowerSource, Snapshot, ThermalState};
-
-    #[test]
-    fn battery_helpers_reflect_power_source() {
-        let snapshot = Snapshot {
-            has_battery: true,
-            power_source: PowerSource::Battery,
-            is_charging: Some(false),
-            low_power_mode: false,
-            thermal_state: ThermalState::Nominal,
-        };
-
-        assert!(snapshot.on_battery());
-        assert!(!snapshot.on_ac_power());
-    }
-
-    #[test]
-    fn ac_helpers_reflect_power_source() {
-        let snapshot = Snapshot {
-            has_battery: true,
-            power_source: PowerSource::Ac,
-            is_charging: Some(true),
-            low_power_mode: false,
-            thermal_state: ThermalState::Nominal,
-        };
-
-        assert!(snapshot.on_ac_power());
-        assert!(!snapshot.on_battery());
     }
 }

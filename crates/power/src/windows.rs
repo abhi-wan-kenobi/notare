@@ -20,6 +20,9 @@ pub fn snapshot() -> Result<Snapshot, Error> {
         has_battery,
         power_source: power_source(status.ACLineStatus),
         is_charging: has_battery.then(|| is_charging(status.BatteryFlag)),
+        battery_percent: has_battery
+            .then(|| status.BatteryLifePercent)
+            .filter(|&v| v <= 100),
         low_power_mode: low_power_mode(status.SystemStatusFlag),
         thermal_state: ThermalState::Unknown,
     })

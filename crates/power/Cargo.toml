@@ -7,8 +7,7 @@ edition = "2024"
 thiserror = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-core-foundation = { workspace = true }
-objc2-foundation = { workspace = true, features = ["NSProcessInfo"] }
+cidre = { workspace = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { workspace = true, features = ["Win32_System_Power"] }
