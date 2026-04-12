@@ -16,7 +16,7 @@ use tower::Service;
 use crate::ModelManager;
 
 use self::{
-    request::{ChatCompletionRequest, build_options, convert_messages},
+    request::{ChatCompletionRequest, apply_response_format, build_options, convert_messages},
     response::{
         build_non_streaming_response, build_streaming_response, status_code_for_model_error,
     },
@@ -90,7 +90,7 @@ impl Service<Request<Body>> for CompleteService {
                 }
             };
 
-            let messages = match convert_messages(&request.messages) {
+            let mut messages = match convert_messages(&request.messages) {
                 Ok(messages) => messages,
                 Err(error) => {
                     return Ok((StatusCode::BAD_REQUEST, error).into_response());
@@ -99,7 +99,12 @@ impl Service<Request<Body>> for CompleteService {
             if let Err(error) = hypr_cactus::validate_messages(&messages) {
                 return Ok((status_code_for_model_error(&error), error.to_string()).into_response());
             }
-            let options = build_options(&request);
+            let mut options = build_options(&request);
+            apply_response_format(
+                request.response_format.as_ref(),
+                &mut messages,
+                &mut options,
+            );
 
             let model = match manager.get(request.model.as_deref()).await {
                 Ok(m) => m,

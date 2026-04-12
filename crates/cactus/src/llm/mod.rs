@@ -40,4 +40,6 @@ pub struct CompleteOptions {
     pub handoff_with_images: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enable_thinking_if_supported: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub json_schema: Option<serde_json::Value>,
 }

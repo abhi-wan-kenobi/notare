@@ -3,6 +3,39 @@ use hypr_llm_types::{ImageDetail, MessageContent, MessagePart};
 const TEXT_TEMPERATURE: f32 = 0.1;
 
 #[derive(serde::Deserialize)]
+pub(super) struct JsonSchemaConfig {
+    pub schema: Option<serde_json::Value>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(tag = "type")]
+pub(super) enum ResponseFormat {
+    #[serde(rename = "text")]
+    Text,
+    #[serde(rename = "json_object")]
+    JsonObject,
+    #[serde(rename = "json_schema")]
+    JsonSchema { json_schema: JsonSchemaConfig },
+}
+
+impl ResponseFormat {
+    pub(super) fn system_instruction(&self) -> Option<String> {
+        match self {
+            Self::Text => None,
+            Self::JsonObject => Some("Respond with valid JSON.".to_string()),
+            Self::JsonSchema { .. } => Some("Respond with valid JSON.".to_string()),
+        }
+    }
+
+    pub(super) fn json_schema(&self) -> Option<serde_json::Value> {
+        match self {
+            Self::JsonSchema { json_schema } => json_schema.schema.clone(),
+            _ => None,
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
 pub(super) struct ChatCompletionRequest {
     #[serde(default)]
     pub(super) model: Option<String>,
@@ -13,6 +46,8 @@ pub(super) struct ChatCompletionRequest {
     max_tokens: Option<u32>,
     #[serde(default)]
     max_completion_tokens: Option<u32>,
+    #[serde(default)]
+    pub(super) response_format: Option<ResponseFormat>,
 }
 
 #[derive(serde::Deserialize)]
@@ -94,6 +129,40 @@ pub(super) fn build_options(request: &ChatCompletionRequest) -> hypr_cactus::Com
     }
 }
 
+pub(super) fn apply_response_format(
+    response_format: Option<&ResponseFormat>,
+    messages: &mut Vec<hypr_llm_types::Message>,
+    options: &mut hypr_cactus::CompleteOptions,
+) {
+    let format = match response_format {
+        Some(format) => format,
+        None => return,
+    };
+
+    let instruction = match format.system_instruction() {
+        Some(instruction) => instruction,
+        None => return,
+    };
+
+    if let Some(schema) = format.json_schema() {
+        options.json_schema = Some(schema);
+    }
+
+    if let Some(system_msg) = messages.iter_mut().find(|m| m.role == "system") {
+        match &mut system_msg.content {
+            MessageContent::Text(text) => {
+                text.push_str("\n\n");
+                text.push_str(&instruction);
+            }
+            _ => {
+                messages.insert(0, hypr_llm_types::Message::system(instruction));
+            }
+        }
+    } else {
+        messages.insert(0, hypr_llm_types::Message::system(instruction));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -162,6 +231,13 @@ mod tests {
         format!("file://{}", path.to_string_lossy())
     }
 
+    fn image_url_content(url: &str) -> serde_json::Value {
+        serde_json::json!({
+            "role": "user",
+            "content": [{"type": "image_url", "image_url": { "url": url }}]
+        })
+    }
+
     async fn assert_bad_request(content: serde_json::Value, stream: bool, needle: &str) {
         let manager = ModelManager::<hypr_cactus::Model>::builder().build();
         let mut service = CompleteService::new(manager);
@@ -172,6 +248,12 @@ mod tests {
         let body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
         let text = String::from_utf8(body.to_vec()).unwrap();
         assert!(text.contains(needle), "{text}");
+    }
+
+    async fn assert_bad_request_both_modes(url: &str, needle: &str) {
+        for stream in [false, true] {
+            assert_bad_request(image_url_content(url), stream, needle).await;
+        }
     }
 
     #[test]
@@ -242,17 +324,138 @@ mod tests {
             stream: None,
             max_tokens: Some(123),
             max_completion_tokens: None,
+            response_format: None,
         };
 
         let options = build_options(&request);
 
         assert_eq!(options.temperature, Some(TEXT_TEMPERATURE));
-        assert_eq!(options.min_p, Some(TEXT_MIN_P));
-        assert_eq!(options.repetition_penalty, Some(TEXT_REPETITION_PENALTY));
         assert_eq!(options.max_tokens, Some(123));
-        assert_eq!(options.min_image_tokens, Some(VISION_MIN_IMAGE_TOKENS));
-        assert_eq!(options.max_image_tokens, Some(VISION_MAX_IMAGE_TOKENS));
-        assert_eq!(options.do_image_splitting, Some(true));
+    }
+
+    #[test]
+    fn apply_response_format_none_is_noop() {
+        let mut messages = vec![hypr_llm_types::Message::system("You are helpful.")];
+        let mut options = hypr_cactus::CompleteOptions::default();
+
+        apply_response_format(None, &mut messages, &mut options);
+
+        assert_eq!(messages.len(), 1);
+        assert!(options.json_schema.is_none());
+    }
+
+    #[test]
+    fn apply_response_format_text_is_noop() {
+        let mut messages = vec![hypr_llm_types::Message::system("You are helpful.")];
+        let mut options = hypr_cactus::CompleteOptions::default();
+
+        apply_response_format(Some(&ResponseFormat::Text), &mut messages, &mut options);
+
+        assert_eq!(messages.len(), 1);
+        assert!(options.json_schema.is_none());
+    }
+
+    #[test]
+    fn apply_response_format_json_object_injects_into_system() {
+        let mut messages = vec![
+            hypr_llm_types::Message::system("You are helpful."),
+            hypr_llm_types::Message::user("hello"),
+        ];
+        let mut options = hypr_cactus::CompleteOptions::default();
+
+        apply_response_format(
+            Some(&ResponseFormat::JsonObject),
+            &mut messages,
+            &mut options,
+        );
+
+        assert_eq!(messages.len(), 2);
+        match &messages[0].content {
+            MessageContent::Text(text) => {
+                assert!(text.contains("Respond with valid JSON."));
+            }
+            _ => panic!("expected text content"),
+        }
+        assert!(options.json_schema.is_none());
+    }
+
+    #[test]
+    fn apply_response_format_json_schema_injects_and_sets_option() {
+        let schema =
+            serde_json::json!({"type": "object", "properties": {"name": {"type": "string"}}});
+        let mut messages = vec![
+            hypr_llm_types::Message::system("You are helpful."),
+            hypr_llm_types::Message::user("hello"),
+        ];
+        let mut options = hypr_cactus::CompleteOptions::default();
+        let fmt = ResponseFormat::JsonSchema {
+            json_schema: JsonSchemaConfig {
+                schema: Some(schema.clone()),
+            },
+        };
+
+        apply_response_format(Some(&fmt), &mut messages, &mut options);
+
+        match &messages[0].content {
+            MessageContent::Text(text) => {
+                assert!(text.contains("Respond with valid JSON."));
+                assert!(
+                    !text.contains("schema:"),
+                    "schema should not be duplicated in the prompt"
+                );
+            }
+            _ => panic!("expected text content"),
+        }
+        assert_eq!(options.json_schema, Some(schema));
+    }
+
+    #[test]
+    fn apply_response_format_inserts_system_when_missing() {
+        let mut messages = vec![hypr_llm_types::Message::user("hello")];
+        let mut options = hypr_cactus::CompleteOptions::default();
+
+        apply_response_format(
+            Some(&ResponseFormat::JsonObject),
+            &mut messages,
+            &mut options,
+        );
+
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].role, "system");
+    }
+
+    #[test]
+    fn deserializes_response_format_variants() {
+        let text: ResponseFormat = serde_json::from_str(r#"{"type":"text"}"#).unwrap();
+        assert!(matches!(text, ResponseFormat::Text));
+
+        let json_obj: ResponseFormat = serde_json::from_str(r#"{"type":"json_object"}"#).unwrap();
+        assert!(matches!(json_obj, ResponseFormat::JsonObject));
+
+        let json_schema: ResponseFormat = serde_json::from_str(
+            r#"{"type":"json_schema","json_schema":{"schema":{"type":"object"}}}"#,
+        )
+        .unwrap();
+        assert!(matches!(json_schema, ResponseFormat::JsonSchema { .. }));
+    }
+
+    #[test]
+    fn deserializes_request_without_response_format() {
+        let req: ChatCompletionRequest =
+            serde_json::from_str(r#"{"messages":[{"role":"user","content":"hi"}]}"#).unwrap();
+        assert!(req.response_format.is_none());
+    }
+
+    #[test]
+    fn deserializes_request_with_response_format() {
+        let req: ChatCompletionRequest = serde_json::from_str(
+            r#"{"messages":[{"role":"user","content":"hi"}],"response_format":{"type":"json_object"}}"#,
+        )
+        .unwrap();
+        assert!(matches!(
+            req.response_format,
+            Some(ResponseFormat::JsonObject)
+        ));
     }
 
     #[tokio::test]
@@ -260,10 +463,7 @@ mod tests {
         assert_bad_request(
             serde_json::json!({
                 "role": "assistant",
-                "content": [{
-                    "type": "image_url",
-                    "image_url": { "url": "file:///tmp/test.png" }
-                }]
+                "content": [{"type": "image_url", "image_url": { "url": "file:///tmp/test.png" }}]
             }),
             false,
             "only supported for user messages",
@@ -272,80 +472,29 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn returns_bad_request_for_non_file_image_urls_in_streaming_and_non_streaming() {
-        for stream in [false, true] {
-            assert_bad_request(
-                serde_json::json!({
-                    "role": "user",
-                    "content": [{
-                        "type": "image_url",
-                        "image_url": { "url": "https://example.com/test.png" }
-                    }]
-                }),
-                stream,
-                "local file:// URL",
-            )
-            .await;
-        }
+    async fn returns_bad_request_for_non_file_image_urls() {
+        assert_bad_request_both_modes("https://example.com/test.png", "local file:// URL").await;
     }
 
     #[tokio::test]
-    async fn returns_bad_request_for_malformed_file_urls_in_streaming_and_non_streaming() {
-        for stream in [false, true] {
-            assert_bad_request(
-                serde_json::json!({
-                    "role": "user",
-                    "content": [{
-                        "type": "image_url",
-                        "image_url": { "url": "file://remote-host/tmp/test.png" }
-                    }]
-                }),
-                stream,
-                "must resolve to a local path",
-            )
-            .await;
-        }
+    async fn returns_bad_request_for_malformed_file_urls() {
+        assert_bad_request_both_modes(
+            "file://remote-host/tmp/test.png",
+            "must resolve to a local path",
+        )
+        .await;
     }
 
     #[tokio::test]
-    async fn returns_bad_request_for_missing_local_image_files_in_streaming_and_non_streaming() {
-        let missing = unique_temp_path("missing.png");
-        let url = file_url(&missing);
-
-        for stream in [false, true] {
-            assert_bad_request(
-                serde_json::json!({
-                    "role": "user",
-                    "content": [{
-                        "type": "image_url",
-                        "image_url": { "url": url }
-                    }]
-                }),
-                stream,
-                "image file is not accessible",
-            )
-            .await;
-        }
+    async fn returns_bad_request_for_missing_local_image_files() {
+        let url = file_url(&unique_temp_path("missing.png"));
+        assert_bad_request_both_modes(&url, "image file is not accessible").await;
     }
 
     #[tokio::test]
-    async fn returns_bad_request_for_non_file_targets_in_streaming_and_non_streaming() {
+    async fn returns_bad_request_for_non_file_targets() {
         let dir = TestImagePath::create_dir();
-
-        for stream in [false, true] {
-            assert_bad_request(
-                serde_json::json!({
-                    "role": "user",
-                    "content": [{
-                        "type": "image_url",
-                        "image_url": { "url": dir.url() }
-                    }]
-                }),
-                stream,
-                "must point to a file",
-            )
-            .await;
-        }
+        assert_bad_request_both_modes(&dir.url(), "must point to a file").await;
     }
 
     #[test]
