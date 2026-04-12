@@ -345,3 +345,38 @@ fn test_llm_context_invalid_request_preserves_history() {
     assert_eq!(context.messages()[0].role, "system");
     assert_eq!(context.messages()[1].role, "user");
 }
+
+// cargo test -p cactus --test llm test_llm_context_schema_validation_preserves_history -- --ignored --nocapture
+#[ignore]
+#[test]
+fn test_llm_context_schema_validation_preserves_history() {
+    let model = llm_model();
+    let options = CompleteOptions {
+        max_tokens: Some(20),
+        temperature: Some(0.0),
+        confidence_threshold: Some(0.0),
+        json_schema: Some(serde_json::json!({
+            "type": "object",
+            "required": ["answer"],
+            "properties": {
+                "answer": { "type": "number" }
+            }
+        })),
+        ..Default::default()
+    };
+
+    let mut context = model.llm_context(vec![
+        Message::system("Reply with the single word pineapple."),
+        Message::user("What should you say?"),
+    ]);
+
+    let error = context.complete(&options).unwrap_err();
+
+    assert!(matches!(
+        error,
+        cactus::Error::InvalidStructuredOutput { .. }
+    ));
+    assert_eq!(context.messages().len(), 2);
+    assert_eq!(context.messages()[0].role, "system");
+    assert_eq!(context.messages()[1].role, "user");
+}

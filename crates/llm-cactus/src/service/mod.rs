@@ -15,9 +15,7 @@ use crate::ModelManager;
 
 use self::{
     request::{ChatCompletionRequest, apply_response_format, build_options, convert_messages},
-    response::{
-        build_non_streaming_response, build_streaming_response, status_code_for_model_error,
-    },
+    response::{ModelError, build_non_streaming_response, build_streaming_response},
 };
 
 mod request;
@@ -118,7 +116,7 @@ impl Service<Request<Body>> for CompleteService {
                 }
             };
             if let Err(error) = hypr_cactus::validate_messages(&messages) {
-                return Ok((status_code_for_model_error(&error), error.to_string()).into_response());
+                return Ok(ModelError(error).into_response());
             }
             let mut options = build_options(&request);
             apply_response_format(
@@ -143,9 +141,7 @@ impl Service<Request<Body>> for CompleteService {
                     match hypr_cactus::complete_stream(&model, messages, options) {
                         Ok(s) => s,
                         Err(e) => {
-                            return Ok(
-                                (status_code_for_model_error(&e), e.to_string()).into_response()
-                            );
+                            return Ok(ModelError(e).into_response());
                         }
                     };
 

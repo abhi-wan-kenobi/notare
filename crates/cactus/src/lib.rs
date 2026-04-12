@@ -8,7 +8,7 @@ mod pyannote;
 mod stt;
 mod vad;
 
-pub use error::Error;
+pub use error::{Error, JsonSchemaViolation};
 pub use health::{
     ServiceHealthTracker, ffi_last_error, init_runtime, latest_error, latest_errors_snapshot,
 };

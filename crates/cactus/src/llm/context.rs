@@ -3,6 +3,7 @@ use crate::model::{InferenceGuard, Model};
 
 use super::complete::assistant_message_from_result;
 use super::request::serialize_complete_request;
+use super::schema::{compile_json_schema, validate_completion_result};
 use super::{CompleteOptions, CompletionResult, Message};
 
 /// An exclusive cache-backed LLM session bound to a single model.
@@ -46,8 +47,13 @@ impl<'a> LlmContext<'a> {
 
     pub fn complete(&mut self, options: &CompleteOptions) -> Result<CompletionResult> {
         let request = serialize_complete_request(&self.messages, options)?;
+        let schema_validator = compile_json_schema(options.json_schema.as_ref())?;
         match self.model.complete_prepared(&self.guard, &request) {
             Ok(result) => {
+                if let Err(error) = validate_completion_result(&result, schema_validator.as_ref()) {
+                    self.reset_cache();
+                    return Err(error);
+                }
                 self.messages.push(assistant_message_from_result(&result));
                 Ok(result)
             }

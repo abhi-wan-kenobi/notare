@@ -2,12 +2,31 @@ use serde::{Serialize, ser::Serializer};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, serde::Deserialize)]
+pub struct JsonSchemaViolation {
+    pub message: String,
+    pub keyword: String,
+    pub instance_path: String,
+    pub schema_path: String,
+    pub evaluation_path: String,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("failed to initialize model: {0}")]
     Init(String),
     #[error("invalid request: {0}")]
     InvalidRequest(String),
+    #[error("invalid JSON schema: {message}")]
+    InvalidJsonSchema { message: String },
+    #[error("invalid structured output: {message}")]
+    InvalidStructuredOutput { message: String, raw_output: String },
+    #[error("output does not match JSON schema: {message}")]
+    JsonSchemaValidation {
+        message: String,
+        violations: Vec<JsonSchemaViolation>,
+        raw_output: String,
+    },
     #[error("inference failed: {0}")]
     Inference(String),
     #[error("null pointer from cactus FFI")]
@@ -22,7 +41,10 @@ pub enum Error {
 
 impl Error {
     pub fn is_invalid_request(&self) -> bool {
-        matches!(self, Self::InvalidRequest(_))
+        matches!(
+            self,
+            Self::InvalidRequest(_) | Self::InvalidJsonSchema { .. }
+        )
     }
 }
 

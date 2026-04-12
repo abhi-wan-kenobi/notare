@@ -2,11 +2,28 @@ use axum::response::{IntoResponse, Response, sse};
 use futures_util::{StreamExt, stream};
 use hypr_llm_types::{Response as LlmResponse, StreamingParser};
 
-pub(super) fn status_code_for_model_error(error: &hypr_cactus::Error) -> axum::http::StatusCode {
-    if error.is_invalid_request() {
-        axum::http::StatusCode::BAD_REQUEST
-    } else {
-        axum::http::StatusCode::INTERNAL_SERVER_ERROR
+pub(super) struct ModelError(pub hypr_cactus::Error);
+
+fn status_code_for(error: &hypr_cactus::Error) -> axum::http::StatusCode {
+    match error {
+        hypr_cactus::Error::InvalidRequest(_) | hypr_cactus::Error::InvalidJsonSchema { .. } => {
+            axum::http::StatusCode::BAD_REQUEST
+        }
+        hypr_cactus::Error::InvalidStructuredOutput { .. }
+        | hypr_cactus::Error::JsonSchemaValidation { .. } => {
+            axum::http::StatusCode::UNPROCESSABLE_ENTITY
+        }
+        _ => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+    }
+}
+
+impl IntoResponse for ModelError {
+    fn into_response(self) -> Response {
+        if let Some(body) = structured_model_error_body(&self.0) {
+            return (status_code_for(&self.0), axum::Json(body)).into_response();
+        }
+
+        (status_code_for(&self.0), self.0.to_string()).into_response()
     }
 }
 
@@ -110,7 +127,7 @@ pub(super) async fn build_non_streaming_response(
     let completion = match result {
         Ok(Ok(r)) => r,
         Ok(Err(e)) => {
-            return (status_code_for_model_error(&e), e.to_string()).into_response();
+            return ModelError(e).into_response();
         }
         Err(_) => {
             return (
@@ -179,4 +196,129 @@ pub(super) async fn build_non_streaming_response(
     });
 
     axum::Json(response).into_response()
+}
+
+fn structured_model_error_body(error: &hypr_cactus::Error) -> Option<serde_json::Value> {
+    match error {
+        hypr_cactus::Error::InvalidJsonSchema { message } => Some(structured_error(
+            message,
+            "invalid_request_error",
+            "invalid_json_schema",
+            Some(serde_json::json!({
+                "schema_error": message,
+            })),
+        )),
+        hypr_cactus::Error::InvalidStructuredOutput {
+            message,
+            raw_output,
+        } => Some(structured_error(
+            message,
+            "invalid_response_error",
+            "invalid_structured_output",
+            Some(serde_json::json!({
+                "raw_output": raw_output,
+            })),
+        )),
+        hypr_cactus::Error::JsonSchemaValidation {
+            message,
+            violations,
+            raw_output,
+        } => Some(structured_error(
+            message,
+            "invalid_response_error",
+            "json_schema_validation_failed",
+            Some(serde_json::json!({
+                "violations": violations,
+                "raw_output": raw_output,
+            })),
+        )),
+        _ => None,
+    }
+}
+
+fn structured_error(
+    message: &str,
+    error_type: &str,
+    code: &str,
+    details: Option<serde_json::Value>,
+) -> serde_json::Value {
+    let mut error = serde_json::json!({
+        "message": message,
+        "type": error_type,
+        "code": code,
+    });
+
+    if let Some(details) = details {
+        error["details"] = details;
+    }
+
+    serde_json::json!({ "error": error })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invalid_json_schema_maps_to_bad_request_with_structured_body() {
+        let error = hypr_cactus::Error::InvalidJsonSchema {
+            message: "type must be a string".to_string(),
+        };
+
+        assert_eq!(status_code_for(&error), axum::http::StatusCode::BAD_REQUEST);
+
+        let body = structured_model_error_body(&error).expect("structured error body");
+        assert_eq!(body["error"]["type"], "invalid_request_error");
+        assert_eq!(body["error"]["code"], "invalid_json_schema");
+        assert_eq!(
+            body["error"]["details"]["schema_error"],
+            "type must be a string"
+        );
+    }
+
+    #[test]
+    fn invalid_structured_output_maps_to_unprocessable_entity() {
+        let error = hypr_cactus::Error::InvalidStructuredOutput {
+            message: "final output is not valid JSON".to_string(),
+            raw_output: "hello".to_string(),
+        };
+
+        assert_eq!(
+            status_code_for(&error),
+            axum::http::StatusCode::UNPROCESSABLE_ENTITY
+        );
+
+        let body = structured_model_error_body(&error).expect("structured error body");
+        assert_eq!(body["error"]["type"], "invalid_response_error");
+        assert_eq!(body["error"]["code"], "invalid_structured_output");
+        assert_eq!(body["error"]["details"]["raw_output"], "hello");
+    }
+
+    #[test]
+    fn schema_validation_error_includes_violations() {
+        let error = hypr_cactus::Error::JsonSchemaValidation {
+            message: "schema mismatch".to_string(),
+            violations: vec![hypr_cactus::JsonSchemaViolation {
+                message: "\"oops\" is not of type \"integer\"".to_string(),
+                keyword: "type".to_string(),
+                instance_path: "/answer".to_string(),
+                schema_path: "/properties/answer/type".to_string(),
+                evaluation_path: "/properties/answer/type".to_string(),
+            }],
+            raw_output: r#"{"answer":"oops"}"#.to_string(),
+        };
+
+        assert_eq!(
+            status_code_for(&error),
+            axum::http::StatusCode::UNPROCESSABLE_ENTITY
+        );
+
+        let body = structured_model_error_body(&error).expect("structured error body");
+        assert_eq!(body["error"]["code"], "json_schema_validation_failed");
+        assert_eq!(body["error"]["details"]["violations"][0]["keyword"], "type");
+        assert_eq!(
+            body["error"]["details"]["violations"][0]["instance_path"],
+            "/answer"
+        );
+    }
 }

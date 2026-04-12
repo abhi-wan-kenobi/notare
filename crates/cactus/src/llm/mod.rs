@@ -2,6 +2,7 @@ mod complete;
 mod context;
 mod request;
 mod result;
+mod schema;
 mod stream;
 
 pub use complete::complete;
