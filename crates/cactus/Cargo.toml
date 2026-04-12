@@ -10,6 +10,7 @@ examples = ["dep:colored"]
 [dependencies]
 cactus-sys = { git = "https://github.com/cactus-compute/cactus", package = "cactus-sys", rev = "4e548592f0094dd07fc386ab47cc082ac0464bd0" }
 
+hypr-cactus-model = { workspace = true }
 hypr-language = { workspace = true }
 hypr-llm-types = { workspace = true }
 

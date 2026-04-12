@@ -1,5 +1,6 @@
 mod error;
 mod ffi_utils;
+mod health;
 mod llm;
 pub mod log;
 mod model;
@@ -8,6 +9,9 @@ mod stt;
 mod vad;
 
 pub use error::Error;
+pub use health::{
+    ServiceHealthTracker, ffi_last_error, init_runtime, latest_error, latest_errors_snapshot,
+};
 pub use hypr_language::Language;
 pub use llm::{
     CompleteOptions, CompletionResult, CompletionStream, LlmContext, Message, ToolCall, complete,
