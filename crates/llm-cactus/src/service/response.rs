@@ -102,7 +102,10 @@ pub(super) async fn build_non_streaming_response(
 ) -> Response {
     let model = std::sync::Arc::clone(model);
 
-    let result = tokio::task::spawn_blocking(move || model.complete(&messages, &options)).await;
+    let result = tokio::task::spawn_blocking(move || {
+        hypr_cactus::complete(model.as_ref(), &messages, &options)
+    })
+    .await;
 
     let completion = match result {
         Ok(Ok(r)) => r,

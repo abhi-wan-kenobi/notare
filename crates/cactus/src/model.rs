@@ -1,6 +1,7 @@
 use std::ffi::CString;
 use std::path::{Path, PathBuf};
 use std::ptr::NonNull;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, MutexGuard};
 
 use crate::error::{Error, Result};
@@ -19,6 +20,7 @@ pub enum ModelKind {
 pub struct Model {
     handle: NonNull<std::ffi::c_void>,
     inference_lock: Mutex<()>,
+    llm_poisoned: AtomicBool,
     kind: ModelKind,
     default_transcribe_options: TranscribeOptions,
 }
@@ -70,6 +72,7 @@ impl ModelBuilder {
         Ok(Model {
             handle,
             inference_lock: Mutex::new(()),
+            llm_poisoned: AtomicBool::new(false),
             kind: self.kind,
             default_transcribe_options: self.default_transcribe_options,
         })
@@ -105,6 +108,10 @@ impl Model {
 
     pub fn reset(&mut self) {
         let guard = self.lock_inference();
+        self.reset_with_guard(&guard);
+    }
+
+    pub(crate) fn reset_with_guard(&self, guard: &InferenceGuard<'_>) {
         unsafe {
             cactus_sys::cactus_reset(guard.raw_handle());
         }
@@ -122,6 +129,19 @@ impl Model {
             handle: self.handle,
             _guard: guard,
         }
+    }
+
+    pub(crate) fn ensure_llm_usable(&self) -> Result<()> {
+        if self.llm_poisoned.load(Ordering::Acquire) {
+            return Err(Error::Inference(
+                "LLM state is poisoned after a previous inference failure; recreate the model before using LLM APIs again".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    pub(crate) fn poison_llm(&self) {
+        self.llm_poisoned.store(true, Ordering::Release);
     }
 }
 

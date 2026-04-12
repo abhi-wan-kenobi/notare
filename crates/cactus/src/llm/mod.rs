@@ -1,8 +1,11 @@
 mod complete;
+mod context;
 mod request;
 mod result;
 mod stream;
 
+pub use complete::complete;
+pub use context::LlmContext;
 pub use hypr_llm_types::{Message, ToolCall};
 pub use request::validate_messages;
 pub use result::CompletionResult;

@@ -10,8 +10,8 @@ mod vad;
 pub use error::Error;
 pub use hypr_language::Language;
 pub use llm::{
-    CompleteOptions, CompletionResult, CompletionStream, Message, ToolCall, complete_stream,
-    validate_messages,
+    CompleteOptions, CompletionResult, CompletionStream, LlmContext, Message, ToolCall, complete,
+    complete_stream, validate_messages,
 };
 pub use model::{Model, ModelBuilder, ModelKind};
 pub use pyannote::{

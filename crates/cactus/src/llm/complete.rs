@@ -5,7 +5,7 @@ use crate::error::{Error, Result};
 use crate::ffi_utils::{RESPONSE_BUF_SIZE, parse_buf};
 use crate::model::{InferenceGuard, Model};
 
-use super::request::{PreparedRequest, serialize_complete_request};
+use super::request::PreparedRequest;
 use super::{CompleteOptions, CompletionResult, Message};
 
 type TokenCallback = unsafe extern "C" fn(*const std::ffi::c_char, u32, *mut std::ffi::c_void);
@@ -52,7 +52,29 @@ pub(super) fn complete_error(rc: i32) -> Error {
     Error::Inference(format!("cactus_complete failed ({rc})"))
 }
 
+pub fn complete(
+    model: &Model,
+    messages: &[Message],
+    options: &CompleteOptions,
+) -> Result<CompletionResult> {
+    model.ensure_llm_usable()?;
+    let mut context = model.llm_context(messages.to_vec());
+    context.complete(options)
+}
+
+pub(super) fn assistant_message_from_result(result: &CompletionResult) -> Message {
+    let mut message = Message::assistant(result.text.clone());
+    if !result.function_calls.is_empty() {
+        message = message.with_tool_calls(result.function_calls.clone());
+    }
+    message
+}
+
 impl Model {
+    pub fn llm_context(&self, initial_messages: Vec<Message>) -> super::LlmContext<'_> {
+        super::LlmContext::new(self, initial_messages)
+    }
+
     fn call_complete(
         &self,
         guard: &InferenceGuard<'_>,
@@ -81,47 +103,12 @@ impl Model {
         (rc, buf)
     }
 
-    pub fn complete(
-        &self,
-        messages: &[Message],
-        options: &CompleteOptions,
-    ) -> Result<CompletionResult> {
-        let guard = self.lock_inference();
-        let request = serialize_complete_request(messages, options)?;
-        self.complete_prepared(&guard, &request)
-    }
-
-    pub fn complete_streaming<F>(
-        &self,
-        messages: &[Message],
-        options: &CompleteOptions,
-        on_token: F,
-    ) -> Result<CompletionResult>
-    where
-        F: FnMut(&str) -> bool,
-    {
-        let guard = self.lock_inference();
-        let request = serialize_complete_request(messages, options)?;
-        self.complete_prepared_streaming_with_guard(&guard, &request, on_token)
-    }
-
-    pub(super) fn complete_prepared_streaming<F>(
-        &self,
-        request: &PreparedRequest,
-        on_token: F,
-    ) -> Result<CompletionResult>
-    where
-        F: FnMut(&str) -> bool,
-    {
-        let guard = self.lock_inference();
-        self.complete_prepared_streaming_with_guard(&guard, request, on_token)
-    }
-
-    fn complete_prepared(
+    pub(super) fn complete_prepared(
         &self,
         guard: &InferenceGuard<'_>,
         request: &PreparedRequest,
     ) -> Result<CompletionResult> {
+        self.ensure_llm_usable()?;
         let (rc, buf) = self.call_complete(
             guard,
             &request.messages_c,
@@ -131,13 +118,19 @@ impl Model {
         );
 
         if rc < 0 {
+            self.poison_llm();
             return Err(complete_error(rc));
         }
 
-        Ok(parse_buf(&buf)?)
+        parse_buf(&buf)
+            .map_err(|error| {
+                self.poison_llm();
+                error
+            })
+            .map_err(Into::into)
     }
 
-    fn complete_prepared_streaming_with_guard<F>(
+    pub(super) fn complete_prepared_streaming_with_guard<F>(
         &self,
         guard: &InferenceGuard<'_>,
         request: &PreparedRequest,
@@ -146,6 +139,7 @@ impl Model {
     where
         F: FnMut(&str) -> bool,
     {
+        self.ensure_llm_usable()?;
         let state = CallbackState {
             on_token: UnsafeCell::new(&mut on_token),
             model: self,
@@ -162,9 +156,15 @@ impl Model {
         );
 
         if rc < 0 && !state.stopped.get() {
+            self.poison_llm();
             return Err(complete_error(rc));
         }
 
-        Ok(parse_buf(&buf)?)
+        parse_buf(&buf)
+            .map_err(|error| {
+                self.poison_llm();
+                error
+            })
+            .map_err(Into::into)
     }
 }

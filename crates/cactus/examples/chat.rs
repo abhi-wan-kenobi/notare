@@ -4,7 +4,7 @@ use std::{
     io::{self, BufRead, IsTerminal, Write},
 };
 
-use cactus::{CompleteOptions, Message, Model};
+use cactus::{CompleteOptions, LlmContext, Message, Model};
 use colored::Colorize;
 
 fn main() {
@@ -17,14 +17,14 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn Error>> {
     let model_path = std::env::args().nth(1).expect("usage: chat <model-path>");
-    let mut model = Model::new(&model_path)?;
+    let model = Model::new(&model_path)?;
+    let mut session = model.llm_context(vec![Message::system("You are a helpful assistant.")]);
     let options = CompleteOptions {
         max_tokens: Some(1024),
         temperature: Some(0.7),
         confidence_threshold: Some(0.0),
         ..Default::default()
     };
-    let mut messages = vec![Message::system("You are a helpful assistant.")];
     colored::control::set_override(io::stdout().is_terminal());
 
     print_intro();
@@ -34,8 +34,8 @@ fn run() -> Result<(), Box<dyn Error>> {
             break;
         };
 
-        match chat_turn(&mut model, &options, &mut messages, &input) {
-            Ok(response) => messages.push(Message::assistant(&response)),
+        match chat_turn(&mut session, &options, &input) {
+            Ok(_) => {}
             Err(error) => eprintln!("{}: {error}", "error".red()),
         }
     }
@@ -46,7 +46,7 @@ fn run() -> Result<(), Box<dyn Error>> {
 fn print_intro() {
     println!(
         "{} Type {} or {} to stop.\n",
-        "Chat ready.".cyan(),
+        "Cache-backed chat session ready.".cyan(),
         "exit".yellow(),
         "quit".yellow()
     );
@@ -71,19 +71,17 @@ fn read_user_message() -> io::Result<Option<String>> {
 }
 
 fn chat_turn(
-    model: &mut Model,
+    session: &mut LlmContext<'_>,
     options: &CompleteOptions,
-    messages: &mut Vec<Message>,
     input: &str,
 ) -> Result<String, Box<dyn Error>> {
-    messages.push(Message::user(input));
-    model.reset();
+    session.push(Message::user(input));
 
     print!("{} ", "assistant".green());
     io::stdout().flush()?;
 
     let mut response = String::new();
-    let result = model.complete_streaming(messages, options, |token| {
+    let result = session.complete_streaming(options, |token| {
         print!("{token}");
         let _ = io::stdout().flush();
         response.push_str(token);
