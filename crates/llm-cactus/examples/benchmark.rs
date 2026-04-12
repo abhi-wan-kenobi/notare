@@ -208,12 +208,7 @@ async fn run() -> Result<(), String> {
     let ctx = RequestContext {
         client: reqwest::Client::new(),
         url: format!("http://{}/v1/chat/completions", server.addr),
-        body: build_request_body(
-            &args.common.model_name,
-            &messages,
-            args.common.temperature,
-            &response_format,
-        ),
+        body: build_request_body(&messages, args.common.temperature, &response_format),
     };
 
     if args.pause_before_ms > 0 {

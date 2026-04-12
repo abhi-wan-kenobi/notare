@@ -2964,6 +2964,7 @@ dependencies = [
 name = "cactus"
 version = "0.1.0"
 dependencies = [
+ "cactus-model",
  "cactus-sys",
  "colored",
  "criterion",
@@ -10896,6 +10897,7 @@ dependencies = [
  "cactus",
  "cactus-model",
  "futures-util",
+ "insta",
  "llm-types",
  "model-manager",
  "pico-args",

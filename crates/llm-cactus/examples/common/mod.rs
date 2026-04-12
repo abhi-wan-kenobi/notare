@@ -14,7 +14,7 @@ pub const COMMON_OPTIONS: &str = "\
   --response-format <TYPE>  json-object or json-schema
   --schema-file <PATH>      JSON schema file for json-schema response format
   --system <TEXT>           System prompt
-  --model-name <NAME>       Request model name (default: cactus)
+  --model-name <NAME>       Configured model label (default: cactus)
   --temperature <FLOAT>     Sampling temperature";
 
 pub struct CommonArgs {
@@ -279,13 +279,11 @@ pub fn build_response_format(args: &CommonArgs) -> Result<Option<serde_json::Val
 }
 
 pub fn build_request_body(
-    model_name: &str,
     messages: &[serde_json::Value],
     temperature: Option<f32>,
     response_format: &Option<serde_json::Value>,
 ) -> serde_json::Value {
     serde_json::json!({
-        "model": model_name,
         "stream": false,
         "temperature": temperature,
         "messages": messages,

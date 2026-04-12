@@ -39,12 +39,7 @@ async fn run() -> Result<(), String> {
     let url = format!("http://{}/v1/chat/completions", server.addr);
     let messages = build_messages(&args)?;
     let response_format = build_response_format(&args)?;
-    let body = build_request_body(
-        &args.model_name,
-        &messages,
-        args.temperature,
-        &response_format,
-    );
+    let body = build_request_body(&messages, args.temperature, &response_format);
 
     let response = client
         .post(url)

@@ -22,8 +22,14 @@ impl ResponseFormat {
     pub(super) fn system_instruction(&self) -> Option<String> {
         match self {
             Self::Text => None,
-            Self::JsonObject => Some("Respond with valid JSON.".to_string()),
-            Self::JsonSchema { .. } => Some("Respond with valid JSON.".to_string()),
+            Self::JsonObject => Some(
+                "Respond with valid JSON only. No explanation. No code fences. The response must be directly parsable."
+                    .to_string(),
+            ),
+            Self::JsonSchema { .. } => Some(
+                "Respond with valid JSON only, complying with the provided JSON schema. No explanation. No code fences. The response must be directly parsable."
+                    .to_string(),
+            ),
         }
     }
 
@@ -37,8 +43,8 @@ impl ResponseFormat {
 
 #[derive(serde::Deserialize)]
 pub(super) struct ChatCompletionRequest {
-    #[serde(default)]
-    pub(super) model: Option<String>,
+    #[serde(default, rename = "model")]
+    pub(super) _ignored_model: Option<String>,
     pub(super) messages: Vec<ChatMessage>,
     #[serde(default)]
     pub(super) stream: Option<bool>,
@@ -256,6 +262,10 @@ mod tests {
         }
     }
 
+    fn snapshot_messages(messages: &[hypr_llm_types::Message]) -> String {
+        serde_json::to_string_pretty(messages).unwrap()
+    }
+
     #[test]
     fn converts_text_only_messages() {
         let request = vec![ChatMessage {
@@ -316,7 +326,7 @@ mod tests {
     #[test]
     fn builds_hardcoded_generation_options() {
         let request = ChatCompletionRequest {
-            model: None,
+            _ignored_model: None,
             messages: vec![ChatMessage {
                 role: "user".into(),
                 content: Some(ChatMessageContent::Text("hello".into())),
@@ -372,7 +382,7 @@ mod tests {
         assert_eq!(messages.len(), 2);
         match &messages[0].content {
             MessageContent::Text(text) => {
-                assert!(text.contains("Respond with valid JSON."));
+                assert!(text.contains("Respond with valid JSON only."));
             }
             _ => panic!("expected text content"),
         }
@@ -396,16 +406,21 @@ mod tests {
 
         apply_response_format(Some(&fmt), &mut messages, &mut options);
 
-        match &messages[0].content {
-            MessageContent::Text(text) => {
-                assert!(text.contains("Respond with valid JSON."));
-                assert!(
-                    !text.contains("schema:"),
-                    "schema should not be duplicated in the prompt"
-                );
-            }
-            _ => panic!("expected text content"),
-        }
+        insta::assert_snapshot!(
+            snapshot_messages(&messages),
+            @r#"
+        [
+          {
+            "role": "system",
+            "content": "You are helpful.\n\nRespond with valid JSON only, complying with the provided JSON schema. No explanation. No code fences. The response must be directly parsable."
+          },
+          {
+            "role": "user",
+            "content": "hello"
+          }
+        ]
+        "#
+        );
         assert_eq!(options.json_schema, Some(schema));
     }
 
@@ -422,6 +437,43 @@ mod tests {
 
         assert_eq!(messages.len(), 2);
         assert_eq!(messages[0].role, "system");
+    }
+
+    #[test]
+    fn apply_response_format_json_schema_inserts_new_system_message_snapshot() {
+        let mut messages = vec![hypr_llm_types::Message::user("hello")];
+        let mut options = hypr_cactus::CompleteOptions::default();
+        let schema = serde_json::json!({
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+                "name": {"type": "string"}
+            }
+        });
+        let fmt = ResponseFormat::JsonSchema {
+            json_schema: JsonSchemaConfig {
+                schema: Some(schema.clone()),
+            },
+        };
+
+        apply_response_format(Some(&fmt), &mut messages, &mut options);
+
+        insta::assert_snapshot!(
+            snapshot_messages(&messages),
+            @r#"
+        [
+          {
+            "role": "system",
+            "content": "Respond with valid JSON only, complying with the provided JSON schema. No explanation. No code fences. The response must be directly parsable."
+          },
+          {
+            "role": "user",
+            "content": "hello"
+          }
+        ]
+        "#
+        );
+        assert_eq!(options.json_schema, Some(schema));
     }
 
     #[test]

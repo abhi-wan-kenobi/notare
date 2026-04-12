@@ -31,11 +31,6 @@ pub(crate) fn build_metadata(model_path: &Path) -> Metadata {
     }
 }
 
-pub(crate) fn ensure_log_init() {
-    static LOG_INIT: std::sync::Once = std::sync::Once::new();
-    LOG_INIT.call_once(hypr_cactus::log::init);
-}
-
 pub(crate) fn build_transcribe_options(
     params: &owhisper_interface::ListenParams,
     min_chunk_sec: Option<f32>,

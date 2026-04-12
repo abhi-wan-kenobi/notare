@@ -21,6 +21,7 @@ tokio-util = { workspace = true }
 tower = { workspace = true }
 
 [dev-dependencies]
+insta = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
 tokio = { workspace = true }
 url = { workspace = true }
@@ -29,3 +30,6 @@ pico-args = { workspace = true }
 
 [[example]]
 name = "complete"
+
+[[example]]
+name = "benchmark"

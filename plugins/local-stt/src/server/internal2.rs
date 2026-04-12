@@ -8,7 +8,7 @@ use reqwest::StatusCode;
 use tower_http::cors::{self, CorsLayer};
 
 use super::{ServerInfo, ServerStatus};
-use hypr_cactus_model::{CactusHealthResponse, CactusHealthStatus, CactusSttModel};
+use hypr_cactus_model::{CactusServiceHealth, CactusServiceStatus, CactusSttModel};
 
 pub enum Internal2STTMessage {
     GetHealth(RpcReplyPort<ServerInfo>),
@@ -123,11 +123,12 @@ impl Actor for Internal2STTActor {
 
                 let status = match reqwest::get(&health_url).await {
                     Ok(resp) if resp.status().is_success() => {
-                        match resp.json::<CactusHealthResponse>().await {
+                        match resp.json::<CactusServiceHealth>().await {
                             Ok(health) => match health.status {
-                                CactusHealthStatus::Loading => ServerStatus::Loading,
-                                CactusHealthStatus::Ready => ServerStatus::Ready,
-                                CactusHealthStatus::Failed => ServerStatus::Unreachable,
+                                CactusServiceStatus::Idle => ServerStatus::Loading,
+                                CactusServiceStatus::Loading => ServerStatus::Loading,
+                                CactusServiceStatus::Ready => ServerStatus::Ready,
+                                CactusServiceStatus::Failed => ServerStatus::Unreachable,
                             },
                             Err(error) => {
                                 tracing::warn!(error = %error, "failed_to_parse_internal2_health");

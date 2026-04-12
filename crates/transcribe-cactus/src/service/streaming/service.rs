@@ -9,10 +9,8 @@ use axum::{
     body::Body,
     extract::{FromRequestParts, ws::WebSocketUpgrade},
     http::{Request, StatusCode},
-    response::Json,
     response::{IntoResponse, Response},
 };
-use hypr_cactus_model::{CactusHealthResponse, CactusHealthStatus};
 use hypr_model_manager::{ModelManager, ModelManagerBuilder};
 use tower::Service;
 
@@ -31,6 +29,7 @@ pub struct TranscribeService {
     manager: CactusModelManager,
     cactus_config: CactusConfig,
     connection_manager: ConnectionManager,
+    health: hypr_cactus::ServiceHealthTracker,
 }
 
 pub const LISTEN_PATH: &str = "/v1/listen";
@@ -46,21 +45,18 @@ impl TranscribeService {
         F: FnOnce(String) -> Fut + Clone + Send + Sync + 'static,
         Fut: std::future::Future<Output = (StatusCode, String)> + Send,
     {
+        let health = self.health.clone();
         let svc = axum::error_handling::HandleError::new(self, on_error);
         axum::Router::new()
-            .route(HEALTH_PATH, axum::routing::get(health))
+            .route(
+                HEALTH_PATH,
+                axum::routing::get(move || {
+                    let health = health.clone();
+                    async move { axum::Json(health.snapshot()) }
+                }),
+            )
             .route_service(LISTEN_PATH, svc)
     }
-}
-
-async fn health() -> Json<CactusHealthResponse> {
-    Json(CactusHealthResponse {
-        service: "transcribe".to_string(),
-        live: true,
-        ready: true,
-        status: CactusHealthStatus::Ready,
-        error: None,
-    })
 }
 
 #[derive(Default)]
@@ -82,7 +78,8 @@ impl TranscribeServiceBuilder {
     }
 
     pub fn build(self) -> TranscribeService {
-        crate::service::ensure_log_init();
+        hypr_cactus::init_runtime();
+        let health = hypr_cactus::ServiceHealthTracker::new();
 
         let model_path = self
             .model_path
@@ -94,10 +91,18 @@ impl TranscribeServiceBuilder {
             .build();
 
         let warmup_manager = manager.clone();
+        let warmup_health = health.clone();
         tokio::spawn(async move {
+            tokio::task::yield_now().await;
             match warmup_manager.get(None).await {
-                Ok(_) => tracing::info!("model warmup completed"),
-                Err(e) => tracing::warn!(error = %e, "model warmup failed"),
+                Ok(_) => {
+                    warmup_health.mark_ready();
+                    tracing::info!("model warmup completed");
+                }
+                Err(e) => {
+                    warmup_health.mark_load_failed(e.to_string());
+                    tracing::warn!(error = %e, "model warmup failed");
+                }
             }
         });
 
@@ -106,6 +111,7 @@ impl TranscribeServiceBuilder {
             manager,
             cactus_config: self.cactus_config,
             connection_manager: self.connection_manager.unwrap_or_default(),
+            health,
         }
     }
 }
@@ -124,6 +130,7 @@ impl Service<Request<Body>> for TranscribeService {
         let manager = self.manager.clone();
         let cactus_config = self.cactus_config.clone();
         let connection_manager = self.connection_manager.clone();
+        let health = self.health.clone();
 
         Box::pin(async move {
             let is_ws = req
@@ -143,8 +150,12 @@ impl Service<Request<Body>> for TranscribeService {
 
             if is_ws {
                 let model = match manager.get(None).await {
-                    Ok(model) => model,
+                    Ok(model) => {
+                        health.mark_ready();
+                        model
+                    }
                     Err(error) => {
+                        health.mark_load_failed(error.to_string());
                         tracing::error!(error = %error, "failed_to_load_model");
                         return Ok((
                             StatusCode::INTERNAL_SERVER_ERROR,
@@ -212,6 +223,7 @@ impl Service<Request<Body>> for TranscribeService {
                         &params,
                         &manager,
                         &model_path,
+                        &health,
                     )
                     .await)
                 } else {
@@ -221,6 +233,7 @@ impl Service<Request<Body>> for TranscribeService {
                         &params,
                         &manager,
                         &model_path,
+                        &health,
                     )
                     .await)
                 }

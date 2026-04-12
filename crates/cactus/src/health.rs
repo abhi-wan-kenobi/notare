@@ -2,7 +2,7 @@ use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_void};
 use std::sync::{Arc, Mutex, Once};
 
-use hypr_cactus_model::{CactusHealthResponse, CactusHealthStatus};
+use hypr_cactus_model::{CactusServiceHealth, CactusServiceStatus};
 
 static RUNTIME_INIT: Once = Once::new();
 static SHARED_STATE: Mutex<SharedHealthState> = Mutex::new(SharedHealthState::new());
@@ -28,13 +28,12 @@ impl SharedHealthState {
 }
 
 struct ServiceHealthState {
-    status: CactusHealthStatus,
+    status: CactusServiceStatus,
     load_error: Option<String>,
 }
 
 #[derive(Clone)]
 pub struct ServiceHealthTracker {
-    service: Arc<str>,
     state: Arc<Mutex<ServiceHealthState>>,
 }
 
@@ -67,38 +66,43 @@ pub fn ffi_last_error() -> Option<String> {
 }
 
 impl ServiceHealthTracker {
-    pub fn new(service: impl Into<Arc<str>>) -> Self {
+    pub fn new() -> Self {
         init_runtime();
 
         Self {
-            service: service.into(),
             state: Arc::new(Mutex::new(ServiceHealthState {
-                status: CactusHealthStatus::Loading,
+                status: CactusServiceStatus::Loading,
                 load_error: None,
             })),
         }
     }
 
+    pub fn mark_idle(&self) {
+        let mut state = self.state.lock().unwrap();
+        state.status = CactusServiceStatus::Idle;
+        state.load_error = None;
+    }
+
     pub fn mark_loading(&self) {
         let mut state = self.state.lock().unwrap();
-        state.status = CactusHealthStatus::Loading;
+        state.status = CactusServiceStatus::Loading;
         state.load_error = None;
     }
 
     pub fn mark_ready(&self) {
         let mut state = self.state.lock().unwrap();
-        state.status = CactusHealthStatus::Ready;
+        state.status = CactusServiceStatus::Ready;
         state.load_error = None;
     }
 
     pub fn mark_load_failed(&self, error: impl Into<String>) {
         let error = error.into();
         let mut state = self.state.lock().unwrap();
-        state.status = CactusHealthStatus::Failed;
+        state.status = CactusServiceStatus::Failed;
         state.load_error = Some(error);
     }
 
-    pub fn snapshot(&self) -> CactusHealthResponse {
+    pub fn snapshot(&self) -> CactusServiceHealth {
         let state = self.state.lock().unwrap();
         let error = state
             .load_error
@@ -107,13 +111,7 @@ impl ServiceHealthTracker {
             .or_else(ffi_last_error);
         let status = state.status;
 
-        CactusHealthResponse {
-            service: self.service.to_string(),
-            live: true,
-            ready: status == CactusHealthStatus::Ready,
-            status,
-            error,
-        }
+        CactusServiceHealth { status, error }
     }
 }
 
@@ -192,24 +190,26 @@ mod tests {
         let _guard = TEST_LOCK.lock().unwrap();
         reset_for_tests();
 
-        let tracker = ServiceHealthTracker::new("llm");
+        let tracker = ServiceHealthTracker::new();
         record_error_for_tests("[global] callback error");
 
         let loading = tracker.snapshot();
-        assert_eq!(loading.status, CactusHealthStatus::Loading);
-        assert!(!loading.ready);
+        assert_eq!(loading.status, CactusServiceStatus::Loading);
         assert_eq!(loading.error.as_deref(), Some("[global] callback error"));
+
+        tracker.mark_idle();
+        let idle = tracker.snapshot();
+        assert_eq!(idle.status, CactusServiceStatus::Idle);
+        assert_eq!(idle.error.as_deref(), Some("[global] callback error"));
 
         tracker.mark_load_failed("failed to load model");
         let failed = tracker.snapshot();
-        assert_eq!(failed.status, CactusHealthStatus::Failed);
-        assert!(!failed.ready);
+        assert_eq!(failed.status, CactusServiceStatus::Failed);
         assert_eq!(failed.error.as_deref(), Some("failed to load model"));
 
         tracker.mark_ready();
         let ready = tracker.snapshot();
-        assert_eq!(ready.status, CactusHealthStatus::Ready);
-        assert!(ready.ready);
+        assert_eq!(ready.status, CactusServiceStatus::Ready);
         assert_eq!(ready.error.as_deref(), Some("[global] callback error"));
     }
 
@@ -218,8 +218,8 @@ mod tests {
         let _guard = TEST_LOCK.lock().unwrap();
         reset_for_tests();
 
-        let llm = ServiceHealthTracker::new("llm");
-        let transcribe = ServiceHealthTracker::new("transcribe");
+        let llm = ServiceHealthTracker::new();
+        let transcribe = ServiceHealthTracker::new();
 
         llm.mark_load_failed("llm failed");
         transcribe.mark_ready();
@@ -228,9 +228,9 @@ mod tests {
         let llm_health = llm.snapshot();
         let transcribe_health = transcribe.snapshot();
 
-        assert_eq!(llm_health.status, CactusHealthStatus::Failed);
+        assert_eq!(llm_health.status, CactusServiceStatus::Failed);
         assert_eq!(llm_health.error.as_deref(), Some("llm failed"));
-        assert_eq!(transcribe_health.status, CactusHealthStatus::Ready);
+        assert_eq!(transcribe_health.status, CactusServiceStatus::Ready);
         assert_eq!(
             transcribe_health.error.as_deref(),
             Some("[shared] runtime issue")

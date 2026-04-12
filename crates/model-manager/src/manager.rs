@@ -37,6 +37,20 @@ impl<M: ModelLoader> ModelManager<M> {
         crate::ModelManagerBuilder::default()
     }
 
+    pub fn default_model_name(&self) -> Option<String> {
+        self.default_model
+            .try_read()
+            .map(|default_model| default_model.clone())
+            .expect("default model lock should not be contended during service setup")
+    }
+
+    pub fn has_default_model(&self) -> bool {
+        self.default_model
+            .try_read()
+            .map(|default_model| default_model.is_some())
+            .expect("default model lock should not be contended during service setup")
+    }
+
     pub async fn register(&self, name: impl Into<String>, path: impl Into<PathBuf>) {
         let mut reg = self.registry.write().await;
         reg.insert(name.into(), path.into());

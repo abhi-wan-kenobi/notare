@@ -24,10 +24,15 @@ pub async fn handle_batch(
     params: &ListenParams,
     manager: &ModelManager<hypr_cactus::Model>,
     model_path: &Path,
+    health: &hypr_cactus::ServiceHealthTracker,
 ) -> Response {
     let model = match manager.get(None).await {
-        Ok(m) => m,
+        Ok(m) => {
+            health.mark_ready();
+            m
+        }
         Err(e) => {
+            health.mark_load_failed(e.to_string());
             tracing::error!(error = %e, "failed_to_load_model");
             return json_error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -75,10 +80,15 @@ pub async fn handle_batch_sse(
     params: &ListenParams,
     manager: &ModelManager<hypr_cactus::Model>,
     model_path: &Path,
+    health: &hypr_cactus::ServiceHealthTracker,
 ) -> Response {
     let model = match manager.get(None).await {
-        Ok(m) => m,
+        Ok(m) => {
+            health.mark_ready();
+            m
+        }
         Err(e) => {
+            health.mark_load_failed(e.to_string());
             tracing::error!(error = %e, "failed_to_load_model");
             return json_error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
