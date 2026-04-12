@@ -5,6 +5,11 @@ on:
         description: Commit SHA to test
         required: false
         type: string
+      cactus_version:
+        description: Cactus version to test
+        required: false
+        default: "1.11"
+        type: string
   push:
     branches: [main]
     paths:
@@ -38,7 +43,9 @@ jobs:
           fi
         env:
           INPUT_SHA: ${{ inputs.sha }}
-      - run: git clone --depth 1 --branch v1.7 https://github.com/cactus-compute/cactus.git cactus
+      - run: git clone --depth 1 --branch "v${CACTUS_VERSION}" https://github.com/cactus-compute/cactus.git cactus
+        env:
+          CACTUS_VERSION: ${{ inputs.cactus_version || '1.11' }}
       - uses: ./.github/actions/rust_install
         with:
           platform: linux
@@ -51,7 +58,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: cactus/weights/
-          key: cactus-models-${{ matrix.model.name }}-arm-v1
+          key: cactus-models-${{ matrix.model.name }}-arm-v${{ inputs.cactus_version || '1.11' }}
       - run: cactus download ${{ matrix.model.repo }}
       - run: cargo test -p transcribe-cactus -- --ignored --nocapture --skip snapshot
         env:
