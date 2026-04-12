@@ -1,5 +1,10 @@
 on:
   workflow_dispatch:
+    inputs:
+      sha:
+        description: Commit SHA to test
+        required: false
+        type: string
   push:
     branches: [main]
     paths:
@@ -25,6 +30,14 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          if [[ -n "${INPUT_SHA:-}" ]]; then
+            git checkout "$INPUT_SHA"
+          fi
+        env:
+          INPUT_SHA: ${{ inputs.sha }}
       - run: git clone --depth 1 --branch v1.7 https://github.com/cactus-compute/cactus.git cactus
       - uses: ./.github/actions/rust_install
         with:
