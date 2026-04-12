@@ -1,1 +1,0 @@
-- `pnpm -F desktop gen:schema` is needed after editing schema for seed.
