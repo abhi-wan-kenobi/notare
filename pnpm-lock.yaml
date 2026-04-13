@@ -254,9 +254,6 @@ importers:
       '@hypr/plugin-local-stt':
         specifier: workspace:*
         version: link:../../plugins/local-stt
-      '@hypr/plugin-mcp':
-        specifier: workspace:*
-        version: link:../../plugins/mcp
       '@hypr/plugin-messenger':
         specifier: workspace:*
         version: link:../../plugins/messenger
@@ -1899,12 +1896,6 @@ importers:
         version: 2.10.1
 
   plugins/local-stt:
-    dependencies:
-      '@tauri-apps/api':
-        specifier: ^2.10.1
-        version: 2.10.1
-
-  plugins/mcp:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.10.1
@@ -24604,7 +24595,7 @@ snapshots:
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 25.6.0
+      '@types/node': 24.12.2
 
   '@types/bun@1.3.12':
     dependencies:
@@ -24754,7 +24745,7 @@ snapshots:
 
   '@types/express-serve-static-core@5.1.1':
     dependencies:
-      '@types/node': 25.6.0
+      '@types/node': 24.12.2
       '@types/qs': 6.15.0
       '@types/range-parser': 1.2.7
       '@types/send': 1.2.1
@@ -24925,12 +24916,12 @@ snapshots:
 
   '@types/send@1.2.1':
     dependencies:
-      '@types/node': 25.6.0
+      '@types/node': 24.12.2
 
   '@types/serve-static@2.2.0':
     dependencies:
       '@types/http-errors': 2.0.5
-      '@types/node': 25.6.0
+      '@types/node': 24.12.2
 
   '@types/sinonjs__fake-timers@8.1.5': {}
 

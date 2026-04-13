@@ -59,7 +59,6 @@
     "@hypr/plugin-importer": "workspace:*",
     "@hypr/plugin-js": "workspace:*",
     "@hypr/plugin-local-stt": "workspace:*",
-    "@hypr/plugin-mcp": "workspace:*",
     "@hypr/plugin-messenger": "workspace:*",
     "@hypr/plugin-misc": "workspace:*",
     "@hypr/plugin-network": "workspace:*",
