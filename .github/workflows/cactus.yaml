@@ -31,14 +31,14 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: cactus/weights/
-          key: cactus-models-arm-v1
+          key: cactus-models-arm-v2
       - run: |
-          cactus download google/gemma-3-270m-it
+          cactus download Cactus-Compute/LFM2-VL-450M
           cactus download UsefulSensors/moonshine-base
       - run: cargo test -p cactus --test vad
       - run: cargo test -p cactus --test llm -- --ignored --nocapture
         env:
-          CACTUS_LLM_MODEL: ${{ github.workspace }}/cactus/weights/gemma-3-270m-it
+          CACTUS_LLM_MODEL: ${{ github.workspace }}/cactus/weights/LFM2-VL-450M
       - run: cargo test -p cactus --test stt -- --ignored --nocapture
         env:
           CACTUS_STT_MODEL: ${{ github.workspace }}/cactus/weights/moonshine-base
