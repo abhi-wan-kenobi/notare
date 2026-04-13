@@ -89,22 +89,6 @@ function snapshotAnalysisToEntry(
   };
 }
 
-export function upsertAnalysis(
-  current: DailyObservationAnalysis[],
-  next: DailyObservationAnalysis,
-): DailyObservationAnalysis[] {
-  return [
-    next,
-    ...current.filter(
-      (analysis) =>
-        !(
-          analysis.screenshotId === next.screenshotId &&
-          analysis.capturedAtMs === next.capturedAtMs
-        ),
-    ),
-  ].sort((a, b) => a.capturedAtMs - b.capturedAtMs);
-}
-
 export function mergeEntries(
   analyses: DailyObservationAnalysis[] | undefined,
   liveEntries: ActivityCaptureEntry[],

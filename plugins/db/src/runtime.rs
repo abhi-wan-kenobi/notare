@@ -243,7 +243,7 @@ async fn run_query(
         };
     }
 
-    let rows = query.fetch_all(db.pool()).await?;
+    let rows = query.fetch_all(db.pool().as_ref()).await?;
     Ok(rows.iter().map(row_to_json).collect())
 }
 

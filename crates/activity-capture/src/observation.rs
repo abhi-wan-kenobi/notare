@@ -1,6 +1,7 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use hypr_activity_capture_interface::NormalizedSnapshot;
+use uuid::Uuid;
 
 use crate::screenshot::{
     ObservationScreenshotKind, ObservationScreenshotRequest, target_from_snapshot,
@@ -212,8 +213,6 @@ impl ActiveObservation {
 #[derive(Debug, Default)]
 pub struct ObservationReducer {
     config: ObservationReducerConfig,
-    next_observation_sequence: u64,
-    next_event_sequence: u64,
     next_request_id: u64,
     active: Option<ActiveObservation>,
 }
@@ -322,8 +321,7 @@ impl ObservationReducer {
         now_ms: i64,
         update: &mut ObservationUpdate,
     ) -> ActiveObservation {
-        self.next_observation_sequence += 1;
-        let observation_id = format!("obs-{}-{now_ms}", self.next_observation_sequence);
+        let observation_id = format!("obs-{}", Uuid::new_v4());
         let observation_key = ObservationKey::from_snapshot(&snapshot);
         let event = self.new_event(
             &observation_id,
@@ -543,9 +541,8 @@ impl ObservationReducer {
         started_at: SystemTime,
         snapshot: Option<NormalizedSnapshot>,
     ) -> ObservationEvent {
-        self.next_event_sequence += 1;
         ObservationEvent {
-            id: format!("obs_evt-{}", self.next_event_sequence),
+            id: format!("obs_evt-{}", Uuid::new_v4()),
             observation_id: observation_id.to_string(),
             observation_key: observation_key.as_string(),
             kind,
@@ -713,5 +710,27 @@ mod tests {
                 .iter()
                 .any(|request| request.kind == crate::ObservationScreenshotKind::Settled)
         );
+    }
+
+    #[test]
+    fn reducer_restarts_do_not_reuse_persisted_ids() {
+        let first = ObservationReducer::new(ObservationReducerConfig::default()).ingest(
+            std::time::SystemTime::UNIX_EPOCH,
+            Some(snapshot("compose:body", "hello")),
+        );
+        let second = ObservationReducer::new(ObservationReducerConfig::default()).ingest(
+            std::time::SystemTime::UNIX_EPOCH,
+            Some(snapshot("compose:body", "hello")),
+        );
+
+        assert_eq!(first.events.len(), 1);
+        assert_eq!(second.events.len(), 1);
+        assert_ne!(first.events[0].id, second.events[0].id);
+        assert_ne!(
+            first.events[0].observation_id,
+            second.events[0].observation_id
+        );
+        assert!(first.events[0].id.starts_with("obs_evt-"));
+        assert!(first.events[0].observation_id.starts_with("obs-"));
     }
 }

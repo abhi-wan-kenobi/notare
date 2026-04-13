@@ -12,6 +12,7 @@ use hypr_activity_capture::{
     ObservationReducerConfig, ObservationScreenshotCapture, ObservationScreenshotRequest,
     PlatformCapture, RawCaptureSample, WatchOptions, capture_screenshot,
 };
+use hypr_db_core2::Db3;
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 use tauri_specta::Event;
@@ -98,7 +99,7 @@ fn dedupe_identities(values: Vec<String>) -> Vec<String> {
 
 pub struct ActivityCaptureRuntime<R: tauri::Runtime> {
     app: tauri::AppHandle<R>,
-    pool: Arc<SqlitePool>,
+    db: Arc<Db3>,
     policy: Mutex<CapturePolicy>,
     config: ActivityCaptureConfig,
     analyze_screenshots: AtomicBool,
@@ -109,7 +110,7 @@ pub struct ActivityCaptureRuntime<R: tauri::Runtime> {
 }
 
 impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
-    pub fn new(app: tauri::AppHandle<R>, pool: Arc<SqlitePool>) -> Self {
+    pub fn new(app: tauri::AppHandle<R>, db: Arc<Db3>) -> Self {
         let excluded_app_ids = SelfIdentity::resolve(&app).excluded_app_ids;
         let config = ActivityCaptureConfig {
             poll_interval_ms: WATCH_POLL_INTERVAL_MS,
@@ -121,7 +122,7 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
 
         Self {
             app,
-            pool,
+            db,
             policy: Mutex::new(CapturePolicy {
                 app_rules: excluded_app_ids
                     .iter()
@@ -146,8 +147,8 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         }
     }
 
-    pub fn pool(&self) -> &SqlitePool {
-        &self.pool
+    pub fn pool(&self) -> &hypr_db_core2::DbPool {
+        self.db.pool()
     }
 
     pub fn configure(&self, analyze_screenshots: Option<bool>) -> Result<(), crate::Error> {
@@ -207,13 +208,13 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         let today_start = now - (now % 86_400_000);
 
         let screenshots_this_hour =
-            hypr_db_activity::count_screenshots_since(&self.pool, one_hour_ago)
+            hypr_db_app::count_screenshots_since(self.db.pool(), one_hour_ago)
                 .await
                 .unwrap_or(0);
-        let screenshots_today = hypr_db_activity::count_screenshots_since(&self.pool, today_start)
+        let screenshots_today = hypr_db_app::count_screenshots_since(self.db.pool(), today_start)
             .await
             .unwrap_or(0);
-        let storage_bytes = hypr_db_activity::total_screenshot_storage_bytes(&self.pool)
+        let storage_bytes = hypr_db_app::total_screenshot_storage_bytes(self.db.pool())
             .await
             .unwrap_or(0);
 
@@ -238,8 +239,10 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         start_ms: i64,
         end_ms: i64,
     ) -> Result<Vec<ActivityCaptureObservationAnalysis>, String> {
-        let rows = hypr_db_activity::list_preferred_observation_analyses_in_range(
-            &self.pool, start_ms, end_ms,
+        let rows = hypr_db_app::list_preferred_observation_analyses_in_range(
+            self.db.pool(),
+            start_ms,
+            end_ms,
         )
         .await
         .map_err(|error| error.to_string())?;
@@ -433,7 +436,7 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
             .acknowledge_capture(request.request_id, true, captured_at_ms);
 
         let screenshot_id = screenshot_id_for(&capture);
-        if let Err(error) = persist_screenshot(&self.pool, &screenshot_id, &capture).await {
+        if let Err(error) = persist_screenshot(self.db.pool(), &screenshot_id, &capture).await {
             tracing::warn!(%error, "failed_to_persist_activity_screenshot");
         }
 
@@ -451,9 +454,9 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         tauri::async_runtime::spawn(async move {
             match analysis::analyze_screenshot(&runtime.app, &screenshot_id, &capture).await {
                 Ok(analysis) => {
-                    if let Err(error) = hypr_db_activity::insert_observation_analysis(
-                        &runtime.pool,
-                        hypr_db_activity::InsertObservationAnalysis {
+                    if let Err(error) = hypr_db_app::insert_observation_analysis(
+                        runtime.db.pool(),
+                        hypr_db_app::InsertObservationAnalysis {
                             id: &format!(
                                 "oa-{}-{}-{}",
                                 analysis.observation_id,
@@ -516,9 +519,9 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
             .map(|value| serde_json::to_string(value).unwrap_or_else(|_| "{}".to_string()))
             .unwrap_or_else(|| "{}".to_string());
 
-        if let Err(error) = hypr_db_activity::insert_observation_event(
-            &self.pool,
-            hypr_db_activity::InsertObservationEvent {
+        if let Err(error) = hypr_db_app::insert_observation_event(
+            self.db.pool(),
+            hypr_db_app::InsertObservationEvent {
                 id: &event.id,
                 observation_id: &event.observation_id,
                 occurred_at_ms: system_time_to_unix_ms(event.occurred_at),
@@ -559,9 +562,9 @@ async fn persist_screenshot(
     let snapshot_json =
         serde_json::to_string(&capture.snapshot).unwrap_or_else(|_| "{}".to_string());
 
-    hypr_db_activity::insert_screenshot(
+    hypr_db_app::insert_screenshot(
         pool,
-        hypr_db_activity::InsertScreenshot {
+        hypr_db_app::InsertScreenshot {
             id: screenshot_id,
             observation_id: &capture.observation_id,
             screenshot_kind: capture.kind.as_str(),
@@ -593,6 +596,7 @@ fn screenshot_id_for(capture: &ObservationScreenshotCapture) -> String {
 #[cfg(test)]
 mod tests {
     use super::{ActivityCaptureRuntime, SelfIdentity};
+    use hypr_db_core2::Db3;
     use std::path::PathBuf;
     use std::sync::Arc;
 
@@ -629,9 +633,7 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let runtime = ActivityCaptureRuntime::new(
             app.handle().clone(),
-            Arc::new(
-                rt.block_on(async { sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap() }),
-            ),
+            Arc::new(rt.block_on(async { Db3::connect_memory_plain().await.unwrap() })),
         );
 
         assert!(!runtime.policy().app_rules.is_empty());

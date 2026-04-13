@@ -1,5 +1,6 @@
 use std::ffi::{CStr, c_void};
 use std::future::Future;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::str::FromStr;
@@ -49,6 +50,11 @@ pub enum DbOpenError {
 #[derive(Debug)]
 pub struct Db3 {
     cloudsync_path: Option<PathBuf>,
+    pool: DbPool,
+}
+
+#[derive(Clone, Debug)]
+pub struct DbPool {
     pool: SqlitePool,
     table_change_tx: Arc<broadcast::Sender<TableChange>>,
 }
@@ -103,24 +109,22 @@ impl Db3 {
             .filename(path)
             .create_if_missing(true);
         let (options, cloudsync_path) = hypr_cloudsync::apply(options)?;
-        let (pool, table_change_tx) = connect_pool(options, None).await.map_err(Error::from)?;
+        let pool = connect_pool(options, None).await.map_err(Error::from)?;
 
         Ok(Self {
             cloudsync_path: Some(cloudsync_path),
             pool,
-            table_change_tx,
         })
     }
 
     pub async fn connect_memory() -> Result<Self, Error> {
         let options = SqliteConnectOptions::from_str("sqlite::memory:")?;
         let (options, cloudsync_path) = hypr_cloudsync::apply(options)?;
-        let (pool, table_change_tx) = connect_pool(options, Some(1)).await.map_err(Error::from)?;
+        let pool = connect_pool(options, Some(1)).await.map_err(Error::from)?;
 
         Ok(Self {
             cloudsync_path: Some(cloudsync_path),
             pool,
-            table_change_tx,
         })
     }
 
@@ -132,24 +136,22 @@ impl Db3 {
             .filename(path)
             .create_if_missing(true)
             .pragma("foreign_keys", "ON");
-        let (pool, table_change_tx) = connect_pool(options, None).await?;
+        let pool = connect_pool(options, None).await?;
 
         Ok(Self {
             cloudsync_path: None,
             pool,
-            table_change_tx,
         })
     }
 
     pub async fn connect_memory_plain() -> Result<Self, sqlx::Error> {
         let options =
             SqliteConnectOptions::from_str("sqlite::memory:")?.pragma("foreign_keys", "ON");
-        let (pool, table_change_tx) = connect_pool(options, Some(1)).await?;
+        let pool = connect_pool(options, Some(1)).await?;
 
         Ok(Self {
             cloudsync_path: None,
             pool,
-            table_change_tx,
         })
     }
 
@@ -161,16 +163,16 @@ impl Db3 {
         self.cloudsync_path.as_deref()
     }
 
-    pub fn pool(&self) -> &SqlitePool {
+    pub fn pool(&self) -> &DbPool {
         &self.pool
     }
 
     pub fn subscribe_table_changes(&self) -> broadcast::Receiver<TableChange> {
-        self.table_change_tx.subscribe()
+        self.pool.subscribe_table_changes()
     }
 
     pub async fn cloudsync_version(&self) -> Result<String, Error> {
-        hypr_cloudsync::version(&self.pool).await
+        hypr_cloudsync::version(self.pool.as_ref()).await
     }
 
     pub async fn cloudsync_init(
@@ -179,19 +181,19 @@ impl Db3 {
         crdt_algo: Option<&str>,
         force: Option<bool>,
     ) -> Result<(), Error> {
-        hypr_cloudsync::init(&self.pool, table_name, crdt_algo, force).await
+        hypr_cloudsync::init(self.pool.as_ref(), table_name, crdt_algo, force).await
     }
 
     pub async fn cloudsync_network_init(&self, connection_string: &str) -> Result<(), Error> {
-        hypr_cloudsync::network_init(&self.pool, connection_string).await
+        hypr_cloudsync::network_init(self.pool.as_ref(), connection_string).await
     }
 
     pub async fn cloudsync_network_set_apikey(&self, api_key: &str) -> Result<(), Error> {
-        hypr_cloudsync::network_set_apikey(&self.pool, api_key).await
+        hypr_cloudsync::network_set_apikey(self.pool.as_ref(), api_key).await
     }
 
     pub async fn cloudsync_network_set_token(&self, token: &str) -> Result<(), Error> {
-        hypr_cloudsync::network_set_token(&self.pool, token).await
+        hypr_cloudsync::network_set_token(self.pool.as_ref(), token).await
     }
 
     pub async fn cloudsync_network_sync(
@@ -199,7 +201,31 @@ impl Db3 {
         wait_ms: Option<i64>,
         max_retries: Option<i64>,
     ) -> Result<(), Error> {
-        hypr_cloudsync::network_sync(&self.pool, wait_ms, max_retries).await
+        hypr_cloudsync::network_sync(self.pool.as_ref(), wait_ms, max_retries).await
+    }
+}
+
+impl DbPool {
+    pub fn subscribe_table_changes(&self) -> broadcast::Receiver<TableChange> {
+        self.table_change_tx.subscribe()
+    }
+
+    pub async fn close(self) {
+        self.pool.close().await;
+    }
+}
+
+impl AsRef<SqlitePool> for DbPool {
+    fn as_ref(&self) -> &SqlitePool {
+        &self.pool
+    }
+}
+
+impl Deref for DbPool {
+    type Target = SqlitePool;
+
+    fn deref(&self) -> &Self::Target {
+        &self.pool
     }
 }
 
@@ -248,19 +274,18 @@ async fn connect_with_options(options: &DbOpenOptions<'_>) -> Result<Db3, DbOpen
         (connect_options, None)
     };
 
-    let (pool, table_change_tx) = connect_pool(connect_options, options.max_connections).await?;
+    let pool = connect_pool(connect_options, options.max_connections).await?;
 
     Ok(Db3 {
         cloudsync_path,
         pool,
-        table_change_tx,
     })
 }
 
 async fn connect_pool(
     connect_options: SqliteConnectOptions,
     max_connections: Option<u32>,
-) -> Result<(SqlitePool, Arc<broadcast::Sender<TableChange>>), sqlx::Error> {
+) -> Result<DbPool, sqlx::Error> {
     let (table_change_tx, _) = broadcast::channel(256);
     let table_change_tx = Arc::new(table_change_tx);
 
@@ -288,7 +313,10 @@ async fn connect_pool(
     }
 
     let pool = pool_options.connect_with(connect_options).await?;
-    Ok((pool, table_change_tx))
+    Ok(DbPool {
+        pool,
+        table_change_tx,
+    })
 }
 
 unsafe extern "C" fn update_hook_callback(
@@ -391,7 +419,7 @@ mod tests {
         let tables: Vec<String> = sqlx::query_as::<_, (String,)>(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
         )
-        .fetch_all(db.pool())
+        .fetch_all(db.pool().as_ref())
         .await
         .unwrap()
         .into_iter()
@@ -425,14 +453,14 @@ mod tests {
     async fn emits_table_changes_for_local_writes() {
         let db = Db3::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL)")
-            .execute(db.pool())
+            .execute(db.pool().as_ref())
             .await
             .unwrap();
 
         let mut changes = db.subscribe_table_changes();
 
         sqlx::query("INSERT INTO test_events (id) VALUES ('a')")
-            .execute(db.pool())
+            .execute(db.pool().as_ref())
             .await
             .unwrap();
 
@@ -496,5 +524,31 @@ mod tests {
 
         assert_eq!(first.table, "multi_conn_events");
         assert_eq!(second.table, "multi_conn_events");
+    }
+
+    #[tokio::test]
+    async fn cloned_pool_keeps_hooks_alive_after_db_drop() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        sqlx::query("CREATE TABLE retained_events (id TEXT PRIMARY KEY NOT NULL)")
+            .execute(db.pool().as_ref())
+            .await
+            .unwrap();
+
+        let pool = db.pool().clone();
+        let mut changes = pool.subscribe_table_changes();
+        drop(db);
+
+        sqlx::query("INSERT INTO retained_events (id) VALUES ('a')")
+            .execute(pool.as_ref())
+            .await
+            .unwrap();
+
+        let change = tokio::time::timeout(std::time::Duration::from_secs(1), changes.recv())
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(change.table, "retained_events");
+        assert_eq!(change.kind, TableChangeKind::Insert);
     }
 }

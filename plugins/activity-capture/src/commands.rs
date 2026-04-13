@@ -194,25 +194,16 @@ pub async fn get_daily_summary_snapshot<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     input: LoadDailySummarySnapshotInput,
 ) -> Result<DailySummarySnapshot, String> {
-    let activity_db = open_activity_db(&app).await?;
-    let app_db = open_app_db(&app).await?;
+    let db = open_app_db(&app).await?;
 
     let (events, analyses, screenshot_count) = tokio::try_join!(
-        hypr_db_activity::list_observation_events_in_range(
-            activity_db.pool(),
+        hypr_db_app::list_observation_events_in_range(db.pool(), input.start_ms, input.end_ms),
+        hypr_db_app::list_preferred_observation_analyses_in_range(
+            db.pool(),
             input.start_ms,
             input.end_ms
         ),
-        hypr_db_activity::list_preferred_observation_analyses_in_range(
-            activity_db.pool(),
-            input.start_ms,
-            input.end_ms
-        ),
-        hypr_db_activity::count_screenshots_in_range(
-            activity_db.pool(),
-            input.start_ms,
-            input.end_ms
-        ),
+        hypr_db_app::count_screenshots_in_range(db.pool(), input.start_ms, input.end_ms),
     )
     .map_err(|error| error.to_string())?;
 
@@ -246,14 +237,11 @@ pub async fn get_daily_summary_snapshot<R: tauri::Runtime>(
         source_cursor_ms
     );
 
-    let summary = hypr_db_app::get_daily_summary_by_date(
-        app_db.pool(),
-        &input.date,
-        &daily_note_id(&input.date),
-    )
-    .await
-    .map_err(|error| error.to_string())?
-    .map(map_stored_daily_summary);
+    let summary =
+        hypr_db_app::get_daily_summary_by_date(db.pool(), &input.date, &daily_note_id(&input.date))
+            .await
+            .map_err(|error| error.to_string())?
+            .map(map_stored_daily_summary);
 
     Ok(DailySummarySnapshot {
         stats,
@@ -305,27 +293,6 @@ pub async fn save_daily_summary<R: tauri::Runtime>(
     Ok(map_stored_daily_summary(row))
 }
 
-async fn open_activity_db<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<Db3, String> {
-    let db_path = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?
-        .join("activity.db");
-    Db3::open_with_migrate(
-        DbOpenOptions {
-            storage: DbStorage::Local(&db_path),
-            cloudsync: false,
-            journal_mode_wal: true,
-            foreign_keys: true,
-            max_connections: None,
-            migration_failure_policy: MigrationFailurePolicy::Recreate,
-        },
-        |pool| Box::pin(hypr_db_activity::migrate(pool)),
-    )
-    .await
-    .map_err(|error| error.to_string())
-}
-
 async fn open_app_db<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<Db3, String> {
     let db_path = app
         .path()
@@ -356,7 +323,7 @@ fn daily_summary_id(date: &str) -> String {
 }
 
 fn build_daily_activity_stats(
-    events: &[hypr_db_activity::ObservationEventRow],
+    events: &[hypr_db_app::ObservationEventRow],
     analysis_count: u32,
     screenshot_count: u32,
 ) -> DailyActivityStats {

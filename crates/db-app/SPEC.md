@@ -1,9 +1,6 @@
 # db-app Spec
 
-`db-app` is the durable per-day artifact store.
-
-It intentionally does not store raw activity capture data. That remains in
-`db-activity`.
+`db-app` is the local desktop SQLite store.
 
 ## Tables
 
@@ -46,8 +43,20 @@ Columns:
 Unique:
 - `daily_note_id`
 
+### `activity_observation_events`
+
+Raw observation lifecycle events emitted by activity capture.
+
+### `activity_screenshots`
+
+Captured screenshots plus blob payloads and snapshot metadata.
+
+### `activity_observation_analyses`
+
+Per-screenshot analysis output used to build higher-level summaries.
+
 ## Model
 
 - `daily_notes` is user-authored canonical content.
 - `daily_summaries` is machine-generated durable output.
-- Raw screenshots, transitions, and VLM output do not belong here.
+- Activity capture tables are append-heavy local telemetry owned by the desktop app.

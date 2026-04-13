@@ -1,4 +1,8 @@
+import { useMemo } from "react";
+
 import { commands as activityCaptureCommands } from "@hypr/plugin-activity-capture";
+
+import { useLiveQuery } from "./use-live-query";
 
 export type DailyActivityAppStat = {
   appName: string;
@@ -57,18 +61,301 @@ export type DailySummarySnapshot = {
   sourceFingerprint: string;
 };
 
-export async function getDailySummarySnapshot(params: {
+type ObservationAnalysisRow = {
+  capturedAtMs: number;
+  observationId: string;
+  screenshotId: string;
+  screenshotKind: string;
+  appName: string;
+  windowTitle: string | null;
+  summary: string;
+};
+
+type DailySummaryRow = {
+  id: string;
+  date: string;
+  content: string;
+  timelineJson: string;
+  topicsJson: string;
+  status: string;
+  sourceCursorMs: number;
+  sourceFingerprint: string;
+  generatedAt: string;
+  generationError: string;
+  updatedAt: string;
+};
+
+type DailyStatsRow = {
+  observationCount: number;
+  screenshotCount: number;
+  analysisCount: number;
+  uniqueAppCount: number;
+  firstObservationAtMs: number | null;
+  lastObservationAtMs: number | null;
+  topAppsJson: string;
+  eventCursorMs: number;
+  analysisCursorMs: number;
+};
+
+const ANALYSES_SQL = `WITH ranked AS (
+  SELECT
+    observation_id AS observationId,
+    screenshot_id AS screenshotId,
+    screenshot_kind AS screenshotKind,
+    captured_at_ms AS capturedAtMs,
+    app_name AS appName,
+    NULLIF(window_title, '') AS windowTitle,
+    summary,
+    ROW_NUMBER() OVER (
+      PARTITION BY observation_id
+      ORDER BY CASE screenshot_kind
+        WHEN 'settled' THEN 0
+        WHEN 'refresh' THEN 1
+        ELSE 2
+      END,
+      captured_at_ms DESC,
+      id DESC
+    ) AS rankInObservation
+  FROM activity_observation_analyses
+  WHERE captured_at_ms >= ? AND captured_at_ms < ?
+)
+SELECT
+  observationId,
+  screenshotId,
+  screenshotKind,
+  capturedAtMs,
+  appName,
+  windowTitle,
+  summary
+FROM ranked
+WHERE rankInObservation = 1
+ORDER BY capturedAtMs ASC`;
+
+const STATS_SQL = `WITH started_events AS (
+  SELECT occurred_at_ms, app_name
+  FROM activity_observation_events
+  WHERE event_kind = 'started' AND occurred_at_ms >= ? AND occurred_at_ms < ?
+),
+ranked_analyses AS (
+  SELECT
+    observation_id,
+    captured_at_ms,
+    ROW_NUMBER() OVER (
+      PARTITION BY observation_id
+      ORDER BY CASE screenshot_kind
+        WHEN 'settled' THEN 0
+        WHEN 'refresh' THEN 1
+        ELSE 2
+      END,
+      captured_at_ms DESC,
+      id DESC
+    ) AS rankInObservation
+  FROM activity_observation_analyses
+  WHERE captured_at_ms >= ? AND captured_at_ms < ?
+),
+preferred_analyses AS (
+  SELECT captured_at_ms
+  FROM ranked_analyses
+  WHERE rankInObservation = 1
+),
+top_apps AS (
+  SELECT app_name AS appName, COUNT(*) AS count
+  FROM started_events
+  WHERE app_name != ''
+  GROUP BY app_name
+  ORDER BY count DESC, app_name ASC
+  LIMIT 5
+)
+SELECT
+  COALESCE((SELECT COUNT(*) FROM started_events), 0) AS observationCount,
+  COALESCE((
+    SELECT COUNT(*)
+    FROM activity_screenshots
+    WHERE captured_at_ms >= ? AND captured_at_ms < ?
+  ), 0) AS screenshotCount,
+  COALESCE((SELECT COUNT(*) FROM preferred_analyses), 0) AS analysisCount,
+  COALESCE((
+    SELECT COUNT(DISTINCT app_name)
+    FROM started_events
+    WHERE app_name != ''
+  ), 0) AS uniqueAppCount,
+  (SELECT MIN(occurred_at_ms) FROM started_events) AS firstObservationAtMs,
+  (SELECT MAX(occurred_at_ms) FROM started_events) AS lastObservationAtMs,
+  COALESCE((
+    SELECT json_group_array(json_object('appName', appName, 'count', count))
+    FROM top_apps
+  ), '[]') AS topAppsJson,
+  COALESCE((SELECT MAX(occurred_at_ms) FROM started_events), 0) AS eventCursorMs,
+  COALESCE((SELECT MAX(captured_at_ms) FROM preferred_analyses), 0) AS analysisCursorMs`;
+
+const SUMMARY_SQL = `SELECT
+  id,
+  date,
+  content,
+  timeline_json AS timelineJson,
+  topics_json AS topicsJson,
+  status,
+  source_cursor_ms AS sourceCursorMs,
+  source_fingerprint AS sourceFingerprint,
+  generated_at AS generatedAt,
+  generation_error AS generationError,
+  updated_at AS updatedAt
+FROM daily_summaries
+WHERE date = ? AND daily_note_id = ?
+LIMIT 1`;
+
+function parseJsonArray<T>(value: string, fallback: T[]) {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? (parsed as T[]) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function mapAnalyses(
+  rows: ObservationAnalysisRow[],
+): DailyObservationAnalysis[] {
+  return rows.map((row) => ({
+    capturedAtMs: row.capturedAtMs,
+    observationId: row.observationId,
+    screenshotId: row.screenshotId,
+    screenshotKind: row.screenshotKind,
+    appName: row.appName,
+    windowTitle: row.windowTitle,
+    summary: row.summary,
+  }));
+}
+
+function mapSummary(rows: DailySummaryRow[]): StoredDailySummary | null {
+  const [row] = rows;
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    date: row.date,
+    content: row.content,
+    timeline: parseJsonArray<DailySummaryTimelineItem>(row.timelineJson, []),
+    topics: parseJsonArray<DailySummaryTopic>(row.topicsJson, []),
+    status: row.status,
+    sourceCursorMs: row.sourceCursorMs,
+    sourceFingerprint: row.sourceFingerprint,
+    generatedAt: row.generatedAt,
+    generationError: row.generationError,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function mapStats(rows: DailyStatsRow[]): {
+  stats: DailyActivityStats;
+  sourceCursorMs: number;
+} {
+  const row = rows[0] ?? {
+    observationCount: 0,
+    screenshotCount: 0,
+    analysisCount: 0,
+    uniqueAppCount: 0,
+    firstObservationAtMs: null,
+    lastObservationAtMs: null,
+    topAppsJson: "[]",
+    eventCursorMs: 0,
+    analysisCursorMs: 0,
+  };
+
+  return {
+    stats: {
+      observationCount: row.observationCount,
+      screenshotCount: row.screenshotCount,
+      analysisCount: row.analysisCount,
+      uniqueAppCount: row.uniqueAppCount,
+      firstObservationAtMs: row.firstObservationAtMs,
+      lastObservationAtMs: row.lastObservationAtMs,
+      topApps: parseJsonArray<DailyActivityAppStat>(row.topAppsJson, []),
+    },
+    sourceCursorMs: Math.max(row.eventCursorMs, row.analysisCursorMs),
+  };
+}
+
+function dailyNoteId(date: string) {
+  return `daily-note-${date}`;
+}
+
+function buildSourceFingerprint(params: {
+  observationCount: number;
+  screenshotCount: number;
+  analysisCount: number;
+  sourceCursorMs: number;
+}) {
+  return `observations:${params.observationCount}|screenshots:${params.screenshotCount}|analyses:${params.analysisCount}|cursor:${params.sourceCursorMs}`;
+}
+
+export function useDailySummarySnapshot(params: {
   date: string;
   startMs: number;
   endMs: number;
-}): Promise<DailySummarySnapshot> {
-  const result = await activityCaptureCommands.getDailySummarySnapshot(params);
+}) {
+  const analysesQuery = useLiveQuery<
+    ObservationAnalysisRow,
+    DailyObservationAnalysis[]
+  >({
+    sql: ANALYSES_SQL,
+    params: [params.startMs, params.endMs],
+    mapRows: mapAnalyses,
+  });
+  const statsQuery = useLiveQuery<
+    DailyStatsRow,
+    { stats: DailyActivityStats; sourceCursorMs: number }
+  >({
+    sql: STATS_SQL,
+    params: [
+      params.startMs,
+      params.endMs,
+      params.startMs,
+      params.endMs,
+      params.startMs,
+      params.endMs,
+    ],
+    mapRows: mapStats,
+  });
+  const summaryQuery = useLiveQuery<DailySummaryRow, StoredDailySummary | null>(
+    {
+      sql: SUMMARY_SQL,
+      params: [params.date, dailyNoteId(params.date)],
+      mapRows: mapSummary,
+    },
+  );
 
-  if (result.status === "error") {
-    throw new Error(String(result.error));
-  }
+  const data = useMemo<DailySummarySnapshot | undefined>(() => {
+    if (
+      !analysesQuery.data ||
+      !statsQuery.data ||
+      summaryQuery.data === undefined
+    ) {
+      return undefined;
+    }
 
-  return result.data;
+    return {
+      stats: statsQuery.data.stats,
+      analyses: analysesQuery.data,
+      summary: summaryQuery.data,
+      sourceCursorMs: statsQuery.data.sourceCursorMs,
+      sourceFingerprint: buildSourceFingerprint({
+        observationCount: statsQuery.data.stats.observationCount,
+        screenshotCount: statsQuery.data.stats.screenshotCount,
+        analysisCount: statsQuery.data.stats.analysisCount,
+        sourceCursorMs: statsQuery.data.sourceCursorMs,
+      }),
+    };
+  }, [analysesQuery.data, statsQuery.data, summaryQuery.data]);
+
+  return {
+    data,
+    isLoading:
+      analysesQuery.isLoading || statsQuery.isLoading || summaryQuery.isLoading,
+    error: analysesQuery.error ?? statsQuery.error ?? summaryQuery.error,
+  };
 }
 
 export async function saveDailySummary(params: {

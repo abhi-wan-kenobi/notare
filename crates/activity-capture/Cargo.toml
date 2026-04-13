@@ -11,4 +11,6 @@ hypr-activity-capture-interface = { workspace = true }
 hypr-activity-capture-macos = { workspace = true }
 hypr-activity-capture-windows = { workspace = true }
 hypr-screen-core = { workspace = true }
+
 serde = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }

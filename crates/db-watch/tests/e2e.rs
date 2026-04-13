@@ -1,16 +1,15 @@
 use db_watch::{TableDeps, extract_tables};
-use sqlx::SqlitePool;
 
-async fn test_pool() -> SqlitePool {
+async fn test_db() -> hypr_db_core2::Db3 {
     let db = hypr_db_core2::Db3::connect_memory_plain().await.unwrap();
     hypr_db_app::migrate(db.pool()).await.unwrap();
-    db.pool().clone()
+    db
 }
 
 #[tokio::test]
 async fn full_cycle() {
-    let pool = test_pool().await;
-    let tables = extract_tables(&pool, "SELECT id FROM daily_notes WHERE id = ?")
+    let db = test_db().await;
+    let tables = extract_tables(db.pool(), "SELECT id FROM daily_notes WHERE id = ?")
         .await
         .unwrap();
 
@@ -23,9 +22,9 @@ async fn full_cycle() {
 
 #[tokio::test]
 async fn multi_table_join() {
-    let pool = test_pool().await;
+    let db = test_db().await;
     let tables = extract_tables(
-        &pool,
+        db.pool(),
         "SELECT ds.id FROM daily_summaries ds JOIN daily_notes dn ON ds.daily_note_id = dn.id",
     )
     .await
@@ -41,8 +40,8 @@ async fn multi_table_join() {
 
 #[tokio::test]
 async fn unregister_stops_notifications() {
-    let pool = test_pool().await;
-    let tables = extract_tables(&pool, "SELECT id FROM daily_notes WHERE id = ?")
+    let db = test_db().await;
+    let tables = extract_tables(db.pool(), "SELECT id FROM daily_notes WHERE id = ?")
         .await
         .unwrap();
 
@@ -57,17 +56,17 @@ async fn unregister_stops_notifications() {
 
 #[tokio::test]
 async fn overlapping_watches() {
-    let pool = test_pool().await;
+    let db = test_db().await;
 
     let tables_a = extract_tables(
-        &pool,
+        db.pool(),
         "SELECT ds.id FROM daily_summaries ds JOIN daily_notes dn ON ds.daily_note_id = dn.id",
     )
     .await
     .unwrap();
 
     let tables_b = extract_tables(
-        &pool,
+        db.pool(),
         "SELECT id FROM daily_notes \
          WHERE EXISTS ( \
            SELECT 1 FROM daily_summaries \
@@ -92,9 +91,9 @@ async fn overlapping_watches() {
 
 #[tokio::test]
 async fn alias_watch_cycle() {
-    let pool = test_pool().await;
+    let db = test_db().await;
     let tables = extract_tables(
-        &pool,
+        db.pool(),
         "SELECT dn.id FROM daily_notes AS dn WHERE dn.date = '2026-04-11'",
     )
     .await

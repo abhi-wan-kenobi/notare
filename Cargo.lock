@@ -17,6 +17,7 @@ dependencies = [
  "activity-capture-windows",
  "screen-core",
  "serde",
+ "uuid",
 ]
 
 [[package]]
@@ -4668,15 +4669,6 @@ name = "data-url"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be1e0bca6c3637f992fc1cc7cbc52a78c1ef6db076dbf1059c4323d6a2048376"
-
-[[package]]
-name = "db-activity"
-version = "0.1.0"
-dependencies = [
- "db-core2",
- "sqlx",
- "tokio",
-]
 
 [[package]]
 name = "db-app"
@@ -18373,7 +18365,6 @@ name = "tauri-plugin-activity-capture"
 version = "0.1.0"
 dependencies = [
  "activity-capture",
- "db-activity",
  "db-app",
  "db-core2",
  "futures-util",

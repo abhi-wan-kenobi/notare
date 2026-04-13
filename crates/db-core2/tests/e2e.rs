@@ -13,7 +13,7 @@ async fn setup_db() -> Db3 {
             value TEXT NOT NULL DEFAULT ''
         )",
     )
-    .execute(db.pool())
+    .execute(db.pool().as_ref())
     .await
     .unwrap();
 
@@ -33,7 +33,7 @@ async fn sync_roundtrip() {
 
     sqlx::query("INSERT INTO test_sync (id, value) VALUES (cloudsync_uuid(), ?)")
         .bind(&marker)
-        .execute(db_a.pool())
+        .execute(db_a.pool().as_ref())
         .await
         .unwrap();
 

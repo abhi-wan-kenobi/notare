@@ -28,9 +28,10 @@ pub async fn extract_tables(pool: &SqlitePool, sql: &str) -> Result<HashSet<Stri
     for row in &eqp_rows {
         let detail: &str = row.get("detail");
         if let Some(name) = parse_table_from_detail(detail) {
-            if known_tables.contains(name) {
-                tables.insert(name.to_string());
-            } else if let Some(real) = alias_map.get(name) {
+            let normalized_name = normalize_identifier(name);
+            if known_tables.contains(&normalized_name) {
+                tables.insert(normalized_name);
+            } else if let Some(real) = alias_map.get(&normalized_name) {
                 tables.insert(real.clone());
             }
         }
@@ -45,6 +46,25 @@ fn parse_table_from_detail(detail: &str) -> Option<&str> {
         .strip_prefix("SCAN ")
         .or_else(|| trimmed.strip_prefix("SEARCH "))?;
     rest.split_whitespace().next()
+}
+
+fn normalize_identifier(token: &str) -> String {
+    let token = token.trim_matches(|c: char| matches!(c, ',' | ')' | ';' | '('));
+    let token = token.rsplit('.').next().unwrap_or(token);
+    strip_identifier_quotes(token).to_string()
+}
+
+fn strip_identifier_quotes(token: &str) -> &str {
+    if token.len() >= 2 {
+        if (token.starts_with('"') && token.ends_with('"'))
+            || (token.starts_with('`') && token.ends_with('`'))
+            || (token.starts_with('[') && token.ends_with(']'))
+        {
+            return &token[1..token.len() - 1];
+        }
+    }
+
+    token
 }
 
 /// Build a map from alias → table name by scanning for `FROM table alias` and
@@ -84,8 +104,8 @@ fn build_alias_map(
         }
 
         // Strip trailing comma/paren from the table token
-        let raw_table = tokens[table_idx].trim_end_matches([',', ')']);
-        if !known_tables.contains(raw_table) {
+        let raw_table = normalize_identifier(tokens[table_idx]);
+        if !known_tables.contains(&raw_table) {
             continue;
         }
 
@@ -98,7 +118,7 @@ fn build_alias_map(
         };
 
         if alias_idx < tokens.len() {
-            let alias = tokens[alias_idx].trim_end_matches([',', ')', ';']);
+            let alias = normalize_identifier(tokens[alias_idx]);
             let alias_upper = alias.to_uppercase();
             if !alias.is_empty()
                 && !matches!(
@@ -118,9 +138,9 @@ fn build_alias_map(
                         | "EXCEPT"
                         | "INTERSECT"
                 )
-                && !known_tables.contains(alias)
+                && !known_tables.contains(&alias)
             {
-                map.insert(alias.to_string(), raw_table.to_string());
+                map.insert(alias, raw_table.clone());
             }
         }
     }
@@ -131,16 +151,16 @@ fn build_alias_map(
 mod tests {
     use super::*;
 
-    async fn test_pool() -> SqlitePool {
+    async fn test_db() -> hypr_db_core2::Db3 {
         let db = hypr_db_core2::Db3::connect_memory_plain().await.unwrap();
         hypr_db_app::migrate(db.pool()).await.unwrap();
-        db.pool().clone()
+        db
     }
 
     #[tokio::test]
     async fn single_table() {
-        let pool = test_pool().await;
-        let tables = extract_tables(&pool, "SELECT id FROM daily_notes WHERE id = ?")
+        let db = test_db().await;
+        let tables = extract_tables(db.pool(), "SELECT id FROM daily_notes WHERE id = ?")
             .await
             .unwrap();
         assert_eq!(tables, HashSet::from(["daily_notes".to_string()]));
@@ -148,9 +168,9 @@ mod tests {
 
     #[tokio::test]
     async fn join_query() {
-        let pool = test_pool().await;
+        let db = test_db().await;
         let tables = extract_tables(
-            &pool,
+            db.pool(),
             "SELECT ds.id FROM daily_summaries ds JOIN daily_notes dn ON ds.daily_note_id = dn.id",
         )
         .await
@@ -162,9 +182,9 @@ mod tests {
 
     #[tokio::test]
     async fn alias_query() {
-        let pool = test_pool().await;
+        let db = test_db().await;
         let tables = extract_tables(
-            &pool,
+            db.pool(),
             "SELECT dn.id FROM daily_notes AS dn WHERE dn.date = '2026-04-11'",
         )
         .await
@@ -174,9 +194,9 @@ mod tests {
 
     #[tokio::test]
     async fn subquery() {
-        let pool = test_pool().await;
+        let db = test_db().await;
         let tables = extract_tables(
-            &pool,
+            db.pool(),
             "SELECT id FROM daily_notes \
              WHERE EXISTS ( \
                SELECT 1 FROM daily_summaries \
@@ -188,5 +208,29 @@ mod tests {
         assert!(tables.contains("daily_notes"));
         assert!(tables.contains("daily_summaries"));
         assert_eq!(tables.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn quoted_alias_query() {
+        let db = test_db().await;
+        let tables = extract_tables(
+            db.pool(),
+            r#"SELECT "dn".id FROM "daily_notes" AS "dn" WHERE "dn".date = '2026-04-11'"#,
+        )
+        .await
+        .unwrap();
+        assert_eq!(tables, HashSet::from(["daily_notes".to_string()]));
+    }
+
+    #[tokio::test]
+    async fn schema_qualified_query() {
+        let db = test_db().await;
+        let tables = extract_tables(
+            db.pool(),
+            "SELECT dn.id FROM main.daily_notes dn WHERE dn.date = '2026-04-11'",
+        )
+        .await
+        .unwrap();
+        assert_eq!(tables, HashSet::from(["daily_notes".to_string()]));
     }
 }

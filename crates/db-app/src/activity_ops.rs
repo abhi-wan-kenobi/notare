@@ -1,6 +1,6 @@
 use sqlx::SqlitePool;
 
-use crate::types::{ObservationEventRow, PreferredObservationAnalysisRow};
+use crate::activity_types::{ObservationEventRow, PreferredObservationAnalysisRow};
 
 pub struct InsertObservationEvent<'a> {
     pub id: &'a str,

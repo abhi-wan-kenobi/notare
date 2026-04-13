@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -10,9 +10,8 @@ import { Spinner } from "@hypr/ui/components/ui/spinner";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 
 import {
-  getDailySummarySnapshot,
   saveDailySummary,
-  type DailySummarySnapshot,
+  useDailySummarySnapshot,
   type DailySummaryTimelineItem,
   type DailySummaryTopic,
 } from "./api";
@@ -34,7 +33,6 @@ import {
   mergeEntries,
   toEntry,
   updateStatus,
-  upsertAnalysis,
   upsertEntry,
 } from "./helpers";
 import {
@@ -63,18 +61,10 @@ function ActivityCaptureFeed({
 }) {
   const tz = useTimezone();
   const model = useLanguageModel("enhance");
-  const queryClient = useQueryClient();
   const [liveEntries, setLiveEntries] = useState<ActivityCaptureEntry[]>([]);
   const [status, setStatus] = useState<ActivityCaptureStatus | null>(null);
   const [startMs, endMs] = useMemo(() => dateToMsRange(date, tz), [date, tz]);
-  const snapshotQueryKey = useMemo(
-    () => ["daily-summary-snapshot", date, startMs, endMs] as const,
-    [date, startMs, endMs],
-  );
-  const summaryQuery = useQuery({
-    queryKey: snapshotQueryKey,
-    queryFn: () => getDailySummarySnapshot({ date, startMs, endMs }),
-  });
+  const snapshotQuery = useDailySummarySnapshot({ date, startMs, endMs });
   const captureMutation = useMutation({
     mutationFn: async (nextRunning: boolean) => {
       const result = nextRunning
@@ -103,8 +93,7 @@ function ActivityCaptureFeed({
         throw new Error("No language model configured.");
       }
 
-      const snapshot =
-        (await summaryQuery.refetch()).data ?? summaryQuery.data ?? null;
+      const snapshot = snapshotQuery.data ?? null;
       if (!snapshot) {
         throw new Error("Failed to load daily summary source data.");
       }
@@ -133,7 +122,6 @@ function ActivityCaptureFeed({
       });
     },
     onSuccess: async () => {
-      await summaryQuery.refetch();
       sonnerToast.success("Daily summary updated.");
     },
     onError: (error) => {
@@ -143,8 +131,8 @@ function ActivityCaptureFeed({
   });
 
   const entries = useMemo(
-    () => mergeEntries(summaryQuery.data?.analyses, liveEntries),
-    [liveEntries, summaryQuery.data?.analyses],
+    () => mergeEntries(snapshotQuery.data?.analyses, liveEntries),
+    [liveEntries, snapshotQuery.data?.analyses],
   );
 
   useEffect(() => {
@@ -180,33 +168,6 @@ function ActivityCaptureFeed({
         }
 
         setLiveEntries((current) => upsertEntry(current, entry));
-
-        if (payload.type !== "activityObservationAnalysisReady") {
-          return;
-        }
-
-        queryClient.setQueryData<DailySummarySnapshot>(
-          snapshotQueryKey,
-          (current) => {
-            if (!current) {
-              return current;
-            }
-
-            return {
-              ...current,
-              analyses: upsertAnalysis(current.analyses, {
-                capturedAtMs: payload.analysis.capturedAtMs,
-                observationId: payload.analysis.observationId,
-                screenshotId: payload.analysis.screenshotId,
-                screenshotKind: payload.analysis.screenshotKind,
-                appName: payload.analysis.appName,
-                windowTitle: payload.analysis.windowTitle,
-                summary: payload.analysis.summary,
-              }),
-            };
-          },
-        );
-        void queryClient.invalidateQueries({ queryKey: snapshotQueryKey });
       })
       .then((fn) => {
         if (cancelled) {
@@ -223,9 +184,9 @@ function ActivityCaptureFeed({
       cancelled = true;
       unlisten?.();
     };
-  }, [date, queryClient, snapshotQueryKey, tz]);
+  }, [date, tz]);
 
-  const canGenerate = !!model && (summaryQuery.data?.analyses.length ?? 0) > 0;
+  const canGenerate = !!model && (snapshotQuery.data?.analyses.length ?? 0) > 0;
 
   useEffect(() => {
     generateRef.current = {
@@ -245,14 +206,18 @@ function ActivityCaptureFeed({
     <section className="px-6">
       {activeTab === "timeline" ? (
         <TimelineContent
-          summary={summaryQuery.data?.summary ?? null}
-          isLoading={summaryQuery.isPending}
+          summary={snapshotQuery.data?.summary ?? null}
+          isLoading={snapshotQuery.isLoading}
           isGenerating={generateMutation.isPending}
         />
-      ) : summaryQuery.isPending ? (
+      ) : snapshotQuery.isLoading ? (
         <div className="flex items-center gap-2 py-6 text-sm text-neutral-500">
           <Spinner size={14} className="text-neutral-400" />
           Loading captured activity...
+        </div>
+      ) : snapshotQuery.error ? (
+        <div className="py-6 text-sm text-red-500">
+          Failed to load captured activity.
         </div>
       ) : entries.length > 0 ? (
         <div className="-my-1 pt-2">

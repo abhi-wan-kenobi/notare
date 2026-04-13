@@ -50,7 +50,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
                 .path()
                 .app_data_dir()
                 .expect("app_data_dir must be available")
-                .join("activity.db");
+                .join("app.db");
 
             let db = std::thread::spawn(move || {
                 let rt = tokio::runtime::Builder::new_current_thread()
@@ -64,9 +64,9 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
                         journal_mode_wal: true,
                         foreign_keys: true,
                         max_connections: None,
-                        migration_failure_policy: MigrationFailurePolicy::Recreate,
+                        migration_failure_policy: MigrationFailurePolicy::Fail,
                     },
-                    |pool| Box::pin(hypr_db_activity::migrate(pool)),
+                    |pool| Box::pin(hypr_db_app::migrate(pool)),
                 ))
             })
             .join()
@@ -75,7 +75,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
             app.manage(Arc::new(runtime::ActivityCaptureRuntime::new(
                 app.app_handle().clone(),
-                Arc::new(db.pool().clone()),
+                Arc::new(db),
             )));
             Ok(())
         })
