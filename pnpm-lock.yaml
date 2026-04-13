@@ -254,6 +254,9 @@ importers:
       '@hypr/plugin-local-stt':
         specifier: workspace:*
         version: link:../../plugins/local-stt
+      '@hypr/plugin-mcp':
+        specifier: workspace:*
+        version: link:../../plugins/mcp
       '@hypr/plugin-messenger':
         specifier: workspace:*
         version: link:../../plugins/messenger
@@ -2030,6 +2033,12 @@ importers:
         version: 2.10.1
 
   plugins/local-stt:
+    dependencies:
+      '@tauri-apps/api':
+        specifier: ^2.10.1
+        version: 2.10.1
+
+  plugins/mcp:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.10.1
