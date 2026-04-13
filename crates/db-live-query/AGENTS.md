@@ -30,7 +30,14 @@
 - `extract_tables(...)` is the single dependency-analysis path for live-query targeting unless this crate is intentionally redesigned.
 - Subscription state must represent dependency analysis explicitly: `Reactive { tables }` or `NonReactive { reason }`.
 - Non-reactive subscriptions still deliver the initial query result or error; they simply do not auto-refresh.
+- Reactive subscriptions must stay internal to this crate until the initial result or error has been delivered. Dispatcher-driven refreshes must not emit before that first event.
+- The first event delivered for every subscription is the initial snapshot or initial error for that exact SQL + params pair.
+- If table changes land while a reactive subscription is still initializing, they must collapse into at most one catch-up refresh after activation, based on commit sequence relative to the baseline captured before the initial query rather than dispatcher timing.
+- Init-time catch-up refreshes that would deliver the same payload as the already-sent initial event must be suppressed.
+- Refresh jobs whose triggering change sequence is at or below the subscription's activation ignore floor must not emit.
 - Reruns remain table-granular only.
+- `unsubscribe()` resolving is a hard delivery barrier: queued or in-flight refresh work must not deliver any later event after it returns.
+- Refresh jobs must not own cloned sinks. Delivery must be revalidated against the current registered subscription state immediately before sending.
 - Stale subscribers must be removed when event delivery fails.
 - The sink trait should stay generic enough that transport adapters can remain thin.
 

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use sqlx::{Row, SqlitePool};
 
@@ -67,11 +67,8 @@ fn strip_identifier_quotes(token: &str) -> &str {
     token
 }
 
-fn build_alias_map(
-    sql: &str,
-    known_tables: &HashSet<String>,
-) -> std::collections::HashMap<String, String> {
-    let mut map = std::collections::HashMap::new();
+fn build_alias_map(sql: &str, known_tables: &HashSet<String>) -> HashMap<String, String> {
+    let mut map = HashMap::new();
     let upper = sql.to_uppercase();
     let tokens: Vec<&str> = sql.split_whitespace().collect();
     let upper_tokens: Vec<&str> = upper.split_whitespace().collect();

@@ -32,10 +32,6 @@ fn row_to_json(row: &sqlx::sqlite::SqliteRow) -> serde_json::Value {
     for (index, column) in row.columns().iter().enumerate() {
         let value = match row.try_get_raw(index) {
             Ok(raw) if !raw.is_null() => match raw.type_info().name() {
-                "TEXT" => row
-                    .get::<Option<String>, _>(index)
-                    .map(serde_json::Value::String)
-                    .unwrap_or(serde_json::Value::Null),
                 "INTEGER" | "INT" | "BOOLEAN" => row
                     .get::<Option<i64>, _>(index)
                     .map(serde_json::Value::from)
