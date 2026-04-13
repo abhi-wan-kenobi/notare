@@ -1,7 +1,9 @@
 [build]
-base = "apps/unsigned-web"
 command = "pnpm build"
 publish = "dist"
+
+[build.environment]
+NODE_VERSION = "22"
 
 [[redirects]]
 from = "/*"
