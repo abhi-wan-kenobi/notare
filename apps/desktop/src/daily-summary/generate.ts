@@ -33,7 +33,7 @@ export async function getDailySummaryUserPrompt(params: {
     time: formatTime(analysis.capturedAtMs, tz),
     appName: analysis.appName,
     windowTitle: analysis.windowTitle,
-    reason: analysis.reason,
+    reason: analysis.screenshotKind,
     summary: analysis.summary,
   }));
   const result = await templateCommands.render({
@@ -41,12 +41,12 @@ export async function getDailySummaryUserPrompt(params: {
       date,
       timezone: tz ?? null,
       stats: {
-        signalCount: snapshot.stats.signalCount,
+        signalCount: snapshot.stats.observationCount,
         screenshotCount: snapshot.stats.screenshotCount,
         analysisCount: snapshot.stats.analysisCount,
         uniqueAppCount: snapshot.stats.uniqueAppCount,
-        firstSignal: formatSignalTime(snapshot.stats.firstSignalAtMs, tz),
-        lastSignal: formatSignalTime(snapshot.stats.lastSignalAtMs, tz),
+        firstSignal: formatSignalTime(snapshot.stats.firstObservationAtMs, tz),
+        lastSignal: formatSignalTime(snapshot.stats.lastObservationAtMs, tz),
       },
       topApps: snapshot.stats.topApps.map((item) => ({
         appName: item.appName,

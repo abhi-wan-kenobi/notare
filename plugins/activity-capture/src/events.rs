@@ -3,8 +3,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use hypr_activity_capture as core;
 
 pub use core::{
-    ActivityKind, AppIdKind, CaptureErrorKind, ContentLevel, SnapshotSource, TextAnchorConfidence,
-    TextAnchorKind, TransitionReason,
+    ActivityKind, AppIdKind, CaptureErrorKind, ContentLevel, ObservationChangeClass,
+    ObservationEndReason, ObservationEventKind, ObservationScreenshotKind, SnapshotSource,
+    TextAnchorConfidence, TextAnchorKind,
 };
 
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
@@ -44,20 +45,37 @@ pub struct ActivityCaptureAppIdentity {
 
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
-pub struct ActivityCaptureSignal {
-    pub sequence: i64,
+pub struct ActivityCaptureObservation {
+    pub observation_id: String,
+    pub observation_key: String,
+    pub started_at_ms: i64,
+    pub last_seen_at_ms: i64,
+    pub last_checkpoint_at_ms: Option<i64>,
+    pub last_text_change_at_ms: Option<i64>,
+    pub typing: bool,
+    pub latest_snapshot: ActivityCaptureSnapshot,
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityCaptureObservationEvent {
+    pub id: String,
+    pub observation_id: String,
+    pub observation_key: String,
+    pub kind: String,
+    pub change_class: Option<String>,
+    pub end_reason: Option<String>,
     pub occurred_at_ms: i64,
-    pub reason: TransitionReason,
-    pub suppressed_snapshot_count: i32,
-    pub fingerprint: Option<String>,
+    pub started_at_ms: i64,
     pub snapshot: Option<ActivityCaptureSnapshot>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
-pub struct ActivityCaptureScreenshotAnalysis {
-    pub fingerprint: String,
-    pub reason: TransitionReason,
+pub struct ActivityCaptureObservationAnalysis {
+    pub observation_id: String,
+    pub screenshot_id: String,
+    pub screenshot_kind: String,
     pub captured_at_ms: i64,
     pub app_name: String,
     pub window_title: Option<String>,
@@ -66,8 +84,10 @@ pub struct ActivityCaptureScreenshotAnalysis {
 
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
-pub struct ActivityCaptureScreenshotAnalysisError {
-    pub fingerprint: String,
+pub struct ActivityCaptureObservationAnalysisError {
+    pub observation_id: String,
+    pub screenshot_id: String,
+    pub screenshot_kind: String,
     pub captured_at_ms: i64,
     pub app_name: String,
     pub window_title: Option<String>,
@@ -82,26 +102,31 @@ pub struct ActivityCaptureRuntimeError {
     pub occurred_at_ms: i64,
 }
 
+#[derive(Debug, Clone, Copy, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityCaptureConfig {
+    pub poll_interval_ms: u64,
+    pub entry_dwell_ms: u64,
+    pub typing_settle_ms: u64,
+    pub long_typing_checkpoint_ms: u64,
+    pub refresh_interval_ms: u64,
+}
+
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivityCaptureStatus {
     pub is_running: bool,
     pub last_state_changed_at_ms: Option<i64>,
-    pub last_signal: Option<ActivityCaptureSignal>,
+    pub current_observation: Option<ActivityCaptureObservation>,
+    pub last_observation_event: Option<ActivityCaptureObservationEvent>,
     pub last_error: Option<ActivityCaptureRuntimeError>,
-    pub last_screenshot_analysis: Option<ActivityCaptureScreenshotAnalysis>,
-    pub last_screenshot_analysis_error: Option<ActivityCaptureScreenshotAnalysisError>,
-    pub budget: ActivityCaptureBudget,
+    pub last_observation_analysis: Option<ActivityCaptureObservationAnalysis>,
+    pub last_observation_analysis_error: Option<ActivityCaptureObservationAnalysisError>,
+    pub config: ActivityCaptureConfig,
     pub analyze_screenshots: bool,
     pub screenshots_today: u32,
     pub screenshots_this_hour: u32,
     pub storage_used_mb: u64,
-}
-
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct ActivityCaptureBudget {
-    pub min_interval_secs: u32,
 }
 
 #[derive(Debug, Clone, Copy, serde::Serialize, specta::Type)]
@@ -126,17 +151,27 @@ pub struct ActivityCaptureCapabilities {
 pub enum ActivityCapturePluginEvent {
     #[serde(rename = "activityCaptureStateChanged")]
     StateChanged { state: ActivityCaptureStateChanged },
-    #[serde(rename = "activityCaptureSignal")]
-    Signal { signal: ActivityCaptureSignal },
+    #[serde(rename = "activityObservationStarted")]
+    ObservationStarted {
+        event: ActivityCaptureObservationEvent,
+    },
+    #[serde(rename = "activityObservationCheckpointed")]
+    ObservationCheckpointed {
+        event: ActivityCaptureObservationEvent,
+    },
+    #[serde(rename = "activityObservationEnded")]
+    ObservationEnded {
+        event: ActivityCaptureObservationEvent,
+    },
     #[serde(rename = "activityCaptureError")]
     Error { error: ActivityCaptureRuntimeError },
-    #[serde(rename = "activityCaptureScreenshotAnalysis")]
-    ScreenshotAnalysis {
-        analysis: ActivityCaptureScreenshotAnalysis,
+    #[serde(rename = "activityObservationAnalysisReady")]
+    ObservationAnalysisReady {
+        analysis: ActivityCaptureObservationAnalysis,
     },
-    #[serde(rename = "activityCaptureScreenshotAnalysisError")]
-    ScreenshotAnalysisError {
-        error: ActivityCaptureScreenshotAnalysisError,
+    #[serde(rename = "activityObservationAnalysisError")]
+    ObservationAnalysisError {
+        error: ActivityCaptureObservationAnalysisError,
     },
 }
 
@@ -164,8 +199,8 @@ impl From<core::AppIdentity> for ActivityCaptureAppIdentity {
     }
 }
 
-impl From<core::Snapshot> for ActivityCaptureSnapshot {
-    fn from(value: core::Snapshot) -> Self {
+impl From<core::NormalizedSnapshot> for ActivityCaptureSnapshot {
+    fn from(value: core::NormalizedSnapshot) -> Self {
         Self {
             app: value.app.clone().into(),
             activity_kind: value.activity_kind,
@@ -190,30 +225,33 @@ impl From<core::Snapshot> for ActivityCaptureSnapshot {
     }
 }
 
-impl From<core::Transition> for ActivityCaptureSignal {
-    fn from(value: core::Transition) -> Self {
-        let occurred_at_ms = value
-            .current
-            .as_ref()
-            .map(|event| system_time_to_unix_ms(event.started_at))
-            .or_else(|| {
-                value
-                    .previous
-                    .as_ref()
-                    .map(|event| system_time_to_unix_ms(event.ended_at))
-            })
-            .unwrap_or_default();
-        let fingerprint = value
-            .current
-            .as_ref()
-            .map(|event| event.fingerprint.clone());
+impl From<core::ObservationState> for ActivityCaptureObservation {
+    fn from(value: core::ObservationState) -> Self {
         Self {
-            occurred_at_ms,
-            reason: value.reason,
-            sequence: value.sequence.min(i64::MAX as u64) as i64,
-            suppressed_snapshot_count: value.suppressed_snapshot_count.min(i32::MAX as u32) as i32,
-            fingerprint,
-            snapshot: value.current.map(|event| event.snapshot.into()),
+            observation_id: value.observation_id,
+            observation_key: value.observation_key,
+            started_at_ms: system_time_to_unix_ms(value.started_at),
+            last_seen_at_ms: system_time_to_unix_ms(value.last_seen_at),
+            last_checkpoint_at_ms: value.last_checkpoint_at.map(system_time_to_unix_ms),
+            last_text_change_at_ms: value.last_text_change_at.map(system_time_to_unix_ms),
+            typing: value.typing,
+            latest_snapshot: value.latest_snapshot.into(),
+        }
+    }
+}
+
+impl From<core::ObservationEvent> for ActivityCaptureObservationEvent {
+    fn from(value: core::ObservationEvent) -> Self {
+        Self {
+            id: value.id,
+            observation_id: value.observation_id,
+            observation_key: value.observation_key,
+            kind: value.kind.as_str().to_string(),
+            change_class: value.change_class.map(|value| value.as_str().to_string()),
+            end_reason: value.end_reason.map(|value| value.as_str().to_string()),
+            occurred_at_ms: system_time_to_unix_ms(value.occurred_at),
+            started_at_ms: system_time_to_unix_ms(value.started_at),
+            snapshot: value.snapshot.map(Into::into),
         }
     }
 }

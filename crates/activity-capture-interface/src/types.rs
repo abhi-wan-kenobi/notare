@@ -302,7 +302,7 @@ pub struct TextAnchor {
     Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
-pub struct SnapshotSpec {
+pub struct NormalizedSnapshotSpec {
     pub captured_at: SystemTime,
     pub app: AppIdentity,
     pub activity_kind: ActivityKind,
@@ -319,7 +319,7 @@ pub struct SnapshotSpec {
     Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
-pub struct Snapshot {
+pub struct NormalizedSnapshot {
     pub app: AppIdentity,
     pub activity_kind: ActivityKind,
     pub captured_at: SystemTime,
@@ -345,79 +345,9 @@ pub struct Snapshot {
     Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
 )]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
-pub struct Event {
-    pub started_at: SystemTime,
-    pub ended_at: SystemTime,
-    pub fingerprint: String,
-    pub snapshot: Snapshot,
-}
-
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-    serde::Serialize,
-    serde::Deserialize,
-    schemars::JsonSchema,
-)]
-#[cfg_attr(feature = "specta", derive(specta::Type))]
-#[serde(rename_all = "snake_case")]
-pub enum TransitionReason {
-    Started,
-    Idle,
-    AppChanged,
-    WindowChanged,
-    ActivityKindChanged,
-    UrlChanged,
-    TitleChanged,
-    TextAnchorChanged,
-    ContentChanged,
-}
-
-impl TransitionReason {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Started => "started",
-            Self::Idle => "idle",
-            Self::AppChanged => "app_changed",
-            Self::WindowChanged => "window_changed",
-            Self::ActivityKindChanged => "activity_kind_changed",
-            Self::UrlChanged => "url_changed",
-            Self::TitleChanged => "title_changed",
-            Self::TextAnchorChanged => "text_anchor_changed",
-            Self::ContentChanged => "content_changed",
-        }
-    }
-
-    pub fn parse(s: &str) -> Self {
-        match s {
-            "started" => Self::Started,
-            "idle" => Self::Idle,
-            "app_changed" => Self::AppChanged,
-            "window_changed" => Self::WindowChanged,
-            "activity_kind_changed" => Self::ActivityKindChanged,
-            "url_changed" => Self::UrlChanged,
-            "title_changed" => Self::TitleChanged,
-            "text_anchor_changed" => Self::TextAnchorChanged,
-            "content_changed" => Self::ContentChanged,
-            _ => Self::Started,
-        }
-    }
-}
-
-#[derive(
-    Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
-)]
-#[cfg_attr(feature = "specta", derive(specta::Type))]
-pub struct Transition {
-    pub previous: Option<Event>,
-    pub current: Option<Event>,
-    pub reason: TransitionReason,
-    pub sequence: u64,
-    pub suppressed_snapshot_count: u32,
+pub struct RawCaptureSample {
+    pub captured_at: SystemTime,
+    pub snapshot: Option<NormalizedSnapshot>,
 }
 
 #[derive(

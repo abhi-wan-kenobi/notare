@@ -23,9 +23,9 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
             commands::capabilities::<tauri::Wry>,
-            commands::snapshot::<tauri::Wry>,
-            commands::latest_screenshot_analysis::<tauri::Wry>,
-            commands::list_analyses_in_range::<tauri::Wry>,
+            commands::current_observation::<tauri::Wry>,
+            commands::latest_observation_analysis::<tauri::Wry>,
+            commands::list_observation_analyses_in_range::<tauri::Wry>,
             commands::status::<tauri::Wry>,
             commands::start::<tauri::Wry>,
             commands::stop::<tauri::Wry>,

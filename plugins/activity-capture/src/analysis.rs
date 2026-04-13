@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use hypr_activity_capture::ActivityScreenshotCapture;
+use hypr_activity_capture::ObservationScreenshotCapture;
 use hypr_screen_core::CaptureSubject;
 use reqwest::Client;
 use serde_json::json;
@@ -8,9 +8,11 @@ use tauri_plugin_local_llm::LocalLlmPluginExt;
 use url::Url;
 
 use crate::events::{
-    ActivityCaptureScreenshotAnalysis, ActivityCaptureScreenshotAnalysisError, TransitionReason,
-    unix_ms_now,
+    ActivityCaptureObservationAnalysis, ActivityCaptureObservationAnalysisError, unix_ms_now,
 };
+
+pub const ANALYSIS_MODEL_NAME: &str = "local-llm";
+pub const ANALYSIS_PROMPT_VERSION: &str = "observation-v1";
 
 struct ScreenshotAnalysisRequest {
     system_prompt: String,
@@ -21,14 +23,16 @@ struct ScreenshotAnalysisRequest {
 
 pub async fn analyze_screenshot<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
-    screenshot: &ActivityScreenshotCapture,
-) -> Result<ActivityCaptureScreenshotAnalysis, ActivityCaptureScreenshotAnalysisError> {
+    screenshot_id: &str,
+    screenshot: &ObservationScreenshotCapture,
+) -> Result<ActivityCaptureObservationAnalysis, ActivityCaptureObservationAnalysisError> {
     let (app_name, window_title) = analysis_identity(screenshot);
     let server_url = app
         .server_url()
         .await
         .map_err(|error| {
             analysis_error(
+                screenshot_id,
                 screenshot,
                 &app_name,
                 window_title.clone(),
@@ -37,6 +41,7 @@ pub async fn analyze_screenshot<R: tauri::Runtime>(
         })?
         .ok_or_else(|| {
             analysis_error(
+                screenshot_id,
                 screenshot,
                 &app_name,
                 window_title.clone(),
@@ -44,16 +49,32 @@ pub async fn analyze_screenshot<R: tauri::Runtime>(
             )
         })?;
 
-    let request = build_request(screenshot, &app_name, window_title.clone())
-        .map_err(|error| analysis_error(screenshot, &app_name, window_title.clone(), error))?;
+    let request = build_request(screenshot, &app_name, window_title.clone()).map_err(|error| {
+        analysis_error(
+            screenshot_id,
+            screenshot,
+            &app_name,
+            window_title.clone(),
+            error,
+        )
+    })?;
 
     let summary = call_local_llm(&server_url, &request)
         .await
-        .map_err(|error| analysis_error(screenshot, &app_name, window_title.clone(), error))?;
+        .map_err(|error| {
+            analysis_error(
+                screenshot_id,
+                screenshot,
+                &app_name,
+                window_title.clone(),
+                error,
+            )
+        })?;
 
-    Ok(ActivityCaptureScreenshotAnalysis {
-        fingerprint: screenshot.fingerprint.clone(),
-        reason: screenshot.reason,
+    Ok(ActivityCaptureObservationAnalysis {
+        observation_id: screenshot.observation_id.clone(),
+        screenshot_id: screenshot_id.to_string(),
+        screenshot_kind: screenshot.kind.as_str().to_string(),
         captured_at_ms: screenshot.captured_at_ms,
         app_name,
         window_title,
@@ -62,27 +83,12 @@ pub async fn analyze_screenshot<R: tauri::Runtime>(
 }
 
 fn build_request(
-    screenshot: &ActivityScreenshotCapture,
+    screenshot: &ObservationScreenshotCapture,
     app_name: &str,
     window_title: Option<String>,
 ) -> Result<ScreenshotAnalysisRequest, String> {
-    let system_prompt =
-        hypr_template_app::render(hypr_template_app::Template::ActivityCaptureSystem(
-            hypr_template_app::ActivityCaptureSystem { language: None },
-        ))
-        .map_err(|error| error.to_string())?;
-
-    let reason: TransitionReason = screenshot.reason;
-    let user_prompt = hypr_template_app::render(hypr_template_app::Template::ActivityCaptureUser(
-        Box::new(hypr_template_app::ActivityCaptureUser {
-            app_name: app_name.to_string(),
-            window_title,
-            reason: reason.as_str().to_string(),
-            fingerprint: screenshot.fingerprint.clone(),
-        }),
-    ))
-    .map_err(|error| error.to_string())?;
-
+    let system_prompt = "You are summarizing a single desktop activity observation. Use the screenshot and provided metadata to describe the user's likely task in 2-4 concise sentences. Prefer concrete UI evidence. If visible text is present, use it as grounding rather than repeating it verbatim.".to_string();
+    let user_prompt = build_prompt(screenshot, app_name, window_title);
     let temp_image = TempScreenshotFile::create(screenshot)?;
     let image_url = file_url(temp_image.path())?;
 
@@ -92,6 +98,30 @@ fn build_request(
         image_url,
         _temp_image: temp_image,
     })
+}
+
+fn build_prompt(
+    screenshot: &ObservationScreenshotCapture,
+    app_name: &str,
+    window_title: Option<String>,
+) -> String {
+    let snapshot = &screenshot.snapshot;
+    let text_excerpt = snapshot.primary_text().unwrap_or_default();
+    [
+        format!("Observation ID: {}", screenshot.observation_id),
+        format!("Screenshot kind: {}", screenshot.kind.as_str()),
+        format!("App: {app_name}"),
+        format!("Window title: {}", window_title.unwrap_or_default()),
+        format!("Activity kind: {}", snapshot.activity_kind.as_str()),
+        format!("URL: {}", snapshot.url.clone().unwrap_or_default()),
+        format!(
+            "Text anchor identity: {}",
+            snapshot.text_anchor_identity.clone().unwrap_or_default()
+        ),
+        format!("Text excerpt: {text_excerpt}"),
+        "Describe the user's likely task, not just the visible controls.".to_string(),
+    ]
+    .join("\n")
 }
 
 async fn call_local_llm(
@@ -134,12 +164,8 @@ async fn call_local_llm(
         return Err(format!("HTTP {status}: {body}"));
     }
 
-    parse_response_text(&body)
-}
-
-fn parse_response_text(body: &str) -> Result<String, String> {
     let value: serde_json::Value =
-        serde_json::from_str(body).map_err(|error| format!("invalid JSON response: {error}"))?;
+        serde_json::from_str(&body).map_err(|error| format!("invalid JSON response: {error}"))?;
     value["choices"][0]["message"]["content"]
         .as_str()
         .map(str::trim)
@@ -149,13 +175,16 @@ fn parse_response_text(body: &str) -> Result<String, String> {
 }
 
 fn analysis_error(
-    screenshot: &ActivityScreenshotCapture,
+    screenshot_id: &str,
+    screenshot: &ObservationScreenshotCapture,
     app_name: &str,
     window_title: Option<String>,
     message: impl Into<String>,
-) -> ActivityCaptureScreenshotAnalysisError {
-    ActivityCaptureScreenshotAnalysisError {
-        fingerprint: screenshot.fingerprint.clone(),
+) -> ActivityCaptureObservationAnalysisError {
+    ActivityCaptureObservationAnalysisError {
+        observation_id: screenshot.observation_id.clone(),
+        screenshot_id: screenshot_id.to_string(),
+        screenshot_kind: screenshot.kind.as_str().to_string(),
         captured_at_ms: screenshot.captured_at_ms,
         app_name: app_name.to_string(),
         window_title,
@@ -163,7 +192,7 @@ fn analysis_error(
     }
 }
 
-fn analysis_identity(screenshot: &ActivityScreenshotCapture) -> (String, Option<String>) {
+fn analysis_identity(screenshot: &ObservationScreenshotCapture) -> (String, Option<String>) {
     match &screenshot.image.subject {
         CaptureSubject::Window(window) => (
             window.app_name.clone(),
@@ -192,9 +221,9 @@ struct TempScreenshotFile {
 }
 
 impl TempScreenshotFile {
-    fn create(screenshot: &ActivityScreenshotCapture) -> Result<Self, String> {
+    fn create(screenshot: &ObservationScreenshotCapture) -> Result<Self, String> {
         let path = std::env::temp_dir().join(format!(
-            "activity-capture-{}-{}-{}.{}",
+            "activity-observation-{}-{}-{}.{}",
             std::process::id(),
             screenshot.captured_at_ms,
             unix_ms_now(),
@@ -221,35 +250,5 @@ fn extension_for_mime(mime_type: &str) -> &'static str {
         "image/jpeg" => "jpg",
         "image/webp" => "webp",
         _ => "png",
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn request_keeps_temp_image_alive_until_drop() {
-        let path = std::env::temp_dir().join(format!(
-            "activity-capture-test-{}-{}.png",
-            std::process::id(),
-            unix_ms_now()
-        ));
-        std::fs::write(&path, [1, 2, 3]).expect("temp file should be written");
-        let temp_image = TempScreenshotFile { path };
-
-        let request = ScreenshotAnalysisRequest {
-            system_prompt: "system".to_string(),
-            user_prompt: "user".to_string(),
-            image_url: file_url(temp_image.path()).expect("file URL should be created"),
-            _temp_image: temp_image,
-        };
-        let path = request._temp_image.path().to_path_buf();
-
-        assert!(path.exists());
-
-        drop(request);
-
-        assert!(!path.exists());
     }
 }

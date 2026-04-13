@@ -6,7 +6,7 @@ import {
   type ActivityCaptureStatus,
 } from "@hypr/plugin-activity-capture";
 
-import { type DailyActivityAnalysis } from "./api";
+import { type DailyObservationAnalysis } from "./api";
 import { type ActivityCaptureEntry } from "./types";
 
 import { toTz } from "~/calendar/hooks";
@@ -20,7 +20,7 @@ export function formatTime(capturedAtMs: number, tz?: string) {
 }
 
 export function entryKey(entry: ActivityCaptureEntry) {
-  return `${entry.kind}:${entry.fingerprint}:${entry.capturedAtMs}`;
+  return `${entry.kind}:${entry.id}:${entry.capturedAtMs}`;
 }
 
 export function upsertEntry(
@@ -43,25 +43,25 @@ export function dateToMsRange(date: string, tz?: string): [number, number] {
 export function toEntry(
   payload: ActivityCapturePluginEvent,
 ): ActivityCaptureEntry | null {
-  if (payload.type === "activityCaptureScreenshotAnalysis") {
+  if (payload.type === "activityObservationAnalysisReady") {
     return {
       kind: "analysis",
       capturedAtMs: payload.analysis.capturedAtMs,
-      fingerprint: payload.analysis.fingerprint,
+      id: payload.analysis.screenshotId,
       payload: {
         appName: payload.analysis.appName,
         windowTitle: payload.analysis.windowTitle,
         summary: payload.analysis.summary,
-        reason: payload.analysis.reason,
+        reason: payload.analysis.screenshotKind,
       },
     };
   }
 
-  if (payload.type === "activityCaptureScreenshotAnalysisError") {
+  if (payload.type === "activityObservationAnalysisError") {
     return {
       kind: "error",
       capturedAtMs: payload.error.capturedAtMs,
-      fingerprint: payload.error.fingerprint,
+      id: payload.error.screenshotId,
       payload: {
         appName: payload.error.appName,
         windowTitle: payload.error.windowTitle,
@@ -74,31 +74,31 @@ export function toEntry(
 }
 
 function snapshotAnalysisToEntry(
-  analysis: DailyActivityAnalysis,
+  analysis: DailyObservationAnalysis,
 ): ActivityCaptureEntry {
   return {
     kind: "analysis",
     capturedAtMs: analysis.capturedAtMs,
-    fingerprint: analysis.fingerprint,
+    id: analysis.screenshotId,
     payload: {
       appName: analysis.appName,
       windowTitle: analysis.windowTitle,
       summary: analysis.summary,
-      reason: analysis.reason,
+      reason: analysis.screenshotKind,
     },
   };
 }
 
 export function upsertAnalysis(
-  current: DailyActivityAnalysis[],
-  next: DailyActivityAnalysis,
-): DailyActivityAnalysis[] {
+  current: DailyObservationAnalysis[],
+  next: DailyObservationAnalysis,
+): DailyObservationAnalysis[] {
   return [
     next,
     ...current.filter(
       (analysis) =>
         !(
-          analysis.fingerprint === next.fingerprint &&
+          analysis.screenshotId === next.screenshotId &&
           analysis.capturedAtMs === next.capturedAtMs
         ),
     ),
@@ -106,7 +106,7 @@ export function upsertAnalysis(
 }
 
 export function mergeEntries(
-  analyses: DailyActivityAnalysis[] | undefined,
+  analyses: DailyObservationAnalysis[] | undefined,
   liveEntries: ActivityCaptureEntry[],
 ) {
   return liveEntries.reduce(
@@ -119,12 +119,17 @@ export function emptyStatus(): ActivityCaptureStatus {
   return {
     isRunning: false,
     lastStateChangedAtMs: null,
-    lastSignal: null,
+    currentObservation: null,
+    lastObservationEvent: null,
     lastError: null,
-    lastScreenshotAnalysis: null,
-    lastScreenshotAnalysisError: null,
-    budget: {
-      minIntervalSecs: 0,
+    lastObservationAnalysis: null,
+    lastObservationAnalysisError: null,
+    config: {
+      pollIntervalMs: 0,
+      entryDwellMs: 0,
+      typingSettleMs: 0,
+      longTypingCheckpointMs: 0,
+      refreshIntervalMs: 0,
     },
     analyzeScreenshots: false,
     screenshotsToday: 0,
@@ -147,10 +152,21 @@ export function updateStatus(
     };
   }
 
-  if (payload.type === "activityCaptureSignal") {
+  if (
+    payload.type === "activityObservationStarted" ||
+    payload.type === "activityObservationCheckpointed"
+  ) {
     return {
       ...next,
-      lastSignal: payload.signal,
+      lastObservationEvent: payload.event,
+    };
+  }
+
+  if (payload.type === "activityObservationEnded") {
+    return {
+      ...next,
+      currentObservation: null,
+      lastObservationEvent: payload.event,
     };
   }
 
@@ -163,18 +179,18 @@ export function updateStatus(
     };
   }
 
-  if (payload.type === "activityCaptureScreenshotAnalysis") {
+  if (payload.type === "activityObservationAnalysisReady") {
     return {
       ...next,
-      lastScreenshotAnalysis: payload.analysis,
-      lastScreenshotAnalysisError: null,
+      lastObservationAnalysis: payload.analysis,
+      lastObservationAnalysisError: null,
     };
   }
 
-  if (payload.type === "activityCaptureScreenshotAnalysisError") {
+  if (payload.type === "activityObservationAnalysisError") {
     return {
       ...next,
-      lastScreenshotAnalysisError: payload.error,
+      lastObservationAnalysisError: payload.error,
     };
   }
 

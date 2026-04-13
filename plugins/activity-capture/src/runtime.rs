@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::{
     Arc, Mutex,
@@ -8,29 +8,32 @@ use std::time::Duration;
 
 use futures_util::StreamExt;
 use hypr_activity_capture::{
-    ActivityCapture, ActivityScreenshotCapture, CapturePolicy, PlatformCapture, ScreenshotConfig,
-    ScreenshotDecision, ScreenshotPolicy, WatchOptions, capture_screenshot,
+    ActivityCapture, BundleRule, CaptureAccess, CapturePolicy, ObservationReducer,
+    ObservationReducerConfig, ObservationScreenshotCapture, ObservationScreenshotRequest,
+    PlatformCapture, RawCaptureSample, WatchOptions, capture_screenshot,
 };
+use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 use tauri_specta::Event;
 
 use crate::{
-    analysis,
+    analysis::{self, ANALYSIS_MODEL_NAME, ANALYSIS_PROMPT_VERSION},
     events::{
-        ActivityCaptureBudget, ActivityCapturePluginEvent, ActivityCaptureRuntimeError,
-        ActivityCaptureScreenshotAnalysis, ActivityCaptureScreenshotAnalysisError,
-        ActivityCaptureSignal, ActivityCaptureStateChanged, ActivityCaptureStatus,
-        CaptureErrorKind, unix_ms_now,
+        ActivityCaptureConfig, ActivityCaptureObservation, ActivityCaptureObservationAnalysis,
+        ActivityCaptureObservationAnalysisError, ActivityCaptureObservationEvent,
+        ActivityCapturePluginEvent, ActivityCaptureRuntimeError, ActivityCaptureStateChanged,
+        ActivityCaptureStatus, ObservationEventKind, system_time_to_unix_ms, unix_ms_now,
     },
 };
 
 #[derive(Clone, Default)]
 struct LastKnown {
     state_changed_at_ms: Option<i64>,
-    signal: Option<ActivityCaptureSignal>,
+    current_observation: Option<ActivityCaptureObservation>,
+    observation_event: Option<ActivityCaptureObservationEvent>,
     error: Option<ActivityCaptureRuntimeError>,
-    screenshot_analysis: Option<ActivityCaptureScreenshotAnalysis>,
-    screenshot_analysis_error: Option<ActivityCaptureScreenshotAnalysisError>,
+    observation_analysis: Option<ActivityCaptureObservationAnalysis>,
+    observation_analysis_error: Option<ActivityCaptureObservationAnalysisError>,
 }
 
 const KNOWN_DESKTOP_APP_IDS: &[&str] = &[
@@ -60,7 +63,7 @@ impl SelfIdentity {
 
         if let Some(app_identifier) = normalize_identity(app_identifier) {
             excluded_app_ids.push(app_identifier.clone());
-            if is_known_desktop_app_id(&app_identifier) {
+            if KNOWN_DESKTOP_APP_IDS.contains(&app_identifier.as_str()) {
                 excluded_app_ids
                     .extend(KNOWN_DESKTOP_APP_IDS.iter().map(|value| value.to_string()));
             }
@@ -85,10 +88,6 @@ fn normalize_identity(value: Option<String>) -> Option<String> {
         .filter(|value| !value.is_empty())
 }
 
-fn is_known_desktop_app_id(app_id: &str) -> bool {
-    KNOWN_DESKTOP_APP_IDS.contains(&app_id)
-}
-
 fn dedupe_identities(values: Vec<String>) -> Vec<String> {
     let mut seen = HashSet::new();
     values
@@ -101,53 +100,57 @@ pub struct ActivityCaptureRuntime<R: tauri::Runtime> {
     app: tauri::AppHandle<R>,
     pool: Arc<SqlitePool>,
     policy: Mutex<CapturePolicy>,
-    screenshot_config: ScreenshotConfig,
+    config: ActivityCaptureConfig,
     analyze_screenshots: AtomicBool,
     running: AtomicBool,
     task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
-    screenshot_policy: Mutex<ScreenshotPolicy>,
-    latest_capture: Mutex<Option<ActivityScreenshotCapture>>,
+    reducer: Mutex<ObservationReducer>,
     last_known: Mutex<LastKnown>,
-    screenshot_task: Mutex<ScreenshotTaskState>,
-    recent_analyses: Mutex<HashMap<String, i64>>,
 }
 
 impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
     pub fn new(app: tauri::AppHandle<R>, pool: Arc<SqlitePool>) -> Self {
-        let screenshot_config = ScreenshotConfig {
-            excluded_app_ids: SelfIdentity::resolve(&app).excluded_app_ids,
-            ..ScreenshotConfig::default()
+        let excluded_app_ids = SelfIdentity::resolve(&app).excluded_app_ids;
+        let config = ActivityCaptureConfig {
+            poll_interval_ms: WATCH_POLL_INTERVAL_MS,
+            entry_dwell_ms: 1_200,
+            typing_settle_ms: 2_500,
+            long_typing_checkpoint_ms: 10_000,
+            refresh_interval_ms: 60_000,
         };
+
         Self {
             app,
             pool,
-            policy: Mutex::new(CapturePolicy::default()),
-            screenshot_config: screenshot_config.clone(),
+            policy: Mutex::new(CapturePolicy {
+                app_rules: excluded_app_ids
+                    .iter()
+                    .map(|bundle_id| BundleRule {
+                        bundle_id: bundle_id.clone(),
+                        access: CaptureAccess::None,
+                    })
+                    .collect(),
+                ..CapturePolicy::default()
+            }),
+            config,
             analyze_screenshots: AtomicBool::new(true),
             running: AtomicBool::new(false),
             task: Mutex::new(None),
-            screenshot_policy: Mutex::new(ScreenshotPolicy::new(screenshot_config)),
-            latest_capture: Mutex::new(None),
+            reducer: Mutex::new(ObservationReducer::new(ObservationReducerConfig {
+                entry_dwell_ms: config.entry_dwell_ms,
+                typing_settle_ms: config.typing_settle_ms,
+                long_typing_checkpoint_ms: config.long_typing_checkpoint_ms,
+                refresh_interval_ms: config.refresh_interval_ms,
+            })),
             last_known: Mutex::new(LastKnown::default()),
-            screenshot_task: Mutex::new(ScreenshotTaskState::default()),
-            recent_analyses: Mutex::new(HashMap::new()),
         }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn excluded_app_ids(&self) -> &[String] {
-        &self.screenshot_config.excluded_app_ids
     }
 
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
     }
 
-    pub fn configure(
-        &self,
-        _budget: Option<ActivityCaptureBudget>,
-        analyze_screenshots: Option<bool>,
-    ) -> Result<(), crate::Error> {
+    pub fn configure(&self, analyze_screenshots: Option<bool>) -> Result<(), crate::Error> {
         if let Some(analyze) = analyze_screenshots {
             self.analyze_screenshots.store(analyze, Ordering::SeqCst);
         }
@@ -177,11 +180,19 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         self.running.load(Ordering::SeqCst)
     }
 
-    pub fn latest_screenshot_analysis(&self) -> Option<ActivityCaptureScreenshotAnalysis> {
+    pub fn current_observation(&self) -> Option<ActivityCaptureObservation> {
         self.last_known
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .screenshot_analysis
+            .current_observation
+            .clone()
+    }
+
+    pub fn latest_observation_analysis(&self) -> Option<ActivityCaptureObservationAnalysis> {
+        self.last_known
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .observation_analysis
             .clone()
     }
 
@@ -191,7 +202,6 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .clone();
-
         let now = unix_ms_now();
         let one_hour_ago = now - 3_600_000;
         let today_start = now - (now % 86_400_000);
@@ -200,11 +210,9 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
             hypr_db_activity::count_screenshots_since(&self.pool, one_hour_ago)
                 .await
                 .unwrap_or(0);
-
         let screenshots_today = hypr_db_activity::count_screenshots_since(&self.pool, today_start)
             .await
             .unwrap_or(0);
-
         let storage_bytes = hypr_db_activity::total_screenshot_storage_bytes(&self.pool)
             .await
             .unwrap_or(0);
@@ -212,13 +220,12 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         ActivityCaptureStatus {
             is_running: self.is_running(),
             last_state_changed_at_ms: last.state_changed_at_ms,
-            last_signal: last.signal.clone(),
-            last_error: last.error.clone(),
-            last_screenshot_analysis: last.screenshot_analysis.clone(),
-            last_screenshot_analysis_error: last.screenshot_analysis_error.clone(),
-            budget: ActivityCaptureBudget {
-                min_interval_secs: self.screenshot_config.min_interval_secs,
-            },
+            current_observation: last.current_observation,
+            last_observation_event: last.observation_event,
+            last_error: last.error,
+            last_observation_analysis: last.observation_analysis,
+            last_observation_analysis_error: last.observation_analysis_error,
+            config: self.config,
             analyze_screenshots: self.analyze_screenshots.load(Ordering::SeqCst),
             screenshots_today,
             screenshots_this_hour,
@@ -226,80 +233,29 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         }
     }
 
-    pub async fn list_analyses_in_range(
+    pub async fn list_observation_analyses_in_range(
         &self,
         start_ms: i64,
         end_ms: i64,
-    ) -> Result<Vec<ActivityCaptureScreenshotAnalysis>, String> {
-        let rows =
-            hypr_db_activity::list_screenshot_analyses_in_range(&self.pool, start_ms, end_ms)
-                .await
-                .map_err(|e| e.to_string())?;
+    ) -> Result<Vec<ActivityCaptureObservationAnalysis>, String> {
+        let rows = hypr_db_activity::list_preferred_observation_analyses_in_range(
+            &self.pool, start_ms, end_ms,
+        )
+        .await
+        .map_err(|error| error.to_string())?;
 
         Ok(rows
             .into_iter()
-            .map(|row| ActivityCaptureScreenshotAnalysis {
-                fingerprint: row.fingerprint,
-                reason: hypr_activity_capture::TransitionReason::parse(&row.reason),
+            .map(|row| ActivityCaptureObservationAnalysis {
+                observation_id: row.observation_id,
+                screenshot_id: row.screenshot_id,
+                screenshot_kind: row.screenshot_kind,
                 captured_at_ms: row.captured_at_ms,
                 app_name: row.app_name,
-                window_title: if row.window_title.is_empty() {
-                    None
-                } else {
-                    Some(row.window_title)
-                },
-                summary: row.analysis_summary,
+                window_title: (!row.window_title.is_empty()).then_some(row.window_title),
+                summary: row.summary,
             })
             .collect())
-    }
-
-    async fn persist_signal(&self, signal: &ActivityCaptureSignal) {
-        let id = format!("sig-{}-{}", signal.occurred_at_ms, signal.sequence);
-        let snapshot = signal.snapshot.as_ref();
-        let reason = signal.reason.as_str();
-        let fingerprint = signal.fingerprint.as_deref().unwrap_or("");
-        let app_id = snapshot.map(|s| s.app.app_id.as_str()).unwrap_or("");
-        let bundle_id = snapshot
-            .and_then(|s| s.app.bundle_id.as_deref())
-            .unwrap_or("");
-        let app_name = snapshot.map(|s| s.app_name.as_str()).unwrap_or("");
-        let window_title = snapshot
-            .and_then(|s| s.window_title.as_deref())
-            .unwrap_or("");
-        let url = snapshot.and_then(|s| s.url.as_deref()).unwrap_or("");
-
-        let domain = url::Url::parse(url)
-            .ok()
-            .and_then(|u| u.host_str().map(|h| h.to_string()))
-            .unwrap_or_default();
-
-        if let Err(error) = hypr_db_activity::insert_signal(
-            &self.pool,
-            hypr_db_activity::InsertSignal {
-                id: &id,
-                occurred_at_ms: signal.occurred_at_ms,
-                transition_sequence: signal.sequence,
-                reason,
-                app_id,
-                bundle_id,
-                app_name,
-                activity_kind: snapshot.map(|s| s.activity_kind.as_str()).unwrap_or(""),
-                window_title,
-                url,
-                domain: &domain,
-                content_level: snapshot.map(|s| s.content_level.as_str()).unwrap_or(""),
-                source: snapshot.map(|s| s.source.as_str()).unwrap_or(""),
-                text_anchor_identity: snapshot
-                    .and_then(|s| s.text_anchor_identity.as_deref())
-                    .unwrap_or(""),
-                fingerprint,
-                payload_json: "{}",
-            },
-        )
-        .await
-        {
-            tracing::warn!(%error, "failed_to_persist_activity_signal");
-        }
     }
 
     pub fn start(self: &Arc<Self>) -> Result<(), crate::Error> {
@@ -309,7 +265,7 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
 
         let capture = PlatformCapture::with_policy(self.policy());
         let mut stream = capture.watch(WatchOptions {
-            poll_interval: Duration::from_millis(WATCH_POLL_INTERVAL_MS),
+            poll_interval: Duration::from_millis(self.config.poll_interval_ms),
             emit_initial: true,
         })?;
 
@@ -322,37 +278,23 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         if let Some(handle) = self.task.lock().unwrap_or_else(|e| e.into_inner()).take() {
             handle.abort();
         }
+
         let event = ActivityCapturePluginEvent::StateChanged {
             state: ActivityCaptureStateChanged {
                 is_running: true,
                 changed_at_ms,
             },
         };
-        if let Err(error) = event.emit(&self.app) {
-            tracing::error!(?error, "failed_to_emit_activity_capture_state_changed");
-        }
+        let _ = event.emit(&self.app);
 
         let runtime = Arc::clone(self);
         let handle = tauri::async_runtime::spawn(async move {
             while let Some(item) = stream.next().await {
                 match item {
-                    Ok(transition) => {
-                        runtime.handle_screenshot_transition(&transition);
-                        let signal = ActivityCaptureSignal::from(transition);
-                        runtime.persist_signal(&signal).await;
-                        runtime
-                            .last_known
-                            .lock()
-                            .unwrap_or_else(|e| e.into_inner())
-                            .signal = Some(signal.clone());
-                        let event = ActivityCapturePluginEvent::Signal { signal };
-                        if let Err(error) = event.emit(&runtime.app) {
-                            tracing::error!(?error, "failed_to_emit_activity_capture_signal");
-                        }
-                    }
+                    Ok(sample) => runtime.handle_capture_sample(sample).await,
                     Err(error) => {
                         let runtime_error = ActivityCaptureRuntimeError {
-                            kind: CaptureErrorKind::from(error.kind),
+                            kind: error.kind,
                             message: error.message,
                             occurred_at_ms: unix_ms_now(),
                         };
@@ -362,12 +304,10 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
                             last.error = Some(runtime_error.clone());
                             last.state_changed_at_ms = Some(runtime_error.occurred_at_ms);
                         }
-                        let event = ActivityCapturePluginEvent::Error {
+                        let _ = ActivityCapturePluginEvent::Error {
                             error: runtime_error,
-                        };
-                        if let Err(emit_error) = event.emit(&runtime.app) {
-                            tracing::error!(?emit_error, "failed_to_emit_activity_capture_error");
                         }
+                        .emit(&runtime.app);
                         break;
                     }
                 }
@@ -380,15 +320,13 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
                 .lock()
                 .unwrap_or_else(|e| e.into_inner())
                 .state_changed_at_ms = Some(changed_at_ms);
-            let event = ActivityCapturePluginEvent::StateChanged {
+            let _ = ActivityCapturePluginEvent::StateChanged {
                 state: ActivityCaptureStateChanged {
                     is_running: false,
                     changed_at_ms,
                 },
-            };
-            if let Err(error) = event.emit(&runtime.app) {
-                tracing::error!(?error, "failed_to_emit_activity_capture_state_changed");
             }
+            .emit(&runtime.app);
         });
 
         *self.task.lock().unwrap_or_else(|e| e.into_inner()) = Some(handle);
@@ -410,264 +348,246 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         if let Some(handle) = self.task.lock().unwrap_or_else(|e| e.into_inner()).take() {
             handle.abort();
         }
-        if let Some(handle) = self
-            .screenshot_task
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .handle
-            .take()
-        {
-            handle.abort();
-        }
-        let event = ActivityCapturePluginEvent::StateChanged {
+        let _ = ActivityCapturePluginEvent::StateChanged {
             state: ActivityCaptureStateChanged {
                 is_running: false,
                 changed_at_ms,
             },
-        };
-        if let Err(error) = event.emit(&self.app) {
-            tracing::error!(?error, "failed_to_emit_activity_capture_state_changed");
         }
+        .emit(&self.app);
     }
 
-    fn handle_screenshot_transition(
-        self: &Arc<Self>,
-        transition: &hypr_activity_capture::Transition,
-    ) {
-        let decision = {
-            let mut policy = self
-                .screenshot_policy
+    async fn handle_capture_sample(self: &Arc<Self>, sample: RawCaptureSample) {
+        let update = {
+            let mut reducer = self.reducer.lock().unwrap_or_else(|e| e.into_inner());
+            let update = reducer.ingest(sample.captured_at, sample.snapshot);
+            let current = reducer.current_observation().map(Into::into);
+            self.last_known
                 .lock()
-                .unwrap_or_else(|e| e.into_inner());
-            policy.on_transition(transition, unix_ms_now())
+                .unwrap_or_else(|e| e.into_inner())
+                .current_observation = current;
+            update
         };
 
-        match decision {
-            ScreenshotDecision::None => {}
-            ScreenshotDecision::CancelPending => self.clear_screenshot_task(),
-            ScreenshotDecision::Schedule(pending) => self.replace_screenshot_task(pending),
-            ScreenshotDecision::CancelAndSchedule(pending) => {
-                self.clear_screenshot_task();
-                self.replace_screenshot_task(pending);
-            }
-        }
-    }
-
-    fn clear_screenshot_task(&self) {
-        let mut task_state = self
-            .screenshot_task
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        task_state.pending_id = None;
-        if let Some(handle) = task_state.handle.take() {
-            handle.abort();
-        }
-    }
-
-    fn replace_screenshot_task(self: &Arc<Self>, pending: hypr_activity_capture::PendingCapture) {
-        let delay_ms = pending.due_at_ms.saturating_sub(unix_ms_now()).max(0) as u64;
-        let pending_id = pending.id;
-        let runtime = Arc::clone(self);
-        let handle = tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
-            runtime.fire_screenshot_capture(pending_id);
-        });
-
-        let mut task_state = self
-            .screenshot_task
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        if let Some(existing) = task_state.handle.take() {
-            existing.abort();
-        }
-        task_state.pending_id = Some(pending_id);
-        task_state.handle = Some(handle);
-    }
-
-    fn fire_screenshot_capture(self: &Arc<Self>, pending_id: u64) {
-        {
-            let mut task_state = self
-                .screenshot_task
+        for event in update.events {
+            self.persist_observation_event(&event).await;
+            let event_payload: ActivityCaptureObservationEvent = event.clone().into();
+            self.last_known
                 .lock()
-                .unwrap_or_else(|e| e.into_inner());
-            if task_state.pending_id == Some(pending_id) {
-                task_state.pending_id = None;
-                task_state.handle = None;
-            }
+                .unwrap_or_else(|e| e.into_inner())
+                .observation_event = Some(event_payload.clone());
+            let plugin_event = match event.kind {
+                ObservationEventKind::Started => ActivityCapturePluginEvent::ObservationStarted {
+                    event: event_payload,
+                },
+                ObservationEventKind::Checkpointed => {
+                    ActivityCapturePluginEvent::ObservationCheckpointed {
+                        event: event_payload,
+                    }
+                }
+                ObservationEventKind::Ended => ActivityCapturePluginEvent::ObservationEnded {
+                    event: event_payload,
+                },
+            };
+            let _ = plugin_event.emit(&self.app);
         }
 
-        let now_ms = unix_ms_now();
-        let pending = {
-            let mut policy = self
-                .screenshot_policy
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
-            match policy.fire(pending_id, now_ms) {
-                Some(p) => p,
-                None => return,
-            }
-        };
+        for request in update.capture_requests {
+            self.handle_screenshot_request(request).await;
+        }
+    }
 
-        let image = match capture_screenshot(&pending.target) {
+    async fn handle_screenshot_request(self: &Arc<Self>, request: ObservationScreenshotRequest) {
+        let image = match capture_screenshot(&request.target) {
             Ok(image) => image,
             Err(error) => {
-                tracing::warn!(pending_id, %error, "activity_screenshot_capture_failed");
+                let _ = self
+                    .reducer
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .acknowledge_capture(request.request_id, false, unix_ms_now());
+                tracing::warn!(%error, request_id = request.request_id, "activity_screenshot_capture_failed");
                 return;
             }
         };
 
         let captured_at_ms = image.captured_at_ms;
-        let capture = ActivityScreenshotCapture {
-            fingerprint: pending.fingerprint,
-            reason: pending.reason,
-            scheduled_at_ms: pending.scheduled_at_ms,
+        let capture = ObservationScreenshotCapture {
+            request_id: request.request_id,
+            observation_id: request.observation_id.clone(),
+            observation_key: request.observation_key.clone(),
+            fingerprint: request.snapshot.content_fingerprint(),
+            reason: request.kind.as_str().to_string(),
+            kind: request.kind,
+            scheduled_at_ms: request.scheduled_at_ms,
             captured_at_ms,
-            target: pending.target,
+            target: request.target,
+            snapshot: request.snapshot,
             image,
         };
 
-        tracing::info!(
-            fingerprint = %capture.fingerprint,
-            reason = ?capture.reason,
-            pid = capture.target.pid,
-            app_name = %capture.target.app_name,
-            title = capture.target.title.as_deref().unwrap_or_default(),
-            scheduled_at_ms = capture.scheduled_at_ms,
-            captured_at_ms = capture.captured_at_ms,
-            "activity_screenshot_capture_succeeded"
-        );
-
-        *self
-            .latest_capture
+        let _ = self
+            .reducer
             .lock()
-            .unwrap_or_else(|e| e.into_inner()) = Some(capture.clone());
+            .unwrap_or_else(|e| e.into_inner())
+            .acknowledge_capture(request.request_id, true, captured_at_ms);
 
-        if self.should_analyze(&capture) {
-            self.spawn_screenshot_analysis(capture);
-        } else {
-            self.spawn_screenshot_persist_only(capture);
+        let screenshot_id = screenshot_id_for(&capture);
+        if let Err(error) = persist_screenshot(&self.pool, &screenshot_id, &capture).await {
+            tracing::warn!(%error, "failed_to_persist_activity_screenshot");
+        }
+
+        if self.analyze_screenshots.load(Ordering::SeqCst) {
+            self.spawn_screenshot_analysis(screenshot_id, capture);
         }
     }
 
-    fn should_analyze(&self, capture: &ActivityScreenshotCapture) -> bool {
-        use hypr_activity_capture::TransitionReason;
-
-        if !self.analyze_screenshots.load(Ordering::SeqCst) {
-            return false;
-        }
-
-        if matches!(
-            capture.reason,
-            TransitionReason::TitleChanged | TransitionReason::UrlChanged
-        ) {
-            return false;
-        }
-
-        let now = unix_ms_now();
-        let dedup_window_ms: i64 = 5 * 60 * 1000;
-        let mut cache = self
-            .recent_analyses
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        cache.retain(|_, ts| now - *ts < dedup_window_ms);
-        if let Some(&last_ts) = cache.get(&capture.fingerprint) {
-            if now - last_ts < dedup_window_ms {
-                return false;
-            }
-        }
-        cache.insert(capture.fingerprint.clone(), now);
-
-        true
-    }
-
-    fn spawn_screenshot_persist_only(self: &Arc<Self>, capture: ActivityScreenshotCapture) {
-        let pool = Arc::clone(&self.pool);
-        tauri::async_runtime::spawn(async move {
-            if let Err(error) = persist_screenshot(&pool, &capture).await {
-                tracing::warn!(%error, "failed_to_persist_activity_screenshot");
-            }
-        });
-    }
-
-    fn spawn_screenshot_analysis(self: &Arc<Self>, capture: ActivityScreenshotCapture) {
+    fn spawn_screenshot_analysis(
+        self: &Arc<Self>,
+        screenshot_id: String,
+        capture: ObservationScreenshotCapture,
+    ) {
         let runtime = Arc::clone(self);
         tauri::async_runtime::spawn(async move {
-            if let Err(error) = persist_screenshot(&runtime.pool, &capture).await {
-                tracing::warn!(%error, "failed_to_persist_activity_screenshot");
-            }
-
-            let screenshot_id =
-                format!("ss-{}-{}", capture.captured_at_ms, capture.scheduled_at_ms);
-
-            match analysis::analyze_screenshot(&runtime.app, &capture).await {
+            match analysis::analyze_screenshot(&runtime.app, &screenshot_id, &capture).await {
                 Ok(analysis) => {
-                    if let Err(error) = hypr_db_activity::update_screenshot_analysis(
+                    if let Err(error) = hypr_db_activity::insert_observation_analysis(
                         &runtime.pool,
-                        &screenshot_id,
-                        &analysis.summary,
-                        unix_ms_now(),
+                        hypr_db_activity::InsertObservationAnalysis {
+                            id: &format!(
+                                "oa-{}-{}-{}",
+                                analysis.observation_id,
+                                analysis.screenshot_id,
+                                ANALYSIS_PROMPT_VERSION
+                            ),
+                            observation_id: &analysis.observation_id,
+                            screenshot_id: &analysis.screenshot_id,
+                            screenshot_kind: &analysis.screenshot_kind,
+                            captured_at_ms: analysis.captured_at_ms,
+                            model_name: ANALYSIS_MODEL_NAME,
+                            prompt_version: ANALYSIS_PROMPT_VERSION,
+                            app_name: &analysis.app_name,
+                            window_title: analysis.window_title.as_deref().unwrap_or(""),
+                            summary: &analysis.summary,
+                        },
                     )
                     .await
                     {
-                        tracing::warn!(%error, "failed_to_persist_screenshot_analysis");
+                        tracing::warn!(%error, "failed_to_persist_observation_analysis");
                     }
 
                     {
                         let mut last = runtime.last_known.lock().unwrap_or_else(|e| e.into_inner());
-                        last.screenshot_analysis = Some(analysis.clone());
-                        last.screenshot_analysis_error = None;
+                        last.observation_analysis = Some(analysis.clone());
+                        last.observation_analysis_error = None;
                     }
-                    let event = ActivityCapturePluginEvent::ScreenshotAnalysis { analysis };
-                    if let Err(error) = event.emit(&runtime.app) {
-                        tracing::error!(
-                            ?error,
-                            "failed_to_emit_activity_capture_screenshot_analysis"
-                        );
-                    }
+                    let _ = ActivityCapturePluginEvent::ObservationAnalysisReady { analysis }
+                        .emit(&runtime.app);
                 }
                 Err(error) => {
                     runtime
                         .last_known
                         .lock()
                         .unwrap_or_else(|e| e.into_inner())
-                        .screenshot_analysis_error = Some(error.clone());
-                    let event = ActivityCapturePluginEvent::ScreenshotAnalysisError { error };
-                    if let Err(emit_error) = event.emit(&runtime.app) {
-                        tracing::error!(
-                            ?emit_error,
-                            "failed_to_emit_activity_capture_screenshot_analysis_error"
-                        );
-                    }
+                        .observation_analysis_error = Some(error.clone());
+                    let _ = ActivityCapturePluginEvent::ObservationAnalysisError { error }
+                        .emit(&runtime.app);
                 }
             }
         });
     }
-}
 
-#[derive(Default)]
-struct ScreenshotTaskState {
-    pending_id: Option<u64>,
-    handle: Option<tauri::async_runtime::JoinHandle<()>>,
+    async fn persist_observation_event(&self, event: &hypr_activity_capture::ObservationEvent) {
+        let snapshot = event.snapshot.as_ref();
+        let app_id = snapshot.map(|s| s.app.app_id.as_str()).unwrap_or("");
+        let bundle_id = snapshot
+            .and_then(|s| s.app.bundle_id.as_deref())
+            .unwrap_or("");
+        let app_name = snapshot.map(|s| s.app_name.as_str()).unwrap_or("");
+        let window_title = snapshot
+            .and_then(|s| s.window_title.as_deref())
+            .unwrap_or("");
+        let url = snapshot.and_then(|s| s.url.as_deref()).unwrap_or("");
+        let domain = url::Url::parse(url)
+            .ok()
+            .and_then(|u| u.host_str().map(|h| h.to_string()))
+            .unwrap_or_default();
+        let snapshot_json = snapshot
+            .map(|value| serde_json::to_string(value).unwrap_or_else(|_| "{}".to_string()))
+            .unwrap_or_else(|| "{}".to_string());
+
+        if let Err(error) = hypr_db_activity::insert_observation_event(
+            &self.pool,
+            hypr_db_activity::InsertObservationEvent {
+                id: &event.id,
+                observation_id: &event.observation_id,
+                occurred_at_ms: system_time_to_unix_ms(event.occurred_at),
+                event_kind: event.kind.as_str(),
+                end_reason: event.end_reason.map(|value| value.as_str()),
+                change_class: event.change_class.map(|value| value.as_str()),
+                app_id,
+                bundle_id,
+                app_name,
+                activity_kind: snapshot.map(|s| s.activity_kind.as_str()).unwrap_or(""),
+                window_title,
+                url,
+                domain: &domain,
+                text_anchor_identity: snapshot
+                    .and_then(|s| s.text_anchor_identity.as_deref())
+                    .unwrap_or(""),
+                observation_key: &event.observation_key,
+                snapshot_json: &snapshot_json,
+            },
+        )
+        .await
+        {
+            tracing::warn!(%error, "failed_to_persist_observation_event");
+        }
+    }
 }
 
 async fn persist_screenshot(
     pool: &SqlitePool,
-    capture: &ActivityScreenshotCapture,
+    screenshot_id: &str,
+    capture: &ObservationScreenshotCapture,
 ) -> Result<(), sqlx::Error> {
-    let screenshot_id = format!("ss-{}-{}", capture.captured_at_ms, capture.scheduled_at_ms);
-    let signal_id = format!("sig-{}-{}", capture.scheduled_at_ms, capture.captured_at_ms);
+    let sha256 = Sha256::digest(&capture.image.image_bytes);
+    let sha256 = sha256
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>();
+    let snapshot_json =
+        serde_json::to_string(&capture.snapshot).unwrap_or_else(|_| "{}".to_string());
 
     hypr_db_activity::insert_screenshot(
         pool,
         hypr_db_activity::InsertScreenshot {
-            id: &screenshot_id,
-            signal_id: &signal_id,
-            fingerprint: &capture.fingerprint,
+            id: screenshot_id,
+            observation_id: &capture.observation_id,
+            screenshot_kind: capture.kind.as_str(),
+            scheduled_at_ms: capture.scheduled_at_ms,
             captured_at_ms: capture.captured_at_ms,
-            image_png: &capture.image.image_bytes,
+            app_name: &capture.target.app_name,
+            window_title: capture.target.title.as_deref().unwrap_or(""),
+            mime_type: &capture.image.mime_type,
+            width: capture.image.width as i64,
+            height: capture.image.height as i64,
+            sha256: &sha256,
+            image_blob: &capture.image.image_bytes,
+            snapshot_json: &snapshot_json,
         },
     )
     .await
+}
+
+fn screenshot_id_for(capture: &ObservationScreenshotCapture) -> String {
+    format!(
+        "ss-{}-{}-{}-{}",
+        capture.observation_id,
+        capture.kind.as_str(),
+        capture.captured_at_ms,
+        capture.request_id
+    )
 }
 
 #[cfg(test)]
@@ -702,33 +622,11 @@ mod tests {
     }
 
     #[test]
-    fn self_identity_adds_known_desktop_aliases() {
-        let identity = SelfIdentity::from_parts(Some("com.hyprnote.Hyprnote".to_string()), None);
-
-        assert!(
-            identity
-                .excluded_app_ids
-                .contains(&"com.hyprnote.dev".to_string())
-        );
-        assert!(
-            identity
-                .excluded_app_ids
-                .contains(&"com.hyprnote.stable".to_string())
-        );
-        assert!(
-            identity
-                .excluded_app_ids
-                .contains(&"com.hyprnote.Hyprnote".to_string())
-        );
-    }
-
-    #[test]
-    fn runtime_initializes_self_exclusions_from_app_identity() {
+    fn runtime_initializes_with_self_exclusions() {
         let app = tauri::test::mock_builder()
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .unwrap();
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let expected = SelfIdentity::resolve(&app.handle().clone());
         let runtime = ActivityCaptureRuntime::new(
             app.handle().clone(),
             Arc::new(
@@ -736,11 +634,6 @@ mod tests {
             ),
         );
 
-        assert_eq!(runtime.excluded_app_ids(), expected.excluded_app_ids);
-        if let Ok(current_exe) = std::env::current_exe() {
-            let current_exe = current_exe.to_string_lossy().to_string();
-            assert!(runtime.excluded_app_ids().contains(&current_exe));
-        }
-        drop(rt);
+        assert!(!runtime.policy().app_rules.is_empty());
     }
 }

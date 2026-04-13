@@ -14,25 +14,25 @@ async capabilities() : Promise<Result<ActivityCaptureCapabilities, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async snapshot() : Promise<Result<ActivityCaptureSnapshot | null, string>> {
+async currentObservation() : Promise<Result<ActivityCaptureObservation | null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:activity-capture|snapshot") };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:activity-capture|current_observation") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async latestScreenshotAnalysis() : Promise<Result<ActivityCaptureScreenshotAnalysis | null, string>> {
+async latestObservationAnalysis() : Promise<Result<ActivityCaptureObservationAnalysis | null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:activity-capture|latest_screenshot_analysis") };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:activity-capture|latest_observation_analysis") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async listAnalysesInRange(startMs: number, endMs: number) : Promise<Result<ActivityCaptureScreenshotAnalysis[], string>> {
+async listObservationAnalysesInRange(startMs: number, endMs: number) : Promise<Result<ActivityCaptureObservationAnalysis[], string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:activity-capture|list_analyses_in_range", { startMs, endMs }) };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:activity-capture|list_observation_analyses_in_range", { startMs, endMs }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -112,25 +112,26 @@ activityCapturePluginEvent: "plugin:activity-capture:activity-capture-plugin-eve
 /** user-defined types **/
 
 export type ActivityCaptureAppIdentity = { pid: number; appName: string; appId: string; appIdKind: AppIdKind; bundleId: string | null; executablePath: string | null }
-export type ActivityCaptureBudget = { minIntervalSecs: number }
 export type ActivityCaptureCapabilities = { canWatch: boolean; canCaptureVisibleText: boolean; canCaptureBrowserUrl: boolean; requiresAccessibilityPermission: boolean }
-export type ActivityCapturePluginEvent = { type: "activityCaptureStateChanged"; state: ActivityCaptureStateChanged } | { type: "activityCaptureSignal"; signal: ActivityCaptureSignal } | { type: "activityCaptureError"; error: ActivityCaptureRuntimeError } | { type: "activityCaptureScreenshotAnalysis"; analysis: ActivityCaptureScreenshotAnalysis } | { type: "activityCaptureScreenshotAnalysisError"; error: ActivityCaptureScreenshotAnalysisError }
+export type ActivityCaptureConfig = { pollIntervalMs: number; entryDwellMs: number; typingSettleMs: number; longTypingCheckpointMs: number; refreshIntervalMs: number }
+export type ActivityCaptureObservation = { observationId: string; observationKey: string; startedAtMs: number; lastSeenAtMs: number; lastCheckpointAtMs: number | null; lastTextChangeAtMs: number | null; typing: boolean; latestSnapshot: ActivityCaptureSnapshot }
+export type ActivityCaptureObservationAnalysis = { observationId: string; screenshotId: string; screenshotKind: string; capturedAtMs: number; appName: string; windowTitle: string | null; summary: string }
+export type ActivityCaptureObservationAnalysisError = { observationId: string; screenshotId: string; screenshotKind: string; capturedAtMs: number; appName: string; windowTitle: string | null; message: string }
+export type ActivityCaptureObservationEvent = { id: string; observationId: string; observationKey: string; kind: string; changeClass: string | null; endReason: string | null; occurredAtMs: number; startedAtMs: number; snapshot: ActivityCaptureSnapshot | null }
+export type ActivityCapturePluginEvent = { type: "activityCaptureStateChanged"; state: ActivityCaptureStateChanged } | { type: "activityObservationStarted"; event: ActivityCaptureObservationEvent } | { type: "activityObservationCheckpointed"; event: ActivityCaptureObservationEvent } | { type: "activityObservationEnded"; event: ActivityCaptureObservationEvent } | { type: "activityCaptureError"; error: ActivityCaptureRuntimeError } | { type: "activityObservationAnalysisReady"; analysis: ActivityCaptureObservationAnalysis } | { type: "activityObservationAnalysisError"; error: ActivityCaptureObservationAnalysisError }
 export type ActivityCaptureRuntimeError = { kind: CaptureErrorKind; message: string; occurredAtMs: number }
-export type ActivityCaptureScreenshotAnalysis = { fingerprint: string; reason: TransitionReason; capturedAtMs: number; appName: string; windowTitle: string | null; summary: string }
-export type ActivityCaptureScreenshotAnalysisError = { fingerprint: string; capturedAtMs: number; appName: string; windowTitle: string | null; message: string }
-export type ActivityCaptureSignal = { sequence: number; occurredAtMs: number; reason: TransitionReason; suppressedSnapshotCount: number; fingerprint: string | null; snapshot: ActivityCaptureSnapshot | null }
-export type ActivityCaptureSnapshot = { app: ActivityCaptureAppIdentity; activityKind: ActivityKind; capturedAtMs: number; pid: number; appName: string; bundleId: string | null; windowTitle: string | null; url: string | null; visibleText: string | null; textAnchorKind: TextAnchorKind | null; textAnchorIdentity: string | null; textAnchorText: string | null; textAnchorPrefix: string | null; textAnchorSuffix: string | null; textAnchorSelectedText: string | null; textAnchorConfidence: TextAnchorConfidence | null; contentLevel: ContentLevel; source: SnapshotSource }
+export type ActivityCaptureSnapshot = { app: ActivityCaptureAppIdentity; activityKind: ActivityKind; capturedAtMs: number; pid: number; appName: string; bundleId: string | null; focusedWindowId: number | null; windowTitle: string | null; url: string | null; visibleText: string | null; textAnchorKind: TextAnchorKind | null; textAnchorIdentity: string | null; textAnchorText: string | null; textAnchorPrefix: string | null; textAnchorSuffix: string | null; textAnchorSelectedText: string | null; textAnchorConfidence: TextAnchorConfidence | null; contentLevel: ContentLevel; source: SnapshotSource }
 export type ActivityCaptureStateChanged = { isRunning: boolean; changedAtMs: number }
-export type ActivityCaptureStatus = { isRunning: boolean; lastStateChangedAtMs: number | null; lastSignal: ActivityCaptureSignal | null; lastError: ActivityCaptureRuntimeError | null; lastScreenshotAnalysis: ActivityCaptureScreenshotAnalysis | null; lastScreenshotAnalysisError: ActivityCaptureScreenshotAnalysisError | null; budget: ActivityCaptureBudget; analyzeScreenshots: boolean; screenshotsToday: number; screenshotsThisHour: number; storageUsedMb: number }
+export type ActivityCaptureStatus = { isRunning: boolean; lastStateChangedAtMs: number | null; currentObservation: ActivityCaptureObservation | null; lastObservationEvent: ActivityCaptureObservationEvent | null; lastError: ActivityCaptureRuntimeError | null; lastObservationAnalysis: ActivityCaptureObservationAnalysis | null; lastObservationAnalysisError: ActivityCaptureObservationAnalysisError | null; config: ActivityCaptureConfig; analyzeScreenshots: boolean; screenshotsToday: number; screenshotsThisHour: number; storageUsedMb: number }
 export type ActivityKind = "foreground_window" | "browser" | "audio_session"
 export type AppIdKind = "bundle_id" | "executable_path" | "process_name" | "pid"
 export type CaptureErrorKind = "permission_denied" | "unsupported" | "temporarily_unavailable" | "platform"
-export type ConfigureInput = { budget: ActivityCaptureBudget | null; analyzeScreenshots: boolean | null }
+export type ConfigureInput = { analyzeScreenshots: boolean | null }
 export type ContentLevel = "metadata" | "url" | "full"
-export type DailyActivityAnalysis = { capturedAtMs: number; fingerprint: string; appName: string; windowTitle: string | null; reason: string; summary: string }
 export type DailyActivityAppStat = { appName: string; count: number }
-export type DailyActivityStats = { signalCount: number; screenshotCount: number; analysisCount: number; uniqueAppCount: number; firstSignalAtMs: number | null; lastSignalAtMs: number | null; topApps: DailyActivityAppStat[] }
-export type DailySummarySnapshot = { stats: DailyActivityStats; analyses: DailyActivityAnalysis[]; summary: StoredDailySummary | null; sourceCursorMs: number; sourceFingerprint: string }
+export type DailyActivityStats = { observationCount: number; screenshotCount: number; analysisCount: number; uniqueAppCount: number; firstObservationAtMs: number | null; lastObservationAtMs: number | null; topApps: DailyActivityAppStat[] }
+export type DailyObservationAnalysis = { capturedAtMs: number; observationId: string; screenshotId: string; screenshotKind: string; appName: string; windowTitle: string | null; summary: string }
+export type DailySummarySnapshot = { stats: DailyActivityStats; analyses: DailyObservationAnalysis[]; summary: StoredDailySummary | null; sourceCursorMs: number; sourceFingerprint: string }
 export type DailySummaryTimelineItem = { time: string; summary: string }
 export type DailySummaryTopic = { title: string; summary: string }
 export type LoadDailySummarySnapshotInput = { date: string; startMs: number; endMs: number }
@@ -139,7 +140,6 @@ export type SnapshotSource = "accessibility" | "workspace"
 export type StoredDailySummary = { id: string; date: string; content: string; timeline: DailySummaryTimelineItem[]; topics: DailySummaryTopic[]; status: string; sourceCursorMs: number; sourceFingerprint: string; generatedAt: string; generationError: string; updatedAt: string }
 export type TextAnchorConfidence = "high" | "medium" | "low"
 export type TextAnchorKind = "focused_edit" | "selected_text" | "focused_element" | "document" | "none"
-export type TransitionReason = "started" | "idle" | "app_changed" | "activity_kind_changed" | "url_changed" | "title_changed" | "text_anchor_changed" | "content_changed"
 
 /** tauri-specta globals **/
 

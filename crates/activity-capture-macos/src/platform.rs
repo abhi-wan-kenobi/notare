@@ -2,7 +2,8 @@
 
 use hypr_activity_capture_interface::{
     ActivityCapture, AppIdKind, AppIdentity, Capabilities, CaptureAccess, CaptureError,
-    CapturePolicy, CaptureStream, Snapshot, SnapshotSource, SnapshotSpec, TextAnchor, WatchOptions,
+    CapturePolicy, CaptureStream, NormalizedSnapshot, NormalizedSnapshotSpec, SnapshotSource,
+    TextAnchor, WatchOptions,
 };
 use objc2::rc::autoreleasepool;
 use objc2_application_services::{AXIsProcessTrusted, AXUIElement};
@@ -33,7 +34,7 @@ impl MacosCapture {
         Self { policy }
     }
 
-    pub(crate) fn capture_snapshot(&self) -> Result<Option<Snapshot>, CaptureError> {
+    pub(crate) fn capture_snapshot(&self) -> Result<Option<NormalizedSnapshot>, CaptureError> {
         autoreleasepool(|_| {
             let Some(application) = frontmost::resolve() else {
                 return Ok(None);
@@ -59,18 +60,21 @@ impl MacosCapture {
                 return Ok(None);
             }
             if app_access == CaptureAccess::Metadata {
-                return Ok(Some(Snapshot::from_spec(SnapshotSpec {
-                    captured_at: std::time::SystemTime::now(),
-                    app,
-                    activity_kind: hypr_activity_capture_interface::ActivityKind::ForegroundWindow,
-                    access: app_access,
-                    source: SnapshotSource::Workspace,
-                    focused_window_id: None,
-                    window_title: None,
-                    url: None,
-                    visible_text: None,
-                    text_anchor: None,
-                })));
+                return Ok(Some(NormalizedSnapshot::from_spec(
+                    NormalizedSnapshotSpec {
+                        captured_at: std::time::SystemTime::now(),
+                        app,
+                        activity_kind:
+                            hypr_activity_capture_interface::ActivityKind::ForegroundWindow,
+                        access: app_access,
+                        source: SnapshotSource::Workspace,
+                        focused_window_id: None,
+                        window_title: None,
+                        url: None,
+                        visible_text: None,
+                        text_anchor: None,
+                    },
+                )));
             }
 
             ensure_trusted()?;
@@ -83,18 +87,21 @@ impl MacosCapture {
                 .or_else(|_| copy_element_attribute(&ax_application, "AXMainWindow"))?;
 
             let Some(focused_window) = focused_window else {
-                return Ok(Some(Snapshot::from_spec(SnapshotSpec {
-                    captured_at: std::time::SystemTime::now(),
-                    app,
-                    activity_kind: hypr_activity_capture_interface::ActivityKind::ForegroundWindow,
-                    access: app_access,
-                    source: SnapshotSource::Workspace,
-                    focused_window_id: None,
-                    window_title: None,
-                    url: None,
-                    visible_text: None,
-                    text_anchor: None,
-                })));
+                return Ok(Some(NormalizedSnapshot::from_spec(
+                    NormalizedSnapshotSpec {
+                        captured_at: std::time::SystemTime::now(),
+                        app,
+                        activity_kind:
+                            hypr_activity_capture_interface::ActivityKind::ForegroundWindow,
+                        access: app_access,
+                        source: SnapshotSource::Workspace,
+                        focused_window_id: None,
+                        window_title: None,
+                        url: None,
+                        visible_text: None,
+                        text_anchor: None,
+                    },
+                )));
             };
 
             if bool_attribute(&focused_window, "AXMinimized")? == Some(true) {
@@ -156,7 +163,7 @@ impl ActivityCapture for MacosCapture {
         }
     }
 
-    fn snapshot(&self) -> Result<Option<Snapshot>, CaptureError> {
+    fn snapshot(&self) -> Result<Option<NormalizedSnapshot>, CaptureError> {
         self.capture_snapshot()
     }
 
@@ -183,7 +190,7 @@ fn build_snapshot(
     visible_text: Option<String>,
     text_anchor: Option<TextAnchorCapture>,
     url_override: Option<String>,
-) -> Snapshot {
+) -> NormalizedSnapshot {
     let fields = sanitize_snapshot_fields(
         &app.app_name,
         app.bundle_id.as_deref(),
@@ -192,7 +199,7 @@ fn build_snapshot(
         text_anchor,
     );
 
-    Snapshot::from_spec(SnapshotSpec {
+    NormalizedSnapshot::from_spec(NormalizedSnapshotSpec {
         captured_at: std::time::SystemTime::now(),
         activity_kind: decision.activity_kind,
         access: decision.access,

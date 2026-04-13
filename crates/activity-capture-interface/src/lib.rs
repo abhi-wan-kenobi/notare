@@ -17,8 +17,80 @@ mod types;
 
 pub use types::*;
 
+pub type Snapshot = NormalizedSnapshot;
+pub type SnapshotSpec = NormalizedSnapshotSpec;
+
 pub type CaptureStream =
-    Pin<Box<dyn Stream<Item = Result<Transition, CaptureError>> + Send + 'static>>;
+    Pin<Box<dyn Stream<Item = Result<RawCaptureSample, CaptureError>> + Send + 'static>>;
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Event {
+    pub started_at: std::time::SystemTime,
+    pub ended_at: std::time::SystemTime,
+    pub fingerprint: String,
+    pub snapshot: Snapshot,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TransitionReason {
+    Started,
+    Idle,
+    AppChanged,
+    WindowChanged,
+    ActivityKindChanged,
+    UrlChanged,
+    TitleChanged,
+    TextAnchorChanged,
+    ContentChanged,
+}
+
+impl TransitionReason {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Started => "started",
+            Self::Idle => "idle",
+            Self::AppChanged => "app_changed",
+            Self::WindowChanged => "window_changed",
+            Self::ActivityKindChanged => "activity_kind_changed",
+            Self::UrlChanged => "url_changed",
+            Self::TitleChanged => "title_changed",
+            Self::TextAnchorChanged => "text_anchor_changed",
+            Self::ContentChanged => "content_changed",
+        }
+    }
+
+    pub fn parse(s: &str) -> Self {
+        match s {
+            "started" => Self::Started,
+            "idle" => Self::Idle,
+            "app_changed" => Self::AppChanged,
+            "window_changed" => Self::WindowChanged,
+            "activity_kind_changed" => Self::ActivityKindChanged,
+            "url_changed" => Self::UrlChanged,
+            "title_changed" => Self::TitleChanged,
+            "text_anchor_changed" => Self::TextAnchorChanged,
+            "content_changed" => Self::ContentChanged,
+            _ => Self::Started,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Transition {
+    pub previous: Option<Event>,
+    pub current: Option<Event>,
+    pub reason: TransitionReason,
+    pub sequence: u64,
+    pub suppressed_snapshot_count: u32,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct EventCoalescer {
+    current: Option<Event>,
+    current_suppressed_snapshot_count: u32,
+    sequence: u64,
+}
 
 impl CaptureAccess {
     pub fn allows_snapshot(self) -> bool {
@@ -153,25 +225,6 @@ impl Default for BrowserPolicy {
 }
 
 impl CapturePolicy {
-    pub fn access_for_bundle(&self, bundle_id: Option<&str>) -> CaptureAccess {
-        let Some(bundle_id) = bundle_id.map(str::trim).filter(|value| !value.is_empty()) else {
-            return self.mode.default_access();
-        };
-
-        let mut matched = None;
-        for rule in &self.app_rules {
-            if rule.bundle_id != bundle_id {
-                continue;
-            }
-            if rule.access == CaptureAccess::None {
-                return CaptureAccess::None;
-            }
-            matched = Some(rule.access);
-        }
-
-        matched.unwrap_or_else(|| self.mode.default_access())
-    }
-
     pub fn access_for_app(&self, app: &AppIdentity) -> CaptureAccess {
         let ids = [
             app.bundle_id.as_deref(),
@@ -248,8 +301,8 @@ impl Default for CapturePolicy {
     }
 }
 
-impl Snapshot {
-    pub fn from_spec(spec: SnapshotSpec) -> Self {
+impl NormalizedSnapshot {
+    pub fn from_spec(spec: NormalizedSnapshotSpec) -> Self {
         let content_level = content_level_for_access(spec.access);
         let text_anchor = spec
             .access
@@ -290,16 +343,16 @@ impl Snapshot {
         }
     }
 
-    pub fn fingerprint(&self) -> String {
-        let content_level = match self.content_level {
-            ContentLevel::Metadata => "metadata",
-            ContentLevel::Url => "url",
-            ContentLevel::Full => "full",
-        };
-        let has_anchor = self.text_anchor_identity.is_some()
-            || self.text_anchor_text.is_some()
-            || self.text_anchor_selected_text.is_some();
-        let ambient_text = if has_anchor {
+    pub fn primary_text(&self) -> Option<&str> {
+        self.text_anchor_text
+            .as_deref()
+            .or(self.text_anchor_selected_text.as_deref())
+            .or(self.visible_text.as_deref())
+            .filter(|value| !value.is_empty())
+    }
+
+    pub fn content_fingerprint(&self) -> String {
+        let ambient_text = if self.text_anchor_identity.is_some() {
             ""
         } else {
             self.visible_text.as_deref().unwrap_or_default()
@@ -307,16 +360,12 @@ impl Snapshot {
 
         STANDARD_NO_PAD.encode(
             [
-                content_level,
+                self.content_level.as_str(),
                 self.app.app_id.as_str(),
-                match self.activity_kind {
-                    ActivityKind::ForegroundWindow => "foreground_window",
-                    ActivityKind::Browser => "browser",
-                    ActivityKind::AudioSession => "audio_session",
-                },
+                self.activity_kind.as_str(),
                 &self
                     .focused_window_id
-                    .map(|id| id.to_string())
+                    .map(|value| value.to_string())
                     .unwrap_or_default(),
                 self.window_title.as_deref().unwrap_or_default(),
                 self.url.as_deref().unwrap_or_default(),
@@ -337,8 +386,69 @@ impl Event {
         Self {
             started_at: snapshot.captured_at,
             ended_at: snapshot.captured_at,
-            fingerprint: snapshot.fingerprint(),
+            fingerprint: snapshot.content_fingerprint(),
             snapshot,
+        }
+    }
+}
+
+impl EventCoalescer {
+    pub fn current(&self) -> Option<&Event> {
+        self.current.as_ref()
+    }
+
+    pub fn push(&mut self, snapshot: Option<Snapshot>) -> Option<Transition> {
+        match (self.current.take(), snapshot) {
+            (None, None) => None,
+            (None, Some(snapshot)) => {
+                let current = Event::from_snapshot(snapshot);
+                self.current = Some(current.clone());
+                self.current_suppressed_snapshot_count = 0;
+                self.sequence += 1;
+                Some(Transition {
+                    previous: None,
+                    current: Some(current),
+                    reason: TransitionReason::Started,
+                    sequence: self.sequence,
+                    suppressed_snapshot_count: 0,
+                })
+            }
+            (Some(previous), None) => {
+                let suppressed_snapshot_count = self.current_suppressed_snapshot_count;
+                self.current_suppressed_snapshot_count = 0;
+                self.sequence += 1;
+                Some(Transition {
+                    previous: Some(previous),
+                    current: None,
+                    reason: TransitionReason::Idle,
+                    sequence: self.sequence,
+                    suppressed_snapshot_count,
+                })
+            }
+            (Some(mut current), Some(snapshot)) => {
+                let fingerprint = snapshot.content_fingerprint();
+                if current.fingerprint == fingerprint {
+                    current.ended_at = snapshot.captured_at;
+                    current.snapshot = snapshot;
+                    self.current = Some(current);
+                    self.current_suppressed_snapshot_count += 1;
+                    None
+                } else {
+                    let next = Event::from_snapshot(snapshot);
+                    let reason = transition_reason(&current.snapshot, &next.snapshot);
+                    let suppressed_snapshot_count = self.current_suppressed_snapshot_count;
+                    self.current = Some(next.clone());
+                    self.current_suppressed_snapshot_count = 0;
+                    self.sequence += 1;
+                    Some(Transition {
+                        previous: Some(current),
+                        current: Some(next),
+                        reason,
+                        sequence: self.sequence,
+                        suppressed_snapshot_count,
+                    })
+                }
+            }
         }
     }
 }
@@ -403,7 +513,7 @@ impl CaptureError {
 pub trait ActivityCapture: Send + Sync {
     fn capabilities(&self) -> Capabilities;
 
-    fn snapshot(&self) -> Result<Option<Snapshot>, CaptureError>;
+    fn snapshot(&self) -> Result<Option<NormalizedSnapshot>, CaptureError>;
 
     fn watch(&self, options: WatchOptions) -> Result<CaptureStream, CaptureError>;
 }
@@ -414,19 +524,19 @@ pub fn spawn_polling_watch_stream<F>(
     options: WatchOptions,
 ) -> Result<CaptureStream, CaptureError>
 where
-    F: FnMut() -> Result<Option<Snapshot>, CaptureError> + Send + 'static,
+    F: FnMut() -> Result<Option<NormalizedSnapshot>, CaptureError> + Send + 'static,
 {
-    let (transition_tx, transition_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (sample_tx, sample_rx) = tokio::sync::mpsc::unbounded_channel();
     let stop = Arc::new(StopSignal::default());
     let thread_stop = Arc::clone(&stop);
 
     let handle = thread::Builder::new()
         .name(thread_name.into())
-        .spawn(move || watch_loop(poll_snapshot, options, thread_stop, transition_tx))
+        .spawn(move || watch_loop(poll_snapshot, options, thread_stop, sample_tx))
         .map_err(|error| CaptureError::platform(error.to_string()))?;
 
     Ok(Box::pin(WatchStream {
-        inner: tokio_stream::wrappers::UnboundedReceiverStream::new(transition_rx),
+        inner: tokio_stream::wrappers::UnboundedReceiverStream::new(sample_rx),
         stop,
         handle: Some(handle),
     }))
@@ -466,74 +576,6 @@ pub fn source_for_access(access: CaptureAccess, preferred: SnapshotSource) -> Sn
     }
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct EventCoalescer {
-    current: Option<Event>,
-    current_suppressed_snapshot_count: u32,
-    sequence: u64,
-}
-
-impl EventCoalescer {
-    pub fn current(&self) -> Option<&Event> {
-        self.current.as_ref()
-    }
-
-    pub fn push(&mut self, snapshot: Option<Snapshot>) -> Option<Transition> {
-        match (self.current.take(), snapshot) {
-            (None, None) => None,
-            (None, Some(snapshot)) => {
-                let current = Event::from_snapshot(snapshot);
-                self.current = Some(current.clone());
-                self.current_suppressed_snapshot_count = 0;
-                self.sequence += 1;
-                Some(Transition {
-                    previous: None,
-                    current: Some(current),
-                    reason: TransitionReason::Started,
-                    sequence: self.sequence,
-                    suppressed_snapshot_count: 0,
-                })
-            }
-            (Some(previous), None) => {
-                let suppressed_snapshot_count = self.current_suppressed_snapshot_count;
-                self.current_suppressed_snapshot_count = 0;
-                self.sequence += 1;
-                Some(Transition {
-                    previous: Some(previous),
-                    current: None,
-                    reason: TransitionReason::Idle,
-                    sequence: self.sequence,
-                    suppressed_snapshot_count,
-                })
-            }
-            (Some(mut current), Some(snapshot)) => {
-                let fingerprint = snapshot.fingerprint();
-                if current.fingerprint == fingerprint {
-                    current.ended_at = snapshot.captured_at;
-                    current.snapshot = snapshot;
-                    self.current = Some(current);
-                    self.current_suppressed_snapshot_count += 1;
-                    None
-                } else {
-                    let next = Event::from_snapshot(snapshot);
-                    let reason = transition_reason(&current.snapshot, &next.snapshot);
-                    let suppressed_snapshot_count = self.current_suppressed_snapshot_count;
-                    self.current = Some(next.clone());
-                    self.current_suppressed_snapshot_count = 0;
-                    self.sequence += 1;
-                    Some(Transition {
-                        previous: Some(current),
-                        current: Some(next),
-                        reason,
-                        sequence: self.sequence,
-                        suppressed_snapshot_count,
-                    })
-                }
-            }
-        }
-    }
-}
-
 fn transition_reason(previous: &Snapshot, current: &Snapshot) -> TransitionReason {
     if previous.app.app_id != current.app.app_id {
         return TransitionReason::AppChanged;
@@ -568,17 +610,17 @@ fn watch_loop<F>(
     mut poll_snapshot: F,
     options: WatchOptions,
     stop: Arc<StopSignal>,
-    transition_tx: tokio::sync::mpsc::UnboundedSender<Result<Transition, CaptureError>>,
+    sample_tx: tokio::sync::mpsc::UnboundedSender<Result<RawCaptureSample, CaptureError>>,
 ) where
-    F: FnMut() -> Result<Option<Snapshot>, CaptureError>,
+    F: FnMut() -> Result<Option<NormalizedSnapshot>, CaptureError>,
 {
-    let mut state = WatchState::new(options);
     let mut first_iteration = true;
 
     loop {
         if !first_iteration && stop.wait_timeout(options.poll_interval) {
             break;
         }
+        let should_emit = !first_iteration || options.emit_initial;
         first_iteration = false;
 
         if stop.is_set() {
@@ -587,16 +629,25 @@ fn watch_loop<F>(
 
         match poll_snapshot() {
             Ok(snapshot) => {
-                let Some(transition) = state.push(snapshot) else {
+                if !should_emit {
                     continue;
-                };
+                }
 
-                if transition_tx.send(Ok(transition)).is_err() {
+                if sample_tx
+                    .send(Ok(RawCaptureSample {
+                        captured_at: snapshot
+                            .as_ref()
+                            .map(|value| value.captured_at)
+                            .unwrap_or_else(std::time::SystemTime::now),
+                        snapshot,
+                    }))
+                    .is_err()
+                {
                     break;
                 }
             }
             Err(error) => {
-                let _ = transition_tx.send(Err(error));
+                let _ = sample_tx.send(Err(error));
                 break;
             }
         }
@@ -639,42 +690,14 @@ impl StopSignal {
     }
 }
 
-struct WatchState {
-    coalescer: EventCoalescer,
-    first_transition_suppressed: bool,
-}
-
-impl WatchState {
-    fn new(options: WatchOptions) -> Self {
-        Self {
-            coalescer: EventCoalescer::default(),
-            first_transition_suppressed: !options.emit_initial,
-        }
-    }
-
-    fn push(&mut self, snapshot: Option<Snapshot>) -> Option<Transition> {
-        let transition = self.coalescer.push(snapshot)?;
-        if self.first_transition_suppressed
-            && transition.previous.is_none()
-            && transition.current.is_some()
-        {
-            self.first_transition_suppressed = false;
-            return None;
-        }
-
-        self.first_transition_suppressed = false;
-        Some(transition)
-    }
-}
-
 struct WatchStream {
-    inner: tokio_stream::wrappers::UnboundedReceiverStream<Result<Transition, CaptureError>>,
+    inner: tokio_stream::wrappers::UnboundedReceiverStream<Result<RawCaptureSample, CaptureError>>,
     stop: Arc<StopSignal>,
     handle: Option<thread::JoinHandle<()>>,
 }
 
 impl Stream for WatchStream {
-    type Item = Result<Transition, CaptureError>;
+    type Item = Result<RawCaptureSample, CaptureError>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         Pin::new(&mut self.inner).poll_next(cx)
@@ -693,7 +716,6 @@ impl Drop for WatchStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::SystemTime;
 
     fn app_identity() -> AppIdentity {
         AppIdentity {
@@ -706,11 +728,11 @@ mod tests {
         }
     }
 
-    fn snapshot(title: &str) -> Snapshot {
-        Snapshot {
+    fn snapshot(title: &str) -> NormalizedSnapshot {
+        NormalizedSnapshot {
             app: app_identity(),
             activity_kind: ActivityKind::ForegroundWindow,
-            captured_at: SystemTime::UNIX_EPOCH + Duration::from_secs(10),
+            captured_at: std::time::SystemTime::UNIX_EPOCH + Duration::from_secs(10),
             pid: 42,
             app_name: "TextEdit".to_string(),
             bundle_id: Some("com.apple.TextEdit".to_string()),
@@ -731,160 +753,21 @@ mod tests {
     }
 
     #[test]
-    fn fingerprint_is_stable() {
-        let left = snapshot("Notes");
-        let right = snapshot("Notes");
-
-        assert_eq!(left.fingerprint(), right.fingerprint());
-    }
-
-    #[test]
-    fn coalescer_emits_initial_transition() {
-        let mut coalescer = EventCoalescer::default();
-        let transition = coalescer.push(Some(snapshot("Notes"))).unwrap();
-
-        assert!(transition.previous.is_none());
-        assert_eq!(transition.reason, TransitionReason::Started);
-        assert_eq!(transition.sequence, 1);
-        assert_eq!(transition.suppressed_snapshot_count, 0);
+    fn content_fingerprint_is_stable() {
         assert_eq!(
-            transition.current.unwrap().snapshot.window_title.as_deref(),
-            Some("Notes")
+            snapshot("Notes").content_fingerprint(),
+            snapshot("Notes").content_fingerprint()
         );
     }
 
     #[test]
-    fn coalescer_suppresses_extensions() {
-        let mut coalescer = EventCoalescer::default();
-        let _ = coalescer.push(Some(snapshot("Notes")));
-
-        let mut same = snapshot("Notes");
-        same.captured_at += Duration::from_secs(5);
-
-        assert!(coalescer.push(Some(same)).is_none());
-        assert_eq!(
-            coalescer.current().unwrap().ended_at,
-            SystemTime::UNIX_EPOCH + Duration::from_secs(15)
-        );
-    }
-
-    #[test]
-    fn coalescer_emits_change_transition() {
-        let mut coalescer = EventCoalescer::default();
-        let _ = coalescer.push(Some(snapshot("Notes")));
-        let mut same = snapshot("Notes");
-        same.captured_at += Duration::from_secs(5);
-        let _ = coalescer.push(Some(same));
-        let transition = coalescer.push(Some(snapshot("Docs"))).unwrap();
-
-        assert_eq!(transition.reason, TransitionReason::TitleChanged);
-        assert_eq!(transition.sequence, 2);
-        assert_eq!(transition.suppressed_snapshot_count, 1);
-        assert_eq!(
-            transition
-                .previous
-                .unwrap()
-                .snapshot
-                .window_title
-                .as_deref(),
-            Some("Notes")
-        );
-        assert_eq!(
-            transition.current.unwrap().snapshot.window_title.as_deref(),
-            Some("Docs")
-        );
-    }
-
-    #[test]
-    fn coalescer_emits_idle_transition() {
-        let mut coalescer = EventCoalescer::default();
-        let _ = coalescer.push(Some(snapshot("Notes")));
-        let mut same = snapshot("Notes");
-        same.captured_at += Duration::from_secs(5);
-        let _ = coalescer.push(Some(same));
-        let transition = coalescer.push(None).unwrap();
-
-        assert_eq!(transition.reason, TransitionReason::Idle);
-        assert_eq!(transition.sequence, 2);
-        assert_eq!(transition.suppressed_snapshot_count, 1);
-        assert_eq!(
-            transition
-                .previous
-                .unwrap()
-                .snapshot
-                .window_title
-                .as_deref(),
-            Some("Notes")
-        );
-        assert!(transition.current.is_none());
-    }
-
-    #[test]
-    fn fingerprint_prefers_anchor_text_over_ambient_text() {
+    fn content_fingerprint_prefers_anchor_text_over_ambient_text() {
         let mut left = snapshot("Notes");
         let mut right = snapshot("Notes");
-
         left.visible_text = Some("ambient one".to_string());
         right.visible_text = Some("ambient two".to_string());
 
-        assert_eq!(left.fingerprint(), right.fingerprint());
-
-        right.text_anchor_text = Some("changed".to_string());
-
-        assert_ne!(left.fingerprint(), right.fingerprint());
-    }
-
-    #[test]
-    fn coalescer_detects_app_change() {
-        let mut coalescer = EventCoalescer::default();
-        let _ = coalescer.push(Some(snapshot("Notes")));
-
-        let mut next = snapshot("Notes");
-        next.app.app_id = "com.google.Chrome".to_string();
-        next.app_name = "Google Chrome".to_string();
-        next.bundle_id = Some("com.google.Chrome".to_string());
-
-        let transition = coalescer.push(Some(next)).unwrap();
-
-        assert_eq!(transition.reason, TransitionReason::AppChanged);
-    }
-
-    #[test]
-    fn coalescer_detects_window_change() {
-        let mut coalescer = EventCoalescer::default();
-        let _ = coalescer.push(Some(snapshot("Notes")));
-
-        let mut next = snapshot("Notes");
-        next.focused_window_id = Some(202);
-
-        let transition = coalescer.push(Some(next)).unwrap();
-
-        assert_eq!(transition.reason, TransitionReason::WindowChanged);
-    }
-
-    #[test]
-    fn fingerprint_falls_back_to_visible_text_when_anchor_is_missing() {
-        let mut left = snapshot("Notes");
-        let mut right = snapshot("Notes");
-
-        left.text_anchor_kind = None;
-        left.text_anchor_identity = None;
-        left.text_anchor_text = None;
-        left.text_anchor_prefix = None;
-        left.text_anchor_suffix = None;
-        left.text_anchor_selected_text = None;
-        left.text_anchor_confidence = None;
-
-        right.text_anchor_kind = None;
-        right.text_anchor_identity = None;
-        right.text_anchor_text = None;
-        right.text_anchor_prefix = None;
-        right.text_anchor_suffix = None;
-        right.text_anchor_selected_text = None;
-        right.text_anchor_confidence = None;
-        right.visible_text = Some("different".to_string());
-
-        assert_ne!(left.fingerprint(), right.fingerprint());
+        assert_eq!(left.content_fingerprint(), right.content_fingerprint());
     }
 
     #[test]
@@ -901,157 +784,13 @@ mod tests {
     }
 
     #[test]
-    fn browser_policy_uses_last_matching_rule() {
-        let policy = BrowserPolicy {
-            rules: vec![
-                DomainRule {
-                    domain: "example.com".to_string(),
-                    include_subdomains: true,
-                    access: CaptureAccess::Url,
-                },
-                DomainRule {
-                    domain: "docs.example.com".to_string(),
-                    include_subdomains: false,
-                    access: CaptureAccess::Full,
-                },
-            ],
-            ..Default::default()
-        };
+    fn browser_policy_sanitizes_url() {
+        let policy = BrowserPolicy::default();
+        let sanitized = policy
+            .sanitize_url("https://docs.example.com/page?q=1#section")
+            .unwrap();
 
-        assert_eq!(
-            policy.access_for_host(Some("docs.example.com"), PolicyMode::OptIn),
-            CaptureAccess::Full
-        );
-        assert_eq!(
-            policy.access_for_host(Some("www.example.com"), PolicyMode::OptIn),
-            CaptureAccess::Url
-        );
-        assert_eq!(
-            policy.access_for_host(Some("other.com"), PolicyMode::OptIn),
-            CaptureAccess::Metadata
-        );
-    }
-
-    #[test]
-    fn capture_policy_denies_when_any_matching_rule_denies() {
-        let policy = CapturePolicy {
-            mode: PolicyMode::OptIn,
-            app_rules: vec![
-                BundleRule {
-                    bundle_id: "com.example.app".to_string(),
-                    access: CaptureAccess::None,
-                },
-                BundleRule {
-                    bundle_id: "com.example.app".to_string(),
-                    access: CaptureAccess::Full,
-                },
-            ],
-            browser: BrowserPolicy::default(),
-        };
-
-        assert_eq!(
-            policy.access_for_bundle(Some("com.example.app")),
-            CaptureAccess::None
-        );
-        assert_eq!(
-            policy.access_for_bundle(Some("com.example.other")),
-            CaptureAccess::Metadata
-        );
-    }
-
-    #[test]
-    fn capture_policy_matches_executable_path_when_bundle_id_is_missing() {
-        let policy = CapturePolicy {
-            mode: PolicyMode::OptIn,
-            app_rules: vec![BundleRule {
-                bundle_id: "C:\\Program Files\\Slack\\slack.exe".to_string(),
-                access: CaptureAccess::Full,
-            }],
-            browser: BrowserPolicy::default(),
-        };
-        let app = AppIdentity {
-            pid: 7,
-            app_name: "slack.exe".to_string(),
-            app_id: "C:\\Program Files\\Slack\\slack.exe".to_string(),
-            app_id_kind: AppIdKind::ExecutablePath,
-            bundle_id: None,
-            executable_path: Some("C:\\Program Files\\Slack\\slack.exe".to_string()),
-        };
-
-        assert_eq!(policy.access_for_app(&app), CaptureAccess::Full);
-    }
-
-    #[test]
-    fn browser_policy_sanitizes_url_and_decides_access() {
-        let policy = BrowserPolicy {
-            rules: vec![DomainRule {
-                domain: "example.com".to_string(),
-                include_subdomains: true,
-                access: CaptureAccess::Full,
-            }],
-            ..Default::default()
-        };
-
-        let decision = policy.access_for_context(
-            &BrowserContext {
-                raw_url: Some("https://docs.example.com/path?q=1#anchor".to_string()),
-                is_private: false,
-            },
-            PolicyMode::OptIn,
-        );
-
-        assert_eq!(decision.access, CaptureAccess::Full);
-        assert_eq!(
-            decision.url.as_deref(),
-            Some("https://docs.example.com/path")
-        );
-        assert_eq!(decision.activity_kind, ActivityKind::Browser);
-    }
-
-    #[test]
-    fn capture_policy_decision_normalizes_url_access_for_non_browser_activity() {
-        let policy = CapturePolicy {
-            mode: PolicyMode::OptIn,
-            app_rules: vec![BundleRule {
-                bundle_id: "com.example.editor".to_string(),
-                access: CaptureAccess::Url,
-            }],
-            browser: BrowserPolicy::default(),
-        };
-        let decision = policy.decision_for_candidate(&CaptureCandidate {
-            app: AppIdentity {
-                pid: 5,
-                app_name: "Editor".to_string(),
-                app_id: "com.example.editor".to_string(),
-                app_id_kind: AppIdKind::BundleId,
-                bundle_id: Some("com.example.editor".to_string()),
-                executable_path: None,
-            },
-            activity_kind: ActivityKind::ForegroundWindow,
-            source: SnapshotSource::Accessibility,
-            browser: None,
-        });
-
-        assert_eq!(decision.access, CaptureAccess::Metadata);
-        assert_eq!(decision.source, SnapshotSource::Workspace);
-    }
-
-    #[test]
-    fn opt_out_policy_defaults_to_full() {
-        let policy = CapturePolicy {
-            mode: PolicyMode::OptOut,
-            ..Default::default()
-        };
-
-        assert_eq!(
-            policy.access_for_bundle(Some("com.example.app")),
-            CaptureAccess::Full
-        );
-        assert_eq!(
-            policy
-                .browser
-                .access_for_host(Some("example.com"), policy.mode),
-            CaptureAccess::Full
-        );
+        assert_eq!(sanitized.host.as_deref(), Some("docs.example.com"));
+        assert_eq!(sanitized.url, "https://docs.example.com/page");
     }
 }

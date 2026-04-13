@@ -3,8 +3,8 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     ActivityCapturePluginExt,
     events::{
-        ActivityCaptureBudget, ActivityCaptureCapabilities, ActivityCaptureScreenshotAnalysis,
-        ActivityCaptureSnapshot, ActivityCaptureStatus,
+        ActivityCaptureCapabilities, ActivityCaptureObservation,
+        ActivityCaptureObservationAnalysis, ActivityCaptureStatus,
     },
 };
 use hypr_db_core2::{Db3, DbOpenOptions, DbStorage, MigrationFailurePolicy};
@@ -23,23 +23,24 @@ pub struct DailyActivityAppStat {
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DailyActivityStats {
-    pub signal_count: u32,
+    pub observation_count: u32,
     pub screenshot_count: u32,
     pub analysis_count: u32,
     pub unique_app_count: u32,
-    pub first_signal_at_ms: Option<i64>,
-    pub last_signal_at_ms: Option<i64>,
+    pub first_observation_at_ms: Option<i64>,
+    pub last_observation_at_ms: Option<i64>,
     pub top_apps: Vec<DailyActivityAppStat>,
 }
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
-pub struct DailyActivityAnalysis {
+pub struct DailyObservationAnalysis {
     pub captured_at_ms: i64,
-    pub fingerprint: String,
+    pub observation_id: String,
+    pub screenshot_id: String,
+    pub screenshot_kind: String,
     pub app_name: String,
     pub window_title: Option<String>,
-    pub reason: String,
     pub summary: String,
 }
 
@@ -77,7 +78,7 @@ pub struct StoredDailySummary {
 #[serde(rename_all = "camelCase")]
 pub struct DailySummarySnapshot {
     pub stats: DailyActivityStats,
-    pub analyses: Vec<DailyActivityAnalysis>,
+    pub analyses: Vec<DailyObservationAnalysis>,
     pub summary: Option<StoredDailySummary>,
     pub source_cursor_ms: i64,
     pub source_fingerprint: String,
@@ -103,6 +104,12 @@ pub struct SaveDailySummaryInput {
     pub generated_at: String,
 }
 
+#[derive(Debug, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ConfigureInput {
+    pub analyze_screenshots: Option<bool>,
+}
+
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn capabilities<R: tauri::Runtime>(
@@ -113,20 +120,30 @@ pub(crate) async fn capabilities<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn snapshot<R: tauri::Runtime>(
+pub(crate) async fn current_observation<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
-) -> Result<Option<ActivityCaptureSnapshot>, String> {
-    app.activity_capture()
-        .snapshot()
-        .map_err(|error| error.to_string())
+) -> Result<Option<ActivityCaptureObservation>, String> {
+    Ok(app.activity_capture().current_observation())
 }
 
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn latest_screenshot_analysis<R: tauri::Runtime>(
+pub(crate) async fn latest_observation_analysis<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
-) -> Result<Option<ActivityCaptureScreenshotAnalysis>, String> {
-    Ok(app.activity_capture().latest_screenshot_analysis())
+) -> Result<Option<ActivityCaptureObservationAnalysis>, String> {
+    Ok(app.activity_capture().latest_observation_analysis())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn list_observation_analyses_in_range<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    start_ms: i64,
+    end_ms: i64,
+) -> Result<Vec<ActivityCaptureObservationAnalysis>, String> {
+    app.activity_capture()
+        .list_observation_analyses_in_range(start_ms, end_ms)
+        .await
 }
 
 #[tauri::command]
@@ -135,18 +152,6 @@ pub(crate) async fn status<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<ActivityCaptureStatus, String> {
     Ok(app.activity_capture().status().await)
-}
-
-#[tauri::command]
-#[specta::specta]
-pub(crate) async fn list_analyses_in_range<R: tauri::Runtime>(
-    app: tauri::AppHandle<R>,
-    start_ms: i64,
-    end_ms: i64,
-) -> Result<Vec<ActivityCaptureScreenshotAnalysis>, String> {
-    app.activity_capture()
-        .list_analyses_in_range(start_ms, end_ms)
-        .await
 }
 
 #[tauri::command]
@@ -172,13 +177,6 @@ pub(crate) async fn is_running<R: tauri::Runtime>(
     Ok(app.activity_capture().is_running())
 }
 
-#[derive(Debug, serde::Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct ConfigureInput {
-    pub budget: Option<ActivityCaptureBudget>,
-    pub analyze_screenshots: Option<bool>,
-}
-
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn configure<R: tauri::Runtime>(
@@ -186,7 +184,7 @@ pub(crate) async fn configure<R: tauri::Runtime>(
     input: ConfigureInput,
 ) -> Result<(), String> {
     app.activity_capture()
-        .configure(input.budget, input.analyze_screenshots)
+        .configure(input.analyze_screenshots)
         .map_err(|error| error.to_string())
 }
 
@@ -199,9 +197,13 @@ pub async fn get_daily_summary_snapshot<R: tauri::Runtime>(
     let activity_db = open_activity_db(&app).await?;
     let app_db = open_app_db(&app).await?;
 
-    let (signals, analyses, screenshot_count) = tokio::try_join!(
-        hypr_db_activity::list_signals_in_range(activity_db.pool(), input.start_ms, input.end_ms),
-        hypr_db_activity::list_screenshot_analyses_in_range(
+    let (events, analyses, screenshot_count) = tokio::try_join!(
+        hypr_db_activity::list_observation_events_in_range(
+            activity_db.pool(),
+            input.start_ms,
+            input.end_ms
+        ),
+        hypr_db_activity::list_preferred_observation_analyses_in_range(
             activity_db.pool(),
             input.start_ms,
             input.end_ms
@@ -214,33 +216,31 @@ pub async fn get_daily_summary_snapshot<R: tauri::Runtime>(
     )
     .map_err(|error| error.to_string())?;
 
-    let stats = build_daily_activity_stats(&signals, analyses.len() as u32, screenshot_count);
+    let stats = build_daily_activity_stats(&events, analyses.len() as u32, screenshot_count);
     let analysis_items = analyses
         .iter()
-        .map(|analysis| DailyActivityAnalysis {
+        .map(|analysis| DailyObservationAnalysis {
             captured_at_ms: analysis.captured_at_ms,
-            fingerprint: analysis.fingerprint.clone(),
+            observation_id: analysis.observation_id.clone(),
+            screenshot_id: analysis.screenshot_id.clone(),
+            screenshot_kind: analysis.screenshot_kind.clone(),
             app_name: analysis.app_name.clone(),
-            window_title: if analysis.window_title.is_empty() {
-                None
-            } else {
-                Some(analysis.window_title.clone())
-            },
-            reason: analysis.reason.clone(),
-            summary: analysis.analysis_summary.clone(),
+            window_title: (!analysis.window_title.is_empty())
+                .then_some(analysis.window_title.clone()),
+            summary: analysis.summary.clone(),
         })
         .collect::<Vec<_>>();
 
-    let source_cursor_ms = signals
+    let source_cursor_ms = events
         .last()
-        .map(|signal| signal.occurred_at_ms)
+        .map(|event| event.occurred_at_ms)
         .into_iter()
         .chain(analyses.last().map(|analysis| analysis.captured_at_ms))
         .max()
         .unwrap_or_default();
     let source_fingerprint = format!(
-        "signals:{}|screenshots:{}|analyses:{}|cursor:{}",
-        signals.len(),
+        "observations:{}|screenshots:{}|analyses:{}|cursor:{}",
+        stats.observation_count,
         screenshot_count,
         analyses.len(),
         source_cursor_ms
@@ -356,19 +356,23 @@ fn daily_summary_id(date: &str) -> String {
 }
 
 fn build_daily_activity_stats(
-    signals: &[hypr_db_activity::SignalRow],
+    events: &[hypr_db_activity::ObservationEventRow],
     analysis_count: u32,
     screenshot_count: u32,
 ) -> DailyActivityStats {
+    let started_events = events
+        .iter()
+        .filter(|event| event.event_kind == "started")
+        .collect::<Vec<_>>();
     let mut counts = HashMap::<String, u32>::new();
     let mut apps = HashSet::<String>::new();
 
-    for signal in signals {
-        if signal.app_name.is_empty() {
+    for event in &started_events {
+        if event.app_name.is_empty() {
             continue;
         }
-        apps.insert(signal.app_name.clone());
-        *counts.entry(signal.app_name.clone()).or_default() += 1;
+        apps.insert(event.app_name.clone());
+        *counts.entry(event.app_name.clone()).or_default() += 1;
     }
 
     let mut top_apps = counts
@@ -383,12 +387,12 @@ fn build_daily_activity_stats(
     top_apps.truncate(5);
 
     DailyActivityStats {
-        signal_count: signals.len() as u32,
+        observation_count: started_events.len() as u32,
         screenshot_count,
         analysis_count,
         unique_app_count: apps.len() as u32,
-        first_signal_at_ms: signals.first().map(|signal| signal.occurred_at_ms),
-        last_signal_at_ms: signals.last().map(|signal| signal.occurred_at_ms),
+        first_observation_at_ms: started_events.first().map(|event| event.occurred_at_ms),
+        last_observation_at_ms: started_events.last().map(|event| event.occurred_at_ms),
         top_apps,
     }
 }

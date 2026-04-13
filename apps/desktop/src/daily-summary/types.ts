@@ -28,7 +28,7 @@ export type ActivityCaptureEntry =
   | {
       kind: "analysis";
       capturedAtMs: number;
-      fingerprint: string;
+      id: string;
       payload: {
         appName: string;
         windowTitle: string | null;
@@ -39,7 +39,7 @@ export type ActivityCaptureEntry =
   | {
       kind: "error";
       capturedAtMs: number;
-      fingerprint: string;
+      id: string;
       payload: {
         appName: string;
         windowTitle: string | null;

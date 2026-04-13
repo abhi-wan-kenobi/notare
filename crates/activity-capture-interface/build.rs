@@ -12,10 +12,9 @@ struct ActivityCaptureInterfaceSchema {
     sanitized_browser_url: types::SanitizedBrowserUrl,
     capture_candidate: types::CaptureCandidate,
     capture_decision: types::CaptureDecision,
-    snapshot_spec: types::SnapshotSpec,
-    snapshot: types::Snapshot,
-    event: types::Event,
-    transition: types::Transition,
+    normalized_snapshot_spec: types::NormalizedSnapshotSpec,
+    normalized_snapshot: types::NormalizedSnapshot,
+    raw_capture_sample: types::RawCaptureSample,
     capabilities: types::Capabilities,
 }
 

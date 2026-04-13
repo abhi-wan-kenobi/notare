@@ -6,21 +6,22 @@ export type DailyActivityAppStat = {
 };
 
 export type DailyActivityStats = {
-  signalCount: number;
+  observationCount: number;
   screenshotCount: number;
   analysisCount: number;
   uniqueAppCount: number;
-  firstSignalAtMs: number | null;
-  lastSignalAtMs: number | null;
+  firstObservationAtMs: number | null;
+  lastObservationAtMs: number | null;
   topApps: DailyActivityAppStat[];
 };
 
-export type DailyActivityAnalysis = {
+export type DailyObservationAnalysis = {
   capturedAtMs: number;
-  fingerprint: string;
+  observationId: string;
+  screenshotId: string;
+  screenshotKind: string;
   appName: string;
   windowTitle: string | null;
-  reason: string;
   summary: string;
 };
 
@@ -50,7 +51,7 @@ export type StoredDailySummary = {
 
 export type DailySummarySnapshot = {
   stats: DailyActivityStats;
-  analyses: DailyActivityAnalysis[];
+  analyses: DailyObservationAnalysis[];
   summary: StoredDailySummary | null;
   sourceCursorMs: number;
   sourceFingerprint: string;

@@ -21,20 +21,17 @@
     "capture_policy": {
       "$ref": "#/$defs/CapturePolicy"
     },
-    "event": {
-      "$ref": "#/$defs/Event"
+    "normalized_snapshot": {
+      "$ref": "#/$defs/NormalizedSnapshot"
+    },
+    "normalized_snapshot_spec": {
+      "$ref": "#/$defs/NormalizedSnapshotSpec"
+    },
+    "raw_capture_sample": {
+      "$ref": "#/$defs/RawCaptureSample"
     },
     "sanitized_browser_url": {
       "$ref": "#/$defs/SanitizedBrowserUrl"
-    },
-    "snapshot": {
-      "$ref": "#/$defs/Snapshot"
-    },
-    "snapshot_spec": {
-      "$ref": "#/$defs/SnapshotSpec"
-    },
-    "transition": {
-      "$ref": "#/$defs/Transition"
     }
   },
   "required": [
@@ -44,10 +41,9 @@
     "sanitized_browser_url",
     "capture_candidate",
     "capture_decision",
-    "snapshot_spec",
-    "snapshot",
-    "event",
-    "transition",
+    "normalized_snapshot_spec",
+    "normalized_snapshot",
+    "raw_capture_sample",
     "capabilities"
   ],
   "$defs": {
@@ -305,54 +301,7 @@
         "access"
       ]
     },
-    "Event": {
-      "type": "object",
-      "properties": {
-        "ended_at": {
-          "$ref": "#/$defs/SystemTime"
-        },
-        "fingerprint": {
-          "type": "string"
-        },
-        "snapshot": {
-          "$ref": "#/$defs/Snapshot"
-        },
-        "started_at": {
-          "$ref": "#/$defs/SystemTime"
-        }
-      },
-      "required": [
-        "started_at",
-        "ended_at",
-        "fingerprint",
-        "snapshot"
-      ]
-    },
-    "PolicyMode": {
-      "type": "string",
-      "enum": [
-        "opt_in",
-        "opt_out"
-      ]
-    },
-    "SanitizedBrowserUrl": {
-      "type": "object",
-      "properties": {
-        "host": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "url": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "url"
-      ]
-    },
-    "Snapshot": {
+    "NormalizedSnapshot": {
       "type": "object",
       "properties": {
         "activity_kind": {
@@ -470,14 +419,7 @@
         "source"
       ]
     },
-    "SnapshotSource": {
-      "type": "string",
-      "enum": [
-        "accessibility",
-        "workspace"
-      ]
-    },
-    "SnapshotSpec": {
+    "NormalizedSnapshotSpec": {
       "type": "object",
       "properties": {
         "access": {
@@ -538,6 +480,58 @@
         "activity_kind",
         "access",
         "source"
+      ]
+    },
+    "PolicyMode": {
+      "type": "string",
+      "enum": [
+        "opt_in",
+        "opt_out"
+      ]
+    },
+    "RawCaptureSample": {
+      "type": "object",
+      "properties": {
+        "captured_at": {
+          "$ref": "#/$defs/SystemTime"
+        },
+        "snapshot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NormalizedSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "captured_at"
+      ]
+    },
+    "SanitizedBrowserUrl": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ]
+    },
+    "SnapshotSource": {
+      "type": "string",
+      "enum": [
+        "accessibility",
+        "workspace"
       ]
     },
     "SystemTime": {
@@ -618,63 +612,6 @@
         "focused_element",
         "document",
         "none"
-      ]
-    },
-    "Transition": {
-      "type": "object",
-      "properties": {
-        "current": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Event"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "previous": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Event"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "reason": {
-          "$ref": "#/$defs/TransitionReason"
-        },
-        "sequence": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0
-        },
-        "suppressed_snapshot_count": {
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0
-        }
-      },
-      "required": [
-        "reason",
-        "sequence",
-        "suppressed_snapshot_count"
-      ]
-    },
-    "TransitionReason": {
-      "type": "string",
-      "enum": [
-        "started",
-        "idle",
-        "app_changed",
-        "window_changed",
-        "activity_kind_changed",
-        "url_changed",
-        "title_changed",
-        "text_anchor_changed",
-        "content_changed"
       ]
     }
   }

@@ -49,7 +49,9 @@ impl ActivityCapture for MacosCapture {
         Capabilities::default()
     }
 
-    fn snapshot(&self) -> Result<Option<hypr_activity_capture_interface::Snapshot>, CaptureError> {
+    fn snapshot(
+        &self,
+    ) -> Result<Option<hypr_activity_capture_interface::NormalizedSnapshot>, CaptureError> {
         Err(CaptureError::unsupported(
             "activity-capture-macos is only available on macOS",
         ))

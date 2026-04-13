@@ -1,26 +1,14 @@
-#[cfg(target_os = "windows")]
-mod capture;
-#[cfg(target_os = "windows")]
-mod com;
-#[cfg(target_os = "windows")]
-mod session;
-
-#[cfg(target_os = "windows")]
-pub use capture::WindowsCapture;
-
-#[cfg(not(target_os = "windows"))]
 use hypr_activity_capture_interface::{
-    ActivityCapture, Capabilities, CaptureError, CapturePolicy, CaptureStream, WatchOptions,
+    ActivityCapture, Capabilities, CaptureError, CapturePolicy, CaptureStream, NormalizedSnapshot,
+    WatchOptions,
 };
 
-#[cfg(not(target_os = "windows"))]
 #[derive(Debug, Clone, Default)]
 pub struct WindowsCapture {
     #[allow(dead_code)]
     policy: CapturePolicy,
 }
 
-#[cfg(not(target_os = "windows"))]
 impl WindowsCapture {
     pub fn new() -> Self {
         Self::default()
@@ -31,21 +19,21 @@ impl WindowsCapture {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
 impl ActivityCapture for WindowsCapture {
     fn capabilities(&self) -> Capabilities {
+        // Windows activity capture is intentionally a placeholder until we build it out.
         Capabilities::default()
     }
 
-    fn snapshot(&self) -> Result<Option<hypr_activity_capture_interface::Snapshot>, CaptureError> {
+    fn snapshot(&self) -> Result<Option<NormalizedSnapshot>, CaptureError> {
         Err(CaptureError::unsupported(
-            "activity-capture-windows is only available on Windows",
+            "activity capture is only implemented on macOS today",
         ))
     }
 
     fn watch(&self, _options: WatchOptions) -> Result<CaptureStream, CaptureError> {
         Err(CaptureError::unsupported(
-            "activity-capture-windows is only available on Windows",
+            "activity capture is only implemented on macOS today",
         ))
     }
 }

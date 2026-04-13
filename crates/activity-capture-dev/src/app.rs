@@ -128,15 +128,18 @@ impl CaptureDriver {
                 runtime.block_on(async move {
                     let mut stop_rx = stop_rx;
                     let mut stream = stream;
+                    let mut coalescer = EventCoalescer::default();
 
                     loop {
                         tokio::select! {
                             _ = &mut stop_rx => break,
                             item = stream.next() => {
                                 match item {
-                                    Some(Ok(transition)) => {
-                                        if event_tx.send(RuntimeEvent::Transition(transition)).is_err() {
-                                            break;
+                                    Some(Ok(sample)) => {
+                                        if let Some(transition) = coalescer.push(sample.snapshot) {
+                                            if event_tx.send(RuntimeEvent::Transition(transition)).is_err() {
+                                                break;
+                                            }
                                         }
                                     }
                                     Some(Err(error)) => {
@@ -565,12 +568,26 @@ impl ActivityApp {
 
         match capture_screenshot(&fired.target) {
             Ok(image) => {
+                let snapshot =
+                    self.coalescer
+                        .current()
+                        .map(|event| event.snapshot.clone())
+                        .unwrap_or_else(|| {
+                            self.capture.snapshot().ok().flatten().unwrap_or_else(|| {
+                        panic!("expected a snapshot when capturing a screenshot in the dev tool")
+                    })
+                        });
                 let capture = ActivityScreenshotCapture {
+                    request_id: fired.id,
+                    observation_id: "legacy-dev".to_string(),
+                    observation_key: fired.cooldown_scope.clone(),
                     fingerprint: fired.fingerprint,
-                    reason: fired.reason,
+                    reason: fired.reason.as_str().to_string(),
+                    kind: hypr_activity_capture::ObservationScreenshotKind::Entry,
                     scheduled_at_ms: fired.scheduled_at_ms,
                     captured_at_ms: now,
                     target: fired.target,
+                    snapshot,
                     image,
                 };
                 let saved_path = match save_screenshot_image(&capture) {

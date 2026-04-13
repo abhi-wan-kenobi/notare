@@ -181,7 +181,7 @@ function ActivityCaptureFeed({
 
         setLiveEntries((current) => upsertEntry(current, entry));
 
-        if (payload.type !== "activityCaptureScreenshotAnalysis") {
+        if (payload.type !== "activityObservationAnalysisReady") {
           return;
         }
 
@@ -196,10 +196,11 @@ function ActivityCaptureFeed({
               ...current,
               analyses: upsertAnalysis(current.analyses, {
                 capturedAtMs: payload.analysis.capturedAtMs,
-                fingerprint: payload.analysis.fingerprint,
+                observationId: payload.analysis.observationId,
+                screenshotId: payload.analysis.screenshotId,
+                screenshotKind: payload.analysis.screenshotKind,
                 appName: payload.analysis.appName,
                 windowTitle: payload.analysis.windowTitle,
-                reason: payload.analysis.reason,
                 summary: payload.analysis.summary,
               }),
             };

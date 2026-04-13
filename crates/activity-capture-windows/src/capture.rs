@@ -8,7 +8,7 @@ use std::{
 
 use hypr_activity_capture_interface::{
     ActivityCapture, ActivityKind, Capabilities, CaptureCandidate, CaptureError, CapturePolicy,
-    CaptureStream, Snapshot, SnapshotSource, SnapshotSpec, WatchOptions,
+    CaptureStream, NormalizedSnapshot, NormalizedSnapshotSpec, SnapshotSource, WatchOptions,
     spawn_polling_watch_stream,
 };
 
@@ -44,12 +44,14 @@ impl WindowsCapture {
         }
     }
 
-    pub(crate) fn capture_snapshot(&self) -> Result<Option<Snapshot>, CaptureError> {
+    pub(crate) fn capture_snapshot(&self) -> Result<Option<NormalizedSnapshot>, CaptureError> {
         let _com = ComGuard::initialize_mta()?;
         self.capture_snapshot_on_initialized_thread()
     }
 
-    fn capture_snapshot_on_initialized_thread(&self) -> Result<Option<Snapshot>, CaptureError> {
+    fn capture_snapshot_on_initialized_thread(
+        &self,
+    ) -> Result<Option<NormalizedSnapshot>, CaptureError> {
         resolve_active_session_snapshot(self)
     }
 }
@@ -64,7 +66,7 @@ impl ActivityCapture for WindowsCapture {
         }
     }
 
-    fn snapshot(&self) -> Result<Option<Snapshot>, CaptureError> {
+    fn snapshot(&self) -> Result<Option<NormalizedSnapshot>, CaptureError> {
         let capture = self.clone();
         let (tx, rx) = mpsc::sync_channel(1);
 
@@ -98,7 +100,7 @@ impl ActivityCapture for WindowsCapture {
 
 fn resolve_active_session_snapshot(
     capture: &WindowsCapture,
-) -> Result<Option<Snapshot>, CaptureError> {
+) -> Result<Option<NormalizedSnapshot>, CaptureError> {
     let Some(candidate) = find_active_render_session(&capture.policy, &capture.state)? else {
         clear_last_selected_session(&capture.state);
         return Ok(None);
@@ -115,16 +117,18 @@ fn resolve_active_session_snapshot(
         return Ok(None);
     }
 
-    Ok(Some(Snapshot::from_spec(SnapshotSpec {
-        captured_at: SystemTime::now(),
-        app: candidate.app,
-        activity_kind: decision.activity_kind,
-        access: decision.access,
-        source: decision.source,
-        focused_window_id: None,
-        window_title: None,
-        url: decision.url,
-        visible_text: None,
-        text_anchor: None,
-    })))
+    Ok(Some(NormalizedSnapshot::from_spec(
+        NormalizedSnapshotSpec {
+            captured_at: SystemTime::now(),
+            app: candidate.app,
+            activity_kind: decision.activity_kind,
+            access: decision.access,
+            source: decision.source,
+            focused_window_id: None,
+            window_title: None,
+            url: decision.url,
+            visible_text: None,
+            text_anchor: None,
+        },
+    )))
 }
