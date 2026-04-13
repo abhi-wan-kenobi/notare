@@ -35,6 +35,7 @@ import {
   useCustomSidebarEffect,
 } from "~/sidebar/use-custom-sidebar";
 import { uniqueIdfromTab, useTabs } from "~/store/zustand/tabs";
+import { useListener } from "~/stt/contexts";
 
 export function Main2Shell() {
   const currentPlatform = platform();
@@ -93,6 +94,13 @@ export function Main2Shell() {
   const isHomeActive = currentTab === null;
   const isChatOpen =
     chat.mode === "FloatingOpen" || chat.mode === "RightPanelOpen";
+  const liveSessionId = useListener((state) => state.live.sessionId);
+  const liveStatus = useListener((state) => state.live.status);
+  const showAdHocButton = !(
+    currentTab?.type === "sessions" &&
+    currentTab.id === liveSessionId &&
+    liveStatus === "active"
+  );
 
   useMain2TabsShortcuts();
 
@@ -172,7 +180,7 @@ export function Main2Shell() {
       <div className="flex h-full min-w-0 flex-1 flex-col">
         <div
           data-tauri-drag-region
-          className="flex h-9 w-full min-w-0 shrink-0 items-center gap-1 px-3"
+          className="flex h-10 w-full min-w-0 shrink-0 items-center gap-1 pr-1 pl-3"
         >
           <div
             className={cn([
@@ -232,7 +240,7 @@ export function Main2Shell() {
                 axis="x"
                 values={tabs}
                 onReorder={reorder}
-                className="flex h-full w-max gap-1"
+                className="flex h-full w-max items-center gap-1"
               >
                 {tabs.map((tab) => (
                   <Reorder.Item
@@ -241,7 +249,7 @@ export function Main2Shell() {
                     as="div"
                     ref={(el) => setTabRef(tab, el)}
                     style={{ position: "relative" }}
-                    className="z-10 h-full"
+                    className="z-10 flex h-full items-center"
                     transition={{ layout: { duration: 0.15 } }}
                   >
                     <MainTabItem
@@ -264,15 +272,22 @@ export function Main2Shell() {
             </div>
           </div>
 
-          <div className="ml-auto flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={handleAdHoc}
-              title="New ad-hoc session"
-              className="relative h-3.5 w-3.5 overflow-hidden rounded-full border border-red-500/60 bg-linear-to-b from-red-400 to-red-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_1px_2px_rgba(127,29,29,0.14)] hover:brightness-110"
-            >
-              <span className="pointer-events-none absolute top-[1px] left-1/2 h-[22%] w-[68%] -translate-x-1/2 rounded-full bg-white/18" />
-            </button>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {showAdHocButton && (
+              <Button
+                type="button"
+                onClick={handleAdHoc}
+                title="New ad-hoc session"
+                aria-label="New ad-hoc session"
+                variant="ghost"
+                size="icon"
+                className="group shrink-0"
+              >
+                <span className="relative h-3.5 w-3.5 overflow-hidden rounded-full border border-red-500/60 bg-linear-to-b from-red-400 to-red-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_1px_2px_rgba(127,29,29,0.14)] transition-[filter] group-hover:brightness-110">
+                  <span className="pointer-events-none absolute top-[1px] left-1/2 h-[22%] w-[68%] -translate-x-1/2 rounded-full bg-white/18" />
+                </span>
+              </Button>
+            )}
             <Button
               onClick={() => setOpenNoteDialogOpen(true)}
               variant="ghost"
