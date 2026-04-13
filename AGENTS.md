@@ -22,6 +22,7 @@ TinyBase as the primary data store (schema at `packages/store/src/tinybase.ts`),
 - For `apps/desktop/` TypeScript changes, prefer `pnpm -F desktop typecheck` to match CI.
 - After edits, run `pnpm exec dprint fmt`.
 - Use `useForm` (tanstack-form) and `useQuery`/`useMutation` (tanstack-query) for form/mutation state. Avoid manual state management (e.g. `setError`).
+- For `plugins/db` live queries, keep schema creation, migrations, and DB initialization on the Rust side; TypeScript should only consume `execute`/`subscribe` APIs.
 - Branch naming: `fix/`, `chore/`, `refactor/` prefixes.
 
 ## Code Style

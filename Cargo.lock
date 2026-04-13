@@ -4703,6 +4703,7 @@ name = "db-core2"
 version = "0.1.0"
 dependencies = [
  "cloudsync",
+ "libsqlite3-sys",
  "sqlx",
  "tempfile",
  "thiserror 2.0.18",
@@ -4990,6 +4991,7 @@ dependencies = [
  "tauri-plugin-bedrock",
  "tauri-plugin-calendar",
  "tauri-plugin-clipboard-manager",
+ "tauri-plugin-db",
  "tauri-plugin-db2",
  "tauri-plugin-deep-link",
  "tauri-plugin-deeplink2",
@@ -18425,6 +18427,7 @@ dependencies = [
  "screen-core",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "specta",
  "specta-typescript",
  "sqlx",
@@ -18588,6 +18591,28 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "tauri-plugin-db"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "db-app",
+ "db-core2",
+ "db-watch",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "sqlx",
+ "tauri",
+ "tauri-plugin",
+ "tauri-specta",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

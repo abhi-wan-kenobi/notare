@@ -5,11 +5,13 @@ edition = "2024"
 
 [dependencies]
 hypr-cloudsync = { workspace = true }
+libsqlite3-sys = "0.30.1"
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"] }
 thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt"] }
+tokio = { workspace = true, features = ["macros", "rt", "time"] }
 uuid = { workspace = true, features = ["v4"] }

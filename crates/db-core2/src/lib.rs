@@ -1,13 +1,14 @@
-#![forbid(unsafe_code)]
-
+use std::ffi::{CStr, c_void};
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::str::FromStr;
+use std::sync::Arc;
 
 pub use hypr_cloudsync::Error;
 use sqlx::SqlitePool;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+use tokio::sync::broadcast;
 
 #[derive(Clone, Copy, Debug)]
 pub enum DbStorage<'a> {
@@ -49,6 +50,20 @@ pub enum DbOpenError {
 pub struct Db3 {
     cloudsync_path: Option<PathBuf>,
     pool: SqlitePool,
+    table_change_tx: Arc<broadcast::Sender<TableChange>>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TableChangeKind {
+    Insert,
+    Update,
+    Delete,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TableChange {
+    pub table: String,
+    pub kind: TableChangeKind,
 }
 
 type BoxedMigrationFuture<'a, E> = Pin<Box<dyn Future<Output = Result<(), E>> + Send + 'a>>;
@@ -88,29 +103,24 @@ impl Db3 {
             .filename(path)
             .create_if_missing(true);
         let (options, cloudsync_path) = hypr_cloudsync::apply(options)?;
-        let pool = SqlitePoolOptions::new()
-            .connect_with(options)
-            .await
-            .map_err(Error::from)?;
+        let (pool, table_change_tx) = connect_pool(options, None).await.map_err(Error::from)?;
 
         Ok(Self {
             cloudsync_path: Some(cloudsync_path),
             pool,
+            table_change_tx,
         })
     }
 
     pub async fn connect_memory() -> Result<Self, Error> {
         let options = SqliteConnectOptions::from_str("sqlite::memory:")?;
         let (options, cloudsync_path) = hypr_cloudsync::apply(options)?;
-        let pool = SqlitePoolOptions::new()
-            .max_connections(1)
-            .connect_with(options)
-            .await
-            .map_err(Error::from)?;
+        let (pool, table_change_tx) = connect_pool(options, Some(1)).await.map_err(Error::from)?;
 
         Ok(Self {
             cloudsync_path: Some(cloudsync_path),
             pool,
+            table_change_tx,
         })
     }
 
@@ -122,25 +132,24 @@ impl Db3 {
             .filename(path)
             .create_if_missing(true)
             .pragma("foreign_keys", "ON");
-        let pool = SqlitePoolOptions::new().connect_with(options).await?;
+        let (pool, table_change_tx) = connect_pool(options, None).await?;
 
         Ok(Self {
             cloudsync_path: None,
             pool,
+            table_change_tx,
         })
     }
 
     pub async fn connect_memory_plain() -> Result<Self, sqlx::Error> {
         let options =
             SqliteConnectOptions::from_str("sqlite::memory:")?.pragma("foreign_keys", "ON");
-        let pool = SqlitePoolOptions::new()
-            .max_connections(1)
-            .connect_with(options)
-            .await?;
+        let (pool, table_change_tx) = connect_pool(options, Some(1)).await?;
 
         Ok(Self {
             cloudsync_path: None,
             pool,
+            table_change_tx,
         })
     }
 
@@ -154,6 +163,10 @@ impl Db3 {
 
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
+    }
+
+    pub fn subscribe_table_changes(&self) -> broadcast::Receiver<TableChange> {
+        self.table_change_tx.subscribe()
     }
 
     pub async fn cloudsync_version(&self) -> Result<String, Error> {
@@ -235,17 +248,68 @@ async fn connect_with_options(options: &DbOpenOptions<'_>) -> Result<Db3, DbOpen
         (connect_options, None)
     };
 
-    let mut pool_options = SqlitePoolOptions::new();
-    if let Some(max_connections) = options.max_connections {
-        pool_options = pool_options.max_connections(max_connections);
-    }
-
-    let pool = pool_options.connect_with(connect_options).await?;
+    let (pool, table_change_tx) = connect_pool(connect_options, options.max_connections).await?;
 
     Ok(Db3 {
         cloudsync_path,
         pool,
+        table_change_tx,
     })
+}
+
+async fn connect_pool(
+    connect_options: SqliteConnectOptions,
+    max_connections: Option<u32>,
+) -> Result<(SqlitePool, Arc<broadcast::Sender<TableChange>>), sqlx::Error> {
+    let (table_change_tx, _) = broadcast::channel(256);
+    let table_change_tx = Arc::new(table_change_tx);
+
+    let callback_tx = Arc::clone(&table_change_tx);
+    let mut pool_options = SqlitePoolOptions::new().after_connect(move |conn, _| {
+        let callback_tx = Arc::clone(&callback_tx);
+        Box::pin(async move {
+            let mut handle = conn.lock_handle().await?;
+            let raw = handle.as_raw_handle().as_ptr();
+
+            unsafe {
+                libsqlite3_sys::sqlite3_update_hook(
+                    raw,
+                    Some(update_hook_callback),
+                    Arc::as_ptr(&callback_tx) as *mut c_void,
+                );
+            }
+
+            Ok(())
+        })
+    });
+
+    if let Some(max_connections) = max_connections {
+        pool_options = pool_options.max_connections(max_connections);
+    }
+
+    let pool = pool_options.connect_with(connect_options).await?;
+    Ok((pool, table_change_tx))
+}
+
+unsafe extern "C" fn update_hook_callback(
+    user_data: *mut c_void,
+    op: std::os::raw::c_int,
+    _db_name: *const std::os::raw::c_char,
+    table_name: *const std::os::raw::c_char,
+    _row_id: libsqlite3_sys::sqlite3_int64,
+) {
+    let kind = match op {
+        libsqlite3_sys::SQLITE_INSERT => TableChangeKind::Insert,
+        libsqlite3_sys::SQLITE_UPDATE => TableChangeKind::Update,
+        libsqlite3_sys::SQLITE_DELETE => TableChangeKind::Delete,
+        _ => return,
+    };
+
+    let table = unsafe { CStr::from_ptr(table_name) }
+        .to_string_lossy()
+        .into_owned();
+    let tx = unsafe { &*(user_data as *const broadcast::Sender<TableChange>) };
+    let _ = tx.send(TableChange { table, kind });
 }
 
 fn recreate_storage(options: &DbOpenOptions<'_>) -> Result<(), DbOpenError> {
@@ -355,5 +419,82 @@ mod tests {
         .unwrap_err();
 
         assert!(matches!(error, DbOpenError::Migration(message) if message == "nope"));
+    }
+
+    #[tokio::test]
+    async fn emits_table_changes_for_local_writes() {
+        let db = Db3::connect_memory_plain().await.unwrap();
+        sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL)")
+            .execute(db.pool())
+            .await
+            .unwrap();
+
+        let mut changes = db.subscribe_table_changes();
+
+        sqlx::query("INSERT INTO test_events (id) VALUES ('a')")
+            .execute(db.pool())
+            .await
+            .unwrap();
+
+        let change = tokio::time::timeout(std::time::Duration::from_secs(1), changes.recv())
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(change.table, "test_events");
+        assert_eq!(change.kind, TableChangeKind::Insert);
+    }
+
+    #[tokio::test]
+    async fn emits_table_changes_across_multiple_connections() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("app.db");
+
+        let db = Db3::open_with_migrate(
+            DbOpenOptions {
+                storage: DbStorage::Local(&path),
+                cloudsync: false,
+                journal_mode_wal: true,
+                foreign_keys: true,
+                max_connections: Some(4),
+                migration_failure_policy: MigrationFailurePolicy::Fail,
+            },
+            |pool| {
+                Box::pin(async move {
+                    sqlx::query("CREATE TABLE multi_conn_events (id TEXT PRIMARY KEY NOT NULL)")
+                        .execute(pool)
+                        .await
+                        .unwrap();
+                    Ok::<(), sqlx::Error>(())
+                })
+            },
+        )
+        .await
+        .unwrap();
+
+        let mut changes = db.subscribe_table_changes();
+        let mut conn_a = db.pool().acquire().await.unwrap();
+        let mut conn_b = db.pool().acquire().await.unwrap();
+
+        sqlx::query("INSERT INTO multi_conn_events (id) VALUES ('a')")
+            .execute(&mut *conn_a)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO multi_conn_events (id) VALUES ('b')")
+            .execute(&mut *conn_b)
+            .await
+            .unwrap();
+
+        let first = tokio::time::timeout(std::time::Duration::from_secs(1), changes.recv())
+            .await
+            .unwrap()
+            .unwrap();
+        let second = tokio::time::timeout(std::time::Duration::from_secs(1), changes.recv())
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(first.table, "multi_conn_events");
+        assert_eq!(second.table, "multi_conn_events");
     }
 }

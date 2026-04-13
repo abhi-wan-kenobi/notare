@@ -19,7 +19,6 @@ members = [
 exclude = [
   "plugins/apple-calendar",
   "plugins/cli2",
-  "plugins/db",
   "plugins/extensions",
   "crates/vad-ext",
 ]
@@ -223,6 +222,7 @@ tauri-plugin-audio-priority = { path = "plugins/audio-priority" }
 tauri-plugin-auth = { path = "plugins/auth" }
 tauri-plugin-bedrock = { path = "plugins/bedrock" }
 tauri-plugin-calendar = { path = "plugins/calendar" }
+tauri-plugin-db = { path = "plugins/db" }
 tauri-plugin-db2 = { path = "plugins/db2" }
 tauri-plugin-deeplink2 = { path = "plugins/deeplink2" }
 tauri-plugin-detect = { path = "plugins/detect" }

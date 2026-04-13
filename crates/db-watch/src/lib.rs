@@ -25,10 +25,6 @@ impl TableDeps {
     }
 
     pub fn register(&mut self, tables: HashSet<String>) -> WatchId {
-        debug_assert!(
-            !tables.is_empty(),
-            "registering a watch with no table dependencies — the callback will never fire"
-        );
         let id = WatchId(self.next_id);
         self.next_id += 1;
 
@@ -116,5 +112,26 @@ mod tests {
     fn unregister_nonexistent_is_noop() {
         let mut deps = TableDeps::new();
         deps.unregister(WatchId(999));
+    }
+
+    #[test]
+    fn register_empty_tables_never_matches() {
+        let mut deps = TableDeps::new();
+        let watch = deps.register(HashSet::new());
+
+        assert!(deps.affected(&["sessions"]).is_empty());
+
+        deps.unregister(watch);
+        assert!(deps.affected(&["sessions"]).is_empty());
+    }
+
+    #[test]
+    fn duplicate_changed_tables_are_deduped() {
+        let mut deps = TableDeps::new();
+        let watch = deps.register(HashSet::from(["sessions".into()]));
+
+        let affected = deps.affected(&["sessions", "sessions"]);
+        assert_eq!(affected.len(), 1);
+        assert!(affected.contains(&watch));
     }
 }
