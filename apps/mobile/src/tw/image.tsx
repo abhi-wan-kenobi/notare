@@ -1,8 +1,8 @@
-import { useCssElement } from "react-native-css";
+import { Image as RNImage } from "expo-image";
 import React from "react";
 import { StyleSheet } from "react-native";
+import { useCssElement } from "react-native-css";
 import Animated from "react-native-reanimated";
-import { Image as RNImage } from "expo-image";
 
 const AnimatedExpoImage = Animated.createAnimatedComponent(RNImage);
 

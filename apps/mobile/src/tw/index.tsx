@@ -1,9 +1,3 @@
-import {
-  useCssElement,
-  useNativeVariable as useFunctionalVariable,
-} from "react-native-css";
-
-import Animated from "react-native-reanimated";
 import React from "react";
 import {
   View as RNView,
@@ -12,6 +6,11 @@ import {
   ScrollView as RNScrollView,
   TextInput as RNTextInput,
 } from "react-native";
+import {
+  useCssElement,
+  useNativeVariable as useFunctionalVariable,
+} from "react-native-css";
+import Animated from "react-native-reanimated";
 
 export const useCSSVariable =
   process.env.EXPO_OS !== "web"
