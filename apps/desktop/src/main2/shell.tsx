@@ -11,7 +11,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useShallow } from "zustand/shallow";
 
-import { commands as windowsCommands } from "@hypr/plugin-windows";
 import { Button } from "@hypr/ui/components/ui/button";
 import { cn } from "@hypr/utils";
 
@@ -92,13 +91,9 @@ export function Main2Shell() {
     if (showSidebar && !wasSidebarVisibleRef.current) {
       leftsidebar.setExpanded(true);
       leftsidebar.setLocked(true);
-      windowsCommands
-        .windowExpandWidth(280, null, false, true)
-        .catch(console.error);
     } else if (!showSidebar && wasSidebarVisibleRef.current) {
       leftsidebar.setLocked(false);
       leftsidebar.setExpanded(false);
-      windowsCommands.windowRestoreWidth().catch(console.error);
     }
     wasSidebarVisibleRef.current = showSidebar;
   }, [showSidebar, leftsidebar]);

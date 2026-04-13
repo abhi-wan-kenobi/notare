@@ -1,7 +1,5 @@
 import { useEffect, useRef } from "react";
 
-import { commands as windowsCommands } from "@hypr/plugin-windows";
-
 import { useShell } from "~/contexts/shell";
 import { useSearch } from "~/search/contexts/ui";
 import { LeftSidebar } from "~/sidebar";
@@ -27,9 +25,6 @@ export function ClassicMainSidebar() {
       savedExpandedRef.current = leftsidebar.expanded;
       if (!leftsidebar.expanded) {
         leftsidebar.setExpanded(true);
-        windowsCommands
-          .windowExpandWidth(280, null, false, true)
-          .catch(console.error);
       }
       leftsidebar.setLocked(true);
     } else if (!hasCustomSidebar && wasCustomSidebarRef.current) {
@@ -38,7 +33,6 @@ export function ClassicMainSidebar() {
         leftsidebar.setExpanded(savedExpandedRef.current);
       }
       savedExpandedRef.current = null;
-      windowsCommands.windowRestoreWidth().catch(console.error);
     }
     wasCustomSidebarRef.current = hasCustomSidebar;
   }, [hasCustomSidebar, leftsidebar]);
@@ -49,9 +43,6 @@ export function ClassicMainSidebar() {
 
     if (isStartingSearch && !leftsidebar.expanded && !isOnboarding) {
       leftsidebar.setExpanded(true);
-      windowsCommands
-        .windowExpandWidth(280, null, false, true)
-        .catch(console.error);
     }
 
     previousQueryRef.current = query;
