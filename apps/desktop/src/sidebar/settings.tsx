@@ -21,7 +21,34 @@ import { cn } from "@hypr/utils";
 
 import { type SettingsTab, useTabs } from "~/store/zustand/tabs";
 
+type SettingsNavItem =
+  | { id: SettingsTab; label: string; icon: typeof SmartphoneIcon }
+  | {
+      action: "open-templates" | "open-prompts";
+      label: string;
+      icon: typeof SmartphoneIcon;
+    };
+
 function getBaseGroups() {
+  const aiItems: SettingsNavItem[] = [
+    { id: "transcription", label: "Transcription", icon: AudioLinesIcon },
+    { id: "intelligence", label: "Intelligence", icon: SparklesIcon },
+    { id: "memory", label: "Memory", icon: BrainIcon },
+    {
+      action: "open-templates",
+      label: "Templates",
+      icon: BookText,
+    },
+  ];
+
+  if (import.meta.env.DEV) {
+    aiItems.push({
+      action: "open-prompts",
+      label: "Prompts",
+      icon: SparklesIcon,
+    });
+  }
+
   return [
     {
       label: "General",
@@ -30,27 +57,11 @@ function getBaseGroups() {
         { id: "account", label: "Account", icon: UserIcon },
         { id: "calendar", label: "Calendar", icon: CalendarIcon },
         { id: "notifications", label: "Notifications", icon: BellIcon },
-      ] as (
-        | { id: SettingsTab; label: string; icon: typeof SmartphoneIcon }
-        | {
-            action: "open-templates";
-            label: string;
-            icon: typeof SmartphoneIcon;
-          }
-      )[],
+      ] as SettingsNavItem[],
     },
     {
       label: "AI",
-      items: [
-        { id: "transcription", label: "Transcription", icon: AudioLinesIcon },
-        { id: "intelligence", label: "Intelligence", icon: SparklesIcon },
-        { id: "memory", label: "Memory", icon: BrainIcon },
-        {
-          action: "open-templates",
-          label: "Templates",
-          icon: BookText,
-        },
-      ],
+      items: aiItems,
     },
     {
       label: "Lab",
@@ -87,6 +98,13 @@ export function SettingsNav() {
     openNew({ type: "templates" });
   }, [openNew]);
 
+  const handleOpenPrompts = useCallback(() => {
+    openNew({
+      type: "prompts",
+      state: { selectedTask: "enhance" },
+    });
+  }, [openNew]);
+
   const groups = getBaseGroups();
   const isMacos = platform() === "macos";
   if (isMacos) {
@@ -118,6 +136,11 @@ export function SettingsNav() {
                     onClick={() => {
                       if (isSettingsItem) {
                         setActiveTab(item.id as SettingsTab);
+                        return;
+                      }
+
+                      if (item.action === "open-prompts") {
+                        handleOpenPrompts();
                         return;
                       }
 
