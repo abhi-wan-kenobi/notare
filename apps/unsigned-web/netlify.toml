@@ -1,6 +1,7 @@
+# Set base directory to "apps/unsigned-web" in Netlify UI
 [build]
-command = "pnpm build"
-publish = "dist"
+command = "pnpm -F @hypr/unsigned-web build"
+publish = "apps/unsigned-web/dist"
 
 [build.environment]
 NODE_VERSION = "22"
