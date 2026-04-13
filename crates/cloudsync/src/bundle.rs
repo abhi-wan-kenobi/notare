@@ -26,6 +26,27 @@ configure_cloudsync_target!(
     "../vendor/cloudsync/macos/x86_64/cloudsync.dylib"
 );
 
+#[cfg(all(target_os = "android", target_arch = "aarch64"))]
+configure_cloudsync_target!(
+    "android/arm64-v8a",
+    "cloudsync.so",
+    "../vendor/cloudsync/android/arm64-v8a/cloudsync.so"
+);
+
+#[cfg(all(target_os = "android", target_arch = "arm"))]
+configure_cloudsync_target!(
+    "android/armeabi-v7a",
+    "cloudsync.so",
+    "../vendor/cloudsync/android/armeabi-v7a/cloudsync.so"
+);
+
+#[cfg(all(target_os = "android", target_arch = "x86_64"))]
+configure_cloudsync_target!(
+    "android/x86_64",
+    "cloudsync.so",
+    "../vendor/cloudsync/android/x86_64/cloudsync.so"
+);
+
 #[cfg(all(target_os = "linux", target_env = "gnu", target_arch = "aarch64"))]
 configure_cloudsync_target!(
     "linux/gnu/aarch64",
@@ -65,6 +86,11 @@ pub fn bundled_extension_path() -> Result<PathBuf, Error> {
     #[cfg(not(any(
         all(target_os = "macos", target_arch = "aarch64"),
         all(target_os = "macos", target_arch = "x86_64"),
+        all(target_os = "ios", target_arch = "aarch64"),
+        all(target_os = "ios", target_arch = "x86_64"),
+        all(target_os = "android", target_arch = "aarch64"),
+        all(target_os = "android", target_arch = "arm"),
+        all(target_os = "android", target_arch = "x86_64"),
         all(target_os = "linux", target_env = "gnu", target_arch = "aarch64"),
         all(target_os = "linux", target_env = "gnu", target_arch = "x86_64"),
         all(target_os = "linux", target_env = "musl", target_arch = "aarch64"),
@@ -76,8 +102,19 @@ pub fn bundled_extension_path() -> Result<PathBuf, Error> {
     }
 
     #[cfg(any(
+        all(target_os = "ios", target_arch = "aarch64"),
+        all(target_os = "ios", target_arch = "x86_64"),
+    ))]
+    {
+        bundled_ios_framework_path()
+    }
+
+    #[cfg(any(
         all(target_os = "macos", target_arch = "aarch64"),
         all(target_os = "macos", target_arch = "x86_64"),
+        all(target_os = "android", target_arch = "aarch64"),
+        all(target_os = "android", target_arch = "arm"),
+        all(target_os = "android", target_arch = "x86_64"),
         all(target_os = "linux", target_env = "gnu", target_arch = "aarch64"),
         all(target_os = "linux", target_env = "gnu", target_arch = "x86_64"),
         all(target_os = "linux", target_env = "musl", target_arch = "aarch64"),
@@ -128,4 +165,34 @@ pub fn bundled_extension_path() -> Result<PathBuf, Error> {
 
         Ok(extension_path)
     }
+}
+
+#[cfg(any(
+    all(target_os = "ios", target_arch = "aarch64"),
+    all(target_os = "ios", target_arch = "x86_64"),
+))]
+fn bundled_ios_framework_path() -> Result<PathBuf, Error> {
+    if let Some(path) = std::env::var_os("CLOUDSYNC_IOS_FRAMEWORK_PATH") {
+        let path = PathBuf::from(path);
+        if path.exists() {
+            return Ok(path);
+        }
+    }
+
+    let exe = std::env::current_exe()?;
+    let candidates = [
+        exe.parent()
+            .map(|dir| dir.join("Frameworks/CloudSync.framework/CloudSync")),
+        exe.parent()
+            .and_then(|dir| dir.parent())
+            .map(|dir| dir.join("Frameworks/CloudSync.framework/CloudSync")),
+    ];
+
+    for candidate in candidates.into_iter().flatten() {
+        if candidate.exists() {
+            return Ok(candidate);
+        }
+    }
+
+    Err(Error::UnsupportedBundledCloudsync)
 }

@@ -14,7 +14,7 @@ pub use error::Error;
 pub use init::{init, version};
 pub use network::{network_init, network_set_apikey, network_set_token, network_sync};
 
-pub const CLOUDSYNC_VERSION: &str = "0.8.68";
+pub const CLOUDSYNC_VERSION: &str = "1.0.12";
 
 pub fn apply(options: SqliteConnectOptions) -> Result<(SqliteConnectOptions, PathBuf), Error> {
     let extension_path = bundled_extension_path()?;

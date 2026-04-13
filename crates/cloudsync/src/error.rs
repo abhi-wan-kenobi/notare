@@ -1,5 +1,7 @@
 const SUPPORTED_CLOUDSYNC_TARGETS: &str = concat!(
     "macos/{aarch64,x86_64}, ",
+    "ios (via bundled CloudSync.xcframework), ",
+    "android/{arm64-v8a,armeabi-v7a,x86_64}, ",
     "linux/{gnu,musl}/{aarch64,x86_64}, ",
     "windows/x86_64"
 );
