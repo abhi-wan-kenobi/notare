@@ -8,7 +8,7 @@ license = "MIT"
 examples = ["dep:colored"]
 
 [dependencies]
-cactus-sys = { git = "https://github.com/cactus-compute/cactus", package = "cactus-sys", rev = "4e548592f0094dd07fc386ab47cc082ac0464bd0" }
+cactus-sys = { git = "https://github.com/cactus-compute/cactus", package = "cactus-sys", rev = "0d44b063bd249f06c80d269e2c0b11dcf32513c4" }
 
 hypr-cactus-model = { workspace = true }
 hypr-language = { workspace = true }
