@@ -48,16 +48,6 @@ vi.mock("@hypr/ui/components/ui/tooltip", () => ({
   ),
 }));
 
-vi.mock("./expand-toggle", () => ({
-  ExpandToggle: ({
-    label,
-  }: {
-    isExpanded: boolean;
-    onToggle: () => void;
-    label: string;
-  }) => <div>{label}</div>,
-}));
-
 vi.mock("~/audio-player", () => ({
   Timeline: () => <div data-testid="timeline" />,
   TimelineShell: ({ children }: { children?: React.ReactNode }) => (
@@ -66,6 +56,11 @@ vi.mock("~/audio-player", () => ({
   TimelineMeta: ({ children }: { children?: React.ReactNode }) => (
     <div>{children}</div>
   ),
+  useAudioPlayer: () => ({
+    audioExists: true,
+    deleteRecording: vi.fn(),
+    isDeletingRecording: false,
+  }),
 }));
 
 vi.mock("~/session/components/note-input/transcript", () => ({
@@ -132,7 +127,6 @@ describe("PostSessionAccessory", () => {
         hasAudio
         hasTranscript
         isTranscriptExpanded
-        onToggleTranscript={vi.fn()}
       />,
     );
 

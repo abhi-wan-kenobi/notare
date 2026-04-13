@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 import { DuringSessionAccessory } from "./during-session";
+import { ExpandToggle } from "./expand-toggle";
 import { PostSessionAccessory } from "./post-session";
 
+import { useShell } from "~/contexts/shell";
 import { getLiveCaptureUiMode } from "~/store/zustand/listener/general-shared";
 import { useListener } from "~/stt/contexts";
 
@@ -23,6 +26,7 @@ export function useSessionBottomAccessory({
   hasTranscript: boolean;
 }): {
   bottomAccessory: ReactNode;
+  bottomBorderHandle: ReactNode;
   bottomAccessoryState: BottomAccessoryState;
 } {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -32,10 +36,13 @@ export function useSessionBottomAccessory({
   const isInactive = sessionMode === "inactive" || isBatching;
   const hasAudio = Boolean(audioUrl) && isInactive;
   const live = useListener((state) => state.live);
+  const { chat } = useShell();
   const liveCaptureMode = getLiveCaptureUiMode(live);
   const canExpandLiveTranscript = isLive && liveCaptureMode === "live";
   const effectiveExpanded =
     isLive && !canExpandLiveTranscript ? false : isExpanded;
+  const isChatVisible =
+    chat.mode === "FloatingOpen" || chat.mode === "RightPanelOpen";
 
   const prevLive = useRef(isLive);
   useEffect(() => {
@@ -53,6 +60,21 @@ export function useSessionBottomAccessory({
 
   const showPostSession =
     isInactive && (isBatching || hasAudio || hasTranscript);
+
+  useHotkeys(
+    "esc",
+    () => {
+      setIsExpanded(false);
+    },
+    {
+      enabled: showPostSession && isExpanded && !isChatVisible,
+      preventDefault: true,
+      enableOnFormTags: true,
+      enableOnContentEditable: true,
+    },
+    [showPostSession, isExpanded, isChatVisible],
+  );
+
   const mode: NonNullable<BottomAccessoryState>["mode"] | null = isLive
     ? "live"
     : isFinalizing
@@ -75,11 +97,16 @@ export function useSessionBottomAccessory({
           sessionId={sessionId}
           isFinalizing={isFinalizing}
           isExpanded={effectiveExpanded}
-          onToggleExpand={
-            canExpandLiveTranscript ? () => setIsExpanded((v) => !v) : undefined
-          }
         />
       ),
+      bottomBorderHandle:
+        canExpandLiveTranscript && !isFinalizing ? (
+          <ExpandToggle
+            isExpanded={effectiveExpanded}
+            onToggle={() => setIsExpanded((v) => !v)}
+            label="Live"
+          />
+        ) : null,
       bottomAccessoryState,
     };
   }
@@ -92,7 +119,15 @@ export function useSessionBottomAccessory({
           hasAudio={hasAudio}
           hasTranscript={hasTranscript}
           isTranscriptExpanded={isExpanded}
-          onToggleTranscript={() => setIsExpanded((v) => !v)}
+        />
+      ),
+      bottomBorderHandle: (
+        <ExpandToggle
+          isExpanded={isExpanded}
+          onToggle={() => setIsExpanded((v) => !v)}
+          label="Transcript"
+          showExpandedCloseIcon
+          collapsedClassName="bg-neutral-50"
         />
       ),
       bottomAccessoryState,
@@ -101,6 +136,7 @@ export function useSessionBottomAccessory({
 
   return {
     bottomAccessory: null,
+    bottomBorderHandle: null,
     bottomAccessoryState,
   };
 }

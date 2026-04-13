@@ -21,6 +21,7 @@ import { getSessionTabStatus } from "./tab-visual-state";
 
 import { useTitleGeneration } from "~/ai/hooks";
 import * as AudioPlayer from "~/audio-player";
+import { useShell } from "~/contexts/shell";
 import { useSessionStatusBanner } from "~/shared/main";
 import { type TabItem, TabItemBase } from "~/shared/tabs";
 import * as main from "~/store/tinybase/store/main";
@@ -179,6 +180,7 @@ function TabContentNoteInner({
 }) {
   const titleInputRef = React.useRef<TitleInputHandle>(null);
   const noteInputRef = React.useRef<NoteInputHandle>(null);
+  const { chat } = useShell();
 
   const currentView = useCurrentNoteTab(tab);
   const { generateTitle } = useTitleGeneration(tab);
@@ -191,12 +193,13 @@ function TabContentNoteInner({
   useAutoFocusTitle({ sessionId, titleInputRef });
   usePendingUpload(sessionId);
 
-  const { bottomAccessory, bottomAccessoryState } = useSessionBottomAccessory({
-    sessionId,
-    sessionMode,
-    audioUrl,
-    hasTranscript,
-  });
+  const { bottomAccessory, bottomBorderHandle, bottomAccessoryState } =
+    useSessionBottomAccessory({
+      sessionId,
+      sessionMode,
+      audioUrl,
+      hasTranscript,
+    });
 
   const handleNavigateToTitle = React.useCallback((pixelWidth?: number) => {
     if (pixelWidth !== undefined) {
@@ -226,6 +229,25 @@ function TabContentNoteInner({
     bottomAccessoryState,
   });
 
+  const chatOpenMode =
+    bottomAccessoryState?.expanded === true ? "right-panel" : "floating";
+  const mergeTranscriptSurface =
+    bottomAccessoryState?.expanded === true &&
+    (bottomAccessoryState.mode === "playback" ||
+      bottomAccessoryState.mode === "transcript_only");
+
+  useEffect(() => {
+    if (bottomAccessoryState?.expanded !== true) {
+      return;
+    }
+
+    if (chat.mode !== "FloatingOpen") {
+      return;
+    }
+
+    chat.sendEvent({ type: "OPEN_RIGHT_PANEL" });
+  }, [bottomAccessoryState?.expanded, chat]);
+
   return (
     <SessionSurface
       header={<OuterHeader sessionId={tab.id} currentView={currentView} />}
@@ -240,7 +262,11 @@ function TabContentNoteInner({
         />
       }
       afterBorder={bottomAccessory}
-      floatingButton={<FloatingActionButton tab={tab} />}
+      bottomBorderHandle={bottomBorderHandle}
+      mergeAfterBorder={mergeTranscriptSurface}
+      floatingButton={
+        <FloatingActionButton tab={tab} chatOpenMode={chatOpenMode} />
+      }
     >
       <NoteInput
         ref={noteInputRef}
