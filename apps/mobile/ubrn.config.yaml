@@ -1,0 +1,25 @@
+rust:
+  directory: ../..
+  manifestPath: crates/mobile-bridge/Cargo.toml
+
+bindings:
+  cpp: cpp/generated
+  ts: src/generated
+  uniffiToml: ../../crates/mobile-bridge/uniffi.toml
+
+android:
+  directory: android
+  targets:
+    - arm64-v8a
+    - armeabi-v7a
+    - x86_64
+  jniLibs: app/src/main/jniLibs
+
+ios:
+  directory: ios
+
+turboModule:
+  cpp: cpp
+  ts: src/bridge
+  spec: NativeMobileBridge
+  entrypoint: src/bridge/index.ts
