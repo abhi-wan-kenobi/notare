@@ -8,10 +8,10 @@
   },
   "dependencies": {
     "@hypr/utils": "workspace:^",
-    "streamdown": "^2.2.0"
+    "streamdown": "^2.5.0"
   },
   "devDependencies": {
-    "@types/react": "^19.2.13"
+    "@types/react": "^19.2.14"
   },
   "peerDependencies": {
     "react": "^19.2.3"

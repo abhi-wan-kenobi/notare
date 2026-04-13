@@ -15,19 +15,19 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
-    "@playwright/test": "^1.56.1",
-    "@tailwindcss/vite": "^4.1.13",
-    "@types/react": "^19.1.10",
-    "@types/react-dom": "^19.1.7",
-    "@wxt-dev/module-react": "^1.1.4",
-    "happy-dom": "^20.7.0",
-    "tailwindcss": "^4.1.13",
+    "@playwright/test": "^1.59.1",
+    "@tailwindcss/vite": "^4.2.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@wxt-dev/module-react": "^1.2.2",
+    "happy-dom": "^20.8.9",
+    "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4",
-    "wxt": "^0.20.18"
+    "wxt": "^0.20.20"
   }
 }

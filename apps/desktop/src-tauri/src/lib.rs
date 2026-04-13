@@ -113,7 +113,6 @@ pub async fn main() {
         .plugin(tauri_plugin_todo::init())
         .plugin(tauri_plugin_auth::init())
         .plugin(tauri_plugin_db::init())
-        .plugin(tauri_plugin_db2::init())
         .plugin(tauri_plugin_tracing::init())
         .plugin(tauri_plugin_hooks::init())
         .plugin(tauri_plugin_icon::init())
@@ -231,14 +230,6 @@ pub async fn main() {
                     tracing::error!("failed to write AGENTS.md: {}", e);
                 }
             }
-
-            tokio::spawn(async move {
-                use tauri_plugin_db2::Database2PluginExt;
-
-                if let Err(e) = app_clone.db2().init_local().await {
-                    tracing::error!("failed_to_init_local: {}", e);
-                }
-            });
 
             if let (Some(ctx), Some(handle)) = (&root_supervisor_ctx, root_supervisor_handle) {
                 supervisor::monitor_supervisor(handle, ctx.is_exiting.clone(), app_handle.clone());

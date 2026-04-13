@@ -15,12 +15,12 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@floating-ui/dom": "^1.7.5",
+    "@floating-ui/dom": "^1.7.6",
     "@hypr/ui": "workspace:^",
     "@hypr/utils": "workspace:^",
     "@remixicon/react": "^4.9.0",
-    "@tanstack/react-query": "^5.90.20",
-    "@tanstack/react-router": "^1.159.5",
+    "@tanstack/react-query": "^5.99.0",
+    "@tanstack/react-router": "^1.168.19",
     "@tiptap/core": "3.20.1",
     "@tiptap/extension-bubble-menu": "3.20.1",
     "@tiptap/extension-file-handler": "3.20.1",
@@ -41,18 +41,18 @@
     "@tiptap/starter-kit": "3.20.1",
     "@tiptap/suggestion": "3.20.1",
     "clsx": "^2.1.1",
+    "facehash": "^0.0.7",
     "lucide-react": "^0.544.0",
     "prosemirror-commands": "^1.7.1",
     "prosemirror-model": "^1.25.4",
     "prosemirror-state": "^1.4.4",
     "requestidlecallback-polyfill": "^1.0.2",
     "tlds": "^1.261.0",
-    "usehooks-ts": "^3.1.1",
-    "facehash": "^0.0.7"
+    "usehooks-ts": "^3.1.1"
   },
   "devDependencies": {
-    "@types/node": "^22.19.11",
-    "@types/react": "^19.2.13",
+    "@types/node": "^22.19.17",
+    "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "vitest": "^3.2.4"
   },

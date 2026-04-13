@@ -187,7 +187,7 @@ hypr-whisper-local = { path = "crates/whisper-local", package = "whisper-local" 
 hypr-whisper-local-model = { path = "crates/whisper-local-model", package = "whisper-local-model" }
 hypr-ws-client = { path = "crates/ws-client", package = "ws-client" }
 hypr-ws-utils = { path = "crates/ws-utils", package = "ws-utils" }
-posthog-rs = "0.4.1"
+posthog-rs = "0.5"
 progenitor-client = "0.13"
 
 openai-transcription = { path = "crates/openai-transcription", package = "openai-transcription" }
@@ -223,7 +223,6 @@ tauri-plugin-auth = { path = "plugins/auth" }
 tauri-plugin-bedrock = { path = "plugins/bedrock" }
 tauri-plugin-calendar = { path = "plugins/calendar" }
 tauri-plugin-db = { path = "plugins/db" }
-tauri-plugin-db2 = { path = "plugins/db2" }
 tauri-plugin-deeplink2 = { path = "plugins/deeplink2" }
 tauri-plugin-detect = { path = "plugins/detect" }
 tauri-plugin-dock = { path = "plugins/dock" }
@@ -281,7 +280,7 @@ reqwest-streams = "0.15"
 reqwest-tracing = "0.6"
 tokio = "1"
 tokio-stream = "0.1.17"
-tokio-tungstenite = "0.28"
+tokio-tungstenite = "0.29"
 tokio-util = "0.7.15"
 
 camino = "1"
@@ -321,7 +320,7 @@ serde_yaml = "0.9"
 shellexpand = "3"
 similar = "2.7.0"
 statig = "0.4"
-strum = "0.27"
+strum = "0.28"
 tempfile = "3"
 thiserror = "2"
 toml = "0.8"
@@ -354,7 +353,7 @@ gbnf-validator = { git = "https://github.com/fastrepl/gbnf-validator", rev = "3d
 
 jsonwebtoken = { version = "10", features = ["rust_crypto"] }
 sentry = "=0.42.0"
-vergen-gix = "1"
+vergen-gix = "9"
 
 askama = "0.15"
 askama_parser = "0.15"
@@ -415,10 +414,10 @@ objc2-event-kit = "0.3.2"
 objc2-foundation = "0.3.2"
 objc2-user-notifications = "0.3.2"
 
-hmac = "0.12"
-sha2 = "0.10"
+hmac = "0.13"
+sha2 = "0.11"
 
-tokenizers = "0.21.4"
+tokenizers = "0.22"
 whichlang = "0.1"
 
 swift-rs = { git = "https://github.com/yujonglee/swift-rs", rev = "41a1605" }
@@ -428,7 +427,7 @@ windows = "0.62.2"
 windows-core = "0.62.2"
 xcap = "0.9.3"
 
-rmcp = "0.14"
+rmcp = "1.4"
 rustls = { version = "0.23", default-features = false }
 sqlx = { version = "0.8", default-features = false }
 sysinfo = "0.38"
