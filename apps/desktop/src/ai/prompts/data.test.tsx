@@ -10,16 +10,17 @@ import {
   usePromptTemplateSource,
 } from "./data";
 
-const { executeMock, subscribeMock, getTemplateSourceMock } = vi.hoisted(
-  () => ({
+const { executeMock, executeProxyMock, subscribeMock, getTemplateSourceMock } =
+  vi.hoisted(() => ({
     executeMock: vi.fn(),
+    executeProxyMock: vi.fn(),
     subscribeMock: vi.fn(),
     getTemplateSourceMock: vi.fn(),
-  }),
-);
+  }));
 
 vi.mock("@hypr/plugin-db", () => ({
   execute: executeMock,
+  executeProxy: executeProxyMock,
   subscribe: subscribeMock,
 }));
 
@@ -53,22 +54,31 @@ function createWrapper() {
 describe("prompt data", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    executeProxyMock.mockResolvedValue({ rows: [] });
   });
 
   it("loads a stored prompt override from SQLite", async () => {
-    executeMock.mockResolvedValue([
-      { task_type: "enhance", content: "# Context" },
-    ]);
+    executeProxyMock.mockResolvedValue({
+      rows: [
+        [
+          "enhance",
+          "# Context",
+          "2026-04-13T00:00:00Z",
+          "2026-04-13T00:00:00Z",
+        ],
+      ],
+    });
 
     await expect(loadPromptOverride("enhance")).resolves.toBe("# Context");
-    expect(executeMock).toHaveBeenCalledWith(
-      expect.stringContaining("FROM prompt_overrides"),
-      ["enhance"],
+    expect(executeProxyMock).toHaveBeenCalledWith(
+      expect.stringContaining("prompt_overrides"),
+      expect.arrayContaining(["enhance"]),
+      "all",
     );
   });
 
   it("returns null when no override exists", async () => {
-    executeMock.mockResolvedValue([]);
+    executeProxyMock.mockResolvedValue({ rows: [] });
 
     await expect(loadPromptOverride("title")).resolves.toBeNull();
   });

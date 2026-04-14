@@ -23,6 +23,12 @@ vi.mock("@tauri-apps/api/path", () => ({
   sep: vi.fn().mockReturnValue("/"),
 }));
 
+vi.mock("@hypr/plugin-db", () => ({
+  execute: vi.fn().mockResolvedValue([]),
+  executeProxy: vi.fn().mockResolvedValue({ rows: [] }),
+  subscribe: vi.fn().mockResolvedValue(() => {}),
+}));
+
 vi.mock("@hypr/plugin-analytics", () => ({
   commands: {
     event: vi.fn().mockResolvedValue({ status: "ok", data: null }),

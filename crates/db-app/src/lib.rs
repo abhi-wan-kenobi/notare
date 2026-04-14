@@ -2,21 +2,27 @@
 
 mod activity_ops;
 mod activity_types;
+mod cloudsync;
 mod daily_note_ops;
 mod daily_note_types;
 mod daily_summary_ops;
 mod daily_summary_types;
 mod prompt_override_ops;
 mod prompt_override_types;
+mod template_ops;
+mod template_types;
 
 pub use activity_ops::*;
 pub use activity_types::*;
+pub use cloudsync::*;
 pub use daily_note_ops::*;
 pub use daily_note_types::*;
 pub use daily_summary_ops::*;
 pub use daily_summary_types::*;
 pub use prompt_override_ops::*;
 pub use prompt_override_types::*;
+pub use template_ops::*;
+pub use template_types::*;
 
 use sqlx::SqlitePool;
 
@@ -28,6 +34,7 @@ pub async fn migrate(pool: &SqlitePool) -> Result<(), sqlx::migrate::MigrateErro
 mod tests {
     use super::*;
     use hypr_db_core2::Db3;
+    use sqlx::Row;
 
     async fn test_db() -> Db3 {
         let db = Db3::connect_memory_plain().await.unwrap();
@@ -58,8 +65,55 @@ mod tests {
                 "daily_notes",
                 "daily_summaries",
                 "prompt_overrides",
+                "templates",
             ]
         );
+    }
+
+    #[test]
+    fn cloudsync_registry_starts_with_templates_disabled() {
+        let registry = cloudsync_table_registry();
+
+        assert_eq!(registry.len(), 1);
+        assert_eq!(registry[0].table_name, "templates");
+        assert!(!registry[0].enabled);
+        assert!(!cloudsync_alter_guard_required("templates"));
+    }
+
+    #[tokio::test]
+    async fn templates_table_matches_cloudsync_schema_requirements() {
+        let db = test_db().await;
+
+        let rows = sqlx::query(
+            "SELECT name, type, \"notnull\", dflt_value, pk
+             FROM pragma_table_info('templates')
+             ORDER BY cid",
+        )
+        .fetch_all(db.pool().as_ref())
+        .await
+        .unwrap();
+
+        let pk_columns: Vec<_> = rows
+            .iter()
+            .filter(|row| row.get::<i64, _>("pk") > 0)
+            .collect();
+        assert_eq!(pk_columns.len(), 1);
+
+        let pk = pk_columns[0];
+        assert_eq!(pk.get::<String, _>("name"), "id");
+        assert_eq!(pk.get::<String, _>("type").to_uppercase(), "TEXT");
+        assert_eq!(pk.get::<i64, _>("notnull"), 1);
+
+        for row in rows
+            .iter()
+            .filter(|row| row.get::<i64, _>("pk") == 0 && row.get::<i64, _>("notnull") == 1)
+        {
+            assert!(
+                row.get::<Option<String>, _>("dflt_value").is_some(),
+                "column {} must define a DEFAULT value for SQLite Sync compatibility",
+                row.get::<String, _>("name")
+            );
+        }
     }
 
     #[tokio::test]
@@ -306,6 +360,217 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
+    }
+
+    #[tokio::test]
+    async fn template_roundtrip() {
+        let db = test_db().await;
+
+        upsert_template(
+            db.pool(),
+            UpsertTemplate {
+                id: "template-1",
+                title: "Standup",
+                description: "Daily sync",
+                pinned: true,
+                pin_order: Some(2),
+                category: Some("meetings"),
+                targets_json: Some("[\"engineering\"]"),
+                sections_json: "[{\"title\":\"Notes\",\"description\":\"...\"}]",
+            },
+        )
+        .await
+        .unwrap();
+
+        let row = get_template(db.pool(), "template-1")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.title, "Standup");
+        assert_eq!(row.targets_json.as_deref(), Some("[\"engineering\"]"));
+        assert_eq!(
+            row.sections_json,
+            "[{\"title\":\"Notes\",\"description\":\"...\"}]"
+        );
+    }
+
+    #[tokio::test]
+    async fn list_templates_returns_all_ordered_by_id() {
+        let db = test_db().await;
+
+        upsert_template(
+            db.pool(),
+            UpsertTemplate {
+                id: "template-2",
+                title: "Two",
+                description: "",
+                pinned: false,
+                pin_order: None,
+                category: None,
+                targets_json: None,
+                sections_json: "[]",
+            },
+        )
+        .await
+        .unwrap();
+
+        upsert_template(
+            db.pool(),
+            UpsertTemplate {
+                id: "template-1",
+                title: "One",
+                description: "",
+                pinned: false,
+                pin_order: None,
+                category: None,
+                targets_json: None,
+                sections_json: "[]",
+            },
+        )
+        .await
+        .unwrap();
+
+        let rows = list_templates(db.pool()).await.unwrap();
+        let ids: Vec<&str> = rows.iter().map(|row| row.id.as_str()).collect();
+
+        assert_eq!(ids, vec!["template-1", "template-2"]);
+    }
+
+    #[tokio::test]
+    async fn template_upsert_replaces_existing_row_by_id() {
+        let db = test_db().await;
+
+        upsert_template(
+            db.pool(),
+            UpsertTemplate {
+                id: "template-1",
+
+                title: "First",
+                description: "A",
+                pinned: false,
+                pin_order: None,
+                category: None,
+                targets_json: None,
+                sections_json: "[]",
+            },
+        )
+        .await
+        .unwrap();
+
+        upsert_template(
+            db.pool(),
+            UpsertTemplate {
+                id: "template-1",
+
+                title: "Second",
+                description: "B",
+                pinned: true,
+                pin_order: Some(5),
+                category: Some("sales"),
+                targets_json: Some("[\"exec\"]"),
+                sections_json: "[{\"title\":\"Summary\",\"description\":\"Updated\"}]",
+            },
+        )
+        .await
+        .unwrap();
+
+        let row = get_template(db.pool(), "template-1")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.title, "Second");
+        assert_eq!(row.description, "B");
+        assert!(row.pinned);
+        assert_eq!(row.pin_order, Some(5));
+        assert_eq!(row.category.as_deref(), Some("sales"));
+        assert_eq!(row.targets_json.as_deref(), Some("[\"exec\"]"));
+        assert_eq!(
+            row.sections_json,
+            "[{\"title\":\"Summary\",\"description\":\"Updated\"}]"
+        );
+        assert_eq!(list_templates(db.pool()).await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn template_delete_removes_row() {
+        let db = test_db().await;
+
+        upsert_template(
+            db.pool(),
+            UpsertTemplate {
+                id: "template-1",
+
+                title: "Delete Me",
+                description: "",
+                pinned: false,
+                pin_order: None,
+                category: None,
+                targets_json: None,
+                sections_json: "[]",
+            },
+        )
+        .await
+        .unwrap();
+
+        delete_template(db.pool(), "template-1").await.unwrap();
+
+        assert!(
+            get_template(db.pool(), "template-1")
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn template_insert_if_missing_preserves_existing_row() {
+        let db = test_db().await;
+
+        upsert_template(
+            db.pool(),
+            UpsertTemplate {
+                id: "template-1",
+                title: "Original",
+                description: "A",
+                pinned: false,
+                pin_order: None,
+                category: None,
+                targets_json: None,
+                sections_json: "[]",
+            },
+        )
+        .await
+        .unwrap();
+
+        let inserted = insert_template_if_missing(
+            db.pool(),
+            UpsertTemplate {
+                id: "template-1",
+                title: "Replacement",
+                description: "B",
+                pinned: true,
+                pin_order: Some(4),
+                category: Some("meetings"),
+                targets_json: Some("[\"exec\"]"),
+                sections_json: "[{\"title\":\"Summary\",\"description\":\"Updated\"}]",
+            },
+        )
+        .await
+        .unwrap();
+
+        assert!(!inserted);
+
+        let row = get_template(db.pool(), "template-1")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.title, "Original");
+        assert_eq!(row.description, "A");
+        assert!(!row.pinned);
+        assert_eq!(row.pin_order, None);
+        assert_eq!(row.category, None);
+        assert_eq!(row.targets_json, None);
+        assert_eq!(row.sections_json, "[]");
     }
 
     #[tokio::test]

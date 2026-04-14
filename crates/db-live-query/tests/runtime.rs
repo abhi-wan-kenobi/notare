@@ -180,7 +180,7 @@ async fn setup_runtime() -> (tempfile::TempDir, sqlx::SqlitePool, DbRuntime<Test
     let db = hypr_db_core2::Db3::open_with_migrate(
         DbOpenOptions {
             storage: DbStorage::Local(&db_path),
-            cloudsync: false,
+            cloudsync_open_mode: hypr_db_core2::CloudsyncOpenMode::Disabled,
             journal_mode_wal: true,
             foreign_keys: true,
             max_connections: Some(4),
@@ -193,7 +193,7 @@ async fn setup_runtime() -> (tempfile::TempDir, sqlx::SqlitePool, DbRuntime<Test
 
     let pool = db.pool().as_ref().clone();
 
-    (dir, pool, DbRuntime::new(db))
+    (dir, pool, DbRuntime::new(std::sync::Arc::new(db)))
 }
 
 #[tokio::test]

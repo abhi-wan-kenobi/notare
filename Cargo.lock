@@ -4736,8 +4736,10 @@ dependencies = [
 name = "db-core2"
 version = "0.1.0"
 dependencies = [
+ "backon",
  "cloudsync",
  "libsqlite3-sys",
+ "serde",
  "sqlx",
  "tempfile",
  "thiserror 2.0.18",
@@ -4754,6 +4756,7 @@ dependencies = [
  "cloudsync",
  "db-app",
  "db-core2",
+ "serde",
  "serde_json",
  "sqlx",
  "tempfile",
@@ -5008,6 +5011,7 @@ dependencies = [
  "audio-actual",
  "audio-mock",
  "db-core2",
+ "dirs 6.0.0",
  "host",
  "intercept",
  "pico-args",
@@ -18434,8 +18438,6 @@ dependencies = [
  "tauri-plugin-activity-capture",
  "tauri-plugin-local-llm",
  "tauri-specta",
- "tauri-utils 0.1.0",
- "template-app",
  "thiserror 2.0.18",
  "tokio",
  "tracing",

@@ -11,19 +11,12 @@ import {
 } from "@hypr/ui/components/ui/dropdown-menu";
 import { cn } from "@hypr/utils";
 
-import {
-  resolveTemplateTabSelection,
-  useCreateTemplate,
-  useToggleTemplateFavorite,
-  useUserTemplates,
-  type UserTemplate,
-  type WebTemplate,
-} from "./shared";
+import { type WebTemplate } from "./codec";
+import { getTemplateCopyTitle, type UserTemplate } from "./queries";
+import { useTemplateTab } from "./utils";
 
 import { useNativeContextMenu } from "~/shared/hooks/useNativeContextMenu";
-import { useWebResources } from "~/shared/ui/resource-list";
-import * as main from "~/store/tinybase/store/main";
-import { type Tab, useTabs } from "~/store/zustand/tabs";
+import { type Tab } from "~/store/zustand/tabs";
 
 type SortOption = "alphabetical" | "reverse-alphabetical";
 
@@ -32,59 +25,26 @@ export function TemplatesSidebarContent({
 }: {
   tab: Extract<Tab, { type: "templates" }>;
 }) {
-  const updateTabState = useTabs((state) => state.updateTemplatesTabState);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
   const [sortOption, setSortOption] = useState<SortOption>("alphabetical");
-  const userTemplates = useUserTemplates();
-  const createTemplate = useCreateTemplate();
-  const toggleTemplateFavorite = useToggleTemplateFavorite();
-  const { data: webTemplates = [], isLoading: isWebLoading } =
-    useWebResources<WebTemplate>("templates");
-  const deleteTemplateFromStore = main.UI.useDelRowCallback(
-    "templates",
-    (templateId: string) => templateId,
-    main.STORE_ID,
-  );
 
   const {
+    userTemplates,
+    webTemplates,
+    isWebLoading,
     isWebMode,
     selectedMineId: effectiveSelectedMineId,
     selectedWebIndex: effectiveSelectedWebIndex,
-  } = resolveTemplateTabSelection({
-    isWebMode: tab.state.isWebMode,
-    selectedMineId: tab.state.selectedMineId,
-    selectedWebIndex: tab.state.selectedWebIndex,
-    userTemplates,
-    webTemplates,
-  });
+    setSelectedMineId,
+    setSelectedWebIndex,
+    createTemplate,
+    deleteTemplate,
+    toggleTemplateFavorite,
+  } = useTemplateTab(tab);
 
-  const setSelectedMineId = useCallback(
-    (id: string | null) => {
-      updateTabState(tab, {
-        ...tab.state,
-        isWebMode: false,
-        selectedMineId: id,
-        selectedWebIndex: null,
-      });
-    },
-    [updateTabState, tab],
-  );
-
-  const setSelectedWebIndex = useCallback(
-    (index: number | null) => {
-      updateTabState(tab, {
-        ...tab.state,
-        isWebMode: true,
-        selectedMineId: null,
-        selectedWebIndex: index,
-      });
-    },
-    [updateTabState, tab],
-  );
-
-  const handleCreateTemplate = useCallback(() => {
-    const id = createTemplate({
+  const handleCreateTemplate = useCallback(async () => {
+    const id = await createTemplate({
       title: "New Template",
       description: "",
       sections: [],
@@ -96,9 +56,9 @@ export function TemplatesSidebarContent({
   }, [createTemplate, setSelectedMineId]);
 
   const handleDuplicateTemplate = useCallback(
-    (template: UserTemplate) => {
-      const id = createTemplate({
-        title: getDuplicatedTemplateTitle(template.title),
+    async (template: UserTemplate) => {
+      const id = await createTemplate({
+        title: getTemplateCopyTitle(template.title),
         description: template.description ?? "",
         category: template.category,
         targets: template.targets,
@@ -113,19 +73,19 @@ export function TemplatesSidebarContent({
   );
 
   const handleDeleteTemplate = useCallback(
-    (id: string) => {
-      deleteTemplateFromStore(id);
+    async (id: string) => {
+      await deleteTemplate(id);
 
       if (effectiveSelectedMineId === id) {
         setSelectedMineId(null);
       }
     },
-    [deleteTemplateFromStore, effectiveSelectedMineId, setSelectedMineId],
+    [deleteTemplate, effectiveSelectedMineId, setSelectedMineId],
   );
 
   const handleToggleFavorite = useCallback(
-    (id: string) => {
-      toggleTemplateFavorite(id);
+    async (id: string) => {
+      await toggleTemplateFavorite(id);
     },
     [toggleTemplateFavorite],
   );
@@ -134,8 +94,8 @@ export function TemplatesSidebarContent({
     const favorites = userTemplates
       .filter((template) => template.pinned)
       .sort((a, b) => {
-        const orderA = a.pin_order ?? Infinity;
-        const orderB = b.pin_order ?? Infinity;
+        const orderA = a.pinOrder ?? Infinity;
+        const orderB = b.pinOrder ?? Infinity;
         if (orderA !== orderB) {
           return orderA - orderB;
         }
@@ -565,9 +525,4 @@ function TemplateListItem({
       </div>
     </button>
   );
-}
-
-function getDuplicatedTemplateTitle(title: string) {
-  const value = title.trim();
-  return value ? `${value} copy` : "Untitled copy";
 }

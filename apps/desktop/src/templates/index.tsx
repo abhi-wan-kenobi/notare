@@ -1,29 +1,21 @@
 import { BookText } from "lucide-react";
-import { useCallback } from "react";
 
-import type { TemplateSection } from "@hypr/store";
-
-import { TemplateDetailsColumn } from "./components/details";
-import {
-  resolveTemplateTabSelection,
-  useCreateTemplate,
-  useToggleTemplateFavorite,
-  useUserTemplates,
-  type WebTemplate,
-} from "./shared";
+import { TemplateView } from "./template-body";
 
 import { StandardTabWrapper } from "~/shared/main";
 import { type TabItem, TabItemBase } from "~/shared/tabs";
-import { useWebResources } from "~/shared/ui/resource-list";
-import * as main from "~/store/tinybase/store/main";
-import * as settings from "~/store/tinybase/store/settings";
-import { type Tab, useTabs } from "~/store/zustand/tabs";
+import { type Tab } from "~/store/zustand/tabs";
 
+export { parseWebTemplates } from "./codec";
+export type { WebTemplate } from "./codec";
 export {
-  getTemplateCreatorLabel,
-  useTemplateCreatorName,
+  useCreateTemplate,
+  useUserTemplate,
   useUserTemplates,
-} from "./shared";
+} from "./queries";
+export type { UserTemplate, UserTemplateDraft } from "./queries";
+export { getTemplateCreatorLabel, useTemplateCreatorName } from "./utils";
+export { TemplatesSidebarContent } from "./template-sidebar";
 
 export const TabItemTemplate: TabItem<Extract<Tab, { type: "templates" }>> = ({
   tab,
@@ -37,7 +29,7 @@ export const TabItemTemplate: TabItem<Extract<Tab, { type: "templates" }>> = ({
 }) => {
   return (
     <TabItemBase
-      icon={<BookTextIcon className="h-4 w-4" />}
+      icon={<BookText className="h-4 w-4" />}
       title={"Templates"}
       selected={tab.active}
       pinned={tab.pinned}
@@ -52,10 +44,6 @@ export const TabItemTemplate: TabItem<Extract<Tab, { type: "templates" }>> = ({
   );
 };
 
-function BookTextIcon({ className }: { className?: string }) {
-  return <BookText className={className} />;
-}
-
 export function TabContentTemplate({
   tab,
 }: {
@@ -66,172 +54,4 @@ export function TabContentTemplate({
       <TemplateView tab={tab} />
     </StandardTabWrapper>
   );
-}
-
-function TemplateView({ tab }: { tab: Extract<Tab, { type: "templates" }> }) {
-  const updateTabState = useTabs((state) => state.updateTemplatesTabState);
-  const userTemplates = useUserTemplates();
-  const createTemplate = useCreateTemplate();
-  const toggleTemplateFavorite = useToggleTemplateFavorite();
-  const { data: webTemplates = [] } = useWebResources<WebTemplate>("templates");
-  const settingsStore = settings.UI.useStore(settings.STORE_ID);
-
-  const setSelectedMineId = useCallback(
-    (id: string | null) => {
-      updateTabState(tab, {
-        ...tab.state,
-        isWebMode: false,
-        selectedMineId: id,
-        selectedWebIndex: null,
-      });
-    },
-    [updateTabState, tab],
-  );
-
-  const { isWebMode, selectedMineId, selectedWebTemplate } =
-    resolveTemplateTabSelection({
-      isWebMode: tab.state.isWebMode,
-      selectedMineId: tab.state.selectedMineId,
-      selectedWebIndex: tab.state.selectedWebIndex,
-      userTemplates,
-      webTemplates,
-    });
-
-  const deleteTemplateFromStore = main.UI.useDelRowCallback(
-    "templates",
-    (templateId: string) => templateId,
-    main.STORE_ID,
-  );
-
-  const handleDeleteTemplate = useCallback(
-    (id: string) => {
-      deleteTemplateFromStore(id);
-      setSelectedMineId(null);
-    },
-    [deleteTemplateFromStore, setSelectedMineId],
-  );
-
-  const materializeTemplate = useCallback(
-    (
-      template: {
-        title: string;
-        description: string;
-        category?: string;
-        targets?: string[];
-        sections: TemplateSection[];
-      },
-      {
-        title = template.title,
-        onCreate,
-      }: {
-        title?: string;
-        onCreate?: (id: string) => void;
-      } = {},
-    ) => {
-      const id = createTemplate({
-        ...template,
-        title,
-      });
-      if (!id) {
-        return null;
-      }
-
-      onCreate?.(id);
-      setSelectedMineId(id);
-      return id;
-    },
-    [createTemplate, setSelectedMineId],
-  );
-
-  const handleCloneTemplate = useCallback(
-    (template: {
-      title: string;
-      description: string;
-      category?: string;
-      targets?: string[];
-      sections: TemplateSection[];
-    }) => {
-      materializeTemplate(template, {
-        title: getTemplateCopyTitle(template.title),
-      });
-    },
-    [materializeTemplate],
-  );
-
-  const handleFavoriteTemplate = useCallback(
-    (template: {
-      title: string;
-      description: string;
-      category?: string;
-      targets?: string[];
-      sections: TemplateSection[];
-    }) => {
-      materializeTemplate(template, {
-        onCreate: (id) => toggleTemplateFavorite(id),
-      });
-    },
-    [materializeTemplate, toggleTemplateFavorite],
-  );
-
-  const handleSetDefaultTemplate = useCallback(
-    (template: {
-      title: string;
-      description: string;
-      category?: string;
-      targets?: string[];
-      sections: TemplateSection[];
-    }) => {
-      if (!settingsStore) {
-        return;
-      }
-
-      const id = materializeTemplate(template);
-      if (!id) {
-        return;
-      }
-
-      settingsStore.setValue("selected_template_id", id);
-    },
-    [materializeTemplate, settingsStore],
-  );
-
-  const handleDuplicateTemplate = useCallback(
-    (id: string) => {
-      const template = userTemplates.find((item) => item.id === id);
-      if (!template) return;
-
-      handleCloneTemplate({
-        title: template.title,
-        description: template.description,
-        category: template.category,
-        targets: template.targets,
-        sections: template.sections,
-      });
-    },
-    [handleCloneTemplate, userTemplates],
-  );
-
-  return (
-    <div className="h-full">
-      <TemplateDetailsColumn
-        isWebMode={isWebMode}
-        selectedMineId={selectedMineId}
-        selectedWebTemplate={selectedWebTemplate}
-        handleDeleteTemplate={handleDeleteTemplate}
-        handleDuplicateTemplate={handleDuplicateTemplate}
-        handleCloneTemplate={handleCloneTemplate}
-        handleFavoriteTemplate={handleFavoriteTemplate}
-        handleSetDefaultTemplate={handleSetDefaultTemplate}
-      />
-    </div>
-  );
-}
-
-function getTemplateCopyTitle(title: string) {
-  const value = title.trim();
-
-  if (!value) return "Untitled (Copy)";
-  if (value.endsWith("(Copy)")) return value;
-
-  return `${value} (Copy)`;
 }

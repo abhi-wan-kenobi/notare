@@ -4,6 +4,8 @@ pub enum BridgeError {
     Closed,
     #[error("invalid params json: {reason}")]
     InvalidParamsJson { reason: String },
+    #[error("invalid cloudsync config json: {reason}")]
+    InvalidCloudsyncConfigJson { reason: String },
     #[error("params json must encode an array")]
     ParamsMustBeArray,
     #[error("failed to open database: {reason}")]
@@ -38,6 +40,12 @@ pub(crate) fn runtime_error(error: hypr_db_live_query::Error) -> BridgeError {
 }
 
 pub(crate) fn cloudsync_error(error: hypr_db_core2::Error) -> BridgeError {
+    BridgeError::CloudsyncFailed {
+        reason: error.to_string(),
+    }
+}
+
+pub(crate) fn cloudsync_runtime_error(error: hypr_db_core2::CloudsyncRuntimeError) -> BridgeError {
     BridgeError::CloudsyncFailed {
         reason: error.to_string(),
     }

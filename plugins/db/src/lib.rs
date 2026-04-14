@@ -1,13 +1,20 @@
 mod commands;
 mod error;
+mod import;
 mod runtime;
 
 pub use error::{Error, Result};
+pub use runtime::open_app_db;
 use tauri::Manager;
 
 const PLUGIN_NAME: &str = "db";
 
 pub type ManagedState = std::sync::Arc<runtime::PluginDbRuntime>;
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type, PartialEq)]
+pub struct ExecuteProxyResult {
+    rows: Vec<serde_json::Value>,
+}
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type, PartialEq)]
 #[serde(tag = "event", content = "data")]
@@ -23,19 +30,26 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
             commands::execute,
+            commands::execute_proxy,
             commands::subscribe,
             commands::unsubscribe,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }
 
-pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+pub fn init<R: tauri::Runtime>(
+    db: std::sync::Arc<hypr_db_core2::Db3>,
+) -> tauri::plugin::TauriPlugin<R> {
     let specta_builder = make_specta_builder();
 
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
         .setup(move |app, _| {
-            let db = runtime::open_app_db(app)?;
+            let pool = db.pool().clone();
+            let app_handle = app.app_handle().clone();
+            hypr_tauri_utils::spawn("import legacy templates.json", async move {
+                import::import_legacy_templates(&app_handle, &pool).await
+            });
             app.manage(std::sync::Arc::new(runtime::PluginDbRuntime::new(db)));
             Ok(())
         })
@@ -107,7 +121,7 @@ mod test {
         let db = hypr_db_core2::Db3::open_with_migrate(
             hypr_db_core2::DbOpenOptions {
                 storage: hypr_db_core2::DbStorage::Local(&db_path),
-                cloudsync: false,
+                cloudsync_open_mode: hypr_db_core2::CloudsyncOpenMode::Disabled,
                 journal_mode_wal: true,
                 foreign_keys: true,
                 max_connections: Some(4),
@@ -118,7 +132,7 @@ mod test {
         .await
         .unwrap();
 
-        (dir, Arc::new(runtime::PluginDbRuntime::new(db)))
+        (dir, Arc::new(runtime::PluginDbRuntime::new(Arc::new(db))))
     }
 
     #[tokio::test]
