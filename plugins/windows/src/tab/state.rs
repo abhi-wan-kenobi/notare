@@ -45,12 +45,6 @@ crate::common_derives! {
 }
 
 crate::common_derives! {
-    pub struct PromptsState {
-        pub selected_task: Option<String>,
-    }
-}
-
-crate::common_derives! {
     pub struct ChatShortcutsState {
         pub is_web_mode: Option<bool>,
         pub selected_mine_id: Option<String>,

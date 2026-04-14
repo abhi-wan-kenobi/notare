@@ -1,4 +1,3 @@
-import { TabContentPrompt } from "~/ai/prompts";
 import { TabContentCalendar } from "~/calendar";
 import { TabContentChangelog } from "~/changelog";
 import { TabContentChat } from "~/chat/tab/tab-content";
@@ -39,9 +38,6 @@ export function MainTabContent({ tab }: { tab: Tab }) {
   }
   if (tab.type === "templates") {
     return <TabContentTemplate tab={tab} />;
-  }
-  if (tab.type === "prompts") {
-    return <TabContentPrompt tab={tab} />;
   }
   if (tab.type === "chat_shortcuts") {
     return <TabContentChatShortcut tab={tab} />;

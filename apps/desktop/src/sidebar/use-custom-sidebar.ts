@@ -7,7 +7,6 @@ const CUSTOM_SIDEBAR_TYPES: Tab["type"][] = [
   "settings",
   "contacts",
   "templates",
-  "prompts",
 ];
 
 export function hasCustomSidebarTab(tab: Tab | null): boolean {

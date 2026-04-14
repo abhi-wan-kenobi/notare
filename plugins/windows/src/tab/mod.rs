@@ -29,11 +29,6 @@ common_derives! {
             #[serde(skip_serializing_if = "Option::is_none")]
             state: Option<TemplatesState>,
         },
-        #[serde(rename = "prompts")]
-        Prompts {
-            #[serde(skip_serializing_if = "Option::is_none")]
-            state: Option<PromptsState>,
-        },
         #[serde(rename = "chat_shortcuts")]
         ChatShortcuts {
             #[serde(skip_serializing_if = "Option::is_none")]

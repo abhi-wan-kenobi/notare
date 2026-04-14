@@ -15,7 +15,6 @@ import { cn } from "@hypr/utils";
 import { CalendarNav } from "./calendar";
 import { ContactsNav } from "./contacts";
 import { ProfileSection } from "./profile";
-import { PromptsNav } from "./prompts";
 import { SidebarSearchInput } from "./search";
 import { SettingsNav } from "./settings";
 import { TemplatesNav } from "./templates";
@@ -49,13 +48,8 @@ export function LeftSidebar() {
   const isCalendarMode = currentTab?.type === "calendar";
   const isContactsMode = currentTab?.type === "contacts";
   const isTemplatesMode = currentTab?.type === "templates";
-  const isPromptsMode = currentTab?.type === "prompts";
   const isSpecialMode =
-    isSettingsMode ||
-    isCalendarMode ||
-    isContactsMode ||
-    isTemplatesMode ||
-    isPromptsMode;
+    isSettingsMode || isCalendarMode || isContactsMode || isTemplatesMode;
   const showCollapseButton = !isSpecialMode;
   const showSearchResults = !isSpecialMode && query.trim() !== "";
 
@@ -118,8 +112,6 @@ export function LeftSidebar() {
             <ContactsNav />
           ) : isTemplatesMode ? (
             <TemplatesNav />
-          ) : isPromptsMode ? (
-            <PromptsNav />
           ) : (
             <>
               <div className={showSearchResults ? "h-full" : "hidden"}>

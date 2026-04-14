@@ -16,7 +16,6 @@ import { templateSectionSchema } from "@hypr/store";
 import type { TaskArgsMapTransformed, TaskConfig } from ".";
 import { createEnhanceValidator } from "./enhance-validator";
 
-import { loadPromptOverride } from "~/ai/prompts/data";
 import type { Store } from "~/store/tinybase/store/main";
 import { normalizeBulletPoints } from "~/store/zustand/ai-task/shared/transform_impl";
 import { withEarlyValidationRetry } from "~/store/zustand/ai-task/shared/validate";
@@ -102,24 +101,6 @@ async function getUserPrompt(
         ),
       }
     : null;
-
-  const ctx = {
-    content: transcripts,
-    session,
-    participants,
-    template,
-    pre_meeting_memo: preMeetingMemo,
-    post_meeting_memo: postMeetingMemo,
-  };
-
-  const customPrompt = await loadPromptOverride("enhance");
-  if (customPrompt) {
-    const result = await templateCommands.renderCustom(customPrompt, ctx);
-    if (result.status === "error") {
-      throw new Error(result.error);
-    }
-    return result.data;
-  }
 
   const result = await templateCommands.render({
     enhanceUser: {

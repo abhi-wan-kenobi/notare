@@ -24,7 +24,7 @@ import { type SettingsTab, useTabs } from "~/store/zustand/tabs";
 type SettingsNavItem =
   | { id: SettingsTab; label: string; icon: typeof SmartphoneIcon }
   | {
-      action: "open-templates" | "open-prompts";
+      action: "open-templates";
       label: string;
       icon: typeof SmartphoneIcon;
     };
@@ -40,14 +40,6 @@ function getBaseGroups() {
       icon: BookText,
     },
   ];
-
-  if (import.meta.env.DEV) {
-    aiItems.push({
-      action: "open-prompts",
-      label: "Prompts",
-      icon: SparklesIcon,
-    });
-  }
 
   return [
     {
@@ -98,13 +90,6 @@ export function SettingsNav() {
     openNew({ type: "templates" });
   }, [openNew]);
 
-  const handleOpenPrompts = useCallback(() => {
-    openNew({
-      type: "prompts",
-      state: { selectedTask: "enhance" },
-    });
-  }, [openNew]);
-
   const groups = getBaseGroups();
   const isMacos = platform() === "macos";
   if (isMacos) {
@@ -136,11 +121,6 @@ export function SettingsNav() {
                     onClick={() => {
                       if (isSettingsItem) {
                         setActiveTab(item.id as SettingsTab);
-                        return;
-                      }
-
-                      if (item.action === "open-prompts") {
-                        handleOpenPrompts();
                         return;
                       }
 

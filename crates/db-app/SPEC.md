@@ -43,19 +43,6 @@ Columns:
 Unique:
 - `daily_note_id`
 
-### `prompt_overrides`
-
-One local override row per editable built-in prompt task.
-
-Columns:
-- `task_type`
-- `content`
-- `created_at`
-- `updated_at`
-
-Unique:
-- `task_type`
-
 ### `templates`
 
 User-authored note templates mirrored into the desktop SQLite database.

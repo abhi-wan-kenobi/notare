@@ -52,7 +52,6 @@ const deserializePinnedTabs = (data: string): PinnedTab[] => {
         case "sessions":
         case "contacts":
         case "templates":
-        case "prompts":
         case "chat_shortcuts":
         case "humans":
         case "organizations":

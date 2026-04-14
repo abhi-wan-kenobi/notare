@@ -138,13 +138,6 @@ export const activityObservationAnalyses = sqliteTable(
   ],
 );
 
-export const promptOverrides = sqliteTable("prompt_overrides", {
-  taskType: text("task_type").primaryKey(),
-  content: text("content").notNull().default(""),
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-});
-
 export const templates = sqliteTable("templates", {
   id: text("id").primaryKey(),
   title: text("title").notNull().default(""),

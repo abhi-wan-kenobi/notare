@@ -5,7 +5,6 @@ import type {
   ContactsSelection,
   ContactsState,
   EditorView,
-  PromptsState,
   SessionsState,
   TabInput as WindowsTabInput,
   TemplatesState,
@@ -18,7 +17,6 @@ export type {
   ContactsSelection,
   ContactsState,
   EditorView,
-  PromptsState,
   SessionsState,
   TemplatesState,
 };
@@ -103,10 +101,6 @@ export type Tab =
       state: TemplatesState;
     })
   | (BaseTab & {
-      type: "prompts";
-      state: PromptsState;
-    })
-  | (BaseTab & {
       type: "chat_shortcuts";
       state: ChatShortcutsState;
     })
@@ -174,14 +168,6 @@ export const getDefaultState = (tab: TabInput): Tab => {
           selectedWebIndex: null,
         },
       };
-    case "prompts":
-      return {
-        ...base,
-        type: "prompts",
-        state: tab.state ?? {
-          selectedTask: null,
-        },
-      };
     case "chat_shortcuts":
       return {
         ...base,
@@ -245,8 +231,6 @@ export const uniqueIdfromTab = (tab: Tab): string => {
       return `contacts`;
     case "templates":
       return `templates`;
-    case "prompts":
-      return `prompts`;
     case "chat_shortcuts":
       return `chat_shortcuts`;
     case "folders":
