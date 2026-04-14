@@ -4,8 +4,8 @@ use std::sync::Arc;
 use hypr_db_core2::Db3;
 
 use crate::query::run_query;
-use crate::watch::{TableDeps, WatchId};
-use crate::{DependencyAnalysis, QueryEventSink, SubscriptionRegistration};
+use crate::watch::{DependencyWatchIndex, WatchId};
+use crate::{DependencyAnalysis, DependencyTarget, QueryEventSink, SubscriptionRegistration};
 
 struct Subscription<S> {
     id: String,
@@ -26,7 +26,7 @@ enum ReactiveLifecycle {
 }
 
 struct Inner<S> {
-    deps: TableDeps,
+    deps: DependencyWatchIndex,
     ids: std::collections::HashMap<String, SubscriptionSlot>,
     subscriptions: std::collections::HashMap<WatchId, Subscription<S>>,
 }
@@ -34,7 +34,7 @@ struct Inner<S> {
 impl<S> Default for Inner<S> {
     fn default() -> Self {
         Self {
-            deps: TableDeps::default(),
+            deps: DependencyWatchIndex::default(),
             ids: std::collections::HashMap::new(),
             subscriptions: std::collections::HashMap::new(),
         }
@@ -107,8 +107,8 @@ impl<S> Registry<S> {
 
         let mut inner = self.inner.lock().await;
         let reactive_watch_id = match &analysis {
-            DependencyAnalysis::Reactive { tables } => {
-                let watch_id = inner.deps.register(tables.clone());
+            DependencyAnalysis::Reactive { targets } => {
+                let watch_id = inner.deps.register(targets.clone());
                 inner.ids.insert(
                     subscription_id.clone(),
                     SubscriptionSlot::Reactive(watch_id),
@@ -156,8 +156,8 @@ impl<S> Registry<S> {
         match inner.ids.get(subscription_id) {
             Some(SubscriptionSlot::Reactive(watch_id)) => {
                 inner.subscriptions.get(watch_id).map(|_| {
-                    let tables = inner.deps.tables_for(*watch_id).unwrap_or_default();
-                    DependencyAnalysis::Reactive { tables }
+                    let targets = inner.deps.targets_for(*watch_id).unwrap_or_default();
+                    DependencyAnalysis::Reactive { targets }
                 })
             }
             Some(SubscriptionSlot::NonReactive(reason)) => Some(DependencyAnalysis::NonReactive {
@@ -169,18 +169,13 @@ impl<S> Registry<S> {
 
     pub(crate) async fn collect_jobs(
         &self,
-        changed_tables: &HashSet<String>,
+        changed_targets: &HashSet<DependencyTarget>,
         trigger_seq: u64,
     ) -> Vec<RefreshJob> {
-        let changed_refs = changed_tables
-            .iter()
-            .map(std::string::String::as_str)
-            .collect::<Vec<_>>();
-
         let inner = self.inner.lock().await;
         inner
             .deps
-            .affected(&changed_refs)
+            .affected(&changed_targets.iter().cloned().collect::<Vec<_>>())
             .into_iter()
             .filter_map(|id| try_build_job(id, inner.subscriptions.get(&id)?, trigger_seq))
             .collect()
@@ -292,7 +287,7 @@ mod tests {
                 vec![],
                 TestSink,
                 DependencyAnalysis::Reactive {
-                    tables: HashSet::from(["daily_notes".to_string()]),
+                    targets: HashSet::from([DependencyTarget::Table("daily_notes".to_string())]),
                 },
             )
             .await;
@@ -301,7 +296,10 @@ mod tests {
         assert!(registry.activate(watch_id, 11).await);
 
         let jobs = registry
-            .collect_jobs(&HashSet::from(["daily_notes".to_string()]), 11)
+            .collect_jobs(
+                &HashSet::from([DependencyTarget::Table("daily_notes".to_string())]),
+                11,
+            )
             .await;
 
         assert!(jobs.is_empty());
@@ -316,7 +314,7 @@ mod tests {
                 vec![],
                 TestSink,
                 DependencyAnalysis::Reactive {
-                    tables: HashSet::from(["daily_notes".to_string()]),
+                    targets: HashSet::from([DependencyTarget::Table("daily_notes".to_string())]),
                 },
             )
             .await;
@@ -325,7 +323,10 @@ mod tests {
         assert!(registry.activate(watch_id, 11).await);
 
         let jobs = registry
-            .collect_jobs(&HashSet::from(["daily_notes".to_string()]), 12)
+            .collect_jobs(
+                &HashSet::from([DependencyTarget::Table("daily_notes".to_string())]),
+                12,
+            )
             .await;
 
         assert_eq!(jobs.len(), 1);

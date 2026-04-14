@@ -3,6 +3,7 @@
 mod error;
 mod explain;
 mod query;
+mod schema;
 mod subscriptions;
 mod watch;
 
@@ -13,10 +14,12 @@ use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 use tokio::sync::watch as tokio_watch;
 
 use hypr_db_core2::Db3;
+use schema::CatalogStore;
 use subscriptions::{QueryEventPayload, RefreshJob, Registry};
 
 pub use error::{Error, Result};
-pub use explain::extract_tables;
+pub use explain::extract_dependencies;
+pub use schema::DependencyResolutionError;
 
 use query::run_query;
 
@@ -25,14 +28,21 @@ pub trait QueryEventSink: Clone + Send + 'static {
     fn send_error(&self, error: String) -> std::result::Result<(), String>;
 }
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum DependencyTarget {
+    Table(String),
+    VirtualTable(String),
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DependencyAnalysis {
-    Reactive { tables: HashSet<String> },
+    Reactive { targets: HashSet<DependencyTarget> },
     NonReactive { reason: String },
 }
 
 pub struct DbRuntime<S> {
     db: Arc<Db3>,
+    catalog: CatalogStore,
     subscriptions: Registry<S>,
     shutdown_tx: tokio_watch::Sender<bool>,
     dispatcher: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
@@ -46,9 +56,11 @@ pub struct SubscriptionRegistration {
 impl<S: QueryEventSink> DbRuntime<S> {
     pub fn new(db: Db3) -> Self {
         let db = Arc::new(db);
+        let catalog = CatalogStore::default();
         let subscriptions = Registry::default();
         let (shutdown_tx, mut shutdown_rx) = tokio_watch::channel(false);
         let mut change_rx = db.subscribe_table_changes();
+        let dispatcher_catalog = catalog.clone();
         let dispatcher_subscriptions = subscriptions.clone();
         let dispatcher_db = Arc::clone(&db);
 
@@ -85,9 +97,24 @@ impl<S: QueryEventSink> DbRuntime<S> {
                                         dispatcher_db.pool().current_table_change_seq();
                                     dispatcher_subscriptions.collect_all_jobs(trigger_seq).await
                                 } else {
-                                    dispatcher_subscriptions
-                                        .collect_jobs(&changed_tables, trigger_seq)
+                                    match dispatcher_catalog
+                                        .canonicalize_raw_tables(
+                                            dispatcher_db.pool().as_ref(),
+                                            &changed_tables,
+                                        )
                                         .await
+                                    {
+                                        Ok(changed_targets) => {
+                                            dispatcher_subscriptions
+                                                .collect_jobs(&changed_targets, trigger_seq)
+                                                .await
+                                        }
+                                        Err(_) => {
+                                            dispatcher_subscriptions
+                                                .collect_all_jobs(trigger_seq)
+                                                .await
+                                        }
+                                    }
                                 }
                             }
                             Err(RecvError::Closed) => break,
@@ -119,6 +146,7 @@ impl<S: QueryEventSink> DbRuntime<S> {
 
         Self {
             db,
+            catalog,
             subscriptions,
             shutdown_tx,
             dispatcher: std::sync::Mutex::new(Some(dispatcher)),
@@ -139,13 +167,19 @@ impl<S: QueryEventSink> DbRuntime<S> {
         params: Vec<serde_json::Value>,
         sink: S,
     ) -> Result<SubscriptionRegistration> {
-        let analysis = match extract_tables(self.db.pool(), &sql).await {
-            Ok(tables) => DependencyAnalysis::Reactive { tables },
+        let baseline_seq = self.db.pool().current_table_change_seq();
+        let analysis = match self
+            .catalog
+            .analyze_query(self.db.pool().as_ref(), &sql)
+            .await
+        {
+            Ok(resolved) => DependencyAnalysis::Reactive {
+                targets: resolved.targets,
+            },
             Err(error) => DependencyAnalysis::NonReactive {
                 reason: error.to_string(),
             },
         };
-        let baseline_seq = self.db.pool().current_table_change_seq();
         let registered = self
             .subscriptions
             .register(sql.clone(), params.clone(), sink.clone(), analysis)
@@ -165,10 +199,12 @@ impl<S: QueryEventSink> DbRuntime<S> {
 
         if let Some(watch_id) = registered.reactive_watch_id {
             let latest_dependency_seq = match &registered.registration.analysis {
-                DependencyAnalysis::Reactive { tables } => tables
-                    .iter()
-                    .filter_map(|table| self.db.pool().latest_table_change_seq(table))
-                    .max()
+                DependencyAnalysis::Reactive { targets } => self
+                    .catalog
+                    .latest_dependency_seq(self.db.pool(), targets)
+                    .await
+                    .ok()
+                    .flatten()
                     .unwrap_or(baseline_seq),
                 DependencyAnalysis::NonReactive { .. } => baseline_seq,
             };

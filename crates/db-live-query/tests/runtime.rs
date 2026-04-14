@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use db_live_query::{DbRuntime, DependencyAnalysis, Error, QueryEventSink};
+use db_live_query::{DbRuntime, DependencyAnalysis, DependencyTarget, Error, QueryEventSink};
 use hypr_db_core2::{DbOpenOptions, DbStorage, MigrationFailurePolicy};
 use serde_json::json;
 
@@ -497,7 +497,7 @@ async fn unrelated_writes_do_not_trigger_refresh() {
 }
 
 #[tokio::test]
-async fn dependency_analysis_reports_reactive_tables() {
+async fn dependency_analysis_reports_reactive_targets() {
     let (_dir, _pool, runtime) = setup_runtime().await;
     let (sink, _events) = TestSink::capture();
 
@@ -519,12 +519,132 @@ async fn dependency_analysis_reports_reactive_tables() {
     assert_eq!(
         analysis,
         DependencyAnalysis::Reactive {
-            tables: std::collections::HashSet::from([
-                "daily_notes".to_string(),
-                "daily_summaries".to_string(),
+            targets: std::collections::HashSet::from([
+                DependencyTarget::Table("daily_notes".to_string()),
+                DependencyTarget::Table("daily_summaries".to_string()),
             ]),
         }
     );
+}
+
+#[tokio::test]
+async fn fts_match_subscriptions_refresh_after_writes() {
+    let (_dir, pool, runtime) = setup_runtime().await;
+    let (sink, events) = TestSink::capture();
+
+    sqlx::query("CREATE VIRTUAL TABLE docs_fts USING fts5(title, body)")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let registration = runtime
+        .subscribe(
+            "SELECT title FROM docs_fts WHERE docs_fts MATCH ? ORDER BY rowid".to_string(),
+            vec![json!("hello")],
+            sink,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(
+        registration.analysis,
+        DependencyAnalysis::Reactive {
+            targets: std::collections::HashSet::from([DependencyTarget::VirtualTable(
+                "docs_fts".to_string(),
+            )]),
+        }
+    );
+
+    let initial = next_event(&events, 0).await.unwrap();
+    assert_eq!(initial, TestEvent::Result(Vec::new()));
+
+    sqlx::query("INSERT INTO docs_fts (title, body) VALUES (?, ?)")
+        .bind("hello world")
+        .bind("greetings from fts")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let refresh = next_event(&events, 1).await.unwrap();
+    let TestEvent::Result(rows) = refresh else {
+        panic!("expected result event");
+    };
+    assert_eq!(rows, vec![json!({ "title": "hello world" })]);
+}
+
+#[tokio::test]
+async fn virtual_table_created_after_runtime_start_is_discovered() {
+    let (_dir, pool, runtime) = setup_runtime().await;
+    let (sink, events) = TestSink::capture();
+
+    sqlx::query("CREATE VIRTUAL TABLE docs_fts USING fts5(title, body)")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    runtime
+        .subscribe(
+            "SELECT rowid FROM docs_fts WHERE docs_fts MATCH ?".to_string(),
+            vec![json!("reload")],
+            sink,
+        )
+        .await
+        .unwrap();
+
+    let initial = next_event(&events, 0).await.unwrap();
+    assert_eq!(initial, TestEvent::Result(Vec::new()));
+
+    sqlx::query("INSERT INTO docs_fts (title, body) VALUES (?, ?)")
+        .bind("reload")
+        .bind("schema catalog refresh")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let refresh = next_event(&events, 1).await.unwrap();
+    let TestEvent::Result(rows) = refresh else {
+        panic!("expected result event");
+    };
+    assert_eq!(rows.len(), 1);
+}
+
+#[tokio::test]
+async fn unsupported_virtual_tables_are_explicitly_non_reactive() {
+    let (_dir, pool, runtime) = setup_runtime().await;
+    let (sink, events) = TestSink::capture();
+
+    sqlx::query("CREATE VIRTUAL TABLE docs_rtree USING rtree(id, min_x, max_x)")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let registration = runtime
+        .subscribe(
+            "SELECT id FROM docs_rtree ORDER BY id".to_string(),
+            vec![],
+            sink,
+        )
+        .await
+        .unwrap();
+
+    assert!(matches!(
+        registration.analysis,
+        DependencyAnalysis::NonReactive { .. }
+    ));
+
+    let initial = next_event(&events, 0).await.unwrap();
+    assert_eq!(initial, TestEvent::Result(Vec::new()));
+
+    sqlx::query("INSERT INTO docs_rtree (id, min_x, max_x) VALUES (?, ?, ?)")
+        .bind(1_i64)
+        .bind(0.0_f64)
+        .bind(1.0_f64)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    assert_eq!(events.lock().unwrap().len(), 1);
 }
 
 #[tokio::test]
