@@ -52,25 +52,17 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
                 .expect("app_data_dir must be available")
                 .join("app.db");
 
-            let db = std::thread::spawn(move || {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .expect("failed to create db init runtime");
-                rt.block_on(Db3::open_with_migrate(
-                    DbOpenOptions {
-                        storage: DbStorage::Local(&db_path),
-                        cloudsync: false,
-                        journal_mode_wal: true,
-                        foreign_keys: true,
-                        max_connections: None,
-                        migration_failure_policy: MigrationFailurePolicy::Fail,
-                    },
-                    |pool| Box::pin(hypr_db_app::migrate(pool)),
-                ))
-            })
-            .join()
-            .expect("db init thread panicked")
+            let db = hypr_tauri_utils::block_on(Db3::open_with_migrate(
+                DbOpenOptions {
+                    storage: DbStorage::Local(&db_path),
+                    cloudsync: false,
+                    journal_mode_wal: true,
+                    foreign_keys: true,
+                    max_connections: None,
+                    migration_failure_policy: MigrationFailurePolicy::Fail,
+                },
+                |pool| Box::pin(hypr_db_app::migrate(pool)),
+            ))
             .expect("failed to initialize activity database");
 
             app.manage(Arc::new(runtime::ActivityCaptureRuntime::new(

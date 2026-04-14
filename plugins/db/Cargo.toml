@@ -12,6 +12,7 @@ hypr-db-app = { workspace = true }
 hypr-db-core2 = { workspace = true }
 hypr-db-live-query = { workspace = true }
 hypr-storage = { workspace = true }
+hypr-tauri-utils = { workspace = true }
 
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -21,13 +22,12 @@ sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbund
 tauri = { workspace = true, features = ["test"] }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["rt", "sync"] }
 
 [dev-dependencies]
 anyhow = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt", "time"] }
+tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
 
 [build-dependencies]
 tauri-plugin = { workspace = true, features = ["build"] }

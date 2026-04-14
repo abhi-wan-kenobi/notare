@@ -18310,7 +18310,7 @@ dependencies = [
  "tauri-macros",
  "tauri-runtime",
  "tauri-runtime-wry",
- "tauri-utils",
+ "tauri-utils 2.8.3",
  "thiserror 2.0.18",
  "tokio",
  "tray-icon",
@@ -18337,7 +18337,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "tauri-utils",
+ "tauri-utils 2.8.3",
  "tauri-winres",
  "toml 0.9.12+spec-1.1.0",
  "walkdir",
@@ -18362,7 +18362,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "syn 2.0.117",
- "tauri-utils",
+ "tauri-utils 2.8.3",
  "thiserror 2.0.18",
  "time",
  "url",
@@ -18381,7 +18381,7 @@ dependencies = [
  "quote",
  "syn 2.0.117",
  "tauri-codegen",
- "tauri-utils",
+ "tauri-utils 2.8.3",
 ]
 
 [[package]]
@@ -18408,7 +18408,7 @@ dependencies = [
  "schemars 0.8.22",
  "serde",
  "serde_json",
- "tauri-utils",
+ "tauri-utils 2.8.3",
  "toml 0.9.12+spec-1.1.0",
  "walkdir",
 ]
@@ -18434,6 +18434,7 @@ dependencies = [
  "tauri-plugin-activity-capture",
  "tauri-plugin-local-llm",
  "tauri-specta",
+ "tauri-utils 0.1.0",
  "template-app",
  "thiserror 2.0.18",
  "tokio",
@@ -18608,6 +18609,7 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "tauri-specta",
+ "tauri-utils 0.1.0",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
@@ -18626,7 +18628,7 @@ dependencies = [
  "serde_json",
  "tauri",
  "tauri-plugin",
- "tauri-utils",
+ "tauri-utils 2.8.3",
  "thiserror 2.0.18",
  "tracing",
  "url",
@@ -18763,7 +18765,7 @@ dependencies = [
  "serde_repr",
  "tauri",
  "tauri-plugin",
- "tauri-utils",
+ "tauri-utils 2.8.3",
  "thiserror 2.0.18",
  "toml 0.9.12+spec-1.1.0",
  "url",
@@ -18785,6 +18787,7 @@ dependencies = [
  "tauri-plugin",
  "tauri-plugin-settings",
  "tauri-specta",
+ "tauri-utils 0.1.0",
  "tempfile",
  "thiserror 2.0.18",
  "tiptap",
@@ -19692,7 +19695,7 @@ dependencies = [
  "raw-window-handle",
  "serde",
  "serde_json",
- "tauri-utils",
+ "tauri-utils 2.8.3",
  "thiserror 2.0.18",
  "url",
  "webkit2gtk",
@@ -19718,7 +19721,7 @@ dependencies = [
  "softbuffer",
  "tao",
  "tauri-runtime",
- "tauri-utils",
+ "tauri-utils 2.8.3",
  "url",
  "webkit2gtk",
  "webview2-com",
@@ -19752,6 +19755,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "tauri-utils"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

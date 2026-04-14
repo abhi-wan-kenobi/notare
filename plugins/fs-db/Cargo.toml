@@ -13,7 +13,7 @@ tauri-plugin = { workspace = true, features = ["build"] }
 [dev-dependencies]
 specta-typescript = { workspace = true }
 tempfile = { workspace = true }
-tokio = { workspace = true, features = ["macros"] }
+tokio = { workspace = true, features = ["macros", "rt"] }
 
 [dependencies]
 tauri = { workspace = true, features = ["test"] }
@@ -27,9 +27,9 @@ chrono = { workspace = true }
 chrono-tz = { workspace = true }
 hypr-db-parser = { workspace = true }
 hypr-frontmatter = { workspace = true }
+hypr-tauri-utils = { workspace = true }
 hypr-tiptap = { workspace = true }
 hypr-version = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["rt"] }
 uuid = { workspace = true }

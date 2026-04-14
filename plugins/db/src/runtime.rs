@@ -3,7 +3,7 @@ use hypr_db_live_query::QueryEventSink;
 use tauri::Manager;
 use tauri::ipc::Channel;
 
-use crate::{Error, QueryEvent, Result};
+use crate::{Error, QueryEvent, Result, migrate};
 
 #[derive(Clone)]
 pub struct QueryEventChannel(Channel<QueryEvent>);
@@ -37,25 +37,24 @@ pub fn open_app_db<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<Db3> 
         .map_err(|error| Error::Io(std::io::Error::other(error.to_string())))?
         .join("app.db");
 
-    let db = std::thread::spawn(move || {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("failed to create db init runtime");
-        runtime.block_on(Db3::open_with_migrate(
-            DbOpenOptions {
-                storage: DbStorage::Local(&db_path),
-                cloudsync: false,
-                journal_mode_wal: true,
-                foreign_keys: true,
-                max_connections: Some(4),
-                migration_failure_policy: MigrationFailurePolicy::Fail,
-            },
-            |pool| Box::pin(hypr_db_app::migrate(pool)),
-        ))
-    })
-    .join()
-    .expect("db init thread panicked")?;
+    let db = hypr_tauri_utils::block_on(Db3::open_with_migrate(
+        DbOpenOptions {
+            storage: DbStorage::Local(&db_path),
+            cloudsync: false,
+            journal_mode_wal: true,
+            foreign_keys: true,
+            max_connections: Some(4),
+            migration_failure_policy: MigrationFailurePolicy::Fail,
+        },
+        |pool| Box::pin(hypr_db_app::migrate(pool)),
+    ))?;
+
+    let pool = db.pool().clone();
+    let app = app.clone();
+    
+    hypr_tauri_utils::spawn("import legacy templates.json", async move {
+        migrate::import_legacy_templates(&app, &pool).await
+    });
 
     Ok(db)
 }
