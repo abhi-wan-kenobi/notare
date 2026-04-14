@@ -19093,7 +19093,6 @@ dependencies = [
  "apalis",
  "apalis-cron",
  "chrono",
- "db-user",
  "detect",
  "host",
  "intercept",
