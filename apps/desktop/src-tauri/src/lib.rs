@@ -325,16 +325,11 @@ pub async fn main() {
                 }
             }
 
-            {
-                let db = app.state::<hypr_db_core2::ManagedDb>();
-                let pool = db.pool().clone();
-                tauri::async_runtime::block_on(pool.close());
-            }
-
             if let Some(ref ctx) = root_supervisor_ctx_for_run {
                 ctx.mark_exiting();
                 ctx.stop();
             }
+
             hypr_host::kill_processes_by_matcher(hypr_host::ProcessMatcher::Sidecar);
         }
         _ => {}
