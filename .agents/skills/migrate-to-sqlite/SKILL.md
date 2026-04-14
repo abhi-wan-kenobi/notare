@@ -7,10 +7,21 @@ description: Migrate a TinyBase table to SQLite. Use when asked to move a data d
 
 - **Schema source of truth:** Rust migration in `crates/db-app/migrations/`
 - **Drizzle mirror:** `packages/db/src/schema.ts` (typed TS query interface, not schema management)
-- **Reads (reactive):** `useDrizzleLiveQuery` — calls `.toSQL()` on a Drizzle query, feeds `{sql, params}` to `useLiveQuery` which uses `subscribe()` from `@hypr/plugin-db`
+- **Reads (reactive):** `useDrizzleLiveQuery` — calls `.toSQL()` on a Drizzle query, feeds `{sql, params}` to the underlying `useLiveQuery` which uses `subscribe()` from `@hypr/plugin-db`
 - **Reads (imperative):** `db.select()...` through the Drizzle sqlite-proxy driver
 - **Writes:** `db.insert()`, `db.update()`, `db.delete()` through the Drizzle sqlite-proxy driver, wrapped in `useMutation` from tanstack-query
 - **Reactivity loop:** write via `execute` → SQLite change → Rust `db-live-query` notifies subscribers → `useLiveQuery` fires `onData` → React re-renders. No manual invalidation needed.
+
+### Package layers
+
+The DB stack uses a factory/DI pattern across four packages:
+
+1. `@hypr/db-runtime` (`packages/db-runtime/`) — type contracts only: `LiveQueryClient`, `DrizzleProxyClient`, shared row/query types.
+2. `@hypr/db` (`packages/db/`) — Drizzle schema (`schema.ts`) + `createDb(client)` factory using `drizzle-orm/sqlite-proxy`. Re-exports Drizzle operators (`eq`, `and`, `sql`, etc.).
+3. `@hypr/db-tauri` (`packages/db-tauri/`) — Tauri-specific client that binds `execute`/`executeProxy`/`subscribe` from `@hypr/plugin-db` to the `db-runtime` types.
+4. `@hypr/db-react` (`packages/db-react/`) — `createUseLiveQuery(client)` and `createUseDrizzleLiveQuery(client)` factories.
+
+These are wired together in `apps/desktop/src/db/index.ts`, which exports `db`, `useLiveQuery`, and `useDrizzleLiveQuery`. **Consumer code imports from `~/db`, not directly from the packages.**
 
 ## Steps
 
@@ -39,7 +50,11 @@ Replace raw TinyBase reads/writes with:
 - `db.select()...` for imperative reads (returns parsed objects via proxy driver)
 - `db.insert()`, `db.update()`, `db.delete()` for writes, wrapped in `useMutation`
 
-Live query results come from Rust `subscribe` as raw objects (not through Drizzle driver), so `mapRows` must still handle JSON parsing for JSON columns.
+Import `db` and `useDrizzleLiveQuery` from `~/db` (the app-level wiring module), and schema tables/operators from `@hypr/db`.
+
+Live query results come from Rust `subscribe` as raw objects (not through the Drizzle driver), so `mapRows` must handle two things:
+- **JSON parsing** for JSON text columns (e.g. `sections_json`, `targets_json`).
+- **snake_case → camelCase mapping.** Live rows use the raw SQLite column names (`pin_order`, `targets_json`), while Drizzle's `$inferSelect` uses camelCase (`pinOrder`, `targetsJson`). Define a separate `<Domain>LiveRow` type with snake_case keys for `mapRows`, distinct from the Drizzle inferred type. See `TemplateLiveRow` in `apps/desktop/src/templates/queries.ts` for the pattern.
 
 ### 6. Remove TinyBase artifacts
 
