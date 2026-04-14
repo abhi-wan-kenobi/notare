@@ -78,7 +78,7 @@ pub use templates_ops::*;
 #[allow(unused)]
 pub use templates_types::*;
 
-pub use hypr_db_core::{Database, Error};
+pub use legacy_db_core::{Database, Error};
 
 #[macro_export]
 macro_rules! user_common_derives {
@@ -98,7 +98,7 @@ macro_rules! user_common_derives {
             $($body)*
         }
 
-        impl hypr_db_core::SqlTable for $name {
+        impl legacy_db_core::SqlTable for $name {
             fn sql_table() -> &'static str {
                 $table
             }
@@ -121,17 +121,17 @@ macro_rules! user_common_derives {
 
 #[derive(Clone)]
 pub struct UserDatabase {
-    db: hypr_db_core::Database,
+    db: legacy_db_core::Database,
 }
 
 impl UserDatabase {
-    pub fn from(db: hypr_db_core::Database) -> Self {
+    pub fn from(db: legacy_db_core::Database) -> Self {
         Self { db }
     }
 }
 
 impl std::ops::Deref for UserDatabase {
-    type Target = hypr_db_core::Database;
+    type Target = legacy_db_core::Database;
 
     fn deref(&self) -> &Self::Target {
         &self.db
@@ -171,7 +171,7 @@ const MIGRATIONS: [&str; 27] = [
 
 pub async fn migrate(db: &UserDatabase) -> Result<(), crate::Error> {
     let conn = db.conn()?;
-    hypr_db_core::migrate(&conn, MIGRATIONS.to_vec()).await?;
+    legacy_db_core::migrate(&conn, MIGRATIONS.to_vec()).await?;
 
     Ok(())
 }
@@ -180,7 +180,7 @@ pub async fn migrate(db: &UserDatabase) -> Result<(), crate::Error> {
 mod tests {
     use super::UserDatabase;
     use crate::migrate;
-    use hypr_db_core::DatabaseBuilder;
+    use legacy_db_core::DatabaseBuilder;
 
     pub async fn setup_db() -> UserDatabase {
         let base_db = DatabaseBuilder::default().memory().build().await.unwrap();

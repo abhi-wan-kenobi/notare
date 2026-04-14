@@ -3,8 +3,8 @@ use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
 
-use hypr_db_parser::{Collection, Transcript};
 use hypr_version::Version;
+use legacy_db_parser::{Collection, Transcript};
 use serde_json::Value;
 
 use super::utils::{FileOp, apply_ops, group_by_session_id, hints_to_json, transcript_to_json};
@@ -47,12 +47,12 @@ async fn run_inner(base_dir: &Path) -> Result<()> {
 }
 
 async fn try_parse_sqlite(path: &Path) -> Option<Collection> {
-    if hypr_db_parser::v1::validate(path).await.is_ok() {
-        return hypr_db_parser::v1::parse_from_sqlite(path).await.ok();
+    if legacy_db_parser::v1::validate(path).await.is_ok() {
+        return legacy_db_parser::v1::parse_from_sqlite(path).await.ok();
     }
 
-    if hypr_db_parser::v0::validate(path).await.is_ok() {
-        return hypr_db_parser::v0::parse_from_sqlite(path).await.ok();
+    if legacy_db_parser::v0::validate(path).await.is_ok() {
+        return legacy_db_parser::v0::parse_from_sqlite(path).await.ok();
     }
 
     None
@@ -177,7 +177,7 @@ fn merge_transcripts(path: &Path, sqlite_transcripts: &[&Transcript]) -> Option<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hypr_db_parser::{Session, SpeakerHint, Word};
+    use legacy_db_parser::{Session, SpeakerHint, Word};
     use tempfile::tempdir;
 
     fn make_word(id: &str, text: &str) -> Word {

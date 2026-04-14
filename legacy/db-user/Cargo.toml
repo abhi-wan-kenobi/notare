@@ -5,8 +5,8 @@ edition = "2024"
 
 [dependencies]
 hypr-buffer = { workspace = true }
-hypr-db-core = { workspace = true }
 hypr-language = { workspace = true }
+legacy-db-core = { workspace = true }
 owhisper-interface = { workspace = true }
 
 libsql = { workspace = true }

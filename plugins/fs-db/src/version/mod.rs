@@ -39,11 +39,11 @@ async fn infer_version(base_dir: &Path) -> DetectedVersion {
         return DetectedVersion::Fresh;
     }
 
-    if hypr_db_parser::v0::validate(&sqlite_file).await.is_ok() {
+    if legacy_db_parser::v0::validate(&sqlite_file).await.is_ok() {
         return DetectedVersion::Inferred(InferredVersion::V0_0_84);
     }
 
-    if hypr_db_parser::v1::validate(&sqlite_file).await.is_err() {
+    if legacy_db_parser::v1::validate(&sqlite_file).await.is_err() {
         return DetectedVersion::Fresh;
     }
 

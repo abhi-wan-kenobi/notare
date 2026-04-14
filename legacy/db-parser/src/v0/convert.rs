@@ -1,6 +1,6 @@
 use crate::types::*;
 
-pub(super) fn session_to_transcript(session: &hypr_db_user::Session) -> Transcript {
+pub(super) fn session_to_transcript(session: &legacy_db_user::Session) -> Transcript {
     let record_start_ms = session
         .record_start
         .map(|dt| dt.timestamp_millis() as u64)

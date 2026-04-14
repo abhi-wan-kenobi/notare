@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use hypr_db_core::libsql;
+use legacy_db_core::libsql;
 use serde_json::Value;
 
 use crate::types::*;

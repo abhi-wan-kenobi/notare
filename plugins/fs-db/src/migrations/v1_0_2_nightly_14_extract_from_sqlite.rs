@@ -3,11 +3,11 @@ use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
 
-use hypr_db_parser::{
-    Collection, EnhancedNote, Human, Organization, Session, SessionParticipant, TagMapping,
-};
 use hypr_frontmatter::Document;
 use hypr_version::Version;
+use legacy_db_parser::{
+    Collection, EnhancedNote, Human, Organization, Session, SessionParticipant, TagMapping,
+};
 
 use super::utils::{FileOp, apply_ops, build_transcript_json_multi, group_by_session_id};
 use super::version_from_name;
@@ -88,11 +88,11 @@ async fn run_inner(base_dir: &Path) -> Result<()> {
         return Ok(());
     }
 
-    if hypr_db_parser::v1::validate(&sqlite_path).await.is_err() {
+    if legacy_db_parser::v1::validate(&sqlite_path).await.is_err() {
         return Ok(());
     }
 
-    let data = hypr_db_parser::v1::parse_from_sqlite(&sqlite_path).await?;
+    let data = legacy_db_parser::v1::parse_from_sqlite(&sqlite_path).await?;
     let ops = collect_ops(base_dir, &data)?;
     apply_ops(ops)?;
 

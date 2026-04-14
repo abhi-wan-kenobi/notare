@@ -13,7 +13,7 @@ pub enum Error {
     Json(#[from] serde_json::Error),
 
     #[error("db parser error: {0}")]
-    DbParser(#[from] hypr_db_parser::Error),
+    DbParser(#[from] legacy_db_parser::Error),
 
     #[error("import source not found: {0:?}")]
     SourceNotFound(ImportSourceKind),

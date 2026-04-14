@@ -3,11 +3,11 @@ use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
 
-use hypr_db_parser::{
-    Collection, EnhancedNote, Human, Organization, Session, SessionParticipant, TagMapping,
-};
 use hypr_frontmatter::Document;
 use hypr_version::Version;
+use legacy_db_parser::{
+    Collection, EnhancedNote, Human, Organization, Session, SessionParticipant, TagMapping,
+};
 
 use super::utils::{FileOp, apply_ops, build_transcript_json_multi, group_by_session_id};
 use super::version_from_name;
@@ -59,7 +59,7 @@ fn resolve_session_tags<'a>(
 }
 
 async fn is_v0_database(path: &Path) -> bool {
-    hypr_db_parser::v0::validate(path).await.is_ok()
+    legacy_db_parser::v0::validate(path).await.is_ok()
 }
 
 pub struct Migrate;
@@ -91,7 +91,7 @@ async fn run_inner(base_dir: &Path) -> Result<()> {
         return Ok(());
     }
 
-    let data = hypr_db_parser::v0::parse_from_sqlite(&sqlite_path).await?;
+    let data = legacy_db_parser::v0::parse_from_sqlite(&sqlite_path).await?;
     let ops = collect_ops(base_dir, &data)?;
     apply_ops(ops)?;
 

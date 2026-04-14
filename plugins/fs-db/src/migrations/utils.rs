@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use hypr_db_parser::{SpeakerHint, Transcript, Word};
+use legacy_db_parser::{SpeakerHint, Transcript, Word};
 use serde_json::Value;
 
 use crate::Result;

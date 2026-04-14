@@ -25,11 +25,11 @@ specta = { workspace = true }
 
 chrono = { workspace = true }
 chrono-tz = { workspace = true }
-hypr-db-parser = { workspace = true }
 hypr-frontmatter = { workspace = true }
 hypr-tauri-utils = { workspace = true }
 hypr-tiptap = { workspace = true }
 hypr-version = { workspace = true }
+legacy-db-parser = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }

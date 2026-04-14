@@ -1,7 +1,7 @@
 mod convert;
 
-use hypr_db_core::libsql;
-use hypr_db_user::UserDatabase;
+use legacy_db_core::libsql;
+use legacy_db_user::UserDatabase;
 use std::path::Path;
 
 use crate::types::*;
@@ -48,7 +48,7 @@ pub async fn validate(path: &Path) -> Result<()> {
 pub async fn parse_from_sqlite(path: &Path) -> Result<Collection> {
     validate(path).await?;
 
-    let db = hypr_db_core::DatabaseBuilder::default()
+    let db = legacy_db_core::DatabaseBuilder::default()
         .local(path)
         .build()
         .await?;
@@ -62,7 +62,7 @@ pub async fn parse_from_sqlite(path: &Path) -> Result<Collection> {
         (),
     )
     .await
-    .map_err(hypr_db_user::Error::from)?;
+    .map_err(legacy_db_user::Error::from)?;
 
     let sessions_raw = db.list_sessions(None).await?;
 

@@ -1,4 +1,4 @@
-use hypr_db_core::SqlTable;
+use legacy_db_core::SqlTable;
 
 use super::{ExtensionMapping, UserDatabase};
 

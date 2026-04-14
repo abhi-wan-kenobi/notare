@@ -7,7 +7,7 @@ pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
-    DbParser(#[from] hypr_db_parser::Error),
+    DbParser(#[from] legacy_db_parser::Error),
     #[error(transparent)]
     Frontmatter(#[from] hypr_frontmatter::Error),
     #[error(transparent)]
