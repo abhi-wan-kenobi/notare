@@ -85,27 +85,24 @@ tauri-plugin-updater2 = { workspace = true }
 tauri-plugin-window-state = { workspace = true }
 tauri-plugin-windows = { workspace = true }
 
-specta = { workspace = true }
-specta-typescript = { workspace = true }
-tauri-specta = { workspace = true, features = ["derive", "typescript"] }
-
-sentry = { workspace = true, features = ["tracing"] }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-strum = { workspace = true, features = ["derive"] }
-tracing = { workspace = true }
-
-hypr-host = { workspace = true }
-hypr-supervisor = { workspace = true }
-
-pico-args = { workspace = true }
-ractor = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
-
-dirs = { workspace = true }
 hypr-audio-actual = { workspace = true }
 hypr-audio-mock = { workspace = true, optional = true }
 hypr-db-core2 = { workspace = true }
+hypr-host = { workspace = true }
+hypr-supervisor = { workspace = true }
+
+dirs = { workspace = true }
+pico-args = { workspace = true }
+ractor = { workspace = true }
+sentry = { workspace = true, features = ["tracing"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+specta = { workspace = true }
+specta-typescript = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
+tauri-specta = { workspace = true, features = ["derive", "typescript"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+tracing = { workspace = true }
 
 [features]
 default = []
