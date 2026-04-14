@@ -72,66 +72,39 @@ async fn downloader<R: Runtime>(
     state.lock().await.model_downloader.clone()
 }
 
-pub trait LocalLlmPluginExt<R: Runtime> {
-    fn models_dir(&self) -> PathBuf;
-
-    fn list_downloaded_model(
-        &self,
-    ) -> impl Future<Output = Result<Vec<crate::SupportedModel>, crate::Error>>;
-
-    fn list_custom_models(
-        &self,
-    ) -> impl Future<Output = Result<Vec<crate::CustomModelInfo>, crate::Error>>;
-
-    fn download_model(
-        &self,
-        model: crate::SupportedModel,
-        channel: Channel<i8>,
-    ) -> impl Future<Output = Result<(), crate::Error>>;
-    fn cancel_download(
-        &self,
-        model: crate::SupportedModel,
-    ) -> impl Future<Output = Result<bool, crate::Error>>;
-    fn delete_model(
-        &self,
-        model: &crate::SupportedModel,
-    ) -> impl Future<Output = Result<(), crate::Error>>;
-    fn is_model_downloading(&self, model: &crate::SupportedModel) -> impl Future<Output = bool>;
-    fn is_model_downloaded(
-        &self,
-        model: &crate::SupportedModel,
-    ) -> impl Future<Output = Result<bool, crate::Error>>;
-    fn server_url(&self) -> impl Future<Output = Result<Option<String>, crate::Error>>;
+pub struct LocalLlmExt<'a, R: Runtime, M: Manager<R>> {
+    manager: &'a M,
+    _runtime: std::marker::PhantomData<fn() -> R>,
 }
 
-impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
-    fn models_dir(&self) -> PathBuf {
-        hypr_local_llm_core::llm_models_dir(&models_base(self))
+impl<'a, R: Runtime, M: Manager<R>> LocalLlmExt<'a, R, M> {
+    pub fn models_dir(&self) -> PathBuf {
+        hypr_local_llm_core::llm_models_dir(&models_base(self.manager))
     }
 
     #[tracing::instrument(skip_all)]
-    async fn is_model_downloading(&self, model: &crate::SupportedModel) -> bool {
-        downloader(self).await.is_downloading(model).await
+    pub async fn is_model_downloading(&self, model: &crate::SupportedModel) -> bool {
+        downloader(self.manager).await.is_downloading(model).await
     }
 
     #[tracing::instrument(skip_all)]
-    async fn is_model_downloaded(
+    pub async fn is_model_downloaded(
         &self,
         model: &crate::SupportedModel,
     ) -> Result<bool, crate::Error> {
-        Ok(downloader(self).await.is_downloaded(model).await?)
+        Ok(downloader(self.manager).await.is_downloaded(model).await?)
     }
 
     #[tracing::instrument(skip_all)]
-    async fn server_url(&self) -> Result<Option<String>, crate::Error> {
-        let state = self.state::<crate::SharedState>();
+    pub async fn server_url(&self) -> Result<Option<String>, crate::Error> {
+        let state = self.manager.state::<crate::SharedState>();
         let guard = state.lock().await;
 
         Ok(guard.server.as_ref().map(|server| server.url().to_string()))
     }
 
     #[tracing::instrument(skip_all)]
-    async fn download_model(
+    pub async fn download_model(
         &self,
         model: crate::SupportedModel,
         channel: Channel<i8>,
@@ -139,7 +112,7 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
         let key = model.download_key();
 
         let (dl, channels) = {
-            let state = self.state::<crate::SharedState>();
+            let state = self.manager.state::<crate::SharedState>();
             let guard = state.lock().await;
             (
                 guard.model_downloader.clone(),
@@ -168,25 +141,57 @@ impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn cancel_download(&self, model: crate::SupportedModel) -> Result<bool, crate::Error> {
-        Ok(downloader(self).await.cancel_download(&model).await?)
+    pub async fn cancel_download(
+        &self,
+        model: crate::SupportedModel,
+    ) -> Result<bool, crate::Error> {
+        Ok(downloader(self.manager)
+            .await
+            .cancel_download(&model)
+            .await?)
     }
 
     #[tracing::instrument(skip_all)]
-    async fn delete_model(&self, model: &crate::SupportedModel) -> Result<(), crate::Error> {
-        downloader(self).await.delete(model).await?;
+    pub async fn delete_model(&self, model: &crate::SupportedModel) -> Result<(), crate::Error> {
+        downloader(self.manager).await.delete(model).await?;
         Ok(())
     }
 
     #[tracing::instrument(skip_all)]
-    async fn list_downloaded_model(&self) -> Result<Vec<crate::SupportedModel>, crate::Error> {
+    pub async fn list_downloaded_model(&self) -> Result<Vec<crate::SupportedModel>, crate::Error> {
         Ok(hypr_local_llm_core::list_downloaded_models(
             &self.models_dir(),
         )?)
     }
 
     #[tracing::instrument(skip_all)]
-    async fn list_custom_models(&self) -> Result<Vec<crate::CustomModelInfo>, crate::Error> {
+    pub async fn list_custom_models(&self) -> Result<Vec<crate::CustomModelInfo>, crate::Error> {
         Ok(hypr_local_llm_core::list_custom_models()?)
+    }
+
+    pub fn start_server(&self) {
+        #[cfg(target_arch = "aarch64")]
+        {
+            let state = self.manager.state::<crate::SharedState>();
+            crate::spawn_llm_server(self.manager.app_handle(), state.inner().clone());
+        }
+    }
+}
+
+pub trait LocalLlmPluginExt<R: Runtime> {
+    fn local_llm(&self) -> LocalLlmExt<'_, R, Self>
+    where
+        Self: Manager<R> + Sized;
+}
+
+impl<R: Runtime, T: Manager<R>> LocalLlmPluginExt<R> for T {
+    fn local_llm(&self) -> LocalLlmExt<'_, R, Self>
+    where
+        Self: Sized,
+    {
+        LocalLlmExt {
+            manager: self,
+            _runtime: std::marker::PhantomData,
+        }
     }
 }

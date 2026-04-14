@@ -28,6 +28,7 @@ pub async fn analyze_screenshot<R: tauri::Runtime>(
 ) -> Result<ActivityCaptureObservationAnalysis, ActivityCaptureObservationAnalysisError> {
     let (app_name, window_title) = analysis_identity(screenshot);
     let server_url = app
+        .local_llm()
         .server_url()
         .await
         .map_err(|error| {

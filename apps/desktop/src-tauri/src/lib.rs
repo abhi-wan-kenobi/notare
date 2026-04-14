@@ -241,14 +241,20 @@ pub async fn main() {
                 supervisor::monitor_supervisor(handle, ctx.is_exiting.clone(), app_handle.clone());
             }
 
-            // control::setup(&app_handle);
-
             {
                 use tauri_plugin_activity_capture::ActivityCapturePluginExt;
-                if app_handle.get_char_v1p1_preview().unwrap_or(false) {
+                // if app_handle.get_char_v1p1_preview().unwrap_or(false) {
+                if false {
                     if let Err(e) = app_handle.activity_capture().start() {
                         tracing::error!("failed to auto-start activity capture: {}", e);
                     }
+                }
+            }
+
+            {
+                use tauri_plugin_local_llm::LocalLlmPluginExt;
+                if false {
+                    app_handle.local_llm().start_server();
                 }
             }
 

@@ -48,7 +48,10 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
 }
 
 #[cfg(target_arch = "aarch64")]
-fn spawn_llm_server<R: tauri::Runtime>(app_handle: &tauri::AppHandle<R>, state: SharedState) {
+pub(crate) fn spawn_llm_server<R: tauri::Runtime>(
+    app_handle: &tauri::AppHandle<R>,
+    state: SharedState,
+) {
     let app_handle = app_handle.clone();
     tauri::async_runtime::spawn(async move {
         let (model_name, model_path) = match resource::resolve_embedded_llm_args(&app_handle) {
@@ -90,7 +93,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             specta_builder.mount_events(app);
 
             let data_dir = app.settings().global_base()?.into_std_path_buf();
-            let models_dir = app.models_dir();
+            let models_dir = app.local_llm().models_dir();
             let cactus_models_dir = data_dir.join("models").join("cactus");
 
             migrate::legacy_gguf_files(&data_dir, &models_dir);
@@ -114,9 +117,6 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             };
             let state = Arc::new(TokioMutex::new(state));
             app.manage(state.clone());
-
-            #[cfg(target_arch = "aarch64")]
-            spawn_llm_server(app.app_handle(), state);
 
             Ok(())
         })

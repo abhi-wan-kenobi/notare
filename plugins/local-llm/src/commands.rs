@@ -5,7 +5,7 @@ use tauri::ipc::Channel;
 #[tauri::command]
 #[specta::specta]
 pub async fn models_dir<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Result<String, String> {
-    Ok(app.models_dir().to_string_lossy().to_string())
+    Ok(app.local_llm().models_dir().to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -20,7 +20,8 @@ pub async fn is_model_downloaded<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     model: crate::SupportedModel,
 ) -> Result<bool, String> {
-    app.is_model_downloaded(&model)
+    app.local_llm()
+        .is_model_downloaded(&model)
         .await
         .map_err(|e| e.to_string())
 }
@@ -31,7 +32,7 @@ pub async fn is_model_downloading<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     model: crate::SupportedModel,
 ) -> Result<bool, String> {
-    Ok(app.is_model_downloading(&model).await)
+    Ok(app.local_llm().is_model_downloading(&model).await)
 }
 
 #[tauri::command]
@@ -41,7 +42,8 @@ pub async fn download_model<R: tauri::Runtime>(
     model: crate::SupportedModel,
     channel: Channel<i8>,
 ) -> Result<(), String> {
-    app.download_model(model, channel)
+    app.local_llm()
+        .download_model(model, channel)
         .await
         .map_err(|e| e.to_string())
 }
@@ -52,7 +54,10 @@ pub async fn cancel_download<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     model: crate::SupportedModel,
 ) -> Result<bool, String> {
-    app.cancel_download(model).await.map_err(|e| e.to_string())
+    app.local_llm()
+        .cancel_download(model)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -61,7 +66,10 @@ pub async fn delete_model<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     model: crate::SupportedModel,
 ) -> Result<(), String> {
-    app.delete_model(&model).await.map_err(|e| e.to_string())
+    app.local_llm()
+        .delete_model(&model)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -69,7 +77,10 @@ pub async fn delete_model<R: tauri::Runtime>(
 pub async fn list_downloaded_model<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<Vec<crate::SupportedModel>, String> {
-    app.list_downloaded_model().await.map_err(|e| e.to_string())
+    app.local_llm()
+        .list_downloaded_model()
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -77,7 +88,10 @@ pub async fn list_downloaded_model<R: tauri::Runtime>(
 pub async fn list_custom_models<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<Vec<CustomModelInfo>, String> {
-    app.list_custom_models().await.map_err(|e| e.to_string())
+    app.local_llm()
+        .list_custom_models()
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -85,5 +99,8 @@ pub async fn list_custom_models<R: tauri::Runtime>(
 pub async fn server_url<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
 ) -> Result<Option<String>, String> {
-    app.server_url().await.map_err(|e| e.to_string())
+    app.local_llm()
+        .server_url()
+        .await
+        .map_err(|e| e.to_string())
 }
