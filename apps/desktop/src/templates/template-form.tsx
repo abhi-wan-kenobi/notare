@@ -17,9 +17,9 @@ import { cn } from "@hypr/utils";
 
 import { TemplateDetailScrollArea } from "./detail-scroll-area";
 import {
+  type UserTemplate,
   useSaveTemplate,
   useToggleTemplateFavorite,
-  useUserTemplate,
 } from "./queries";
 import { SectionsList } from "./sections-editor";
 import { getTemplateCreatorLabel, useTemplateCreatorName } from "./utils";
@@ -142,16 +142,15 @@ function TemplateTargetsInput({
 }
 
 export function TemplateForm({
-  id,
+  template,
   handleDeleteTemplate,
   handleDuplicateTemplate,
 }: {
-  id: string;
+  template: UserTemplate;
   handleDeleteTemplate: (id: string) => void;
   handleDuplicateTemplate: (id: string) => void;
 }) {
-  const { data: row, isLoading } = useUserTemplate(id);
-  const value = row ?? undefined;
+  const { id } = template;
   const saveTemplate = useSaveTemplate();
   const toggleTemplateFavorite = useToggleTemplateFavorite();
   const creatorName = useTemplateCreatorName();
@@ -173,10 +172,10 @@ export function TemplateForm({
 
   const form = useForm({
     defaultValues: {
-      title: value?.title ?? "",
-      description: value?.description ?? "",
-      targets: value?.targets ?? [],
-      sections: value?.sections ?? [],
+      title: template.title ?? "",
+      description: template.description ?? "",
+      targets: template.targets ?? [],
+      sections: template.sections ?? [],
     },
     listeners: {
       onChange: ({ formApi }) => {
@@ -191,12 +190,8 @@ export function TemplateForm({
       },
     },
     onSubmit: ({ value }) => {
-      if (!row) {
-        return;
-      }
-
       return saveTemplate({
-        ...row,
+        ...template,
         ...value,
       });
     },
@@ -207,37 +202,25 @@ export function TemplateForm({
   }, [id]);
 
   useEffect(() => {
-    if (!value || didInitializeForm.current) {
+    if (didInitializeForm.current) {
       return;
     }
 
     form.reset({
-      title: value.title ?? "",
-      description: value.description ?? "",
-      targets: value.targets ?? [],
-      sections: value.sections ?? [],
+      title: template.title ?? "",
+      description: template.description ?? "",
+      targets: template.targets ?? [],
+      sections: template.sections ?? [],
     });
     didInitializeForm.current = true;
-  }, [form, value]);
-
-  if (isLoading) {
-    return <div className="flex h-full flex-1" />;
-  }
-
-  if (!value) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-neutral-500">Template not found</p>
-      </div>
-    );
-  }
+  }, [form, template]);
 
   return (
     <div className="flex h-full flex-1 flex-col">
       <div className="pt-1 pr-1 pb-4 pl-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <TemplateCategoryLabel category={value.category} />
+            <TemplateCategoryLabel category={template.category} />
           </div>
           <div className="flex items-center gap-0">
             <Button
@@ -262,16 +245,18 @@ export function TemplateForm({
               onClick={() => toggleTemplateFavorite(id)}
               className={cn([
                 "text-neutral-500 hover:text-neutral-800",
-                value.pinned && "text-rose-500 hover:text-rose-600",
+                template.pinned && "text-rose-500 hover:text-rose-600",
               ])}
-              title={value.pinned ? "Unfavorite template" : "Favorite template"}
+              title={
+                template.pinned ? "Unfavorite template" : "Favorite template"
+              }
               aria-label={
-                value.pinned ? "Unfavorite template" : "Favorite template"
+                template.pinned ? "Unfavorite template" : "Favorite template"
               }
             >
               <HeartIcon
                 className="size-4"
-                fill={value.pinned ? "currentColor" : "none"}
+                fill={template.pinned ? "currentColor" : "none"}
               />
             </Button>
             <DropdownMenu open={actionsOpen} onOpenChange={setActionsOpen}>

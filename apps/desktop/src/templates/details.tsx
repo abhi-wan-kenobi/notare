@@ -13,7 +13,7 @@ import { cn } from "@hypr/utils";
 
 import { type WebTemplate } from "./codec";
 import { TemplateDetailScrollArea } from "./detail-scroll-area";
-import { type UserTemplateDraft } from "./queries";
+import { type UserTemplate, type UserTemplateDraft } from "./queries";
 import { SectionsList } from "./sections-editor";
 import { TemplateForm } from "./template-form";
 import { getTemplateCreatorLabel } from "./utils";
@@ -25,7 +25,7 @@ import {
 
 export function TemplateDetailsColumn({
   isWebMode,
-  selectedMineId,
+  selectedMineTemplate,
   selectedWebTemplate,
   handleDeleteTemplate,
   handleDuplicateTemplate,
@@ -34,7 +34,7 @@ export function TemplateDetailsColumn({
   handleSetDefaultTemplate,
 }: {
   isWebMode: boolean;
-  selectedMineId: string | null;
+  selectedMineTemplate: UserTemplate | null;
   selectedWebTemplate: WebTemplate | null;
   handleDeleteTemplate: (id: string) => void;
   handleDuplicateTemplate: (id: string) => void;
@@ -56,14 +56,14 @@ export function TemplateDetailsColumn({
     );
   }
 
-  if (!selectedMineId) {
+  if (!selectedMineTemplate) {
     return <ResourceDetailEmpty message="No templates yet" />;
   }
 
   return (
     <TemplateForm
-      key={selectedMineId}
-      id={selectedMineId}
+      key={selectedMineTemplate.id}
+      template={selectedMineTemplate}
       handleDeleteTemplate={handleDeleteTemplate}
       handleDuplicateTemplate={handleDuplicateTemplate}
     />

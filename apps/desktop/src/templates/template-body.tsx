@@ -110,11 +110,14 @@ export function TemplateView({
     [handleCloneTemplate, userTemplates],
   );
 
+  const selectedMineTemplate =
+    userTemplates.find((template) => template.id === selectedMineId) ?? null;
+
   return (
     <div className="h-full">
       <TemplateDetailsColumn
         isWebMode={isWebMode}
-        selectedMineId={selectedMineId}
+        selectedMineTemplate={selectedMineTemplate}
         selectedWebTemplate={selectedWebTemplate}
         handleDeleteTemplate={handleDeleteTemplate}
         handleDuplicateTemplate={handleDuplicateTemplate}
