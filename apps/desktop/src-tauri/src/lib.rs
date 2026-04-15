@@ -113,7 +113,7 @@ pub async fn main() {
         .plugin(tauri_plugin_analytics::init())
         .plugin(tauri_plugin_agent::init())
         .plugin(tauri_plugin_db::init(db.clone()))
-        .plugin(tauri_plugin_activity_capture::init(db.clone()))
+        .plugin(tauri_plugin_activity_capture::init())
         .plugin(tauri_plugin_bedrock::init())
         .plugin(tauri_plugin_importer::init())
         .plugin(tauri_plugin_calendar::init())

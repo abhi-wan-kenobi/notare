@@ -8,13 +8,12 @@ use std::time::Duration;
 
 use futures_util::StreamExt;
 use hypr_activity_capture::{
-    ActivityCapture, BundleRule, CaptureAccess, CapturePolicy, ObservationReducer,
+    ActivityCapture, ActivityCaptureStorage, BundleRule, CaptureAccess, CapturePolicy,
+    InsertObservationAnalysis, InsertObservationEvent, InsertScreenshot, ObservationReducer,
     ObservationReducerConfig, ObservationScreenshotCapture, ObservationScreenshotRequest,
     PlatformCapture, RawCaptureSample, WatchOptions, capture_screenshot,
 };
-use hypr_db_core2::Db3;
 use sha2::{Digest, Sha256};
-use sqlx::SqlitePool;
 use tauri_specta::Event;
 
 use crate::{
@@ -97,9 +96,9 @@ fn dedupe_identities(values: Vec<String>) -> Vec<String> {
         .collect()
 }
 
-pub struct ActivityCaptureRuntime<R: tauri::Runtime> {
+pub struct ActivityCaptureRuntime<R: tauri::Runtime, S: ActivityCaptureStorage> {
     app: tauri::AppHandle<R>,
-    db: Arc<Db3>,
+    storage: Arc<S>,
     policy: Mutex<CapturePolicy>,
     config: ActivityCaptureConfig,
     analyze_screenshots: AtomicBool,
@@ -109,8 +108,8 @@ pub struct ActivityCaptureRuntime<R: tauri::Runtime> {
     last_known: Mutex<LastKnown>,
 }
 
-impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
-    pub fn new(app: tauri::AppHandle<R>, db: Arc<Db3>) -> Self {
+impl<R: tauri::Runtime, S: ActivityCaptureStorage> ActivityCaptureRuntime<R, S> {
+    pub fn new(app: tauri::AppHandle<R>, storage: Arc<S>) -> Self {
         let excluded_app_ids = SelfIdentity::resolve(&app).excluded_app_ids;
         let config = ActivityCaptureConfig {
             poll_interval_ms: WATCH_POLL_INTERVAL_MS,
@@ -122,7 +121,7 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
 
         Self {
             app,
-            db,
+            storage,
             policy: Mutex::new(CapturePolicy {
                 app_rules: excluded_app_ids
                     .iter()
@@ -147,8 +146,8 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         }
     }
 
-    pub fn pool(&self) -> &hypr_db_core2::DbPool {
-        self.db.pool()
+    pub fn storage(&self) -> &S {
+        &self.storage
     }
 
     pub fn configure(&self, analyze_screenshots: Option<bool>) -> Result<(), crate::Error> {
@@ -207,14 +206,19 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         let one_hour_ago = now - 3_600_000;
         let today_start = now - (now % 86_400_000);
 
-        let screenshots_this_hour =
-            hypr_db_app::count_screenshots_since(self.db.pool(), one_hour_ago)
-                .await
-                .unwrap_or(0);
-        let screenshots_today = hypr_db_app::count_screenshots_since(self.db.pool(), today_start)
+        let screenshots_this_hour = self
+            .storage
+            .count_screenshots_since(one_hour_ago)
             .await
             .unwrap_or(0);
-        let storage_bytes = hypr_db_app::total_screenshot_storage_bytes(self.db.pool())
+        let screenshots_today = self
+            .storage
+            .count_screenshots_since(today_start)
+            .await
+            .unwrap_or(0);
+        let storage_bytes = self
+            .storage
+            .total_screenshot_storage_bytes()
             .await
             .unwrap_or(0);
 
@@ -230,7 +234,7 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
             analyze_screenshots: self.analyze_screenshots.load(Ordering::SeqCst),
             screenshots_today,
             screenshots_this_hour,
-            storage_used_mb: storage_bytes / (1024 * 1024),
+            storage_used_mb: (storage_bytes / (1024 * 1024)) as u64,
         }
     }
 
@@ -239,13 +243,11 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         start_ms: i64,
         end_ms: i64,
     ) -> Result<Vec<ActivityCaptureObservationAnalysis>, String> {
-        let rows = hypr_db_app::list_preferred_observation_analyses_in_range(
-            self.db.pool(),
-            start_ms,
-            end_ms,
-        )
-        .await
-        .map_err(|error| error.to_string())?;
+        let rows = self
+            .storage
+            .list_preferred_observation_analyses_in_range(start_ms, end_ms)
+            .await
+            .map_err(|error| error.to_string())?;
 
         Ok(rows
             .into_iter()
@@ -259,6 +261,12 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
                 summary: row.summary,
             })
             .collect())
+    }
+
+    pub fn capabilities(&self) -> crate::events::ActivityCaptureCapabilities {
+        PlatformCapture::with_policy(self.policy())
+            .capabilities()
+            .into()
     }
 
     pub fn start(self: &Arc<Self>) -> Result<(), crate::Error> {
@@ -436,7 +444,7 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
             .acknowledge_capture(request.request_id, true, captured_at_ms);
 
         let screenshot_id = screenshot_id_for(&capture);
-        if let Err(error) = persist_screenshot(self.db.pool(), &screenshot_id, &capture).await {
+        if let Err(error) = self.persist_screenshot(&screenshot_id, &capture).await {
             tracing::warn!(%error, "failed_to_persist_activity_screenshot");
         }
 
@@ -454,27 +462,30 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
         tauri::async_runtime::spawn(async move {
             match analysis::analyze_screenshot(&runtime.app, &screenshot_id, &capture).await {
                 Ok(analysis) => {
-                    if let Err(error) = hypr_db_app::insert_observation_analysis(
-                        runtime.db.pool(),
-                        hypr_db_app::InsertObservationAnalysis {
-                            id: &format!(
+                    if let Err(error) = runtime
+                        .storage
+                        .insert_observation_analysis(InsertObservationAnalysis {
+                            id: format!(
                                 "oa-{}-{}-{}",
                                 analysis.observation_id,
                                 analysis.screenshot_id,
                                 ANALYSIS_PROMPT_VERSION
                             ),
-                            observation_id: &analysis.observation_id,
-                            screenshot_id: &analysis.screenshot_id,
-                            screenshot_kind: &analysis.screenshot_kind,
+                            observation_id: analysis.observation_id.clone(),
+                            screenshot_id: analysis.screenshot_id.clone(),
+                            screenshot_kind: analysis.screenshot_kind.clone(),
                             captured_at_ms: analysis.captured_at_ms,
-                            model_name: ANALYSIS_MODEL_NAME,
-                            prompt_version: ANALYSIS_PROMPT_VERSION,
-                            app_name: &analysis.app_name,
-                            window_title: analysis.window_title.as_deref().unwrap_or(""),
-                            summary: &analysis.summary,
-                        },
-                    )
-                    .await
+                            model_name: ANALYSIS_MODEL_NAME.to_string(),
+                            prompt_version: ANALYSIS_PROMPT_VERSION.to_string(),
+                            app_name: analysis.app_name.clone(),
+                            window_title: analysis
+                                .window_title
+                                .as_deref()
+                                .unwrap_or("")
+                                .to_string(),
+                            summary: analysis.summary.clone(),
+                        })
+                        .await
                     {
                         tracing::warn!(%error, "failed_to_persist_observation_analysis");
                     }
@@ -519,68 +530,69 @@ impl<R: tauri::Runtime> ActivityCaptureRuntime<R> {
             .map(|value| serde_json::to_string(value).unwrap_or_else(|_| "{}".to_string()))
             .unwrap_or_else(|| "{}".to_string());
 
-        if let Err(error) = hypr_db_app::insert_observation_event(
-            self.db.pool(),
-            hypr_db_app::InsertObservationEvent {
-                id: &event.id,
-                observation_id: &event.observation_id,
+        if let Err(error) = self
+            .storage
+            .insert_observation_event(InsertObservationEvent {
+                id: event.id.clone(),
+                observation_id: event.observation_id.clone(),
                 occurred_at_ms: system_time_to_unix_ms(event.occurred_at),
-                event_kind: event.kind.as_str(),
-                end_reason: event.end_reason.map(|value| value.as_str()),
-                change_class: event.change_class.map(|value| value.as_str()),
-                app_id,
-                bundle_id,
-                app_name,
-                activity_kind: snapshot.map(|s| s.activity_kind.as_str()).unwrap_or(""),
-                window_title,
-                url,
-                domain: &domain,
+                event_kind: event.kind.as_str().to_string(),
+                end_reason: event.end_reason.map(|value| value.as_str().to_string()),
+                change_class: event.change_class.map(|value| value.as_str().to_string()),
+                app_id: app_id.to_string(),
+                bundle_id: bundle_id.to_string(),
+                app_name: app_name.to_string(),
+                activity_kind: snapshot
+                    .map(|s| s.activity_kind.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                window_title: window_title.to_string(),
+                url: url.to_string(),
+                domain,
                 text_anchor_identity: snapshot
                     .and_then(|s| s.text_anchor_identity.as_deref())
-                    .unwrap_or(""),
-                observation_key: &event.observation_key,
-                snapshot_json: &snapshot_json,
-            },
-        )
-        .await
+                    .unwrap_or("")
+                    .to_string(),
+                observation_key: event.observation_key.clone(),
+                snapshot_json,
+            })
+            .await
         {
             tracing::warn!(%error, "failed_to_persist_observation_event");
         }
     }
-}
 
-async fn persist_screenshot(
-    pool: &SqlitePool,
-    screenshot_id: &str,
-    capture: &ObservationScreenshotCapture,
-) -> Result<(), sqlx::Error> {
-    let sha256 = Sha256::digest(&capture.image.image_bytes);
-    let sha256 = sha256
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect::<String>();
-    let snapshot_json =
-        serde_json::to_string(&capture.snapshot).unwrap_or_else(|_| "{}".to_string());
+    async fn persist_screenshot(
+        &self,
+        screenshot_id: &str,
+        capture: &ObservationScreenshotCapture,
+    ) -> Result<(), hypr_activity_capture::StorageError> {
+        let sha256 = Sha256::digest(&capture.image.image_bytes);
+        let sha256 = sha256
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>();
+        let snapshot_json =
+            serde_json::to_string(&capture.snapshot).unwrap_or_else(|_| "{}".to_string());
 
-    hypr_db_app::insert_screenshot(
-        pool,
-        hypr_db_app::InsertScreenshot {
-            id: screenshot_id,
-            observation_id: &capture.observation_id,
-            screenshot_kind: capture.kind.as_str(),
-            scheduled_at_ms: capture.scheduled_at_ms,
-            captured_at_ms: capture.captured_at_ms,
-            app_name: &capture.target.app_name,
-            window_title: capture.target.title.as_deref().unwrap_or(""),
-            mime_type: &capture.image.mime_type,
-            width: capture.image.width as i64,
-            height: capture.image.height as i64,
-            sha256: &sha256,
-            image_blob: &capture.image.image_bytes,
-            snapshot_json: &snapshot_json,
-        },
-    )
-    .await
+        self.storage
+            .insert_screenshot(InsertScreenshot {
+                id: screenshot_id.to_string(),
+                observation_id: capture.observation_id.clone(),
+                screenshot_kind: capture.kind.as_str().to_string(),
+                scheduled_at_ms: capture.scheduled_at_ms,
+                captured_at_ms: capture.captured_at_ms,
+                app_name: capture.target.app_name.clone(),
+                window_title: capture.target.title.as_deref().unwrap_or("").to_string(),
+                mime_type: capture.image.mime_type.clone(),
+                width: capture.image.width as i64,
+                height: capture.image.height as i64,
+                sha256,
+                image_blob: capture.image.image_bytes.clone(),
+                snapshot_json,
+            })
+            .await
+    }
 }
 
 fn screenshot_id_for(capture: &ObservationScreenshotCapture) -> String {
@@ -596,7 +608,7 @@ fn screenshot_id_for(capture: &ObservationScreenshotCapture) -> String {
 #[cfg(test)]
 mod tests {
     use super::{ActivityCaptureRuntime, SelfIdentity};
-    use hypr_db_core2::Db3;
+    use hypr_activity_capture::NoopStorage;
     use std::path::PathBuf;
     use std::sync::Arc;
 
@@ -630,11 +642,7 @@ mod tests {
         let app = tauri::test::mock_builder()
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .unwrap();
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let runtime = ActivityCaptureRuntime::new(
-            app.handle().clone(),
-            Arc::new(rt.block_on(async { Db3::connect_memory_plain().await.unwrap() })),
-        );
+        let runtime = ActivityCaptureRuntime::new(app.handle().clone(), Arc::new(NoopStorage));
 
         assert!(!runtime.policy().app_rules.is_empty());
     }

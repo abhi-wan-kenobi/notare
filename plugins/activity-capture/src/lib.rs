@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use hypr_db_core2::Db3;
+use hypr_activity_capture::NoopStorage;
 use tauri::Manager;
 
 mod analysis;
@@ -16,7 +16,7 @@ pub use ext::*;
 
 const PLUGIN_NAME: &str = "activity-capture";
 
-pub type ManagedState<R> = Arc<runtime::ActivityCaptureRuntime<R>>;
+pub type ManagedState<R> = Arc<runtime::ActivityCaptureRuntime<R, NoopStorage>>;
 
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
@@ -38,7 +38,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }
 
-pub fn init<R: tauri::Runtime>(db: Arc<Db3>) -> tauri::plugin::TauriPlugin<R> {
+pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
     let specta_builder = make_specta_builder();
 
     tauri::plugin::Builder::new(PLUGIN_NAME)
@@ -47,7 +47,7 @@ pub fn init<R: tauri::Runtime>(db: Arc<Db3>) -> tauri::plugin::TauriPlugin<R> {
             specta_builder.mount_events(app);
             app.manage(Arc::new(runtime::ActivityCaptureRuntime::new(
                 app.app_handle().clone(),
-                db,
+                Arc::new(NoopStorage),
             )));
             Ok(())
         })
@@ -77,10 +77,8 @@ mod test {
 
     #[test]
     fn test_plugin_init() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let db = Arc::new(rt.block_on(async { Db3::connect_memory_plain().await.unwrap() }));
         let _app = tauri::test::mock_builder()
-            .plugin(init(db))
+            .plugin(init())
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
             .unwrap();
     }

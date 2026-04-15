@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use hypr_activity_capture::{ActivityCapture, CapturePolicy, PlatformCapture};
+use hypr_activity_capture::{ActivityCapture, CapturePolicy, NoopStorage, PlatformCapture};
 
 use crate::{
     ManagedState,
@@ -72,7 +72,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> ActivityCaptureExt<'a, R, M> {
         self.runtime().configure(analyze_screenshots)
     }
 
-    fn runtime(&self) -> Arc<crate::runtime::ActivityCaptureRuntime<R>> {
+    fn runtime(&self) -> Arc<crate::runtime::ActivityCaptureRuntime<R, NoopStorage>> {
         let state = self.manager.state::<ManagedState<R>>();
         Arc::clone(&*state)
     }

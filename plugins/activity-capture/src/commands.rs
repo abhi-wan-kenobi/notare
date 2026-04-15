@@ -7,6 +7,9 @@ use crate::{
         ActivityCaptureObservationAnalysis, ActivityCaptureStatus,
     },
 };
+use hypr_activity_capture::{
+    ActivityCaptureStorage, DailySummaryRow, ObservationEventRow, UpsertDailySummary,
+};
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
@@ -194,16 +197,12 @@ pub async fn get_daily_summary_snapshot<R: tauri::Runtime>(
     input: LoadDailySummarySnapshotInput,
 ) -> Result<DailySummarySnapshot, String> {
     let runtime = app.state::<crate::ManagedState<R>>();
-    let pool = runtime.pool();
+    let storage = runtime.storage();
 
     let (events, analyses, screenshot_count) = tokio::try_join!(
-        hypr_db_app::list_observation_events_in_range(pool, input.start_ms, input.end_ms),
-        hypr_db_app::list_preferred_observation_analyses_in_range(
-            pool,
-            input.start_ms,
-            input.end_ms
-        ),
-        hypr_db_app::count_screenshots_in_range(pool, input.start_ms, input.end_ms),
+        storage.list_observation_events_in_range(input.start_ms, input.end_ms),
+        storage.list_preferred_observation_analyses_in_range(input.start_ms, input.end_ms),
+        storage.count_screenshots_in_range(input.start_ms, input.end_ms),
     )
     .map_err(|error| error.to_string())?;
 
@@ -237,11 +236,11 @@ pub async fn get_daily_summary_snapshot<R: tauri::Runtime>(
         source_cursor_ms
     );
 
-    let summary =
-        hypr_db_app::get_daily_summary_by_date(pool, &input.date, &daily_note_id(&input.date))
-            .await
-            .map_err(|error| error.to_string())?
-            .map(map_stored_daily_summary);
+    let summary = storage
+        .get_daily_summary_by_date(&input.date, &daily_note_id(&input.date))
+        .await
+        .map_err(|error| error.to_string())?
+        .map(map_stored_daily_summary);
 
     Ok(DailySummarySnapshot {
         stats,
@@ -259,34 +258,34 @@ pub async fn save_daily_summary<R: tauri::Runtime>(
     input: SaveDailySummaryInput,
 ) -> Result<StoredDailySummary, String> {
     let runtime = app.state::<crate::ManagedState<R>>();
-    let pool = runtime.pool();
+    let storage = runtime.storage();
     let note_id = daily_note_id(&input.date);
     let summary_id = daily_summary_id(&input.date);
 
-    hypr_db_app::get_or_create_daily_note(pool, &note_id, &input.date, DAILY_SUMMARY_USER_ID)
+    storage
+        .get_or_create_daily_note(&note_id, &input.date, DAILY_SUMMARY_USER_ID)
         .await
         .map_err(|error| error.to_string())?;
 
-    hypr_db_app::upsert_daily_summary(
-        pool,
-        hypr_db_app::UpsertDailySummary {
-            id: &summary_id,
-            daily_note_id: &note_id,
-            date: &input.date,
-            content: &input.content,
-            timeline_json: &serde_json::to_string(&input.timeline).map_err(|e| e.to_string())?,
-            topics_json: &serde_json::to_string(&input.topics).map_err(|e| e.to_string())?,
-            status: "ready",
+    storage
+        .upsert_daily_summary(UpsertDailySummary {
+            id: summary_id.clone(),
+            daily_note_id: note_id,
+            date: input.date,
+            content: input.content,
+            timeline_json: serde_json::to_string(&input.timeline).map_err(|e| e.to_string())?,
+            topics_json: serde_json::to_string(&input.topics).map_err(|e| e.to_string())?,
+            status: "ready".to_string(),
             source_cursor_ms: input.source_cursor_ms,
-            source_fingerprint: &input.source_fingerprint,
-            generation_error: "",
-            generated_at: &input.generated_at,
-        },
-    )
-    .await
-    .map_err(|error| error.to_string())?;
+            source_fingerprint: input.source_fingerprint,
+            generation_error: String::new(),
+            generated_at: input.generated_at,
+        })
+        .await
+        .map_err(|error| error.to_string())?;
 
-    let row = hypr_db_app::get_daily_summary(pool, &summary_id)
+    let row = storage
+        .get_daily_summary(&summary_id)
         .await
         .map_err(|error| error.to_string())?
         .ok_or_else(|| "daily summary was not found after save".to_string())?;
@@ -303,7 +302,7 @@ fn daily_summary_id(date: &str) -> String {
 }
 
 fn build_daily_activity_stats(
-    events: &[hypr_db_app::ObservationEventRow],
+    events: &[ObservationEventRow],
     analysis_count: u32,
     screenshot_count: u32,
 ) -> DailyActivityStats {
@@ -344,7 +343,7 @@ fn build_daily_activity_stats(
     }
 }
 
-fn map_stored_daily_summary(row: hypr_db_app::DailySummaryRow) -> StoredDailySummary {
+fn map_stored_daily_summary(row: DailySummaryRow) -> StoredDailySummary {
     StoredDailySummary {
         id: row.id,
         date: row.date,

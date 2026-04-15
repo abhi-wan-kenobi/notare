@@ -3,6 +3,8 @@ pub mod observation;
 pub use observation::*;
 pub mod screenshot;
 pub use screenshot::*;
+pub mod storage;
+pub use storage::*;
 
 #[cfg(target_os = "macos")]
 pub type PlatformCapture = hypr_activity_capture_macos::MacosCapture;
