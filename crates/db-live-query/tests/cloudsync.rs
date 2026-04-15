@@ -20,7 +20,7 @@ async fn setup_db() -> Db {
             value TEXT NOT NULL DEFAULT ''
         )",
     )
-    .execute(db.pool().as_ref())
+    .execute(db.pool())
     .await
     .unwrap();
 
@@ -39,7 +39,7 @@ async fn cloudsync_pull_refreshes_live_query_subscriptions() {
 
     let db_a = setup_db().await;
     let db_b = setup_db().await;
-    let pool_b = db_b.pool().as_ref().clone();
+    let pool_b = db_b.pool().clone();
     let runtime_b = DbRuntime::new(std::sync::Arc::new(db_b));
     let (sink, events) = TestSink::capture();
 
@@ -59,7 +59,7 @@ async fn cloudsync_pull_refreshes_live_query_subscriptions() {
 
     sqlx::query("INSERT INTO test_sync (id, value) VALUES (cloudsync_uuid(), ?)")
         .bind(&marker)
-        .execute(db_a.pool().as_ref())
+        .execute(db_a.pool())
         .await
         .unwrap();
 

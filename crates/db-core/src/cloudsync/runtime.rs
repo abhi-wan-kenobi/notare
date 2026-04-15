@@ -3,20 +3,15 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use backon::{ExponentialBuilder, Retryable};
 use sqlx::SqlitePool;
-use tokio::sync::{broadcast, oneshot};
+use tokio::sync::oneshot;
 
 use super::state::{CloudsyncBackgroundTask, CloudsyncRuntimeState};
 use super::types::{
     CloudsyncErrorKind, CloudsyncRuntimeConfig, CloudsyncRuntimeError, CloudsyncStatus,
 };
 use crate::Db;
-use crate::pool::TableChange;
 
 impl Db {
-    pub fn subscribe_table_changes(&self) -> broadcast::Receiver<TableChange> {
-        self.pool.subscribe_table_changes()
-    }
-
     pub fn cloudsync_configure(
         &self,
         config: CloudsyncRuntimeConfig,
@@ -83,7 +78,7 @@ impl Db {
         self.apply_cloudsync_auth(&config.auth).await?;
 
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
-        let pool = self.pool.as_ref().clone();
+        let pool = self.pool.clone();
         let runtime_state = Arc::clone(&self.cloudsync_runtime);
         let wait_ms = config.wait_ms;
         let max_retries = config.max_retries;

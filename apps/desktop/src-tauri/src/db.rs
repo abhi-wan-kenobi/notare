@@ -15,9 +15,9 @@ pub async fn open_desktop_db(identifier: &str) -> Arc<Db> {
         dir.join("app.db")
     });
 
-    Arc::new(
-        tauri_plugin_db::open_app_db(db_path.as_deref())
-            .await
-            .expect("failed to open app database"),
-    )
+    let db = tauri_plugin_db::open_app_db(db_path.as_deref())
+        .await
+        .expect("failed to open app database");
+
+    Arc::new(db)
 }

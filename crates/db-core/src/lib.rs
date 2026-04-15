@@ -1,21 +1,18 @@
 mod cloudsync;
-mod pool;
 
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-pub use hypr_cloudsync::Error;
-use sqlx::sqlite::SqliteConnectOptions;
+use sqlx::SqlitePool;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 
 use crate::cloudsync::CloudsyncRuntimeState;
 pub use crate::cloudsync::{
     CloudsyncAuth, CloudsyncRuntimeConfig, CloudsyncRuntimeError, CloudsyncStatus,
     CloudsyncTableSpec, cloudsync_begin_alter_on, cloudsync_commit_alter_on,
 };
-use crate::pool::connect_pool;
-pub use crate::pool::{DbPool, TableChange, TableChangeKind};
 
 #[derive(Clone, Copy, Debug)]
 pub enum DbStorage<'a> {
@@ -50,7 +47,8 @@ pub struct Db {
     pub(crate) cloudsync_enabled: bool,
     pub(crate) cloudsync_path: Option<PathBuf>,
     pub(crate) cloudsync_runtime: Arc<Mutex<CloudsyncRuntimeState>>,
-    pub(crate) pool: DbPool,
+    pub(crate) pool: SqlitePool,
+    change_notifier: hypr_db_change::ChangeNotifier,
 }
 
 impl std::fmt::Debug for Db {
@@ -60,6 +58,7 @@ impl std::fmt::Debug for Db {
             .field("cloudsync_enabled", &self.cloudsync_enabled)
             .field("cloudsync_path", &self.cloudsync_path)
             .field("cloudsync_runtime", &*runtime)
+            .field("change_notifier", &true)
             .finish_non_exhaustive()
     }
 }
@@ -83,10 +82,15 @@ impl Drop for Db {
 
 impl Db {
     pub async fn open(options: DbOpenOptions<'_>) -> Result<Self, DbOpenError> {
-        connect_with_options(&options).await
+        let (change_notifier, pool_options) = hypr_db_change::ChangeNotifier::new();
+        connect_with_options(&options, pool_options, change_notifier).await
     }
 
-    pub async fn connect_local(path: impl AsRef<Path>) -> Result<Self, Error> {
+    pub fn change_notifier(&self) -> &hypr_db_change::ChangeNotifier {
+        &self.change_notifier
+    }
+
+    pub async fn connect_local(path: impl AsRef<Path>) -> Result<Self, hypr_cloudsync::Error> {
         if let Some(parent) = path.as_ref().parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -94,27 +98,38 @@ impl Db {
             .filename(path)
             .create_if_missing(true);
         let (options, cloudsync_path) = hypr_cloudsync::apply(options)?;
-        let pool = connect_pool(options, None).await.map_err(Error::from)?;
+        let (change_notifier, pool_options) = hypr_db_change::ChangeNotifier::new();
+        let pool = pool_options
+            .connect_with(options)
+            .await
+            .map_err(hypr_cloudsync::Error::from)?;
 
         Ok(Self {
             cloudsync_enabled: true,
             cloudsync_path: Some(cloudsync_path),
             cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
             pool,
+            change_notifier,
         })
     }
 
-    pub async fn connect_memory() -> Result<Self, Error> {
+    pub async fn connect_memory() -> Result<Self, hypr_cloudsync::Error> {
         let options =
             apply_internal_connect_policy(SqliteConnectOptions::from_str("sqlite::memory:")?);
         let (options, cloudsync_path) = hypr_cloudsync::apply(options)?;
-        let pool = connect_pool(options, Some(1)).await.map_err(Error::from)?;
+        let (change_notifier, pool_options) = hypr_db_change::ChangeNotifier::new();
+        let pool = pool_options
+            .max_connections(1)
+            .connect_with(options)
+            .await
+            .map_err(hypr_cloudsync::Error::from)?;
 
         Ok(Self {
             cloudsync_enabled: true,
             cloudsync_path: Some(cloudsync_path),
             cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
             pool,
+            change_notifier,
         })
     }
 
@@ -126,13 +141,15 @@ impl Db {
             .filename(path)
             .create_if_missing(true)
             .pragma("foreign_keys", "ON");
-        let pool = connect_pool(options, None).await?;
+        let (change_notifier, pool_options) = hypr_db_change::ChangeNotifier::new();
+        let pool = pool_options.connect_with(options).await?;
 
         Ok(Self {
             cloudsync_enabled: false,
             cloudsync_path: None,
             cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
             pool,
+            change_notifier,
         })
     }
 
@@ -140,22 +157,31 @@ impl Db {
         let options =
             apply_internal_connect_policy(SqliteConnectOptions::from_str("sqlite::memory:")?)
                 .pragma("foreign_keys", "ON");
-        let pool = connect_pool(options, Some(1)).await?;
+        let (change_notifier, pool_options) = hypr_db_change::ChangeNotifier::new();
+        let pool = pool_options
+            .max_connections(1)
+            .connect_with(options)
+            .await?;
 
         Ok(Self {
             cloudsync_enabled: false,
             cloudsync_path: None,
             cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
             pool,
+            change_notifier,
         })
     }
 
-    pub fn pool(&self) -> &DbPool {
+    pub fn pool(&self) -> &SqlitePool {
         &self.pool
     }
 }
 
-async fn connect_with_options(options: &DbOpenOptions<'_>) -> Result<Db, DbOpenError> {
+async fn connect_with_options(
+    options: &DbOpenOptions<'_>,
+    pool_options: SqlitePoolOptions,
+    change_notifier: hypr_db_change::ChangeNotifier,
+) -> Result<Db, DbOpenError> {
     let mut connect_options = match options.storage {
         DbStorage::Local(path) => {
             if let Some(parent) = path.parent() {
@@ -184,17 +210,25 @@ async fn connect_with_options(options: &DbOpenOptions<'_>) -> Result<Db, DbOpenE
         (connect_options, None)
     };
 
-    let max_connections = match options.storage {
-        DbStorage::Memory => Some(1),
-        DbStorage::Local(_) => options.max_connections,
+    let mut pool_options = pool_options;
+    match options.storage {
+        DbStorage::Memory => {
+            pool_options = pool_options.max_connections(1);
+        }
+        DbStorage::Local(_) => {
+            if let Some(max) = options.max_connections {
+                pool_options = pool_options.max_connections(max);
+            }
+        }
     };
-    let pool = connect_pool(connect_options, max_connections).await?;
+    let pool = pool_options.connect_with(connect_options).await?;
 
     Ok(Db {
         cloudsync_enabled: options.cloudsync_enabled,
         cloudsync_path,
         cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
         pool,
+        change_notifier,
     })
 }
 
@@ -251,15 +285,15 @@ mod tests {
         .unwrap();
 
         let foreign_keys: i64 = sqlx::query_scalar("PRAGMA foreign_keys")
-            .fetch_one(db.pool().as_ref())
+            .fetch_one(db.pool())
             .await
             .unwrap();
         let journal_mode: String = sqlx::query_scalar("PRAGMA journal_mode")
-            .fetch_one(db.pool().as_ref())
+            .fetch_one(db.pool())
             .await
             .unwrap();
         let busy_timeout: i64 = sqlx::query_scalar("PRAGMA busy_timeout")
-            .fetch_one(db.pool().as_ref())
+            .fetch_one(db.pool())
             .await
             .unwrap();
 
@@ -404,16 +438,17 @@ mod tests {
     #[tokio::test]
     async fn emits_table_changes_for_local_writes() {
         let db = Db::connect_memory_plain().await.unwrap();
+        let notifier = db.change_notifier();
         sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
-        let mut changes = db.subscribe_table_changes();
-        let before = db.pool().current_table_change_seq();
+        let mut changes = notifier.subscribe();
+        let before = notifier.current_seq();
 
         sqlx::query("INSERT INTO test_events (id) VALUES ('a')")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
@@ -423,24 +458,22 @@ mod tests {
             .unwrap();
 
         assert_eq!(change.table, "test_events");
-        assert_eq!(change.kind, TableChangeKind::Insert);
+        assert_eq!(change.kind, hypr_db_change::TableChangeKind::Insert);
         assert!(change.seq > before);
-        assert_eq!(db.pool().current_table_change_seq(), change.seq);
-        assert_eq!(
-            db.pool().latest_table_change_seq("test_events"),
-            Some(change.seq)
-        );
+        assert_eq!(notifier.current_seq(), change.seq);
+        assert_eq!(notifier.latest_table_seq("test_events"), Some(change.seq));
     }
 
     #[tokio::test]
     async fn emits_table_changes_only_after_commit() {
         let db = Db::connect_memory_plain().await.unwrap();
+        let notifier = db.change_notifier();
         sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
-        let mut changes = db.subscribe_table_changes();
+        let mut changes = notifier.subscribe();
         let mut tx = db.pool().begin().await.unwrap();
 
         sqlx::query("INSERT INTO test_events (id) VALUES ('a')")
@@ -461,22 +494,20 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(change.table, "test_events");
-        assert_eq!(change.kind, TableChangeKind::Insert);
-        assert_eq!(
-            db.pool().latest_table_change_seq("test_events"),
-            Some(change.seq)
-        );
+        assert_eq!(change.kind, hypr_db_change::TableChangeKind::Insert);
+        assert_eq!(notifier.latest_table_seq("test_events"), Some(change.seq));
     }
 
     #[tokio::test]
     async fn rollback_clears_pending_table_changes() {
         let db = Db::connect_memory_plain().await.unwrap();
+        let notifier = db.change_notifier();
         sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
-        let mut changes = db.subscribe_table_changes();
+        let mut changes = notifier.subscribe();
         let mut tx = db.pool().begin().await.unwrap();
 
         sqlx::query("INSERT INTO test_events (id) VALUES ('a')")
@@ -496,12 +527,13 @@ mod tests {
     #[tokio::test]
     async fn coalesces_multiple_writes_in_a_transaction() {
         let db = Db::connect_memory_plain().await.unwrap();
+        let notifier = db.change_notifier();
         sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
-        let mut changes = db.subscribe_table_changes();
+        let mut changes = notifier.subscribe();
         let mut tx = db.pool().begin().await.unwrap();
 
         sqlx::query("INSERT INTO test_events (id, value) VALUES ('a', 'before')")
@@ -520,11 +552,8 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(change.table, "test_events");
-        assert_eq!(change.kind, TableChangeKind::Update);
-        assert_eq!(
-            db.pool().latest_table_change_seq("test_events"),
-            Some(change.seq)
-        );
+        assert_eq!(change.kind, hypr_db_change::TableChangeKind::Update);
+        assert_eq!(notifier.latest_table_seq("test_events"), Some(change.seq));
         assert!(
             tokio::time::timeout(std::time::Duration::from_millis(100), changes.recv())
                 .await
@@ -535,23 +564,24 @@ mod tests {
     #[tokio::test]
     async fn emits_update_and_delete_table_changes() {
         let db = Db::connect_memory_plain().await.unwrap();
+        let notifier = db.change_notifier();
         sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
         sqlx::query("INSERT INTO test_events (id, value) VALUES ('a', 'before')")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
-        let mut changes = db.subscribe_table_changes();
+        let mut changes = notifier.subscribe();
 
         sqlx::query("UPDATE test_events SET value = 'after' WHERE id = 'a'")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
         sqlx::query("DELETE FROM test_events WHERE id = 'a'")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
@@ -565,23 +595,20 @@ mod tests {
             .unwrap();
 
         assert_eq!(update.table, "test_events");
-        assert_eq!(update.kind, TableChangeKind::Update);
+        assert_eq!(update.kind, hypr_db_change::TableChangeKind::Update);
         assert_eq!(delete.table, "test_events");
-        assert_eq!(delete.kind, TableChangeKind::Delete);
+        assert_eq!(delete.kind, hypr_db_change::TableChangeKind::Delete);
         assert!(delete.seq > update.seq);
-        assert_eq!(
-            db.pool().latest_table_change_seq("test_events"),
-            Some(delete.seq)
-        );
+        assert_eq!(notifier.latest_table_seq("test_events"), Some(delete.seq));
     }
 
     #[tokio::test]
     async fn emits_table_changes_across_multiple_connections() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("app.db");
+        let db_path = dir.path().join("app.db");
 
         let db = Db::open(DbOpenOptions {
-            storage: DbStorage::Local(&path),
+            storage: DbStorage::Local(&db_path),
             cloudsync_enabled: false,
             journal_mode_wal: true,
             foreign_keys: true,
@@ -589,12 +616,13 @@ mod tests {
         })
         .await
         .unwrap();
+        let notifier = db.change_notifier();
         sqlx::query("CREATE TABLE multi_conn_events (id TEXT PRIMARY KEY NOT NULL)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
-        let mut changes = db.subscribe_table_changes();
+        let mut changes = notifier.subscribe();
         let mut conn_a = db.pool().acquire().await.unwrap();
         let mut conn_b = db.pool().acquire().await.unwrap();
 
@@ -624,20 +652,21 @@ mod tests {
     #[tokio::test]
     async fn tracks_monotonic_change_sequences_per_table() {
         let db = Db::connect_memory_plain().await.unwrap();
+        let notifier = db.change_notifier();
         sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
         sqlx::query("CREATE TABLE other_events (id TEXT PRIMARY KEY NOT NULL)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
-        let start = db.pool().current_table_change_seq();
-        let mut changes = db.subscribe_table_changes();
+        let start = notifier.current_seq();
+        let mut changes = notifier.subscribe();
 
         sqlx::query("INSERT INTO test_events (id) VALUES ('a')")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
         let first = tokio::time::timeout(std::time::Duration::from_secs(1), changes.recv())
@@ -646,7 +675,7 @@ mod tests {
             .unwrap();
 
         sqlx::query("INSERT INTO test_events (id) VALUES ('b')")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
         let second = tokio::time::timeout(std::time::Duration::from_secs(1), changes.recv())
@@ -655,7 +684,7 @@ mod tests {
             .unwrap();
 
         sqlx::query("INSERT INTO other_events (id) VALUES ('c')")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
         let third = tokio::time::timeout(std::time::Duration::from_secs(1), changes.recv())
@@ -666,16 +695,41 @@ mod tests {
         assert!(first.seq > start);
         assert!(second.seq > first.seq);
         assert!(third.seq > second.seq);
-        assert_eq!(db.pool().current_table_change_seq(), third.seq);
+        assert_eq!(notifier.current_seq(), third.seq);
+        assert_eq!(notifier.latest_table_seq("test_events"), Some(second.seq));
+        assert_eq!(notifier.latest_table_seq("other_events"), Some(third.seq));
+        assert_eq!(notifier.latest_table_seq("missing_events"), None);
+    }
+
+    #[tokio::test]
+    async fn notifier_survives_db_drop() {
+        let db = Db::connect_memory_plain().await.unwrap();
+        let notifier = db.change_notifier().clone();
+        sqlx::query("CREATE TABLE retained_events (id TEXT PRIMARY KEY NOT NULL)")
+            .execute(db.pool())
+            .await
+            .unwrap();
+
+        let pool = db.pool().clone();
+        let mut changes = notifier.subscribe();
+        drop(db);
+
+        sqlx::query("INSERT INTO retained_events (id) VALUES ('a')")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let change = tokio::time::timeout(std::time::Duration::from_secs(1), changes.recv())
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(change.table, "retained_events");
+        assert_eq!(change.kind, hypr_db_change::TableChangeKind::Insert);
         assert_eq!(
-            db.pool().latest_table_change_seq("test_events"),
-            Some(second.seq)
+            notifier.latest_table_seq("retained_events"),
+            Some(change.seq)
         );
-        assert_eq!(
-            db.pool().latest_table_change_seq("other_events"),
-            Some(third.seq)
-        );
-        assert_eq!(db.pool().latest_table_change_seq("missing_events"), None);
     }
 
     #[tokio::test]
@@ -696,36 +750,6 @@ mod tests {
             tokio::time::timeout(std::time::Duration::from_millis(100), db.pool().acquire())
                 .await
                 .is_err()
-        );
-    }
-
-    #[tokio::test]
-    async fn cloned_pool_keeps_hooks_alive_after_db_drop() {
-        let db = Db::connect_memory_plain().await.unwrap();
-        sqlx::query("CREATE TABLE retained_events (id TEXT PRIMARY KEY NOT NULL)")
-            .execute(db.pool().as_ref())
-            .await
-            .unwrap();
-
-        let pool = db.pool().clone();
-        let mut changes = pool.subscribe_table_changes();
-        drop(db);
-
-        sqlx::query("INSERT INTO retained_events (id) VALUES ('a')")
-            .execute(pool.as_ref())
-            .await
-            .unwrap();
-
-        let change = tokio::time::timeout(std::time::Duration::from_secs(1), changes.recv())
-            .await
-            .unwrap()
-            .unwrap();
-
-        assert_eq!(change.table, "retained_events");
-        assert_eq!(change.kind, TableChangeKind::Insert);
-        assert_eq!(
-            pool.latest_table_change_seq("retained_events"),
-            Some(change.seq)
         );
     }
 }

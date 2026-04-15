@@ -4727,11 +4727,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "db-change"
+version = "0.1.0"
+dependencies = [
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "db-core"
 version = "0.1.0"
 dependencies = [
  "backon",
  "cloudsync",
+ "db-change",
  "libsqlite3-sys",
  "serde",
  "sqlx",
@@ -4748,6 +4757,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "cloudsync",
+ "db-change",
  "db-core",
  "db-migrate",
  "serde",

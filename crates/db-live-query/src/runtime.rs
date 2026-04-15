@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 use tokio::sync::watch as tokio_watch;
 
-use hypr_db_core::{Db, TableChange};
+use hypr_db_core::Db;
 
 use crate::error::{Error, Result};
 use crate::query::{run_query, run_query_proxy};
@@ -15,9 +15,11 @@ use crate::types::{
     SubscriptionRegistration,
 };
 use crate::watch::WatchId;
+use hypr_db_change::{ChangeNotifier, TableChange};
 
 pub struct DbRuntime<S> {
     db: Arc<Db>,
+    change_notifier: ChangeNotifier,
     catalog: CatalogStore,
     subscriptions: Registry<S>,
     shutdown_tx: tokio_watch::Sender<bool>,
@@ -26,14 +28,19 @@ pub struct DbRuntime<S> {
 
 impl<S: QueryEventSink> DbRuntime<S> {
     pub fn new(db: Arc<Db>) -> Self {
-        let db = db;
+        let change_notifier = db.change_notifier().clone();
+        Self::new_with_notifier(db, change_notifier)
+    }
+
+    fn new_with_notifier(db: Arc<Db>, change_notifier: ChangeNotifier) -> Self {
         let catalog = CatalogStore::default();
         let subscriptions = Registry::default();
         let (shutdown_tx, mut shutdown_rx) = tokio_watch::channel(false);
-        let mut change_rx = db.subscribe_table_changes();
+        let mut change_rx = change_notifier.subscribe();
         let dispatcher_catalog = catalog.clone();
         let dispatcher_subscriptions = subscriptions.clone();
         let dispatcher_db = Arc::clone(&db);
+        let dispatcher_notifier = change_notifier.clone();
 
         let dispatcher = tokio::spawn(async move {
             loop {
@@ -46,6 +53,7 @@ impl<S: QueryEventSink> DbRuntime<S> {
                     jobs = next_refresh_jobs(
                         &mut change_rx,
                         dispatcher_db.as_ref(),
+                        &dispatcher_notifier,
                         &dispatcher_catalog,
                         &dispatcher_subscriptions,
                     ) => {
@@ -69,6 +77,7 @@ impl<S: QueryEventSink> DbRuntime<S> {
 
         Self {
             db,
+            change_notifier,
             catalog,
             subscriptions,
             shutdown_tx,
@@ -102,7 +111,7 @@ impl<S: QueryEventSink> DbRuntime<S> {
         params: Vec<serde_json::Value>,
         sink: S,
     ) -> Result<SubscriptionRegistration> {
-        let baseline_seq = self.db.pool().current_table_change_seq();
+        let baseline_seq = self.change_notifier.current_seq();
         let analysis = self.analyze_subscription(&sql).await;
         let registered = self
             .subscriptions
@@ -146,11 +155,7 @@ impl<S: QueryEventSink> DbRuntime<S> {
     }
 
     async fn analyze_subscription(&self, sql: &str) -> DependencyAnalysis {
-        match self
-            .catalog
-            .analyze_query(self.db.pool().as_ref(), sql)
-            .await
-        {
+        match self.catalog.analyze_query(self.db.pool(), sql).await {
             Ok(targets) => DependencyAnalysis::Reactive { targets },
             Err(error) => DependencyAnalysis::NonReactive {
                 reason: error.to_string(),
@@ -191,7 +196,7 @@ impl<S: QueryEventSink> DbRuntime<S> {
         let latest_dependency_seq = match analysis {
             DependencyAnalysis::Reactive { targets } => self
                 .catalog
-                .latest_dependency_seq(self.db.pool(), targets)
+                .latest_dependency_seq(&self.change_notifier, targets, self.db.pool())
                 .await
                 .ok()
                 .flatten()
@@ -232,27 +237,32 @@ enum ChangeBatch {
 async fn next_refresh_jobs<S>(
     change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>,
     db: &Db,
+    change_notifier: &ChangeNotifier,
     catalog: &CatalogStore,
     subscriptions: &Registry<S>,
 ) -> Option<Vec<RefreshJob>> {
-    let batch = receive_change_batch(change_rx, db).await?;
+    let batch = receive_change_batch(change_rx, change_notifier).await?;
     Some(collect_refresh_jobs(db, catalog, subscriptions, batch).await)
 }
 
 async fn receive_change_batch(
     change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>,
-    db: &Db,
+    change_notifier: &ChangeNotifier,
 ) -> Option<ChangeBatch> {
     match change_rx.recv().await {
-        Ok(first_change) => Some(drain_buffered_changes(change_rx, db, first_change)),
+        Ok(first_change) => Some(drain_buffered_changes(
+            change_rx,
+            change_notifier,
+            first_change,
+        )),
         Err(RecvError::Closed) => None,
-        Err(RecvError::Lagged(_)) => Some(rerun_all_batch(change_rx, db)),
+        Err(RecvError::Lagged(_)) => Some(rerun_all_batch(change_rx, change_notifier)),
     }
 }
 
 fn drain_buffered_changes(
     change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>,
-    db: &Db,
+    change_notifier: &ChangeNotifier,
     first_change: TableChange,
 ) -> ChangeBatch {
     let mut changed_tables = HashSet::from([first_change.table]);
@@ -270,18 +280,18 @@ fn drain_buffered_changes(
                     trigger_seq,
                 };
             }
-            Err(TryRecvError::Lagged(_)) => return rerun_all_batch(change_rx, db),
+            Err(TryRecvError::Lagged(_)) => return rerun_all_batch(change_rx, change_notifier),
         }
     }
 }
 
 fn rerun_all_batch(
     change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>,
-    db: &Db,
+    change_notifier: &ChangeNotifier,
 ) -> ChangeBatch {
     clear_lagged_changes(change_rx);
     ChangeBatch::RerunAll {
-        trigger_seq: db.pool().current_table_change_seq(),
+        trigger_seq: change_notifier.current_seq(),
     }
 }
 
@@ -305,7 +315,7 @@ async fn collect_refresh_jobs<S>(
             changed_tables,
             trigger_seq,
         } => match catalog
-            .canonicalize_raw_tables(db.pool().as_ref(), &changed_tables)
+            .canonicalize_raw_tables(db.pool(), &changed_tables)
             .await
         {
             Ok(changed_targets) => {
@@ -478,7 +488,7 @@ mod tests {
             .await
             .unwrap();
 
-        let pool = db.pool().as_ref().clone();
+        let pool = db.pool().clone();
         let runtime = DbRuntime::new(Arc::new(db));
 
         let hook = test_support::install_initial_payload_hook().await;

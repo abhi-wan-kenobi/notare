@@ -153,12 +153,9 @@ mod tests {
     #[tokio::test]
     async fn single_table() {
         let db = test_db().await;
-        let targets = extract_dependencies(
-            db.pool().as_ref(),
-            "SELECT id FROM daily_notes WHERE id = ?",
-        )
-        .await
-        .unwrap();
+        let targets = extract_dependencies(db.pool(), "SELECT id FROM daily_notes WHERE id = ?")
+            .await
+            .unwrap();
         assert_eq!(
             targets,
             HashSet::from([DependencyTarget::Table("daily_notes".to_string())])
@@ -169,7 +166,7 @@ mod tests {
     async fn join_query() {
         let db = test_db().await;
         let targets = extract_dependencies(
-            db.pool().as_ref(),
+            db.pool(),
             "SELECT ds.id FROM daily_summaries ds JOIN daily_notes dn ON ds.daily_note_id = dn.id",
         )
         .await
@@ -183,7 +180,7 @@ mod tests {
     async fn alias_query() {
         let db = test_db().await;
         let targets = extract_dependencies(
-            db.pool().as_ref(),
+            db.pool(),
             "SELECT dn.id FROM daily_notes AS dn WHERE dn.date = '2026-04-11'",
         )
         .await
@@ -198,7 +195,7 @@ mod tests {
     async fn subquery() {
         let db = test_db().await;
         let targets = extract_dependencies(
-            db.pool().as_ref(),
+            db.pool(),
             "SELECT id FROM daily_notes \
              WHERE EXISTS ( \
                SELECT 1 FROM daily_summaries \
@@ -216,7 +213,7 @@ mod tests {
     async fn quoted_alias_query() {
         let db = test_db().await;
         let targets = extract_dependencies(
-            db.pool().as_ref(),
+            db.pool(),
             r#"SELECT "dn".id FROM "daily_notes" AS "dn" WHERE "dn".date = '2026-04-11'"#,
         )
         .await
@@ -231,7 +228,7 @@ mod tests {
     async fn bracket_quoted_alias_query() {
         let db = test_db().await;
         let targets = extract_dependencies(
-            db.pool().as_ref(),
+            db.pool(),
             "SELECT [dn].id FROM [daily_notes] AS [dn] WHERE [dn].date = '2026-04-11'",
         )
         .await
@@ -246,7 +243,7 @@ mod tests {
     async fn schema_qualified_query() {
         let db = test_db().await;
         let targets = extract_dependencies(
-            db.pool().as_ref(),
+            db.pool(),
             "SELECT dn.id FROM main.daily_notes dn WHERE dn.date = '2026-04-11'",
         )
         .await
@@ -261,16 +258,16 @@ mod tests {
     async fn view_query_resolves_to_base_table() {
         let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT NOT NULL)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
         sqlx::query("CREATE VIEW notes_view AS SELECT id, body FROM notes")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
         let targets = extract_dependencies(
-            db.pool().as_ref(),
+            db.pool(),
             "SELECT id FROM notes_view WHERE body IS NOT NULL",
         )
         .await
@@ -286,12 +283,12 @@ mod tests {
     async fn fts_match_query_resolves_to_virtual_table_target() {
         let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE VIRTUAL TABLE docs_fts USING fts5(title, body)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
         let targets = extract_dependencies(
-            db.pool().as_ref(),
+            db.pool(),
             "SELECT rowid, title FROM docs_fts WHERE docs_fts MATCH 'hello'",
         )
         .await
@@ -306,7 +303,7 @@ mod tests {
     #[tokio::test]
     async fn empty_dependency_set_is_non_reactive() {
         let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
-        let error = extract_dependencies(db.pool().as_ref(), "SELECT 1")
+        let error = extract_dependencies(db.pool(), "SELECT 1")
             .await
             .unwrap_err();
 
@@ -320,11 +317,11 @@ mod tests {
     async fn unsupported_virtual_tables_are_non_reactive() {
         let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE VIRTUAL TABLE docs_rtree USING rtree(id, min_x, max_x)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
-        let error = extract_dependencies(db.pool().as_ref(), "SELECT id FROM docs_rtree")
+        let error = extract_dependencies(db.pool(), "SELECT id FROM docs_rtree")
             .await
             .unwrap_err();
 

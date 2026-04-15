@@ -117,21 +117,21 @@ async fn open_plain_db() -> Db {
 
 async fn applied_versions(db: &Db) -> Vec<i64> {
     sqlx::query_scalar("SELECT version FROM _sqlx_migrations ORDER BY version")
-        .fetch_all(db.pool().as_ref())
+        .fetch_all(db.pool())
         .await
         .unwrap()
 }
 
 async fn widget_names(db: &Db) -> Vec<String> {
     sqlx::query_scalar("SELECT name FROM widgets ORDER BY id")
-        .fetch_all(db.pool().as_ref())
+        .fetch_all(db.pool())
         .await
         .unwrap()
 }
 
 async fn widget_columns(db: &Db) -> Vec<String> {
     sqlx::query_scalar("SELECT name FROM pragma_table_info('widgets') ORDER BY cid")
-        .fetch_all(db.pool().as_ref())
+        .fetch_all(db.pool())
         .await
         .unwrap()
 }
@@ -269,7 +269,7 @@ async fn cloudsync_alter_scope_runs_successfully_on_a_cloudsync_table() {
     db.cloudsync_init("widgets", None, None).await.unwrap();
 
     let enabled: bool = sqlx::query_scalar("SELECT cloudsync_is_enabled('widgets')")
-        .fetch_one(db.pool().as_ref())
+        .fetch_one(db.pool())
         .await
         .unwrap();
     assert!(enabled);

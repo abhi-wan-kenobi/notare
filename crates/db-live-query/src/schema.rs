@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use hypr_db_core::DbPool;
 use sqlx::{Row, SqlitePool};
+
+use hypr_db_change::ChangeNotifier;
 
 use crate::DependencyTarget;
 
@@ -79,16 +80,17 @@ impl CatalogStore {
 
     pub(crate) async fn latest_dependency_seq(
         &self,
-        pool: &DbPool,
+        change_notifier: &ChangeNotifier,
         targets: &HashSet<DependencyTarget>,
+        pool: &SqlitePool,
     ) -> Result<Option<u64>, sqlx::Error> {
-        let catalog = self.catalog(pool.as_ref(), false).await?;
+        let catalog = self.catalog(pool, false).await?;
         let mut latest = None;
 
         for target in targets {
             if let Some(raw_tables) = catalog.target_to_raw.get(target) {
                 for raw_table in raw_tables {
-                    if let Some(seq) = pool.latest_table_change_seq(raw_table) {
+                    if let Some(seq) = change_notifier.latest_table_seq(raw_table) {
                         latest = Some(latest.unwrap_or(seq).max(seq));
                     }
                 }
@@ -362,7 +364,7 @@ mod tests {
     async fn setup_fts_db() -> hypr_db_core::Db {
         let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE VIRTUAL TABLE docs_fts USING fts5(title, body)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
         db
@@ -371,12 +373,9 @@ mod tests {
     #[tokio::test]
     async fn fts5_catalog_discovers_virtual_and_shadow_tables() {
         let db = setup_fts_db().await;
-        let catalog = SchemaCatalog::load(
-            db.pool().as_ref(),
-            load_schema_version(db.pool().as_ref()).await.unwrap(),
-        )
-        .await
-        .unwrap();
+        let catalog = SchemaCatalog::load(db.pool(), load_schema_version(db.pool()).await.unwrap())
+            .await
+            .unwrap();
 
         assert!(matches!(
             catalog.objects.get("docs_fts").map(|object| &object.kind),
@@ -402,16 +401,13 @@ mod tests {
     async fn unsupported_virtual_modules_are_not_reactive() {
         let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE VIRTUAL TABLE docs_rtree USING rtree(id, min_x, max_x)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
-        let catalog = SchemaCatalog::load(
-            db.pool().as_ref(),
-            load_schema_version(db.pool().as_ref()).await.unwrap(),
-        )
-        .await
-        .unwrap();
+        let catalog = SchemaCatalog::load(db.pool(), load_schema_version(db.pool()).await.unwrap())
+            .await
+            .unwrap();
 
         assert!(matches!(
             catalog.resolve_query_object("docs_rtree"),
@@ -423,13 +419,13 @@ mod tests {
     async fn canonicalize_raw_tables_reloads_after_schema_changes() {
         let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE TABLE existing_notes (id TEXT PRIMARY KEY NOT NULL)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
         let store = CatalogStore::default();
         let targets = store
-            .analyze_query(db.pool().as_ref(), "SELECT id FROM existing_notes")
+            .analyze_query(db.pool(), "SELECT id FROM existing_notes")
             .await
             .unwrap();
         assert_eq!(
@@ -438,15 +434,12 @@ mod tests {
         );
 
         sqlx::query("CREATE TABLE added_later (id TEXT PRIMARY KEY NOT NULL)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
         let targets = store
-            .canonicalize_raw_tables(
-                db.pool().as_ref(),
-                &HashSet::from(["added_later".to_string()]),
-            )
+            .canonicalize_raw_tables(db.pool(), &HashSet::from(["added_later".to_string()]))
             .await
             .unwrap();
 

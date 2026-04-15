@@ -13,7 +13,7 @@ async fn setup_db() -> Db {
             value TEXT NOT NULL DEFAULT ''
         )",
     )
-    .execute(db.pool().as_ref())
+    .execute(db.pool())
     .await
     .unwrap();
 
@@ -33,7 +33,7 @@ async fn sync_roundtrip() {
 
     sqlx::query("INSERT INTO test_sync (id, value) VALUES (cloudsync_uuid(), ?)")
         .bind(&marker)
-        .execute(db_a.pool().as_ref())
+        .execute(db_a.pool())
         .await
         .unwrap();
 
@@ -48,7 +48,7 @@ async fn sync_roundtrip() {
         .unwrap();
 
     let rows: Vec<(String, String)> = sqlx::query_as("SELECT id, value FROM test_sync")
-        .fetch_all(db_b.pool().as_ref())
+        .fetch_all(db_b.pool())
         .await
         .unwrap();
 

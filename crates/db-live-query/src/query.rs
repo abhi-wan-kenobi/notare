@@ -20,7 +20,7 @@ pub async fn run_query_proxy(
 ) -> std::result::Result<ProxyQueryResult, sqlx::Error> {
     if method == ProxyQueryMethod::Run {
         bind_params(sqlx::query(sql), params)
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await?;
         return Ok(ProxyQueryResult { rows: Vec::new() });
     }
@@ -47,7 +47,7 @@ async fn fetch_rows(
     params: &[serde_json::Value],
 ) -> std::result::Result<Vec<sqlx::sqlite::SqliteRow>, sqlx::Error> {
     bind_params(sqlx::query(sql), params)
-        .fetch_all(db.pool().as_ref())
+        .fetch_all(db.pool())
         .await
 }
 
@@ -140,7 +140,7 @@ mod tests {
                 note TEXT
             )",
         )
-        .execute(db.pool().as_ref())
+        .execute(db.pool())
         .await
         .unwrap();
 
@@ -149,7 +149,7 @@ mod tests {
             .bind(vec![0_u8, 1_u8, 2_u8, 255_u8])
             .bind(true)
             .bind(Option::<String>::None)
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 
@@ -210,7 +210,7 @@ mod tests {
         let db = test_db().await;
 
         sqlx::query("CREATE TABLE proxy_values (id TEXT PRIMARY KEY NOT NULL)")
-            .execute(db.pool().as_ref())
+            .execute(db.pool())
             .await
             .unwrap();
 

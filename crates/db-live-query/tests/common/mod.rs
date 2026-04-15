@@ -206,7 +206,7 @@ pub async fn setup_runtime() -> (tempfile::TempDir, sqlx::SqlitePool, DbRuntime<
         .await
         .unwrap();
 
-    let pool = db.pool().as_ref().clone();
+    let pool = db.pool().clone();
 
     (dir, pool, DbRuntime::new(std::sync::Arc::new(db)))
 }

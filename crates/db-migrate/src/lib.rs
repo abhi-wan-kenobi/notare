@@ -42,7 +42,7 @@ mod tests {
         let tables: Vec<String> = sqlx::query_scalar(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
         )
-        .fetch_all(db.pool().as_ref())
+        .fetch_all(db.pool())
         .await
         .unwrap();
 
