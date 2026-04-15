@@ -305,6 +305,10 @@ pub async fn main() {
         }
         #[cfg(target_os = "macos")]
         tauri::RunEvent::ExitRequested { api, .. } => {
+            if let Some(ref ctx) = root_supervisor_ctx_for_run {
+                ctx.mark_exiting();
+            }
+
             if hypr_intercept::should_force_quit() {
                 return;
             }
