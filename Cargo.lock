@@ -18616,7 +18616,6 @@ dependencies = [
  "db-core2",
  "db-live-query",
  "db-migrate",
- "fs-sync-core",
  "serde",
  "serde_json",
  "specta",
@@ -18630,7 +18629,6 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
- "walkdir",
 ]
 
 [[package]]

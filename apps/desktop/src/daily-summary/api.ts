@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 
-import { dailySummaries, eq, and } from "@hypr/db";
 import { commands as activityCaptureCommands } from "@hypr/plugin-activity-capture";
 
-import { db, useDrizzleLiveQuery, useLiveQuery } from "~/db";
+import { useLiveQuery } from "~/db";
 
 export type DailyActivityAppStat = {
   appName: string;
@@ -189,18 +188,13 @@ SELECT
   COALESCE((SELECT MAX(occurred_at_ms) FROM started_events), 0) AS eventCursorMs,
   COALESCE((SELECT MAX(captured_at_ms) FROM preferred_analyses), 0) AS analysisCursorMs`;
 
-function summaryQuery(date: string, dailyNoteId: string) {
-  return db
-    .select()
-    .from(dailySummaries)
-    .where(
-      and(
-        eq(dailySummaries.date, date),
-        eq(dailySummaries.dailyNoteId, dailyNoteId),
-      ),
-    )
-    .limit(1);
-}
+const SUMMARY_SQL = `SELECT
+  id, date, content, timeline_json, topics_json,
+  status, source_cursor_ms, source_fingerprint,
+  generated_at, generation_error, updated_at
+FROM daily_summaries
+WHERE date = ? AND daily_note_id = ?
+LIMIT 1`;
 
 function parseJsonArray<T>(value: string, fallback: T[]) {
   try {
@@ -330,10 +324,12 @@ export function useDailySummarySnapshot(params: {
     ],
     mapRows: mapStats,
   });
-  const summaryResult = useDrizzleLiveQuery<
+  const summaryResult = useLiveQuery<
     DailySummaryRow,
     StoredDailySummary | null
-  >(summaryQuery(params.date, dailyNoteId(params.date)), {
+  >({
+    sql: SUMMARY_SQL,
+    params: [params.date, dailyNoteId(params.date)],
     mapRows: mapSummary,
   });
 
