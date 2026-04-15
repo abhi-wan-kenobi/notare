@@ -10,14 +10,11 @@ import {
   useMentionConfig,
   useSubmit,
 } from "./hooks";
-import { type McpIndicator, McpIndicatorBadge } from "./mcp";
 
 import type { ContextRef } from "~/chat/context/entities";
 import { useShell } from "~/contexts/shell";
 import { ChatEditor, type ChatEditorHandle } from "~/editor/chat";
 import type { PlaceholderFunction } from "~/editor/plugins";
-
-export type { McpIndicator } from "./mcp";
 
 export function ChatMessageInput({
   draftKey,
@@ -26,7 +23,6 @@ export function ChatMessageInput({
   hasContextBar,
   isStreaming,
   onStop,
-  mcpIndicator,
   onContextRefsChange,
 }: {
   draftKey: string;
@@ -39,7 +35,6 @@ export function ChatMessageInput({
   hasContextBar?: boolean;
   isStreaming?: boolean;
   onStop?: () => void;
-  mcpIndicator?: McpIndicator;
   onContextRefsChange?: (refs: ContextRef[]) => void;
 }) {
   const { chat } = useShell();
@@ -89,11 +84,7 @@ export function ChatMessageInput({
         </div>
 
         <div className="flex shrink-0 items-center justify-between">
-          {mcpIndicator ? (
-            <McpIndicatorBadge indicator={mcpIndicator} />
-          ) : (
-            <div />
-          )}
+          <div />
           {isStreaming ? (
             <Button
               onClick={onStop}

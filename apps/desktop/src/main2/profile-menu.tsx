@@ -9,6 +9,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 
+import { commands as openerCommands } from "@hypr/plugin-opener2";
 import { Kbd } from "@hypr/ui/components/ui/kbd";
 import { cn } from "@hypr/utils";
 
@@ -23,7 +24,6 @@ import { useTabs } from "~/store/zustand/tabs";
 export function ProfileMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const openNew = useTabs((state) => state.openNew);
-  const transitionChatMode = useTabs((state) => state.transitionChatMode);
   const auth = useAuth();
   const { isPro } = useBillingAccess();
   const isAuthenticated = !!auth?.session;
@@ -56,19 +56,9 @@ export function ProfileMenu() {
   }, [openNew, close]);
 
   const handleClickHelp = useCallback(() => {
-    const state = {
-      groupId: null,
-      initialMessage: "I need help.",
-    };
-    openNew({ type: "chat_support", state });
-    const { tabs, updateChatSupportTabState } = useTabs.getState();
-    const existingChatTab = tabs.find((t) => t.type === "chat_support");
-    if (existingChatTab) {
-      updateChatSupportTabState(existingChatTab, state);
-    }
-    transitionChatMode({ type: "OPEN_TAB" });
+    void openerCommands.openUrl("https://char.com/discord", null);
     close();
-  }, [openNew, transitionChatMode, close]);
+  }, [close]);
 
   const kbdClass = cn([
     "transition-all duration-100",

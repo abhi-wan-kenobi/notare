@@ -11,6 +11,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useResizeObserver } from "usehooks-ts";
 
+import { commands as openerCommands } from "@hypr/plugin-opener2";
 import { Kbd } from "@hypr/ui/components/ui/kbd";
 import { cn } from "@hypr/utils";
 
@@ -36,7 +37,6 @@ export function ProfileSection({ onExpandChange }: ProfileSectionProps = {}) {
   const [mainViewHeight, setMainViewHeight] = useState<number | null>(null);
   const mainViewRef = useRef<HTMLDivElement | null>(null);
   const openNew = useTabs((state) => state.openNew);
-  const transitionChatMode = useTabs((state) => state.transitionChatMode);
   const auth = useAuth();
   const { isPro } = useBillingAccess();
 
@@ -121,19 +121,9 @@ export function ProfileSection({ onExpandChange }: ProfileSectionProps = {}) {
   }, []);
 
   const handleClickHelp = useCallback(() => {
-    const state = {
-      groupId: null,
-      initialMessage: "I need help.",
-    };
-    openNew({ type: "chat_support", state });
-    const { tabs, updateChatSupportTabState } = useTabs.getState();
-    const existingChatTab = tabs.find((t) => t.type === "chat_support");
-    if (existingChatTab) {
-      updateChatSupportTabState(existingChatTab, state);
-    }
-    transitionChatMode({ type: "OPEN_TAB" });
+    void openerCommands.openUrl("https://char.com/discord", null);
     closeMenu();
-  }, [openNew, transitionChatMode, closeMenu]);
+  }, [closeMenu]);
 
   // const handleClickData = useCallback(() => {
   //   openNew({ type: "data" });

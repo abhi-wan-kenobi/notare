@@ -1,6 +1,4 @@
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
+import { isRecord } from "~/chat/transport/helpers";
 
 export type McpTextContentOutput = {
   content: Array<{
@@ -8,6 +6,18 @@ export type McpTextContentOutput = {
     text?: string;
   }>;
 };
+
+export type McpObjectOutput = Record<string, unknown>;
+
+function isMcpTextEnvelope(output: unknown): output is McpTextContentOutput {
+  return (
+    isRecord(output) &&
+    Array.isArray(output.content) &&
+    output.content.every(
+      (item) => isRecord(item) && typeof item.type === "string",
+    )
+  );
+}
 
 export function extractMcpOutputText(output: unknown): string | null {
   if (!isRecord(output) || !Array.isArray(output.content)) {
@@ -44,4 +54,15 @@ export function parseMcpToolOutput<T>(
 ): T | null {
   const value = readMcpJsonText(output);
   return guard(value) ? value : null;
+}
+
+export function parseMcpObjectOutput<T extends McpObjectOutput>(
+  output: unknown,
+): T | null {
+  if (isRecord(output) && !isMcpTextEnvelope(output)) {
+    return output as T;
+  }
+
+  const value = readMcpJsonText(output);
+  return isRecord(value) ? (value as T) : null;
 }

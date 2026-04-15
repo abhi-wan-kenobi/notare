@@ -1,6 +1,5 @@
 import { TabItemCalendar } from "~/calendar";
 import { TabItemChangelog } from "~/changelog";
-import { TabItemChat } from "~/chat/tab/tab-item";
 import { TabItemChatShortcut } from "~/chat_shortcuts";
 import { TabItemContact } from "~/contacts";
 import { TabItemHuman } from "~/contacts/humans";
@@ -158,20 +157,6 @@ export function MainTabItem({
   if (tab.type === "chat_shortcuts") {
     return (
       <TabItemChatShortcut
-        tab={tab}
-        tabIndex={tabIndex}
-        handleCloseThis={handleClose}
-        handleSelectThis={handleSelect}
-        handleCloseOthers={handleCloseOthers}
-        handleCloseAll={handleCloseAll}
-        handlePinThis={handlePinThis}
-        handleUnpinThis={handleUnpinThis}
-      />
-    );
-  }
-  if (tab.type === "chat_support") {
-    return (
-      <TabItemChat
         tab={tab}
         tabIndex={tabIndex}
         handleCloseThis={handleClose}

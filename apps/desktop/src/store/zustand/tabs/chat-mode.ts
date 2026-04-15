@@ -1,12 +1,6 @@
 import type { StoreApi } from "zustand";
 
-import type { BasicActions, BasicState } from "./basic";
-
-export type ChatMode =
-  | "RightPanelOpen"
-  | "FloatingClosed"
-  | "FloatingOpen"
-  | "FullTab";
+export type ChatMode = "RightPanelOpen" | "FloatingClosed" | "FloatingOpen";
 
 export type ChatEvent =
   | { type: "OPEN" }
@@ -14,8 +8,7 @@ export type ChatEvent =
   | { type: "OPEN_RIGHT_PANEL" }
   | { type: "CLOSE" }
   | { type: "SHIFT" }
-  | { type: "TOGGLE" }
-  | { type: "OPEN_TAB" };
+  | { type: "TOGGLE" };
 
 export type ChatModeState = {
   chatMode: ChatMode;
@@ -42,9 +35,6 @@ const computeNextChatMode = (
       if (event.type === "SHIFT") {
         return "FloatingOpen";
       }
-      if (event.type === "OPEN_TAB") {
-        return "FullTab";
-      }
       return state;
     case "FloatingClosed":
       if (event.type === "OPEN" || event.type === "TOGGLE") {
@@ -55,9 +45,6 @@ const computeNextChatMode = (
       }
       if (event.type === "OPEN_RIGHT_PANEL") {
         return "RightPanelOpen";
-      }
-      if (event.type === "OPEN_TAB") {
-        return "FullTab";
       }
       return state;
     case "FloatingOpen":
@@ -70,29 +57,13 @@ const computeNextChatMode = (
       if (event.type === "SHIFT") {
         return "RightPanelOpen";
       }
-      if (event.type === "OPEN_TAB") {
-        return "FullTab";
-      }
-      return state;
-    case "FullTab":
-      if (event.type === "OPEN_FLOATING") {
-        return "FloatingOpen";
-      }
-      if (event.type === "OPEN_RIGHT_PANEL") {
-        return "RightPanelOpen";
-      }
-      if (event.type === "CLOSE" || event.type === "TOGGLE") {
-        return "FloatingClosed";
-      }
       return state;
     default:
       return state;
   }
 };
 
-export const createChatModeSlice = <
-  T extends ChatModeState & BasicState & BasicActions,
->(
+export const createChatModeSlice = <T extends ChatModeState>(
   set: StoreApi<T>["setState"],
   get: StoreApi<T>["getState"],
 ): ChatModeState & ChatModeActions => ({
@@ -110,12 +81,5 @@ export const createChatModeSlice = <
         ? { lastOpenChatMode: currentMode }
         : {}),
     } as Partial<T>);
-
-    if (currentMode === "FullTab" && nextMode !== "FullTab") {
-      const chatTab = get().tabs.find((t) => t.type === "chat_support");
-      if (chatTab) {
-        get().close(chatTab);
-      }
-    }
   },
 });

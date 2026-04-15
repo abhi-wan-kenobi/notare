@@ -8,6 +8,8 @@ import {
   ToolCardFooters,
 } from "./shared";
 
+import { parseMcpObjectOutput } from "~/chat/mcp/mcp-output-parser";
+
 type EditSummaryOutput = {
   status?: string;
   message?: string;
@@ -20,10 +22,7 @@ type EditSummaryOutput = {
 };
 
 function parseEditSummaryOutput(output: unknown): EditSummaryOutput | null {
-  if (output && typeof output === "object") {
-    return output as EditSummaryOutput;
-  }
-  return null;
+  return parseMcpObjectOutput<EditSummaryOutput>(output);
 }
 
 export const ToolEditSummary = defineTool({

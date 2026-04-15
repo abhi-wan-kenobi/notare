@@ -38,7 +38,6 @@ function MainAppContent() {
 const useNavigationEvents = () => {
   const navigate = useNavigate();
   const openNew = useTabs((state) => state.openNew);
-  const transitionChatMode = useTabs((state) => state.transitionChatMode);
   const openNewNote = useNewNote({ behavior: "new" });
 
   useEffect(() => {
@@ -94,16 +93,6 @@ const useNavigationEvents = () => {
           return;
         } else {
           openNew(payload.tab);
-          if (payload.tab.type === "chat_support") {
-            if (payload.tab.state) {
-              const { tabs, updateChatSupportTabState } = useTabs.getState();
-              const chatTab = tabs.find((t) => t.type === "chat_support");
-              if (chatTab) {
-                updateChatSupportTabState(chatTab, payload.tab.state);
-              }
-            }
-            transitionChatMode({ type: "OPEN_TAB" });
-          }
         }
       })
       .then((fn) => {
@@ -115,5 +104,5 @@ const useNavigationEvents = () => {
       unlistenNavigate?.();
       unlistenOpenTab?.();
     };
-  }, [navigate, openNew, openNewNote, transitionChatMode]);
+  }, [navigate, openNew, openNewNote]);
 };

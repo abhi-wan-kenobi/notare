@@ -143,8 +143,6 @@ export const createBasicSlice = <
       return;
     }
 
-    const shouldResetChatMode =
-      tabToClose.type === "chat_support" && get().chatMode === "FullTab";
     const remainingTabs = tabs.filter((t) => !isSameTab(t, tab));
 
     if (remainingTabs.length === 0) {
@@ -154,7 +152,6 @@ export const createBasicSlice = <
         history: new Map(),
         canGoBack: false,
         canGoNext: false,
-        ...(shouldResetChatMode ? { chatMode: "FloatingClosed" as const } : {}),
       } as unknown as Partial<T>);
       return;
     }
@@ -174,7 +171,6 @@ export const createBasicSlice = <
       tabs: nextTabs,
       currentTab: nextCurrentTab,
       history: nextHistory,
-      ...(shouldResetChatMode ? { chatMode: "FloatingClosed" as const } : {}),
     } as Partial<T>);
   },
   reorder: (tabs) => {
@@ -188,12 +184,6 @@ export const createBasicSlice = <
     if (!tabToKeep) {
       return;
     }
-
-    const isRemovingChatTab =
-      tabToKeep.type !== "chat_support" &&
-      tabs.some((t) => t.type === "chat_support");
-    const shouldResetChatMode =
-      isRemovingChatTab && get().chatMode === "FullTab";
 
     const nextHistory = new Map(history);
     const tabWithActiveFlag = { ...tabToKeep, active: true };
@@ -209,18 +199,15 @@ export const createBasicSlice = <
       tabs: nextTabs,
       currentTab: tabWithActiveFlag,
       history: nextHistory,
-      ...(shouldResetChatMode ? { chatMode: "FloatingClosed" as const } : {}),
     } as Partial<T>);
   },
   closeAll: () => {
-    const shouldResetChatMode = get().chatMode === "FullTab";
     set({
       tabs: [],
       currentTab: null,
       history: new Map(),
       canGoBack: false,
       canGoNext: false,
-      ...(shouldResetChatMode ? { chatMode: "FloatingClosed" as const } : {}),
     } as unknown as Partial<T>);
   },
   pin: (tab) => {

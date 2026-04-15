@@ -283,7 +283,7 @@ function TabChatButton({ shortcutLabel }: { shortcutLabel?: string }) {
   const { chat } = useShell();
   const isChatOpen =
     chat.mode === "FloatingOpen" || chat.mode === "RightPanelOpen";
-  const isTabbarSelected = isChatOpen || chat.mode === "FullTab";
+  const isTabbarSelected = isChatOpen;
 
   const { data: isChatEnabled } = useQuery({
     refetchInterval: 10_000,

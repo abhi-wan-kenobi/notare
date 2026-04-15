@@ -15,20 +15,7 @@ impl MenuItemHandler for HelpSuggestFeature {
         Ok(MenuItemKind::MenuItem(item))
     }
 
-    fn handle(app: &AppHandle<tauri::Wry>) {
-        use tauri_plugin_windows::{AppWindow, ChatState, OpenTab, TabInput, WindowsPluginExt};
-        use tauri_specta::Event;
-
-        if app.windows().show(AppWindow::Main).is_ok() {
-            let event = OpenTab {
-                tab: TabInput::ChatSupport {
-                    state: Some(ChatState {
-                        initial_message: Some("I'd like to suggest a feature.".to_string()),
-                        ..Default::default()
-                    }),
-                },
-            };
-            let _ = event.emit(app);
-        }
+    fn handle(_app: &AppHandle<tauri::Wry>) {
+        let _ = open::that("https://char.com/discord");
     }
 }

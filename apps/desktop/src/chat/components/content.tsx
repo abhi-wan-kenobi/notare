@@ -2,7 +2,7 @@ import type { ChatStatus } from "ai";
 
 import { ChatBody } from "./body";
 import { ContextBar } from "./context-bar";
-import { ChatMessageInput, type McpIndicator } from "./input";
+import { ChatMessageInput } from "./input";
 
 import type { useLanguageModel } from "~/ai/hooks";
 import { dedupeByKey, type ContextRef } from "~/chat/context/entities";
@@ -25,7 +25,6 @@ export function ChatContent({
   onAddContextEntity,
   onDraftContextRefsChange,
   isSystemPromptReady,
-  mcpIndicator,
   children,
 }: {
   sessionId: string;
@@ -48,7 +47,6 @@ export function ChatContent({
   onAddContextEntity?: (ref: ContextRef) => void;
   onDraftContextRefsChange?: (refs: ContextRef[]) => void;
   isSystemPromptReady: boolean;
-  mcpIndicator?: McpIndicator;
   children?: React.ReactNode;
 }) {
   const isModelConfigured = !!model;
@@ -97,7 +95,6 @@ export function ChatContent({
             onContextRefsChange={onDraftContextRefsChange}
             isStreaming={status === "streaming" || status === "submitted"}
             onStop={stop}
-            mcpIndicator={mcpIndicator}
           />
         </>
       )}

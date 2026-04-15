@@ -88,9 +88,6 @@ export function useMainTabsShortcuts({ onModT }: { onModT: () => void }) {
         } else if (currentTab.pinned) {
           unpin(currentTab);
         } else {
-          if (currentTab.type === "chat_support") {
-            chat.sendEvent({ type: "CLOSE" });
-          }
           close(currentTab);
         }
       }
@@ -107,7 +104,6 @@ export function useMainTabsShortcuts({ onModT }: { onModT: () => void }) {
       isListening,
       liveSessionId,
       setPendingCloseConfirmationTab,
-      chat,
     ],
   );
 

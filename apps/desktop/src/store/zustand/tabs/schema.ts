@@ -1,7 +1,6 @@
 import type {
   ChangelogState,
   ChatShortcutsState,
-  ChatState,
   ContactsSelection,
   ContactsState,
   EditorView,
@@ -13,7 +12,6 @@ import type {
 export type {
   ChangelogState,
   ChatShortcutsState,
-  ChatState,
   ContactsSelection,
   ContactsState,
   EditorView,
@@ -117,10 +115,6 @@ export type Tab =
       state: ChangelogState;
     })
   | (BaseTab & { type: "settings"; state: SettingsState })
-  | (BaseTab & {
-      type: "chat_support";
-      state: ChatState;
-    })
   | (BaseTab & { type: "onboarding" })
   | (BaseTab & { type: "edit"; requestId: string })
   | (BaseTab & {
@@ -200,15 +194,6 @@ export const getDefaultState = (tab: TabInput): Tab => {
         type: "settings",
         state: { tab: (tab.state?.tab as SettingsTab) ?? "app" },
       };
-    case "chat_support":
-      return {
-        ...base,
-        type: "chat_support",
-        state: tab.state ?? {
-          groupId: null,
-          initialMessage: null,
-        },
-      };
     case "onboarding":
       return { ...base, type: "onboarding" };
     case "edit":
@@ -243,8 +228,6 @@ export const uniqueIdfromTab = (tab: Tab): string => {
       return "changelog";
     case "settings":
       return `settings`;
-    case "chat_support":
-      return `chat_support`;
     case "onboarding":
       return `onboarding`;
     case "edit":

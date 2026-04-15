@@ -3,6 +3,8 @@ import { WandSparklesIcon } from "lucide-react";
 import { defineTool } from "./define-tool";
 import { ToolCardBody, ToolCardFooterError, ToolCardFooters } from "./shared";
 
+import { parseMcpObjectOutput } from "~/chat/mcp/mcp-output-parser";
+
 type UpdatePromptTemplateOutput = {
   status?: string;
   message?: string;
@@ -12,11 +14,7 @@ type UpdatePromptTemplateOutput = {
 function parseUpdatePromptTemplateOutput(
   output: unknown,
 ): UpdatePromptTemplateOutput | null {
-  if (output && typeof output === "object") {
-    return output as UpdatePromptTemplateOutput;
-  }
-
-  return null;
+  return parseMcpObjectOutput<UpdatePromptTemplateOutput>(output);
 }
 
 export const ToolUpdatePromptTemplate = defineTool({

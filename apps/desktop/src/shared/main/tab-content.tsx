@@ -1,6 +1,5 @@
 import { TabContentCalendar } from "~/calendar";
 import { TabContentChangelog } from "~/changelog";
-import { TabContentChat } from "~/chat/tab/tab-content";
 import { TabContentChatShortcut } from "~/chat_shortcuts";
 import { TabContentContact } from "~/contacts";
 import { TabContentHuman } from "~/contacts/humans";
@@ -41,9 +40,6 @@ export function MainTabContent({ tab }: { tab: Tab }) {
   }
   if (tab.type === "chat_shortcuts") {
     return <TabContentChatShortcut tab={tab} />;
-  }
-  if (tab.type === "chat_support") {
-    return <TabContentChat tab={tab} />;
   }
   if (tab.type === "onboarding") {
     return <TabContentOnboarding tab={tab} />;
