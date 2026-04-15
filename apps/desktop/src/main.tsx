@@ -99,21 +99,6 @@ if (env.VITE_SENTRY_DSN) {
   });
 }
 
-async function initDevTools() {
-  if (!import.meta.env.DEV || getCurrentWebviewWindowLabel() === "composer") {
-    return;
-  }
-
-  await import("react-grab");
-  (
-    window as typeof window & {
-      __REACT_GRAB__?: {
-        setToolbarState: (state: { collapsed: boolean; edge: "right" }) => void;
-      };
-    }
-  ).__REACT_GRAB__?.setToolbarState({ collapsed: true, edge: "right" });
-}
-
 function AppWithTiny() {
   const manager = useCreateManager(() => {
     return createManager().start();
@@ -137,7 +122,6 @@ function AppWithTiny() {
 }
 
 initWindowsPlugin();
-void initDevTools();
 
 const rootElement = document.getElementById("root")!;
 if (!rootElement.innerHTML) {
