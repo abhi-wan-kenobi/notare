@@ -36,6 +36,16 @@ pub fn has_char_plugin(path: &Path) -> Result<bool, String> {
     }
 }
 
+pub fn is_char_plugin(path: &Path) -> Result<bool, String> {
+    match std::fs::read_to_string(path) {
+        Ok(contents) => Ok(contents.contains("char")
+            && contents.contains("opencode")
+            && contents.contains("notify")),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(e) => Err(format!("failed to read {}: {e}", path.display())),
+    }
+}
+
 const PLUGIN_CONTENTS: &str = r#"import type { Plugin } from "@opencode-ai/plugin";
 
 export const CharPlugin: Plugin = async () => {
@@ -81,5 +91,38 @@ mod tests {
         std::fs::write(&path, "export const plugin = {};\n").unwrap();
 
         assert!(!has_char_plugin(&path).unwrap());
+    }
+
+    #[test]
+    fn is_char_plugin_detects_current_contents() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("char.ts");
+
+        std::fs::write(&path, PLUGIN_CONTENTS).unwrap();
+
+        assert!(is_char_plugin(&path).unwrap());
+    }
+
+    #[test]
+    fn is_char_plugin_detects_outdated_contents() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("char.ts");
+
+        let old_plugin = r#"
+            const child = Bun.spawn(["char", "opencode", "notify"]);
+        "#;
+        std::fs::write(&path, old_plugin).unwrap();
+
+        assert!(is_char_plugin(&path).unwrap());
+    }
+
+    #[test]
+    fn is_char_plugin_rejects_unrelated_plugin() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("char.ts");
+
+        std::fs::write(&path, "export const plugin = {};\n").unwrap();
+
+        assert!(!is_char_plugin(&path).unwrap());
     }
 }

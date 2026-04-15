@@ -8,6 +8,6 @@ pub use health::{
 };
 pub use install::{
     InstallCliRequest, InstallCliResponse, UninstallCliRequest, UninstallCliResponse, install_cli,
-    uninstall_cli,
+    uninstall_cli, upgrade_hooks,
 };
 pub use types::{ProviderAuthStatus, ProviderHealth, ProviderHealthStatus, ProviderKind};

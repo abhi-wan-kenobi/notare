@@ -47,6 +47,22 @@ pub fn install_cli() -> Result<InstallCliResponse, String> {
     })
 }
 
+pub fn upgrade() {
+    upgrade_at(&hypr_codex::config_path());
+}
+
+fn upgrade_at(config_path: &std::path::Path) {
+    let command = hypr_codex::notify_command();
+    let Ok(mut table) = hypr_codex::read_config(config_path) else {
+        return;
+    };
+    if !hypr_codex::has_notify(&table, &command) {
+        return;
+    }
+    hypr_codex::set_notify(&mut table, command);
+    let _ = hypr_codex::write_config(config_path, &table);
+}
+
 pub fn uninstall_cli() -> Result<UninstallCliResponse, String> {
     let config_path = hypr_codex::config_path();
     let command = hypr_codex::notify_command();
@@ -98,5 +114,51 @@ impl From<hypr_codex::HealthAuthStatus> for ProviderAuthStatus {
             hypr_codex::HealthAuthStatus::Unauthenticated => Self::Unauthenticated,
             hypr_codex::HealthAuthStatus::Unknown => Self::Unknown,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn upgrade_does_not_create_file_when_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+
+        upgrade_at(&path);
+
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn upgrade_does_not_add_hook_when_not_installed() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        std::fs::write(&path, "").unwrap();
+
+        upgrade_at(&path);
+
+        let table = hypr_codex::read_config(&path).unwrap();
+        assert!(!hypr_codex::has_notify(
+            &table,
+            &hypr_codex::notify_command()
+        ));
+    }
+
+    #[test]
+    fn upgrade_refreshes_existing_hook() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+
+        let mut table = toml::Table::new();
+        let command = hypr_codex::notify_command();
+        hypr_codex::set_notify(&mut table, command.clone());
+        hypr_codex::write_config(&path, &table).unwrap();
+
+        upgrade_at(&path);
+
+        let table = hypr_codex::read_config(&path).unwrap();
+        assert!(hypr_codex::has_notify(&table, &command));
     }
 }

@@ -10,5 +10,10 @@ hypr-opencode = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 
+[dev-dependencies]
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+toml = { workspace = true }
+
 [features]
 specta = ["dep:specta"]

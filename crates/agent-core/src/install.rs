@@ -47,6 +47,12 @@ pub fn install_cli(request: InstallCliRequest) -> Result<InstallCliResponse, Str
     }
 }
 
+pub fn upgrade_hooks() {
+    claude::upgrade();
+    codex::upgrade();
+    opencode::upgrade();
+}
+
 pub fn uninstall_cli(request: UninstallCliRequest) -> Result<UninstallCliResponse, String> {
     match request.provider {
         ProviderKind::Codex => codex::uninstall_cli(),

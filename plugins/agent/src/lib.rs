@@ -35,6 +35,10 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
+        .setup(|_app, _api| {
+            hypr_agent_core::upgrade_hooks();
+            Ok(())
+        })
         .build()
 }
 

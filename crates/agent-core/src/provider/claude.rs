@@ -41,6 +41,22 @@ pub fn install_cli() -> Result<InstallCliResponse, String> {
     })
 }
 
+pub fn upgrade() {
+    upgrade_at(&hypr_claude::settings_path());
+}
+
+fn upgrade_at(settings_path: &std::path::Path) {
+    let Ok(mut settings) = hypr_claude::read_settings(settings_path) else {
+        return;
+    };
+    if !hypr_claude::has_command_hook(&settings, STOP_EVENT, COMMAND) {
+        return;
+    }
+    let _ = hypr_claude::remove_command_hook(&mut settings, STOP_EVENT, COMMAND);
+    let _ = hypr_claude::upsert_command_hook(&mut settings, STOP_EVENT, COMMAND);
+    let _ = hypr_claude::write_settings(settings_path, &settings);
+}
+
 pub fn uninstall_cli() -> Result<UninstallCliResponse, String> {
     let settings_path = hypr_claude::settings_path();
     let mut settings = hypr_claude::read_settings(&settings_path)?;
@@ -83,5 +99,51 @@ impl From<hypr_claude::HealthAuthStatus> for ProviderAuthStatus {
             hypr_claude::HealthAuthStatus::Unauthenticated => Self::Unauthenticated,
             hypr_claude::HealthAuthStatus::Unknown => Self::Unknown,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn upgrade_does_not_create_file_when_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+
+        upgrade_at(&path);
+
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn upgrade_does_not_add_hook_when_not_installed() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        std::fs::write(&path, "{}").unwrap();
+
+        upgrade_at(&path);
+
+        let settings = hypr_claude::read_settings(&path).unwrap();
+        assert!(!hypr_claude::has_command_hook(
+            &settings, STOP_EVENT, COMMAND
+        ));
+    }
+
+    #[test]
+    fn upgrade_refreshes_existing_hook() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+
+        let mut settings = serde_json::json!({});
+        hypr_claude::upsert_command_hook(&mut settings, STOP_EVENT, COMMAND).unwrap();
+        hypr_claude::write_settings(&path, &settings).unwrap();
+
+        upgrade_at(&path);
+
+        let settings = hypr_claude::read_settings(&path).unwrap();
+        assert!(hypr_claude::has_command_hook(
+            &settings, STOP_EVENT, COMMAND
+        ));
     }
 }
