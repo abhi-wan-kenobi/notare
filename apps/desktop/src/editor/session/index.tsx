@@ -1,3 +1,4 @@
+import "prosemirror-view/style/prosemirror.css";
 import "prosemirror-gapcursor/style/gapcursor.css";
 
 import {
@@ -461,7 +462,7 @@ export const NoteEditor = forwardRef<NoteEditorRef, EditorProps>(
         <LinkedItemOpenBehaviorContext.Provider value={linkedItemOpenBehavior}>
           <ProseMirror
             defaultState={defaultState}
-            nodeViews={nodeViews}
+            nodeViewComponents={nodeViews}
             dispatchTransaction={function (this: EditorView, tr: Transaction) {
               const { state: newState, transactions } =
                 this.state.applyTransaction(tr);
@@ -476,8 +477,8 @@ export const NoteEditor = forwardRef<NoteEditorRef, EditorProps>(
               autocorrect: "off",
               autocapitalize: "off",
               role: "textbox",
+              class: "tiptap",
             }}
-            className="tiptap"
           >
             <ProseMirrorDoc />
             <ViewCapture viewRef={viewRef} onViewReady={onViewReady} />

@@ -258,7 +258,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     return (
       <ProseMirror
         defaultState={defaultState}
-        nodeViews={nodeViews}
+        nodeViewComponents={nodeViews}
         dispatchTransaction={function (this: EditorView, tr) {
           const newState = this.state.apply(tr);
           this.updateState(newState);
@@ -272,8 +272,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           autocorrect: "off",
           autocapitalize: "off",
           role: "textbox",
+          class: cn(className, "tiptap"),
         }}
-        className={cn(className, "tiptap")}
       >
         <ProseMirrorDoc />
         <ViewCapture viewRef={viewRef} />

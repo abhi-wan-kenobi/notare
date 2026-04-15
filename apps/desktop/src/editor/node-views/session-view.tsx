@@ -182,6 +182,7 @@ export const SessionNodeView = forwardRef<
         )}
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <div
+            ref={nodeProps.contentDOMRef}
             data-session-title
             className={cn([
               "min-w-0 text-sm text-neutral-900",
