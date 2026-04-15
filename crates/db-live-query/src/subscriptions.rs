@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use hypr_db_core2::Db3;
+use hypr_db_core::Db;
 
 use crate::query::run_query;
 use crate::watch::{DependencyWatchIndex, WatchId};
@@ -78,7 +78,7 @@ pub(crate) enum QueryEventPayload {
 }
 
 impl QueryEventPayload {
-    pub(crate) async fn load(db: &Db3, sql: &str, params: &[serde_json::Value]) -> Self {
+    pub(crate) async fn load(db: &Db, sql: &str, params: &[serde_json::Value]) -> Self {
         match run_query(db, sql, params).await {
             Ok(rows) => Self::Result(rows),
             Err(error) => Self::Error(error.to_string()),
@@ -205,7 +205,7 @@ impl<S> Registry<S> {
 impl<S: QueryEventSink> Registry<S> {
     pub(crate) async fn refresh(
         &self,
-        db: &Db3,
+        db: &Db,
         job: RefreshJob,
         suppress_if_equal: Option<&QueryEventPayload>,
     ) {

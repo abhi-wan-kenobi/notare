@@ -142,8 +142,8 @@ mod tests {
         }
     }
 
-    async fn test_db() -> hypr_db_core2::Db3 {
-        let db = hypr_db_core2::Db3::connect_memory_plain().await.unwrap();
+    async fn test_db() -> hypr_db_core::Db {
+        let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         hypr_db_migrate::migrate(&db, live_query_test_schema())
             .await
             .unwrap();
@@ -259,7 +259,7 @@ mod tests {
 
     #[tokio::test]
     async fn view_query_resolves_to_base_table() {
-        let db = hypr_db_core2::Db3::connect_memory_plain().await.unwrap();
+        let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT NOT NULL)")
             .execute(db.pool().as_ref())
             .await
@@ -284,7 +284,7 @@ mod tests {
 
     #[tokio::test]
     async fn fts_match_query_resolves_to_virtual_table_target() {
-        let db = hypr_db_core2::Db3::connect_memory_plain().await.unwrap();
+        let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE VIRTUAL TABLE docs_fts USING fts5(title, body)")
             .execute(db.pool().as_ref())
             .await
@@ -305,7 +305,7 @@ mod tests {
 
     #[tokio::test]
     async fn empty_dependency_set_is_non_reactive() {
-        let db = hypr_db_core2::Db3::connect_memory_plain().await.unwrap();
+        let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         let error = extract_dependencies(db.pool().as_ref(), "SELECT 1")
             .await
             .unwrap_err();
@@ -318,7 +318,7 @@ mod tests {
 
     #[tokio::test]
     async fn unsupported_virtual_tables_are_non_reactive() {
-        let db = hypr_db_core2::Db3::connect_memory_plain().await.unwrap();
+        let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE VIRTUAL TABLE docs_rtree USING rtree(id, min_x, max_x)")
             .execute(db.pool().as_ref())
             .await

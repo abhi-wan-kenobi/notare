@@ -4,15 +4,15 @@ use std::time::Duration;
 
 use common::{TestEvent, TestSink, next_event};
 use db_live_query::DbRuntime;
-use hypr_db_core2::Db3;
+use hypr_db_core::Db;
 use serde_json::json;
 
 fn connection_string() -> String {
     std::env::var("SQLITECLOUD_URL").expect("SQLITECLOUD_URL must be set")
 }
 
-async fn setup_db() -> Db3 {
-    let db = Db3::connect_memory().await.unwrap();
+async fn setup_db() -> Db {
+    let db = Db::connect_memory().await.unwrap();
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS test_sync (

@@ -1,5 +1,5 @@
 use db_migrate::{DbSchema, MigrateError, MigrationScope, MigrationStep, migrate};
-use hypr_db_core2::Db3;
+use hypr_db_core::Db;
 
 const CREATE_WIDGETS_SQL: &str = r#"
 CREATE TABLE widgets (
@@ -111,25 +111,25 @@ fn widgets_synced(table_name: &str) -> bool {
     table_name == "widgets"
 }
 
-async fn open_plain_db() -> Db3 {
-    Db3::connect_memory_plain().await.unwrap()
+async fn open_plain_db() -> Db {
+    Db::connect_memory_plain().await.unwrap()
 }
 
-async fn applied_versions(db: &Db3) -> Vec<i64> {
+async fn applied_versions(db: &Db) -> Vec<i64> {
     sqlx::query_scalar("SELECT version FROM _sqlx_migrations ORDER BY version")
         .fetch_all(db.pool().as_ref())
         .await
         .unwrap()
 }
 
-async fn widget_names(db: &Db3) -> Vec<String> {
+async fn widget_names(db: &Db) -> Vec<String> {
     sqlx::query_scalar("SELECT name FROM widgets ORDER BY id")
         .fetch_all(db.pool().as_ref())
         .await
         .unwrap()
 }
 
-async fn widget_columns(db: &Db3) -> Vec<String> {
+async fn widget_columns(db: &Db) -> Vec<String> {
     sqlx::query_scalar("SELECT name FROM pragma_table_info('widgets') ORDER BY cid")
         .fetch_all(db.pool().as_ref())
         .await
@@ -260,7 +260,7 @@ async fn cloudsync_alter_scope_falls_back_to_plain_when_cloudsync_is_disabled() 
 ))]
 #[tokio::test]
 async fn cloudsync_alter_scope_runs_successfully_on_a_cloudsync_table() {
-    let db = Db3::connect_memory().await.unwrap();
+    let db = Db::connect_memory().await.unwrap();
 
     migrate(&db, schema(CLOUDSYNC_BASE_STEPS, widgets_synced))
         .await

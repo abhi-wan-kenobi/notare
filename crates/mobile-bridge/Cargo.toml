@@ -9,7 +9,7 @@ name = "mobile_bridge"
 
 [dependencies]
 hypr-db-app = { workspace = true }
-hypr-db-core2 = { workspace = true }
+hypr-db-core = { workspace = true }
 hypr-db-live-query = { workspace = true }
 hypr-db-migrate = { workspace = true }
 

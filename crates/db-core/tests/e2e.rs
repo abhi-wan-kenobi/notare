@@ -1,11 +1,11 @@
-use db_core2::Db3;
+use db_core::Db;
 
 fn connection_string() -> String {
     std::env::var("SQLITECLOUD_URL").expect("SQLITECLOUD_URL must be set")
 }
 
-async fn setup_db() -> Db3 {
-    let db = Db3::connect_memory().await.unwrap();
+async fn setup_db() -> Db {
+    let db = Db::connect_memory().await.unwrap();
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS test_sync (

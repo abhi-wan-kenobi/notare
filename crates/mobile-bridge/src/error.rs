@@ -39,13 +39,13 @@ pub(crate) fn runtime_error(error: hypr_db_live_query::Error) -> BridgeError {
     }
 }
 
-pub(crate) fn cloudsync_error(error: hypr_db_core2::Error) -> BridgeError {
+pub(crate) fn cloudsync_error(error: hypr_db_core::Error) -> BridgeError {
     BridgeError::CloudsyncFailed {
         reason: error.to_string(),
     }
 }
 
-pub(crate) fn cloudsync_runtime_error(error: hypr_db_core2::CloudsyncRuntimeError) -> BridgeError {
+pub(crate) fn cloudsync_runtime_error(error: hypr_db_core::CloudsyncRuntimeError) -> BridgeError {
     BridgeError::CloudsyncFailed {
         reason: error.to_string(),
     }
@@ -60,7 +60,7 @@ pub(crate) fn serialization_error(error: serde_json::Error) -> BridgeError {
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum OpenAppDbError {
     #[error(transparent)]
-    Open(#[from] hypr_db_core2::DbOpenError),
+    Open(#[from] hypr_db_core::DbOpenError),
     #[error(transparent)]
     Migrate(#[from] hypr_db_migrate::MigrateError),
 }

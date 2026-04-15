@@ -106,11 +106,13 @@ fn read_events_file(path: &Path) -> crate::Result<Vec<LegacyEvent>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hypr_db_core2::Db3;
+    use hypr_db_core::Db;
 
-    async fn test_db() -> Db3 {
-        let db = Db3::connect_memory_plain().await.unwrap();
-        hypr_db_app::migrate(db.pool()).await.unwrap();
+    async fn test_db() -> Db {
+        let db = Db::connect_memory_plain().await.unwrap();
+        hypr_db_migrate::migrate(&db, hypr_db_app::schema())
+            .await
+            .unwrap();
         db
     }
 

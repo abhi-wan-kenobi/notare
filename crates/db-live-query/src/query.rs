@@ -1,10 +1,10 @@
-use hypr_db_core2::Db3;
+use hypr_db_core::Db;
 use sqlx::{Column, Row, TypeInfo, ValueRef};
 
 use crate::{ProxyQueryMethod, ProxyQueryResult};
 
 pub async fn run_query(
-    db: &Db3,
+    db: &Db,
     sql: &str,
     params: &[serde_json::Value],
 ) -> std::result::Result<Vec<serde_json::Value>, sqlx::Error> {
@@ -13,7 +13,7 @@ pub async fn run_query(
 }
 
 pub async fn run_query_proxy(
-    db: &Db3,
+    db: &Db,
     sql: &str,
     params: &[serde_json::Value],
     method: ProxyQueryMethod,
@@ -42,7 +42,7 @@ pub async fn run_query_proxy(
 }
 
 async fn fetch_rows(
-    db: &Db3,
+    db: &Db,
     sql: &str,
     params: &[serde_json::Value],
 ) -> std::result::Result<Vec<sqlx::sqlite::SqliteRow>, sqlx::Error> {
@@ -124,8 +124,8 @@ mod tests {
 
     use super::*;
 
-    async fn test_db() -> hypr_db_core2::Db3 {
-        hypr_db_core2::Db3::connect_memory_plain().await.unwrap()
+    async fn test_db() -> hypr_db_core::Db {
+        hypr_db_core::Db::connect_memory_plain().await.unwrap()
     }
 
     #[tokio::test]

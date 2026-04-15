@@ -4,7 +4,7 @@
 
 - Reusable live-query runtime over arbitrary SQL.
 - Owns query execution, dependency analysis, subscription state, rerun targeting, and sink delivery.
-- Consumes raw observed table-change signals from `db-core2` and maps them onto canonical dependency targets.
+- Consumes raw observed table-change signals from `db-core` and maps them onto canonical dependency targets.
 
 ## Owns
 
@@ -26,7 +26,7 @@
 ## Invariants
 
 - Keep this crate transport-agnostic.
-- `db-core2` stays schema-agnostic and emits raw observed table changes only.
+- `db-core` stays schema-agnostic and emits raw observed table changes only.
 - `db-live-query` is the layer that interprets schema, resolves dependencies, and decides rerun targeting.
 - Dependency analysis must be explicit: `Reactive { targets }` or `NonReactive { reason }`.
 - Non-reactive subscriptions still deliver the initial result or error; they simply never auto-refresh.
@@ -50,7 +50,7 @@
 
 ## Dependency Direction
 
-- May depend on `db-core2`.
+- May depend on `db-core`.
 - May be consumed by `plugins/db` and `mobile-bridge`.
 - Must not depend on Tauri or app-specific UI/runtime layers.
 

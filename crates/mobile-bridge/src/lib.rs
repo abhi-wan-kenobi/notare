@@ -195,7 +195,7 @@ impl MobileDbBridge {
     }
 
     pub fn configure_cloudsync(&self, config_json: String) -> Result<(), BridgeError> {
-        let config: hypr_db_core2::CloudsyncRuntimeConfig = serde_json::from_str(&config_json)
+        let config: hypr_db_core::CloudsyncRuntimeConfig = serde_json::from_str(&config_json)
             .map_err(|error| BridgeError::InvalidCloudsyncConfigJson {
                 reason: error.to_string(),
             })?;

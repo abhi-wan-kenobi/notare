@@ -38,7 +38,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
 }
 
 pub fn init<R: tauri::Runtime>(
-    db: std::sync::Arc<hypr_db_core2::Db3>,
+    db: std::sync::Arc<hypr_db_core::Db>,
 ) -> tauri::plugin::TauriPlugin<R> {
     let specta_builder = make_specta_builder();
 
@@ -118,8 +118,8 @@ mod test {
     async fn setup_runtime() -> (tempfile::TempDir, Arc<runtime::PluginDbRuntime>) {
         let dir = tempfile::tempdir().unwrap();
         let db_path = dir.path().join("app.db");
-        let db = hypr_db_core2::Db3::open(hypr_db_core2::DbOpenOptions {
-            storage: hypr_db_core2::DbStorage::Local(&db_path),
+        let db = hypr_db_core::Db::open(hypr_db_core::DbOpenOptions {
+            storage: hypr_db_core::DbStorage::Local(&db_path),
             cloudsync_enabled: false,
             journal_mode_wal: true,
             foreign_keys: true,

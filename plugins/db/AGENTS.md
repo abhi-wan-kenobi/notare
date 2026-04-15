@@ -40,7 +40,7 @@
 
 ## Dependency Direction
 
-- This plugin may depend on `db-core2` and `db-live-query`.
+- This plugin may depend on `db-core` and `db-live-query`.
 - App code may depend on this plugin's JS bindings.
 - Lower layers must not depend back on this plugin.
 

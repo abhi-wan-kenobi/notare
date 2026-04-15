@@ -7,7 +7,7 @@ use sqlx::{Executor, Sqlite, SqlitePool};
 use tokio::sync::{broadcast, oneshot};
 use tokio::task::JoinHandle;
 
-use crate::Db3;
+use crate::Db;
 use crate::pool::TableChange;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -157,7 +157,7 @@ impl std::fmt::Debug for CloudsyncBackgroundTask {
     }
 }
 
-impl Db3 {
+impl Db {
     pub fn cloudsync_enabled(&self) -> bool {
         self.cloudsync_enabled
     }

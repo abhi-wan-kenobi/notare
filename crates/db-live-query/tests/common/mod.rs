@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use db_live_query::{DbRuntime, QueryEventSink};
-use hypr_db_core2::{DbOpenOptions, DbStorage};
+use hypr_db_core::{DbOpenOptions, DbStorage};
 
 const LIVE_QUERY_TEST_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] =
     &[hypr_db_migrate::MigrationStep {
@@ -193,7 +193,7 @@ pub async fn wait_for_stable_event_count(
 pub async fn setup_runtime() -> (tempfile::TempDir, sqlx::SqlitePool, DbRuntime<TestSink>) {
     let dir = tempfile::tempdir().unwrap();
     let db_path = dir.path().join("app.db");
-    let db = hypr_db_core2::Db3::open(DbOpenOptions {
+    let db = hypr_db_core::Db::open(DbOpenOptions {
         storage: DbStorage::Local(&db_path),
         cloudsync_enabled: false,
         journal_mode_wal: true,

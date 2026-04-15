@@ -7,16 +7,16 @@ mod schema;
 pub use error::MigrateError;
 pub use schema::{DbSchema, MigrationScope, MigrationStep};
 
-use hypr_db_core2::Db3;
+use hypr_db_core::Db;
 
-pub async fn migrate(db: &Db3, schema: DbSchema) -> Result<(), MigrateError> {
+pub async fn migrate(db: &Db, schema: DbSchema) -> Result<(), MigrateError> {
     migrate::run_migrations(db, schema).await
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hypr_db_core2::{DbOpenOptions, DbStorage};
+    use hypr_db_core::{DbOpenOptions, DbStorage};
 
     fn empty_schema() -> DbSchema {
         DbSchema {
@@ -27,7 +27,7 @@ mod tests {
 
     #[tokio::test]
     async fn migrate_bootstraps_migration_history() {
-        let db = Db3::open(DbOpenOptions {
+        let db = Db::open(DbOpenOptions {
             storage: DbStorage::Memory,
             cloudsync_enabled: false,
             journal_mode_wal: true,

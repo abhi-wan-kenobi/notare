@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use hypr_db_core2::DbPool;
+use hypr_db_core::DbPool;
 use sqlx::{Row, SqlitePool};
 
 use crate::DependencyTarget;
@@ -359,8 +359,8 @@ async fn load_schema_version(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
 mod tests {
     use super::*;
 
-    async fn setup_fts_db() -> hypr_db_core2::Db3 {
-        let db = hypr_db_core2::Db3::connect_memory_plain().await.unwrap();
+    async fn setup_fts_db() -> hypr_db_core::Db {
+        let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE VIRTUAL TABLE docs_fts USING fts5(title, body)")
             .execute(db.pool().as_ref())
             .await
@@ -400,7 +400,7 @@ mod tests {
 
     #[tokio::test]
     async fn unsupported_virtual_modules_are_not_reactive() {
-        let db = hypr_db_core2::Db3::connect_memory_plain().await.unwrap();
+        let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE VIRTUAL TABLE docs_rtree USING rtree(id, min_x, max_x)")
             .execute(db.pool().as_ref())
             .await
@@ -421,7 +421,7 @@ mod tests {
 
     #[tokio::test]
     async fn canonicalize_raw_tables_reloads_after_schema_changes() {
-        let db = hypr_db_core2::Db3::connect_memory_plain().await.unwrap();
+        let db = hypr_db_core::Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE TABLE existing_notes (id TEXT PRIMARY KEY NOT NULL)")
             .execute(db.pool().as_ref())
             .await

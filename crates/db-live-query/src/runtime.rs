@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 use tokio::sync::watch as tokio_watch;
 
-use hypr_db_core2::{Db3, TableChange};
+use hypr_db_core::{Db, TableChange};
 
 use crate::error::{Error, Result};
 use crate::query::{run_query, run_query_proxy};
@@ -17,7 +17,7 @@ use crate::types::{
 use crate::watch::WatchId;
 
 pub struct DbRuntime<S> {
-    db: Arc<Db3>,
+    db: Arc<Db>,
     catalog: CatalogStore,
     subscriptions: Registry<S>,
     shutdown_tx: tokio_watch::Sender<bool>,
@@ -25,7 +25,7 @@ pub struct DbRuntime<S> {
 }
 
 impl<S: QueryEventSink> DbRuntime<S> {
-    pub fn new(db: Arc<Db3>) -> Self {
+    pub fn new(db: Arc<Db>) -> Self {
         let db = db;
         let catalog = CatalogStore::default();
         let subscriptions = Registry::default();
@@ -141,7 +141,7 @@ impl<S: QueryEventSink> DbRuntime<S> {
             .await
     }
 
-    pub fn db(&self) -> &Db3 {
+    pub fn db(&self) -> &Db {
         self.db.as_ref()
     }
 
@@ -231,7 +231,7 @@ enum ChangeBatch {
 
 async fn next_refresh_jobs<S>(
     change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>,
-    db: &Db3,
+    db: &Db,
     catalog: &CatalogStore,
     subscriptions: &Registry<S>,
 ) -> Option<Vec<RefreshJob>> {
@@ -241,7 +241,7 @@ async fn next_refresh_jobs<S>(
 
 async fn receive_change_batch(
     change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>,
-    db: &Db3,
+    db: &Db,
 ) -> Option<ChangeBatch> {
     match change_rx.recv().await {
         Ok(first_change) => Some(drain_buffered_changes(change_rx, db, first_change)),
@@ -252,7 +252,7 @@ async fn receive_change_batch(
 
 fn drain_buffered_changes(
     change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>,
-    db: &Db3,
+    db: &Db,
     first_change: TableChange,
 ) -> ChangeBatch {
     let mut changed_tables = HashSet::from([first_change.table]);
@@ -277,7 +277,7 @@ fn drain_buffered_changes(
 
 fn rerun_all_batch(
     change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>,
-    db: &Db3,
+    db: &Db,
 ) -> ChangeBatch {
     clear_lagged_changes(change_rx);
     ChangeBatch::RerunAll {
@@ -295,7 +295,7 @@ fn clear_lagged_changes(change_rx: &mut tokio::sync::broadcast::Receiver<TableCh
 }
 
 async fn collect_refresh_jobs<S>(
-    db: &Db3,
+    db: &Db,
     catalog: &CatalogStore,
     subscriptions: &Registry<S>,
     batch: ChangeBatch,
@@ -406,7 +406,7 @@ mod tests {
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
 
-    use hypr_db_core2::{DbOpenOptions, DbStorage};
+    use hypr_db_core::{DbOpenOptions, DbStorage};
     use serde_json::json;
 
     use super::*;
@@ -465,7 +465,7 @@ mod tests {
     async fn stale_init_time_broadcast_processed_after_activation_is_ignored() {
         let dir = tempfile::tempdir().unwrap();
         let db_path = dir.path().join("app.db");
-        let db = hypr_db_core2::Db3::open(DbOpenOptions {
+        let db = hypr_db_core::Db::open(DbOpenOptions {
             storage: DbStorage::Local(&db_path),
             cloudsync_enabled: false,
             journal_mode_wal: true,

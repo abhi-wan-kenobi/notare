@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use hypr_db_core2::CloudsyncTableSpec;
+use hypr_db_core::CloudsyncTableSpec;
 
 static CLOUDSYNC_TABLE_REGISTRY: LazyLock<Vec<CloudsyncTableSpec>> = LazyLock::new(|| {
     vec![CloudsyncTableSpec {

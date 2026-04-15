@@ -4,12 +4,12 @@
 
 `db-migrate` owns app-database migration execution.
 
-- Input: a checked-open `Db3` from `db-core2` plus a schema manifest from a schema crate such as `db-app`
+- Input: a checked-open `Db` from `db-core` plus a schema manifest from a schema crate such as `db-app`
 - Output: schema changes applied and recorded in `_sqlx_migrations`
 
 This crate exists to keep:
 
-- `db-core2` focused on database opening, pooling, and SQLite/CloudSync primitives
+- `db-core` focused on database opening, pooling, and SQLite/CloudSync primitives
 - schema crates focused on migration manifests and table meaning
 - CloudSync-sensitive migration mechanics enforced in one place
 
@@ -64,7 +64,7 @@ pool:
 ## API
 
 ```rust
-pub async fn migrate(db: &Db3, schema: DbSchema) -> Result<(), MigrateError>
+pub async fn migrate(db: &Db, schema: DbSchema) -> Result<(), MigrateError>
 ```
 
 Callers must open the database first. This crate does not own connection setup or storage configuration.
@@ -95,7 +95,7 @@ If a change is about how migrations are executed, it probably belongs here.
 - Keep behavior as close to upstream `sqlx` as possible.
 - Add divergence only when CloudSync or connection-control requirements force it.
 - Make migration scope explicit in the manifest; do not infer it from SQL text.
-- For `CloudsyncAlter`, use connection-scoped helpers from `db-core2`, never pool-level wrappers.
+- For `CloudsyncAlter`, use connection-scoped helpers from `db-core`, never pool-level wrappers.
 - When CloudSync is disabled, the same `CloudsyncAlter` step should fall back to normal SQLite execution so local and synced schemas stay aligned.
 - Prefer a small, auditable port over a growing custom framework.
 

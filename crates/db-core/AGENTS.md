@@ -1,12 +1,12 @@
-# `db-core2`
+# `db-core`
 
 ## Role
 
-- `db-core2` is the database substrate layer.
-- It owns `Db3`/`DbPool`, SQLite open options, pool lifecycle, storage-recreation primitives, and per-connection SQLite wiring.
+- `db-core` is the database substrate layer.
+- It owns `Db`/`DbPool`, SQLite open options, pool lifecycle, storage-recreation primitives, and per-connection SQLite wiring.
 - Raw SQLite hook integration belongs here, including `sqlite3_update_hook`.
 - Cloudsync integration also belongs here because it is part of how the database is opened and managed, not how queries are exposed to the app.
-- Higher layers should consume `Db3`/`DbPool` and raw table-change events from here instead of reimplementing pool setup.
+- Higher layers should consume `Db`/`DbPool` and raw table-change events from here instead of reimplementing pool setup.
 
 ## This Crate Owns
 

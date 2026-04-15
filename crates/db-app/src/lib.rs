@@ -39,12 +39,12 @@ pub fn schema() -> hypr_db_migrate::DbSchema {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hypr_db_core2::Db3;
+    use hypr_db_core::Db;
     use sqlx::Row;
 
-    async fn test_db() -> Db3 {
-        let db = Db3::open(hypr_db_core2::DbOpenOptions {
-            storage: hypr_db_core2::DbStorage::Memory,
+    async fn test_db() -> Db {
+        let db = Db::open(hypr_db_core::DbOpenOptions {
+            storage: hypr_db_core::DbStorage::Memory,
             cloudsync_enabled: false,
             journal_mode_wal: true,
             foreign_keys: true,

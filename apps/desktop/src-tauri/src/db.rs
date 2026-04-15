@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use hypr_db_core2::Db3;
+use hypr_db_core::Db;
 
-pub async fn open_desktop_db(identifier: &str) -> Arc<Db3> {
+pub async fn open_desktop_db(identifier: &str) -> Arc<Db> {
     let base = dirs::data_dir().expect("data_dir must be available");
 
     let db_path = match identifier {

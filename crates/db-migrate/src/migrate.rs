@@ -4,7 +4,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::time::{Duration, Instant};
 
-use hypr_db_core2::Db3;
+use hypr_db_core::Db;
 use sqlx::migrate::{
     AppliedMigration, Migrate, MigrateError as SqlxMigrateError, Migration, MigrationType,
 };
@@ -16,14 +16,14 @@ use crate::schema::{DbSchema, MigrationScope, MigrationStep};
 type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 struct DbMigrateConnection<'a> {
-    db: &'a Db3,
+    db: &'a Db,
     conn: sqlx::pool::PoolConnection<Sqlite>,
     scopes_by_version: HashMap<i64, MigrationScope>,
 }
 
 impl<'a> DbMigrateConnection<'a> {
     fn new(
-        db: &'a Db3,
+        db: &'a Db,
         conn: sqlx::pool::PoolConnection<Sqlite>,
         scopes_by_version: HashMap<i64, MigrationScope>,
     ) -> Self {
@@ -35,7 +35,7 @@ impl<'a> DbMigrateConnection<'a> {
     }
 }
 
-pub(crate) async fn run_migrations(db: &Db3, schema: DbSchema) -> Result<(), MigrateError> {
+pub(crate) async fn run_migrations(db: &Db, schema: DbSchema) -> Result<(), MigrateError> {
     let resolved = resolve_migrations(schema)?;
     let scopes_by_version = resolved
         .iter()
@@ -228,13 +228,13 @@ impl Migrate for DbMigrateConnection<'_> {
 
                     let start = Instant::now();
 
-                    hypr_db_core2::cloudsync_begin_alter_on(&mut *self.conn, table_name)
+                    hypr_db_core::cloudsync_begin_alter_on(&mut *self.conn, table_name)
                         .await
                         .map_err(cloudsync_error)?;
 
                     execute_migration(&mut *self.conn, migration).await?;
 
-                    hypr_db_core2::cloudsync_commit_alter_on(&mut *self.conn, table_name)
+                    hypr_db_core::cloudsync_commit_alter_on(&mut *self.conn, table_name)
                         .await
                         .map_err(cloudsync_error)?;
 

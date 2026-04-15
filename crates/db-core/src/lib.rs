@@ -42,21 +42,21 @@ pub enum DbOpenError {
     Cloudsync(#[from] hypr_cloudsync::Error),
 }
 
-pub type ManagedDb = std::sync::Arc<Db3>;
+pub type ManagedDb = std::sync::Arc<Db>;
 
 const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 
-pub struct Db3 {
+pub struct Db {
     pub(crate) cloudsync_enabled: bool,
     pub(crate) cloudsync_path: Option<PathBuf>,
     pub(crate) cloudsync_runtime: Arc<Mutex<CloudsyncRuntimeState>>,
     pub(crate) pool: DbPool,
 }
 
-impl std::fmt::Debug for Db3 {
+impl std::fmt::Debug for Db {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let runtime = self.cloudsync_runtime.lock().unwrap();
-        f.debug_struct("Db3")
+        f.debug_struct("Db")
             .field("cloudsync_enabled", &self.cloudsync_enabled)
             .field("cloudsync_path", &self.cloudsync_path)
             .field("cloudsync_runtime", &*runtime)
@@ -64,7 +64,7 @@ impl std::fmt::Debug for Db3 {
     }
 }
 
-impl Drop for Db3 {
+impl Drop for Db {
     fn drop(&mut self) {
         let task = {
             let mut runtime = self.cloudsync_runtime.lock().unwrap();
@@ -81,7 +81,7 @@ impl Drop for Db3 {
     }
 }
 
-impl Db3 {
+impl Db {
     pub async fn open(options: DbOpenOptions<'_>) -> Result<Self, DbOpenError> {
         connect_with_options(&options).await
     }
@@ -155,7 +155,7 @@ impl Db3 {
     }
 }
 
-async fn connect_with_options(options: &DbOpenOptions<'_>) -> Result<Db3, DbOpenError> {
+async fn connect_with_options(options: &DbOpenOptions<'_>) -> Result<Db, DbOpenError> {
     let mut connect_options = match options.storage {
         DbStorage::Local(path) => {
             if let Some(parent) = path.parent() {
@@ -190,7 +190,7 @@ async fn connect_with_options(options: &DbOpenOptions<'_>) -> Result<Db3, DbOpen
     };
     let pool = connect_pool(connect_options, max_connections).await?;
 
-    Ok(Db3 {
+    Ok(Db {
         cloudsync_enabled: options.cloudsync_enabled,
         cloudsync_path,
         cloudsync_runtime: Arc::new(Mutex::new(CloudsyncRuntimeState::default())),
@@ -230,7 +230,7 @@ mod tests {
     async fn connect_local_plain_creates_parent_dirs() {
         let tmp = tempfile::tempdir().unwrap();
         let db_path = tmp.path().join("nonexistent").join("nested").join("app.db");
-        let db = Db3::connect_local_plain(&db_path).await.unwrap();
+        let db = Db::connect_local_plain(&db_path).await.unwrap();
         assert!(db_path.exists());
         drop(db);
     }
@@ -240,7 +240,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let db_path = tmp.path().join("app.db");
 
-        let db = Db3::open(DbOpenOptions {
+        let db = Db::open(DbOpenOptions {
             storage: DbStorage::Local(&db_path),
             cloudsync_enabled: false,
             journal_mode_wal: true,
@@ -270,7 +270,7 @@ mod tests {
 
     #[tokio::test]
     async fn disabled_open_mode_keeps_cloudsync_inert() {
-        let db = Db3::open(DbOpenOptions {
+        let db = Db::open(DbOpenOptions {
             storage: DbStorage::Memory,
             cloudsync_enabled: false,
             journal_mode_wal: false,
@@ -298,7 +298,7 @@ mod tests {
 
     #[tokio::test]
     async fn enabled_open_mode_requires_runtime_config_before_start() {
-        let db = Db3::connect_memory().await.unwrap();
+        let db = Db::connect_memory().await.unwrap();
 
         let error = db.cloudsync_start().await.unwrap_err();
         assert!(matches!(error, CloudsyncRuntimeError::NotConfigured));
@@ -306,7 +306,7 @@ mod tests {
 
     #[tokio::test]
     async fn configure_rejects_live_runtime_changes() {
-        let db = Db3::connect_memory_plain().await.unwrap();
+        let db = Db::connect_memory_plain().await.unwrap();
         db.cloudsync_configure(test_cloudsync_config()).unwrap();
         db.cloudsync_runtime.lock().unwrap().running = true;
 
@@ -332,7 +332,7 @@ mod tests {
 
     #[tokio::test]
     async fn reconfigure_preserves_stopped_state_when_runtime_is_inert() {
-        let db = Db3::open(DbOpenOptions {
+        let db = Db::open(DbOpenOptions {
             storage: DbStorage::Memory,
             cloudsync_enabled: false,
             journal_mode_wal: false,
@@ -372,7 +372,7 @@ mod tests {
             }
         }
 
-        let db = Db3::connect_memory_plain().await.unwrap();
+        let db = Db::connect_memory_plain().await.unwrap();
         let dropped = Arc::new(AtomicBool::new(false));
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
         let guard = DropFlag(Arc::clone(&dropped));
@@ -403,7 +403,7 @@ mod tests {
 
     #[tokio::test]
     async fn emits_table_changes_for_local_writes() {
-        let db = Db3::connect_memory_plain().await.unwrap();
+        let db = Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL)")
             .execute(db.pool().as_ref())
             .await
@@ -434,7 +434,7 @@ mod tests {
 
     #[tokio::test]
     async fn emits_table_changes_only_after_commit() {
-        let db = Db3::connect_memory_plain().await.unwrap();
+        let db = Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL)")
             .execute(db.pool().as_ref())
             .await
@@ -470,7 +470,7 @@ mod tests {
 
     #[tokio::test]
     async fn rollback_clears_pending_table_changes() {
-        let db = Db3::connect_memory_plain().await.unwrap();
+        let db = Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL)")
             .execute(db.pool().as_ref())
             .await
@@ -495,7 +495,7 @@ mod tests {
 
     #[tokio::test]
     async fn coalesces_multiple_writes_in_a_transaction() {
-        let db = Db3::connect_memory_plain().await.unwrap();
+        let db = Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)")
             .execute(db.pool().as_ref())
             .await
@@ -534,7 +534,7 @@ mod tests {
 
     #[tokio::test]
     async fn emits_update_and_delete_table_changes() {
-        let db = Db3::connect_memory_plain().await.unwrap();
+        let db = Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL)")
             .execute(db.pool().as_ref())
             .await
@@ -580,7 +580,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("app.db");
 
-        let db = Db3::open(DbOpenOptions {
+        let db = Db::open(DbOpenOptions {
             storage: DbStorage::Local(&path),
             cloudsync_enabled: false,
             journal_mode_wal: true,
@@ -623,7 +623,7 @@ mod tests {
 
     #[tokio::test]
     async fn tracks_monotonic_change_sequences_per_table() {
-        let db = Db3::connect_memory_plain().await.unwrap();
+        let db = Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE TABLE test_events (id TEXT PRIMARY KEY NOT NULL)")
             .execute(db.pool().as_ref())
             .await
@@ -680,7 +680,7 @@ mod tests {
 
     #[tokio::test]
     async fn open_memory_clamps_max_connections_to_one() {
-        let db = Db3::open(DbOpenOptions {
+        let db = Db::open(DbOpenOptions {
             storage: DbStorage::Memory,
             cloudsync_enabled: false,
             journal_mode_wal: false,
@@ -701,7 +701,7 @@ mod tests {
 
     #[tokio::test]
     async fn cloned_pool_keeps_hooks_alive_after_db_drop() {
-        let db = Db3::connect_memory_plain().await.unwrap();
+        let db = Db::connect_memory_plain().await.unwrap();
         sqlx::query("CREATE TABLE retained_events (id TEXT PRIMARY KEY NOT NULL)")
             .execute(db.pool().as_ref())
             .await

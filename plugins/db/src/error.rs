@@ -5,7 +5,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Db(#[from] hypr_db_core2::DbOpenError),
+    Db(#[from] hypr_db_core::DbOpenError),
     #[error(transparent)]
     Migrate(#[from] hypr_db_migrate::MigrateError),
     #[error(transparent)]

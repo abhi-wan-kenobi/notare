@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use hypr_db_core2::{Db3, DbOpenOptions, DbStorage};
+use hypr_db_core::{Db, DbOpenOptions, DbStorage};
 use hypr_db_live_query::QueryEventSink;
 use tauri::ipc::Channel;
 
@@ -31,13 +31,13 @@ impl QueryEventSink for QueryEventChannel {
 
 pub type PluginDbRuntime = hypr_db_live_query::DbRuntime<QueryEventChannel>;
 
-pub async fn open_app_db(db_path: Option<&Path>) -> Result<Db3> {
+pub async fn open_app_db(db_path: Option<&Path>) -> Result<Db> {
     let storage = match db_path {
         Some(path) => DbStorage::Local(path),
         None => DbStorage::Memory,
     };
 
-    let db = Db3::open(DbOpenOptions {
+    let db = Db::open(DbOpenOptions {
         storage,
         cloudsync_enabled: false,
         journal_mode_wal: true,
