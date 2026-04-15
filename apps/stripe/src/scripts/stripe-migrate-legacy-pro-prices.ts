@@ -5,7 +5,7 @@ const HARDCODED_OLD_MONTHLY_PRICE_ID = "price_1RsWbzEABq1oJeLy4hfpEFJT";
 const HARDCODED_OLD_YEARLY_PRICE_ID = "price_1RsuVFEABq1oJeLy6mPncvSp";
 const HARDCODED_NEW_MONTHLY_PRICE_ID = "price_1T2Z8ZEABq1oJeLyqbCPC7cl";
 const HARDCODED_NEW_YEARLY_PRICE_ID = "price_1T2Z8IEABq1oJeLyNN5InKs4";
-const STRIPE_API_VERSION = "2026-01-28.clover";
+const STRIPE_API_VERSION = "2026-02-25.clover";
 
 const { values } = parseArgs({
   args: Bun.argv.slice(2),
