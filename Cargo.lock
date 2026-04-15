@@ -17,6 +17,7 @@ dependencies = [
  "activity-capture-windows",
  "screen-core",
  "serde",
+ "thiserror 2.0.18",
  "uuid",
 ]
 
@@ -18434,8 +18435,6 @@ name = "tauri-plugin-activity-capture"
 version = "0.1.0"
 dependencies = [
  "activity-capture",
- "db-app",
- "db-core2",
  "futures-util",
  "reqwest 0.13.2",
  "screen-core",
@@ -18444,7 +18443,6 @@ dependencies = [
  "sha2 0.11.0",
  "specta",
  "specta-typescript",
- "sqlx",
  "tauri",
  "tauri-plugin",
  "tauri-plugin-activity-capture",
