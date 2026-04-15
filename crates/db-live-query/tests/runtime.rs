@@ -612,6 +612,57 @@ async fn virtual_table_created_after_runtime_start_is_discovered() {
 }
 
 #[tokio::test]
+async fn ordinary_table_created_after_runtime_start_is_discovered() {
+    let (_dir, pool, runtime) = setup_runtime().await;
+    let (sink, events) = TestSink::capture();
+
+    sqlx::query(
+        "CREATE TABLE notes_added_later (id TEXT PRIMARY KEY NOT NULL, body TEXT NOT NULL)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let registration = runtime
+        .subscribe(
+            "SELECT id FROM notes_added_later WHERE body IS NOT NULL ORDER BY id".to_string(),
+            vec![],
+            sink,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(
+        registration.analysis,
+        DependencyAnalysis::Reactive {
+            targets: std::collections::HashSet::from([DependencyTarget::Table(
+                "notes_added_later".to_string(),
+            )]),
+        }
+    );
+
+    let initial = next_event(&events, 0, Duration::from_secs(1))
+        .await
+        .unwrap();
+    assert_eq!(initial, TestEvent::Result(Vec::new()));
+
+    sqlx::query("INSERT INTO notes_added_later (id, body) VALUES (?, ?)")
+        .bind("late-note-1")
+        .bind("hello")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let refresh = next_event(&events, 1, Duration::from_secs(1))
+        .await
+        .unwrap();
+    let TestEvent::Result(rows) = refresh else {
+        panic!("expected result event");
+    };
+    assert_eq!(rows, vec![json!({ "id": "late-note-1" })]);
+}
+
+#[tokio::test]
 async fn unsupported_virtual_tables_are_explicitly_non_reactive() {
     let (_dir, pool, runtime) = setup_runtime().await;
     let (sink, events) = TestSink::capture();
@@ -796,6 +847,39 @@ async fn extraction_failures_become_explicit_non_reactive_subscriptions() {
         .await
         .unwrap();
     assert!(matches!(event, TestEvent::Error(_)));
+}
+
+#[tokio::test]
+async fn constant_selects_are_explicitly_non_reactive() {
+    let (_dir, pool, runtime) = setup_runtime().await;
+    let (sink, events) = TestSink::capture();
+
+    let registration = runtime
+        .subscribe("SELECT 1 AS value".to_string(), vec![], sink)
+        .await
+        .unwrap();
+
+    assert!(matches!(
+        &registration.analysis,
+        DependencyAnalysis::NonReactive { .. }
+    ));
+
+    let initial = next_event(&events, 0, Duration::from_secs(1))
+        .await
+        .unwrap();
+    assert_eq!(initial, TestEvent::Result(vec![json!({ "value": 1 })]));
+
+    sqlx::query("INSERT INTO daily_notes (id, date, body, user_id) VALUES (?, ?, ?, ?)")
+        .bind("note-nonreactive")
+        .bind("2026-04-24")
+        .bind("{}")
+        .bind("user-1")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    assert_eq!(events.lock().unwrap().len(), 1);
 }
 
 #[tokio::test]

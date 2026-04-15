@@ -11,28 +11,7 @@ const LIVE_QUERY_TEST_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] =
     &[hypr_db_migrate::MigrationStep {
         id: "20260415000000_live_query_test_schema",
         scope: hypr_db_migrate::MigrationScope::Plain,
-        sql: r#"
-CREATE TABLE daily_notes (
-    id TEXT PRIMARY KEY NOT NULL,
-    date TEXT NOT NULL,
-    body TEXT NOT NULL,
-    user_id TEXT NOT NULL
-);
-
-CREATE TABLE daily_summaries (
-    id TEXT PRIMARY KEY NOT NULL,
-    daily_note_id TEXT NOT NULL,
-    date TEXT NOT NULL,
-    content TEXT NOT NULL,
-    timeline_json TEXT NOT NULL,
-    topics_json TEXT NOT NULL,
-    status TEXT NOT NULL,
-    source_cursor_ms INTEGER NOT NULL,
-    source_fingerprint TEXT NOT NULL,
-    generation_error TEXT NOT NULL,
-    generated_at TEXT NOT NULL
-);
-    "#,
+        sql: include_str!("live_query_test_schema.sql"),
     }];
 
 fn live_query_test_schema() -> hypr_db_migrate::DbSchema {

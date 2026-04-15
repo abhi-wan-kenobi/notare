@@ -13,10 +13,7 @@ pub async fn extract_dependencies(
     pool: &SqlitePool,
     sql: &str,
 ) -> Result<HashSet<DependencyTarget>, DependencyResolutionError> {
-    CatalogStore::default()
-        .analyze_query(pool, sql)
-        .await
-        .map(|resolved| resolved.targets)
+    CatalogStore::default().analyze_query(pool, sql).await
 }
 
 pub(crate) fn parse_table_from_detail(detail: &str) -> Option<&str> {
@@ -33,7 +30,7 @@ pub(crate) fn normalize_identifier(token: &str) -> String {
     strip_identifier_quotes(token).to_string()
 }
 
-fn strip_identifier_quotes(token: &str) -> &str {
+pub(crate) fn strip_identifier_quotes(token: &str) -> &str {
     if token.len() >= 2 {
         if (token.starts_with('"') && token.ends_with('"'))
             || (token.starts_with('`') && token.ends_with('`'))
@@ -56,22 +53,8 @@ pub(crate) fn build_alias_map(
     let upper_tokens: Vec<&str> = upper.split_whitespace().collect();
 
     for i in 0..tokens.len() {
-        let is_from_or_join = matches!(
-            upper_tokens[i],
-            "FROM" | "JOIN" | "INNER" | "LEFT" | "RIGHT" | "CROSS"
-        );
-        if !is_from_or_join {
+        let Some(table_idx) = table_reference_index(&upper_tokens, i) else {
             continue;
-        }
-
-        let table_idx = if matches!(upper_tokens[i], "INNER" | "LEFT" | "RIGHT" | "CROSS") {
-            if i + 1 < tokens.len() && upper_tokens[i + 1] == "JOIN" {
-                i + 2
-            } else {
-                continue;
-            }
-        } else {
-            i + 1
         };
 
         if table_idx >= tokens.len() {
@@ -83,41 +66,62 @@ pub(crate) fn build_alias_map(
             continue;
         }
 
-        let alias_idx = if table_idx + 1 < upper_tokens.len() && upper_tokens[table_idx + 1] == "AS"
-        {
-            table_idx + 2
-        } else {
-            table_idx + 1
-        };
+        let alias_idx = alias_token_index(&upper_tokens, table_idx);
 
         if alias_idx < tokens.len() {
             let alias = normalize_identifier(tokens[alias_idx]);
-            let alias_upper = alias.to_uppercase();
-            if !alias.is_empty()
-                && !matches!(
-                    alias_upper.as_str(),
-                    "ON" | "WHERE"
-                        | "SET"
-                        | "JOIN"
-                        | "INNER"
-                        | "LEFT"
-                        | "RIGHT"
-                        | "CROSS"
-                        | "ORDER"
-                        | "GROUP"
-                        | "HAVING"
-                        | "LIMIT"
-                        | "UNION"
-                        | "EXCEPT"
-                        | "INTERSECT"
-                )
-                && !known_objects.contains(&alias)
-            {
+            if !alias.is_empty() && !is_alias_stop_word(&alias) && !known_objects.contains(&alias) {
                 map.insert(alias, raw_object.clone());
             }
         }
     }
     map
+}
+
+fn table_reference_index(upper_tokens: &[&str], index: usize) -> Option<usize> {
+    if index >= upper_tokens.len() {
+        return None;
+    }
+
+    if matches!(upper_tokens[index], "FROM" | "JOIN") {
+        return Some(index + 1);
+    }
+
+    if matches!(upper_tokens[index], "INNER" | "LEFT" | "RIGHT" | "CROSS")
+        && upper_tokens.get(index + 1) == Some(&"JOIN")
+    {
+        return Some(index + 2);
+    }
+
+    None
+}
+
+fn alias_token_index(upper_tokens: &[&str], table_idx: usize) -> usize {
+    if upper_tokens.get(table_idx + 1) == Some(&"AS") {
+        table_idx + 2
+    } else {
+        table_idx + 1
+    }
+}
+
+fn is_alias_stop_word(alias: &str) -> bool {
+    matches!(
+        alias.to_uppercase().as_str(),
+        "ON" | "WHERE"
+            | "SET"
+            | "JOIN"
+            | "INNER"
+            | "LEFT"
+            | "RIGHT"
+            | "CROSS"
+            | "ORDER"
+            | "GROUP"
+            | "HAVING"
+            | "LIMIT"
+            | "UNION"
+            | "EXCEPT"
+            | "INTERSECT"
+    )
 }
 
 #[cfg(test)]
@@ -128,28 +132,7 @@ mod tests {
         &[hypr_db_migrate::MigrationStep {
             id: "20260415000000_live_query_test_schema",
             scope: hypr_db_migrate::MigrationScope::Plain,
-            sql: r#"
-CREATE TABLE daily_notes (
-    id TEXT PRIMARY KEY NOT NULL,
-    date TEXT NOT NULL,
-    body TEXT NOT NULL,
-    user_id TEXT NOT NULL
-);
-
-CREATE TABLE daily_summaries (
-    id TEXT PRIMARY KEY NOT NULL,
-    daily_note_id TEXT NOT NULL,
-    date TEXT NOT NULL,
-    content TEXT NOT NULL,
-    timeline_json TEXT NOT NULL,
-    topics_json TEXT NOT NULL,
-    status TEXT NOT NULL,
-    source_cursor_ms INTEGER NOT NULL,
-    source_fingerprint TEXT NOT NULL,
-    generation_error TEXT NOT NULL,
-    generated_at TEXT NOT NULL
-);
-        "#,
+            sql: include_str!("../tests/common/live_query_test_schema.sql"),
         }];
 
     fn live_query_test_schema() -> hypr_db_migrate::DbSchema {
@@ -349,5 +332,47 @@ CREATE TABLE daily_summaries (
             error,
             DependencyResolutionError::UnsupportedObject { .. }
         ));
+    }
+
+    #[test]
+    fn parse_table_from_detail_accepts_scan_and_search_rows() {
+        assert_eq!(
+            parse_table_from_detail("SCAN daily_notes"),
+            Some("daily_notes")
+        );
+        assert_eq!(
+            parse_table_from_detail("SEARCH main.daily_notes USING INDEX idx_notes_date (date=?)"),
+            Some("main.daily_notes")
+        );
+        assert_eq!(
+            parse_table_from_detail("USE TEMP B-TREE FOR ORDER BY"),
+            None
+        );
+    }
+
+    #[test]
+    fn normalize_identifier_strips_schema_quotes_and_punctuation() {
+        assert_eq!(
+            normalize_identifier("\"main\".\"daily_notes\","),
+            "daily_notes"
+        );
+        assert_eq!(normalize_identifier("[daily_notes]);"), "daily_notes");
+        assert_eq!(normalize_identifier("`daily_notes`"), "daily_notes");
+    }
+
+    #[test]
+    fn build_alias_map_tracks_aliases_and_skips_sql_keywords() {
+        let known_objects =
+            HashSet::from(["daily_notes".to_string(), "daily_summaries".to_string()]);
+
+        let aliases = build_alias_map(
+            "SELECT dn.id FROM daily_notes dn JOIN daily_summaries AS ds ON ds.daily_note_id = dn.id WHERE dn.date IS NOT NULL ORDER BY dn.id",
+            &known_objects,
+        );
+        assert_eq!(aliases.get("dn"), Some(&"daily_notes".to_string()));
+        assert_eq!(aliases.get("ds"), Some(&"daily_summaries".to_string()));
+
+        let no_aliases = build_alias_map("SELECT id FROM daily_notes ORDER BY id", &known_objects);
+        assert!(no_aliases.is_empty());
     }
 }

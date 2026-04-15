@@ -8,16 +8,8 @@ use crate::watch::{DependencyWatchIndex, WatchId};
 use crate::{DependencyAnalysis, DependencyTarget, QueryEventSink, SubscriptionRegistration};
 
 struct Subscription<S> {
-    id: String,
-    sql: String,
-    params: Vec<serde_json::Value>,
-    sink: S,
-    lifecycle: ReactiveLifecycle,
-}
-
-enum SubscriptionSlot {
-    Reactive(WatchId),
-    NonReactive(String),
+    analysis: DependencyAnalysis,
+    state: SubscriptionState<S>,
 }
 
 enum ReactiveLifecycle {
@@ -25,18 +17,31 @@ enum ReactiveLifecycle {
     Active { ignore_through_seq: u64 },
 }
 
+enum SubscriptionState<S> {
+    Reactive(ReactiveSubscription<S>),
+    NonReactive,
+}
+
+struct ReactiveSubscription<S> {
+    watch_id: WatchId,
+    sql: String,
+    params: Vec<serde_json::Value>,
+    sink: S,
+    lifecycle: ReactiveLifecycle,
+}
+
 struct Inner<S> {
     deps: DependencyWatchIndex,
-    ids: std::collections::HashMap<String, SubscriptionSlot>,
-    subscriptions: std::collections::HashMap<WatchId, Subscription<S>>,
+    subscriptions: std::collections::HashMap<String, Subscription<S>>,
+    watch_ids: std::collections::HashMap<WatchId, String>,
 }
 
 impl<S> Default for Inner<S> {
     fn default() -> Self {
         Self {
             deps: DependencyWatchIndex::default(),
-            ids: std::collections::HashMap::new(),
             subscriptions: std::collections::HashMap::new(),
+            watch_ids: std::collections::HashMap::new(),
         }
     }
 }
@@ -97,34 +102,30 @@ impl<S> Registry<S> {
         analysis: DependencyAnalysis,
     ) -> RegisteredSubscription {
         let subscription_id = uuid::Uuid::new_v4().to_string();
-        let subscription = Subscription {
-            id: subscription_id.clone(),
-            sql,
-            params,
-            sink,
-            lifecycle: ReactiveLifecycle::Initializing,
-        };
-
         let mut inner = self.inner.lock().await;
-        let reactive_watch_id = match &analysis {
+        let state = match &analysis {
             DependencyAnalysis::Reactive { targets } => {
                 let watch_id = inner.deps.register(targets.clone());
-                inner.ids.insert(
-                    subscription_id.clone(),
-                    SubscriptionSlot::Reactive(watch_id),
-                );
-                inner.subscriptions.insert(watch_id, subscription);
-                Some(watch_id)
+                inner.watch_ids.insert(watch_id, subscription_id.clone());
+                SubscriptionState::Reactive(ReactiveSubscription {
+                    watch_id,
+                    sql,
+                    params,
+                    sink,
+                    lifecycle: ReactiveLifecycle::Initializing,
+                })
             }
-            DependencyAnalysis::NonReactive { reason } => {
-                inner.ids.insert(
-                    subscription_id.clone(),
-                    SubscriptionSlot::NonReactive(reason.clone()),
-                );
-                drop(subscription);
-                None
-            }
+            DependencyAnalysis::NonReactive { .. } => SubscriptionState::NonReactive,
         };
+        let reactive_watch_id = state.watch_id();
+
+        inner.subscriptions.insert(
+            subscription_id.clone(),
+            Subscription {
+                analysis: analysis.clone(),
+                state,
+            },
+        );
 
         RegisteredSubscription {
             registration: SubscriptionRegistration {
@@ -137,34 +138,19 @@ impl<S> Registry<S> {
 
     pub(crate) async fn unregister(&self, subscription_id: &str) -> bool {
         let mut inner = self.inner.lock().await;
-        match inner.ids.remove(subscription_id) {
-            Some(SubscriptionSlot::Reactive(watch_id)) => {
-                inner.subscriptions.remove(&watch_id);
-                inner.deps.unregister(watch_id);
-                true
-            }
-            Some(SubscriptionSlot::NonReactive(_)) => true,
-            None => false,
-        }
+        remove_subscription(&mut inner, subscription_id)
     }
 
     pub(crate) async fn dependency_analysis(
         &self,
         subscription_id: &str,
     ) -> Option<DependencyAnalysis> {
-        let inner = self.inner.lock().await;
-        match inner.ids.get(subscription_id) {
-            Some(SubscriptionSlot::Reactive(watch_id)) => {
-                inner.subscriptions.get(watch_id).map(|_| {
-                    let targets = inner.deps.targets_for(*watch_id).unwrap_or_default();
-                    DependencyAnalysis::Reactive { targets }
-                })
-            }
-            Some(SubscriptionSlot::NonReactive(reason)) => Some(DependencyAnalysis::NonReactive {
-                reason: reason.clone(),
-            }),
-            None => None,
-        }
+        self.inner
+            .lock()
+            .await
+            .subscriptions
+            .get(subscription_id)
+            .map(|subscription| subscription.analysis.clone())
     }
 
     pub(crate) async fn collect_jobs(
@@ -175,9 +161,13 @@ impl<S> Registry<S> {
         let inner = self.inner.lock().await;
         inner
             .deps
-            .affected(&changed_targets.iter().cloned().collect::<Vec<_>>())
+            .affected(changed_targets)
             .into_iter()
-            .filter_map(|id| try_build_job(id, inner.subscriptions.get(&id)?, trigger_seq))
+            .filter_map(|watch_id| {
+                let subscription_id = inner.watch_ids.get(&watch_id)?;
+                let subscription = inner.subscriptions.get(subscription_id)?;
+                try_build_job(subscription, trigger_seq)
+            })
             .collect()
     }
 
@@ -185,23 +175,29 @@ impl<S> Registry<S> {
         let inner = self.inner.lock().await;
         inner
             .subscriptions
-            .iter()
-            .filter_map(|(&id, sub)| try_build_job(id, sub, trigger_seq))
+            .values()
+            .filter_map(|subscription| try_build_job(subscription, trigger_seq))
             .collect()
     }
 
     pub(crate) async fn activate(&self, watch_id: WatchId, ignore_through_seq: u64) -> bool {
         let mut inner = self.inner.lock().await;
-        let Some(subscription) = inner.subscriptions.get_mut(&watch_id) else {
+        let Some(subscription_id) = inner.watch_ids.get(&watch_id).cloned() else {
+            return false;
+        };
+        let Some(subscription) = inner.subscriptions.get_mut(&subscription_id) else {
             return false;
         };
 
-        match subscription.lifecycle {
-            ReactiveLifecycle::Initializing => {
-                subscription.lifecycle = ReactiveLifecycle::Active { ignore_through_seq };
-                true
-            }
-            ReactiveLifecycle::Active { .. } => false,
+        match &mut subscription.state {
+            SubscriptionState::Reactive(reactive) => match reactive.lifecycle {
+                ReactiveLifecycle::Initializing => {
+                    reactive.lifecycle = ReactiveLifecycle::Active { ignore_through_seq };
+                    true
+                }
+                ReactiveLifecycle::Active { .. } => false,
+            },
+            SubscriptionState::NonReactive => false,
         }
     }
 }
@@ -216,12 +212,18 @@ impl<S: QueryEventSink> Registry<S> {
         let payload = QueryEventPayload::load(db, &job.sql, &job.params).await;
 
         let mut inner = self.inner.lock().await;
-        let (subscription_id, send_result) = {
-            let Some(subscription) = inner.subscriptions.get(&job.watch_id) else {
+        let Some(subscription_id) = inner.watch_ids.get(&job.watch_id).cloned() else {
+            return;
+        };
+        let send_result = {
+            let Some(subscription) = inner.subscriptions.get(&subscription_id) else {
+                return;
+            };
+            let SubscriptionState::Reactive(reactive) = &subscription.state else {
                 return;
             };
 
-            if !matches!(subscription.lifecycle, ReactiveLifecycle::Active { .. }) {
+            if !matches!(reactive.lifecycle, ReactiveLifecycle::Active { .. }) {
                 return;
             }
 
@@ -229,36 +231,52 @@ impl<S: QueryEventSink> Registry<S> {
                 return;
             }
 
-            (subscription.id.clone(), payload.send_to(&subscription.sink))
+            payload.send_to(&reactive.sink)
         };
 
         if send_result.is_err() {
-            remove_subscription(&mut inner, job.watch_id, subscription_id);
+            remove_subscription(&mut inner, &subscription_id);
         }
     }
 }
 
-fn try_build_job<S>(
-    watch_id: WatchId,
-    sub: &Subscription<S>,
-    trigger_seq: u64,
-) -> Option<RefreshJob> {
-    match sub.lifecycle {
+impl<S> SubscriptionState<S> {
+    fn watch_id(&self) -> Option<WatchId> {
+        match self {
+            Self::Reactive(reactive) => Some(reactive.watch_id),
+            Self::NonReactive => None,
+        }
+    }
+}
+
+fn try_build_job<S>(subscription: &Subscription<S>, trigger_seq: u64) -> Option<RefreshJob> {
+    let SubscriptionState::Reactive(reactive) = &subscription.state else {
+        return None;
+    };
+
+    match reactive.lifecycle {
         ReactiveLifecycle::Active { ignore_through_seq } if trigger_seq > ignore_through_seq => {
             Some(RefreshJob {
-                watch_id,
-                sql: sub.sql.clone(),
-                params: sub.params.clone(),
+                watch_id: reactive.watch_id,
+                sql: reactive.sql.clone(),
+                params: reactive.params.clone(),
             })
         }
         _ => None,
     }
 }
 
-fn remove_subscription<S>(inner: &mut Inner<S>, watch_id: WatchId, subscription_id: String) {
-    inner.subscriptions.remove(&watch_id);
-    inner.ids.remove(&subscription_id);
-    inner.deps.unregister(watch_id);
+fn remove_subscription<S>(inner: &mut Inner<S>, subscription_id: &str) -> bool {
+    let Some(subscription) = inner.subscriptions.remove(subscription_id) else {
+        return false;
+    };
+
+    if let SubscriptionState::Reactive(reactive) = subscription.state {
+        inner.watch_ids.remove(&reactive.watch_id);
+        inner.deps.unregister(reactive.watch_id);
+    }
+
+    true
 }
 
 #[cfg(test)]
@@ -330,5 +348,99 @@ mod tests {
             .await;
 
         assert_eq!(jobs.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn reactive_registrations_report_stored_targets() {
+        let registry = Registry::<TestSink>::default();
+        let targets = HashSet::from([DependencyTarget::Table("daily_notes".to_string())]);
+        let registered = registry
+            .register(
+                "SELECT id FROM daily_notes".to_string(),
+                vec![],
+                TestSink,
+                DependencyAnalysis::Reactive {
+                    targets: targets.clone(),
+                },
+            )
+            .await;
+
+        assert_eq!(
+            registry
+                .dependency_analysis(&registered.registration.id)
+                .await,
+            Some(DependencyAnalysis::Reactive { targets })
+        );
+    }
+
+    #[tokio::test]
+    async fn non_reactive_registrations_report_reason_and_unregister_cleanly() {
+        let registry = Registry::<TestSink>::default();
+        let registered = registry
+            .register(
+                "SELECT 1".to_string(),
+                vec![],
+                TestSink,
+                DependencyAnalysis::NonReactive {
+                    reason: "query has no reactive dependencies".to_string(),
+                },
+            )
+            .await;
+
+        assert!(registered.reactive_watch_id.is_none());
+        assert_eq!(
+            registry
+                .dependency_analysis(&registered.registration.id)
+                .await,
+            Some(DependencyAnalysis::NonReactive {
+                reason: "query has no reactive dependencies".to_string(),
+            })
+        );
+
+        assert!(registry.unregister(&registered.registration.id).await);
+        assert!(
+            registry
+                .dependency_analysis(&registered.registration.id)
+                .await
+                .is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn collect_all_jobs_only_returns_active_subscriptions() {
+        let registry = Registry::<TestSink>::default();
+        let initializing = registry
+            .register(
+                "SELECT id FROM daily_notes".to_string(),
+                vec![],
+                TestSink,
+                DependencyAnalysis::Reactive {
+                    targets: HashSet::from([DependencyTarget::Table("daily_notes".to_string())]),
+                },
+            )
+            .await;
+        let active = registry
+            .register(
+                "SELECT id FROM daily_summaries".to_string(),
+                vec![],
+                TestSink,
+                DependencyAnalysis::Reactive {
+                    targets: HashSet::from([DependencyTarget::Table(
+                        "daily_summaries".to_string(),
+                    )]),
+                },
+            )
+            .await;
+        let active_watch_id = active.reactive_watch_id.unwrap();
+
+        assert!(registry.activate(active_watch_id, 3).await);
+
+        let jobs = registry.collect_all_jobs(4).await;
+
+        assert_eq!(jobs.len(), 1);
+        assert_eq!(jobs[0].watch_id, active_watch_id);
+        assert_eq!(jobs[0].sql, "SELECT id FROM daily_summaries");
+        assert!(jobs[0].params.is_empty());
+        assert_ne!(initializing.reactive_watch_id, Some(active_watch_id));
     }
 }

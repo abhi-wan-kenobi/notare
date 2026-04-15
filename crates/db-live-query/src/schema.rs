@@ -21,12 +21,6 @@ pub(crate) struct CatalogStore {
     state: Arc<tokio::sync::Mutex<Option<SchemaCatalog>>>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct ResolvedDependencies {
-    pub(crate) targets: HashSet<DependencyTarget>,
-    pub(crate) raw_tables: HashSet<String>,
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct SchemaCatalog {
     schema_version: i64,
@@ -55,7 +49,7 @@ impl CatalogStore {
         &self,
         pool: &SqlitePool,
         sql: &str,
-    ) -> Result<ResolvedDependencies, DependencyResolutionError> {
+    ) -> Result<HashSet<DependencyTarget>, DependencyResolutionError> {
         let catalog = self.catalog(pool, false).await?;
         catalog.resolve_query(pool, sql).await
     }
@@ -244,14 +238,13 @@ impl SchemaCatalog {
         &self,
         pool: &SqlitePool,
         sql: &str,
-    ) -> Result<ResolvedDependencies, DependencyResolutionError> {
+    ) -> Result<HashSet<DependencyTarget>, DependencyResolutionError> {
         let alias_map = super::explain::build_alias_map(sql, &self.query_objects);
         let eqp_rows = sqlx::query(&format!("EXPLAIN QUERY PLAN {sql}"))
             .fetch_all(pool)
             .await?;
 
         let mut targets = HashSet::new();
-        let mut raw_tables = HashSet::new();
 
         for row in &eqp_rows {
             let detail: &str = row.get("detail");
@@ -268,20 +261,14 @@ impl SchemaCatalog {
             };
 
             let target = self.resolve_query_object(&schema_name)?;
-            targets.insert(target.clone());
-            if let Some(mapped_raw_tables) = self.target_to_raw.get(&target) {
-                raw_tables.extend(mapped_raw_tables.iter().cloned());
-            }
+            targets.insert(target);
         }
 
         if targets.is_empty() {
             return Err(DependencyResolutionError::EmptyDependencySet);
         }
 
-        Ok(ResolvedDependencies {
-            targets,
-            raw_tables,
-        })
+        Ok(targets)
     }
 
     fn resolve_query_object(
@@ -358,21 +345,8 @@ fn parse_virtual_table_module(sql: &str) -> Option<String> {
     let end_index = after_using
         .find(|ch: char| ch.is_whitespace() || ch == '(')
         .unwrap_or(after_using.len());
-    let module = strip_identifier_quotes(&after_using[..end_index]).trim();
+    let module = crate::explain::strip_identifier_quotes(&after_using[..end_index]).trim();
     (!module.is_empty()).then(|| module.to_ascii_lowercase())
-}
-
-fn strip_identifier_quotes(token: &str) -> &str {
-    if token.len() >= 2 {
-        if (token.starts_with('"') && token.ends_with('"'))
-            || (token.starts_with('`') && token.ends_with('`'))
-            || (token.starts_with('[') && token.ends_with(']'))
-        {
-            return &token[1..token.len() - 1];
-        }
-    }
-
-    token
 }
 
 async fn load_schema_version(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
@@ -443,5 +417,42 @@ mod tests {
             catalog.resolve_query_object("docs_rtree"),
             Err(DependencyResolutionError::UnsupportedObject { .. })
         ));
+    }
+
+    #[tokio::test]
+    async fn canonicalize_raw_tables_reloads_after_schema_changes() {
+        let db = hypr_db_core2::Db3::connect_memory_plain().await.unwrap();
+        sqlx::query("CREATE TABLE existing_notes (id TEXT PRIMARY KEY NOT NULL)")
+            .execute(db.pool().as_ref())
+            .await
+            .unwrap();
+
+        let store = CatalogStore::default();
+        let targets = store
+            .analyze_query(db.pool().as_ref(), "SELECT id FROM existing_notes")
+            .await
+            .unwrap();
+        assert_eq!(
+            targets,
+            HashSet::from([DependencyTarget::Table("existing_notes".to_string())])
+        );
+
+        sqlx::query("CREATE TABLE added_later (id TEXT PRIMARY KEY NOT NULL)")
+            .execute(db.pool().as_ref())
+            .await
+            .unwrap();
+
+        let targets = store
+            .canonicalize_raw_tables(
+                db.pool().as_ref(),
+                &HashSet::from(["added_later".to_string()]),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            targets,
+            HashSet::from([DependencyTarget::Table("added_later".to_string())])
+        );
     }
 }

@@ -8,8 +8,7 @@ pub async fn run_query(
     sql: &str,
     params: &[serde_json::Value],
 ) -> std::result::Result<Vec<serde_json::Value>, sqlx::Error> {
-    let query = bind_params(sqlx::query(sql), params);
-    let rows = query.fetch_all(db.pool().as_ref()).await?;
+    let rows = fetch_rows(db, sql, params).await?;
     Ok(rows.iter().map(row_to_json).collect())
 }
 
@@ -26,8 +25,7 @@ pub async fn run_query_proxy(
         return Ok(ProxyQueryResult { rows: Vec::new() });
     }
 
-    let query = bind_params(sqlx::query(sql), params);
-    let rows = query.fetch_all(db.pool().as_ref()).await?;
+    let rows = fetch_rows(db, sql, params).await?;
     let rows = match method {
         ProxyQueryMethod::Get => rows
             .first()
@@ -41,6 +39,16 @@ pub async fn run_query_proxy(
     };
 
     Ok(ProxyQueryResult { rows })
+}
+
+async fn fetch_rows(
+    db: &Db3,
+    sql: &str,
+    params: &[serde_json::Value],
+) -> std::result::Result<Vec<sqlx::sqlite::SqliteRow>, sqlx::Error> {
+    bind_params(sqlx::query(sql), params)
+        .fetch_all(db.pool().as_ref())
+        .await
 }
 
 fn row_to_json(row: &sqlx::sqlite::SqliteRow) -> serde_json::Value {
@@ -108,4 +116,113 @@ fn bind_params<'q>(
     }
 
     query
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    async fn test_db() -> hypr_db_core2::Db3 {
+        hypr_db_core2::Db3::connect_memory_plain().await.unwrap()
+    }
+
+    #[tokio::test]
+    async fn run_query_serializes_blob_null_and_boolean_values() {
+        let db = test_db().await;
+
+        sqlx::query(
+            "CREATE TABLE query_types (
+                id TEXT PRIMARY KEY NOT NULL,
+                payload BLOB,
+                enabled BOOLEAN,
+                note TEXT
+            )",
+        )
+        .execute(db.pool().as_ref())
+        .await
+        .unwrap();
+
+        sqlx::query("INSERT INTO query_types (id, payload, enabled, note) VALUES (?, ?, ?, ?)")
+            .bind("row-1")
+            .bind(vec![0_u8, 1_u8, 2_u8, 255_u8])
+            .bind(true)
+            .bind(Option::<String>::None)
+            .execute(db.pool().as_ref())
+            .await
+            .unwrap();
+
+        let rows = run_query(
+            &db,
+            "SELECT id, payload, enabled, note FROM query_types",
+            &[],
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            rows,
+            vec![json!({
+                "id": "row-1",
+                "payload": [0, 1, 2, 255],
+                "enabled": 1,
+                "note": serde_json::Value::Null,
+            })]
+        );
+    }
+
+    #[tokio::test]
+    async fn run_query_binds_object_and_array_params_as_json_strings() {
+        let db = test_db().await;
+        let object_payload = json!({ "kind": "object", "count": 2 });
+        let array_payload = json!(["a", "b"]);
+
+        let rows = run_query(
+            &db,
+            "SELECT ? AS object_payload, ? AS array_payload, ? AS null_payload",
+            &[
+                object_payload.clone(),
+                array_payload.clone(),
+                serde_json::Value::Null,
+            ],
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(rows.len(), 1);
+        let row = &rows[0];
+        assert_eq!(row["null_payload"], serde_json::Value::Null);
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(row["object_payload"].as_str().unwrap())
+                .unwrap(),
+            object_payload
+        );
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(row["array_payload"].as_str().unwrap())
+                .unwrap(),
+            array_payload
+        );
+    }
+
+    #[tokio::test]
+    async fn run_query_proxy_get_returns_empty_rows_when_query_is_empty() {
+        let db = test_db().await;
+
+        sqlx::query("CREATE TABLE proxy_values (id TEXT PRIMARY KEY NOT NULL)")
+            .execute(db.pool().as_ref())
+            .await
+            .unwrap();
+
+        let result = run_query_proxy(
+            &db,
+            "SELECT id FROM proxy_values WHERE id = ?",
+            &[json!("missing")],
+            ProxyQueryMethod::Get,
+        )
+        .await
+        .unwrap();
+
+        assert!(result.rows.is_empty());
+    }
 }

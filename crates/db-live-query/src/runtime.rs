@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 use tokio::sync::watch as tokio_watch;
 
-use hypr_db_core2::Db3;
+use hypr_db_core2::{Db3, TableChange};
 
 use crate::error::{Error, Result};
 use crate::query::{run_query, run_query_proxy};
@@ -14,6 +14,7 @@ use crate::types::{
     DependencyAnalysis, ProxyQueryMethod, ProxyQueryResult, QueryEventSink,
     SubscriptionRegistration,
 };
+use crate::watch::WatchId;
 
 pub struct DbRuntime<S> {
     db: Arc<Db3>,
@@ -42,62 +43,14 @@ impl<S: QueryEventSink> DbRuntime<S> {
                             break;
                         }
                     }
-                    change = change_rx.recv() => {
-                        let jobs = match change {
-                            Ok(first_change) => {
-                                let mut changed_tables = HashSet::from([first_change.table]);
-                                let mut trigger_seq = first_change.seq;
-                                let mut rerun_all = false;
-                                loop {
-                                    match change_rx.try_recv() {
-                                        Ok(next_change) => {
-                                            trigger_seq = trigger_seq.max(next_change.seq);
-                                            changed_tables.insert(next_change.table);
-                                        }
-                                        Err(TryRecvError::Empty) => break,
-                                        Err(TryRecvError::Closed) => break,
-                                        Err(TryRecvError::Lagged(_)) => {
-                                            rerun_all = true;
-                                        }
-                                    }
-                                }
-
-                                if rerun_all {
-                                    let trigger_seq =
-                                        dispatcher_db.pool().current_table_change_seq();
-                                    dispatcher_subscriptions.collect_all_jobs(trigger_seq).await
-                                } else {
-                                    match dispatcher_catalog
-                                        .canonicalize_raw_tables(
-                                            dispatcher_db.pool().as_ref(),
-                                            &changed_tables,
-                                        )
-                                        .await
-                                    {
-                                        Ok(changed_targets) => {
-                                            dispatcher_subscriptions
-                                                .collect_jobs(&changed_targets, trigger_seq)
-                                                .await
-                                        }
-                                        Err(_) => {
-                                            dispatcher_subscriptions
-                                                .collect_all_jobs(trigger_seq)
-                                                .await
-                                        }
-                                    }
-                                }
-                            }
-                            Err(RecvError::Closed) => break,
-                            Err(RecvError::Lagged(_)) => {
-                                loop {
-                                    match change_rx.try_recv() {
-                                        Ok(_) | Err(TryRecvError::Lagged(_)) => {}
-                                        Err(TryRecvError::Empty) | Err(TryRecvError::Closed) => break,
-                                    }
-                                }
-                                let trigger_seq = dispatcher_db.pool().current_table_change_seq();
-                                dispatcher_subscriptions.collect_all_jobs(trigger_seq).await
-                            }
+                    jobs = next_refresh_jobs(
+                        &mut change_rx,
+                        dispatcher_db.as_ref(),
+                        &dispatcher_catalog,
+                        &dispatcher_subscriptions,
+                    ) => {
+                        let Some(jobs) = jobs else {
+                            break;
                         };
                         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
                         if jobs.is_empty() {
@@ -150,63 +103,25 @@ impl<S: QueryEventSink> DbRuntime<S> {
         sink: S,
     ) -> Result<SubscriptionRegistration> {
         let baseline_seq = self.db.pool().current_table_change_seq();
-        let analysis = match self
-            .catalog
-            .analyze_query(self.db.pool().as_ref(), &sql)
-            .await
-        {
-            Ok(resolved) => DependencyAnalysis::Reactive {
-                targets: resolved.targets,
-            },
-            Err(error) => DependencyAnalysis::NonReactive {
-                reason: error.to_string(),
-            },
-        };
+        let analysis = self.analyze_subscription(&sql).await;
         let registered = self
             .subscriptions
             .register(sql.clone(), params.clone(), sink.clone(), analysis)
             .await;
         #[cfg(test)]
         test_support::before_initial_payload_load().await;
-        let initial_payload = QueryEventPayload::load(&self.db, &sql, &params).await;
-
-        let event_result = initial_payload.send_to(&sink);
-
-        if let Err(error) = event_result {
-            self.subscriptions
-                .unregister(&registered.registration.id)
-                .await;
-            return Err(Error::Sink(error));
-        }
-
-        if let Some(watch_id) = registered.reactive_watch_id {
-            let latest_dependency_seq = match &registered.registration.analysis {
-                DependencyAnalysis::Reactive { targets } => self
-                    .catalog
-                    .latest_dependency_seq(self.db.pool(), targets)
-                    .await
-                    .ok()
-                    .flatten()
-                    .unwrap_or(baseline_seq),
-                DependencyAnalysis::NonReactive { .. } => baseline_seq,
-            };
-            self.subscriptions
-                .activate(watch_id, latest_dependency_seq)
-                .await;
-            if latest_dependency_seq > baseline_seq {
-                self.subscriptions
-                    .refresh(
-                        &self.db,
-                        RefreshJob {
-                            watch_id,
-                            sql,
-                            params,
-                        },
-                        Some(&initial_payload),
-                    )
-                    .await;
-            }
-        }
+        let initial_payload = self
+            .deliver_initial_payload(&registered.registration.id, &sql, &params, &sink)
+            .await?;
+        self.activate_reactive_subscription(
+            baseline_seq,
+            registered.reactive_watch_id,
+            &registered.registration.analysis,
+            &initial_payload,
+            &sql,
+            &params,
+        )
+        .await;
 
         Ok(registered.registration)
     }
@@ -228,6 +143,179 @@ impl<S: QueryEventSink> DbRuntime<S> {
 
     pub fn db(&self) -> &Db3 {
         self.db.as_ref()
+    }
+
+    async fn analyze_subscription(&self, sql: &str) -> DependencyAnalysis {
+        match self
+            .catalog
+            .analyze_query(self.db.pool().as_ref(), sql)
+            .await
+        {
+            Ok(targets) => DependencyAnalysis::Reactive { targets },
+            Err(error) => DependencyAnalysis::NonReactive {
+                reason: error.to_string(),
+            },
+        }
+    }
+
+    async fn deliver_initial_payload(
+        &self,
+        subscription_id: &str,
+        sql: &str,
+        params: &[serde_json::Value],
+        sink: &S,
+    ) -> Result<QueryEventPayload> {
+        let initial_payload = QueryEventPayload::load(&self.db, sql, params).await;
+
+        if let Err(error) = initial_payload.send_to(sink) {
+            self.subscriptions.unregister(subscription_id).await;
+            return Err(Error::Sink(error));
+        }
+
+        Ok(initial_payload)
+    }
+
+    async fn activate_reactive_subscription(
+        &self,
+        baseline_seq: u64,
+        watch_id: Option<WatchId>,
+        analysis: &DependencyAnalysis,
+        initial_payload: &QueryEventPayload,
+        sql: &str,
+        params: &[serde_json::Value],
+    ) {
+        let Some(watch_id) = watch_id else {
+            return;
+        };
+
+        let latest_dependency_seq = match analysis {
+            DependencyAnalysis::Reactive { targets } => self
+                .catalog
+                .latest_dependency_seq(self.db.pool(), targets)
+                .await
+                .ok()
+                .flatten()
+                .unwrap_or(baseline_seq),
+            DependencyAnalysis::NonReactive { .. } => baseline_seq,
+        };
+
+        self.subscriptions
+            .activate(watch_id, latest_dependency_seq)
+            .await;
+
+        if latest_dependency_seq > baseline_seq {
+            self.subscriptions
+                .refresh(
+                    &self.db,
+                    RefreshJob {
+                        watch_id,
+                        sql: sql.to_string(),
+                        params: params.to_vec(),
+                    },
+                    Some(initial_payload),
+                )
+                .await;
+        }
+    }
+}
+
+enum ChangeBatch {
+    ChangedTables {
+        changed_tables: HashSet<String>,
+        trigger_seq: u64,
+    },
+    RerunAll {
+        trigger_seq: u64,
+    },
+}
+
+async fn next_refresh_jobs<S>(
+    change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>,
+    db: &Db3,
+    catalog: &CatalogStore,
+    subscriptions: &Registry<S>,
+) -> Option<Vec<RefreshJob>> {
+    let batch = receive_change_batch(change_rx, db).await?;
+    Some(collect_refresh_jobs(db, catalog, subscriptions, batch).await)
+}
+
+async fn receive_change_batch(
+    change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>,
+    db: &Db3,
+) -> Option<ChangeBatch> {
+    match change_rx.recv().await {
+        Ok(first_change) => Some(drain_buffered_changes(change_rx, db, first_change)),
+        Err(RecvError::Closed) => None,
+        Err(RecvError::Lagged(_)) => Some(rerun_all_batch(change_rx, db)),
+    }
+}
+
+fn drain_buffered_changes(
+    change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>,
+    db: &Db3,
+    first_change: TableChange,
+) -> ChangeBatch {
+    let mut changed_tables = HashSet::from([first_change.table]);
+    let mut trigger_seq = first_change.seq;
+
+    loop {
+        match change_rx.try_recv() {
+            Ok(next_change) => {
+                trigger_seq = trigger_seq.max(next_change.seq);
+                changed_tables.insert(next_change.table);
+            }
+            Err(TryRecvError::Empty) | Err(TryRecvError::Closed) => {
+                return ChangeBatch::ChangedTables {
+                    changed_tables,
+                    trigger_seq,
+                };
+            }
+            Err(TryRecvError::Lagged(_)) => return rerun_all_batch(change_rx, db),
+        }
+    }
+}
+
+fn rerun_all_batch(
+    change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>,
+    db: &Db3,
+) -> ChangeBatch {
+    clear_lagged_changes(change_rx);
+    ChangeBatch::RerunAll {
+        trigger_seq: db.pool().current_table_change_seq(),
+    }
+}
+
+fn clear_lagged_changes(change_rx: &mut tokio::sync::broadcast::Receiver<TableChange>) {
+    loop {
+        match change_rx.try_recv() {
+            Ok(_) | Err(TryRecvError::Lagged(_)) => {}
+            Err(TryRecvError::Empty) | Err(TryRecvError::Closed) => break,
+        }
+    }
+}
+
+async fn collect_refresh_jobs<S>(
+    db: &Db3,
+    catalog: &CatalogStore,
+    subscriptions: &Registry<S>,
+    batch: ChangeBatch,
+) -> Vec<RefreshJob> {
+    match batch {
+        ChangeBatch::ChangedTables {
+            changed_tables,
+            trigger_seq,
+        } => match catalog
+            .canonicalize_raw_tables(db.pool().as_ref(), &changed_tables)
+            .await
+        {
+            Ok(changed_targets) => {
+                subscriptions
+                    .collect_jobs(&changed_targets, trigger_seq)
+                    .await
+            }
+            Err(_) => subscriptions.collect_all_jobs(trigger_seq).await,
+        },
+        ChangeBatch::RerunAll { trigger_seq } => subscriptions.collect_all_jobs(trigger_seq).await,
     }
 }
 
@@ -363,28 +451,7 @@ mod tests {
         &[hypr_db_migrate::MigrationStep {
             id: "20260415000000_live_query_test_schema",
             scope: hypr_db_migrate::MigrationScope::Plain,
-            sql: r#"
-CREATE TABLE daily_notes (
-    id TEXT PRIMARY KEY NOT NULL,
-    date TEXT NOT NULL,
-    body TEXT NOT NULL,
-    user_id TEXT NOT NULL
-);
-
-CREATE TABLE daily_summaries (
-    id TEXT PRIMARY KEY NOT NULL,
-    daily_note_id TEXT NOT NULL,
-    date TEXT NOT NULL,
-    content TEXT NOT NULL,
-    timeline_json TEXT NOT NULL,
-    topics_json TEXT NOT NULL,
-    status TEXT NOT NULL,
-    source_cursor_ms INTEGER NOT NULL,
-    source_fingerprint TEXT NOT NULL,
-    generation_error TEXT NOT NULL,
-    generated_at TEXT NOT NULL
-);
-        "#,
+            sql: include_str!("../tests/common/live_query_test_schema.sql"),
         }];
 
     fn live_query_test_schema() -> hypr_db_migrate::DbSchema {
