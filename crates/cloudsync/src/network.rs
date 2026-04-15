@@ -2,6 +2,40 @@ use sqlx::SqlitePool;
 
 use crate::error::Error;
 
+async fn query_with_optional_params(
+    pool: &SqlitePool,
+    fn_name: &str,
+    wait_ms: Option<i64>,
+    max_retries: Option<i64>,
+) -> Result<i64, Error> {
+    Ok(match (wait_ms, max_retries) {
+        (None, None) => {
+            sqlx::query_scalar(&format!("SELECT {fn_name}()"))
+                .fetch_one(pool)
+                .await?
+        }
+        (Some(wait_ms), None) => {
+            sqlx::query_scalar(&format!("SELECT {fn_name}(?)"))
+                .bind(wait_ms)
+                .fetch_one(pool)
+                .await?
+        }
+        (None, Some(max_retries)) => {
+            sqlx::query_scalar(&format!("SELECT {fn_name}(NULL, ?)"))
+                .bind(max_retries)
+                .fetch_one(pool)
+                .await?
+        }
+        (Some(wait_ms), Some(max_retries)) => {
+            sqlx::query_scalar(&format!("SELECT {fn_name}(?, ?)"))
+                .bind(wait_ms)
+                .bind(max_retries)
+                .fetch_one(pool)
+                .await?
+        }
+    })
+}
+
 /// https://docs.sqlitecloud.io/docs/sqlite-sync-api-cloudsync-network-init
 pub async fn network_init(pool: &SqlitePool, connection_string: &str) -> Result<(), Error> {
     sqlx::query("SELECT cloudsync_network_init(?)")
@@ -56,32 +90,7 @@ pub async fn network_send_changes(
     wait_ms: Option<i64>,
     max_retries: Option<i64>,
 ) -> Result<i64, Error> {
-    Ok(match (wait_ms, max_retries) {
-        (None, None) => {
-            sqlx::query_scalar("SELECT cloudsync_network_send_changes()")
-                .fetch_one(pool)
-                .await?
-        }
-        (Some(wait_ms), None) => {
-            sqlx::query_scalar("SELECT cloudsync_network_send_changes(?)")
-                .bind(wait_ms)
-                .fetch_one(pool)
-                .await?
-        }
-        (None, Some(max_retries)) => {
-            sqlx::query_scalar("SELECT cloudsync_network_send_changes(NULL, ?)")
-                .bind(max_retries)
-                .fetch_one(pool)
-                .await?
-        }
-        (Some(wait_ms), Some(max_retries)) => {
-            sqlx::query_scalar("SELECT cloudsync_network_send_changes(?, ?)")
-                .bind(wait_ms)
-                .bind(max_retries)
-                .fetch_one(pool)
-                .await?
-        }
-    })
+    query_with_optional_params(pool, "cloudsync_network_send_changes", wait_ms, max_retries).await
 }
 
 /// https://docs.sqlitecloud.io/docs/sqlite-sync-api-cloudsync-network-check-changes
@@ -90,32 +99,13 @@ pub async fn network_check_changes(
     wait_ms: Option<i64>,
     max_retries: Option<i64>,
 ) -> Result<i64, Error> {
-    Ok(match (wait_ms, max_retries) {
-        (None, None) => {
-            sqlx::query_scalar("SELECT cloudsync_network_check_changes()")
-                .fetch_one(pool)
-                .await?
-        }
-        (Some(wait_ms), None) => {
-            sqlx::query_scalar("SELECT cloudsync_network_check_changes(?)")
-                .bind(wait_ms)
-                .fetch_one(pool)
-                .await?
-        }
-        (None, Some(max_retries)) => {
-            sqlx::query_scalar("SELECT cloudsync_network_check_changes(NULL, ?)")
-                .bind(max_retries)
-                .fetch_one(pool)
-                .await?
-        }
-        (Some(wait_ms), Some(max_retries)) => {
-            sqlx::query_scalar("SELECT cloudsync_network_check_changes(?, ?)")
-                .bind(wait_ms)
-                .bind(max_retries)
-                .fetch_one(pool)
-                .await?
-        }
-    })
+    query_with_optional_params(
+        pool,
+        "cloudsync_network_check_changes",
+        wait_ms,
+        max_retries,
+    )
+    .await
 }
 
 /// https://docs.sqlitecloud.io/docs/sqlite-sync-api-cloudsync-network-reset-sync-version
@@ -142,30 +132,5 @@ pub async fn network_sync(
     wait_ms: Option<i64>,
     max_retries: Option<i64>,
 ) -> Result<i64, Error> {
-    Ok(match (wait_ms, max_retries) {
-        (None, None) => {
-            sqlx::query_scalar("SELECT cloudsync_network_sync()")
-                .fetch_one(pool)
-                .await?
-        }
-        (Some(wait_ms), None) => {
-            sqlx::query_scalar("SELECT cloudsync_network_sync(?)")
-                .bind(wait_ms)
-                .fetch_one(pool)
-                .await?
-        }
-        (None, Some(max_retries)) => {
-            sqlx::query_scalar("SELECT cloudsync_network_sync(NULL, ?)")
-                .bind(max_retries)
-                .fetch_one(pool)
-                .await?
-        }
-        (Some(wait_ms), Some(max_retries)) => {
-            sqlx::query_scalar("SELECT cloudsync_network_sync(?, ?)")
-                .bind(wait_ms)
-                .bind(max_retries)
-                .fetch_one(pool)
-                .await?
-        }
-    })
+    query_with_optional_params(pool, "cloudsync_network_sync", wait_ms, max_retries).await
 }

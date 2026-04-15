@@ -1,0 +1,13 @@
+mod ops;
+mod runtime;
+mod state;
+mod types;
+
+pub use ops::{cloudsync_begin_alter_on, cloudsync_commit_alter_on};
+#[cfg(test)]
+pub(crate) use state::CloudsyncBackgroundTask;
+pub(crate) use state::CloudsyncRuntimeState;
+pub use types::{
+    CloudsyncAuth, CloudsyncRuntimeConfig, CloudsyncRuntimeError, CloudsyncStatus,
+    CloudsyncTableSpec,
+};
