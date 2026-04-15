@@ -4,45 +4,6 @@
 
 ## Tables
 
-### `daily_notes`
-
-One row per user per date for the canonical daily note/editor document.
-
-Columns:
-- `id`
-- `date`
-- `body`
-- `user_id`
-- `visibility`
-- `created_at`
-- `updated_at`
-
-Unique:
-- `(date, user_id)`
-
-### `daily_summaries`
-
-One derived summary artifact per daily note. This is what the daily summary UI
-should render.
-
-Columns:
-- `id`
-- `daily_note_id`
-- `date`
-- `content`
-- `timeline_json`
-- `topics_json`
-- `status`
-- `source_cursor_ms`
-- `source_fingerprint`
-- `generation_error`
-- `generated_at`
-- `created_at`
-- `updated_at`
-
-Unique:
-- `daily_note_id`
-
 ### `templates`
 
 User-authored note templates mirrored into the desktop SQLite database.
@@ -62,21 +23,53 @@ Columns:
 Unique:
 - `id`
 
-### `activity_observation_events`
+### `calendars`
 
-Raw observation lifecycle events emitted by activity capture.
+Connected calendar metadata cached in the desktop SQLite database.
 
-### `activity_screenshots`
+Columns:
+- `id`
+- `tracking_id_calendar`
+- `name`
+- `enabled`
+- `provider`
+- `source`
+- `color`
+- `connection_id`
+- `created_at`
+- `updated_at`
 
-Captured screenshots plus blob payloads and snapshot metadata.
+Unique:
+- `id`
 
-### `activity_observation_analyses`
+### `events`
 
-Per-screenshot analysis output used to build higher-level summaries.
+Calendar events mirrored into the desktop SQLite database.
+
+Columns:
+- `id`
+- `tracking_id_event`
+- `calendar_id`
+- `title`
+- `started_at`
+- `ended_at`
+- `location`
+- `meeting_link`
+- `description`
+- `note`
+- `recurrence_series_id`
+- `has_recurrence_rules`
+- `is_all_day`
+- `provider`
+- `participants_json`
+- `created_at`
+- `updated_at`
+
+Unique:
+- `id`
 
 ## Model
 
-- `daily_notes` is user-authored canonical content.
-- `daily_summaries` is machine-generated durable output.
 - `templates` is the durable local store for user templates.
-- Activity capture tables are append-heavy local telemetry owned by the desktop app.
+- `calendars` stores synced calendar metadata for local app reads.
+- `events` stores synced calendar events for local app reads.
