@@ -82,14 +82,14 @@ mod tests {
         hypr_db_migrate::migrate(&db, schema()).await.unwrap();
 
         let tables: Vec<String> = sqlx::query_scalar(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_sqlx%' ORDER BY name",
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
         )
         .fetch_all(db.pool().as_ref())
         .await
         .unwrap();
 
         assert!(tables.contains(&"templates".to_string()));
-        assert!(tables.contains(&"_char_migrations".to_string()));
+        assert!(tables.contains(&"_sqlx_migrations".to_string()));
     }
 
     #[tokio::test]
@@ -97,7 +97,7 @@ mod tests {
         let db = test_db().await;
 
         let tables: Vec<String> = sqlx::query_as::<_, (String,)>(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_sqlx%' ORDER BY name",
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
         )
         .fetch_all(db.pool().as_ref())
         .await
@@ -108,7 +108,7 @@ mod tests {
 
         assert_eq!(
             tables,
-            vec!["_char_migrations", "calendars", "events", "templates"]
+            vec!["_sqlx_migrations", "calendars", "events", "templates"]
         );
     }
 

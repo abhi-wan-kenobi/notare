@@ -177,13 +177,12 @@ async fn connect_with_options(options: &DbOpenOptions<'_>) -> Result<Db3, DbOpen
         connect_options = connect_options.pragma("foreign_keys", "ON");
     }
 
-    let (connect_options, cloudsync_path) =
-        if options.cloudsync_enabled {
-            let (connect_options, cloudsync_path) = hypr_cloudsync::apply(connect_options)?;
-            (connect_options, Some(cloudsync_path))
-        } else {
-            (connect_options, None)
-        };
+    let (connect_options, cloudsync_path) = if options.cloudsync_enabled {
+        let (connect_options, cloudsync_path) = hypr_cloudsync::apply(connect_options)?;
+        (connect_options, Some(cloudsync_path))
+    } else {
+        (connect_options, None)
+    };
 
     let max_connections = match options.storage {
         DbStorage::Memory => Some(1),

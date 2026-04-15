@@ -124,9 +124,46 @@ pub(crate) fn build_alias_map(
 mod tests {
     use super::*;
 
+    const LIVE_QUERY_TEST_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] =
+        &[hypr_db_migrate::MigrationStep {
+            id: "20260415000000_live_query_test_schema",
+            scope: hypr_db_migrate::MigrationScope::Plain,
+            sql: r#"
+CREATE TABLE daily_notes (
+    id TEXT PRIMARY KEY NOT NULL,
+    date TEXT NOT NULL,
+    body TEXT NOT NULL,
+    user_id TEXT NOT NULL
+);
+
+CREATE TABLE daily_summaries (
+    id TEXT PRIMARY KEY NOT NULL,
+    daily_note_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    content TEXT NOT NULL,
+    timeline_json TEXT NOT NULL,
+    topics_json TEXT NOT NULL,
+    status TEXT NOT NULL,
+    source_cursor_ms INTEGER NOT NULL,
+    source_fingerprint TEXT NOT NULL,
+    generation_error TEXT NOT NULL,
+    generated_at TEXT NOT NULL
+);
+        "#,
+        }];
+
+    fn live_query_test_schema() -> hypr_db_migrate::DbSchema {
+        hypr_db_migrate::DbSchema {
+            steps: LIVE_QUERY_TEST_MIGRATION_STEPS,
+            validate_cloudsync_table: |_| false,
+        }
+    }
+
     async fn test_db() -> hypr_db_core2::Db3 {
         let db = hypr_db_core2::Db3::connect_memory_plain().await.unwrap();
-        hypr_db_app::migrate(db.pool()).await.unwrap();
+        hypr_db_migrate::migrate(&db, live_query_test_schema())
+            .await
+            .unwrap();
         db
     }
 

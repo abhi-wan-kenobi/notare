@@ -166,6 +166,71 @@ async fn execute_binds_params_and_serializes_rows() {
 }
 
 #[tokio::test]
+async fn execute_proxy_supports_run_all_get_values_and_invalid_method() {
+    let (_dir, pool, runtime) = setup_runtime().await;
+
+    sqlx::query(
+        "CREATE TABLE proxy_values (
+                id TEXT PRIMARY KEY NOT NULL,
+                visits INTEGER NOT NULL
+            )",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let inserted = runtime
+        .execute_proxy(
+            "INSERT INTO proxy_values (id, visits) VALUES (?, ?)".to_string(),
+            vec![json!("row-1"), json!(42)],
+            "run".to_string(),
+        )
+        .await
+        .unwrap();
+    assert!(inserted.rows.is_empty());
+
+    let all_rows = runtime
+        .execute_proxy(
+            "SELECT id, visits FROM proxy_values ORDER BY id".to_string(),
+            vec![],
+            "all".to_string(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(all_rows.rows, vec![json!(["row-1", 42])]);
+
+    let first_row = runtime
+        .execute_proxy(
+            "SELECT id, visits FROM proxy_values ORDER BY id".to_string(),
+            vec![],
+            "get".to_string(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(first_row.rows, vec![json!("row-1"), json!(42)]);
+
+    let values_rows = runtime
+        .execute_proxy(
+            "SELECT id, visits FROM proxy_values ORDER BY id".to_string(),
+            vec![],
+            "values".to_string(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(values_rows.rows, vec![json!(["row-1", 42])]);
+
+    let error = runtime
+        .execute_proxy(
+            "SELECT id FROM proxy_values".to_string(),
+            vec![],
+            "bogus".to_string(),
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(error, Error::InvalidQueryMethod(method) if method == "bogus"));
+}
+
+#[tokio::test]
 async fn dependent_writes_trigger_refresh() {
     let (_dir, pool, runtime) = setup_runtime().await;
     let (sink, events) = TestSink::capture();
@@ -199,6 +264,59 @@ async fn dependent_writes_trigger_refresh() {
         panic!("expected result event");
     };
     assert_eq!(rows.len(), 1);
+}
+
+#[tokio::test]
+async fn view_subscriptions_refresh_after_base_table_writes() {
+    let (_dir, pool, runtime) = setup_runtime().await;
+    let (sink, events) = TestSink::capture();
+
+    sqlx::query("CREATE TABLE view_notes (id TEXT PRIMARY KEY NOT NULL, body TEXT NOT NULL)")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("CREATE VIEW view_notes_live AS SELECT id, body FROM view_notes")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let registration = runtime
+        .subscribe(
+            "SELECT id FROM view_notes_live WHERE body IS NOT NULL ORDER BY id".to_string(),
+            vec![],
+            sink,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(
+        registration.analysis,
+        DependencyAnalysis::Reactive {
+            targets: std::collections::HashSet::from([DependencyTarget::Table(
+                "view_notes".to_string(),
+            )]),
+        }
+    );
+
+    let initial = next_event(&events, 0, Duration::from_secs(1))
+        .await
+        .unwrap();
+    assert_eq!(initial, TestEvent::Result(Vec::new()));
+
+    sqlx::query("INSERT INTO view_notes (id, body) VALUES (?, ?)")
+        .bind("view-note-1")
+        .bind("hello from view")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let refresh = next_event(&events, 1, Duration::from_secs(1))
+        .await
+        .unwrap();
+    let TestEvent::Result(rows) = refresh else {
+        panic!("expected result event");
+    };
+    assert_eq!(rows, vec![json!({ "id": "view-note-1" })]);
 }
 
 #[tokio::test]
@@ -393,6 +511,53 @@ async fn fts_match_subscriptions_refresh_after_writes() {
     sqlx::query("INSERT INTO docs_fts (title, body) VALUES (?, ?)")
         .bind("hello world")
         .bind("greetings from fts")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let refresh = next_event(&events, 1, Duration::from_secs(1))
+        .await
+        .unwrap();
+    let TestEvent::Result(rows) = refresh else {
+        panic!("expected result event");
+    };
+    assert_eq!(rows, vec![json!({ "title": "hello world" })]);
+}
+
+#[tokio::test]
+async fn fts_shadow_table_changes_refresh_virtual_subscriptions() {
+    let (_dir, pool, runtime) = setup_runtime().await;
+    let (sink, events) = TestSink::capture();
+
+    sqlx::query("CREATE VIRTUAL TABLE docs_fts USING fts5(title, body)")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO docs_fts (title, body) VALUES (?, ?)")
+        .bind("hello world")
+        .bind("shadow table refresh")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    runtime
+        .subscribe(
+            "SELECT title FROM docs_fts WHERE docs_fts MATCH ? ORDER BY rowid".to_string(),
+            vec![json!("hello")],
+            sink,
+        )
+        .await
+        .unwrap();
+
+    let initial = next_event(&events, 0, Duration::from_secs(1))
+        .await
+        .unwrap();
+    assert_eq!(
+        initial,
+        TestEvent::Result(vec![json!({ "title": "hello world" })])
+    );
+
+    sqlx::query("INSERT INTO docs_fts(docs_fts) VALUES('rebuild')")
         .execute(&pool)
         .await
         .unwrap();

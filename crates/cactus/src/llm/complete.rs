@@ -49,7 +49,15 @@ unsafe extern "C" fn token_trampoline<F: FnMut(&str) -> bool>(
 }
 
 pub(super) fn complete_error(rc: i32) -> Error {
-    Error::Inference(format!("cactus_complete failed ({rc})"))
+    let detail = crate::health::ffi_last_error()
+        .or_else(crate::health::latest_error)
+        .unwrap_or_default();
+
+    if detail.is_empty() {
+        Error::Inference(format!("cactus_complete failed ({rc})"))
+    } else {
+        Error::Inference(format!("cactus_complete failed ({rc}): {detail}"))
+    }
 }
 
 pub fn complete(

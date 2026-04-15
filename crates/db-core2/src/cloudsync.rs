@@ -10,7 +10,6 @@ use tokio::task::JoinHandle;
 use crate::Db3;
 use crate::pool::TableChange;
 
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum CloudsyncAuth {
@@ -334,12 +333,11 @@ impl Db3 {
             )
         };
 
-        let has_unsent_changes =
-            if self.cloudsync_enabled && network_initialized {
-                Some(self.cloudsync_network_has_unsent_changes().await?)
-            } else {
-                None
-            };
+        let has_unsent_changes = if self.cloudsync_enabled && network_initialized {
+            Some(self.cloudsync_network_has_unsent_changes().await?)
+        } else {
+            None
+        };
 
         Ok(CloudsyncStatus {
             cloudsync_enabled: self.cloudsync_enabled,
