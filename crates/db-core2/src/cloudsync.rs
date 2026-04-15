@@ -3,19 +3,13 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use backon::{ExponentialBuilder, Retryable};
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
+use sqlx::{Executor, Sqlite, SqlitePool};
 use tokio::sync::{broadcast, oneshot};
 use tokio::task::JoinHandle;
 
 use crate::Db3;
 use crate::pool::TableChange;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum CloudsyncOpenMode {
-    Disabled,
-    Enabled,
-}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -53,7 +47,7 @@ pub enum CloudsyncErrorKind {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CloudsyncStatus {
-    pub open_mode: CloudsyncOpenMode,
+    pub cloudsync_enabled: bool,
     pub extension_loaded: bool,
     pub configured: bool,
     pub running: bool,
@@ -72,6 +66,8 @@ pub enum CloudsyncRuntimeError {
     NotConfigured,
     #[error("cloudsync runtime is not started")]
     NotStarted,
+    #[error("cloudsync runtime is running; stop it first or use cloudsync_reconfigure")]
+    RestartRequired,
     #[error("cloudsync sync interval must be greater than 0")]
     InvalidSyncInterval,
     #[error(transparent)]
@@ -163,8 +159,8 @@ impl std::fmt::Debug for CloudsyncBackgroundTask {
 }
 
 impl Db3 {
-    pub fn cloudsync_open_mode(&self) -> CloudsyncOpenMode {
-        self.cloudsync_open_mode
+    pub fn cloudsync_enabled(&self) -> bool {
+        self.cloudsync_enabled
     }
 
     pub fn has_cloudsync(&self) -> bool {
@@ -186,13 +182,35 @@ impl Db3 {
         config: CloudsyncRuntimeConfig,
     ) -> Result<(), CloudsyncRuntimeError> {
         let mut runtime = self.cloudsync_runtime.lock().unwrap();
+        if runtime.running {
+            return Err(CloudsyncRuntimeError::RestartRequired);
+        }
         runtime.config = Some(config.normalized()?);
         runtime.last_error = None;
         Ok(())
     }
 
+    pub async fn cloudsync_reconfigure(
+        &self,
+        config: CloudsyncRuntimeConfig,
+    ) -> Result<(), CloudsyncRuntimeError> {
+        let was_running = self.cloudsync_runtime.lock().unwrap().running;
+
+        if was_running {
+            self.cloudsync_stop().await?;
+        }
+
+        self.cloudsync_configure(config)?;
+
+        if was_running {
+            self.cloudsync_start().await?;
+        }
+
+        Ok(())
+    }
+
     pub async fn cloudsync_start(&self) -> Result<(), CloudsyncRuntimeError> {
-        if self.cloudsync_open_mode == CloudsyncOpenMode::Disabled {
+        if !self.cloudsync_enabled {
             let mut runtime = self.cloudsync_runtime.lock().unwrap();
             runtime.running = false;
             runtime.network_initialized = false;
@@ -270,7 +288,7 @@ impl Db3 {
             let _ = task.join_handle.await;
         }
 
-        if self.cloudsync_open_mode == CloudsyncOpenMode::Disabled {
+        if !self.cloudsync_enabled {
             let mut runtime = self.cloudsync_runtime.lock().unwrap();
             runtime.network_initialized = false;
             runtime.last_error = None;
@@ -317,14 +335,14 @@ impl Db3 {
         };
 
         let has_unsent_changes =
-            if self.cloudsync_open_mode == CloudsyncOpenMode::Enabled && network_initialized {
+            if self.cloudsync_enabled && network_initialized {
                 Some(self.cloudsync_network_has_unsent_changes().await?)
             } else {
                 None
             };
 
         Ok(CloudsyncStatus {
-            open_mode: self.cloudsync_open_mode,
+            cloudsync_enabled: self.cloudsync_enabled,
             extension_loaded: self.has_cloudsync(),
             configured: config.is_some(),
             running,
@@ -339,7 +357,7 @@ impl Db3 {
     }
 
     pub async fn cloudsync_trigger_sync(&self) -> Result<i64, CloudsyncRuntimeError> {
-        if self.cloudsync_open_mode == CloudsyncOpenMode::Disabled {
+        if !self.cloudsync_enabled {
             let mut runtime = self.cloudsync_runtime.lock().unwrap();
             runtime.last_error = None;
             return Ok(0);
@@ -404,14 +422,14 @@ impl Db3 {
         &self,
         table_name: &str,
     ) -> Result<(), hypr_cloudsync::Error> {
-        hypr_cloudsync::begin_alter(self.pool.as_ref(), table_name).await
+        cloudsync_begin_alter_on(self.pool.as_ref(), table_name).await
     }
 
     pub async fn cloudsync_commit_alter(
         &self,
         table_name: &str,
     ) -> Result<(), hypr_cloudsync::Error> {
-        hypr_cloudsync::commit_alter(self.pool.as_ref(), table_name).await
+        cloudsync_commit_alter_on(self.pool.as_ref(), table_name).await
     }
 
     pub async fn cloudsync_cleanup(&self, table_name: &str) -> Result<(), hypr_cloudsync::Error> {
@@ -483,6 +501,26 @@ impl Db3 {
         runtime.last_error_kind = None;
         runtime.consecutive_failures = 0;
     }
+}
+
+pub async fn cloudsync_begin_alter_on<'e, E>(
+    executor: E,
+    table_name: &str,
+) -> Result<(), hypr_cloudsync::Error>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    hypr_cloudsync::begin_alter(executor, table_name).await
+}
+
+pub async fn cloudsync_commit_alter_on<'e, E>(
+    executor: E,
+    table_name: &str,
+) -> Result<(), hypr_cloudsync::Error>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    hypr_cloudsync::commit_alter(executor, table_name).await
 }
 
 const MAX_BACKOFF_SECS: u64 = 300;
