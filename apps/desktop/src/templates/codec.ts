@@ -22,99 +22,23 @@ function parseJsonText(value: string, context: string): unknown {
   }
 }
 
-export function assertCanonicalTemplateSections(
+function validateSections(
   value: unknown,
   context: string,
+  {
+    allowBareStrings,
+    requireDescription,
+  }: {
+    allowBareStrings: boolean;
+    requireDescription: boolean;
+  },
 ): TemplateSection[] {
   if (!Array.isArray(value)) {
     return templateDataError(context, "sections must be an array");
   }
 
   return value.map((section, index) => {
-    if (!section || typeof section !== "object") {
-      return templateDataError(
-        context,
-        `sections[${index}] must be an object with title and description`,
-      );
-    }
-
-    const next = section as Record<string, unknown>;
-    if (typeof next.title !== "string") {
-      return templateDataError(
-        context,
-        `sections[${index}].title must be a string`,
-      );
-    }
-
-    if (typeof next.description !== "string") {
-      return templateDataError(
-        context,
-        `sections[${index}].description must be a string`,
-      );
-    }
-
-    return {
-      title: next.title,
-      description: next.description,
-    };
-  });
-}
-
-export function assertCanonicalTemplateTargets(
-  value: unknown,
-  context: string,
-): string[] | undefined {
-  if (value === null || value === undefined) {
-    return undefined;
-  }
-
-  if (!Array.isArray(value)) {
-    return templateDataError(context, "targets must be an array of strings");
-  }
-
-  return value.map((target, index) => {
-    if (typeof target !== "string") {
-      return templateDataError(context, `targets[${index}] must be a string`);
-    }
-
-    return target;
-  });
-}
-
-export function parseStoredTemplateSections(
-  value: unknown,
-  templateId: string,
-): TemplateSection[] {
-  const context = `template ${templateId} sections_json`;
-  const parsed =
-    typeof value === "string" ? parseJsonText(value, context) : value;
-  return normalizeStoredTemplateSections(parsed, context);
-}
-
-export function parseStoredTemplateTargets(
-  value: unknown,
-  templateId: string,
-): string[] | undefined {
-  if (value === null || value === undefined) {
-    return undefined;
-  }
-
-  const context = `template ${templateId} targets_json`;
-  const parsed =
-    typeof value === "string" ? parseJsonText(value, context) : value;
-  return normalizeStoredTemplateTargets(parsed, context);
-}
-
-function normalizeStoredTemplateSections(
-  value: unknown,
-  context: string,
-): TemplateSection[] {
-  if (!Array.isArray(value)) {
-    return templateDataError(context, "sections must be an array");
-  }
-
-  return value.map((section, index) => {
-    if (typeof section === "string") {
+    if (allowBareStrings && typeof section === "string") {
       const title = section.trim();
       if (!title) {
         return templateDataError(
@@ -122,7 +46,6 @@ function normalizeStoredTemplateSections(
           `sections[${index}] must not be an empty string`,
         );
       }
-
       return { title, description: "" };
     }
 
@@ -134,6 +57,23 @@ function normalizeStoredTemplateSections(
     }
 
     const next = section as Record<string, unknown>;
+
+    if (requireDescription) {
+      if (typeof next.title !== "string") {
+        return templateDataError(
+          context,
+          `sections[${index}].title must be a string`,
+        );
+      }
+      if (typeof next.description !== "string") {
+        return templateDataError(
+          context,
+          `sections[${index}].description must be a string`,
+        );
+      }
+      return { title: next.title, description: next.description };
+    }
+
     if (typeof next.title !== "string" || !next.title.trim()) {
       return templateDataError(
         context,
@@ -152,21 +92,22 @@ function normalizeStoredTemplateSections(
     }
 
     return {
-      title: next.title.trim(),
+      title: allowBareStrings ? next.title.trim() : next.title,
       description: typeof next.description === "string" ? next.description : "",
     };
   });
 }
 
-function normalizeStoredTemplateTargets(
+function validateTargets(
   value: unknown,
   context: string,
+  { lenient }: { lenient: boolean },
 ): string[] | undefined {
   if (value === null || value === undefined) {
     return undefined;
   }
 
-  if (typeof value === "string") {
+  if (lenient && typeof value === "string") {
     const target = value.trim();
     return target ? [target] : undefined;
   }
@@ -175,16 +116,67 @@ function normalizeStoredTemplateTargets(
     return templateDataError(context, "targets must be an array of strings");
   }
 
-  const targets = value.flatMap((target, index) => {
+  if (lenient) {
+    const targets = value.flatMap((target, index) => {
+      if (typeof target !== "string") {
+        return templateDataError(context, `targets[${index}] must be a string`);
+      }
+      const trimmed = target.trim();
+      return trimmed ? [trimmed] : [];
+    });
+    return targets.length > 0 ? targets : undefined;
+  }
+
+  return value.map((target, index) => {
     if (typeof target !== "string") {
       return templateDataError(context, `targets[${index}] must be a string`);
     }
-
-    const trimmed = target.trim();
-    return trimmed ? [trimmed] : [];
+    return target;
   });
+}
 
-  return targets.length > 0 ? targets : undefined;
+export function assertCanonicalTemplateSections(
+  value: unknown,
+  context: string,
+): TemplateSection[] {
+  return validateSections(value, context, {
+    allowBareStrings: false,
+    requireDescription: true,
+  });
+}
+
+export function assertCanonicalTemplateTargets(
+  value: unknown,
+  context: string,
+): string[] | undefined {
+  return validateTargets(value, context, { lenient: false });
+}
+
+export function parseStoredTemplateSections(
+  value: unknown,
+  templateId: string,
+): TemplateSection[] {
+  const context = `template ${templateId} sections_json`;
+  const parsed =
+    typeof value === "string" ? parseJsonText(value, context) : value;
+  return validateSections(parsed, context, {
+    allowBareStrings: true,
+    requireDescription: false,
+  });
+}
+
+export function parseStoredTemplateTargets(
+  value: unknown,
+  templateId: string,
+): string[] | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  const context = `template ${templateId} targets_json`;
+  const parsed =
+    typeof value === "string" ? parseJsonText(value, context) : value;
+  return validateTargets(parsed, context, { lenient: true });
 }
 
 export function parseWebTemplates(
@@ -220,51 +212,15 @@ function parseWebTemplate(
     description:
       typeof template.description === "string" ? template.description : "",
     category: typeof template.category === "string" ? template.category : "",
-    targets: assertCanonicalTemplateTargets(
+    targets: validateTargets(
       template.targets ?? undefined,
       `web template ${template.title} targets`,
+      { lenient: true },
     ),
-    sections: parseWebTemplateSections(
+    sections: validateSections(
       template.sections,
       `web template ${template.title} sections`,
+      { allowBareStrings: false, requireDescription: false },
     ),
   };
-}
-
-function parseWebTemplateSections(
-  value: unknown,
-  context: string,
-): TemplateSection[] {
-  if (!Array.isArray(value)) {
-    return templateDataError(context, "sections must be an array");
-  }
-
-  return value.map((section, index) => {
-    if (!section || typeof section !== "object") {
-      return templateDataError(context, `sections[${index}] must be an object`);
-    }
-
-    const next = section as Record<string, unknown>;
-    if (typeof next.title !== "string" || !next.title.trim()) {
-      return templateDataError(
-        context,
-        `sections[${index}].title must be a non-empty string`,
-      );
-    }
-
-    if (
-      next.description !== undefined &&
-      typeof next.description !== "string"
-    ) {
-      return templateDataError(
-        context,
-        `sections[${index}].description must be a string when present`,
-      );
-    }
-
-    return {
-      title: next.title,
-      description: typeof next.description === "string" ? next.description : "",
-    };
-  });
 }

@@ -15,7 +15,6 @@ import { Input } from "@hypr/ui/components/ui/input";
 import { Textarea } from "@hypr/ui/components/ui/textarea";
 import { cn } from "@hypr/utils";
 
-import { TemplateDetailScrollArea } from "./detail-scroll-area";
 import {
   type UserTemplate,
   useSaveTemplate,
@@ -344,17 +343,19 @@ export function TemplateForm({
         </div>
       </div>
 
-      <TemplateDetailScrollArea>
-        <form.Field name="sections">
-          {(field) => (
-            <SectionsList
-              disabled={false}
-              items={field.state.value}
-              onChange={(items) => field.handleChange(items)}
-            />
-          )}
-        </form.Field>
-      </TemplateDetailScrollArea>
+      <div className="relative flex-1 overflow-hidden">
+        <div className="scroll-fade-y h-full overflow-y-auto px-6 pb-6">
+          <form.Field name="sections">
+            {(field) => (
+              <SectionsList
+                disabled={false}
+                items={field.state.value}
+                onChange={(items) => field.handleChange(items)}
+              />
+            )}
+          </form.Field>
+        </div>
+      </div>
     </div>
   );
 }

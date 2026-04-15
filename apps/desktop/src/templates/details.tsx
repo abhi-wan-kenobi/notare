@@ -12,7 +12,6 @@ import {
 import { cn } from "@hypr/utils";
 
 import { type WebTemplate } from "./codec";
-import { TemplateDetailScrollArea } from "./detail-scroll-area";
 import { type UserTemplate, type UserTemplateDraft } from "./queries";
 import { SectionsList } from "./sections-editor";
 import { TemplateForm } from "./template-form";
@@ -159,13 +158,15 @@ function WebTemplatePreview({
         }
       />
 
-      <TemplateDetailScrollArea>
-        <SectionsList
-          disabled={true}
-          items={template.sections ?? []}
-          onChange={() => {}}
-        />
-      </TemplateDetailScrollArea>
+      <div className="relative flex-1 overflow-hidden">
+        <div className="scroll-fade-y h-full overflow-y-auto px-6 pb-6">
+          <SectionsList
+            disabled={true}
+            items={template.sections ?? []}
+            onChange={() => {}}
+          />
+        </div>
+      </div>
     </div>
   );
 }

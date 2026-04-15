@@ -144,7 +144,9 @@ export const TaskItemView = forwardRef<
         onToggle={handleToggle}
       />
       <div className="flex min-w-0 flex-1 flex-wrap items-start gap-2">
-        <div ref={nodeProps.contentDOMRef} className="min-w-0 flex-1">{children}</div>
+        <div ref={nodeProps.contentDOMRef} className="min-w-0 flex-1">
+          {children}
+        </div>
         {taskSource && taskId ? (
           <div contentEditable={false} suppressContentEditableWarning>
             {showDueDateInput ? (

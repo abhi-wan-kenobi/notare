@@ -32,25 +32,13 @@ export function TemplateView({
     [deleteTemplate, setSelectedMineId],
   );
 
-  const materializeTemplate = useCallback(
+  const cloneAsMine = useCallback(
     async (
-      template: UserTemplateDraft,
-      {
-        title = template.title,
-        onCreate,
-      }: {
-        title?: string;
-        onCreate?: (id: string) => void | Promise<void>;
-      } = {},
+      draft: UserTemplateDraft,
+      onCreate?: (id: string) => void | Promise<void>,
     ) => {
-      const id = await createTemplate({
-        ...template,
-        title,
-      });
-      if (!id) {
-        return null;
-      }
-
+      const id = await createTemplate(draft);
+      if (!id) return null;
       await onCreate?.(id);
       setSelectedMineId(id);
       return id;
@@ -59,46 +47,35 @@ export function TemplateView({
   );
 
   const handleCloneTemplate = useCallback(
-    async (template: UserTemplateDraft) => {
-      await materializeTemplate(template, {
-        title: getTemplateCopyTitle(template.title),
+    async (draft: UserTemplateDraft) => {
+      await cloneAsMine({
+        ...draft,
+        title: getTemplateCopyTitle(draft.title),
       });
     },
-    [materializeTemplate],
+    [cloneAsMine],
   );
 
   const handleFavoriteTemplate = useCallback(
-    async (template: UserTemplateDraft) => {
-      await materializeTemplate(template, {
-        onCreate: async (id) => {
-          await toggleTemplateFavorite(id);
-        },
-      });
+    async (draft: UserTemplateDraft) => {
+      await cloneAsMine(draft, (id) => toggleTemplateFavorite(id));
     },
-    [materializeTemplate, toggleTemplateFavorite],
+    [cloneAsMine, toggleTemplateFavorite],
   );
 
   const handleSetDefaultTemplate = useCallback(
-    async (template: UserTemplateDraft) => {
-      if (!settingsStore) {
-        return;
-      }
-
-      const id = await materializeTemplate(template);
-      if (!id) {
-        return;
-      }
-
-      settingsStore.setValue("selected_template_id", id);
+    async (draft: UserTemplateDraft) => {
+      if (!settingsStore) return;
+      const id = await cloneAsMine(draft);
+      if (id) settingsStore.setValue("selected_template_id", id);
     },
-    [materializeTemplate, settingsStore],
+    [cloneAsMine, settingsStore],
   );
 
   const handleDuplicateTemplate = useCallback(
     async (id: string) => {
-      const template = userTemplates.find((item) => item.id === id);
+      const template = userTemplates.find((t) => t.id === id);
       if (!template) return;
-
       await handleCloneTemplate({
         title: template.title,
         description: template.description,

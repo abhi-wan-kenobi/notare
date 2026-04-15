@@ -25,16 +25,6 @@ type TemplateLiveRow = {
   targets_json: unknown;
   sections_json: unknown;
 };
-type StoredTemplateRecord = {
-  id: string;
-  title: string;
-  description: string;
-  pinned: boolean;
-  pinOrder: number | null;
-  category: string | null;
-  targetsJson: unknown;
-  sectionsJson: unknown;
-};
 
 export type UserTemplate = {
   id: string;
@@ -65,49 +55,55 @@ const templateRowSelection = {
   updatedAt: templates.updatedAt,
 };
 
-function mapTemplateRows(rows: TemplateRow[]): UserTemplate[] {
-  return rows.map((row) =>
-    mapStoredTemplateRecord({
-      id: row.id,
-      title: row.title,
-      description: row.description,
-      pinned: row.pinned,
-      pinOrder: row.pinOrder,
-      category: row.category,
-      targetsJson: row.targetsJson,
-      sectionsJson: row.sectionsJson,
-    }),
-  );
+function toUserTemplate(
+  id: string,
+  title: string,
+  description: string,
+  pinned: boolean,
+  pinOrder: number | null,
+  category: string | null,
+  targetsJson: unknown,
+  sectionsJson: unknown,
+): UserTemplate {
+  return {
+    id,
+    title,
+    description,
+    pinned,
+    pinOrder: pinOrder ?? undefined,
+    category: category ?? undefined,
+    targets: parseStoredTemplateTargets(targetsJson, id),
+    sections: parseStoredTemplateSections(sectionsJson, id),
+  };
 }
 
-function mapStoredTemplateRecord(row: StoredTemplateRecord): UserTemplate {
-  const sections = parseStoredTemplateSections(row.sectionsJson, row.id);
-  const targets = parseStoredTemplateTargets(row.targetsJson, row.id);
-
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    pinned: row.pinned,
-    pinOrder: row.pinOrder ?? undefined,
-    category: row.category ?? undefined,
-    targets,
-    sections,
-  };
+function mapTemplateRows(rows: TemplateRow[]): UserTemplate[] {
+  return rows.map((row) =>
+    toUserTemplate(
+      row.id,
+      row.title,
+      row.description,
+      row.pinned,
+      row.pinOrder,
+      row.category,
+      row.targetsJson,
+      row.sectionsJson,
+    ),
+  );
 }
 
 function mapTemplateLiveRows(rows: TemplateLiveRow[]): UserTemplate[] {
   return rows.map((row) =>
-    mapStoredTemplateRecord({
-      id: row.id,
-      title: row.title,
-      description: row.description,
-      pinned: Boolean(row.pinned),
-      pinOrder: row.pin_order,
-      category: row.category,
-      targetsJson: row.targets_json,
-      sectionsJson: row.sections_json,
-    }),
+    toUserTemplate(
+      row.id,
+      row.title,
+      row.description,
+      Boolean(row.pinned),
+      row.pin_order,
+      row.category,
+      row.targets_json,
+      row.sections_json,
+    ),
   );
 }
 
@@ -160,7 +156,7 @@ export async function getTemplateById(
 }
 
 export function useCreateTemplate() {
-  const mutation = useMutation({
+  const { mutateAsync } = useMutation({
     mutationFn: async (template: UserTemplateDraft) => {
       const id = crypto.randomUUID();
       const targets = assertCanonicalTemplateTargets(
@@ -195,14 +191,11 @@ export function useCreateTemplate() {
     },
   });
 
-  return useCallback(
-    (template: UserTemplateDraft) => mutation.mutateAsync(template),
-    [mutation],
-  );
+  return mutateAsync;
 }
 
 export function useSaveTemplate() {
-  const mutation = useMutation({
+  const { mutateAsync } = useMutation({
     mutationFn: async (template: UserTemplate) => {
       const targets = assertCanonicalTemplateTargets(
         template.targets,
@@ -234,14 +227,11 @@ export function useSaveTemplate() {
     },
   });
 
-  return useCallback(
-    (template: UserTemplate) => mutation.mutateAsync(template),
-    [mutation],
-  );
+  return mutateAsync;
 }
 
 export function useDeleteTemplate() {
-  const mutation = useMutation({
+  const { mutateAsync } = useMutation({
     mutationFn: async (id: string) => {
       await db.delete(templates).where(eq(templates.id, id));
     },
@@ -250,7 +240,7 @@ export function useDeleteTemplate() {
     },
   });
 
-  return useCallback((id: string) => mutation.mutateAsync(id), [mutation]);
+  return mutateAsync;
 }
 
 export function useToggleTemplateFavorite() {

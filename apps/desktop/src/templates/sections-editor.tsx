@@ -20,30 +20,6 @@ import { cn } from "@hypr/utils";
 
 type SectionDraft = TemplateSection & { key: string };
 
-function createDraft(section: TemplateSection, key?: string): SectionDraft {
-  return {
-    key: key ?? crypto.randomUUID(),
-    title: section.title,
-    description: section.description,
-  };
-}
-
-function toSection(draft: SectionDraft): TemplateSection {
-  return {
-    title: draft.title,
-    description: draft.description,
-  };
-}
-
-function sameSection(draft: SectionDraft, section?: TemplateSection) {
-  if (!section) {
-    return false;
-  }
-  return (
-    draft.title === section.title && draft.description === section.description
-  );
-}
-
 function useEditableSections({
   disabled,
   initialItems,
@@ -54,107 +30,90 @@ function useEditableSections({
   onChange: (items: TemplateSection[]) => void;
 }) {
   const [drafts, setDrafts] = useState<SectionDraft[]>(() =>
-    initialItems.map((section) => createDraft(section)),
+    initialItems.map((s) => ({ ...s, key: crypto.randomUUID() })),
   );
 
   useEffect(() => {
     setDrafts((prev) => {
-      const shouldUpdate =
+      const changed =
         prev.length !== initialItems.length ||
-        prev.some((draft, index) => !sameSection(draft, initialItems[index]));
-
-      if (!shouldUpdate) {
-        return prev;
-      }
-
-      return initialItems.map((section, index) =>
-        createDraft(section, prev[index]?.key),
-      );
+        prev.some(
+          (d, i) =>
+            d.title !== initialItems[i]?.title ||
+            d.description !== initialItems[i]?.description,
+        );
+      if (!changed) return prev;
+      return initialItems.map((s, i) => ({
+        ...s,
+        key: prev[i]?.key ?? crypto.randomUUID(),
+      }));
     });
   }, [initialItems]);
 
-  const commitDrafts = useCallback(
+  const commit = useCallback(
     (next: SectionDraft[] | ((prev: SectionDraft[]) => SectionDraft[])) => {
       setDrafts((prev) => {
         const resolved = typeof next === "function" ? next(prev) : next;
-        onChange(resolved.map((draft) => toSection(draft)));
+        onChange(
+          resolved.map(({ title, description }) => ({ title, description })),
+        );
         return resolved;
       });
     },
     [onChange],
   );
 
-  const changeSection = useCallback(
-    (draft: SectionDraft) => {
-      commitDrafts((prev) =>
-        prev.map((section) => (section.key === draft.key ? draft : section)),
-      );
-    },
-    [commitDrafts],
-  );
-
-  const deleteSection = useCallback(
-    (key: string) => {
-      commitDrafts((prev) => prev.filter((section) => section.key !== key));
-    },
-    [commitDrafts],
-  );
-
-  const insertSectionAt = useCallback(
-    (index: number) => {
-      commitDrafts((prev) => {
-        const next = [...prev];
-        next.splice(index, 0, createDraft({ title: "", description: "" }));
-        return next;
-      });
-    },
-    [commitDrafts],
-  );
-
-  const moveSection = useCallback(
-    (key: string, direction: -1 | 1) => {
-      commitDrafts((prev) => {
-        const currentIndex = prev.findIndex((section) => section.key === key);
-        const targetIndex = currentIndex + direction;
-
-        if (currentIndex < 0 || targetIndex < 0 || targetIndex >= prev.length) {
-          return prev;
-        }
-
-        const next = [...prev];
-        const [section] = next.splice(currentIndex, 1);
-        next.splice(targetIndex, 0, section);
-        return next;
-      });
-    },
-    [commitDrafts],
-  );
-
-  const reorderSections = useCallback(
-    (next: SectionDraft[]) => {
-      if (disabled) {
-        return;
-      }
-      commitDrafts(next);
-    },
-    [commitDrafts, disabled],
-  );
-
-  const addSection = useCallback(() => {
-    commitDrafts((prev) => [
-      ...prev,
-      createDraft({ title: "", description: "" }),
-    ]);
-  }, [commitDrafts]);
-
   return {
     drafts,
-    addSection,
-    changeSection,
-    deleteSection,
-    insertSectionAt,
-    moveSection,
-    reorderSections,
+    addSection: useCallback(
+      () =>
+        commit((prev) => [
+          ...prev,
+          { title: "", description: "", key: crypto.randomUUID() },
+        ]),
+      [commit],
+    ),
+    changeSection: useCallback(
+      (draft: SectionDraft) =>
+        commit((prev) => prev.map((s) => (s.key === draft.key ? draft : s))),
+      [commit],
+    ),
+    deleteSection: useCallback(
+      (key: string) => commit((prev) => prev.filter((s) => s.key !== key)),
+      [commit],
+    ),
+    insertSectionAt: useCallback(
+      (index: number) =>
+        commit((prev) => {
+          const next = [...prev];
+          next.splice(index, 0, {
+            title: "",
+            description: "",
+            key: crypto.randomUUID(),
+          });
+          return next;
+        }),
+      [commit],
+    ),
+    moveSection: useCallback(
+      (key: string, direction: -1 | 1) =>
+        commit((prev) => {
+          const i = prev.findIndex((s) => s.key === key);
+          const j = i + direction;
+          if (i < 0 || j < 0 || j >= prev.length) return prev;
+          const next = [...prev];
+          const [s] = next.splice(i, 1);
+          next.splice(j, 0, s);
+          return next;
+        }),
+      [commit],
+    ),
+    reorderSections: useCallback(
+      (next: SectionDraft[]) => {
+        if (!disabled) commit(next);
+      },
+      [commit, disabled],
+    ),
   };
 }
 
