@@ -5057,7 +5057,6 @@ dependencies = [
  "tauri-plugin-dock",
  "tauri-plugin-export",
  "tauri-plugin-flag",
- "tauri-plugin-fs-db",
  "tauri-plugin-fs-sync",
  "tauri-plugin-fs2",
  "tauri-plugin-git",
@@ -18798,31 +18797,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tauri-plugin-fs-db"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "chrono-tz 0.10.4",
- "db-parser",
- "frontmatter",
- "serde",
- "serde_json",
- "specta",
- "specta-typescript",
- "tauri",
- "tauri-plugin",
- "tauri-plugin-settings",
- "tauri-specta",
- "tauri-utils 0.1.0",
- "tempfile",
- "thiserror 2.0.18",
- "tiptap",
- "tokio",
- "uuid",
- "version",
-]
-
-[[package]]
 name = "tauri-plugin-fs-sync"
 version = "0.1.0"
 dependencies = [
@@ -19636,7 +19610,6 @@ dependencies = [
  "strum 0.28.0",
  "tauri",
  "tauri-plugin",
- "tauri-plugin-fs-db",
  "tauri-plugin-store2",
  "tauri-plugin-updater",
  "tauri-specta",

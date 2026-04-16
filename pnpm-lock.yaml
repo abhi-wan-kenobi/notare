@@ -234,9 +234,6 @@ importers:
       '@hypr/plugin-flag':
         specifier: workspace:*
         version: link:../../plugins/flag
-      '@hypr/plugin-fs-db':
-        specifier: workspace:*
-        version: link:../../plugins/fs-db
       '@hypr/plugin-fs-sync':
         specifier: workspace:*
         version: link:../../plugins/fs-sync
@@ -2052,12 +2049,6 @@ importers:
         version: 2.10.1
 
   plugins/flag:
-    dependencies:
-      '@tauri-apps/api':
-        specifier: ^2.10.1
-        version: 2.10.1
-
-  plugins/fs-db:
     dependencies:
       '@tauri-apps/api':
         specifier: ^2.10.1
