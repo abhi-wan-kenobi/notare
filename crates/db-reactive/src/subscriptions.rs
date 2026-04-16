@@ -1,9 +1,8 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use hypr_db_core::Db;
+use hypr_db_execute::DbExecutor;
 
-use crate::query::run_query;
 use crate::watch::{DependencyWatchIndex, WatchId};
 use crate::{DependencyAnalysis, DependencyTarget, QueryEventSink, SubscriptionRegistration};
 
@@ -78,8 +77,12 @@ pub(crate) enum QueryEventPayload {
 }
 
 impl QueryEventPayload {
-    pub(crate) async fn load(db: &Db, sql: &str, params: &[serde_json::Value]) -> Self {
-        match run_query(db, sql, params).await {
+    pub(crate) async fn load(
+        executor: &DbExecutor,
+        sql: &str,
+        params: &[serde_json::Value],
+    ) -> Self {
+        match executor.execute(sql.to_string(), params.to_vec()).await {
             Ok(rows) => Self::Result(rows),
             Err(error) => Self::Error(error.to_string()),
         }
@@ -205,11 +208,11 @@ impl<S> Registry<S> {
 impl<S: QueryEventSink> Registry<S> {
     pub(crate) async fn refresh(
         &self,
-        db: &Db,
+        executor: &DbExecutor,
         job: RefreshJob,
         suppress_if_equal: Option<&QueryEventPayload>,
     ) {
-        let payload = QueryEventPayload::load(db, &job.sql, &job.params).await;
+        let payload = QueryEventPayload::load(executor, &job.sql, &job.params).await;
 
         let mut inner = self.inner.lock().await;
         let Some(subscription_id) = inner.watch_ids.get(&job.watch_id).cloned() else {

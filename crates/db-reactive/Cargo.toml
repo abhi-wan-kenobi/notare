@@ -1,12 +1,12 @@
 [package]
-name = "db-live-query"
+name = "db-reactive"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 hypr-db-change = { workspace = true }
 hypr-db-core = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
+hypr-db-execute = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite", "sqlite-unbundled"] }
 thiserror = { workspace = true }

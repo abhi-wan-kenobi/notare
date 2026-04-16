@@ -10,8 +10,9 @@ description = ""
 [dependencies]
 hypr-db-app = { workspace = true }
 hypr-db-core = { workspace = true }
-hypr-db-live-query = { workspace = true }
+hypr-db-execute = { workspace = true }
 hypr-db-migrate = { workspace = true }
+hypr-db-reactive = { workspace = true }
 hypr-storage = { workspace = true }
 hypr-tauri-utils = { workspace = true }
 

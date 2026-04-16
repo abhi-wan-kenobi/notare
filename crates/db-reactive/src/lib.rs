@@ -2,7 +2,6 @@
 
 mod error;
 mod explain;
-mod query;
 mod runtime;
 mod schema;
 mod subscriptions;
@@ -11,9 +10,6 @@ mod watch;
 
 pub use error::{Error, Result};
 pub use explain::extract_dependencies;
-pub use runtime::DbRuntime;
+pub use runtime::LiveQueryRuntime;
 pub use schema::DependencyResolutionError;
-pub use types::{
-    DependencyAnalysis, DependencyTarget, ProxyQueryMethod, ProxyQueryResult, QueryEventSink,
-    SubscriptionRegistration,
-};
+pub use types::{DependencyAnalysis, DependencyTarget, QueryEventSink, SubscriptionRegistration};

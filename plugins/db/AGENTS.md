@@ -19,7 +19,7 @@
 - Opening `app_data_dir()/app.db`.
 - Running `hypr_db_app::migrate` during plugin setup.
 - Tauri command definitions and state management for `execute`, `subscribe`, and `unsubscribe`.
-- Adapting `db-live-query::QueryEventSink` onto Tauri `Channel<QueryEvent>`.
+- Adapting `db-reactive::QueryEventSink` onto Tauri `Channel<QueryEvent>`.
 - The generated TypeScript bindings and the minimal JS wrapper API.
 
 ## This Folder Does Not Own
@@ -40,17 +40,17 @@
 
 ## Dependency Direction
 
-- This plugin may depend on `db-core` and `db-live-query`.
+- This plugin may depend on `db-core`, `db-execute`, and `db-reactive`.
 - App code may depend on this plugin's JS bindings.
 - Lower layers must not depend back on this plugin.
 
 ## Design Notes
 
-- Live-query orchestration, dependency analysis, rerun policy, and stale subscriber cleanup belong below this plugin in `db-live-query`.
+- Live-query orchestration, dependency analysis, rerun policy, and stale subscriber cleanup belong below this plugin in `db-reactive`.
 - If the app needs richer query abstractions, put them in app code or a separate shared package instead of expanding the plugin API surface.
 
 ## Test Ownership
 
 - Put tests here when the behavior is about app bootstrap, migration invocation during setup, Tauri command wiring, channel adaptation, generated bindings, or the minimal JS API contract.
-- Keep plugin tests thin. Prefer adapter smoke tests over re-testing live-query invalidation behavior that already belongs in `db-live-query`.
+- Keep plugin tests thin. Prefer adapter smoke tests over re-testing live-query invalidation behavior that already belongs in `db-reactive`.
 - Do not add table-targeting, rerun-policy, or stale-subscriber behavior tests here unless the plugin layer itself changes that behavior.

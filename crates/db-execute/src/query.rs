@@ -127,6 +127,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+    use crate::DbExecutor;
 
     async fn test_db() -> hypr_db_core::Db {
         hypr_db_core::Db::connect_memory_plain().await.unwrap()
@@ -135,6 +136,7 @@ mod tests {
     #[tokio::test]
     async fn run_query_serializes_blob_null_and_boolean_values() {
         let db = test_db().await;
+        let executor = DbExecutor::new(std::sync::Arc::new(db));
 
         sqlx::query(
             "CREATE TABLE query_types (
@@ -144,7 +146,7 @@ mod tests {
                 note TEXT
             )",
         )
-        .execute(db.pool())
+        .execute(executor.db.pool())
         .await
         .unwrap();
 
@@ -153,24 +155,24 @@ mod tests {
             .bind(vec![0_u8, 1_u8, 2_u8, 255_u8])
             .bind(true)
             .bind(Option::<String>::None)
-            .execute(db.pool())
+            .execute(executor.db.pool())
             .await
             .unwrap();
 
-        let rows = run_query(
-            &db,
-            "SELECT id, payload, enabled, note FROM query_types",
-            &[],
-        )
-        .await
-        .unwrap();
+        let rows = executor
+            .execute(
+                "SELECT id, payload, enabled, note FROM query_types".to_string(),
+                vec![],
+            )
+            .await
+            .unwrap();
 
         assert_eq!(
             rows,
             vec![json!({
                 "id": "row-1",
                 "payload": [0, 1, 2, 255],
-                "enabled": true,
+                "enabled": 1,
                 "note": serde_json::Value::Null,
             })]
         );
@@ -179,20 +181,21 @@ mod tests {
     #[tokio::test]
     async fn run_query_binds_object_and_array_params_as_json_strings() {
         let db = test_db().await;
+        let executor = DbExecutor::new(std::sync::Arc::new(db));
         let object_payload = json!({ "kind": "object", "count": 2 });
         let array_payload = json!(["a", "b"]);
 
-        let rows = run_query(
-            &db,
-            "SELECT ? AS object_payload, ? AS array_payload, ? AS null_payload",
-            &[
-                object_payload.clone(),
-                array_payload.clone(),
-                serde_json::Value::Null,
-            ],
-        )
-        .await
-        .unwrap();
+        let rows = executor
+            .execute(
+                "SELECT ? AS object_payload, ? AS array_payload, ? AS null_payload".to_string(),
+                vec![
+                    object_payload.clone(),
+                    array_payload.clone(),
+                    serde_json::Value::Null,
+                ],
+            )
+            .await
+            .unwrap();
 
         assert_eq!(rows.len(), 1);
         let row = &rows[0];
@@ -212,21 +215,81 @@ mod tests {
     #[tokio::test]
     async fn run_query_proxy_get_returns_empty_rows_when_query_is_empty() {
         let db = test_db().await;
+        let executor = DbExecutor::new(std::sync::Arc::new(db));
 
         sqlx::query("CREATE TABLE proxy_values (id TEXT PRIMARY KEY NOT NULL)")
-            .execute(db.pool())
+            .execute(executor.db.pool())
             .await
             .unwrap();
 
-        let result = run_query_proxy(
-            &db,
-            "SELECT id FROM proxy_values WHERE id = ?",
-            &[json!("missing")],
-            ProxyQueryMethod::Get,
+        let result = executor
+            .execute_proxy(
+                "SELECT id FROM proxy_values WHERE id = ?".to_string(),
+                vec![json!("missing")],
+                ProxyQueryMethod::Get,
+            )
+            .await
+            .unwrap();
+
+        assert!(result.rows.is_empty());
+    }
+
+    #[tokio::test]
+    async fn execute_proxy_supports_run_all_get_values_and_invalid_method() {
+        let db = test_db().await;
+        let executor = DbExecutor::new(std::sync::Arc::new(db));
+
+        sqlx::query(
+            "CREATE TABLE proxy_values (
+                id TEXT PRIMARY KEY NOT NULL,
+                visits INTEGER NOT NULL
+            )",
         )
+        .execute(executor.db.pool())
         .await
         .unwrap();
 
-        assert!(result.rows.is_empty());
+        let inserted = executor
+            .execute_proxy(
+                "INSERT INTO proxy_values (id, visits) VALUES (?, ?)".to_string(),
+                vec![json!("row-1"), json!(42)],
+                ProxyQueryMethod::Run,
+            )
+            .await
+            .unwrap();
+        assert!(inserted.rows.is_empty());
+
+        let all_rows = executor
+            .execute_proxy(
+                "SELECT id, visits FROM proxy_values ORDER BY id".to_string(),
+                vec![],
+                ProxyQueryMethod::All,
+            )
+            .await
+            .unwrap();
+        assert_eq!(all_rows.rows, vec![json!(["row-1", 42])]);
+
+        let first_row = executor
+            .execute_proxy(
+                "SELECT id, visits FROM proxy_values ORDER BY id".to_string(),
+                vec![],
+                ProxyQueryMethod::Get,
+            )
+            .await
+            .unwrap();
+        assert_eq!(first_row.rows, vec![json!("row-1"), json!(42)]);
+
+        let values_rows = executor
+            .execute_proxy(
+                "SELECT id, visits FROM proxy_values ORDER BY id".to_string(),
+                vec![],
+                ProxyQueryMethod::Values,
+            )
+            .await
+            .unwrap();
+        assert_eq!(values_rows.rows, vec![json!(["row-1", 42])]);
+
+        let error = "bogus".parse::<ProxyQueryMethod>().unwrap_err();
+        assert!(matches!(error, crate::Error::InvalidQueryMethod(method) if method == "bogus"));
     }
 }

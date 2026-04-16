@@ -23,6 +23,9 @@ pub(crate) async fn execute_proxy(
     params: Vec<serde_json::Value>,
     method: String,
 ) -> Result<ExecuteProxyResult, String> {
+    let method = method
+        .parse::<hypr_db_execute::ProxyQueryMethod>()
+        .map_err(|error| error.to_string())?;
     state
         .execute_proxy(sql, params, method)
         .await

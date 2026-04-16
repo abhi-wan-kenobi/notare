@@ -5,20 +5,18 @@ use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 use tokio::sync::watch as tokio_watch;
 
 use hypr_db_core::Db;
+use hypr_db_execute::DbExecutor;
 
 use crate::error::{Error, Result};
-use crate::query::{run_query, run_query_proxy};
 use crate::schema::CatalogStore;
 use crate::subscriptions::{QueryEventPayload, RefreshJob, Registry};
-use crate::types::{
-    DependencyAnalysis, ProxyQueryMethod, ProxyQueryResult, QueryEventSink,
-    SubscriptionRegistration,
-};
+use crate::types::{DependencyAnalysis, QueryEventSink, SubscriptionRegistration};
 use crate::watch::WatchId;
 use hypr_db_change::{ChangeNotifier, TableChange};
 
-pub struct DbRuntime<S> {
+pub struct LiveQueryRuntime<S> {
     db: Arc<Db>,
+    executor: DbExecutor,
     change_notifier: ChangeNotifier,
     catalog: CatalogStore,
     subscriptions: Registry<S>,
@@ -26,13 +24,14 @@ pub struct DbRuntime<S> {
     dispatcher: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
-impl<S: QueryEventSink> DbRuntime<S> {
+impl<S: QueryEventSink> LiveQueryRuntime<S> {
     pub fn new(db: Arc<Db>) -> Self {
         let change_notifier = db.change_notifier().clone();
         Self::new_with_notifier(db, change_notifier)
     }
 
     fn new_with_notifier(db: Arc<Db>, change_notifier: ChangeNotifier) -> Self {
+        let executor = DbExecutor::new(Arc::clone(&db));
         let catalog = CatalogStore::default();
         let subscriptions = Registry::default();
         let (shutdown_tx, mut shutdown_rx) = tokio_watch::channel(false);
@@ -40,6 +39,7 @@ impl<S: QueryEventSink> DbRuntime<S> {
         let dispatcher_catalog = catalog.clone();
         let dispatcher_subscriptions = subscriptions.clone();
         let dispatcher_db = Arc::clone(&db);
+        let dispatcher_executor = executor.clone();
         let dispatcher_notifier = change_notifier.clone();
 
         let dispatcher = tokio::spawn(async move {
@@ -67,7 +67,7 @@ impl<S: QueryEventSink> DbRuntime<S> {
 
                         for job in jobs {
                             dispatcher_subscriptions
-                                .refresh(&dispatcher_db, job, None)
+                                .refresh(&dispatcher_executor, job, None)
                                 .await;
                         }
                     }
@@ -77,32 +77,13 @@ impl<S: QueryEventSink> DbRuntime<S> {
 
         Self {
             db,
+            executor,
             change_notifier,
             catalog,
             subscriptions,
             shutdown_tx,
             dispatcher: std::sync::Mutex::new(Some(dispatcher)),
         }
-    }
-
-    pub async fn execute(
-        &self,
-        sql: String,
-        params: Vec<serde_json::Value>,
-    ) -> Result<Vec<serde_json::Value>> {
-        run_query(&self.db, &sql, &params).await.map_err(Into::into)
-    }
-
-    pub async fn execute_proxy(
-        &self,
-        sql: String,
-        params: Vec<serde_json::Value>,
-        method: String,
-    ) -> Result<ProxyQueryResult> {
-        let method: ProxyQueryMethod = method.parse()?;
-        run_query_proxy(&self.db, &sql, &params, method)
-            .await
-            .map_err(Into::into)
     }
 
     pub async fn subscribe(
@@ -170,7 +151,7 @@ impl<S: QueryEventSink> DbRuntime<S> {
         params: &[serde_json::Value],
         sink: &S,
     ) -> Result<QueryEventPayload> {
-        let initial_payload = QueryEventPayload::load(&self.db, sql, params).await;
+        let initial_payload = QueryEventPayload::load(&self.executor, sql, params).await;
 
         if let Err(error) = initial_payload.send_to(sink) {
             self.subscriptions.unregister(subscription_id).await;
@@ -211,7 +192,7 @@ impl<S: QueryEventSink> DbRuntime<S> {
         if latest_dependency_seq > baseline_seq {
             self.subscriptions
                 .refresh(
-                    &self.db,
+                    &self.executor,
                     RefreshJob {
                         watch_id,
                         sql: sql.to_string(),
@@ -329,7 +310,7 @@ async fn collect_refresh_jobs<S>(
     }
 }
 
-impl<S> Drop for DbRuntime<S> {
+impl<S> Drop for LiveQueryRuntime<S> {
     fn drop(&mut self) {
         let _ = self.shutdown_tx.send(true);
         if let Some(dispatcher) = self.dispatcher.lock().unwrap().take() {
@@ -489,7 +470,7 @@ mod tests {
             .unwrap();
 
         let pool = db.pool().clone();
-        let runtime = DbRuntime::new(Arc::new(db));
+        let runtime = LiveQueryRuntime::new(Arc::new(db));
 
         let hook = test_support::install_initial_payload_hook().await;
         let (sink, events) = TestSink::capture();

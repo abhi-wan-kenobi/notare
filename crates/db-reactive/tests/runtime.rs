@@ -3,7 +3,7 @@ mod common;
 use std::time::Duration;
 
 use common::{TestEvent, TestSink, next_event, setup_runtime, wait_for_stable_event_count};
-use db_live_query::{DependencyAnalysis, DependencyTarget, Error};
+use db_reactive::{DependencyAnalysis, DependencyTarget, Error};
 use serde_json::json;
 
 #[tokio::test]
@@ -106,128 +106,6 @@ async fn initialization_suppresses_duplicate_catch_up_payloads() {
 
     tokio::time::sleep(Duration::from_millis(100)).await;
     assert_eq!(events.lock().unwrap().len(), 1);
-}
-
-#[tokio::test]
-async fn execute_binds_params_and_serializes_rows() {
-    let (_dir, pool, runtime) = setup_runtime().await;
-
-    sqlx::query(
-        "CREATE TABLE query_values (
-                id TEXT PRIMARY KEY NOT NULL,
-                nullable_text TEXT,
-                enabled BOOLEAN NOT NULL,
-                visits INTEGER NOT NULL,
-                ratio REAL NOT NULL,
-                payload TEXT NOT NULL
-            )",
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
-
-    let inserted = runtime
-        .execute(
-            "INSERT INTO query_values (id, nullable_text, enabled, visits, ratio, payload) VALUES (?, ?, ?, ?, ?, ?)"
-                .to_string(),
-            vec![
-                json!("row-1"),
-                serde_json::Value::Null,
-                json!(true),
-                json!(42),
-                json!(1.5),
-                json!({ "kind": "object" }),
-            ],
-        )
-        .await
-        .unwrap();
-    assert!(inserted.is_empty());
-
-    let rows = runtime
-        .execute(
-            "SELECT id, nullable_text, enabled, visits, ratio, payload FROM query_values"
-                .to_string(),
-            vec![],
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(
-        rows,
-        vec![json!({
-            "id": "row-1",
-            "nullable_text": serde_json::Value::Null,
-            "enabled": 1,
-            "visits": 42,
-            "ratio": 1.5,
-            "payload": "{\"kind\":\"object\"}",
-        })]
-    );
-}
-
-#[tokio::test]
-async fn execute_proxy_supports_run_all_get_values_and_invalid_method() {
-    let (_dir, pool, runtime) = setup_runtime().await;
-
-    sqlx::query(
-        "CREATE TABLE proxy_values (
-                id TEXT PRIMARY KEY NOT NULL,
-                visits INTEGER NOT NULL
-            )",
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
-
-    let inserted = runtime
-        .execute_proxy(
-            "INSERT INTO proxy_values (id, visits) VALUES (?, ?)".to_string(),
-            vec![json!("row-1"), json!(42)],
-            "run".to_string(),
-        )
-        .await
-        .unwrap();
-    assert!(inserted.rows.is_empty());
-
-    let all_rows = runtime
-        .execute_proxy(
-            "SELECT id, visits FROM proxy_values ORDER BY id".to_string(),
-            vec![],
-            "all".to_string(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(all_rows.rows, vec![json!(["row-1", 42])]);
-
-    let first_row = runtime
-        .execute_proxy(
-            "SELECT id, visits FROM proxy_values ORDER BY id".to_string(),
-            vec![],
-            "get".to_string(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(first_row.rows, vec![json!("row-1"), json!(42)]);
-
-    let values_rows = runtime
-        .execute_proxy(
-            "SELECT id, visits FROM proxy_values ORDER BY id".to_string(),
-            vec![],
-            "values".to_string(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(values_rows.rows, vec![json!(["row-1", 42])]);
-
-    let error = runtime
-        .execute_proxy(
-            "SELECT id FROM proxy_values".to_string(),
-            vec![],
-            "bogus".to_string(),
-        )
-        .await
-        .unwrap_err();
-    assert!(matches!(error, Error::InvalidQueryMethod(method) if method == "bogus"));
 }
 
 #[tokio::test]

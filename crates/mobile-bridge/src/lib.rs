@@ -8,15 +8,16 @@ use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 
 use error::{
-    BridgeError, cloudsync_error, cloudsync_runtime_error, parse_params_json, runtime_error,
-    serialization_error,
+    BridgeError, cloudsync_error, cloudsync_runtime_error, execute_error, parse_params_json,
+    reactive_error, serialization_error,
 };
 use listener::{ListenerSink, QueryEventListener};
 
 uniffi::setup_scaffolding!();
 
 struct BridgeState {
-    db_runtime: hypr_db_live_query::DbRuntime<ListenerSink>,
+    executor: hypr_db_execute::DbExecutor,
+    live_query_runtime: hypr_db_reactive::LiveQueryRuntime<ListenerSink>,
     runtime: tokio::runtime::Runtime,
     subscription_ids: HashSet<String>,
 }
@@ -44,14 +45,17 @@ impl MobileDbBridge {
             .map_err(|error| BridgeError::OpenFailed {
                 reason: error.to_string(),
             })?;
-        let db_runtime = {
+        let db = std::sync::Arc::new(db);
+        let executor = hypr_db_execute::DbExecutor::new(std::sync::Arc::clone(&db));
+        let live_query_runtime = {
             let _guard = runtime.enter();
-            hypr_db_live_query::DbRuntime::new(std::sync::Arc::new(db))
+            hypr_db_reactive::LiveQueryRuntime::new(db)
         };
 
         Ok(Self {
             state: Mutex::new(Some(BridgeState {
-                db_runtime,
+                executor,
+                live_query_runtime,
                 runtime,
                 subscription_ids: HashSet::new(),
             })),
@@ -63,8 +67,8 @@ impl MobileDbBridge {
         self.with_state(|state| {
             let rows = state
                 .runtime
-                .block_on(state.db_runtime.execute(sql, params))
-                .map_err(runtime_error)?;
+                .block_on(state.executor.execute(sql, params))
+                .map_err(execute_error)?;
             serde_json::to_string(&rows).map_err(serialization_error)
         })
     }
@@ -76,11 +80,14 @@ impl MobileDbBridge {
         method: String,
     ) -> Result<String, BridgeError> {
         let params = parse_params_json(&params_json)?;
+        let method = method
+            .parse::<hypr_db_execute::ProxyQueryMethod>()
+            .map_err(execute_error)?;
         self.with_state(|state| {
             let rows = state
                 .runtime
-                .block_on(state.db_runtime.execute_proxy(sql, params, method))
-                .map_err(runtime_error)?;
+                .block_on(state.executor.execute_proxy(sql, params, method))
+                .map_err(execute_error)?;
             serde_json::to_string(&rows).map_err(serialization_error)
         })
     }
@@ -95,12 +102,12 @@ impl MobileDbBridge {
         self.with_state(|state| {
             let registration = state
                 .runtime
-                .block_on(
-                    state
-                        .db_runtime
-                        .subscribe(sql, params, ListenerSink::new(listener)),
-                )
-                .map_err(runtime_error)?;
+                .block_on(state.live_query_runtime.subscribe(
+                    sql,
+                    params,
+                    ListenerSink::new(listener),
+                ))
+                .map_err(reactive_error)?;
             state.subscription_ids.insert(registration.id.clone());
             Ok(registration.id)
         })
@@ -110,8 +117,8 @@ impl MobileDbBridge {
         self.with_state(|state| {
             state
                 .runtime
-                .block_on(state.db_runtime.unsubscribe(&subscription_id))
-                .map_err(runtime_error)?;
+                .block_on(state.live_query_runtime.unsubscribe(&subscription_id))
+                .map_err(reactive_error)?;
             state.subscription_ids.remove(&subscription_id);
             Ok(())
         })
@@ -121,7 +128,7 @@ impl MobileDbBridge {
         self.with_state(|state| {
             state
                 .runtime
-                .block_on(state.db_runtime.db().cloudsync_version())
+                .block_on(state.live_query_runtime.db().cloudsync_version())
                 .map_err(cloudsync_error)
         })
     }
@@ -135,7 +142,7 @@ impl MobileDbBridge {
         self.with_state(|state| {
             state
                 .runtime
-                .block_on(state.db_runtime.db().cloudsync_init(
+                .block_on(state.live_query_runtime.db().cloudsync_init(
                     &table_name,
                     crdt_algo.as_deref(),
                     force,
@@ -150,7 +157,7 @@ impl MobileDbBridge {
                 .runtime
                 .block_on(
                     state
-                        .db_runtime
+                        .live_query_runtime
                         .db()
                         .cloudsync_network_init(&connection_string),
                 )
@@ -162,7 +169,12 @@ impl MobileDbBridge {
         self.with_state(|state| {
             state
                 .runtime
-                .block_on(state.db_runtime.db().cloudsync_network_set_apikey(&api_key))
+                .block_on(
+                    state
+                        .live_query_runtime
+                        .db()
+                        .cloudsync_network_set_apikey(&api_key),
+                )
                 .map_err(cloudsync_error)
         })
     }
@@ -171,7 +183,12 @@ impl MobileDbBridge {
         self.with_state(|state| {
             state
                 .runtime
-                .block_on(state.db_runtime.db().cloudsync_network_set_token(&token))
+                .block_on(
+                    state
+                        .live_query_runtime
+                        .db()
+                        .cloudsync_network_set_token(&token),
+                )
                 .map_err(cloudsync_error)
         })
     }
@@ -186,7 +203,7 @@ impl MobileDbBridge {
                 .runtime
                 .block_on(
                     state
-                        .db_runtime
+                        .live_query_runtime
                         .db()
                         .cloudsync_network_sync(wait_ms, max_retries),
                 )
@@ -201,7 +218,7 @@ impl MobileDbBridge {
             })?;
         self.with_state(|state| {
             state
-                .db_runtime
+                .live_query_runtime
                 .db()
                 .cloudsync_configure(config)
                 .map_err(cloudsync_runtime_error)
@@ -212,7 +229,7 @@ impl MobileDbBridge {
         self.with_state(|state| {
             state
                 .runtime
-                .block_on(state.db_runtime.db().cloudsync_start())
+                .block_on(state.live_query_runtime.db().cloudsync_start())
                 .map_err(cloudsync_runtime_error)
         })
     }
@@ -221,7 +238,7 @@ impl MobileDbBridge {
         self.with_state(|state| {
             state
                 .runtime
-                .block_on(state.db_runtime.db().cloudsync_stop())
+                .block_on(state.live_query_runtime.db().cloudsync_stop())
                 .map_err(cloudsync_runtime_error)
         })
     }
@@ -230,7 +247,7 @@ impl MobileDbBridge {
         self.with_state(|state| {
             let status = state
                 .runtime
-                .block_on(state.db_runtime.db().cloudsync_status())
+                .block_on(state.live_query_runtime.db().cloudsync_status())
                 .map_err(cloudsync_runtime_error)?;
             serde_json::to_string(&status).map_err(serialization_error)
         })
@@ -240,7 +257,7 @@ impl MobileDbBridge {
         self.with_state(|state| {
             state
                 .runtime
-                .block_on(state.db_runtime.db().cloudsync_trigger_sync())
+                .block_on(state.live_query_runtime.db().cloudsync_trigger_sync())
                 .map_err(cloudsync_runtime_error)
         })
     }
@@ -252,14 +269,15 @@ impl MobileDbBridge {
         };
 
         let subscription_ids: Vec<String> = state.subscription_ids.drain().collect();
-        let pool = state.db_runtime.db().pool().clone();
+        let pool = state.live_query_runtime.db().pool().clone();
         state.runtime.block_on(async {
             for subscription_id in subscription_ids {
-                let _ = state.db_runtime.unsubscribe(&subscription_id).await;
+                let _ = state.live_query_runtime.unsubscribe(&subscription_id).await;
             }
-            let _ = state.db_runtime.db().cloudsync_stop().await;
+            let _ = state.live_query_runtime.db().cloudsync_stop().await;
         });
-        drop(state.db_runtime);
+        drop(state.live_query_runtime);
+        drop(state.executor);
         state.runtime.block_on(pool.close());
 
         Ok(())
@@ -382,23 +400,22 @@ mod tests {
 
         bridge
             .execute(
-                "INSERT INTO daily_notes (id, date, body, user_id) VALUES (?, ?, ?, ?)".to_string(),
-                r#"["note-1","2026-04-13","{}","user-1"]"#.to_string(),
+                "INSERT INTO templates (id, title) VALUES (?, ?)".to_string(),
+                r#"["template-1","Weekly"]"#.to_string(),
             )
             .unwrap();
 
         let rows_json = bridge
             .execute(
-                "SELECT id, date, user_id FROM daily_notes ORDER BY id".to_string(),
+                "SELECT id, title FROM templates ORDER BY id".to_string(),
                 "[]".to_string(),
             )
             .unwrap();
         let rows: Vec<serde_json::Value> = serde_json::from_str(&rows_json).unwrap();
 
         assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0]["id"], "note-1");
-        assert_eq!(rows[0]["date"], "2026-04-13");
-        assert_eq!(rows[0]["user_id"], "user-1");
+        assert_eq!(rows[0]["id"], "template-1");
+        assert_eq!(rows[0]["title"], "Weekly");
     }
 
     #[test]
@@ -407,24 +424,23 @@ mod tests {
 
         bridge
             .execute(
-                "INSERT INTO daily_notes (id, date, body, user_id) VALUES (?, ?, ?, ?)".to_string(),
-                r#"["note-1","2026-04-13","{}","user-1"]"#.to_string(),
+                "INSERT INTO templates (id, title) VALUES (?, ?)".to_string(),
+                r#"["template-1","Weekly"]"#.to_string(),
             )
             .unwrap();
 
         let result_json = bridge
             .execute_proxy(
-                "SELECT id, date, user_id FROM daily_notes ORDER BY id".to_string(),
+                "SELECT id, title FROM templates ORDER BY id".to_string(),
                 "[]".to_string(),
                 "all".to_string(),
             )
             .unwrap();
-        let result: hypr_db_live_query::ProxyQueryResult =
-            serde_json::from_str(&result_json).unwrap();
+        let result: hypr_db_execute::ProxyQueryResult = serde_json::from_str(&result_json).unwrap();
 
         assert_eq!(
             result.rows,
-            vec![serde_json::json!(["note-1", "2026-04-13", "user-1"])]
+            vec![serde_json::json!(["template-1", "Weekly"])]
         );
     }
 
@@ -435,7 +451,7 @@ mod tests {
 
         let subscription_id = bridge
             .subscribe(
-                "SELECT id, date FROM daily_notes ORDER BY id".to_string(),
+                "SELECT id, title FROM templates ORDER BY id".to_string(),
                 "[]".to_string(),
                 listener,
             )
@@ -446,8 +462,8 @@ mod tests {
 
         bridge
             .execute(
-                "INSERT INTO daily_notes (id, date, body, user_id) VALUES (?, ?, ?, ?)".to_string(),
-                r#"["note-live","2026-04-13","{}","user-1"]"#.to_string(),
+                "INSERT INTO templates (id, title) VALUES (?, ?)".to_string(),
+                r#"["template-live","Retro"]"#.to_string(),
             )
             .unwrap();
 
@@ -456,7 +472,7 @@ mod tests {
             panic!("expected result event");
         };
         assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0]["id"], "note-live");
+        assert_eq!(rows[0]["id"], "template-live");
 
         bridge.unsubscribe(subscription_id).unwrap();
     }
@@ -468,7 +484,7 @@ mod tests {
 
         let subscription_id = bridge
             .subscribe(
-                "SELECT id, date FROM daily_notes ORDER BY id".to_string(),
+                "SELECT id, title FROM templates ORDER BY id".to_string(),
                 "[]".to_string(),
                 listener,
             )
@@ -479,8 +495,8 @@ mod tests {
 
         bridge
             .execute(
-                "INSERT INTO daily_notes (id, date, body, user_id) VALUES (?, ?, ?, ?)".to_string(),
-                r#"["note-after-unsub","2026-04-13","{}","user-1"]"#.to_string(),
+                "INSERT INTO templates (id, title) VALUES (?, ?)".to_string(),
+                r#"["template-after-unsub","Standup"]"#.to_string(),
             )
             .unwrap();
 
@@ -521,7 +537,7 @@ mod tests {
 
         let status: serde_json::Value =
             serde_json::from_str(&bridge.cloudsync_status().unwrap()).unwrap();
-        assert_eq!(status["open_mode"], "disabled");
+        assert_eq!(status["cloudsync_enabled"], false);
         assert_eq!(status["configured"], true);
         assert_eq!(status["running"], false);
         assert_eq!(status["network_initialized"], false);

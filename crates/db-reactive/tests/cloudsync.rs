@@ -3,7 +3,7 @@ mod common;
 use std::time::Duration;
 
 use common::{TestEvent, TestSink, next_event};
-use db_live_query::DbRuntime;
+use db_reactive::LiveQueryRuntime;
 use hypr_db_core::Db;
 use serde_json::json;
 
@@ -40,7 +40,7 @@ async fn cloudsync_pull_refreshes_live_query_subscriptions() {
     let db_a = setup_db().await;
     let db_b = setup_db().await;
     let pool_b = db_b.pool().clone();
-    let runtime_b = DbRuntime::new(std::sync::Arc::new(db_b));
+    let runtime_b = LiveQueryRuntime::new(std::sync::Arc::new(db_b));
     let (sink, events) = TestSink::capture();
 
     runtime_b

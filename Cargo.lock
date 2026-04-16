@@ -4752,21 +4752,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "db-live-query"
+name = "db-execute"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "cloudsync",
- "db-change",
  "db-core",
- "db-migrate",
  "serde",
  "serde_json",
  "sqlx",
- "tempfile",
  "thiserror 2.0.18",
  "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -4793,6 +4787,24 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
+]
+
+[[package]]
+name = "db-reactive"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cloudsync",
+ "db-change",
+ "db-core",
+ "db-execute",
+ "db-migrate",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -11569,8 +11581,9 @@ version = "0.1.0"
 dependencies = [
  "db-app",
  "db-core",
- "db-live-query",
+ "db-execute",
  "db-migrate",
+ "db-reactive",
  "serde_json",
  "tempfile",
  "thiserror 2.0.18",
@@ -18550,8 +18563,9 @@ dependencies = [
  "anyhow",
  "db-app",
  "db-core",
- "db-live-query",
+ "db-execute",
  "db-migrate",
+ "db-reactive",
  "serde",
  "serde_json",
  "specta",

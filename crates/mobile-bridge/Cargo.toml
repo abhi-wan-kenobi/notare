@@ -10,8 +10,9 @@ name = "mobile_bridge"
 [dependencies]
 hypr-db-app = { workspace = true }
 hypr-db-core = { workspace = true }
-hypr-db-live-query = { workspace = true }
+hypr-db-execute = { workspace = true }
 hypr-db-migrate = { workspace = true }
+hypr-db-reactive = { workspace = true }
 
 serde_json = { workspace = true }
 thiserror = { workspace = true }

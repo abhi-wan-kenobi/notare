@@ -33,13 +33,19 @@ pub(crate) fn parse_params_json(params_json: &str) -> Result<Vec<serde_json::Val
     }
 }
 
-pub(crate) fn runtime_error(error: hypr_db_live_query::Error) -> BridgeError {
+pub(crate) fn execute_error(error: hypr_db_execute::Error) -> BridgeError {
     BridgeError::QueryFailed {
         reason: error.to_string(),
     }
 }
 
-pub(crate) fn cloudsync_error(error: hypr_db_core::Error) -> BridgeError {
+pub(crate) fn reactive_error(error: hypr_db_reactive::Error) -> BridgeError {
+    BridgeError::QueryFailed {
+        reason: error.to_string(),
+    }
+}
+
+pub(crate) fn cloudsync_error(error: impl std::fmt::Display) -> BridgeError {
     BridgeError::CloudsyncFailed {
         reason: error.to_string(),
     }

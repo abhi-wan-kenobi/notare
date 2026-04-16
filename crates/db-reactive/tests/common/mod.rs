@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use db_live_query::{DbRuntime, QueryEventSink};
+use db_reactive::{LiveQueryRuntime, QueryEventSink};
 use hypr_db_core::{DbOpenOptions, DbStorage};
 
 const LIVE_QUERY_TEST_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] =
@@ -190,7 +190,11 @@ pub async fn wait_for_stable_event_count(
     }
 }
 
-pub async fn setup_runtime() -> (tempfile::TempDir, sqlx::SqlitePool, DbRuntime<TestSink>) {
+pub async fn setup_runtime() -> (
+    tempfile::TempDir,
+    sqlx::SqlitePool,
+    LiveQueryRuntime<TestSink>,
+) {
     let dir = tempfile::tempdir().unwrap();
     let db_path = dir.path().join("app.db");
     let db = hypr_db_core::Db::open(DbOpenOptions {
@@ -208,5 +212,5 @@ pub async fn setup_runtime() -> (tempfile::TempDir, sqlx::SqlitePool, DbRuntime<
 
     let pool = db.pool().clone();
 
-    (dir, pool, DbRuntime::new(std::sync::Arc::new(db)))
+    (dir, pool, LiveQueryRuntime::new(std::sync::Arc::new(db)))
 }

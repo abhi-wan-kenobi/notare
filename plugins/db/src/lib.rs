@@ -61,7 +61,7 @@ mod test {
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
 
-    use hypr_db_live_query::QueryEventSink;
+    use hypr_db_reactive::QueryEventSink;
     use serde_json::json;
     use tauri::ipc::{Channel, InvokeResponseBody};
 
@@ -176,7 +176,7 @@ mod test {
 
         runtime
             .subscribe(
-                "SELECT id, date FROM daily_notes ORDER BY id".to_string(),
+                "SELECT id, title FROM templates ORDER BY id".to_string(),
                 vec![],
                 runtime::QueryEventChannel::new(channel),
             )

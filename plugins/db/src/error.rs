@@ -13,7 +13,9 @@ pub enum Error {
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
     #[error(transparent)]
-    Runtime(#[from] hypr_db_live_query::Error),
+    Execute(#[from] hypr_db_execute::Error),
+    #[error(transparent)]
+    Reactive(#[from] hypr_db_reactive::Error),
 }
 
 impl Serialize for Error {

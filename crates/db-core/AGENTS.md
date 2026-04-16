@@ -40,7 +40,7 @@
 ## Dependency Direction
 
 - Lower-level dependencies such as `sqlx`, SQLite FFI, and cloudsync are allowed here.
-- `db-live-query` may depend on this crate.
+- `db-reactive` and `db-execute` may depend on this crate.
 - `plugins/db` may depend on this crate.
 - This crate must not depend on Tauri, transport types, or app query orchestration.
 
