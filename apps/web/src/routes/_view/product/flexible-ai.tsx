@@ -88,6 +88,225 @@ const localCapabilities = [
       "Run Llama, Mistral, Qwen, or other open models locally for summaries, action items, and question answering.",
   },
 ];
+
 function Component() {
-  return <div />;
+  return (
+    <main className="min-h-screen flex-1 overflow-x-hidden px-2 md:px-8">
+      <div className="">
+        <HeroSection />
+        <AISetupSection />
+        <LocalFeaturesSection />
+        <SwitchSection />
+        <BenchmarkSection />
+        <FAQSection />
+        <CTASection
+          title="Pick the AI setup that fits every meeting"
+          description="Start with managed defaults, bring your own providers, or run fully local without switching apps."
+        />
+      </div>
+    </main>
+  );
+}
+
+function SectionTitle({ children }: { children: ReactNode }) {
+  return (
+    <div className="text-left">
+      <p className="text-color-secondary py-6 font-mono text-xs font-medium tracking-widest uppercase">
+        {children}
+      </p>
+    </div>
+  );
+}
+
+function HeroSection() {
+  return (
+    <div className="">
+      <div className="px-6 py-12 lg:py-20">
+        <header className="mx-auto mb-12 text-left">
+          <h1 className="text-color mb-6 font-mono text-2xl tracking-wide sm:text-5xl">
+            Take Meeting Notes With
+            <br />
+            AI of Your Choice
+          </h1>
+          <p className="text-color text-lg sm:text-xl">
+            Char lets you choose between managed cloud AI, your own provider
+            keys,
+            <br className="hidden sm:inline" /> or fully local models on your
+            machine.
+          </p>
+          <div className="mt-8 flex items-center gap-4">
+            <DownloadButton />
+            <GithubStars />
+          </div>
+        </header>
+      </div>
+    </div>
+  );
+}
+
+function AISetupSection() {
+  return (
+    <section className="border-color-brand surface rounded-xl border">
+      <div className="border-color-brand border-b px-4 py-6">
+        {" "}
+        <SectionTitle>Pick your AI setup</SectionTitle>
+      </div>
+      <div className="grid md:grid-cols-3">
+        {setupOptions.map((option, index) => (
+          <div
+            key={option.title}
+            className={cn([
+              "border-color-brand p-8",
+              index < setupOptions.length - 1 && "md:border-r",
+            ])}
+          >
+            <Icon icon={option.icon} className="text-color mb-4 text-3xl" />
+            <p className="text-color-secondary mb-1 font-mono text-xs tracking-widest uppercase">
+              {option.eyebrow}
+            </p>
+            <h3 className="text-color mb-2 font-mono text-xl">
+              {option.title}
+            </h3>
+            <p className="text-color mb-4 text-sm font-medium">
+              {option.detail}
+            </p>
+            <p className="text-fg text-base leading-relaxed">
+              {option.description}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LocalFeaturesSection() {
+  return (
+    <section className="pt-8">
+      <SectionTitle>Local features</SectionTitle>
+      <div className="divide-brand flex flex-row divide-x pb-8">
+        {localCapabilities.map((capability) => (
+          <div key={capability.title} className="flex items-start gap-4 p-8">
+            <Icon
+              icon={capability.icon}
+              className="text-color shrink-0 text-3xl"
+            />
+            <div>
+              <h3 className="text-color mb-2 font-mono text-xl">
+                {capability.title}
+              </h3>
+              <p className="text-fg text-base leading-relaxed">
+                {capability.description}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SwitchSection() {
+  return (
+    <section className="border-color-brand surface rounded-xl border">
+      <div className="px-8 pt-6">
+        {" "}
+        <SectionTitle>Switch providers anytime</SectionTitle>
+      </div>
+      <p className="text-fg border-color-brand border-b px-8 pb-8 text-left text-base leading-relaxed">
+        Your notes are never locked to a single AI provider.
+      </p>
+      <div className="grid md:grid-cols-2">
+        {switchBenefits.map((benefit, index) => (
+          <div
+            key={benefit.title}
+            className={cn([
+              "border-color-brand p-8",
+              index < 2 && "border-b",
+              index % 2 === 0 && "md:border-r",
+            ])}
+          >
+            <h3 className="text-color mb-2 font-mono text-lg font-medium">
+              {benefit.title}
+            </h3>
+            <p className="text-fg text-base leading-relaxed">
+              {benefit.description}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function BenchmarkSection() {
+  return (
+    <section className="px-4 pt-16 pb-16">
+      <div className="">
+        <h2 className="text-color mb-8 font-mono text-2xl tracking-wide sm:text-3xl">
+          Compare model performance before you decide
+        </h2>
+        <p className="text-fg max-w-2xl text-base leading-relaxed">
+          We benchmark leading models on meeting tasks like summaries, action
+          items, speaker tracking, and Q&A so you can choose with confidence.
+        </p>
+      </div>
+      <div className="flex flex-col gap-4 pt-10 sm:flex-row">
+        <Link
+          to="/eval/"
+          className={cn([
+            "flex h-9 items-center rounded-lg px-4 text-sm transition-colors",
+            "border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50",
+          ])}
+        >
+          View AI model evaluations
+        </Link>
+        <Link
+          to="/product/local-ai/"
+          className={cn([
+            "flex h-9 items-center rounded-lg px-4 text-sm transition-colors",
+            "border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50",
+          ])}
+        >
+          Explore local AI setup
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function FAQSection() {
+  return (
+    <section id="faq" className="px-4 pt-16 pb-16">
+      <div className="mx-auto flex flex-col gap-4 md:flex-row md:gap-8">
+        <div className="mb-4 text-left md:mb-12">
+          <h2 className="text-color mb-4 font-mono text-2xl tracking-wide md:text-4xl">
+            Frequently Asked Questions
+          </h2>
+        </div>
+
+        <FAQ>
+          <FAQItem question="Which AI models does Char use?">
+            Char Cloud routes requests to the best models for each task.
+          </FAQItem>
+          <FAQItem question="Can I use different models for different meetings?">
+            Yes. You can switch providers before any meeting or re-process
+            existing transcripts with different models anytime.
+          </FAQItem>
+          <FAQItem question="What happens to my notes if I switch providers?">
+            Nothing changes in your notes. They stay as Markdown files on your
+            device.
+          </FAQItem>
+          <FAQItem question="Is local AI good enough?">
+            Local models keep improving and work well for many meetings. Cloud
+            models can still help for tougher reasoning-heavy conversations.
+          </FAQItem>
+          <FAQItem question="Does Char train AI models on my data?">
+            No. Char does not use your recordings, transcripts, or notes to
+            train AI models.
+          </FAQItem>
+        </FAQ>
+      </div>
+    </section>
+  );
 }
