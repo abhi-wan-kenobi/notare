@@ -78,6 +78,12 @@ pub enum Commands {
     #[cfg(feature = "desktop")]
     /// Open the desktop app or download page
     Desktop,
+    #[cfg(feature = "desktop-db")]
+    /// Manage desktop SQLite data
+    Db {
+        #[command(flatten)]
+        args: hypr_db_cli::Args,
+    },
     #[cfg(feature = "desktop")]
     /// Report a bug on GitHub
     #[command(hide = true)]
@@ -112,6 +118,8 @@ impl Commands {
             Commands::Play { args } => args.base.as_deref(),
             #[cfg(feature = "standalone")]
             Commands::Record { args } => args.base.as_deref(),
+            #[cfg(feature = "desktop-db")]
+            Commands::Db { args } => args.base.as_deref(),
             _ => None,
         }
     }
@@ -155,7 +163,8 @@ mod tests {
     #[cfg(all(
         feature = "desktop",
         not(feature = "standalone"),
-        not(feature = "todo")
+        not(feature = "todo"),
+        not(feature = "desktop-db")
     ))]
     fn desktop_help_stays_lightweight() {
         let mut command = Cli::command();
@@ -170,6 +179,40 @@ mod tests {
         assert!(!help.contains("update"));
         assert!(!help.contains("meetings"));
         assert!(!help.contains("export"));
+    }
+
+    #[test]
+    #[cfg(feature = "desktop-db")]
+    fn desktop_db_help_shows_db_command() {
+        let mut command = Cli::command();
+        let help = render_help(&mut command);
+
+        assert!(help.contains("db"));
+    }
+
+    #[test]
+    #[cfg(feature = "desktop-db")]
+    fn db_help_renders() {
+        let mut command = Cli::command();
+        let mut db = command.find_subcommand_mut("db").unwrap().clone();
+        let help = render_help(&mut db);
+
+        assert!(help.contains("templates"));
+        assert!(help.contains("--base <DIR>"));
+    }
+
+    #[test]
+    #[cfg(feature = "desktop-db")]
+    fn db_templates_help_renders() {
+        let mut command = Cli::command();
+        let mut db = command.find_subcommand_mut("db").unwrap().clone();
+        let mut templates = db.find_subcommand_mut("templates").unwrap().clone();
+        let help = render_help(&mut templates);
+
+        assert!(help.contains("list"));
+        assert!(help.contains("get"));
+        assert!(help.contains("upsert"));
+        assert!(help.contains("delete"));
     }
 
     #[test]

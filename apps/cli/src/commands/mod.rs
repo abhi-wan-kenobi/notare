@@ -90,6 +90,10 @@ pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()>
             }
             Ok(())
         }
+        #[cfg(feature = "desktop-db")]
+        Some(CliCommand::Db { args }) => hypr_db_cli::run(args)
+            .await
+            .map_err(|e| e.to_string().into()),
         #[cfg(feature = "desktop")]
         Some(CliCommand::Bug) => {
             bug::run()?;

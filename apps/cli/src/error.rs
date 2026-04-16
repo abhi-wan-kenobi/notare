@@ -94,15 +94,6 @@ pub fn did_you_mean<'a>(input: &str, candidates: &[&'a str]) -> Option<&'a str> 
         .map(|(c, _)| c)
 }
 
-#[macro_export]
-macro_rules! db {
-    ($expr:expr, $op:literal) => {
-        $expr
-            .await
-            .map_err(|e| $crate::error::CliError::operation_failed($op, e.to_string()))?
-    };
-}
-
 impl From<String> for CliError {
     fn from(message: String) -> Self {
         Self::Message(message)
