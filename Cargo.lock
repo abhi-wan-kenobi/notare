@@ -3541,6 +3541,7 @@ dependencies = [
 name = "cli"
 version = "0.1.0"
 dependencies = [
+ "agent-core",
  "analytics",
  "audio",
  "audio-actual",
@@ -3550,7 +3551,6 @@ dependencies = [
  "clap",
  "clap-verbosity-flag",
  "clap_complete",
- "claude",
  "cli-docs",
  "clio",
  "codex 0.1.0",
@@ -3569,7 +3569,6 @@ dependencies = [
  "model-downloader",
  "mp3",
  "open",
- "opencode",
  "owhisper-client",
  "owhisper-interface",
  "portable-pty",

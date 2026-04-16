@@ -2,8 +2,6 @@ use clap::Subcommand;
 
 use crate::error::{CliError, CliResult};
 
-const COMMAND: &str = "char claude notify";
-
 #[derive(Subcommand)]
 pub enum Commands {
     /// Receive a hook event from Claude Code (reads JSON from stdin)
@@ -30,39 +28,21 @@ fn notify() -> CliResult<()> {
 }
 
 fn install() -> CliResult<()> {
-    let settings_path = hypr_claude::settings_path();
+    let response = hypr_agent_core::install_cli(hypr_agent_core::InstallCliRequest {
+        provider: hypr_agent_core::ProviderKind::Claude,
+    })
+    .map_err(|e| CliError::operation_failed("install claude integration", e))?;
 
-    let mut settings = hypr_claude::read_settings(&settings_path)
-        .map_err(|e| CliError::operation_failed("read claude settings", e))?;
-
-    hypr_claude::upsert_command_hook(&mut settings, "Stop", COMMAND)
-        .map_err(|e| CliError::operation_failed("update claude settings hooks", e))?;
-
-    hypr_claude::write_settings(&settings_path, &settings)
-        .map_err(|e| CliError::operation_failed("write claude settings", e))?;
-
-    eprintln!(
-        "Installed char as Claude Code hook handler in {}",
-        settings_path.display()
-    );
+    eprintln!("{}", response.message);
     Ok(())
 }
 
 fn uninstall() -> CliResult<()> {
-    let settings_path = hypr_claude::settings_path();
+    let response = hypr_agent_core::uninstall_cli(hypr_agent_core::UninstallCliRequest {
+        provider: hypr_agent_core::ProviderKind::Claude,
+    })
+    .map_err(|e| CliError::operation_failed("uninstall claude integration", e))?;
 
-    let mut settings = hypr_claude::read_settings(&settings_path)
-        .map_err(|e| CliError::operation_failed("read claude settings", e))?;
-
-    hypr_claude::remove_command_hook(&mut settings, "Stop", COMMAND)
-        .map_err(|e| CliError::operation_failed("update claude settings hooks", e))?;
-
-    hypr_claude::write_settings(&settings_path, &settings)
-        .map_err(|e| CliError::operation_failed("write claude settings", e))?;
-
-    eprintln!(
-        "Removed char from Claude Code hooks in {}",
-        settings_path.display()
-    );
+    eprintln!("{}", response.message);
     Ok(())
 }

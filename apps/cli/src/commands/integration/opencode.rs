@@ -32,44 +32,21 @@ fn notify(payload: &str) -> CliResult<()> {
 }
 
 fn install() -> CliResult<()> {
-    let plugin_path = hypr_opencode::plugin_path();
+    let response = hypr_agent_core::install_cli(hypr_agent_core::InstallCliRequest {
+        provider: hypr_agent_core::ProviderKind::Opencode,
+    })
+    .map_err(|e| CliError::operation_failed("install opencode integration", e))?;
 
-    if plugin_path.exists()
-        && !hypr_opencode::has_char_plugin(&plugin_path)
-            .map_err(|e| CliError::operation_failed("read opencode plugin", e))?
-    {
-        return Err(CliError::operation_failed(
-            "install opencode plugin",
-            format!(
-                "refusing to replace existing plugin at {}",
-                plugin_path.display()
-            ),
-        ));
-    }
-
-    hypr_opencode::write_plugin(&plugin_path)
-        .map_err(|e| CliError::operation_failed("write opencode plugin", e))?;
-
-    eprintln!(
-        "Installed char as OpenCode plugin at {}",
-        plugin_path.display()
-    );
+    eprintln!("{}", response.message);
     Ok(())
 }
 
 fn uninstall() -> CliResult<()> {
-    let plugin_path = hypr_opencode::plugin_path();
+    let response = hypr_agent_core::uninstall_cli(hypr_agent_core::UninstallCliRequest {
+        provider: hypr_agent_core::ProviderKind::Opencode,
+    })
+    .map_err(|e| CliError::operation_failed("uninstall opencode integration", e))?;
 
-    if hypr_opencode::has_char_plugin(&plugin_path)
-        .map_err(|e| CliError::operation_failed("read opencode plugin", e))?
-    {
-        hypr_opencode::remove_plugin(&plugin_path)
-            .map_err(|e| CliError::operation_failed("remove opencode plugin", e))?;
-    }
-
-    eprintln!(
-        "Removed char OpenCode plugin from {}",
-        plugin_path.display()
-    );
+    eprintln!("{}", response.message);
     Ok(())
 }

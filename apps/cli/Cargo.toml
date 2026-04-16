@@ -12,12 +12,12 @@ name = "char"
 path = "src/main.rs"
 
 [dependencies]
+hypr-agent-core = { workspace = true, optional = true }
 hypr-analytics = { workspace = true }
 hypr-audio = { workspace = true, optional = true }
 hypr-audio-actual = { workspace = true, optional = true }
 hypr-audio-norm = { workspace = true, optional = true }
 hypr-audio-utils = { workspace = true, optional = true }
-hypr-claude = { workspace = true, optional = true }
 hypr-codex = { workspace = true, optional = true }
 hypr-db-cli = { workspace = true, optional = true }
 hypr-host = { workspace = true }
@@ -26,7 +26,6 @@ hypr-listener2-core = { workspace = true, optional = true }
 hypr-local-model = { workspace = true, optional = true }
 hypr-local-stt-core = { workspace = true, optional = true }
 hypr-model-downloader = { workspace = true, optional = true }
-hypr-opencode = { workspace = true, optional = true }
 hypr-shortcut-macos = { workspace = true, optional = true }
 hypr-transcript = { workspace = true, optional = true }
 owhisper-client = { workspace = true, optional = true }
@@ -83,9 +82,8 @@ desktop-db = ["desktop", "dep:hypr-db-cli"]
 e2e = []
 todo = [
   "desktop",
-  "dep:hypr-claude",
+  "dep:hypr-agent-core",
   "dep:hypr-codex",
-  "dep:hypr-opencode",
   "dep:hypr-shortcut-macos",
 ]
 standalone = [

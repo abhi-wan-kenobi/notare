@@ -32,51 +32,21 @@ fn notify(payload: &str) -> CliResult<()> {
 }
 
 fn install() -> CliResult<()> {
-    let config_path = hypr_codex::config_path();
-    let command = hypr_codex::notify_command();
+    let response = hypr_agent_core::install_cli(hypr_agent_core::InstallCliRequest {
+        provider: hypr_agent_core::ProviderKind::Codex,
+    })
+    .map_err(|e| CliError::operation_failed("install codex integration", e))?;
 
-    let mut table = hypr_codex::read_config(&config_path)
-        .map_err(|e| CliError::operation_failed("read codex config", e))?;
-
-    if table.contains_key("notify") && !hypr_codex::has_notify(&table, &command) {
-        return Err(CliError::operation_failed(
-            "install codex integration",
-            format!(
-                "refusing to replace existing notify handler in {}",
-                config_path.display()
-            ),
-        ));
-    }
-
-    hypr_codex::set_notify(&mut table, command);
-
-    hypr_codex::write_config(&config_path, &table)
-        .map_err(|e| CliError::operation_failed("write codex config", e))?;
-
-    eprintln!(
-        "Installed char as Codex notify handler in {}",
-        config_path.display()
-    );
+    eprintln!("{}", response.message);
     Ok(())
 }
 
 fn uninstall() -> CliResult<()> {
-    let config_path = hypr_codex::config_path();
-    let command = hypr_codex::notify_command();
+    let response = hypr_agent_core::uninstall_cli(hypr_agent_core::UninstallCliRequest {
+        provider: hypr_agent_core::ProviderKind::Codex,
+    })
+    .map_err(|e| CliError::operation_failed("uninstall codex integration", e))?;
 
-    let mut table = hypr_codex::read_config(&config_path)
-        .map_err(|e| CliError::operation_failed("read codex config", e))?;
-
-    if hypr_codex::has_notify(&table, &command) {
-        hypr_codex::remove_notify(&mut table);
-    }
-
-    hypr_codex::write_config(&config_path, &table)
-        .map_err(|e| CliError::operation_failed("write codex config", e))?;
-
-    eprintln!(
-        "Removed char from Codex notify handler in {}",
-        config_path.display()
-    );
+    eprintln!("{}", response.message);
     Ok(())
 }
