@@ -22,7 +22,7 @@ async executeProxy(sql: string, params: JsonValue[], method: string) : Promise<R
     else return { status: "error", error: e  as any };
 }
 },
-async subscribe(sql: string, params: JsonValue[], onEvent: TAURI_CHANNEL<QueryEvent>) : Promise<Result<string, string>> {
+async subscribe(sql: string, params: JsonValue[], onEvent: TAURI_CHANNEL<QueryEvent>) : Promise<Result<SubscriptionRegistration, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:db|subscribe", { sql, params, onEvent }) };
 } catch (e) {
@@ -50,9 +50,12 @@ async unsubscribe(subscriptionId: string) : Promise<Result<null, string>> {
 
 /** user-defined types **/
 
+export type DependencyAnalysis = { kind: "reactive"; data: { targets: DependencyTarget[] } } | { kind: "non_reactive"; data: { reason: string } }
+export type DependencyTarget = { kind: "table"; data: string } | { kind: "virtual_table"; data: string }
 export type ExecuteProxyResult = { rows: JsonValue[] }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 export type QueryEvent = { event: "result"; data: JsonValue[] } | { event: "error"; data: string }
+export type SubscriptionRegistration = { id: string; analysis: DependencyAnalysis }
 export type TAURI_CHANNEL<TSend> = null
 
 /** tauri-specta globals **/

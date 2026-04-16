@@ -47,8 +47,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
     }
 
     fn require_audio(&self) -> Result<Arc<dyn hypr_audio::AudioProvider>, crate::Error> {
-        self.audio_provider()
-            .ok_or(crate::Error::NoAudioProvider)
+        self.audio_provider().ok_or(crate::Error::NoAudioProvider)
     }
 
     pub async fn open(&self, permission: Permission) -> Result<(), crate::Error> {
@@ -216,9 +215,8 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
             }
         }
 
-        Err(last_error.unwrap_or_else(|| {
-            std::io::Error::other("failed to open System Settings").into()
-        }))
+        Err(last_error
+            .unwrap_or_else(|| std::io::Error::other("failed to open System Settings").into()))
     }
 
     async fn open_calendar(&self) -> Result<(), crate::Error> {
@@ -413,9 +411,8 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
                 });
 
             unsafe {
-                event_store.requestFullAccessToRemindersWithCompletion(
-                    &*completion as *const _ as *mut _,
-                )
+                event_store
+                    .requestFullAccessToRemindersWithCompletion(&*completion as *const _ as *mut _)
             };
 
             let _ = rx.recv_timeout(std::time::Duration::from_secs(60));

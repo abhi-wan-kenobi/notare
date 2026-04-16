@@ -1,5 +1,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 
+import type { SubscriptionRegistration } from "./bindings.gen";
+
 export type QueryEvent<T = Record<string, unknown>> =
   | { event: "result"; data: T[] }
   | { event: "error"; data: string };
@@ -40,14 +42,23 @@ export async function subscribe<T = Record<string, unknown>>(
     options.onError?.(event.data);
   };
 
-  const subscriptionId: string = await invoke("plugin:db|subscribe", {
-    sql,
-    params,
-    onEvent: channel,
-  });
+  const registration: SubscriptionRegistration = await invoke(
+    "plugin:db|subscribe",
+    {
+      sql,
+      params,
+      onEvent: channel,
+    },
+  );
+
+  if (registration.analysis.kind === "non_reactive") {
+    console.warn(
+      `[plugin-db] live query subscription is non-reactive for SQL "${sql}": ${registration.analysis.data.reason}`,
+    );
+  }
 
   return async () => {
     channel.onmessage = () => {};
-    await invoke("plugin:db|unsubscribe", { subscriptionId });
+    await invoke("plugin:db|unsubscribe", { subscriptionId: registration.id });
   };
 }

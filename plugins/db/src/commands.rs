@@ -40,7 +40,7 @@ pub(crate) async fn subscribe(
     sql: String,
     params: Vec<serde_json::Value>,
     on_event: Channel<QueryEvent>,
-) -> Result<String, String> {
+) -> Result<hypr_db_reactive::SubscriptionRegistration, String> {
     state
         .subscribe(
             sql,
@@ -48,7 +48,6 @@ pub(crate) async fn subscribe(
             crate::runtime::QueryEventChannel::new(on_event),
         )
         .await
-        .map(|registration| registration.id)
         .map_err(|error| error.to_string())
 }
 
