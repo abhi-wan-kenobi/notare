@@ -8,7 +8,6 @@ use owhisper_interface::batch::{
 use serde::{Deserialize, Serialize};
 
 use super::SmallestAIAdapter;
-use crate::adapter::http::mime_type_from_extension;
 use crate::adapter::parsing::parse_speaker_id;
 use crate::adapter::{BatchFuture, BatchSttAdapter, ClientWithMiddleware, MIXED_CAPTURE_CHANNEL};
 use crate::error::Error;
@@ -66,6 +65,7 @@ impl SmallestAIAdapter {
             }
 
             query_pairs.append_pair("word_timestamps", "true");
+            query_pairs.append_pair("diarize", "true");
             query_pairs.append_pair(
                 "language",
                 &SmallestAIAdapter::language_query_value(&params.languages),
@@ -75,7 +75,7 @@ impl SmallestAIAdapter {
         let response = client
             .post(url)
             .header("Authorization", format!("Bearer {api_key}"))
-            .header("Content-Type", mime_type_from_extension(file_path))
+            .header("Content-Type", "application/octet-stream")
             .body(file_bytes)
             .send()
             .await?;
@@ -131,7 +131,7 @@ struct SmallestBatchResponse {
     status: Option<String>,
     #[serde(default)]
     session_id: Option<String>,
-    #[serde(default)]
+    #[serde(default, alias = "transcription")]
     transcript: Option<String>,
     #[serde(default)]
     text: Option<String>,

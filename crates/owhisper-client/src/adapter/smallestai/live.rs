@@ -36,6 +36,8 @@ impl RealtimeSttAdapter for SmallestAIAdapter {
             query_pairs.append_pair("encoding", "linear16");
             query_pairs.append_pair("sample_rate", &params.sample_rate.to_string());
             query_pairs.append_pair("word_timestamps", "true");
+            query_pairs.append_pair("diarize", "true");
+            query_pairs.append_pair("full_transcript", "true");
             query_pairs.append_pair(
                 "language",
                 &SmallestAIAdapter::language_query_value(&params.languages),
@@ -124,7 +126,7 @@ impl RealtimeSttAdapter for SmallestAIAdapter {
         vec![StreamResponse::TranscriptResponse {
             is_final,
             speech_final: is_final,
-            from_finalize: msg.is_last,
+            from_finalize: msg.from_finalize || msg.is_last,
             start,
             duration,
             channel,
@@ -152,6 +154,8 @@ struct SmallestRealtimeMessage {
     is_final: bool,
     #[serde(default)]
     is_last: bool,
+    #[serde(default)]
+    from_finalize: bool,
     #[serde(default)]
     language: Option<String>,
     #[serde(default)]
@@ -206,6 +210,8 @@ struct SmallestRealtimeWord {
     confidence: Option<f64>,
     #[serde(default)]
     speaker: Option<SmallestSpeaker>,
+    #[serde(default)]
+    speaker_confidence: Option<f64>,
     #[serde(default)]
     language: Option<String>,
 }
@@ -307,6 +313,8 @@ mod tests {
         assert_eq!(query.get("encoding"), Some(&"linear16".to_string()));
         assert_eq!(query.get("sample_rate"), Some(&"16000".to_string()));
         assert_eq!(query.get("word_timestamps"), Some(&"true".to_string()));
+        assert_eq!(query.get("diarize"), Some(&"true".to_string()));
+        assert_eq!(query.get("full_transcript"), Some(&"true".to_string()));
         assert_eq!(query.get("language"), Some(&"en".to_string()));
     }
 
