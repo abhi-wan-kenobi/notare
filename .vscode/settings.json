@@ -16,7 +16,8 @@
   "files.readonlyInclude": {
     "**/routeTree.gen.ts": true,
     "**/*.gen.json": true,
-    "**/vendor/**": true
+    "**/vendor/**": true,
+    "**/migrations/[!_]*.sql": true
   },
   "editor.wordBasedSuggestions": "off",
   "editor.quickSuggestionsDelay": 200,
