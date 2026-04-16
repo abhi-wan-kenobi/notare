@@ -39,6 +39,7 @@ export const ScrollView = (
     contentContainerClassName?: string;
   },
 ) => {
+  // @ts-expect-error: react-native-css expands ScrollView props into an unbounded type graph here
   return useCssElement(RNScrollView, props, {
     className: "style",
     contentContainerClassName: "contentContainerStyle",
@@ -66,6 +67,7 @@ export const AnimatedScrollView = (
     contentContainerClassName?: string;
   },
 ) => {
+  // @ts-expect-error: Animated ScrollView props trigger the same react-native-css inference blowup
   return useCssElement(Animated.ScrollView, props, {
     className: "style",
     contentContainerClassName: "contentContainerStyle",

@@ -1,61 +1,24 @@
 # `db-reactive`
 
-## Role
+## Use This Crate For
 
-- Reusable live-query runtime over arbitrary SQL.
-- Owns dependency analysis, subscription state, rerun targeting, and sink delivery.
-- Uses `db-execute` for snapshot loading and refresh payload execution.
-- Consumes raw observed table-change signals from `db-core` and maps them onto canonical dependency targets.
+- Transport-agnostic live queries over `hypr_db_core::Db`.
+- Conservative dependency analysis, subscription lifecycle, rerun targeting, and sink delivery.
 
-## Owns
+## Put Changes Elsewhere When
 
-- `LiveQueryRuntime` and the background dispatcher.
-- Schema-aware dependency analysis via `extract_dependencies(...)`.
-- Schema catalog loading/caching from SQLite metadata.
-- Canonical dependency targets for ordinary tables and supported virtual tables.
-- Raw-table to dependency-target canonicalization for rerun targeting.
-- Subscription registration, activation, refresh, and unregistration.
-- Stale-sink cleanup.
+- Pool creation, SQLite hook installation, and open policy belong in `db-core` / `db-change`.
+- One-shot SQL execution belongs in `db-execute`.
+- Tauri channels, UniFFI listeners, and React hooks belong in transport or app layers.
 
-## Does Not Own
+## Hard Rules
 
-- SQLite pool creation, raw hooks, or DB open policy.
-- App DB bootstrap, file paths, or migrations.
-- Tauri commands, channels, JS bindings, or React hooks.
-- Row-level or predicate-level invalidation.
-
-## Invariants
-
-- Keep this crate transport-agnostic.
-- `db-core` stays schema-agnostic and emits raw observed table changes only.
-- `db-reactive` is the layer that interprets schema, resolves dependencies, and decides rerun targeting.
-- Dependency analysis must be explicit: `Reactive { targets }` or `NonReactive { reason }`.
-- Non-reactive subscriptions still deliver the initial result or error; they simply never auto-refresh.
-- Reactive dependencies are canonical targets, not raw observed table names.
-- Supported ordinary tables map to `DependencyTarget::Table`.
-- Supported virtual tables map to `DependencyTarget::VirtualTable`.
-- FTS5 is supported through virtual-table/shadow-table canonicalization.
-- Unsupported or unresolvable dependencies must make the whole subscription non-reactive.
-- Empty dependency extraction must make the subscription non-reactive.
-- Partial dependency sets are not allowed.
-- Views are not watched directly; they are only reactive when query-plan expansion reaches supported underlying targets.
-- The first event for every subscription is the initial snapshot or initial error for that exact SQL + params pair.
-- Dispatcher-driven refreshes must not emit before the first event is delivered.
-- If writes land while a reactive subscription is initializing, they collapse into at most one catch-up refresh after activation.
-- Catch-up refreshes that would deliver the same payload as the initial event must be suppressed.
-- Refresh jobs whose triggering sequence is at or below the subscription's activation ignore floor must not emit.
-- `unsubscribe()` resolving is a hard delivery barrier: no later event may be delivered after it returns.
-- Refresh delivery must be revalidated against current subscription state immediately before sending.
-- Stale subscribers must be removed when sink delivery fails.
-- Reruns remain dependency-target-granular only; no incremental view maintenance.
-
-## Dependency Direction
-
-- May depend on `db-core` and `db-execute`.
-- May be consumed by `plugins/db` and `mobile-bridge`.
-- Must not depend on Tauri or app-specific UI/runtime layers.
-
-## Test Ownership
-
-- Keep dependency-analysis, canonicalization, rerun targeting, init-time catch-up, unsubscribe barriers, stale-sink cleanup, and JSON serialization tests here.
-- Higher layers should only add thin adapter tests.
+- Reactivity is conservative. If any dependency cannot be resolved or is unsupported, mark the whole subscription `NonReactive`; never return partial target sets.
+- Dependency tracking uses canonical targets, not raw table names. New virtual-table support must update both query resolution and raw-table/shadow-table canonicalization.
+- The first sink event is always the initial result or initial error. Refresh delivery must never overtake it.
+- Writes during subscription setup are handled by seq bookkeeping. Preserve the baseline-seq and catch-up-refresh flow so init does not miss committed changes.
+- `unsubscribe()` is a hard delivery barrier. Once it resolves, no more sink callbacks may occur for that subscription.
+- Sink failures remove only the failing subscription. One dead transport must not poison the runtime.
+- Lagged change receivers or schema-catalog misses degrade by rerunning broadly. Preserve correctness first; precision is optional.
+- Reactivity currently depends on `EXPLAIN QUERY PLAN`. Ordinary tables, resolvable views, and supported FTS5 virtual/shadow tables are reactive; unsupported virtual tables must stay explicitly non-reactive.
+- The dispatcher intentionally coalesces bursts with a short delay. Treat latency/load changes here as behavioral changes, not refactors.
