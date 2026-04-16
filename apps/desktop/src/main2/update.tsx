@@ -2,7 +2,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { type UnlistenFn } from "@tauri-apps/api/event";
 import { message } from "@tauri-apps/plugin-dialog";
 import { XIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { commands, events } from "@hypr/plugin-updater2";
 import { Button } from "@hypr/ui/components/ui/button";
@@ -11,7 +11,7 @@ import { cn } from "@hypr/utils";
 import { useTabs } from "~/store/zustand/tabs";
 
 export function UpdateBanner() {
-  const { version } = useUpdate();
+  const { version, progress } = useUpdate();
   const isHomeOnly = useShouldShowUpdateBanner();
   const [dismissed, setDismissed] = useState(false);
   const [installing, setInstalling] = useState(false);
@@ -44,6 +44,8 @@ export function UpdateBanner() {
     return null;
   }
 
+  const isDownloading = progress !== null && progress < 1;
+
   return (
     <div
       className={cn([
@@ -52,15 +54,19 @@ export function UpdateBanner() {
       ])}
     >
       <span>v{version} available</span>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={handleInstallUpdate}
-        disabled={installing}
-        className="h-7 px-3 text-xs font-medium"
-      >
-        {installing ? "Installing..." : "Update & Restart"}
-      </Button>
+      {isDownloading ? (
+        <DownloadProgress progress={progress} />
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleInstallUpdate}
+          disabled={installing}
+          className="h-7 px-3 text-xs font-medium"
+        >
+          {installing ? "Installing..." : "Update & Restart"}
+        </Button>
+      )}
       <button
         type="button"
         onClick={() => setDismissed(true)}
@@ -68,6 +74,22 @@ export function UpdateBanner() {
       >
         <XIcon size={14} />
       </button>
+    </div>
+  );
+}
+
+function DownloadProgress({ progress }: { progress: number }) {
+  const pct = Math.round(progress * 100);
+  const width = `${pct}%`;
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1.5 w-32 overflow-hidden rounded-full bg-neutral-200">
+        <div
+          className="h-full rounded-full bg-neutral-500 transition-all duration-300"
+          style={{ width }}
+        />
+      </div>
+      <span className="text-xs text-neutral-500">{pct}%</span>
     </div>
   );
 }
@@ -86,22 +108,50 @@ export function useShouldShowUpdateBanner() {
 
 function useUpdate() {
   const [version, setVersion] = useState<string | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  const downloadedRef = useRef(0);
 
   useEffect(() => {
-    let unlisten: UnlistenFn | null = null;
+    const unlistens: UnlistenFn[] = [];
+
+    void events.updateDownloadingEvent
+      .listen(({ payload }) => {
+        setVersion(payload.version);
+        setProgress(0);
+        downloadedRef.current = 0;
+      })
+      .then((f) => unlistens.push(f));
+
+    void events.updateDownloadProgressEvent
+      .listen(({ payload }) => {
+        downloadedRef.current += payload.chunk_length;
+        if (payload.content_length) {
+          setProgress(
+            Math.min(downloadedRef.current / payload.content_length, 1),
+          );
+        }
+      })
+      .then((f) => unlistens.push(f));
 
     void events.updateReadyEvent
       .listen(({ payload }) => {
         setVersion(payload.version);
+        setProgress(null);
       })
-      .then((f) => {
-        unlisten = f;
-      });
+      .then((f) => unlistens.push(f));
+
+    void events.updateDownloadFailedEvent
+      .listen(() => {
+        setProgress(null);
+      })
+      .then((f) => unlistens.push(f));
 
     return () => {
-      unlisten?.();
+      for (const unlisten of unlistens) {
+        unlisten();
+      }
     };
   }, []);
 
-  return { version };
+  return { version, progress };
 }

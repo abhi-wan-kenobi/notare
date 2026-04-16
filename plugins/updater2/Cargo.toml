@@ -14,7 +14,6 @@ tauri-plugin = { workspace = true, features = ["build"] }
 specta-typescript = { workspace = true }
 
 [dependencies]
-tauri-plugin-fs-db = { workspace = true }
 tauri-plugin-store2 = { workspace = true }
 tauri-plugin-updater = { workspace = true }
 tokio = { workspace = true, features = ["macros", "time"] }

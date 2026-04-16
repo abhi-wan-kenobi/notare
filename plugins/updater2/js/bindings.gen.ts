@@ -48,11 +48,13 @@ async maybeEmitUpdated() : Promise<void> {
 
 export const events = __makeEvents__<{
 updateDownloadFailedEvent: UpdateDownloadFailedEvent,
+updateDownloadProgressEvent: UpdateDownloadProgressEvent,
 updateDownloadingEvent: UpdateDownloadingEvent,
 updateReadyEvent: UpdateReadyEvent,
 updatedEvent: UpdatedEvent
 }>({
 updateDownloadFailedEvent: "plugin:updater2:update-download-failed-event",
+updateDownloadProgressEvent: "plugin:updater2:update-download-progress-event",
 updateDownloadingEvent: "plugin:updater2:update-downloading-event",
 updateReadyEvent: "plugin:updater2:update-ready-event",
 updatedEvent: "plugin:updater2:updated-event"
@@ -66,6 +68,7 @@ updatedEvent: "plugin:updater2:updated-event"
 
 export type InstallResult = { kind: "relaunch_current" }
 export type UpdateDownloadFailedEvent = { version: string }
+export type UpdateDownloadProgressEvent = { version: string; chunk_length: number; content_length: number | null }
 export type UpdateDownloadingEvent = { version: string }
 export type UpdateReadyEvent = { version: string }
 export type UpdatedEvent = { previous: string | null; current: string }

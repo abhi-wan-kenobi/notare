@@ -25,6 +25,7 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
         ])
         .events(tauri_specta::collect_events![
             events::UpdateDownloadingEvent,
+            events::UpdateDownloadProgressEvent,
             events::UpdateDownloadFailedEvent,
             events::UpdateReadyEvent,
             events::UpdatedEvent,

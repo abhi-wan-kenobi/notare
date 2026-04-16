@@ -6,7 +6,8 @@ use tauri_plugin_updater::UpdaterExt;
 use tauri_specta::Event;
 
 use crate::events::{
-    UpdateDownloadFailedEvent, UpdateDownloadingEvent, UpdateReadyEvent, UpdatedEvent,
+    UpdateDownloadFailedEvent, UpdateDownloadProgressEvent, UpdateDownloadingEvent,
+    UpdateReadyEvent, UpdatedEvent,
 };
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
@@ -115,11 +116,6 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Updater2<'a, R, M> {
             return Ok(());
         }
 
-        use tauri_plugin_fs_db::FsDbPluginExt;
-        if let Err(e) = self.manager.fs_db().ensure_version_file() {
-            tracing::warn!("failed_to_ensure_version_file: {}", e);
-        }
-
         let updater = self.manager.updater()?;
         let update = updater
             .check()
@@ -138,8 +134,22 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Updater2<'a, R, M> {
         }
         .emit(self.manager.app_handle());
 
+        let app_handle = self.manager.app_handle().clone();
+        let version_string = version.to_string();
         let result: Result<(), crate::Error> = async {
-            let bytes = update.download(|_, _| {}, || {}).await?;
+            let bytes = update
+                .download(
+                    |chunk_length, content_length| {
+                        let _ = UpdateDownloadProgressEvent {
+                            version: version_string.clone(),
+                            chunk_length: chunk_length as u64,
+                            content_length,
+                        }
+                        .emit(&app_handle);
+                    },
+                    || {},
+                )
+                .await?;
             self.cache_update_bytes(version, &bytes)?;
             Ok(())
         }
