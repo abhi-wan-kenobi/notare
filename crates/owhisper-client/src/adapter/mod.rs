@@ -18,6 +18,7 @@ mod mistral;
 mod openai;
 mod owhisper;
 mod pyannote;
+mod smallestai;
 pub(crate) mod soniox;
 mod whispercpp;
 
@@ -35,6 +36,7 @@ pub use language::{LanguageQuality, LanguageSupport};
 pub use mistral::*;
 pub use openai::*;
 pub use pyannote::*;
+pub use smallestai::*;
 pub use soniox::*;
 pub use whispercpp::*;
 
