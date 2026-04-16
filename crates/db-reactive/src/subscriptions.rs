@@ -14,6 +14,13 @@ struct Subscription<S> {
 enum ReactiveLifecycle {
     Initializing,
     Active { ignore_through_seq: u64 },
+    Closing(ClosingReason),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ClosingReason {
+    Unsubscribe,
+    SinkFailure,
 }
 
 enum SubscriptionState<S> {
@@ -27,6 +34,9 @@ struct ReactiveSubscription<S> {
     params: Vec<serde_json::Value>,
     sink: S,
     lifecycle: ReactiveLifecycle,
+    detached: bool,
+    in_flight_refreshes: usize,
+    idle_notify: Arc<tokio::sync::Notify>,
 }
 
 struct Inner<S> {
@@ -116,6 +126,9 @@ impl<S> Registry<S> {
                     params,
                     sink,
                     lifecycle: ReactiveLifecycle::Initializing,
+                    detached: false,
+                    in_flight_refreshes: 0,
+                    idle_notify: Arc::new(tokio::sync::Notify::new()),
                 })
             }
             DependencyAnalysis::NonReactive { .. } => SubscriptionState::NonReactive,
@@ -140,8 +153,18 @@ impl<S> Registry<S> {
     }
 
     pub(crate) async fn unregister(&self, subscription_id: &str) -> bool {
-        let mut inner = self.inner.lock().await;
-        remove_subscription(&mut inner, subscription_id)
+        loop {
+            let wait_for_idle = {
+                let mut inner = self.inner.lock().await;
+                match begin_unsubscribe(&mut inner, subscription_id) {
+                    Some(UnregisterState::Done) => return true,
+                    Some(UnregisterState::Wait(wait_for_idle)) => wait_for_idle,
+                    None => return false,
+                }
+            };
+
+            wait_for_idle.notified().await;
+        }
     }
 
     pub(crate) async fn dependency_analysis(
@@ -198,7 +221,7 @@ impl<S> Registry<S> {
                     reactive.lifecycle = ReactiveLifecycle::Active { ignore_through_seq };
                     true
                 }
-                ReactiveLifecycle::Active { .. } => false,
+                ReactiveLifecycle::Active { .. } | ReactiveLifecycle::Closing(_) => false,
             },
             SubscriptionState::NonReactive => false,
         }
@@ -214,31 +237,89 @@ impl<S: QueryEventSink> Registry<S> {
     ) {
         let payload = QueryEventPayload::load(executor, &job.sql, &job.params).await;
 
-        let mut inner = self.inner.lock().await;
-        let Some(subscription_id) = inner.watch_ids.get(&job.watch_id).cloned() else {
+        let Some((subscription_id, sink)) = self
+            .begin_refresh_delivery(job.watch_id, suppress_if_equal, &payload)
+            .await
+        else {
             return;
         };
-        let send_result = {
-            let Some(subscription) = inner.subscriptions.get(&subscription_id) else {
-                return;
-            };
-            let SubscriptionState::Reactive(reactive) = &subscription.state else {
-                return;
-            };
+        let send_result = payload.send_to(&sink);
+        self.finish_refresh_delivery(&subscription_id, send_result.is_err())
+            .await;
+    }
 
-            if !matches!(reactive.lifecycle, ReactiveLifecycle::Active { .. }) {
-                return;
-            }
-
-            if suppress_if_equal == Some(&payload) {
-                return;
-            }
-
-            payload.send_to(&reactive.sink)
+    async fn begin_refresh_delivery(
+        &self,
+        watch_id: WatchId,
+        suppress_if_equal: Option<&QueryEventPayload>,
+        payload: &QueryEventPayload,
+    ) -> Option<(String, S)> {
+        let mut inner = self.inner.lock().await;
+        let subscription_id = inner.watch_ids.get(&watch_id).cloned()?;
+        let subscription = inner.subscriptions.get_mut(&subscription_id)?;
+        let SubscriptionState::Reactive(reactive) = &mut subscription.state else {
+            return None;
         };
 
-        if send_result.is_err() {
-            remove_subscription(&mut inner, &subscription_id);
+        if !matches!(reactive.lifecycle, ReactiveLifecycle::Active { .. }) {
+            return None;
+        }
+
+        if suppress_if_equal == Some(payload) {
+            return None;
+        }
+
+        reactive.in_flight_refreshes += 1;
+        Some((subscription_id, reactive.sink.clone()))
+    }
+
+    async fn finish_refresh_delivery(&self, subscription_id: &str, send_failed: bool) {
+        let mut inner = self.inner.lock().await;
+        let Some((watch_id, should_detach, notify_idle, remove_now)) = ({
+            let Some(subscription) = inner.subscriptions.get_mut(subscription_id) else {
+                return;
+            };
+            let SubscriptionState::Reactive(reactive) = &mut subscription.state else {
+                return;
+            };
+
+            reactive.in_flight_refreshes = reactive.in_flight_refreshes.saturating_sub(1);
+
+            let mut should_detach = false;
+            let watch_id = reactive.watch_id;
+            if send_failed {
+                should_detach = !reactive.detached;
+                reactive.lifecycle = ReactiveLifecycle::Closing(ClosingReason::SinkFailure);
+                reactive.detached = true;
+            }
+
+            let notify_idle = reactive.in_flight_refreshes == 0;
+            let remove_now = notify_idle
+                && matches!(
+                    reactive.lifecycle,
+                    ReactiveLifecycle::Closing(ClosingReason::SinkFailure)
+                );
+
+            Some((watch_id, should_detach, notify_idle, remove_now))
+        }) else {
+            return;
+        };
+
+        if should_detach {
+            inner.watch_ids.remove(&watch_id);
+            inner.deps.unregister(watch_id);
+        }
+
+        if notify_idle {
+            if let Some(subscription) = inner.subscriptions.get(subscription_id) {
+                if let SubscriptionState::Reactive(reactive) = &subscription.state {
+                    reactive.idle_notify.notify_waiters();
+                }
+            }
+        }
+
+        if remove_now {
+            remove_subscription(&mut inner, subscription_id);
         }
     }
 }
@@ -275,11 +356,51 @@ fn remove_subscription<S>(inner: &mut Inner<S>, subscription_id: &str) -> bool {
     };
 
     if let SubscriptionState::Reactive(reactive) = subscription.state {
-        inner.watch_ids.remove(&reactive.watch_id);
-        inner.deps.unregister(reactive.watch_id);
+        if !reactive.detached {
+            inner.watch_ids.remove(&reactive.watch_id);
+            inner.deps.unregister(reactive.watch_id);
+        }
     }
 
     true
+}
+
+enum UnregisterState {
+    Done,
+    Wait(Arc<tokio::sync::Notify>),
+}
+
+fn begin_unsubscribe<S>(inner: &mut Inner<S>, subscription_id: &str) -> Option<UnregisterState> {
+    let (watch_id, should_detach, in_flight_refreshes, idle_notify) = {
+        let subscription = inner.subscriptions.get_mut(subscription_id)?;
+        let SubscriptionState::Reactive(reactive) = &mut subscription.state else {
+            remove_subscription(inner, subscription_id);
+            return Some(UnregisterState::Done);
+        };
+
+        reactive.lifecycle = ReactiveLifecycle::Closing(ClosingReason::Unsubscribe);
+        let watch_id = reactive.watch_id;
+        let should_detach = !reactive.detached;
+        reactive.detached = true;
+        (
+            watch_id,
+            should_detach,
+            reactive.in_flight_refreshes,
+            Arc::clone(&reactive.idle_notify),
+        )
+    };
+
+    if should_detach {
+        inner.watch_ids.remove(&watch_id);
+        inner.deps.unregister(watch_id);
+    }
+
+    if in_flight_refreshes == 0 {
+        remove_subscription(inner, subscription_id);
+        Some(UnregisterState::Done)
+    } else {
+        Some(UnregisterState::Wait(idle_notify))
+    }
 }
 
 #[cfg(test)]

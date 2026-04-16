@@ -33,7 +33,7 @@ async fn setup_db() -> Db {
 }
 
 #[tokio::test]
-#[ignore = "requires SQLite Cloud connectivity and credentials"]
+#[ignore = "external verification only; requires SQLITECLOUD_URL and an explicit --ignored run"]
 async fn cloudsync_pull_refreshes_live_query_subscriptions() {
     let marker = uuid::Uuid::new_v4().to_string();
 

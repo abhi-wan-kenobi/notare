@@ -17,8 +17,8 @@ uniffi::setup_scaffolding!();
 
 struct BridgeState {
     executor: hypr_db_execute::DbExecutor,
-    live_query_runtime: hypr_db_reactive::LiveQueryRuntime<ListenerSink>,
-    runtime: tokio::runtime::Runtime,
+    live_query_runtime: Arc<hypr_db_reactive::LiveQueryRuntime<ListenerSink>>,
+    runtime: Arc<tokio::runtime::Runtime>,
     subscription_ids: HashSet<String>,
 }
 
@@ -38,9 +38,11 @@ impl MobileDbBridge {
             .map_err(|error| BridgeError::OpenFailed {
                 reason: error.to_string(),
             })?;
+        let runtime = Arc::new(runtime);
         let path = std::path::PathBuf::from(db_path);
         let cloudsync_enabled = cloudsync_open_mode.as_deref() == Some("enabled");
         let db = runtime
+            .handle()
             .block_on(db::open_app_db(&path, cloudsync_enabled))
             .map_err(|error| BridgeError::OpenFailed {
                 reason: error.to_string(),
@@ -49,7 +51,7 @@ impl MobileDbBridge {
         let executor = hypr_db_execute::DbExecutor::new(std::sync::Arc::clone(&db));
         let live_query_runtime = {
             let _guard = runtime.enter();
-            hypr_db_reactive::LiveQueryRuntime::new(db)
+            Arc::new(hypr_db_reactive::LiveQueryRuntime::new(db))
         };
 
         Ok(Self {
@@ -64,13 +66,13 @@ impl MobileDbBridge {
 
     pub fn execute(&self, sql: String, params_json: String) -> Result<String, BridgeError> {
         let params = parse_params_json(&params_json)?;
-        self.with_state(|state| {
-            let rows = state
-                .runtime
-                .block_on(state.executor.execute(sql, params))
-                .map_err(execute_error)?;
-            serde_json::to_string(&rows).map_err(serialization_error)
-        })
+        let (runtime, executor) =
+            self.with_state(|state| Ok((Arc::clone(&state.runtime), state.executor.clone())))?;
+        let rows = runtime
+            .handle()
+            .block_on(executor.execute(sql, params))
+            .map_err(execute_error)?;
+        serde_json::to_string(&rows).map_err(serialization_error)
     }
 
     pub fn execute_proxy(
@@ -83,13 +85,13 @@ impl MobileDbBridge {
         let method = method
             .parse::<hypr_db_execute::ProxyQueryMethod>()
             .map_err(execute_error)?;
-        self.with_state(|state| {
-            let rows = state
-                .runtime
-                .block_on(state.executor.execute_proxy(sql, params, method))
-                .map_err(execute_error)?;
-            serde_json::to_string(&rows).map_err(serialization_error)
-        })
+        let (runtime, executor) =
+            self.with_state(|state| Ok((Arc::clone(&state.runtime), state.executor.clone())))?;
+        let rows = runtime
+            .handle()
+            .block_on(executor.execute_proxy(sql, params, method))
+            .map_err(execute_error)?;
+        serde_json::to_string(&rows).map_err(serialization_error)
     }
 
     pub fn subscribe(
@@ -99,38 +101,71 @@ impl MobileDbBridge {
         listener: Arc<dyn QueryEventListener>,
     ) -> Result<String, BridgeError> {
         let params = parse_params_json(&params_json)?;
-        self.with_state(|state| {
-            let registration = state
-                .runtime
-                .block_on(state.live_query_runtime.subscribe(
-                    sql,
-                    params,
-                    ListenerSink::new(listener),
-                ))
-                .map_err(reactive_error)?;
-            state.subscription_ids.insert(registration.id.clone());
-            Ok(registration.id)
-        })
+        let sql_for_log = sql.clone();
+        let (runtime, live_query_runtime) = self.with_state(|state| {
+            Ok((
+                Arc::clone(&state.runtime),
+                Arc::clone(&state.live_query_runtime),
+            ))
+        })?;
+        let registration = runtime
+            .handle()
+            .block_on(live_query_runtime.subscribe(sql, params, ListenerSink::new(listener)))
+            .map_err(reactive_error)?;
+
+        if let hypr_db_reactive::DependencyAnalysis::NonReactive { reason } = &registration.analysis
+        {
+            eprintln!(
+                "[mobile-bridge] live query subscription is non-reactive for SQL {:?}: {}",
+                sql_for_log, reason
+            );
+        }
+
+        let subscription_id = registration.id.clone();
+        if self
+            .with_state(|state| {
+                state.subscription_ids.insert(subscription_id.clone());
+                Ok(())
+            })
+            .is_err()
+        {
+            let _ = runtime
+                .handle()
+                .block_on(live_query_runtime.unsubscribe(&registration.id));
+            return Err(BridgeError::Closed);
+        }
+
+        Ok(registration.id)
     }
 
     pub fn unsubscribe(&self, subscription_id: String) -> Result<(), BridgeError> {
+        let (runtime, live_query_runtime) = self.with_state(|state| {
+            Ok((
+                Arc::clone(&state.runtime),
+                Arc::clone(&state.live_query_runtime),
+            ))
+        })?;
+        runtime
+            .handle()
+            .block_on(live_query_runtime.unsubscribe(&subscription_id))
+            .map_err(reactive_error)?;
         self.with_state(|state| {
-            state
-                .runtime
-                .block_on(state.live_query_runtime.unsubscribe(&subscription_id))
-                .map_err(reactive_error)?;
             state.subscription_ids.remove(&subscription_id);
             Ok(())
         })
     }
 
     pub fn cloudsync_version(&self) -> Result<String, BridgeError> {
-        self.with_state(|state| {
-            state
-                .runtime
-                .block_on(state.live_query_runtime.db().cloudsync_version())
-                .map_err(cloudsync_error)
-        })
+        let (runtime, live_query_runtime) = self.with_state(|state| {
+            Ok((
+                Arc::clone(&state.runtime),
+                Arc::clone(&state.live_query_runtime),
+            ))
+        })?;
+        runtime
+            .handle()
+            .block_on(live_query_runtime.db().cloudsync_version())
+            .map_err(cloudsync_error)
     }
 
     pub fn cloudsync_init(
@@ -139,58 +174,67 @@ impl MobileDbBridge {
         crdt_algo: Option<String>,
         force: Option<bool>,
     ) -> Result<(), BridgeError> {
-        self.with_state(|state| {
-            state
-                .runtime
-                .block_on(state.live_query_runtime.db().cloudsync_init(
-                    &table_name,
-                    crdt_algo.as_deref(),
-                    force,
-                ))
-                .map_err(cloudsync_error)
-        })
+        let (runtime, live_query_runtime) = self.with_state(|state| {
+            Ok((
+                Arc::clone(&state.runtime),
+                Arc::clone(&state.live_query_runtime),
+            ))
+        })?;
+        runtime
+            .handle()
+            .block_on(live_query_runtime.db().cloudsync_init(
+                &table_name,
+                crdt_algo.as_deref(),
+                force,
+            ))
+            .map_err(cloudsync_error)
     }
 
     pub fn cloudsync_network_init(&self, connection_string: String) -> Result<(), BridgeError> {
-        self.with_state(|state| {
-            state
-                .runtime
-                .block_on(
-                    state
-                        .live_query_runtime
-                        .db()
-                        .cloudsync_network_init(&connection_string),
-                )
-                .map_err(cloudsync_error)
-        })
+        let (runtime, live_query_runtime) = self.with_state(|state| {
+            Ok((
+                Arc::clone(&state.runtime),
+                Arc::clone(&state.live_query_runtime),
+            ))
+        })?;
+        runtime
+            .handle()
+            .block_on(
+                live_query_runtime
+                    .db()
+                    .cloudsync_network_init(&connection_string),
+            )
+            .map_err(cloudsync_error)
     }
 
     pub fn cloudsync_network_set_apikey(&self, api_key: String) -> Result<(), BridgeError> {
-        self.with_state(|state| {
-            state
-                .runtime
-                .block_on(
-                    state
-                        .live_query_runtime
-                        .db()
-                        .cloudsync_network_set_apikey(&api_key),
-                )
-                .map_err(cloudsync_error)
-        })
+        let (runtime, live_query_runtime) = self.with_state(|state| {
+            Ok((
+                Arc::clone(&state.runtime),
+                Arc::clone(&state.live_query_runtime),
+            ))
+        })?;
+        runtime
+            .handle()
+            .block_on(
+                live_query_runtime
+                    .db()
+                    .cloudsync_network_set_apikey(&api_key),
+            )
+            .map_err(cloudsync_error)
     }
 
     pub fn cloudsync_network_set_token(&self, token: String) -> Result<(), BridgeError> {
-        self.with_state(|state| {
-            state
-                .runtime
-                .block_on(
-                    state
-                        .live_query_runtime
-                        .db()
-                        .cloudsync_network_set_token(&token),
-                )
-                .map_err(cloudsync_error)
-        })
+        let (runtime, live_query_runtime) = self.with_state(|state| {
+            Ok((
+                Arc::clone(&state.runtime),
+                Arc::clone(&state.live_query_runtime),
+            ))
+        })?;
+        runtime
+            .handle()
+            .block_on(live_query_runtime.db().cloudsync_network_set_token(&token))
+            .map_err(cloudsync_error)
     }
 
     pub fn cloudsync_network_sync(
@@ -198,17 +242,20 @@ impl MobileDbBridge {
         wait_ms: Option<i64>,
         max_retries: Option<i64>,
     ) -> Result<i64, BridgeError> {
-        self.with_state(|state| {
-            state
-                .runtime
-                .block_on(
-                    state
-                        .live_query_runtime
-                        .db()
-                        .cloudsync_network_sync(wait_ms, max_retries),
-                )
-                .map_err(cloudsync_error)
-        })
+        let (runtime, live_query_runtime) = self.with_state(|state| {
+            Ok((
+                Arc::clone(&state.runtime),
+                Arc::clone(&state.live_query_runtime),
+            ))
+        })?;
+        runtime
+            .handle()
+            .block_on(
+                live_query_runtime
+                    .db()
+                    .cloudsync_network_sync(wait_ms, max_retries),
+            )
+            .map_err(cloudsync_error)
     }
 
     pub fn configure_cloudsync(&self, config_json: String) -> Result<(), BridgeError> {
@@ -216,50 +263,65 @@ impl MobileDbBridge {
             .map_err(|error| BridgeError::InvalidCloudsyncConfigJson {
                 reason: error.to_string(),
             })?;
-        self.with_state(|state| {
-            state
-                .live_query_runtime
-                .db()
-                .cloudsync_configure(config)
-                .map_err(cloudsync_runtime_error)
-        })
+        let live_query_runtime =
+            self.with_state(|state| Ok(Arc::clone(&state.live_query_runtime)))?;
+        live_query_runtime
+            .db()
+            .cloudsync_configure(config)
+            .map_err(cloudsync_runtime_error)
     }
 
     pub fn start_cloudsync(&self) -> Result<(), BridgeError> {
-        self.with_state(|state| {
-            state
-                .runtime
-                .block_on(state.live_query_runtime.db().cloudsync_start())
-                .map_err(cloudsync_runtime_error)
-        })
+        let (runtime, live_query_runtime) = self.with_state(|state| {
+            Ok((
+                Arc::clone(&state.runtime),
+                Arc::clone(&state.live_query_runtime),
+            ))
+        })?;
+        runtime
+            .handle()
+            .block_on(live_query_runtime.db().cloudsync_start())
+            .map_err(cloudsync_runtime_error)
     }
 
     pub fn stop_cloudsync(&self) -> Result<(), BridgeError> {
-        self.with_state(|state| {
-            state
-                .runtime
-                .block_on(state.live_query_runtime.db().cloudsync_stop())
-                .map_err(cloudsync_runtime_error)
-        })
+        let (runtime, live_query_runtime) = self.with_state(|state| {
+            Ok((
+                Arc::clone(&state.runtime),
+                Arc::clone(&state.live_query_runtime),
+            ))
+        })?;
+        runtime
+            .handle()
+            .block_on(live_query_runtime.db().cloudsync_stop())
+            .map_err(cloudsync_runtime_error)
     }
 
     pub fn cloudsync_status(&self) -> Result<String, BridgeError> {
-        self.with_state(|state| {
-            let status = state
-                .runtime
-                .block_on(state.live_query_runtime.db().cloudsync_status())
-                .map_err(cloudsync_runtime_error)?;
-            serde_json::to_string(&status).map_err(serialization_error)
-        })
+        let (runtime, live_query_runtime) = self.with_state(|state| {
+            Ok((
+                Arc::clone(&state.runtime),
+                Arc::clone(&state.live_query_runtime),
+            ))
+        })?;
+        let status = runtime
+            .handle()
+            .block_on(live_query_runtime.db().cloudsync_status())
+            .map_err(cloudsync_runtime_error)?;
+        serde_json::to_string(&status).map_err(serialization_error)
     }
 
     pub fn cloudsync_sync_now(&self) -> Result<i64, BridgeError> {
-        self.with_state(|state| {
-            state
-                .runtime
-                .block_on(state.live_query_runtime.db().cloudsync_trigger_sync())
-                .map_err(cloudsync_runtime_error)
-        })
+        let (runtime, live_query_runtime) = self.with_state(|state| {
+            Ok((
+                Arc::clone(&state.runtime),
+                Arc::clone(&state.live_query_runtime),
+            ))
+        })?;
+        runtime
+            .handle()
+            .block_on(live_query_runtime.db().cloudsync_trigger_sync())
+            .map_err(cloudsync_runtime_error)
     }
 
     pub fn close(&self) -> Result<(), BridgeError> {
@@ -267,10 +329,11 @@ impl MobileDbBridge {
         let Some(mut state) = guard.take() else {
             return Ok(());
         };
+        drop(guard);
 
         let subscription_ids: Vec<String> = state.subscription_ids.drain().collect();
         let pool = state.live_query_runtime.db().pool().clone();
-        state.runtime.block_on(async {
+        state.runtime.handle().block_on(async {
             for subscription_id in subscription_ids {
                 let _ = state.live_query_runtime.unsubscribe(&subscription_id).await;
             }
@@ -278,7 +341,7 @@ impl MobileDbBridge {
         });
         drop(state.live_query_runtime);
         drop(state.executor);
-        state.runtime.block_on(pool.close());
+        state.runtime.handle().block_on(pool.close());
 
         Ok(())
     }
@@ -317,6 +380,8 @@ impl Drop for MobileDbBridge {
 ))]
 mod tests {
     use super::*;
+    use std::process::Command;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::Duration;
 
     #[derive(Clone, Debug, PartialEq)]
@@ -392,6 +457,20 @@ mod tests {
         )
         .unwrap();
         (dir, bridge)
+    }
+
+    const REENTRANT_SUBSCRIBE_CHILD_ENV: &str = "MOBILE_BRIDGE_REENTRANT_SUBSCRIBE_CHILD";
+
+    fn cloudsync_config_json() -> String {
+        r#"{
+            "connection_string":"sqlitecloud://demo.invalid/app.db?apikey=demo",
+            "auth":{"type":"none"},
+            "tables":[{"table_name":"templates","crdt_algo":null,"force_init":null,"enabled":false}],
+            "sync_interval_ms":30000,
+            "wait_ms":1000,
+            "max_retries":1
+        }"#
+        .to_string()
     }
 
     #[test]
@@ -478,6 +557,76 @@ mod tests {
     }
 
     #[test]
+    fn subscribe_listener_can_reenter_bridge_without_deadlock() {
+        if std::env::var_os(REENTRANT_SUBSCRIBE_CHILD_ENV).is_some() {
+            #[derive(Clone)]
+            struct ReentrantListener {
+                bridge: std::sync::Weak<MobileDbBridge>,
+                callback_completed: Arc<AtomicBool>,
+            }
+
+            impl QueryEventListener for ReentrantListener {
+                fn on_result(&self, _rows_json: String) {
+                    let bridge = self
+                        .bridge
+                        .upgrade()
+                        .expect("bridge should be alive during callback");
+                    bridge.configure_cloudsync(cloudsync_config_json()).unwrap();
+                    self.callback_completed.store(true, Ordering::SeqCst);
+                }
+
+                fn on_error(&self, message: String) {
+                    panic!("unexpected error callback: {message}");
+                }
+            }
+
+            let (_dir, bridge) = new_bridge(None);
+            let bridge = Arc::new(bridge);
+            let callback_completed = Arc::new(AtomicBool::new(false));
+            let listener = Arc::new(ReentrantListener {
+                bridge: Arc::downgrade(&bridge),
+                callback_completed: Arc::clone(&callback_completed),
+            });
+
+            let subscription_id = bridge
+                .subscribe(
+                    "SELECT id, title FROM templates ORDER BY id".to_string(),
+                    "[]".to_string(),
+                    listener,
+                )
+                .unwrap();
+            assert!(callback_completed.load(Ordering::SeqCst));
+            bridge.unsubscribe(subscription_id).unwrap();
+            return;
+        }
+
+        let current_exe = std::env::current_exe().unwrap();
+        let mut child = Command::new(current_exe)
+            .arg("--exact")
+            .arg("tests::subscribe_listener_can_reenter_bridge_without_deadlock")
+            .arg("--nocapture")
+            .env(REENTRANT_SUBSCRIBE_CHILD_ENV, "1")
+            .spawn()
+            .unwrap();
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+
+        loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                assert!(status.success(), "child test failed with status {status}");
+                break;
+            }
+
+            if std::time::Instant::now() >= deadline {
+                let _ = child.kill();
+                let _ = child.wait();
+                panic!("child test timed out; subscribe listener re-entry likely deadlocked");
+            }
+
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    #[test]
     fn unsubscribe_stops_future_events() {
         let (_dir, bridge) = new_bridge(None);
         let (listener, events) = TestListener::capture();
@@ -520,19 +669,7 @@ mod tests {
     fn cloudsync_manager_roundtrips_when_disabled() {
         let (_dir, bridge) = new_bridge(None);
 
-        bridge
-            .configure_cloudsync(
-                r#"{
-                    "connection_string":"sqlitecloud://demo.invalid/app.db?apikey=demo",
-                    "auth":{"type":"none"},
-                    "tables":[{"table_name":"templates","crdt_algo":null,"force_init":null,"enabled":false}],
-                    "sync_interval_ms":30000,
-                    "wait_ms":1000,
-                    "max_retries":1
-                }"#
-                .to_string(),
-            )
-            .unwrap();
+        bridge.configure_cloudsync(cloudsync_config_json()).unwrap();
         bridge.start_cloudsync().unwrap();
 
         let status: serde_json::Value =

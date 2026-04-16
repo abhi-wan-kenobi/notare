@@ -98,11 +98,17 @@ impl<S: QueryEventSink> LiveQueryRuntime<S> {
             .subscriptions
             .register(sql.clone(), params.clone(), sink.clone(), analysis)
             .await;
+
         #[cfg(test)]
         test_support::before_initial_payload_load().await;
+
         let initial_payload = self
             .deliver_initial_payload(&registered.registration.id, &sql, &params, &sink)
             .await?;
+
+        #[cfg(test)]
+        test_support::before_activation().await;
+
         self.activate_reactive_subscription(
             baseline_seq,
             registered.reactive_watch_id,
@@ -327,14 +333,14 @@ mod test_support {
 
     use tokio::sync::{Mutex, Notify};
 
-    struct InitialPayloadHook {
+    struct Hook {
         reached: AtomicBool,
         reached_notify: Notify,
         released: AtomicBool,
         release_notify: Notify,
     }
 
-    impl InitialPayloadHook {
+    impl Hook {
         fn new() -> Self {
             Self {
                 reached: AtomicBool::new(false),
@@ -345,27 +351,51 @@ mod test_support {
         }
     }
 
-    pub(crate) struct InitialPayloadHookHandle {
-        hook: Arc<InitialPayloadHook>,
+    pub(crate) struct HookHandle {
+        hook: Arc<Hook>,
     }
 
-    fn hook_slot() -> &'static Mutex<Option<Arc<InitialPayloadHook>>> {
-        static SLOT: OnceLock<Mutex<Option<Arc<InitialPayloadHook>>>> = OnceLock::new();
+    fn initial_payload_hook_slot() -> &'static Mutex<Option<Arc<Hook>>> {
+        static SLOT: OnceLock<Mutex<Option<Arc<Hook>>>> = OnceLock::new();
         SLOT.get_or_init(|| Mutex::new(None))
     }
 
-    pub(crate) async fn install_initial_payload_hook() -> InitialPayloadHookHandle {
-        let hook = Arc::new(InitialPayloadHook::new());
-        *hook_slot().lock().await = Some(Arc::clone(&hook));
-        InitialPayloadHookHandle { hook }
+    fn activation_hook_slot() -> &'static Mutex<Option<Arc<Hook>>> {
+        static SLOT: OnceLock<Mutex<Option<Arc<Hook>>>> = OnceLock::new();
+        SLOT.get_or_init(|| Mutex::new(None))
+    }
+
+    pub(crate) async fn install_initial_payload_hook() -> HookHandle {
+        let hook = Arc::new(Hook::new());
+        *initial_payload_hook_slot().lock().await = Some(Arc::clone(&hook));
+        HookHandle { hook }
+    }
+
+    pub(crate) async fn install_activation_hook() -> HookHandle {
+        let hook = Arc::new(Hook::new());
+        *activation_hook_slot().lock().await = Some(Arc::clone(&hook));
+        HookHandle { hook }
     }
 
     pub(crate) async fn before_initial_payload_load() {
-        let hook = hook_slot().lock().await.clone();
+        let hook = initial_payload_hook_slot().lock().await.clone();
         let Some(hook) = hook else {
             return;
         };
 
+        reach_and_wait(hook).await;
+    }
+
+    pub(crate) async fn before_activation() {
+        let hook = activation_hook_slot().lock().await.clone();
+        let Some(hook) = hook else {
+            return;
+        };
+
+        reach_and_wait(hook).await;
+    }
+
+    async fn reach_and_wait(hook: Arc<Hook>) {
         hook.reached.store(true, Ordering::SeqCst);
         hook.reached_notify.notify_waiters();
         while !hook.released.load(Ordering::SeqCst) {
@@ -373,7 +403,7 @@ mod test_support {
         }
     }
 
-    impl InitialPayloadHookHandle {
+    impl HookHandle {
         pub(crate) async fn wait_until_reached(&self) {
             tokio::time::timeout(std::time::Duration::from_secs(1), async {
                 while !self.hook.reached.load(Ordering::SeqCst) {
@@ -387,13 +417,29 @@ mod test_support {
         pub(crate) async fn release(self) {
             self.hook.released.store(true, Ordering::SeqCst);
             self.hook.release_notify.notify_waiters();
-            *hook_slot().lock().await = None;
+            let mut initial_payload_slot = initial_payload_hook_slot().lock().await;
+            if initial_payload_slot
+                .as_ref()
+                .is_some_and(|hook| Arc::ptr_eq(hook, &self.hook))
+            {
+                *initial_payload_slot = None;
+            }
+            drop(initial_payload_slot);
+
+            let mut activation_slot = activation_hook_slot().lock().await;
+            if activation_slot
+                .as_ref()
+                .is_some_and(|hook| Arc::ptr_eq(hook, &self.hook))
+            {
+                *activation_slot = None;
+            }
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::OnceLock;
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
 
@@ -402,6 +448,11 @@ mod tests {
 
     use super::*;
     use crate::types::QueryEventSink;
+
+    fn hook_test_lock() -> &'static tokio::sync::Mutex<()> {
+        static LOCK: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| tokio::sync::Mutex::new(()))
+    }
 
     #[derive(Clone, Debug, PartialEq)]
     enum TestEvent {
@@ -452,8 +503,11 @@ mod tests {
         }
     }
 
-    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-    async fn stale_init_time_broadcast_processed_after_activation_is_ignored() {
+    async fn setup_runtime() -> (
+        tempfile::TempDir,
+        sqlx::SqlitePool,
+        LiveQueryRuntime<TestSink>,
+    ) {
         let dir = tempfile::tempdir().unwrap();
         let db_path = dir.path().join("app.db");
         let db = hypr_db_core::Db::open(DbOpenOptions {
@@ -470,8 +524,128 @@ mod tests {
             .unwrap();
 
         let pool = db.pool().clone();
-        let runtime = LiveQueryRuntime::new(Arc::new(db));
+        (dir, pool, LiveQueryRuntime::new(Arc::new(db)))
+    }
 
+    async fn next_event(
+        events: &Arc<Mutex<Vec<TestEvent>>>,
+        index: usize,
+        timeout: Duration,
+    ) -> TestEvent {
+        tokio::time::timeout(timeout, async {
+            loop {
+                if let Some(event) = events.lock().unwrap().get(index).cloned() {
+                    return event;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("expected event")
+    }
+
+    async fn assert_no_event(events: &Arc<Mutex<Vec<TestEvent>>>, index: usize, timeout: Duration) {
+        let result = tokio::time::timeout(timeout, async {
+            loop {
+                if let Some(event) = events.lock().unwrap().get(index).cloned() {
+                    return event;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await;
+
+        assert!(
+            result.is_err(),
+            "unexpected event at index {index}: {:?}",
+            result.unwrap()
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn catch_up_refresh_emits_exactly_once_when_dependency_changes_before_activation() {
+        let _guard = hook_test_lock().lock().await;
+        let (_dir, pool, runtime) = setup_runtime().await;
+        let activation_hook = test_support::install_activation_hook().await;
+        let (sink, events) = TestSink::capture();
+
+        let subscribe = tokio::spawn(async move {
+            runtime
+                .subscribe(
+                    "SELECT id FROM daily_notes ORDER BY id".to_string(),
+                    vec![],
+                    sink,
+                )
+                .await
+        });
+
+        activation_hook.wait_until_reached().await;
+        assert_eq!(
+            next_event(&events, 0, Duration::from_secs(1)).await,
+            TestEvent::Result(Vec::new())
+        );
+
+        sqlx::query("INSERT INTO daily_notes (id, date, body, user_id) VALUES (?, ?, ?, ?)")
+            .bind("note-catch-up")
+            .bind("2026-04-20")
+            .bind("{}")
+            .bind("user-catch-up")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        activation_hook.release().await;
+        subscribe.await.unwrap().unwrap();
+
+        assert_eq!(
+            next_event(&events, 1, Duration::from_secs(1)).await,
+            TestEvent::Result(vec![json!({ "id": "note-catch-up" })])
+        );
+        assert_no_event(&events, 2, Duration::from_millis(150)).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn catch_up_refresh_is_suppressed_when_initial_payload_matches_latest_state() {
+        let _guard = hook_test_lock().lock().await;
+        let (_dir, pool, runtime) = setup_runtime().await;
+        let initial_payload_hook = test_support::install_initial_payload_hook().await;
+        let (sink, events) = TestSink::capture();
+
+        let subscribe = tokio::spawn(async move {
+            runtime
+                .subscribe(
+                    "SELECT id FROM daily_notes WHERE id = ?".to_string(),
+                    vec![json!("note-catch-up-match")],
+                    sink,
+                )
+                .await
+        });
+
+        initial_payload_hook.wait_until_reached().await;
+
+        sqlx::query("INSERT INTO daily_notes (id, date, body, user_id) VALUES (?, ?, ?, ?)")
+            .bind("note-catch-up-match")
+            .bind("2026-04-25")
+            .bind("{}")
+            .bind("user-match")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        initial_payload_hook.release().await;
+        subscribe.await.unwrap().unwrap();
+
+        assert_eq!(
+            next_event(&events, 0, Duration::from_secs(1)).await,
+            TestEvent::Result(vec![json!({ "id": "note-catch-up-match" })])
+        );
+        assert_no_event(&events, 1, Duration::from_millis(150)).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn stale_init_time_broadcast_processed_after_activation_is_ignored() {
+        let _guard = hook_test_lock().lock().await;
+        let (_dir, pool, runtime) = setup_runtime().await;
         let hook = test_support::install_initial_payload_hook().await;
         let (sink, events) = TestSink::capture();
 
@@ -510,22 +684,10 @@ mod tests {
         hook.release().await;
         subscribe.await.unwrap().unwrap();
 
-        let initial = tokio::time::timeout(Duration::from_secs(1), async {
-            loop {
-                if let Some(event) = events.lock().unwrap().first().cloned() {
-                    return event;
-                }
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            }
-        })
-        .await
-        .unwrap();
         assert_eq!(
-            initial,
+            next_event(&events, 0, Duration::from_secs(1)).await,
             TestEvent::Result(vec![json!({ "id": "note-stale-after-activation" })])
         );
-
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        assert_eq!(events.lock().unwrap().len(), 1);
+        assert_no_event(&events, 1, Duration::from_millis(150)).await;
     }
 }
