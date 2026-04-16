@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { LiveQueryClient } from "@hypr/db-runtime";
+import type { LiveQueryClient, Unsubscribe } from "@hypr/db-runtime";
 
 type UseLiveQueryOptions<TRow, TData> = {
   sql: string;
@@ -28,7 +28,7 @@ export function createUseLiveQuery(client: LiveQueryClient) {
 
     useEffect(() => {
       let active = true;
-      let unsubscribe: (() => void) | undefined;
+      let unsubscribe: Unsubscribe | undefined;
 
       if (!enabled) {
         setIsLoading(false);
@@ -65,7 +65,7 @@ export function createUseLiveQuery(client: LiveQueryClient) {
         })
         .then((fn) => {
           if (!active) {
-            fn();
+            void fn().catch(() => {});
             return;
           }
 
@@ -82,7 +82,7 @@ export function createUseLiveQuery(client: LiveQueryClient) {
 
       return () => {
         active = false;
-        unsubscribe?.();
+        void unsubscribe?.().catch(() => {});
       };
     }, [enabled, paramsKey, sql]);
 

@@ -18,7 +18,7 @@ describe("@hypr/db-react", () => {
 
   it("loads initial rows and unsubscribes on unmount", async () => {
     const useLiveQuery = createUseLiveQuery(client);
-    const unsubscribe = vi.fn();
+    const unsubscribe = vi.fn().mockResolvedValue(undefined);
     let onData: ((rows: Array<{ id: number }>) => void) | undefined;
 
     subscribeMock.mockImplementation(async (_sql, _params, options) => {
@@ -52,7 +52,9 @@ describe("@hypr/db-react", () => {
 
     unmount();
 
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("does not subscribe when disabled", () => {
@@ -71,12 +73,12 @@ describe("@hypr/db-react", () => {
 
   it("ignores late subscription resolution after unmount", async () => {
     const useLiveQuery = createUseLiveQuery(client);
-    const unsubscribe = vi.fn();
-    let resolveSubscribe: ((value: () => void) => void) | undefined;
+    const unsubscribe = vi.fn().mockResolvedValue(undefined);
+    let resolveSubscribe: ((value: () => Promise<void>) => void) | undefined;
 
     subscribeMock.mockImplementation(
       () =>
-        new Promise<() => void>((resolve) => {
+        new Promise<() => Promise<void>>((resolve) => {
           resolveSubscribe = resolve;
         }),
     );
@@ -105,7 +107,7 @@ describe("@hypr/db-react", () => {
 
     subscribeMock.mockImplementation(async (_sql, _params, options) => {
       onData = options.onData;
-      return () => {};
+      return async () => {};
     });
 
     const query = {

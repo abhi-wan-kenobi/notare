@@ -141,7 +141,7 @@ export async function subscribe<T = Row>(
     onData: (rows: T[]) => void;
     onError?: (error: string) => void;
   },
-): Promise<() => void> {
+): Promise<() => Promise<void>> {
   const bridge = await openBridge();
   const subscriptionId = bridge.subscribe(sql, JSON.stringify(params), {
     onResult: (rowsJson) => {
@@ -152,12 +152,8 @@ export async function subscribe<T = Row>(
     },
   });
 
-  return () => {
-    try {
-      bridge.unsubscribe(subscriptionId);
-    } catch {
-      // Ignore duplicate unsubscribe or teardown races.
-    }
+  return async () => {
+    bridge.unsubscribe(subscriptionId);
   };
 }
 

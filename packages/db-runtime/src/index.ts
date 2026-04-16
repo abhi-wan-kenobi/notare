@@ -6,6 +6,8 @@ export type QueryEvent<T = Row> =
   | { event: "result"; data: T[] }
   | { event: "error"; data: string };
 
+export type Unsubscribe = () => Promise<void>;
+
 export type DrizzleProxyClient = {
   executeProxy(
     sql: string,
@@ -23,5 +25,5 @@ export type LiveQueryClient = {
       onData: (rows: T[]) => void;
       onError?: (error: string) => void;
     },
-  ): Promise<() => void>;
+  ): Promise<Unsubscribe>;
 };

@@ -11,7 +11,6 @@ mod watch;
 
 pub use error::{Error, Result};
 pub use explain::extract_dependencies;
-pub use hypr_db_change::{ChangeNotifier, TableChange, TableChangeKind};
 pub use runtime::DbRuntime;
 pub use schema::DependencyResolutionError;
 pub use types::{

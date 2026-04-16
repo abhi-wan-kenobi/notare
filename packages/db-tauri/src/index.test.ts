@@ -30,7 +30,7 @@ describe("@hypr/db-tauri", () => {
 
   it("delegates subscribe to the db plugin", async () => {
     const { tauriLiveQueryClient } = await import("./index");
-    const unsubscribe = vi.fn();
+    const unsubscribe = vi.fn().mockResolvedValue(undefined);
     subscribeMock.mockResolvedValue(unsubscribe);
 
     const nextUnsubscribe = await tauriLiveQueryClient.subscribe(
@@ -49,7 +49,7 @@ describe("@hypr/db-tauri", () => {
       }),
     );
 
-    nextUnsubscribe();
+    await nextUnsubscribe();
     expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 

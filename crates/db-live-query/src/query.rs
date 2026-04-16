@@ -74,7 +74,11 @@ fn row_to_json_array(row: &sqlx::sqlite::SqliteRow) -> serde_json::Value {
 fn json_value_at(row: &sqlx::sqlite::SqliteRow, index: usize) -> serde_json::Value {
     match row.try_get_raw(index) {
         Ok(raw) if !raw.is_null() => match raw.type_info().name() {
-            "INTEGER" | "INT" | "BOOLEAN" => row
+            "BOOLEAN" => row
+                .get::<Option<bool>, _>(index)
+                .map(serde_json::Value::from)
+                .unwrap_or(serde_json::Value::Null),
+            "INTEGER" | "INT" => row
                 .get::<Option<i64>, _>(index)
                 .map(serde_json::Value::from)
                 .unwrap_or(serde_json::Value::Null),
@@ -166,7 +170,7 @@ mod tests {
             vec![json!({
                 "id": "row-1",
                 "payload": [0, 1, 2, 255],
-                "enabled": 1,
+                "enabled": true,
                 "note": serde_json::Value::Null,
             })]
         );

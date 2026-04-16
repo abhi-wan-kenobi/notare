@@ -19,7 +19,7 @@ type TemplateLiveRow = {
   id: string;
   title: string;
   description: string;
-  pinned: number | boolean;
+  pinned: boolean;
   pin_order: number | null;
   category: string | null;
   targets_json: unknown;
@@ -98,7 +98,7 @@ function mapTemplateLiveRows(rows: TemplateLiveRow[]): UserTemplate[] {
       row.id,
       row.title,
       row.description,
-      Boolean(row.pinned),
+      row.pinned,
       row.pin_order,
       row.category,
       row.targets_json,

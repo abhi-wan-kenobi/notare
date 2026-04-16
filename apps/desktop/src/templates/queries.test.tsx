@@ -17,7 +17,7 @@ describe("template queries", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     executeProxyMock.mockResolvedValue({ rows: [] });
-    subscribeMock.mockResolvedValue(() => {});
+    subscribeMock.mockResolvedValue(async () => {});
   });
 
   it("maps live query rows that use raw SQLite field names", async () => {
@@ -25,7 +25,7 @@ describe("template queries", () => {
 
     subscribeMock.mockImplementation(async (_sql, _params, options) => {
       subscriptions.push(options);
-      return () => {};
+      return async () => {};
     });
 
     const { result: templatesResult } = renderHook(() => useUserTemplates());
@@ -43,7 +43,7 @@ describe("template queries", () => {
           id: "template-1",
           title: "Standup",
           description: "Daily sync",
-          pinned: 1,
+          pinned: true,
           pin_order: 2,
           category: "meetings",
           targets_json: '["engineering"]',

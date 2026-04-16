@@ -28,7 +28,7 @@ export async function subscribe<T = Record<string, unknown>>(
     onData: (rows: T[]) => void;
     onError?: (error: string) => void;
   },
-): Promise<() => void> {
+): Promise<() => Promise<void>> {
   const channel = new Channel<QueryEvent<T>>();
 
   channel.onmessage = (event) => {
@@ -46,7 +46,8 @@ export async function subscribe<T = Record<string, unknown>>(
     onEvent: channel,
   });
 
-  return () => {
-    invoke("plugin:db|unsubscribe", { subscriptionId }).catch(() => {});
+  return async () => {
+    channel.onmessage = () => {};
+    await invoke("plugin:db|unsubscribe", { subscriptionId });
   };
 }
