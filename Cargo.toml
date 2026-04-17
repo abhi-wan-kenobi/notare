@@ -159,6 +159,7 @@ hypr-resampler = { path = "crates/resampler", package = "resampler" }
 hypr-s3 = { path = "crates/s3", package = "s3" }
 hypr-screen-core = { path = "crates/screen-core", package = "screen-core" }
 hypr-segmentation = { path = "crates/segmentation", package = "segmentation" }
+hypr-shortcut-macos = { path = "crates/shortcut-macos", package = "shortcut-macos" }
 hypr-slack-web = { path = "crates/slack-web", package = "slack-web" }
 hypr-storage = { path = "crates/storage", package = "storage" }
 hypr-supabase-auth = { path = "crates/supabase-auth", package = "supabase-auth" }
@@ -256,6 +257,7 @@ tauri-plugin-relay = { path = "plugins/relay" }
 tauri-plugin-screen = { path = "plugins/screen" }
 tauri-plugin-settings = { path = "plugins/settings" }
 tauri-plugin-sfx = { path = "plugins/sfx" }
+tauri-plugin-shortcut = { path = "plugins/shortcut" }
 tauri-plugin-sidecar2 = { path = "plugins/sidecar2" }
 tauri-plugin-store2 = { path = "plugins/store2" }
 tauri-plugin-tantivy = { path = "plugins/tantivy" }

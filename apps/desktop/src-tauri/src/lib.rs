@@ -149,6 +149,7 @@ pub async fn main() {
         .plugin(tauri_plugin_store2::init())
         .plugin(tauri_plugin_settings::init())
         .plugin(tauri_plugin_sfx::init())
+        .plugin(tauri_plugin_shortcut::init())
         .plugin(tauri_plugin_windows::init())
         .plugin(tauri_plugin_js::init())
         .plugin(tauri_plugin_flag::init())

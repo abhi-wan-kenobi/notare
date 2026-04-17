@@ -5118,6 +5118,7 @@ dependencies = [
  "tauri-plugin-settings",
  "tauri-plugin-sfx",
  "tauri-plugin-shell",
+ "tauri-plugin-shortcut",
  "tauri-plugin-sidecar2",
  "tauri-plugin-single-instance",
  "tauri-plugin-store",
@@ -16665,6 +16666,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
+name = "shortcut-macos"
+version = "0.1.0"
+dependencies = [
+ "core-foundation 0.10.1",
+ "macos-accessibility-client",
+ "serde",
+ "specta",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
 name = "sigchld"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -19379,6 +19392,22 @@ dependencies = [
  "tauri-plugin",
  "thiserror 2.0.18",
  "tokio",
+]
+
+[[package]]
+name = "tauri-plugin-shortcut"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "shortcut-macos",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-plugin",
+ "tauri-specta",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
