@@ -4,7 +4,7 @@ import {
   Plus,
 } from "lucide-react";
 import { Reorder, useDragControls } from "motion/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { TemplateSection } from "@hypr/store";
 import { Button } from "@hypr/ui/components/ui/button";
@@ -50,17 +50,28 @@ function useEditableSections({
     });
   }, [initialItems]);
 
+  const pendingCommit = useRef<TemplateSection[] | null>(null);
+
+  useEffect(() => {
+    if (pendingCommit.current) {
+      const value = pendingCommit.current;
+      pendingCommit.current = null;
+      onChange(value);
+    }
+  });
+
   const commit = useCallback(
     (next: SectionDraft[] | ((prev: SectionDraft[]) => SectionDraft[])) => {
       setDrafts((prev) => {
         const resolved = typeof next === "function" ? next(prev) : next;
-        onChange(
-          resolved.map(({ title, description }) => ({ title, description })),
-        );
+        pendingCommit.current = resolved.map(({ title, description }) => ({
+          title,
+          description,
+        }));
         return resolved;
       });
     },
-    [onChange],
+    [],
   );
 
   return {
