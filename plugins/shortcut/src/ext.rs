@@ -1,6 +1,6 @@
 use crate::{
     error::Error,
-    events::{HotKey, Options, Permissions},
+    events::{HotKey, Options},
     handler::Handler,
 };
 
@@ -17,16 +17,6 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Shortcut<'a, R, M> {
 
     pub fn unregister(&self) -> Result<(), Error> {
         self.manager.state::<Handler>().unregister()
-    }
-
-    pub fn check_permissions(&self) -> Permissions {
-        self.manager.state::<Handler>().check_permissions()
-    }
-
-    pub fn request_accessibility_permission(&self) -> Result<bool, Error> {
-        self.manager
-            .state::<Handler>()
-            .request_accessibility_permission()
     }
 }
 

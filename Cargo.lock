@@ -5085,6 +5085,7 @@ dependencies = [
  "tauri-plugin-deeplink2",
  "tauri-plugin-detect",
  "tauri-plugin-dialog",
+ "tauri-plugin-dictation",
  "tauri-plugin-dock",
  "tauri-plugin-export",
  "tauri-plugin-flag",
@@ -18768,6 +18769,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-dictation"
+version = "0.1.0"
+dependencies = [
+ "dictation-ui-macos",
+ "serde",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-plugin",
+ "tauri-plugin-shortcut",
+ "tauri-specta",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
 name = "tauri-plugin-dock"
 version = "0.1.0"
 dependencies = [
@@ -19410,7 +19427,6 @@ dependencies = [
 name = "tauri-plugin-shortcut"
 version = "0.1.0"
 dependencies = [
- "dictation-ui-macos",
  "serde",
  "shortcut-macos",
  "specta",
@@ -19419,7 +19435,6 @@ dependencies = [
  "tauri-plugin",
  "tauri-specta",
  "thiserror 2.0.18",
- "tokio",
  "tracing",
 ]
 

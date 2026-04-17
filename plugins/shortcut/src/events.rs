@@ -45,17 +45,12 @@ fn default_min_key_time_ms() -> u64 {
     150
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct Permissions {
-    pub accessibility: bool,
-    pub input_monitoring: bool,
-}
-
 #[macro_export]
 macro_rules! common_event_derives {
     ($item:item) => {
-        #[derive(serde::Serialize, Clone, specta::Type, tauri_specta::Event)]
+        #[derive(
+            serde::Serialize, serde::Deserialize, Clone, specta::Type, tauri_specta::Event,
+        )]
         $item
     };
 }
@@ -63,11 +58,9 @@ macro_rules! common_event_derives {
 common_event_derives! {
     #[serde(tag = "type", rename_all = "camelCase")]
     pub enum ShortcutEvent {
-        Start,
-        Stop,
-        Cancel,
-        Discard,
-        #[serde(rename = "permission")]
-        PermissionChanged { accessibility: bool, input_monitoring: bool },
+        Pressed,
+        Released,
+        Cancelled,
+        Discarded,
     }
 }

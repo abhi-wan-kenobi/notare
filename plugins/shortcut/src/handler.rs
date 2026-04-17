@@ -1,6 +1,6 @@
 use crate::{
     error::Error,
-    events::{HotKey, Modifier, Options, Permissions},
+    events::{HotKey, Modifier, Options},
 };
 
 #[cfg(target_os = "macos")]
@@ -11,34 +11,24 @@ pub use self::stub::Handler;
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use std::sync::{Arc, Mutex};
+    use std::{sync::Mutex, time::Duration};
 
-    use hypr_dictation_ui_macos as ui;
     use hypr_shortcut_macos as sm;
     use tauri::{AppHandle, Runtime};
     use tauri_specta::Event;
-    use tokio::time::{Duration, sleep};
 
-    use super::{Error, HotKey, Modifier, Options, Permissions};
+    use super::{Error, HotKey, Modifier, Options};
     use crate::events::ShortcutEvent;
 
     pub struct Handler {
-        inner: Arc<Mutex<Inner>>,
-    }
-
-    struct Inner {
-        processor: Option<Arc<Mutex<sm::HotKeyProcessor>>>,
-        tap: Option<sm::EventTap>,
+        listener: Mutex<Option<sm::Listener>>,
     }
 
     impl Handler {
-        pub fn new<R: Runtime>(app: AppHandle<R>) -> Self {
-            let inner = Arc::new(Mutex::new(Inner {
-                processor: None,
-                tap: None,
-            }));
-            spawn_permission_watcher(app);
-            Self { inner }
+        pub fn new() -> Self {
+            Self {
+                listener: Mutex::new(None),
+            }
         }
 
         pub fn register<R: Runtime>(
@@ -47,86 +37,31 @@ mod macos {
             hotkey: HotKey,
             options: Options,
         ) -> Result<(), Error> {
-            if !sm::permission::check_accessibility() {
-                sm::permission::prompt_accessibility();
-                return Err(Error::AccessibilityDenied);
-            }
-
-            if !sm::permission::check_input_monitoring() {
-                return Err(Error::InputMonitoringDenied);
-            }
-
-            let sm_hotkey = convert_hotkey(&hotkey);
-            let sm_options = convert_options(options);
-
-            let processor = Arc::new(Mutex::new({
-                let mut p = sm::HotKeyProcessor::new(sm_hotkey);
-                p.set_options(sm_options);
-                p
-            }));
-
-            let cb_processor = processor.clone();
-            let tap = sm::EventTap::start(move |event| {
-                let mut p = cb_processor.lock().unwrap_or_else(|e| e.into_inner());
-                let out = match event {
-                    sm::TapEvent::Key(k) => p.process_key(k),
-                    sm::TapEvent::MouseClick => p.process_mouse_click(),
-                };
-                drop(p);
-                if let Some(out) = out {
+            let listener = sm::Listener::start(
+                convert_hotkey(&hotkey),
+                convert_options(options),
+                move |out| {
                     let evt = match out {
-                        sm::Output::StartRecording => {
-                            ui::show();
-                            ui::update_state(&ui::DictationState {
-                                phase: ui::Phase::Recording,
-                                amplitude: 0.0,
-                            });
-                            ShortcutEvent::Start
-                        }
-                        sm::Output::StopRecording => {
-                            ui::update_state(&ui::DictationState {
-                                phase: ui::Phase::Processing,
-                                amplitude: 0.0,
-                            });
-                            ui::hide();
-                            ShortcutEvent::Stop
-                        }
-                        sm::Output::Cancel => {
-                            ui::hide();
-                            ShortcutEvent::Cancel
-                        }
-                        sm::Output::Discard => {
-                            ui::hide();
-                            ShortcutEvent::Discard
-                        }
+                        sm::Output::StartRecording => ShortcutEvent::Pressed,
+                        sm::Output::StopRecording => ShortcutEvent::Released,
+                        sm::Output::Cancel => ShortcutEvent::Cancelled,
+                        sm::Output::Discard => ShortcutEvent::Discarded,
                     };
                     let _ = evt.emit(&app);
-                }
-            })
+                },
+            )
             .map_err(|e| Error::TapStart(e.to_string()))?;
 
-            let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-            inner.tap = Some(tap);
-            inner.processor = Some(processor);
+            *self.listener.lock().unwrap_or_else(|e| e.into_inner()) = Some(listener);
             Ok(())
         }
 
         pub fn unregister(&self) -> Result<(), Error> {
-            let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-            inner.tap.take();
-            inner.processor = None;
+            self.listener
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .take();
             Ok(())
-        }
-
-        pub fn check_permissions(&self) -> Permissions {
-            Permissions {
-                accessibility: sm::permission::check_accessibility(),
-                input_monitoring: sm::permission::check_input_monitoring(),
-            }
-        }
-
-        pub fn request_accessibility_permission(&self) -> Result<bool, Error> {
-            Ok(sm::permission::prompt_accessibility())
         }
     }
 
@@ -151,48 +86,18 @@ mod macos {
             minimum_key_time: Duration::from_millis(options.minimum_key_time_ms),
         }
     }
-
-    fn spawn_permission_watcher<R: Runtime>(app: AppHandle<R>) {
-        tauri::async_runtime::spawn(async move {
-            let mut last = (
-                sm::permission::check_accessibility(),
-                sm::permission::check_input_monitoring(),
-            );
-            let _ = ShortcutEvent::PermissionChanged {
-                accessibility: last.0,
-                input_monitoring: last.1,
-            }
-            .emit(&app);
-
-            loop {
-                sleep(Duration::from_millis(500)).await;
-                let current = (
-                    sm::permission::check_accessibility(),
-                    sm::permission::check_input_monitoring(),
-                );
-                if current != last {
-                    let _ = ShortcutEvent::PermissionChanged {
-                        accessibility: current.0,
-                        input_monitoring: current.1,
-                    }
-                    .emit(&app);
-                    last = current;
-                }
-            }
-        });
-    }
 }
 
 #[cfg(not(target_os = "macos"))]
 mod stub {
     use tauri::{AppHandle, Runtime};
 
-    use super::{Error, HotKey, Options, Permissions};
+    use super::{Error, HotKey, Options};
 
     pub struct Handler;
 
     impl Handler {
-        pub fn new<R: Runtime>(_app: AppHandle<R>) -> Self {
+        pub fn new() -> Self {
             Self
         }
 
@@ -207,17 +112,6 @@ mod stub {
 
         pub fn unregister(&self) -> Result<(), Error> {
             Ok(())
-        }
-
-        pub fn check_permissions(&self) -> Permissions {
-            Permissions {
-                accessibility: true,
-                input_monitoring: true,
-            }
-        }
-
-        pub fn request_accessibility_permission(&self) -> Result<bool, Error> {
-            Ok(true)
         }
     }
 }

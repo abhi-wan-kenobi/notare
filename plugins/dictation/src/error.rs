@@ -2,8 +2,6 @@ use serde::{Serialize, ser::Serializer};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("failed to start event tap: {0}")]
-    TapStart(String),
     #[error("not supported on this platform")]
     Unsupported,
 }

@@ -6,8 +6,6 @@ Default permissions for the plugin
 
 - `allow-register-hotkey`
 - `allow-unregister-hotkey`
-- `allow-check-permissions`
-- `allow-request-accessibility-permission`
 
 ## Permission Table
 
@@ -17,32 +15,6 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
-
-<tr>
-<td>
-
-`shortcut:allow-check-permissions`
-
-</td>
-<td>
-
-Enables the check_permissions command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`shortcut:deny-check-permissions`
-
-</td>
-<td>
-
-Denies the check_permissions command without any pre-configured scope.
-
-</td>
-</tr>
 
 <tr>
 <td>
@@ -66,32 +38,6 @@ Enables the register_hotkey command without any pre-configured scope.
 <td>
 
 Denies the register_hotkey command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`shortcut:allow-request-accessibility-permission`
-
-</td>
-<td>
-
-Enables the request_accessibility_permission command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`shortcut:deny-request-accessibility-permission`
-
-</td>
-<td>
-
-Denies the request_accessibility_permission command without any pre-configured scope.
 
 </td>
 </tr>

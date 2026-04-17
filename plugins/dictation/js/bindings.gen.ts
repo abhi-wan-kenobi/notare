@@ -6,17 +6,33 @@
 
 
 export const commands = {
-async registerHotkey(hotkey: HotKey, options: Options) : Promise<Result<null, string>> {
+async show() : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:shortcut|register_hotkey", { hotkey, options }) };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|show") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async unregisterHotkey() : Promise<Result<null, string>> {
+async hide() : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:shortcut|unregister_hotkey") };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|hide") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setPhase(phase: Phase) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|set_phase", { phase }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateAmplitude(amplitude: number) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|update_amplitude", { amplitude }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -27,11 +43,6 @@ async unregisterHotkey() : Promise<Result<null, string>> {
 /** user-defined events **/
 
 
-export const events = __makeEvents__<{
-shortcutEvent: ShortcutEvent
-}>({
-shortcutEvent: "plugin:shortcut:shortcut-event"
-})
 
 /** user-defined constants **/
 
@@ -39,10 +50,7 @@ shortcutEvent: "plugin:shortcut:shortcut-event"
 
 /** user-defined types **/
 
-export type HotKey = { key: number | null; modifiers: Modifier[] }
-export type Modifier = "command" | "option" | "shift" | "control" | "fn"
-export type Options = { useDoubleTapOnly?: boolean; doubleTapLockEnabled?: boolean; minimumKeyTimeMs?: number }
-export type ShortcutEvent = { type: "pressed" } | { type: "released" } | { type: "cancelled" } | { type: "discarded" }
+export type Phase = "recording" | "processing"
 
 /** tauri-specta globals **/
 

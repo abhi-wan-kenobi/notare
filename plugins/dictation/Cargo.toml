@@ -1,9 +1,9 @@
 [package]
-name = "tauri-plugin-shortcut"
+name = "tauri-plugin-dictation"
 version = "0.1.0"
 edition = "2024"
 exclude = ["/js", "/node_modules"]
-links = "tauri-plugin-shortcut"
+links = "tauri-plugin-dictation"
 
 [build-dependencies]
 tauri-plugin = { workspace = true, features = ["build"] }
@@ -20,5 +20,7 @@ tracing = { workspace = true }
 tauri = { workspace = true, features = ["test"] }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 
+tauri-plugin-shortcut = { workspace = true }
+
 [target.'cfg(target_os = "macos")'.dependencies]
-hypr-shortcut-macos = { workspace = true }
+hypr-dictation-ui-macos = { workspace = true }

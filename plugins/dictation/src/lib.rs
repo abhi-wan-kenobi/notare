@@ -11,16 +11,17 @@ pub use ext::*;
 use handler::Handler;
 use tauri::Manager;
 
-const PLUGIN_NAME: &str = "shortcut";
+const PLUGIN_NAME: &str = "dictation";
 
 fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
     tauri_specta::Builder::<R>::new()
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
-            commands::register_hotkey::<tauri::Wry>,
-            commands::unregister_hotkey::<tauri::Wry>,
+            commands::show::<tauri::Wry>,
+            commands::hide::<tauri::Wry>,
+            commands::set_phase::<tauri::Wry>,
+            commands::update_amplitude::<tauri::Wry>,
         ])
-        .events(tauri_specta::collect_events![ShortcutEvent])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }
 
@@ -30,12 +31,35 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
         .setup(move |app, _api| {
-            specta_builder.mount_events(app);
-            let handler = Handler::new();
-            app.manage(handler);
+            app.manage(Handler::new());
+            setup_shortcut_bridge(app);
             Ok(())
         })
         .build()
+}
+
+fn setup_shortcut_bridge(app: &tauri::AppHandle) {
+    use ext::DictationPluginExt;
+    use tauri_plugin_shortcut::ShortcutEvent;
+    use tauri_specta::Event;
+
+    let handle = app.clone();
+    ShortcutEvent::listen(app, move |event| {
+        let d = handle.dictation();
+        match event.payload {
+            ShortcutEvent::Pressed => {
+                let _ = d.set_phase(Phase::Recording);
+                let _ = d.show();
+            }
+            ShortcutEvent::Released => {
+                let _ = d.set_phase(Phase::Processing);
+                let _ = d.hide();
+            }
+            ShortcutEvent::Cancelled | ShortcutEvent::Discarded => {
+                let _ = d.hide();
+            }
+        }
+    });
 }
 
 #[cfg(test)]

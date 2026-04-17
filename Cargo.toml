@@ -232,6 +232,7 @@ tauri-plugin-calendar = { path = "plugins/calendar" }
 tauri-plugin-db = { path = "plugins/db" }
 tauri-plugin-deeplink2 = { path = "plugins/deeplink2" }
 tauri-plugin-detect = { path = "plugins/detect" }
+tauri-plugin-dictation = { path = "plugins/dictation" }
 tauri-plugin-dock = { path = "plugins/dock" }
 tauri-plugin-export = { path = "plugins/export" }
 tauri-plugin-flag = { path = "plugins/flag" }

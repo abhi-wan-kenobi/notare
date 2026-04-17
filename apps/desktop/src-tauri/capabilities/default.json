@@ -89,6 +89,7 @@
     "flag:default",
     "relay:default",
     "shortcut:default",
+    "dictation:default",
     {
       "identifier": "http:default",
       "deny": [],
