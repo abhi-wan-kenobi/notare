@@ -1,0 +1,14 @@
+name: lint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  lint:
+    runs-on: depot-ubuntu-24.04-4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/pnpm_install
+      - run: npx oxlint --quiet --format=github apps/desktop/src/
