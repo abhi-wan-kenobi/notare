@@ -40,7 +40,7 @@ pub(crate) fn prepare_binaries() -> Result<()> {
 
     cmd!(
         sh,
-        "{cargo} build --release --target {triple} -p cli --features desktop"
+        "{cargo} build --release --target {triple} -p cli --features desktop-macos"
     )
     .run()?;
 

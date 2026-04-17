@@ -24,9 +24,6 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check -p cli --features desktop
-      - run: cargo check -p cli --features desktop-db
-      - run: cargo clippy -p cli --features desktop
-      - run: cargo clippy -p cli --features desktop-db
-      - run: cargo test -p cli --features desktop
-      - run: cargo test -p cli --features desktop-db
+      - run: cargo check -p cli --features desktop-macos
+      - run: cargo clippy -p cli --features desktop-macos
+      - run: cargo test -p cli --features desktop-macos

@@ -1,11 +1,11 @@
 use crate::config::paths::{self, AppPaths};
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-audio")]
 use crate::stt;
 
 pub struct AppContext {
     analytics: hypr_analytics::AnalyticsClient,
     paths: AppPaths,
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     quiet: bool,
     trace_buffer: crate::OptTraceBuffer,
 }
@@ -16,7 +16,7 @@ impl AppContext {
         quiet: bool,
         trace_buffer: crate::OptTraceBuffer,
     ) -> Self {
-        #[cfg(not(feature = "standalone"))]
+        #[cfg(not(feature = "_cli-audio"))]
         let _ = quiet;
 
         let paths = paths::resolve_paths(base);
@@ -24,7 +24,7 @@ impl AppContext {
         Self {
             analytics: analytics_client(),
             paths,
-            #[cfg(feature = "standalone")]
+            #[cfg(feature = "_cli-audio")]
             quiet,
             trace_buffer,
         }
@@ -46,17 +46,17 @@ impl AppContext {
         });
     }
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     pub fn quiet(&self) -> bool {
         self.quiet
     }
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     pub fn paths(&self) -> &AppPaths {
         &self.paths
     }
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     pub fn stt_overrides(
         &self,
         provider: Option<stt::SttProvider>,
@@ -75,12 +75,12 @@ impl AppContext {
         }
     }
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-tui")]
     pub fn trace_buffer(&self) -> crate::OptTraceBuffer {
         self.trace_buffer.clone()
     }
 
-    #[cfg(not(feature = "standalone"))]
+    #[cfg(not(feature = "_cli-tui"))]
     pub fn trace_buffer(&self) -> crate::OptTraceBuffer {
         self.trace_buffer
     }

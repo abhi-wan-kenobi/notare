@@ -76,16 +76,26 @@ url = { workspace = true }
 vt100 = "0.15"
 
 [features]
-desktop = []
-desktop-db = ["desktop", "dep:hypr-db-cli"]
+# Public features. Pick exactly one per build.
+desktop-macos = ["_cli-desktop", "_cli-db"]
+standalone-macos = ["_cli-audio", "_cli-skill-update", "_cli-db"]
+standalone-linux = ["_cli-skill-update", "_cli-db"]
+
+# Additive.
 e2e = []
 todo = [
-  "desktop",
+  "desktop-macos",
   "dep:hypr-agent-core",
   "dep:hypr-codex",
 ]
-standalone = [
-  "desktop",
+
+# Internal — do not enable directly.
+_cli-db = ["dep:hypr-db-cli"]
+_cli-desktop = []
+_cli-tui = ["dep:ratatui", "dep:crossterm", "dep:libc"]
+_cli-skill-update = ["_cli-tui"]
+_cli-audio = [
+  "_cli-tui",
   "dep:chrono",
   "dep:hypr-audio",
   "dep:hypr-audio-actual",
@@ -100,9 +110,6 @@ standalone = [
   "dep:hypr-model-downloader",
   "dep:owhisper-client",
   "dep:owhisper-interface",
-  "dep:ratatui",
-  "dep:crossterm",
-  "dep:libc",
   "dep:rodio",
   "dep:tempfile",
   "dep:tokio-stream",

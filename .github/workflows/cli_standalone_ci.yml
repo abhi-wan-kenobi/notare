@@ -19,12 +19,11 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux
-            clippy: false
-          - os: windows-latest
-            platform: windows
+            feature: standalone-linux
             clippy: false
           - os: macos-latest
             platform: macos
+            feature: standalone-macos
             clippy: true
     runs-on: ${{ matrix.os }}
     defaults:
@@ -40,13 +39,13 @@ jobs:
       - if: ${{ !matrix.clippy }}
         uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check -p cli --features standalone
+      - run: cargo check -p cli --features ${{ matrix.feature }}
       - if: matrix.clippy
-        run: cargo clippy -p cli --features standalone
+        run: cargo clippy -p cli --features ${{ matrix.feature }}
       - if: runner.os == 'macOS'
         run: |
           rustup target add x86_64-apple-darwin
-          cargo check -p cli --features standalone --target x86_64-apple-darwin
+          cargo check -p cli --features standalone-macos --target x86_64-apple-darwin
 
   e2e:
     if: ${{ !startsWith(github.head_ref || '', 'blog/') }}
@@ -59,4 +58,4 @@ jobs:
       - uses: ./.github/actions/install_cli_deps
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test -p cli --features standalone,e2e -- --test-threads=1
+      - run: cargo test -p cli --features standalone-macos,e2e -- --test-threads=1

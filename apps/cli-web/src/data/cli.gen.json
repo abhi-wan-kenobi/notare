@@ -383,10 +383,22 @@
       ]
     },
     {
-      "name": "char desktop",
-      "about": "Open the desktop app or download page",
-      "synopsis": "char desktop [-h] [-V]",
+      "name": "char db",
+      "about": "Manage desktop SQLite data",
+      "synopsis": "char db [--base] [--db-path] [-h] [-V] <command>",
       "options": [
+        {
+          "flags": "--base",
+          "value_name": "DIR",
+          "required": false,
+          "is_flag": false
+        },
+        {
+          "flags": "--db-path",
+          "value_name": "FILE",
+          "required": false,
+          "is_flag": false
+        },
         {
           "flags": "-h, --help",
           "help": "Print help",
@@ -398,6 +410,165 @@
           "help": "Print version",
           "required": false,
           "is_flag": false
+        }
+      ],
+      "subcommands": [
+        {
+          "name": "char db templates",
+          "about": "Manage templates stored in the desktop SQLite database",
+          "synopsis": "char db templates [-h] [-V] <command>",
+          "options": [
+            {
+              "flags": "-h, --help",
+              "help": "Print help",
+              "required": false,
+              "is_flag": false
+            },
+            {
+              "flags": "-V, --version",
+              "help": "Print version",
+              "required": false,
+              "is_flag": false
+            }
+          ],
+          "subcommands": [
+            {
+              "name": "char db templates list",
+              "about": "List templates",
+              "synopsis": "char db templates list [-h] [-V]",
+              "options": [
+                {
+                  "flags": "-h, --help",
+                  "help": "Print help",
+                  "required": false,
+                  "is_flag": false
+                },
+                {
+                  "flags": "-V, --version",
+                  "help": "Print version",
+                  "required": false,
+                  "is_flag": false
+                }
+              ]
+            },
+            {
+              "name": "char db templates get",
+              "about": "Fetch a template by id",
+              "synopsis": "char db templates get [-h] [-V] <id>",
+              "options": [
+                {
+                  "flags": "-h, --help",
+                  "help": "Print help",
+                  "required": false,
+                  "is_flag": false
+                },
+                {
+                  "flags": "-V, --version",
+                  "help": "Print version",
+                  "required": false,
+                  "is_flag": false
+                }
+              ],
+              "arguments": [
+                {
+                  "name": "ID",
+                  "required": true
+                }
+              ]
+            },
+            {
+              "name": "char db templates upsert",
+              "about": "Insert or update a template",
+              "synopsis": "char db templates upsert <--id> <--title> [--description] [--pinned] [--pin-order] [--category] [--targets-json] <--sections-json> [-h] [-V]",
+              "options": [
+                {
+                  "flags": "--id",
+                  "value_name": "ID",
+                  "required": true,
+                  "is_flag": false
+                },
+                {
+                  "flags": "--title",
+                  "value_name": "TITLE",
+                  "required": true,
+                  "is_flag": false
+                },
+                {
+                  "flags": "--description",
+                  "value_name": "DESCRIPTION",
+                  "default": "",
+                  "required": false,
+                  "is_flag": false
+                },
+                {
+                  "flags": "--pinned",
+                  "required": false,
+                  "is_flag": true
+                },
+                {
+                  "flags": "--pin-order",
+                  "value_name": "PIN_ORDER",
+                  "required": false,
+                  "is_flag": false
+                },
+                {
+                  "flags": "--category",
+                  "value_name": "CATEGORY",
+                  "required": false,
+                  "is_flag": false
+                },
+                {
+                  "flags": "--targets-json",
+                  "value_name": "TARGETS_JSON",
+                  "required": false,
+                  "is_flag": false
+                },
+                {
+                  "flags": "--sections-json",
+                  "value_name": "SECTIONS_JSON",
+                  "required": true,
+                  "is_flag": false
+                },
+                {
+                  "flags": "-h, --help",
+                  "help": "Print help",
+                  "required": false,
+                  "is_flag": false
+                },
+                {
+                  "flags": "-V, --version",
+                  "help": "Print version",
+                  "required": false,
+                  "is_flag": false
+                }
+              ]
+            },
+            {
+              "name": "char db templates delete",
+              "about": "Delete a template by id",
+              "synopsis": "char db templates delete [-h] [-V] <id>",
+              "options": [
+                {
+                  "flags": "-h, --help",
+                  "help": "Print help",
+                  "required": false,
+                  "is_flag": false
+                },
+                {
+                  "flags": "-V, --version",
+                  "help": "Print version",
+                  "required": false,
+                  "is_flag": false
+                }
+              ],
+              "arguments": [
+                {
+                  "name": "ID",
+                  "required": true
+                }
+              ]
+            }
+          ]
         }
       ]
     },

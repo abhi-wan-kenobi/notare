@@ -4,9 +4,9 @@ mod commands;
 mod config;
 mod error;
 mod output;
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-audio")]
 mod stt;
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-tui")]
 pub(crate) mod tui;
 
 use crate::cli::{Cli, Commands};
@@ -35,15 +35,15 @@ fn main() {
     }
 }
 
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-tui")]
 type OptTraceBuffer = Option<tui::TraceBuffer>;
-#[cfg(not(feature = "standalone"))]
+#[cfg(not(feature = "_cli-tui"))]
 type OptTraceBuffer = ();
 
 fn init_tracing(cli: &Cli) -> OptTraceBuffer {
     let level = cli.verbose.tracing_level_filter();
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     let wants_json = matches!(
         cli.command,
         Some(Commands::Transcribe {
@@ -53,10 +53,10 @@ fn init_tracing(cli: &Cli) -> OptTraceBuffer {
             },
         })
     );
-    #[cfg(not(feature = "standalone"))]
+    #[cfg(not(feature = "_cli-audio"))]
     let wants_json = false;
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     let wants_json = wants_json
         || matches!(
             cli.command,
@@ -68,7 +68,7 @@ fn init_tracing(cli: &Cli) -> OptTraceBuffer {
             })
         );
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     let wants_capture = !wants_json
         && std::io::IsTerminal::is_terminal(&std::io::stderr())
         && matches!(
@@ -81,7 +81,7 @@ fn init_tracing(cli: &Cli) -> OptTraceBuffer {
             )
         );
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     if wants_capture {
         let buf = tui::new_trace_buffer();
         init_tracing_capture(level, buf.clone());
@@ -94,9 +94,9 @@ fn init_tracing(cli: &Cli) -> OptTraceBuffer {
         init_tracing_stderr(level);
     }
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-tui")]
     return None;
-    #[cfg(not(feature = "standalone"))]
+    #[cfg(not(feature = "_cli-tui"))]
     return;
 }
 
@@ -123,7 +123,7 @@ fn init_tracing_json(level: tracing_subscriber::filter::LevelFilter) {
         .init();
 }
 
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-audio")]
 fn init_tracing_capture(level: tracing_subscriber::filter::LevelFilter, buffer: tui::TraceBuffer) {
     use tracing_subscriber::EnvFilter;
     use tracing_subscriber::layer::SubscriberExt;

@@ -40,7 +40,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Computed version: $VERSION"
 
-  build:
+  build-macos:
     needs: compute-version
     runs-on: depot-macos-15
     strategy:
@@ -63,7 +63,7 @@ jobs:
           apple-certificate-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
       - run: echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-      - run: cargo build --release -p cli --features standalone --target ${{ matrix.target }}
+      - run: cargo build --release -p cli --features standalone-macos --target ${{ matrix.target }}
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           APP_VERSION: ${{ needs.compute-version.outputs.version }}
@@ -88,8 +88,42 @@ jobs:
           path: ${{ env.ARCHIVE }}
           retention-days: 3
 
+  build-linux:
+    needs: compute-version
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/rust_install
+        with:
+          platform: linux
+      - run: cargo build --release -p cli --features standalone-linux --target ${{ matrix.target }}
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          APP_VERSION: ${{ needs.compute-version.outputs.version }}
+      - run: |
+          BIN="target/${{ matrix.target }}/release/char"
+          strip "$BIN"
+          ARCHIVE="char-${{ needs.compute-version.outputs.version }}-${{ matrix.target }}.tar.xz"
+          tar -cJf "$ARCHIVE" -C "target/${{ matrix.target }}/release" char
+          echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
+      - uses: actions/upload-artifact@v4
+        with:
+          name: char-${{ matrix.target }}
+          path: ${{ env.ARCHIVE }}
+          retention-days: 3
+
   publish-npm:
-    needs: [compute-version, build]
+    needs: [compute-version, build-macos, build-linux]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -129,7 +163,7 @@ jobs:
           tag_prefix: ""
 
   release:
-    needs: [compute-version, build, create-tag]
+    needs: [compute-version, build-macos, build-linux, create-tag]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -149,6 +183,8 @@ jobs:
           files: |
             artifacts/char-${{ needs.compute-version.outputs.version }}-aarch64-apple-darwin.tar.xz
             artifacts/char-${{ needs.compute-version.outputs.version }}-x86_64-apple-darwin.tar.xz
+            artifacts/char-${{ needs.compute-version.outputs.version }}-x86_64-unknown-linux-gnu.tar.xz
+            artifacts/char-${{ needs.compute-version.outputs.version }}-aarch64-unknown-linux-gnu.tar.xz
       - id: artifacts
         run: |
           LIST=$(ls artifacts/*.tar.xz artifacts/*.sha256 | paste -sd,)

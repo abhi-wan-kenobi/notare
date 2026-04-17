@@ -476,22 +476,22 @@ async fn run_pretty(
 ) -> CliResult<()> {
     let update_check = super::update_check::UpdateHandle::spawn();
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     let file_name = input_path
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| input_path.display().to_string());
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     let mut viewport = if _trace_buffer.is_some() {
         crate::tui::InlineViewport::stderr(5, _trace_buffer).ok()
     } else {
         None
     };
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     let mut normalize_spinner_idx = 0usize;
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     let mut normalize_progress = |percentage: f64| {
         normalize_spinner_idx = (normalize_spinner_idx + 1) % crate::tui::SPINNER.len();
         draw_normalization(
@@ -502,7 +502,7 @@ async fn run_pretty(
         );
     };
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     let mut handle = match start_batch(
         input_path,
         args.keywords.clone(),
@@ -521,7 +521,7 @@ async fn run_pretty(
         }
     };
 
-    #[cfg(not(feature = "standalone"))]
+    #[cfg(not(feature = "_cli-audio"))]
     let mut handle = start_batch(
         input_path,
         args.keywords.clone(),
@@ -533,7 +533,7 @@ async fn run_pretty(
 
     let mut failure: Option<(BatchErrorCode, String)> = None;
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     let (mut spinner_idx, mut last_pct, mut last_transcript, mut tick) = (
         0usize,
         0.0f64,
@@ -542,7 +542,7 @@ async fn run_pretty(
     );
 
     loop {
-        #[cfg(feature = "standalone")]
+        #[cfg(feature = "_cli-audio")]
         let event = if viewport.is_some() {
             tokio::select! {
                 ev = handle.rx.recv() => ev,
@@ -563,7 +563,7 @@ async fn run_pretty(
             handle.rx.recv().await
         };
 
-        #[cfg(not(feature = "standalone"))]
+        #[cfg(not(feature = "_cli-audio"))]
         let event = handle.rx.recv().await;
 
         let Some(event) = event else { break };
@@ -573,7 +573,7 @@ async fn run_pretty(
             BatchEvent::BatchResponseStreamed {
                 event: streamed, ..
             } => {
-                #[cfg(feature = "standalone")]
+                #[cfg(feature = "_cli-audio")]
                 {
                     last_pct = streamed.percentage();
                     if let Some(t) = extract_stream_transcript(&streamed)
@@ -582,7 +582,7 @@ async fn run_pretty(
                         last_transcript = t.to_string();
                     }
                 }
-                #[cfg(not(feature = "standalone"))]
+                #[cfg(not(feature = "_cli-audio"))]
                 {
                     let _ = streamed;
                 }
@@ -613,7 +613,7 @@ async fn run_pretty(
     }
     parts.push(format!("in {:.1}s", result.elapsed.as_secs_f64()));
 
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     if let Some(ref mut vp) = viewport {
         let mut lines = vec![format!("saved  {}", parts.join("  "))];
         if let Some(path) = &output_path {
@@ -630,7 +630,7 @@ async fn run_pretty(
         eprintln!("{}", parts.join(", ").dimmed());
     }
 
-    #[cfg(not(feature = "standalone"))]
+    #[cfg(not(feature = "_cli-audio"))]
     {
         if let Some(path) = &output_path {
             parts.push(format!("-> {}", path.display()));
@@ -646,7 +646,7 @@ async fn run_pretty(
     Ok(())
 }
 
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-audio")]
 fn draw_normalization(
     viewport: &mut Option<crate::tui::InlineViewport>,
     file_name: &str,
@@ -668,7 +668,7 @@ fn draw_normalization(
     }
 }
 
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-audio")]
 fn format_gauge(pct: u8) -> String {
     let width = 40;
     let filled = (pct as usize * width) / 100;

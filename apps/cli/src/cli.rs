@@ -40,13 +40,13 @@ pub enum OutputFormat {
 #[strum(serialize_all = "snake_case")]
 #[allow(clippy::large_enum_variant)]
 pub enum Commands {
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     /// Transcribe an audio file
     Transcribe {
         #[command(flatten)]
         args: crate::commands::transcribe::Args,
     },
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     /// Manage local models
     Models {
         #[command(flatten)]
@@ -57,42 +57,42 @@ pub enum Commands {
         #[arg(value_enum)]
         shell: clap_complete::Shell,
     },
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     /// Play an audio file
     Play {
         #[command(flatten)]
         args: crate::commands::play::Args,
     },
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     /// Record audio to an MP3 file
     Record {
         #[command(flatten)]
         args: crate::commands::record::Args,
     },
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-skill-update")]
     /// Install char skill for AI coding agents
     Skill {
         #[command(subcommand)]
         command: crate::commands::skill::Commands,
     },
-    #[cfg(feature = "desktop")]
+    #[cfg(feature = "_cli-desktop")]
     /// Open the desktop app or download page
     Desktop,
-    #[cfg(feature = "desktop-db")]
+    #[cfg(feature = "_cli-db")]
     /// Manage desktop SQLite data
     Db {
         #[command(flatten)]
         args: hypr_db_cli::Args,
     },
-    #[cfg(feature = "desktop")]
+    #[cfg(feature = "_cli-desktop")]
     /// Report a bug on GitHub
     #[command(hide = true)]
     Bug,
-    #[cfg(feature = "desktop")]
+    #[cfg(feature = "_cli-desktop")]
     /// Open char.com
     #[command(hide = true)]
     Hello,
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-skill-update")]
     /// Update char to the latest version
     Update,
 
@@ -107,15 +107,15 @@ pub enum Commands {
 impl Commands {
     pub fn base_override(&self) -> Option<&std::path::Path> {
         match self {
-            #[cfg(feature = "standalone")]
+            #[cfg(feature = "_cli-audio")]
             Commands::Transcribe { args } => args.base.as_deref(),
-            #[cfg(feature = "standalone")]
+            #[cfg(feature = "_cli-audio")]
             Commands::Models { args } => args.base.as_deref(),
-            #[cfg(feature = "standalone")]
+            #[cfg(feature = "_cli-audio")]
             Commands::Play { args } => args.base.as_deref(),
-            #[cfg(feature = "standalone")]
+            #[cfg(feature = "_cli-audio")]
             Commands::Record { args } => args.base.as_deref(),
-            #[cfg(feature = "desktop-db")]
+            #[cfg(feature = "_cli-db")]
             Commands::Db { args } => args.base.as_deref(),
             _ => None,
         }
@@ -143,7 +143,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     fn root_help_only_shows_truly_global_options() {
         let mut command = Cli::command();
         let help = render_help(&mut command);
@@ -158,10 +158,10 @@ mod tests {
 
     #[test]
     #[cfg(all(
-        feature = "desktop",
-        not(feature = "standalone"),
-        not(feature = "todo"),
-        not(feature = "desktop-db")
+        feature = "_cli-desktop",
+        not(feature = "_cli-audio"),
+        not(feature = "_cli-skill-update"),
+        not(feature = "todo")
     ))]
     fn desktop_help_stays_lightweight() {
         let mut command = Cli::command();
@@ -179,7 +179,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "desktop-db")]
+    #[cfg(feature = "_cli-db")]
     fn desktop_db_help_shows_db_command() {
         let mut command = Cli::command();
         let help = render_help(&mut command);
@@ -188,7 +188,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "desktop-db")]
+    #[cfg(feature = "_cli-db")]
     fn db_help_renders() {
         let mut command = Cli::command();
         let mut db = command.find_subcommand_mut("db").unwrap().clone();
@@ -199,7 +199,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "desktop-db")]
+    #[cfg(feature = "_cli-db")]
     fn db_templates_help_renders() {
         let mut command = Cli::command();
         let mut db = command.find_subcommand_mut("db").unwrap().clone();
@@ -213,7 +213,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     fn transcribe_help_keeps_stt_config() {
         let mut command = Cli::command();
         let mut transcribe = command.find_subcommand_mut("transcribe").unwrap().clone();
@@ -227,7 +227,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "standalone", target_os = "macos"))]
+    #[cfg(all(feature = "_cli-audio", target_os = "macos"))]
     fn transcribe_accepts_whispercpp_provider() {
         let input = tempfile::NamedTempFile::new().unwrap();
         Cli::try_parse_from([
@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     #[cfg(all(
-        feature = "standalone",
+        feature = "_cli-audio",
         target_os = "macos",
         any(target_arch = "arm", target_arch = "aarch64")
     ))]
@@ -261,7 +261,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     fn models_help_only_shows_base_override() {
         let mut command = Cli::command();
         let mut models = command.find_subcommand_mut("models").unwrap().clone();
@@ -281,7 +281,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     fn record_rejects_stt_only_flags() {
         match Cli::try_parse_from(["char", "record", "--api-key", "secret"]) {
             Ok(_) => panic!("record unexpectedly accepted --api-key"),
@@ -290,7 +290,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     fn model_delete_uses_long_only_force() {
         Cli::try_parse_from(["char", "models", "delete", "tiny", "--force"]).unwrap();
 
@@ -301,7 +301,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "standalone")]
+    #[cfg(feature = "_cli-audio")]
     fn models_list_accepts_json_format() {
         let mut command = Cli::command();
         let mut list = command
@@ -316,7 +316,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "standalone")]
+    #[cfg(all(
+        feature = "_cli-audio",
+        feature = "_cli-skill-update",
+        feature = "_cli-db"
+    ))]
     fn generate_docs_standalone() {
         let cmd = Cli::command();
         let json = cli_docs::generate_json(&cmd);
@@ -329,8 +333,9 @@ mod tests {
 
     #[test]
     #[cfg(all(
-        feature = "desktop",
-        not(feature = "standalone"),
+        feature = "_cli-desktop",
+        not(feature = "_cli-audio"),
+        not(feature = "_cli-skill-update"),
         not(feature = "todo")
     ))]
     fn generate_docs_desktop() {

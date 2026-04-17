@@ -1,6 +1,6 @@
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-audio")]
 pub mod transcribe;
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-audio")]
 pub(crate) mod update_check;
 
 #[cfg(feature = "todo")]
@@ -8,21 +8,21 @@ pub mod integration;
 #[cfg(feature = "todo")]
 pub mod todo;
 
-#[cfg(feature = "desktop")]
+#[cfg(feature = "_cli-desktop")]
 pub mod bug;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "_cli-desktop")]
 pub mod desktop;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "_cli-desktop")]
 pub mod hello;
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-audio")]
 pub mod model;
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-audio")]
 pub mod play;
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-audio")]
 pub mod record;
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-skill-update")]
 pub mod skill;
-#[cfg(feature = "standalone")]
+#[cfg(feature = "_cli-skill-update")]
 pub mod update;
 
 use std::path::{Path, PathBuf};
@@ -59,25 +59,25 @@ pub(crate) fn resolve_session_dir(base: Option<&Path>, timestamp: &str) -> CliRe
 }
 
 pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()> {
-    #[cfg(not(feature = "standalone"))]
+    #[cfg(not(any(feature = "_cli-audio", feature = "_cli-skill-update")))]
     let _ = ctx;
 
     match command {
-        #[cfg(feature = "standalone")]
+        #[cfg(feature = "_cli-audio")]
         Some(CliCommand::Transcribe { args }) => transcribe::run(ctx, args).await,
-        #[cfg(feature = "standalone")]
+        #[cfg(feature = "_cli-audio")]
         Some(CliCommand::Models { args }) => model::run(ctx, args).await,
-        #[cfg(feature = "standalone")]
+        #[cfg(feature = "_cli-audio")]
         Some(CliCommand::Play { args }) => play::run(ctx, args).await,
-        #[cfg(feature = "standalone")]
+        #[cfg(feature = "_cli-audio")]
         Some(CliCommand::Record { args }) => record::run(ctx, args).await,
-        #[cfg(feature = "standalone")]
+        #[cfg(feature = "_cli-skill-update")]
         Some(CliCommand::Skill { command }) => skill::run(ctx, command).await,
         Some(CliCommand::Completions { shell }) => {
             crate::cli::generate_completions(shell);
             Ok(())
         }
-        #[cfg(feature = "desktop")]
+        #[cfg(feature = "_cli-desktop")]
         Some(CliCommand::Desktop) => {
             use desktop::DesktopAction;
             match desktop::run()? {
@@ -88,23 +88,23 @@ pub async fn run(ctx: &AppContext, command: Option<CliCommand>) -> CliResult<()>
             }
             Ok(())
         }
-        #[cfg(feature = "desktop-db")]
+        #[cfg(feature = "_cli-db")]
         Some(CliCommand::Db { args }) => hypr_db_cli::run(args)
             .await
             .map_err(|e| e.to_string().into()),
-        #[cfg(feature = "desktop")]
+        #[cfg(feature = "_cli-desktop")]
         Some(CliCommand::Bug) => {
             bug::run()?;
             eprintln!("Opened bug report page in browser");
             Ok(())
         }
-        #[cfg(feature = "desktop")]
+        #[cfg(feature = "_cli-desktop")]
         Some(CliCommand::Hello) => {
             hello::run()?;
             eprintln!("Opened char.com in browser");
             Ok(())
         }
-        #[cfg(feature = "standalone")]
+        #[cfg(feature = "_cli-skill-update")]
         Some(CliCommand::Update) => update::run(),
         #[cfg(feature = "todo")]
         Some(CliCommand::Todo { command }) => todo::run(command).await,
