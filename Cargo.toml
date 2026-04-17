@@ -94,6 +94,7 @@ hypr-denoise = { path = "crates/denoise", package = "denoise" }
 hypr-detect = { path = "crates/detect", package = "detect" }
 hypr-device-monitor = { path = "crates/device-monitor", package = "device-monitor" }
 hypr-devin = { path = "crates/devin", package = "devin" }
+hypr-dictation-ui-macos = { path = "crates/dictation-ui-macos", package = "dictation-ui-macos" }
 hypr-docs = { path = "crates/docs", package = "docs" }
 hypr-download-interface = { path = "crates/download-interface", package = "download-interface" }
 hypr-embedding = { path = "crates/embedding", package = "embedding" }

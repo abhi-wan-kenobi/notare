@@ -13,6 +13,7 @@ pub use self::stub::Handler;
 mod macos {
     use std::sync::{Arc, Mutex};
 
+    use hypr_dictation_ui_macos as ui;
     use hypr_shortcut_macos as sm;
     use tauri::{AppHandle, Runtime};
     use tauri_specta::Event;
@@ -70,10 +71,30 @@ mod macos {
                 drop(p);
                 if let Some(out) = out {
                     let evt = match out {
-                        sm::Output::StartRecording => ShortcutEvent::Start,
-                        sm::Output::StopRecording => ShortcutEvent::Stop,
-                        sm::Output::Cancel => ShortcutEvent::Cancel,
-                        sm::Output::Discard => ShortcutEvent::Discard,
+                        sm::Output::StartRecording => {
+                            ui::show();
+                            ui::update_state(&ui::DictationState {
+                                phase: ui::Phase::Recording,
+                                amplitude: 0.0,
+                            });
+                            ShortcutEvent::Start
+                        }
+                        sm::Output::StopRecording => {
+                            ui::update_state(&ui::DictationState {
+                                phase: ui::Phase::Processing,
+                                amplitude: 0.0,
+                            });
+                            ui::hide();
+                            ShortcutEvent::Stop
+                        }
+                        sm::Output::Cancel => {
+                            ui::hide();
+                            ShortcutEvent::Cancel
+                        }
+                        sm::Output::Discard => {
+                            ui::hide();
+                            ShortcutEvent::Discard
+                        }
                     };
                     let _ = evt.emit(&app);
                 }

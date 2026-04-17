@@ -5196,6 +5196,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dictation-ui-macos"
+version = "0.1.0"
+dependencies = [
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "serde",
+ "serde_json",
+ "swift-rs 1.0.7 (git+https://github.com/yujonglee/swift-rs?rev=41a1605)",
+]
+
+[[package]]
 name = "difflib"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -19398,6 +19410,7 @@ dependencies = [
 name = "tauri-plugin-shortcut"
 version = "0.1.0"
 dependencies = [
+ "dictation-ui-macos",
  "serde",
  "shortcut-macos",
  "specta",

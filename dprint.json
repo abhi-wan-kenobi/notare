@@ -22,6 +22,7 @@
     "**/*.gen.*",
     "**/dist",
     "**/target",
+    "**/.build",
     "**/public",
     "**/gen/**",
     "**/generated/**",
