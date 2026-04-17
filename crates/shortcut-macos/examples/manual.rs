@@ -1,19 +1,15 @@
-#[cfg(target_os = "macos")]
+use std::{
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
+
+use shortcut_macos::{EventTap, HotKey, HotKeyProcessor, Modifier, Modifiers, Output, TapEvent};
+
 fn main() {
-    use std::{
-        sync::{Arc, Mutex},
-        thread,
-        time::Duration,
-    };
-
-    use shortcut_macos::{
-        EventTap, HotKey, HotKeyProcessor, Modifier, Modifiers, Output, TapEvent, permission,
-    };
-
-    if !permission::check_accessibility() {
-        eprintln!("[manual] Accessibility not granted — prompting…");
-        permission::prompt_accessibility();
-    }
+    eprintln!(
+        "[manual] Requires Accessibility + Input Monitoring. Grant in System Settings if the tap fails."
+    );
 
     let hotkey = HotKey::modifier_only(Modifiers::from([Modifier::Option]));
     let processor = Arc::new(Mutex::new(HotKeyProcessor::new(hotkey)));
@@ -41,9 +37,4 @@ fn main() {
     loop {
         thread::sleep(Duration::from_secs(60));
     }
-}
-
-#[cfg(not(target_os = "macos"))]
-fn main() {
-    eprintln!("shortcut-macos only runs on macOS.");
 }

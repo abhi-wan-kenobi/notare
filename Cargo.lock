@@ -16682,8 +16682,6 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 name = "shortcut-macos"
 version = "0.1.0"
 dependencies = [
- "core-foundation 0.10.1",
- "macos-accessibility-client",
  "serde",
  "specta",
  "thiserror 2.0.18",
