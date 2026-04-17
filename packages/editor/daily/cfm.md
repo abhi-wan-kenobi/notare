@@ -6,7 +6,8 @@
 
 ### vs Commonmark
 
-- It is superset of [`Commonmark`](https://commonmark.org/help).
+- It is **MOSTLY** superset of [`Commonmark`](https://commonmark.org/help).
+- "Mostly" because how we handle newlines.
 
 ## vs GFM(Github-Flavored-Markodwn)
 
@@ -20,9 +21,15 @@
 
 ## How Task represented
 
+Old thought:
+```
 - `HTML` is allowed in `Commonmark`.
 - `<task id="<id>"></task>
 - This assume it can fetch info from `tasks` table to render UI.
+```
+
+Current: ("char-task-id=t-123456")`
+`- [ ] some task title that is not yet done "char-task-id=t-123456"`
 
 ## Other Consideration
 

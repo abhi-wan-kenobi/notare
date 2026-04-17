@@ -2,3 +2,5 @@
 FROM ghcr.io/boldsoftware/exeuntu:latest
 
 LABEL org.opencontainers.image.source=https://github.com/fastrepl/char
+
+RUN npm install -g char
