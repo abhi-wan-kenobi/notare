@@ -411,7 +411,7 @@ function HeroSection({
                     loop
                     playsInline
                     className="pointer-events-none h-full w-full object-cover"
-                    style={{ "--controls": "none" } as React.CSSProperties}
+                    style={{ "--controls": "none" } as any}
                   />
                   <button
                     type="button"
