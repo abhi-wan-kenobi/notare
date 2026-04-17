@@ -3,6 +3,80 @@ name: migrate-to-sqlite
 description: Migrate a TinyBase table to SQLite. Use when asked to move a data domain (e.g. templates, chat shortcuts, vocabs) from the TinyBase store to the app SQLite database.
 ---
 
+## Status
+
+Keep up to date as each PR lands. Outer box = fully done across both
+phases. Sub-bullets track sub-states where relevant.
+
+- [x] `templates` — already Drizzle, no Phase 0 needed
+- [ ] `calendars`
+  - [x] Phase 0 reads (PR 2: `useCalendar`, `useEnabledCalendars`)
+  - [ ] Phase 0 writes — `services/calendar/ctx.ts` has a cross-domain
+        calendars+events transaction; lands with events PR
+  - [ ] Phase 1 — Rust migration + ops exist
+- [ ] `events`
+  - [ ] Phase 0
+  - [ ] Phase 1 — Rust migration + ops exist
+- [ ] `sessions`
+- [ ] `transcripts`
+- [ ] `humans`
+- [ ] `organizations`
+- [ ] `enhanced_notes`
+  - [x] Phase 0 reads — `session/hooks/useEnhancedNotes.ts`
+  - [ ] Phase 0 writes
+  - [ ] Phase 1
+- [ ] `mapping_session_participant`
+- [ ] `mapping_tag_session`
+- [ ] `mapping_mention`
+- [ ] `tags`
+- [ ] `chat_groups`
+- [ ] `chat_messages`
+  - [x] Phase 0 writes (partial) — `chat/store/*`
+  - [ ] Phase 0 reads
+  - [ ] Phase 1
+- [ ] `chat_shortcuts`
+- [ ] `tasks`
+- [ ] `memories`
+  - [x] Phase 0 writes — `settings/memory/custom-vocabulary.tsx`
+  - [ ] Phase 0 reads
+  - [ ] Phase 1
+- [ ] `daily_notes`
+
+## Strategy
+
+Two-phase, per-domain migration. Each phase is many small PRs.
+
+### Phase 0 — Decouple consumers
+
+Before any storage swap, move every TinyBase call behind a domain hook
+living in `apps/desktop/src/<domain>/hooks.ts` (or `<domain>/hooks/*`).
+Hook return shapes are plain TypeScript; no TinyBase types leak out.
+Consumer code stops importing `~/store/tinybase/store/main`.
+
+Why: one storage-swap PR per domain touches 1 file (the hook module),
+not 20–50 consumer files.
+
+Enforced by `hypr/no-raw-tinybase` in `eslint-plugin-hypr.mjs`.
+`.oxlintrc.json` keeps a `TINYBASE_MIGRATION_PENDING` override that
+shrinks as each domain is cleaned. CI gates this via
+`.github/workflows/lint.yaml`.
+
+### Phase 1 — Swap storage per domain
+
+1. Rust migration + ops + Drizzle schema (steps below).
+2. Flip writes in the hook module: `db.insert()/update()/delete()`.
+3. **Shadow-hydrate** TinyBase from SQLite so read hooks that haven't
+   moved yet keep working. A small adapter subscribes to `db-live-query`
+   and mirrors rows into the in-memory TinyBase store. One-way only:
+   SQLite is the source of truth.
+4. Swap read hooks to `useDrizzleLiveQuery` one at a time. Consumers
+   untouched because hook signatures are stable.
+5. Once no TinyBase consumers remain for the domain, remove the shadow
+   adapter, the TinyBase schema entries, and the persister.
+
+Skip the shadow bridge only for leaf-clean domains (no cross-table
+indexes/queries into or out of the domain, and <10 consumer sites).
+
 ## Architecture
 
 - **Schema source of truth:** Rust migration in `crates/db-app/migrations/`
@@ -23,7 +97,10 @@ The DB stack uses a factory/DI pattern across four packages:
 
 These are wired together in `apps/desktop/src/db/index.ts`, which exports `db`, `useLiveQuery`, and `useDrizzleLiveQuery`. **Consumer code imports from `~/db`, not directly from the packages.**
 
-## Steps
+## Per-domain steps (Phase 1)
+
+Assumes Phase 0 already landed for this domain — consumers go through
+`<domain>/hooks.ts`, not raw `UI.*`.
 
 ### 1. Rust migration
 
@@ -43,31 +120,42 @@ If the domain had a TinyBase JSON persister file (e.g. `templates.json`), add an
 
 Add the table definition to `packages/db/src/schema.ts` mirroring the migration. Use `{ mode: "json" }` for JSON text columns, `{ mode: "boolean" }` for integer boolean columns. Re-export from `packages/db/src/index.ts` if adding new operator re-exports.
 
-### 5. TS consumer migration
+### 5. Swap hook internals
 
-Replace raw TinyBase reads/writes with:
+Replace the hook module's TinyBase calls with Drizzle. Hook signatures
+stay the same, so consumer code doesn't change.
+
 - `useDrizzleLiveQuery(db.select()...)` for reactive reads
 - `db.select()...` for imperative reads (returns parsed objects via proxy driver)
 - `db.insert()`, `db.update()`, `db.delete()` for writes, wrapped in `useMutation`
 
-Import `db` and `useDrizzleLiveQuery` from `~/db` (the app-level wiring module), and schema tables/operators from `@hypr/db`.
+Import `db` and `useDrizzleLiveQuery` from `~/db`, and schema tables/operators from `@hypr/db`.
 
 Live query results come from Rust `subscribe` as raw objects (not through the Drizzle driver), so `mapRows` must handle two things:
 - **JSON parsing** for JSON text columns (e.g. `sections_json`, `targets_json`).
 - **snake_case → camelCase mapping.** Live rows use the raw SQLite column names (`pin_order`, `targets_json`), while Drizzle's `$inferSelect` uses camelCase (`pinOrder`, `targetsJson`). Define a separate `<Domain>LiveRow` type with snake_case keys for `mapRows`, distinct from the Drizzle inferred type. See `TemplateLiveRow` in `apps/desktop/src/templates/queries.ts` for the pattern.
 
-### 6. Remove TinyBase artifacts
+### 6. Shadow bridge (skip for leaf-clean domains)
+
+Add a small module that hydrates the TinyBase `<domain>` table from
+SQLite on startup and subscribes to `db-live-query` to mirror subsequent
+changes. One-way: SQLite → TinyBase. Retire once all consumers have
+swapped.
+
+### 7. Remove TinyBase artifacts
 
 - Table definition from `packages/store/src/tinybase.ts`
 - Query definitions from `store/tinybase/store/main.ts` (both `QUERIES` object and `_QueryResultRows` type)
 - Persister files (e.g. `store/tinybase/persister/<domain>/`)
 - Persister registration from `store/tinybase/store/persisters.ts`
 - Hooks from `store/tinybase/hooks/` if they existed
+- Shadow-bridge module if one was added
 - Associated tests and test wrapper setup
 
-### 7. Verify
+### 8. Verify
 
 - `cargo check` and `cargo test -p db-app -p tauri-plugin-db`
 - `pnpm -F @hypr/desktop typecheck`
 - `pnpm -F @hypr/desktop test`
+- `npx oxlint --quiet apps/desktop/src/` (the `hypr/no-raw-tinybase` CI gate)
 - `pnpm exec dprint fmt`

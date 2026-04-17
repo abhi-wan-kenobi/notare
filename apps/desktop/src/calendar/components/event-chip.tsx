@@ -10,7 +10,7 @@ import {
 } from "@hypr/ui/components/ui/popover";
 import { cn } from "@hypr/utils";
 
-import { toTz, useTimezone } from "~/calendar/hooks";
+import { toTz, useCalendar, useTimezone } from "~/calendar/hooks";
 import { EventDisplay } from "~/session/components/outer-header/metadata";
 import { useEvent } from "~/store/tinybase/hooks";
 import * as main from "~/store/tinybase/store/main";
@@ -18,9 +18,8 @@ import { getOrCreateSessionForEventId } from "~/store/tinybase/store/sessions";
 import { useTabs } from "~/store/zustand/tabs";
 
 function useCalendarColor(calendarId: string | null): string | null {
-  const calendar = main.UI.useRow("calendars", calendarId ?? "", main.STORE_ID);
-  if (!calendarId) return null;
-  return calendar?.color ? String(calendar.color) : null;
+  const calendar = useCalendar(calendarId);
+  return calendar?.color || null;
 }
 
 export function EventChip({ eventId }: { eventId: string }) {

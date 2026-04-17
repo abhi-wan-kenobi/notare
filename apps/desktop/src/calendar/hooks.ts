@@ -50,6 +50,53 @@ export function useWeekStartsOn(): 0 | 1 {
   }, [value]);
 }
 
+export type Calendar = {
+  id: string;
+  tracking_id_calendar: string;
+  name: string;
+  enabled: boolean;
+  provider: string;
+  source: string;
+  color: string;
+  connection_id: string;
+  created_at: string;
+};
+
+export function useCalendar(id: string | null | undefined): Calendar | null {
+  const row = main.UI.useRow("calendars", id ?? "", main.STORE_ID);
+  return useMemo(() => {
+    if (!id) return null;
+    if (!row || Object.keys(row).length === 0) return null;
+    return {
+      id,
+      tracking_id_calendar: row.tracking_id_calendar ?? "",
+      name: row.name ?? "",
+      enabled: row.enabled ?? false,
+      provider: row.provider ?? "",
+      source: row.source ?? "",
+      color: row.color ?? "",
+      connection_id: row.connection_id ?? "",
+      created_at: row.created_at ?? "",
+    };
+  }, [id, row]);
+}
+
+export type EnabledCalendar = { id: string; provider: string };
+
+export function useEnabledCalendars(): EnabledCalendar[] {
+  const resultTable = main.UI.useResultTable(
+    main.QUERIES.enabledCalendars,
+    main.STORE_ID,
+  );
+  return useMemo(() => {
+    if (!resultTable) return [];
+    return Object.entries(resultTable).map(([id, row]) => ({
+      id,
+      provider: row.provider ?? "",
+    }));
+  }, [resultTable]);
+}
+
 export type CalendarData = {
   eventIdsByDate: Record<string, string[]>;
   sessionIdsByDate: Record<string, string[]>;
