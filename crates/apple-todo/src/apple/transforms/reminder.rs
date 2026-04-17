@@ -96,6 +96,7 @@ fn extract_date_components(components: &NSDateComponents) -> DateComponents {
     let day = components.day();
     let hour = components.hour();
     let minute = components.minute();
+    let second = components.second();
 
     // NSDateComponents uses NSIntegerMax (isize::MAX) for undefined components
     let undefined = isize::MAX;
@@ -107,7 +108,12 @@ fn extract_date_components(components: &NSDateComponents) -> DateComponents {
     };
 
     let time = if hour != undefined && minute != undefined {
-        chrono::NaiveTime::from_hms_opt(hour as u32, minute as u32, 0)
+        let second = if second == undefined {
+            0
+        } else {
+            second as u32
+        };
+        chrono::NaiveTime::from_hms_opt(hour as u32, minute as u32, second)
     } else {
         None
     };
@@ -118,5 +124,35 @@ fn extract_date_components(components: &NSDateComponents) -> DateComponents {
         date,
         time,
         time_zone,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{NaiveDate, NaiveTime};
+    use objc2_foundation::NSDateComponents;
+
+    use super::extract_date_components;
+
+    #[test]
+    fn extract_date_components_preserves_seconds() {
+        let components = NSDateComponents::new();
+        components.setYear(2026);
+        components.setMonth(4);
+        components.setDay(17);
+        components.setHour(9);
+        components.setMinute(30);
+        components.setSecond(15);
+
+        let extracted = extract_date_components(&components);
+
+        assert_eq!(
+            extracted.date,
+            Some(NaiveDate::from_ymd_opt(2026, 4, 17).unwrap())
+        );
+        assert_eq!(
+            extracted.time,
+            Some(NaiveTime::from_hms_opt(9, 30, 15).unwrap())
+        );
     }
 }

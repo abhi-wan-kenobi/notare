@@ -22,6 +22,8 @@ pub enum Error {
     InvalidReadPath(String),
     #[error("invalid reminder date components: {0}")]
     InvalidDateComponents(String),
+    #[error("invalid reminder input: {0}")]
+    InvalidReminderInput(String),
     #[error("objective-c exception: {0}")]
     ObjectiveCException(String),
     #[error("xpc connection failed")]

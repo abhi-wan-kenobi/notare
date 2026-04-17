@@ -169,7 +169,7 @@ pub fn create_todo(input: CreateReminderInput) -> Result<String, Error> {
     #[cfg(target_os = "macos")]
     {
         let handle = hypr_apple_todo::Handle;
-        handle.create_reminder(input).map_err(Into::into)
+        handle.create_reminder_identifier(input).map_err(Into::into)
     }
 
     #[cfg(not(target_os = "macos"))]
