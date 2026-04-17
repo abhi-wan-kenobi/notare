@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@source "../index.html";
+
+@theme {
+  --font-sans: "Geist", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+
+  --color-page: #f2f1ef;
+  --color-surface: #ffffff;
+  --color-fg: oklch(0.3 0.0197 81.53);
+  --color-fg-muted: oklch(0.4922 0.0127 67.79);
+  --color-border: oklch(0.7782 0.0018 67.8);
+  --color-border-subtle: oklch(0.9213 0.0027 106.45);
+  --color-brand-dark: #57534e;
+}
