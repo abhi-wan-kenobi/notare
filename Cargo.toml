@@ -159,7 +159,6 @@ hypr-resampler = { path = "crates/resampler", package = "resampler" }
 hypr-s3 = { path = "crates/s3", package = "s3" }
 hypr-screen-core = { path = "crates/screen-core", package = "screen-core" }
 hypr-segmentation = { path = "crates/segmentation", package = "segmentation" }
-hypr-shortcut-macos = { path = "crates/shortcut-macos", package = "shortcut-macos" }
 hypr-slack-web = { path = "crates/slack-web", package = "slack-web" }
 hypr-storage = { path = "crates/storage", package = "storage" }
 hypr-supabase-auth = { path = "crates/supabase-auth", package = "supabase-auth" }

@@ -26,7 +26,6 @@ hypr-listener2-core = { workspace = true, optional = true }
 hypr-local-model = { workspace = true, optional = true }
 hypr-local-stt-core = { workspace = true, optional = true }
 hypr-model-downloader = { workspace = true, optional = true }
-hypr-shortcut-macos = { workspace = true, optional = true }
 hypr-transcript = { workspace = true, optional = true }
 owhisper-client = { workspace = true, optional = true }
 owhisper-interface = { workspace = true, optional = true }
@@ -84,7 +83,6 @@ todo = [
   "desktop",
   "dep:hypr-agent-core",
   "dep:hypr-codex",
-  "dep:hypr-shortcut-macos",
 ]
 standalone = [
   "desktop",
@@ -102,7 +100,6 @@ standalone = [
   "dep:hypr-model-downloader",
   "dep:owhisper-client",
   "dep:owhisper-interface",
-  "dep:hypr-shortcut-macos",
   "dep:ratatui",
   "dep:crossterm",
   "dep:libc",

@@ -95,9 +95,6 @@ pub enum Commands {
     #[cfg(feature = "standalone")]
     /// Update char to the latest version
     Update,
-    #[cfg(all(feature = "standalone", target_os = "macos"))]
-    #[command(hide = true)]
-    ShortcutDaemon,
 
     #[cfg(feature = "todo")]
     /// Manage todos and automations

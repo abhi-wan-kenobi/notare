@@ -4,12 +4,6 @@ use crate::error::CliResult;
 
 #[derive(Subcommand)]
 pub enum Commands {
-    #[cfg(all(feature = "standalone", target_os = "macos"))]
-    /// Manage global shortcut
-    Shortcut {
-        #[command(subcommand)]
-        command: Option<crate::commands::shortcut::Commands>,
-    },
     /// Claude Code integration
     Claude {
         #[command(subcommand)]
@@ -29,8 +23,6 @@ pub enum Commands {
 
 pub async fn run(command: Option<Commands>) -> CliResult<()> {
     match command {
-        #[cfg(all(feature = "standalone", target_os = "macos"))]
-        Some(Commands::Shortcut { command }) => crate::commands::shortcut::run(command).await,
         Some(Commands::Claude { command }) => {
             crate::commands::integration::claude::run(command).await
         }
