@@ -31,7 +31,18 @@ pub enum Permission {
     SystemAudio,
     ScreenRecording,
     Accessibility,
+    InputMonitoring,
 }
+
+#[cfg(target_os = "macos")]
+#[link(name = "IOKit", kind = "framework")]
+unsafe extern "C" {
+    fn IOHIDCheckAccess(request_type: u32) -> u32;
+    fn IOHIDRequestAccess(request_type: u32) -> bool;
+}
+
+#[cfg(target_os = "macos")]
+const K_IOHID_REQUEST_TYPE_LISTEN_EVENT: u32 = 1;
 
 pub struct Permissions<'a, R: tauri::Runtime, M: tauri::Manager<R>> {
     #[allow(dead_code)]
@@ -59,6 +70,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
             Permission::SystemAudio => self.open_system_audio().await,
             Permission::ScreenRecording => self.open_screen_recording().await,
             Permission::Accessibility => self.open_accessibility().await,
+            Permission::InputMonitoring => self.open_input_monitoring().await,
         }
     }
 
@@ -83,6 +95,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
             Permission::SystemAudio => self.check_system_audio().await,
             Permission::ScreenRecording => self.check_screen_recording().await,
             Permission::Accessibility => self.check_accessibility().await,
+            Permission::InputMonitoring => self.check_input_monitoring().await,
         }
     }
 
@@ -98,6 +111,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
             Permission::SystemAudio => "systemAudio",
             Permission::ScreenRecording => "screenRecording",
             Permission::Accessibility => "accessibility",
+            Permission::InputMonitoring => "inputMonitoring",
         };
 
         let cmd = self
@@ -156,6 +170,11 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
                 "trusted" => PermissionStatus::Authorized,
                 _ => PermissionStatus::Denied,
             },
+            Permission::InputMonitoring => match value {
+                "notDetermined" => PermissionStatus::NeverRequested,
+                "authorized" => PermissionStatus::Authorized,
+                _ => PermissionStatus::Denied,
+            },
         };
 
         tracing::debug!(permission = arg, %value, ?status, "check via sidecar");
@@ -171,6 +190,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
             Permission::SystemAudio => self.request_system_audio().await,
             Permission::ScreenRecording => self.request_screen_recording().await,
             Permission::Accessibility => self.request_accessibility().await,
+            Permission::InputMonitoring => self.request_input_monitoring().await,
         }
     }
 
@@ -183,6 +203,7 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
             Permission::SystemAudio => self.reset_system_audio().await,
             Permission::ScreenRecording => self.reset_screen_recording().await,
             Permission::Accessibility => self.reset_accessibility().await,
+            Permission::InputMonitoring => self.reset_input_monitoring().await,
         }
     }
 
@@ -536,6 +557,43 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Permissions<'a, R, M> {
     async fn reset_accessibility(&self) -> Result<(), crate::Error> {
         #[cfg(target_os = "macos")]
         self.reset_tcc("Accessibility").await;
+
+        Ok(())
+    }
+
+    async fn open_input_monitoring(&self) -> Result<(), crate::Error> {
+        #[cfg(target_os = "macos")]
+        {
+            self.open_privacy_settings("Privacy_ListenEvent")?;
+        }
+
+        Ok(())
+    }
+
+    async fn check_input_monitoring(&self) -> Result<PermissionStatus, crate::Error> {
+        #[cfg(target_os = "macos")]
+        return check!("input_monitoring", unsafe {
+            IOHIDCheckAccess(K_IOHID_REQUEST_TYPE_LISTEN_EVENT) as isize
+        });
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            Ok(PermissionStatus::Denied)
+        }
+    }
+
+    async fn request_input_monitoring(&self) -> Result<(), crate::Error> {
+        #[cfg(target_os = "macos")]
+        unsafe {
+            IOHIDRequestAccess(K_IOHID_REQUEST_TYPE_LISTEN_EVENT);
+        }
+
+        Ok(())
+    }
+
+    async fn reset_input_monitoring(&self) -> Result<(), crate::Error> {
+        #[cfg(target_os = "macos")]
+        self.reset_tcc("ListenEvent").await;
 
         Ok(())
     }

@@ -52,6 +52,10 @@ mod macos {
                 return Err(Error::AccessibilityDenied);
             }
 
+            if !sm::permission::check_input_monitoring() {
+                return Err(Error::InputMonitoringDenied);
+            }
+
             let sm_hotkey = convert_hotkey(&hotkey);
             let sm_options = convert_options(options);
 

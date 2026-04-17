@@ -3,10 +3,11 @@ import CoreGraphics
 import Contacts
 import EventKit
 import Foundation
+import IOKit.hid
 
 guard CommandLine.arguments.count > 1 else {
   fputs(
-    "Usage: check-permissions <calendar|reminders|contacts|microphone|systemAudio|screenRecording|accessibility>\n",
+    "Usage: check-permissions <calendar|reminders|contacts|microphone|systemAudio|screenRecording|accessibility|inputMonitoring>\n",
     stderr)
   exit(1)
 }
@@ -84,6 +85,13 @@ case "screenRecording":
   }
 case "accessibility":
   print(AXIsProcessTrusted() ? "trusted" : "untrusted")
+case "inputMonitoring":
+  switch IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) {
+  case kIOHIDAccessTypeGranted: print("authorized")
+  case kIOHIDAccessTypeDenied: print("denied")
+  case kIOHIDAccessTypeUnknown: print("notDetermined")
+  default: print("unknown")
+  }
 default:
   fputs("Unknown permission type: \(permissionType)\n", stderr)
   exit(1)

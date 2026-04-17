@@ -4,6 +4,8 @@ use serde::{Serialize, ser::Serializer};
 pub enum Error {
     #[error("accessibility permission is required to monitor global hotkeys")]
     AccessibilityDenied,
+    #[error("input monitoring permission is required to monitor global hotkeys")]
+    InputMonitoringDenied,
     #[error("failed to start event tap: {0}")]
     TapStart(String),
     #[error("not supported on this platform")]

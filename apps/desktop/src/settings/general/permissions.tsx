@@ -151,6 +151,7 @@ export function Permissions() {
   const systemAudio = usePermission("systemAudio");
   const screenRecording = usePermission("screenRecording");
   const accessibility = usePermission("accessibility");
+  const inputMonitoring = usePermission("inputMonitoring");
 
   return (
     <div>
@@ -216,6 +217,15 @@ export function Permissions() {
             onRequest={reminders.request}
             onReset={reminders.reset}
             onOpen={reminders.open}
+          />
+          <PermissionRow
+            title="Input monitoring"
+            description="Required to listen for global dictation hotkeys"
+            status={inputMonitoring.status}
+            isPending={inputMonitoring.isPending}
+            onRequest={inputMonitoring.request}
+            onReset={inputMonitoring.reset}
+            onOpen={inputMonitoring.open}
           />
         </PermissionGroup>
       </div>
