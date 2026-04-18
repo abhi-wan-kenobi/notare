@@ -28,7 +28,7 @@ Verify:
 node --version
 ```
 
-You should see `v20.x.x` or higher.
+You should see `v22.x.x` or higher.
 
 ## Install pnpm
 
@@ -42,7 +42,7 @@ Verify:
 pnpm --version
 ```
 
-You should see `9.x.x` or higher.
+You should see `10.x.x` or higher.
 
 ## Install project dependencies
 
@@ -59,11 +59,11 @@ This downloads everything the project needs. It takes a minute or two the first 
 
 You won't run `node` or `pnpm` commands constantly, but they're behind the scenes for:
 
-- `pnpm -F desktop tauri dev` — Run the desktop app locally
-- `pnpm -F web dev` — Run the website locally to preview content changes
+- `pnpm exec turbo run tauri:dev --filter=@hypr/desktop` — Run the desktop app locally
+- `pnpm exec turbo run dev --filter=@hypr/web` — Run the website locally to preview content changes
 - `pnpm install` — Run this after pulling new changes that update dependencies
 
-Most of these commands are wrapped in Taskfile commands, so you'll often just run `task <something>` instead. But Node.js and pnpm need to be installed for any of it to work.
+Turbo is the default runner for JavaScript and TypeScript workflows in this repo. Taskfile remains useful for infra helpers like local Supabase and Stripe webhooks, but Node.js and pnpm power both layers.
 
 ## Troubleshooting
 

@@ -13,19 +13,13 @@ description: "Learn how to run Char for development"
 ## Desktop (apps/desktop)
 
 ```bash
-npx turbo -F @hypr/desktop tauri:dev
-```
-
-or
-
-```bash
-pnpm -F ui build && pnpm -F desktop tauri dev
+pnpm exec turbo run tauri:dev --filter=@hypr/desktop
 ```
 
 ## Web (apps/web)
 
 ```bash
-pnpm -F web dev
+pnpm exec turbo run dev --filter=@hypr/web
 ```
 
 ## API server (apps/api)
@@ -63,7 +57,7 @@ task stripe
 ## Stripe webhook service (apps/stripe)
 
 ```bash
-pnpm -F stripe dev
+pnpm exec turbo run dev --filter=@hypr/stripe
 ```
 
 This runs the dedicated Stripe webhook handler on Bun (default port 8788). It processes Stripe webhook events for subscription and entitlement management. See [Environment Variables](/docs/developers/env) for required configuration.

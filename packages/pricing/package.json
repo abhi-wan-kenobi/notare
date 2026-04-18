@@ -16,5 +16,8 @@
   "peerDependencies": {
     "lucide-react": ">=0.400.0",
     "react": "^19.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
   }
 }

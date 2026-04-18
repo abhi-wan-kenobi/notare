@@ -15,7 +15,8 @@
     "./tailwind.config": "./tailwind.config.ts"
   },
   "scripts": {
-    "build": "tailwindcss -i ./src/styles/globals.css -o ./dist/globals.css --minify"
+    "build": "tailwindcss -i ./src/styles/globals.css -o ./dist/globals.css --minify",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

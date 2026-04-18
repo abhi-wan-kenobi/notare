@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "e2e": "wdio run wdio.blackbox.conf.ts"
+    "e2e": "wdio run wdio.blackbox.conf.ts",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@crabnebula/tauri-driver": "^2.0.9",

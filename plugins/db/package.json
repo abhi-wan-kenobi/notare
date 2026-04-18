@@ -3,7 +3,8 @@
   "private": true,
   "main": "./js/index.ts",
   "scripts": {
-    "codegen": "cargo test -p tauri-plugin-db"
+    "codegen": "cargo test -p tauri-plugin-db",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1"

@@ -4,15 +4,15 @@ section: "Developers"
 description: "Learn how to setup Char for development"
 ---
 
-Char uses [Taskfile](https://taskfile.dev) for most development tasks. See `**/Taskfile.yaml` for available commands.
+Char uses [Turborepo](https://turbo.build/repo) as the canonical runner for JavaScript and TypeScript app/package workflows. [Taskfile](https://taskfile.dev) is still used for infra and shell-heavy helpers like local Supabase and Stripe webhooks.
 
 ## Prerequisites
 
 Before setting up Char, ensure you have the following installed:
 
 - [Rust](https://rustup.rs) (latest stable)
-- [Node.js](https://nodejs.org) (v20 or later)
-- [pnpm](https://pnpm.io) (v9 or later)
+- [Node.js](https://nodejs.org) (v22 or later)
+- [pnpm](https://pnpm.io) (v10 or later)
 - [Taskfile](https://taskfile.dev/installation)
 
 ## Mac
@@ -39,10 +39,10 @@ cd char
 pnpm install
 ```
 
-Build the UI package before running the desktop app:
+Turbo will handle the JS-side workspace graph for desktop and web commands:
 
 ```bash
-pnpm -F ui build
+pnpm exec turbo run tauri:dev --filter=@hypr/desktop
 ```
 
 ### macOS permissions for development

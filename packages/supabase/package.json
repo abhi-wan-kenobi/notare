@@ -20,5 +20,8 @@
     "hono": {
       "optional": true
     }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
   }
 }

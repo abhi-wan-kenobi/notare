@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "node ./build.mjs",
-    "install:dev": "node ./install-dev.mjs"
+    "install:dev": "node ./install-dev.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@hypr/plugin-sdk": "workspace:*",
