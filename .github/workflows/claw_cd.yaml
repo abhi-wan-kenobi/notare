@@ -27,7 +27,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
         with:
-          context: apps/claw
+          context: .
           file: apps/claw/Dockerfile
           push: true
           tags: ghcr.io/fastrepl/char-claw:${{ github.sha }}
