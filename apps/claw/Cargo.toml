@@ -1,0 +1,25 @@
+[package]
+name = "claw"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "claw"
+path = "src/main.rs"
+
+[dependencies]
+zeroclaw-api = { git = "https://github.com/zeroclaw-labs/zeroclaw.git", rev = "30395e909f660c9a6ec3075df1f70d84077a96d0" }
+zeroclaw-channels = { git = "https://github.com/zeroclaw-labs/zeroclaw.git", rev = "30395e909f660c9a6ec3075df1f70d84077a96d0", default-features = false, features = ["channel-telegram", "channel-whatsapp-cloud", "channel-webhook"] }
+zeroclaw-config = { git = "https://github.com/zeroclaw-labs/zeroclaw.git", rev = "30395e909f660c9a6ec3075df1f70d84077a96d0" }
+zeroclaw-gateway = { git = "https://github.com/zeroclaw-labs/zeroclaw.git", rev = "30395e909f660c9a6ec3075df1f70d84077a96d0" }
+zeroclaw-infra = { git = "https://github.com/zeroclaw-labs/zeroclaw.git", rev = "30395e909f660c9a6ec3075df1f70d84077a96d0" }
+zeroclaw-providers = { git = "https://github.com/zeroclaw-labs/zeroclaw.git", rev = "30395e909f660c9a6ec3075df1f70d84077a96d0" }
+zeroclaw-runtime = { git = "https://github.com/zeroclaw-labs/zeroclaw.git", rev = "30395e909f660c9a6ec3075df1f70d84077a96d0" }
+
+hypr-supabase-auth = { workspace = true, features = ["refresh"] }
+
+anyhow = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
