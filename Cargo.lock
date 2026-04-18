@@ -700,6 +700,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "api-claw"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "exedev",
+ "rand_core 0.6.4",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "ssh-key",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "api-client"
 version = "0.1.0"
 dependencies = [
@@ -935,23 +952,6 @@ dependencies = [
  "thiserror 2.0.18",
  "ticket-interface",
  "utoipa",
-]
-
-[[package]]
-name = "api-vm"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "chrono",
- "exedev",
- "rand_core 0.6.4",
- "serde",
- "serde_json",
- "sha2 0.11.0",
- "ssh-key",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
 ]
 
 [[package]]
