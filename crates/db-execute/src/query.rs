@@ -19,7 +19,7 @@ pub async fn run_query_proxy(
     method: ProxyQueryMethod,
 ) -> std::result::Result<ProxyQueryResult, sqlx::Error> {
     if method == ProxyQueryMethod::Run {
-        bind_params(sqlx::query(sql), params)
+        bind_params(sqlx::query(sqlx::AssertSqlSafe(sql)), params)
             .execute(db.pool())
             .await?;
         return Ok(ProxyQueryResult { rows: Vec::new() });
@@ -46,7 +46,7 @@ async fn fetch_rows(
     sql: &str,
     params: &[serde_json::Value],
 ) -> std::result::Result<Vec<sqlx::sqlite::SqliteRow>, sqlx::Error> {
-    bind_params(sqlx::query(sql), params)
+    bind_params(sqlx::query(sqlx::AssertSqlSafe(sql)), params)
         .fetch_all(db.pool())
         .await
 }
@@ -100,9 +100,9 @@ fn json_value_at(row: &sqlx::sqlite::SqliteRow, index: usize) -> serde_json::Val
 }
 
 fn bind_params<'q>(
-    mut query: sqlx::query::Query<'q, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'q>>,
+    mut query: sqlx::query::Query<'q, sqlx::Sqlite, sqlx::sqlite::SqliteArguments>,
     params: &[serde_json::Value],
-) -> sqlx::query::Query<'q, sqlx::Sqlite, sqlx::sqlite::SqliteArguments<'q>> {
+) -> sqlx::query::Query<'q, sqlx::Sqlite, sqlx::sqlite::SqliteArguments> {
     for param in params {
         query = match param {
             serde_json::Value::Null => query.bind(None::<String>),

@@ -242,7 +242,7 @@ impl SchemaCatalog {
         sql: &str,
     ) -> Result<HashSet<DependencyTarget>, DependencyResolutionError> {
         let alias_map = super::explain::build_alias_map(sql, &self.query_objects);
-        let eqp_rows = sqlx::query(&format!("EXPLAIN QUERY PLAN {sql}"))
+        let eqp_rows = sqlx::query(sqlx::AssertSqlSafe(format!("EXPLAIN QUERY PLAN {sql}")))
             .fetch_all(pool)
             .await?;
 

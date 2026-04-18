@@ -10,24 +10,24 @@ async fn query_with_optional_params(
 ) -> Result<i64, Error> {
     Ok(match (wait_ms, max_retries) {
         (None, None) => {
-            sqlx::query_scalar(&format!("SELECT {fn_name}()"))
+            sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT {fn_name}()")))
                 .fetch_one(pool)
                 .await?
         }
         (Some(wait_ms), None) => {
-            sqlx::query_scalar(&format!("SELECT {fn_name}(?)"))
+            sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT {fn_name}(?)")))
                 .bind(wait_ms)
                 .fetch_one(pool)
                 .await?
         }
         (None, Some(max_retries)) => {
-            sqlx::query_scalar(&format!("SELECT {fn_name}(NULL, ?)"))
+            sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT {fn_name}(NULL, ?)")))
                 .bind(max_retries)
                 .fetch_one(pool)
                 .await?
         }
         (Some(wait_ms), Some(max_retries)) => {
-            sqlx::query_scalar(&format!("SELECT {fn_name}(?, ?)"))
+            sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT {fn_name}(?, ?)")))
                 .bind(wait_ms)
                 .bind(max_retries)
                 .fetch_one(pool)

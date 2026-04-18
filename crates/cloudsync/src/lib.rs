@@ -1,4 +1,4 @@
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 
 mod api;
 mod bundle;
@@ -25,7 +25,9 @@ pub const CLOUDSYNC_VERSION: &str = "1.0.12";
 
 pub fn apply(options: SqliteConnectOptions) -> Result<(SqliteConnectOptions, PathBuf), Error> {
     let extension_path = bundled_extension_path()?;
-    let options = options.extension(extension_path.to_string_lossy().into_owned());
+
+    #[allow(unsafe_code)]
+    let options = unsafe { options.extension(extension_path.to_string_lossy().into_owned()) };
 
     Ok((options, extension_path))
 }

@@ -437,5 +437,5 @@ xcap = "0.9.3"
 
 rmcp = "1.4"
 rustls = { version = "0.23", default-features = false }
-sqlx = { version = "0.8", default-features = false }
+sqlx = { version = "=0.9.0-alpha.1", default-features = false }
 sysinfo = "0.38"
