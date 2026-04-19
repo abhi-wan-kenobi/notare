@@ -91,20 +91,25 @@ const BANNED_TINYBASE_EXACT_IMPORTS = new Set([
   "tinybase",
 ]);
 
-const BANNED_MAIN_STORE_IMPORTS = new Set(["~/store/tinybase/store/main"]);
+const BANNED_MAIN_STORE_IMPORTS = new Set([
+  "~/store/tinybase/store/main",
+  "~/store/tinybase/hooks",
+]);
+
+const BANNED_MAIN_STORE_IMPORT_PREFIXES = ["~/store/tinybase/hooks/"];
 
 const noRawTinybase = {
   meta: {
     type: "problem",
     docs: {
       description:
-        "Ban direct TinyBase UI hook / store access outside of designated hook modules. Consumers must go through domain hooks (~/<domain>/hooks/*) so storage can be swapped in one place.",
+        "Ban direct main-store TinyBase access outside designated boundary hooks. Consumers of ~/store/tinybase/store/main must go through domain hooks (~/<domain>/hooks/*) so the main store can be swapped in one place.",
     },
     messages: {
       bannedImport:
-        "Direct TinyBase import '{{source}}' is not allowed here. Wrap reads/writes in a domain hook module (e.g. ~/<domain>/hooks/) and import from there instead.",
+        "Raw TinyBase import '{{source}}' is not allowed in desktop consumer code. For main-store data, wrap reads/writes in a domain hook module (e.g. ~/<domain>/hooks/) and import from there instead.",
       bannedMainStoreImport:
-        "Direct import of '{{source}}' is not allowed in consumer code. Use a domain hook from ~/<domain>/hooks/ instead. If this file is the hook module, add its path to the rule's allowlist in .oxlintrc.json.",
+        "Direct import of main-store module '{{source}}' is not allowed in consumer code. Use a domain hook from ~/<domain>/hooks/ instead. If this file is the boundary hook module, add its path to the rule's allowlist in .oxlintrc.json.",
     },
   },
   create(context) {
@@ -135,7 +140,13 @@ const noRawTinybase = {
           }
         }
 
-        if (BANNED_MAIN_STORE_IMPORTS.has(source)) {
+        const isBannedMainStore =
+          BANNED_MAIN_STORE_IMPORTS.has(source) ||
+          BANNED_MAIN_STORE_IMPORT_PREFIXES.some((prefix) =>
+            source.startsWith(prefix),
+          );
+
+        if (isBannedMainStore) {
           const hasRuntimeSpecifier = node.specifiers.some(
             (s) =>
               s.type === "ImportNamespaceSpecifier" ||

@@ -8,6 +8,10 @@ description: Migrate a TinyBase table to SQLite. Use when asked to move a data d
 Keep up to date as each PR lands. Outer box = fully done across both
 phases. Sub-bullets track sub-states where relevant.
 
+This migration targets the TinyBase `main` store only. The separate
+TinyBase `settings` store is out of scope unless the plan is explicitly
+expanded to include it.
+
 - [x] `templates` — already Drizzle, no Phase 0 needed
 - [ ] `calendars`
   - [x] Phase 0 reads (PR 2: `useCalendar`, `useEnabledCalendars`)
@@ -52,6 +56,12 @@ Before any storage swap, move every TinyBase call behind a domain hook
 living in `apps/desktop/src/<domain>/hooks.ts` (or `<domain>/hooks/*`).
 Hook return shapes are plain TypeScript; no TinyBase types leak out.
 Consumer code stops importing `~/store/tinybase/store/main`.
+
+Scope note: this applies to consumers of
+`~/store/tinybase/store/main` and the legacy `~/store/tinybase/hooks`
+barrel. Do not start wrapping `settings.UI.*` usage behind new hooks as
+part of this effort; `~/store/tinybase/store/settings` is intentionally
+out of scope for this migration.
 
 Why: one storage-swap PR per domain touches 1 file (the hook module),
 not 20–50 consumer files.
