@@ -1,11 +1,6 @@
 import { type NodeViewComponentProps } from "@handlewithcare/react-prosemirror";
 import { Facehash, stringHash } from "facehash";
-import {
-  Building2Icon,
-  MessageSquareIcon,
-  StickyNoteIcon,
-  UserIcon,
-} from "lucide-react";
+import { Building2Icon, StickyNoteIcon, UserIcon } from "lucide-react";
 import type { NodeSpec } from "prosemirror-model";
 import { forwardRef, useCallback } from "react";
 
@@ -99,9 +94,7 @@ function MentionAvatar({
       ? StickyNoteIcon
       : type === "organization"
         ? Building2Icon
-        : type === "chat_shortcut"
-          ? MessageSquareIcon
-          : UserIcon;
+        : UserIcon;
 
   return (
     <span className="mention-avatar mention-avatar-icon">

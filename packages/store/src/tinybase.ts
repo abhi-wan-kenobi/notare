@@ -5,7 +5,6 @@ import {
   calendarSchema,
   chatGroupSchema,
   chatMessageSchema,
-  chatShortcutSchema,
   dailyNoteSchema,
   enhancedNoteSchema,
   eventSchema,
@@ -147,11 +146,6 @@ export const tableSchemaForTinybase = {
     body_json: { type: "string" },
     due_date: { type: "string" },
   } as const satisfies InferTinyBaseSchema<typeof taskSchema>,
-  chat_shortcuts: {
-    user_id: { type: "string" },
-    title: { type: "string" },
-    content: { type: "string" },
-  } as const satisfies InferTinyBaseSchema<typeof chatShortcutSchema>,
   memories: {
     user_id: { type: "string" },
     type: { type: "string" },

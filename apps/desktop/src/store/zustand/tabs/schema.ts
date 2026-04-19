@@ -1,6 +1,5 @@
 import type {
   ChangelogState,
-  ChatShortcutsState,
   ContactsSelection,
   ContactsState,
   EditorView,
@@ -11,7 +10,6 @@ import type {
 
 export type {
   ChangelogState,
-  ChatShortcutsState,
   ContactsSelection,
   ContactsState,
   EditorView,
@@ -97,10 +95,6 @@ export type Tab =
       state: TemplatesState;
     })
   | (BaseTab & {
-      type: "chat_shortcuts";
-      state: ChatShortcutsState;
-    })
-  | (BaseTab & {
       type: "humans";
       id: string;
     })
@@ -160,16 +154,6 @@ export const getDefaultState = (tab: TabInput): Tab => {
           selectedWebIndex: null,
         },
       };
-    case "chat_shortcuts":
-      return {
-        ...base,
-        type: "chat_shortcuts",
-        state: tab.state ?? {
-          isWebMode: null,
-          selectedMineId: null,
-          selectedWebIndex: null,
-        },
-      };
     case "humans":
       return { ...base, type: "humans", id: tab.id };
     case "organizations":
@@ -219,8 +203,6 @@ export const uniqueIdfromTab = (tab: Tab): string => {
       return `contacts`;
     case "templates":
       return `templates`;
-    case "chat_shortcuts":
-      return `chat_shortcuts`;
     case "folders":
       return `folders-${tab.id ?? "all"}`;
     case "empty":

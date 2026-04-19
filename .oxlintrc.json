@@ -42,7 +42,6 @@
         "apps/desktop/src/auth/**",
         "apps/desktop/src/calendar/**",
         "apps/desktop/src/chat/**",
-        "apps/desktop/src/chat_shortcuts/**",
         "apps/desktop/src/composer/**",
         "apps/desktop/src/contacts/**",
         "apps/desktop/src/edit/**",

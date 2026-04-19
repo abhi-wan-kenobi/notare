@@ -20,6 +20,7 @@ describe("pinned tab persistence", () => {
       status: "ok",
       data: JSON.stringify([
         { type: "daily", pinned: true },
+        { type: "chat_shortcuts", pinned: true },
         { type: "empty", pinned: true },
         { type: "sessions", id: "session-1", pinned: true },
       ]),
@@ -35,6 +36,7 @@ describe("pinned tab persistence", () => {
       status: "ok",
       data: JSON.stringify([
         { type: "daily", pinned: true },
+        { type: "chat_shortcuts", pinned: true },
         { type: "empty", pinned: true },
         { type: "sessions", id: "session-1", pinned: true },
       ]),

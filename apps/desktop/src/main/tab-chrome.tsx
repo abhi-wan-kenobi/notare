@@ -37,7 +37,7 @@ export function ClassicMainTabChrome({ tabs }: { tabs: Tab[] }) {
   const { leftsidebar } = useShell();
   const currentPlatform = platform();
   const isLinux = currentPlatform === "linux";
-  const chatShortcutLabel = currentPlatform === "macos" ? "⌘ J" : "Ctrl J";
+  const chatPanelShortcutLabel = currentPlatform === "macos" ? "⌘ J" : "Ctrl J";
   const notifications = useNotifications();
   const currentTab = useTabs((state) => state.currentTab);
   const isOnboarding = currentTab?.type === "onboarding";
@@ -272,7 +272,7 @@ export function ClassicMainTabChrome({ tabs }: { tabs: Tab[] }) {
 
         <div className="ml-auto flex h-full items-center gap-1">
           <Update />
-          <TabChatButton shortcutLabel={chatShortcutLabel} />
+          <TabChatButton shortcutLabel={chatPanelShortcutLabel} />
         </div>
       </div>
     </div>

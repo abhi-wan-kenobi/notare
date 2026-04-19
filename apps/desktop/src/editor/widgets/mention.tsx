@@ -13,12 +13,7 @@ import {
   useEditorEventListener,
   useEditorState,
 } from "@handlewithcare/react-prosemirror";
-import {
-  Building2Icon,
-  MessageSquareIcon,
-  StickyNoteIcon,
-  UserIcon,
-} from "lucide-react";
+import { Building2Icon, StickyNoteIcon, UserIcon } from "lucide-react";
 import {
   type EditorState,
   NodeSelection,
@@ -228,8 +223,6 @@ export function MentionSuggestion({ config }: { config: MentionConfig }) {
             <UserIcon className="mention-type-icon mention-type-human" />
           ) : item.type === "organization" ? (
             <Building2Icon className="mention-type-icon mention-type-organization" />
-          ) : item.type === "chat_shortcut" ? (
-            <MessageSquareIcon className="mention-type-icon mention-type-chat-shortcut" />
           ) : null}
           <span className="mention-label">{item.label}</span>
         </button>

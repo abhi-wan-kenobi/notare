@@ -45,14 +45,6 @@ crate::common_derives! {
 }
 
 crate::common_derives! {
-    pub struct ChatShortcutsState {
-        pub is_web_mode: Option<bool>,
-        pub selected_mine_id: Option<String>,
-        pub selected_web_index: Option<i32>,
-    }
-}
-
-crate::common_derives! {
     pub struct ExtensionsState {
         pub selected_extension: Option<String>,
     }

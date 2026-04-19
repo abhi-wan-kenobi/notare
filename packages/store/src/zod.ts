@@ -205,12 +205,6 @@ export const chatMessageSchema = z.object({
   status: chatMessageStatusSchema.default("ready"),
 });
 
-export const chatShortcutSchema = z.object({
-  user_id: z.string(),
-  title: z.string(),
-  content: z.string(),
-});
-
 export const memorySchema = z.object({
   user_id: z.string(),
   type: z.string(),
@@ -341,7 +335,6 @@ export type TemplateSection = z.infer<typeof templateSectionSchema>;
 export type ChatGroup = z.infer<typeof chatGroupSchema>;
 export type ChatMessageStatus = z.infer<typeof chatMessageStatusSchema>;
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
-export type ChatShortcut = z.infer<typeof chatShortcutSchema>;
 export type Memory = z.infer<typeof memorySchema>;
 export type DailyNote = z.infer<typeof dailyNoteSchema>;
 export type EnhancedNote = z.infer<typeof enhancedNoteSchema>;
@@ -358,7 +351,6 @@ export type EnhancedNoteStorage = ToStorageType<typeof enhancedNoteSchema>;
 export type TaskStorage = ToStorageType<typeof taskSchema>;
 export type HumanStorage = ToStorageType<typeof humanSchema>;
 export type OrganizationStorage = ToStorageType<typeof organizationSchema>;
-export type ChatShortcutStorage = ToStorageType<typeof chatShortcutSchema>;
 export type MemoryStorage = ToStorageType<typeof memorySchema>;
 export type DailyNoteStorage = ToStorageType<typeof dailyNoteSchema>;
 export type EventStorage = ToStorageType<typeof eventSchema>;

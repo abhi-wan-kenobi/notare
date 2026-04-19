@@ -1,6 +1,6 @@
 ---
 name: migrate-to-sqlite
-description: Migrate a TinyBase table to SQLite. Use when asked to move a data domain (e.g. templates, chat shortcuts, vocabs) from the TinyBase store to the app SQLite database.
+description: Migrate a TinyBase table to SQLite. Use when asked to move a data domain (e.g. templates, vocabs) from the TinyBase store to the app SQLite database.
 ---
 
 ## Status
@@ -38,7 +38,6 @@ expanded to include it.
   - [x] Phase 0 writes (partial) — `chat/store/*`
   - [ ] Phase 0 reads
   - [ ] Phase 1
-- [ ] `chat_shortcuts`
 - [ ] `tasks`
 - [ ] `memories`
   - [x] Phase 0 writes — `settings/memory/custom-vocabulary.tsx`

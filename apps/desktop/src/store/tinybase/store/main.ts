@@ -133,15 +133,6 @@ export const StoreComponent = () => {
           },
         )
         .setQueryDefinition(
-          QUERIES.visibleChatShortcuts,
-          "chat_shortcuts",
-          ({ select }) => {
-            select("user_id");
-            select("title");
-            select("content");
-          },
-        )
-        .setQueryDefinition(
           QUERIES.sessionParticipantsWithDetails,
           "mapping_session_participant",
           ({ select, join }) => {
@@ -354,7 +345,6 @@ export const QUERIES = {
   timelineSessions: "timelineSessions",
   visibleOrganizations: "visibleOrganizations",
   visibleHumans: "visibleHumans",
-  visibleChatShortcuts: "visibleChatShortcuts",
   visibleVocabs: "visibleVocabs",
   sessionParticipantsWithDetails: "sessionParticipantsWithDetails",
   sessionRecordingTimes: "sessionRecordingTimes",
@@ -423,11 +413,6 @@ interface _QueryResultRows {
     name: string;
     pinned: boolean;
     pin_order: number;
-  };
-  visibleChatShortcuts: {
-    user_id: string;
-    title: string;
-    content: string;
   };
   sessionParticipantsWithDetails: {
     session_id: string;
