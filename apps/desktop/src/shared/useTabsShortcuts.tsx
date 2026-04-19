@@ -161,7 +161,7 @@ export function useMainTabsShortcuts({ onModT }: { onModT: () => void }) {
 
   useHotkeys(
     "mod+shift+c",
-    () => openNew({ type: "settings", state: { tab: "calendar" } }),
+    () => openNew({ type: "calendar" }),
     {
       preventDefault: true,
       enableOnFormTags: true,

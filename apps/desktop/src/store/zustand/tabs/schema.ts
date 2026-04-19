@@ -32,7 +32,6 @@ export type SettingsTab =
   | "account"
   | "app"
   | "notifications"
-  | "calendar"
   | "permissions"
   | "lab"
   | "agent"
@@ -48,7 +47,6 @@ export const normalizeSettingsTab = (
   switch (tab) {
     case "app":
     case "notifications":
-    case "calendar":
     case "permissions":
     case "lab":
     case "agent":
@@ -188,12 +186,17 @@ export const getDefaultState = (tab: TabInput): Tab => {
         type: "changelog",
         state: tab.state,
       };
-    case "settings":
+    case "settings": {
+      const subtab = tab.state?.tab as string | null | undefined;
+      if (subtab === "calendar") {
+        return { ...base, type: "calendar" };
+      }
       return {
         ...base,
         type: "settings",
-        state: { tab: (tab.state?.tab as SettingsTab) ?? "app" },
+        state: { tab: (subtab as SettingsTab) ?? "app" },
       };
+    }
     case "onboarding":
       return { ...base, type: "onboarding" };
     case "edit":

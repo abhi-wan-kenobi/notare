@@ -46,7 +46,7 @@ export function ProfileMenu() {
   }, [openNew, close]);
 
   const handleClickCalendar = useCallback(() => {
-    openNew({ type: "settings", state: { tab: "calendar" } });
+    openNew({ type: "calendar" });
     close();
   }, [openNew, close]);
 

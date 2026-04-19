@@ -58,10 +58,8 @@ export function useDeeplinkHandler() {
           }
 
           void dismissInstruction().then(() => {
-            if (return_to === "calendar") {
+            if (return_to === "calendar" || return_to === "settings-calendar") {
               openNew({ type: "calendar" });
-            } else if (return_to === "settings-calendar") {
-              openNew({ type: "settings", state: { tab: "calendar" } });
             } else if (return_to === "todo") {
               openNew({ type: "settings", state: { tab: "todo" } });
             }

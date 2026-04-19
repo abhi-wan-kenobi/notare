@@ -24,12 +24,14 @@ import { type SettingsTab, useTabs } from "~/store/zustand/tabs";
 type SettingsNavItem =
   | { id: SettingsTab; label: string; icon: typeof SmartphoneIcon }
   | {
-      action: "open-templates";
+      action: "open-templates" | "open-calendar";
       label: string;
       icon: typeof SmartphoneIcon;
     };
 
-function getBaseGroups() {
+type SettingsNavGroup = { label: string; items: SettingsNavItem[] };
+
+function getBaseGroups(): SettingsNavGroup[] {
   const aiItems: SettingsNavItem[] = [
     { id: "transcription", label: "Transcription", icon: AudioLinesIcon },
     { id: "intelligence", label: "Intelligence", icon: SparklesIcon },
@@ -47,9 +49,8 @@ function getBaseGroups() {
       items: [
         { id: "app", label: "App", icon: SmartphoneIcon },
         { id: "account", label: "Account", icon: UserIcon },
-        { id: "calendar", label: "Calendar", icon: CalendarIcon },
         { id: "notifications", label: "Notifications", icon: BellIcon },
-      ] as SettingsNavItem[],
+      ],
     },
     {
       label: "AI",
@@ -90,6 +91,10 @@ export function SettingsNav() {
     openNew({ type: "templates" });
   }, [openNew]);
 
+  const handleOpenCalendar = useCallback(() => {
+    openNew({ type: "calendar" });
+  }, [openNew]);
+
   const groups = getBaseGroups();
   const isMacos = platform() === "macos";
   if (isMacos) {
@@ -99,6 +104,12 @@ export function SettingsNav() {
       icon: LockIcon,
     });
   }
+
+  groups[0].items.push({
+    action: "open-calendar",
+    label: "Calendar",
+    icon: CalendarIcon,
+  });
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
@@ -119,12 +130,16 @@ export function SettingsNav() {
                   <button
                     key={isSettingsItem ? item.id : item.action}
                     onClick={() => {
-                      if (isSettingsItem) {
-                        setActiveTab(item.id as SettingsTab);
+                      if (!isSettingsItem) {
+                        if (item.action === "open-templates") {
+                          handleOpenTemplates();
+                        } else {
+                          handleOpenCalendar();
+                        }
                         return;
                       }
 
-                      handleOpenTemplates();
+                      setActiveTab(item.id as SettingsTab);
                     }}
                     className={cn([
                       "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm",

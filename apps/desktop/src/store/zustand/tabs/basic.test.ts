@@ -112,22 +112,22 @@ describe("Basic Tab Actions", () => {
     useTabs.getState().openNew(
       createSettingsTab({
         active: false,
-        state: { tab: "calendar" },
+        state: { tab: "notifications" },
       }),
     );
 
     const state = useTabs.getState();
     expect(state).toMatchTabsInOrder([
-      { type: "settings", active: true, state: { tab: "calendar" } },
+      { type: "settings", active: true, state: { tab: "notifications" } },
       { id: "tab1", active: false, type: "sessions" },
     ]);
     expect(state).toHaveCurrentTab({
       type: "settings",
-      state: { tab: "calendar" },
+      state: { tab: "notifications" },
     });
     expect(state).toHaveLastHistoryEntry({
       type: "settings",
-      state: { tab: "calendar" },
+      state: { tab: "notifications" },
     });
   });
 

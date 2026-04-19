@@ -2,7 +2,6 @@ import { SettingsIcon } from "lucide-react";
 
 import { cn } from "@hypr/utils";
 
-import { SettingsCalendar } from "./calendar";
 import {
   SettingsAccount,
   SettingsApp,
@@ -71,8 +70,6 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
         return <SettingsApp />;
       case "notifications":
         return <SettingsNotifications />;
-      case "calendar":
-        return <SettingsCalendar />;
       case "permissions":
         return <SettingsPermissions />;
       case "lab":
