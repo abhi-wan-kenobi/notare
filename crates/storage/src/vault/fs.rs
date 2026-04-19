@@ -19,7 +19,6 @@ const VAULT_FILES: &[&str] = &[
     "events.json",
     "calendars.json",
     "templates.json",
-    "memories.json",
     "store.json",
 ];
 

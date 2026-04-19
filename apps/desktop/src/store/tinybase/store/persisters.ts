@@ -11,7 +11,6 @@ import { useChatPersister } from "~/store/tinybase/persister/chat";
 import { useDailyNotePersister } from "~/store/tinybase/persister/daily-note";
 import { useEventsPersister } from "~/store/tinybase/persister/events";
 import { useHumanPersister } from "~/store/tinybase/persister/human";
-import { useMemoryPersister } from "~/store/tinybase/persister/memory";
 import { useOrganizationPersister } from "~/store/tinybase/persister/organization";
 import { useSessionPersister } from "~/store/tinybase/persister/session";
 import { useTaskPersister } from "~/store/tinybase/persister/tasks";
@@ -25,7 +24,6 @@ export function useMainPersisters(store: Store) {
   const eventPersister = useEventsPersister(store);
   const chatPersister = useChatPersister(store);
   const calendarPersister = useCalendarPersister(store);
-  const memoryPersister = useMemoryPersister(store);
   const dailyNotePersister = useDailyNotePersister(store);
   const taskPersister = useTaskPersister(store);
 
@@ -42,7 +40,6 @@ export function useMainPersisters(store: Store) {
       { id: "event", persister: eventPersister },
       { id: "chat", persister: chatPersister },
       { id: "calendar", persister: calendarPersister },
-      { id: "memory", persister: memoryPersister },
       { id: "dailyNote", persister: dailyNotePersister },
       { id: "task", persister: taskPersister },
     ];
@@ -66,7 +63,6 @@ export function useMainPersisters(store: Store) {
     eventPersister,
     chatPersister,
     calendarPersister,
-    memoryPersister,
     dailyNotePersister,
     taskPersister,
   ]);
@@ -85,7 +81,6 @@ export function useMainPersisters(store: Store) {
     eventPersister,
     chatPersister,
     calendarPersister,
-    memoryPersister,
     dailyNotePersister,
     taskPersister,
   };

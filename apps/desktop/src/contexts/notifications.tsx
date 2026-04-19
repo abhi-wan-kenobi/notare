@@ -117,9 +117,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   );
   const isAiTab =
     currentTab?.type === "settings" &&
-    ["transcription", "intelligence", "memory"].includes(
-      currentTab.state?.tab ?? "",
-    );
+    ["transcription", "intelligence"].includes(currentTab.state?.tab ?? "");
 
   const value = useMemo<NotificationState>(() => {
     const hasActiveBanner = hasConfigBanner && !isAiTab;

@@ -5,7 +5,6 @@ import {
   BellIcon,
   BookText,
   BotIcon,
-  BrainIcon,
   CalendarIcon,
   CodeIcon,
   FlaskConical,
@@ -35,7 +34,6 @@ function getBaseGroups(): SettingsNavGroup[] {
   const aiItems: SettingsNavItem[] = [
     { id: "transcription", label: "Transcription", icon: AudioLinesIcon },
     { id: "intelligence", label: "Intelligence", icon: SparklesIcon },
-    { id: "memory", label: "Memory", icon: BrainIcon },
     {
       action: "open-templates",
       label: "Templates",

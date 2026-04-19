@@ -13,7 +13,6 @@ import {
   mappingMentionSchema,
   mappingSessionParticipantSchema,
   mappingTagSessionSchema,
-  memorySchema,
   organizationSchema,
   sessionSchema,
   tagSchema,
@@ -146,12 +145,6 @@ export const tableSchemaForTinybase = {
     body_json: { type: "string" },
     due_date: { type: "string" },
   } as const satisfies InferTinyBaseSchema<typeof taskSchema>,
-  memories: {
-    user_id: { type: "string" },
-    type: { type: "string" },
-    text: { type: "string" },
-    created_at: { type: "string" },
-  } as const satisfies InferTinyBaseSchema<typeof memorySchema>,
   daily_notes: {
     user_id: { type: "string" },
     date: { type: "string" },

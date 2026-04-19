@@ -169,16 +169,6 @@ export const StoreComponent = () => {
             select("provider");
             where("enabled", true);
           },
-        )
-        .setQueryDefinition(
-          QUERIES.visibleVocabs,
-          "memories",
-          ({ select, where }) => {
-            select("text");
-            select("type");
-            select("created_at");
-            where("type", "vocab");
-          },
         ),
     [],
   )!;
@@ -345,7 +335,6 @@ export const QUERIES = {
   timelineSessions: "timelineSessions",
   visibleOrganizations: "visibleOrganizations",
   visibleHumans: "visibleHumans",
-  visibleVocabs: "visibleVocabs",
   sessionParticipantsWithDetails: "sessionParticipantsWithDetails",
   sessionRecordingTimes: "sessionRecordingTimes",
   enabledCalendars: "enabledCalendars",
@@ -431,11 +420,6 @@ interface _QueryResultRows {
   };
   enabledCalendars: {
     provider: string;
-  };
-  visibleVocabs: {
-    text: string;
-    type: string;
-    created_at: string;
   };
 }
 

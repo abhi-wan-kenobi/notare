@@ -15,7 +15,6 @@ import { SettingsTodo } from "./todo";
 
 import { LLM } from "~/settings/ai/llm";
 import { STT } from "~/settings/ai/stt";
-import { SettingsMemory } from "~/settings/memory";
 import { StandardTabWrapper } from "~/shared/main";
 import { type TabItem, TabItemBase } from "~/shared/tabs";
 import { type Tab } from "~/store/zustand/tabs";
@@ -82,8 +81,6 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
         return <STT />;
       case "intelligence":
         return <LLM />;
-      case "memory":
-        return <SettingsMemory />;
       case "todo":
         return <SettingsTodo />;
     }
