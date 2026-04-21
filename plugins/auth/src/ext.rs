@@ -9,10 +9,13 @@ pub(crate) fn parse_account_info(
     let Some(session) = find_session(data)? else {
         return Ok(None);
     };
-    let metadata = session.user.user_metadata;
+    let Some(user) = session.user else {
+        return Ok(None);
+    };
+    let metadata = user.user_metadata;
     Ok(Some(AccountInfo {
-        user_id: session.user.id,
-        email: session.user.email,
+        user_id: user.id,
+        email: user.email,
         full_name: metadata.as_ref().and_then(|m| m.full_name.clone()),
         avatar_url: metadata.as_ref().and_then(|m| m.avatar_url.clone()),
         stripe_customer_id: metadata.as_ref().and_then(|m| m.stripe_customer_id.clone()),
