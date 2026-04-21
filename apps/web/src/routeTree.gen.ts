@@ -28,7 +28,6 @@ import { Route as ViewIndexRouteImport } from './routes/_view/index'
 import { Route as ApiTemplatesRouteImport } from './routes/api/templates'
 import { Route as ApiShortcutsRouteImport } from './routes/api/shortcuts'
 import { Route as ApiMediaUploadRouteImport } from './routes/api/media-upload'
-import { Route as ApiK6ReportsRouteImport } from './routes/api/k6-reports'
 import { Route as ViewWhyCharRouteImport } from './routes/_view/why-char'
 import { Route as ViewSecurityRouteImport } from './routes/_view/security'
 import { Route as ViewPrivacyRouteImport } from './routes/_view/privacy'
@@ -55,10 +54,8 @@ import { Route as ViewUpdatesIndexRouteImport } from './routes/_view/updates/ind
 import { Route as ViewSolutionsIndexRouteImport } from './routes/_view/solutions/index'
 import { Route as ViewPressKitIndexRouteImport } from './routes/_view/press-kit/index'
 import { Route as ViewLegalIndexRouteImport } from './routes/_view/legal/index'
-import { Route as ViewK6ReportsIndexRouteImport } from './routes/_view/k6-reports/index'
 import { Route as ViewIntegrationsIndexRouteImport } from './routes/_view/integrations/index'
 import { Route as ViewGalleryIndexRouteImport } from './routes/_view/gallery/index'
-import { Route as ViewEvalIndexRouteImport } from './routes/_view/eval/index'
 import { Route as ViewDownloadIndexRouteImport } from './routes/_view/download/index'
 import { Route as ViewDocsIndexRouteImport } from './routes/_view/docs/index'
 import { Route as ViewCompanyHandbookIndexRouteImport } from './routes/_view/company-handbook/index'
@@ -89,7 +86,6 @@ import { Route as ViewProductAiNotetakingRouteImport } from './routes/_view/prod
 import { Route as ViewProductAiAssistantRouteImport } from './routes/_view/product/ai-assistant'
 import { Route as ViewPressKitAppRouteImport } from './routes/_view/press-kit/app'
 import { Route as ViewLegalSlugRouteImport } from './routes/_view/legal/$slug'
-import { Route as ViewK6ReportsIdRouteImport } from './routes/_view/k6-reports/$id'
 import { Route as ViewDownloadWindowsRouteImport } from './routes/_view/download/windows'
 import { Route as ViewDownloadLinuxDebRouteImport } from './routes/_view/download/linux-deb'
 import { Route as ViewDownloadLinuxAppimageRouteImport } from './routes/_view/download/linux-appimage'
@@ -243,11 +239,6 @@ const ApiMediaUploadRoute = ApiMediaUploadRouteImport.update({
   path: '/api/media-upload',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiK6ReportsRoute = ApiK6ReportsRouteImport.update({
-  id: '/api/k6-reports',
-  path: '/api/k6-reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ViewWhyCharRoute = ViewWhyCharRouteImport.update({
   id: '/why-char',
   path: '/why-char',
@@ -379,11 +370,6 @@ const ViewLegalIndexRoute = ViewLegalIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ViewLegalRouteRoute,
 } as any)
-const ViewK6ReportsIndexRoute = ViewK6ReportsIndexRouteImport.update({
-  id: '/k6-reports/',
-  path: '/k6-reports/',
-  getParentRoute: () => ViewRouteRoute,
-} as any)
 const ViewIntegrationsIndexRoute = ViewIntegrationsIndexRouteImport.update({
   id: '/integrations/',
   path: '/integrations/',
@@ -392,11 +378,6 @@ const ViewIntegrationsIndexRoute = ViewIntegrationsIndexRouteImport.update({
 const ViewGalleryIndexRoute = ViewGalleryIndexRouteImport.update({
   id: '/gallery/',
   path: '/gallery/',
-  getParentRoute: () => ViewRouteRoute,
-} as any)
-const ViewEvalIndexRoute = ViewEvalIndexRouteImport.update({
-  id: '/eval/',
-  path: '/eval/',
   getParentRoute: () => ViewRouteRoute,
 } as any)
 const ViewDownloadIndexRoute = ViewDownloadIndexRouteImport.update({
@@ -550,11 +531,6 @@ const ViewLegalSlugRoute = ViewLegalSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => ViewLegalRouteRoute,
-} as any)
-const ViewK6ReportsIdRoute = ViewK6ReportsIdRouteImport.update({
-  id: '/k6-reports/$id',
-  path: '/k6-reports/$id',
-  getParentRoute: () => ViewRouteRoute,
 } as any)
 const ViewDownloadWindowsRoute = ViewDownloadWindowsRouteImport.update({
   id: '/download/windows',
@@ -894,7 +870,6 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof ViewPrivacyRoute
   '/security': typeof ViewSecurityRoute
   '/why-char': typeof ViewWhyCharRoute
-  '/api/k6-reports': typeof ApiK6ReportsRoute
   '/api/media-upload': typeof ApiMediaUploadRoute
   '/api/shortcuts': typeof ApiShortcutsRoute
   '/api/templates': typeof ApiTemplatesRoute
@@ -917,7 +892,6 @@ export interface FileRoutesByFullPath {
   '/download/linux-appimage': typeof ViewDownloadLinuxAppimageRoute
   '/download/linux-deb': typeof ViewDownloadLinuxDebRoute
   '/download/windows': typeof ViewDownloadWindowsRoute
-  '/k6-reports/$id': typeof ViewK6ReportsIdRoute
   '/legal/$slug': typeof ViewLegalSlugRoute
   '/press-kit/app': typeof ViewPressKitAppRoute
   '/product/ai-assistant': typeof ViewProductAiAssistantRoute
@@ -948,10 +922,8 @@ export interface FileRoutesByFullPath {
   '/company-handbook/': typeof ViewCompanyHandbookIndexRoute
   '/docs/': typeof ViewDocsIndexRoute
   '/download/': typeof ViewDownloadIndexRoute
-  '/eval/': typeof ViewEvalIndexRoute
   '/gallery/': typeof ViewGalleryIndexRoute
   '/integrations/': typeof ViewIntegrationsIndexRoute
-  '/k6-reports/': typeof ViewK6ReportsIndexRoute
   '/legal/': typeof ViewLegalIndexRoute
   '/press-kit/': typeof ViewPressKitIndexRoute
   '/solutions/': typeof ViewSolutionsIndexRoute
@@ -1028,7 +1000,6 @@ export interface FileRoutesByTo {
   '/privacy': typeof ViewPrivacyRoute
   '/security': typeof ViewSecurityRoute
   '/why-char': typeof ViewWhyCharRoute
-  '/api/k6-reports': typeof ApiK6ReportsRoute
   '/api/media-upload': typeof ApiMediaUploadRoute
   '/api/shortcuts': typeof ApiShortcutsRoute
   '/api/templates': typeof ApiTemplatesRoute
@@ -1052,7 +1023,6 @@ export interface FileRoutesByTo {
   '/download/linux-appimage': typeof ViewDownloadLinuxAppimageRoute
   '/download/linux-deb': typeof ViewDownloadLinuxDebRoute
   '/download/windows': typeof ViewDownloadWindowsRoute
-  '/k6-reports/$id': typeof ViewK6ReportsIdRoute
   '/legal/$slug': typeof ViewLegalSlugRoute
   '/press-kit/app': typeof ViewPressKitAppRoute
   '/product/ai-assistant': typeof ViewProductAiAssistantRoute
@@ -1083,10 +1053,8 @@ export interface FileRoutesByTo {
   '/company-handbook': typeof ViewCompanyHandbookIndexRoute
   '/docs': typeof ViewDocsIndexRoute
   '/download': typeof ViewDownloadIndexRoute
-  '/eval': typeof ViewEvalIndexRoute
   '/gallery': typeof ViewGalleryIndexRoute
   '/integrations': typeof ViewIntegrationsIndexRoute
-  '/k6-reports': typeof ViewK6ReportsIndexRoute
   '/legal': typeof ViewLegalIndexRoute
   '/press-kit': typeof ViewPressKitIndexRoute
   '/solutions': typeof ViewSolutionsIndexRoute
@@ -1170,7 +1138,6 @@ export interface FileRoutesById {
   '/_view/privacy': typeof ViewPrivacyRoute
   '/_view/security': typeof ViewSecurityRoute
   '/_view/why-char': typeof ViewWhyCharRoute
-  '/api/k6-reports': typeof ApiK6ReportsRoute
   '/api/media-upload': typeof ApiMediaUploadRoute
   '/api/shortcuts': typeof ApiShortcutsRoute
   '/api/templates': typeof ApiTemplatesRoute
@@ -1194,7 +1161,6 @@ export interface FileRoutesById {
   '/_view/download/linux-appimage': typeof ViewDownloadLinuxAppimageRoute
   '/_view/download/linux-deb': typeof ViewDownloadLinuxDebRoute
   '/_view/download/windows': typeof ViewDownloadWindowsRoute
-  '/_view/k6-reports/$id': typeof ViewK6ReportsIdRoute
   '/_view/legal/$slug': typeof ViewLegalSlugRoute
   '/_view/press-kit/app': typeof ViewPressKitAppRoute
   '/_view/product/ai-assistant': typeof ViewProductAiAssistantRoute
@@ -1225,10 +1191,8 @@ export interface FileRoutesById {
   '/_view/company-handbook/': typeof ViewCompanyHandbookIndexRoute
   '/_view/docs/': typeof ViewDocsIndexRoute
   '/_view/download/': typeof ViewDownloadIndexRoute
-  '/_view/eval/': typeof ViewEvalIndexRoute
   '/_view/gallery/': typeof ViewGalleryIndexRoute
   '/_view/integrations/': typeof ViewIntegrationsIndexRoute
-  '/_view/k6-reports/': typeof ViewK6ReportsIndexRoute
   '/_view/legal/': typeof ViewLegalIndexRoute
   '/_view/press-kit/': typeof ViewPressKitIndexRoute
   '/_view/solutions/': typeof ViewSolutionsIndexRoute
@@ -1313,7 +1277,6 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/security'
     | '/why-char'
-    | '/api/k6-reports'
     | '/api/media-upload'
     | '/api/shortcuts'
     | '/api/templates'
@@ -1336,7 +1299,6 @@ export interface FileRouteTypes {
     | '/download/linux-appimage'
     | '/download/linux-deb'
     | '/download/windows'
-    | '/k6-reports/$id'
     | '/legal/$slug'
     | '/press-kit/app'
     | '/product/ai-assistant'
@@ -1367,10 +1329,8 @@ export interface FileRouteTypes {
     | '/company-handbook/'
     | '/docs/'
     | '/download/'
-    | '/eval/'
     | '/gallery/'
     | '/integrations/'
-    | '/k6-reports/'
     | '/legal/'
     | '/press-kit/'
     | '/solutions/'
@@ -1447,7 +1407,6 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/security'
     | '/why-char'
-    | '/api/k6-reports'
     | '/api/media-upload'
     | '/api/shortcuts'
     | '/api/templates'
@@ -1471,7 +1430,6 @@ export interface FileRouteTypes {
     | '/download/linux-appimage'
     | '/download/linux-deb'
     | '/download/windows'
-    | '/k6-reports/$id'
     | '/legal/$slug'
     | '/press-kit/app'
     | '/product/ai-assistant'
@@ -1502,10 +1460,8 @@ export interface FileRouteTypes {
     | '/company-handbook'
     | '/docs'
     | '/download'
-    | '/eval'
     | '/gallery'
     | '/integrations'
-    | '/k6-reports'
     | '/legal'
     | '/press-kit'
     | '/solutions'
@@ -1588,7 +1544,6 @@ export interface FileRouteTypes {
     | '/_view/privacy'
     | '/_view/security'
     | '/_view/why-char'
-    | '/api/k6-reports'
     | '/api/media-upload'
     | '/api/shortcuts'
     | '/api/templates'
@@ -1612,7 +1567,6 @@ export interface FileRouteTypes {
     | '/_view/download/linux-appimage'
     | '/_view/download/linux-deb'
     | '/_view/download/windows'
-    | '/_view/k6-reports/$id'
     | '/_view/legal/$slug'
     | '/_view/press-kit/app'
     | '/_view/product/ai-assistant'
@@ -1643,10 +1597,8 @@ export interface FileRouteTypes {
     | '/_view/company-handbook/'
     | '/_view/docs/'
     | '/_view/download/'
-    | '/_view/eval/'
     | '/_view/gallery/'
     | '/_view/integrations/'
-    | '/_view/k6-reports/'
     | '/_view/legal/'
     | '/_view/press-kit/'
     | '/_view/solutions/'
@@ -1715,7 +1667,6 @@ export interface RootRouteChildren {
   XRoute: typeof XRoute
   YcRoute: typeof YcRoute
   YoutubeRoute: typeof YoutubeRoute
-  ApiK6ReportsRoute: typeof ApiK6ReportsRoute
   ApiMediaUploadRoute: typeof ApiMediaUploadRoute
   ApiShortcutsRoute: typeof ApiShortcutsRoute
   ApiTemplatesRoute: typeof ApiTemplatesRoute
@@ -1888,13 +1839,6 @@ declare module '@tanstack/react-router' {
       path: '/api/media-upload'
       fullPath: '/api/media-upload'
       preLoaderRoute: typeof ApiMediaUploadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/k6-reports': {
-      id: '/api/k6-reports'
-      path: '/api/k6-reports'
-      fullPath: '/api/k6-reports'
-      preLoaderRoute: typeof ApiK6ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_view/why-char': {
@@ -2079,13 +2023,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ViewLegalIndexRouteImport
       parentRoute: typeof ViewLegalRouteRoute
     }
-    '/_view/k6-reports/': {
-      id: '/_view/k6-reports/'
-      path: '/k6-reports'
-      fullPath: '/k6-reports/'
-      preLoaderRoute: typeof ViewK6ReportsIndexRouteImport
-      parentRoute: typeof ViewRouteRoute
-    }
     '/_view/integrations/': {
       id: '/_view/integrations/'
       path: '/integrations'
@@ -2098,13 +2035,6 @@ declare module '@tanstack/react-router' {
       path: '/gallery'
       fullPath: '/gallery/'
       preLoaderRoute: typeof ViewGalleryIndexRouteImport
-      parentRoute: typeof ViewRouteRoute
-    }
-    '/_view/eval/': {
-      id: '/_view/eval/'
-      path: '/eval'
-      fullPath: '/eval/'
-      preLoaderRoute: typeof ViewEvalIndexRouteImport
       parentRoute: typeof ViewRouteRoute
     }
     '/_view/download/': {
@@ -2316,13 +2246,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/legal/$slug'
       preLoaderRoute: typeof ViewLegalSlugRouteImport
       parentRoute: typeof ViewLegalRouteRoute
-    }
-    '/_view/k6-reports/$id': {
-      id: '/_view/k6-reports/$id'
-      path: '/k6-reports/$id'
-      fullPath: '/k6-reports/$id'
-      preLoaderRoute: typeof ViewK6ReportsIdRouteImport
-      parentRoute: typeof ViewRouteRoute
     }
     '/_view/download/windows': {
       id: '/_view/download/windows'
@@ -2827,7 +2750,6 @@ interface ViewRouteRouteChildren {
   ViewDownloadLinuxAppimageRoute: typeof ViewDownloadLinuxAppimageRoute
   ViewDownloadLinuxDebRoute: typeof ViewDownloadLinuxDebRoute
   ViewDownloadWindowsRoute: typeof ViewDownloadWindowsRoute
-  ViewK6ReportsIdRoute: typeof ViewK6ReportsIdRoute
   ViewPressKitAppRoute: typeof ViewPressKitAppRoute
   ViewProductAiAssistantRoute: typeof ViewProductAiAssistantRoute
   ViewProductAiNotetakingRoute: typeof ViewProductAiNotetakingRoute
@@ -2851,10 +2773,8 @@ interface ViewRouteRouteChildren {
   ViewBlogIndexRoute: typeof ViewBlogIndexRoute
   ViewChangelogIndexRoute: typeof ViewChangelogIndexRoute
   ViewDownloadIndexRoute: typeof ViewDownloadIndexRoute
-  ViewEvalIndexRoute: typeof ViewEvalIndexRoute
   ViewGalleryIndexRoute: typeof ViewGalleryIndexRoute
   ViewIntegrationsIndexRoute: typeof ViewIntegrationsIndexRoute
-  ViewK6ReportsIndexRoute: typeof ViewK6ReportsIndexRoute
   ViewPressKitIndexRoute: typeof ViewPressKitIndexRoute
   ViewSolutionsIndexRoute: typeof ViewSolutionsIndexRoute
   ViewUpdatesIndexRoute: typeof ViewUpdatesIndexRoute
@@ -2897,7 +2817,6 @@ const ViewRouteRouteChildren: ViewRouteRouteChildren = {
   ViewDownloadLinuxAppimageRoute: ViewDownloadLinuxAppimageRoute,
   ViewDownloadLinuxDebRoute: ViewDownloadLinuxDebRoute,
   ViewDownloadWindowsRoute: ViewDownloadWindowsRoute,
-  ViewK6ReportsIdRoute: ViewK6ReportsIdRoute,
   ViewPressKitAppRoute: ViewPressKitAppRoute,
   ViewProductAiAssistantRoute: ViewProductAiAssistantRoute,
   ViewProductAiNotetakingRoute: ViewProductAiNotetakingRoute,
@@ -2921,10 +2840,8 @@ const ViewRouteRouteChildren: ViewRouteRouteChildren = {
   ViewBlogIndexRoute: ViewBlogIndexRoute,
   ViewChangelogIndexRoute: ViewChangelogIndexRoute,
   ViewDownloadIndexRoute: ViewDownloadIndexRoute,
-  ViewEvalIndexRoute: ViewEvalIndexRoute,
   ViewGalleryIndexRoute: ViewGalleryIndexRoute,
   ViewIntegrationsIndexRoute: ViewIntegrationsIndexRoute,
-  ViewK6ReportsIndexRoute: ViewK6ReportsIndexRoute,
   ViewPressKitIndexRoute: ViewPressKitIndexRoute,
   ViewSolutionsIndexRoute: ViewSolutionsIndexRoute,
   ViewUpdatesIndexRoute: ViewUpdatesIndexRoute,
@@ -2986,7 +2903,6 @@ const rootRouteChildren: RootRouteChildren = {
   XRoute: XRoute,
   YcRoute: YcRoute,
   YoutubeRoute: YoutubeRoute,
-  ApiK6ReportsRoute: ApiK6ReportsRoute,
   ApiMediaUploadRoute: ApiMediaUploadRoute,
   ApiShortcutsRoute: ApiShortcutsRoute,
   ApiTemplatesRoute: ApiTemplatesRoute,
