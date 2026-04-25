@@ -68,6 +68,7 @@ export function PostSessionAccessory({
         <TranscriptPanel
           sessionId={sessionId}
           screen={screen}
+          hasAudio={hasAudio}
           hasTranscript={hasTranscript}
           isExpanded={isTranscriptExpanded}
         />
@@ -80,11 +81,13 @@ export function PostSessionAccessory({
 function TranscriptPanel({
   sessionId,
   screen,
+  hasAudio,
   hasTranscript,
   isExpanded,
 }: {
   sessionId: string;
   screen: ReturnType<typeof useTranscriptScreen>;
+  hasAudio: boolean;
   hasTranscript: boolean;
   isExpanded: boolean;
 }) {
@@ -105,7 +108,13 @@ function TranscriptPanel({
     );
   }
 
-  return <TranscriptEmptyPanel sessionId={sessionId} isExpanded={isExpanded} />;
+  return (
+    <TranscriptEmptyPanel
+      sessionId={sessionId}
+      hasAudio={hasAudio}
+      isExpanded={isExpanded}
+    />
+  );
 }
 
 function useRegenerateTranscript(sessionId: string) {
@@ -374,9 +383,11 @@ function TranscriptReadyPanel({
 
 function TranscriptEmptyPanel({
   sessionId,
+  hasAudio,
   isExpanded,
 }: {
   sessionId: string;
+  hasAudio: boolean;
   isExpanded: boolean;
 }) {
   const screen = useTranscriptScreen({ sessionId });
@@ -384,7 +395,6 @@ function TranscriptEmptyPanel({
   const regenerate = useRegenerateTranscript(sessionId);
 
   const error = screen.kind === "empty" ? screen.error : null;
-  const hasAudio = screen.kind === "empty" ? screen.hasAudio : false;
 
   if (!isExpanded) {
     return null;

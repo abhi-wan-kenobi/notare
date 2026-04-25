@@ -139,4 +139,28 @@ describe("PostSessionAccessory", () => {
 
     expect(handleBatchFailedMock).not.toHaveBeenCalled();
   });
+
+  it("shows Generate button in empty panel when audio is present but screen state is not 'empty'", async () => {
+    useTranscriptScreenMock.mockReturnValue({
+      kind: "ready",
+      transcriptIds: [],
+      liveSegments: [],
+      currentActive: false,
+    });
+
+    render(
+      <PostSessionAccessory
+        sessionId="session-1"
+        hasAudio
+        hasTranscript={false}
+        isTranscriptExpanded
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Generate/ }));
+
+    await waitFor(() => {
+      expect(runBatchMock).toHaveBeenCalledWith("/tmp/session.wav");
+    });
+  });
 });
