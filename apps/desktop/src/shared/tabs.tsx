@@ -375,8 +375,8 @@ export function TabItemBase({
         >
           <AppFloatingPanel className="flex flex-col gap-2 p-3">
             <p className="text-sm text-neutral-700">
-              Are you sure you want to close this tab? This will stop Char from
-              listening.
+              Are you sure you want to close this tab? This will stop Anarlog
+              from listening.
             </p>
             <Button
               variant="destructive"

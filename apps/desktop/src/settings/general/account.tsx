@@ -43,7 +43,7 @@ const ACCOUNT_FEATURES = [
   {
     label: "Integrations",
     icon: Puzzle,
-    benefit: "Connect tools and pull context into Char with less busywork.",
+    benefit: "Connect tools and pull context into Anarlog with less busywork.",
     accent: {
       icon: "text-purple-700",
       label: "text-purple-900",
@@ -96,7 +96,7 @@ export function SettingsAccount() {
             <h2 className="mb-4 font-serif text-lg font-semibold">Account</h2>
             <Container
               title="Finish sign-in"
-              description="Complete the sign-in flow in your browser, then come back here if Char does not reconnect automatically."
+              description="Complete the sign-in flow in your browser, then come back here if Anarlog does not reconnect automatically."
               action={
                 <Button onClick={handleSignIn} variant="outline">
                   Reopen sign-in page
@@ -104,8 +104,8 @@ export function SettingsAccount() {
               }
             >
               <p className="text-xs text-neutral-500">
-                If the browser does not reopen Char, use the paste-link fallback
-                in the sign-in instruction window.
+                If the browser does not reopen Anarlog, use the paste-link
+                fallback in the sign-in instruction window.
               </p>
             </Container>
           </div>
@@ -120,7 +120,7 @@ export function SettingsAccount() {
             <div className="flex min-w-0 flex-1 flex-col gap-4">
               <h2 className="font-serif text-lg font-semibold">Account</h2>
               <div className="flex flex-col gap-2">
-                <h3 className="text-sm font-medium">Sign in to Char</h3>
+                <h3 className="text-sm font-medium">Sign in to Anarlog</h3>
                 <div className="text-sm text-neutral-600">
                   Sign in to unlock cloud transcription and AI models, plus Pro
                   features like integrations and sharing.

@@ -124,7 +124,7 @@ export function SettingsApp() {
             {(telemetryConsentField) => (
               <AppSettingsView
                 autostart={{
-                  title: "Start Char at login",
+                  title: "Start Anarlog at login",
                   description: "Always ready without manually launching.",
                   value: autostartField.state.value,
                   onChange: (val) => autostartField.handleChange(val),
@@ -132,7 +132,7 @@ export function SettingsApp() {
                 telemetryConsent={{
                   title: "Share usage data",
                   description:
-                    "Send anonymous usage analytics to help improve Char.",
+                    "Send anonymous usage analytics to help improve Anarlog.",
                   value: telemetryConsentField.state.value,
                   onChange: (val) => telemetryConsentField.handleChange(val),
                 }}

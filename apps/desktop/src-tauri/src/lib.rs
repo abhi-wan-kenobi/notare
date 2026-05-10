@@ -1,7 +1,6 @@
 mod agents;
 mod commands;
 mod db;
-mod embedded_cli;
 mod ext;
 mod store;
 mod supervisor;
@@ -380,9 +379,6 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::set_recently_opened_sessions::<tauri::Wry>,
             commands::get_char_v1p1_preview::<tauri::Wry>,
             commands::set_char_v1p1_preview::<tauri::Wry>,
-            commands::check_embedded_cli::<tauri::Wry>,
-            commands::install_embedded_cli::<tauri::Wry>,
-            commands::uninstall_embedded_cli::<tauri::Wry>,
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }

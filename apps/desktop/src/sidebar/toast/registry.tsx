@@ -107,7 +107,7 @@ export function createToastRegistry({
         description: (
           <>
             <strong className="font-mono">Transcription model</strong> is needed
-            to make Char listen to your conversations.
+            to make Anarlog listen to your conversations.
           </>
         ),
         primaryAction: {
@@ -124,7 +124,7 @@ export function createToastRegistry({
         description: (
           <>
             <strong className="font-mono">Language model</strong> is needed to
-            make Char summarize and chat about your conversations.
+            make Anarlog summarize and chat about your conversations.
           </>
         ),
         primaryAction: {
@@ -142,13 +142,13 @@ export function createToastRegistry({
         icon: (
           <img
             src="/assets/hyprnote-pro.png"
-            alt="Char Pro"
+            alt="Anarlog Pro"
             className="size-5"
           />
         ),
         title: "Sign in required",
         description:
-          "You have Char Pro models configured. Please sign in to use them.",
+          "You have Anarlog Pro models configured. Please sign in to use them.",
         primaryAction: {
           label: "Sign in",
           onClick: onSignIn,
@@ -167,7 +167,7 @@ export function createToastRegistry({
         icon: (
           <img
             src="/assets/hyprnote-pro.png"
-            alt="Char Pro"
+            alt="Anarlog Pro"
             className="size-5"
           />
         ),

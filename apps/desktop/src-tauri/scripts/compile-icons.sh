@@ -14,7 +14,7 @@ SRC_TAURI="$(cd "$SCRIPT_DIR/.." && pwd)"
 ICONS_SRC="$SRC_TAURI/icons/src"
 RESOURCES="$SRC_TAURI/resources"
 
-VARIANTS=("stable" "nightly" "staging" "pro")
+VARIANTS=("stable")
 
 for variant in "${VARIANTS[@]}"; do
   icon_path="$ICONS_SRC/${variant}.icon"

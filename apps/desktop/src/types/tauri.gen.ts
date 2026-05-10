@@ -107,30 +107,6 @@ async setCharV1p1Preview(v: boolean) : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
-},
-async checkEmbeddedCli() : Promise<Result<EmbeddedCliStatus, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("check_embedded_cli") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async installEmbeddedCli() : Promise<Result<EmbeddedCliStatus, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("install_embedded_cli") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async uninstallEmbeddedCli() : Promise<Result<EmbeddedCliStatus, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("uninstall_embedded_cli") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
 }
 }
 
@@ -143,9 +119,6 @@ async uninstallEmbeddedCli() : Promise<Result<EmbeddedCliStatus, string>> {
 
 
 /** user-defined types **/
-
-export type EmbeddedCliState = "installed" | "missing" | "conflict" | "unsupported" | "resource_missing"
-export type EmbeddedCliStatus = { supported: boolean; commandName: string; installPath: string; resourcePath: string | null; state: EmbeddedCliState; details: string | null }
 
 /** tauri-specta globals **/
 

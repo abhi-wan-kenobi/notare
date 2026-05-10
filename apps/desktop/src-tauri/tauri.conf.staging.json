@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Char Staging",
-  "mainBinaryName": "char-staging",
+  "productName": "Anarlog Staging",
+  "mainBinaryName": "anarlog-staging",
   "identifier": "com.hyprnote.staging",
   "plugins": {
     "deep-link": {
@@ -13,16 +13,16 @@
   },
   "bundle": {
     "icon": [
-      "icons/staging/32x32.png",
-      "icons/staging/128x128.png",
-      "icons/staging/128x128@2x.png",
-      "icons/staging/icon.icns",
-      "icons/staging/icon.ico"
+      "icons/stable/32x32.png",
+      "icons/stable/128x128.png",
+      "icons/stable/128x128@2x.png",
+      "icons/stable/icon.icns",
+      "icons/stable/icon.ico"
     ],
     "macOS": {
       "files": {
-        "Resources/AppIcon.incs": "resources/staging/AppIcon.icns",
-        "Resources/Assets.car": "resources/staging/Assets.car"
+        "Resources/AppIcon.incs": "resources/stable/AppIcon.icns",
+        "Resources/Assets.car": "resources/stable/Assets.car"
       },
       "dmg": {
         "background": "assets/dmg-background-staging.png"

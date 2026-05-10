@@ -55,7 +55,7 @@ export function FinalSection({ onContinue }: { onContinue: () => void }) {
         className="px-10 py-3.5 text-base"
         onClick={() => void finishOnboarding(onContinue)}
       >
-        Open Char
+        Open Anarlog
       </OnboardingButton>
     </div>
   );

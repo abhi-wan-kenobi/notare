@@ -155,7 +155,7 @@ export function InstructionScreen({
     return (
       <ExternalInstruction
         title="Complete your purchase"
-        description="Finish checkout in your browser, then return to Char."
+        description="Finish checkout in your browser, then return to Anarlog."
         actionLabel="Reopen checkout page"
         onBack={onBack}
         url={url}
@@ -166,7 +166,7 @@ export function InstructionScreen({
   return (
     <ExternalInstruction
       title="Connect your integration"
-      description="Authorize access in your browser, then return to Char."
+      description="Authorize access in your browser, then return to Anarlog."
       actionLabel="Reopen in browser"
       onBack={onBack}
       url={url}
@@ -190,7 +190,7 @@ function SignInInstruction({ onBack }: { onBack: () => void }) {
   return (
     <InstructionShell
       title="Sign in to your account"
-      description="Complete sign-in in your browser, then return to Char."
+      description="Complete sign-in in your browser, then return to Anarlog."
       onBack={onBack}
     >
       {showCallbackInput ? (
@@ -213,7 +213,7 @@ function SignInInstruction({ onBack }: { onBack: () => void }) {
           </div>
           <p className="text-xs leading-5 text-neutral-500">
             Paste the browser URL here if the browser button did not reopen
-            Char.
+            Anarlog.
           </p>
         </>
       ) : (

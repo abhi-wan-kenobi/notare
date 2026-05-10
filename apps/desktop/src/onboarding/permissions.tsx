@@ -133,10 +133,10 @@ export function PermissionsSection({
   return (
     <div className="@container flex items-stretch gap-3">
       <PermissionBlock
-        enabledLabel="Char can hear your voice"
+        enabledLabel="Anarlog can hear your voice"
         enableLabel="Allow microphone access"
         enabledBody="Microphone access turned on"
-        enableBody="Help Char listen to you"
+        enableBody="Help Anarlog listen to you"
         Icon={MicIcon}
         permissionName="Microphone"
         status={mic.status}
@@ -145,10 +145,10 @@ export function PermissionsSection({
       />
 
       <PermissionBlock
-        enabledLabel="Char can hear others"
+        enabledLabel="Anarlog can hear others"
         enableLabel="Allow system audio access"
         enabledBody="System audio enabled"
-        enableBody="Help Char listen to others"
+        enableBody="Help Anarlog listen to others"
         Icon={Volume2Icon}
         permissionName="System audio"
         status={systemAudio.status}

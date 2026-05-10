@@ -336,7 +336,7 @@ export function Main2Shell() {
               >
                 <img
                   src="/assets/char-chat-bubble.svg"
-                  alt="Char"
+                  alt="Anarlog"
                   className={cn([
                     "size-[16px] shrink-0 object-contain opacity-65",
                     isChatOpen && "opacity-100",

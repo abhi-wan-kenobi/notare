@@ -2,7 +2,7 @@ import { CalendarIcon, Puzzle, Sparkle } from "lucide-react";
 
 import { cn } from "@hypr/utils";
 
-import { OnboardingButton, OnboardingCharIcon } from "../shared";
+import { OnboardingButton, OnboardingAnarlogIcon } from "../shared";
 
 import { useAuth } from "~/auth";
 
@@ -17,7 +17,7 @@ const FEATURES = [
   {
     label: "Integrations",
     icon: Puzzle,
-    benefit: "Connect tools and pull context into Char with less busywork.",
+    benefit: "Connect tools and pull context into Anarlog with less busywork.",
     accent: { icon: "text-purple-700", label: "text-purple-900" },
   },
   {
@@ -48,7 +48,7 @@ export function BeforeLogin({ onContinue: _ }: { onContinue: () => void }) {
             }}
             className="flex items-center gap-2 px-8 py-3 text-base"
           >
-            <OnboardingCharIcon inverted />
+            <OnboardingAnarlogIcon inverted />
             Get started for free
           </OnboardingButton>
 

@@ -96,7 +96,7 @@ const Placeholder: PlaceholderFunction = ({ node, pos }) => {
   }
 
   if (pos === 0) {
-    return "Take notes to guide Char's meeting notes. Press / for commands.";
+    return "Take notes to guide Anarlog's meeting notes. Press / for commands.";
   }
 
   return "Press / for commands.";

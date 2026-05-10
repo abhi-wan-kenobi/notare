@@ -14,7 +14,7 @@ import { ProviderId, PROVIDERS } from "./shared";
 import { useAuth } from "~/auth";
 import { useBillingAccess } from "~/auth/billing";
 import {
-  CharProviderIcon,
+  AnarlogProviderIcon,
   HyprCloudCTAButton,
   HyprProviderRow,
   NonHyprProviderCard,
@@ -37,8 +37,8 @@ export function ConfigureProviders() {
       >
         <HyprProviderCard
           providerId="hyprnote"
-          providerName="Char"
-          icon={<CharProviderIcon />}
+          providerName="Anarlog"
+          icon={<AnarlogProviderIcon />}
           badge={PROVIDERS.find((p) => p.id === "hyprnote")?.badge}
         />
         {PROVIDERS.filter((provider) => provider.id !== "hyprnote").map(
@@ -131,9 +131,9 @@ function HyprProviderAutoRow({ highlight }: { highlight?: boolean }) {
   return (
     <HyprProviderRow>
       <div className="flex-1">
-        <span className="text-sm font-medium">Char Cloud</span>
+        <span className="text-sm font-medium">Anarlog Cloud</span>
         <p className="text-xs text-neutral-500">
-          Use the Char Cloud API for AI assistance.
+          Use the Anarlog Cloud API for AI assistance.
         </p>
       </div>
       <HyprCloudCTAButton

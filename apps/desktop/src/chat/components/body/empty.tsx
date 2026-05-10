@@ -62,7 +62,7 @@ export function ChatBodyEmpty({
           <div className="mb-2 flex items-center gap-2">
             <img
               src="/assets/char-chat-bubble.svg"
-              alt="Char"
+              alt="Anarlog"
               className="size-4 object-contain"
             />
             <span className="text-sm font-medium text-neutral-800">
@@ -94,7 +94,7 @@ export function ChatBodyEmpty({
         <div className="mb-2 flex items-center gap-2">
           <img
             src="/assets/char-chat-bubble.svg"
-            alt="Char"
+            alt="Anarlog"
             className="size-4 object-contain"
           />
           <span className="text-sm font-medium text-neutral-800">Charlie</span>

@@ -36,7 +36,7 @@ const MOCK_INTEGRATIONS: Integration[] = [
     description: "Send meeting notes and updates to Slack channels",
     connected: true,
     connectedAt: "2024-10-10T09:00:00Z",
-    accountInfo: "Char Workspace",
+    accountInfo: "Anarlog Workspace",
   },
   {
     id: "2",
@@ -290,7 +290,7 @@ function IntegrationCard({
         <>
           Are you sure you want to disconnect {integration.name}
           {integration.accountInfo && ` (${integration.accountInfo})`}? This
-          integration will no longer sync with Char.
+          integration will no longer sync with Anarlog.
         </>
       }
     >

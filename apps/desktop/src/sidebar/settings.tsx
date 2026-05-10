@@ -6,14 +6,11 @@ import {
   ArrowUpRightIcon,
   BellIcon,
   BookText,
-  BotIcon,
   CalendarIcon,
-  CodeIcon,
   FlaskConical,
   LockIcon,
   SmartphoneIcon,
   SparklesIcon,
-  TicketIcon,
   UserIcon,
 } from "lucide-react";
 import { useCallback } from "react";
@@ -61,12 +58,7 @@ function getBaseGroups(showLab: boolean): SettingsNavGroup[] {
   if (showLab) {
     groups.push({
       label: "Lab",
-      items: [
-        { id: "lab", label: "General", icon: FlaskConical },
-        { id: "agent", label: "Agent", icon: BotIcon },
-        { id: "developer", label: "Developer", icon: CodeIcon },
-        { id: "todo", label: "Ticket", icon: TicketIcon },
-      ],
+      items: [{ id: "lab", label: "Preview", icon: FlaskConical }],
     });
   }
 

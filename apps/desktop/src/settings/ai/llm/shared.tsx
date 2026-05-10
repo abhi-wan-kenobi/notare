@@ -12,7 +12,7 @@ import {
 import type { ReactNode } from "react";
 
 import { env } from "~/env";
-import { CharProviderIcon } from "~/settings/ai/shared";
+import { AnarlogProviderIcon } from "~/settings/ai/shared";
 import {
   type ProviderRequirement,
   requiresConfigField,
@@ -37,9 +37,9 @@ type Provider = {
 const _PROVIDERS = [
   {
     id: "hyprnote",
-    displayName: "Char",
+    displayName: "Anarlog",
     badge: "Recommended",
-    icon: <CharProviderIcon />,
+    icon: <AnarlogProviderIcon />,
     baseUrl: new URL("/llm", env.VITE_API_URL).toString(),
     requirements: [
       { kind: "requires_auth" },

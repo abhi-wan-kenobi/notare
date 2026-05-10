@@ -174,7 +174,7 @@ function ChangeContentPathDialog({
         <DialogHeader>
           <DialogTitle>Change content location</DialogTitle>
           <DialogDescription>
-            Choose where Char should store data. (notes, settings, etc)
+            Choose where Anarlog should store data. (notes, settings, etc)
           </DialogDescription>
         </DialogHeader>
 

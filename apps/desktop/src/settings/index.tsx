@@ -9,8 +9,6 @@ import {
   SettingsPermissions,
 } from "./general";
 import { SettingsLab } from "./lab";
-import { AgentIntegrations } from "./lab/agent-integrations";
-import { DeveloperSettings } from "./lab/developer";
 import { SettingsTodo } from "./todo";
 
 import { LLM } from "~/settings/ai/llm";
@@ -73,10 +71,6 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
         return <SettingsPermissions />;
       case "lab":
         return <SettingsLab />;
-      case "agent":
-        return <AgentIntegrations />;
-      case "developer":
-        return <DeveloperSettings />;
       case "transcription":
         return <STT />;
       case "intelligence":

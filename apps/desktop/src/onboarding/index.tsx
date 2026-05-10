@@ -215,7 +215,7 @@ function OnboardingScreenContent({
           ])}
         >
           <h1 className="font-serif text-3xl font-semibold text-neutral-900">
-            Welcome to Char
+            Welcome to Anarlog
           </h1>
           <button
             onClick={() => setIsMuted((prev) => !prev)}
@@ -236,7 +236,7 @@ function OnboardingScreenContent({
             <OnboardingSection
               title="Start with permissions"
               completedTitle="Permissions granted"
-              description="Char needs access to your microphone and system audio to record and transcribe your meetings"
+              description="Anarlog needs access to your microphone and system audio to record and transcribe your meetings"
               status={getStepStatus("permissions", currentStep)}
               skippable={false}
               onBack={goBack}
@@ -273,7 +273,7 @@ function OnboardingScreenContent({
 
             <OnboardingSection
               title="Connect calendar"
-              description="Char will sync your calendar to get meeting reminders"
+              description="Anarlog will sync your calendar to get meeting reminders"
               completedTitle="Calendar connected"
               status={getStepStatus("calendar", currentStep)}
               onBack={goBack}

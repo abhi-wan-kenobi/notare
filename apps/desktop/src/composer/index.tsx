@@ -222,7 +222,7 @@ function ComposerInput({
             ])}
           >
             <ArrowUpRightIcon className="size-3.5" />
-            Open Char
+            Open Anarlog
           </button>
           <button
             type="button"

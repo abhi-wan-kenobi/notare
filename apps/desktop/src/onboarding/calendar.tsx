@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { ConnectionItem } from "@hypr/api-client";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
 
-import { OnboardingButton, OnboardingCharIcon } from "./shared";
+import { OnboardingButton, OnboardingAnarlogIcon } from "./shared";
 
 import { useAuth } from "~/auth";
 import { useBillingAccess } from "~/auth/billing";
@@ -390,8 +390,8 @@ function OutlookCalendarProvider({ onSignIn }: { onSignIn: () => void }) {
       {!isSignedIn ? (
         <span className="grid items-center overflow-hidden">
           <span className="invisible col-start-1 row-start-1 flex items-center justify-center gap-3">
-            <OnboardingCharIcon inverted />
-            Sign in to Char
+            <OnboardingAnarlogIcon inverted />
+            Sign in to Anarlog
           </span>
 
           <motion.span
@@ -413,8 +413,8 @@ function OutlookCalendarProvider({ onSignIn }: { onSignIn: () => void }) {
             animate={{ y: isHovered ? "0%" : "-150%" }}
             transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
           >
-            <OnboardingCharIcon inverted />
-            Sign in to Char
+            <OnboardingAnarlogIcon inverted />
+            Sign in to Anarlog
           </motion.span>
         </span>
       ) : (
@@ -499,8 +499,8 @@ function GoogleCalendarProvider({ onSignIn }: { onSignIn: () => void }) {
         {!isSignedIn ? (
           <span className="grid items-center overflow-hidden">
             <span className="invisible col-start-1 row-start-1 flex items-center justify-center gap-3">
-              <OnboardingCharIcon inverted />
-              Sign in to Char
+              <OnboardingAnarlogIcon inverted />
+              Sign in to Anarlog
             </span>
 
             <motion.span
@@ -522,8 +522,8 @@ function GoogleCalendarProvider({ onSignIn }: { onSignIn: () => void }) {
               animate={{ y: isHovered ? "0%" : "-140%" }}
               transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
             >
-              <OnboardingCharIcon inverted />
-              Sign in to Char
+              <OnboardingAnarlogIcon inverted />
+              Sign in to Anarlog
             </motion.span>
           </span>
         ) : (

@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
 import type { LocalModel } from "@hypr/plugin-local-stt";
 
 import { env } from "~/env";
-import { CharProviderIcon } from "~/settings/ai/shared";
+import { AnarlogProviderIcon } from "~/settings/ai/shared";
 import {
   type ProviderRequirement,
   requiresEntitlement,
@@ -100,9 +100,9 @@ const _PROVIDERS = [
   {
     disabled: false,
     id: "hyprnote",
-    displayName: "Char",
+    displayName: "Anarlog",
     badge: "Recommended",
-    icon: <CharProviderIcon />,
+    icon: <AnarlogProviderIcon />,
     baseUrl: new URL("/stt", env.VITE_API_URL).toString(),
     models: ["cloud"],
     requirements: [],

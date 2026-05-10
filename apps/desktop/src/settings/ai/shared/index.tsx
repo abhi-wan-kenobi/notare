@@ -48,11 +48,11 @@ type ProviderConfig = {
   };
 };
 
-export function CharProviderIcon() {
+export function AnarlogProviderIcon() {
   return (
     <img
       src="/assets/char-logo-icon-black.svg"
-      alt="Char"
+      alt="Anarlog"
       className="size-3.5 object-contain"
     />
   );

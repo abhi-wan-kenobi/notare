@@ -54,7 +54,7 @@ export function StreamingView({ enhancedNoteId }: { enhancedNoteId: string }) {
   );
 }
 
-const TIPS = ["The Char team loves our users!"];
+const TIPS = ["The Anarlog team loves our users!"];
 
 function RotatingTip() {
   const [index, setIndex] = useState(() =>

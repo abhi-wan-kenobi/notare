@@ -162,7 +162,7 @@ export function OnboardingButton({
   );
 }
 
-export function OnboardingCharIcon({
+export function OnboardingAnarlogIcon({
   inverted = false,
 }: {
   inverted?: boolean;

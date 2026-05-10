@@ -28,7 +28,7 @@ import { ProviderId, PROVIDERS } from "./shared";
 
 import { useBillingAccess } from "~/auth/billing";
 import {
-  CharProviderIcon,
+  AnarlogProviderIcon,
   HyprCloudCTAButton,
   HyprProviderRow,
   NonHyprProviderCard,
@@ -55,8 +55,8 @@ export function ConfigureProviders() {
         <HyprProviderCard
           ref={hyprAccordionRef}
           providerId="hyprnote"
-          providerName="Char"
-          icon={<CharProviderIcon />}
+          providerName="Anarlog"
+          icon={<AnarlogProviderIcon />}
           badge={PROVIDERS.find((p) => p.id === "hyprnote")?.badge}
         />
         {PROVIDERS.filter((provider) => provider.id !== "hyprnote").map(
@@ -363,9 +363,9 @@ function HyprProviderCloudRow() {
   return (
     <HyprProviderRow>
       <div className="flex-1">
-        <span className="text-sm font-medium">Char Cloud</span>
+        <span className="text-sm font-medium">Anarlog Cloud</span>
         <p className="text-xs text-neutral-500">
-          Use the Char Cloud API to transcribe your audio.
+          Use the Anarlog Cloud API to transcribe your audio.
         </p>
       </div>
       <HyprCloudCTAButton
@@ -567,7 +567,7 @@ function HyprProviderLocalRow({
 function ProviderContext({ providerId }: { providerId: ProviderId }) {
   const content =
     providerId === "hyprnote"
-      ? "**Char Cloud** routes request to the **best available model** for highest accuracy and performance."
+      ? "**Anarlog Cloud** routes request to the **best available model** for highest accuracy and performance."
       : providerId === "deepgram"
         ? `Use [Deepgram](https://deepgram.com) for transcriptions. \
     If you want to use a [Dedicated](https://developers.deepgram.com/reference/custom-endpoints#deepgram-dedicated-endpoints)

@@ -349,7 +349,7 @@ function TabChatButton({ shortcutLabel }: { shortcutLabel?: string }) {
         >
           <img
             src="/assets/char-chat-bubble.svg"
-            alt="Char"
+            alt="Anarlog"
             className={cn([
               "size-[16px] shrink-0 object-contain opacity-65",
               isTabbarSelected && "opacity-100",

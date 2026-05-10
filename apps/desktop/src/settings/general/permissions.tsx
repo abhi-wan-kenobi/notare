@@ -202,7 +202,7 @@ export function Permissions() {
         <PermissionGroup title="Others">
           <PermissionRow
             title="Calendar"
-            description="Required to sync Apple Calendar events into Char"
+            description="Required to sync Apple Calendar events into Anarlog"
             status={calendar.status}
             isPending={calendar.isPending}
             onRequest={calendar.request}
@@ -211,7 +211,7 @@ export function Permissions() {
           />
           <PermissionRow
             title="Reminders"
-            description="Required to sync Apple Reminders into Char"
+            description="Required to sync Apple Reminders into Anarlog"
             status={reminders.status}
             isPending={reminders.isPending}
             onRequest={reminders.request}
