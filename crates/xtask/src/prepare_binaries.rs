@@ -37,24 +37,6 @@ pub(crate) fn prepare_binaries() -> Result<()> {
     fs::copy(&src, &dst).with_context(|| format!("copy {} -> {}", src.display(), dst.display()))?;
 
     println!("prepare-binaries: binaries/char-chrome-native-host-{triple}{ext}");
-
-    cmd!(
-        sh,
-        "{cargo} build --release --target {triple} -p cli --features desktop-macos"
-    )
-    .run()?;
-
-    fs::create_dir_all(&binaries_dir).context("create binaries/")?;
-
-    let src = src_tauri
-        .join("target")
-        .join(&triple)
-        .join("release")
-        .join(format!("char{ext}"));
-    let dst = binaries_dir.join(format!("char-cli-{triple}{ext}"));
-    fs::copy(&src, &dst).with_context(|| format!("copy {} -> {}", src.display(), dst.display()))?;
-
-    println!("prepare-binaries: binaries/char-cli-{triple}{ext}");
     Ok(())
 }
 
