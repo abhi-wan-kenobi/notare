@@ -31,11 +31,6 @@ export function getSitemap(): Sitemap<TRoutes> {
         priority: 0.8,
         changeFrequency: "daily",
       },
-      "/changelog/": {
-        priority: 0.7,
-        changeFrequency: "weekly",
-      },
-
       "/opensource": {
         priority: 0.8,
         changeFrequency: "monthly",
@@ -72,10 +67,6 @@ export function getSitemap(): Sitemap<TRoutes> {
       "/free": {
         priority: 0.7,
         changeFrequency: "monthly",
-      },
-      "/eval/": {
-        priority: 0.7,
-        changeFrequency: "weekly",
       },
       "/gallery/": {
         priority: 0.7,
@@ -213,31 +204,6 @@ export function getSitemap(): Sitemap<TRoutes> {
           }));
         } catch (error) {
           console.warn("Failed to load comparison pages for sitemap:", error);
-          return [];
-        }
-      },
-
-      "/changelog/$slug": async () => {
-        try {
-          const path = await import("path");
-          const url = await import("url");
-          const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
-          const modulePath = path.resolve(
-            __dirname,
-            "../../.content-collections/generated/allChangelogs.js",
-          );
-          const imported = await import(modulePath);
-          const allChangelogs =
-            imported.default ?? imported.allChangelogs ?? [];
-          if (!Array.isArray(allChangelogs)) return [];
-          return allChangelogs.map((changelog: any) => ({
-            path: `/changelog/${changelog.slug}`,
-            priority: 0.6,
-            changeFrequency: "monthly" as const,
-            lastModified: changelog.date,
-          }));
-        } catch (error) {
-          console.warn("Failed to load changelogs for sitemap:", error);
           return [];
         }
       },

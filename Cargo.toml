@@ -11,8 +11,6 @@ debug = false
 resolver = "2"
 members = [
   "apps/api",
-  "apps/claw",
-  "apps/cli",
   "apps/desktop/src-tauri",
   "crates/*",
   "legacy/*",
@@ -26,10 +24,6 @@ exclude = [
 ]
 
 [workspace.dependencies]
-hypr-activity-capture = { path = "crates/activity-capture", package = "activity-capture" }
-hypr-activity-capture-interface = { path = "crates/activity-capture-interface", package = "activity-capture-interface" }
-hypr-activity-capture-macos = { path = "crates/activity-capture-macos", package = "activity-capture-macos" }
-hypr-activity-capture-windows = { path = "crates/activity-capture-windows", package = "activity-capture-windows" }
 hypr-aec = { path = "crates/aec", package = "aec" }
 hypr-afconvert = { path = "crates/afconvert", package = "afconvert" }
 hypr-agc = { path = "crates/agc", package = "agc" }
@@ -224,7 +218,6 @@ tauri-plugin-store = "2.4"
 tauri-plugin-updater = "2.10"
 tauri-plugin-window-state = "2.4"
 
-tauri-plugin-activity-capture = { path = "plugins/activity-capture" }
 tauri-plugin-agent = { path = "plugins/agent" }
 tauri-plugin-analytics = { path = "plugins/analytics" }
 tauri-plugin-audio-priority = { path = "plugins/audio-priority" }

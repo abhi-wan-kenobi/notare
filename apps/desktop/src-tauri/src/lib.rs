@@ -113,7 +113,6 @@ pub async fn main() {
         .plugin(tauri_plugin_analytics::init())
         .plugin(tauri_plugin_agent::init())
         .plugin(tauri_plugin_db::init(db.clone()))
-        .plugin(tauri_plugin_activity_capture::init())
         .plugin(tauri_plugin_bedrock::init())
         .plugin(tauri_plugin_importer::init())
         .plugin(tauri_plugin_calendar::init())
@@ -241,16 +240,6 @@ pub async fn main() {
 
             if let (Some(ctx), Some(handle)) = (&root_supervisor_ctx, root_supervisor_handle) {
                 supervisor::monitor_supervisor(handle, ctx.is_exiting.clone(), app_handle.clone());
-            }
-
-            {
-                use tauri_plugin_activity_capture::ActivityCapturePluginExt;
-                // if app_handle.get_char_v1p1_preview().unwrap_or(false) {
-                if false {
-                    if let Err(e) = app_handle.activity_capture().start() {
-                        tracing::error!("failed to auto-start activity capture: {}", e);
-                    }
-                }
             }
 
             {

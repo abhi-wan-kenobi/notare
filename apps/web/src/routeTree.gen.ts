@@ -21,9 +21,7 @@ import { Route as DiscordRouteImport } from './routes/discord'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as BlueskyRouteImport } from './routes/bluesky'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as ViewRouteRouteImport } from './routes/_view/route'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ViewIndexRouteImport } from './routes/_view/index'
 import { Route as ApiTemplatesRouteImport } from './routes/api/templates'
 import { Route as ApiShortcutsRouteImport } from './routes/api/shortcuts'
@@ -43,13 +41,6 @@ import { Route as ViewLegalRouteRouteImport } from './routes/_view/legal/route'
 import { Route as ViewDocsRouteRouteImport } from './routes/_view/docs/route'
 import { Route as ViewCompanyHandbookRouteRouteImport } from './routes/_view/company-handbook/route'
 import { Route as ViewAppRouteRouteImport } from './routes/_view/app/route'
-import { Route as AdminStarsIndexRouteImport } from './routes/admin/stars/index'
-import { Route as AdminMediaIndexRouteImport } from './routes/admin/media/index'
-import { Route as AdminLeadFinderIndexRouteImport } from './routes/admin/lead-finder/index'
-import { Route as AdminKanbanIndexRouteImport } from './routes/admin/kanban/index'
-import { Route as AdminCrmIndexRouteImport } from './routes/admin/crm/index'
-import { Route as AdminCollectionsIndexRouteImport } from './routes/admin/collections/index'
-import { Route as AdminBrandingIndexRouteImport } from './routes/admin/branding/index'
 import { Route as ViewUpdatesIndexRouteImport } from './routes/_view/updates/index'
 import { Route as ViewSolutionsIndexRouteImport } from './routes/_view/solutions/index'
 import { Route as ViewPressKitIndexRouteImport } from './routes/_view/press-kit/index'
@@ -59,7 +50,6 @@ import { Route as ViewGalleryIndexRouteImport } from './routes/_view/gallery/ind
 import { Route as ViewDownloadIndexRouteImport } from './routes/_view/download/index'
 import { Route as ViewDocsIndexRouteImport } from './routes/_view/docs/index'
 import { Route as ViewCompanyHandbookIndexRouteImport } from './routes/_view/company-handbook/index'
-import { Route as ViewChangelogIndexRouteImport } from './routes/_view/changelog/index'
 import { Route as ViewBlogIndexRouteImport } from './routes/_view/blog/index'
 import { Route as ViewAppIndexRouteImport } from './routes/_view/app/index'
 import { Route as ApiWebhooksSlackInteractiveRouteImport } from './routes/api/webhooks/slack-interactive'
@@ -93,7 +83,6 @@ import { Route as ViewDownloadAppleSiliconRouteImport } from './routes/_view/dow
 import { Route as ViewDownloadAppleIntelRouteImport } from './routes/_view/download/apple-intel'
 import { Route as ViewDocsSplatRouteImport } from './routes/_view/docs/$'
 import { Route as ViewCompanyHandbookSplatRouteImport } from './routes/_view/company-handbook/$'
-import { Route as ViewChangelogSlugRouteImport } from './routes/_view/changelog/$slug'
 import { Route as ViewCallbackSignoutRouteImport } from './routes/_view/callback/signout'
 import { Route as ViewCallbackIntegrationRouteImport } from './routes/_view/callback/integration'
 import { Route as ViewCallbackBillingRouteImport } from './routes/_view/callback/billing'
@@ -205,19 +194,9 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRouteRoute = AdminRouteRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ViewRouteRoute = ViewRouteRouteImport.update({
   id: '/_view',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminRouteRoute,
 } as any)
 const ViewIndexRoute = ViewIndexRouteImport.update({
   id: '/',
@@ -315,41 +294,6 @@ const ViewAppRouteRoute = ViewAppRouteRouteImport.update({
   path: '/app',
   getParentRoute: () => ViewRouteRoute,
 } as any)
-const AdminStarsIndexRoute = AdminStarsIndexRouteImport.update({
-  id: '/stars/',
-  path: '/stars/',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminMediaIndexRoute = AdminMediaIndexRouteImport.update({
-  id: '/media/',
-  path: '/media/',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminLeadFinderIndexRoute = AdminLeadFinderIndexRouteImport.update({
-  id: '/lead-finder/',
-  path: '/lead-finder/',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminKanbanIndexRoute = AdminKanbanIndexRouteImport.update({
-  id: '/kanban/',
-  path: '/kanban/',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminCrmIndexRoute = AdminCrmIndexRouteImport.update({
-  id: '/crm/',
-  path: '/crm/',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminCollectionsIndexRoute = AdminCollectionsIndexRouteImport.update({
-  id: '/collections/',
-  path: '/collections/',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminBrandingIndexRoute = AdminBrandingIndexRouteImport.update({
-  id: '/branding/',
-  path: '/branding/',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
 const ViewUpdatesIndexRoute = ViewUpdatesIndexRouteImport.update({
   id: '/updates/',
   path: '/updates/',
@@ -396,11 +340,6 @@ const ViewCompanyHandbookIndexRoute =
     path: '/',
     getParentRoute: () => ViewCompanyHandbookRouteRoute,
   } as any)
-const ViewChangelogIndexRoute = ViewChangelogIndexRouteImport.update({
-  id: '/changelog/',
-  path: '/changelog/',
-  getParentRoute: () => ViewRouteRoute,
-} as any)
 const ViewBlogIndexRoute = ViewBlogIndexRouteImport.update({
   id: '/blog/',
   path: '/blog/',
@@ -570,11 +509,6 @@ const ViewCompanyHandbookSplatRoute =
     path: '/$',
     getParentRoute: () => ViewCompanyHandbookRouteRoute,
   } as any)
-const ViewChangelogSlugRoute = ViewChangelogSlugRouteImport.update({
-  id: '/changelog/$slug',
-  path: '/changelog/$slug',
-  getParentRoute: () => ViewRouteRoute,
-} as any)
 const ViewCallbackSignoutRoute = ViewCallbackSignoutRouteImport.update({
   id: '/callback/signout',
   path: '/callback/signout',
@@ -842,7 +776,6 @@ const ViewDownloadNightlyAppleIntelRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof ViewIndexRoute
-  '/admin': typeof AdminRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/bluesky': typeof BlueskyRoute
   '/contact': typeof ContactRoute
@@ -873,7 +806,6 @@ export interface FileRoutesByFullPath {
   '/api/media-upload': typeof ApiMediaUploadRoute
   '/api/shortcuts': typeof ApiShortcutsRoute
   '/api/templates': typeof ApiTemplatesRoute
-  '/admin/': typeof AdminIndexRoute
   '/app/account': typeof ViewAppAccountRoute
   '/app/checkout': typeof ViewAppCheckoutRoute
   '/app/integration': typeof ViewAppIntegrationRoute
@@ -884,7 +816,6 @@ export interface FileRoutesByFullPath {
   '/callback/billing': typeof ViewCallbackBillingRoute
   '/callback/integration': typeof ViewCallbackIntegrationRoute
   '/callback/signout': typeof ViewCallbackSignoutRoute
-  '/changelog/$slug': typeof ViewChangelogSlugRoute
   '/company-handbook/$': typeof ViewCompanyHandbookSplatRoute
   '/docs/$': typeof ViewDocsSplatRoute
   '/download/apple-intel': typeof ViewDownloadAppleIntelRoute
@@ -918,7 +849,6 @@ export interface FileRoutesByFullPath {
   '/api/webhooks/slack-interactive': typeof ApiWebhooksSlackInteractiveRoute
   '/app/': typeof ViewAppIndexRoute
   '/blog/': typeof ViewBlogIndexRoute
-  '/changelog/': typeof ViewChangelogIndexRoute
   '/company-handbook/': typeof ViewCompanyHandbookIndexRoute
   '/docs/': typeof ViewDocsIndexRoute
   '/download/': typeof ViewDownloadIndexRoute
@@ -928,13 +858,6 @@ export interface FileRoutesByFullPath {
   '/press-kit/': typeof ViewPressKitIndexRoute
   '/solutions/': typeof ViewSolutionsIndexRoute
   '/updates/': typeof ViewUpdatesIndexRoute
-  '/admin/branding/': typeof AdminBrandingIndexRoute
-  '/admin/collections/': typeof AdminCollectionsIndexRoute
-  '/admin/crm/': typeof AdminCrmIndexRoute
-  '/admin/kanban/': typeof AdminKanbanIndexRoute
-  '/admin/lead-finder/': typeof AdminLeadFinderIndexRoute
-  '/admin/media/': typeof AdminMediaIndexRoute
-  '/admin/stars/': typeof AdminStarsIndexRoute
   '/download/nightly/apple-intel': typeof ViewDownloadNightlyAppleIntelRoute
   '/download/nightly/apple-silicon': typeof ViewDownloadNightlyAppleSiliconRoute
   '/download/nightly/linux-appimage': typeof ViewDownloadNightlyLinuxAppimageRoute
@@ -1004,7 +927,6 @@ export interface FileRoutesByTo {
   '/api/shortcuts': typeof ApiShortcutsRoute
   '/api/templates': typeof ApiTemplatesRoute
   '/': typeof ViewIndexRoute
-  '/admin': typeof AdminIndexRoute
   '/app/account': typeof ViewAppAccountRoute
   '/app/checkout': typeof ViewAppCheckoutRoute
   '/app/integration': typeof ViewAppIntegrationRoute
@@ -1015,7 +937,6 @@ export interface FileRoutesByTo {
   '/callback/billing': typeof ViewCallbackBillingRoute
   '/callback/integration': typeof ViewCallbackIntegrationRoute
   '/callback/signout': typeof ViewCallbackSignoutRoute
-  '/changelog/$slug': typeof ViewChangelogSlugRoute
   '/company-handbook/$': typeof ViewCompanyHandbookSplatRoute
   '/docs/$': typeof ViewDocsSplatRoute
   '/download/apple-intel': typeof ViewDownloadAppleIntelRoute
@@ -1049,7 +970,6 @@ export interface FileRoutesByTo {
   '/api/webhooks/slack-interactive': typeof ApiWebhooksSlackInteractiveRoute
   '/app': typeof ViewAppIndexRoute
   '/blog': typeof ViewBlogIndexRoute
-  '/changelog': typeof ViewChangelogIndexRoute
   '/company-handbook': typeof ViewCompanyHandbookIndexRoute
   '/docs': typeof ViewDocsIndexRoute
   '/download': typeof ViewDownloadIndexRoute
@@ -1059,13 +979,6 @@ export interface FileRoutesByTo {
   '/press-kit': typeof ViewPressKitIndexRoute
   '/solutions': typeof ViewSolutionsIndexRoute
   '/updates': typeof ViewUpdatesIndexRoute
-  '/admin/branding': typeof AdminBrandingIndexRoute
-  '/admin/collections': typeof AdminCollectionsIndexRoute
-  '/admin/crm': typeof AdminCrmIndexRoute
-  '/admin/kanban': typeof AdminKanbanIndexRoute
-  '/admin/lead-finder': typeof AdminLeadFinderIndexRoute
-  '/admin/media': typeof AdminMediaIndexRoute
-  '/admin/stars': typeof AdminStarsIndexRoute
   '/download/nightly/apple-intel': typeof ViewDownloadNightlyAppleIntelRoute
   '/download/nightly/apple-silicon': typeof ViewDownloadNightlyAppleSiliconRoute
   '/download/nightly/linux-appimage': typeof ViewDownloadNightlyLinuxAppimageRoute
@@ -1110,7 +1023,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_view': typeof ViewRouteRouteWithChildren
-  '/admin': typeof AdminRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/bluesky': typeof BlueskyRoute
   '/contact': typeof ContactRoute
@@ -1142,7 +1054,6 @@ export interface FileRoutesById {
   '/api/shortcuts': typeof ApiShortcutsRoute
   '/api/templates': typeof ApiTemplatesRoute
   '/_view/': typeof ViewIndexRoute
-  '/admin/': typeof AdminIndexRoute
   '/_view/app/account': typeof ViewAppAccountRoute
   '/_view/app/checkout': typeof ViewAppCheckoutRoute
   '/_view/app/integration': typeof ViewAppIntegrationRoute
@@ -1153,7 +1064,6 @@ export interface FileRoutesById {
   '/_view/callback/billing': typeof ViewCallbackBillingRoute
   '/_view/callback/integration': typeof ViewCallbackIntegrationRoute
   '/_view/callback/signout': typeof ViewCallbackSignoutRoute
-  '/_view/changelog/$slug': typeof ViewChangelogSlugRoute
   '/_view/company-handbook/$': typeof ViewCompanyHandbookSplatRoute
   '/_view/docs/$': typeof ViewDocsSplatRoute
   '/_view/download/apple-intel': typeof ViewDownloadAppleIntelRoute
@@ -1187,7 +1097,6 @@ export interface FileRoutesById {
   '/api/webhooks/slack-interactive': typeof ApiWebhooksSlackInteractiveRoute
   '/_view/app/': typeof ViewAppIndexRoute
   '/_view/blog/': typeof ViewBlogIndexRoute
-  '/_view/changelog/': typeof ViewChangelogIndexRoute
   '/_view/company-handbook/': typeof ViewCompanyHandbookIndexRoute
   '/_view/docs/': typeof ViewDocsIndexRoute
   '/_view/download/': typeof ViewDownloadIndexRoute
@@ -1197,13 +1106,6 @@ export interface FileRoutesById {
   '/_view/press-kit/': typeof ViewPressKitIndexRoute
   '/_view/solutions/': typeof ViewSolutionsIndexRoute
   '/_view/updates/': typeof ViewUpdatesIndexRoute
-  '/admin/branding/': typeof AdminBrandingIndexRoute
-  '/admin/collections/': typeof AdminCollectionsIndexRoute
-  '/admin/crm/': typeof AdminCrmIndexRoute
-  '/admin/kanban/': typeof AdminKanbanIndexRoute
-  '/admin/lead-finder/': typeof AdminLeadFinderIndexRoute
-  '/admin/media/': typeof AdminMediaIndexRoute
-  '/admin/stars/': typeof AdminStarsIndexRoute
   '/_view/download/nightly/apple-intel': typeof ViewDownloadNightlyAppleIntelRoute
   '/_view/download/nightly/apple-silicon': typeof ViewDownloadNightlyAppleSiliconRoute
   '/_view/download/nightly/linux-appimage': typeof ViewDownloadNightlyLinuxAppimageRoute
@@ -1249,7 +1151,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
     | '/auth'
     | '/bluesky'
     | '/contact'
@@ -1280,7 +1181,6 @@ export interface FileRouteTypes {
     | '/api/media-upload'
     | '/api/shortcuts'
     | '/api/templates'
-    | '/admin/'
     | '/app/account'
     | '/app/checkout'
     | '/app/integration'
@@ -1291,7 +1191,6 @@ export interface FileRouteTypes {
     | '/callback/billing'
     | '/callback/integration'
     | '/callback/signout'
-    | '/changelog/$slug'
     | '/company-handbook/$'
     | '/docs/$'
     | '/download/apple-intel'
@@ -1325,7 +1224,6 @@ export interface FileRouteTypes {
     | '/api/webhooks/slack-interactive'
     | '/app/'
     | '/blog/'
-    | '/changelog/'
     | '/company-handbook/'
     | '/docs/'
     | '/download/'
@@ -1335,13 +1233,6 @@ export interface FileRouteTypes {
     | '/press-kit/'
     | '/solutions/'
     | '/updates/'
-    | '/admin/branding/'
-    | '/admin/collections/'
-    | '/admin/crm/'
-    | '/admin/kanban/'
-    | '/admin/lead-finder/'
-    | '/admin/media/'
-    | '/admin/stars/'
     | '/download/nightly/apple-intel'
     | '/download/nightly/apple-silicon'
     | '/download/nightly/linux-appimage'
@@ -1411,7 +1302,6 @@ export interface FileRouteTypes {
     | '/api/shortcuts'
     | '/api/templates'
     | '/'
-    | '/admin'
     | '/app/account'
     | '/app/checkout'
     | '/app/integration'
@@ -1422,7 +1312,6 @@ export interface FileRouteTypes {
     | '/callback/billing'
     | '/callback/integration'
     | '/callback/signout'
-    | '/changelog/$slug'
     | '/company-handbook/$'
     | '/docs/$'
     | '/download/apple-intel'
@@ -1456,7 +1345,6 @@ export interface FileRouteTypes {
     | '/api/webhooks/slack-interactive'
     | '/app'
     | '/blog'
-    | '/changelog'
     | '/company-handbook'
     | '/docs'
     | '/download'
@@ -1466,13 +1354,6 @@ export interface FileRouteTypes {
     | '/press-kit'
     | '/solutions'
     | '/updates'
-    | '/admin/branding'
-    | '/admin/collections'
-    | '/admin/crm'
-    | '/admin/kanban'
-    | '/admin/lead-finder'
-    | '/admin/media'
-    | '/admin/stars'
     | '/download/nightly/apple-intel'
     | '/download/nightly/apple-silicon'
     | '/download/nightly/linux-appimage'
@@ -1516,7 +1397,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_view'
-    | '/admin'
     | '/auth'
     | '/bluesky'
     | '/contact'
@@ -1548,7 +1428,6 @@ export interface FileRouteTypes {
     | '/api/shortcuts'
     | '/api/templates'
     | '/_view/'
-    | '/admin/'
     | '/_view/app/account'
     | '/_view/app/checkout'
     | '/_view/app/integration'
@@ -1559,7 +1438,6 @@ export interface FileRouteTypes {
     | '/_view/callback/billing'
     | '/_view/callback/integration'
     | '/_view/callback/signout'
-    | '/_view/changelog/$slug'
     | '/_view/company-handbook/$'
     | '/_view/docs/$'
     | '/_view/download/apple-intel'
@@ -1593,7 +1471,6 @@ export interface FileRouteTypes {
     | '/api/webhooks/slack-interactive'
     | '/_view/app/'
     | '/_view/blog/'
-    | '/_view/changelog/'
     | '/_view/company-handbook/'
     | '/_view/docs/'
     | '/_view/download/'
@@ -1603,13 +1480,6 @@ export interface FileRouteTypes {
     | '/_view/press-kit/'
     | '/_view/solutions/'
     | '/_view/updates/'
-    | '/admin/branding/'
-    | '/admin/collections/'
-    | '/admin/crm/'
-    | '/admin/kanban/'
-    | '/admin/lead-finder/'
-    | '/admin/media/'
-    | '/admin/stars/'
     | '/_view/download/nightly/apple-intel'
     | '/_view/download/nightly/apple-silicon'
     | '/_view/download/nightly/linux-appimage'
@@ -1654,7 +1524,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   ViewRouteRoute: typeof ViewRouteRouteWithChildren
-  AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   BlueskyRoute: typeof BlueskyRoute
   ContactRoute: typeof ContactRoute
@@ -1792,26 +1661,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_view': {
       id: '/_view'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof ViewRouteRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
     }
     '/_view/': {
       id: '/_view/'
@@ -1946,55 +1801,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ViewAppRouteRouteImport
       parentRoute: typeof ViewRouteRoute
     }
-    '/admin/stars/': {
-      id: '/admin/stars/'
-      path: '/stars'
-      fullPath: '/admin/stars/'
-      preLoaderRoute: typeof AdminStarsIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/media/': {
-      id: '/admin/media/'
-      path: '/media'
-      fullPath: '/admin/media/'
-      preLoaderRoute: typeof AdminMediaIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/lead-finder/': {
-      id: '/admin/lead-finder/'
-      path: '/lead-finder'
-      fullPath: '/admin/lead-finder/'
-      preLoaderRoute: typeof AdminLeadFinderIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/kanban/': {
-      id: '/admin/kanban/'
-      path: '/kanban'
-      fullPath: '/admin/kanban/'
-      preLoaderRoute: typeof AdminKanbanIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/crm/': {
-      id: '/admin/crm/'
-      path: '/crm'
-      fullPath: '/admin/crm/'
-      preLoaderRoute: typeof AdminCrmIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/collections/': {
-      id: '/admin/collections/'
-      path: '/collections'
-      fullPath: '/admin/collections/'
-      preLoaderRoute: typeof AdminCollectionsIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/branding/': {
-      id: '/admin/branding/'
-      path: '/branding'
-      fullPath: '/admin/branding/'
-      preLoaderRoute: typeof AdminBrandingIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
     '/_view/updates/': {
       id: '/_view/updates/'
       path: '/updates'
@@ -2057,13 +1863,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/company-handbook/'
       preLoaderRoute: typeof ViewCompanyHandbookIndexRouteImport
       parentRoute: typeof ViewCompanyHandbookRouteRoute
-    }
-    '/_view/changelog/': {
-      id: '/_view/changelog/'
-      path: '/changelog'
-      fullPath: '/changelog/'
-      preLoaderRoute: typeof ViewChangelogIndexRouteImport
-      parentRoute: typeof ViewRouteRoute
     }
     '/_view/blog/': {
       id: '/_view/blog/'
@@ -2295,13 +2094,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/company-handbook/$'
       preLoaderRoute: typeof ViewCompanyHandbookSplatRouteImport
       parentRoute: typeof ViewCompanyHandbookRouteRoute
-    }
-    '/_view/changelog/$slug': {
-      id: '/_view/changelog/$slug'
-      path: '/changelog/$slug'
-      fullPath: '/changelog/$slug'
-      preLoaderRoute: typeof ViewChangelogSlugRouteImport
-      parentRoute: typeof ViewRouteRoute
     }
     '/_view/callback/signout': {
       id: '/_view/callback/signout'
@@ -2744,7 +2536,6 @@ interface ViewRouteRouteChildren {
   ViewCallbackBillingRoute: typeof ViewCallbackBillingRoute
   ViewCallbackIntegrationRoute: typeof ViewCallbackIntegrationRoute
   ViewCallbackSignoutRoute: typeof ViewCallbackSignoutRoute
-  ViewChangelogSlugRoute: typeof ViewChangelogSlugRoute
   ViewDownloadAppleIntelRoute: typeof ViewDownloadAppleIntelRoute
   ViewDownloadAppleSiliconRoute: typeof ViewDownloadAppleSiliconRoute
   ViewDownloadLinuxAppimageRoute: typeof ViewDownloadLinuxAppimageRoute
@@ -2771,7 +2562,6 @@ interface ViewRouteRouteChildren {
   ViewUpdatesSlugRoute: typeof ViewUpdatesSlugRoute
   ViewVsSlugRoute: typeof ViewVsSlugRoute
   ViewBlogIndexRoute: typeof ViewBlogIndexRoute
-  ViewChangelogIndexRoute: typeof ViewChangelogIndexRoute
   ViewDownloadIndexRoute: typeof ViewDownloadIndexRoute
   ViewGalleryIndexRoute: typeof ViewGalleryIndexRoute
   ViewIntegrationsIndexRoute: typeof ViewIntegrationsIndexRoute
@@ -2811,7 +2601,6 @@ const ViewRouteRouteChildren: ViewRouteRouteChildren = {
   ViewCallbackBillingRoute: ViewCallbackBillingRoute,
   ViewCallbackIntegrationRoute: ViewCallbackIntegrationRoute,
   ViewCallbackSignoutRoute: ViewCallbackSignoutRoute,
-  ViewChangelogSlugRoute: ViewChangelogSlugRoute,
   ViewDownloadAppleIntelRoute: ViewDownloadAppleIntelRoute,
   ViewDownloadAppleSiliconRoute: ViewDownloadAppleSiliconRoute,
   ViewDownloadLinuxAppimageRoute: ViewDownloadLinuxAppimageRoute,
@@ -2838,7 +2627,6 @@ const ViewRouteRouteChildren: ViewRouteRouteChildren = {
   ViewUpdatesSlugRoute: ViewUpdatesSlugRoute,
   ViewVsSlugRoute: ViewVsSlugRoute,
   ViewBlogIndexRoute: ViewBlogIndexRoute,
-  ViewChangelogIndexRoute: ViewChangelogIndexRoute,
   ViewDownloadIndexRoute: ViewDownloadIndexRoute,
   ViewGalleryIndexRoute: ViewGalleryIndexRoute,
   ViewIntegrationsIndexRoute: ViewIntegrationsIndexRoute,
@@ -2862,35 +2650,8 @@ const ViewRouteRouteWithChildren = ViewRouteRoute._addFileChildren(
   ViewRouteRouteChildren,
 )
 
-interface AdminRouteRouteChildren {
-  AdminIndexRoute: typeof AdminIndexRoute
-  AdminBrandingIndexRoute: typeof AdminBrandingIndexRoute
-  AdminCollectionsIndexRoute: typeof AdminCollectionsIndexRoute
-  AdminCrmIndexRoute: typeof AdminCrmIndexRoute
-  AdminKanbanIndexRoute: typeof AdminKanbanIndexRoute
-  AdminLeadFinderIndexRoute: typeof AdminLeadFinderIndexRoute
-  AdminMediaIndexRoute: typeof AdminMediaIndexRoute
-  AdminStarsIndexRoute: typeof AdminStarsIndexRoute
-}
-
-const AdminRouteRouteChildren: AdminRouteRouteChildren = {
-  AdminIndexRoute: AdminIndexRoute,
-  AdminBrandingIndexRoute: AdminBrandingIndexRoute,
-  AdminCollectionsIndexRoute: AdminCollectionsIndexRoute,
-  AdminCrmIndexRoute: AdminCrmIndexRoute,
-  AdminKanbanIndexRoute: AdminKanbanIndexRoute,
-  AdminLeadFinderIndexRoute: AdminLeadFinderIndexRoute,
-  AdminMediaIndexRoute: AdminMediaIndexRoute,
-  AdminStarsIndexRoute: AdminStarsIndexRoute,
-}
-
-const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
-  AdminRouteRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   ViewRouteRoute: ViewRouteRouteWithChildren,
-  AdminRouteRoute: AdminRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   BlueskyRoute: BlueskyRoute,
   ContactRoute: ContactRoute,

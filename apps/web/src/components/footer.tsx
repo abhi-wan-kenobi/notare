@@ -239,14 +239,6 @@ function ProductLinks() {
         </li>
         <li>
           <Link
-            to="/changelog/"
-            className="text-color hover:text-color text-sm no-underline transition-colors hover:underline hover:decoration-dotted"
-          >
-            Changelog
-          </Link>
-        </li>
-        <li>
-          <Link
             to="/docs/"
             className="text-color hover:text-color text-sm no-underline transition-colors hover:underline hover:decoration-dotted"
           >
@@ -511,14 +503,6 @@ function ToolsLinks() {
         Tools
       </h3>
       <ul className="flex flex-col gap-3">
-        <li>
-          <Link
-            to="/eval/"
-            className="text-color hover:text-color text-sm no-underline transition-colors hover:underline hover:decoration-dotted"
-          >
-            AI Eval
-          </Link>
-        </li>
         <li>
           <Link
             to="/product/notepad/"

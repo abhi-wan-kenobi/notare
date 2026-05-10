@@ -253,15 +253,6 @@ function BenchmarkSection() {
       </div>
       <div className="flex flex-col gap-4 pt-10 sm:flex-row">
         <Link
-          to="/eval/"
-          className={cn([
-            "flex h-9 items-center rounded-lg px-4 text-sm transition-colors",
-            "border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50",
-          ])}
-        >
-          View AI model evaluations
-        </Link>
-        <Link
           to="/product/local-ai/"
           className={cn([
             "flex h-9 items-center rounded-lg px-4 text-sm transition-colors",
