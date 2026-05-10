@@ -8,7 +8,7 @@ import { z } from "zod";
 import { deriveBillingInfo, type SupabaseJwtPayload } from "@hypr/supabase";
 import { cn } from "@hypr/utils";
 
-import { CharLogo } from "@/components/sidebar";
+import { AnarlogLogo } from "@/components/anarlog-logo";
 import { exchangeOAuthCode, exchangeOtpToken } from "@/functions/auth";
 import { desktopSchemeSchema } from "@/functions/desktop-flow";
 import { useAnalytics } from "@/hooks/use-posthog";
@@ -176,7 +176,7 @@ function Header({ title }: { title: string }) {
           "border-color-brand border-b",
         ])}
       >
-        <CharLogo compact className="text-fg h-10 w-auto" />
+        <AnarlogLogo compact className="text-fg h-10 w-auto" />
         <h1 className="text-fg py-4 font-mono text-xl">{title}</h1>
       </div>
     </div>
@@ -304,7 +304,7 @@ function Component() {
                   "flex items-center justify-center",
                 ])}
               >
-                Open Char
+                Open Anarlog
               </button>
 
               <button

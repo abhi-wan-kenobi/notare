@@ -14,7 +14,7 @@ const config = defineConfig(() => ({
     tailwindcss(),
     tanstackStart({
       sitemap: {
-        host: "https://char.com",
+        host: "https://anarlog.so",
       },
       prerender: {
         enabled: true,
@@ -22,14 +22,13 @@ const config = defineConfig(() => ({
         crawlLinks: true,
         autoStaticPathsDiscovery: true,
         filter: ({ path }) => {
-          return (
-            path === "/" ||
-            path.startsWith("/blog") ||
-            path.startsWith("/docs") ||
-            path.startsWith("/pricing") ||
-            path.startsWith("/solution") ||
-            path.startsWith("/vs")
-          );
+          return [
+            "/",
+            "/blog",
+            "/blog/",
+            "/blog/char-is-now-anarlog",
+            "/blog/char-is-now-anarlog/",
+          ].includes(path);
         },
       },
     }),
@@ -42,12 +41,7 @@ const config = defineConfig(() => ({
         }),
   ],
   ssr: {
-    noExternal: [
-      "posthog-js",
-      "@posthog/react",
-      "react-tweet",
-      "@content-collections/mdx",
-    ],
+    noExternal: ["posthog-js", "@posthog/react", "react-tweet"],
   },
   resolve: {
     tsconfigPaths: true,

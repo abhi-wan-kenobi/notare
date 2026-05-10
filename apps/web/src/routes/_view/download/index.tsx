@@ -11,23 +11,23 @@ export const Route = createFileRoute("/_view/download/")({
   component: Component,
   head: () => ({
     meta: [
-      { title: "Download Char - Private Meeting Notes for macOS" },
+      { title: "Download Anarlog - Private Meeting Notes for macOS" },
       {
         name: "description",
         content:
-          "Download Char for macOS to take private, bot-free meeting notes with local transcription, BYOK AI, and optional cloud features. Apple Silicon and Intel builds available.",
+          "Download Anarlog for macOS to take private, bot-free meeting notes with local transcription, BYOK AI, and optional cloud features. Apple Silicon and Intel builds available.",
       },
       {
         property: "og:title",
-        content: "Download Char - Private Meeting Notes for macOS",
+        content: "Download Anarlog - Private Meeting Notes for macOS",
       },
       {
         property: "og:description",
         content:
-          "Get Char on macOS and start with local meeting notes, on-device transcription, and optional cloud upgrades when you need them.",
+          "Get Anarlog on macOS and start with local meeting notes, on-device transcription, and optional cloud upgrades when you need them.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://char.com/download" },
+      { property: "og:url", content: "https://anarlog.so/download" },
     ],
   }),
 });
@@ -55,10 +55,10 @@ function Component() {
           <section className="px-4 py-16">
             <div className="mx-auto mb-16 flex max-w-2xl flex-col gap-6 text-left">
               <h1 className="text-color font-mono text-4xl tracking-tight sm:text-5xl">
-                Download Char
+                Download Anarlog
               </h1>
               <p className="text-fg-muted text-lg sm:text-xl">
-                Choose your platform to get started with Char
+                Choose your platform to get started with Anarlog
               </p>
             </div>
 
@@ -214,8 +214,8 @@ function CTASection() {
       <div className="flex flex-col items-center gap-6 text-left">
         <div className="mb-4 flex size-40 items-center justify-center rounded-[48px] border border-neutral-100 bg-transparent shadow-2xl">
           <Image
-            src="/api/assets/hyprnote/icon.png"
-            alt="Char"
+            src="/logo.svg"
+            alt="Anarlog"
             width={144}
             height={144}
             className="mx-auto size-36 rounded-[40px] border border-neutral-100"

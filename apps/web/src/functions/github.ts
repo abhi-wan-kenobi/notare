@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { env } from "../env";
 
-const GITHUB_ORG_REPO = "fastrepl/char";
+const GITHUB_ORG_REPO = "fastrepl/anarlog";
 const GITHUB_REPO_URL = `https://github.com/${GITHUB_ORG_REPO}`;
 const GITHUB_REPO_API_URL = `https://api.github.com/repos/${GITHUB_ORG_REPO}`;
 const CACHE_TTL = HOUR;
@@ -16,7 +16,7 @@ type GitHubStats = {
 function getGitHubHeaders(accept = "application/vnd.github+json") {
   const headers: Record<string, string> = {
     Accept: accept,
-    "User-Agent": "Char-Web",
+    "User-Agent": "Anarlog-Web",
     "X-GitHub-Api-Version": "2022-11-28",
   };
   if (env.GITHUB_TOKEN) {
@@ -105,7 +105,7 @@ async function fetchGitHubStatsFromRepoPage(): Promise<GitHubStats | null> {
     ]);
     const forks = extractGitHubCounter(html, [
       /id="repo-network-counter"[^>]*title="([^"]+)"/,
-      /href="\/fastrepl\/char\/forks"[\s\S]{0,250}?<strong>([0-9,]+)<\/strong>/,
+      /href="\/fastrepl\/anarlog\/forks"[\s\S]{0,250}?<strong>([0-9,]+)<\/strong>/,
     ]);
 
     if (stars === null || forks === null) {

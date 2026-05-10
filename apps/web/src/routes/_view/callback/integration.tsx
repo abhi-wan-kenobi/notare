@@ -82,7 +82,7 @@ function Component() {
       void queryClient.invalidateQueries({
         predicate: (query) => query.queryKey[0] === "integration-status",
       });
-      void navigate({ to: "/app/account/" });
+      void navigate({ to: "/app/account/" } as any);
     }
   }, [search.flow, navigate, queryClient]);
 
@@ -128,7 +128,7 @@ function Component() {
                   "rounded-full bg-linear-to-t from-stone-600 to-stone-500 text-white shadow-md hover:scale-[102%] hover:shadow-lg active:scale-[98%]",
                 ])}
               >
-                Open Char
+                Open Anarlog
               </button>
 
               <button

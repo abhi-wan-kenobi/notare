@@ -86,7 +86,7 @@ export function AccountAccessSection() {
             <AccordionContent className="pb-4">
               <div className="rounded-md border border-red-200 bg-red-50 p-4">
                 <p className="text-sm text-red-900">
-                  Char is a local-first app. Your notes, transcripts, and
+                  Anarlog is a local-first app. Your notes, transcripts, and
                   meeting data stay on your device. Deleting your account only
                   removes cloud-stored data.
                 </p>
