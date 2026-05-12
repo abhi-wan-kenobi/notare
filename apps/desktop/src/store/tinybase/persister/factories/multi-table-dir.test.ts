@@ -16,7 +16,6 @@ const fsSyncMocks = vi.hoisted(() => ({
   serialize: vi.fn().mockResolvedValue({ status: "ok", data: "" }),
   writeDocumentBatch: vi.fn().mockResolvedValue({ status: "ok", data: null }),
   readDocumentBatch: vi.fn(),
-  cleanupOrphan: vi.fn().mockResolvedValue({ status: "ok", data: 0 }),
 }));
 
 const fs2Mocks = vi.hoisted(() => ({
@@ -42,7 +41,6 @@ describe("createMultiTableDirPersister", () => {
       dirName: "test",
       entityParser: () => null,
       tables: [{ tableName: "sessions", isPrimary: true }],
-      cleanup: () => [],
       loadAll: async () => ok({ sessions: {} }),
       loadSingle: async () => ok({ sessions: {} }),
       save: () => ({ operations: [] }),

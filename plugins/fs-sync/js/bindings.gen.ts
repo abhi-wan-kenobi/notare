@@ -78,14 +78,6 @@ async deleteFolder(folderPath: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async cleanupOrphan(target: CleanupTarget, validIds: string[]) : Promise<Result<number, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:fs-sync|cleanup_orphan", { target, validIds }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async audioExist(sessionId: string) : Promise<Result<boolean, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:fs-sync|audio_exist", { sessionId }) };
@@ -219,7 +211,6 @@ export type AttachmentInfo = { attachmentId: string; path: string; extension: st
 export type AttachmentSaveResult = { path: string; attachmentId: string }
 export type AudioImportEvent = { type: "audioImportStarted"; session_id: string } | { type: "audioImportProgress"; session_id: string; percentage: number } | { type: "audioImportCompleted"; session_id: string } | { type: "audioImportFailed"; session_id: string; error: string }
 export type AudioSourceMetadata = { createdAt: string | null; modifiedAt: string | null; durationMs: number | null }
-export type CleanupTarget = { type: "files"; subdir: string; extension: string } | { type: "dirs"; subdir: string; marker_file: string } | { type: "filesRecursive"; subdir: string; marker_file: string; extension: string }
 export type FolderInfo = { name: string; parent_folder_id: string | null }
 export type FolderSessionUpdate = { sessionId: string; folderId: string }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>

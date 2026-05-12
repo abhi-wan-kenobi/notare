@@ -166,16 +166,6 @@ export function createMarkdownDirPersister<
   return createCollectorPersister(store, {
     label,
     watchPaths: [`${dirName}/`],
-    cleanup: (tables) => [
-      {
-        type: "files",
-        subdir: dirName,
-        extension: "md",
-        keepIds: Object.keys(
-          (tables as Record<string, Record<string, unknown>>)[tableName] ?? {},
-        ),
-      },
-    ],
     entityParser,
     loadSingle: (entityId: string) =>
       loadSingleEntity(config, entityId, deletionMarker),

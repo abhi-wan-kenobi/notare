@@ -45,24 +45,6 @@ pub struct ScanResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(tag = "type", rename_all = "camelCase")]
-pub enum CleanupTarget {
-    Files {
-        subdir: String,
-        extension: String,
-    },
-    Dirs {
-        subdir: String,
-        marker_file: String,
-    },
-    FilesRecursive {
-        subdir: String,
-        marker_file: String,
-        extension: String,
-    },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AttachmentSaveResult {
     pub path: String,

@@ -8,7 +8,6 @@ use assert_fs::prelude::*;
 
 pub const UUID_1: &str = "550e8400-e29b-41d4-a716-446655440000";
 pub const UUID_2: &str = "550e8400-e29b-41d4-a716-446655440001";
-pub const UUID_3: &str = "550e8400-e29b-41d4-a716-446655440002";
 
 pub fn md_with_frontmatter(frontmatter: &str, content: &str) -> String {
     format!("---\n{frontmatter}\n---\n{content}")

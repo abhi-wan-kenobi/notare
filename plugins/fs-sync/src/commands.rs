@@ -12,8 +12,7 @@ use crate::frontmatter::ParsedDocument;
 use crate::session::find_session_dir;
 use crate::session_content::load_session_content as load_session_content_from_fs;
 use crate::types::{
-    CleanupTarget, ListFoldersResult, MoveSessionResult, RenameFolderResult, ScanResult,
-    SessionContentData,
+    ListFoldersResult, MoveSessionResult, RenameFolderResult, ScanResult, SessionContentData,
 };
 
 macro_rules! spawn_blocking {
@@ -178,18 +177,6 @@ pub(crate) async fn delete_folder<R: tauri::Runtime>(
 ) -> Result<(), String> {
     app.fs_sync()
         .delete_folder(&folder_path)
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-#[specta::specta]
-pub(crate) async fn cleanup_orphan<R: tauri::Runtime>(
-    app: tauri::AppHandle<R>,
-    target: CleanupTarget,
-    valid_ids: Vec<String>,
-) -> Result<u32, String> {
-    app.fs_sync()
-        .cleanup_orphan(target, valid_ids)
         .map_err(|e| e.to_string())
 }
 

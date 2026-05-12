@@ -19,7 +19,6 @@ const fsSyncMocks = vi.hoisted(() => ({
   serialize: vi.fn().mockResolvedValue({ status: "ok", data: "" }),
   writeDocumentBatch: vi.fn().mockResolvedValue({ status: "ok", data: null }),
   readDocumentBatch: vi.fn(),
-  cleanupOrphan: vi.fn().mockResolvedValue({ status: "ok", data: 0 }),
 }));
 
 const fs2Mocks = vi.hoisted(() => ({

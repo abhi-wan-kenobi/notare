@@ -13,10 +13,6 @@ import {
 } from "./save/index";
 
 import { createMultiTableDirPersister } from "~/store/tinybase/persister/factories";
-import {
-  SESSION_META_FILE,
-  SESSION_NOTE_EXTENSION,
-} from "~/store/tinybase/persister/shared";
 import type { Store } from "~/store/tinybase/store/main";
 
 export function createSessionPersister(store: Store) {
@@ -31,21 +27,6 @@ export function createSessionPersister(store: Store) {
       { tableName: "mapping_tag_session", foreignKey: "session_id" },
       { tableName: "transcripts", foreignKey: "session_id" },
       { tableName: "enhanced_notes", foreignKey: "session_id" },
-    ],
-    cleanup: (tables) => [
-      {
-        type: "dirs",
-        subdir: "sessions",
-        markerFile: SESSION_META_FILE,
-        keepIds: Object.keys(tables.sessions ?? {}),
-      },
-      {
-        type: "filesRecursive",
-        subdir: "sessions",
-        markerFile: SESSION_META_FILE,
-        extension: SESSION_NOTE_EXTENSION.slice(1),
-        keepIds: Object.keys(tables.enhanced_notes ?? {}),
-      },
     ],
     loadAll: loadAllSessionData,
     loadSingle: loadSingleSession,

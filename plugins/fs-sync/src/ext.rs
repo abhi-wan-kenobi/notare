@@ -48,14 +48,6 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> FsSync<'a, R, M> {
         self.core()?.delete_folder(folder_path)
     }
 
-    pub fn cleanup_orphan(
-        &self,
-        target: crate::CleanupTarget,
-        valid_ids: Vec<String>,
-    ) -> Result<u32, crate::Error> {
-        self.core()?.cleanup_orphan(target, valid_ids)
-    }
-
     pub fn attachment_save(
         &self,
         session_id: &str,

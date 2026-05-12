@@ -30,41 +30,11 @@ import {
 } from "~/store/tinybase/persister/shared/types";
 import { StoreOrMergeableStore } from "~/store/tinybase/store/shared";
 
-const CLEANUP_SAFEGUARD_MIN_DISK_COUNT = 5;
-const CLEANUP_SAFEGUARD_MIN_KEEP_RATIO = 0.5;
-
 type LoadSingleFn<Schemas extends OptionalSchemas> = (
   entityId: string,
 ) => Promise<
   PersistedChanges<Schemas, Persists.StoreOrMergeableStore> | undefined
 >;
-
-type OrphanCleanupDirs = {
-  type: "dirs";
-  subdir: string;
-  markerFile: string;
-  keepIds: string[];
-};
-
-type OrphanCleanupFiles = {
-  type: "files";
-  subdir: string;
-  extension: string;
-  keepIds: string[];
-};
-
-type OrphanCleanupFilesRecursive = {
-  type: "filesRecursive";
-  subdir: string;
-  markerFile: string;
-  extension: string;
-  keepIds: string[];
-};
-
-export type OrphanCleanupConfig =
-  | OrphanCleanupDirs
-  | OrphanCleanupFiles
-  | OrphanCleanupFilesRecursive;
 
 type BaseCollectorOptions<Schemas extends OptionalSchemas> = {
   label: string;
@@ -75,7 +45,6 @@ type BaseCollectorOptions<Schemas extends OptionalSchemas> = {
     changedTables?: ChangedTables,
   ) => SaveResult;
   load?: () => Promise<Content<Schemas> | undefined>;
-  cleanup?: (tables: TablesContent) => OrphanCleanupConfig[];
   watchPaths?: string[];
   watchIntervalMs?: number;
 };
@@ -161,11 +130,6 @@ export function createCollectorPersister<Schemas extends OptionalSchemas>(
         await writeDocumentBatch(documentItems, options.label);
         await deleteFiles(deletePaths, options.label);
       }
-
-      if (options.cleanup) {
-        const cleanupConfigs = options.cleanup(tables ?? {});
-        await runOrphanCleanup(cleanupConfigs, options.label);
-      }
     } catch (error) {
       console.error(`[${options.label}] save error:`, error);
     }
@@ -241,103 +205,6 @@ async function deleteFiles(paths: string[], label: string): Promise<void> {
       if (!errorStr.includes("No such file") && !errorStr.includes("ENOENT")) {
         console.error(`[${label}] Failed to delete file ${path}:`, errorStr);
       }
-    }
-  }
-}
-
-async function countItemsOnDisk(config: OrphanCleanupConfig): Promise<number> {
-  try {
-    const dataDir = await getDataDir();
-    const subdir = [dataDir, config.subdir].join("/");
-
-    if (config.type === "dirs") {
-      const result = await fsSyncCommands.scanAndRead(
-        subdir,
-        [config.markerFile],
-        true,
-        null,
-      );
-      if (result.status === "ok") {
-        return result.data.dirs.length;
-      }
-    } else if (config.type === "files") {
-      const result = await fsSyncCommands.scanAndRead(
-        subdir,
-        [`*.${config.extension}`],
-        false,
-        null,
-      );
-      if (result.status === "ok") {
-        return Object.keys(result.data.files).length;
-      }
-    } else if (config.type === "filesRecursive") {
-      const result = await fsSyncCommands.scanAndRead(
-        subdir,
-        [`*.${config.extension}`],
-        true,
-        null,
-      );
-      if (result.status === "ok") {
-        return Object.keys(result.data.files).length;
-      }
-    }
-  } catch {
-    // Ignore counting errors - we'll proceed with cleanup
-  }
-  return 0;
-}
-
-async function runOrphanCleanup(
-  configs: OrphanCleanupConfig[],
-  label: string,
-): Promise<void> {
-  for (const config of configs) {
-    if (config.keepIds.length === 0) {
-      continue;
-    }
-
-    const diskCount = await countItemsOnDisk(config);
-    const keepRatio = config.keepIds.length / Math.max(diskCount, 1);
-
-    if (
-      diskCount > CLEANUP_SAFEGUARD_MIN_DISK_COUNT &&
-      keepRatio < CLEANUP_SAFEGUARD_MIN_KEEP_RATIO
-    ) {
-      console.warn(
-        `[${label}] Skipping ${config.type} cleanup: keeping ${config.keepIds.length}/${diskCount} ` +
-          `(${(keepRatio * 100).toFixed(0)}%) - possible load failure`,
-      );
-      continue;
-    }
-
-    try {
-      if (config.type === "dirs") {
-        await fsSyncCommands.cleanupOrphan(
-          {
-            type: "dirs",
-            subdir: config.subdir,
-            marker_file: config.markerFile,
-          },
-          config.keepIds,
-        );
-      } else if (config.type === "files") {
-        await fsSyncCommands.cleanupOrphan(
-          { type: "files", subdir: config.subdir, extension: config.extension },
-          config.keepIds,
-        );
-      } else if (config.type === "filesRecursive") {
-        await fsSyncCommands.cleanupOrphan(
-          {
-            type: "filesRecursive",
-            subdir: config.subdir,
-            marker_file: config.markerFile,
-            extension: config.extension,
-          },
-          config.keepIds,
-        );
-      }
-    } catch (error) {
-      console.error(`[${label}] Cleanup error for ${config.type}:`, error);
     }
   }
 }

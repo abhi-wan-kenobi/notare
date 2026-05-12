@@ -2,10 +2,7 @@ import type { MergeableStore, OptionalSchemas } from "tinybase/with-schemas";
 
 import { toContent, toPersistedChanges } from "@hypr/tinybase-utils";
 
-import {
-  createCollectorPersister,
-  type OrphanCleanupConfig,
-} from "./collector";
+import { createCollectorPersister } from "./collector";
 
 import {
   createDeletionMarker,
@@ -30,7 +27,6 @@ export type MultiTableDirConfig<
   dirName: string;
   entityParser: (path: string) => string | null;
   tables: TableConfigEntry<Schemas, TLoadedData>[];
-  cleanup: (tables: TablesContent) => OrphanCleanupConfig[];
   loadAll: (dataDir: string) => Promise<LoadResult<TLoadedData>>;
   loadSingle: (
     dataDir: string,
@@ -58,16 +54,8 @@ export function createMultiTableDirPersister<
   store: MergeableStore<Schemas>,
   config: MultiTableDirConfig<Schemas, TLoadedData>,
 ): ReturnType<typeof createCollectorPersister<Schemas>> {
-  const {
-    label,
-    dirName,
-    entityParser,
-    tables,
-    cleanup,
-    loadAll,
-    loadSingle,
-    save,
-  } = config;
+  const { label, dirName, entityParser, tables, loadAll, loadSingle, save } =
+    config;
 
   const deletionMarker = createDeletionMarker<TLoadedData>(
     store as DeletionMarkerStore,
@@ -78,7 +66,6 @@ export function createMultiTableDirPersister<
   return createCollectorPersister(store, {
     label,
     watchPaths: [`${dirName}/`],
-    cleanup,
     entityParser,
     loadSingle: async (entityId: string) => {
       try {

@@ -2,7 +2,6 @@
 mod test_fixtures;
 
 pub mod audio;
-pub mod cleanup;
 pub mod error;
 pub mod folder;
 pub mod frontmatter;
@@ -21,21 +20,16 @@ pub use path::{build_session_dir, is_uuid, normalize_folder_path};
 pub use session::find_session_dir;
 pub use types::*;
 
-use std::collections::HashSet;
 use std::path::PathBuf;
 
 pub struct FsSyncCore {
-    base_dir: PathBuf,
     sessions_dir: PathBuf,
 }
 
 impl FsSyncCore {
     pub fn new(base_dir: PathBuf) -> Self {
         let sessions_dir = base_dir.join("sessions");
-        Self {
-            base_dir,
-            sessions_dir,
-        }
+        Self { sessions_dir }
     }
 
     pub fn list_folders(&self) -> Result<ListFoldersResult> {
@@ -184,41 +178,6 @@ impl FsSyncCore {
         }
 
         Ok(false)
-    }
-
-    pub fn cleanup_orphan(&self, target: CleanupTarget, valid_ids: Vec<String>) -> Result<u32> {
-        let valid_set: HashSet<String> = valid_ids.into_iter().collect();
-
-        match target {
-            CleanupTarget::Files { subdir, extension } => {
-                let dir = self.base_dir.join(&subdir);
-                Ok(cleanup::cleanup_files_in_dir(&dir, &extension, &valid_set)?)
-            }
-            CleanupTarget::Dirs {
-                subdir,
-                marker_file,
-            } => {
-                let dir = self.base_dir.join(&subdir);
-                Ok(cleanup::cleanup_dirs_recursive(
-                    &dir,
-                    &marker_file,
-                    &valid_set,
-                )?)
-            }
-            CleanupTarget::FilesRecursive {
-                subdir,
-                marker_file,
-                extension,
-            } => {
-                let dir = self.base_dir.join(&subdir);
-                Ok(cleanup::cleanup_files_recursive(
-                    &dir,
-                    &marker_file,
-                    &extension,
-                    &valid_set,
-                )?)
-            }
-        }
     }
 
     pub fn attachment_save(
@@ -627,33 +586,6 @@ mod tests {
 
         let core = FsSyncCore::new(temp.path().to_path_buf());
         core.attachment_remove(UUID_1, "missing.txt").unwrap();
-    }
-
-    #[test]
-    fn cleanup_orphan_files_removes_invalid_ids() {
-        let temp = TempDir::new().unwrap();
-        temp.child("notes").create_dir_all().unwrap();
-        temp.child("notes")
-            .child(format!("{UUID_1}.json"))
-            .write_str("{}")
-            .unwrap();
-        temp.child("notes")
-            .child(format!("{UUID_2}.json"))
-            .write_str("{}")
-            .unwrap();
-
-        let core = FsSyncCore::new(temp.path().to_path_buf());
-        let removed = core
-            .cleanup_orphan(
-                CleanupTarget::Files {
-                    subdir: "notes".to_string(),
-                    extension: "json".to_string(),
-                },
-                vec![UUID_1.to_string()],
-            )
-            .unwrap();
-
-        assert_eq!(removed, 1);
     }
 
     #[test]
