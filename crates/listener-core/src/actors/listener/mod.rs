@@ -42,6 +42,7 @@ pub struct ListenerArgs {
     pub base_url: String,
     pub api_key: String,
     pub keywords: Vec<String>,
+    pub transcription_mode: crate::TranscriptionMode,
     pub mode: crate::actors::ChannelMode,
     pub session_started_at: Instant,
     pub session_started_at_unix: SystemTime,
@@ -61,6 +62,12 @@ pub struct ListenerState {
 pub(super) enum ChannelSender {
     Single(tokio::sync::mpsc::Sender<MixedMessage<Bytes, ControlMessage>>),
     Dual(tokio::sync::mpsc::Sender<MixedMessage<(Bytes, Bytes), ControlMessage>>),
+    Soniqo(tokio::sync::mpsc::Sender<SoniqoAudioMsg>),
+}
+
+pub(super) enum SoniqoAudioMsg {
+    Single(hypr_transcribe_soniqo::TranscriptSource, Bytes),
+    Dual(Bytes, Bytes),
 }
 
 pub struct ListenerActor;
@@ -145,13 +152,15 @@ impl Actor for ListenerActor {
         }
 
         if let Some(update) = state.transcript.flush() {
-            state
-                .args
-                .runtime
-                .emit_data(SessionDataEvent::TranscriptDelta {
-                    session_id: state.args.session_id.clone(),
-                    delta: Box::new(update.transcript_delta),
-                });
+            if !update.transcript_delta.is_empty() {
+                state
+                    .args
+                    .runtime
+                    .emit_data(SessionDataEvent::TranscriptDelta {
+                        session_id: state.args.session_id.clone(),
+                        delta: Box::new(update.transcript_delta),
+                    });
+            }
             if let Some(segment_delta) = update.segment_delta {
                 state
                     .args
@@ -176,17 +185,31 @@ impl Actor for ListenerActor {
         let _guard = span.enter();
 
         match message {
-            ListenerMsg::AudioSingle(audio) => {
-                if let ChannelSender::Single(tx) = &state.tx {
+            ListenerMsg::AudioSingle(audio) => match &state.tx {
+                ChannelSender::Single(tx) => {
                     let _ = tx.try_send(MixedMessage::Audio(audio));
                 }
-            }
+                ChannelSender::Soniqo(tx) => {
+                    let source =
+                        if matches!(state.args.mode, crate::actors::ChannelMode::SpeakerOnly) {
+                            hypr_transcribe_soniqo::TranscriptSource::System
+                        } else {
+                            hypr_transcribe_soniqo::TranscriptSource::Microphone
+                        };
+                    let _ = tx.try_send(SoniqoAudioMsg::Single(source, audio));
+                }
+                ChannelSender::Dual(_) => {}
+            },
 
-            ListenerMsg::AudioDual(mic, spk) => {
-                if let ChannelSender::Dual(tx) = &state.tx {
+            ListenerMsg::AudioDual(mic, spk) => match &state.tx {
+                ChannelSender::Dual(tx) => {
                     let _ = tx.try_send(MixedMessage::Audio((mic, spk)));
                 }
-            }
+                ChannelSender::Soniqo(tx) => {
+                    let _ = tx.try_send(SoniqoAudioMsg::Dual(mic, spk));
+                }
+                ChannelSender::Single(_) => {}
+            },
 
             ListenerMsg::StreamResponse(mut response) => {
                 if let StreamResponse::ErrorResponse {

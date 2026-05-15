@@ -19,6 +19,8 @@ pub struct CaptureParams {
     pub api_key: String,
     pub keywords: Vec<String>,
     #[serde(default)]
+    pub transcription_mode: Option<listener::TranscriptionMode>,
+    #[serde(default)]
     pub participant_human_ids: Vec<String>,
     #[serde(default)]
     pub self_human_id: Option<String>,
@@ -26,6 +28,24 @@ pub struct CaptureParams {
 
 impl CaptureParams {
     fn default_transcription_mode(&self) -> listener::TranscriptionMode {
+        if self.transcription_mode == Some(listener::TranscriptionMode::Batch) {
+            return listener::TranscriptionMode::Batch;
+        }
+
+        if let Some(model) =
+            hypr_transcribe_soniqo::local_model_from_request(&self.base_url, &self.model)
+        {
+            return if model.supports_live_on_current_platform() {
+                listener::TranscriptionMode::Live
+            } else {
+                listener::TranscriptionMode::Batch
+            };
+        }
+
+        if hypr_transcribe_soniqo::is_local_base_url(&self.base_url) {
+            return listener::TranscriptionMode::Batch;
+        }
+
         let adapter_kind =
             AdapterKind::from_url_and_languages(&self.base_url, &self.languages, Some(&self.model));
 
@@ -309,6 +329,7 @@ mod tests {
             base_url: base_url.to_string(),
             api_key: "test-key".to_string(),
             keywords: vec![],
+            transcription_mode: None,
             participant_human_ids: vec![],
             self_human_id: None,
         }
@@ -402,11 +423,97 @@ mod tests {
     }
 
     #[test]
-    fn defaults_local_cactus_capture_to_batch_mode() {
+    fn defaults_local_cactus_parakeet_capture_to_batch_mode() {
         let params = capture_params(
             "http://localhost:50060/v1",
             "cactus-parakeet-tdt-0.6b-v3-int8",
         );
+
+        assert_eq!(
+            params.default_transcription_mode(),
+            TranscriptionMode::Batch
+        );
+    }
+
+    #[test]
+    fn defaults_local_cactus_non_parakeet_capture_to_batch_mode() {
+        let params = capture_params("http://localhost:50060/v1", "cactus-whisper-small-int8");
+
+        assert_eq!(
+            params.default_transcription_mode(),
+            TranscriptionMode::Batch
+        );
+    }
+
+    #[test]
+    fn defaults_soniqo_streaming_capture_to_platform_mode() {
+        let params = capture_params("soniqo://local", "soniqo-parakeet-streaming");
+        let expected = if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+            TranscriptionMode::Live
+        } else {
+            TranscriptionMode::Batch
+        };
+
+        assert_eq!(params.default_transcription_mode(), expected);
+    }
+
+    #[test]
+    fn defaults_soniqo_streaming_with_loopback_base_to_platform_mode() {
+        let params = capture_params("http://localhost:50060/v1", "soniqo-parakeet-streaming");
+        let expected = if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+            TranscriptionMode::Live
+        } else {
+            TranscriptionMode::Batch
+        };
+
+        assert_eq!(params.default_transcription_mode(), expected);
+    }
+
+    #[test]
+    fn defaults_soniqo_batch_capture_to_batch_mode() {
+        let params = capture_params("soniqo://local", "soniqo-parakeet-batch");
+
+        assert_eq!(
+            params.default_transcription_mode(),
+            TranscriptionMode::Batch
+        );
+    }
+
+    #[test]
+    fn explicit_batch_overrides_soniqo_streaming_capture() {
+        let mut params = capture_params("soniqo://local", "soniqo-parakeet-streaming");
+        params.transcription_mode = Some(TranscriptionMode::Batch);
+
+        assert_eq!(
+            params.default_transcription_mode(),
+            TranscriptionMode::Batch
+        );
+    }
+
+    #[test]
+    fn explicit_live_falls_back_to_batch_for_soniqo_batch_model() {
+        let mut params = capture_params("soniqo://local", "soniqo-parakeet-batch");
+        params.transcription_mode = Some(TranscriptionMode::Live);
+
+        assert_eq!(
+            params.default_transcription_mode(),
+            TranscriptionMode::Batch
+        );
+    }
+
+    #[test]
+    fn defaults_soniqo_model_on_non_soniqo_provider_from_provider_mode() {
+        let params = capture_params("https://api.openai.com/v1", "soniqo-parakeet-streaming");
+
+        assert_eq!(
+            params.default_transcription_mode(),
+            TranscriptionMode::Batch
+        );
+    }
+
+    #[test]
+    fn defaults_invalid_soniqo_local_model_to_batch_mode() {
+        let params = capture_params("soniqo://local", "nova-3");
 
         assert_eq!(
             params.default_transcription_mode(),

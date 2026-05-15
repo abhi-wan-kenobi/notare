@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Instant, SystemTime};
 
-use ractor::{Actor, ActorCell, ActorProcessingErr, ActorRef, RpcReplyPort, SupervisionEvent};
+use ractor::{
+    Actor, ActorCell, ActorProcessingErr, ActorRef, ActorStatus, RpcReplyPort, SupervisionEvent,
+};
 use tracing::Instrument;
 
 use crate::actors::session::lifecycle::{
@@ -111,13 +113,17 @@ impl Actor for RootActor {
 
 async fn start_session_impl(
     root_cell: ActorCell,
-    params: SessionParams,
+    mut params: SessionParams,
     state: &mut RootState,
 ) -> Result<(), StartSessionError> {
+    let requested_transcription_mode = params.transcription_mode;
+    params.transcription_mode = params.effective_transcription_mode();
     let session_id = params.session_id.clone();
     let span = session_span(&session_id);
 
     async {
+        clear_stopped_supervisors(state);
+
         if state.active_supervisor.is_some() {
             tracing::warn!("session_already_running");
             return Err(StartSessionError::SessionAlreadyRunning);
@@ -142,6 +148,7 @@ async fn start_session_impl(
         let ctx = SessionContext {
             runtime: state.runtime.clone(),
             audio: state.audio.clone(),
+            requested_transcription_mode,
             params: params.clone(),
             app_dir,
             started_at_instant: Instant::now(),
@@ -152,12 +159,17 @@ async fn start_session_impl(
             Ok((supervisor_cell, _handle)) => {
                 supervisor_cell.link(root_cell);
 
+                if supervisor_cell.get_status() == ActorStatus::Stopped {
+                    clear_sentry_session_context();
+                    return Err(StartSessionError::FailedToStartSession);
+                }
+
                 state.active_session_id = Some(params.session_id.clone());
                 state.active_supervisor = Some(supervisor_cell);
 
                 let evt = SessionLifecycleEvent::Active {
                     session_id: params.session_id,
-                    requested_transcription_mode: params.transcription_mode,
+                    requested_transcription_mode,
                     current_transcription_mode: params.transcription_mode,
                     error: None,
                 };
@@ -176,6 +188,26 @@ async fn start_session_impl(
     }
     .instrument(span)
     .await
+}
+
+fn clear_stopped_supervisors(state: &mut RootState) {
+    if state
+        .active_supervisor
+        .as_ref()
+        .is_some_and(|supervisor| supervisor.get_status() == ActorStatus::Stopped)
+    {
+        let session_id = state.active_session_id.take().unwrap_or_default();
+        tracing::warn!(%session_id, "clearing_stale_active_session_supervisor");
+        state.active_supervisor = None;
+    }
+
+    state.finalizing_sessions.retain(|session_id, supervisor| {
+        let should_keep = supervisor.get_status() != ActorStatus::Stopped;
+        if !should_keep {
+            tracing::warn!(%session_id, "clearing_stale_finalizing_session_supervisor");
+        }
+        should_keep
+    });
 }
 
 async fn stop_session_impl(state: &mut RootState) {

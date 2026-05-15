@@ -4,6 +4,7 @@ use std::str::FromStr;
 use crate::listener::ListenerPluginExt;
 use crate::{CaptureParams, CaptureState};
 use hypr_transcript::{RenderTranscriptRequest, RenderedTranscriptSegment};
+use hypr_transcription_core::listener2 as listener2_core;
 
 #[tauri::command]
 #[specta::specta]
@@ -87,10 +88,8 @@ pub async fn is_supported_languages_live<R: tauri::Runtime>(
         .map(|s| hypr_language::Language::from_str(s))
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| format!("unknown_language: {}", e))?;
-    let adapter_kind =
-        AdapterKind::from_str(&provider).map_err(|_| format!("unknown_provider: {}", provider))?;
 
-    Ok(adapter_kind.is_supported_languages_live(&languages_parsed, model.as_deref()))
+    listener2_core::is_supported_languages_live(&provider, model.as_deref(), &languages_parsed)
 }
 
 #[tauri::command]

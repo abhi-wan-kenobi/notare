@@ -36,6 +36,11 @@ export const SETTINGS_MAPPING = {
       path: ["general", "save_recordings"],
       default: true as boolean,
     },
+    audio_retention: {
+      type: "string",
+      path: ["general", "audio_retention"],
+      default: "oneMonth" as string,
+    },
     notification_event: {
       type: "boolean",
       path: ["notification", "event"],

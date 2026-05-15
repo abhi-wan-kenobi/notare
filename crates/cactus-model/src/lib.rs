@@ -293,17 +293,39 @@ impl CactusSttModel {
         }
     }
 
+    pub fn model_size_bytes(&self) -> Option<u64> {
+        match self {
+            CactusSttModel::WhisperSmallInt4 => Some(183_648_302),
+            CactusSttModel::WhisperSmallInt4Apple => Some(221_231_520),
+            CactusSttModel::WhisperSmallInt8 => Some(284_395_215),
+            CactusSttModel::WhisperSmallInt8Apple => Some(365_229_337),
+            CactusSttModel::WhisperMediumInt4 | CactusSttModel::WhisperMediumInt4Apple => None,
+            CactusSttModel::WhisperMediumInt8 => Some(827_189_575),
+            CactusSttModel::WhisperMediumInt8Apple => Some(1_111_632_582),
+            CactusSttModel::ParakeetCtc0_6bInt4 => Some(409_526_897),
+            CactusSttModel::ParakeetCtc0_6bInt4Apple => Some(680_424_777),
+            CactusSttModel::ParakeetCtc0_6bInt8 => Some(680_288_614),
+            CactusSttModel::ParakeetCtc0_6bInt8Apple => Some(1_244_681_027),
+            CactusSttModel::ParakeetTdt0_6bV3Int4 => Some(430_744_371),
+            CactusSttModel::ParakeetTdt0_6bV3Int4Apple => Some(699_644_823),
+            CactusSttModel::ParakeetTdt0_6bV3Int8 => Some(706_097_687),
+            CactusSttModel::ParakeetTdt0_6bV3Int8Apple => Some(1_266_173_165),
+        }
+    }
+
     pub fn supported_languages(&self) -> Vec<hypr_language::Language> {
         match self {
             CactusSttModel::ParakeetCtc0_6bInt4
             | CactusSttModel::ParakeetCtc0_6bInt4Apple
             | CactusSttModel::ParakeetCtc0_6bInt8
-            | CactusSttModel::ParakeetCtc0_6bInt8Apple
-            | CactusSttModel::ParakeetTdt0_6bV3Int4
+            | CactusSttModel::ParakeetCtc0_6bInt8Apple => {
+                vec!["en".parse().unwrap()]
+            }
+            CactusSttModel::ParakeetTdt0_6bV3Int4
             | CactusSttModel::ParakeetTdt0_6bV3Int4Apple
             | CactusSttModel::ParakeetTdt0_6bV3Int8
             | CactusSttModel::ParakeetTdt0_6bV3Int8Apple => {
-                vec!["en".parse().unwrap()]
+                hypr_language::parakeet_tdt_v3_languages()
             }
             _ => hypr_language::whisper_multilingual(),
         }
@@ -585,6 +607,15 @@ mod tests {
         assert_eq!(
             CactusSttModel::WhisperSmallInt4.checksum(),
             Some(3458434299)
+        );
+    }
+
+    #[test]
+    fn unavailable_stt_models_have_unknown_size() {
+        assert_eq!(CactusSttModel::WhisperMediumInt4.model_size_bytes(), None);
+        assert_eq!(
+            CactusSttModel::WhisperMediumInt4Apple.model_size_bytes(),
+            None
         );
     }
 }
