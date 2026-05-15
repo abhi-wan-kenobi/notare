@@ -9,11 +9,15 @@ interface SettingItem {
 
 interface AppSettingsViewProps {
   autostart: SettingItem;
+  autoStartScheduledMeetings: SettingItem;
+  autoStopMeetings: SettingItem;
   telemetryConsent: SettingItem;
 }
 
 export function AppSettingsView({
   autostart,
+  autoStartScheduledMeetings,
+  autoStopMeetings,
   telemetryConsent,
 }: AppSettingsViewProps) {
   return (
@@ -25,6 +29,18 @@ export function AppSettingsView({
           description={autostart.description}
           checked={autostart.value}
           onChange={autostart.onChange}
+        />
+        <SettingRow
+          title={autoStartScheduledMeetings.title}
+          description={autoStartScheduledMeetings.description}
+          checked={autoStartScheduledMeetings.value}
+          onChange={autoStartScheduledMeetings.onChange}
+        />
+        <SettingRow
+          title={autoStopMeetings.title}
+          description={autoStopMeetings.description}
+          checked={autoStopMeetings.value}
+          onChange={autoStopMeetings.onChange}
         />
         <SettingRow
           title={telemetryConsent.title}

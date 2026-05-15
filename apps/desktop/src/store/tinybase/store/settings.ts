@@ -31,6 +31,16 @@ export const SETTINGS_MAPPING = {
       path: ["general", "autostart"],
       default: false as boolean,
     },
+    auto_stop_meetings: {
+      type: "boolean",
+      path: ["general", "auto_stop_meetings"],
+      default: true as boolean,
+    },
+    auto_start_scheduled_meetings: {
+      type: "boolean",
+      path: ["general", "auto_start_scheduled_meetings"],
+      default: true as boolean,
+    },
     save_recordings: {
       type: "boolean",
       path: ["general", "save_recordings"],
