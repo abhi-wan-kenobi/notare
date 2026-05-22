@@ -16,6 +16,8 @@ import {
 import * as settings from "~/store/tinybase/store/settings";
 import { listenerStore } from "~/store/zustand/listener/instance";
 import { useTabs } from "~/store/zustand/tabs";
+import { parseAutoStopEndedNotificationKey } from "~/stt/auto-stop-notification";
+import { parseBatchCompletedNotificationKey } from "~/stt/batch-completed-notification";
 
 type MainStore = NonNullable<ReturnType<typeof main.UI.useStore>>;
 
@@ -56,6 +58,30 @@ function shouldAutoStartNotificationSession(
 
   const startTime = new Date(String(startedAt)).getTime();
   return !Number.isNaN(startTime) && startTime <= Date.now();
+}
+
+function handleAutoStopEndedNotification(
+  type: "notification_confirm" | "notification_accept",
+  key: string,
+): boolean {
+  const sessionId = parseAutoStopEndedNotificationKey(key);
+  if (!sessionId) {
+    return false;
+  }
+
+  if (type !== "notification_accept") {
+    return true;
+  }
+
+  const listenerState = listenerStore.getState();
+  if (
+    listenerState.live.status === "active" &&
+    listenerState.live.sessionId === sessionId
+  ) {
+    listenerState.stop();
+  }
+
+  return true;
 }
 
 function useUpdaterEvents() {
@@ -143,15 +169,32 @@ function useNotificationEvents() {
           payload.type === "notification_confirm" ||
           payload.type === "notification_accept"
         ) {
+          if (handleAutoStopEndedNotification(payload.type, payload.key)) {
+            return;
+          }
+
           const eventId =
             payload.source?.type === "calendar_event"
               ? payload.source.event_id
               : null;
+          const sourceSessionId =
+            payload.source?.type === "session"
+              ? payload.source.session_id
+              : parseBatchCompletedNotificationKey(payload.key);
           const triggerAppIds =
             payload.source?.type === "mic_detected"
               ? (payload.source.app_ids ?? null)
               : null;
           const currentStore = storeRef.current;
+          if (sourceSessionId) {
+            openNewRef.current({
+              type: "sessions",
+              id: sourceSessionId,
+              state: { view: null, autoStart: null },
+            });
+            return;
+          }
+
           if (!currentStore) {
             pendingAutoStart.current = { eventId, triggerAppIds };
             return;
