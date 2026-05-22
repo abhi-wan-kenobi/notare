@@ -2,7 +2,6 @@ use hypr_api_auth::{AuthContext, AuthState};
 use octocrab::Octocrab;
 use reqwest::Client as HttpClient;
 use serde::Deserialize;
-use sqlx::PgPool;
 use stripe::Client as StripeClient;
 
 use crate::config::SupportConfig;
@@ -11,7 +10,6 @@ use crate::config::SupportConfig;
 pub(crate) struct AppState {
     pub(crate) config: SupportConfig,
     pub(crate) octocrab: Octocrab,
-    pub(crate) _db_pool: PgPool,
     pub(crate) stripe: StripeClient,
     pub(crate) _auth: AuthState,
     pub(crate) http_client: HttpClient,
@@ -19,7 +17,7 @@ pub(crate) struct AppState {
 }
 
 impl AppState {
-    pub(crate) async fn new(config: SupportConfig) -> Self {
+    pub(crate) fn new(config: SupportConfig) -> Self {
         let key = {
             let pem = config.github.github_bot_private_key.replace("\\n", "\n");
             let pem = if pem.starts_with("-----") {
@@ -35,10 +33,6 @@ impl AppState {
             .app(config.github.github_bot_app_id.into(), key)
             .build()
             .expect("failed to build octocrab client");
-
-        let db_pool = PgPool::connect(&config.support_database.support_database_url)
-            .await
-            .expect("failed to connect to Supabase Postgres");
 
         let stripe = StripeClient::new(&config.stripe.stripe_secret_key);
 
@@ -66,7 +60,6 @@ impl AppState {
         Self {
             config,
             octocrab,
-            _db_pool: db_pool,
             stripe,
             _auth: auth,
             http_client: HttpClient::new(),

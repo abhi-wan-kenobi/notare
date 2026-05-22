@@ -32,7 +32,7 @@ pub async fn router(config: SupportConfig) -> Router {
         .with_model_resolver(std::sync::Arc::new(resolver));
     let llm_router = hypr_llm_proxy::router(llm_config);
 
-    let state = AppState::new(config).await;
+    let state = AppState::new(config);
     let mcp = mcp_service(state.clone());
 
     let chatwoot_routes = Router::new()

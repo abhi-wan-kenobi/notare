@@ -24,6 +24,8 @@ use crate::supabase::SupabaseClient;
 
 pub(crate) use error::{RouteError, parse_async_provider};
 
+const MAX_BATCH_AUDIO_BODY_BYTES: usize = 512 * 1024 * 1024;
+
 #[derive(Clone)]
 pub(crate) struct AppState {
     pub config: SttProxyConfig,
@@ -158,7 +160,7 @@ fn make_state(config: SttProxyConfig) -> AppState {
 }
 
 fn with_common_layers(router: Router) -> Router {
-    router.layer(DefaultBodyLimit::max(100 * 1024 * 1024))
+    router.layer(DefaultBodyLimit::max(MAX_BATCH_AUDIO_BODY_BYTES))
 }
 
 pub fn router(config: SttProxyConfig) -> Router {

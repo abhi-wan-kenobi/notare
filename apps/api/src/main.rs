@@ -464,10 +464,11 @@ fn main() -> std::io::Result<()> {
         .build()?
         .block_on(async {
             let addr = SocketAddr::from(([0, 0, 0, 0], env.port));
+            let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+            let app = app().await;
             tracing::info!(addr = %addr, "server_listening");
 
-            let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-            axum::serve(listener, app().await)
+            axum::serve(listener, app)
                 .with_graceful_shutdown(shutdown_signal())
                 .await
                 .unwrap();
