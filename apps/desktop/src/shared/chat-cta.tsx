@@ -10,15 +10,10 @@ export function ChatCTA({
   label?: string;
 }) {
   const { chat } = useShell();
-  const isChatOpen = chat.mode === "RightPanelOpen";
+  const isChatOpen = chat.mode === "FloatingOpen";
 
   const handleClick = () => {
-    if (isChatOpen) {
-      chat.sendEvent({ type: "TOGGLE" });
-      return;
-    }
-
-    chat.sendEvent({ type: "OPEN_RIGHT_PANEL" });
+    chat.sendEvent({ type: "OPEN" });
   };
 
   if (isChatOpen) {

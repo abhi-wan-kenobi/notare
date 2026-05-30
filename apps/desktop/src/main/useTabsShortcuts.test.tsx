@@ -2,7 +2,7 @@ import { cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
-  chatMode: "FloatingClosed" as "FloatingClosed" | "RightPanelOpen",
+  chatMode: "FloatingClosed" as "FloatingClosed" | "FloatingOpen",
   currentTab: null as null | { active: boolean; slotId: string; type: string },
   handlers: new Map<string, (event?: { defaultPrevented: boolean }) => void>(),
   openCurrent: vi.fn(),
@@ -130,6 +130,20 @@ describe("useClassicMainTabsShortcuts", () => {
     expect(hoisted.openCurrent).toHaveBeenCalledWith({ type: "empty" });
   });
 
+  it("returns the escape shortcut action", () => {
+    hoisted.currentTab = {
+      active: true,
+      slotId: "slot-session",
+      type: "sessions",
+    };
+
+    const { result } = renderHook(() => useClassicMainTabsShortcuts());
+
+    result.current.runEscapeShortcut();
+
+    expect(hoisted.openCurrent).toHaveBeenCalledWith({ type: "empty" });
+  });
+
   it("opens the home view even when the editor stops escape propagation", () => {
     hoisted.currentTab = {
       active: true,
@@ -172,8 +186,8 @@ describe("useClassicMainTabsShortcuts", () => {
     expect(hoisted.openCurrent).not.toHaveBeenCalled();
   });
 
-  it("closes the chat panel before going home on escape", () => {
-    hoisted.chatMode = "RightPanelOpen";
+  it("closes the floating chat before going home on escape", () => {
+    hoisted.chatMode = "FloatingOpen";
     hoisted.currentTab = {
       active: true,
       slotId: "slot-session",

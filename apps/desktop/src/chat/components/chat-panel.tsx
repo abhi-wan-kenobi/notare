@@ -1,4 +1,3 @@
-import { platform } from "@tauri-apps/plugin-os";
 import { useCallback } from "react";
 
 import { cn } from "@hypr/utils";
@@ -14,11 +13,16 @@ import { useChatActions } from "~/chat/store/use-chat-actions";
 import { useShell } from "~/contexts/shell";
 import * as main from "~/store/tinybase/store/main";
 
-export function ChatView() {
+export function ChatView({
+  isExpanded = false,
+  onToggleExpanded,
+}: {
+  isExpanded?: boolean;
+  onToggleExpanded?: () => void;
+}) {
   const { chat } = useShell();
   const { groupId, sessionId, setGroupId } = chat;
-  const currentPlatform = platform();
-  const chatPanelShortcutLabel = currentPlatform === "macos" ? "⌘ J" : "Ctrl J";
+  const isFloating = chat.mode === "FloatingOpen";
 
   const { currentSessionId } = useSessionTab();
 
@@ -41,16 +45,24 @@ export function ChatView() {
     <div
       className={cn([
         "flex h-full min-h-0 flex-col overflow-hidden",
-        chat.mode !== "RightPanelOpen" && "bg-stone-50",
+        isFloating ? "bg-stone-800 text-white" : "bg-stone-50",
       ])}
     >
-      <div className="flex h-10 shrink-0 items-center border-b border-neutral-100 pr-0 pl-0">
+      <div
+        className={cn([
+          "flex shrink-0 items-center pr-0 pl-0",
+          isFloating
+            ? "h-11 border-b border-stone-700/80"
+            : "h-10 border-b border-neutral-100",
+        ])}
+      >
         <ChatToolbarControls
           currentChatGroupId={groupId}
+          isExpanded={isExpanded}
           onNewChat={chat.startNewChat}
           onSelectChat={chat.selectChat}
-          onCloseChat={() => chat.sendEvent({ type: "CLOSE" })}
-          shortcutLabel={chatPanelShortcutLabel}
+          onToggleExpanded={onToggleExpanded}
+          surface={isFloating ? "dark" : "light"}
         />
       </div>
       {user_id && (

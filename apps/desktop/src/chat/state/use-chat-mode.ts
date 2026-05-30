@@ -18,7 +18,9 @@ export function useChatMode() {
 
   useHotkeys(
     "mod+j",
-    () => transitionChatMode({ type: "TOGGLE" }),
+    () => {
+      transitionChatMode({ type: "TOGGLE" });
+    },
     {
       preventDefault: true,
       enableOnFormTags: true,

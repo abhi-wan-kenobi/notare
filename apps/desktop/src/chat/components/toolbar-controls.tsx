@@ -1,4 +1,10 @@
-import { ChevronDown, MessageCircle, Plus } from "lucide-react";
+import {
+  ChevronDown,
+  Maximize2,
+  MessageCircle,
+  Minimize2,
+  Plus,
+} from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@hypr/ui/components/ui/button";
@@ -19,53 +25,73 @@ import * as main from "~/store/tinybase/store/main";
 
 export function ChatToolbarControls({
   currentChatGroupId,
-  onCloseChat,
+  isExpanded = false,
   onNewChat,
   onSelectChat,
-  shortcutLabel,
+  onToggleExpanded,
+  surface = "light",
 }: {
   currentChatGroupId: string | undefined;
-  onCloseChat: () => void;
+  isExpanded?: boolean;
   onNewChat: () => void;
   onSelectChat: (chatGroupId: string) => void;
-  shortcutLabel?: string;
+  onToggleExpanded?: () => void;
+  surface?: "light" | "dark";
 }) {
+  const isDark = surface === "dark";
+
   return (
-    <div className="relative flex h-full w-full min-w-0 items-center">
-      <div className="flex min-w-0 items-center gap-1 pr-8">
+    <div
+      className={cn([
+        "flex h-full w-full min-w-0 items-center gap-2",
+        isDark ? "px-3" : "px-0",
+      ])}
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-1">
         <ChatGroups
           currentChatGroupId={currentChatGroupId}
           onSelectChat={onSelectChat}
+          surface={surface}
         />
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
         <ChatActionButton
           icon={<Plus size={16} />}
           onClick={onNewChat}
           title="New chat"
+          className={isDark ? darkToolbarButtonClassName : undefined}
+        />
+        <ChatActionButton
+          icon={isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          onClick={onToggleExpanded ?? (() => {})}
+          title={isExpanded ? "Collapse chat" : "Expand chat"}
+          className={cn([
+            isDark
+              ? [
+                  darkToolbarButtonClassName,
+                  "bg-white/7 text-white hover:bg-white/10",
+                ]
+              : "bg-neutral-100 text-neutral-900 hover:bg-neutral-100",
+          ])}
         />
       </div>
-      <ChatActionButton
-        icon={<MessageCircle size={16} />}
-        onClick={onCloseChat}
-        title="Close chat"
-        shortcutLabel={shortcutLabel}
-        className="absolute top-1/2 right-0 -translate-y-1/2 bg-neutral-100 text-neutral-900 hover:bg-neutral-100"
-      />
     </div>
   );
 }
+
+const darkToolbarButtonClassName =
+  "size-8 rounded-lg text-stone-300 hover:bg-white/7 hover:text-white";
 
 function ChatActionButton({
   className,
   icon,
   title,
   onClick,
-  shortcutLabel,
 }: {
   className?: string;
   icon: React.ReactNode;
   title: string;
   onClick: () => void;
-  shortcutLabel?: string;
 }) {
   return (
     <Tooltip>
@@ -80,14 +106,7 @@ function ChatActionButton({
           {icon}
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="flex items-center gap-2">
-        <span>{title}</span>
-        {shortcutLabel && (
-          <span className="rounded border border-neutral-200 bg-neutral-50 px-1 py-0.5 text-[10px] text-neutral-500">
-            {shortcutLabel}
-          </span>
-        )}
-      </TooltipContent>
+      <TooltipContent side="bottom">{title}</TooltipContent>
     </Tooltip>
   );
 }
@@ -95,11 +114,14 @@ function ChatActionButton({
 function ChatGroups({
   currentChatGroupId,
   onSelectChat,
+  surface = "light",
 }: {
   currentChatGroupId: string | undefined;
   onSelectChat: (chatGroupId: string) => void;
+  surface?: "light" | "dark";
 }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const isDark = surface === "dark";
 
   const currentChatTitle = main.UI.useCell(
     "chat_groups",
@@ -122,16 +144,26 @@ function ChatGroups({
         <Button
           variant="ghost"
           className={cn([
-            "group -ml-2 flex h-8 max-w-64 min-w-0 justify-start gap-2 px-2 py-0",
-            "text-neutral-700",
+            "group flex h-8 min-w-0 justify-start gap-2 px-2 py-0",
+            isDark
+              ? "h-9 max-w-full flex-1 rounded-lg px-2.5 text-stone-100 hover:bg-white/7 hover:text-white data-[state=open]:bg-white/7"
+              : "text-neutral-700",
           ])}
         >
-          <h3 className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-700">
+          <h3
+            className={cn([
+              "min-w-0 flex-1 truncate font-medium",
+              isDark
+                ? "text-[15px] text-stone-100"
+                : "text-xs text-neutral-700",
+            ])}
+          >
             {currentChatTitle || "Ask Anarlog AI anything"}
           </h3>
           <ChevronDown
             className={cn([
-              "h-3.5 w-3.5 shrink-0 text-neutral-400 transition-transform duration-200",
+              "h-3.5 w-3.5 shrink-0 transition-transform duration-200",
+              isDark ? "text-stone-300" : "text-neutral-400",
               isDropdownOpen && "rotate-180",
             ])}
           />
