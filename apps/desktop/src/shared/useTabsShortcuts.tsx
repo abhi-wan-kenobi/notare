@@ -9,6 +9,7 @@ import { useTabs } from "~/store/zustand/tabs";
 import { useListener } from "~/stt/contexts";
 
 export function useMainTabsShortcuts({ onModT }: { onModT: () => void }) {
+  const runEscapeShortcut = useMainEscapeShortcutAction();
   const {
     tabs,
     currentTab,
@@ -18,7 +19,6 @@ export function useMainTabsShortcuts({ onModT }: { onModT: () => void }) {
     selectPrev,
     restoreLastClosedTab,
     openNew,
-    openCurrent,
     unpin,
     setPendingCloseConfirmationTab,
   } = useTabs(
@@ -31,7 +31,6 @@ export function useMainTabsShortcuts({ onModT }: { onModT: () => void }) {
       selectPrev: state.selectPrev,
       restoreLastClosedTab: state.restoreLastClosedTab,
       openNew: state.openNew,
-      openCurrent: state.openCurrent,
       unpin: state.unpin,
       setPendingCloseConfirmationTab: state.setPendingCloseConfirmationTab,
     })),
@@ -44,29 +43,6 @@ export function useMainTabsShortcuts({ onModT }: { onModT: () => void }) {
   const newNote = useNewNote();
   const newNoteCurrent = useNewNote({ behavior: "current" });
 
-  const openHome = useCallback(() => {
-    if (currentTab?.type === "onboarding" || currentTab?.type === "empty") {
-      return;
-    }
-
-    const existingHomeTab = tabs.find((tab) => tab.type === "empty");
-    if (existingHomeTab) {
-      select(existingHomeTab);
-      return;
-    }
-
-    openCurrent({ type: "empty" });
-  }, [currentTab, openCurrent, select, tabs]);
-
-  const runEscapeShortcut = useCallback(() => {
-    if (chat.mode === "FloatingOpen") {
-      chat.sendEvent({ type: "CLOSE" });
-      return;
-    }
-
-    openHome();
-  }, [chat, openHome]);
-
   const escapeShortcutRef = useRef(runEscapeShortcut);
   escapeShortcutRef.current = runEscapeShortcut;
 
@@ -76,8 +52,18 @@ export function useMainTabsShortcuts({ onModT }: { onModT: () => void }) {
         return;
       }
 
+      const fromProseMirrorEditor = isFromProseMirrorEditor(event.target);
+      const hadEditorEscapeConsumer =
+        fromProseMirrorEditor &&
+        document.querySelector("[data-editor-escape-consumer]") !== null;
+
       window.setTimeout(() => {
-        if (event.defaultPrevented) {
+        if (
+          shouldSkipEscapeShortcut(event, {
+            fromProseMirrorEditor,
+            hadEditorEscapeConsumer,
+          })
+        ) {
           return;
         }
 
@@ -233,6 +219,53 @@ export function useMainTabsShortcuts({ onModT }: { onModT: () => void }) {
   );
 
   return { runEscapeShortcut };
+}
+
+export function useMainEscapeShortcutAction() {
+  const { chat } = useShell();
+
+  return useCallback(() => {
+    if (chat.mode === "FloatingOpen") {
+      chat.sendEvent({ type: "CLOSE" });
+      return;
+    }
+
+    const { tabs, currentTab, openCurrent, select } = useTabs.getState();
+
+    if (currentTab?.type === "onboarding" || currentTab?.type === "empty") {
+      return;
+    }
+
+    const existingHomeTab = tabs.find((tab) => tab.type === "empty");
+    if (existingHomeTab) {
+      select(existingHomeTab);
+      return;
+    }
+
+    openCurrent({ type: "empty" });
+  }, [chat.mode, chat.sendEvent]);
+}
+
+function shouldSkipEscapeShortcut(
+  event: KeyboardEvent,
+  {
+    fromProseMirrorEditor,
+    hadEditorEscapeConsumer,
+  }: { fromProseMirrorEditor: boolean; hadEditorEscapeConsumer: boolean },
+) {
+  if (!event.defaultPrevented) {
+    return false;
+  }
+
+  if (!fromProseMirrorEditor) {
+    return true;
+  }
+
+  return hadEditorEscapeConsumer;
+}
+
+function isFromProseMirrorEditor(target: EventTarget | null) {
+  return target instanceof Element && target.closest(".ProseMirror") !== null;
 }
 
 function isPersistentChatInputFocused(

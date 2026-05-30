@@ -40,38 +40,32 @@ vi.mock("~/shared/useNewNote", () => ({
   useNewNoteAndListen: () => vi.fn(),
 }));
 
-vi.mock("~/store/zustand/tabs", () => ({
-  useTabs: (
-    selector: (state: {
-      clearSelection: () => void;
-      close: () => void;
-      currentTab: typeof hoisted.currentTab;
-      openCurrent: typeof hoisted.openCurrent;
-      openNew: typeof hoisted.openNew;
-      restoreLastClosedTab: () => void;
-      select: typeof hoisted.select;
-      selectNext: () => void;
-      selectPrev: () => void;
-      setPendingCloseConfirmationTab: () => void;
-      tabs: typeof hoisted.tabs;
-      unpin: () => void;
-    }) => unknown,
-  ) =>
-    selector({
-      tabs: hoisted.tabs,
-      currentTab: hoisted.currentTab,
-      clearSelection: vi.fn(),
-      close: vi.fn(),
-      select: hoisted.select,
-      selectNext: vi.fn(),
-      selectPrev: vi.fn(),
-      restoreLastClosedTab: vi.fn(),
-      openNew: hoisted.openNew,
-      openCurrent: hoisted.openCurrent,
-      unpin: vi.fn(),
-      setPendingCloseConfirmationTab: vi.fn(),
-    }),
-}));
+vi.mock("~/store/zustand/tabs", () => {
+  const getTabsState = () => ({
+    tabs: hoisted.tabs,
+    currentTab: hoisted.currentTab,
+    clearSelection: vi.fn(),
+    close: vi.fn(),
+    select: hoisted.select,
+    selectNext: vi.fn(),
+    selectPrev: vi.fn(),
+    restoreLastClosedTab: vi.fn(),
+    openNew: hoisted.openNew,
+    openCurrent: hoisted.openCurrent,
+    unpin: vi.fn(),
+    setPendingCloseConfirmationTab: vi.fn(),
+  });
+
+  const useTabs = ((
+    selector: (state: ReturnType<typeof getTabsState>) => unknown,
+  ) => selector(getTabsState())) as ((
+    selector: (state: ReturnType<typeof getTabsState>) => unknown,
+  ) => unknown) & { getState: typeof getTabsState };
+
+  useTabs.getState = getTabsState;
+
+  return { useTabs };
+});
 
 vi.mock("~/stt/contexts", () => ({
   useListener: (
@@ -144,6 +138,26 @@ describe("useClassicMainTabsShortcuts", () => {
     expect(hoisted.openCurrent).toHaveBeenCalledWith({ type: "empty" });
   });
 
+  it("uses the latest tab state when the returned escape action runs", () => {
+    hoisted.currentTab = {
+      active: true,
+      slotId: "slot-home",
+      type: "empty",
+    };
+
+    const { result } = renderHook(() => useClassicMainTabsShortcuts());
+
+    hoisted.currentTab = {
+      active: true,
+      slotId: "slot-session",
+      type: "sessions",
+    };
+
+    result.current.runEscapeShortcut();
+
+    expect(hoisted.openCurrent).toHaveBeenCalledWith({ type: "empty" });
+  });
+
   it("opens the home view even when the editor stops escape propagation", () => {
     hoisted.currentTab = {
       active: true,
@@ -162,6 +176,134 @@ describe("useClassicMainTabsShortcuts", () => {
     editor.remove();
 
     expect(hoisted.openCurrent).toHaveBeenCalledWith({ type: "empty" });
+  });
+
+  it("opens the home view when the editor prevents default escape handling", () => {
+    hoisted.currentTab = {
+      active: true,
+      slotId: "slot-session",
+      type: "sessions",
+    };
+    const editor = document.createElement("div");
+    editor.className = "ProseMirror";
+    editor.contentEditable = "true";
+    editor.addEventListener("keydown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    document.body.append(editor);
+
+    renderHook(() => useClassicMainTabsShortcuts());
+
+    dispatchEscape(editor);
+    vi.runOnlyPendingTimers();
+    editor.remove();
+
+    expect(hoisted.openCurrent).toHaveBeenCalledWith({ type: "empty" });
+  });
+
+  it("does not rerun escape when a focused target handles it directly", () => {
+    hoisted.currentTab = {
+      active: true,
+      slotId: "slot-session",
+      type: "sessions",
+    };
+    const { result } = renderHook(() => useClassicMainTabsShortcuts());
+    const target = document.createElement("input");
+    target.addEventListener("keydown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      result.current.runEscapeShortcut();
+    });
+    document.body.append(target);
+
+    dispatchEscape(target);
+    vi.runOnlyPendingTimers();
+    target.remove();
+
+    expect(hoisted.openCurrent).toHaveBeenCalledWith({ type: "empty" });
+    expect(hoisted.openCurrent).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not duplicate chat close when a focused target handles escape directly", () => {
+    hoisted.chatMode = "FloatingOpen";
+    hoisted.currentTab = {
+      active: true,
+      slotId: "slot-session",
+      type: "sessions",
+    };
+    const { result } = renderHook(() => useClassicMainTabsShortcuts());
+    const target = document.createElement("input");
+    target.addEventListener("keydown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      result.current.runEscapeShortcut();
+    });
+    document.body.append(target);
+
+    dispatchEscape(target);
+    vi.runOnlyPendingTimers();
+    target.remove();
+
+    expect(hoisted.sendEvent).toHaveBeenCalledWith({ type: "CLOSE" });
+    expect(hoisted.sendEvent).toHaveBeenCalledTimes(1);
+    expect(hoisted.openCurrent).not.toHaveBeenCalled();
+  });
+
+  it("lets editor escape consumers handle the key before opening home", () => {
+    hoisted.currentTab = {
+      active: true,
+      slotId: "slot-session",
+      type: "sessions",
+    };
+    const editor = document.createElement("div");
+    editor.className = "ProseMirror";
+    editor.contentEditable = "true";
+    editor.addEventListener("keydown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    const menu = document.createElement("div");
+    menu.dataset.editorEscapeConsumer = "true";
+    document.body.append(editor, menu);
+
+    renderHook(() => useClassicMainTabsShortcuts());
+
+    dispatchEscape(editor);
+    vi.runOnlyPendingTimers();
+    editor.remove();
+    menu.remove();
+
+    expect(hoisted.openCurrent).not.toHaveBeenCalled();
+    expect(hoisted.select).not.toHaveBeenCalled();
+  });
+
+  it("does not open home when an editor escape consumer unmounts before the shortcut runs", () => {
+    hoisted.currentTab = {
+      active: true,
+      slotId: "slot-session",
+      type: "sessions",
+    };
+    const editor = document.createElement("div");
+    editor.className = "ProseMirror";
+    editor.contentEditable = "true";
+    const menu = document.createElement("div");
+    menu.dataset.editorEscapeConsumer = "true";
+    editor.addEventListener("keydown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      menu.remove();
+    });
+    document.body.append(editor, menu);
+
+    renderHook(() => useClassicMainTabsShortcuts());
+
+    dispatchEscape(editor);
+    vi.runOnlyPendingTimers();
+    editor.remove();
+
+    expect(hoisted.openCurrent).not.toHaveBeenCalled();
+    expect(hoisted.select).not.toHaveBeenCalled();
   });
 
   it("selects an existing home tab on escape", () => {
