@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-30 20:26+0900\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: ro\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/settings/general/spoken-languages.tsx:177
+msgid "Add language"
+msgstr "Adăugați limba"
+
+#: src/settings/general/spoken-languages.tsx:175
+msgid "Add spoken language"
+msgstr "Adăugați limba vorbită"
+
+#: src/settings/general/spoken-languages.tsx:116
+msgid "Additional spoken languages"
+msgstr "Limbi vorbite suplimentare"
+
+#: src/settings/general/index.tsx:151
+msgid "Always ready without manually launching."
+msgstr "Întotdeauna gata fără lansare manuală."
+
+#: src/settings/general/app-settings.tsx:33
+msgid "App"
+msgstr "Aplicație"
+
+#: src/settings/general/index.tsx:158
+msgid "Automatically start listening when an event-backed note reaches its scheduled start time."
+msgstr "Începe automat ascultarea când o notă susținută de un eveniment atinge ora de începere programată."
+
+#: src/settings/general/index.tsx:168
+msgid "Automatically stop listening when the meeting app releases the microphone."
+msgstr "Opriți automat ascultarea când aplicația pentru întâlniri eliberează microfonul."
+
+#: src/settings/general/index.tsx:264
+msgid "Data"
+msgstr "Date"
+
+#: src/settings/general/index.tsx:213
+msgid "Language & Region"
+msgstr "Limbă și regiune"
+
+#: src/settings/general/main-language.tsx:53
+msgid "Language for summaries, chats, and AI-generated responses"
+msgstr "Limba pentru rezumate, chaturi și răspunsuri generate de AI"
+
+#: src/settings/general/main-language.tsx:50
+msgid "Main language"
+msgstr "Limba principală"
+
+#: src/settings/general/app-settings.tsx:59
+msgid "Meetings"
+msgstr "Întâlniri"
+
+#: src/settings/general/main-language.tsx:64
+#: src/settings/general/spoken-languages.tsx:218
+msgid "No matching languages found"
+msgstr "Nu s-au găsit limbi care se potrivesc"
+
+#: src/settings/general/index.tsx:276
+msgid "Notifications"
+msgstr "Notificări"
+
+#: src/settings/general/main-language.tsx:63
+msgid "Search language..."
+msgstr "Căutați limba..."
+
+#: src/settings/general/main-language.tsx:62
+msgid "Select language"
+msgstr "Selectați limba"
+
+#: src/settings/general/index.tsx:192
+msgid "Send anonymous usage analytics to help improve Anarlog."
+msgstr "Trimiteți analize anonime de utilizare pentru a ajuta la îmbunătățirea Anarlog."
+
+#: src/settings/index.tsx:36
+msgid "Settings"
+msgstr "Setări"
+
+#: src/settings/general/index.tsx:191
+msgid "Share usage data"
+msgstr "Partajați datele de utilizare"
+
+#: src/settings/general/index.tsx:174
+msgid "Show floating bar"
+msgstr "Afișați bara plutitoare"
+
+#: src/settings/general/index.tsx:175
+msgid "Show the compact floating control while listening."
+msgstr "Afișați controlul flotant compact în timp ce ascultați."
+
+#: src/settings/general/index.tsx:181
+msgid "Show timeline in sidebar"
+msgstr "Afișați cronologia în bara laterală"
+
+#: src/settings/general/index.tsx:150
+msgid "Start Anarlog at login"
+msgstr "Porniți Anarlog la conectare"
+
+#: src/settings/general/index.tsx:157
+msgid "Start when meeting begins"
+msgstr "Începe când începe întâlnirea"
+
+#: src/settings/general/index.tsx:167
+msgid "Stop when meeting ends"
+msgstr "Opriți când întâlnirea se încheie"
+
+#: src/settings/general/spoken-languages.tsx:119
+msgid "The main language is always included for transcription"
+msgstr "Limba principală este întotdeauna inclusă pentru transcriere"
+
+#: src/settings/general/index.tsx:182
+msgid "Use the left sidebar timeline instead of the top timeline."
+msgstr "Folosiți cronologia din bara laterală din stânga în loc de cronologia de sus."

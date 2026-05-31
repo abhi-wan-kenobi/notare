@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-30 20:26+0900\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: uz\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/settings/general/spoken-languages.tsx:177
+msgid "Add language"
+msgstr "Til qo'shish"
+
+#: src/settings/general/spoken-languages.tsx:175
+msgid "Add spoken language"
+msgstr "Og'zaki til qo'shing"
+
+#: src/settings/general/spoken-languages.tsx:116
+msgid "Additional spoken languages"
+msgstr "Qo'shimcha og'zaki tillar"
+
+#: src/settings/general/index.tsx:151
+msgid "Always ready without manually launching."
+msgstr "Qo'lda ishga tushirmasdan ham doim tayyor."
+
+#: src/settings/general/app-settings.tsx:33
+msgid "App"
+msgstr "Ilova"
+
+#: src/settings/general/index.tsx:158
+msgid "Automatically start listening when an event-backed note reaches its scheduled start time."
+msgstr "Tadbirga asoslangan eslatma belgilangan boshlanish vaqtiga yetganda, avtomatik ravishda tinglashni boshlang."
+
+#: src/settings/general/index.tsx:168
+msgid "Automatically stop listening when the meeting app releases the microphone."
+msgstr "Uchrashuv ilovasi mikrofonni qoʻyib yuborganida tinglashni avtomatik ravishda toʻxtating."
+
+#: src/settings/general/index.tsx:264
+msgid "Data"
+msgstr "Ma'lumotlar"
+
+#: src/settings/general/index.tsx:213
+msgid "Language & Region"
+msgstr "Til va mintaqa"
+
+#: src/settings/general/main-language.tsx:53
+msgid "Language for summaries, chats, and AI-generated responses"
+msgstr "Xulosalar, chatlar va AI tomonidan yaratilgan javoblar uchun til"
+
+#: src/settings/general/main-language.tsx:50
+msgid "Main language"
+msgstr "Asosiy til"
+
+#: src/settings/general/app-settings.tsx:59
+msgid "Meetings"
+msgstr "Uchrashuvlar"
+
+#: src/settings/general/main-language.tsx:64
+#: src/settings/general/spoken-languages.tsx:218
+msgid "No matching languages found"
+msgstr "Mos tillar topilmadi"
+
+#: src/settings/general/index.tsx:276
+msgid "Notifications"
+msgstr "Bildirishnomalar"
+
+#: src/settings/general/main-language.tsx:63
+msgid "Search language..."
+msgstr "Tilni qidirish..."
+
+#: src/settings/general/main-language.tsx:62
+msgid "Select language"
+msgstr "Tilni tanlang"
+
+#: src/settings/general/index.tsx:192
+msgid "Send anonymous usage analytics to help improve Anarlog."
+msgstr "Anarlogni yaxshilashga yordam berish uchun anonim foydalanish tahlilini yuboring."
+
+#: src/settings/index.tsx:36
+msgid "Settings"
+msgstr "Sozlamalar"
+
+#: src/settings/general/index.tsx:191
+msgid "Share usage data"
+msgstr "Foydalanish ma'lumotlarini baham ko'rish"
+
+#: src/settings/general/index.tsx:174
+msgid "Show floating bar"
+msgstr "Suzuvchi satrni ko'rsatish"
+
+#: src/settings/general/index.tsx:175
+msgid "Show the compact floating control while listening."
+msgstr "Tinglash paytida ixcham suzuvchi boshqaruvni ko'rsating."
+
+#: src/settings/general/index.tsx:181
+msgid "Show timeline in sidebar"
+msgstr "Yon panelda vaqt jadvalini ko'rsatish"
+
+#: src/settings/general/index.tsx:150
+msgid "Start Anarlog at login"
+msgstr "Kirish vaqtida Anarlogni ishga tushiring"
+
+#: src/settings/general/index.tsx:157
+msgid "Start when meeting begins"
+msgstr "Uchrashuv boshlanganda boshlang"
+
+#: src/settings/general/index.tsx:167
+msgid "Stop when meeting ends"
+msgstr "Uchrashuv tugashi bilan toʻxtating"
+
+#: src/settings/general/spoken-languages.tsx:119
+msgid "The main language is always included for transcription"
+msgstr "Asosiy til har doim transkripsiya uchun kiritilgan"
+
+#: src/settings/general/index.tsx:182
+msgid "Use the left sidebar timeline instead of the top timeline."
+msgstr "Yuqori vaqt jadvali oʻrniga chap yon paneldagi vaqt jadvalidan foydalaning."

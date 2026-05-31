@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-30 20:26+0900\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: cs\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/settings/general/spoken-languages.tsx:177
+msgid "Add language"
+msgstr "Přidat jazyk"
+
+#: src/settings/general/spoken-languages.tsx:175
+msgid "Add spoken language"
+msgstr "Přidat mluvený jazyk"
+
+#: src/settings/general/spoken-languages.tsx:116
+msgid "Additional spoken languages"
+msgstr "Další mluvené jazyky"
+
+#: src/settings/general/index.tsx:151
+msgid "Always ready without manually launching."
+msgstr "Vždy připraven bez ručního spouštění."
+
+#: src/settings/general/app-settings.tsx:33
+msgid "App"
+msgstr "Aplikace"
+
+#: src/settings/general/index.tsx:158
+msgid "Automatically start listening when an event-backed note reaches its scheduled start time."
+msgstr "Automaticky začít poslouchat, když poznámka podporovaná událostí dosáhne svého plánovaného času zahájení."
+
+#: src/settings/general/index.tsx:168
+msgid "Automatically stop listening when the meeting app releases the microphone."
+msgstr "Automaticky přestat poslouchat, když schůzková aplikace uvolní mikrofon."
+
+#: src/settings/general/index.tsx:264
+msgid "Data"
+msgstr "Data"
+
+#: src/settings/general/index.tsx:213
+msgid "Language & Region"
+msgstr "Jazyk a oblast"
+
+#: src/settings/general/main-language.tsx:53
+msgid "Language for summaries, chats, and AI-generated responses"
+msgstr "Jazyk pro shrnutí, chaty a odpovědi generované umělou inteligencí"
+
+#: src/settings/general/main-language.tsx:50
+msgid "Main language"
+msgstr "Hlavní jazyk"
+
+#: src/settings/general/app-settings.tsx:59
+msgid "Meetings"
+msgstr "Schůzky"
+
+#: src/settings/general/main-language.tsx:64
+#: src/settings/general/spoken-languages.tsx:218
+msgid "No matching languages found"
+msgstr "Nebyly nalezeny žádné odpovídající jazyky"
+
+#: src/settings/general/index.tsx:276
+msgid "Notifications"
+msgstr "Oznámení"
+
+#: src/settings/general/main-language.tsx:63
+msgid "Search language..."
+msgstr "Jazyk vyhledávání..."
+
+#: src/settings/general/main-language.tsx:62
+msgid "Select language"
+msgstr "Vyberte jazyk"
+
+#: src/settings/general/index.tsx:192
+msgid "Send anonymous usage analytics to help improve Anarlog."
+msgstr "Posílejte anonymní analýzy využití, které pomohou zlepšit Anarlog."
+
+#: src/settings/index.tsx:36
+msgid "Settings"
+msgstr "Nastavení"
+
+#: src/settings/general/index.tsx:191
+msgid "Share usage data"
+msgstr "Sdílet údaje o využití"
+
+#: src/settings/general/index.tsx:174
+msgid "Show floating bar"
+msgstr "Zobrazit plovoucí lištu"
+
+#: src/settings/general/index.tsx:175
+msgid "Show the compact floating control while listening."
+msgstr "Při poslechu ukažte kompaktní plovoucí ovládání."
+
+#: src/settings/general/index.tsx:181
+msgid "Show timeline in sidebar"
+msgstr "Zobrazit časovou osu na postranním panelu"
+
+#: src/settings/general/index.tsx:150
+msgid "Start Anarlog at login"
+msgstr "Spustit Anarlog při přihlášení"
+
+#: src/settings/general/index.tsx:157
+msgid "Start when meeting begins"
+msgstr "Začít při zahájení schůzky"
+
+#: src/settings/general/index.tsx:167
+msgid "Stop when meeting ends"
+msgstr "Zastavit, když schůzka skončí"
+
+#: src/settings/general/spoken-languages.tsx:119
+msgid "The main language is always included for transcription"
+msgstr "Pro přepis je vždy zahrnut hlavní jazyk"
+
+#: src/settings/general/index.tsx:182
+msgid "Use the left sidebar timeline instead of the top timeline."
+msgstr "Namísto horní časové osy použijte levou časovou osu."

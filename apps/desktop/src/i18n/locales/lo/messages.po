@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-30 20:26+0900\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: lo\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/settings/general/spoken-languages.tsx:177
+msgid "Add language"
+msgstr "ເພີ່ມພາສາ"
+
+#: src/settings/general/spoken-languages.tsx:175
+msgid "Add spoken language"
+msgstr "ເພີ່ມພາສາເວົ້າ"
+
+#: src/settings/general/spoken-languages.tsx:116
+msgid "Additional spoken languages"
+msgstr "ພາສາເວົ້າເພີ່ມເຕີມ"
+
+#: src/settings/general/index.tsx:151
+msgid "Always ready without manually launching."
+msgstr "ພ້ອມສະເໝີໂດຍບໍ່ມີການເປີດດ້ວຍຕົນເອງ."
+
+#: src/settings/general/app-settings.tsx:33
+msgid "App"
+msgstr "ແອັບ"
+
+#: src/settings/general/index.tsx:158
+msgid "Automatically start listening when an event-backed note reaches its scheduled start time."
+msgstr "ເລີ່ມຟັງອັດຕະໂນມັດເມື່ອບັນທຶກເຫດການທີ່ຮອງຮັບຮອດເວລາເລີ່ມຕົ້ນທີ່ກຳນົດໄວ້."
+
+#: src/settings/general/index.tsx:168
+msgid "Automatically stop listening when the meeting app releases the microphone."
+msgstr "ຢຸດຟັງອັດຕະໂນມັດເມື່ອແອັບປະຊຸມປ່ອຍໄມໂຄຣໂຟນ."
+
+#: src/settings/general/index.tsx:264
+msgid "Data"
+msgstr "ຂໍ້ມູນ"
+
+#: src/settings/general/index.tsx:213
+msgid "Language & Region"
+msgstr "ພາສາ ແລະພາກພື້ນ"
+
+#: src/settings/general/main-language.tsx:53
+msgid "Language for summaries, chats, and AI-generated responses"
+msgstr "ພາສາສຳລັບບົດສະຫຼຸບ, ການສົນທະນາ ແລະຄຳຕອບທີ່ສ້າງຂຶ້ນໂດຍ AI"
+
+#: src/settings/general/main-language.tsx:50
+msgid "Main language"
+msgstr "ພາສາຫຼັກ"
+
+#: src/settings/general/app-settings.tsx:59
+msgid "Meetings"
+msgstr "ການປະຊຸມ"
+
+#: src/settings/general/main-language.tsx:64
+#: src/settings/general/spoken-languages.tsx:218
+msgid "No matching languages found"
+msgstr "ບໍ່ພົບພາສາທີ່ກົງກັນ"
+
+#: src/settings/general/index.tsx:276
+msgid "Notifications"
+msgstr "ການແຈ້ງເຕືອນ"
+
+#: src/settings/general/main-language.tsx:63
+msgid "Search language..."
+msgstr "ພາສາຄົ້ນຫາ..."
+
+#: src/settings/general/main-language.tsx:62
+msgid "Select language"
+msgstr "ເລືອກພາສາ"
+
+#: src/settings/general/index.tsx:192
+msgid "Send anonymous usage analytics to help improve Anarlog."
+msgstr "ສົ່ງການວິເຄາະການນຳໃຊ້ທີ່ບໍ່ເປີດເຜີຍຊື່ເພື່ອຊ່ວຍປັບປຸງ Anarlog."
+
+#: src/settings/index.tsx:36
+msgid "Settings"
+msgstr "ການຕັ້ງຄ່າ"
+
+#: src/settings/general/index.tsx:191
+msgid "Share usage data"
+msgstr "ແບ່ງປັນຂໍ້ມູນການນຳໃຊ້"
+
+#: src/settings/general/index.tsx:174
+msgid "Show floating bar"
+msgstr "ສະແດງແຖບເລື່ອນ"
+
+#: src/settings/general/index.tsx:175
+msgid "Show the compact floating control while listening."
+msgstr "ສະແດງການຄວບຄຸມການລອຍຕົວແບບກະທັດຮັດໃນຂະນະທີ່ຟັງ."
+
+#: src/settings/general/index.tsx:181
+msgid "Show timeline in sidebar"
+msgstr "ສະແດງທາມລາຍໃນແຖບດ້ານຂ້າງ"
+
+#: src/settings/general/index.tsx:150
+msgid "Start Anarlog at login"
+msgstr "ເລີ່ມ​ຕົ້ນ​ອະນາ​ລັອກ​ທີ່​ເຂົ້າ​ສູ່​ລະ​ບົບ"
+
+#: src/settings/general/index.tsx:157
+msgid "Start when meeting begins"
+msgstr "ເລີ່ມເມື່ອການປະຊຸມເລີ່ມຕົ້ນ"
+
+#: src/settings/general/index.tsx:167
+msgid "Stop when meeting ends"
+msgstr "ຢຸດເມື່ອການປະຊຸມຈົບລົງ"
+
+#: src/settings/general/spoken-languages.tsx:119
+msgid "The main language is always included for transcription"
+msgstr "ພາສາຫຼັກແມ່ນລວມເຂົ້າກັບການຖອດຂໍ້ຄວາມສະເໝີ"
+
+#: src/settings/general/index.tsx:182
+msgid "Use the left sidebar timeline instead of the top timeline."
+msgstr "ໃຊ້ທາມລາຍແຖບດ້ານຊ້າຍແທນທາມລາຍເທິງສຸດ."

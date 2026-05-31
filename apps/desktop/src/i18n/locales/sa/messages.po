@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-30 20:26+0900\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: sa\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/settings/general/spoken-languages.tsx:177
+msgid "Add language"
+msgstr "भाषा योजयतु"
+
+#: src/settings/general/spoken-languages.tsx:175
+msgid "Add spoken language"
+msgstr "भाषितभाषा योजयतु"
+
+#: src/settings/general/spoken-languages.tsx:116
+msgid "Additional spoken languages"
+msgstr "अतिरिक्तभाष्यभाषा"
+
+#: src/settings/general/index.tsx:151
+msgid "Always ready without manually launching."
+msgstr "हस्तेन प्रक्षेपणं विना सर्वदा सज्जम्।"
+
+#: src/settings/general/app-settings.tsx:33
+msgid "App"
+msgstr "अनुप्रयोग"
+
+#: src/settings/general/index.tsx:158
+msgid "Automatically start listening when an event-backed note reaches its scheduled start time."
+msgstr "यदा घटना-समर्थित-टिप्पणी स्वस्य निर्धारित-प्रारम्भसमयं प्राप्नोति तदा स्वयमेव श्रोतुं आरभत ।"
+
+#: src/settings/general/index.tsx:168
+msgid "Automatically stop listening when the meeting app releases the microphone."
+msgstr "यदा सभा-अनुप्रयोगः माइक्रोफोनं मुक्तं करोति तदा स्वयमेव श्रवणं स्थगयति ।"
+
+#: src/settings/general/index.tsx:264
+msgid "Data"
+msgstr "दत्तांश"
+
+#: src/settings/general/index.tsx:213
+msgid "Language & Region"
+msgstr "भाषा एवं क्षेत्र"
+
+#: src/settings/general/main-language.tsx:53
+msgid "Language for summaries, chats, and AI-generated responses"
+msgstr "सारांशानां, गपशपानां, एआइ-जनितप्रतिसादानां च भाषा"
+
+#: src/settings/general/main-language.tsx:50
+msgid "Main language"
+msgstr "मुख्यभाषा"
+
+#: src/settings/general/app-settings.tsx:59
+msgid "Meetings"
+msgstr "समागमाः"
+
+#: src/settings/general/main-language.tsx:64
+#: src/settings/general/spoken-languages.tsx:218
+msgid "No matching languages found"
+msgstr "न सङ्गतभाषा लभ्यते"
+
+#: src/settings/general/index.tsx:276
+msgid "Notifications"
+msgstr "सूचना"
+
+#: src/settings/general/main-language.tsx:63
+msgid "Search language..."
+msgstr "भाषां अन्वेष्टुम्..."
+
+#: src/settings/general/main-language.tsx:62
+msgid "Select language"
+msgstr "भाषां चिनोतु"
+
+#: src/settings/general/index.tsx:192
+msgid "Send anonymous usage analytics to help improve Anarlog."
+msgstr "Anarlog इत्यस्य उन्नयनार्थं सहायतार्थं अनामिकं उपयोगविश्लेषणं प्रेषयन्तु ।"
+
+#: src/settings/index.tsx:36
+msgid "Settings"
+msgstr "सेटिंग्स्"
+
+#: src/settings/general/index.tsx:191
+msgid "Share usage data"
+msgstr "उपयोगदत्तांशं साझां कुर्वन्तु"
+
+#: src/settings/general/index.tsx:174
+msgid "Show floating bar"
+msgstr "प्लवमानं पट्टिकां दर्शयतु"
+
+#: src/settings/general/index.tsx:175
+msgid "Show the compact floating control while listening."
+msgstr "श्रवणकाले संकुचितं प्लवमानं नियन्त्रणं दर्शयतु।"
+
+#: src/settings/general/index.tsx:181
+msgid "Show timeline in sidebar"
+msgstr "पार्श्वपट्टिकायां समयरेखां दर्शयतु"
+
+#: src/settings/general/index.tsx:150
+msgid "Start Anarlog at login"
+msgstr "प्रवेशसमये Anarlog आरभत"
+
+#: src/settings/general/index.tsx:157
+msgid "Start when meeting begins"
+msgstr "समागमस्य आरम्भे आरभत"
+
+#: src/settings/general/index.tsx:167
+msgid "Stop when meeting ends"
+msgstr "समागमस्य समाप्तेः समये स्थगयतु"
+
+#: src/settings/general/spoken-languages.tsx:119
+msgid "The main language is always included for transcription"
+msgstr "प्रतिलेखनार्थं मुख्यभाषा सर्वदा समाविष्टा भवति"
+
+#: src/settings/general/index.tsx:182
+msgid "Use the left sidebar timeline instead of the top timeline."
+msgstr "ऊर्ध्वसमयरेखायाः स्थाने वामपार्श्वपट्टिकाकालरेखायाः उपयोगं कुर्वन्तु ।"

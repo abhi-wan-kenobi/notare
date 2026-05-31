@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-30 20:26+0900\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: he\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/settings/general/spoken-languages.tsx:177
+msgid "Add language"
+msgstr "הוסף שפה"
+
+#: src/settings/general/spoken-languages.tsx:175
+msgid "Add spoken language"
+msgstr "הוסף שפה מדוברת"
+
+#: src/settings/general/spoken-languages.tsx:116
+msgid "Additional spoken languages"
+msgstr "שפות מדוברות נוספות"
+
+#: src/settings/general/index.tsx:151
+msgid "Always ready without manually launching."
+msgstr "תמיד מוכן ללא הפעלה ידנית."
+
+#: src/settings/general/app-settings.tsx:33
+msgid "App"
+msgstr "אפליקציה"
+
+#: src/settings/general/index.tsx:158
+msgid "Automatically start listening when an event-backed note reaches its scheduled start time."
+msgstr "התחל להאזין באופן אוטומטי כאשר הערה מגובה אירוע מגיעה לזמן ההתחלה המתוכנן שלה."
+
+#: src/settings/general/index.tsx:168
+msgid "Automatically stop listening when the meeting app releases the microphone."
+msgstr "הפסק להאזין באופן אוטומטי כאשר אפליקציית הפגישות משחררת את המיקרופון."
+
+#: src/settings/general/index.tsx:264
+msgid "Data"
+msgstr "נתונים"
+
+#: src/settings/general/index.tsx:213
+msgid "Language & Region"
+msgstr "שפה ואזור"
+
+#: src/settings/general/main-language.tsx:53
+msgid "Language for summaries, chats, and AI-generated responses"
+msgstr "שפה לסיכומים, צ'אטים ותגובות שנוצרו על ידי AI"
+
+#: src/settings/general/main-language.tsx:50
+msgid "Main language"
+msgstr "שפה ראשית"
+
+#: src/settings/general/app-settings.tsx:59
+msgid "Meetings"
+msgstr "פגישות"
+
+#: src/settings/general/main-language.tsx:64
+#: src/settings/general/spoken-languages.tsx:218
+msgid "No matching languages found"
+msgstr "לא נמצאו שפות מתאימות"
+
+#: src/settings/general/index.tsx:276
+msgid "Notifications"
+msgstr "התראות"
+
+#: src/settings/general/main-language.tsx:63
+msgid "Search language..."
+msgstr "שפת חיפוש..."
+
+#: src/settings/general/main-language.tsx:62
+msgid "Select language"
+msgstr "בחר שפה"
+
+#: src/settings/general/index.tsx:192
+msgid "Send anonymous usage analytics to help improve Anarlog."
+msgstr "שלח ניתוח שימוש אנונימי כדי לעזור בשיפור Anarlog."
+
+#: src/settings/index.tsx:36
+msgid "Settings"
+msgstr "הגדרות"
+
+#: src/settings/general/index.tsx:191
+msgid "Share usage data"
+msgstr "שתף נתוני שימוש"
+
+#: src/settings/general/index.tsx:174
+msgid "Show floating bar"
+msgstr "הצג סרגל צף"
+
+#: src/settings/general/index.tsx:175
+msgid "Show the compact floating control while listening."
+msgstr "הצג את הבקרה הציפה הקומפקטית תוך כדי האזנה."
+
+#: src/settings/general/index.tsx:181
+msgid "Show timeline in sidebar"
+msgstr "הצג ציר זמן בסרגל הצד"
+
+#: src/settings/general/index.tsx:150
+msgid "Start Anarlog at login"
+msgstr "התחל אנלוג בכניסה"
+
+#: src/settings/general/index.tsx:157
+msgid "Start when meeting begins"
+msgstr "התחל כאשר הפגישה מתחילה"
+
+#: src/settings/general/index.tsx:167
+msgid "Stop when meeting ends"
+msgstr "עצור כאשר הפגישה מסתיימת"
+
+#: src/settings/general/spoken-languages.tsx:119
+msgid "The main language is always included for transcription"
+msgstr "השפה הראשית כלולה תמיד לתמלול"
+
+#: src/settings/general/index.tsx:182
+msgid "Use the left sidebar timeline instead of the top timeline."
+msgstr "השתמש בקו הזמן של סרגל הצד השמאלי במקום בקו הזמן העליון."

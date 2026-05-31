@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-30 20:26+0900\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fi\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/settings/general/spoken-languages.tsx:177
+msgid "Add language"
+msgstr "Lisää kieli"
+
+#: src/settings/general/spoken-languages.tsx:175
+msgid "Add spoken language"
+msgstr "Lisää puhuttu kieli"
+
+#: src/settings/general/spoken-languages.tsx:116
+msgid "Additional spoken languages"
+msgstr "Muita puhuttuja kieliä"
+
+#: src/settings/general/index.tsx:151
+msgid "Always ready without manually launching."
+msgstr "Aina valmis ilman manuaalista käynnistämistä."
+
+#: src/settings/general/app-settings.tsx:33
+msgid "App"
+msgstr "Sovellus"
+
+#: src/settings/general/index.tsx:158
+msgid "Automatically start listening when an event-backed note reaches its scheduled start time."
+msgstr "Aloita kuuntelu automaattisesti, kun tapahtuman taustalla oleva nuotti saavuttaa ajoitetun alkamisajan."
+
+#: src/settings/general/index.tsx:168
+msgid "Automatically stop listening when the meeting app releases the microphone."
+msgstr "Lopeta kuuntelu automaattisesti, kun kokoussovellus vapauttaa mikrofonin."
+
+#: src/settings/general/index.tsx:264
+msgid "Data"
+msgstr "Tiedot"
+
+#: src/settings/general/index.tsx:213
+msgid "Language & Region"
+msgstr "Kieli ja alue"
+
+#: src/settings/general/main-language.tsx:53
+msgid "Language for summaries, chats, and AI-generated responses"
+msgstr "Kieli yhteenvetoja, keskusteluja ja tekoälyn luomia vastauksia varten"
+
+#: src/settings/general/main-language.tsx:50
+msgid "Main language"
+msgstr "Pääkieli"
+
+#: src/settings/general/app-settings.tsx:59
+msgid "Meetings"
+msgstr "Kokoukset"
+
+#: src/settings/general/main-language.tsx:64
+#: src/settings/general/spoken-languages.tsx:218
+msgid "No matching languages found"
+msgstr "Vastaavia kieliä ei löytynyt"
+
+#: src/settings/general/index.tsx:276
+msgid "Notifications"
+msgstr "Ilmoitukset"
+
+#: src/settings/general/main-language.tsx:63
+msgid "Search language..."
+msgstr "Hakukieli..."
+
+#: src/settings/general/main-language.tsx:62
+msgid "Select language"
+msgstr "Valitse kieli"
+
+#: src/settings/general/index.tsx:192
+msgid "Send anonymous usage analytics to help improve Anarlog."
+msgstr "Lähetä anonyymi käyttöanalytiikka auttaaksesi parantamaan Anarlogia."
+
+#: src/settings/index.tsx:36
+msgid "Settings"
+msgstr "Asetukset"
+
+#: src/settings/general/index.tsx:191
+msgid "Share usage data"
+msgstr "Jaa käyttötiedot"
+
+#: src/settings/general/index.tsx:174
+msgid "Show floating bar"
+msgstr "Näytä kelluva palkki"
+
+#: src/settings/general/index.tsx:175
+msgid "Show the compact floating control while listening."
+msgstr "Näytä kompakti kelluva säädin kuunnellessasi."
+
+#: src/settings/general/index.tsx:181
+msgid "Show timeline in sidebar"
+msgstr "Näytä aikajana sivupalkissa"
+
+#: src/settings/general/index.tsx:150
+msgid "Start Anarlog at login"
+msgstr "Käynnistä Anarlog sisäänkirjautumisen yhteydessä"
+
+#: src/settings/general/index.tsx:157
+msgid "Start when meeting begins"
+msgstr "Aloita kokouksen alkaessa"
+
+#: src/settings/general/index.tsx:167
+msgid "Stop when meeting ends"
+msgstr "Lopeta, kun kokous päättyy"
+
+#: src/settings/general/spoken-languages.tsx:119
+msgid "The main language is always included for transcription"
+msgstr "Pääkieli on aina mukana transkriptiota varten"
+
+#: src/settings/general/index.tsx:182
+msgid "Use the left sidebar timeline instead of the top timeline."
+msgstr "Käytä vasemman sivupalkin aikajanaa yläaikajanan sijaan."

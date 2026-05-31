@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-30 20:26+0900\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: id\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/settings/general/spoken-languages.tsx:177
+msgid "Add language"
+msgstr "Tambahkan bahasa"
+
+#: src/settings/general/spoken-languages.tsx:175
+msgid "Add spoken language"
+msgstr "Tambahkan bahasa lisan"
+
+#: src/settings/general/spoken-languages.tsx:116
+msgid "Additional spoken languages"
+msgstr "Bahasa lisan tambahan"
+
+#: src/settings/general/index.tsx:151
+msgid "Always ready without manually launching."
+msgstr "Selalu siap tanpa meluncurkan secara manual."
+
+#: src/settings/general/app-settings.tsx:33
+msgid "App"
+msgstr "Aplikasi"
+
+#: src/settings/general/index.tsx:158
+msgid "Automatically start listening when an event-backed note reaches its scheduled start time."
+msgstr "Secara otomatis mulai mendengarkan ketika catatan yang didukung acara mencapai waktu mulai yang dijadwalkan."
+
+#: src/settings/general/index.tsx:168
+msgid "Automatically stop listening when the meeting app releases the microphone."
+msgstr "Secara otomatis berhenti mendengarkan saat aplikasi rapat melepaskan mikrofon."
+
+#: src/settings/general/index.tsx:264
+msgid "Data"
+msgstr "Data"
+
+#: src/settings/general/index.tsx:213
+msgid "Language & Region"
+msgstr "Bahasa & Wilayah"
+
+#: src/settings/general/main-language.tsx:53
+msgid "Language for summaries, chats, and AI-generated responses"
+msgstr "Bahasa untuk ringkasan, chat, dan respons yang dihasilkan AI"
+
+#: src/settings/general/main-language.tsx:50
+msgid "Main language"
+msgstr "Bahasa utama"
+
+#: src/settings/general/app-settings.tsx:59
+msgid "Meetings"
+msgstr "Rapat"
+
+#: src/settings/general/main-language.tsx:64
+#: src/settings/general/spoken-languages.tsx:218
+msgid "No matching languages found"
+msgstr "Tidak ditemukan bahasa yang cocok"
+
+#: src/settings/general/index.tsx:276
+msgid "Notifications"
+msgstr "Pemberitahuan"
+
+#: src/settings/general/main-language.tsx:63
+msgid "Search language..."
+msgstr "Bahasa penelusuran..."
+
+#: src/settings/general/main-language.tsx:62
+msgid "Select language"
+msgstr "Pilih bahasa"
+
+#: src/settings/general/index.tsx:192
+msgid "Send anonymous usage analytics to help improve Anarlog."
+msgstr "Kirim analisis penggunaan anonim untuk membantu meningkatkan Anarlog."
+
+#: src/settings/index.tsx:36
+msgid "Settings"
+msgstr "Pengaturan"
+
+#: src/settings/general/index.tsx:191
+msgid "Share usage data"
+msgstr "Bagikan data penggunaan"
+
+#: src/settings/general/index.tsx:174
+msgid "Show floating bar"
+msgstr "Tampilkan bilah mengambang"
+
+#: src/settings/general/index.tsx:175
+msgid "Show the compact floating control while listening."
+msgstr "Tampilkan kontrol mengambang ringkas sambil mendengarkan."
+
+#: src/settings/general/index.tsx:181
+msgid "Show timeline in sidebar"
+msgstr "Tampilkan garis waktu di sidebar"
+
+#: src/settings/general/index.tsx:150
+msgid "Start Anarlog at login"
+msgstr "Mulai Anarlog saat login"
+
+#: src/settings/general/index.tsx:157
+msgid "Start when meeting begins"
+msgstr "Mulai saat rapat dimulai"
+
+#: src/settings/general/index.tsx:167
+msgid "Stop when meeting ends"
+msgstr "Berhenti ketika rapat berakhir"
+
+#: src/settings/general/spoken-languages.tsx:119
+msgid "The main language is always included for transcription"
+msgstr "Bahasa utama selalu disertakan untuk transkripsi"
+
+#: src/settings/general/index.tsx:182
+msgid "Use the left sidebar timeline instead of the top timeline."
+msgstr "Gunakan timeline sidebar kiri, bukan timeline atas."

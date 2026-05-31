@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-30 20:26+0900\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: sd\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/settings/general/spoken-languages.tsx:177
+msgid "Add language"
+msgstr "ٻولي شامل ڪريو"
+
+#: src/settings/general/spoken-languages.tsx:175
+msgid "Add spoken language"
+msgstr "ڳالهائيندڙ ٻولي شامل ڪريو"
+
+#: src/settings/general/spoken-languages.tsx:116
+msgid "Additional spoken languages"
+msgstr "اضافي ڳالهائيندڙ ٻوليون"
+
+#: src/settings/general/index.tsx:151
+msgid "Always ready without manually launching."
+msgstr "دستي طور تي لانچ ڪرڻ کان سواءِ هميشه تيار."
+
+#: src/settings/general/app-settings.tsx:33
+msgid "App"
+msgstr "ايپ"
+
+#: src/settings/general/index.tsx:158
+msgid "Automatically start listening when an event-backed note reaches its scheduled start time."
+msgstr "خود بخود ٻڌڻ شروع ڪريو جڏھن ھڪڙي واقعي جي پٺڀرائي نوٽ پنھنجي مقرر ڪيل وقت تي پھچي."
+
+#: src/settings/general/index.tsx:168
+msgid "Automatically stop listening when the meeting app releases the microphone."
+msgstr "خود بخود ٻڌڻ بند ڪريو جڏھن ميٽنگ ايپ مائڪروفون جاري ڪري ٿي."
+
+#: src/settings/general/index.tsx:264
+msgid "Data"
+msgstr "ڊيٽا"
+
+#: src/settings/general/index.tsx:213
+msgid "Language & Region"
+msgstr "ٻولي ۽ علائقو"
+
+#: src/settings/general/main-language.tsx:53
+msgid "Language for summaries, chats, and AI-generated responses"
+msgstr "خلاصو، چيٽ، ۽ AI جي ٺاهيل جوابن لاءِ ٻولي"
+
+#: src/settings/general/main-language.tsx:50
+msgid "Main language"
+msgstr "مکيه ٻولي"
+
+#: src/settings/general/app-settings.tsx:59
+msgid "Meetings"
+msgstr "ملاقات"
+
+#: src/settings/general/main-language.tsx:64
+#: src/settings/general/spoken-languages.tsx:218
+msgid "No matching languages found"
+msgstr "ڪابه ملندڙ ٻوليون نه مليون"
+
+#: src/settings/general/index.tsx:276
+msgid "Notifications"
+msgstr "اطلاعات"
+
+#: src/settings/general/main-language.tsx:63
+msgid "Search language..."
+msgstr "ٻولي ڳولھيو..."
+
+#: src/settings/general/main-language.tsx:62
+msgid "Select language"
+msgstr "ٻولي چونڊيو"
+
+#: src/settings/general/index.tsx:192
+msgid "Send anonymous usage analytics to help improve Anarlog."
+msgstr "انارلاگ کي بهتر ڪرڻ ۾ مدد لاءِ گمنام استعمال جا تجزيا موڪليو."
+
+#: src/settings/index.tsx:36
+msgid "Settings"
+msgstr "سيٽنگون"
+
+#: src/settings/general/index.tsx:191
+msgid "Share usage data"
+msgstr "استعمال ڊيٽا حصيداري ڪريو"
+
+#: src/settings/general/index.tsx:174
+msgid "Show floating bar"
+msgstr "سچل بار ڏيکاريو"
+
+#: src/settings/general/index.tsx:175
+msgid "Show the compact floating control while listening."
+msgstr "ٻڌڻ دوران ڪمپيڪٽ سچل ڪنٽرول ڏيکاريو."
+
+#: src/settings/general/index.tsx:181
+msgid "Show timeline in sidebar"
+msgstr "سائيڊبار ۾ ٽائم لائن ڏيکاريو"
+
+#: src/settings/general/index.tsx:150
+msgid "Start Anarlog at login"
+msgstr "لاگ ان تي Anarlog شروع ڪريو"
+
+#: src/settings/general/index.tsx:157
+msgid "Start when meeting begins"
+msgstr "شروع ڪريو جڏهن ميٽنگ شروع ٿئي"
+
+#: src/settings/general/index.tsx:167
+msgid "Stop when meeting ends"
+msgstr "جڏهن ميٽنگ ختم ٿئي ته روڪيو"
+
+#: src/settings/general/spoken-languages.tsx:119
+msgid "The main language is always included for transcription"
+msgstr "مکيه ٻولي هميشه ٽرانسپشن لاءِ شامل ڪئي ويندي آهي"
+
+#: src/settings/general/index.tsx:182
+msgid "Use the left sidebar timeline instead of the top timeline."
+msgstr "مٿين ٽائم لائن جي بدران کاٻي سائڊبار ٽائم لائن استعمال ڪريو."

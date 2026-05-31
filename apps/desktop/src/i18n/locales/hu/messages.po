@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-30 20:26+0900\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: hu\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/settings/general/spoken-languages.tsx:177
+msgid "Add language"
+msgstr "Nyelv hozzáadása"
+
+#: src/settings/general/spoken-languages.tsx:175
+msgid "Add spoken language"
+msgstr "Beszélt nyelv hozzáadása"
+
+#: src/settings/general/spoken-languages.tsx:116
+msgid "Additional spoken languages"
+msgstr "További beszélt nyelvek"
+
+#: src/settings/general/index.tsx:151
+msgid "Always ready without manually launching."
+msgstr "Mindig készen áll kézi indítás nélkül."
+
+#: src/settings/general/app-settings.tsx:33
+msgid "App"
+msgstr "Alkalmazás"
+
+#: src/settings/general/index.tsx:158
+msgid "Automatically start listening when an event-backed note reaches its scheduled start time."
+msgstr "Automatikusan elkezdheti a hallgatást, ha egy eseményhez kapcsolódó hangjegy eléri az ütemezett kezdési időpontját."
+
+#: src/settings/general/index.tsx:168
+msgid "Automatically stop listening when the meeting app releases the microphone."
+msgstr "A hallgatás automatikus leállítása, amikor az értekezlet alkalmazás elengedi a mikrofont."
+
+#: src/settings/general/index.tsx:264
+msgid "Data"
+msgstr "Adatok"
+
+#: src/settings/general/index.tsx:213
+msgid "Language & Region"
+msgstr "Nyelv és régió"
+
+#: src/settings/general/main-language.tsx:53
+msgid "Language for summaries, chats, and AI-generated responses"
+msgstr "Összefoglalók, csevegések és mesterséges intelligencia által generált válaszok nyelve"
+
+#: src/settings/general/main-language.tsx:50
+msgid "Main language"
+msgstr "Fő nyelv"
+
+#: src/settings/general/app-settings.tsx:59
+msgid "Meetings"
+msgstr "Találkozók"
+
+#: src/settings/general/main-language.tsx:64
+#: src/settings/general/spoken-languages.tsx:218
+msgid "No matching languages found"
+msgstr "Nincs megfelelő nyelv"
+
+#: src/settings/general/index.tsx:276
+msgid "Notifications"
+msgstr "Értesítések"
+
+#: src/settings/general/main-language.tsx:63
+msgid "Search language..."
+msgstr "Keresési nyelv..."
+
+#: src/settings/general/main-language.tsx:62
+msgid "Select language"
+msgstr "Nyelv kiválasztása"
+
+#: src/settings/general/index.tsx:192
+msgid "Send anonymous usage analytics to help improve Anarlog."
+msgstr "Anonim használati elemzések küldése az Anarlog fejlesztéséhez."
+
+#: src/settings/index.tsx:36
+msgid "Settings"
+msgstr "Beállítások"
+
+#: src/settings/general/index.tsx:191
+msgid "Share usage data"
+msgstr "Használati adatok megosztása"
+
+#: src/settings/general/index.tsx:174
+msgid "Show floating bar"
+msgstr "Lebegő sáv megjelenítése"
+
+#: src/settings/general/index.tsx:175
+msgid "Show the compact floating control while listening."
+msgstr "A kompakt lebegő vezérlő megjelenítése hallgatás közben."
+
+#: src/settings/general/index.tsx:181
+msgid "Show timeline in sidebar"
+msgstr "Idővonal megjelenítése az oldalsávon"
+
+#: src/settings/general/index.tsx:150
+msgid "Start Anarlog at login"
+msgstr "Indítsa el az Anarlogot bejelentkezéskor"
+
+#: src/settings/general/index.tsx:157
+msgid "Start when meeting begins"
+msgstr "A megbeszélés kezdetekor kezdődik"
+
+#: src/settings/general/index.tsx:167
+msgid "Stop when meeting ends"
+msgstr "Leállítás az értekezlet végén"
+
+#: src/settings/general/spoken-languages.tsx:119
+msgid "The main language is always included for transcription"
+msgstr "A fő nyelv mindig szerepel az átíráshoz"
+
+#: src/settings/general/index.tsx:182
+msgid "Use the left sidebar timeline instead of the top timeline."
+msgstr "Használja a bal oldalsáv idővonalát a felső idővonal helyett."

@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-30 20:26+0900\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: bg\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/settings/general/spoken-languages.tsx:177
+msgid "Add language"
+msgstr "Добавяне на език"
+
+#: src/settings/general/spoken-languages.tsx:175
+msgid "Add spoken language"
+msgstr "Добавяне на говорим език"
+
+#: src/settings/general/spoken-languages.tsx:116
+msgid "Additional spoken languages"
+msgstr "Допълнителни говорими езици"
+
+#: src/settings/general/index.tsx:151
+msgid "Always ready without manually launching."
+msgstr "Винаги готов без ръчно стартиране."
+
+#: src/settings/general/app-settings.tsx:33
+msgid "App"
+msgstr "Приложение"
+
+#: src/settings/general/index.tsx:158
+msgid "Automatically start listening when an event-backed note reaches its scheduled start time."
+msgstr "Автоматично започване на прослушване, когато подкрепена от събитие бележка достигне планирания си начален час."
+
+#: src/settings/general/index.tsx:168
+msgid "Automatically stop listening when the meeting app releases the microphone."
+msgstr "Автоматично спиране на слушането, когато приложението за срещи освободи микрофона."
+
+#: src/settings/general/index.tsx:264
+msgid "Data"
+msgstr "Данни"
+
+#: src/settings/general/index.tsx:213
+msgid "Language & Region"
+msgstr "Език и регион"
+
+#: src/settings/general/main-language.tsx:53
+msgid "Language for summaries, chats, and AI-generated responses"
+msgstr "Език за резюмета, чатове и генерирани от AI отговори"
+
+#: src/settings/general/main-language.tsx:50
+msgid "Main language"
+msgstr "Основен език"
+
+#: src/settings/general/app-settings.tsx:59
+msgid "Meetings"
+msgstr "Срещи"
+
+#: src/settings/general/main-language.tsx:64
+#: src/settings/general/spoken-languages.tsx:218
+msgid "No matching languages found"
+msgstr "Няма намерени съответстващи езици"
+
+#: src/settings/general/index.tsx:276
+msgid "Notifications"
+msgstr "Известия"
+
+#: src/settings/general/main-language.tsx:63
+msgid "Search language..."
+msgstr "Език за търсене..."
+
+#: src/settings/general/main-language.tsx:62
+msgid "Select language"
+msgstr "Избор на език"
+
+#: src/settings/general/index.tsx:192
+msgid "Send anonymous usage analytics to help improve Anarlog."
+msgstr "Изпращайте анонимни анализи на използването, за да помогнете за подобряването на Anarlog."
+
+#: src/settings/index.tsx:36
+msgid "Settings"
+msgstr "Настройки"
+
+#: src/settings/general/index.tsx:191
+msgid "Share usage data"
+msgstr "Споделяне на данни за използване"
+
+#: src/settings/general/index.tsx:174
+msgid "Show floating bar"
+msgstr "Показване на плаваща лента"
+
+#: src/settings/general/index.tsx:175
+msgid "Show the compact floating control while listening."
+msgstr "Показване на компактния плаващ контрол, докато слушате."
+
+#: src/settings/general/index.tsx:181
+msgid "Show timeline in sidebar"
+msgstr "Показване на времевата линия в страничната лента"
+
+#: src/settings/general/index.tsx:150
+msgid "Start Anarlog at login"
+msgstr "Стартирайте Anarlog при влизане"
+
+#: src/settings/general/index.tsx:157
+msgid "Start when meeting begins"
+msgstr "Започнете, когато срещата започне"
+
+#: src/settings/general/index.tsx:167
+msgid "Stop when meeting ends"
+msgstr "Спрете, когато срещата приключи"
+
+#: src/settings/general/spoken-languages.tsx:119
+msgid "The main language is always included for transcription"
+msgstr "Основният език винаги е включен за транскрипция"
+
+#: src/settings/general/index.tsx:182
+msgid "Use the left sidebar timeline instead of the top timeline."
+msgstr "Използвайте времевата линия от лявата странична лента вместо горната времева линия."

@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-30 20:26+0900\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: am\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/settings/general/spoken-languages.tsx:177
+msgid "Add language"
+msgstr "ቋንቋ አክል"
+
+#: src/settings/general/spoken-languages.tsx:175
+msgid "Add spoken language"
+msgstr "የሚነገር ቋንቋ ያክሉ"
+
+#: src/settings/general/spoken-languages.tsx:116
+msgid "Additional spoken languages"
+msgstr "ተጨማሪ የሚነገሩ ቋንቋዎች"
+
+#: src/settings/general/index.tsx:151
+msgid "Always ready without manually launching."
+msgstr "እራስዎ ሳይጀመር ሁልጊዜ ዝግጁ።"
+
+#: src/settings/general/app-settings.tsx:33
+msgid "App"
+msgstr "መተግበሪያ"
+
+#: src/settings/general/index.tsx:158
+msgid "Automatically start listening when an event-backed note reaches its scheduled start time."
+msgstr "በክስተት የተደገፈ ማስታወሻ የተያዘለት የመጀመሪያ ሰዓቱ ሲደርስ በራስ-ሰር ማዳመጥ ይጀምሩ።"
+
+#: src/settings/general/index.tsx:168
+msgid "Automatically stop listening when the meeting app releases the microphone."
+msgstr "የስብሰባው መተግበሪያ ማይክሮፎኑን ሲለቅ በራስ-ሰር ማዳመጥ ያቁሙ።"
+
+#: src/settings/general/index.tsx:264
+msgid "Data"
+msgstr "ውሂብ"
+
+#: src/settings/general/index.tsx:213
+msgid "Language & Region"
+msgstr "ቋንቋ እና ክልል"
+
+#: src/settings/general/main-language.tsx:53
+msgid "Language for summaries, chats, and AI-generated responses"
+msgstr "ቋንቋ ለማጠቃለያዎች፣ ውይይቶች እና በAI-የተፈጠሩ ምላሾች"
+
+#: src/settings/general/main-language.tsx:50
+msgid "Main language"
+msgstr "ዋና ቋንቋ"
+
+#: src/settings/general/app-settings.tsx:59
+msgid "Meetings"
+msgstr "ስብሰባዎች"
+
+#: src/settings/general/main-language.tsx:64
+#: src/settings/general/spoken-languages.tsx:218
+msgid "No matching languages found"
+msgstr "ምንም ተዛማጅ ቋንቋዎች አልተገኙም"
+
+#: src/settings/general/index.tsx:276
+msgid "Notifications"
+msgstr "ማሳወቂያዎች"
+
+#: src/settings/general/main-language.tsx:63
+msgid "Search language..."
+msgstr "ቋንቋ ፈልግ..."
+
+#: src/settings/general/main-language.tsx:62
+msgid "Select language"
+msgstr "ቋንቋ ምረጥ"
+
+#: src/settings/general/index.tsx:192
+msgid "Send anonymous usage analytics to help improve Anarlog."
+msgstr "አናሎግ ለማሻሻል ለማገዝ ስም-አልባ የአጠቃቀም ትንታኔዎችን ይላኩ።"
+
+#: src/settings/index.tsx:36
+msgid "Settings"
+msgstr "ቅንብሮች"
+
+#: src/settings/general/index.tsx:191
+msgid "Share usage data"
+msgstr "የአጠቃቀም ውሂብ አጋራ"
+
+#: src/settings/general/index.tsx:174
+msgid "Show floating bar"
+msgstr "ተንሳፋፊ አሞሌ አሳይ"
+
+#: src/settings/general/index.tsx:175
+msgid "Show the compact floating control while listening."
+msgstr "በማዳመጥ ጊዜ የታመቀ ተንሳፋፊ መቆጣጠሪያውን አሳይ።"
+
+#: src/settings/general/index.tsx:181
+msgid "Show timeline in sidebar"
+msgstr "የጊዜ መስመር በጎን አሞሌ አሳይ"
+
+#: src/settings/general/index.tsx:150
+msgid "Start Anarlog at login"
+msgstr "በመግቢያው ላይ አናርሎግ ይጀምሩ"
+
+#: src/settings/general/index.tsx:157
+msgid "Start when meeting begins"
+msgstr "ስብሰባ ሲጀምር ጀምር"
+
+#: src/settings/general/index.tsx:167
+msgid "Stop when meeting ends"
+msgstr "ስብሰባው ሲያልቅ ያቁሙ"
+
+#: src/settings/general/spoken-languages.tsx:119
+msgid "The main language is always included for transcription"
+msgstr "ዋናው ቋንቋ ሁል ጊዜ ለጽሑፍ ግልባጭ ተካቷል"
+
+#: src/settings/general/index.tsx:182
+msgid "Use the left sidebar timeline instead of the top timeline."
+msgstr "ከላይኛው የጊዜ መስመር ይልቅ የግራ የጎን አሞሌ የጊዜ መስመርን ተጠቀም።"

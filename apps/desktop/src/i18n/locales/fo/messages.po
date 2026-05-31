@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-30 20:26+0900\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fo\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/settings/general/spoken-languages.tsx:177
+msgid "Add language"
+msgstr "Legg mál til"
+
+#: src/settings/general/spoken-languages.tsx:175
+msgid "Add spoken language"
+msgstr "Legg talumál til"
+
+#: src/settings/general/spoken-languages.tsx:116
+msgid "Additional spoken languages"
+msgstr "Eyka talumál"
+
+#: src/settings/general/index.tsx:151
+msgid "Always ready without manually launching."
+msgstr "Altíð klárur uttan at seta í gongd manuelt."
+
+#: src/settings/general/app-settings.tsx:33
+msgid "App"
+msgstr "Forrit"
+
+#: src/settings/general/index.tsx:158
+msgid "Automatically start listening when an event-backed note reaches its scheduled start time."
+msgstr "Byrja sjálvvirkandi at lurta, tá ein hendingarstuðlaður notur nær sína ásettu byrjanartíð."
+
+#: src/settings/general/index.tsx:168
+msgid "Automatically stop listening when the meeting app releases the microphone."
+msgstr "Sjálvvirkandi steðga við at lurta, tá møtiappin sleppur mikrofonini."
+
+#: src/settings/general/index.tsx:264
+msgid "Data"
+msgstr "Dátur"
+
+#: src/settings/general/index.tsx:213
+msgid "Language & Region"
+msgstr "Mál og øki"
+
+#: src/settings/general/main-language.tsx:53
+msgid "Language for summaries, chats, and AI-generated responses"
+msgstr "Mál til samandráttir, kjak og AI-genererað svar"
+
+#: src/settings/general/main-language.tsx:50
+msgid "Main language"
+msgstr "Høvuðsmál"
+
+#: src/settings/general/app-settings.tsx:59
+msgid "Meetings"
+msgstr "Fundir"
+
+#: src/settings/general/main-language.tsx:64
+#: src/settings/general/spoken-languages.tsx:218
+msgid "No matching languages found"
+msgstr "Einki samsvarandi mál er funnið"
+
+#: src/settings/general/index.tsx:276
+msgid "Notifications"
+msgstr "Fráboðanir"
+
+#: src/settings/general/main-language.tsx:63
+msgid "Search language..."
+msgstr "Leitimál..."
+
+#: src/settings/general/main-language.tsx:62
+msgid "Select language"
+msgstr "Vel mál"
+
+#: src/settings/general/index.tsx:192
+msgid "Send anonymous usage analytics to help improve Anarlog."
+msgstr "Send dulnevndar nýtslugreiningar fyri at hjálpa til við at betra um Anarlog."
+
+#: src/settings/index.tsx:36
+msgid "Settings"
+msgstr "Innstillingar"
+
+#: src/settings/general/index.tsx:191
+msgid "Share usage data"
+msgstr "Deil nýtsludátur"
+
+#: src/settings/general/index.tsx:174
+msgid "Show floating bar"
+msgstr "Vís flótandi striku"
+
+#: src/settings/general/index.tsx:175
+msgid "Show the compact floating control while listening."
+msgstr "Vís kompaktu flótandi stýringina, meðan tú lurtar."
+
+#: src/settings/general/index.tsx:181
+msgid "Show timeline in sidebar"
+msgstr "Vís tíðarlinju í síðulinjuni"
+
+#: src/settings/general/index.tsx:150
+msgid "Start Anarlog at login"
+msgstr "Byrja Anarlog við innritan"
+
+#: src/settings/general/index.tsx:157
+msgid "Start when meeting begins"
+msgstr "Byrja tá møtið byrjar"
+
+#: src/settings/general/index.tsx:167
+msgid "Stop when meeting ends"
+msgstr "Steðga á, tá ið fundurin endar"
+
+#: src/settings/general/spoken-languages.tsx:119
+msgid "The main language is always included for transcription"
+msgstr "Høvuðsmálið er altíð við til umskriving"
+
+#: src/settings/general/index.tsx:182
+msgid "Use the left sidebar timeline instead of the top timeline."
+msgstr "Brúka vinstru síðulinju ístaðin fyri ovastu tíðarlinjuna."
