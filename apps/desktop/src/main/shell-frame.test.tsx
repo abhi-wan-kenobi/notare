@@ -5,7 +5,6 @@ const mocks = vi.hoisted(() => ({
   currentTab: { type: "empty" } as { type: string } | null,
   leftsidebar: {
     expanded: true,
-    showDevtool: false,
   },
   sidebarTimelineEnabled: false,
 }));
@@ -47,6 +46,10 @@ vi.mock("~/shared/config", () => ({
   useConfigValue: () => mocks.sidebarTimelineEnabled,
 }));
 
+vi.mock("~/sidebar/toast", () => ({
+  ToastArea: () => <div data-testid="toast-area" />,
+}));
+
 vi.mock("~/store/zustand/tabs", () => ({
   useTabs: (
     selector: (state: { currentTab: typeof mocks.currentTab }) => unknown,
@@ -63,13 +66,13 @@ describe("ClassicMainShellFrame", () => {
   beforeEach(() => {
     mocks.currentTab = { type: "empty" };
     mocks.leftsidebar.expanded = true;
-    mocks.leftsidebar.showDevtool = false;
     mocks.sidebarTimelineEnabled = false;
   });
 
   it("uses top-edge main surface chrome in top timeline mode", () => {
     render(<ClassicMainShellFrame />);
 
+    expect(screen.getByTestId("toast-area")).toBeTruthy();
     expect(
       screen
         .getByTestId("main-shell-scaffold")

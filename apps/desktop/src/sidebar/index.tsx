@@ -1,5 +1,3 @@
-import { lazy, Suspense } from "react";
-
 import { cn } from "@hypr/utils";
 
 import { CalendarNav } from "./calendar";
@@ -7,18 +5,11 @@ import { ContactsNav } from "./contacts";
 import { SettingsNav } from "./settings";
 import { TemplatesNav } from "./templates";
 import { TimelineView } from "./timeline";
-import { ToastArea } from "./toast";
 
-import { useShell } from "~/contexts/shell";
 import { useConfigValue } from "~/shared/config";
 import { useTabs } from "~/store/zustand/tabs";
 
-const DevtoolView = lazy(() =>
-  import("./devtool").then((m) => ({ default: m.DevtoolView })),
-);
-
 export function LeftSidebar() {
-  const { leftsidebar } = useShell();
   const currentTab = useTabs((state) => state.currentTab);
   const sidebarTimelineEnabled = useConfigValue("sidebar_timeline_enabled");
 
@@ -28,8 +19,7 @@ export function LeftSidebar() {
   const isTemplatesMode = currentTab?.type === "templates";
   const isSpecialMode =
     isSettingsMode || isCalendarMode || isContactsMode || isTemplatesMode;
-  const isTimelineSidebarLayout =
-    sidebarTimelineEnabled && !leftsidebar.showDevtool && !isSpecialMode;
+  const isTimelineSidebarLayout = sidebarTimelineEnabled && !isSpecialMode;
 
   return (
     <div
@@ -40,11 +30,7 @@ export function LeftSidebar() {
     >
       <div className="flex flex-1 flex-col gap-1 overflow-hidden">
         <div className="relative min-h-0 flex-1 overflow-hidden">
-          {leftsidebar.showDevtool ? (
-            <Suspense fallback={null}>
-              <DevtoolView />
-            </Suspense>
-          ) : isSettingsMode ? (
+          {isSettingsMode ? (
             <SettingsNav />
           ) : isCalendarMode ? (
             <CalendarNav />
@@ -55,7 +41,6 @@ export function LeftSidebar() {
           ) : (
             <TimelineView topChromeInset={isTimelineSidebarLayout} />
           )}
-          {!leftsidebar.showDevtool && !isSpecialMode && <ToastArea />}
         </div>
       </div>
     </div>

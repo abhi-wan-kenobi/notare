@@ -2,6 +2,8 @@ import type { ServerStatus } from "@hypr/plugin-local-stt";
 
 import type { DownloadProgress, ToastCondition, ToastType } from "./types";
 
+import type { DevtoolsToastPreview } from "~/store/zustand/devtools-toast-preview";
+
 const ANARLOG_ICON_SRC = "/assets/anarlog-icon.png";
 
 type ToastRegistryEntry = {
@@ -29,6 +31,13 @@ type ToastRegistryParams = {
   onOpenSTTSettings: () => void;
 };
 
+type DevtoolsToastPreviewParams = {
+  preview: DevtoolsToastPreview;
+  onSignIn: () => void | Promise<void>;
+  onOpenLLMSettings: () => void;
+  onOpenSTTSettings: () => void;
+};
+
 export function createToastRegistry({
   isAuthenticated,
   isAuthLoading,
@@ -49,7 +58,7 @@ export function createToastRegistry({
   onOpenSTTSettings,
 }: ToastRegistryParams): ToastRegistryEntry[] {
   const downloadTitle =
-    activeDownloads.length === 1
+    activeDownloads.length === 1 && downloadingModel
       ? `Downloading ${downloadingModel}`
       : `Downloading ${activeDownloads.length} models`;
 
@@ -58,8 +67,7 @@ export function createToastRegistry({
     {
       toast: {
         id: "downloading-model",
-        title: downloadTitle,
-        description: "This may take a few minutes",
+        description: downloadTitle,
         dismissible: false,
         progress:
           activeDownloads.length === 1 ? (downloadProgress ?? 0) : undefined,
@@ -70,12 +78,7 @@ export function createToastRegistry({
     {
       toast: {
         id: "local-stt-loading",
-        description: (
-          <>
-            <strong className="font-mono">Local transcription</strong> is
-            starting up...
-          </>
-        ),
+        description: "Starting transcription...",
         dismissible: false,
       },
       condition: () =>
@@ -84,14 +87,9 @@ export function createToastRegistry({
     {
       toast: {
         id: "local-stt-unreachable",
-        description: (
-          <>
-            <strong className="text-red-600">Could not connect</strong> to the
-            local speech-to-text model. Please check your settings.
-          </>
-        ),
+        description: "Transcription unavailable",
         primaryAction: {
-          label: "Check settings",
+          label: "Settings",
           onClick: onOpenSTTSettings,
         },
         dismissible: true,
@@ -106,14 +104,9 @@ export function createToastRegistry({
     {
       toast: {
         id: "missing-stt",
-        description: (
-          <>
-            <strong className="font-mono">Transcription model</strong> is needed
-            to make Anarlog listen to your conversations.
-          </>
-        ),
+        description: "Transcription model needed",
         primaryAction: {
-          label: "Configure transcription",
+          label: "Add",
           onClick: onOpenSTTSettings,
         },
         dismissible: false,
@@ -123,14 +116,9 @@ export function createToastRegistry({
     {
       toast: {
         id: "missing-llm",
-        description: (
-          <>
-            <strong className="font-mono">Language model</strong> is needed to
-            make Anarlog summarize and chat about your conversations.
-          </>
-        ),
+        description: "Language model needed",
         primaryAction: {
-          label: "Add intelligence",
+          label: "Add",
           onClick: onOpenLLMSettings,
         },
         dismissible: true,
@@ -148,9 +136,7 @@ export function createToastRegistry({
             className="size-5 object-contain object-center"
           />
         ),
-        title: "Sign in required",
-        description:
-          "You have Anarlog Pro models configured. Please sign in to use them.",
+        description: "Sign in required",
         primaryAction: {
           label: "Sign in",
           onClick: onSignIn,
@@ -166,18 +152,9 @@ export function createToastRegistry({
     {
       toast: {
         id: "upgrade-to-pro",
-        icon: (
-          <img
-            src={ANARLOG_ICON_SRC}
-            alt="Anarlog Pro"
-            className="size-5 object-contain object-center"
-          />
-        ),
-        title: "Keep the magic going",
-        description:
-          "Transcription stays free. Pro unlocks other magic you'll love.",
+        description: "Pro features available",
         primaryAction: {
-          label: "Upgrade to Pro",
+          label: "Upgrade",
           onClick: onSignIn,
         },
         dismissible: true,
@@ -204,4 +181,62 @@ export function getToastToShow(
     }
   }
   return null;
+}
+
+export function createDevtoolsToastPreview({
+  preview,
+  onSignIn,
+  onOpenLLMSettings,
+  onOpenSTTSettings,
+}: DevtoolsToastPreviewParams): ToastType {
+  switch (preview) {
+    case "language-model":
+      return {
+        id: "devtools-missing-llm",
+        description: "Language model needed",
+        primaryAction: {
+          label: "Add",
+          onClick: onOpenLLMSettings,
+        },
+        dismissible: true,
+      };
+    case "transcription-model":
+      return {
+        id: "devtools-missing-stt",
+        description: "Transcription model needed",
+        primaryAction: {
+          label: "Add",
+          onClick: onOpenSTTSettings,
+        },
+        dismissible: false,
+      };
+    case "transcription-error":
+      return {
+        id: "devtools-local-stt-unreachable",
+        description: "Transcription unavailable",
+        primaryAction: {
+          label: "Settings",
+          onClick: onOpenSTTSettings,
+        },
+        dismissible: true,
+        variant: "error",
+      };
+    case "download":
+      return {
+        id: "devtools-downloading-model",
+        description: "Downloading model",
+        dismissible: false,
+        progress: 42,
+      };
+    case "pro":
+      return {
+        id: "devtools-upgrade-to-pro",
+        description: "Pro features available",
+        primaryAction: {
+          label: "Upgrade",
+          onClick: onSignIn,
+        },
+        dismissible: true,
+      };
+  }
 }
