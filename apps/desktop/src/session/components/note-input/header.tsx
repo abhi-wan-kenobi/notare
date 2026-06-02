@@ -130,7 +130,21 @@ async function copyTextToClipboard(
   },
 ) {
   try {
-    await navigator.clipboard.writeText(text);
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/plain": new Blob([text], {
+            type: "text/plain",
+          }),
+          "text/markdown": new Blob([text], {
+            type: "text/markdown",
+          }),
+        }),
+      ]);
+    } catch {
+      // Fallback for environments that do not support text/markdown
+      await navigator.clipboard.writeText(text);
+    }
 
     if (messages) {
       sonnerToast.success(messages.success);
@@ -147,7 +161,6 @@ async function copyTextToClipboard(
     return false;
   }
 }
-
 function HeaderTabRaw({
   isActive,
   onClick = () => {},
