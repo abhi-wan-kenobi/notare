@@ -8,13 +8,22 @@ final class FloatingPanelPositionController: NSObject, NSWindowDelegate {
   private var programmaticOrigin: NSPoint?
   private let programmaticMoveSuppressionDelay: TimeInterval = 0.15
 
-  func position(_ panel: NSPanel, force: Bool = false, defaultOrigin: (NSScreen) -> NSPoint) {
+  func position(
+    _ panel: NSPanel,
+    force: Bool = false,
+    size: NSSize? = nil,
+    defaultOrigin: (NSScreen, NSSize) -> NSPoint
+  ) {
+    let panelSize = size ?? panel.frame.size
+
     if let pinnedOrigin {
       if force {
-        let origin = clampedOrigin(pinnedOrigin, for: panel)
+        let origin = clampedOrigin(pinnedOrigin, size: panelSize)
         move(panel, to: origin)
         self.pinnedOrigin = origin
-        activeScreenId = panel.screen.flatMap { displayId(for: $0) }
+        let frame = NSRect(origin: origin, size: panelSize)
+        activeScreenId =
+          (screen(containing: frame) ?? panel.screen).flatMap { displayId(for: $0) }
       }
       return
     }
@@ -25,12 +34,40 @@ final class FloatingPanelPositionController: NSObject, NSWindowDelegate {
       return
     }
 
-    move(panel, to: defaultOrigin(screen))
+    move(panel, to: defaultOrigin(screen, panelSize))
     activeScreenId = screenId
+  }
+
+  func setFrame(_ panel: NSPanel, to frame: NSRect, display: Bool, animate: Bool) {
+    let wasPinned = pinnedOrigin != nil
+
+    performProgrammaticMove(expectedOrigin: frame.origin) {
+      panel.setFrame(frame, display: display, animate: animate)
+      return panel.frame.origin
+    }
+
+    if wasPinned {
+      pinnedOrigin = frame.origin
+      activeScreenId =
+        (screen(containing: frame) ?? panel.screen).flatMap { displayId(for: $0) }
+    }
   }
 
   func resetActiveScreen() {
     activeScreenId = nil
+  }
+
+  func preparePinnedFrameForReplacement(_ panel: NSPanel, size: NSSize) {
+    guard pinnedOrigin != nil else { return }
+
+    let frame = NSRect(
+      x: panel.frame.minX,
+      y: panel.frame.maxY - size.height,
+      width: size.width,
+      height: size.height)
+    pinnedOrigin = frame.origin
+    activeScreenId =
+      (screen(containing: frame) ?? panel.screen).flatMap { displayId(for: $0) }
   }
 
   func windowDidMove(_ notification: Notification) {
@@ -57,15 +94,23 @@ final class FloatingPanelPositionController: NSObject, NSWindowDelegate {
   }
 
   private func move(_ panel: NSPanel, to origin: NSPoint) {
+    performProgrammaticMove(expectedOrigin: origin) {
+      panel.setFrameOrigin(origin)
+      return panel.frame.origin
+    }
+  }
+
+  private func performProgrammaticMove(expectedOrigin: NSPoint, updateFrame: () -> NSPoint) {
     programmaticMoveId += 1
     let moveId = programmaticMoveId
 
     isProgrammaticMove = true
-    programmaticOrigin = origin
-    panel.setFrameOrigin(origin)
-    programmaticOrigin = panel.frame.origin
+    programmaticOrigin = expectedOrigin
+    let actualOrigin = updateFrame()
+    programmaticOrigin =
+      pointsAreClose(actualOrigin, expectedOrigin) ? actualOrigin : expectedOrigin
 
-    // AppKit can deliver move notifications shortly after setFrameOrigin returns.
+    // AppKit can deliver move notifications shortly after programmatic frame changes.
     DispatchQueue.main.asyncAfter(deadline: .now() + programmaticMoveSuppressionDelay) {
       [weak self] in
       guard let self, self.programmaticMoveId == moveId else { return }
@@ -91,8 +136,7 @@ final class FloatingPanelPositionController: NSObject, NSWindowDelegate {
     return nearestScreen(to: mouse) ?? NSScreen.main ?? screens.first!
   }
 
-  private func clampedOrigin(_ origin: NSPoint, for panel: NSPanel) -> NSPoint {
-    let size = panel.frame.size
+  private func clampedOrigin(_ origin: NSPoint, size: NSSize) -> NSPoint {
     let rect = NSRect(origin: origin, size: size)
     guard
       let screen = screen(containing: rect) ?? nearestScreen(to: center(of: rect)) ?? NSScreen.main
