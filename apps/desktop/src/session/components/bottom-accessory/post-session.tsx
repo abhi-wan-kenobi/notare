@@ -20,6 +20,7 @@ import { cn } from "@hypr/utils";
 
 import * as AudioPlayer from "~/audio-player";
 import { getEnhancerService } from "~/services/enhancer";
+import type { PastSessionNote } from "~/session/components/bottom-accessory/past-notes";
 import { Transcript } from "~/session/components/note-input/transcript";
 import {
   formatTranscriptExportSegments,
@@ -30,22 +31,34 @@ import { showTransientToast } from "~/sidebar/toast/transient";
 import { useListener } from "~/stt/contexts";
 import { isStoppedTranscriptionError, useRunBatch } from "~/stt/useRunBatch";
 
+export type PostSessionTab = "transcript" | "past_notes";
+
 export function PostSessionAccessory({
   sessionId,
   hasAudio,
   hasTranscript,
   isTranscriptExpanded,
+  activeTab = "transcript",
+  pastNotes = [],
   fillHeight = false,
 }: {
   sessionId: string;
   hasAudio: boolean;
   hasTranscript: boolean;
   isTranscriptExpanded: boolean;
+  activeTab?: PostSessionTab;
+  pastNotes?: PastSessionNote[];
   fillHeight?: boolean;
 }) {
   const screen = useTranscriptScreen({ sessionId });
   const isBatching = screen.kind === "running_batch";
-  const shouldFillTranscriptPanel = fillHeight && (hasTranscript || isBatching);
+  const effectiveActiveTab =
+    activeTab === "past_notes" && pastNotes.length > 0
+      ? "past_notes"
+      : "transcript";
+  const shouldFillExpandedPanel =
+    fillHeight &&
+    (effectiveActiveTab === "past_notes" || hasTranscript || isBatching);
   const timeline = isBatching ? (
     <BatchProgressTimeline sessionId={sessionId} screen={screen} />
   ) : hasAudio ? (
@@ -66,19 +79,26 @@ export function PostSessionAccessory({
       {isTranscriptExpanded ? (
         <div
           className={cn([
-            shouldFillTranscriptPanel
+            shouldFillExpandedPanel
               ? "min-h-[114px] flex-1 overflow-hidden"
               : "shrink-0",
           ])}
         >
-          <TranscriptPanel
-            sessionId={sessionId}
-            screen={screen}
-            hasAudio={hasAudio}
-            hasTranscript={hasTranscript}
-            isExpanded={isTranscriptExpanded}
-            fillHeight={shouldFillTranscriptPanel}
-          />
+          {effectiveActiveTab === "past_notes" ? (
+            <PastNotesPanel
+              notes={pastNotes}
+              fillHeight={shouldFillExpandedPanel}
+            />
+          ) : (
+            <TranscriptPanel
+              sessionId={sessionId}
+              screen={screen}
+              hasAudio={hasAudio}
+              hasTranscript={hasTranscript}
+              isExpanded={isTranscriptExpanded}
+              fillHeight={shouldFillExpandedPanel}
+            />
+          )}
         </div>
       ) : null}
       {timeline ? (
@@ -105,6 +125,73 @@ function TimelineSlot({
       {children}
     </div>
   );
+}
+
+function PastNotesPanel({
+  notes,
+  fillHeight,
+}: {
+  notes: PastSessionNote[];
+  fillHeight: boolean;
+}) {
+  return (
+    <TranscriptCard fillHeight={fillHeight}>
+      <div className="flex shrink-0 items-center justify-between px-3 py-1.5">
+        <span className="text-xs font-medium text-neutral-500">Past notes</span>
+      </div>
+
+      <div
+        className={cn([
+          "min-h-0 overflow-y-auto px-4 pb-4",
+          fillHeight ? "flex-1" : "max-h-[300px]",
+        ])}
+      >
+        <div className="relative flex flex-col gap-4 pt-2">
+          <div className="absolute top-2 bottom-0 left-[3px] w-px bg-neutral-200" />
+          {notes.map((note) => (
+            <div
+              key={note.sessionId}
+              className="relative grid grid-cols-1 pl-5"
+            >
+              <div className="absolute top-1.5 left-0 h-2 w-2 rounded-full border border-neutral-300 bg-white" />
+              <div className="flex min-w-0 flex-col gap-1">
+                <div className="flex min-w-0 items-baseline justify-between gap-3">
+                  <span className="min-w-0 truncate text-xs font-medium text-neutral-700">
+                    {note.title}
+                  </span>
+                  <span className="shrink-0 text-[11px] text-neutral-400">
+                    {note.dateLabel}
+                  </span>
+                </div>
+                {note.summary ? (
+                  <ul className="flex flex-col gap-1 text-xs leading-5 text-neutral-500">
+                    {splitKeyFacts(note.summary).map((fact) => (
+                      <li key={fact} className="line-clamp-2">
+                        {fact}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs leading-5 text-neutral-400">
+                    {note.isGenerating
+                      ? "Generating key facts..."
+                      : "Key facts will be generated when this tab opens."}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </TranscriptCard>
+  );
+}
+
+function splitKeyFacts(content: string): string[] {
+  return content
+    .split("\n")
+    .map((fact) => fact.trim())
+    .filter(Boolean);
 }
 
 function TranscriptPanel({
