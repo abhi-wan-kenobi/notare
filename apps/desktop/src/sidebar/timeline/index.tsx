@@ -17,7 +17,7 @@ import {
 } from "react";
 
 import { Button } from "@hypr/ui/components/ui/button";
-import { cn, startOfDay } from "@hypr/utils";
+import { cn } from "@hypr/utils";
 
 import { useAnchor, useAutoScrollToAnchor } from "./anchor";
 import { TimelineItemComponent } from "./item";
@@ -148,6 +148,7 @@ export function TimelineView({
     () => buckets.some((bucket) => bucket.label === "Today"),
     [buckets],
   );
+  const currentTimeMs = useCurrentTimeMs();
 
   const currentTab = useTabs((state) => state.currentTab);
 
@@ -302,23 +303,12 @@ export function TimelineView({
     deps: [todayBucketLength],
   });
 
-  const todayTimestamp = useMemo(() => startOfDay(new Date()).getTime(), []);
   const indicatorIndex = useMemo(() => {
     if (hasToday) {
       return -1;
     }
-    return buckets.findIndex(
-      (bucket) =>
-        bucket.items.length > 0 &&
-        (() => {
-          const itemDate = getItemTimestamp(bucket.items[0]);
-          if (!itemDate) {
-            return false;
-          }
-          return itemDate.getTime() < todayTimestamp;
-        })(),
-    );
-  }, [buckets, hasToday, todayTimestamp]);
+    return getFallbackIndicatorIndex(buckets, Date.now());
+  }, [buckets, hasToday, currentTimeMs]);
 
   const toggleShowIgnored = useCallback(() => {
     setShowIgnored((prev) => !prev);
@@ -632,6 +622,41 @@ function SidebarTimelineActionButton({
       </span>
       <span className="truncate">{label}</span>
     </button>
+  );
+}
+
+function getFallbackIndicatorIndex(buckets: TimelineBucket[], nowMs: number) {
+  let staleFutureBoundary: number | null = null;
+
+  for (let index = 0; index < buckets.length; index++) {
+    const bucket = buckets[index];
+    const firstItem = bucket?.items[0];
+    if (!bucket || !firstItem) {
+      continue;
+    }
+
+    const itemDate = getItemTimestamp(firstItem);
+    if (!itemDate || itemDate.getTime() >= nowMs) {
+      continue;
+    }
+
+    if (isFutureBucketLabel(bucket.label)) {
+      staleFutureBoundary = index + 1;
+      continue;
+    }
+
+    return staleFutureBoundary ?? index;
+  }
+
+  return staleFutureBoundary ?? -1;
+}
+
+function isFutureBucketLabel(label: string) {
+  return (
+    label === "Tomorrow" ||
+    label === "next week" ||
+    label === "next month" ||
+    label.startsWith("in ")
   );
 }
 
