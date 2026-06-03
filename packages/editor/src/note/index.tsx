@@ -14,6 +14,8 @@ import { history } from "prosemirror-history";
 import { Node as PMNode } from "prosemirror-model";
 import {
   EditorState,
+  Plugin,
+  PluginKey,
   Selection,
   TextSelection,
   type Transaction,
@@ -123,6 +125,20 @@ export interface NoteEditorRef {
   commands: EditorCommands;
 }
 
+export type SessionMentionDropData = {
+  id: string;
+  label: string;
+};
+
+export type SessionMentionDropConfig = {
+  has?: (
+    dataTransfer: Pick<DataTransfer, "types"> | null | undefined,
+  ) => boolean;
+  read: (
+    dataTransfer: Pick<DataTransfer, "getData" | "types"> | null | undefined,
+  ) => SessionMentionDropData | null;
+};
+
 type NodeViewComponents = NonNullable<
   ComponentProps<typeof ProseMirror>["nodeViewComponents"]
 >;
@@ -138,6 +154,7 @@ export interface NoteEditorProps {
   linkedItemOpenBehavior?: LinkedItemOpenBehavior;
   taskSource?: TaskSource;
   extraNodeViews?: NodeViewComponents;
+  sessionMentionDropConfig?: SessionMentionDropConfig;
   showFormatToolbar?: boolean;
 }
 
@@ -178,6 +195,74 @@ function wrapNodeViewComponents(nodeViews?: NodeViewComponents) {
       }),
     ]),
   ) as NodeViewComponents;
+}
+
+function createSessionMentionDropPlugin(config: SessionMentionDropConfig) {
+  const hasSession = (dataTransfer: DataTransfer | null) =>
+    config.has ? config.has(dataTransfer) : Boolean(config.read(dataTransfer));
+  const readSession = (dataTransfer: DataTransfer | null) =>
+    config.read(dataTransfer);
+
+  return new Plugin({
+    key: new PluginKey("sessionMentionDrop"),
+    props: {
+      handleDOMEvents: {
+        dragover(_view, event) {
+          const dataTransfer = (event as DragEvent).dataTransfer;
+          if (!hasSession(dataTransfer)) {
+            return false;
+          }
+
+          event.preventDefault();
+          if (dataTransfer) {
+            dataTransfer.dropEffect = "copy";
+          }
+          return true;
+        },
+      },
+      handleDrop(view, event) {
+        const session = readSession(event.dataTransfer);
+        const mentionType = view.state.schema.nodes["mention-@"];
+        if (!session || !mentionType) {
+          return false;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const mentionNode = mentionType.create({
+          id: session.id,
+          type: "session",
+          label: session.label,
+        });
+        const space = view.state.schema.text(" ");
+        const pos =
+          view.posAtCoords({
+            left: event.clientX,
+            top: event.clientY,
+          })?.pos ?? view.state.selection.from;
+
+        try {
+          const tr = view.state.tr.insert(pos, [mentionNode, space]);
+          tr.setSelection(
+            TextSelection.create(
+              tr.doc,
+              pos + mentionNode.nodeSize + space.nodeSize,
+            ),
+          );
+          view.dispatch(tr.scrollIntoView());
+        } catch {
+          const tr = view.state.tr
+            .replaceSelectionWith(mentionNode)
+            .insertText(" ");
+          view.dispatch(tr.scrollIntoView());
+        }
+
+        view.focus();
+        return true;
+      },
+    },
+  });
 }
 
 function ViewCapture({
@@ -362,6 +447,7 @@ export const NoteEditor = forwardRef<NoteEditorRef, NoteEditorProps>(
       linkedItemOpenBehavior = "current",
       taskSource,
       extraNodeViews,
+      sessionMentionDropConfig,
       showFormatToolbar = true,
     } = props;
 
@@ -456,12 +542,16 @@ export const NoteEditor = forwardRef<NoteEditorRef, NoteEditorProps>(
         appLinkPastePlugin(),
         linkBoundaryGuardPlugin(),
         ...(mentionConfig ? [mentionSkipPlugin()] : []),
+        ...(sessionMentionDropConfig
+          ? [createSessionMentionDropPlugin(sessionMentionDropConfig)]
+          : []),
         ...(fileHandlerConfig ? [fileHandlerPlugin(fileHandlerConfig)] : []),
       ],
       [
         placeholderComponent,
         fileHandlerConfig,
         mentionConfig,
+        sessionMentionDropConfig,
         onNavigateToTitle,
       ],
     );
