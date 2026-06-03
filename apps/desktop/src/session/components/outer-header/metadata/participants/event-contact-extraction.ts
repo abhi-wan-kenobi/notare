@@ -52,6 +52,10 @@ export type ApplyExtractedContactsResult = {
   contacts: ExtractedEventContact[];
 };
 
+export type ApplyContactEnhancementResult = ApplyExtractedContactsResult & {
+  matched: boolean;
+};
+
 const aiExtractionSchema = z.object({
   contacts: z
     .array(
@@ -236,6 +240,85 @@ export function applyExtractedContacts(
       } else if (existingMapping.source === "excluded") {
         result.skipped += 1;
       }
+    }
+  });
+
+  return result;
+}
+
+export function applyExtractedContactToHuman(
+  store: Store,
+  sessionId: string,
+  humanId: string,
+  contacts: ExtractedEventContact[],
+  options: {
+    userId?: string;
+  } = {},
+): ApplyContactEnhancementResult {
+  const userId = options.userId || getCurrentUserId(store);
+  const normalizedContacts = normalizeExtractedContacts(contacts, []);
+  const result: ApplyContactEnhancementResult = {
+    created: 0,
+    updated: 0,
+    linked: 0,
+    skipped: 0,
+    contacts: [],
+    matched: false,
+  };
+
+  if (normalizedContacts.length === 0) {
+    return result;
+  }
+
+  store.transaction(() => {
+    const sessionMappings = buildSessionMappingsByHuman(store, sessionId);
+    const mapping = sessionMappings.get(humanId);
+    if (!mapping || mapping.source === "excluded") {
+      result.skipped += 1;
+      return;
+    }
+
+    const human = store.getRow("humans", humanId);
+    if (!human) {
+      result.skipped += 1;
+      return;
+    }
+
+    const contact = findContactForHuman(human, normalizedContacts);
+    if (!contact) {
+      if (humanId === userId) {
+        result.matched = true;
+        result.contacts.push(normalizedContacts[0]);
+        result.skipped += 1;
+      }
+      return;
+    }
+
+    result.matched = true;
+    result.contacts.push(contact);
+
+    const currentUser = store.getRow("humans", userId);
+    if (humanId === userId || isCurrentUserContact(contact, currentUser)) {
+      result.skipped += 1;
+      return;
+    }
+
+    const existingName = stringCell(human.name);
+    const existingEmail = stringCell(human.email);
+    const shouldUpdateName = shouldUpdateHumanName(existingName, contact.email);
+    const shouldUpdateEmail = shouldUpdateHumanEmail(
+      existingEmail,
+      contact.email,
+    );
+
+    if (shouldUpdateName) {
+      store.setCell("humans", humanId, "name", contact.name);
+    }
+    if (shouldUpdateEmail) {
+      store.setCell("humans", humanId, "email", contact.email ?? "");
+    }
+    if (shouldUpdateName || shouldUpdateEmail) {
+      result.updated += 1;
     }
   });
 
@@ -635,14 +718,40 @@ function isCurrentUserContact(
   );
 }
 
-function getCandidateAliases(candidate: EventContactCandidate): Set<string> {
-  const aliases = new Set<string>();
-  const normalizedName = normalizeName(candidate.name ?? "");
-  const nameTokens = tokenizeName(candidate.name ?? "");
+function findContactForHuman(
+  human: Record<string, unknown>,
+  contacts: ExtractedEventContact[],
+): ExtractedEventContact | undefined {
+  const humanCandidate: EventContactCandidate = {
+    name: stringCell(human.name),
+    email: stringCell(human.email),
+  };
+  const humanEmail = normalizeEmail(humanCandidate.email);
+  const humanName = normalizeName(humanCandidate.name ?? "");
+  const humanAliases = getStrongCandidateAliases(humanCandidate);
 
-  if (normalizedName) {
-    aliases.add(normalizedName);
-  }
+  return contacts.find((contact) => {
+    const contactEmail = normalizeEmail(contact.email);
+    if (humanEmail && contactEmail === humanEmail) {
+      return true;
+    }
+
+    const contactName = normalizeName(contact.name);
+    if (contactName && humanAliases.has(contactName)) {
+      return true;
+    }
+
+    const contactAliases = getStrongCandidateAliases({
+      name: contact.name,
+      email: contact.email,
+    });
+    return Boolean(humanName && contactAliases.has(humanName));
+  });
+}
+
+function getCandidateAliases(candidate: EventContactCandidate): Set<string> {
+  const aliases = getStrongCandidateAliases(candidate);
+  const nameTokens = tokenizeName(candidate.name ?? "");
 
   if (nameTokens[0]) {
     aliases.add(nameTokens[0]);
@@ -659,6 +768,29 @@ function getCandidateAliases(candidate: EventContactCandidate): Set<string> {
     }
     if (emailTokens[0]) {
       aliases.add(emailTokens[0]);
+    }
+  }
+
+  return aliases;
+}
+
+function getStrongCandidateAliases(
+  candidate: EventContactCandidate,
+): Set<string> {
+  const aliases = new Set<string>();
+  const normalizedName = normalizeName(candidate.name ?? "");
+
+  if (normalizedName) {
+    aliases.add(normalizedName);
+  }
+
+  const emailLocal = candidate.email?.split("@")[0];
+  if (emailLocal) {
+    const normalizedEmailLocal = normalizeName(
+      emailLocal.replace(/[._+-]+/g, " "),
+    );
+    if (normalizedEmailLocal) {
+      aliases.add(normalizedEmailLocal);
     }
   }
 
