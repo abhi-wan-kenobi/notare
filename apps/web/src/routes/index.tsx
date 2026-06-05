@@ -1115,7 +1115,7 @@ function AnnouncementBanner() {
   return (
     <div className="flex justify-center px-5 pt-6 md:pt-8">
       <a
-        href="https://v2.char.com"
+        href="https://char.com"
         className="border-color-subtle text-color group inline-flex max-w-full items-center justify-center gap-2 rounded-full border bg-white px-4 py-2 text-center text-sm font-medium shadow-sm transition-colors hover:bg-neutral-50 md:px-5"
         aria-label="Visit Char v2"
       >
