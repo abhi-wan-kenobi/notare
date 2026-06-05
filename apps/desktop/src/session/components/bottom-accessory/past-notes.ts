@@ -23,6 +23,7 @@ export type PastSessionNote = {
   dateLabel: string;
   summary: string | null;
   isGenerating: boolean;
+  isRegenerateDisabled?: boolean;
 };
 
 export type PastSessionNoteRequest = {
@@ -40,17 +41,19 @@ export type PastSessionNotesResult = {
   isGenerating: boolean;
   canGenerate: boolean;
   generateMissing: () => void;
+  regenerate: (sessionId: string) => void;
 };
 
 type MainStore = NonNullable<ReturnType<typeof main.UI.useStore>>;
 
 const MAX_PAST_NOTES = 8;
 const MAX_SOURCE_LENGTH = 6000;
+const MAX_KEY_FACTS = 3;
 const SPACE_REGEX = /\s+/g;
 const GENERIC_TITLE_KEYS = new Set(["new note", "untitled"]);
 
 const keyFactsSchema = z.object({
-  facts: z.array(z.string()).min(1).max(6),
+  facts: z.array(z.string()).min(1).max(MAX_KEY_FACTS),
 });
 
 export function usePastSessionNotes(sessionId: string): PastSessionNotesResult {
@@ -67,7 +70,7 @@ export function usePastSessionNotes(sessionId: string): PastSessionNotesResult {
 
   const built = useMemo(() => {
     if (!store) {
-      return { notes: [], missing: [] };
+      return { notes: [], missing: [], requests: [] };
     }
 
     return buildPastSessionNotes(
@@ -101,10 +104,10 @@ export function usePastSessionNotes(sessionId: string): PastSessionNotesResult {
 
   const generatingIds = useMemo(
     () =>
-      mutation.isPending
-        ? new Set(built.missing.map((request) => request.sessionId))
+      mutation.isPending && mutation.variables
+        ? new Set(mutation.variables.map((request) => request.sessionId))
         : new Set<string>(),
-    [built.missing, mutation.isPending],
+    [mutation.isPending, mutation.variables],
   );
 
   const notes = useMemo(
@@ -112,8 +115,9 @@ export function usePastSessionNotes(sessionId: string): PastSessionNotesResult {
       built.notes.map((note) => ({
         ...note,
         isGenerating: generatingIds.has(note.sessionId),
+        isRegenerateDisabled: mutation.isPending,
       })),
-    [built.notes, generatingIds],
+    [built.notes, generatingIds, mutation.isPending],
   );
 
   const generateMissing = useCallback(() => {
@@ -124,12 +128,31 @@ export function usePastSessionNotes(sessionId: string): PastSessionNotesResult {
     void mutation.mutateAsync(built.missing);
   }, [built.missing, model, mutation]);
 
+  const regenerate = useCallback(
+    (targetSessionId: string) => {
+      if (!model || mutation.isPending) {
+        return;
+      }
+
+      const request = built.requests.find(
+        (request) => request.sessionId === targetSessionId,
+      );
+      if (!request) {
+        return;
+      }
+
+      void mutation.mutateAsync([request]);
+    },
+    [built.requests, model, mutation],
+  );
+
   return {
     notes,
     hasPastNotes: notes.length > 0,
     isGenerating: mutation.isPending,
     canGenerate: Boolean(model),
     generateMissing,
+    regenerate,
   };
 }
 
@@ -140,10 +163,11 @@ export function buildPastSessionNotes(
 ): {
   notes: PastSessionNote[];
   missing: PastSessionNoteRequest[];
+  requests: PastSessionNoteRequest[];
 } {
   const currentSession = store.getRow("sessions", sessionId);
   if (!currentSession) {
-    return { notes: [], missing: [] };
+    return { notes: [], missing: [], requests: [] };
   }
 
   const currentParticipantIds = getSessionParticipantIds(
@@ -155,13 +179,14 @@ export function buildPastSessionNotes(
   const currentSeriesId = getRecurrenceSeriesId(currentEvent);
   const currentTitleKey = getSessionTitleKey(currentSession);
   if (!currentSeriesId && !currentTitleKey) {
-    return { notes: [], missing: [] };
+    return { notes: [], missing: [], requests: [] };
   }
 
   const currentTimestamp = getSessionTimestamp(currentSession);
   const items: Array<{
     note: PastSessionNote & { dateMs: number };
-    missing: PastSessionNoteRequest | null;
+    request: PastSessionNoteRequest;
+    isMissing: boolean;
   }> = [];
 
   store.forEachRow("sessions", (candidateSessionId, _forEachCell) => {
@@ -212,6 +237,14 @@ export function buildPastSessionNotes(
     const sourceHash = createSourceHash([title, dateLabel, source].join("\n"));
     const saved = getSavedKeyFacts(store, candidateSessionId, sourceHash);
     const ownerUserId = getSessionUserId(candidateSession, userId);
+    const request = {
+      sessionId: candidateSessionId,
+      userId: ownerUserId,
+      title,
+      dateLabel,
+      sourceText: source,
+      sourceHash,
+    };
 
     items.push({
       note: {
@@ -222,16 +255,8 @@ export function buildPastSessionNotes(
         isGenerating: false,
         dateMs: candidateTimestamp,
       },
-      missing: saved
-        ? null
-        : {
-            sessionId: candidateSessionId,
-            userId: ownerUserId,
-            title,
-            dateLabel,
-            sourceText: source,
-            sourceHash,
-          },
+      request,
+      isMissing: !saved,
     });
   });
 
@@ -244,7 +269,8 @@ export function buildPastSessionNotes(
       const { dateMs: _dateMs, ...rest } = note;
       return rest;
     }),
-    missing: selected.flatMap((item) => item.missing ?? []),
+    missing: selected.flatMap((item) => (item.isMissing ? [item.request] : [])),
+    requests: selected.map((item) => item.request),
   };
 }
 
@@ -317,7 +343,7 @@ async function generatePastSessionKeyFacts({
     prompt,
     output: Output.object({ schema: keyFactsSchema }),
     maxRetries: 2,
-    maxOutputTokens: 700,
+    maxOutputTokens: 400,
   });
 
   return normalizeFacts(result.output?.facts ?? []).join("\n");
@@ -352,7 +378,7 @@ function normalizeFacts(facts: string[]): string[] {
     normalized.push(text);
   }
 
-  return normalized.slice(0, 6);
+  return normalized.slice(0, MAX_KEY_FACTS);
 }
 
 function getSavedKeyFacts(
