@@ -26,6 +26,13 @@ use env::env;
 
 use crate::env::Env;
 
+const PAID_ENTITLEMENTS: &[&str] = &["hyprnote_pro", "hyprnote_lite"];
+
+fn paid_auth_state(supabase_url: &str) -> AuthState {
+    AuthState::new(supabase_url)
+        .with_required_entitlements(PAID_ENTITLEMENTS.iter().map(|e| e.to_string()).collect())
+}
+
 pub const DEVICE_FINGERPRINT_HEADER: &str = "x-device-fingerprint";
 pub const REQUEST_ID_HEADER: &str = "x-request-id";
 
@@ -110,8 +117,7 @@ async fn app() -> Router {
         )
         .build();
 
-    let auth_state_pro = AuthState::new(&env.supabase.supabase_url)
-        .with_required_entitlements(vec!["hyprnote_pro".into(), "hyprnote_lite".into()]);
+    let auth_state_paid = paid_auth_state(&env.supabase.supabase_url);
     let auth_state_basic = AuthState::new(&env.supabase.supabase_url);
     let auth_state_support = AuthState::new(&env.supabase.supabase_url);
 
@@ -161,15 +167,14 @@ async fn app() -> Router {
             hypr_transcribe_proxy::callback_router(stt_config.clone()),
         );
 
-    let auth_state_integration =
-        AuthState::new(&env.supabase.supabase_url).with_required_entitlement("hyprnote_pro");
+    let auth_state_integration = paid_auth_state(&env.supabase.supabase_url);
 
-    let pro_routes = Router::new()
+    let paid_routes = Router::new()
         .merge(hypr_api_research::router(research_config))
         .nest("/pyannote", hypr_api_pyannote::router(pyannote_config))
         .route_layer(middleware::from_fn(auth::sentry_and_analytics))
         .route_layer(middleware::from_fn_with_state(
-            auth_state_pro,
+            auth_state_paid,
             auth::require_auth,
         ));
 
@@ -241,7 +246,7 @@ async fn app() -> Router {
         .nest("/cactus", hypr_api_cactus::router(cactus_config))
         .merge(support_routes)
         .merge(webhook_routes)
-        .merge(pro_routes)
+        .merge(paid_routes)
         .merge(integration_routes)
         .merge(integration_management_routes)
         .merge(auth_routes)
