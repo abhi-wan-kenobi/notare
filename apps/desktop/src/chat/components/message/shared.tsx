@@ -3,7 +3,7 @@ import { type ReactNode } from "react";
 
 import { cn } from "@hypr/utils";
 
-import { useShell } from "~/contexts/shell";
+import { useChatAppearance } from "~/chat/hooks/use-chat-appearance";
 
 export function MessageContainer({
   align = "start",
@@ -33,9 +33,7 @@ export function MessageBubble({
   withActionButton?: boolean;
   children: ReactNode;
 }) {
-  const { chat } = useShell();
-  const isDarkSurface =
-    chat.mode === "FloatingOpen" || chat.mode === "RightPanelOpen";
+  const { isDarkAppearance } = useChatAppearance();
 
   return (
     <div
@@ -44,13 +42,13 @@ export function MessageBubble({
         variant === "user" &&
           "w-fit max-w-full rounded-2xl bg-blue-100 px-3 py-1 text-neutral-800 [&_p]:[text-wrap:wrap]",
         variant === "assistant" &&
-          (isDarkSurface
-            ? "rounded-2xl bg-white/95 px-3 py-1 text-neutral-800"
-            : "text-neutral-800"),
+          (isDarkAppearance
+            ? "bg-primary-foreground/95 text-primary rounded-2xl px-3 py-1"
+            : "text-foreground"),
         variant === "loading" &&
-          (isDarkSurface
-            ? "w-fit rounded-2xl bg-white/95 px-3 py-1 text-neutral-800"
-            : "text-neutral-800"),
+          (isDarkAppearance
+            ? "bg-primary-foreground/95 text-primary w-fit rounded-2xl px-3 py-1"
+            : "text-foreground"),
         variant === "error" &&
           "rounded-2xl border border-red-200 bg-red-50 px-3 py-1 text-red-600",
         withActionButton && "group relative",
@@ -82,8 +80,8 @@ export function ActionButton({
         "transition-opacity",
         "rounded-full p-1",
         variant === "default" && [
-          "bg-neutral-200 hover:bg-neutral-300",
-          "text-neutral-600 hover:text-neutral-800",
+          "bg-accent hover:bg-accent",
+          "text-muted-foreground hover:text-foreground",
         ],
         variant === "error" && [
           "bg-red-100 hover:bg-red-200",
@@ -111,7 +109,7 @@ export function Disclosure({
     <details
       className={cn([
         "group my-2 rounded-md border px-2 py-1 transition-colors",
-        "cursor-pointer border-neutral-200 hover:border-neutral-300",
+        "border-border hover:border-border cursor-pointer",
       ])}
     >
       <summary
@@ -122,7 +120,7 @@ export function Disclosure({
         }}
         className={cn([
           "w-full",
-          "text-xs text-neutral-500",
+          "text-muted-foreground text-xs",
           "list-none select-none marker:hidden",
           "flex items-center gap-2",
           disabled && "cursor-default",
@@ -135,9 +133,7 @@ export function Disclosure({
         </span>
         <ChevronRight className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" />
       </summary>
-      <div className="mt-1 border-t border-neutral-200 px-1 pt-2">
-        {children}
-      </div>
+      <div className="border-border mt-1 border-t px-1 pt-2">{children}</div>
     </details>
   );
 }

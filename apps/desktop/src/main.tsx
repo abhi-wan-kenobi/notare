@@ -13,12 +13,12 @@ import {
   useCreateManager,
 } from "tinytick/ui-react";
 
+import "@hypr/ui/globals.css";
 import {
   getCurrentWebviewWindowLabel,
   init as initWindowsPlugin,
 } from "@hypr/plugin-windows";
 import { Toaster } from "@hypr/ui/components/ui/toast";
-import "@hypr/ui/globals.css";
 
 import { createToolRegistry } from "./contexts/tool-registry/core";
 import { env } from "./env";
@@ -29,6 +29,8 @@ import { EventListeners } from "./services/event-listeners";
 import { TaskManager } from "./services/task-manager";
 import { RawEditorSyncBridge } from "./session/raw-editor-sync";
 import { ErrorComponent, NotFoundComponent } from "./shared/control";
+import { bootstrapThemeFromSettings } from "./shared/theme/apply";
+import { AppThemeProvider } from "./shared/theme/provider";
 import {
   type Store,
   STORE_ID,
@@ -72,22 +74,24 @@ function App() {
   }, [store, settingsStore]);
 
   if (!store || !settingsStore || !aiTaskStore) {
-    return <div className="h-screen w-screen bg-stone-50" />;
+    return <div className="bg-background h-screen w-screen" />;
   }
 
   return (
-    <AppI18nProvider>
-      <RouterProvider
-        router={router}
-        context={{
-          persistedStore: store,
-          internalStore: store,
-          listenerStore,
-          aiTaskStore,
-          toolRegistry,
-        }}
-      />
-    </AppI18nProvider>
+    <AppThemeProvider>
+      <AppI18nProvider>
+        <RouterProvider
+          router={router}
+          context={{
+            persistedStore: store,
+            internalStore: store,
+            listenerStore,
+            aiTaskStore,
+            toolRegistry,
+          }}
+        />
+      </AppI18nProvider>
+    </AppThemeProvider>
   );
 }
 
@@ -132,11 +136,16 @@ function AppWithTiny() {
 initWindowsPlugin();
 
 const rootElement = document.getElementById("root")!;
-if (!rootElement.innerHTML) {
+async function renderApp() {
+  await bootstrapThemeFromSettings();
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
       <AppWithTiny />
     </StrictMode>,
   );
+}
+
+if (!rootElement.innerHTML) {
+  void renderApp();
 }

@@ -51,6 +51,18 @@ vi.mock("~/contexts/shell", () => ({
   }),
 }));
 
+vi.mock("~/chat/hooks/use-chat-appearance", () => ({
+  useChatAppearance: () => ({
+    isDarkAppearance: true,
+    toolbarSurface: "dark",
+    panelClassName: "bg-primary text-primary-foreground",
+    panelBorderClassName: "border-primary/80",
+    elevatedSurfaceClassName:
+      "bg-primary-foreground text-primary border-border",
+    inputEditorClassName: "text-primary",
+  }),
+}));
+
 vi.mock("~/search/contexts/engine", () => ({
   useSearchEngine: () => ({
     search: searchMock,
@@ -198,5 +210,15 @@ describe("ContextBar session picker", () => {
     expect(outer?.className).not.toContain("mx-5");
     expect(outer?.className).not.toContain("mx-2");
     expect(outer?.className).not.toContain("mr-0");
+  });
+
+  it("uses an elevated surface that contrasts with the dark chat panel", () => {
+    renderContextBar();
+
+    const outer = document.querySelector("[data-chat-context-bar]");
+
+    expect(outer?.className).toContain("bg-primary-foreground");
+    expect(outer?.className).toContain("text-primary");
+    expect(outer?.className).not.toContain("bg-card");
   });
 });

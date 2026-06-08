@@ -1,3 +1,5 @@
+import "./chat-input.css";
+
 import { SquareIcon } from "lucide-react";
 import { useRef } from "react";
 
@@ -9,6 +11,7 @@ import { cn } from "@hypr/utils";
 import { useAutoFocusEditor, useDraftState, useSubmit } from "./hooks";
 
 import type { ContextRef } from "~/chat/context/entities";
+import { useChatAppearance } from "~/chat/hooks/use-chat-appearance";
 import { useShell } from "~/contexts/shell";
 import { useMentionConfig } from "~/editor-bridge/mention-config";
 
@@ -34,6 +37,7 @@ export function ChatMessageInput({
   onContextRefsChange?: (refs: ContextRef[]) => void;
 }) {
   const { chat } = useShell();
+  const { elevatedSurfaceClassName } = useChatAppearance();
   const editorRef = useRef<ChatEditorHandle>(null);
   const disabled =
     typeof disabledProp === "object" ? disabledProp.disabled : disabledProp;
@@ -57,12 +61,19 @@ export function ChatMessageInput({
   const isRightPanel = chat.mode === "RightPanelOpen";
 
   return (
-    <Container hasContextBar={hasContextBar} isRightPanel={isRightPanel}>
+    <Container
+      elevatedSurfaceClassName={elevatedSurfaceClassName}
+      hasContextBar={hasContextBar}
+      isRightPanel={isRightPanel}
+    >
       <div data-chat-message-input className="flex flex-col px-2 pt-3 pb-2">
         <div className="mb-1 min-h-0 flex-1">
           <ChatEditor
             ref={editorRef}
-            className="max-h-[40vh] overflow-y-auto overscroll-contain text-sm text-neutral-900"
+            className={cn([
+              "chat-input-editor",
+              "max-h-[40vh] overflow-y-auto overscroll-contain text-sm",
+            ])}
             initialContent={initialContent}
             mentionConfig={mentionConfig}
             placeholder={chatPlaceholder}
@@ -87,22 +98,20 @@ export function ChatMessageInput({
               onClick={handleSubmit}
               disabled={isSendDisabled}
               className={cn([
-                "inline-flex h-7 items-center gap-1.5 rounded-lg pr-1.5 pl-2.5 text-xs font-medium transition-all duration-100",
-                "border",
-                isSendDisabled
-                  ? "cursor-default border-neutral-200 text-neutral-300"
-                  : [
-                      "border-stone-600 bg-stone-800 text-white",
-                      "hover:bg-stone-700",
-                      "active:scale-[0.97] active:bg-stone-600",
-                    ],
+                "chat-input-send",
+                "inline-flex h-7 items-center gap-1.5 rounded-lg border pr-1.5 pl-2.5 text-xs font-medium transition-all duration-100",
+                !isSendDisabled && [
+                  "bg-primary text-primary-foreground border-stone-600",
+                  "hover:bg-primary/90",
+                  "active:bg-primary/80 active:scale-[0.97]",
+                ],
               ])}
             >
               Send
               <span
                 className={cn([
-                  "font-mono text-xs",
-                  isSendDisabled ? "text-neutral-300" : "text-stone-400",
+                  "chat-input-send-shortcut font-mono text-xs",
+                  !isSendDisabled && "text-stone-400",
                 ])}
               >
                 ⌘ ↩
@@ -117,10 +126,12 @@ export function ChatMessageInput({
 
 function Container({
   children,
+  elevatedSurfaceClassName,
   hasContextBar,
   isRightPanel,
 }: {
   children: React.ReactNode;
+  elevatedSurfaceClassName: string;
   hasContextBar?: boolean;
   isRightPanel: boolean;
 }) {
@@ -132,8 +143,10 @@ function Container({
       ])}
     >
       <div
+        data-chat-input-surface="elevated"
         className={cn([
-          "flex max-h-full flex-col border border-neutral-200 bg-white",
+          "flex max-h-full flex-col border",
+          elevatedSurfaceClassName,
           hasContextBar ? "rounded-t-none rounded-b-xl" : "rounded-xl",
           hasContextBar && "border-t-0",
         ])}
