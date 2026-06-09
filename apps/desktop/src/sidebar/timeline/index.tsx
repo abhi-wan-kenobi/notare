@@ -152,11 +152,9 @@ export function TimelineView({
   const bucketHeaderTopClassName = topChromeInset
     ? showCalendarSyncStatus
       ? "top-28"
-      : areSidebarActionsHidden
-        ? "top-20"
-        : isScrolledToTop
-          ? "top-[5.25rem]"
-          : "top-28"
+      : isScrolledToTop
+        ? "top-[5.25rem]"
+        : "top-12"
     : "top-0";
 
   const hasToday = useMemo(
@@ -474,7 +472,7 @@ export function TimelineView({
               <div
                 data-sidebar-timeline-bucket-header
                 className={cn([
-                  "sticky z-10",
+                  "sticky z-20",
                   bucketHeaderTopClassName,
                   "bg-background/95 py-1 pr-1 pl-3 backdrop-blur",
                 ])}
