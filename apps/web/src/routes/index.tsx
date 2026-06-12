@@ -57,6 +57,7 @@ const credibilityLogos = [
   { name: "Databricks", src: "/icons/databricks.svg" },
   { name: "Amazon", src: "/icons/amazon.svg", className: "max-h-9" },
   { name: "Meta", src: "/icons/meta.svg", className: "max-h-9" },
+  { name: "Y Combinator", src: "/icons/yc.svg" },
   { name: "Palantir", src: "/icons/palantir.svg" },
   { name: "Apple", src: "/icons/apple.svg", className: "max-h-9" },
   { name: "Disney", src: "/icons/disney.svg", className: "max-h-9" },
@@ -338,7 +339,7 @@ function Component() {
               AI notepad for private meetings.
             </h1>
             <p className="mt-6 max-w-2xl text-xl leading-9 text-[#363029]">
-              An open-source Granola alternative for private meetings,
+              The open-source Granola alternative for private meetings,
               downloaded over 11.9M times. Record locally and choose where AI
               runs.
             </p>
@@ -772,8 +773,8 @@ function HowItWorksSection() {
           How it works
         </h2>
         <p className="mt-6 text-lg leading-8 text-[#4f4940]">
-          Write rough notes during the meeting. Anarlog turns them into an
-          editable summary afterward.
+          Jot notes during the call. Anarlog turns them into an editable
+          summary.
         </p>
       </div>
       <div className="relative left-1/2 mt-8 hidden w-screen max-w-[1120px] -translate-x-1/2 sm:grid sm:grid-cols-2">
@@ -784,8 +785,8 @@ function HowItWorksSection() {
         <div className="flex flex-col overflow-clip">
           <div className="flex flex-col gap-4 p-8">
             <p className="text-sm leading-6 text-neutral-600">
-              <span className="font-semibold">While you take notes,</span>{" "}
-              Anarlog records from your device. No bot joins the call.
+              <span className="font-semibold">Take notes.</span> Anarlog records
+              from your device. No bot joins.
             </p>
           </div>
           <div className="flex flex-1 items-center justify-center bg-stone-50/30 px-8 pb-0">
@@ -826,8 +827,8 @@ function HowItWorksSection() {
         <div className="flex flex-col overflow-clip">
           <div className="flex flex-col gap-4 p-8">
             <p className="text-sm leading-6 text-neutral-600">
-              <span className="font-semibold">After the meeting is over,</span>{" "}
-              your rough notes become a summary you can edit and keep.
+              <span className="font-semibold">After the call,</span> your notes
+              become an editable summary.
             </p>
           </div>
           <div className="flex flex-1 items-start justify-center bg-stone-50/30 px-8 pb-0">
@@ -954,8 +955,8 @@ function HowItWorksSection() {
         <div>
           <div className="p-6">
             <p className="mb-4 text-sm leading-6 text-neutral-600">
-              <span className="font-semibold">While you take notes,</span>{" "}
-              Anarlog records from your device. No bot joins the call.
+              <span className="font-semibold">Take notes.</span> Anarlog records
+              from your device. No bot joins.
             </p>
           </div>
           <div className="relative overflow-clip bg-stone-50/30 px-6 pb-0">
@@ -999,8 +1000,8 @@ function HowItWorksSection() {
         <div>
           <div className="p-6">
             <p className="mb-4 text-sm leading-6 text-neutral-600">
-              <span className="font-semibold">After the meeting is over,</span>{" "}
-              your rough notes become a summary you can edit and keep.
+              <span className="font-semibold">After the call,</span> your notes
+              become an editable summary.
             </p>
           </div>
           <div className="overflow-clip bg-stone-50/30 px-6 pb-0">
@@ -1188,7 +1189,7 @@ function DownloadButton() {
       {open && (
         <div
           role="menu"
-          className="absolute top-[calc(100%+0.5rem)] left-0 z-10 w-80 max-w-[calc(100vw-2.5rem)] rounded-2xl border border-[#d8d0c5] bg-white p-2 shadow-[0_14px_40px_rgba(24,22,19,0.12)]"
+          className="absolute top-[calc(100%+0.5rem)] left-0 z-10 w-full max-w-[calc(100vw-2.5rem)] rounded-2xl border border-[#d8d0c5] bg-white p-2 shadow-[0_14px_40px_rgba(24,22,19,0.12)]"
         >
           <a
             href={appleIntelDownloadUrl}
