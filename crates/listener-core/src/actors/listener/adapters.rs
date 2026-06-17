@@ -422,6 +422,7 @@ fn build_listen_params(args: &ListenerArgs) -> owhisper_interface::ListenParams 
         sample_rate: super::super::SAMPLE_RATE,
         keywords: args.keywords.clone(),
         num_speakers,
+        max_speakers: num_speakers,
         custom_query: Some(custom_query),
         ..Default::default()
     }
@@ -455,7 +456,9 @@ fn format_languages(languages: &[hypr_language::Language]) -> String {
 }
 
 fn build_extra(args: &ListenerArgs) -> (f64, Extra) {
-    let session_offset_secs = args.session_started_at.elapsed().as_secs_f64();
+    let session_offset_secs = args
+        .stream_offset_secs
+        .unwrap_or_else(|| args.session_started_at.elapsed().as_secs_f64());
     let started_unix_millis = args
         .session_started_at_unix
         .duration_since(UNIX_EPOCH)
@@ -640,6 +643,7 @@ mod tests {
             mode: crate::actors::ChannelMode::MicOnly,
             session_started_at: Instant::now(),
             session_started_at_unix: SystemTime::now(),
+            stream_offset_secs: None,
             session_id: "session".to_string(),
             participant_human_ids: vec![],
             self_human_id: None,
@@ -656,6 +660,16 @@ mod tests {
     }
 
     #[test]
+    fn build_extra_prefers_explicit_stream_offset() {
+        let mut args = listener_args("https://api.deepgram.com", "nova-3");
+        args.stream_offset_secs = Some(12.5);
+
+        let (offset_secs, _) = build_extra(&args);
+
+        assert_eq!(offset_secs, 12.5);
+    }
+
+    #[test]
     fn build_listen_params_sets_num_speakers_without_assemblyai_custom_query() {
         let mut args = listener_args("https://api.assemblyai.com", "u3-rt-pro");
         args.participant_human_ids = vec!["remote".to_string()];
@@ -665,6 +679,7 @@ mod tests {
         let custom_query = params.custom_query.expect("custom query");
 
         assert_eq!(params.num_speakers, Some(2));
+        assert_eq!(params.max_speakers, Some(2));
         assert!(!custom_query.contains_key("speaker_labels"));
         assert!(!custom_query.contains_key("max_speakers"));
     }
@@ -679,6 +694,7 @@ mod tests {
         let custom_query = params.custom_query.expect("custom query");
 
         assert_eq!(params.num_speakers, Some(2));
+        assert_eq!(params.max_speakers, Some(2));
         assert!(!custom_query.contains_key("speaker_labels"));
         assert!(!custom_query.contains_key("max_speakers"));
     }
