@@ -15,7 +15,9 @@ enum FloatingBarLayout {
   static let hoverHandleGap: CGFloat = 3
   static let hoverHandleWidth: CGFloat = 13
   static let hoverHandleHeight: CGFloat = 8
-  static let hoverHandleReservedHeight: CGFloat = hoverHandleGap + hoverHandleHeight
+  static let hoverHandleBottomPadding: CGFloat = 4
+  static let hoverHandleReservedHeight: CGFloat =
+    hoverHandleGap + hoverHandleHeight + hoverHandleBottomPadding
   static let hoverHandleDotSize: CGFloat = 1.6
   static let hoverHandleDotGap: CGFloat = 2.4
   static let containerWidth: CGFloat = pillWidth + inset * 2
@@ -32,68 +34,38 @@ struct FloatingBarView: View {
 
   var body: some View {
     VStack(spacing: FloatingBarLayout.hoverHandleGap) {
-      VStack(spacing: FloatingBarLayout.clickAreaGap) {
-        Button(action: { performClick(RustBridge.openMainWindow) }) {
-          CircularClickArea {
-            Text("a")
-              .font(.custom(FloatingBarFonts.cabinSketchName, size: FloatingBarLayout.markSize))
-              .foregroundStyle(.white)
-              .offset(y: -1)
-          }
-        }
-        .buttonStyle(.plain)
+      controls
 
-        Button(action: { performClick(RustBridge.stopListening) }) {
-          CircularClickArea(
-            hoverFill: accentColor.opacity(0.16),
-            onHoverChange: { isBarsHovered = $0 }
-          ) {
-            Group {
-              if isBarsHovered {
-                Rectangle()
-                  .fill(stopColor)
-                  .frame(
-                    width: FloatingBarLayout.stopSquareSize,
-                    height: FloatingBarLayout.stopSquareSize
-                  )
-              } else if model.status == .error {
-                ErrorMark(color: errorAccentColor)
-              } else {
-                DancingBars(color: accentColor, amplitude: model.amplitude)
-              }
-            }
-            .frame(
-              width: FloatingBarLayout.waveformWidth,
-              height: FloatingBarLayout.waveformHeight
-            )
-          }
-        }
-        .buttonStyle(.plain)
-      }
-      .padding(FloatingBarLayout.pillPadding)
-      .frame(width: FloatingBarLayout.pillWidth, height: FloatingBarLayout.pillHeight)
-      .contentShape(Capsule(style: .continuous))
-      .simultaneousGesture(dragClickSuppressor)
-      .background(
-        Capsule(style: .continuous)
-          .fill(Color(red: 0.43, green: 0.44, blue: 0.40).opacity(0.78))
-      )
-      .overlay(
-        Capsule(style: .continuous)
-          .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5)
-      )
-      .overlay(
-        Capsule(style: .continuous)
-          .strokeBorder(Color.white.opacity(0.28), lineWidth: 0.5)
-          .padding(1.5)
-      )
-
-      FloatingBarHoverHandle()
+      FloatingBarHoverHandle(color: secondaryContentColor)
         .opacity(isBarHovered ? 1 : 0)
         .scaleEffect(isBarHovered ? 1 : 0.92)
-        .animation(.easeOut(duration: 0.12), value: isBarHovered)
         .accessibilityHidden(true)
     }
+    .padding(.bottom, FloatingBarLayout.hoverHandleBottomPadding)
+    .frame(
+      width: FloatingBarLayout.pillWidth,
+      height: isBarHovered
+        ? FloatingBarLayout.pillHeight + FloatingBarLayout.hoverHandleReservedHeight
+        : FloatingBarLayout.pillHeight,
+      alignment: .top
+    )
+    .contentShape(Capsule(style: .continuous))
+    .simultaneousGesture(dragClickSuppressor)
+    .background(
+      Capsule(style: .continuous)
+        .fill(surfaceColor)
+    )
+    .overlay(
+      Capsule(style: .continuous)
+        .strokeBorder(outerStrokeColor, lineWidth: 0.5)
+    )
+    .overlay(
+      Capsule(style: .continuous)
+        .strokeBorder(innerStrokeColor, lineWidth: 0.5)
+        .padding(1.5)
+    )
+    .clipShape(Capsule(style: .continuous))
+    .animation(.easeOut(duration: 0.12), value: isBarHovered)
     .padding(FloatingBarLayout.inset)
     .frame(
       width: FloatingBarLayout.containerWidth,
@@ -104,8 +76,83 @@ struct FloatingBarView: View {
     .onHover { isBarHovered = $0 }
   }
 
+  private var controls: some View {
+    VStack(spacing: FloatingBarLayout.clickAreaGap) {
+      Button(action: { performClick(RustBridge.openMainWindow) }) {
+        CircularClickArea(hoverFill: controlHoverFill) {
+          Text("a")
+            .font(.custom(FloatingBarFonts.cabinSketchName, size: FloatingBarLayout.markSize))
+            .foregroundStyle(primaryContentColor)
+            .offset(y: -1)
+        }
+      }
+      .buttonStyle(.plain)
+
+      Button(action: { performClick(RustBridge.stopListening) }) {
+        CircularClickArea(
+          hoverFill: accentColor.opacity(0.16),
+          onHoverChange: { isBarsHovered = $0 }
+        ) {
+          Group {
+            if isBarsHovered {
+              Rectangle()
+                .fill(stopColor)
+                .frame(
+                  width: FloatingBarLayout.stopSquareSize,
+                  height: FloatingBarLayout.stopSquareSize
+                )
+            } else if model.status == .error {
+              ErrorMark(color: errorAccentColor)
+            } else {
+              DancingBars(color: accentColor, amplitude: model.amplitude)
+            }
+          }
+          .frame(
+            width: FloatingBarLayout.waveformWidth,
+            height: FloatingBarLayout.waveformHeight
+          )
+        }
+      }
+      .buttonStyle(.plain)
+    }
+    .padding(FloatingBarLayout.pillPadding)
+    .frame(width: FloatingBarLayout.pillWidth, height: FloatingBarLayout.pillHeight)
+  }
+
   private var accentColor: Color {
     model.status == .error ? errorAccentColor : normalAccentColor
+  }
+
+  private var surfaceColor: Color {
+    if model.colorScheme == .dark {
+      return Color(red: 0.43, green: 0.44, blue: 0.40).opacity(0.78)
+    }
+
+    return Color(red: 0.86, green: 0.85, blue: 0.82).opacity(0.95)
+  }
+
+  private var primaryContentColor: Color {
+    if model.colorScheme == .dark {
+      return .white
+    }
+
+    return Color(red: 0.12, green: 0.11, blue: 0.10)
+  }
+
+  private var secondaryContentColor: Color {
+    primaryContentColor.opacity(model.colorScheme == .dark ? 0.66 : 0.46)
+  }
+
+  private var controlHoverFill: Color {
+    primaryContentColor.opacity(model.colorScheme == .dark ? 0.08 : 0.07)
+  }
+
+  private var outerStrokeColor: Color {
+    primaryContentColor.opacity(model.colorScheme == .dark ? 0.14 : 0.12)
+  }
+
+  private var innerStrokeColor: Color {
+    primaryContentColor.opacity(model.colorScheme == .dark ? 0.28 : 0.18)
   }
 
   private var stopColor: Color {
@@ -146,6 +193,7 @@ struct FloatingBarView: View {
 }
 
 private struct FloatingBarHoverHandle: View {
+  let color: Color
   private let columns = Array(
     repeating: GridItem(
       .fixed(FloatingBarLayout.hoverHandleDotSize), spacing: FloatingBarLayout.hoverHandleDotGap),
@@ -156,7 +204,7 @@ private struct FloatingBarHoverHandle: View {
     LazyVGrid(columns: columns, spacing: FloatingBarLayout.hoverHandleDotGap) {
       ForEach(0..<6, id: \.self) { _ in
         Circle()
-          .fill(Color.white.opacity(0.66))
+          .fill(color)
           .frame(
             width: FloatingBarLayout.hoverHandleDotSize,
             height: FloatingBarLayout.hoverHandleDotSize
