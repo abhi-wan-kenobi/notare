@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   chatElevatedSurfaceClassNames,
+  chatFloatingPanelClassNames,
   chatFloatingControlClassNames,
   chatFloatingPanelShellClassNames,
   chatInputEditorClassNames,
@@ -25,11 +26,11 @@ describe("chat surface tokens", () => {
     expect(chatPanelBorderClassNames()).toContain("border-border");
   });
 
-  it("maps elevated chat surfaces to dark accent tokens", () => {
-    expect(chatElevatedSurfaceClassNames()).toContain("bg-accent");
-    expect(chatElevatedSurfaceClassNames()).toContain("text-accent-foreground");
+  it("maps elevated chat surfaces to the card theme", () => {
+    expect(chatElevatedSurfaceClassNames()).toContain("bg-card");
+    expect(chatElevatedSurfaceClassNames()).toContain("text-card-foreground");
     expect(chatElevatedSurfaceClassNames()).toContain("border-border");
-    expect(chatInputEditorClassNames()).toContain("text-accent-foreground");
+    expect(chatInputEditorClassNames()).toContain("text-card-foreground");
     expect(chatInputEditorClassNames()).toContain("chat-input-editor");
   });
 
@@ -38,15 +39,27 @@ describe("chat surface tokens", () => {
     expect(chatFloatingControlClassNames()).toContain("text-accent-foreground");
   });
 
-  it("uses the card surface on the floating shell", () => {
+  it("uses a neutral surface on the floating shell", () => {
     expect(chatFloatingPanelShellClassNames()).toContain(
       "shadow-[0_16px_48px_rgba(0,0,0,0.18)]",
     );
     expect(chatFloatingPanelShellClassNames()).toContain(
       "dark:shadow-[0_16px_48px_rgba(0,0,0,0.55)]",
     );
-    expect(chatFloatingPanelShellClassNames()).toContain("border-border");
-    expect(chatFloatingPanelShellClassNames()).toContain("bg-card");
+    expect(chatFloatingPanelShellClassNames()).toContain("bg-[#f4f4f5]");
+    expect(chatFloatingPanelShellClassNames()).toContain("border-[#dedede]");
+    expect(chatFloatingPanelShellClassNames()).toContain("dark:bg-[#202020]");
+    expect(chatFloatingPanelShellClassNames()).toContain(
+      "dark:border-[#3a3a3a]",
+    );
+    expect(chatFloatingPanelShellClassNames()).not.toContain("bg-card");
+  });
+
+  it("uses a neutral floating panel surface to separate it from white notes", () => {
+    expect(chatFloatingPanelClassNames()).toContain("bg-[#f4f4f5]");
+    expect(chatFloatingPanelClassNames()).toContain("text-card-foreground");
+    expect(chatFloatingPanelClassNames()).toContain("dark:bg-[#202020]");
+    expect(chatFloatingPanelClassNames()).not.toContain("bg-card");
   });
 
   it("styles disabled send controls on the elevated input surface", () => {

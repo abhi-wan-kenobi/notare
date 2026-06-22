@@ -11,6 +11,7 @@ import { useSessionTab } from "./use-session-tab";
 import { useLanguageModel } from "~/ai/hooks";
 import { useChatAppearance } from "~/chat/hooks/use-chat-appearance";
 import { useChatActions } from "~/chat/store/use-chat-actions";
+import { chatFloatingPanelClassNames } from "~/chat/surface";
 import { useShell } from "~/contexts/shell";
 import * as main from "~/store/tinybase/store/main";
 
@@ -65,11 +66,13 @@ export function ChatSessionHost({
 
 export function ChatPanelFrame({
   layout = "floating",
+  onDraftContentChange,
   onOpenFloating,
   onOpenRightPanel,
   sessionProps,
 }: {
   layout?: "floating" | "right-panel";
+  onDraftContentChange?: (hasDraftContent: boolean) => void;
   onOpenFloating?: () => void;
   onOpenRightPanel?: () => void;
   sessionProps: ChatSessionRenderProps | null;
@@ -95,8 +98,9 @@ export function ChatPanelFrame({
   return (
     <div
       className={cn([
-        "flex h-full min-h-0 flex-col overflow-hidden",
-        panelClassName,
+        "flex min-h-0 flex-col overflow-hidden",
+        isFloating ? "max-h-full" : "h-full",
+        isFloating ? chatFloatingPanelClassNames() : panelClassName,
       ])}
     >
       <div
@@ -119,6 +123,8 @@ export function ChatPanelFrame({
       {sessionProps && (
         <ChatContent
           {...sessionProps}
+          layout={layout}
+          onDraftContentChange={onDraftContentChange}
           model={model}
           handleSendMessage={handleSendMessage}
         >

@@ -88,6 +88,7 @@ describe("ChatView", () => {
 
     expect(root?.className).toContain("bg-card");
     expect(root?.className).toContain("text-card-foreground");
+    expect(root?.className).toContain("h-full");
     expect(root?.className).not.toContain("bg-primary");
     expect(root?.firstElementChild?.className).toContain("h-12");
     expect(root?.firstElementChild?.className).not.toContain("border-b");
@@ -101,12 +102,15 @@ describe("ChatView", () => {
     );
   });
 
-  it("uses the sidebar card shell in the floating layout", () => {
+  it("uses the neutral shell in the floating layout", () => {
     const { container } = render(<ChatView layout="floating" />);
     const root = container.firstElementChild;
 
-    expect(root?.className).toContain("bg-card");
+    expect(root?.className).toContain("bg-[#f4f4f5]");
     expect(root?.className).toContain("text-card-foreground");
+    expect(root?.className).toContain("max-h-full");
+    expect(root?.className).not.toContain("bg-card");
+    expect(root?.className.split(" ")).not.toContain("h-full");
     expect(root?.firstElementChild?.className).toContain("h-11");
     expect(root?.firstElementChild?.className).not.toContain("border-b");
     expect(screen.getByTestId("chat-toolbar").dataset.surface).toBe("light");

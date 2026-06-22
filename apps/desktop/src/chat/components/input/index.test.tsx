@@ -31,8 +31,12 @@ vi.mock("@hypr/editor/chat", async () => {
         className: string;
         onSubmit: () => void;
         onUpdate: (json: unknown) => void;
+        placeholder: (props: {
+          node: { type: { name: string } };
+          pos: number;
+        }) => string;
       }
-    >(function ChatEditor({ className, onUpdate }, ref) {
+    >(function ChatEditor({ className, onUpdate, placeholder }, ref) {
       editorState.onUpdate = onUpdate;
 
       React.useImperativeHandle(ref, () => ({
@@ -41,7 +45,16 @@ vi.mock("@hypr/editor/chat", async () => {
         getJSON: () => editorState.json,
       }));
 
-      return <div className={className} data-testid="chat-editor" />;
+      return (
+        <div
+          className={className}
+          data-placeholder={placeholder({
+            node: { type: { name: "paragraph" } },
+            pos: 0,
+          })}
+          data-testid="chat-editor"
+        />
+      );
     }),
   };
 });
@@ -63,8 +76,8 @@ vi.mock("~/contexts/shell", () => ({
 vi.mock("~/chat/hooks/use-chat-appearance", () => ({
   useChatAppearance: () => ({
     isDarkAppearance: true,
-    elevatedSurfaceClassName: "bg-accent text-accent-foreground border-border",
-    inputEditorClassName: "chat-input-editor text-accent-foreground",
+    elevatedSurfaceClassName: "bg-card text-card-foreground border-border",
+    inputEditorClassName: "chat-input-editor text-card-foreground",
     sendButtonDisabledClassName:
       "cursor-default border-border text-muted-foreground/60",
     sendButtonShortcutDisabledClassName: "text-muted-foreground/60",
@@ -87,10 +100,13 @@ describe("ChatMessageInput", () => {
   });
 
   it("disables send until the draft has content", () => {
+    shellState.mode = "RightPanelOpen";
     const onSendMessage = vi.fn();
+    const onDraftContentChange = vi.fn();
     render(
       <ChatMessageInput
         draftKey="chat-input-test"
+        onDraftContentChange={onDraftContentChange}
         onSendMessage={onSendMessage}
       />,
     );
@@ -114,6 +130,7 @@ describe("ChatMessageInput", () => {
     });
 
     expect(sendButton.disabled).toBe(false);
+    expect(onDraftContentChange).toHaveBeenCalledWith(true);
 
     fireEvent.click(sendButton);
 
@@ -123,9 +140,55 @@ describe("ChatMessageInput", () => {
       [],
     );
     expect(clearContentMock).toHaveBeenCalled();
+    expect(onDraftContentChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("tracks attachment-only drafts without enabling text send", () => {
+    shellState.mode = "RightPanelOpen";
+    const onDraftContentChange = vi.fn();
+    render(
+      <ChatMessageInput
+        draftKey="chat-input-test"
+        onDraftContentChange={onDraftContentChange}
+        onSendMessage={vi.fn()}
+      />,
+    );
+
+    const sendButton = screen.getByRole<HTMLButtonElement>("button", {
+      name: /send/i,
+    });
+
+    editorState.json = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "attachment",
+              attrs: {
+                id: "attachment-1",
+                name: "image.png",
+                mimeType: "image/png",
+                url: "data:image/png;base64,abc",
+                size: 123,
+              },
+            },
+          ],
+        },
+      ],
+    };
+    act(() => {
+      editorState.onUpdate?.(editorState.json);
+    });
+
+    expect(onDraftContentChange).toHaveBeenCalledWith(true);
+    expect(sendButton.disabled).toBe(true);
   });
 
   it("marks the send control for disabled surface styling before the draft has content", () => {
+    shellState.mode = "RightPanelOpen";
+
     render(
       <ChatMessageInput draftKey="chat-input-test" onSendMessage={vi.fn()} />,
     );
@@ -139,7 +202,7 @@ describe("ChatMessageInput", () => {
     expect(sendButton.className).not.toContain("bg-primary");
   });
 
-  it("uses the elevated dark input surface for typed text", () => {
+  it("matches the hovered FAB surface while floating", () => {
     render(
       <ChatMessageInput draftKey="chat-input-test" onSendMessage={vi.fn()} />,
     );
@@ -148,12 +211,43 @@ describe("ChatMessageInput", () => {
     const surface = editor.closest("[data-chat-message-input]")?.parentElement;
 
     expect(editor.className).toContain("chat-input-editor");
-    expect(surface?.getAttribute("data-chat-input-surface")).toBe("elevated");
-    expect(surface?.className).toContain("bg-accent");
-    expect(surface?.className).toContain("text-accent-foreground");
+    expect(editor.className).toContain("max-h-24");
+    expect(editor.className).toContain("overflow-y-auto");
+    expect(editor.dataset.placeholder).toBe("Ask anything");
+    expect(screen.queryByRole("button", { name: /send/i })).toBeNull();
+    expect(surface?.getAttribute("data-chat-input-surface")).toBe("floating");
+    expect(surface?.className).toContain("min-h-10");
+    expect(surface?.className).toContain("max-h-32");
+    expect(surface?.className).toContain("rounded-[20px]");
+    expect(surface?.className).toContain("py-2");
+    expect(surface?.className).toContain("bg-[#f4f4f5]");
+    expect(surface?.className).toContain("dark:bg-[#202020]");
+    expect(surface?.className).toContain("text-muted-foreground");
+    expect(surface?.className).toContain(
+      "shadow-[inset_0_0_0_1px_hsl(var(--border)),0_4px_12px_rgba(0,0,0,0.1),0_16px_40px_rgba(0,0,0,0.16)]",
+    );
+    expect(surface?.className).not.toContain("bg-card");
   });
 
-  it("uses shared horizontal outer padding while floating", () => {
+  it("uses the light card input surface in the right panel", () => {
+    shellState.mode = "RightPanelOpen";
+
+    render(
+      <ChatMessageInput draftKey="chat-input-test" onSendMessage={vi.fn()} />,
+    );
+
+    const editor = screen.getByTestId("chat-editor");
+    const surface = editor.closest("[data-chat-message-input]")?.parentElement;
+
+    expect(editor.className).toContain("chat-input-editor");
+    expect(editor.className).toContain("max-h-[40vh]");
+    expect(surface?.getAttribute("data-chat-input-surface")).toBe("elevated");
+    expect(surface?.className).toContain("bg-card");
+    expect(surface?.className).toContain("text-card-foreground");
+    expect(surface?.className).toContain("rounded-xl");
+  });
+
+  it("keeps the floating input inset from the clipped shell corners", () => {
     render(
       <ChatMessageInput draftKey="chat-input-test" onSendMessage={vi.fn()} />,
     );
@@ -163,9 +257,10 @@ describe("ChatMessageInput", () => {
       .closest("[data-chat-message-input]");
     const outerContainer = messageInput?.parentElement?.parentElement;
 
-    expect(outerContainer?.className).toContain("px-3");
-    expect(outerContainer?.className).toContain("pb-2");
-    expect(outerContainer?.className).not.toContain("px-2");
+    expect(outerContainer?.className).toContain("px-1");
+    expect(outerContainer?.className).toContain("pb-1");
+    expect(outerContainer?.className).not.toContain("px-3");
+    expect(outerContainer?.className).not.toContain("px-2.5");
     expect(outerContainer?.className).not.toContain("pr-0");
   });
 
@@ -186,5 +281,18 @@ describe("ChatMessageInput", () => {
     expect(outerContainer?.className).not.toContain("px-5");
     expect(outerContainer?.className).not.toContain("px-2");
     expect(outerContainer?.className).not.toContain("pr-0");
+  });
+
+  it("caps the editor height in the right panel separately", () => {
+    shellState.mode = "RightPanelOpen";
+
+    render(
+      <ChatMessageInput draftKey="chat-input-test" onSendMessage={vi.fn()} />,
+    );
+
+    const editor = screen.getByTestId("chat-editor");
+
+    expect(editor.className).toContain("max-h-[40vh]");
+    expect(editor.className).not.toContain("max-h-48");
   });
 });

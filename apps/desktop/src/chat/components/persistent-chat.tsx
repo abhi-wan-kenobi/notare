@@ -17,9 +17,9 @@ import type { ChatSessionRenderProps } from "~/chat/components/session-provider"
 import { chatFloatingPanelShellClassNames } from "~/chat/surface";
 import { useShell } from "~/contexts/shell";
 
-const FLOATING_PANEL_MIN_WIDTH = 360;
+const FLOATING_PANEL_MIN_WIDTH = 368;
 const FLOATING_PANEL_MIN_HEIGHT = 320;
-const FLOATING_PANEL_MARGIN = 16;
+const FLOATING_PANEL_MARGIN = 12;
 
 type FloatingPanelSize = {
   width: number;
@@ -85,6 +85,7 @@ export function PersistentChatPanel({
   const [hasBeenOpened, setHasBeenOpened] = useState(false);
   const [containerRect, setContainerRect] =
     useState<FloatingContainerRect | null>(null);
+  const [draftHasContent, setDraftHasContent] = useState(false);
   const [floatingSize, setFloatingSize] = useState<FloatingPanelSize | null>(
     null,
   );
@@ -180,25 +181,38 @@ export function PersistentChatPanel({
   }
 
   const panelMotion = {
-    initial: { y: 24, opacity: 0, scale: 0.96, filter: "blur(6px)" },
-    animate: { y: 0, opacity: 1, scale: 1, filter: "blur(0px)" },
-    exit: { y: 18, opacity: 0, scale: 0.97, filter: "blur(4px)" },
+    initial: {
+      y: 0,
+      opacity: 1,
+      scale: 1,
+      clipPath: "inset(calc(100% - 5rem) 0 0 0 round 1.75rem)",
+    },
+    animate: {
+      y: 0,
+      opacity: 1,
+      scale: 1,
+      clipPath: "inset(0 0 0 0 round 1.75rem)",
+    },
+    exit: {
+      y: 8,
+      opacity: 0,
+      scale: 0.99,
+      clipPath: "inset(calc(100% - 5rem) 0 0 0 round 1.75rem)",
+    },
   };
   const panelTransition = {
     opacity: { duration: 0.18, ease: [0.22, 1, 0.36, 1] },
-    scale: { duration: 0.24, ease: [0.22, 1, 0.36, 1] },
-    y: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
-    filter: { duration: 0.16, ease: "easeOut" },
+    scale: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+    y: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
+    clipPath: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
   };
   const panelStyle =
     floatingSize && containerRect
       ? getFloatingPanelStyle(floatingSize, containerRect)
       : {
-          width: "min(640px, calc(100% - 2rem))",
-          height: "min(560px, calc(100% - 1rem))",
-          minWidth: "min(360px, calc(100% - 2rem))",
-          minHeight: "min(320px, calc(100% - 1rem))",
-          maxWidth: "calc(100% - 2rem)",
+          width: "calc(100% - 1.5rem)",
+          minWidth: "min(368px, calc(100% - 1.5rem))",
+          maxWidth: "648px",
           maxHeight: "calc(100% - 1rem)",
           transformOrigin: "bottom center",
         };
@@ -296,10 +310,14 @@ export function PersistentChatPanel({
             data-chat-resize-frame
             className={cn([
               "pointer-events-auto relative flex h-full min-h-0",
-              "items-end justify-center px-4 pt-4 pb-3",
+              "items-end justify-center px-3 pt-4 pb-2",
             ])}
             onClick={(event) => {
               if (event.target === event.currentTarget) {
+                if (draftHasContent) {
+                  return;
+                }
+
                 chat.sendEvent({ type: "CLOSE" });
               }
             }}
@@ -307,6 +325,7 @@ export function PersistentChatPanel({
             <motion.div
               ref={panelRef}
               data-chat-panel
+              data-chat-panel-reveal="bottom-up"
               data-chat-size="floating"
               className={cn([
                 "relative flex min-h-0 flex-col overflow-hidden",
@@ -320,6 +339,7 @@ export function PersistentChatPanel({
             >
               <ChatPanelFrame
                 layout="floating"
+                onDraftContentChange={setDraftHasContent}
                 onOpenRightPanel={() =>
                   chat.sendEvent({ type: "OPEN_RIGHT_PANEL" })
                 }

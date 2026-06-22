@@ -1,9 +1,6 @@
-import { MessageCircle } from "lucide-react";
-
 import { cn } from "@hypr/utils";
 
 import { useShell } from "~/contexts/shell";
-import { floatingActionSurfaceClassName } from "~/shared/floating-action-surface";
 
 export function ChatCTA({
   label = "Ask anything",
@@ -34,26 +31,21 @@ export function ChatCTA({
         data-chat-cta-surface
         aria-hidden="true"
         className={cn([
-          "pointer-events-none absolute bottom-0 left-1/2 inline-flex h-[10px] w-24 max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center overflow-hidden rounded-full border-2",
-          "origin-bottom px-0 text-sm transition-[width,height,padding,background-color,border-color,box-shadow] duration-200 ease-out",
-          "group-hover/anarlog-chat-cta:h-10 group-hover/anarlog-chat-cta:w-[640px] group-hover/anarlog-chat-cta:px-4",
-          "group-focus-visible/anarlog-chat-cta:h-10 group-focus-visible/anarlog-chat-cta:w-[640px] group-focus-visible/anarlog-chat-cta:px-4",
+          "pointer-events-none absolute bottom-0 left-1/2 inline-flex h-2 w-[min(640px,calc(100cqw_-_2rem))] -translate-x-1/2 items-center overflow-hidden rounded-full bg-black dark:bg-white",
+          "[clip-path:inset(0_calc(50%_-_3rem)_0_calc(50%_-_3rem)_round_9999px)]",
+          "origin-bottom px-0 text-sm shadow-none transition-[clip-path,height,padding,background-color,box-shadow] duration-200 ease-out",
+          "group-hover/anarlog-chat-cta:bg-[#f4f4f5] group-focus-visible/anarlog-chat-cta:bg-[#f4f4f5] dark:group-hover/anarlog-chat-cta:bg-[#202020] dark:group-focus-visible/anarlog-chat-cta:bg-[#202020]",
+          "group-hover/anarlog-chat-cta:h-10 group-hover/anarlog-chat-cta:px-4 group-hover/anarlog-chat-cta:[clip-path:inset(0_0_0_0_round_9999px)]",
+          "group-focus-visible/anarlog-chat-cta:h-10 group-focus-visible/anarlog-chat-cta:px-4 group-focus-visible/anarlog-chat-cta:[clip-path:inset(0_0_0_0_round_9999px)]",
+          "group-hover/anarlog-chat-cta:shadow-[inset_0_0_0_1px_hsl(var(--border)),0_4px_12px_rgba(0,0,0,0.1),0_16px_40px_rgba(0,0,0,0.16)] group-focus-visible/anarlog-chat-cta:shadow-[inset_0_0_0_1px_hsl(var(--border)),0_4px_12px_rgba(0,0,0,0.1),0_16px_40px_rgba(0,0,0,0.16)] dark:group-hover/anarlog-chat-cta:shadow-[inset_0_0_0_1px_hsl(var(--border)),0_4px_14px_rgba(0,0,0,0.35),0_16px_44px_rgba(0,0,0,0.55)] dark:group-focus-visible/anarlog-chat-cta:shadow-[inset_0_0_0_1px_hsl(var(--border)),0_4px_14px_rgba(0,0,0,0.35),0_16px_44px_rgba(0,0,0,0.55)]",
           "group-focus-visible/anarlog-chat-cta:ring-ring group-focus-visible/anarlog-chat-cta:ring-2 group-focus-visible/anarlog-chat-cta:ring-offset-2",
-          floatingActionSurfaceClassName,
         ])}
       >
-        <MessageCircle
-          className={cn([
-            "text-background/55 dark:text-primary/50 size-4 shrink-0 opacity-0 transition-opacity duration-150",
-            "group-focus-within/anarlog-chat-cta:opacity-100 group-hover/anarlog-chat-cta:opacity-100",
-          ])}
-          aria-hidden="true"
-        />
         <span
           aria-hidden="true"
           className={cn([
-            "ml-2 max-w-0 min-w-0 flex-1 truncate text-left opacity-0",
-            "text-background/55 dark:text-primary/50",
+            "max-w-0 min-w-0 flex-1 truncate text-left opacity-0",
+            "group-focus-within/anarlog-chat-cta:text-muted-foreground group-hover/anarlog-chat-cta:text-muted-foreground text-white/55",
             "transition-[max-width,opacity] duration-200 ease-out",
             "group-hover/anarlog-chat-cta:max-w-full group-hover/anarlog-chat-cta:opacity-100",
             "group-focus-within/anarlog-chat-cta:max-w-full group-focus-within/anarlog-chat-cta:opacity-100",
