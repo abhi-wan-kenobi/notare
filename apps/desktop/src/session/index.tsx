@@ -25,8 +25,10 @@ import { useSTTConnection } from "~/stt/useSTTConnection";
 import { useUploadFile } from "~/stt/useUploadFile";
 
 export function TabContentNote({
+  standaloneWindow = false,
   tab,
 }: {
+  standaloneWindow?: boolean;
   tab: Extract<Tab, { type: "sessions" }>;
 }) {
   const sessionMode = useListener((state) => state.getSessionMode(tab.id));
@@ -41,6 +43,10 @@ export function TabContentNote({
   useEffect(() => {
     if (!tab.state.autoStart) {
       hasAttemptedAutoStart.current = false;
+      return;
+    }
+
+    if (standaloneWindow) {
       return;
     }
 
@@ -63,6 +69,7 @@ export function TabContentNote({
     tab.id,
     tab.state,
     tab.state.autoStart,
+    standaloneWindow,
     canStartLiveSession,
     conn,
     startListening,
@@ -88,6 +95,7 @@ export function TabContentNote({
         <AudioPlayer.Provider sessionId={tab.id} url={audioUrl ?? ""}>
           <TabContentNoteInner
             tab={tab}
+            standaloneWindow={standaloneWindow}
             audioUrlReady={Boolean(audioUrl)}
             isAudioUrlLoading={audioUrlQuery.isPending}
           />
@@ -99,10 +107,12 @@ export function TabContentNote({
 
 function TabContentNoteInner({
   tab,
+  standaloneWindow,
   audioUrlReady,
   isAudioUrlLoading,
 }: {
   tab: Extract<Tab, { type: "sessions" }>;
+  standaloneWindow: boolean;
   audioUrlReady: boolean;
   isAudioUrlLoading: boolean;
 }) {
@@ -177,6 +187,7 @@ function TabContentNoteInner({
         <OuterHeader
           sessionId={tab.id}
           currentView={currentView}
+          standaloneWindow={standaloneWindow}
           title={
             <TitleInput
               ref={titleInputRef}
@@ -195,7 +206,11 @@ function TabContentNoteInner({
       bottomBorderHandle={bottomBorderHandle}
       mergeAfterBorder={mergeTranscriptSurface}
       floatingButton={
-        <FloatingActionButton skipReason={skipReason} tab={tab} />
+        <FloatingActionButton
+          allowListening={!standaloneWindow}
+          skipReason={skipReason}
+          tab={tab}
+        />
       }
     >
       <NoteInput

@@ -260,6 +260,49 @@ describe("OuterHeader", () => {
     expect(screen.queryByRole("button", { name: "Stop listening" })).toBeNull();
   });
 
+  it("keeps listener controls hidden in standalone windows", () => {
+    mocks.leftsidebar.expanded = true;
+    mocks.sessionModes = { "session-1": "active" };
+
+    render(
+      <OuterHeader
+        sessionId="session-1"
+        currentView={{ type: "raw" } as EditorView}
+        standaloneWindow
+        title={<span>Session title</span>}
+      />,
+    );
+
+    const title = screen.getByText("Session title");
+    const titleSlot = title.parentElement?.parentElement;
+
+    expect(titleSlot?.className).toContain("left-[68px]");
+    expect(titleSlot?.className).toContain("right-[70px]");
+    expect(screen.queryByRole("button", { name: "Stop listening" })).toBeNull();
+    expect(mocks.stopListening).not.toHaveBeenCalled();
+  });
+
+  it("does not reserve collapsed sidebar gutter in standalone windows", () => {
+    mocks.leftsidebar.expanded = false;
+
+    const { container } = render(
+      <OuterHeader
+        sessionId="session-1"
+        currentView={{ type: "raw" } as EditorView}
+        standaloneWindow
+        title={<span>Session title</span>}
+      />,
+    );
+
+    const title = screen.getByText("Session title");
+    const titleSlot = title.parentElement?.parentElement;
+    const header = container.firstElementChild;
+
+    expect(header?.className).not.toContain("pl-[156px]");
+    expect(titleSlot?.className).toContain("left-[68px]");
+    expect(titleSlot?.className).toContain("right-[70px]");
+  });
+
   it("shows a header join control before a remote meeting", () => {
     mocks.sessionEvents = {
       "session-1": {
