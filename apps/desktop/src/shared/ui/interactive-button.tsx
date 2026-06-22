@@ -13,6 +13,7 @@ import {
 interface InteractiveButtonProps {
   children: ReactNode;
   onClick?: () => void;
+  onDoubleClick?: () => void;
   onCmdClick?: () => void;
   onShiftClick?: () => void;
   onMouseDown?: (e: MouseEvent<HTMLElement>) => void;
@@ -27,6 +28,7 @@ interface InteractiveButtonProps {
 export function InteractiveButton({
   children,
   onClick,
+  onDoubleClick,
   onCmdClick,
   onShiftClick,
   onMouseDown,
@@ -51,11 +53,43 @@ export function InteractiveButton({
       } else if (e.metaKey || e.ctrlKey) {
         e.preventDefault();
         onCmdClick?.();
+      } else if (onDoubleClick) {
+        if (e.detail > 1) {
+          return;
+        }
+
+        onClick?.();
       } else {
         onClick?.();
       }
     },
-    [onClick, onCmdClick, onShiftClick, disabled],
+    [onClick, onDoubleClick, onCmdClick, onShiftClick, disabled],
+  );
+
+  const handleDoubleClick = useCallback(
+    (e: MouseEvent<HTMLElement>) => {
+      if (disabled) {
+        return;
+      }
+
+      e.preventDefault();
+      onDoubleClick?.();
+    },
+    [onDoubleClick, disabled],
+  );
+
+  const handleDragStart = useCallback(
+    (e: DragEvent<HTMLElement>) => {
+      onDragStart?.(e);
+    },
+    [onDragStart],
+  );
+
+  const handleContextMenu = useCallback(
+    (e: MouseEvent<HTMLElement>) => {
+      showMenu(e);
+    },
+    [showMenu],
   );
 
   const Element = asChild ? "div" : "button";
@@ -63,9 +97,10 @@ export function InteractiveButton({
   return (
     <Element
       onClick={handleClick}
-      onDragStart={onDragStart}
+      onDoubleClick={onDoubleClick ? handleDoubleClick : undefined}
+      onDragStart={onDragStart ? handleDragStart : undefined}
       onMouseDown={onMouseDown}
-      onContextMenu={contextMenu ? showMenu : undefined}
+      onContextMenu={contextMenu ? handleContextMenu : undefined}
       className={className}
       disabled={!asChild ? disabled : undefined}
       draggable={draggable}
