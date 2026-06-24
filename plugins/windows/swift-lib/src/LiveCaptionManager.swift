@@ -18,6 +18,10 @@ final class LiveCaptionManager {
   func show() {
     runOnMain { [weak self] in
       guard let self else { return }
+      guard !self.settingsModel.liveCaptionMinimized else {
+        self.hidePanel(clearText: false)
+        return
+      }
 
       if let panel = self.panel {
         self.resize(panel)
@@ -81,8 +85,13 @@ final class LiveCaptionManager {
   func update(state: LiveCaptionStatePayload) {
     runOnMain { [weak self] in
       guard let self else { return }
-      self.model.text = state.text
       let placementChanged = self.settingsModel.apply(liveCaptionState: state)
+      if state.minimized {
+        self.hidePanel(clearText: false)
+        return
+      }
+
+      self.model.text = state.text
       if let panel = self.panel {
         self.resize(panel)
         guard NSEvent.pressedMouseButtons == 0 else { return }
@@ -138,13 +147,9 @@ final class LiveCaptionManager {
   }
 
   private var initialSize: NSSize {
-    if settingsModel.liveCaptionMinimized {
-      return LiveCaptionLayout.minimizedSize
-    }
-
     return NSSize(
-      width: LiveCaptionLayout.defaultWidth,
-      height: LiveCaptionLayout.height(forLineCount: LiveCaptionLayout.defaultLineCount))
+      width: CGFloat(settingsModel.liveCaptionWidth),
+      height: LiveCaptionLayout.height(forLineCount: settingsModel.liveCaptionLineCount))
   }
 
   private func resize(_ panel: NSPanel) {
@@ -165,13 +170,12 @@ final class LiveCaptionManager {
   }
 
   private func targetSize(for panel: NSPanel) -> NSSize {
-    if settingsModel.liveCaptionMinimized {
-      return LiveCaptionLayout.minimizedSize
-    }
-
-    let width = min(max(panel.frame.width, LiveCaptionLayout.minWidth), LiveCaptionLayout.maxWidth)
+    let isResizing = NSEvent.pressedMouseButtons != 0
+    let requestedWidth = isResizing ? panel.frame.width : CGFloat(settingsModel.liveCaptionWidth)
+    let requestedLineCount = isResizing ? model.lineCount : settingsModel.liveCaptionLineCount
+    let width = min(max(requestedWidth, LiveCaptionLayout.minWidth), LiveCaptionLayout.maxWidth)
     let lineCount = min(
-      max(model.lineCount, LiveCaptionLayout.minLineCount),
+      max(requestedLineCount, LiveCaptionLayout.minLineCount),
       LiveCaptionLayout.maxLineCount
     )
     model.lineCount = lineCount
@@ -182,12 +186,6 @@ final class LiveCaptionManager {
   }
 
   private func updateSizeConstraints(_ panel: NSPanel, targetSize: NSSize) {
-    if settingsModel.liveCaptionMinimized {
-      panel.minSize = targetSize
-      panel.maxSize = targetSize
-      return
-    }
-
     panel.minSize = NSSize(
       width: LiveCaptionLayout.minWidth,
       height: LiveCaptionLayout.height(forLineCount: LiveCaptionLayout.minLineCount))
@@ -200,6 +198,11 @@ final class LiveCaptionManager {
     settingsModel.setLiveCaptionMinimized(minimized)
     if minimized {
       hidePanel(clearText: false)
+      return
+    }
+
+    if panel == nil {
+      show()
       return
     }
 

@@ -15,7 +15,6 @@ enum LiveCaptionLayout {
   static let cornerRadius: CGFloat = 12
   static let screenMargin: CGFloat = 12
   static let topOffset: CGFloat = 18
-  static let minimizedSize = NSSize(width: 42, height: 36)
 
   static func height(forLineCount lineCount: Int) -> CGFloat {
     let clampedLineCount = min(max(lineCount, minLineCount), maxLineCount)
@@ -34,20 +33,8 @@ struct LiveCaptionView: View {
   @ObservedObject var model: LiveCaptionViewModel
   @ObservedObject var settings: FloatingOverlaySettingsModel
   let onSetMinimized: (Bool) -> Void
-  @State private var isHovered = false
 
   var body: some View {
-    Group {
-      if settings.liveCaptionMinimized {
-        minimizedBody
-      } else {
-        expandedBody
-      }
-    }
-    .onHover { isHovered = $0 }
-  }
-
-  private var expandedBody: some View {
     VStack(spacing: 0) {
       Text(model.text)
         .font(.system(size: 16, weight: .medium, design: .default))
@@ -55,7 +42,7 @@ struct LiveCaptionView: View {
         .foregroundStyle(.white)
         .multilineTextAlignment(.center)
         .lineLimit(model.lineCount)
-        .truncationMode(.tail)
+        .truncationMode(.head)
         .fixedSize(horizontal: false, vertical: true)
         .frame(
           maxWidth: .infinity,
@@ -78,27 +65,7 @@ struct LiveCaptionView: View {
       .frame(height: LiveCaptionLayout.footerHeight)
     }
     .background(captionBackground)
-    .overlay(alignment: .bottomTrailing) {
-      ResizeHint()
-        .opacity(isHovered ? 0.55 : 0)
-        .padding(6)
-    }
     .contentShape(RoundedRectangle(cornerRadius: LiveCaptionLayout.cornerRadius))
-  }
-
-  private var minimizedBody: some View {
-    Button(action: { onSetMinimized(false) }) {
-      Image(systemName: "captions.bubble")
-        .font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(.white)
-        .frame(
-          width: LiveCaptionLayout.minimizedSize.width,
-          height: LiveCaptionLayout.minimizedSize.height
-        )
-        .background(captionBackground)
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Restore transcript")
   }
 
   private var captionBackground: some View {
@@ -132,7 +99,7 @@ private struct CaptionFooter: View {
       Spacer(minLength: 0)
 
       Button(action: onMinimize) {
-        Text("Close")
+        Text("Hide")
           .font(.system(size: 11, weight: .semibold))
           .foregroundStyle(.white.opacity(0.92))
           .padding(.horizontal, 8)
@@ -147,27 +114,13 @@ private struct CaptionFooter: View {
           )
       }
       .buttonStyle(.plain)
-      .accessibilityLabel("Close transcript")
+      .accessibilityLabel("Hide transcript")
     }
     .padding(.leading, LiveCaptionLayout.horizontalPadding)
-    .padding(.trailing, 24)
+    .padding(.trailing, 8)
   }
 
   private var clampedOpacity: Double {
     min(max(opacity, FloatingOverlayOpacity.minLiveCaption), FloatingOverlayOpacity.maxLiveCaption)
-  }
-}
-
-private struct ResizeHint: View {
-  var body: some View {
-    VStack(alignment: .trailing, spacing: 2) {
-      Capsule()
-        .fill(.white)
-        .frame(width: 6, height: 1)
-      Capsule()
-        .fill(.white)
-        .frame(width: 10, height: 1)
-    }
-    .accessibilityHidden(true)
   }
 }
