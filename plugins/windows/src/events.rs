@@ -94,6 +94,17 @@ common_event_derives! {
     pub struct FloatingBarOpenMain {}
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct FloatingBarSettingsChange {
+    pub floating_bar_opacity: Option<f64>,
+    pub live_caption_opacity: Option<f64>,
+    pub live_caption_width: Option<f64>,
+    pub live_caption_line_count: Option<u32>,
+    pub live_caption_position: Option<crate::window::live_caption::LiveCaptionPosition>,
+    pub live_caption_minimized: Option<bool>,
+}
+
 common_event_derives! {
     pub struct DevtoolsPanelAction {
         pub action: String,
