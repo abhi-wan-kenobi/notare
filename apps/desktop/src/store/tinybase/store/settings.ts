@@ -61,16 +61,6 @@ export const SETTINGS_MAPPING = {
       path: ["general", "live_caption_opacity"],
       default: 0.3 as number,
     },
-    live_caption_width: {
-      type: "number",
-      path: ["general", "live_caption_width"],
-      default: 440 as number,
-    },
-    live_caption_line_count: {
-      type: "number",
-      path: ["general", "live_caption_line_count"],
-      default: 1 as number,
-    },
     live_caption_position: {
       type: "string",
       path: ["general", "live_caption_position"],
@@ -80,6 +70,11 @@ export const SETTINGS_MAPPING = {
       type: "boolean",
       path: ["general", "live_caption_minimized"],
       default: false as boolean,
+    },
+    live_caption_enabled: {
+      type: "boolean",
+      path: ["general", "live_caption_enabled"],
+      default: true as boolean,
     },
     show_app_in_dock: {
       type: "boolean",

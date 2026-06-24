@@ -26,19 +26,17 @@ type LiveCaptionPosition =
 type FloatingOverlaySettings = {
   floatingBarOpacity: number;
   liveCaptionOpacity: number;
-  liveCaptionWidth: number;
-  liveCaptionLineCount: number;
   liveCaptionPosition: LiveCaptionPosition;
   liveCaptionMinimized: boolean;
+  liveCaptionEnabled: boolean;
 };
 type FloatingOverlaySettingsStorage = Pick<
   GeneralStorage,
   | "floating_bar_opacity"
   | "live_caption_opacity"
-  | "live_caption_width"
-  | "live_caption_line_count"
   | "live_caption_position"
   | "live_caption_minimized"
+  | "live_caption_enabled"
 >;
 type FloatingRouteState = {
   sessionId: string;
@@ -47,8 +45,6 @@ type FloatingRouteState = {
   colorScheme: FloatingBarColorScheme;
   opacity: number;
   liveCaptionOpacity: number;
-  liveCaptionWidth: number;
-  liveCaptionLineCount: number;
   liveCaptionPosition: LiveCaptionPosition;
   liveCaptionMinimized: boolean;
   liveCaptionToggleVisible: boolean;
@@ -57,8 +53,6 @@ type LiveCaptionRouteState = {
   sessionId: string;
   text: string;
   opacity: number;
-  width: number;
-  lineCount: number;
   position: LiveCaptionPosition;
   minimized: boolean;
 };
@@ -66,20 +60,15 @@ type LiveCaptionRouteState = {
 const DEFAULT_FLOATING_OVERLAY_SETTINGS: FloatingOverlaySettings = {
   floatingBarOpacity: 0.78,
   liveCaptionOpacity: 0.3,
-  liveCaptionWidth: 440,
-  liveCaptionLineCount: 1,
   liveCaptionPosition: "topCenter",
   liveCaptionMinimized: false,
+  liveCaptionEnabled: true,
 };
 
 const FLOATING_BAR_MIN_OPACITY = 0.35;
 const FLOATING_BAR_MAX_OPACITY = 0.95;
 const LIVE_CAPTION_MIN_OPACITY = 0.05;
 const LIVE_CAPTION_MAX_OPACITY = 1;
-const LIVE_CAPTION_MIN_WIDTH = 260;
-const LIVE_CAPTION_MAX_WIDTH = 640;
-const LIVE_CAPTION_MIN_LINE_COUNT = 1;
-const LIVE_CAPTION_MAX_LINE_COUNT = 4;
 
 const LIVE_CAPTION_POSITIONS: ReadonlySet<string> = new Set([
   "topCenter",
@@ -93,10 +82,9 @@ const LIVE_CAPTION_POSITIONS: ReadonlySet<string> = new Set([
 const FLOATING_OVERLAY_SETTING_KEYS = [
   "floating_bar_opacity",
   "live_caption_opacity",
-  "live_caption_width",
-  "live_caption_line_count",
   "live_caption_position",
   "live_caption_minimized",
+  "live_caption_enabled",
   "current_stt_provider",
   "current_stt_model",
 ] as const;
@@ -108,6 +96,7 @@ export function FloatingMeetingWindowHost() {
   return (
     <>
       <FloatingOverlaySettingsEventSync />
+      <LiveCaptionDefaultVisibilitySync store={store} />
       {floatingBarEnabled ? (
         <FloatingMeetingWindowSync store={store} />
       ) : (
@@ -134,22 +123,11 @@ function getFloatingOverlaySettingsFromStore(
       LIVE_CAPTION_MIN_OPACITY,
       LIVE_CAPTION_MAX_OPACITY,
     ),
-    liveCaptionWidth: normalizeNumber(
-      store?.getValue("live_caption_width"),
-      DEFAULT_FLOATING_OVERLAY_SETTINGS.liveCaptionWidth,
-      LIVE_CAPTION_MIN_WIDTH,
-      LIVE_CAPTION_MAX_WIDTH,
-    ),
-    liveCaptionLineCount: normalizeInteger(
-      store?.getValue("live_caption_line_count"),
-      DEFAULT_FLOATING_OVERLAY_SETTINGS.liveCaptionLineCount,
-      LIVE_CAPTION_MIN_LINE_COUNT,
-      LIVE_CAPTION_MAX_LINE_COUNT,
-    ),
     liveCaptionPosition: normalizeLiveCaptionPosition(
       store?.getValue("live_caption_position"),
     ),
     liveCaptionMinimized: store?.getValue("live_caption_minimized") === true,
+    liveCaptionEnabled: store?.getValue("live_caption_enabled") !== false,
   };
 }
 
@@ -189,6 +167,51 @@ function FloatingOverlaySettingsEventSync() {
     return () => {
       cancelled = true;
       unlisten?.();
+    };
+  });
+
+  return null;
+}
+
+function LiveCaptionDefaultVisibilitySync({
+  store,
+}: {
+  store: SettingsStore | undefined;
+}) {
+  useMountEffect(() => {
+    let appliedSessionId: string | null = null;
+
+    const applyDefaultVisibility = (state: ListenerState) => {
+      if (!store || state.live.status !== "active" || !state.live.sessionId) {
+        appliedSessionId = null;
+        return;
+      }
+
+      if (state.live.liveTranscriptionActive !== true) {
+        return;
+      }
+
+      if (appliedSessionId === state.live.sessionId) {
+        return;
+      }
+
+      appliedSessionId = state.live.sessionId;
+      store.setValue(
+        "live_caption_minimized",
+        getLiveCaptionMinimizedForSessionDefault({
+          liveCaptionEnabled: store.getValue("live_caption_enabled") !== false,
+        }),
+      );
+    };
+
+    applyDefaultVisibility(listenerStore.getState());
+
+    const unsubscribe = listenerStore.subscribe((state) => {
+      applyDefaultVisibility(state);
+    });
+
+    return () => {
+      unsubscribe();
     };
   });
 
@@ -555,8 +578,6 @@ export function getFloatingRouteState(
     colorScheme,
     opacity: settings.floatingBarOpacity,
     liveCaptionOpacity: settings.liveCaptionOpacity,
-    liveCaptionWidth: settings.liveCaptionWidth,
-    liveCaptionLineCount: settings.liveCaptionLineCount,
     liveCaptionPosition: settings.liveCaptionPosition,
     liveCaptionMinimized: settings.liveCaptionMinimized,
     liveCaptionToggleVisible,
@@ -578,13 +599,23 @@ function getCurrentFloatingRouteState(
 }
 
 export function shouldShowFloatingLiveCaptionToggle({
+  provider,
+  model,
   liveTranscriptionActive,
 }: {
   provider?: string | null;
   model?: string | null;
   liveTranscriptionActive: boolean;
 }) {
-  return liveTranscriptionActive;
+  return liveTranscriptionActive && isHyprnoteCloudSttModel(provider, model);
+}
+
+export function getLiveCaptionMinimizedForSessionDefault({
+  liveCaptionEnabled,
+}: {
+  liveCaptionEnabled: boolean;
+}) {
+  return !liveCaptionEnabled;
 }
 
 function getFloatingLiveCaptionToggleVisible(
@@ -625,8 +656,6 @@ export function getLiveCaptionRouteState(
     sessionId: state.live.sessionId,
     text: state.liveCaptionText.trim(),
     opacity: settings.liveCaptionOpacity,
-    width: settings.liveCaptionWidth,
-    lineCount: settings.liveCaptionLineCount,
     position: settings.liveCaptionPosition,
     minimized: false,
   };
@@ -700,8 +729,6 @@ function isSameFloatingRouteState(
     left?.colorScheme === right?.colorScheme &&
     left?.opacity === right?.opacity &&
     left?.liveCaptionOpacity === right?.liveCaptionOpacity &&
-    left?.liveCaptionWidth === right?.liveCaptionWidth &&
-    left?.liveCaptionLineCount === right?.liveCaptionLineCount &&
     left?.liveCaptionPosition === right?.liveCaptionPosition &&
     left?.liveCaptionMinimized === right?.liveCaptionMinimized &&
     left?.liveCaptionToggleVisible === right?.liveCaptionToggleVisible
@@ -716,8 +743,6 @@ function isSameLiveCaptionRouteState(
     left?.sessionId === right?.sessionId &&
     left?.text === right?.text &&
     left?.opacity === right?.opacity &&
-    left?.width === right?.width &&
-    left?.lineCount === right?.lineCount &&
     left?.position === right?.position &&
     left?.minimized === right?.minimized
   );
@@ -805,8 +830,6 @@ async function showFloatingMeetingWindow(
     colorScheme: routeState.colorScheme,
     opacity: routeState.opacity,
     liveCaptionOpacity: routeState.liveCaptionOpacity,
-    liveCaptionWidth: routeState.liveCaptionWidth,
-    liveCaptionLineCount: routeState.liveCaptionLineCount,
     liveCaptionPosition: routeState.liveCaptionPosition,
     liveCaptionMinimized: routeState.liveCaptionMinimized,
     liveCaptionToggleVisible: routeState.liveCaptionToggleVisible,
@@ -852,8 +875,6 @@ async function showLiveCaptionWindow(
   const updateResult = await windowsCommands.liveCaptionUpdate({
     text: routeState.text,
     opacity: routeState.opacity,
-    width: routeState.width,
-    lineCount: routeState.lineCount,
     position: routeState.position,
     minimized: routeState.minimized,
   });
@@ -876,29 +897,11 @@ function normalizeOpacity(
   min: number,
   max: number,
 ): number {
-  return normalizeNumber(value, fallback, min, max);
-}
-
-function normalizeNumber(
-  value: unknown,
-  fallback: number,
-  min: number,
-  max: number,
-): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return fallback;
   }
 
   return Math.min(Math.max(value, min), max);
-}
-
-function normalizeInteger(
-  value: unknown,
-  fallback: number,
-  min: number,
-  max: number,
-): number {
-  return Math.round(normalizeNumber(value, fallback, min, max));
 }
 
 function normalizeLiveCaptionPosition(value: unknown): LiveCaptionPosition {
@@ -933,30 +936,6 @@ function getSettingsValuesFromNativeChange(change: FloatingBarSettingsChange) {
       DEFAULT_FLOATING_OVERLAY_SETTINGS.liveCaptionOpacity,
       LIVE_CAPTION_MIN_OPACITY,
       LIVE_CAPTION_MAX_OPACITY,
-    );
-  }
-
-  if (
-    change.liveCaptionWidth !== null &&
-    change.liveCaptionWidth !== undefined
-  ) {
-    values.live_caption_width = normalizeNumber(
-      change.liveCaptionWidth,
-      DEFAULT_FLOATING_OVERLAY_SETTINGS.liveCaptionWidth,
-      LIVE_CAPTION_MIN_WIDTH,
-      LIVE_CAPTION_MAX_WIDTH,
-    );
-  }
-
-  if (
-    change.liveCaptionLineCount !== null &&
-    change.liveCaptionLineCount !== undefined
-  ) {
-    values.live_caption_line_count = normalizeInteger(
-      change.liveCaptionLineCount,
-      DEFAULT_FLOATING_OVERLAY_SETTINGS.liveCaptionLineCount,
-      LIVE_CAPTION_MIN_LINE_COUNT,
-      LIVE_CAPTION_MAX_LINE_COUNT,
     );
   }
 

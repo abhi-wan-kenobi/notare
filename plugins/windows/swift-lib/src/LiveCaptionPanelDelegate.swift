@@ -36,9 +36,7 @@ final class LiveCaptionPanelDelegate: NSObject, NSWindowDelegate {
     let height = LiveCaptionLayout.height(forLineCount: lineCount)
 
     DispatchQueue.main.async { [weak self] in
-      guard let self else { return }
-      model.lineCount = lineCount
-      settings.setLiveCaptionSize(width: Double(width), lineCount: lineCount)
+      self?.model.lineCount = lineCount
     }
 
     return NSSize(width: width, height: height)

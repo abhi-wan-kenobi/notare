@@ -277,8 +277,6 @@ export const generalSchema = z.object({
   floating_bar_enabled: z.boolean().default(true),
   floating_bar_opacity: z.number().default(0.78),
   live_caption_opacity: z.number().default(0.3),
-  live_caption_width: z.number().default(440),
-  live_caption_line_count: z.number().default(1),
   live_caption_position: z
     .enum([
       "topCenter",
@@ -290,6 +288,7 @@ export const generalSchema = z.object({
     ])
     .default("topCenter"),
   live_caption_minimized: z.boolean().default(false),
+  live_caption_enabled: z.boolean().default(true),
   show_app_in_dock: z.boolean().default(true),
   show_tray_icon: z.boolean().default(true),
   telemetry_consent: z.boolean().default(true),
