@@ -49,8 +49,7 @@ export function useSessionBottomAccessory({
     live.sessionId !== null &&
     live.sessionId !== sessionId &&
     shouldShowLiveTranscriptAccessory(live);
-  const shouldLoadPastNotes =
-    (isInactive || isRunningBatch) && !shouldDeferToGlobalLiveAccessory;
+  const shouldLoadPastNotes = isInactive && !shouldDeferToGlobalLiveAccessory;
   const pastNotes = usePastSessionNotes(sessionId, {
     enabled: shouldLoadPastNotes,
   });
@@ -61,8 +60,9 @@ export function useSessionBottomAccessory({
   const isChatVisible =
     chat.mode === "FloatingOpen" || chat.mode === "RightPanelOpen";
 
+  const showBatchProgress = isRunningBatch && !shouldDeferToGlobalLiveAccessory;
   const showPostSession =
-    isRunningBatch ||
+    showBatchProgress ||
     (!shouldDeferToGlobalLiveAccessory && isInactive && hasPastNotes);
   const selectPostSessionTab = useCallback(
     (tab: PostSessionTab) => {

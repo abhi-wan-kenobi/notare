@@ -7,6 +7,7 @@ describe("shouldShowSessionBottomAccessory", () => {
     expect(
       shouldShowSessionBottomAccessory({
         currentView: { type: "transcript" },
+        sessionMode: "inactive",
         bottomAccessoryState: {
           mode: "transcript_only",
           expanded: false,
@@ -19,6 +20,7 @@ describe("shouldShowSessionBottomAccessory", () => {
     expect(
       shouldShowSessionBottomAccessory({
         currentView: { type: "transcript" },
+        sessionMode: "inactive",
         bottomAccessoryState: {
           mode: "playback",
           expanded: false,
@@ -31,6 +33,43 @@ describe("shouldShowSessionBottomAccessory", () => {
     expect(
       shouldShowSessionBottomAccessory({
         currentView: { type: "transcript" },
+        sessionMode: "inactive",
+        bottomAccessoryState: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps batch transcription stop controls on the transcript tab", () => {
+    expect(
+      shouldShowSessionBottomAccessory({
+        currentView: { type: "transcript" },
+        sessionMode: "running_batch",
+        bottomAccessoryState: {
+          mode: "playback",
+          expanded: false,
+        },
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps batch transcription stop controls outside the transcript tab", () => {
+    expect(
+      shouldShowSessionBottomAccessory({
+        currentView: { type: "raw" },
+        sessionMode: "running_batch",
+        bottomAccessoryState: {
+          mode: "playback",
+          expanded: false,
+        },
+      }),
+    ).toBe(true);
+  });
+
+  it("hides batch transcription status without accessory state", () => {
+    expect(
+      shouldShowSessionBottomAccessory({
+        currentView: { type: "raw" },
+        sessionMode: "running_batch",
         bottomAccessoryState: null,
       }),
     ).toBe(false);

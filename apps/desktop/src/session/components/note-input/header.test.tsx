@@ -32,6 +32,64 @@ const hoisted = vi.hoisted(() => ({
   }>,
 }));
 
+const lingui = vi.hoisted(() => {
+  type LinguiDescriptor = {
+    message?: string;
+    values?: Record<string, unknown>;
+  };
+  const isDescriptor = (value: unknown): value is LinguiDescriptor =>
+    Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  const t = (
+    input: TemplateStringsArray | LinguiDescriptor | string,
+    ...values: unknown[]
+  ) => {
+    if (typeof input === "string") {
+      return input;
+    }
+
+    if (isDescriptor(input)) {
+      let message = input.message ?? "";
+      const replacements =
+        input.values ??
+        values.find(
+          (value): value is Record<string, unknown> =>
+            Boolean(value) &&
+            typeof value === "object" &&
+            !Array.isArray(value),
+        );
+
+      if (replacements) {
+        for (const [key, value] of Object.entries(replacements)) {
+          message = message.split(`{${key}}`).join(String(value));
+        }
+      }
+
+      return message;
+    }
+
+    return Array.from(input).reduce(
+      (text, part, index) => `${text}${part}${values[index] ?? ""}`,
+      "",
+    );
+  };
+
+  return { t };
+});
+
+vi.mock("@lingui/react/macro", () => ({
+  useLingui: () => ({
+    _: lingui.t,
+    t: lingui.t,
+  }),
+}));
+
+vi.mock("@lingui/react", () => ({
+  useLingui: () => ({
+    _: lingui.t,
+    t: lingui.t,
+  }),
+}));
+
 vi.mock("@hypr/editor/markdown", () => ({
   json2md: () => "",
   parseJsonContent: () => ({}),
@@ -223,12 +281,15 @@ describe("Header", () => {
     expect(memoTab.className).toContain("h-[26px]");
     expect(memoTab.className).not.toContain("-my-px");
     expect(memoTab.className).toContain("bg-white");
+    expect(memoTab.className).toContain("text-foreground");
     expect(memoTab.className).toContain("shadow-xs");
+    expect(memoTab.className).toContain("dark:text-primary");
     expect(memoTab.className).toContain("dark:bg-white");
     expect(summaryTab.className).toContain("h-[26px]");
     expect(summaryTab.className).toContain("dark:hover:bg-white/8");
     expect(summaryTab.querySelector("svg")).not.toBeNull();
     expect(summaryTab.querySelectorAll("svg")).toHaveLength(1);
+    expect(transcriptTab.querySelector("svg")).not.toBeNull();
     expect(summaryTab.textContent).toBe("");
     expect(transcriptTab.textContent).toBe("");
     expect(summaryTab.getAttribute("title")).toBe(
@@ -255,6 +316,8 @@ describe("Header", () => {
       name: "Customer Call",
     });
     expect(activeSummaryTab.textContent).toBe("Customer Call");
+    expect(activeSummaryTab.className).toContain("text-foreground");
+    expect(activeSummaryTab.className).toContain("dark:text-primary");
     expect(activeSummaryTab.querySelectorAll("svg")).toHaveLength(2);
 
     fireEvent.click(activeSummaryTab);
@@ -452,6 +515,31 @@ describe("Header", () => {
     expect(
       screen.getByRole("button", { name: "Customer Call" }).textContent,
     ).toBe("Customer Call");
+  });
+
+  it("shows a spinner in the transcript tab while transcribing", () => {
+    const editorTabs: EditorView[] = [
+      { type: "enhanced", id: "note-1" },
+      { type: "raw" },
+      { type: "transcript" },
+    ];
+
+    render(
+      <Header
+        sessionId="session-1"
+        editorTabs={editorTabs}
+        currentTab={{ type: "raw" }}
+        handleTabChange={vi.fn()}
+        isTranscribing
+      />,
+    );
+
+    const transcriptTab = screen.getByRole("button", { name: "Transcript" });
+
+    expect(
+      transcriptTab.querySelector("[data-testid='tab-spinner']"),
+    ).not.toBeNull();
+    expect(transcriptTab.querySelector("svg")).toBeNull();
   });
 });
 

@@ -128,6 +128,10 @@ function TabContentNoteInner({
   const sessionId = tab.id;
   const { skipReason } = useAutoEnhance(tab);
   const sessionMode = useListener((state) => state.getSessionMode(sessionId));
+  const isTranscribing =
+    sessionMode === "active" ||
+    sessionMode === "finalizing" ||
+    sessionMode === "running_batch";
   const { audioExists } = AudioPlayer.useAudioPlayer();
 
   useAutoFocusTitle({ sessionId, noteInputRef });
@@ -170,6 +174,7 @@ function TabContentNoteInner({
   const showBottomAccessory = shouldShowSessionBottomAccessory({
     currentView,
     bottomAccessoryState,
+    sessionMode,
   });
   const showBottomTranscriptSurface =
     showBottomAccessory && currentView.type !== "transcript";
@@ -187,6 +192,7 @@ function TabContentNoteInner({
               editorTabs={editorTabs}
               currentTab={currentView}
               handleTabChange={handleTabChange}
+              isTranscribing={isTranscribing}
             />
           }
         />
