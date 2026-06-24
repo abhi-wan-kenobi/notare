@@ -57,6 +57,8 @@ describe("getFloatingRouteState", () => {
       colorScheme: "dark",
       opacity: 0.78,
       liveCaptionOpacity: 0.3,
+      liveCaptionWidth: 440,
+      liveCaptionLineCount: 1,
       liveCaptionPosition: "topCenter",
       liveCaptionMinimized: false,
       liveCaptionToggleVisible: false,
@@ -141,12 +143,14 @@ describe("getLiveCaptionRouteState", () => {
       sessionId: "session-1",
       text: "we should ship this",
       opacity: 0.3,
+      width: 440,
+      lineCount: 1,
       position: "topCenter",
       minimized: false,
     });
   });
 
-  it("hides captions when the floating bar toggle has hidden them", () => {
+  it("hides captions when the live caption is hidden from the floating bar", () => {
     expect(
       getLiveCaptionRouteState(
         createListenerStateWithCaption(
@@ -160,9 +164,59 @@ describe("getLiveCaptionRouteState", () => {
         {
           floatingBarOpacity: 0.7,
           liveCaptionOpacity: 0.66,
+          liveCaptionWidth: 520,
+          liveCaptionLineCount: 3,
           liveCaptionPosition: "bottomRight",
           liveCaptionMinimized: true,
           liveCaptionEnabled: true,
+        },
+      ),
+    ).toBeNull();
+  });
+
+  it("keeps the minimized caption restore control visible without text", () => {
+    expect(
+      getLiveCaptionRouteState(
+        createListenerStateWithCaption(
+          {
+            status: "active",
+            sessionId: "session-1",
+            liveTranscriptionActive: true,
+          },
+          " ",
+        ),
+        {
+          floatingBarOpacity: 0.7,
+          liveCaptionOpacity: 0.66,
+          liveCaptionWidth: 520,
+          liveCaptionLineCount: 3,
+          liveCaptionPosition: "bottomRight",
+          liveCaptionMinimized: true,
+          liveCaptionEnabled: true,
+        },
+      ),
+    ).toBeNull();
+  });
+
+  it("hides captions when the default preference starts them hidden", () => {
+    expect(
+      getLiveCaptionRouteState(
+        createListenerStateWithCaption(
+          {
+            status: "active",
+            sessionId: "session-1",
+            liveTranscriptionActive: true,
+          },
+          "hello",
+        ),
+        {
+          floatingBarOpacity: 0.7,
+          liveCaptionOpacity: 0.66,
+          liveCaptionWidth: 520,
+          liveCaptionLineCount: 3,
+          liveCaptionPosition: "bottomRight",
+          liveCaptionMinimized: true,
+          liveCaptionEnabled: false,
         },
       ),
     ).toBeNull();
@@ -199,7 +253,6 @@ describe("getLiveCaptionRouteState", () => {
       minimized: false,
     });
   });
-
   it("hides captions before live transcription is active", () => {
     expect(
       getLiveCaptionRouteState(
@@ -231,6 +284,8 @@ describe("getLiveCaptionRouteState", () => {
       sessionId: "session-1",
       text: "",
       opacity: 0.3,
+      width: 440,
+      lineCount: 1,
       position: "topCenter",
       minimized: false,
     });
