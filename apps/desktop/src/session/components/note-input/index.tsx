@@ -3,6 +3,7 @@ import {
   forwardRef,
   type UIEventHandler,
   useCallback,
+  useDeferredValue,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -75,6 +76,12 @@ export const NoteInput = forwardRef<
     const fallbackCurrentTab: TabEditorView = useCurrentNoteTab(tab);
     const editorTabs = providedEditorTabs ?? fallbackEditorTabs;
     const currentTab = providedCurrentTab ?? fallbackCurrentTab;
+    const deferredCurrentTab = useDeferredValue(currentTab);
+    const renderedCurrentTab = editorTabs.some((editorTab) =>
+      isSameEditorView(editorTab, deferredCurrentTab),
+    )
+      ? deferredCurrentTab
+      : currentTab;
 
     const sessionMode = useListener((state) => state.getSessionMode(sessionId));
     const isMeetingInProgress =
@@ -83,9 +90,9 @@ export const NoteInput = forwardRef<
       sessionMode === "running_batch";
 
     const { scrollRef, onBeforeTabChange } = useScrollPreservation(
-      currentTab.type === "enhanced"
-        ? `enhanced-${currentTab.id}`
-        : currentTab.type,
+      renderedCurrentTab.type === "enhanced"
+        ? `enhanced-${renderedCurrentTab.id}`
+        : renderedCurrentTab.type,
     );
 
     useImperativeHandle(
@@ -104,6 +111,10 @@ export const NoteInput = forwardRef<
 
     const handleTabChange = useCallback(
       (tabView: TabEditorView) => {
+        if (isSameEditorView(tabView, currentTab)) {
+          return;
+        }
+
         onBeforeTabChange();
         if (providedHandleTabChange) {
           providedHandleTabChange(tabView);
@@ -114,7 +125,12 @@ export const NoteInput = forwardRef<
           });
         }
       },
-      [onBeforeTabChange, providedHandleTabChange, updateSessionTabState],
+      [
+        currentTab,
+        onBeforeTabChange,
+        providedHandleTabChange,
+        updateSessionTabState,
+      ],
     );
 
     useTabShortcuts({
@@ -124,12 +140,12 @@ export const NoteInput = forwardRef<
     });
 
     useEffect(() => {
-      if (currentTab.type === "raw" && isMeetingInProgress) {
+      if (renderedCurrentTab.type === "raw" && isMeetingInProgress) {
         requestAnimationFrame(() => {
           internalEditorRef.current?.commands.focus();
         });
       }
-    }, [currentTab, isMeetingInProgress]);
+    }, [renderedCurrentTab, isMeetingInProgress]);
 
     const handleViewReady = useCallback((editorView: EditorView) => {
       setView(editorView);
@@ -150,7 +166,8 @@ export const NoteInput = forwardRef<
     const search = useSearch();
     const showSearchBar = search?.isVisible ?? false;
     const isEditableTab =
-      currentTab.type === "enhanced" || currentTab.type === "raw";
+      renderedCurrentTab.type === "enhanced" ||
+      renderedCurrentTab.type === "raw";
 
     useEffect(() => {
       search?.close();
@@ -195,22 +212,22 @@ export const NoteInput = forwardRef<
             className={cn([
               "h-full px-3",
               "pt-2",
-              currentTab.type === "transcript"
+              renderedCurrentTab.type === "transcript"
                 ? "overflow-hidden pb-0"
                 : "scroll-fade-y overflow-auto pb-6",
             ])}
           >
-            {currentTab.type === "enhanced" && (
+            {renderedCurrentTab.type === "enhanced" && (
               <Enhanced
                 ref={internalEditorRef}
                 sessionId={sessionId}
-                enhancedNoteId={currentTab.id}
+                enhancedNoteId={renderedCurrentTab.id}
                 onNavigateToTitle={onNavigateToTitle}
                 onViewReady={handleViewReady}
                 onViewDisposed={handleViewDisposed}
               />
             )}
-            {currentTab.type === "raw" && (
+            {renderedCurrentTab.type === "raw" && (
               <RawEditor
                 ref={internalEditorRef}
                 sessionId={sessionId}
@@ -219,7 +236,7 @@ export const NoteInput = forwardRef<
                 onViewDisposed={handleViewDisposed}
               />
             )}
-            {currentTab.type === "transcript" && (
+            {renderedCurrentTab.type === "transcript" && (
               <Transcript sessionId={sessionId} scrollRef={scrollRef} />
             )}
           </div>
@@ -228,6 +245,18 @@ export const NoteInput = forwardRef<
     );
   },
 );
+
+function isSameEditorView(left: TabEditorView, right: TabEditorView): boolean {
+  if (left.type !== right.type) {
+    return false;
+  }
+
+  if (left.type === "enhanced" && right.type === "enhanced") {
+    return left.id === right.id;
+  }
+
+  return true;
+}
 
 function useTabShortcuts({
   editorTabs,
