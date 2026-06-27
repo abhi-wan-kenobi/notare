@@ -242,6 +242,263 @@ describe("event contact extraction", () => {
     );
   });
 
+  test("keeps model email and company when inferred title contact appears first", async () => {
+    const store = createStore();
+    store.setRow("sessions", "session-1", {
+      user_id: "user-1",
+      created_at: "2026-06-16T05:00:00.000Z",
+      title: "Tom Yang <> john",
+      raw_md: "",
+      event_json: JSON.stringify({
+        tracking_id: "event-tracking-1",
+        calendar_id: "calendar-1",
+        title: "Tom Yang <> john",
+        started_at: "2026-06-16T05:00:00.000Z",
+        ended_at: "2026-06-16T05:20:00.000Z",
+        is_all_day: false,
+        has_recurrence_rules: false,
+        description: "What:\nTom Yang <> john\n\nWho:\nJohn Jeong - Organizer",
+      }),
+    });
+    store.setRow("humans", "human-1", {
+      user_id: "user-1",
+      created_at: "2026-06-16T05:00:00.000Z",
+      name: "Tom Yang",
+      email: "",
+      phone: "",
+      org_id: "",
+      job_title: "",
+      linkedin_username: "",
+      memo: "",
+      pinned: false,
+    });
+    store.setRow("mapping_session_participant", "mapping-1", {
+      user_id: "user-1",
+      session_id: "session-1",
+      human_id: "human-1",
+      source: "manual",
+    });
+
+    const context = buildEventContactExtractionContext(store, "session-1", {
+      tracking_id: "event-tracking-1",
+      calendar_id: "calendar-1",
+      title: "Tom Yang <> john",
+      started_at: "2026-06-16T05:00:00.000Z",
+      ended_at: "2026-06-16T05:20:00.000Z",
+      is_all_day: false,
+      has_recurrence_rules: false,
+      description: "What:\nTom Yang <> john\n\nWho:\nJohn Jeong - Organizer",
+    });
+
+    vi.mocked(generateText).mockResolvedValue({
+      text: JSON.stringify({
+        contacts: [
+          {
+            name: "Tom Yang",
+            email: "tom@kestroll.com",
+            companyName: "Kestroll",
+          },
+        ],
+      }),
+    } as any);
+
+    const extraction = await extractEventContacts({
+      model: {} as any,
+      context,
+    });
+    const result = applyExtractedContactToHuman(
+      store,
+      "session-1",
+      "human-1",
+      extraction.contacts,
+      { userId: "user-1" },
+    );
+
+    expect(extraction.contacts).toEqual([
+      {
+        name: "Tom Yang",
+        email: "tom@kestroll.com",
+        companyName: "Kestroll",
+      },
+    ]);
+    expect(result).toMatchObject({
+      updated: 1,
+      matched: true,
+    });
+    expect(store.getCell("humans", "human-1", "email")).toBe(
+      "tom@kestroll.com",
+    );
+    const organizationEntry = Object.entries(
+      store.getTable("organizations"),
+    ).find(([, organization]) => organization.name === "Kestroll");
+    expect(store.getCell("humans", "human-1", "org_id")).toBe(
+      organizationEntry?.[0],
+    );
+  });
+
+  test("replaces an inferred email when the model returns a different email for the same person", async () => {
+    const context = {
+      title: "Tom Yang <> john",
+      description: "What:\nTom Yang <> john",
+      candidates: [
+        {
+          name: "John Jeong",
+          email: "john@example.com",
+          isCurrentUser: true,
+        },
+        {
+          name: "Tom Yang",
+          email: "tom@old.example",
+        },
+      ],
+    };
+
+    vi.mocked(generateText).mockResolvedValue({
+      text: JSON.stringify({
+        contacts: [
+          {
+            name: "Tom Yang",
+            email: "tom@kestroll.com",
+            companyName: "Kestroll",
+          },
+        ],
+      }),
+    } as any);
+
+    await expect(
+      extractEventContacts({ model: {} as any, context }),
+    ).resolves.toEqual({
+      source: "model",
+      contacts: [
+        {
+          name: "Tom Yang",
+          email: "tom@kestroll.com",
+          companyName: "Kestroll",
+        },
+      ],
+    });
+  });
+
+  test("falls back to event title names when the model misses an email-only participant", async () => {
+    const store = createStore();
+    store.setRow("sessions", "session-1", {
+      user_id: "user-1",
+      created_at: "2026-06-26T00:00:00.000Z",
+      title: "30 Min Meeting between Gonzalo Soto and Yujong Lee",
+      raw_md: "",
+      event_json: JSON.stringify({
+        tracking_id: "event-tracking-1",
+        calendar_id: "calendar-1",
+        title: "30 Min Meeting between Gonzalo Soto and Yujong Lee",
+        started_at: "2026-06-26T08:30:00.000Z",
+        ended_at: "2026-06-26T09:00:00.000Z",
+        is_all_day: false,
+        has_recurrence_rules: false,
+        description:
+          "What:\n30 Min Meeting between Gonzalo Soto and Yujong Lee\n\nInvitee timezone:\nAsia/Seoul",
+      }),
+    });
+    store.setRow("humans", "human-1", {
+      user_id: "user-1",
+      created_at: "2026-06-26T00:00:00.000Z",
+      name: "gonzalo@gumloop.com",
+      email: "gonzalo@gumloop.com",
+      phone: "",
+      org_id: "",
+      job_title: "",
+      linkedin_username: "",
+      memo: "",
+      pinned: false,
+    });
+    store.setRow("mapping_session_participant", "mapping-1", {
+      user_id: "user-1",
+      session_id: "session-1",
+      human_id: "human-1",
+      source: "auto",
+    });
+
+    const context = buildEventContactExtractionContext(store, "session-1", {
+      tracking_id: "event-tracking-1",
+      calendar_id: "calendar-1",
+      title: "30 Min Meeting between Gonzalo Soto and Yujong Lee",
+      started_at: "2026-06-26T08:30:00.000Z",
+      ended_at: "2026-06-26T09:00:00.000Z",
+      is_all_day: false,
+      has_recurrence_rules: false,
+      description:
+        "What:\n30 Min Meeting between Gonzalo Soto and Yujong Lee\n\nInvitee timezone:\nAsia/Seoul",
+    });
+
+    vi.mocked(generateText).mockResolvedValue({
+      text: JSON.stringify({ contacts: [] }),
+    } as any);
+
+    const extraction = await extractEventContacts({
+      model: {} as any,
+      context,
+    });
+    const result = applyExtractedContactToHuman(
+      store,
+      "session-1",
+      "human-1",
+      extraction.contacts,
+      { userId: "user-1" },
+    );
+
+    expect(extraction.contacts).toContainEqual({
+      name: "Gonzalo Soto",
+      email: "gonzalo@gumloop.com",
+    });
+    expect(result).toMatchObject({
+      updated: 1,
+      matched: true,
+    });
+    expect(store.getCell("humans", "human-1", "name")).toBe("Gonzalo Soto");
+  });
+
+  test("does not infer a title prefix from a between line with delimiters", async () => {
+    const context = {
+      title: "30 Min Meeting between Gonzalo Soto and Yujong Lee <> john",
+      description:
+        "What:\n30 Min Meeting between Gonzalo Soto and Yujong Lee <> john",
+      candidates: [
+        {
+          name: "John Jeong",
+          email: "john@example.com",
+          isCurrentUser: true,
+        },
+        {
+          name: "Gonzalo Soto",
+          email: "gonzalo@gumloop.com",
+        },
+        {
+          name: "Yujong Lee",
+          email: "yujong@example.com",
+        },
+      ],
+    };
+
+    vi.mocked(generateText).mockResolvedValue({
+      text: JSON.stringify({ contacts: [] }),
+    } as any);
+
+    await expect(
+      extractEventContacts({ model: {} as any, context }),
+    ).resolves.toEqual({
+      source: "model",
+      contacts: [
+        {
+          name: "Gonzalo Soto",
+          email: "gonzalo@gumloop.com",
+        },
+        {
+          name: "Yujong Lee",
+          email: "yujong@example.com",
+        },
+      ],
+    });
+  });
+
   test("reuses an existing organization when applying extracted company", () => {
     const store = createStore();
     store.setRow("organizations", "org-1", {
