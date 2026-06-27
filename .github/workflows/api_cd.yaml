@@ -42,7 +42,7 @@ jobs:
             --token="$INFISICAL_TOKEN" \
             --env="$INFISICAL_ENV" \
             --projectId="$INFISICAL_PROJECT_ID" \
-            --path="/ai" \
+            --path="/anarlog/ai" \
             --format=json \
             --output-file="$secrets_json"
 
