@@ -48,9 +48,11 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_create_connect_session() {
+        let api_key =
+            std::env::var("NANGO_API_KEY").expect("NANGO_API_KEY is required for this live test");
         let nango_client = NangoClientBuilder::default()
             .api_base("https://api.nango.dev")
-            .api_key("de9c36c9-33dc-4ebf-b006-153d458583ea")
+            .api_key(api_key)
             .build()
             .unwrap();
 

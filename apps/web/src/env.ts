@@ -16,7 +16,6 @@ export function requireEnv<T>(value: T | undefined, name: string): T {
 
 export const env = createEnv({
   server: {
-    NANGO_SECRET_KEY: requiredInProd(z.string().min(1)),
     DATABASE_URL: requiredInProd(z.string().min(1)),
 
     SUPABASE_URL: requiredInProd(z.string().min(1)),

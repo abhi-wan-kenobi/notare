@@ -27,7 +27,8 @@ pub struct SupabaseEnv {
 pub struct NangoEnv {
     #[serde(default)]
     pub nango_api_base: Option<String>,
-    pub nango_secret_key: String,
+    pub nango_api_key: String,
+    pub nango_webhook_signing_key: String,
 }
 
 #[derive(Clone, Deserialize)]

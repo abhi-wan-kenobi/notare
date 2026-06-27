@@ -57,7 +57,7 @@ pub async fn nango_webhook(
         .ok_or_else(|| NangoError::Auth("Missing X-Nango-Hmac-Sha256 header".to_string()))?;
 
     let valid = hypr_nango::verify_webhook_signature(
-        &state.config.nango.nango_secret_key,
+        &state.config.nango.nango_webhook_signing_key,
         body.as_bytes(),
         signature,
     );
@@ -300,16 +300,33 @@ mod tests {
     use crate::error::NangoError;
     use crate::state::AppState;
 
-    use super::{handle_auth_webhook, handle_forward_webhook};
+    use axum::extract::State;
+    use axum::http::{HeaderMap, HeaderValue};
 
-    const SECRET: &str = "test-secret";
+    use super::{handle_auth_webhook, handle_forward_webhook, nango_webhook};
 
-    fn sign_body(body: &str) -> String {
+    const API_KEY: &str = "test-api-key";
+    const WEBHOOK_SIGNING_KEY: &str = "test-webhook-signing-key";
+
+    fn sign_body_with(secret: &str, body: &str) -> String {
         use hmac::{Hmac, KeyInit, Mac};
         use sha2::Sha256;
-        let mut mac = Hmac::<Sha256>::new_from_slice(SECRET.as_bytes()).unwrap();
+        let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).unwrap();
         mac.update(body.as_bytes());
         hex::encode(mac.finalize().into_bytes())
+    }
+
+    fn sign_body(body: &str) -> String {
+        sign_body_with(WEBHOOK_SIGNING_KEY, body)
+    }
+
+    fn signature_headers(signature: String) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "x-nango-hmac-sha256",
+            HeaderValue::from_str(&signature).unwrap(),
+        );
+        headers
     }
 
     async fn make_fixture() -> (MockServer, MockServer, AppState) {
@@ -347,7 +364,7 @@ mod tests {
         let body = r#"{"type":"auth"}"#;
         let sig = sign_body(body);
         assert!(hypr_nango::verify_webhook_signature(
-            SECRET,
+            WEBHOOK_SIGNING_KEY,
             body.as_bytes(),
             &sig
         ));
@@ -357,10 +374,28 @@ mod tests {
     fn wrong_signature_is_invalid() {
         let body = r#"{"type":"auth"}"#;
         assert!(!hypr_nango::verify_webhook_signature(
-            SECRET,
+            WEBHOOK_SIGNING_KEY,
             body.as_bytes(),
             "bad-sig"
         ));
+    }
+
+    #[tokio::test]
+    async fn webhook_signature_uses_webhook_signing_key_not_api_key() {
+        let (_nango_mock, _supabase_mock, state) = make_fixture().await;
+        let body = r#"{"type":"sync"}"#.to_string();
+
+        let signed_with_api_key = nango_webhook(
+            State(state.clone()),
+            signature_headers(sign_body_with(API_KEY, &body)),
+            body.clone(),
+        )
+        .await;
+        assert!(matches!(signed_with_api_key, Err(NangoError::Auth(_))));
+
+        let signed_with_webhook_key =
+            nango_webhook(State(state), signature_headers(sign_body(&body)), body).await;
+        assert!(signed_with_webhook_key.is_ok());
     }
 
     // --- handle_auth_webhook ---

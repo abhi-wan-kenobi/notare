@@ -28,7 +28,8 @@ impl NangoConfig {
         Self {
             nango: NangoEnv {
                 nango_api_base: Some(nango_base.to_string()),
-                nango_secret_key: "test-secret".to_string(),
+                nango_api_key: "test-api-key".to_string(),
+                nango_webhook_signing_key: "test-webhook-signing-key".to_string(),
             },
             supabase_url: supabase_base.to_string(),
             supabase_anon_key: "test-anon-key".to_string(),
@@ -38,7 +39,7 @@ impl NangoConfig {
 }
 
 pub(crate) fn build_nango_client(config: &NangoConfig) -> Result<NangoClient, hypr_nango::Error> {
-    let mut builder = hypr_nango::NangoClient::builder().api_key(&config.nango.nango_secret_key);
+    let mut builder = hypr_nango::NangoClient::builder().api_key(&config.nango.nango_api_key);
     if let Some(api_base) = &config.nango.nango_api_base {
         builder = builder.api_base(api_base);
     }
