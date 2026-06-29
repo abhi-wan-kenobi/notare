@@ -10,7 +10,7 @@ import { cn } from "@hypr/utils";
 
 import { SiteFooter } from "@/components/site-footer";
 import { desktopSchemeSchema } from "@/functions/desktop-flow";
-import { getGitHubStats } from "@/functions/github";
+import { getGitHubStats, getStargazers } from "@/functions/github";
 import { useMountEffect } from "@/hooks/useMountEffect";
 import {
   ANARLOG_SITE_URL,
@@ -41,19 +41,15 @@ const featureList = [
 
 const privacyCommitments = [
   {
-    title: "Your notes stay yours",
-    description: "Audio, transcripts, and notes live as files on your device.",
+    description: "Audio, transcripts, and notes stay as files on your device.",
     visual: "files",
   },
   {
-    title: "Choose your stack",
-    description:
-      "Run on-device transcription, bring your own key, or use hosted AI.",
+    description: "Choose on-device models, your own key, or hosted AI.",
     visual: "key",
   },
   {
-    title: "No bots on calls",
-    description: "Capture system audio without adding a bot to the meeting.",
+    description: "Capture meeting audio without adding a bot to the call.",
     visual: "meeting",
   },
 ];
@@ -307,9 +303,17 @@ export const Route = createFileRoute("/")({
     });
   },
   component: Component,
-  loader: async () => ({
-    githubStars: (await getGitHubStats()).stars ?? 8466,
-  }),
+  loader: async () => {
+    const [githubStats, stargazers] = await Promise.all([
+      getGitHubStats(),
+      getStargazers(),
+    ]);
+
+    return {
+      githubStars: githubStats.stars ?? 8466,
+      githubStargazers: stargazers,
+    };
+  },
   head: () => ({
     links: [{ rel: "canonical", href: ANARLOG_SITE_URL }],
     scripts: [
@@ -330,7 +334,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Component() {
-  const { githubStars } = Route.useLoaderData();
+  const { githubStars, githubStargazers } = Route.useLoaderData();
   const formattedGithubStars = githubStars.toLocaleString("en-US");
 
   return (
@@ -349,7 +353,6 @@ function Component() {
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-3 text-sm">
               <DownloadButton />
-              <GitHubButton formattedGithubStars={formattedGithubStars} />
             </div>
             <HeroWorkflowDemo />
           </section>
@@ -359,6 +362,11 @@ function Component() {
           <PrivacySection />
 
           <TestimonialsSection />
+
+          <OpenSourceSection
+            formattedGithubStars={formattedGithubStars}
+            stargazers={githubStargazers}
+          />
 
           <section id="manifesto" className="pt-28 pb-14 md:pt-32 md:pb-16">
             <article
@@ -467,25 +475,82 @@ function FinalCtaSection() {
   );
 }
 
-function GitHubButton({
+type GitHubStargazer = {
+  username: string;
+  avatar: string;
+};
+
+function OpenSourceSection({
   formattedGithubStars,
+  stargazers,
 }: {
   formattedGithubStars: string;
+  stargazers: GitHubStargazer[];
 }) {
+  const visibleStargazers = stargazers.slice(0, 24);
+
   return (
-    <a
-      href="https://github.com/fastrepl/anarlog"
-      className="inline-flex items-center gap-2 rounded-full border border-neutral-300 px-5 py-3 font-medium text-neutral-900 transition-colors hover:border-neutral-400 hover:bg-neutral-100"
+    <section
+      className="relative left-1/2 w-screen max-w-[880px] -translate-x-1/2 py-12 md:py-14"
+      aria-labelledby="open-source-heading"
     >
-      <img
-        src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg"
-        alt=""
-        className="size-4"
-        aria-hidden="true"
-      />
-      <span>GitHub</span>
-      <span className="text-neutral-500">{formattedGithubStars} stars</span>
-    </a>
+      <div className="mx-auto max-w-[700px] px-5 md:px-8">
+        <h2
+          id="open-source-heading"
+          className="font-hand text-3xl leading-none font-semibold text-[#756b5d]"
+        >
+          Open source by default
+        </h2>
+        <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-[#4f4940]">
+          We deeply care about transparency. Anarlog is open source so anyone
+          can inspect how meeting memory is handled.
+        </p>
+
+        <a
+          href="https://github.com/fastrepl/anarlog"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-6 inline-flex items-center gap-2 rounded-full border border-neutral-300 bg-white px-5 py-3 text-sm font-medium text-neutral-900 transition-colors hover:border-neutral-400 hover:bg-neutral-100"
+        >
+          <Icon icon="mdi:github" width={18} height={18} aria-hidden="true" />
+          <span>{formattedGithubStars} stars on GitHub</span>
+        </a>
+      </div>
+
+      {visibleStargazers.length > 0 && (
+        <div className="relative mt-8 overflow-hidden px-5 md:px-8">
+          <div
+            className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-linear-to-r from-white to-transparent md:w-20"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-linear-to-l from-white to-transparent md:w-20"
+            aria-hidden="true"
+          />
+          <div className="mx-auto grid max-w-[620px] grid-cols-6 gap-2 sm:grid-cols-12">
+            {visibleStargazers.map((stargazer) => (
+              <a
+                key={stargazer.username}
+                href={`https://github.com/${stargazer.username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group aspect-square overflow-hidden rounded-[4px] border border-neutral-200 bg-neutral-100 transition-transform hover:-translate-y-0.5 hover:border-neutral-400"
+                aria-label={`${stargazer.username} on GitHub`}
+                title={stargazer.username}
+              >
+                <img
+                  src={stargazer.avatar}
+                  alt=""
+                  className="h-full w-full object-cover grayscale transition duration-200 group-hover:grayscale-0"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -689,11 +754,11 @@ function PrivacySection() {
     <section className="py-16 md:py-20">
       <div>
         <h2 className="font-hand text-3xl leading-none font-semibold text-[#756b5d]">
-          What makes it different
+          Your data stays yours
         </h2>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[#4f4940]">
-          Anarlog stays out of the participant list, keeps notes on disk, and
-          lets you pick the AI path.
+          Anarlog is built around data you own, privacy you control, and notes
+          that stay useful outside our app.
         </p>
       </div>
 
@@ -702,14 +767,11 @@ function PrivacySection() {
           {privacyCommitments.map((commitment) => {
             return (
               <div
-                key={commitment.title}
-                className="flex flex-col px-6 py-3 text-left md:w-[31%] md:p-4"
+                key={commitment.description}
+                className="flex flex-col px-6 py-3 text-center md:w-[31%] md:p-4"
               >
                 <PrivacyVisual type={commitment.visual} />
-                <p className="mt-3 text-sm leading-6 text-[#4f4940] md:mt-5">
-                  <span className="font-semibold text-[#181613]">
-                    {commitment.title}.
-                  </span>{" "}
+                <p className="mx-auto mt-3 max-w-[15rem] text-sm leading-6 text-[#4f4940] md:mt-5">
                   {commitment.description}
                 </p>
               </div>
@@ -728,35 +790,35 @@ function PrivacyVisual({
 }) {
   if (type === "files") {
     return (
-      <div className="flex h-20 items-center justify-start gap-2 select-none md:h-28 md:w-full md:justify-between md:gap-1">
+      <div className="flex h-20 items-center justify-center gap-2 select-none md:h-28 md:w-full md:justify-between md:gap-1">
         <img
           src="/icons/file.webp"
           alt=""
-          className="w-10 rotate-[3deg] object-contain"
+          className="w-10 rotate-[3deg] object-contain transition-transform duration-300 ease-out hover:rotate-[7deg]"
           draggable={false}
         />
         <img
           src="/icons/file.webp"
           alt=""
-          className="w-10 rotate-[-5deg] object-contain"
+          className="w-10 rotate-[-5deg] object-contain transition-transform duration-300 ease-out hover:rotate-[-9deg]"
           draggable={false}
         />
         <img
           src="/icons/folderchar.svg"
           alt=""
-          className="w-14 object-contain"
+          className="w-14 object-contain transition-transform duration-300 ease-out hover:rotate-[3deg]"
           draggable={false}
         />
         <img
           src="/icons/file.webp"
           alt=""
-          className="w-10 rotate-[6deg] object-contain"
+          className="w-10 rotate-[6deg] object-contain transition-transform duration-300 ease-out hover:rotate-[10deg]"
           draggable={false}
         />
         <img
           src="/icons/file.webp"
           alt=""
-          className="w-10 rotate-[-4deg] object-contain"
+          className="w-10 rotate-[-4deg] object-contain transition-transform duration-300 ease-out hover:rotate-[-8deg]"
           draggable={false}
         />
       </div>
@@ -765,96 +827,48 @@ function PrivacyVisual({
 
   if (type === "key") {
     return (
-      <div className="flex h-20 items-center justify-center select-none md:h-28 md:w-full">
-        <svg
-          className="h-20 w-36 md:h-28 md:w-48"
-          viewBox="0 0 180 132"
+      <div className="flex h-24 items-center justify-center select-none md:h-28 md:w-full">
+        <div
+          className="relative h-24 w-52 md:h-28 md:w-60"
           role="img"
-          aria-label="AI stack options cycling between device, key, and hosted"
+          aria-label="AI option cards cycling between cloud, key, and chip"
         >
-          <g className="animate-stack-layer-device">
-            <path
-              d="M90 8 152 42 90 76 28 42Z"
-              fill="#fffaf0"
-              stroke="#181613"
-              strokeOpacity="0.34"
-            />
-            <path
-              d="M90 20 122 38 90 56 58 38Z"
-              fill="#181613"
-              opacity="0.07"
-            />
-            <Cpu
-              x={77}
-              y={28}
-              width={26}
-              height={26}
-              strokeWidth={1.7}
-              className="text-[#181613]"
-            />
-          </g>
-          <g className="animate-stack-layer-key">
-            <path
-              d="M90 34 152 68 90 102 28 68Z"
-              fill="#fffaf0"
-              stroke="#181613"
-              strokeOpacity="0.34"
-            />
-            <rect
-              x="58"
-              y="62"
-              width="64"
-              height="18"
-              rx="5"
-              fill="#fffaf0"
-              stroke="#181613"
-              strokeOpacity="0.26"
-            />
-            <KeyRound
-              x={68}
-              y={61}
-              width={18}
-              height={18}
-              strokeWidth={1.8}
-              className="text-[#181613]"
-            />
-            <path
-              d="M92 71h16"
-              stroke="#756b5d"
-              strokeLinecap="round"
-              strokeDasharray="2 5"
-            />
-          </g>
-          <g className="animate-stack-layer-hosted">
-            <path
-              d="M90 58 152 92 90 126 28 92Z"
-              fill="#fffaf0"
-              stroke="#181613"
-              strokeOpacity="0.34"
-            />
-            <Cloud
-              x={76}
-              y={84}
-              width={30}
-              height={30}
-              strokeWidth={1.8}
-              className="text-[#181613]"
-            />
-          </g>
-        </svg>
+          <div className="ai-option-card ai-option-card-cloud">
+            <Cloud size={28} strokeWidth={2.5} aria-hidden="true" />
+          </div>
+          <div className="ai-option-card ai-option-card-key">
+            <KeyRound size={30} strokeWidth={2.3} aria-hidden="true" />
+          </div>
+          <div className="ai-option-card ai-option-card-chip">
+            <Cpu size={30} strokeWidth={2.3} aria-hidden="true" />
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-20 items-center select-none md:h-28 md:w-full">
-      <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white py-2 pr-8 pl-4 text-left shadow-[0_8px_18px_rgba(24,22,19,0.08)] md:w-full">
-        <Icon icon="logos:google-meet" width={32} height={32} />
+    <div className="flex h-20 items-center justify-center select-none md:h-28 md:w-full">
+      <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white py-2 pr-3 pl-4 text-left shadow-[0_3px_10px_rgba(24,22,19,0.04)] md:w-full">
+        <img
+          src="/icons/google-meet.svg"
+          alt=""
+          className="h-7 w-7 object-contain"
+          draggable={false}
+        />
         <div className="flex flex-col gap-1">
           <span className="text-sm font-medium text-stone-800">
             Sprint 3 planning
           </span>
           <span className="text-sm text-stone-400">5 participants</span>
+        </div>
+        <div
+          className="meeting-audio-bars ml-auto flex h-6 items-center gap-0.5"
+          aria-hidden="true"
+        >
+          <span className="meeting-audio-bar" />
+          <span className="meeting-audio-bar" />
+          <span className="meeting-audio-bar" />
         </div>
       </div>
     </div>
@@ -945,7 +959,23 @@ function HeroWorkflowDemo() {
 
   return (
     <div className="relative left-1/2 mt-10 w-screen max-w-[500px] -translate-x-1/2 px-8 pb-16 sm:px-10">
-      <div className="mx-auto max-w-[420px] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[0_24px_70px_rgba(24,22,19,0.08)]">
+      <div
+        className="pointer-events-none absolute top-10 bottom-24 left-8 z-0 w-12 rounded-full bg-neutral-950/10 blur-2xl sm:left-10"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute top-10 right-8 bottom-24 z-0 w-12 rounded-full bg-neutral-950/10 blur-2xl sm:right-10"
+        aria-hidden="true"
+      />
+      <div
+        className="relative z-10 mx-auto max-w-[420px] overflow-hidden rounded-xl border-x border-t border-neutral-200 bg-white shadow-[0_24px_70px_rgba(24,22,19,0.08)]"
+        style={{
+          WebkitMaskImage:
+            "linear-gradient(to bottom, black 0%, black calc(100% - 5rem), transparent 100%)",
+          maskImage:
+            "linear-gradient(to bottom, black 0%, black calc(100% - 5rem), transparent 100%)",
+        }}
+      >
         <div className="flex items-center gap-2 px-4 py-3">
           <div className="flex gap-2">
             <div className="h-3 w-3 rounded-full bg-red-400"></div>
@@ -1113,18 +1143,62 @@ function AnnouncementBanner() {
     <div className="flex justify-center px-5 pt-6 md:pt-8">
       <a
         href="https://char.com"
-        className="border-color-subtle text-color group inline-flex max-w-full items-center justify-center gap-2 rounded-full border bg-white px-4 py-2 text-center text-sm font-medium shadow-sm transition-colors hover:bg-neutral-50 md:px-5"
-        aria-label="Visit Char v2"
+        className="char-announcement group relative inline-flex h-8 w-[15.25rem] max-w-full items-center justify-center text-center text-sm font-medium text-[#181613] opacity-75 transition-opacity hover:opacity-100"
+        aria-label="Join the waitlist for Char"
       >
-        <span className="min-w-0">We're innovating the todo list too</span>
-        <ArrowRight
-          size={16}
-          strokeWidth={2.2}
-          className="shrink-0 transition-transform group-hover:translate-x-0.5"
+        <span className="char-announcement-text char-announcement-text-primary absolute inset-y-0 flex min-w-0 items-center justify-center px-8 whitespace-nowrap">
+          Join the waitlist for Char
+        </span>
+        <span className="char-announcement-text char-announcement-text-secondary absolute inset-y-0 flex min-w-0 items-center justify-center px-8 whitespace-nowrap">
+          We're innovating the todo list
+        </span>
+        <span
+          className="pointer-events-none absolute inset-0"
           aria-hidden="true"
-        />
+        >
+          <CharBracket
+            side="left"
+            className="char-announcement-bracket char-announcement-bracket-left absolute top-1/2 left-1/2 h-5 text-[#181613]"
+          />
+          <CharBracket
+            side="right"
+            className="char-announcement-bracket char-announcement-bracket-right absolute top-1/2 left-1/2 h-5 text-[#181613]"
+          />
+        </span>
       </a>
     </div>
+  );
+}
+
+function CharBracket({
+  side,
+  className,
+}: {
+  side: "left" | "right";
+  className?: string;
+}) {
+  return (
+    <svg
+      width="8"
+      height="30"
+      viewBox="0 0 8 30"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      {side === "left" ? (
+        <path
+          d="M7.871 4.147C7.871 5.658 7.082 7.039 6.099 8.214C4.65 9.946 3.77 12.161 3.77 14.575C3.77 16.99 4.65 19.205 6.099 20.937C7.082 22.112 7.871 23.493 7.871 25.004V29.151H2.965V24.319C2.965 22.735 2.165 21.249 0.822 20.34L0 19.783V9.235L0.822 8.678C2.165 7.769 2.965 6.284 2.965 4.699V0L7.871 0V4.147Z"
+          fill="currentColor"
+        />
+      ) : (
+        <path
+          d="M0 4.147C0 5.658 0.789 7.039 1.773 8.214C3.221 9.946 4.101 12.161 4.101 14.575C4.101 16.99 3.221 19.205 1.773 20.937C0.789 22.112 0 23.493 0 25.004V29.151H4.907V24.319C4.907 22.735 5.706 21.249 7.049 20.34L7.871 19.783V9.235L7.049 8.678C5.706 7.769 4.907 6.284 4.907 4.699V0L0 0V4.147Z"
+          fill="currentColor"
+        />
+      )}
+    </svg>
   );
 }
 
