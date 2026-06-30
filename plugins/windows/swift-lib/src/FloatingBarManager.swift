@@ -1,4 +1,5 @@
 import Cocoa
+import Combine
 import SwiftUI
 
 final class FloatingBarManager {
@@ -10,8 +11,18 @@ final class FloatingBarManager {
   private let placement = FloatingPanelPositionController()
   private var displayChangeObserver: Any?
   private var followActiveScreenTimer: Timer?
+  private var cancellables = Set<AnyCancellable>()
 
-  private init() {}
+  private init() {
+    model.$isExpanded
+      .removeDuplicates()
+      .sink { [weak self] _ in
+        guard let self, let panel = self.panel else { return }
+        self.resize(panel)
+        self.position(panel, force: true)
+      }
+      .store(in: &cancellables)
+  }
 
   func show() {
     DispatchQueue.main.async { [weak self] in
@@ -68,8 +79,12 @@ final class FloatingBarManager {
       self.model.status = state.status
       self.model.amplitude = min(max(state.amplitude, 0), 1)
       self.model.colorScheme = state.colorScheme
+      self.model.title = state.title
       self.model.liveCaptionToggleVisible = state.liveCaptionToggleVisible
+      self.model.transcriptBubbles = state.transcriptBubbles
       self.settingsModel.apply(floatingBarState: state)
+      self.model.isExpanded =
+        state.liveCaptionToggleVisible && !self.settingsModel.liveCaptionMinimized
       if let panel = self.panel {
         self.resize(panel)
         self.position(panel, force: true)
@@ -82,7 +97,7 @@ final class FloatingBarManager {
       contentRect: NSRect(
         x: 0,
         y: 0,
-        width: FloatingBarLayout.containerWidth,
+        width: currentSize.width,
         height: currentSize.height),
       styleMask: [.borderless, .nonactivatingPanel],
       backing: .buffered,
@@ -111,7 +126,7 @@ final class FloatingBarManager {
     ) { screen, size in
       let frame = screen.visibleFrame
       let x = frame.maxX - size.width - FloatingBarLayout.screenMargin
-      let y = frame.midY - size.height / 2 - FloatingBarLayout.visualCenterOffset
+      let y = frame.maxY - size.height - FloatingBarLayout.screenMargin
       return NSPoint(x: x, y: y)
     }
   }
@@ -120,21 +135,20 @@ final class FloatingBarManager {
     let size = currentSize
     guard panel.frame.size != size else { return }
 
-    panel.setFrame(
-      NSRect(
-        x: panel.frame.minX,
-        y: panel.frame.midY - size.height / 2,
-        width: size.width,
-        height: size.height),
-      display: true)
+    let frame = NSRect(
+      x: panel.frame.maxX - size.width,
+      y: panel.frame.maxY - size.height,
+      width: size.width,
+      height: size.height)
+    placement.setFrame(panel, to: frame, display: true, animate: false)
     panel.contentView?.frame = NSRect(origin: .zero, size: size)
   }
 
   private var currentSize: NSSize {
-    let controlCount: CGFloat = model.liveCaptionToggleVisible ? 3 : 2
-    return NSSize(
-      width: FloatingBarLayout.containerWidth,
-      height: FloatingBarLayout.containerHeight(forControlCount: controlCount))
+    FloatingBarLayout.containerSize(
+      isExpanded: model.isExpanded,
+      showsExpand: model.liveCaptionToggleVisible
+    )
   }
 
   private func startFollowingActiveScreen() {
