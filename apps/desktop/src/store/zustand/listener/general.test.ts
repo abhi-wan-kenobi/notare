@@ -3,12 +3,20 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const {
   getIdentifierMock,
+  getCaptureSnapshotMock,
+  listenCaptureDataMock,
+  listenCaptureLifecycleMock,
+  listenCaptureStatusMock,
   runEventHooksMock,
   setRecordingIndicatorMock,
   stopCaptureMock,
   vaultBaseMock,
 } = vi.hoisted(() => ({
   getIdentifierMock: vi.fn(),
+  getCaptureSnapshotMock: vi.fn(),
+  listenCaptureDataMock: vi.fn(),
+  listenCaptureLifecycleMock: vi.fn(),
+  listenCaptureStatusMock: vi.fn(),
   runEventHooksMock: vi.fn(),
   setRecordingIndicatorMock: vi.fn(),
   stopCaptureMock: vi.fn(),
@@ -45,6 +53,7 @@ vi.mock("@hypr/plugin-settings", () => ({
 
 vi.mock("@hypr/plugin-transcription", () => ({
   commands: {
+    getCaptureSnapshot: getCaptureSnapshotMock,
     setMicMuted: vi.fn(),
     startCapture: vi.fn(),
     startTranscription: vi.fn(),
@@ -54,13 +63,13 @@ vi.mock("@hypr/plugin-transcription", () => ({
   },
   events: {
     captureDataEvent: {
-      listen: vi.fn(),
+      listen: listenCaptureDataMock,
     },
     captureLifecycleEvent: {
-      listen: vi.fn(),
+      listen: listenCaptureLifecycleMock,
     },
     captureStatusEvent: {
-      listen: vi.fn(),
+      listen: listenCaptureStatusMock,
     },
   },
 }));
@@ -79,6 +88,19 @@ describe("General Listener Slice", () => {
     store = createListenerStore();
     vi.clearAllMocks();
     getIdentifierMock.mockResolvedValue("com.hyprnote.stable");
+    getCaptureSnapshotMock.mockResolvedValue({
+      status: "ok",
+      data: {
+        activeSessionId: null,
+        finalizingSessionIds: [],
+        liveTranscriptionActive: null,
+        requestedLiveTranscription: null,
+        state: "inactive",
+      },
+    });
+    listenCaptureDataMock.mockResolvedValue(() => {});
+    listenCaptureLifecycleMock.mockResolvedValue(() => {});
+    listenCaptureStatusMock.mockResolvedValue(() => {});
     runEventHooksMock.mockResolvedValue({ status: "ok", data: null });
     setRecordingIndicatorMock.mockResolvedValue({ status: "ok", data: null });
     stopCaptureMock.mockResolvedValue({ status: "ok", data: null });
@@ -630,6 +652,211 @@ describe("General Listener Slice", () => {
     test("start action exists and is callable", () => {
       const start = store.getState().start;
       expect(typeof start).toBe("function");
+    });
+
+    test("attachLiveSession hydrates the active native capture for the same session", async () => {
+      getCaptureSnapshotMock.mockResolvedValueOnce({
+        status: "ok",
+        data: {
+          activeSessionId: "session-a",
+          finalizingSessionIds: [],
+          liveTranscriptionActive: true,
+          requestedLiveTranscription: true,
+          state: "active",
+        },
+      });
+
+      await store.getState().attachLiveSession("session-a");
+
+      expect(store.getState().getSessionMode("session-a")).toBe("active");
+      expect(store.getState().live.sessionId).toBe("session-a");
+      expect(store.getState().live.liveTranscriptionActive).toBe(true);
+      expect(listenCaptureLifecycleMock).toHaveBeenCalledTimes(1);
+      expect(listenCaptureStatusMock).toHaveBeenCalledTimes(1);
+      expect(listenCaptureDataMock).toHaveBeenCalledTimes(1);
+    });
+
+    test("attachLiveSession ignores overlapping attaches for the same session", async () => {
+      await Promise.all([
+        store.getState().attachLiveSession("session-a"),
+        store.getState().attachLiveSession("session-a"),
+      ]);
+
+      expect(listenCaptureLifecycleMock).toHaveBeenCalledTimes(1);
+      expect(listenCaptureStatusMock).toHaveBeenCalledTimes(1);
+      expect(listenCaptureDataMock).toHaveBeenCalledTimes(1);
+      expect(getCaptureSnapshotMock).toHaveBeenCalledTimes(1);
+    });
+
+    test("attachLiveSession clears the previous session interval before applying an active snapshot", async () => {
+      const intervalId = setInterval(() => {}, 1000);
+      const clearIntervalSpy = vi.spyOn(globalThis, "clearInterval");
+      getCaptureSnapshotMock.mockResolvedValueOnce({
+        status: "ok",
+        data: {
+          activeSessionId: "session-b",
+          finalizingSessionIds: [],
+          liveTranscriptionActive: true,
+          requestedLiveTranscription: true,
+          state: "active",
+        },
+      });
+      store.setState((state) =>
+        mutate(state, (draft) => {
+          markLiveActive(draft.live, "session-a", intervalId, true, true, null);
+        }),
+      );
+
+      await store.getState().attachLiveSession("session-b");
+
+      expect(clearIntervalSpy).toHaveBeenCalledWith(intervalId);
+      expect(store.getState().live.sessionId).toBe("session-b");
+
+      clearInterval(store.getState().live.intervalId);
+      clearIntervalSpy.mockRestore();
+    });
+
+    test("attachLiveSession does not mark a different active native capture as current", async () => {
+      getCaptureSnapshotMock.mockResolvedValueOnce({
+        status: "ok",
+        data: {
+          activeSessionId: "session-b",
+          finalizingSessionIds: [],
+          liveTranscriptionActive: true,
+          requestedLiveTranscription: true,
+          state: "active",
+        },
+      });
+
+      await store.getState().attachLiveSession("session-a");
+
+      expect(store.getState().getSessionMode("session-a")).toBe("inactive");
+      expect(store.getState().live.sessionId).toBeNull();
+    });
+
+    test("attachLiveSession hydrates finalizing native capture for the same session", async () => {
+      let dataHandler:
+        | ((event: {
+            payload: {
+              session_id: string;
+              type: "transcript_segment_delta";
+              delta: unknown;
+            };
+          }) => void)
+        | undefined;
+      listenCaptureDataMock.mockImplementationOnce((handler) => {
+        dataHandler = handler;
+        return Promise.resolve(() => {});
+      });
+      getCaptureSnapshotMock.mockResolvedValueOnce({
+        status: "ok",
+        data: {
+          activeSessionId: null,
+          finalizingSessionIds: ["session-a"],
+          liveTranscriptionActive: null,
+          requestedLiveTranscription: null,
+          state: "finalizing",
+        },
+      });
+
+      await store.getState().attachLiveSession("session-a");
+
+      expect(store.getState().live.sessionId).toBe("session-a");
+      expect(store.getState().getSessionMode("session-a")).toBe("finalizing");
+
+      dataHandler?.({
+        payload: {
+          delta: {
+            removed_ids: [],
+            upserts: [
+              {
+                end_ms: 1000,
+                id: "segment-1",
+                key: {
+                  channel: "DirectMic",
+                },
+                start_ms: 0,
+                text: "hello",
+                words: [],
+              },
+            ],
+          },
+          session_id: "session-a",
+          type: "transcript_segment_delta",
+        },
+      });
+
+      expect(store.getState().liveSegments).toMatchObject([
+        { id: "segment-1", text: "hello" },
+      ]);
+    });
+
+    test("attachLiveSession accepts segment events before snapshot hydration", async () => {
+      let dataHandler:
+        | ((event: {
+            payload: {
+              session_id: string;
+              type: "transcript_segment_delta";
+              delta: unknown;
+            };
+          }) => void)
+        | undefined;
+      let resolveSnapshot:
+        | ((value: Awaited<ReturnType<typeof getCaptureSnapshotMock>>) => void)
+        | undefined;
+      listenCaptureDataMock.mockImplementationOnce((handler) => {
+        dataHandler = handler;
+        return Promise.resolve(() => {});
+      });
+      getCaptureSnapshotMock.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveSnapshot = resolve;
+        }),
+      );
+
+      const attachPromise = store.getState().attachLiveSession("session-a");
+      await vi.waitFor(() => {
+        expect(dataHandler).toBeDefined();
+      });
+
+      dataHandler?.({
+        payload: {
+          delta: {
+            removed_ids: [],
+            upserts: [
+              {
+                end_ms: 1000,
+                id: "segment-before-snapshot",
+                key: {
+                  channel: "DirectMic",
+                },
+                start_ms: 0,
+                text: "early",
+                words: [],
+              },
+            ],
+          },
+          session_id: "session-a",
+          type: "transcript_segment_delta",
+        },
+      });
+
+      expect(store.getState().liveSegments).toMatchObject([
+        { id: "segment-before-snapshot", text: "early" },
+      ]);
+
+      resolveSnapshot?.({
+        status: "ok",
+        data: {
+          activeSessionId: null,
+          finalizingSessionIds: [],
+          liveTranscriptionActive: null,
+          requestedLiveTranscription: null,
+          state: "inactive",
+        },
+      });
+      await attachPromise;
+      expect(store.getState().live.sessionId).toBeNull();
     });
 
     test("start returns false while another session is active", async () => {

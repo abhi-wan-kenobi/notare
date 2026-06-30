@@ -4,7 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetTabsStore } from "~/store/zustand/tabs/test-utils";
 
 const mocks = vi.hoisted(() => ({
+  attachLiveSession: vi.fn(),
   close: vi.fn(),
+  listenerState: {
+    attachLiveSession: vi.fn(),
+    live: {
+      eventUnlistenersBySession: {} as Record<string, (() => void)[]>,
+    },
+  },
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
@@ -13,7 +20,13 @@ vi.mock("@tauri-apps/api/window", () => ({
   }),
 }));
 
+vi.mock("~/stt/contexts", () => ({
+  useListener: (selector: (state: typeof mocks.listenerState) => unknown) =>
+    selector(mocks.listenerState),
+}));
+
 import {
+  useAttachStandaloneNoteToLiveSession,
   useCloseStandaloneNoteWindowOnEscape,
   useStandaloneNoteTab,
 } from "./note.$sessionId";
@@ -22,6 +35,9 @@ import { useTabs } from "~/store/zustand/tabs";
 
 describe("standalone note window route", () => {
   beforeEach(() => {
+    mocks.listenerState.attachLiveSession = mocks.attachLiveSession;
+    mocks.listenerState.live.eventUnlistenersBySession = {};
+    mocks.attachLiveSession.mockClear();
     mocks.close.mockClear();
     resetTabsStore();
   });
@@ -70,6 +86,29 @@ describe("standalone note window route", () => {
     });
 
     expect(result.current.state.view).toEqual({ type: "raw" });
+  });
+
+  it("attaches the standalone note to live session events", () => {
+    renderHook(() => useAttachStandaloneNoteToLiveSession("session-1"));
+
+    expect(mocks.attachLiveSession).toHaveBeenCalledWith("session-1");
+  });
+
+  it("reattaches after standalone live session events are removed", () => {
+    const { rerender } = renderHook(() =>
+      useAttachStandaloneNoteToLiveSession("session-1"),
+    );
+    expect(mocks.attachLiveSession).toHaveBeenCalledTimes(1);
+
+    mocks.listenerState.live.eventUnlistenersBySession = {
+      "session-1": [vi.fn()],
+    };
+    rerender();
+    expect(mocks.attachLiveSession).toHaveBeenCalledTimes(1);
+
+    mocks.listenerState.live.eventUnlistenersBySession = {};
+    rerender();
+    expect(mocks.attachLiveSession).toHaveBeenCalledTimes(2);
   });
 });
 
