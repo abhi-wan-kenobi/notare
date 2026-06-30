@@ -55,17 +55,27 @@ const privacyCommitments = [
 ];
 
 const credibilityLogos = [
-  { name: "Databricks", src: "/icons/databricks.svg" },
-  { name: "Amazon", src: "/icons/amazon.svg", className: "max-h-9" },
-  { name: "Meta", src: "/icons/meta.svg", className: "max-h-9" },
+  { name: "Databricks", src: "/icons/databricks.svg", className: "max-h-5" },
+  { name: "Cloudflare", src: "/icons/cloudflare.png" },
+  { name: "Amazon", src: "/icons/amazon.svg", className: "max-h-5" },
+  { name: "Meta", src: "/icons/meta.svg", className: "max-h-5" },
   { name: "Y Combinator", src: "/icons/yc.svg" },
-  { name: "Palantir", src: "/icons/palantir.svg" },
-  { name: "Apple", src: "/icons/apple.svg", className: "max-h-9" },
-  { name: "Disney", src: "/icons/disney.svg", className: "max-h-9" },
-  { name: "Richmond American", src: "/icons/richmond_american.svg" },
-  { name: "Adobe", src: "/icons/adobe.svg", className: "max-h-8" },
-  { name: "Wayfair", src: "/icons/wayfair.svg" },
-  { name: "Bain & Company", src: "/icons/bain.svg", className: "max-h-6" },
+  { name: "Palantir", src: "/icons/palantir.svg", className: "max-h-5" },
+  { name: "Apple", src: "/icons/apple.svg", className: "max-h-5" },
+  { name: "Disney", src: "/icons/disney.svg", className: "max-h-5" },
+  {
+    name: "Richmond American",
+    src: "/icons/richmond_american.svg",
+    className: "max-h-5",
+  },
+  { name: "Adobe", src: "/icons/adobe.svg", className: "max-h-5" },
+  { name: "Wayfair", src: "/icons/wayfair.svg", className: "max-h-5" },
+  { name: "Bain & Company", src: "/icons/bain.svg", className: "max-h-5" },
+  {
+    name: "McKinsey & Company",
+    src: "/icons/mckinsey.png",
+    className: "max-h-5",
+  },
 ];
 
 const testimonials = [
@@ -355,9 +365,8 @@ function Component() {
               <DownloadButton />
             </div>
             <HeroWorkflowDemo />
+            <CredibilityLogoMarquee />
           </section>
-
-          <CredibilityLogoMarquee />
 
           <PrivacySection />
 
@@ -557,20 +566,42 @@ function OpenSourceSection({
 function CredibilityLogoMarquee() {
   return (
     <section
-      className="pt-0 pb-6 md:pb-8"
+      className="relative pt-0 pb-2 md:pb-0"
       aria-labelledby="credibility-heading"
     >
-      <h2
-        id="credibility-heading"
-        className="font-hand text-base leading-none font-semibold text-[#756b5d] md:text-lg"
-      >
-        Trusted by people in
-      </h2>
       <p className="sr-only">
         {credibilityLogos.map((logo) => logo.name).join(", ")}
       </p>
+      <div
+        className="pointer-events-none absolute -top-[4.4rem] left-1/2 z-20 h-20 w-[15rem] -translate-x-[160%] text-neutral-950 max-[899px]:hidden"
+        aria-hidden="true"
+      >
+        <p className="absolute top-0 left-0 w-max -rotate-[3deg] font-['Reenie_Beanie','Patrick_Hand',cursive] text-[25px] leading-none font-normal whitespace-nowrap lg:text-[28px]">
+          people love us at
+        </p>
+        <svg
+          className="absolute top-[1.65rem] left-[1.15rem] h-[2.9rem] w-[4.65rem] rotate-[5deg] text-neutral-950"
+          viewBox="0 0 74 46"
+          fill="none"
+        >
+          <path
+            d="M7 8L56 30"
+            stroke="currentColor"
+            strokeWidth="2.1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M44 22L57 30L42 37"
+            stroke="currentColor"
+            strokeWidth="2.1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
 
-      <div className="relative left-1/2 mt-3 w-screen -translate-x-1/2 overflow-hidden bg-white py-4 motion-reduce:overflow-visible">
+      <div className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-white motion-reduce:overflow-visible">
         <div
           className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-linear-to-r from-white to-transparent motion-reduce:hidden md:w-32"
           aria-hidden="true"
@@ -601,7 +632,7 @@ function CredibilityLogoMarquee() {
                   src={logo.src}
                   alt=""
                   className={cn([
-                    "h-7 w-auto max-w-none object-contain opacity-65 grayscale",
+                    "h-6 w-auto max-w-none object-contain opacity-65 grayscale",
                     logo.className,
                   ])}
                   draggable={false}
@@ -611,6 +642,12 @@ function CredibilityLogoMarquee() {
           ))}
         </div>
       </div>
+      <h2
+        id="credibility-heading"
+        className="mt-1 font-['Reenie_Beanie','Patrick_Hand',cursive] text-[22px] leading-none font-normal text-neutral-950 min-[900px]:sr-only"
+      >
+        people love us at
+      </h2>
     </section>
   );
 }
@@ -961,7 +998,7 @@ function HeroWorkflowDemo() {
   const isGeneratingSummary = enhancedLines > 0 && enhancedLines < 6;
 
   return (
-    <div className="relative left-1/2 mt-10 w-screen max-w-[500px] -translate-x-1/2 px-8 pb-8 sm:px-10">
+    <div className="relative left-1/2 mt-10 w-screen max-w-[500px] -translate-x-1/2 px-8 sm:px-10">
       <div
         className="pointer-events-none absolute top-10 bottom-24 left-8 z-0 w-12 rounded-full bg-neutral-950/10 blur-2xl sm:left-10"
         aria-hidden="true"
@@ -1000,35 +1037,43 @@ function HeroWorkflowDemo() {
         <div className="relative min-h-[260px] overflow-hidden text-left text-sm sm:min-h-[300px]">
           <div
             className={cn([
-              "absolute inset-0 space-y-3 p-5 transition-[opacity,transform] duration-500 sm:p-6",
-              isSummaryPhase
-                ? "-translate-y-3 opacity-0"
-                : "translate-y-0 opacity-100",
+              "absolute inset-0 space-y-3 p-5 transition-opacity duration-500 sm:p-6",
+              isSummaryPhase ? "opacity-0" : "opacity-100",
             ])}
           >
             <div className="text-neutral-700">ui update - moble</div>
             <div className="text-neutral-700">api</div>
             <div className="mt-4 text-neutral-700">new dash - urgnet</div>
             <div className="text-neutral-700">a/b tst next wk</div>
-            <div className="mt-4 text-neutral-700">
+            <div className="mt-4 min-h-5 text-neutral-700">
               {typedText1}
-              {typedText1 && typedText1.length < text1.length && (
-                <span className="animate-pulse">|</span>
-              )}
+              <span
+                className={cn([
+                  typedText1 && typedText1.length < text1.length
+                    ? "animate-pulse"
+                    : "opacity-0",
+                ])}
+              >
+                |
+              </span>
             </div>
-            <div className="text-neutral-700">
+            <div className="min-h-5 text-neutral-700">
               {typedText2}
-              {typedText2 && typedText2.length < text2.length && (
-                <span className="animate-pulse">|</span>
-              )}
+              <span
+                className={cn([
+                  typedText2 && typedText2.length < text2.length
+                    ? "animate-pulse"
+                    : "opacity-0",
+                ])}
+              >
+                |
+              </span>
             </div>
           </div>
           <div
             className={cn([
-              "absolute inset-0 space-y-4 overflow-hidden p-5 text-left transition-[opacity,transform] duration-500 sm:p-6",
-              isSummaryPhase
-                ? "translate-y-0 opacity-100"
-                : "translate-y-3 opacity-0",
+              "absolute inset-0 space-y-4 overflow-hidden p-5 text-left transition-opacity duration-500 sm:p-6",
+              isSummaryPhase ? "opacity-100" : "opacity-0",
             ])}
           >
             <div className="space-y-2">
@@ -1104,7 +1149,7 @@ function HeroWorkflowDemo() {
                 <li
                   className={cn([
                     "transition-opacity duration-500",
-                    enhancedLines >= 6 ? "opacity-100" : "opacity-0",
+                    enhancedLines >= 5 ? "opacity-100" : "opacity-0",
                   ])}
                 >
                   Ben mentioned that backend infrastructure needs optimization
@@ -1113,7 +1158,7 @@ function HeroWorkflowDemo() {
                 <li
                   className={cn([
                     "transition-opacity duration-500",
-                    enhancedLines >= 6 ? "opacity-100" : "opacity-0",
+                    enhancedLines >= 5 ? "opacity-100" : "opacity-0",
                   ])}
                 >
                   Mark stressed that the dashboard launch should align with
@@ -1122,7 +1167,7 @@ function HeroWorkflowDemo() {
                 <li
                   className={cn([
                     "transition-opacity duration-500",
-                    enhancedLines >= 6 ? "opacity-100" : "opacity-0",
+                    enhancedLines >= 5 ? "opacity-100" : "opacity-0",
                   ])}
                 >
                   Development will start immediately, and a basic prototype must
