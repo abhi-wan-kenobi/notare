@@ -61,7 +61,11 @@ jobs:
                   target.write(f"{key}={value}\n")
           PY
 
-          flyctl secrets import --app hyprnote-ai --stage < "$secrets_file"
+          if [ -s "$secrets_file" ]; then
+            flyctl secrets import --app hyprnote-ai --stage < "$secrets_file"
+          else
+            echo "No Infisical secrets exported; skipping Fly secret import."
+          fi
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
