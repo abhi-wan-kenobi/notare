@@ -561,9 +561,7 @@ export function getFloatingTranscriptBubbles(
         id: segment.id,
         speakerLabel: getFloatingSpeakerLabel(segment.key),
         text,
-        isSelf:
-          segment.key.channel === "DirectMic" &&
-          segment.key.speaker_index == null,
+        isSelf: isFloatingSelfSpeaker(segment.key),
         isFinal: segment.words.every((word) => word.is_final),
       };
     })
@@ -586,7 +584,7 @@ function getFloatingSegmentText(
 function getFloatingSpeakerLabel(
   key: ListenerState["liveSegments"][number]["key"],
 ) {
-  if (key.channel === "DirectMic" && key.speaker_index == null) {
+  if (isFloatingSelfSpeaker(key)) {
     return "You";
   }
 
@@ -599,6 +597,12 @@ function getFloatingSpeakerLabel(
   }
 
   return "Audio";
+}
+
+function isFloatingSelfSpeaker(
+  key: ListenerState["liveSegments"][number]["key"],
+) {
+  return key.channel === "DirectMic";
 }
 
 export function shouldShowFloatingLiveCaptionToggle({
