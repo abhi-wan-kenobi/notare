@@ -64,6 +64,7 @@ const LEFT_SIDEBAR_MIN_WIDTH_PX = 200;
 const LEFT_SIDEBAR_MAX_WIDTH_PX = 360;
 const LEFT_SIDEBAR_COLLAPSED_SIZE = 0;
 const LEFT_SIDEBAR_FALLBACK_CONTAINER_WIDTH_PX = 1000;
+const LEFT_SIDEBAR_PANEL_SIZE_EPSILON = 0.01;
 
 type MainAreaWindowDragStart = {
   pointerId: number;
@@ -80,21 +81,25 @@ export function ClassicMainBody() {
   const { leftsidebar } = useShell();
   const currentTab = useTabs((state) => state.currentTab);
   const { runEscapeShortcut } = useClassicMainTabsShortcuts();
-  const [leftSidebarPanelConstraints] = useState(
-    createLeftSidebarPanelConstraints,
-  );
+  const [leftSidebarPanelConstraints, setLeftSidebarPanelConstraints] =
+    useState(createLeftSidebarPanelConstraints);
   const [leftSidebarPanelSize, setLeftSidebarPanelSize] = useState(
     leftSidebarPanelConstraints.defaultSize,
   );
   const bodyRootRef = useRef<HTMLDivElement>(null);
   const leftSidebarPanelRef = useRef<ImperativePanelHandle>(null);
+  const leftSidebarPanelConstraintsRef = useRef(leftSidebarPanelConstraints);
   const leftSidebarPanelSizeRef = useRef(leftSidebarPanelSize);
   const lastExpandedLeftSidebarPanelSizeRef = useRef(leftSidebarPanelSize);
   const leftSidebarResizeDraggingRef = useRef(false);
+  const leftSidebarDefaultSizeTrackingRef = useRef(true);
+  const pendingLeftSidebarDefaultSizeRef = useRef<number | null>(null);
+  const syncDefaultLeftSidebarPanelSizeRef = useRef<() => void>(() => {});
   const [showIgnoredTimelineEvents, setShowIgnoredTimelineEvents] =
     useState(false);
   const [showDevtoolsPanelButton, setShowDevtoolsPanelButton] = useState(false);
   const [devtoolsPanelOpen, setDevtoolsPanelOpen] = useState(false);
+  leftSidebarPanelConstraintsRef.current = leftSidebarPanelConstraints;
 
   useMountEffect(() => {
     let cancelled = false;
@@ -197,6 +202,28 @@ export function ClassicMainBody() {
 
       const sidebarSize = sizes[0];
       if (typeof sidebarSize === "number") {
+        const pendingDefaultSize = pendingLeftSidebarDefaultSizeRef.current;
+        if (
+          pendingDefaultSize !== null &&
+          !leftSidebarResizeDraggingRef.current
+        ) {
+          if (!panelSizesAreEqual(sidebarSize, pendingDefaultSize)) {
+            return;
+          }
+
+          pendingLeftSidebarDefaultSizeRef.current = null;
+        }
+
+        if (
+          !leftSidebarResizeDraggingRef.current &&
+          !panelSizesAreEqual(
+            sidebarSize,
+            leftSidebarPanelConstraintsRef.current.defaultSize,
+          )
+        ) {
+          leftSidebarDefaultSizeTrackingRef.current = false;
+        }
+
         leftSidebarPanelSizeRef.current = sidebarSize;
         applyLeftSidebarPanelSize(sidebarSize);
 
@@ -223,6 +250,11 @@ export function ClassicMainBody() {
     (isDragging: boolean) => {
       leftSidebarResizeDraggingRef.current = isDragging;
       setLeftSidebarResizing(isDragging);
+
+      if (isDragging) {
+        leftSidebarDefaultSizeTrackingRef.current = false;
+        pendingLeftSidebarDefaultSizeRef.current = null;
+      }
 
       if (!isDragging) {
         commitLeftSidebarPanelSize(
@@ -278,6 +310,95 @@ export function ClassicMainBody() {
     leftsidebar.toggleExpanded,
     restoreLeftSidebarPanelSize,
   ]);
+  const syncDefaultLeftSidebarPanelSize = useCallback(() => {
+    if (
+      !mountLeftSidebarPanel ||
+      leftSidebarResizeDraggingRef.current ||
+      !leftSidebarDefaultSizeTrackingRef.current
+    ) {
+      return;
+    }
+
+    const currentConstraints = leftSidebarPanelConstraintsRef.current;
+
+    if (
+      !panelSizesAreEqual(
+        leftSidebarPanelSizeRef.current,
+        currentConstraints.defaultSize,
+      )
+    ) {
+      leftSidebarDefaultSizeTrackingRef.current = false;
+      return;
+    }
+
+    const measuredWidth = getMeasuredMainAreaWidthPx(bodyRootRef.current);
+    const nextConstraints = createLeftSidebarPanelConstraints(measuredWidth);
+
+    if (
+      panelSizesAreEqual(
+        nextConstraints.defaultSize,
+        currentConstraints.defaultSize,
+      ) &&
+      panelSizesAreEqual(nextConstraints.minSize, currentConstraints.minSize) &&
+      panelSizesAreEqual(nextConstraints.maxSize, currentConstraints.maxSize)
+    ) {
+      return;
+    }
+
+    leftSidebarPanelConstraintsRef.current = nextConstraints;
+    setLeftSidebarPanelConstraints(nextConstraints);
+    leftSidebarPanelSizeRef.current = nextConstraints.defaultSize;
+    lastExpandedLeftSidebarPanelSizeRef.current = nextConstraints.defaultSize;
+    pendingLeftSidebarDefaultSizeRef.current = nextConstraints.defaultSize;
+    commitLeftSidebarPanelSize(nextConstraints.defaultSize);
+    applyLeftSidebarPanelSize(nextConstraints.defaultSize);
+
+    window.requestAnimationFrame(() => {
+      resizeLeftSidebarPanel(
+        leftSidebarPanelRef.current,
+        nextConstraints.defaultSize,
+      );
+    });
+  }, [
+    applyLeftSidebarPanelSize,
+    commitLeftSidebarPanelSize,
+    mountLeftSidebarPanel,
+  ]);
+  syncDefaultLeftSidebarPanelSizeRef.current = syncDefaultLeftSidebarPanelSize;
+  useMountEffect(() => {
+    const bodyRoot = bodyRootRef.current;
+    let syncFrame: number | null = null;
+
+    const scheduleDefaultSizeSync = () => {
+      if (syncFrame !== null) {
+        window.cancelAnimationFrame(syncFrame);
+      }
+
+      syncFrame = window.requestAnimationFrame(() => {
+        syncFrame = null;
+        syncDefaultLeftSidebarPanelSizeRef.current();
+      });
+    };
+
+    scheduleDefaultSizeSync();
+    window.addEventListener("resize", scheduleDefaultSizeSync);
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" && bodyRoot
+        ? new ResizeObserver(scheduleDefaultSizeSync)
+        : null;
+    if (resizeObserver && bodyRoot) {
+      resizeObserver.observe(bodyRoot);
+    }
+
+    return () => {
+      if (syncFrame !== null) {
+        window.cancelAnimationFrame(syncFrame);
+      }
+      window.removeEventListener("resize", scheduleDefaultSizeSync);
+      resizeObserver?.disconnect();
+    };
+  });
   const handleLeftSidebarChromeWheel = useCallback(
     (event: WheelEvent<HTMLDivElement>) => {
       if (!showSidebarTimeline) {
@@ -485,9 +606,9 @@ export function ClassicMainBody() {
   );
 }
 
-function createLeftSidebarPanelConstraints() {
+function createLeftSidebarPanelConstraints(widthPx?: number) {
   const containerWidthPx = Math.max(
-    getInitialMainAreaWidthPx(),
+    widthPx ?? getInitialMainAreaWidthPx(),
     LEFT_SIDEBAR_DEFAULT_WIDTH_PX,
   );
   const minSize = percentageFromPixels(
@@ -508,6 +629,12 @@ function createLeftSidebarPanelConstraints() {
   };
 }
 
+function getMeasuredMainAreaWidthPx(element: HTMLElement | null) {
+  const measuredWidth = element?.getBoundingClientRect().width ?? 0;
+
+  return measuredWidth > 0 ? measuredWidth : getInitialMainAreaWidthPx();
+}
+
 function getInitialMainAreaWidthPx() {
   if (typeof window === "undefined") {
     return LEFT_SIDEBAR_FALLBACK_CONTAINER_WIDTH_PX;
@@ -522,6 +649,10 @@ function getInitialMainAreaWidthPx() {
 
 function percentageFromPixels(widthPx: number, containerWidthPx: number) {
   return Math.min((widthPx / containerWidthPx) * 100, 100);
+}
+
+function panelSizesAreEqual(left: number, right: number) {
+  return Math.abs(left - right) < LEFT_SIDEBAR_PANEL_SIZE_EPSILON;
 }
 
 function resizeLeftSidebarPanel(
