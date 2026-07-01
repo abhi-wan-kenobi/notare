@@ -17,6 +17,10 @@ import {
 import { useSessionEvent } from "~/store/tinybase/hooks";
 import type { EditorView } from "~/store/zustand/tabs/schema";
 import { useListener } from "~/stt/contexts";
+import {
+  isMainWebviewWindow,
+  requestMainListenerControl,
+} from "~/stt/window-control";
 
 export function OuterHeader({
   sessionId,
@@ -37,7 +41,8 @@ export function OuterHeader({
     !standaloneWindow && !leftsidebar.expanded;
   const showExpandedSidebarTimelineHeader = leftsidebar.expanded;
   const reserveCollapsedLiveControls =
-    showSidebarTimelineHeaderGutter && isSidebarStopButtonMode(sessionMode);
+    (showSidebarTimelineHeaderGutter || standaloneWindow) &&
+    isSidebarStopButtonMode(sessionMode);
 
   return (
     <div
@@ -77,12 +82,12 @@ export function OuterHeader({
         className="relative z-10 ml-auto flex shrink-0 items-center gap-0 pr-1"
       >
         <SidebarModeStopButton
+          sessionId={sessionId}
           sessionMode={sessionMode}
           standaloneWindow={standaloneWindow}
         />
         <HeaderMeetingControl sessionId={sessionId} sessionMode={sessionMode} />
         <OverflowButton
-          allowListening={!standaloneWindow}
           standaloneWindow={standaloneWindow}
           sessionId={sessionId}
           currentView={currentView}
@@ -238,9 +243,11 @@ function getMeetingDisplay(type: RemoteMeeting["type"]) {
 }
 
 function SidebarModeStopButton({
+  sessionId,
   sessionMode,
   standaloneWindow,
 }: {
+  sessionId: string;
   sessionMode: string;
   standaloneWindow: boolean;
 }) {
@@ -255,9 +262,22 @@ function SidebarModeStopButton({
   const active = isSidebarStopButtonMode(sessionMode);
   const finalizing = sessionMode === "finalizing";
 
-  if (standaloneWindow || leftsidebar.expanded || !active) {
+  if ((!standaloneWindow && leftsidebar.expanded) || !active) {
     return null;
   }
+
+  const handleStop = () => {
+    if (finalizing) {
+      return;
+    }
+
+    if (!isMainWebviewWindow()) {
+      void requestMainListenerControl("stop", sessionId);
+      return;
+    }
+
+    stop();
+  };
 
   const accent = degraded ? "amber" : "red";
   const colors = {
@@ -279,7 +299,7 @@ function SidebarModeStopButton({
     <button
       type="button"
       data-tauri-drag-region="false"
-      onClick={finalizing ? undefined : stop}
+      onClick={handleStop}
       disabled={finalizing}
       className={cn([
         "group inline-flex items-center justify-center rounded-full text-sm font-medium",

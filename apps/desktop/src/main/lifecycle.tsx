@@ -13,6 +13,7 @@ import { useDesktopTabLifecycle } from "~/shared/desktop-tab-lifecycle";
 import * as main from "~/store/tinybase/store/main";
 import * as settings from "~/store/tinybase/store/settings";
 import { useTabs } from "~/store/zustand/tabs";
+import { MainListenerControlBridge } from "~/stt/window-control";
 
 export function useClassicMainLifecycle() {
   const openNew = useTabs((state) => state.openNew);
@@ -34,6 +35,7 @@ export function useClassicMainLifecycle() {
 export function ClassicMainServices() {
   return (
     <>
+      <MainListenerControlBridge />
       <ToolRegistration />
       <EnhancerInit />
     </>

@@ -125,6 +125,7 @@ describe("OverflowButton", () => {
     useListenerMock.mockImplementation((selector) =>
       selector({
         getSessionMode: () => "inactive",
+        stop: vi.fn(),
       }),
     );
   });

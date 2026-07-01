@@ -4,6 +4,10 @@ import { DropdownMenuItem } from "@hypr/ui/components/ui/dropdown-menu";
 
 import { useListener } from "~/stt/contexts";
 import { useStartListening } from "~/stt/useStartListening";
+import {
+  isMainWebviewWindow,
+  requestMainListenerControl,
+} from "~/stt/window-control";
 
 export function Listening({
   sessionId,
@@ -21,8 +25,20 @@ export function Listening({
   const isBatching = mode === "running_batch";
   const startListening = useStartListening(sessionId);
 
+  if (!isListening && hasTranscript) {
+    return null;
+  }
+
   const handleToggleListening = () => {
     if (isBatching) {
+      return;
+    }
+
+    if (!isMainWebviewWindow()) {
+      void requestMainListenerControl(
+        isListening ? "stop" : "start",
+        sessionId,
+      );
       return;
     }
 

@@ -687,7 +687,7 @@ msgstr ""
 msgid "Filter synced items by {0}."
 msgstr ""
 
-#: src/session/components/outer-header/index.tsx:292
+#: src/session/components/outer-header/index.tsx:312
 msgid "Finalizing"
 msgstr ""
 
@@ -838,11 +838,11 @@ msgstr ""
 msgid "Job Title"
 msgstr ""
 
-#: src/session/components/outer-header/index.tsx:178
+#: src/session/components/outer-header/index.tsx:183
 msgid "Join"
 msgstr ""
 
-#: src/session/components/outer-header/index.tsx:158
+#: src/session/components/outer-header/index.tsx:163
 msgid "Join {name}"
 msgstr ""
 
@@ -1675,11 +1675,11 @@ msgid "Starting your trial..."
 msgstr ""
 
 #: src/session/components/note-input/header.tsx:570
-#: src/session/components/outer-header/index.tsx:319
+#: src/session/components/outer-header/index.tsx:339
 msgid "Stop"
 msgstr ""
 
-#: src/session/components/outer-header/index.tsx:292
+#: src/session/components/outer-header/index.tsx:312
 #: src/sidebar/timeline/item.tsx:244
 msgid "Stop listening"
 msgstr ""

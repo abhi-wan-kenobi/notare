@@ -18,6 +18,12 @@ const mocks = vi.hoisted(() => ({
   stopListening: vi.fn(),
   nowMs: new Date("2026-06-05T09:50:00.000Z").getTime(),
   openUrl: vi.fn(),
+  isMainWebviewWindow: vi.fn(() => true),
+  requestMainListenerControl: vi.fn(),
+  overflowProps: [] as Array<{
+    allowListening?: boolean;
+    standaloneWindow?: boolean;
+  }>,
 }));
 
 vi.mock("./metadata", () => ({
@@ -36,7 +42,13 @@ vi.mock("./metadata", () => ({
 }));
 
 vi.mock("./overflow", () => ({
-  OverflowButton: () => <button type="button">More</button>,
+  OverflowButton: (props: {
+    allowListening?: boolean;
+    standaloneWindow?: boolean;
+  }) => {
+    mocks.overflowProps.push(props);
+    return <button type="button">More</button>;
+  },
 }));
 
 vi.mock("@hypr/ui/components/ui/dancing-sticks", () => ({
@@ -47,6 +59,11 @@ vi.mock("@hypr/plugin-opener2", () => ({
   commands: {
     openUrl: mocks.openUrl,
   },
+}));
+
+vi.mock("~/stt/window-control", () => ({
+  isMainWebviewWindow: mocks.isMainWebviewWindow,
+  requestMainListenerControl: mocks.requestMainListenerControl,
 }));
 
 vi.mock("~/calendar/hooks", () => ({
@@ -108,6 +125,10 @@ describe("OuterHeader", () => {
     mocks.stopListening.mockClear();
     mocks.nowMs = new Date("2026-06-05T09:50:00.000Z").getTime();
     mocks.openUrl.mockClear();
+    mocks.isMainWebviewWindow.mockReset();
+    mocks.isMainWebviewWindow.mockReturnValue(true);
+    mocks.requestMainListenerControl.mockClear();
+    mocks.overflowProps = [];
   });
 
   afterEach(() => {
@@ -297,9 +318,10 @@ describe("OuterHeader", () => {
     expect(screen.queryByRole("button", { name: "Stop listening" })).toBeNull();
   });
 
-  it("keeps listener controls hidden in standalone windows", () => {
+  it("shows the dedicated stop button in standalone windows and delegates stop to main", () => {
     mocks.leftsidebar.expanded = true;
     mocks.sessionModes = { "session-1": "active" };
+    mocks.isMainWebviewWindow.mockReturnValue(false);
 
     render(
       <OuterHeader
@@ -314,8 +336,17 @@ describe("OuterHeader", () => {
     const titleSlot = title.parentElement?.parentElement;
 
     expect(titleSlot?.className).toContain("left-[76px]");
-    expect(titleSlot?.className).toContain("right-[70px]");
-    expect(screen.queryByRole("button", { name: "Stop listening" })).toBeNull();
+    expect(titleSlot?.className).toContain("right-[153px]");
+    const stopButton = screen.getByRole("button", { name: "Stop listening" });
+    fireEvent.click(stopButton);
+
+    const overflowProps = mocks.overflowProps[mocks.overflowProps.length - 1];
+    expect(overflowProps?.standaloneWindow).toBe(true);
+    expect(overflowProps?.allowListening).toBeUndefined();
+    expect(mocks.requestMainListenerControl).toHaveBeenCalledWith(
+      "stop",
+      "session-1",
+    );
     expect(mocks.stopListening).not.toHaveBeenCalled();
   });
 
