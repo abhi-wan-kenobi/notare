@@ -11,7 +11,6 @@ import {
   chainCommands,
   createParagraphNear,
   deleteSelection,
-  exitCode,
   joinBackward,
   joinForward,
   liftEmptyBlock,
@@ -221,6 +220,10 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
         submitShortcut === "enter"
           ? submitCommand
           : chainCommands(createParagraphNear, liftEmptyBlock, splitBlock);
+      const shiftEnterCommand =
+        submitShortcut === "enter"
+          ? chainCommands(createParagraphNear, liftEmptyBlock, splitBlock)
+          : undefined;
 
       return [
         reactKeys(),
@@ -228,17 +231,10 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           "Mod-z": undo,
           "Mod-Shift-z": redo,
           ...(!mac ? { "Mod-y": redo } : {}),
-          "Mod-Enter": submitCommand,
-          "Shift-Enter": chainCommands(exitCode, (state, dispatch) => {
-            if (dispatch) {
-              dispatch(
-                state.tr
-                  .replaceSelectionWith(chatSchema.nodes.hardBreak.create())
-                  .scrollIntoView(),
-              );
-            }
-            return true;
-          }),
+          ...(submitShortcut === "mod-enter"
+            ? { "Mod-Enter": submitCommand }
+            : {}),
+          ...(shiftEnterCommand ? { "Shift-Enter": shiftEnterCommand } : {}),
           Enter: enterCommand,
           Backspace: chainCommands(
             deleteSelection,
