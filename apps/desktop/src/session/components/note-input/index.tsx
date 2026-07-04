@@ -145,11 +145,52 @@ export const NoteInput = forwardRef<
       ],
     );
 
-    useTabShortcuts({
-      editorTabs,
-      currentTab,
-      handleTabChange,
-    });
+    const handleAdjacentViewShortcut = useCallback(
+      (direction: "previous" | "next") => {
+        if (editorTabs.length <= 1) {
+          return;
+        }
+
+        const currentIndex = editorTabs.findIndex((editorTab) =>
+          isSameEditorView(editorTab, renderedCurrentTab),
+        );
+        if (currentIndex === -1) {
+          return;
+        }
+
+        const nextIndex =
+          direction === "previous"
+            ? (currentIndex - 1 + editorTabs.length) % editorTabs.length
+            : (currentIndex + 1) % editorTabs.length;
+        const nextView = editorTabs[nextIndex];
+        if (nextView) {
+          handleTabChange(nextView);
+        }
+      },
+      [editorTabs, handleTabChange, renderedCurrentTab],
+    );
+
+    useHotkeys(
+      "mod+alt+left",
+      () => handleAdjacentViewShortcut("previous"),
+      {
+        preventDefault: true,
+        enableOnFormTags: true,
+        enableOnContentEditable: true,
+      },
+      [handleAdjacentViewShortcut],
+    );
+
+    useHotkeys(
+      "mod+alt+right",
+      () => handleAdjacentViewShortcut("next"),
+      {
+        preventDefault: true,
+        enableOnFormTags: true,
+        enableOnContentEditable: true,
+      },
+      [handleAdjacentViewShortcut],
+    );
 
     useEffect(() => {
       if (renderedCurrentTab.type === "raw" && isMeetingInProgress) {
@@ -273,98 +314,4 @@ function isSameEditorView(left: TabEditorView, right: TabEditorView): boolean {
   }
 
   return true;
-}
-
-function useTabShortcuts({
-  editorTabs,
-  currentTab,
-  handleTabChange,
-}: {
-  editorTabs: TabEditorView[];
-  currentTab: TabEditorView;
-  handleTabChange: (view: TabEditorView) => void;
-}) {
-  useHotkeys(
-    "alt+s",
-    () => {
-      const enhancedTabs = editorTabs.filter((t) => t.type === "enhanced");
-      if (enhancedTabs.length === 0) return;
-
-      if (currentTab.type === "enhanced") {
-        const currentIndex = enhancedTabs.findIndex(
-          (t) => t.type === "enhanced" && t.id === currentTab.id,
-        );
-        const nextIndex = (currentIndex + 1) % enhancedTabs.length;
-        handleTabChange(enhancedTabs[nextIndex]);
-      } else {
-        handleTabChange(enhancedTabs[0]);
-      }
-    },
-    {
-      preventDefault: true,
-      enableOnFormTags: true,
-      enableOnContentEditable: true,
-    },
-    [currentTab, editorTabs, handleTabChange],
-  );
-
-  useHotkeys(
-    "alt+m",
-    () => {
-      const rawTab = editorTabs.find((t) => t.type === "raw");
-      if (rawTab && currentTab.type !== "raw") {
-        handleTabChange(rawTab);
-      }
-    },
-    {
-      preventDefault: true,
-      enableOnFormTags: true,
-      enableOnContentEditable: true,
-    },
-    [currentTab, editorTabs, handleTabChange],
-  );
-
-  useHotkeys(
-    "ctrl+alt+left",
-    () => {
-      const currentIndex = editorTabs.findIndex(
-        (t) =>
-          (t.type === "enhanced" &&
-            currentTab.type === "enhanced" &&
-            t.id === currentTab.id) ||
-          (t.type === currentTab.type && t.type !== "enhanced"),
-      );
-      if (currentIndex > 0) {
-        handleTabChange(editorTabs[currentIndex - 1]);
-      }
-    },
-    {
-      preventDefault: true,
-      enableOnFormTags: true,
-      enableOnContentEditable: true,
-    },
-    [currentTab, editorTabs, handleTabChange],
-  );
-
-  useHotkeys(
-    "ctrl+alt+right",
-    () => {
-      const currentIndex = editorTabs.findIndex(
-        (t) =>
-          (t.type === "enhanced" &&
-            currentTab.type === "enhanced" &&
-            t.id === currentTab.id) ||
-          (t.type === currentTab.type && t.type !== "enhanced"),
-      );
-      if (currentIndex >= 0 && currentIndex < editorTabs.length - 1) {
-        handleTabChange(editorTabs[currentIndex + 1]);
-      }
-    },
-    {
-      preventDefault: true,
-      enableOnFormTags: true,
-      enableOnContentEditable: true,
-    },
-    [currentTab, editorTabs, handleTabChange],
-  );
 }
