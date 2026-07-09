@@ -1,9 +1,11 @@
 # Napkin Figures for Blog Posts
 
-Use Napkin for conceptual figures: workflows, privacy/data-flow diagrams,
-decision trees, comparison visuals, and abstract explainers. Do not use it to
-fake product UI. If a post needs product screenshots and official/current
-screenshots are not available, ask for real screenshots or app access.
+Use Napkin for blog conceptual figures: workflows, privacy/data-flow diagrams,
+decision trees, comparison visuals, and abstract explainers. Blog diagrams
+should come from Napkin rather than hand-rolled SVG/PNG assets unless the user
+explicitly asks for a non-Napkin figure. Do not use it to fake product UI. If a
+post needs product screenshots and official/current screenshots are not
+available, ask for real screenshots or app access.
 
 Generated Napkin file URLs expire after 30 minutes, so every accepted figure
 must be downloaded immediately and rehosted in the Supabase `blog` bucket under
