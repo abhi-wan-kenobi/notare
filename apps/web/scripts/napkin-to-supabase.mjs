@@ -5,7 +5,7 @@ import { basename, extname } from "node:path";
 
 const NAPKIN_API_BASE = "https://api.napkin.ai";
 const BLOG_BUCKET = "blog";
-const DEFAULT_STYLE_ID = "CSQQ4VB1DGPPTVVEDXHPGWKFDNJJTSKCC5T0";
+const DEFAULT_STYLE_ID = "CDQPRVVJCSTPRBBCD5Q6AWSDE8S0";
 const DEFAULT_LANGUAGE = "en-US";
 const DEFAULT_POLL_INTERVAL_MS = 5000;
 const DEFAULT_TIMEOUT_MS = 180000;
@@ -62,7 +62,7 @@ Required:
 Useful options:
   --format png|svg|ppt              Defaults from filename extension, then png.
   --context "..."                   Additional generation context.
-  --style-id <id>                   Napkin style/brand ID. Defaults to Corporate Clean.
+  --style-id <id>                   Napkin style/brand ID. Defaults to Anarlog brand.
   --visual-query flowchart|timeline Optional layout hint.
   --orientation auto|horizontal|vertical|square
   --width 1200                      PNG width hint.

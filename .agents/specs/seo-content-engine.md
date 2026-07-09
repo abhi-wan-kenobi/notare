@@ -177,6 +177,8 @@ Research each competitor before writing conversion content:
 - Blog diagrams and conceptual figures should be generated with Napkin. Do not
   hand-roll custom SVG/PNG diagrams for blog content unless the user explicitly
   asks for a non-Napkin asset.
+- Use Anarlog's Napkin brand ID by default:
+  `CDQPRVVJCSTPRBBCD5Q6AWSDE8S0`.
 - Napkin URLs expire; always upload generated files to Supabase before using
   them in MDX.
 - Do not use Napkin or other generation tools to fake product UI.

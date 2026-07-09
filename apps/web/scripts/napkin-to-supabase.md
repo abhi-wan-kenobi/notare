@@ -42,7 +42,8 @@ The script prints:
 ## Defaults
 
 - Format defaults from the filename extension.
-- Style defaults to Napkin's Corporate Clean built-in style.
+- Style defaults to Anarlog's Napkin brand ID:
+  `CDQPRVVJCSTPRBBCD5Q6AWSDE8S0`.
 - Language defaults to `en-US`.
 - Upload path is always `articles/<slug>/<filename>`.
 - Uploads do not overwrite existing objects unless `--upsert` is passed.
