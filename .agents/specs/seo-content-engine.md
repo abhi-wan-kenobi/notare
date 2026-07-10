@@ -39,6 +39,9 @@ founder/product/category narrative unless explicitly requested otherwise.
 - Conversion: competitor alternatives, platform-specific notetaker pages, and
   pages that compare tools while routing readers toward Anarlog's private,
   local-first, bot-free positioning.
+- Do not end posts with generic `Related reading` or `Sources` sections. Put
+  useful internal links and source references contextually near the claims or
+  sections they support.
 
 ## Narrative Arc
 
