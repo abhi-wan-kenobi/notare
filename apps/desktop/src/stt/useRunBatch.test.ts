@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import {
@@ -12,34 +12,32 @@ import { useRunBatch } from "./useRunBatch";
 const {
   startTranscriptionMock,
   useListenerMock,
-  useStoreMock,
-  useIndexesMock,
-  useValuesMock,
+  useSessionMock,
+  useSessionParticipantsMock,
   useSTTConnectionMock,
   useAuthMock,
   useBillingAccessMock,
   useConfigValueMock,
   isSupportedLanguagesBatchMock,
   sonnerToastMessageMock,
-  settingsUseStoreMock,
   deleteProcessedAudioForRetentionMock,
-  saveMock,
+  createTranscriptMock,
+  appendTranscriptWordsAndHintsMock,
   idMock,
 } = vi.hoisted(() => ({
   startTranscriptionMock: vi.fn(),
   useListenerMock: vi.fn(),
-  useStoreMock: vi.fn(),
-  useIndexesMock: vi.fn(),
-  useValuesMock: vi.fn(),
+  useSessionMock: vi.fn(),
+  useSessionParticipantsMock: vi.fn(),
   useSTTConnectionMock: vi.fn(),
   useAuthMock: vi.fn(),
   useBillingAccessMock: vi.fn(),
   useConfigValueMock: vi.fn(),
   isSupportedLanguagesBatchMock: vi.fn(),
   sonnerToastMessageMock: vi.fn(),
-  settingsUseStoreMock: vi.fn(),
   deleteProcessedAudioForRetentionMock: vi.fn(),
-  saveMock: vi.fn(),
+  createTranscriptMock: vi.fn(),
+  appendTranscriptWordsAndHintsMock: vi.fn(),
   idMock: vi.fn(),
 }));
 
@@ -48,7 +46,7 @@ vi.mock("./contexts", () => ({
 }));
 
 vi.mock("./useKeywords", () => ({
-  getSessionKeywords: vi.fn(() => []),
+  getSessionKeywords: vi.fn(async () => []),
   useKeywords: vi.fn(() => []),
 }));
 
@@ -78,6 +76,13 @@ vi.mock("~/env", () => ({
 
 vi.mock("~/services/audio-retention", () => ({
   deleteProcessedAudioForRetention: deleteProcessedAudioForRetentionMock,
+  normalizeAudioRetention: (value: unknown) =>
+    typeof value === "string" ? value : "forever",
+}));
+
+vi.mock("~/session/queries", () => ({
+  useSession: useSessionMock,
+  useSessionParticipants: useSessionParticipantsMock,
 }));
 
 vi.mock("~/shared/config", () => ({
@@ -120,72 +125,10 @@ vi.mock("~/stt/capabilities", () => {
   };
 });
 
-vi.mock("~/store/tinybase/store/main", () => ({
-  STORE_ID: "main",
-  INDEXES: {
-    transcriptBySession: "transcriptBySession",
-  },
-  UI: {
-    useStore: useStoreMock,
-    useIndexes: useIndexesMock,
-    useValues: useValuesMock,
-  },
+vi.mock("~/stt/queries", () => ({
+  appendTranscriptWordsAndHints: appendTranscriptWordsAndHintsMock,
+  createTranscript: createTranscriptMock,
 }));
-
-vi.mock("~/store/tinybase/store/settings", () => ({
-  STORE_ID: "settings",
-  UI: {
-    useStore: settingsUseStoreMock,
-  },
-}));
-
-vi.mock("~/store/tinybase/store/save", () => ({
-  save: saveMock,
-}));
-
-function createStore() {
-  const tables = {
-    sessions: new Map<string, Record<string, unknown>>([
-      ["session-1", { raw_md: "Existing memo" }],
-    ]),
-    transcripts: new Map<string, Record<string, unknown>>(),
-    mapping_session_participant: new Map<string, Record<string, unknown>>(),
-  };
-
-  return {
-    tables,
-    forEachRow: (
-      tableId: keyof typeof tables,
-      callback: (rowId: string) => void,
-    ) => {
-      for (const rowId of tables[tableId].keys()) callback(rowId);
-    },
-    getCell: (tableId: keyof typeof tables, rowId: string, cellId: string) =>
-      tables[tableId].get(rowId)?.[cellId],
-    setCell: (
-      tableId: keyof typeof tables,
-      rowId: string,
-      cellId: string,
-      value: unknown,
-    ) => {
-      tables[tableId].set(rowId, {
-        ...tables[tableId].get(rowId),
-        [cellId]: value,
-      });
-    },
-    setRow: (
-      tableId: keyof typeof tables,
-      rowId: string,
-      row: Record<string, unknown>,
-    ) => {
-      tables[tableId].set(rowId, row);
-    },
-    delRow: (tableId: keyof typeof tables, rowId: string) => {
-      tables[tableId].delete(rowId);
-    },
-    transaction: (callback: () => void) => callback(),
-  };
-}
 
 describe("getBatchProvider", () => {
   test("maps pyannote to the batch transcription provider", () => {
@@ -267,17 +210,19 @@ describe("useRunBatch", () => {
 
     let nextId = 0;
     idMock.mockImplementation(() => `generated-${++nextId}`);
-    saveMock.mockResolvedValue(undefined);
+    createTranscriptMock.mockResolvedValue(undefined);
+    appendTranscriptWordsAndHintsMock.mockResolvedValue(undefined);
     deleteProcessedAudioForRetentionMock.mockResolvedValue(undefined);
     isSupportedLanguagesBatchMock.mockResolvedValue(true);
     useListenerMock.mockImplementation((selector) =>
       selector({ startTranscription: startTranscriptionMock }),
     );
-    useStoreMock.mockReturnValue(createStore());
-    useIndexesMock.mockReturnValue({
-      getSliceRowIds: vi.fn(() => []),
+    useSessionMock.mockReturnValue({
+      id: "session-1",
+      user_id: "user-1",
+      raw_md: "Existing memo",
     });
-    useValuesMock.mockReturnValue({ user_id: "user-1" });
+    useSessionParticipantsMock.mockReturnValue([]);
     useSTTConnectionMock.mockReturnValue({
       conn: {
         provider: "deepgram",
@@ -298,10 +243,16 @@ describe("useRunBatch", () => {
     useConfigValueMock.mockImplementation((key) =>
       key === "ai_language" ? "en" : [],
     );
-    settingsUseStoreMock.mockReturnValue({ id: "settings-store" });
   });
 
-  test("saves once after streamed default batch persists finish", async () => {
+  test("waits for streamed SQLite persists before retention", async () => {
+    let resolveAppend: (() => void) | undefined;
+    appendTranscriptWordsAndHintsMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveAppend = resolve;
+        }),
+    );
     startTranscriptionMock.mockImplementation(async (_params, options) => {
       options.handlePersist(
         [{ text: "hello", start_ms: 0, end_ms: 100, channel: 0 }],
@@ -314,14 +265,21 @@ describe("useRunBatch", () => {
     });
 
     const { result } = renderHook(() => useRunBatch("session-1"));
+    const run = result.current("/tmp/session.wav");
 
-    await act(async () => {
-      await result.current("/tmp/session.wav");
+    await waitFor(() => {
+      expect(appendTranscriptWordsAndHintsMock).toHaveBeenCalledTimes(1);
     });
+    expect(deleteProcessedAudioForRetentionMock).not.toHaveBeenCalled();
 
-    expect(saveMock).toHaveBeenCalledTimes(1);
+    resolveAppend?.();
+    await act(async () => await run);
+
+    expect(createTranscriptMock).toHaveBeenCalledTimes(1);
     expect(deleteProcessedAudioForRetentionMock).toHaveBeenCalledTimes(1);
-    expect(saveMock.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(
+      appendTranscriptWordsAndHintsMock.mock.invocationCallOrder[0],
+    ).toBeLessThan(
       deleteProcessedAudioForRetentionMock.mock.invocationCallOrder[0],
     );
   });
@@ -342,7 +300,8 @@ describe("useRunBatch", () => {
     });
 
     expect(handlePersist).toHaveBeenCalledTimes(1);
-    expect(saveMock).not.toHaveBeenCalled();
+    expect(createTranscriptMock).not.toHaveBeenCalled();
+    expect(appendTranscriptWordsAndHintsMock).not.toHaveBeenCalled();
   });
 
   test("flushes default batch persists before rethrowing transcription errors", async () => {
@@ -362,7 +321,7 @@ describe("useRunBatch", () => {
       }),
     ).rejects.toThrow("provider failed");
 
-    expect(saveMock).toHaveBeenCalledTimes(1);
+    expect(createTranscriptMock).toHaveBeenCalledTimes(1);
     expect(deleteProcessedAudioForRetentionMock).not.toHaveBeenCalled();
   });
 
@@ -465,37 +424,12 @@ describe("useRunBatch", () => {
 
 describe("getSessionSpeakerCount", () => {
   test("counts distinct session participants plus the current user", () => {
-    const rows = new Map([
-      ["mapping-1", { session_id: "session-1", human_id: "human-a" }],
-      ["mapping-2", { session_id: "session-1", human_id: "human-a" }],
-      ["mapping-3", { session_id: "session-1", human_id: "human-b" }],
-      ["mapping-4", { session_id: "other-session", human_id: "human-c" }],
-    ]);
-    const store = {
-      forEachRow: (_table: string, callback: (rowId: string) => void) => {
-        for (const rowId of rows.keys()) callback(rowId);
-      },
-      getCell: (_table: string, rowId: string, cellId: string) =>
-        rows.get(rowId)?.[cellId as "session_id" | "human_id"],
-    };
-
-    expect(getSessionSpeakerCount(store as any, "session-1", "self")).toBe(3);
+    expect(
+      getSessionSpeakerCount(["human-a", "human-a", "human-b"], "self"),
+    ).toBe(3);
   });
 
   test("returns undefined until at least two speakers are known", () => {
-    const rows = new Map([
-      ["mapping-1", { session_id: "session-1", human_id: "human-a" }],
-    ]);
-    const store = {
-      forEachRow: (_table: string, callback: (rowId: string) => void) => {
-        for (const rowId of rows.keys()) callback(rowId);
-      },
-      getCell: (_table: string, rowId: string, cellId: string) =>
-        rows.get(rowId)?.[cellId as "session_id" | "human_id"],
-    };
-
-    expect(getSessionSpeakerCount(store as any, "session-1", null)).toBe(
-      undefined,
-    );
+    expect(getSessionSpeakerCount(["human-a"], null)).toBe(undefined);
   });
 });

@@ -4,6 +4,7 @@ import {
   render,
   renderHook,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -47,6 +48,7 @@ const hoisted = vi.hoisted(() => ({
     title: string;
     description: string;
     pinned: boolean;
+    icon?: { type: "emoji"; value: string };
     sections: unknown[];
   }>,
 }));
@@ -177,6 +179,17 @@ vi.mock("~/services/enhancer", () => ({
   getEnhancerService: () => ({ enhance: hoisted.enhance }),
 }));
 
+vi.mock("~/session/queries", () => ({
+  deleteEnhancedNote: vi.fn(() => Promise.resolve()),
+  useEnhancedNote: () => ({
+    content: "",
+    templateId: "template-1",
+    title: "Summary",
+  }),
+  useEnhancedNoteRecords: () => [{ id: "note-1" }],
+  useSession: () => ({ raw_md: "" }),
+}));
+
 vi.mock("~/session/components/note-input/transcript/actions", () => ({
   useRegenerateTranscript: () => hoisted.regenerateTranscript,
 }));
@@ -215,39 +228,6 @@ vi.mock("~/shared/hooks/useNativeContextMenu", () => ({
 
 vi.mock("~/shared/ui/resource-list", () => ({
   useWebResources: () => ({ data: [], isLoading: false }),
-}));
-
-vi.mock("~/store/tinybase/store/main", () => ({
-  STORE_ID: "main",
-  INDEXES: {
-    enhancedNotesBySession: "enhancedNotesBySession",
-  },
-  UI: {
-    useCell: (table: string, _row: string, cell: string) => {
-      if (table === "enhanced_notes" && cell === "title") {
-        return "Summary";
-      }
-
-      if (table === "enhanced_notes" && cell === "content") {
-        return "";
-      }
-
-      if (table === "enhanced_notes" && cell === "template_id") {
-        return "template-1";
-      }
-
-      if (table === "sessions" && cell === "raw_md") {
-        return "";
-      }
-
-      return undefined;
-    },
-    useSliceRowIds: () => ["note-1"],
-    useStore: () => ({
-      delRow: vi.fn(),
-      setPartialRow: vi.fn(),
-    }),
-  },
 }));
 
 vi.mock("~/store/zustand/tabs", () => ({
@@ -303,6 +283,16 @@ vi.mock("~/stt/window-control", () => ({
 }));
 
 vi.mock("~/templates", () => ({
+  DEFAULT_TEMPLATE_ICON: {
+    type: "icon",
+    value: "notebook-tabs",
+    color: "#9ca3af",
+  },
+  TemplateIconGlyph: ({ icon }: { icon?: { type: string; value: string } }) => (
+    <span aria-hidden data-testid="template-icon">
+      {icon?.value}
+    </span>
+  ),
   filterWebTemplatesAgainstUserTemplates: () => [],
   getTemplateCreatorLabel: () => "You",
   parseWebTemplates: () => [],
@@ -592,7 +582,7 @@ describe("Header", () => {
     ).toEqual(["Copy"]);
   });
 
-  it("replaces the current enhanced note when changing templates", () => {
+  it("replaces the current enhanced note when changing templates", async () => {
     hoisted.userTemplates = [
       {
         id: "template-2",
@@ -602,7 +592,7 @@ describe("Header", () => {
         sections: [],
       },
     ];
-    hoisted.enhance.mockReturnValue({
+    hoisted.enhance.mockResolvedValue({
       type: "started",
       noteId: "note-1",
     });
@@ -629,10 +619,12 @@ describe("Header", () => {
       targetNoteId: "note-1",
       templateTitle: "Decision Log",
     });
-    expect(handleTabChange).toHaveBeenCalledWith({
-      type: "enhanced",
-      id: "note-1",
-    });
+    await waitFor(() =>
+      expect(handleTabChange).toHaveBeenCalledWith({
+        type: "enhanced",
+        id: "note-1",
+      }),
+    );
   });
 
   it("replaces the current enhanced note with auto generation", () => {
@@ -645,7 +637,7 @@ describe("Header", () => {
         sections: [],
       },
     ];
-    hoisted.enhance.mockReturnValue({
+    hoisted.enhance.mockResolvedValue({
       type: "started",
       noteId: "note-1",
     });

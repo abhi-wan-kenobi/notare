@@ -36,21 +36,12 @@ vi.mock("~/services/enhancer", () => ({
   getEnhancerService: () => hoisted.service,
 }));
 
-vi.mock("~/store/tinybase/store/main", () => ({
-  STORE_ID: "main",
-  INDEXES: {
-    enhancedNotesBySession: "enhancedNotesBySession",
-  },
-  UI: {
-    useSliceRowIds: () => hoisted.enhancedNoteIds,
-  },
+vi.mock("~/session/queries", () => ({
+  useEnhancedNoteRecords: () => hoisted.enhancedNoteIds.map((id) => ({ id })),
 }));
 
-vi.mock("~/store/tinybase/store/settings", () => ({
-  STORE_ID: "settings",
-  UI: {
-    useValue: () => hoisted.selectedTemplateId,
-  },
+vi.mock("~/shared/config", () => ({
+  useConfigValue: () => hoisted.selectedTemplateId,
 }));
 
 vi.mock("~/stt/contexts", () => ({

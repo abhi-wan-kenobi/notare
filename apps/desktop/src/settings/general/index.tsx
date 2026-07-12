@@ -1,11 +1,8 @@
 import { Trans } from "@lingui/react/macro";
 import { useForm } from "@tanstack/react-form";
-import { disable, enable } from "@tauri-apps/plugin-autostart";
+import { Loader2Icon } from "lucide-react";
 
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
-import { commands as trayCommands } from "@hypr/plugin-tray";
-import { commands as windowsCommands } from "@hypr/plugin-windows";
-import type { General, GeneralStorage } from "@hypr/store";
 
 export { SettingsAccount } from "./account";
 import { AppSettingsView } from "./app-settings";
@@ -23,49 +20,31 @@ import { TimezoneSelector } from "./timezone";
 import { WeekStartSelector } from "./week-start";
 
 import { SettingsPageTitle } from "~/settings/page-title";
-import { useConfigValues } from "~/shared/config";
-import * as settings from "~/store/tinybase/store/settings";
+import {
+  type StoredSettingValues,
+  useSetSettingValues,
+  useStoredSettingValuesQuery,
+} from "~/settings/queries";
+import { resolveConfigValues } from "~/shared/config";
 
-type GeneralFormValues = Omit<General, "personalization_dictionary_terms">;
+const SETTINGS_FORM_KEYS = [
+  "autostart",
+  "auto_start_scheduled_meetings",
+  "auto_stop_meetings",
+  "floating_bar_enabled",
+  "show_app_in_dock",
+  "show_tray_icon",
+  "notification_detect",
+  "telemetry_consent",
+  "ai_language",
+  "spoken_languages",
+  "current_stt_provider",
+] as const;
 
-function useSettingsForm() {
-  const settingsValue = useConfigValues([
-    "autostart",
-    "auto_start_scheduled_meetings",
-    "auto_stop_meetings",
-    "floating_bar_enabled",
-    "show_app_in_dock",
-    "show_tray_icon",
-    "notification_detect",
-    "telemetry_consent",
-    "ai_language",
-    "spoken_languages",
-    "current_stt_provider",
-  ] as const);
+function useSettingsForm(storedSettings: StoredSettingValues) {
+  const settingsValue = resolveConfigValues(SETTINGS_FORM_KEYS, storedSettings);
 
-  const setPartialValues = settings.UI.useSetPartialValuesCallback(
-    (row: Partial<GeneralFormValues>) =>
-      ({
-        ...row,
-        spoken_languages: row.spoken_languages
-          ? JSON.stringify(row.spoken_languages)
-          : undefined,
-        ignored_platforms: row.ignored_platforms
-          ? JSON.stringify(row.ignored_platforms)
-          : undefined,
-        included_platforms: row.included_platforms
-          ? JSON.stringify(row.included_platforms)
-          : undefined,
-        ignored_recurring_series: row.ignored_recurring_series
-          ? JSON.stringify(row.ignored_recurring_series)
-          : undefined,
-        ignored_events: row.ignored_events
-          ? JSON.stringify(row.ignored_events)
-          : undefined,
-      }) satisfies Partial<GeneralStorage>,
-    [],
-    settings.STORE_ID,
-  );
+  const setSettingValues = useSetSettingValues();
 
   const form = useForm({
     defaultValues: {
@@ -96,8 +75,6 @@ function useSettingsForm() {
       },
     },
     onSubmit: ({ value }) => {
-      const previousShowAppInDock = settingsValue.show_app_in_dock;
-      const previousShowTrayIcon = settingsValue.show_tray_icon;
       const normalizedValue = {
         ...value,
         spoken_languages: getAdditionalSpokenLanguages(
@@ -106,35 +83,19 @@ function useSettingsForm() {
         ),
       };
 
-      setPartialValues(normalizedValue);
-
-      if (normalizedValue.autostart) {
-        void enable();
-      } else {
-        void disable();
-      }
-
-      if (normalizedValue.show_app_in_dock !== previousShowAppInDock) {
-        void windowsCommands
-          .setShowAppInDock(normalizedValue.show_app_in_dock)
-          .then((result) => {
-            if (result.status === "error") {
-              console.error(result.error);
-            }
-          })
-          .catch(console.error);
-      }
-
-      if (normalizedValue.show_tray_icon !== previousShowTrayIcon) {
-        void trayCommands
-          .setTrayIconVisible(normalizedValue.show_tray_icon)
-          .then((result) => {
-            if (result.status === "error") {
-              console.error(result.error);
-            }
-          })
-          .catch(console.error);
-      }
+      setSettingValues({
+        autostart: normalizedValue.autostart,
+        auto_start_scheduled_meetings:
+          normalizedValue.auto_start_scheduled_meetings,
+        auto_stop_meetings: normalizedValue.auto_stop_meetings,
+        floating_bar_enabled: normalizedValue.floating_bar_enabled,
+        show_app_in_dock: normalizedValue.show_app_in_dock,
+        show_tray_icon: normalizedValue.show_tray_icon,
+        notification_detect: normalizedValue.notification_detect,
+        telemetry_consent: normalizedValue.telemetry_consent,
+        ai_language: normalizedValue.ai_language,
+        spoken_languages: JSON.stringify(normalizedValue.spoken_languages),
+      });
 
       void analyticsCommands.event({
         event: "settings_changed",
@@ -160,7 +121,31 @@ function useSettingsForm() {
 }
 
 export function SettingsApp() {
-  const { form } = useSettingsForm();
+  const { data, isLoading, error } = useStoredSettingValuesQuery();
+
+  if (error) {
+    throw error;
+  }
+  if (isLoading || !data) {
+    return (
+      <div className="flex min-h-48 items-center justify-center">
+        <Loader2Icon
+          aria-label="Loading settings"
+          className="text-muted-foreground size-5 animate-spin"
+        />
+      </div>
+    );
+  }
+
+  return <SettingsAppContent storedSettings={data} />;
+}
+
+function SettingsAppContent({
+  storedSettings,
+}: {
+  storedSettings: StoredSettingValues;
+}) {
+  const { form } = useSettingsForm(storedSettings);
 
   return (
     <div className="flex flex-col gap-8">

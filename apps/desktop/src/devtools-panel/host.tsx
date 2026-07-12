@@ -12,7 +12,9 @@ import {
 import { useBillingAccess } from "~/auth/billing";
 import { TrialEndedDialog } from "~/billing/trial-ended-dialog";
 import { TrialStartedDialog } from "~/billing/trial-started-dialog";
-import { useDevtoolsStore, useDevtoolsUserId } from "~/devtools-panel/hooks";
+import { executeTransaction } from "~/db";
+import { useDevtoolsUserId } from "~/devtools-panel/hooks";
+import { createSession, updateSession } from "~/session/queries";
 import { useMountEffect } from "~/shared/hooks/useMountEffect";
 import {
   type DevtoolsOtaPreviewStatus,
@@ -133,7 +135,6 @@ function DevtoolsFloatingPanelSync() {
 
 function useDevtoolsPanelActions() {
   const openNew = useTabs((s) => s.openNew);
-  const store = useDevtoolsStore();
   const user_id = useDevtoolsUserId();
   const { trialDaysRemaining, upgradeToPro } = useBillingAccess();
   const showToastPreview = useDevtoolsToastPreview(
@@ -181,35 +182,53 @@ function useDevtoolsPanelActions() {
     [showMainWindow, showOtaPreview],
   );
 
+  const clearNotifications = useCallback(async () => {
+    try {
+      await notificationCommands.clearNotifications();
+    } catch (error) {
+      console.error("[devtools] failed to clear notifications", error);
+    }
+  }, []);
+
   const showCalendarNotification = useCallback(async () => {
     const eventId = `devtool-event-${crypto.randomUUID()}`;
     const startedAt = new Date(Date.now() + 5 * 60 * 1000);
     const endedAt = new Date(startedAt.getTime() + 30 * 60 * 1000);
+    const now = new Date().toISOString();
 
-    store?.setRow("events", eventId, {
-      user_id: user_id ?? "",
-      created_at: new Date().toISOString(),
-      tracking_id_event: eventId,
-      calendar_id: "devtool-calendar",
-      title: "Devtool design sync",
-      started_at: startedAt.toISOString(),
-      ended_at: endedAt.toISOString(),
-      location: "Conference Room",
-      meeting_link: "https://zoom.us/j/1234567890",
-      description: "Notification test event",
-      note: "",
-      recurrence_series_id: "",
-      has_recurrence_rules: false,
-      is_all_day: false,
-      provider: "google",
-      participants_json: JSON.stringify([
-        {
-          name: "Ada Lovelace",
-          email: "ada@example.com",
-          status: "accepted",
-        },
-      ]),
-    });
+    await executeTransaction([
+      {
+        sql: `
+          INSERT INTO events (
+            id, tracking_id_event, calendar_id, title, started_at, ended_at,
+            location, meeting_link, description, note, recurrence_series_id,
+            has_recurrence_rules, is_all_day, provider, participants_json,
+            created_at, updated_at, deleted_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', '', 0, 0, ?, ?, ?, ?, NULL)
+        `,
+        params: [
+          eventId,
+          eventId,
+          "devtool-calendar",
+          "Devtool design sync",
+          startedAt.toISOString(),
+          endedAt.toISOString(),
+          "Conference Room",
+          "https://zoom.us/j/1234567890",
+          "Notification test event",
+          "google",
+          JSON.stringify([
+            {
+              name: "Ada Lovelace",
+              email: "ada@example.com",
+              status: "accepted",
+            },
+          ]),
+          now,
+          now,
+        ],
+      },
+    ]);
 
     await notificationCommands.showNotification({
       key: `devtool-calendar-${eventId}`,
@@ -236,7 +255,7 @@ function useDevtoolsPanelActions() {
       footer: null,
       icon: null,
     });
-  }, [store, user_id]);
+  }, []);
 
   const showMicDetectedNotification = useCallback(async () => {
     await notificationCommands.showNotification({
@@ -311,12 +330,11 @@ function useDevtoolsPanelActions() {
   }, []);
 
   const createWithCountdown = useCallback(
-    (seconds: number, meetingLink?: string) => {
-      if (!store) {
+    async (seconds: number, meetingLink?: string) => {
+      if (!user_id) {
         return;
       }
 
-      const sessionId = crypto.randomUUID();
       const started_at = new Date(Date.now() + seconds * 1000).toISOString();
       const event_json = JSON.stringify({
         tracking_id: "devtool-test",
@@ -331,16 +349,18 @@ function useDevtoolsPanelActions() {
         ...(meetingLink ? { meeting_link: meetingLink } : {}),
       });
 
-      store.setRow("sessions", sessionId, {
-        user_id: user_id ?? "",
+      const sessionId = await createSession(
+        meetingLink ? "Countdown Test (Zoom)" : "Countdown Test",
+        user_id,
+      );
+      await updateSession(sessionId, {
         created_at: new Date().toISOString(),
-        title: meetingLink ? "Countdown Test (Zoom)" : "Countdown Test",
         event_json,
       });
 
       openNew({ type: "sessions", id: sessionId });
     },
-    [openNew, store, user_id],
+    [openNew, user_id],
   );
 
   const handleAction = useCallback(
@@ -407,7 +427,7 @@ function useDevtoolsPanelActions() {
           void showBatchCompletedNotification("devtool", { force: true });
           return;
         case "notifications:clear":
-          void notificationCommands.clearNotifications();
+          void clearNotifications();
           return;
         case "billing:trial-started":
           setTrialStartedOpen(true);
@@ -416,16 +436,16 @@ function useDevtoolsPanelActions() {
           setTrialEndedOpen(true);
           return;
         case "countdown:note-60":
-          createWithCountdown(60);
+          void createWithCountdown(60);
           return;
         case "countdown:note-300":
-          createWithCountdown(300);
+          void createWithCountdown(300);
           return;
         case "countdown:zoom-60":
-          createWithCountdown(60, "https://zoom.us/j/1234567890");
+          void createWithCountdown(60, "https://zoom.us/j/1234567890");
           return;
         case "countdown:zoom-300":
-          createWithCountdown(300, "https://zoom.us/j/1234567890");
+          void createWithCountdown(300, "https://zoom.us/j/1234567890");
           return;
         case "panel:opened":
         case "panel:closed":
@@ -439,6 +459,7 @@ function useDevtoolsPanelActions() {
     },
     [
       createWithCountdown,
+      clearNotifications,
       showAutoStopNotification,
       showCalendarNotification,
       showInstruction,

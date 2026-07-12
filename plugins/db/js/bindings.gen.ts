@@ -14,9 +14,49 @@ async execute(sql: string, params: JsonValue[]) : Promise<Result<JsonValue[], st
     else return { status: "error", error: e  as any };
 }
 },
+async executeTransaction(statements: TransactionStatement[]) : Promise<Result<number[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|execute_transaction", { statements }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async executeProxy(sql: string, params: JsonValue[], method: string) : Promise<Result<ExecuteProxyResult, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("plugin:db|execute_proxy", { sql, params, method }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getLegacyImportReport() : Promise<Result<LegacyImportReport, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|get_legacy_import_report") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getLegacyCleanupStatus() : Promise<Result<LegacyCleanupStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|get_legacy_cleanup_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async cleanupLegacyFiles() : Promise<Result<LegacyCleanupResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|cleanup_legacy_files") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async runLegacyImport(dryRun: boolean) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:db|run_legacy_import", { dryRun }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -54,9 +94,17 @@ export type DependencyAnalysis = { kind: "reactive"; data: { targets: Dependency
 export type DependencyTarget = { kind: "table"; data: string } | { kind: "virtual_table"; data: string }
 export type ExecuteProxyResult = { rows: JsonValue[] }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
+export type LegacyCleanupResult = { deletedFileCount: number; deletedBytes: number }
+export type LegacyCleanupStatus = { migrationVerified: boolean; available: boolean; alreadyCleaned: boolean; fileCount: number; totalBytes: number; sourceRoot: string; blockingReason: string | null }
+export type LegacyImportItemReport = { sourcePath: string; sourceKind: string; sourceSha256: string; status: string; discoveredCount: number; importedCount: number; matchedCount: number; skippedCount: number; conflictCount: number; error: string }
+export type LegacyImportReport = { state: StorageMigrationState; latestRun: LegacyImportRun | null; items: LegacyImportItemReport[]; targets: LegacyImportTargetReport[] }
+export type LegacyImportRun = { id: string; importerVersion: number; sourceRoot: string; dryRun: boolean; status: string; discoveredCount: number; importedCount: number; matchedCount: number; skippedCount: number; conflictCount: number; errorCount: number; startedAt: string; completedAt: string | null; error: string }
+export type LegacyImportTargetReport = { sourcePath: string; tableName: string; targetId: string; status: string; error: string }
 export type QueryEvent = { event: "result"; data: JsonValue[] } | { event: "error"; data: string }
+export type StorageMigrationState = { phase: string; latestRunId: string; parityVerified: boolean; cutoverAt: string | null; rollbackUntil: string | null; lastError: string; updatedAt: string }
 export type SubscriptionRegistration = { id: string; analysis: DependencyAnalysis }
 export type TAURI_CHANNEL<TSend> = null
+export type TransactionStatement = { sql: string; params: JsonValue[]; expectedRowsAffected?: number | null }
 
 /** tauri-specta globals **/
 

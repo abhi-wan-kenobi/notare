@@ -41,16 +41,13 @@ vi.mock("~/shared/config", () => ({
   useConfigValue: () => undefined,
 }));
 
-vi.mock("~/store/tinybase/hooks", () => ({
+vi.mock("~/session/hooks/useSessionEvent", () => ({
   useSessionEvent: () => mocks.sessionEvent,
 }));
 
-vi.mock("~/store/tinybase/store/main", () => ({
-  STORE_ID: "main",
-  UI: {
-    useCell: () => mocks.createdAt,
-    useSetCellCallback: () => mocks.setCreatedAt,
-  },
+vi.mock("~/session/queries", () => ({
+  useSession: () => ({ created_at: mocks.createdAt }),
+  useUpdateSession: () => mocks.setCreatedAt,
 }));
 
 vi.mock("./participants", () => ({

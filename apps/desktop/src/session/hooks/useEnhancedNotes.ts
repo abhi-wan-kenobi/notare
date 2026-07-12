@@ -3,61 +3,39 @@ import { useEffect, useMemo } from "react";
 import { useAITask } from "~/ai/contexts";
 import { getEnhancerService } from "~/services/enhancer";
 import { useHasTranscript } from "~/session/components/shared";
-import * as main from "~/store/tinybase/store/main";
-import * as settings from "~/store/tinybase/store/settings";
+import {
+  useEnhancedNote as useSqliteEnhancedNote,
+  useEnhancedNoteRecords,
+} from "~/session/queries";
+import { useConfigValue } from "~/shared/config";
 import { createTaskId } from "~/store/zustand/ai-task/task-configs";
 import type { SessionMode } from "~/store/zustand/listener/general";
 import { useListener } from "~/stt/contexts";
 
 export function useEnhancedNotes(sessionId: string) {
-  return main.UI.useSliceRowIds(
-    main.INDEXES.enhancedNotesBySession,
-    sessionId,
-    main.STORE_ID,
-  );
+  const notes = useEnhancedNoteRecords(sessionId);
+  return useMemo(() => notes.map((note) => note.id), [notes]);
 }
 
 export function useEnhancedNote(enhancedNoteId: string) {
-  const title = main.UI.useCell(
-    "enhanced_notes",
-    enhancedNoteId,
-    "title",
-    main.STORE_ID,
-  );
-  const content = main.UI.useCell(
-    "enhanced_notes",
-    enhancedNoteId,
-    "content",
-    main.STORE_ID,
-  );
-  const position = main.UI.useCell(
-    "enhanced_notes",
-    enhancedNoteId,
-    "position",
-    main.STORE_ID,
-  );
-  const templateId = main.UI.useCell(
-    "enhanced_notes",
-    enhancedNoteId,
-    "template_id",
-    main.STORE_ID,
-  );
+  const note = useSqliteEnhancedNote(enhancedNoteId);
 
-  return { title, content, position, templateId };
+  return {
+    title: note?.title,
+    content: note?.content,
+    position: note?.position,
+    templateId: note?.templateId,
+  };
 }
 
 export function useEnsureDefaultSummary(sessionId: string) {
   const hasTranscript = useHasTranscript(sessionId);
   const sessionMode = useListener((state) => state.getSessionMode(sessionId));
   const batchError = useListener((state) => state.batch[sessionId]?.error);
-  const enhancedNoteIds = main.UI.useSliceRowIds(
-    main.INDEXES.enhancedNotesBySession,
-    sessionId,
-    main.STORE_ID,
-  );
+  const enhancedNoteIds = useEnhancedNotes(sessionId);
   useEnsureDefaultSummaryFromState({
     batchError: Boolean(batchError),
-    enhancedNoteCount: enhancedNoteIds?.length ?? 0,
+    enhancedNoteCount: enhancedNoteIds.length,
     hasTranscript,
     sessionId,
     sessionMode,
@@ -79,10 +57,7 @@ export function useEnsureDefaultSummaryFromState({
   sessionId: string;
   sessionMode: SessionMode;
 }) {
-  const selectedTemplateId = settings.UI.useValue(
-    "selected_template_id",
-    settings.STORE_ID,
-  ) as string | undefined;
+  const selectedTemplateId = useConfigValue("selected_template_id");
   const templateId = selectedTemplateId || undefined;
 
   useEffect(() => {
@@ -102,7 +77,11 @@ export function useEnsureDefaultSummaryFromState({
       (hasTranscript || sessionMode === "running_batch" || batchError);
 
     if (enhancedNoteCount === 0 && canCreateSummary) {
-      service.ensureNote(sessionId, templateId);
+      void Promise.resolve(service.ensureNote(sessionId, templateId)).catch(
+        (error) => {
+          console.error("[enhancer] failed to create default summary", error);
+        },
+      );
     }
   }, [
     sessionId,
@@ -116,14 +95,10 @@ export function useEnsureDefaultSummaryFromState({
 }
 
 export function useIsSessionEnhancing(sessionId: string): boolean {
-  const enhancedNoteIds = main.UI.useSliceRowIds(
-    main.INDEXES.enhancedNotesBySession,
-    sessionId,
-    main.STORE_ID,
-  );
+  const enhancedNoteIds = useEnhancedNotes(sessionId);
 
   const taskIds = useMemo(
-    () => (enhancedNoteIds || []).map((id) => createTaskId(id, "enhance")),
+    () => enhancedNoteIds.map((id) => createTaskId(id, "enhance")),
     [enhancedNoteIds],
   );
 

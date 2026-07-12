@@ -4,9 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import { safeParseDate } from "@hypr/utils";
 import { TZDate } from "@hypr/utils";
 
+import { useIgnoredEvents } from "./ignored-events";
+import {
+  useCalendarRow,
+  useEnabledCalendarRows,
+  useTimelineTables,
+} from "./queries";
+
 import { useConfigValue } from "~/shared/config";
-import { useIgnoredEvents } from "~/store/tinybase/hooks";
-import * as main from "~/store/tinybase/store/main";
+import type {
+  TimelineEventsTable,
+  TimelineSessionsTable,
+} from "~/sidebar/timeline/utils";
 
 export function useTimezone() {
   return useConfigValue("timezone") || undefined;
@@ -63,43 +72,23 @@ export type Calendar = {
 };
 
 export function useCalendar(id: string | null | undefined): Calendar | null {
-  const row = main.UI.useRow("calendars", id ?? "", main.STORE_ID);
-  return useMemo(() => {
-    if (!id) return null;
-    if (!row || Object.keys(row).length === 0) return null;
-    return {
-      id,
-      tracking_id_calendar: row.tracking_id_calendar ?? "",
-      name: row.name ?? "",
-      enabled: row.enabled ?? false,
-      provider: row.provider ?? "",
-      source: row.source ?? "",
-      color: row.color ?? "",
-      connection_id: row.connection_id ?? "",
-      created_at: row.created_at ?? "",
-    };
-  }, [id, row]);
+  return useCalendarRow(id);
 }
 
 export type EnabledCalendar = { id: string; provider: string };
 
 export function useEnabledCalendars(): EnabledCalendar[] {
-  const resultTable = main.UI.useResultTable(
-    main.QUERIES.enabledCalendars,
-    main.STORE_ID,
-  );
+  const rows = useEnabledCalendarRows();
   return useMemo(() => {
-    if (!resultTable) return [];
-    return Object.entries(resultTable).map(([id, row]) => ({
-      id,
-      provider: row.provider ?? "",
-    }));
-  }, [resultTable]);
+    return rows.map((row) => ({ id: row.id, provider: row.provider }));
+  }, [rows]);
 }
 
 export type CalendarData = {
   eventIdsByDate: Record<string, string[]>;
   sessionIdsByDate: Record<string, string[]>;
+  eventsById: NonNullable<TimelineEventsTable>;
+  sessionsById: NonNullable<TimelineSessionsTable>;
 };
 
 function compareNullableDates(a: string | undefined, b: string | undefined) {
@@ -116,15 +105,10 @@ function compareNullableDates(a: string | undefined, b: string | undefined) {
 
 export function useCalendarData(): CalendarData {
   const tz = useTimezone();
-
-  const eventsTable = main.UI.useResultTable(
-    main.QUERIES.timelineEvents,
-    main.STORE_ID,
-  );
-  const sessionsTable = main.UI.useResultTable(
-    main.QUERIES.timelineSessions,
-    main.STORE_ID,
-  );
+  const {
+    timelineEventsTable: eventsTable,
+    timelineSessionsTable: sessionsTable,
+  } = useTimelineTables();
   const { isIgnored } = useIgnoredEvents();
 
   return useMemo(() => {
@@ -192,6 +176,11 @@ export function useCalendarData(): CalendarData {
       }
     }
 
-    return { eventIdsByDate, sessionIdsByDate };
+    return {
+      eventIdsByDate,
+      sessionIdsByDate,
+      eventsById: eventsTable ?? {},
+      sessionsById: sessionsTable ?? {},
+    };
   }, [eventsTable, sessionsTable, tz, isIgnored]);
 }

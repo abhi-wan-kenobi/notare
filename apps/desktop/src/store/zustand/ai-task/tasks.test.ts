@@ -4,6 +4,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { TASK_CONFIGS } from "./task-configs";
 import { createTasksSlice, extractUnderlyingError } from "./tasks";
 
+const mocks = vi.hoisted(() => ({
+  getStoredSettingValues: vi.fn(async () => ({
+    values: {},
+    hasValues: new Set(),
+  })),
+}));
+
+vi.mock("~/settings/queries", () => ({
+  getStoredSettingValues: mocks.getStoredSettingValues,
+}));
+
 const originalEnhanceConfig = { ...TASK_CONFIGS.enhance };
 
 afterEach(() => {
@@ -20,10 +31,7 @@ describe("createTasksSlice", () => {
           : { ...state, ...updater };
     };
     const get = () => state;
-    state = createTasksSlice(set, get, {
-      persistedStore: {} as any,
-      settingsStore: {} as any,
-    });
+    state = createTasksSlice(set, get);
 
     const taskId = "summary-1-enhance" as const;
     state.syncRemoteTask(taskId, {
@@ -51,10 +59,7 @@ describe("createTasksSlice", () => {
           : { ...state, ...updater };
     };
     const get = () => state;
-    state = createTasksSlice(set, get, {
-      persistedStore: {} as any,
-      settingsStore: {} as any,
-    });
+    state = createTasksSlice(set, get);
 
     let resolveOnSuccess: () => void;
     const onSuccessStarted = new Promise<void>((resolve) => {
@@ -107,10 +112,7 @@ describe("createTasksSlice", () => {
           : { ...state, ...updater };
     };
     const get = () => state;
-    state = createTasksSlice(set, get, {
-      persistedStore: {} as any,
-      settingsStore: {} as any,
-    });
+    state = createTasksSlice(set, get);
 
     let resolveOnSuccess: () => void;
     const onSuccessStarted = new Promise<void>((resolve) => {
@@ -145,6 +147,40 @@ describe("createTasksSlice", () => {
 
     expect(state.tasks[taskId]).toMatchObject({
       status: "idle",
+    });
+  });
+
+  it("marks a task failed when durable post-processing fails", async () => {
+    let state: ReturnType<typeof createTasksSlice>;
+    const set = (updater: any) => {
+      state =
+        typeof updater === "function"
+          ? updater(state)
+          : { ...state, ...updater };
+    };
+    const get = () => state;
+    state = createTasksSlice(set, get);
+
+    TASK_CONFIGS.enhance.transformArgs = vi.fn(async () => ({}) as any);
+    TASK_CONFIGS.enhance.transforms = [];
+    TASK_CONFIGS.enhance.executeWorkflow = vi.fn(async function* () {
+      yield { type: "text-delta", text: "Generated summary" } as any;
+    });
+    TASK_CONFIGS.enhance.onSuccess = vi.fn(async () => {
+      throw new Error("database write failed");
+    });
+
+    const taskId = "session-1-enhance" as const;
+    await state.generate(taskId, {
+      model: {} as any,
+      taskType: "enhance",
+      args: { sessionId: "session-1", enhancedNoteId: "note-1" },
+    });
+
+    expect(state.tasks[taskId]).toMatchObject({
+      status: "error",
+      streamedText: "",
+      error: expect.objectContaining({ message: "database write failed" }),
     });
   });
 });

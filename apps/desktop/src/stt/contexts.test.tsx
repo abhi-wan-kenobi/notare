@@ -16,13 +16,17 @@ const {
   listenMock,
   showNotificationMock,
   useStoreMock,
-  useSettingsStoreMock,
+  useConfigValueMock,
+  getNearbyCalendarEventsMock,
+  loadSessionEventMock,
 } = vi.hoisted(() => ({
   listMicUsingApplicationsMock: vi.fn(),
   listenMock: vi.fn(),
   showNotificationMock: vi.fn(),
   useStoreMock: vi.fn(() => null),
-  useSettingsStoreMock: vi.fn(() => null),
+  useConfigValueMock: vi.fn(() => true),
+  getNearbyCalendarEventsMock: vi.fn(),
+  loadSessionEventMock: vi.fn(),
 }));
 
 vi.mock("@hypr/plugin-detect", () => ({
@@ -42,18 +46,16 @@ vi.mock("@hypr/plugin-notification", () => ({
   },
 }));
 
-vi.mock("~/store/tinybase/store/main", () => ({
-  STORE_ID: "test-store",
-  UI: {
-    useStore: useStoreMock,
-  },
+vi.mock("~/calendar/queries", () => ({
+  getNearbyCalendarEvents: getNearbyCalendarEventsMock,
 }));
 
-vi.mock("~/store/tinybase/store/settings", () => ({
-  STORE_ID: "settings-store",
-  UI: {
-    useStore: useSettingsStoreMock,
-  },
+vi.mock("~/session/queries", () => ({
+  loadSessionEvent: loadSessionEventMock,
+}));
+
+vi.mock("~/shared/config", () => ({
+  useConfigValue: useConfigValueMock,
 }));
 
 function setStoreActive(
@@ -142,14 +144,78 @@ function mockNearbyEventStoreMany(
   };
 }
 
+async function readConfiguredSessionEvent(sessionId: string) {
+  const store = useStoreMock() as any;
+  const row = store?.getRow?.("sessions", sessionId);
+  if (!row?.event_json) return null;
+  return JSON.parse(row.event_json);
+}
+
+async function readConfiguredNearbyEvents(nowMs: number, windowMs: number) {
+  const store = useStoreMock() as any;
+  if (!store) return [];
+
+  const rows: Array<{
+    id: string;
+    title: string;
+    meetingLink?: string;
+    location?: string;
+    description?: string;
+    participantNames: string[];
+    startedAt: number;
+  }> = [];
+  store.forEachRow?.("events", (eventId: string) => {
+    const event = store.getRow?.("events", eventId);
+    if (!event?.started_at || event.is_all_day) return;
+    const startedAt = new Date(event.started_at).getTime();
+    if (Number.isNaN(startedAt) || Math.abs(startedAt - nowMs) > windowMs) {
+      return;
+    }
+
+    let participants: Array<{ name?: string; is_current_user?: boolean }> = [];
+    try {
+      const parsed = JSON.parse(event.participants_json || "[]");
+      if (Array.isArray(parsed)) participants = parsed;
+    } catch {}
+
+    rows.push({
+      id: eventId,
+      title: event.title || "Untitled Event",
+      meetingLink: event.meeting_link || undefined,
+      location: event.location || undefined,
+      description: event.description || undefined,
+      participantNames: [
+        ...new Set(
+          participants
+            .filter((participant) => !participant.is_current_user)
+            .map((participant) => participant.name?.trim() || "")
+            .filter(Boolean),
+        ),
+      ],
+      startedAt,
+    });
+  });
+
+  rows.sort(
+    (a, b) =>
+      Math.abs(a.startedAt - nowMs) - Math.abs(b.startedAt - nowMs) ||
+      a.startedAt - b.startedAt,
+  );
+  return rows.map(({ startedAt: _startedAt, ...event }) => event);
+}
+
 describe("ListenerProvider detect events", () => {
   beforeEach(() => {
     listenMock.mockReset();
     showNotificationMock.mockReset();
     useStoreMock.mockReset();
-    useSettingsStoreMock.mockReset();
+    useConfigValueMock.mockReset();
+    getNearbyCalendarEventsMock.mockReset();
+    loadSessionEventMock.mockReset();
     useStoreMock.mockReturnValue(null);
-    useSettingsStoreMock.mockReturnValue(null);
+    useConfigValueMock.mockReturnValue(true);
+    getNearbyCalendarEventsMock.mockImplementation(readConfiguredNearbyEvents);
+    loadSessionEventMock.mockImplementation(readConfiguredSessionEvent);
     listenMock.mockResolvedValue(() => {});
     listMicUsingApplicationsMock.mockResolvedValue({ status: "ok", data: [] });
     vi.useRealTimers();
@@ -273,11 +339,7 @@ describe("ListenerProvider detect events", () => {
 
     store.setState({ stop: stopSpy });
     store.getState().setTriggerAppIds(["us.zoom.xos"]);
-    useSettingsStoreMock.mockReturnValue({
-      getValue: vi.fn((key: string) =>
-        key === "auto_stop_meetings" ? false : undefined,
-      ),
-    } as any);
+    useConfigValueMock.mockReturnValue(false);
 
     render(
       <ListenerProvider store={store}>

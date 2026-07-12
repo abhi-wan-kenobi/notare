@@ -10,12 +10,31 @@ use db::open_desktop_db;
 use ext::*;
 use store::*;
 
-use tauri::Manager;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use tauri::Emitter;
 use tauri_plugin_permissions::{Permission, PermissionsPluginExt};
 use tauri_plugin_windows::{AppWindow, WindowsPluginExt};
 
 #[cfg(any(feature = "dev", feature = "devtools"))]
 const STAGING_BUNDLE_ID: &str = "com.hyprnote.staging";
+
+const APP_EXIT_REQUESTED_EVENT: &str = "app-exit-requested";
+static EXIT_FLUSH_COMPLETE: AtomicBool = AtomicBool::new(false);
+
+fn mark_exit_flush_complete() {
+    EXIT_FLUSH_COMPLETE.store(true, Ordering::SeqCst);
+}
+
+fn should_force_quit() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        return hypr_intercept::should_force_quit();
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    false
+}
 
 fn create_audio_provider(_bundle_id: &str) -> std::sync::Arc<dyn hypr_audio_actual::AudioProvider> {
     #[cfg(any(feature = "dev", feature = "devtools"))]
@@ -110,6 +129,7 @@ pub async fn main() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_opener2::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_tracing::init())
         .plugin(tauri_plugin_analytics::init())
         .plugin(tauri_plugin_agent::init())
         .plugin(tauri_plugin_db::init(db.clone()))
@@ -118,7 +138,6 @@ pub async fn main() {
         .plugin(tauri_plugin_calendar::init())
         .plugin(tauri_plugin_todo::init())
         .plugin(tauri_plugin_auth::init())
-        .plugin(tauri_plugin_tracing::init())
         .plugin(tauri_plugin_hooks::init())
         .plugin(tauri_plugin_icon::init())
         .plugin(tauri_plugin_shell::init())
@@ -191,7 +210,7 @@ pub async fn main() {
 
     let root_supervisor_ctx_for_run = root_supervisor_ctx.clone();
 
-    let app = builder
+    let app_result = builder
         .invoke_handler(specta_builder.invoke_handler())
         .on_window_event(tauri_plugin_windows::on_window_event)
         .setup(move |app| {
@@ -255,8 +274,12 @@ pub async fn main() {
 
             Ok(())
         })
-        .build(context)
-        .unwrap();
+        .build(context);
+
+    let app = match app_result {
+        Ok(app) => app,
+        Err(error) => exit_after_startup_failure(&error),
+    };
 
     match get_onboarding_flag() {
         None => {}
@@ -298,23 +321,20 @@ pub async fn main() {
         tauri::RunEvent::Reopen { .. } => {
             AppWindow::Main.show(app).unwrap();
         }
-        #[cfg(target_os = "macos")]
         tauri::RunEvent::ExitRequested { api, .. } => {
             if let Some(ref ctx) = root_supervisor_ctx_for_run {
                 ctx.mark_exiting();
             }
 
-            if hypr_intercept::should_force_quit() {
+            if EXIT_FLUSH_COMPLETE.load(Ordering::SeqCst) || should_force_quit() {
                 return;
             }
 
             api.prevent_exit();
-
-            for (_, window) in app.webview_windows() {
-                let _ = window.close();
+            if app.emit_to("main", APP_EXIT_REQUESTED_EVENT, ()).is_err() {
+                mark_exit_flush_complete();
+                app.exit(0);
             }
-
-            let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
         }
         tauri::RunEvent::Exit => {
             {
@@ -333,6 +353,29 @@ pub async fn main() {
         }
         _ => {}
     });
+}
+
+fn startup_failure_message(error: &impl std::fmt::Display) -> String {
+    format!("Anarlog failed to start: {error}")
+}
+
+fn exit_after_startup_failure(error: &impl std::fmt::Display) -> ! {
+    let message = startup_failure_message(error);
+    eprintln!("{message}");
+    tracing::error!(error = %error, "desktop startup failed");
+    sentry::capture_message(&message, sentry::Level::Error);
+
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("/usr/bin/osascript")
+            .args([
+                "-e",
+                "display alert \"Anarlog could not start\" message \"Your existing data was left unchanged. Please restart the app. If the problem continues, contact support.\" as critical buttons {\"OK\"} default button \"OK\"",
+            ])
+            .spawn();
+    }
+
+    std::process::exit(1);
 }
 
 fn get_onboarding_flag() -> Option<bool> {
@@ -376,8 +419,8 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::set_dismissed_toasts::<tauri::Wry>,
             commands::get_env::<tauri::Wry>,
             commands::show_devtool::<tauri::Wry>,
+            commands::complete_app_exit::<tauri::Wry>,
             commands::get_tinybase_values::<tauri::Wry>,
-            commands::set_tinybase_values::<tauri::Wry>,
             commands::get_pinned_tabs::<tauri::Wry>,
             commands::set_pinned_tabs::<tauri::Wry>,
             commands::get_recently_opened_sessions::<tauri::Wry>,
@@ -389,6 +432,16 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn startup_failure_message_includes_the_original_error() {
+        let message = startup_failure_message(&"legacy import did not pass parity verification");
+
+        assert_eq!(
+            message,
+            "Anarlog failed to start: legacy import did not pass parity verification"
+        );
+    }
 
     #[test]
     fn export_types() {

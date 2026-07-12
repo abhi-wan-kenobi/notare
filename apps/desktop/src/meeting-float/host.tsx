@@ -3,21 +3,26 @@ import {
   events as windowsEvents,
   type FloatingBarSettingsChange,
 } from "@hypr/plugin-windows";
-import type { GeneralStorage } from "@hypr/store";
 
-import { type MeetingFloatMainStore, useMeetingFloatMainStore } from "./hooks";
+import {
+  createMeetingFloatLabelContext,
+  loadMeetingFloatData,
+  type MeetingFloatData,
+  subscribeMeetingFloatData,
+} from "./hooks";
 
-import { useConfigValue } from "~/shared/config";
+import {
+  getStoredSettingValues,
+  setSettingValue,
+  useSetSettingValues,
+} from "~/settings/queries";
+import type { SettingValues } from "~/settings/schema";
+import { useConfigValue, useConfigValues } from "~/shared/config";
 import { useMountEffect } from "~/shared/hooks/useMountEffect";
-import * as settingsStore from "~/store/tinybase/store/settings";
 import { listenerStore } from "~/store/zustand/listener/instance";
 import { SegmentKeyUtils, type RenderLabelContext } from "~/stt/live-segment";
-import { defaultRenderLabelContext } from "~/stt/segment/shared";
 
 type ListenerState = ReturnType<typeof listenerStore.getState>;
-export type SettingsStore = NonNullable<
-  ReturnType<typeof settingsStore.UI.useStore>
->;
 type FloatingBarStatus = "recording" | "error";
 type FloatingBarColorScheme = "light" | "dark";
 type LiveCaptionPosition =
@@ -36,7 +41,7 @@ type FloatingOverlaySettings = {
   liveCaptionMinimized: boolean;
 };
 type FloatingOverlaySettingsStorage = Pick<
-  GeneralStorage,
+  SettingValues,
   | "floating_bar_opacity"
   | "live_caption_opacity"
   | "live_caption_width"
@@ -117,24 +122,21 @@ const FLOATING_OVERLAY_SETTING_KEYS = [
   "live_caption_line_count",
   "live_caption_position",
   "live_caption_minimized",
-  "current_stt_provider",
-  "current_stt_model",
 ] as const;
 
 export function FloatingMeetingWindowHost() {
   const floatingBarEnabled = useConfigValue("floating_bar_enabled");
-  const store = settingsStore.UI.useStore(settingsStore.STORE_ID);
-  const main = useMeetingFloatMainStore();
+  const storedSettings = useConfigValues(FLOATING_OVERLAY_SETTING_KEYS);
+  const overlaySettings = getFloatingOverlaySettings(storedSettings);
 
   return (
     <>
       <FloatingOverlaySettingsEventSync />
-      <LiveCaptionDefaultVisibilitySync store={store} />
+      <LiveCaptionDefaultVisibilitySync />
       {floatingBarEnabled ? (
         <FloatingMeetingWindowSync
-          key={main ? "main-store-ready" : "main-store-pending"}
-          store={store}
-          main={main}
+          key={JSON.stringify(overlaySettings)}
+          settings={overlaySettings}
         />
       ) : (
         <FloatingMeetingWindowDisabled />
@@ -144,49 +146,45 @@ export function FloatingMeetingWindowHost() {
   );
 }
 
-function getFloatingOverlaySettingsFromStore(
-  store: SettingsStore | undefined,
+function getFloatingOverlaySettings(
+  values: Partial<FloatingOverlaySettingsStorage>,
 ): FloatingOverlaySettings {
   return {
     floatingBarOpacity: normalizeOpacity(
-      store?.getValue("floating_bar_opacity"),
+      values.floating_bar_opacity,
       DEFAULT_FLOATING_OVERLAY_SETTINGS.floatingBarOpacity,
       FLOATING_BAR_MIN_OPACITY,
       FLOATING_BAR_MAX_OPACITY,
     ),
     liveCaptionOpacity: normalizeOpacity(
-      store?.getValue("live_caption_opacity"),
+      values.live_caption_opacity,
       DEFAULT_FLOATING_OVERLAY_SETTINGS.liveCaptionOpacity,
       LIVE_CAPTION_MIN_OPACITY,
       LIVE_CAPTION_MAX_OPACITY,
     ),
     liveCaptionWidth: normalizeNumber(
-      store?.getValue("live_caption_width"),
+      values.live_caption_width,
       DEFAULT_FLOATING_OVERLAY_SETTINGS.liveCaptionWidth,
       LIVE_CAPTION_MIN_WIDTH,
       LIVE_CAPTION_MAX_WIDTH,
     ),
     liveCaptionLineCount: normalizeInteger(
-      store?.getValue("live_caption_line_count"),
+      values.live_caption_line_count,
       DEFAULT_FLOATING_OVERLAY_SETTINGS.liveCaptionLineCount,
       LIVE_CAPTION_MIN_LINE_COUNT,
       LIVE_CAPTION_MAX_LINE_COUNT,
     ),
     liveCaptionPosition: normalizeLiveCaptionPosition(
-      store?.getValue("live_caption_position"),
+      values.live_caption_position,
     ),
     liveCaptionMinimized:
-      (store?.getValue("live_caption_minimized") ??
+      (values.live_caption_minimized ??
         DEFAULT_FLOATING_OVERLAY_SETTINGS.liveCaptionMinimized) === true,
   };
 }
 
 function FloatingOverlaySettingsEventSync() {
-  const setPartialValues = settingsStore.UI.useSetPartialValuesCallback(
-    (values: Partial<FloatingOverlaySettingsStorage>) => values,
-    [],
-    settingsStore.STORE_ID,
-  );
+  const setSettingValues = useSetSettingValues();
 
   useMountEffect(() => {
     let cancelled = false;
@@ -203,7 +201,7 @@ function FloatingOverlaySettingsEventSync() {
           return;
         }
 
-        setPartialValues(values);
+        setSettingValues(values);
       })
       .then((nextUnlisten) => {
         if (cancelled) {
@@ -223,16 +221,12 @@ function FloatingOverlaySettingsEventSync() {
   return null;
 }
 
-function LiveCaptionDefaultVisibilitySync({
-  store,
-}: {
-  store: SettingsStore | undefined;
-}) {
+function LiveCaptionDefaultVisibilitySync() {
   useMountEffect(() => {
     let appliedSessionId: string | null = null;
 
     const applyDefaultVisibility = (state: ListenerState) => {
-      if (!store || state.live.status !== "active" || !state.live.sessionId) {
+      if (state.live.status !== "active" || !state.live.sessionId) {
         appliedSessionId = null;
         return;
       }
@@ -242,7 +236,7 @@ function LiveCaptionDefaultVisibilitySync({
       }
 
       appliedSessionId = state.live.sessionId;
-      store.setValue("live_caption_minimized", true);
+      void setSettingValue("live_caption_minimized", true);
     };
 
     applyDefaultVisibility(listenerStore.getState());
@@ -275,25 +269,24 @@ function LiveCaptionWindowDisabled() {
 }
 
 function FloatingMeetingWindowSync({
-  main,
-  store,
+  settings,
 }: {
-  main: MeetingFloatMainStore | undefined;
-  store: SettingsStore | undefined;
+  settings: FloatingOverlaySettings;
 }) {
   useMountEffect(() => {
-    let settings = getFloatingOverlaySettingsFromStore(store);
+    let meetingData: MeetingFloatData = { sessions: {}, humanNames: {} };
     let routeState = getCurrentFloatingRouteState(
       listenerStore.getState(),
       undefined,
       settings,
-      getFloatingLiveCaptionToggleVisible(listenerStore.getState(), store),
-      main,
+      getFloatingLiveCaptionToggleVisible(listenerStore.getState()),
+      meetingData,
     );
     let syncQueued = false;
     let cancelled = false;
     let shownSessionId: string | null = null;
     let nativeCommandsUnavailable = false;
+    let unsubscribeMeetingData: (() => Promise<void>) | null = null;
     const unlisteners: Array<() => void> = [];
 
     const shouldContinue = () => !cancelled;
@@ -311,8 +304,8 @@ function FloatingMeetingWindowSync({
           listenerStore.getState(),
           undefined,
           settings,
-          getFloatingLiveCaptionToggleVisible(listenerStore.getState(), store),
-          main,
+          getFloatingLiveCaptionToggleVisible(listenerStore.getState()),
+          meetingData,
         ),
       );
     };
@@ -375,8 +368,8 @@ function FloatingMeetingWindowSync({
       });
 
     windowsEvents.floatingBarOpenMain
-      .listen(() => {
-        void windowsCommands.windowShow({ type: "main" });
+      .listen(async () => {
+        await windowsCommands.windowShow({ type: "main" });
       })
       .then((unlisten) => {
         if (cancelled) {
@@ -394,24 +387,19 @@ function FloatingMeetingWindowSync({
       const nextRouteState = getFloatingRouteState(state, {
         colorScheme,
         settings,
-        liveCaptionToggleVisible: getFloatingLiveCaptionToggleVisible(
-          state,
-          store,
-        ),
-        sessionTitle: getFloatingSessionTitle(state, main),
-        speakerLabelContext: getFloatingSpeakerLabelContext(state, main),
+        liveCaptionToggleVisible: getFloatingLiveCaptionToggleVisible(state),
+        sessionTitle: getFloatingSessionTitle(state, meetingData),
+        speakerLabelContext: getFloatingSpeakerLabelContext(state, meetingData),
       });
       const previousRouteState = getFloatingRouteState(previousState, {
         colorScheme,
         settings,
-        liveCaptionToggleVisible: getFloatingLiveCaptionToggleVisible(
-          previousState,
-          store,
-        ),
-        sessionTitle: getFloatingSessionTitle(previousState, main),
+        liveCaptionToggleVisible:
+          getFloatingLiveCaptionToggleVisible(previousState),
+        sessionTitle: getFloatingSessionTitle(previousState, meetingData),
         speakerLabelContext: getFloatingSpeakerLabelContext(
           previousState,
-          main,
+          meetingData,
         ),
       });
 
@@ -420,37 +408,25 @@ function FloatingMeetingWindowSync({
       }
     });
 
-    const settingsListenerIds = addFloatingOverlaySettingsListeners(
-      store,
-      () => {
-        const nextSettings = getFloatingOverlaySettingsFromStore(store);
-        const nextRouteState = getCurrentFloatingRouteState(
-          listenerStore.getState(),
-          undefined,
-          nextSettings,
-          getFloatingLiveCaptionToggleVisible(listenerStore.getState(), store),
-          main,
-        );
-
-        settings = nextSettings;
-        updateRouteState(nextRouteState);
+    void subscribeMeetingFloatData(
+      (nextData) => {
+        meetingData = nextData;
+        refreshCurrentRouteState();
       },
-    );
-
-    const sessionTitleListenerId = main?.addCellListener(
-      "sessions",
-      null,
-      "title",
-      refreshCurrentRouteState,
-    );
-    const participantListenerId = main?.addTableListener(
-      "mapping_session_participant",
-      refreshCurrentRouteState,
-    );
-    const humanListenerId = main?.addTableListener(
-      "humans",
-      refreshCurrentRouteState,
-    );
+      (error) => {
+        console.error("Failed to read floating meeting data:", error);
+      },
+    )
+      .then((unsubscribe) => {
+        if (cancelled) {
+          void unsubscribe();
+        } else {
+          unsubscribeMeetingData = unsubscribe;
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to subscribe to floating meeting data:", error);
+      });
 
     const unsubscribeAppliedTheme = subscribeToAppliedTheme(() => {
       refreshCurrentRouteState();
@@ -460,16 +436,7 @@ function FloatingMeetingWindowSync({
       cancelled = true;
       unsubscribe();
       unsubscribeAppliedTheme();
-      removeSettingsListeners(store, settingsListenerIds);
-      if (sessionTitleListenerId) {
-        main?.delListener(sessionTitleListenerId);
-      }
-      if (participantListenerId) {
-        main?.delListener(participantListenerId);
-      }
-      if (humanListenerId) {
-        main?.delListener(humanListenerId);
-      }
+      void unsubscribeMeetingData?.();
       unlisteners.forEach((unlisten) => unlisten());
       void hideFloatingMeetingPanel();
     };
@@ -536,29 +503,28 @@ function getCurrentFloatingRouteState(
   sessionId?: string,
   settings: FloatingOverlaySettings = DEFAULT_FLOATING_OVERLAY_SETTINGS,
   liveCaptionToggleVisible = false,
-  main?: MeetingFloatMainStore,
+  meetingData?: MeetingFloatData,
 ): FloatingRouteState | null {
   return getFloatingRouteState(state, {
     sessionId,
     colorScheme: getCurrentFloatingBarColorScheme(),
     settings,
     liveCaptionToggleVisible,
-    sessionTitle: getFloatingSessionTitle(state, main),
-    speakerLabelContext: getFloatingSpeakerLabelContext(state, main),
+    sessionTitle: getFloatingSessionTitle(state, meetingData),
+    speakerLabelContext: getFloatingSpeakerLabelContext(state, meetingData),
   });
 }
 
 function getFloatingSessionTitle(
   state: ListenerState,
-  main: MeetingFloatMainStore | undefined,
+  meetingData: MeetingFloatData | undefined,
 ) {
   const sessionId = state.live.sessionId;
   if (!sessionId) {
     return null;
   }
 
-  const title = main?.getCell("sessions", sessionId, "title");
-  return typeof title === "string" ? title : null;
+  return meetingData?.sessions[sessionId]?.title ?? null;
 }
 
 function getFloatingTitle(title: string | null | undefined) {
@@ -646,13 +612,13 @@ function getFloatingSpeakerLabel(
 
 function getFloatingSpeakerLabelContext(
   state: ListenerState,
-  main: MeetingFloatMainStore | undefined,
+  meetingData: MeetingFloatData | undefined,
 ): RenderLabelContext | undefined {
-  if (!main || !state.live.sessionId) {
+  if (!meetingData || !state.live.sessionId) {
     return undefined;
   }
 
-  return defaultRenderLabelContext(main, state.live.sessionId);
+  return createMeetingFloatLabelContext(meetingData, state.live.sessionId);
 }
 
 function isFloatingSelfSpeaker(
@@ -687,16 +653,8 @@ export function shouldShowFloatingLiveCaptionToggle({
   return liveTranscriptionActive;
 }
 
-function getFloatingLiveCaptionToggleVisible(
-  state: ListenerState,
-  store: SettingsStore | undefined,
-) {
-  const provider = store?.getValue("current_stt_provider");
-  const model = store?.getValue("current_stt_model");
-
+function getFloatingLiveCaptionToggleVisible(state: ListenerState) {
   return shouldShowFloatingLiveCaptionToggle({
-    provider: typeof provider === "string" ? provider : undefined,
-    model: typeof model === "string" ? model : undefined,
     liveTranscriptionActive: state.live.liveTranscriptionActive === true,
   });
 }
@@ -748,32 +706,6 @@ function subscribeToAppliedTheme(onStoreChange: () => void) {
     attributes: true,
   });
   return () => observer.disconnect();
-}
-
-function addFloatingOverlaySettingsListeners(
-  store: SettingsStore | undefined,
-  onChange: () => void,
-) {
-  if (!store) {
-    return [];
-  }
-
-  return FLOATING_OVERLAY_SETTING_KEYS.map((key) =>
-    store.addValueListener(key, onChange),
-  );
-}
-
-function removeSettingsListeners(
-  store: SettingsStore | undefined,
-  listenerIds: string[],
-) {
-  if (!store) {
-    return;
-  }
-
-  for (const listenerId of listenerIds) {
-    store.delListener(listenerId);
-  }
 }
 
 export function getCurrentFloatingBarColorScheme(): FloatingBarColorScheme {
@@ -1069,13 +1001,9 @@ function getSettingsValuesFromNativeChange(change: FloatingBarSettingsChange) {
 export async function openFloatingMeetingPanel({
   sessionId,
   enabled,
-  main,
-  store,
 }: {
   sessionId?: string;
   enabled: boolean;
-  main?: MeetingFloatMainStore;
-  store?: SettingsStore;
 }) {
   if (!enabled) {
     await hideFloatingMeetingPanel();
@@ -1083,12 +1011,16 @@ export async function openFloatingMeetingPanel({
   }
 
   const state = listenerStore.getState();
+  const [{ values }, meetingData] = await Promise.all([
+    getStoredSettingValues(),
+    loadMeetingFloatData(),
+  ]);
   const routeState = getCurrentFloatingRouteState(
     state,
     sessionId,
-    getFloatingOverlaySettingsFromStore(store),
-    getFloatingLiveCaptionToggleVisible(state, store),
-    main,
+    getFloatingOverlaySettings(values),
+    getFloatingLiveCaptionToggleVisible(state),
+    meetingData,
   );
 
   if (!routeState) {

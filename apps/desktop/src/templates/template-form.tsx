@@ -22,9 +22,11 @@ import {
   useToggleTemplateFavorite,
 } from "./queries";
 import { SectionsList } from "./sections-editor";
+import { TemplateIconPicker } from "./template-icon-picker";
 
+import { useSetSettingValue } from "~/settings/queries";
+import { useConfigValue } from "~/shared/config";
 import { TemplateCategoryLabel } from "~/shared/ui/template-category-label";
-import * as settings from "~/store/tinybase/store/settings";
 
 function parseTargets(value: string) {
   return value
@@ -156,23 +158,19 @@ export function TemplateForm({
   const [actionsOpen, setActionsOpen] = useState(false);
   const didInitializeForm = useRef(false);
 
-  const selectedTemplateId = settings.UI.useValue(
-    "selected_template_id",
-    settings.STORE_ID,
-  ) as string | undefined;
+  const selectedTemplateId = useConfigValue("selected_template_id");
   const isDefault = selectedTemplateId === id;
 
-  const setSelectedTemplateId = settings.UI.useSetValueCallback(
-    "selected_template_id",
-    () => (isDefault ? "" : id),
-    [id, isDefault],
-    settings.STORE_ID,
-  );
+  const setDefaultTemplateId = useSetSettingValue("selected_template_id");
+  const setSelectedTemplateId = () => {
+    setDefaultTemplateId(isDefault ? "" : id);
+  };
 
   const form = useForm({
     defaultValues: {
       title: template.title ?? "",
       description: template.description ?? "",
+      icon: template.icon,
       targets: template.targets ?? [],
       sections: template.sections ?? [],
     },
@@ -208,6 +206,7 @@ export function TemplateForm({
     form.reset({
       title: template.title ?? "",
       description: template.description ?? "",
+      icon: template.icon,
       targets: template.targets ?? [],
       sections: template.sections ?? [],
     });
@@ -293,9 +292,17 @@ export function TemplateForm({
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div className="scroll-fade-y h-full overflow-y-auto px-6 pt-3 pb-6">
           <div className="min-w-0">
-            <form.Field name="title">
-              {(field) => (
-                <div className="flex min-w-0 items-baseline gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <form.Field name="icon">
+                {(field) => (
+                  <TemplateIconPicker
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                  />
+                )}
+              </form.Field>
+              <form.Field name="title">
+                {(field) => (
                   <div className="relative max-w-full min-w-0">
                     <span
                       aria-hidden="true"
@@ -310,9 +317,9 @@ export function TemplateForm({
                       className="absolute inset-0 h-auto w-full max-w-full min-w-0 border-0 px-0 py-0 text-lg font-semibold shadow-none focus-visible:ring-0 md:text-lg"
                     />
                   </div>
-                </div>
-              )}
-            </form.Field>
+                )}
+              </form.Field>
+            </div>
             <form.Field name="description">
               {(field) => (
                 <Textarea

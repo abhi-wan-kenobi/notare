@@ -11,6 +11,99 @@ const PLUGIN_NAME: &str = "db";
 
 pub type ManagedState = std::sync::Arc<runtime::PluginDbRuntime>;
 
+#[derive(Debug, Clone, serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionStatement {
+    pub sql: String,
+    pub params: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub expected_rows_affected: Option<u64>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct StorageMigrationState {
+    pub phase: String,
+    pub latest_run_id: String,
+    pub parity_verified: bool,
+    pub cutover_at: Option<String>,
+    pub rollback_until: Option<String>,
+    pub last_error: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct LegacyImportRun {
+    pub id: String,
+    pub importer_version: i64,
+    pub source_root: String,
+    pub dry_run: bool,
+    pub status: String,
+    pub discovered_count: i64,
+    pub imported_count: i64,
+    pub matched_count: i64,
+    pub skipped_count: i64,
+    pub conflict_count: i64,
+    pub error_count: i64,
+    pub started_at: String,
+    pub completed_at: Option<String>,
+    pub error: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct LegacyImportItemReport {
+    pub source_path: String,
+    pub source_kind: String,
+    pub source_sha256: String,
+    pub status: String,
+    pub discovered_count: i64,
+    pub imported_count: i64,
+    pub matched_count: i64,
+    pub skipped_count: i64,
+    pub conflict_count: i64,
+    pub error: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct LegacyImportTargetReport {
+    pub source_path: String,
+    pub table_name: String,
+    pub target_id: String,
+    pub status: String,
+    pub error: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LegacyImportReport {
+    pub state: StorageMigrationState,
+    pub latest_run: Option<LegacyImportRun>,
+    pub items: Vec<LegacyImportItemReport>,
+    pub targets: Vec<LegacyImportTargetReport>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LegacyCleanupStatus {
+    pub migration_verified: bool,
+    pub available: bool,
+    pub already_cleaned: bool,
+    pub file_count: u64,
+    pub total_bytes: u64,
+    pub source_root: String,
+    pub blocking_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LegacyCleanupResult {
+    pub deleted_file_count: u64,
+    pub deleted_bytes: u64,
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type, PartialEq)]
 pub struct ExecuteProxyResult {
     rows: Vec<serde_json::Value>,
@@ -30,7 +123,12 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
         .plugin_name(PLUGIN_NAME)
         .commands(tauri_specta::collect_commands![
             commands::execute,
+            commands::execute_transaction,
             commands::execute_proxy,
+            commands::get_legacy_import_report,
+            commands::get_legacy_cleanup_status,
+            commands::cleanup_legacy_files,
+            commands::run_legacy_import,
             commands::subscribe,
             commands::unsubscribe,
         ])
@@ -46,12 +144,7 @@ pub fn init<R: tauri::Runtime>(
         .invoke_handler(specta_builder.invoke_handler())
         .setup(move |app, _| {
             hypr_tauri_utils::block_on(hypr_db_app::prepare_schema(db.as_ref()))?;
-
-            let pool = db.pool().clone();
-            let app_handle = app.app_handle().clone();
-            hypr_tauri_utils::spawn("import legacy tinybase json", async move {
-                import::import_legacy_data(&app_handle, &pool).await
-            });
+            hypr_tauri_utils::block_on(import::import_legacy_data(app.app_handle(), db.pool()))?;
             app.manage(std::sync::Arc::new(runtime::PluginDbRuntime::new(db)));
             Ok(())
         })
@@ -232,6 +325,107 @@ mod test {
                 "title": "Template 1",
             })]
         );
+    }
+
+    #[tokio::test]
+    async fn execute_transaction_commits_every_statement_atomically() {
+        let (_dir, runtime) = setup_unmigrated_runtime().await;
+
+        let rows_affected = runtime
+            .execute_transaction(vec![
+                TransactionStatement {
+                    sql: "INSERT INTO templates (id, title) VALUES (?, ?)".to_string(),
+                    params: vec![json!("template-1"), json!("Template 1")],
+                    expected_rows_affected: None,
+                },
+                TransactionStatement {
+                    sql: "INSERT INTO templates (id, title) VALUES (?, ?)".to_string(),
+                    params: vec![json!("template-2"), json!("Template 2")],
+                    expected_rows_affected: None,
+                },
+            ])
+            .await
+            .unwrap();
+
+        assert_eq!(rows_affected, vec![1, 1]);
+
+        let rows = runtime
+            .execute(
+                "SELECT id FROM templates WHERE id IN (?, ?) ORDER BY id".to_string(),
+                vec![json!("template-1"), json!("template-2")],
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            rows,
+            vec![json!({ "id": "template-1" }), json!({ "id": "template-2" })]
+        );
+    }
+
+    #[tokio::test]
+    async fn execute_transaction_rolls_back_when_a_statement_fails() {
+        let (_dir, runtime) = setup_runtime().await;
+
+        let result = runtime
+            .execute_transaction(vec![
+                TransactionStatement {
+                    sql: "INSERT INTO templates (id, title) VALUES (?, ?)".to_string(),
+                    params: vec![json!("template-rollback"), json!("Rollback")],
+                    expected_rows_affected: None,
+                },
+                TransactionStatement {
+                    sql: "INSERT INTO missing_table (id) VALUES (?)".to_string(),
+                    params: vec![json!("fail")],
+                    expected_rows_affected: None,
+                },
+            ])
+            .await;
+
+        assert!(result.is_err());
+        let rows = runtime
+            .execute(
+                "SELECT id FROM templates WHERE id = ?".to_string(),
+                vec![json!("template-rollback")],
+            )
+            .await
+            .unwrap();
+        assert!(rows.is_empty());
+    }
+
+    #[tokio::test]
+    async fn execute_transaction_rolls_back_when_affected_rows_do_not_match() {
+        let (_dir, runtime) = setup_runtime().await;
+
+        let result = runtime
+            .execute_transaction(vec![
+                TransactionStatement {
+                    sql: "INSERT INTO templates (id, title) VALUES (?, ?)".to_string(),
+                    params: vec![json!("template-rollback"), json!("Rollback")],
+                    expected_rows_affected: Some(1),
+                },
+                TransactionStatement {
+                    sql: "UPDATE templates SET title = ? WHERE id = ?".to_string(),
+                    params: vec![json!("Missing"), json!("missing-template")],
+                    expected_rows_affected: Some(1),
+                },
+            ])
+            .await;
+
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("statement 1 affected 0 rows; expected 1")
+        );
+        let rows = runtime
+            .execute(
+                "SELECT id FROM templates WHERE id = ?".to_string(),
+                vec![json!("template-rollback")],
+            )
+            .await
+            .unwrap();
+        assert!(rows.is_empty());
     }
 
     #[tokio::test]

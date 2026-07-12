@@ -1,8 +1,7 @@
 import type { TaskArgsMap, TaskArgsMapTransformed, TaskConfig } from ".";
 
-import type { Store as MainStore } from "~/store/tinybase/store/main";
-import type { Store as SettingsStore } from "~/store/tinybase/store/settings";
-import { collectEnhancedNotesContent } from "~/store/tinybase/store/utils";
+import { loadSessionContentSnapshot } from "~/session/content-queries";
+import type { SettingValues } from "~/settings/schema";
 
 export const titleTransform: Pick<TaskConfig<"title">, "transformArgs"> = {
   transformArgs,
@@ -10,16 +9,27 @@ export const titleTransform: Pick<TaskConfig<"title">, "transformArgs"> = {
 
 async function transformArgs(
   args: TaskArgsMap["title"],
-  store: MainStore,
-  settingsStore: SettingsStore,
+  settingsValues: SettingValues,
 ): Promise<TaskArgsMapTransformed["title"]> {
+  const snapshot = args.enhancedNote
+    ? null
+    : await loadSessionContentSnapshot(args.sessionId);
+  if (!args.enhancedNote && !snapshot) {
+    throw new Error(`Session ${args.sessionId} no longer exists`);
+  }
+
   const enhancedNote =
-    args.enhancedNote ?? collectEnhancedNotesContent(store, args.sessionId);
-  const language = getLanguage(settingsStore);
+    args.enhancedNote ??
+    snapshot?.enhancedNotes
+      .map((note) => note.markdown)
+      .filter(Boolean)
+      .join("\n\n") ??
+    "";
+  const language = getLanguage(settingsValues);
   return { language, enhancedNote };
 }
 
-function getLanguage(settingsStore: SettingsStore): string | null {
-  const value = settingsStore.getValue("ai_language");
+function getLanguage(settingsValues: SettingValues): string | null {
+  const value = settingsValues.ai_language;
   return typeof value === "string" && value.length > 0 ? value : null;
 }

@@ -11,11 +11,15 @@ const {
   updaterListenMock,
   maybeEmitUpdatedMock,
   getCurrentWebviewWindowLabelMock,
-  useMainStoreMock,
-  useSettingsStoreMock,
+  liveQuerySubscribeMock,
+  listenerSubscribeMock,
+  useConfigValueMock,
+  useConfigValuesMock,
+  setSettingValueMock,
   openNewMock,
   createSessionMock,
   getOrCreateSessionForEventIdMock,
+  getCalendarEventStartedAtMock,
   setTriggerAppIdsMock,
   stopMock,
   updateCaptureConfigMock,
@@ -25,11 +29,15 @@ const {
   updaterListenMock: vi.fn(),
   maybeEmitUpdatedMock: vi.fn(),
   getCurrentWebviewWindowLabelMock: vi.fn(() => "main"),
-  useMainStoreMock: vi.fn(() => null),
-  useSettingsStoreMock: vi.fn(() => null),
+  liveQuerySubscribeMock: vi.fn(),
+  listenerSubscribeMock: vi.fn(),
+  useConfigValueMock: vi.fn((): string[] => []),
+  useConfigValuesMock: vi.fn(),
+  setSettingValueMock: vi.fn(async () => {}),
   openNewMock: vi.fn(),
-  createSessionMock: vi.fn(() => "session-new"),
-  getOrCreateSessionForEventIdMock: vi.fn(() => "session-event"),
+  createSessionMock: vi.fn(async () => "session-new"),
+  getOrCreateSessionForEventIdMock: vi.fn(async () => "session-event"),
+  getCalendarEventStartedAtMock: vi.fn(),
   setTriggerAppIdsMock: vi.fn(),
   stopMock: vi.fn(),
   updateCaptureConfigMock: vi.fn(),
@@ -59,29 +67,28 @@ vi.mock("@hypr/plugin-windows", () => ({
   getCurrentWebviewWindowLabel: getCurrentWebviewWindowLabelMock,
 }));
 
-vi.mock("~/store/tinybase/store/main", () => ({
-  STORE_ID: "main-store",
-  UI: {
-    useStore: useMainStoreMock,
+vi.mock("~/db", () => ({
+  liveQueryClient: {
+    subscribe: liveQuerySubscribeMock,
   },
 }));
 
-vi.mock("~/store/tinybase/store/settings", () => ({
-  STORE_ID: "settings-store",
-  SETTINGS_MAPPING: {
-    values: {
-      ai_language: { default: "en" },
-      spoken_languages: { default: "[]" },
-    },
-  },
-  UI: {
-    useStore: useSettingsStoreMock,
-  },
+vi.mock("~/shared/config", () => ({
+  useConfigValue: useConfigValueMock,
+  useConfigValues: useConfigValuesMock,
 }));
 
-vi.mock("~/store/tinybase/store/sessions", () => ({
+vi.mock("~/settings/queries", () => ({
+  setSettingValue: setSettingValueMock,
+}));
+
+vi.mock("~/session/queries", () => ({
   createSession: createSessionMock,
   getOrCreateSessionForEventId: getOrCreateSessionForEventIdMock,
+}));
+
+vi.mock("~/calendar/queries", () => ({
+  getCalendarEventStartedAt: getCalendarEventStartedAtMock,
 }));
 
 vi.mock("~/store/zustand/tabs", () => ({
@@ -92,6 +99,7 @@ vi.mock("~/store/zustand/tabs", () => ({
 vi.mock("~/store/zustand/listener/instance", () => ({
   listenerStore: {
     getState: getListenerStateMock,
+    subscribe: listenerSubscribeMock,
   },
 }));
 
@@ -101,11 +109,15 @@ describe("EventListeners notification events", () => {
     updaterListenMock.mockReset();
     maybeEmitUpdatedMock.mockReset();
     getCurrentWebviewWindowLabelMock.mockReset();
-    useMainStoreMock.mockReset();
-    useSettingsStoreMock.mockReset();
+    liveQuerySubscribeMock.mockReset();
+    listenerSubscribeMock.mockReset();
+    useConfigValueMock.mockReset();
+    useConfigValuesMock.mockReset();
+    setSettingValueMock.mockReset();
     openNewMock.mockReset();
     createSessionMock.mockReset();
     getOrCreateSessionForEventIdMock.mockReset();
+    getCalendarEventStartedAtMock.mockReset();
     setTriggerAppIdsMock.mockReset();
     stopMock.mockReset();
     updateCaptureConfigMock.mockReset();
@@ -114,10 +126,24 @@ describe("EventListeners notification events", () => {
     getCurrentWebviewWindowLabelMock.mockReturnValue("main");
     notificationListenMock.mockResolvedValue(() => {});
     updaterListenMock.mockResolvedValue(() => {});
-    createSessionMock.mockReturnValue("session-new");
-    getOrCreateSessionForEventIdMock.mockReturnValue("session-event");
-    useMainStoreMock.mockReturnValue(null);
-    useSettingsStoreMock.mockReturnValue(null);
+    createSessionMock.mockResolvedValue("session-new");
+    getOrCreateSessionForEventIdMock.mockResolvedValue("session-event");
+    getCalendarEventStartedAtMock.mockResolvedValue(null);
+    liveQuerySubscribeMock.mockImplementation(
+      async (_sql, _params, handlers) => {
+        handlers.onData([]);
+        return async () => {};
+      },
+    );
+    listenerSubscribeMock.mockReturnValue(() => {});
+    useConfigValueMock.mockReturnValue([]);
+    useConfigValuesMock.mockReturnValue({
+      ai_language: "en",
+      spoken_languages: [],
+      current_stt_provider: undefined,
+      current_stt_model: undefined,
+    });
+    setSettingValueMock.mockResolvedValue(undefined);
     getListenerStateMock.mockReturnValue({
       setTriggerAppIds: setTriggerAppIdsMock,
       stop: stopMock,
@@ -132,11 +158,7 @@ describe("EventListeners notification events", () => {
   });
 
   test("stores mic-detected footer actions as ignored platforms", async () => {
-    const settingsStore = {
-      getValue: vi.fn(() => JSON.stringify(["com.existing.app"])),
-      setValue: vi.fn(),
-    };
-    useSettingsStoreMock.mockReturnValue(settingsStore as never);
+    useConfigValueMock.mockReturnValue(["com.existing.app"]);
 
     render(<EventListeners />);
 
@@ -160,7 +182,7 @@ describe("EventListeners notification events", () => {
       },
     });
 
-    expect(settingsStore.setValue).toHaveBeenCalledWith(
+    expect(setSettingValueMock).toHaveBeenCalledWith(
       "ignored_platforms",
       JSON.stringify(["com.existing.app", "us.zoom.xos"]),
     );
@@ -168,8 +190,6 @@ describe("EventListeners notification events", () => {
   });
 
   test("notification_accept with auto-stop prompt stops the active session", async () => {
-    useMainStoreMock.mockReturnValue({} as never);
-
     render(<EventListeners />);
 
     await vi.waitFor(() =>
@@ -194,59 +214,37 @@ describe("EventListeners notification events", () => {
 
   test("live capture config sync mounts without auth providers", async () => {
     vi.useFakeTimers();
-
-    const mainStore = {
-      addTableListener: vi.fn(() => "main-listener"),
-      delListener: vi.fn(),
-      forEachRow: vi.fn(),
-      getValue: vi.fn((key: string) =>
-        key === "user_id" ? "human-self" : undefined,
-      ),
-    };
-    const settingsStore = {
-      addValueListener: vi.fn(() => "settings-listener"),
-      delListener: vi.fn(),
-      getValue: vi.fn((key: string) => {
-        if (key === "ai_language") {
-          return "ko";
-        }
-        if (key === "spoken_languages") {
-          return JSON.stringify(["ko"]);
-        }
-        if (key === "current_stt_provider") {
-          return "soniox";
-        }
-        if (key === "current_stt_model") {
-          return "stt-v4";
-        }
-        return undefined;
-      }),
-    };
-
-    useMainStoreMock.mockReturnValue(mainStore as never);
-    useSettingsStoreMock.mockReturnValue(settingsStore as never);
+    useConfigValuesMock.mockReturnValue({
+      ai_language: "ko",
+      spoken_languages: ["ko"],
+      current_stt_provider: "soniox",
+      current_stt_model: "stt-v4",
+    });
 
     render(<EventListeners />);
 
-    expect(mainStore.addTableListener).toHaveBeenCalledWith(
-      "mapping_session_participant",
-      expect.any(Function),
+    await vi.waitFor(() =>
+      expect(liveQuerySubscribeMock).toHaveBeenCalledTimes(1),
     );
-    expect(settingsStore.addValueListener).toHaveBeenCalledTimes(4);
-
+    const handlers = liveQuerySubscribeMock.mock.calls[0]?.[2];
+    handlers.onData([
+      {
+        session_id: "session-1",
+        owner_user_id: "human-self",
+        human_id: "human-remote",
+      },
+    ]);
     await vi.runOnlyPendingTimersAsync();
 
     expect(updateCaptureConfigMock).toHaveBeenCalledWith({
       session_id: "session-1",
       languages: ["ko"],
-      participant_human_ids: [],
+      participant_human_ids: ["human-remote"],
       self_human_id: "human-self",
     });
   });
 
   test("notification_confirm with auto-stop prompt ignores collapsed body click", async () => {
-    useMainStoreMock.mockReturnValue({} as never);
-
     render(<EventListeners />);
 
     await vi.waitFor(() =>
@@ -270,8 +268,6 @@ describe("EventListeners notification events", () => {
   });
 
   test("notification_confirm with session source opens that session", async () => {
-    useMainStoreMock.mockReturnValue(null);
-
     render(<EventListeners />);
 
     await vi.waitFor(() =>
@@ -298,8 +294,6 @@ describe("EventListeners notification events", () => {
   });
 
   test("notification_confirm with batch key opens that session without source", async () => {
-    useMainStoreMock.mockReturnValue({} as never);
-
     render(<EventListeners />);
 
     await vi.waitFor(() =>
@@ -326,8 +320,6 @@ describe("EventListeners notification events", () => {
   });
 
   test("notification_confirm with mic_detected source opens detected event and sets triggerAppIds", async () => {
-    useMainStoreMock.mockReturnValue({} as never);
-
     render(<EventListeners />);
 
     await vi.waitFor(() =>
@@ -349,10 +341,9 @@ describe("EventListeners notification events", () => {
       },
     });
 
-    expect(getOrCreateSessionForEventIdMock).toHaveBeenCalledWith(
-      {},
-      "event-1",
-    );
+    await vi.waitFor(() => expect(openNewMock).toHaveBeenCalledTimes(1));
+
+    expect(getOrCreateSessionForEventIdMock).toHaveBeenCalledWith("event-1");
     expect(createSessionMock).not.toHaveBeenCalled();
     expect(setTriggerAppIdsMock).toHaveBeenCalledWith(["us.zoom.xos"]);
     expect(openNewMock).toHaveBeenCalledWith({
@@ -363,8 +354,6 @@ describe("EventListeners notification events", () => {
   });
 
   test("notification_option_selected with mic_detected source sets triggerAppIds", async () => {
-    useMainStoreMock.mockReturnValue({} as never);
-
     render(<EventListeners />);
 
     await vi.waitFor(() =>
@@ -388,13 +377,11 @@ describe("EventListeners notification events", () => {
     });
 
     expect(setTriggerAppIdsMock).toHaveBeenCalledWith(["us.zoom.xos"]);
-    expect(openNewMock).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(openNewMock).toHaveBeenCalledTimes(1));
   });
 
-  test("notification_confirm with mic_detected source preserves triggerAppIds across pending-auto-start (regression: bugbot follow-up)", async () => {
-    useMainStoreMock.mockReturnValue(null);
-
-    const { rerender } = render(<EventListeners />);
+  test("notification_confirm opens without waiting for the legacy store", async () => {
+    render(<EventListeners />);
 
     await vi.waitFor(() =>
       expect(notificationListenMock).toHaveBeenCalledTimes(1),
@@ -415,12 +402,6 @@ describe("EventListeners notification events", () => {
       },
     });
 
-    expect(setTriggerAppIdsMock).not.toHaveBeenCalled();
-    expect(openNewMock).not.toHaveBeenCalled();
-
-    useMainStoreMock.mockReturnValue({} as never);
-    rerender(<EventListeners />);
-
     await vi.waitFor(() =>
       expect(setTriggerAppIdsMock).toHaveBeenCalledWith(["us.zoom.xos"]),
     );
@@ -431,13 +412,7 @@ describe("EventListeners notification events", () => {
     vi.spyOn(Date, "now").mockReturnValue(
       new Date("2026-05-15T12:00:00.000Z").getTime(),
     );
-    useMainStoreMock.mockReturnValue({
-      getRow: vi.fn((table: string, rowId: string) =>
-        table === "events" && rowId === "evt-1"
-          ? { started_at: "2026-05-15T12:02:00.000Z" }
-          : undefined,
-      ),
-    } as never);
+    getCalendarEventStartedAtMock.mockResolvedValue("2026-05-15T12:02:00.000Z");
 
     render(<EventListeners />);
 
@@ -455,6 +430,7 @@ describe("EventListeners notification events", () => {
       },
     });
 
+    await vi.waitFor(() => expect(openNewMock).toHaveBeenCalledTimes(1));
     expect(setTriggerAppIdsMock).not.toHaveBeenCalled();
     expect(openNewMock).toHaveBeenCalledWith({
       type: "sessions",
@@ -467,13 +443,7 @@ describe("EventListeners notification events", () => {
     vi.spyOn(Date, "now").mockReturnValue(
       new Date("2026-05-15T12:02:00.000Z").getTime(),
     );
-    useMainStoreMock.mockReturnValue({
-      getRow: vi.fn((table: string, rowId: string) =>
-        table === "events" && rowId === "evt-1"
-          ? { started_at: "2026-05-15T12:00:00.000Z" }
-          : undefined,
-      ),
-    } as never);
+    getCalendarEventStartedAtMock.mockResolvedValue("2026-05-15T12:00:00.000Z");
 
     render(<EventListeners />);
 
@@ -491,10 +461,12 @@ describe("EventListeners notification events", () => {
       },
     });
 
-    expect(openNewMock).toHaveBeenCalledWith({
-      type: "sessions",
-      id: "session-event",
-      state: { view: null, autoStart: true },
-    });
+    await vi.waitFor(() =>
+      expect(openNewMock).toHaveBeenCalledWith({
+        type: "sessions",
+        id: "session-event",
+        state: { view: null, autoStart: true },
+      }),
+    );
   });
 });

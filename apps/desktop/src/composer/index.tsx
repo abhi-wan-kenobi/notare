@@ -21,21 +21,17 @@ import {
 } from "~/chat/components/input/hooks";
 import { ChatSession } from "~/chat/components/session-provider";
 import { dedupeByKey, type ContextRef } from "~/chat/context/entities";
+import { useChatGroup } from "~/chat/store/queries";
 import { useChatActions } from "~/chat/store/use-chat-actions";
 import { useShell } from "~/contexts/shell";
 import { useMentionConfig } from "~/editor-bridge/mention-config";
-import * as main from "~/store/tinybase/store/main";
+import { useOwnerUserId } from "~/shared/owner-user";
 
 export function ComposerScreen() {
   const { chat } = useShell();
   const model = useLanguageModel("chat");
-  const { user_id } = main.UI.useValues(main.STORE_ID);
-  const currentTitle = main.UI.useCell(
-    "chat_groups",
-    chat.groupId ?? "",
-    "title",
-    main.STORE_ID,
-  );
+  const userId = useOwnerUserId();
+  const currentChatGroup = useChatGroup(chat.groupId);
   const { handleSendMessage } = useChatActions({
     groupId: chat.groupId,
     onGroupCreated: chat.setGroupId,
@@ -62,7 +58,7 @@ export function ComposerScreen() {
     [],
   );
 
-  if (!user_id) {
+  if (!userId) {
     return <div className="h-screen w-screen bg-transparent" />;
   }
 
@@ -99,7 +95,7 @@ export function ComposerScreen() {
               }
               onStop={sessionProps.stop}
               onSendMessage={sendMessage}
-              title={currentTitle || "Ask Anarlog AI anything"}
+              title={currentChatGroup?.title || "Ask Anarlog AI anything"}
             />
           ) : (
             <ComposerSettingsCard />

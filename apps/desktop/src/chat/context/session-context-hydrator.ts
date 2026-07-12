@@ -1,10 +1,13 @@
-import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
-import type { SessionContentData } from "@hypr/plugin-fs-sync";
 import type { SessionContext, Transcript } from "@hypr/plugin-template";
 
-import type * as main from "~/store/tinybase/store/main";
+import { loadHumansByIds } from "~/contacts/queries";
 import {
-  buildRenderTranscriptRequestFromFsTranscript,
+  loadSessionContentSnapshot,
+  type SessionContentSnapshot,
+} from "~/session/content-queries";
+import {
+  buildRenderTranscriptRequestFromRows,
+  collectAssignedHumanIdsFromTranscriptRows,
   renderTranscriptSegments,
 } from "~/stt/render-transcript";
 
@@ -25,30 +28,35 @@ function extractEventName(event: unknown): string | null {
 }
 
 async function buildTranscript(
-  transcriptData: SessionContentData["transcript"],
-  store: ReturnType<typeof main.UI.useStore>,
-  sessionId: string,
+  transcripts: SessionContentSnapshot["transcripts"],
+  humans: Array<{ id: string; name: string }>,
+  participantHumanIds: string[],
+  selfHumanId?: string,
 ): Promise<Transcript | null> {
-  const transcripts = transcriptData?.transcripts ?? [];
   if (transcripts.length === 0) {
     return null;
   }
-  const request = buildRenderTranscriptRequestFromFsTranscript(
-    transcriptData,
-    store,
-    sessionId,
+  const request = buildRenderTranscriptRequestFromRows(
+    transcripts,
+    {
+      selfHumanId,
+      humans: humans
+        .filter((human) => human.name)
+        .map((human) => ({ human_id: human.id, name: human.name })),
+    },
+    participantHumanIds,
   );
   if (!request) {
     return null;
   }
   const segments = await renderTranscriptSegments(request);
 
-  const startedAtCandidates = transcripts
-    .map((t) => t.started_at)
-    .filter((v): v is number => typeof v === "number");
+  const startedAtCandidates = transcripts.map(
+    (transcript) => transcript.started_at,
+  );
   const endedAtCandidates = transcripts
-    .map((t) => t.ended_at)
-    .filter((v): v is number => typeof v === "number");
+    .map((transcript) => transcript.ended_at)
+    .filter((value): value is number => typeof value === "number");
 
   return {
     segments: segments.map((segment) => ({
@@ -62,57 +70,50 @@ async function buildTranscript(
   };
 }
 
-export async function hydrateSessionContextFromFs(
-  store: ReturnType<typeof main.UI.useStore>,
+export async function hydrateSessionContext(
   sessionId: string,
+  selfHumanId?: string,
 ): Promise<SessionContext | null> {
-  const result = await fsSyncCommands.loadSessionContent(sessionId);
-  if (result.status === "error") {
-    return null;
-  }
+  const snapshot = await loadSessionContentSnapshot(sessionId);
+  if (!snapshot) return null;
 
-  const payload = result.data;
-  const participants =
-    payload.meta?.participants
-      ?.map((participant) => {
-        const row = store?.getRow("humans", participant.humanId);
-        if (!row || typeof row.name !== "string" || !row.name) {
-          return null;
-        }
+  const participantHumanIds = snapshot.participants.map(
+    (participant) => participant.humanId,
+  );
+  const assignedHumanIds = collectAssignedHumanIdsFromTranscriptRows(
+    snapshot.transcripts,
+  );
+  const humanIds = [
+    ...new Set(
+      [...participantHumanIds, ...assignedHumanIds, selfHumanId ?? ""].filter(
+        Boolean,
+      ),
+    ),
+  ];
+  const humans = await loadHumansByIds(humanIds);
+  const participants = snapshot.participants.flatMap((participant) =>
+    participant.name
+      ? [{ name: participant.name, jobTitle: participant.jobTitle || null }]
+      : [],
+  );
 
-        return {
-          name: row.name,
-          jobTitle:
-            typeof row.job_title === "string" && row.job_title
-              ? row.job_title
-              : null,
-        };
-      })
-      .filter(
-        (
-          participant,
-        ): participant is { name: string; jobTitle: string | null } =>
-          Boolean(participant),
-      ) ?? [];
-
-  const enhancedContent = payload.notes
-    .slice()
-    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-    .map((note) => note.markdown ?? null)
+  const enhancedContent = snapshot.enhancedNotes
+    .map((note) => note.markdown || null)
     .filter((note): note is string => Boolean(note))
     .join("\n\n---\n\n");
 
   const transcript = await buildTranscript(
-    payload.transcript,
-    store,
-    sessionId,
+    snapshot.transcripts,
+    humans,
+    participantHumanIds,
+    selfHumanId,
   );
-  const eventName = extractEventName(payload.meta?.event);
+  const eventName = extractEventName(snapshot.event);
 
   return {
-    title: payload.meta?.title ?? null,
-    date: payload.meta?.createdAt ?? null,
-    rawContent: payload.rawMemoMarkdown ?? null,
+    title: snapshot.title || null,
+    date: snapshot.createdAt || null,
+    rawContent: snapshot.rawMarkdown || null,
     enhancedContent: enhancedContent || null,
     transcript,
     participants,

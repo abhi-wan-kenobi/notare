@@ -1,5 +1,4 @@
 import { type UnlistenFn } from "@tauri-apps/api/event";
-import { useEffect, useRef } from "react";
 
 import { events as notificationEvents } from "@hypr/plugin-notification";
 import {
@@ -8,13 +7,13 @@ import {
 } from "@hypr/plugin-updater2";
 import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 
+import { getCalendarEventStartedAt } from "~/calendar/queries";
+import { liveQueryClient } from "~/db";
+import { createSession, getOrCreateSessionForEventId } from "~/session/queries";
+import { setSettingValue } from "~/settings/queries";
+import { useConfigValue, useConfigValues } from "~/shared/config";
+import { useLatestRef } from "~/shared/hooks/useLatestRef";
 import { useMountEffect } from "~/shared/hooks/useMountEffect";
-import * as main from "~/store/tinybase/store/main";
-import {
-  createSession,
-  getOrCreateSessionForEventId,
-} from "~/store/tinybase/store/sessions";
-import * as settings from "~/store/tinybase/store/settings";
 import { listenerStore } from "~/store/zustand/listener/instance";
 import { useTabs } from "~/store/zustand/tabs";
 import { parseAutoStopEndedNotificationKey } from "~/stt/auto-stop-notification";
@@ -24,33 +23,33 @@ import {
   getTranscriptionLanguages,
 } from "~/stt/capabilities";
 
-type MainStore = NonNullable<ReturnType<typeof main.UI.useStore>>;
-type SettingsStore = NonNullable<ReturnType<typeof settings.UI.useStore>>;
+type CaptureIdentitySqlRow = {
+  session_id: string;
+  owner_user_id: string;
+  human_id: string | null;
+};
+
+const CAPTURE_IDENTITY_SQL = `
+  SELECT
+    session.id AS session_id,
+    session.owner_user_id,
+    participant.human_id
+  FROM sessions AS session
+  LEFT JOIN session_participants AS participant
+    ON participant.session_id = session.id
+    AND participant.human_id <> ''
+    AND participant.source <> 'excluded'
+    AND participant.deleted_at IS NULL
+  WHERE session.deleted_at IS NULL
+  ORDER BY session.id, participant.human_id
+`;
 
 const LIVE_CAPTURE_CONFIG_DEBOUNCE_MS = 750;
 
-function parseIgnoredPlatforms(value: unknown) {
-  if (typeof value !== "string") {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed)
-      ? parsed.filter(
-          (bundleId): bundleId is string => typeof bundleId === "string",
-        )
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function shouldAutoStartNotificationSession(
-  store: MainStore,
+async function shouldAutoStartNotificationSession(
   eventId: string | null,
   triggerAppIds: string[] | null,
-): boolean {
+): Promise<boolean> {
   if (triggerAppIds && triggerAppIds.length > 0) {
     return true;
   }
@@ -59,13 +58,31 @@ function shouldAutoStartNotificationSession(
     return true;
   }
 
-  const startedAt = store.getRow("events", eventId)?.started_at;
+  const startedAt = await getCalendarEventStartedAt(eventId);
   if (!startedAt) {
     return false;
   }
 
   const startTime = new Date(String(startedAt)).getTime();
   return !Number.isNaN(startTime) && startTime <= Date.now();
+}
+
+async function createNotificationSession(
+  eventId: string | null,
+  triggerAppIds: string[] | null,
+): Promise<{ sessionId: string; autoStart: boolean }> {
+  const sessionId = eventId
+    ? await getOrCreateSessionForEventId(eventId)
+    : await createSession();
+
+  if (triggerAppIds && triggerAppIds.length > 0) {
+    listenerStore.getState().setTriggerAppIds(triggerAppIds);
+  }
+
+  return {
+    sessionId,
+    autoStart: await shouldAutoStartNotificationSession(eventId, triggerAppIds),
+  };
 }
 
 function handleAutoStopEndedNotification(
@@ -92,30 +109,22 @@ function handleAutoStopEndedNotification(
   return true;
 }
 
-function getSessionParticipantHumanIds(store: MainStore, sessionId: string) {
+function getSessionParticipantHumanIds(
+  rows: CaptureIdentitySqlRow[],
+  sessionId: string,
+) {
   const seen = new Set<string>();
   const participantHumanIds: string[] = [];
 
-  store.forEachRow("mapping_session_participant", (mappingId, _forEachCell) => {
-    const sid = store.getCell(
-      "mapping_session_participant",
-      mappingId,
-      "session_id",
-    );
-    if (sid !== sessionId) return;
-
-    const humanId = store.getCell(
-      "mapping_session_participant",
-      mappingId,
-      "human_id",
-    );
-    if (typeof humanId !== "string" || !humanId || seen.has(humanId)) {
-      return;
+  for (const row of rows) {
+    const humanId = row.human_id;
+    if (row.session_id !== sessionId || !humanId || seen.has(humanId)) {
+      continue;
     }
 
     seen.add(humanId);
     participantHumanIds.push(humanId);
-  });
+  }
 
   return participantHumanIds;
 }
@@ -148,68 +157,65 @@ function parseStringArray(value: unknown, fallback: string[]) {
   }
 }
 
-function getSettingsDefault(key: "ai_language" | "spoken_languages") {
-  const mapping = settings.SETTINGS_MAPPING?.values[key];
-  return mapping && "default" in mapping ? mapping.default : undefined;
-}
-
-function getLiveConfigLanguages(settingsStore: SettingsStore) {
-  const aiLanguageValue = settingsStore.getValue("ai_language");
-  const aiLanguage =
-    typeof aiLanguageValue === "string"
-      ? aiLanguageValue
-      : typeof getSettingsDefault("ai_language") === "string"
-        ? getSettingsDefault("ai_language")
-        : undefined;
-
+function getLiveConfigLanguages(aiLanguage: string, spokenLanguages: string[]) {
   return getTranscriptionLanguages(
-    aiLanguage,
-    parseStringArray(
-      settingsStore.getValue("spoken_languages"),
-      parseStringArray(getSettingsDefault("spoken_languages"), []),
-    ),
+    aiLanguage || undefined,
+    parseStringArray(spokenLanguages, []),
   );
 }
 
 function LiveCaptureConfigSync() {
-  const store = main.UI.useStore(main.STORE_ID);
-  const settingsStore = settings.UI.useStore(settings.STORE_ID);
+  const settingsValues = useConfigValues([
+    "ai_language",
+    "spoken_languages",
+    "current_stt_provider",
+    "current_stt_model",
+  ] as const);
 
-  if (!store || !settingsStore) {
-    return null;
-  }
-
+  const settingsSignature = JSON.stringify(settingsValues);
   return (
     <LiveCaptureConfigSyncReady
-      settingsStore={settingsStore as SettingsStore}
-      store={store as MainStore}
+      key={settingsSignature}
+      settingsValues={settingsValues}
     />
   );
 }
 
 function LiveCaptureConfigSyncReady({
-  store,
-  settingsStore,
+  settingsValues,
 }: {
-  store: MainStore;
-  settingsStore: SettingsStore;
+  settingsValues: {
+    ai_language: string;
+    spoken_languages: string[];
+    current_stt_provider: string | undefined;
+    current_stt_model: string | undefined;
+  };
 }) {
   useMountEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let lastSignature: string | null = null;
+    let rows: CaptureIdentitySqlRow[] = [];
+    let hasSnapshot = false;
+    let cancelled = false;
+    let unsubscribeDatabase: (() => Promise<void>) | null = null;
 
     const pushConfig = async () => {
+      if (!hasSnapshot) {
+        return;
+      }
+
       const live = listenerStore.getState().live;
       if (live.status !== "active" || !live.sessionId) {
         return;
       }
 
-      const languages = getLiveConfigLanguages(settingsStore);
-      const provider = settingsStore.getValue("current_stt_provider");
-      const model = settingsStore.getValue("current_stt_model");
+      const languages = getLiveConfigLanguages(
+        settingsValues.ai_language,
+        settingsValues.spoken_languages,
+      );
       const liveConfig = await getLiveTranscriptionConfig({
-        provider: typeof provider === "string" ? provider : undefined,
-        model: typeof model === "string" ? model : undefined,
+        provider: settingsValues.current_stt_provider,
+        model: settingsValues.current_stt_model,
         languages,
       });
 
@@ -217,15 +223,15 @@ function LiveCaptureConfigSyncReady({
         return;
       }
 
-      const selfHumanId = store.getValue("user_id");
+      const session = rows.find((row) => row.session_id === live.sessionId);
       const nextConfig = {
         session_id: live.sessionId,
         languages: liveConfig.languages,
         participant_human_ids: getSessionParticipantHumanIds(
-          store,
+          rows,
           live.sessionId,
         ),
-        self_human_id: typeof selfHumanId === "string" ? selfHumanId : null,
+        self_human_id: session?.owner_user_id || null,
       };
       const signature = createCaptureConfigSignature(nextConfig);
       if (signature === lastSignature) {
@@ -251,28 +257,42 @@ function LiveCaptureConfigSyncReady({
       }, LIVE_CAPTURE_CONFIG_DEBOUNCE_MS);
     };
 
-    const mainListenerIds = [
-      store.addTableListener("mapping_session_participant", schedulePush),
-    ];
-    const settingsListenerIds = [
-      settingsStore.addValueListener("ai_language", schedulePush),
-      settingsStore.addValueListener("spoken_languages", schedulePush),
-      settingsStore.addValueListener("current_stt_provider", schedulePush),
-      settingsStore.addValueListener("current_stt_model", schedulePush),
-    ];
-
-    schedulePush();
+    const unsubscribeListener = listenerStore.subscribe(schedulePush);
+    void liveQueryClient
+      .subscribe<CaptureIdentitySqlRow>(CAPTURE_IDENTITY_SQL, [], {
+        onData: (nextRows) => {
+          rows = nextRows;
+          hasSnapshot = true;
+          schedulePush();
+        },
+        onError: (error) => {
+          console.error(
+            "[listener] failed to read live capture identities",
+            error,
+          );
+        },
+      })
+      .then((unsubscribe) => {
+        if (cancelled) {
+          void unsubscribe();
+        } else {
+          unsubscribeDatabase = unsubscribe;
+        }
+      })
+      .catch((error) => {
+        console.error(
+          "[listener] failed to subscribe to live capture identities",
+          error,
+        );
+      });
 
     return () => {
+      cancelled = true;
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      for (const listenerId of mainListenerIds) {
-        store.delListener(listenerId);
-      }
-      for (const listenerId of settingsListenerIds) {
-        settingsStore.delListener(listenerId);
-      }
+      unsubscribeListener();
+      void unsubscribeDatabase?.();
     };
   });
 
@@ -281,8 +301,9 @@ function LiveCaptureConfigSyncReady({
 
 function useUpdaterEvents() {
   const openNew = useTabs((state) => state.openNew);
+  const openNewRef = useLatestRef(openNew);
 
-  useEffect(() => {
+  useMountEffect(() => {
     if (getCurrentWebviewWindowLabel() !== "main") {
       return;
     }
@@ -291,66 +312,29 @@ function useUpdaterEvents() {
 
     void updaterEvents.updatedEvent
       .listen(({ payload: { previous, current } }) => {
-        openNew({
+        openNewRef.current({
           type: "changelog",
           state: { previous, current },
         });
       })
-      .then((f) => {
+      .then(async (f) => {
         unlisten = f;
-        updaterCommands.maybeEmitUpdated();
+        await updaterCommands.maybeEmitUpdated();
       });
 
     return () => {
       unlisten?.();
     };
-  }, [openNew]);
+  });
 }
 
 function useNotificationEvents() {
-  const store = main.UI.useStore(main.STORE_ID);
-  const settingsStore = settings.UI.useStore(settings.STORE_ID);
+  const ignoredPlatforms = useConfigValue("ignored_platforms");
   const openNew = useTabs((state) => state.openNew);
-  const pendingAutoStart = useRef<{
-    eventId: string | null;
-    triggerAppIds: string[] | null;
-  } | null>(null);
-  const storeRef = useRef(store);
-  const settingsStoreRef = useRef(settingsStore);
-  const openNewRef = useRef(openNew);
+  const ignoredPlatformsRef = useLatestRef(ignoredPlatforms);
+  const openNewRef = useLatestRef(openNew);
 
-  useEffect(() => {
-    storeRef.current = store;
-    settingsStoreRef.current = settingsStore;
-    openNewRef.current = openNew;
-  }, [store, settingsStore, openNew]);
-
-  useEffect(() => {
-    if (pendingAutoStart.current && store) {
-      const { eventId, triggerAppIds } = pendingAutoStart.current;
-      pendingAutoStart.current = null;
-      const sessionId = eventId
-        ? getOrCreateSessionForEventId(store, eventId)
-        : createSession(store);
-
-      if (triggerAppIds && triggerAppIds.length > 0) {
-        listenerStore.getState().setTriggerAppIds(triggerAppIds);
-      }
-      const autoStart = shouldAutoStartNotificationSession(
-        store,
-        eventId,
-        triggerAppIds,
-      );
-
-      openNew({
-        type: "sessions",
-        id: sessionId,
-        state: { view: null, autoStart: autoStart ? true : null },
-      });
-    }
-  }, [store, openNew]);
-
-  useEffect(() => {
+  useMountEffect(() => {
     if (getCurrentWebviewWindowLabel() !== "main") {
       return;
     }
@@ -387,7 +371,6 @@ function useNotificationEvents() {
             payload.source?.type === "mic_detected"
               ? (payload.source.app_ids ?? null)
               : null;
-          const currentStore = storeRef.current;
           if (sourceSessionId) {
             openNewRef.current({
               type: "sessions",
@@ -397,45 +380,31 @@ function useNotificationEvents() {
             return;
           }
 
-          if (!currentStore) {
-            pendingAutoStart.current = { eventId, triggerAppIds };
-            return;
-          }
-          const sessionId = eventId
-            ? getOrCreateSessionForEventId(currentStore, eventId)
-            : createSession(currentStore);
-
-          if (triggerAppIds && triggerAppIds.length > 0) {
-            listenerStore.getState().setTriggerAppIds(triggerAppIds);
-          }
-          const autoStart = shouldAutoStartNotificationSession(
-            currentStore,
-            eventId,
-            triggerAppIds,
-          );
-
-          openNewRef.current({
-            type: "sessions",
-            id: sessionId,
-            state: { view: null, autoStart: autoStart ? true : null },
-          });
+          void createNotificationSession(eventId, triggerAppIds)
+            .then(({ sessionId, autoStart }) => {
+              openNewRef.current({
+                type: "sessions",
+                id: sessionId,
+                state: { view: null, autoStart: autoStart ? true : null },
+              });
+            })
+            .catch((error) => {
+              console.error(
+                "[notification] failed to open notification session",
+                error,
+              );
+            });
         } else if (payload.type === "notification_option_selected") {
-          const currentStore = storeRef.current;
-          if (!currentStore) return;
-
           const selectedIndex = payload.selected_index;
           const eventIds =
             payload.source?.type === "mic_detected"
               ? (payload.source.event_ids ?? [])
               : [];
 
-          const sessionId =
+          const sessionPromise =
             selectedIndex < eventIds.length
-              ? getOrCreateSessionForEventId(
-                  currentStore,
-                  eventIds[selectedIndex],
-                )
-              : createSession(currentStore);
+              ? getOrCreateSessionForEventId(eventIds[selectedIndex])
+              : createSession();
 
           if (payload.source?.type === "mic_detected") {
             const triggerAppIds = payload.source.app_ids ?? [];
@@ -446,18 +415,22 @@ function useNotificationEvents() {
               );
           }
 
-          openNewRef.current({
-            type: "sessions",
-            id: sessionId,
-            state: { view: null, autoStart: true },
-          });
+          void sessionPromise
+            .then((sessionId) => {
+              openNewRef.current({
+                type: "sessions",
+                id: sessionId,
+                state: { view: null, autoStart: true },
+              });
+            })
+            .catch((error) => {
+              console.error(
+                "[notification] failed to open selected event",
+                error,
+              );
+            });
         } else if (payload.type === "notification_footer_action") {
           if (payload.source?.type !== "mic_detected") {
-            return;
-          }
-
-          const currentSettingsStore = settingsStoreRef.current;
-          if (!currentSettingsStore) {
             return;
           }
 
@@ -466,9 +439,7 @@ function useNotificationEvents() {
             return;
           }
 
-          const ignoredPlatforms = parseIgnoredPlatforms(
-            currentSettingsStore.getValue("ignored_platforms"),
-          );
+          const ignoredPlatforms = ignoredPlatformsRef.current;
           const nextIgnoredPlatforms = [
             ...new Set([...ignoredPlatforms, ...appIds]),
           ];
@@ -477,10 +448,12 @@ function useNotificationEvents() {
             return;
           }
 
-          currentSettingsStore.setValue(
+          void setSettingValue(
             "ignored_platforms",
             JSON.stringify(nextIgnoredPlatforms),
-          );
+          ).catch((error) => {
+            console.error("[notification] failed to ignore platforms", error);
+          });
         }
       })
       .then((f) => {
@@ -495,7 +468,7 @@ function useNotificationEvents() {
       cancelled = true;
       unlisten?.();
     };
-  }, []);
+  });
 }
 
 export function EventListeners() {

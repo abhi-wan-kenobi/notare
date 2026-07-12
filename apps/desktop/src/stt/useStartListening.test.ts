@@ -12,18 +12,18 @@ const {
   startMock,
   runBatchMock,
   useListenerMock,
-  useValuesMock,
-  useStoreMock,
-  useIndexesMock,
+  useSessionMock,
+  useSessionHasTranscriptMock,
+  useSessionParticipantHumanIdsMock,
+  createLiveTranscriptMock,
+  applyLiveTranscriptDeltaToDatabaseMock,
+  softDeleteTranscriptMock,
   useConfigValueMock,
   useSTTConnectionMock,
   isSupportedLanguagesLiveMock,
   leftSidebarExpanded,
   setLeftSidebarExpandedMock,
-  settingsUseStoreMock,
   deleteProcessedAudioForRetentionMock,
-  mainStoreMock,
-  settingsStoreMock,
 } = vi.hoisted(() => ({
   queueAutoEnhanceMock: vi.fn(),
   queueAutoEnhanceIfSummaryEmptyMock: vi.fn(),
@@ -31,25 +31,18 @@ const {
   startMock: vi.fn(),
   runBatchMock: vi.fn(),
   useListenerMock: vi.fn(),
-  useValuesMock: vi.fn(),
-  useStoreMock: vi.fn(),
-  useIndexesMock: vi.fn(),
+  useSessionMock: vi.fn(),
+  useSessionHasTranscriptMock: vi.fn(),
+  useSessionParticipantHumanIdsMock: vi.fn(),
+  createLiveTranscriptMock: vi.fn(),
+  applyLiveTranscriptDeltaToDatabaseMock: vi.fn(),
+  softDeleteTranscriptMock: vi.fn(),
   useConfigValueMock: vi.fn(),
   useSTTConnectionMock: vi.fn(),
   isSupportedLanguagesLiveMock: vi.fn(),
   leftSidebarExpanded: { value: true },
   setLeftSidebarExpandedMock: vi.fn(),
-  settingsUseStoreMock: vi.fn(),
   deleteProcessedAudioForRetentionMock: vi.fn(),
-  mainStoreMock: {
-    getCell: vi.fn((_table: string, _rowId: string, _cell: string) => ""),
-    forEachRow: vi.fn(),
-    setRow: vi.fn(),
-    setCell: vi.fn(),
-    delRow: vi.fn(),
-    transaction: vi.fn((fn: () => void) => fn()),
-  },
-  settingsStoreMock: { id: "settings-store" },
 }));
 
 vi.mock("@hypr/plugin-transcription", () => ({
@@ -63,7 +56,7 @@ vi.mock("./contexts", () => ({
 }));
 
 vi.mock("./useKeywords", () => ({
-  getSessionKeywords: vi.fn(() => []),
+  getSessionKeywords: vi.fn(async () => []),
   useKeywords: vi.fn(() => []),
 }));
 
@@ -92,6 +85,8 @@ vi.mock("~/services/enhancer", () => ({
 
 vi.mock("~/services/audio-retention", () => ({
   deleteProcessedAudioForRetention: deleteProcessedAudioForRetentionMock,
+  normalizeAudioRetention: (value: unknown) =>
+    typeof value === "string" ? value : "forever",
 }));
 
 vi.mock("~/contexts/shell", () => ({
@@ -104,7 +99,12 @@ vi.mock("~/contexts/shell", () => ({
 }));
 
 vi.mock("~/session/utils", () => ({
-  getSessionEventById: vi.fn(() => null),
+  getSessionEvent: vi.fn(() => null),
+}));
+
+vi.mock("~/session/queries", () => ({
+  useSession: useSessionMock,
+  useSessionHasTranscript: useSessionHasTranscriptMock,
 }));
 
 vi.mock("~/shared/config", () => ({
@@ -115,23 +115,11 @@ vi.mock("~/shared/utils", () => ({
   id: vi.fn(() => "generated-id"),
 }));
 
-vi.mock("~/store/tinybase/store/main", () => ({
-  STORE_ID: "main",
-  INDEXES: {
-    transcriptBySession: "transcriptBySession",
-  },
-  UI: {
-    useValues: useValuesMock,
-    useStore: useStoreMock,
-    useIndexes: useIndexesMock,
-  },
-}));
-
-vi.mock("~/store/tinybase/store/settings", () => ({
-  STORE_ID: "settings",
-  UI: {
-    useStore: settingsUseStoreMock,
-  },
+vi.mock("~/stt/queries", () => ({
+  applyLiveTranscriptDeltaToDatabase: applyLiveTranscriptDeltaToDatabaseMock,
+  createLiveTranscript: createLiveTranscriptMock,
+  softDeleteTranscript: softDeleteTranscriptMock,
+  useSessionParticipantHumanIds: useSessionParticipantHumanIdsMock,
 }));
 
 describe("getPostCaptureAction", () => {
@@ -193,15 +181,20 @@ describe("useStartListening", () => {
         start: startMock,
       }),
     );
-    useValuesMock.mockReturnValue({ user_id: "user-1" });
-    useIndexesMock.mockReturnValue(null);
+    useSessionMock.mockReturnValue({
+      id: "session-1",
+      user_id: "user-1",
+      raw_md: "Existing memo",
+    });
+    useSessionHasTranscriptMock.mockReturnValue(false);
+    useSessionParticipantHumanIdsMock.mockReturnValue([]);
+    createLiveTranscriptMock.mockResolvedValue(undefined);
+    applyLiveTranscriptDeltaToDatabaseMock.mockResolvedValue(undefined);
+    softDeleteTranscriptMock.mockResolvedValue(undefined);
     useConfigValueMock.mockImplementation((key) =>
       key === "ai_language" ? "en" : [],
     );
     leftSidebarExpanded.value = true;
-    settingsUseStoreMock.mockReturnValue(settingsStoreMock);
-    mainStoreMock.getCell.mockImplementation(() => "");
-    mainStoreMock.forEachRow.mockImplementation(() => {});
     useSTTConnectionMock.mockReturnValue({
       conn: {
         provider: "hyprnote",
@@ -210,7 +203,6 @@ describe("useStartListening", () => {
         apiKey: "",
       },
     });
-    useStoreMock.mockReturnValue(mainStoreMock);
     startMock.mockResolvedValue(true);
     runBatchMock.mockResolvedValue(undefined);
     isSupportedLanguagesLiveMock.mockResolvedValue({
@@ -255,7 +247,7 @@ describe("useStartListening", () => {
 
   test("reads keywords from the same pre-start snapshot as the transcript memo", async () => {
     const calls: string[] = [];
-    vi.mocked(getSessionKeywords).mockImplementation(() => {
+    vi.mocked(getSessionKeywords).mockImplementation(async () => {
       calls.push("keywords");
       return ["launch"];
     });
@@ -300,8 +292,7 @@ describe("useStartListening", () => {
       "session-1",
     );
     expect(deleteProcessedAudioForRetentionMock).toHaveBeenCalledWith(
-      mainStoreMock,
-      settingsStoreMock,
+      "forever",
       "session-1",
     );
   });
@@ -329,31 +320,20 @@ describe("useStartListening", () => {
       "session-1",
     );
     expect(deleteProcessedAudioForRetentionMock).toHaveBeenCalledWith(
-      mainStoreMock,
-      settingsStoreMock,
+      "forever",
       "session-1",
     );
   });
 
   test("regenerates the summary after resumed live capture writes transcript", async () => {
-    useIndexesMock.mockReturnValue({
-      getSliceRowIds: vi.fn(() => ["existing-transcript"]),
-    });
-    mainStoreMock.getCell.mockImplementation((table, _rowId, cell) => {
-      if (table === "transcripts" && cell === "words") {
-        return JSON.stringify([
-          {
-            id: "existing-word",
-            text: "existing",
-            start_ms: 0,
-            end_ms: 100,
-            channel: 0,
-          },
-        ]);
-      }
-
-      return "";
-    });
+    let resolveTranscriptWrite: (() => void) | undefined;
+    createLiveTranscriptMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveTranscriptWrite = resolve;
+        }),
+    );
+    useSessionHasTranscriptMock.mockReturnValue(true);
 
     const { result } = renderHook(() => useStartListening("session-1"));
 
@@ -381,40 +361,25 @@ describe("useStartListening", () => {
     });
 
     const onStopped = startMock.mock.calls[0]?.[1]?.onStopped;
-
-    await act(async () => {
-      await onStopped?.("session-1", {
-        durationSeconds: 42,
-        audioPath: "/tmp/session.wav",
-        requestedLiveTranscription: true,
-        liveTranscriptionActive: true,
-      });
+    const stopped = onStopped?.("session-1", {
+      durationSeconds: 42,
+      audioPath: "/tmp/session.wav",
+      requestedLiveTranscription: true,
+      liveTranscriptionActive: true,
     });
 
+    expect(resetEnhanceTasksMock).not.toHaveBeenCalled();
+    resolveTranscriptWrite?.();
+    await act(async () => await stopped);
+
+    expect(createLiveTranscriptMock).toHaveBeenCalledTimes(1);
     expect(resetEnhanceTasksMock).toHaveBeenCalledWith("session-1");
     expect(queueAutoEnhanceMock).toHaveBeenCalledWith("session-1");
     expect(queueAutoEnhanceIfSummaryEmptyMock).not.toHaveBeenCalled();
   });
 
   test("regenerates the summary after resumed batch capture completes", async () => {
-    useIndexesMock.mockReturnValue({
-      getSliceRowIds: vi.fn(() => ["existing-transcript"]),
-    });
-    mainStoreMock.getCell.mockImplementation((table, _rowId, cell) => {
-      if (table === "transcripts" && cell === "words") {
-        return JSON.stringify([
-          {
-            id: "existing-word",
-            text: "existing",
-            start_ms: 0,
-            end_ms: 100,
-            channel: 0,
-          },
-        ]);
-      }
-
-      return "";
-    });
+    useSessionHasTranscriptMock.mockReturnValue(true);
 
     const { result } = renderHook(() => useStartListening("session-1"));
 

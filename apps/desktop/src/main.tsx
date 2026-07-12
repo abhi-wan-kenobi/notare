@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode, useMemo } from "react";
 import ReactDOM from "react-dom/client";
-import { Provider as TinyBaseProvider, useStores } from "tinybase/ui-react";
 import { createManager } from "tinytick";
 import {
   Provider as TinyTickProvider,
@@ -29,20 +28,12 @@ import { routeTree } from "./routeTree.gen";
 import { EventListeners } from "./services/event-listeners";
 import { TaskManager } from "./services/task-manager";
 import { useRemoteSessionDeletionUndoListener } from "./session/hooks/useDeleteSession";
-import { RawEditorSyncBridge } from "./session/raw-editor-sync";
+import { refreshLegacySettingsSnapshots } from "./settings/legacy-snapshots";
+import { initializeApplicationSettings } from "./settings/queries";
+import { initializeAppExitFlush } from "./shared/app-exit";
 import { ErrorComponent, NotFoundComponent } from "./shared/control";
 import { bootstrapThemeFromSettings } from "./shared/theme/apply";
 import { AppThemeProvider } from "./shared/theme/provider";
-import {
-  type Store,
-  STORE_ID,
-  StoreComponent,
-} from "./store/tinybase/store/main";
-import {
-  STORE_ID as SETTINGS_STORE_ID,
-  type Store as SettingsStore,
-  StoreComponent as SettingsStoreComponent,
-} from "./store/tinybase/store/settings";
 import { createAITaskStore } from "./store/zustand/ai-task";
 import { listenerStore } from "./store/zustand/listener/instance";
 
@@ -63,21 +54,7 @@ declare module "@tanstack/react-router" {
 }
 
 function App() {
-  const stores = useStores();
-
-  const store = stores[STORE_ID] as unknown as Store;
-  const settingsStore = stores[SETTINGS_STORE_ID] as unknown as SettingsStore;
-
-  const aiTaskStore = useMemo(() => {
-    if (!store || !settingsStore) {
-      return null;
-    }
-    return createAITaskStore({ persistedStore: store, settingsStore });
-  }, [store, settingsStore]);
-
-  if (!store || !settingsStore || !aiTaskStore) {
-    return <div className="bg-background h-screen w-screen" />;
-  }
+  const aiTaskStore = useMemo(() => createAITaskStore(), []);
 
   return (
     <AppThemeProvider>
@@ -86,8 +63,6 @@ function App() {
         <RouterProvider
           router={router}
           context={{
-            persistedStore: store,
-            internalStore: store,
             listenerStore,
             aiTaskStore,
             toolRegistry,
@@ -112,7 +87,7 @@ if (env.VITE_SENTRY_DSN) {
   });
 }
 
-function AppWithTiny() {
+function AppRoot() {
   const manager = useCreateManager(() => {
     return createManager().start();
   });
@@ -122,22 +97,23 @@ function AppWithTiny() {
   return (
     <QueryClientProvider client={queryClient}>
       <TinyTickProvider manager={manager}>
-        <TinyBaseProvider>
-          <StoreComponent />
-          <SettingsStoreComponent />
-          <RawEditorSyncBridge />
-          <App />
-          {isMainWindow ? <TaskManager /> : null}
-          {isMainWindow ? <FloatingMeetingWindowHost /> : null}
-          {isMainWindow ? <EventListeners /> : null}
-          <Toaster />
-        </TinyBaseProvider>
+        <App />
+        {isMainWindow ? <TaskManager /> : null}
+        {isMainWindow ? <FloatingMeetingWindowHost /> : null}
+        {isMainWindow ? <EventListeners /> : null}
+        <Toaster />
       </TinyTickProvider>
     </QueryClientProvider>
   );
 }
 
 initWindowsPlugin();
+
+if (getCurrentWebviewWindowLabel() === "main") {
+  void initializeAppExitFlush().catch((error) => {
+    console.error("Failed to initialize the exit flush listener", error);
+  });
+}
 
 const rootElement = document.getElementById("root")!;
 
@@ -155,11 +131,17 @@ async function enableReactScanInDev() {
 }
 
 async function renderApp() {
+  await refreshLegacySettingsSnapshots().catch((error) => {
+    console.error("Failed to refresh legacy settings snapshots", error);
+  });
+  await initializeApplicationSettings().catch((error) => {
+    console.error("Failed to initialize application settings", error);
+  });
   await Promise.all([bootstrapThemeFromSettings(), enableReactScanInDev()]);
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
-      <AppWithTiny />
+      <AppRoot />
     </StrictMode>,
   );
 }

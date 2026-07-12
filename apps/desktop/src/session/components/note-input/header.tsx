@@ -37,22 +37,30 @@ import { useSessionTranscriptRenderData } from "~/session/components/note-input/
 import { useCanShowTranscript } from "~/session/components/shared";
 import { useEnsureDefaultSummary } from "~/session/hooks/useEnhancedNotes";
 import {
+  deleteEnhancedNote,
+  useEnhancedNote,
+  useEnhancedNoteRecords,
+  useSession,
+} from "~/session/queries";
+import {
   type MenuItemDef,
   useNativeContextMenu,
 } from "~/shared/hooks/useNativeContextMenu";
 import { useWebResources } from "~/shared/ui/resource-list";
-import * as main from "~/store/tinybase/store/main";
 import { createTaskId } from "~/store/zustand/ai-task/task-configs";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 import { type EditorView } from "~/store/zustand/tabs/schema";
 import { useListener } from "~/stt/contexts";
 import {
   filterWebTemplatesAgainstUserTemplates,
+  DEFAULT_TEMPLATE_ICON,
   parseWebTemplates,
+  TemplateIconGlyph,
   useCreateTemplate,
   useUserTemplate,
   useUserTemplates,
   type WebTemplate,
+  type TemplateIcon,
 } from "~/templates";
 
 function getStoredNoteMarkdown(content: string | undefined) {
@@ -301,12 +309,7 @@ function HeaderViewRawActive({
   sessionId: string;
   standalone: boolean;
 }) {
-  const rawMd = main.UI.useCell(
-    "sessions",
-    sessionId,
-    "raw_md",
-    main.STORE_ID,
-  ) as string | undefined;
+  const rawMd = useSession(sessionId)?.raw_md;
   const memoMarkdown = useMemo(() => getStoredNoteMarkdown(rawMd), [rawMd]);
   const contextMenu = useMemo<MenuItemDef[]>(
     () => [
@@ -374,18 +377,9 @@ function HeaderViewEnhanced({
 }
 
 function useEnhancedViewTitle(enhancedNoteId: string) {
-  const rawTitle = main.UI.useCell(
-    "enhanced_notes",
-    enhancedNoteId,
-    "title",
-    main.STORE_ID,
-  );
-  const templateId = main.UI.useCell(
-    "enhanced_notes",
-    enhancedNoteId,
-    "template_id",
-    main.STORE_ID,
-  ) as string | undefined;
+  const enhancedNote = useEnhancedNote(enhancedNoteId);
+  const rawTitle = enhancedNote?.title;
+  const templateId = enhancedNote?.templateId;
   const { data: template } = useUserTemplate(templateId);
   const templateTitle = template?.title?.trim() || null;
   const viewTitle = getEnhancedNoteTitle({
@@ -456,12 +450,7 @@ function HeaderViewEnhancedActive({
     sessionId,
     enhancedNoteId,
   );
-  const content = main.UI.useCell(
-    "enhanced_notes",
-    enhancedNoteId,
-    "content",
-    main.STORE_ID,
-  ) as string | undefined;
+  const content = useEnhancedNote(enhancedNoteId)?.content;
   const { viewTitle, templateTooltip } = useEnhancedViewTitle(enhancedNoteId);
   const noteMarkdown = useMemo(() => getStoredNoteMarkdown(content), [content]);
 
@@ -480,18 +469,26 @@ function HeaderViewEnhancedActive({
         return;
       }
 
-      const result = getEnhancerService()?.enhance(sessionId, {
-        templateId: selection.templateId,
-        targetNoteId: enhancedNoteId,
-        templateTitle: selection.templateId ? selection.title : undefined,
-      });
-
-      if (
-        (result?.type === "started" || result?.type === "already_active") &&
-        result.noteId
-      ) {
-        onSelectNote?.(result.noteId);
+      const service = getEnhancerService();
+      if (!service) {
+        return;
       }
+
+      void Promise.resolve(
+        service.enhance(sessionId, {
+          templateId: selection.templateId,
+          targetNoteId: enhancedNoteId,
+          templateTitle: selection.templateId ? selection.title : undefined,
+        }),
+      )
+        .then((result) => {
+          if (result.type === "started" || result.type === "already_active") {
+            onSelectNote?.(result.noteId);
+          }
+        })
+        .catch((error) => {
+          console.error("[enhancer] failed to replace summary template", error);
+        });
     },
     [enhancedNoteId, isGenerating, onSelectNote, sessionId],
   );
@@ -910,6 +907,7 @@ function TemplatePickerPopover({
         title: template.title,
         description: template.description,
         category: template.category,
+        icon: template.icon,
         targets: template.targets,
         sections: template.sections ?? [],
       });
@@ -1013,6 +1011,7 @@ function TemplatePickerPopover({
     Array<{
       key: string;
       title: string;
+      icon: TemplateIcon;
       isFavorite?: boolean;
       onClick: () => void;
     }>
@@ -1020,6 +1019,7 @@ function TemplatePickerPopover({
     const favoriteItems = filteredFavoriteTemplates.map((template) => ({
       key: template.id,
       title: template.title || "Untitled",
+      icon: template.icon,
       isFavorite: true,
       onClick: () =>
         handleUseTemplate({
@@ -1031,6 +1031,7 @@ function TemplatePickerPopover({
     const userItems = filteredOtherTemplates.map((template) => ({
       key: template.id,
       title: template.title || "Untitled",
+      icon: template.icon,
       onClick: () =>
         handleUseTemplate({
           templateId: template.id,
@@ -1041,6 +1042,7 @@ function TemplatePickerPopover({
     const webItems = filteredWebTemplates.map((template, index) => ({
       key: template.slug || `library-${index}`,
       title: template.title || "Untitled",
+      icon: template.icon,
       onClick: () => handleWebTemplateClick(template),
     }));
 
@@ -1067,6 +1069,7 @@ function TemplatePickerPopover({
       items: Array<{
         key: string;
         title: string;
+        icon: TemplateIcon;
         isFavorite?: boolean;
         onClick: () => void;
       }>;
@@ -1080,6 +1083,11 @@ function TemplatePickerPopover({
         {
           key: "auto",
           title: "Auto",
+          icon: {
+            type: "icon",
+            value: "sparkles",
+            color: "#9ca3af",
+          } satisfies TemplateIcon,
           onClick: () =>
             handleUseTemplate({
               templateId: null,
@@ -1113,6 +1121,7 @@ function TemplatePickerPopover({
           {
             key: `create-${trimmedSearch}`,
             title: trimmedSearch,
+            icon: DEFAULT_TEMPLATE_ICON,
             onClick: () => handleCreateTemplate(trimmedSearch),
           },
         ],
@@ -1190,9 +1199,11 @@ function TemplatePickerPopover({
       <PopoverContent variant="app" className="w-80" align="start">
         <div className="flex flex-col gap-1">
           <AppFloatingPanel className="flex flex-col overflow-hidden">
-            <div className="border-border border-b py-2">
+            <div className="border-border border-b py-1">
               <div
-                className={cn(["flex h-9 items-center gap-2 rounded-md px-3"])}
+                className={cn([
+                  "flex h-8 items-center gap-2 rounded-md px-2.5",
+                ])}
               >
                 <SearchIcon className="text-muted-foreground h-4 w-4" />
                 <input
@@ -1218,9 +1229,9 @@ function TemplatePickerPopover({
 
             <div className="relative">
               <div
-                className={cn(["scroll-fade-y max-h-80 overflow-y-auto p-2"])}
+                className={cn(["scroll-fade-y max-h-80 overflow-y-auto p-1.5"])}
               >
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-0">
                   {resultSections.map((section) => (
                     <TemplateSection
                       key={section.key}
@@ -1241,6 +1252,7 @@ function TemplatePickerPopover({
                                 resultRefs.current[itemIndex] = node;
                               }}
                               title={item.title}
+                              icon={item.icon}
                               isFavorite={item.isFavorite}
                               onClick={item.onClick}
                               onKeyDown={(e) =>
@@ -1291,7 +1303,6 @@ export function Header({
   isTranscribing?: boolean;
 }) {
   const { t } = useLingui();
-  const store = main.UI.useStore(main.STORE_ID);
   const primaryEnhancedTabId = editorTabs.find(
     (view): view is Extract<EditorView, { type: "enhanced" }> =>
       view.type === "enhanced",
@@ -1336,7 +1347,12 @@ export function Header({
                               handleTabChange(previousView);
                             }
 
-                            store?.delRow("enhanced_notes", view.id);
+                            void deleteEnhancedNote(view.id).catch((error) => {
+                              console.error(
+                                "[session-header] failed to remove summary",
+                                error,
+                              );
+                            });
                           }
                         : undefined
                     }
@@ -1395,14 +1411,12 @@ export function useEditorTabs({
   useEnsureDefaultSummary(sessionId);
   const canShowTranscript = useCanShowTranscript(sessionId, { audioExists });
 
-  const enhancedNoteIds = main.UI.useSliceRowIds(
-    main.INDEXES.enhancedNotesBySession,
-    sessionId,
-    main.STORE_ID,
+  const enhancedNoteIds = useEnhancedNoteRecords(sessionId).map(
+    (note) => note.id,
   );
 
   return createEditorTabs({
-    enhancedNoteIds: enhancedNoteIds || [],
+    enhancedNoteIds,
     canShowTranscript,
   });
 }
@@ -1483,7 +1497,7 @@ function TemplateSection({
   showHeader?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-0.5">
       {showHeader ? (
         <div className="flex items-center gap-2 px-2">
           {icon}
@@ -1497,7 +1511,7 @@ function TemplateSection({
           </p>
         </div>
       ) : null}
-      <div className="flex flex-col gap-1">{children}</div>
+      <div className="flex flex-col gap-0">{children}</div>
     </div>
   );
 }
@@ -1505,12 +1519,14 @@ function TemplateSection({
 function TemplateResultButton({
   buttonRef,
   title,
+  icon,
   isFavorite = false,
   onClick,
   onKeyDown,
 }: {
   buttonRef?: React.Ref<HTMLButtonElement>;
   title: string;
+  icon: TemplateIcon;
   isFavorite?: boolean;
   onClick: () => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLButtonElement>) => void;
@@ -1519,12 +1535,13 @@ function TemplateResultButton({
     <button
       ref={buttonRef}
       className={cn([
-        "hover:bg-accent focus:bg-muted w-full rounded-md px-3 py-2 text-left transition-colors focus:outline-hidden",
+        "hover:bg-accent focus:bg-muted h-8 w-full rounded-md px-2.5 text-left transition-colors focus:outline-hidden",
         "flex items-center gap-1.5",
       ])}
       onClick={onClick}
       onKeyDown={onKeyDown}
     >
+      <TemplateIconGlyph icon={icon} className="size-4 text-sm" />
       <span className="text-foreground min-w-0 truncate text-sm font-medium">
         {title}
       </span>

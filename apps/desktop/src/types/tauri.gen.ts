@@ -44,17 +44,12 @@ async getEnv(key: string) : Promise<string> {
 async showDevtool() : Promise<boolean> {
     return await TAURI_INVOKE("show_devtool");
 },
+async completeAppExit() : Promise<void> {
+    await TAURI_INVOKE("complete_app_exit");
+},
 async getTinybaseValues() : Promise<Result<string | null, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_tinybase_values") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async setTinybaseValues(v: string) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("set_tinybase_values", { v }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -103,6 +98,8 @@ async setRecentlyOpenedSessions(v: string) : Promise<Result<null, string>> {
 
 
 /** user-defined types **/
+
+
 
 /** tauri-specta globals **/
 
