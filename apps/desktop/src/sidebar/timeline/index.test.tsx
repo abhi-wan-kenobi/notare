@@ -892,6 +892,7 @@ describe("TimelineView", () => {
 
     vi.setSystemTime(new Date("2024-01-15T12:01:00.000Z"));
     mocks.currentTimeMs = Date.now();
+    fireEvent.focus(window);
     rerender(<TimelineView topChromeInset showOpenCalendarButton />);
 
     expect(
@@ -901,6 +902,7 @@ describe("TimelineView", () => {
 
     vi.setSystemTime(new Date("2024-01-15T12:06:01.000Z"));
     mocks.currentTimeMs = Date.now();
+    fireEvent.focus(window);
     rerender(<TimelineView topChromeInset showIgnoredEvents={false} />);
 
     expect(
@@ -910,6 +912,7 @@ describe("TimelineView", () => {
 
     vi.setSystemTime(new Date("2024-01-15T12:30:01.000Z"));
     mocks.currentTimeMs = Date.now();
+    fireEvent.focus(window);
     rerender(
       <TimelineView
         topChromeInset
