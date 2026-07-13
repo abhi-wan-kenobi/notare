@@ -11,6 +11,7 @@ debug = false
 resolver = "2"
 members = [
   "apps/api",
+  "apps/cli",
   "apps/desktop/src-tauri",
   "crates/*",
   "legacy/*",
@@ -26,6 +27,7 @@ exclude = [
 hypr-aec = { path = "crates/aec", package = "aec" }
 hypr-afconvert = { path = "crates/afconvert", package = "afconvert" }
 hypr-agc = { path = "crates/agc", package = "agc" }
+hypr-agent-access = { path = "crates/agent-access", package = "agent-access" }
 hypr-agent-core = { path = "crates/agent-core", package = "agent-core" }
 hypr-am = { path = "crates/am", package = "am" }
 hypr-amp = { path = "crates/amp", package = "amp" }
