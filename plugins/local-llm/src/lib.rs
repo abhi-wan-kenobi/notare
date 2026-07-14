@@ -74,6 +74,16 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             let state = Arc::new(TokioMutex::new(state));
             app.manage(state.clone());
 
+            // Startup reconciliation: verify declared model state against the
+            // filesystem so corrupt/half-deleted models are quarantined
+            // instead of silently trusted.
+            let reconcile_state = state.clone();
+            tauri::async_runtime::spawn(async move {
+                let downloader = reconcile_state.lock().await.model_downloader.clone();
+                let results = downloader.reconcile(SUPPORTED_MODELS).await;
+                tracing::info!(checked = results.len(), "llm_model_reconcile_done");
+            });
+
             Ok(())
         })
         .build()

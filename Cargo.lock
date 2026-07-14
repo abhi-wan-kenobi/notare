@@ -11207,9 +11207,11 @@ dependencies = [
 name = "model-downloader"
 version = "0.1.0"
 dependencies = [
+ "crc32fast",
  "download-interface",
  "file",
  "serde",
+ "serde_json",
  "specta",
  "tempfile",
  "thiserror 2.0.18",

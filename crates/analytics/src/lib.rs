@@ -100,10 +100,12 @@ impl AnalyticsClientBuilder {
     }
 
     pub fn build(self) -> AnalyticsClient {
-        let posthog = self
-            .posthog_key
-            .map(|key| Arc::new(LazyPosthogClient::new(key, self.posthog_personal_key)));
-        AnalyticsClient { posthog }
+        // Notare is telemetry-free: never construct a PostHog backend, no matter
+        // what keys the build carries. Every send/flag path in this crate
+        // no-ops (local tracing only) when `posthog` is None, so the plugin
+        // commands and all frontend call sites keep working unchanged.
+        let _ = (self.posthog_key, self.posthog_personal_key);
+        AnalyticsClient { posthog: None }
     }
 }
 

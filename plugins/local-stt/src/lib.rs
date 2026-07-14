@@ -69,6 +69,7 @@ pub fn init<R: tauri::Runtime>(options: InitOptions) -> tauri::plugin::TauriPlug
             let api_key = option_env!("AM_API_KEY").map(|s| s.to_string());
 
             let model_downloader = ext::create_model_downloader(app.app_handle());
+            let reconcile_downloader = model_downloader.clone();
 
             let state = std::sync::Arc::new(tokio::sync::Mutex::new(State {
                 am_api_key: api_key,
@@ -78,6 +79,19 @@ pub fn init<R: tauri::Runtime>(options: InitOptions) -> tauri::plugin::TauriPlug
             }));
 
             app.manage(state.clone());
+
+            // Startup reconciliation: verify declared model state against the
+            // filesystem (existence + size + checksum) so a corrupt or
+            // half-deleted model can never be silently trusted.
+            tauri::async_runtime::spawn(async move {
+                let models: Vec<LocalModel> = SUPPORTED_MODELS
+                    .iter()
+                    .filter(|m| m.is_available_on_current_platform())
+                    .cloned()
+                    .collect();
+                let results = reconcile_downloader.reconcile(&models).await;
+                tracing::info!(checked = results.len(), "stt_model_reconcile_done");
+            });
 
             let parent = options.parent_supervisor.clone();
             tauri::async_runtime::spawn(async move {
