@@ -1,0 +1,56 @@
+import { Trans } from "@lingui/react/macro";
+import { AlertCircleIcon, RefreshCwIcon } from "lucide-react";
+
+import { Button } from "@hypr/ui/components/ui/button";
+
+import { useAITask } from "~/ai/contexts";
+import { useLanguageModel } from "~/ai/hooks";
+import { useEnhancedNote } from "~/session/queries";
+import { createTaskId } from "~/store/zustand/ai-task/task-configs";
+
+export function EnhanceError({
+  sessionId,
+  enhancedNoteId,
+  error,
+}: {
+  sessionId: string;
+  enhancedNoteId: string;
+  error: Error | undefined;
+}) {
+  const model = useLanguageModel("enhance");
+  const generate = useAITask((state) => state.generate);
+  const templateId = useEnhancedNote(enhancedNoteId)?.templateId || undefined;
+
+  const handleRetry = () => {
+    if (!model) return;
+
+    const taskId = createTaskId(enhancedNoteId, "enhance");
+    void generate(taskId, {
+      model,
+      taskType: "enhance",
+      args: { sessionId, enhancedNoteId, templateId },
+    });
+  };
+
+  return (
+    <div className="flex h-full min-h-[400px] flex-col items-center justify-center gap-4">
+      <AlertCircleIcon size={24} className="text-muted-foreground" />
+      <p className="text-muted-foreground max-w-lg text-center text-sm">
+        {error?.message || (
+          <Trans>Something went wrong while generating the summary.</Trans>
+        )}
+      </p>
+      <Button
+        onClick={handleRetry}
+        disabled={!model}
+        className="flex items-center gap-2"
+        variant="default"
+      >
+        <RefreshCwIcon size={16} />
+        <span>
+          <Trans>Retry</Trans>
+        </span>
+      </Button>
+    </div>
+  );
+}

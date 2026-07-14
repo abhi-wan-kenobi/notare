@@ -1,0 +1,339 @@
+import { act, cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  signIn: vi.fn(),
+  dismissToast: vi.fn(),
+  openNew: vi.fn(),
+  updateSettingsTabState: vi.fn(),
+  clearDevtoolsPreview: vi.fn(),
+  setToastActionTarget: vi.fn(),
+  sessionMode: "inactive",
+}));
+
+vi.mock("~/auth", () => ({
+  useAuth: () => ({
+    session: null,
+    signIn: mocks.signIn,
+  }),
+}));
+
+vi.mock("~/contexts/notifications", () => ({
+  useNotifications: () => ({
+    hasActiveDownload: false,
+    downloadProgress: null,
+    downloadingModel: null,
+    activeDownloads: [],
+    localSttStatus: null,
+    isLocalSttModel: false,
+  }),
+}));
+
+vi.mock("~/shared/config", () => ({
+  useConfigValues: () => ({
+    current_llm_provider: "local",
+    current_llm_model: "model",
+    current_stt_provider: "local",
+    current_stt_model: "model",
+  }),
+}));
+
+vi.mock("~/store/zustand/devtools-toast-preview", () => ({
+  useDevtoolsToastPreview: (
+    selector: (state: { preview: null; clearPreview: () => void }) => unknown,
+  ) =>
+    selector({
+      preview: null,
+      clearPreview: mocks.clearDevtoolsPreview,
+    }),
+}));
+
+vi.mock("~/store/zustand/tabs", () => ({
+  useTabs: (
+    selector: (state: {
+      currentTab: { type: string };
+      openNew: () => void;
+      updateSettingsTabState: () => void;
+    }) => unknown,
+  ) =>
+    selector({
+      currentTab: { type: "empty" },
+      openNew: mocks.openNew,
+      updateSettingsTabState: mocks.updateSettingsTabState,
+    }),
+}));
+
+vi.mock("~/store/zustand/toast-action", () => ({
+  useToastAction: (
+    selector: (state: { setTarget: (target: "stt" | null) => void }) => unknown,
+  ) => selector({ setTarget: mocks.setToastActionTarget }),
+}));
+
+vi.mock("~/stt/contexts", () => ({
+  useListener: (
+    selector: (state: { getSessionMode: () => string }) => unknown,
+  ) => selector({ getSessionMode: () => mocks.sessionMode }),
+}));
+
+vi.mock("./useDismissedToasts", () => ({
+  useDismissedToasts: () => ({
+    dismissToast: mocks.dismissToast,
+    isDismissed: () => false,
+  }),
+}));
+
+import { ToastArea } from "./index";
+import { showTransientToast, useTransientToast } from "./transient";
+
+describe("ToastArea", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    mocks.signIn.mockClear();
+    mocks.dismissToast.mockClear();
+    mocks.openNew.mockClear();
+    mocks.updateSettingsTabState.mockClear();
+    mocks.clearDevtoolsPreview.mockClear();
+    mocks.setToastActionTarget.mockClear();
+    mocks.sessionMode = "inactive";
+    useTransientToast.getState().clearToast();
+  });
+
+  afterEach(() => {
+    useTransientToast.getState().clearToast();
+    cleanup();
+    document.body.innerHTML = "";
+    vi.useRealTimers();
+  });
+
+  it("keeps the default toast placement fixed to the top chrome position", () => {
+    render(<ToastArea />);
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    const toastContainer = screen
+      .getByText("Pro features available")
+      .closest(".fixed") as HTMLElement | null;
+
+    expect(toastContainer?.style.left).toBe("calc(50% + 0px)");
+    expect(toastContainer?.style.top).toBe("56px");
+  });
+
+  it("keeps default placement centered while anchoring vertically to the main surface", () => {
+    const mainSurface = document.createElement("div");
+    mainSurface.setAttribute("data-chat-floating-anchor", "");
+    vi.spyOn(mainSurface, "getBoundingClientRect").mockReturnValue({
+      bottom: 552,
+      height: 500,
+      left: 200,
+      right: 800,
+      top: 52,
+      width: 600,
+      x: 200,
+      y: 52,
+      toJSON: () => ({}),
+    });
+    document.body.appendChild(mainSurface);
+
+    render(<ToastArea />);
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    const toastContainer = screen
+      .getByText("Pro features available")
+      .closest(".fixed") as HTMLElement | null;
+
+    expect(toastContainer?.style.left).toBe("calc(50% + 0px)");
+    expect(toastContainer?.style.top).toBe("88px");
+  });
+
+  it("centers the left sidebar toast on the main content panel", () => {
+    const mainContentPanel = document.createElement("div");
+    mainContentPanel.setAttribute("data-main-content-panel", "");
+    vi.spyOn(mainContentPanel, "getBoundingClientRect").mockReturnValue({
+      bottom: 520,
+      height: 500,
+      left: 200,
+      right: 1_000,
+      top: 20,
+      width: 800,
+      x: 200,
+      y: 20,
+      toJSON: () => ({}),
+    });
+    document.body.appendChild(mainContentPanel);
+
+    const mainSurface = document.createElement("div");
+    mainSurface.setAttribute("data-chat-floating-anchor", "");
+    vi.spyOn(mainSurface, "getBoundingClientRect").mockReturnValue({
+      bottom: 520,
+      height: 500,
+      left: 300,
+      right: 700,
+      top: 20,
+      width: 400,
+      x: 300,
+      y: 20,
+      toJSON: () => ({}),
+    });
+    document.body.appendChild(mainSurface);
+
+    render(<ToastArea placement="left-sidebar" />);
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    const toastContainer = screen
+      .getByText("Pro features available")
+      .closest(".fixed") as HTMLElement | null;
+
+    expect(toastContainer?.style.left).toBe("600px");
+    expect(toastContainer?.style.top).toBe("56px");
+  });
+
+  it("centers anchored transient toasts on the main content panel", () => {
+    const mainContentPanel = document.createElement("div");
+    mainContentPanel.setAttribute("data-main-content-panel", "");
+    vi.spyOn(mainContentPanel, "getBoundingClientRect").mockReturnValue({
+      bottom: 520,
+      height: 500,
+      left: 200,
+      right: 1_000,
+      top: 20,
+      width: 800,
+      x: 200,
+      y: 20,
+      toJSON: () => ({}),
+    });
+    document.body.appendChild(mainContentPanel);
+
+    const mainSurface = document.createElement("div");
+    mainSurface.setAttribute("data-chat-floating-anchor", "");
+    vi.spyOn(mainSurface, "getBoundingClientRect").mockReturnValue({
+      bottom: 520,
+      height: 500,
+      left: 300,
+      right: 700,
+      top: 20,
+      width: 400,
+      x: 300,
+      y: 20,
+      toJSON: () => ({}),
+    });
+    document.body.appendChild(mainSurface);
+
+    showTransientToast(
+      {
+        id: "transcription-language-warning",
+        description: "Model doesn't support all languages.",
+        anchor: "main-content-panel",
+      },
+      { durationMs: null },
+    );
+
+    render(<ToastArea />);
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    const toastContainer = screen
+      .getByText("Model doesn't support all languages.")
+      .closest(".fixed") as HTMLElement | null;
+
+    expect(toastContainer?.style.left).toBe("600px");
+    expect(toastContainer?.style.top).toBe("56px");
+  });
+
+  it("repositions the left sidebar toast when the main surface scrolls", () => {
+    const mainSurface = document.createElement("div");
+    mainSurface.setAttribute("data-chat-floating-anchor", "");
+    let top = 20;
+
+    vi.spyOn(mainSurface, "getBoundingClientRect").mockImplementation(() => ({
+      bottom: top + 500,
+      height: 500,
+      left: 200,
+      right: 800,
+      top,
+      width: 600,
+      x: 200,
+      y: top,
+      toJSON: () => ({}),
+    }));
+    document.body.appendChild(mainSurface);
+
+    render(<ToastArea placement="left-sidebar" />);
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    const toastContainer = screen
+      .getByText("Pro features available")
+      .closest(".fixed") as HTMLElement | null;
+
+    expect(toastContainer?.style.top).toBe("56px");
+
+    act(() => {
+      top = 52;
+      window.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(toastContainer?.style.top).toBe("88px");
+  });
+
+  it("preserves the main surface vertical anchor when left sidebar placement is disabled", () => {
+    const mainContentPanel = document.createElement("div");
+    mainContentPanel.setAttribute("data-main-content-panel", "");
+    vi.spyOn(mainContentPanel, "getBoundingClientRect").mockReturnValue({
+      bottom: 520,
+      height: 500,
+      left: 200,
+      right: 1_000,
+      top: 0,
+      width: 800,
+      x: 200,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    document.body.appendChild(mainContentPanel);
+
+    const mainSurface = document.createElement("div");
+    mainSurface.setAttribute("data-chat-floating-anchor", "");
+    vi.spyOn(mainSurface, "getBoundingClientRect").mockReturnValue({
+      bottom: 520,
+      height: 500,
+      left: 200,
+      right: 800,
+      top: 20,
+      width: 600,
+      x: 200,
+      y: 20,
+      toJSON: () => ({}),
+    });
+    document.body.appendChild(mainSurface);
+
+    const { rerender } = render(<ToastArea placement="left-sidebar" />);
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    const toastContainer = screen
+      .getByText("Pro features available")
+      .closest(".fixed") as HTMLElement | null;
+
+    expect(toastContainer?.style.left).toBe("600px");
+    expect(toastContainer?.style.top).toBe("56px");
+
+    rerender(<ToastArea />);
+
+    expect(toastContainer?.style.left).toBe("calc(50% + 0px)");
+    expect(toastContainer?.style.top).toBe("56px");
+  });
+});
