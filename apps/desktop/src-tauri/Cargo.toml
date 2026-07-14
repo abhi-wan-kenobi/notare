@@ -45,7 +45,6 @@ tauri-plugin-git = { workspace = true }
 tauri-plugin-hooks = { workspace = true }
 tauri-plugin-http = { workspace = true }
 tauri-plugin-icon = { workspace = true }
-tauri-plugin-importer = { workspace = true }
 tauri-plugin-js = { workspace = true }
 tauri-plugin-local-llm = { workspace = true }
 tauri-plugin-local-stt = { workspace = true }
@@ -113,6 +112,10 @@ automation = ["tauri-plugin-automation"]
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-automation = { version = "0.1", optional = true }
 hypr-intercept = { workspace = true }
+# Legacy Hyprnote-data importer: pulls libsql (own bundled sqlite fork) which
+# duplicate-symbol-clashes with sqlx's bundled sqlite under rust-lld on Linux.
+# Legacy data can only exist on macOS anyway.
+tauri-plugin-importer = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
