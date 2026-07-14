@@ -37,6 +37,10 @@ jobs:
         env:
           NODE_OPTIONS: ""
 
+      # tauri's beforeBuildCommand runs `pnpm -F desktop build`, which does
+      # not build workspace packages the app imports (e.g. @hypr/ui).
+      - run: pnpm exec turbo run build --filter=@hypr/ui
+
       - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.citest.json
         env:
           CI: false
