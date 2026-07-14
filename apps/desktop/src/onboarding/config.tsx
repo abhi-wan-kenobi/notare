@@ -11,9 +11,16 @@ export type OnboardingStep =
 
 // No account system in Notare: the login step is gone everywhere. The
 // calendar step is macOS-only (Apple calendar is local; Google/Outlook
-// needed the upstream cloud).
-const STEPS_MACOS: OnboardingStep[] = ["permissions", "calendar", "final"];
-const STEPS_OTHER: OnboardingStep[] = ["final"];
+// needed the upstream cloud). folder-location (choose where Markdown notes
+// live, e.g. an Obsidian vault) was unreachable upstream — core to Notare,
+// so it's in every flow.
+const STEPS_MACOS: OnboardingStep[] = [
+  "permissions",
+  "calendar",
+  "folder-location",
+  "final",
+];
+const STEPS_OTHER: OnboardingStep[] = ["folder-location", "final"];
 
 function getOnboardingSteps(): OnboardingStep[] {
   return platform() === "macos" ? STEPS_MACOS : STEPS_OTHER;
