@@ -31,10 +31,9 @@ const TYPE_REPLACEMENTS: &[(&str, &str)] = &[
 ];
 
 fn main() {
-    let src = concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../apps/api/openapi.gen.json"
-    );
+    // Snapshot of the upstream (anarlog) cloud API spec; apps/api itself was
+    // stripped from this fork. Goes away with the cloud client code.
+    let src = concat!(env!("CARGO_MANIFEST_DIR"), "/openapi.upstream.json");
     println!("cargo:rerun-if-changed={src}");
 
     OpenApiSpec::from_path(src)
