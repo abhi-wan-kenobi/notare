@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Anarlog Dev",
-  "mainBinaryName": "anarlog-dev",
-  "identifier": "com.hyprnote.dev",
+  "productName": "Notare Dev",
+  "mainBinaryName": "notare-dev",
+  "identifier": "be.abhishek.notare.dev",
   "build": {
     "beforeDevCommand": "pnpm -F desktop dev",
     "devUrl": "http://localhost:1422",
@@ -72,8 +72,7 @@
     "deep-link": {
       "desktop": {
         "schemes": [
-          "hyprnote",
-          "char"
+          "notare"
         ]
       }
     },
