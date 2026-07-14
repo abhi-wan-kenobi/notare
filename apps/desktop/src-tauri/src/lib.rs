@@ -117,6 +117,14 @@ pub async fn main() {
         builder = builder.plugin(tauri_plugin_automation::init());
     }
 
+    // Legacy Hyprnote-data importer is macOS-only: legacy data can't exist on
+    // other platforms, and its libsql dep clashes with sqlx's bundled sqlite
+    // under rust-lld on Linux (duplicate sqlite3_* symbols).
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.plugin(tauri_plugin_importer::init());
+    }
+
     // https://v2.tauri.app/plugin/deep-linking/#desktop
     // should always be the first plugin
     {
@@ -134,7 +142,6 @@ pub async fn main() {
         .plugin(tauri_plugin_agent::init())
         .plugin(tauri_plugin_db::init(db.clone()))
         .plugin(tauri_plugin_bedrock::init())
-        .plugin(tauri_plugin_importer::init())
         .plugin(tauri_plugin_calendar::init())
         .plugin(tauri_plugin_todo::init())
         .plugin(tauri_plugin_auth::init())

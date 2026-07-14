@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "macos-only",
+  "description": "Capabilities for plugins that are only compiled on macOS",
+  "platforms": ["macOS"],
+  "windows": [
+    "*"
+  ],
+  "permissions": [
+    "importer:default"
+  ]
+}
