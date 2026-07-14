@@ -63,17 +63,12 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 }
 
 fn get_api_base_url() -> String {
-    #[cfg(not(debug_assertions))]
-    {
-        env!("VITE_API_URL").to_string()
-    }
-
-    #[cfg(debug_assertions)]
-    {
-        option_env!("VITE_API_URL")
-            .unwrap_or("http://localhost:3001")
-            .to_string()
-    }
+    // No cloud API in Notare: default to localhost in every profile. The
+    // GitHub/Nango todo integrations that needed the upstream cloud are
+    // gated behind sign-in that no longer exists.
+    option_env!("VITE_API_URL")
+        .unwrap_or("http://localhost:3001")
+        .to_string()
 }
 
 #[cfg(test)]
