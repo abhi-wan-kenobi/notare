@@ -1,0 +1,55 @@
+name: desktop_test_build
+
+# Unsigned test builds for manual testing — not releases.
+on:
+  workflow_dispatch:
+    inputs:
+      os:
+        description: "Which OS to build"
+        type: choice
+        default: windows
+        options: [windows, macos, linux]
+
+jobs:
+  build:
+    runs-on: ${{ inputs.os == 'windows' && 'windows-latest' || inputs.os == 'macos' && 'macos-latest' || 'ubuntu-24.04' }}
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - if: inputs.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev xdg-utils libgtk-3-dev libgtk-4-dev \
+            libasound2-dev libudev-dev libpulse-dev libpipewire-0.3-dev libgraphene-1.0-dev \
+            pkg-config patchelf cmake libclang-dev clang
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: corepack enable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: pnpm install
+        env:
+          NODE_OPTIONS: ""
+
+      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.citest.json
+        env:
+          CI: false
+          LIBCLANG_PATH: ${{ inputs.os == 'windows' && 'C:\Program Files\LLVM\bin' || '' }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notare-${{ inputs.os }}
+          path: |
+            target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*.exe
+            target/release/bundle/dmg/*.dmg
+            target/release/bundle/macos/*.app/**
+            target/release/bundle/deb/*.deb
+            target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
