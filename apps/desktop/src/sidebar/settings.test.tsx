@@ -86,7 +86,6 @@ describe("SettingsNav", () => {
     [
       "General",
       "App",
-      "Account",
       "Notifications",
       "Permissions",
       "Context",
