@@ -19,7 +19,8 @@ heavy lifting.
 ## Principles
 
 - **Local-first, privacy-first.** Audio and transcripts never leave your machine
-  unless *you* configure a remote backend. No telemetry by default. No accounts.
+  unless *you* configure a remote backend. No telemetry, period — the analytics
+  backend is compiled out. No accounts.
 - **BYO everything.** Your own STT models (HuggingFace), your own LLM endpoint
   (Ollama / OpenAI-compatible / Anthropic), your own Google OAuth client for
   calendar. No hosted service, no vendor lock-in.

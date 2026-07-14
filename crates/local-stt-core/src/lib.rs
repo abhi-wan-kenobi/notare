@@ -6,6 +6,13 @@ pub static SUPPORTED_MODELS: &[LocalModel] = &[
     LocalModel::Am(AmModel::ParakeetV2),
     LocalModel::Am(AmModel::ParakeetV3),
     LocalModel::Am(AmModel::WhisperLargeV3),
+    LocalModel::Whisper(WhisperModel::QuantizedTiny),
+    LocalModel::Whisper(WhisperModel::QuantizedTinyEn),
+    LocalModel::Whisper(WhisperModel::QuantizedBase),
+    LocalModel::Whisper(WhisperModel::QuantizedBaseEn),
+    LocalModel::Whisper(WhisperModel::QuantizedSmall),
+    LocalModel::Whisper(WhisperModel::QuantizedSmallEn),
+    LocalModel::Whisper(WhisperModel::QuantizedLargeTurbo),
 ];
 
 #[derive(serde::Serialize, serde::Deserialize)]

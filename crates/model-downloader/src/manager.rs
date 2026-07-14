@@ -9,8 +9,9 @@ use crate::Error;
 use crate::download_paths::generation_download_path;
 use crate::download_task::{DownloadTaskParams, spawn_download_task};
 use crate::downloads_registry::{DownloadEntry, DownloadsRegistry};
+use crate::integrity::{self, ModelIntegrity};
 use crate::model::DownloadableModel;
-use crate::runtime::ModelDownloaderRuntime;
+use crate::runtime::{DownloadStatus, ModelDownloaderRuntime};
 use crate::task_join::wait_for_task_exit;
 
 pub struct ModelDownloadManager<M: DownloadableModel> {
@@ -55,6 +56,79 @@ impl<M: DownloadableModel> ModelDownloadManager<M> {
 
     pub async fn is_downloading(&self, model: &M) -> bool {
         self.downloads.contains(&model.download_key()).await
+    }
+
+    pub async fn verify_integrity(&self, model: &M) -> Result<ModelIntegrity, Error> {
+        let models_base = self.runtime.models_base()?;
+        let model_clone = model.clone();
+        tokio::task::spawn_blocking(move || integrity::verify_model(&model_clone, &models_base))
+            .await
+            .map_err(|e| Error::OperationFailed(e.to_string()))?
+    }
+
+    /// Startup reconciliation: verify each model's declared state against the
+    /// filesystem. Corrupt files are quarantined (renamed to `*.corrupt`) so
+    /// every status query reports them as not installed, and a Failed
+    /// progress event is emitted so the UI surfaces a re-download action.
+    /// Models with a download in flight are skipped.
+    pub async fn reconcile(&self, models: &[M]) -> Vec<(M, ModelIntegrity)> {
+        let mut results = Vec::with_capacity(models.len());
+        for model in models {
+            if self.is_downloading(model).await {
+                continue;
+            }
+            match self.verify_integrity(model).await {
+                Ok(ModelIntegrity::Corrupt(reason)) => {
+                    tracing::warn!(
+                        model = %model.download_key(),
+                        %reason,
+                        "model_integrity_corrupt"
+                    );
+                    if let Err(e) = self.quarantine(model).await {
+                        tracing::error!(
+                            model = %model.download_key(),
+                            error = %e,
+                            "model_quarantine_failed"
+                        );
+                    }
+                    self.runtime.emit_progress(
+                        model,
+                        DownloadStatus::Failed(format!("integrity check failed: {reason}")),
+                    );
+                    results.push((model.clone(), ModelIntegrity::Corrupt(reason)));
+                }
+                Ok(state) => results.push((model.clone(), state)),
+                Err(e) => {
+                    tracing::warn!(
+                        model = %model.download_key(),
+                        error = %e,
+                        "model_integrity_check_errored"
+                    );
+                }
+            }
+        }
+        results
+    }
+
+    async fn quarantine(&self, model: &M) -> Result<(), Error> {
+        let models_base = self.runtime.models_base()?;
+        let model_clone = model.clone();
+        tokio::task::spawn_blocking(move || {
+            let destination = model_clone.download_destination(&models_base);
+            integrity::remove_stamp(&destination);
+            if destination.is_file() {
+                let mut name = destination
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_os_string();
+                name.push(".corrupt");
+                std::fs::rename(&destination, destination.with_file_name(name))
+                    .map_err(|e| Error::OperationFailed(e.to_string()))?;
+            }
+            Ok(())
+        })
+        .await
+        .map_err(|e| Error::OperationFailed(e.to_string()))?
     }
 
     pub async fn download(&self, model: &M) -> Result<(), Error> {
@@ -145,8 +219,14 @@ impl<M: DownloadableModel> ModelDownloadManager<M> {
 
         let models_base = self.runtime.models_base()?;
         let model_clone = model.clone();
-        tokio::task::spawn_blocking(move || model_clone.delete_downloaded(&models_base))
-            .await
-            .map_err(|e| Error::OperationFailed(e.to_string()))?
+        tokio::task::spawn_blocking(move || {
+            let result = model_clone.delete_downloaded(&models_base);
+            if result.is_ok() {
+                integrity::remove_stamp(&model_clone.download_destination(&models_base));
+            }
+            result
+        })
+        .await
+        .map_err(|e| Error::OperationFailed(e.to_string()))?
     }
 }

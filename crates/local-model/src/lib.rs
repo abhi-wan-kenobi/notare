@@ -194,7 +194,9 @@ impl LocalModel {
 
         match self {
             LocalModel::Soniqo(model) => model.is_available_on_current_platform(),
-            LocalModel::Whisper(_) => is_apple_silicon,
+            // whisper.cpp runs on every desktop platform (CPU at minimum);
+            // GPU offload (Metal/Vulkan/CUDA) is a build-feature concern.
+            LocalModel::Whisper(_) => true,
             LocalModel::Am(_) => is_apple_silicon,
             LocalModel::GgufLlm(_) => cfg!(target_arch = "aarch64"),
         }
@@ -212,6 +214,10 @@ impl DownloadableModel for GgufLlmModel {
 
     fn download_checksum(&self) -> Option<u32> {
         Some(self.model_checksum())
+    }
+
+    fn expected_size(&self) -> Option<u64> {
+        Some(self.model_size())
     }
 
     fn download_destination(&self, models_base: &Path) -> PathBuf {
@@ -270,6 +276,16 @@ impl DownloadableModel for LocalModel {
         }
     }
 
+    fn expected_size(&self) -> Option<u64> {
+        match self {
+            LocalModel::Soniqo(_) => None,
+            LocalModel::Whisper(model) => Some(model.model_size_bytes()),
+            // AM installs as an unpacked directory; size applies to the tar only.
+            LocalModel::Am(_) => None,
+            LocalModel::GgufLlm(model) => model.expected_size(),
+        }
+    }
+
     fn download_destination(&self, models_base: &Path) -> PathBuf {
         match self {
             LocalModel::Soniqo(model) => models_base.join("soniqo").join(model.as_str()),
@@ -286,7 +302,15 @@ impl DownloadableModel for LocalModel {
             LocalModel::Soniqo(model) => hypr_transcribe_soniqo::is_model_downloaded(*model)
                 .map_err(|e| Error::OperationFailed(e.to_string())),
             LocalModel::Whisper(model) => {
-                Ok(models_base.join("stt").join(model.file_name()).exists())
+                // Never trust bare existence: a truncated or corrupt leftover
+                // (e.g. after a failed uninstall) must not count as installed.
+                let path = models_base.join("stt").join(model.file_name());
+                if !path.is_file() {
+                    return Ok(false);
+                }
+                let actual = hypr_file::file_size(&path)
+                    .map_err(|e| Error::OperationFailed(e.to_string()))?;
+                Ok(actual == model.model_size_bytes())
             }
             LocalModel::Am(model) => model
                 .is_downloaded(models_base.join("stt"))

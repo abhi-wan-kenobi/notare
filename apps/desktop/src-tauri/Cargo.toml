@@ -109,6 +109,12 @@ dev = ["dep:hypr-audio-mock"]
 devtools = ["tauri/devtools", "dep:hypr-audio-mock"]
 automation = ["tauri-plugin-automation"]
 
+# Compile the whisper.cpp engine on platforms that have no Argmax/Soniqo
+# runtime (those are Apple-Silicon-only). CPU inference by default; GPU
+# offload features (vulkan/cuda) are added in the STT-server phase.
+[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
+tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-automation = { version = "0.1", optional = true }
 hypr-intercept = { workspace = true }

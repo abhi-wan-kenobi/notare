@@ -165,7 +165,10 @@ impl<'a, R: Runtime, M: Manager<R>> LocalStt<'a, R, M> {
             ));
         }
 
-        if matches!(server_type, ServerType::External) && !self.is_model_downloaded(&model).await? {
+        // Internal (whisper.cpp) servers need this guard just as much as
+        // external ones: without it a missing/corrupt model file only fails
+        // deep inside the engine as an opaque ServerStartFailed.
+        if !self.is_model_downloaded(&model).await? {
             return Err(crate::Error::ModelNotDownloaded);
         }
 
