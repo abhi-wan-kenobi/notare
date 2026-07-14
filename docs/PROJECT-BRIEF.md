@@ -7,23 +7,26 @@ phased implementation plan for review. Do not start coding until the plan is
 approved.
 
 ## Goal
-Fork **Hyprnote** (Tauri + Rust + web frontend, already cross-platform) and evolve
-it into a single, polished, open-source app for **macOS, Windows, and Linux** that
-replaces three tools:
-- **Hyprnote / Granola-class notetakers** — meeting capture (system+mic audio →
+Fork **anarlog** (formerly Hyprnote — Tauri v2 + Rust + React) and evolve it into a
+single, polished, open-source app for **macOS, Windows, and Linux** that replaces
+three tools:
+- **Anarlog / Granola-class notetakers** — meeting capture (system+mic audio →
   transcript → AI-enhanced notes)
 - **OpenWhispr** — push-to-talk dictation (speak → text inserted into the active app)
 
 One app, two modes: **Meeting mode** and **Dictation mode**.
 
-## Why fork Hyprnote (not OpenWhispr)
+## Why fork anarlog (not OpenWhispr) — see ADR-0001
 The hard, fragile part of a notetaker is **simultaneous system+mic audio capture**
 (Core Audio taps on macOS, WASAPI loopback on Windows, PipeWire/Pulse monitor
-sources on Linux) plus session management and calendar linking. Hyprnote already
-solves capture on all three platforms. OpenWhispr is only a dictation tool and would
-mean rebuilding capture from scratch. STT itself is the EASY, swappable part. So:
-keep Hyprnote's capture + session core; rip out and rebuild the model/STT layer and
-the UX.
+sources on Linux) plus session management and calendar linking. Anarlog ships this
+on macOS and carries real scaffolding for Windows/Linux (wasapi + Pulse/PipeWire
+crates in-tree), plus AEC/denoise/VAD, a dictation plugin, and an OpenAI-compatible
+STT client. OpenWhispr is dictation-only (Electron) and would mean rebuilding
+capture from scratch. STT itself is the EASY, swappable part. So: keep anarlog's
+capture + session core; **finish Windows/Linux support (upstream ships macOS-only
+today — this is our headline contribution)**; rip out and rebuild the model/STT
+layer and the UX; strip their cloud backend (api/stripe/supabase).
 
 ## Hard lesson to design around (real bug from the app being replaced)
 The current app's stored state claimed the STT model was "downloaded" while the model
@@ -121,10 +124,10 @@ desktop app just points at a URL:
 ## Non-functional requirements
 - **Open-source philosophy:** no telemetry by default (opt-in only, clearly
   labeled); local-first; BYO keys for every external service; no phone-home.
-- **License diligence FIRST:** Hyprnote's license and every model/dependency
-  license (whisper.cpp, sherpa-onnx, faster-whisper, HF models). Choose our
-  license accordingly and document attribution. Flag any model with
-  non-commercial/restrictive terms.
+- **License diligence FIRST:** done 2026-07-14 — see `LICENSE-NOTE.md`
+  (upstream MIT since 2026-04-26; fork post-relicense `main` only; whole STT
+  stack permissive; CC-BY models need visible attribution; never ship CC-BY-NC
+  models in the catalog).
 - **Privacy:** all audio + transcripts stay local unless the user configures a
   remote backend; data locations and deletion obvious.
 - **Cross-platform parity:** document any capability gap per OS (esp. Wayland).
