@@ -11,7 +11,6 @@ import {
   SlidersHorizontalIcon,
   SparklesIcon,
   type LucideIcon,
-  UserIcon,
   UsersIcon,
 } from "lucide-react";
 import { useCallback } from "react";
@@ -69,7 +68,6 @@ export function SettingsNav() {
       label: t`General`,
       items: [
         { id: "app", label: t`App`, icon: CogIcon },
-        { id: "account", label: t`Account`, icon: UserIcon },
         { id: "notifications", label: t`Notifications`, icon: BellIcon },
       ],
     },

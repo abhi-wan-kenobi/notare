@@ -9,7 +9,6 @@ import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as sfxCommands } from "@hypr/plugin-sfx";
 import { cn } from "@hypr/utils";
 
-import { LoginSection } from "./account";
 import { CalendarSection } from "./calendar";
 import {
   getInitialStep,
@@ -22,7 +21,6 @@ import { FolderLocationSection } from "./folder-location";
 import { PermissionsSection } from "./permissions";
 import { OnboardingSection } from "./shared";
 
-import { useAuth } from "~/auth";
 import { StandaloneWindowShell } from "~/shared/window-shell";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
 
@@ -83,10 +81,8 @@ function OnboardingScreenContent({
   headerDragRegion?: boolean;
 }) {
   const queryClient = useQueryClient();
-  const auth = useAuth();
   const [isMuted, setIsMuted] = useState(false);
   const [currentStep, setCurrentStep] = useState(getInitialStep);
-  const [didSkipLogin, setDidSkipLogin] = useState(false);
   const onboardingVideoRef = useRef<HTMLVideoElement>(null);
   const currentPlatform = platform();
 
@@ -100,10 +96,9 @@ function OnboardingScreenContent({
     if (prev) setCurrentStep(prev);
   }, [currentStep]);
 
-  const handleCalendarSignIn = useCallback(() => {
-    setCurrentStep("login");
-    void auth.signIn();
-  }, [auth]);
+  // Cloud calendar providers (Google/Outlook) needed the upstream account
+  // system; there is nothing to sign in to anymore.
+  const handleCalendarSignIn = useCallback(() => {}, []);
 
   useEffect(() => {
     void analyticsCommands.event({
@@ -222,39 +217,6 @@ function OnboardingScreenContent({
             onNext={goNext}
           >
             <PermissionsSection onContinue={goNext} />
-          </OnboardingSection>
-
-          <OnboardingSection
-            title={<Trans>Create account</Trans>}
-            description={
-              <Trans>
-                Sign in to unlock powerful AI models, sync across devices, and
-                personalization.
-              </Trans>
-            }
-            completedTitle={
-              auth.session ? (
-                <Trans>Signed in</Trans>
-              ) : didSkipLogin ? (
-                <Trans>Skipped</Trans>
-              ) : (
-                <Trans>Account</Trans>
-              )
-            }
-            status={getStepStatus("login", currentStep)}
-            onBack={goBack}
-            onNext={goNext}
-            onSkip={() => {
-              setDidSkipLogin(true);
-              void analyticsCommands.event({
-                event: "onboarding_login_skipped",
-              });
-            }}
-          >
-            <LoginSection
-              onContinue={goNext}
-              onSkip={() => setDidSkipLogin(true)}
-            />
           </OnboardingSection>
 
           <OnboardingSection

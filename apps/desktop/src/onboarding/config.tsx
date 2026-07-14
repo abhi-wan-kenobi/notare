@@ -9,13 +9,11 @@ export type OnboardingStep =
   | "folder-location"
   | "final";
 
-const STEPS_MACOS: OnboardingStep[] = [
-  "permissions",
-  "login",
-  "calendar",
-  "final",
-];
-const STEPS_OTHER: OnboardingStep[] = ["login", "calendar", "final"];
+// No account system in Notare: the login step is gone everywhere. The
+// calendar step is macOS-only (Apple calendar is local; Google/Outlook
+// needed the upstream cloud).
+const STEPS_MACOS: OnboardingStep[] = ["permissions", "calendar", "final"];
+const STEPS_OTHER: OnboardingStep[] = ["final"];
 
 function getOnboardingSteps(): OnboardingStep[] {
   return platform() === "macos" ? STEPS_MACOS : STEPS_OTHER;
