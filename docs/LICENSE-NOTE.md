@@ -1,14 +1,35 @@
 # License & Legal Diligence Note
 
-_Status: draft 2026-07-14. STT engines/models verified from repos & HF model cards;
-Hyprnote (upstream fork target) section pending final verification._
+_Status: final 2026-07-14. All licenses verified from the actual repos & HF model
+cards, not from memory._
 
-## Upstream: Hyprnote
+## Upstream: anarlog (formerly Hyprnote) — VERIFIED
 
-**PENDING — this section gates the project license.** If Hyprnote is GPL/AGPL, any
-fork derived from its code must remain under that (or a compatible copyleft)
-license; MIT/Apache re-licensing is impossible. If it carries an `ee/` (enterprise)
-directory under a commercial license, that code must be excluded from the fork.
+- **Repo:** `fastrepl/hyprnote` was renamed **Hyprnote → char (2026-02) → anarlog
+  (2026-04)**; `github.com/fastrepl/hyprnote` redirects to
+  `github.com/fastrepl/anarlog`. Fastrepl's flagship is now **char** (separate,
+  closed codebase); anarlog remains the maintained open-source app.
+- **License: MIT** — single root LICENSE, "Copyright (c) 2023-present Fastrepl,
+  Inc.", whole repo. **Relicensed from GPL-3.0 to MIT on 2026-04-26**
+  ([PR #5132](https://github.com/fastrepl/anarlog/pull/5132)). No `ee/` folder, no
+  dual licensing, no CLA.
+- **Caveats:**
+  1. **Fork from current `main` (or any post-2026-04-26 tag) only.** Anything
+     cherry-picked from pre-relicense history is GPL-3.0.
+  2. Contributor consent to the GPL→MIT relicense is not publicly documented;
+     Fastrepl holds the copyright notice. Residual risk accepted, noted here.
+  3. **Trademarks/names:** "Hyprnote" and "char" belong to Fastrepl (hyprnote.com
+     → char.com). The fork must not use those names in branding; internal `hypr-`
+     crate prefixes should be renamed over time.
+  4. The repo contains anarlog's **cloud backend** (`apps/api`, `apps/stripe`,
+     `supabase/`, auth/subscription crates) for their hosted Pro tier — **strip
+     from the fork**.
+
+## Our license: MIT (decided 2026-07-14)
+
+MIT, matching upstream — simplest attribution story, maximum adoption. The root
+LICENSE carries our copyright plus the Fastrepl attribution line for derived
+portions.
 
 ## STT engines & libraries (all verified 2026-07-14)
 
@@ -36,9 +57,9 @@ directory under a commercial license, that code must be excluded from the fork.
 
 ## Implications
 
-1. **The entire STT stack is permissive (MIT/Apache/CC-BY).** Nothing below the app
-   layer constrains our license choice.
-2. **The project license is determined solely by Hyprnote's license** (fork target).
+1. **The entire stack — upstream app AND STT layer — is permissive.** No copyleft
+   obligations anywhere.
+2. Keep upstream's MIT copyright notice alongside ours (done in root LICENSE).
 3. CC-BY models (Parakeet, Canary, Kyutai) require visible attribution in the model
    catalog UI/docs — the catalog JSON should carry a `license` + `attribution` field
    per model and the UI should display it.

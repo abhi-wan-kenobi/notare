@@ -34,5 +34,6 @@ for the full brief and [`docs/adr/`](docs/adr/) for architecture decisions.
 
 ## License
 
-TBD pending upstream license diligence (see `docs/`); this will be a copyleft
-license if the app core is derived from [Hyprnote](https://github.com/fastrepl/hyprnote).
+[MIT](LICENSE). The app core will be derived from
+[anarlog](https://github.com/fastrepl/anarlog) (formerly Hyprnote), also MIT —
+see [`docs/LICENSE-NOTE.md`](docs/LICENSE-NOTE.md) for full diligence.
