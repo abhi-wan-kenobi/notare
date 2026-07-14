@@ -29,11 +29,26 @@ heavy lifting.
 
 ## Status
 
-🚧 **Pre-alpha — planning phase.** See [`docs/PROJECT-BRIEF.md`](docs/PROJECT-BRIEF.md)
+🚧 **Pre-alpha.** The codebase was just forked from
+[anarlog](https://github.com/fastrepl/anarlog) (fork point `c92cbbadf`,
+2026-07-14) and is being reshaped. See [`docs/PROJECT-BRIEF.md`](docs/PROJECT-BRIEF.md)
 for the full brief and [`docs/adr/`](docs/adr/) for architecture decisions.
+
+Headline goals over upstream: **shipped Windows and Linux support**, a unified
+**dictation mode**, a rebuilt self-healing **model manager**, and the
+**companion GPU STT server**.
+
+## Lineage & credits
+
+Notare is a friendly MIT fork of **[anarlog](https://github.com/fastrepl/anarlog)**
+(which started life as **Hyprnote**) by [Fastrepl](https://github.com/fastrepl) —
+an excellent local-first notetaker whose audio-capture and session core this
+project builds on. Dictation-mode inspiration:
+[OpenWhispr](https://github.com/OpenWhispr/openwhispr) and
+[Handy](https://github.com/cjpais/Handy).
 
 ## License
 
-[MIT](LICENSE). The app core will be derived from
-[anarlog](https://github.com/fastrepl/anarlog) (formerly Hyprnote), also MIT —
-see [`docs/LICENSE-NOTE.md`](docs/LICENSE-NOTE.md) for full diligence.
+[MIT](LICENSE) — including upstream anarlog code (MIT, Fastrepl, Inc.).
+See [`docs/LICENSE-NOTE.md`](docs/LICENSE-NOTE.md) for full license diligence,
+including per-model licenses in the STT catalog.

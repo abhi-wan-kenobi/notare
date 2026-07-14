@@ -1,0 +1,92 @@
+on:
+  workflow_dispatch:
+
+env:
+  INFISICAL_ENV: prod
+
+jobs:
+  compute-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - run: git fetch --tags --force
+      - uses: ./.github/actions/doxxer_install
+      - id: version
+        run: |
+          VERSION=$(doxxer --config doxxer.api.toml next patch)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Computed version: $VERSION"
+
+  deploy:
+    needs: compute-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    concurrency: api-fly-deploy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: ./.github/actions/infisical_install
+      - run: |
+          set -euo pipefail
+
+          secrets_json="$(mktemp)"
+          secrets_file="$(mktemp)"
+          trap 'rm -f "$secrets_json" "$secrets_file"' EXIT
+
+          infisical export \
+            --token="$INFISICAL_TOKEN" \
+            --env="$INFISICAL_ENV" \
+            --projectId="$INFISICAL_PROJECT_ID" \
+            --path="/anarlog/ai" \
+            --format=json \
+            --output-file="$secrets_json"
+
+          python3 - "$secrets_json" "$secrets_file" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1]) as source:
+              secrets = json.load(source)
+
+          with open(sys.argv[2], "w") as target:
+              for secret in secrets:
+                  key = secret["key"]
+                  value = secret.get("value", "")
+                  value = value.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\\n")
+                  target.write(f"{key}={value}\n")
+          PY
+
+          if [ -s "$secrets_file" ]; then
+            flyctl secrets import --app hyprnote-ai --stage < "$secrets_file"
+          else
+            echo "No Infisical secrets exported; skipping Fly secret import."
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          INFISICAL_TOKEN: ${{ secrets.INFISICAL_TOKEN }}
+          INFISICAL_PROJECT_ID: ${{ secrets.INFISICAL_PROJECT_ID }}
+      - run: flyctl deploy --config apps/api/fly.toml --dockerfile apps/api/Dockerfile --remote-only --build-arg APP_VERSION=${{ needs.compute-version.outputs.version }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - if: failure()
+        run: timeout 60s flyctl logs --app hyprnote-ai --no-tail || true
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  tag:
+    needs: [compute-version, deploy]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          custom_tag: api_v${{ needs.compute-version.outputs.version }}
+          tag_prefix: ""
