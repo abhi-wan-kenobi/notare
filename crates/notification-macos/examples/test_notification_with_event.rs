@@ -65,7 +65,7 @@ fn main() {
             })
             .participants(participants)
             .event_details(event_details)
-            .action_label("Open Anarlog")
+            .action_label("Open Notare")
             .start_time(start_time)
             .build();
 

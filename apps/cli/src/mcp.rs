@@ -12,7 +12,7 @@ use crate::Error;
 use hypr_agent_access as access;
 
 #[derive(Clone)]
-struct AnarlogMcpServer {
+struct NotareMcpServer {
     db: Arc<hypr_db_core::Db>,
 }
 
@@ -31,16 +31,16 @@ enum ResourceRequest {
     },
 }
 
-impl AnarlogMcpServer {
+impl NotareMcpServer {
     fn new(db: Arc<hypr_db_core::Db>) -> Self {
         Self { db }
     }
 }
 
 #[tool_router]
-impl AnarlogMcpServer {
+impl NotareMcpServer {
     #[tool(
-        description = "List recent Anarlog meetings with pagination metadata. Use query to narrow by title or meeting id, then pass next_offset as offset to continue.",
+        description = "List recent Notare meetings with pagination metadata. Use query to narrow by title or meeting id, then pass next_offset as offset to continue.",
         annotations(
             read_only_hint = true,
             destructive_hint = false,
@@ -59,7 +59,7 @@ impl AnarlogMcpServer {
     }
 
     #[tool(
-        description = "Get one Anarlog meeting with its canonical note, summaries, participants, and action items. Use get_meeting_transcript separately for transcript words.",
+        description = "Get one Notare meeting with its canonical note, summaries, participants, and action items. Use get_meeting_transcript separately for transcript words.",
         annotations(
             read_only_hint = true,
             destructive_hint = false,
@@ -78,7 +78,7 @@ impl AnarlogMcpServer {
     }
 
     #[tool(
-        description = "Get a bounded page of transcript words and readable text for an Anarlog meeting. Pass pagination.next_offset as offset to continue.",
+        description = "Get a bounded page of transcript words and readable text for an Notare meeting. Pass pagination.next_offset as offset to continue.",
         annotations(
             read_only_hint = true,
             destructive_hint = false,
@@ -117,7 +117,7 @@ impl AnarlogMcpServer {
 }
 
 #[tool_handler]
-impl ServerHandler for AnarlogMcpServer {
+impl ServerHandler for NotareMcpServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo::new(
             ServerCapabilities::builder()
@@ -131,7 +131,7 @@ impl ServerHandler for AnarlogMcpServer {
             env!("CARGO_PKG_VERSION"),
         ))
         .with_instructions(
-            "Read-only, local access to Anarlog meeting data. Start with list_meetings to resolve a meeting_id, then call get_meeting for notes, summaries, participants, and action items. Request transcript pages with get_meeting_transcript and continue with pagination.next_offset; each page is capped at 500 words. Use get_recurring_meeting_history for series context. Never invent meeting ids, access SQLite directly, or claim a write occurred: every tool is idempotent and performs no writes. Documentation: https://docs.anarlog.so",
+            "Read-only, local access to Notare meeting data. Start with list_meetings to resolve a meeting_id, then call get_meeting for notes, summaries, participants, and action items. Request transcript pages with get_meeting_transcript and continue with pagination.next_offset; each page is capped at 500 words. Use get_recurring_meeting_history for series context. Never invent meeting ids, access SQLite directly, or claim a write occurred: every tool is idempotent and performs no writes. Documentation: https://docs.anarlog.so",
         )
     }
 
@@ -173,7 +173,7 @@ impl ServerHandler for AnarlogMcpServer {
                     meeting.title
                 };
                 RawResource::new(format!("anarlog://meetings/{}", meeting.id), name)
-                    .with_description("Anarlog meeting context")
+                    .with_description("Notare meeting context")
                     .with_mime_type("text/markdown")
                     .no_annotation()
             })
@@ -194,18 +194,18 @@ impl ServerHandler for AnarlogMcpServer {
         use rmcp::model::AnnotateAble;
 
         Ok(ListResourceTemplatesResult::with_all_items(vec![
-            RawResourceTemplate::new("anarlog://meetings/{meeting_id}", "Anarlog meeting")
+            RawResourceTemplate::new("anarlog://meetings/{meeting_id}", "Notare meeting")
                 .with_description("Meeting metadata, note, summaries, people, and action items")
                 .with_mime_type("text/markdown")
                 .no_annotation(),
             RawResourceTemplate::new(
                 "anarlog://meetings/{meeting_id}/transcript{?offset,limit}",
-                "Anarlog meeting transcript",
+                "Notare meeting transcript",
             )
             .with_description("A bounded page of meeting transcript text")
             .with_mime_type("text/plain")
             .no_annotation(),
-            RawResourceTemplate::new("anarlog://series/{series_id}", "Anarlog meeting series")
+            RawResourceTemplate::new("anarlog://series/{series_id}", "Notare meeting series")
                 .with_description("Recurring meeting history")
                 .with_mime_type("text/markdown")
                 .no_annotation(),
@@ -283,7 +283,7 @@ impl ServerHandler for AnarlogMcpServer {
 }
 
 pub async fn serve(db: Arc<hypr_db_core::Db>) -> crate::Result<()> {
-    let running = AnarlogMcpServer::new(db)
+    let running = NotareMcpServer::new(db)
         .serve(rmcp::transport::stdio())
         .await
         .map_err(|error| Error::operation("start MCP server", error.to_string()))?;
@@ -296,7 +296,7 @@ pub async fn serve(db: Arc<hypr_db_core::Db>) -> crate::Result<()> {
 
 fn parse_resource_uri(uri: &str) -> std::result::Result<ResourceRequest, McpError> {
     let url = url::Url::parse(uri)
-        .map_err(|_| McpError::invalid_params("invalid Anarlog resource URI", None))?;
+        .map_err(|_| McpError::invalid_params("invalid Notare resource URI", None))?;
     if url.scheme() != "anarlog" {
         return Err(McpError::invalid_params(
             "resource URI must use the anarlog scheme",
@@ -347,7 +347,7 @@ fn parse_resource_uri(uri: &str) -> std::result::Result<ResourceRequest, McpErro
             series_id: (*series_id).to_string(),
         }),
         _ => Err(McpError::invalid_params(
-            "unsupported Anarlog resource URI",
+            "unsupported Notare resource URI",
             None,
         )),
     }
@@ -400,7 +400,7 @@ mod tests {
     #[tokio::test]
     async fn server_advertises_tools_and_resources() {
         let db = Arc::new(hypr_db_core::Db::connect_memory_plain().await.unwrap());
-        let info = AnarlogMcpServer::new(db).get_info();
+        let info = NotareMcpServer::new(db).get_info();
         assert!(info.capabilities.tools.is_some());
         assert!(info.capabilities.resources.is_some());
         let instructions = info.instructions.unwrap();
@@ -419,7 +419,7 @@ mod tests {
         .execute(db.pool())
         .await
         .unwrap();
-        let server = AnarlogMcpServer::new(Arc::new(db));
+        let server = NotareMcpServer::new(Arc::new(db));
 
         let result = server
             .list_meetings(Parameters(access::ListMeetingsInput {
@@ -449,7 +449,7 @@ mod tests {
         .await
         .unwrap();
         let (server_transport, client_transport) = tokio::io::duplex(64 * 1024);
-        let server = AnarlogMcpServer::new(Arc::new(db));
+        let server = NotareMcpServer::new(Arc::new(db));
         let info = server.get_info();
         let server_handle = tokio::spawn(async move { server.serve(server_transport).await });
 
@@ -490,7 +490,7 @@ mod tests {
             );
             assert!(
                 mcp_skill.contains(tool_name),
-                "Anarlog skill is missing `{tool_name}`"
+                "Notare skill is missing `{tool_name}`"
             );
         }
         for tool in tools {
@@ -527,17 +527,17 @@ mod tests {
             template_contract,
             [
                 (
-                    "Anarlog meeting".to_string(),
+                    "Notare meeting".to_string(),
                     "anarlog://meetings/{meeting_id}".to_string(),
                     None,
                 ),
                 (
-                    "Anarlog meeting transcript".to_string(),
+                    "Notare meeting transcript".to_string(),
                     "anarlog://meetings/{meeting_id}/transcript{?offset,limit}".to_string(),
                     None,
                 ),
                 (
-                    "Anarlog meeting series".to_string(),
+                    "Notare meeting series".to_string(),
                     "anarlog://series/{series_id}".to_string(),
                     None,
                 ),
@@ -545,7 +545,7 @@ mod tests {
         );
         for (_, uri, _) in &template_contract {
             assert!(mcp_docs.contains(uri), "MCP docs are missing `{uri}`");
-            assert!(mcp_skill.contains(uri), "Anarlog skill is missing `{uri}`");
+            assert!(mcp_skill.contains(uri), "Notare skill is missing `{uri}`");
         }
         assert_eq!(resources.len(), 1);
         assert_eq!(resources[0].raw.name, "Planning");

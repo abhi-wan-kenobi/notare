@@ -169,9 +169,9 @@ describe("getSessionKeywords", () => {
     await expect(
       getSessionKeywords({
         sessionId: "session-1",
-        dictionaryTerms: ["Anarlog"],
+        dictionaryTerms: ["Notare"],
       }),
-    ).resolves.toEqual(expect.arrayContaining(["Anarlog", "Launch"]));
+    ).resolves.toEqual(expect.arrayContaining(["Notare", "Launch"]));
   });
 
   it("prioritizes mapped participants and attached event attendees", async () => {
@@ -199,10 +199,10 @@ describe("getSessionKeywords", () => {
 
     const result = await getSessionKeywords({
       sessionId: "session-1",
-      dictionaryTerms: ["Anarlog"],
+      dictionaryTerms: ["Notare"],
     });
 
-    expect(result.slice(0, 3)).toEqual(["Alice Kim", "Mina Park", "Anarlog"]);
+    expect(result.slice(0, 3)).toEqual(["Alice Kim", "Mina Park", "Notare"]);
     expect(result).toEqual(expect.arrayContaining(["Launch"]));
     expect(result).not.toContain("John Jeong");
   });
@@ -236,20 +236,20 @@ describe("buildKeywords", () => {
 describe("dictionary term helpers", () => {
   it("parses newline and comma separated terms", () => {
     expect(
-      parseDictionaryTermsText("Anarlog\nFastConformer, Parakeet TDT"),
-    ).toEqual(["Anarlog", "FastConformer", "Parakeet TDT"]);
+      parseDictionaryTermsText("Notare\nFastConformer, Parakeet TDT"),
+    ).toEqual(["Notare", "FastConformer", "Parakeet TDT"]);
   });
 
   it("normalizes duplicate terms while preserving first spelling", () => {
-    expect(normalizeKeywordList(["Anarlog", " anarlog ", "Parakeet"])).toEqual([
-      "Anarlog",
+    expect(normalizeKeywordList(["Notare", " notare ", "Parakeet"])).toEqual([
+      "Notare",
       "Parakeet",
     ]);
   });
 
   it("formats stored terms one per line", () => {
-    expect(formatDictionaryTerms(["Anarlog", "Parakeet TDT"])).toBe(
-      "Anarlog\nParakeet TDT",
+    expect(formatDictionaryTerms(["Notare", "Parakeet TDT"])).toBe(
+      "Notare\nParakeet TDT",
     );
   });
 });

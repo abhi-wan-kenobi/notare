@@ -42,7 +42,7 @@ describe("MainSessionStatusBannerHost", () => {
       </SessionStatusBannerProvider>,
     );
 
-    expect(screen.queryByText("Ask for consent when using Anarlog")).toBeNull();
+    expect(screen.queryByText("Ask for consent when using Notare")).toBeNull();
   });
 
   it("prefers the skip reason and stacks above the undo-delete toast", () => {

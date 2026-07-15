@@ -49,13 +49,13 @@ function getMessageForStatus(status: LLMConnectionStatus): ReactNode {
   }
 
   if (status.status === "error" && status.reason === "unauthenticated") {
-    return <Trans>You need to sign in to use Anarlog's language model</Trans>;
+    return <Trans>You need to sign in to use Notare's language model</Trans>;
   }
 
   if (status.status === "error" && status.reason === "not_pro") {
     return (
       <Trans>
-        Your Anarlog plan has expired. Configure another language model or renew
+        Your Notare plan has expired. Configure another language model or renew
         your plan
       </Trans>
     );

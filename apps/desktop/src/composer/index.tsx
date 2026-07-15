@@ -95,7 +95,7 @@ export function ComposerScreen() {
               }
               onStop={sessionProps.stop}
               onSendMessage={sendMessage}
-              title={currentChatGroup?.title || "Ask Anarlog AI anything"}
+              title={currentChatGroup?.title || "Ask Notare AI anything"}
             />
           ) : (
             <ComposerSettingsCard />
@@ -220,7 +220,7 @@ function ComposerInput({
             ])}
           >
             <ArrowUpRightIcon className="size-3.5" />
-            Open Anarlog
+            Open Notare
           </button>
           <button
             type="button"
@@ -300,7 +300,7 @@ function ComposerInput({
 
 const composerPlaceholder: PlaceholderFunction = ({ node, pos }) => {
   if (node.type.name === "paragraph" && pos === 0) {
-    return "Message Anarlog AI";
+    return "Message Notare AI";
   }
 
   return "";

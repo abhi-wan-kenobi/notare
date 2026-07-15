@@ -81,7 +81,7 @@ async fn schema_check(db: &hypr_db_core::Db) -> std::result::Result<(), String> 
 fn render(report: &DoctorReport) -> String {
     let status = |value| if value { "yes" } else { "no" };
     let mut lines = vec![
-        format!("Anarlog CLI {}", report.cli_version),
+        format!("Notare CLI {}", report.cli_version),
         format!("Ready: {}", status(report.ready)),
         format!("Database: {}", report.database.path.display()),
         format!("Exists: {}", status(report.database.exists)),

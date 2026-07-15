@@ -130,7 +130,7 @@ export function Permissions() {
       <PermissionGroup title={<Trans>Others</Trans>}>
         <PermissionRow
           title={t`Calendar`}
-          description={t`Required to sync Apple Calendar events into Anarlog`}
+          description={t`Required to sync Apple Calendar events into Notare`}
           status={calendar.status}
           isPending={calendar.isPending}
           onRequest={calendar.request}

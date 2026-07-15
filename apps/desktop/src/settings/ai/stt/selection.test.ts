@@ -12,7 +12,7 @@ describe("getDefaultSttModel", () => {
     expect(getDefaultSttModel("soniox")).toBe("stt-rt-v5");
   });
 
-  test("does not invent a model for custom or Anarlog providers", () => {
+  test("does not invent a model for custom or Notare providers", () => {
     expect(getDefaultSttModel("custom")).toBeUndefined();
     expect(getDefaultSttModel("hyprnote")).toBeUndefined();
   });

@@ -137,7 +137,7 @@ export function createToastRegistry({
         icon: (
           <img
             src={ANARLOG_ICON_SRC}
-            alt="Anarlog Pro"
+            alt="Notare Pro"
             className="size-5 object-contain object-center"
           />
         ),

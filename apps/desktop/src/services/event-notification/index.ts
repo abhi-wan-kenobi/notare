@@ -73,7 +73,7 @@ export async function checkEventNotifications(
         start_time: Math.floor(startTime.getTime() / 1000),
         participants: null,
         event_details: null,
-        action_label: "Open Anarlog",
+        action_label: "Open Notare",
         action_variant: null,
         options: null,
         footer: null,

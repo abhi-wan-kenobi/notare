@@ -85,7 +85,7 @@ describe("ChatToolbarControls", () => {
     expect(historyButton.className).toContain("w-auto");
     expect(historyButton.className).toContain("gap-1.5");
     expect(historyButton.className).toContain("hover:bg-primary-foreground/14");
-    expect(screen.queryByText("Ask Anarlog AI anything")).toBeNull();
+    expect(screen.queryByText("Ask Notare AI anything")).toBeNull();
   });
 
   it("renders the light chat history trigger without title text", () => {
@@ -110,7 +110,7 @@ describe("ChatToolbarControls", () => {
     expect(historyButton.className).toContain("text-muted-foreground");
     expect(historyButton.className).toContain("hover:bg-muted/80");
     expect(historyButton.textContent).toBe("");
-    expect(screen.queryByText("Ask Anarlog AI anything")).toBeNull();
+    expect(screen.queryByText("Ask Notare AI anything")).toBeNull();
   });
 
   it("keeps the history menu below the trigger and scrolls inside the panel", () => {
@@ -225,7 +225,7 @@ describe("ChatToolbarControls", () => {
     expect(historyButton.className).toContain("-ml-2");
     expect(historyButton.className).toContain("h-8");
     expect(historyButton.className).toContain("w-auto");
-    expect(screen.queryByText("Ask Anarlog AI anything")).toBeNull();
+    expect(screen.queryByText("Ask Notare AI anything")).toBeNull();
     const floatButton = screen.getByRole("button", { name: "Float chat" });
     const closeButton = screen.getByRole("button", { name: "Close chat" });
     expect(floatButton.className).toContain("hover:!bg-muted/80");
