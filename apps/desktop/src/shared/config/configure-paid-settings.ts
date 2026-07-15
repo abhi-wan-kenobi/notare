@@ -5,14 +5,11 @@ export async function configurePaidSettings(): Promise<void> {
   const { values } = await getStoredSettingValues();
   const updates: SettingValues = {};
 
+  // No cloud tier in Notare: default to the local ("hyprnote") STT provider
+  // and leave the model unset until the user downloads one. The upstream
+  // hosted LLM ("hyprnote"/"Auto") is gone, so no LLM default is written.
   if (!values.current_stt_provider) {
     updates.current_stt_provider = "hyprnote";
-    updates.current_stt_model = "cloud";
-  }
-
-  if (!values.current_llm_provider) {
-    updates.current_llm_provider = "hyprnote";
-    updates.current_llm_model = "Auto";
   }
 
   await setSettingValues(updates);

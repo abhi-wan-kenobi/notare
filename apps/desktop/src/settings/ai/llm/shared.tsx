@@ -31,6 +31,10 @@ export type Provider = {
 };
 
 const _PROVIDERS = [
+  // The upstream "hyprnote" hosted LLM required an account + Pro
+  // entitlement; Notare has neither, so it is filtered out of the exported
+  // PROVIDERS list below. The entry stays here so ProviderId (derived from
+  // this array) keeps covering persisted settings that reference it.
   {
     id: "hyprnote",
     displayName: "Notare",
@@ -172,5 +176,9 @@ const _PROVIDERS = [
   },
 ] as const satisfies readonly Provider[];
 
-export const PROVIDERS = sortProviders(_PROVIDERS);
+// "hyprnote" (the dead upstream cloud LLM) is hidden from the UI; see the
+// comment on its entry above.
+export const PROVIDERS = sortProviders(
+  _PROVIDERS.filter((provider) => provider.id !== "hyprnote"),
+);
 export type ProviderId = (typeof _PROVIDERS)[number]["id"];

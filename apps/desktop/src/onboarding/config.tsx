@@ -6,6 +6,7 @@ export type OnboardingStep =
   | "permissions"
   | "login"
   | "calendar"
+  | "transcription"
   | "folder-location"
   | "final";
 
@@ -13,14 +14,20 @@ export type OnboardingStep =
 // calendar step is macOS-only (Apple calendar is local; Google/Outlook
 // needed the upstream cloud). folder-location (choose where Markdown notes
 // live, e.g. an Obsidian vault) was unreachable upstream — core to Notare,
-// so it's in every flow.
+// so it's in every flow. transcription (download a local STT model) is also
+// in every flow — there is no cloud fallback.
 const STEPS_MACOS: OnboardingStep[] = [
   "permissions",
   "calendar",
+  "transcription",
   "folder-location",
   "final",
 ];
-const STEPS_OTHER: OnboardingStep[] = ["folder-location", "final"];
+const STEPS_OTHER: OnboardingStep[] = [
+  "transcription",
+  "folder-location",
+  "final",
+];
 
 function getOnboardingSteps(): OnboardingStep[] {
   return platform() === "macos" ? STEPS_MACOS : STEPS_OTHER;
