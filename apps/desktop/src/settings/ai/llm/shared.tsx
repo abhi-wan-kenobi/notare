@@ -12,7 +12,7 @@ import {
 import type { ReactNode } from "react";
 
 import { env } from "~/env";
-import { AnarlogProviderIcon } from "~/settings/ai/shared";
+import { NotareProviderIcon } from "~/settings/ai/shared";
 import { type ProviderRequirement } from "~/settings/ai/shared/eligibility";
 import { sortProviders } from "~/settings/ai/shared/sort-providers";
 
@@ -33,9 +33,9 @@ export type Provider = {
 const _PROVIDERS = [
   {
     id: "hyprnote",
-    displayName: "Anarlog",
+    displayName: "Notare",
     badge: "Recommended",
-    icon: <AnarlogProviderIcon />,
+    icon: <NotareProviderIcon />,
     baseUrl: new URL("/llm", env.VITE_API_URL).toString(),
     requirements: [
       { kind: "requires_auth" },

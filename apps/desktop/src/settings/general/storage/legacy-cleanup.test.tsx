@@ -55,7 +55,7 @@ describe("LegacyMigrationCleanupRow", () => {
       alreadyCleaned: false,
       fileCount: 12,
       totalBytes: 2048,
-      sourceRoot: "/Users/test/Anarlog",
+      sourceRoot: "/Users/test/Notare",
       blockingReason: null,
     });
     mocks.cleanupLegacyFiles.mockResolvedValue({
@@ -114,7 +114,7 @@ describe("LegacyMigrationCleanupRow", () => {
       alreadyCleaned: false,
       fileCount: 0,
       totalBytes: 0,
-      sourceRoot: "/Users/test/Anarlog",
+      sourceRoot: "/Users/test/Notare",
       blockingReason: "1 legacy file changed after migration",
     });
 

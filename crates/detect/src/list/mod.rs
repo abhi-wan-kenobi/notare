@@ -16,6 +16,10 @@ pub fn list_installed_apps() -> Vec<InstalledApp> {
 }
 
 const SELF_BUNDLE_IDS: &[&str] = &[
+    "be.abhishek.notare",
+    "be.abhishek.notare.dev",
+    "be.abhishek.notare.staging",
+    "be.abhishek.Notare",
     "com.hyprnote.dev",
     "com.hyprnote.stable",
     "com.hyprnote.staging",
@@ -23,6 +27,9 @@ const SELF_BUNDLE_IDS: &[&str] = &[
 ];
 
 const SELF_APP_NAMES: &[&str] = &[
+    "notare",
+    "notare dev",
+    "notare staging",
     "anarlog",
     "anarlog staging",
     "anarlog nightly",
@@ -35,6 +42,9 @@ const SELF_APP_NAMES: &[&str] = &[
 ];
 
 const SELF_APP_PATH_SEGMENTS: &[&str] = &[
+    "/notare.app/",
+    "/notare dev.app/",
+    "/notare staging.app/",
     "/anarlog.app/",
     "/anarlog staging.app/",
     "/anarlog nightly.app/",
@@ -96,13 +106,13 @@ mod tests {
 
     #[test]
     fn test_is_self_app_matches_known_bundle_ids() {
-        assert!(is_self_app(&app("com.hyprnote.stable", "Anarlog")));
+        assert!(is_self_app(&app("com.hyprnote.stable", "Notare")));
         assert!(is_self_app(&app("com.hyprnote.Hyprnote", "Hyprnote")));
     }
 
     #[test]
     fn test_is_self_app_matches_renamed_app_names() {
-        assert!(is_self_app(&app("pid:42", "Anarlog")));
+        assert!(is_self_app(&app("pid:42", "Notare")));
         assert!(is_self_app(&app("pid:43", "Char Nightly")));
         assert!(is_self_app(&app("pid:44", "Hyprnote Staging")));
     }

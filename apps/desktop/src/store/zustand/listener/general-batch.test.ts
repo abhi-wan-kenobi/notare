@@ -492,7 +492,7 @@ describe("runBatchSession", () => {
       expect.objectContaining({
         title: "Transcription complete",
         message: "Your transcript is ready.",
-        action_label: "Open Anarlog",
+        action_label: "Open Notare",
         source: { type: "session", session_id: "session-1" },
       }),
     );

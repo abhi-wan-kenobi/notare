@@ -17,7 +17,7 @@ export function getLocalModelIcon(model: string): ModelIconSpec | null {
   if (value === "cloud") {
     return {
       label: "A",
-      title: "Anarlog Pro",
+      title: "Notare Pro",
       className: "border-border bg-card text-muted-foreground",
       imageSrc: ANARLOG_ICON_SRC,
       imageClassName: "size-4 object-contain",

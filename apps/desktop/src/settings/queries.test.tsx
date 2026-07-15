@@ -192,7 +192,7 @@ describe("SQLite settings", () => {
     mocks.execute.mockResolvedValue([
       {
         id: "personalization_dictionary_terms",
-        value_json: JSON.stringify(JSON.stringify(["Anarlog"])),
+        value_json: JSON.stringify(JSON.stringify(["Notare"])),
       },
     ]);
 
@@ -201,7 +201,7 @@ describe("SQLite settings", () => {
       (current) => JSON.stringify([...JSON.parse(current ?? "[]"), "Erebor"]),
     );
 
-    expect(next).toBe(JSON.stringify(["Anarlog", "Erebor"]));
+    expect(next).toBe(JSON.stringify(["Notare", "Erebor"]));
     const statement = mocks.executeTransaction.mock.calls[0][0][0];
     expect(statement.params.slice(0, 2)).toEqual([
       "personalization_dictionary_terms",

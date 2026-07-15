@@ -36,12 +36,12 @@ msgid "{trialDaysRemaining} days left"
 msgstr "{trialDaysRemaining} days left"
 
 #: src/settings/ai/llm/select.tsx
-msgid "<0>Language model</0> is needed to make Anarlog summarize and chat about your conversations."
-msgstr "<0>Language model</0> is needed to make Anarlog summarize and chat about your conversations."
+msgid "<0>Language model</0> is needed to make Notare summarize and chat about your conversations."
+msgstr "<0>Language model</0> is needed to make Notare summarize and chat about your conversations."
 
 #: src/settings/ai/stt/select.tsx
-msgid "<0>Transcription model</0> is needed to make Anarlog listen to your conversations."
-msgstr "<0>Transcription model</0> is needed to make Anarlog listen to your conversations."
+msgid "<0>Transcription model</0> is needed to make Notare listen to your conversations."
+msgstr "<0>Transcription model</0> is needed to make Notare listen to your conversations."
 
 #: src/settings/general/storage/index.tsx
 msgid "1 day"
@@ -162,24 +162,24 @@ msgid "Analyzing structure..."
 msgstr "Analyzing structure..."
 
 #: src/onboarding/permissions.tsx
-msgid "Anarlog can hear others"
-msgstr "Anarlog can hear others"
+msgid "Notare can hear others"
+msgstr "Notare can hear others"
 
 #: src/onboarding/permissions.tsx
-msgid "Anarlog can hear your voice"
-msgstr "Anarlog can hear your voice"
+msgid "Notare can hear your voice"
+msgstr "Notare can hear your voice"
 
 #: src/settings/general/storage/legacy-cleanup.tsx
-msgid "Anarlog could not verify the migration status"
-msgstr "Anarlog could not verify the migration status"
+msgid "Notare could not verify the migration status"
+msgstr "Notare could not verify the migration status"
 
 #: src/onboarding/index.tsx
-msgid "Anarlog needs access to your microphone and system audio to record and transcribe your meetings"
-msgstr "Anarlog needs access to your microphone and system audio to record and transcribe your meetings"
+msgid "Notare needs access to your microphone and system audio to record and transcribe your meetings"
+msgstr "Notare needs access to your microphone and system audio to record and transcribe your meetings"
 
 #: src/onboarding/index.tsx
-msgid "Anarlog will sync your calendar to get meeting reminders"
-msgstr "Anarlog will sync your calendar to get meeting reminders"
+msgid "Notare will sync your calendar to get meeting reminders"
+msgstr "Notare will sync your calendar to get meeting reminders"
 
 #: src/templates/template-icon-picker.tsx
 msgid "Animals & Nature"
@@ -211,8 +211,8 @@ msgid "Ask & search about anything, or be creative!"
 msgstr "Ask & search about anything, or be creative!"
 
 #: src/shared/chat-cta.tsx
-msgid "Ask Anarlog anything"
-msgstr "Ask Anarlog anything"
+msgid "Ask Notare anything"
+msgstr "Ask Notare anything"
 
 #: src/chat/components/input/index.tsx
 #: src/shared/chat-cta.tsx
@@ -232,8 +232,8 @@ msgid "Audio file retention"
 msgstr "Audio file retention"
 
 #: src/instruction/index.tsx
-msgid "Authorize access in your browser, then return to Anarlog."
-msgstr "Authorize access in your browser, then return to Anarlog."
+msgid "Authorize access in your browser, then return to Notare."
+msgstr "Authorize access in your browser, then return to Notare."
 
 #: src/settings/general/notification.tsx
 msgid "Automatically detect when a meeting starts based on microphone activity."
@@ -382,12 +382,12 @@ msgid "Compare Free and Pro before you sign in."
 msgstr "Compare Free and Pro before you sign in."
 
 #: src/instruction/index.tsx
-msgid "Complete sign-in in your browser, then return to Anarlog."
-msgstr "Complete sign-in in your browser, then return to Anarlog."
+msgid "Complete sign-in in your browser, then return to Notare."
+msgstr "Complete sign-in in your browser, then return to Notare."
 
 #: src/settings/general/account.tsx
-msgid "Complete the sign-in flow in your browser, then come back here if Anarlog does not reconnect automatically."
-msgstr "Complete the sign-in flow in your browser, then come back here if Anarlog does not reconnect automatically."
+msgid "Complete the sign-in flow in your browser, then come back here if Notare does not reconnect automatically."
+msgstr "Complete the sign-in flow in your browser, then come back here if Notare does not reconnect automatically."
 
 #: src/instruction/index.tsx
 msgid "Complete your purchase"
@@ -667,8 +667,8 @@ msgid "Find a note..."
 msgstr "Find a note..."
 
 #: src/instruction/index.tsx
-msgid "Finish checkout in your browser, then return to Anarlog."
-msgstr "Finish checkout in your browser, then return to Anarlog."
+msgid "Finish checkout in your browser, then return to Notare."
+msgstr "Finish checkout in your browser, then return to Notare."
 
 #: src/settings/general/account.tsx
 msgid "Finish sign-in"
@@ -752,12 +752,12 @@ msgid "Having trouble?"
 msgstr "Having trouble?"
 
 #: src/onboarding/permissions.tsx
-msgid "Help Anarlog listen to others"
-msgstr "Help Anarlog listen to others"
+msgid "Help Notare listen to others"
+msgstr "Help Notare listen to others"
 
 #: src/onboarding/permissions.tsx
-msgid "Help Anarlog listen to you"
-msgstr "Help Anarlog listen to you"
+msgid "Help Notare listen to you"
+msgstr "Help Notare listen to you"
 
 #: src/sidebar/timeline/index.tsx
 msgid "Hide Deleted Events"
@@ -776,8 +776,8 @@ msgid "Icons"
 msgstr "Icons"
 
 #: src/settings/general/account.tsx
-msgid "If the browser does not reopen Anarlog, use the paste-link fallback in the sign-in instruction window."
-msgstr "If the browser does not reopen Anarlog, use the paste-link fallback in the sign-in instruction window."
+msgid "If the browser does not reopen Notare, use the paste-link fallback in the sign-in instruction window."
+msgstr "If the browser does not reopen Notare, use the paste-link fallback in the sign-in instruction window."
 
 #: src/sidebar/timeline/upcoming-meeting.ts
 msgid "In {minutes}m {seconds}s"
@@ -821,8 +821,8 @@ msgid "Join our community and stay updated:"
 msgstr "Join our community and stay updated:"
 
 #: src/settings/general/app-settings.tsx
-msgid "Keep Anarlog available from the menu bar."
-msgstr "Keep Anarlog available from the menu bar."
+msgid "Keep Notare available from the menu bar."
+msgstr "Keep Notare available from the menu bar."
 
 #: src/settings/general/index.tsx
 msgid "Language & Region"
@@ -1122,8 +1122,8 @@ msgid "Open {0} settings"
 msgstr "Open {0} settings"
 
 #: src/onboarding/final.tsx
-msgid "Open Anarlog"
-msgstr "Open Anarlog"
+msgid "Open Notare"
+msgstr "Open Notare"
 
 #: src/sidebar/timeline/index.tsx
 msgid "Open calendar"
@@ -1185,8 +1185,8 @@ msgid "Participants"
 msgstr "Participants"
 
 #: src/instruction/index.tsx
-msgid "Paste the browser URL here if the browser button did not reopen Anarlog."
-msgstr "Paste the browser URL here if the browser button did not reopen Anarlog."
+msgid "Paste the browser URL here if the browser button did not reopen Notare."
+msgstr "Paste the browser URL here if the browser button did not reopen Notare."
 
 #: src/contacts/organization-details.tsx
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
@@ -1339,8 +1339,8 @@ msgid "Required to record your voice during meetings and calls"
 msgstr "Required to record your voice during meetings and calls"
 
 #: src/settings/general/permissions.tsx
-msgid "Required to sync Apple Calendar events into Anarlog"
-msgstr "Required to sync Apple Calendar events into Anarlog"
+msgid "Required to sync Apple Calendar events into Notare"
+msgstr "Required to sync Apple Calendar events into Notare"
 
 #: src/calendar/components/apple/permission.tsx
 msgid "Reset"
@@ -1481,8 +1481,8 @@ msgid "Select..."
 msgstr "Select..."
 
 #: src/settings/general/app-settings.tsx
-msgid "Send anonymous usage analytics to help improve Anarlog."
-msgstr "Send anonymous usage analytics to help improve Anarlog."
+msgid "Send anonymous usage analytics to help improve Notare."
+msgstr "Send anonymous usage analytics to help improve Notare."
 
 #: src/contacts/organization-details.tsx
 msgid "Send email"
@@ -1518,8 +1518,8 @@ msgid "Show All Recurring Events"
 msgstr "Show All Recurring Events"
 
 #: src/settings/general/app-settings.tsx
-msgid "Show Anarlog in the Dock and app switcher."
-msgstr "Show Anarlog in the Dock and app switcher."
+msgid "Show Notare in the Dock and app switcher."
+msgstr "Show Notare in the Dock and app switcher."
 
 #: src/settings/general/app-settings.tsx
 msgid "Show app in Dock"
@@ -1567,8 +1567,8 @@ msgid "Sign in for Pro"
 msgstr "Sign in for Pro"
 
 #: src/settings/general/account.tsx
-msgid "Sign in to Anarlog"
-msgstr "Sign in to Anarlog"
+msgid "Sign in to Notare"
+msgstr "Sign in to Notare"
 
 #: src/onboarding/calendar.tsx
 msgid "Sign in to connect"
@@ -1634,8 +1634,8 @@ msgid "SQLite migration verification is incomplete"
 msgstr "SQLite migration verification is incomplete"
 
 #: src/settings/general/app-settings.tsx
-msgid "Start Anarlog at login"
-msgstr "Start Anarlog at login"
+msgid "Start Notare at login"
+msgstr "Start Notare at login"
 
 #: src/main/empty.tsx
 msgid "Start Recording"
@@ -1766,8 +1766,8 @@ msgid "Timezone"
 msgstr "Timezone"
 
 #: src/session/components/note-input/enhanced/streaming.tsx
-msgid "Tip: The Anarlog team loves our users!"
-msgstr "Tip: The Anarlog team loves our users!"
+msgid "Tip: The Notare team loves our users!"
+msgstr "Tip: The Notare team loves our users!"
 
 #: src/session/components/note-input/header.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
@@ -1866,8 +1866,8 @@ msgid "Week starts on"
 msgstr "Week starts on"
 
 #: src/onboarding/index.tsx
-msgid "Welcome to Anarlog"
-msgstr "Welcome to Anarlog"
+msgid "Welcome to Notare"
+msgstr "Welcome to Notare"
 
 #: src/changelog/index.tsx
 msgid "What's new in {version}?"
@@ -1910,8 +1910,8 @@ msgid "You need to select a model to summarize this meeting"
 msgstr "You need to select a model to summarize this meeting"
 
 #: src/session/components/note-input/enhanced/config-error.tsx
-msgid "You need to sign in to use Anarlog's language model"
-msgstr "You need to sign in to use Anarlog's language model"
+msgid "You need to sign in to use Notare's language model"
+msgstr "You need to sign in to use Notare's language model"
 
 #: src/onboarding/account/after-login.tsx
 msgid "You're on a Pro trial"
@@ -1926,8 +1926,8 @@ msgid "Your Account"
 msgstr "Your Account"
 
 #: src/session/components/note-input/enhanced/config-error.tsx
-msgid "Your Anarlog plan has expired. Configure another language model or renew your plan"
-msgstr "Your Anarlog plan has expired. Configure another language model or renew your plan"
+msgid "Your Notare plan has expired. Configure another language model or renew your plan"
+msgstr "Your Notare plan has expired. Configure another language model or renew your plan"
 
 #: src/templates/template-sidebar.tsx
 msgid "Z to A"

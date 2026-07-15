@@ -1,5 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
+  "version": "0.1.0",
   "bundle": {
     "publisher": "Abhishek Gupta",
     "createUpdaterArtifacts": false,

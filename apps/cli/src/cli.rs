@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use hypr_agent_access::{DEFAULT_TRANSCRIPT_LIMIT, MAX_TRANSCRIPT_LIMIT};
 
 #[derive(Debug, Parser)]
-#[command(name = "anarlog", version, about = "Query local Anarlog meeting data")]
+#[command(name = "anarlog", version, about = "Query local Notare meeting data")]
 pub struct Args {
     #[arg(
         long,
@@ -41,7 +41,7 @@ pub enum Command {
         #[command(subcommand)]
         command: MeetingCommand,
     },
-    /// Run the read-only Anarlog MCP server over stdio
+    /// Run the read-only Notare MCP server over stdio
     Mcp,
 }
 
@@ -223,7 +223,7 @@ mod tests {
 
         for path in paths {
             assert!(docs.contains(&path), "CLI docs are missing `{path}`");
-            assert!(skill.contains(&path), "Anarlog skill is missing `{path}`");
+            assert!(skill.contains(&path), "Notare skill is missing `{path}`");
         }
         assert_options_are_documented(&command, docs);
     }

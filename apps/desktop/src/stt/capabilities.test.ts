@@ -75,7 +75,7 @@ describe("isSupportedLocalSttModel", () => {
 });
 
 describe("isConfiguredSttModel", () => {
-  test("requires known model ids for Anarlog STT", () => {
+  test("requires known model ids for Notare STT", () => {
     expect(isConfiguredSttModel("hyprnote", "cloud")).toBe(true);
     expect(isConfiguredSttModel("hyprnote", "soniqo-qwen3-small")).toBe(true);
     expect(isConfiguredSttModel("hyprnote", "removed-local-model")).toBe(false);

@@ -75,7 +75,7 @@ export function SettingsAccount() {
             description={
               <Trans>
                 Complete the sign-in flow in your browser, then come back here
-                if Anarlog does not reconnect automatically.
+                if Notare does not reconnect automatically.
               </Trans>
             }
             action={
@@ -86,7 +86,7 @@ export function SettingsAccount() {
           >
             <p className="text-muted-foreground text-xs">
               <Trans>
-                If the browser does not reopen Anarlog, use the paste-link
+                If the browser does not reopen Notare, use the paste-link
                 fallback in the sign-in instruction window.
               </Trans>
             </p>
@@ -103,7 +103,7 @@ export function SettingsAccount() {
             <div className="flex min-w-0 flex-1 flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <h3 className="text-sm font-medium">
-                  <Trans>Sign in to Anarlog</Trans>
+                  <Trans>Sign in to Notare</Trans>
                 </h3>
                 <div className="text-muted-foreground text-sm">
                   <Trans>

@@ -168,7 +168,7 @@ export function InstructionScreen({
     return (
       <ExternalInstruction
         title={t`Complete your purchase`}
-        description={t`Finish checkout in your browser, then return to Anarlog.`}
+        description={t`Finish checkout in your browser, then return to Notare.`}
         actionLabel={t`Reopen checkout page`}
         onBack={onBack}
         url={url}
@@ -185,7 +185,7 @@ export function InstructionScreen({
           ? t`Connect ${integration.displayName}`
           : t`Connect your integration`
       }
-      description={t`Authorize access in your browser, then return to Anarlog.`}
+      description={t`Authorize access in your browser, then return to Notare.`}
       icon={integration?.icon}
       actionLabel={t`Reopen in browser`}
       onBack={onBack}
@@ -238,7 +238,7 @@ function SignInInstruction({ onBack }: { onBack: () => void }) {
   return (
     <InstructionShell
       title={t`Sign in to your account`}
-      description={t`Complete sign-in in your browser, then return to Anarlog.`}
+      description={t`Complete sign-in in your browser, then return to Notare.`}
       onBack={onBack}
     >
       {showCallbackInput ? (
@@ -262,7 +262,7 @@ function SignInInstruction({ onBack }: { onBack: () => void }) {
           <p className="text-muted-foreground text-xs leading-5">
             <Trans>
               Paste the browser URL here if the browser button did not reopen
-              Anarlog.
+              Notare.
             </Trans>
           </p>
         </>
