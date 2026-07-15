@@ -8,6 +8,14 @@ const mocks = vi.hoisted(() => ({
     (_statements: Array<{ sql: string; params: unknown[] }>) =>
       Promise.resolve([1]),
   ),
+  listSupportedModels: vi.fn(async () => ({
+    status: "ok" as const,
+    data: [] as Array<{ key: string }>,
+  })),
+  isModelDownloaded: vi.fn(async (_model: string) => ({
+    status: "ok" as const,
+    data: false,
+  })),
 }));
 
 vi.mock("@hypr/plugin-analytics", () => ({
@@ -23,6 +31,15 @@ vi.mock("@hypr/plugin-detect", () => ({
   },
 }));
 
+vi.mock("@hypr/plugin-local-stt", () => ({
+  commands: {
+    listSupportedModels: mocks.listSupportedModels,
+    isModelDownloaded: mocks.isModelDownloaded,
+    startServer: vi.fn(async () => ({ status: "ok", data: null })),
+    stopServer: vi.fn(async () => ({ status: "ok", data: null })),
+  },
+}));
+
 vi.mock("~/db", () => ({
   executeTransaction: mocks.executeTransaction,
   liveQueryClient: { execute: mocks.execute },
@@ -35,6 +52,7 @@ vi.mock("~/db/write-queue", () => ({
 }));
 
 import {
+  adoptSttModelIfUnconfigured,
   initializeApplicationSettings,
   parseSettingRows,
   setSettingValues,
@@ -49,6 +67,8 @@ describe("SQLite settings", () => {
       status: "error",
       error: "unavailable",
     });
+    mocks.listSupportedModels.mockResolvedValue({ status: "ok", data: [] });
+    mocks.isModelDownloaded.mockResolvedValue({ status: "ok", data: false });
   });
 
   it("maps the imported settings document into typed values", () => {
@@ -187,6 +207,75 @@ describe("SQLite settings", () => {
     expect(statements.map((statement) => statement.params.slice(0, 2))).toEqual(
       [["current_stt_model", JSON.stringify("nova-3-general")]],
     );
+  });
+
+  it("adopts an already-downloaded local model when none is selected on startup", async () => {
+    let rows = [
+      { id: "current_stt_provider", value_json: JSON.stringify("hyprnote") },
+    ];
+    mocks.execute.mockImplementation(async () => rows);
+    mocks.executeTransaction.mockImplementation(async (statements) => {
+      rows = [
+        ...rows.filter(
+          (row) =>
+            !statements.some((statement) => statement.params[0] === row.id),
+        ),
+        ...statements.map((statement) => ({
+          id: String(statement.params[0]),
+          value_json: String(statement.params[1]),
+        })),
+      ];
+      return statements.map(() => 1);
+    });
+    mocks.listSupportedModels.mockResolvedValue({
+      status: "ok",
+      data: [{ key: "QuantizedTiny" }, { key: "QuantizedSmall" }],
+    });
+    mocks.isModelDownloaded.mockImplementation(async (model) => ({
+      status: "ok",
+      data: model === "QuantizedSmall",
+    }));
+
+    await initializeApplicationSettings();
+
+    expect(rows).toContainEqual({
+      id: "current_stt_model",
+      value_json: JSON.stringify("QuantizedSmall"),
+    });
+    expect(rows).toContainEqual({
+      id: "current_stt_provider",
+      value_json: JSON.stringify("hyprnote"),
+    });
+  });
+
+  it("selects a freshly downloaded model when nothing valid is configured", async () => {
+    mocks.execute.mockResolvedValue([
+      { id: "current_stt_provider", value_json: JSON.stringify("hyprnote") },
+    ]);
+
+    await expect(adoptSttModelIfUnconfigured("QuantizedSmall")).resolves.toBe(
+      true,
+    );
+
+    const statements = mocks.executeTransaction.mock.calls[0][0];
+    expect(statements.map((statement) => statement.params.slice(0, 2))).toEqual(
+      [
+        ["current_stt_provider", JSON.stringify("hyprnote")],
+        ["current_stt_model", JSON.stringify("QuantizedSmall")],
+      ],
+    );
+  });
+
+  it("does not override an existing model selection on download completion", async () => {
+    mocks.execute.mockResolvedValue([
+      { id: "current_stt_provider", value_json: JSON.stringify("hyprnote") },
+      { id: "current_stt_model", value_json: JSON.stringify("QuantizedTiny") },
+    ]);
+
+    await expect(adoptSttModelIfUnconfigured("QuantizedSmall")).resolves.toBe(
+      false,
+    );
+    expect(mocks.executeTransaction).not.toHaveBeenCalled();
   });
 
   it("updates against the latest SQLite value inside the write queue", async () => {

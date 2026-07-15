@@ -15,6 +15,7 @@ import {
   type LocalModel,
 } from "@hypr/plugin-local-stt";
 
+import { adoptSttModelIfUnconfigured } from "~/settings/queries";
 import { useConfigValues } from "~/shared/config";
 import type { DownloadProgress } from "~/sidebar/toast/types";
 import { useTabs } from "~/store/zustand/tabs";
@@ -95,6 +96,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unlisten = localSttEvents.downloadProgressPayload.listen((event) => {
       const { model: eventModel, status } = event.payload;
+
+      if (status === "completed") {
+        // Downloading a local model from settings does not select it by
+        // itself. If no valid STT model is configured yet, adopt the freshly
+        // downloaded one so the user can transcribe right away (same behavior
+        // as the onboarding transcription step).
+        void adoptSttModelIfUnconfigured(eventModel).catch(console.error);
+      }
 
       setActiveDownloads((prev) => {
         const next = new Map(prev);
