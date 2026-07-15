@@ -159,6 +159,7 @@ describe("SQLite settings", () => {
       [
         ["ai_language", JSON.stringify("ko")],
         ["spoken_languages", JSON.stringify(JSON.stringify(["ko", "en"]))],
+        ["current_stt_provider", JSON.stringify("hyprnote")],
       ],
     );
   });

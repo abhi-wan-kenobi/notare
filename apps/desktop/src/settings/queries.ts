@@ -107,6 +107,13 @@ export async function initializeApplicationSettings(): Promise<void> {
     }
   }
 
+  // Fresh installs default to the local ("hyprnote") STT provider; the model
+  // stays unset until the user downloads one (getDefaultSttModel only knows
+  // external providers).
+  if (!stored.values.current_stt_provider) {
+    updates.current_stt_provider = "hyprnote";
+  }
+
   if (!stored.values.current_stt_model) {
     const defaultModel = getDefaultSttModel(stored.values.current_stt_provider);
     if (defaultModel) {

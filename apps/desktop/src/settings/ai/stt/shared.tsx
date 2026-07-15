@@ -168,13 +168,16 @@ export function formatModelSize(sizeBytes?: number | null) {
 
 const _PROVIDERS = [
   {
+    // The provider id "hyprnote" is a persisted setting value; only the
+    // user-facing label changed. Models are the on-device ones returned by
+    // the local-stt plugin (see select.tsx), not this static list.
     disabled: false,
     id: "hyprnote",
-    displayName: "Notare",
-    badge: "Recommended",
+    displayName: "Local (On-Device)",
+    badge: null,
     icon: <NotareProviderIcon />,
     baseUrl: new URL("/stt", env.VITE_API_URL).toString(),
-    models: ["cloud"],
+    models: [],
     requirements: [],
   },
   {

@@ -20,6 +20,7 @@ import { FinalDescription, FinalSection, finishOnboarding } from "./final";
 import { FolderLocationSection } from "./folder-location";
 import { PermissionsSection } from "./permissions";
 import { OnboardingSection } from "./shared";
+import { TranscriptionSection } from "./transcription";
 
 import { StandaloneWindowShell } from "~/shared/window-shell";
 import { type Tab, useTabs } from "~/store/zustand/tabs";
@@ -235,6 +236,22 @@ function OnboardingScreenContent({
               onContinue={goNext}
               onSignIn={handleCalendarSignIn}
             />
+          </OnboardingSection>
+
+          <OnboardingSection
+            title={<Trans>Transcription model</Trans>}
+            description={
+              <Trans>
+                Download a speech-to-text model — transcription runs entirely
+                on your device
+              </Trans>
+            }
+            completedTitle={<Trans>Transcription model configured</Trans>}
+            status={getStepStatus("transcription", currentStep)}
+            onBack={goBack}
+            onNext={goNext}
+          >
+            <TranscriptionSection onContinue={goNext} />
           </OnboardingSection>
 
           <OnboardingSection

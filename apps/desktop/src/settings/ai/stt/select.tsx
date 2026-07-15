@@ -521,10 +521,16 @@ function useConfiguredMapping(): Record<
   });
 
   const localModels = supportedModels.data ?? [];
-  const soniqoModels = localModels.filter((m) => m.model_type === "soniqo");
+  // whisper.cpp models run everywhere; soniqo/argmax backends are Apple
+  // Silicon only.
+  const visibleLocalModels = localModels.filter(
+    (m) => m.model_type === "whispercpp" || isAppleSilicon,
+  );
 
-  const soniqoDownloaded = useQueries({
-    queries: [...soniqoModels.map((m) => sttModelQueries.isDownloaded(m.key))],
+  const localModelsDownloaded = useQueries({
+    queries: [
+      ...visibleLocalModels.map((m) => sttModelQueries.isDownloaded(m.key)),
+    ],
   });
 
   return Object.fromEntries(
@@ -547,24 +553,15 @@ function useConfiguredMapping(): Record<
       }
 
       if (provider.id === "hyprnote") {
-        const models: ModelEntry[] = [
-          { id: "cloud", isDownloaded: billing.isPaid, category: "latest" },
-        ];
-
-        if (isAppleSilicon) {
-          soniqoModels.forEach((model, i) => {
-            models.push({
-              id: model.key,
-              isDownloaded: soniqoDownloaded[i]?.data ?? false,
-              displayName: model.display_name,
-              sizeBytes: model.size_bytes,
-              mode: isRealtimeLocalModel(String(model.key))
-                ? "realtime"
-                : "batch",
-              category: "latest",
-            });
-          });
-        }
+        // No cloud tier in Notare: only on-device models are offered.
+        const models: ModelEntry[] = visibleLocalModels.map((model, i) => ({
+          id: model.key,
+          isDownloaded: localModelsDownloaded[i]?.data ?? false,
+          displayName: model.display_name,
+          sizeBytes: model.size_bytes,
+          mode: isRealtimeLocalModel(String(model.key)) ? "realtime" : "batch",
+          category: "latest" as const,
+        }));
 
         return [provider.id, { configured: true, models }];
       }
