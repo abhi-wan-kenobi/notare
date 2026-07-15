@@ -3,7 +3,10 @@ import { useCallback } from "react";
 
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
 import { commands as detectCommands } from "@hypr/plugin-detect";
-import { commands as localSttCommands } from "@hypr/plugin-local-stt";
+import {
+  commands as localSttCommands,
+  type LocalModel,
+} from "@hypr/plugin-local-stt";
 import { commands as trayCommands } from "@hypr/plugin-tray";
 import { commands as windowsCommands } from "@hypr/plugin-windows";
 
@@ -127,6 +130,51 @@ export async function initializeApplicationSettings(): Promise<void> {
   const current =
     Object.keys(updates).length > 0 ? await getStoredSettingValues() : stored;
   applySettingSideEffects(current.values);
+
+  // A local model can end up downloaded without ever being selected (the
+  // settings download button only downloads). If no valid transcription model
+  // is configured, adopt an already-downloaded local model.
+  await adoptDownloadedSttModelIfUnconfigured().catch(console.error);
+}
+
+export async function adoptSttModelIfUnconfigured(
+  model: LocalModel,
+): Promise<boolean> {
+  const { values } = await getStoredSettingValues();
+  if (
+    isConfiguredSttModel(values.current_stt_provider, values.current_stt_model)
+  ) {
+    return false;
+  }
+
+  await setSettingValues({
+    current_stt_provider: "hyprnote",
+    current_stt_model: model,
+  });
+  return true;
+}
+
+export async function adoptDownloadedSttModelIfUnconfigured(): Promise<boolean> {
+  const { values } = await getStoredSettingValues();
+  if (
+    isConfiguredSttModel(values.current_stt_provider, values.current_stt_model)
+  ) {
+    return false;
+  }
+
+  const supported = await localSttCommands.listSupportedModels();
+  if (supported.status !== "ok") {
+    return false;
+  }
+
+  for (const model of supported.data) {
+    const downloaded = await localSttCommands.isModelDownloaded(model.key);
+    if (downloaded.status === "ok" && downloaded.data) {
+      return adoptSttModelIfUnconfigured(model.key);
+    }
+  }
+
+  return false;
 }
 
 export function setSettingValue<K extends SettingKey>(
