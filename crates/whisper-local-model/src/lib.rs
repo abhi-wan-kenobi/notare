@@ -74,7 +74,10 @@ impl WhisperModel {
                 "https://hyprnote.s3.us-east-1.amazonaws.com/v0/ggerganov/whisper.cpp/main/ggml-small.en-q8_0.bin"
             }
             WhisperModel::QuantizedLargeTurbo => {
-                "https://hyprnote.s3.us-east-1.amazonaws.com/v0/ggerganov/whisper.cpp/main/ggml-large-v3-turbo-q8_0.bin"
+                // Never uploaded to the upstream S3 mirror (403); serve from the
+                // original source. Verified identical to the catalog metadata
+                // (size 874188075, CRC32 3055274469) on 2026-07-15.
+                "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q8_0.bin"
             }
         }
     }
