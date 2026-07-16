@@ -360,10 +360,7 @@ const openTab = <T extends BasicState & NavigationState>(
     shouldTrackReturnOrigin(tabWithDefaults) &&
     activeOriginTab &&
     !isSameTab(activeOriginTab, tabWithDefaults)
-      ? {
-          returnToSlotId: activeOriginTab.slotId,
-          returnToTabId: uniqueIdfromTab(activeOriginTab),
-        }
+      ? getReturnOrigin(activeOriginTab)
       : undefined;
   const tabWithOrigin = returnOrigin
     ? { ...tabWithDefaults, ...returnOrigin }
@@ -471,6 +468,31 @@ const reuseExistingTab = (
 
 const shouldTrackReturnOrigin = (tab: Tab): boolean =>
   RETURN_ORIGIN_TAB_TYPES.includes(tab.type);
+
+/**
+ * A return origin must always point at a notes-family tab. When a special
+ * surface is opened while another special surface is active (e.g.
+ * settings → calendar), the new tab inherits the origin's own return target
+ * instead of pointing at the origin: otherwise the sidebar's "Notes" action
+ * would navigate to the previous special surface (wrong surface bug).
+ */
+const getReturnOrigin = (
+  activeOriginTab: Tab,
+): { returnToSlotId: string; returnToTabId?: string } | undefined => {
+  if (RETURN_ORIGIN_TAB_TYPES.includes(activeOriginTab.type)) {
+    return activeOriginTab.returnToSlotId
+      ? {
+          returnToSlotId: activeOriginTab.returnToSlotId,
+          returnToTabId: activeOriginTab.returnToTabId,
+        }
+      : undefined;
+  }
+
+  return {
+    returnToSlotId: activeOriginTab.slotId,
+    returnToTabId: uniqueIdfromTab(activeOriginTab),
+  };
+};
 
 const clearReturnOriginsForSlot = (tabs: Tab[], slotId: string): Tab[] => {
   return tabs.map((tab) =>

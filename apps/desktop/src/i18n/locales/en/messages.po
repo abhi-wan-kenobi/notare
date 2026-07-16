@@ -437,6 +437,10 @@ msgstr "Connect GitHub for private repos."
 msgid "Connect your integration"
 msgstr "Connect your integration"
 
+#: src/settings/ai/stt/select.tsx
+msgid "Connected"
+msgstr "Connected"
+
 #: src/sidebar/contacts.tsx
 #: src/sidebar/settings.tsx
 #: src/sidebar/surface-nav.tsx
@@ -718,8 +722,12 @@ msgid "Filter synced items by {0}."
 msgstr "Filter synced items by {0}."
 
 #: src/settings/ai/stt/select.tsx
-msgid "Final & re-transcription model"
-msgstr "Final & re-transcription model"
+#~ msgid "Final & re-transcription model"
+#~ msgstr "Final & re-transcription model"
+
+#: src/settings/ai/stt/select.tsx
+msgid "Final pass & re-transcription"
+msgstr "Final pass & re-transcription"
 
 #: src/shared/open-note-dialog.tsx
 msgid "Find a note..."
@@ -958,8 +966,12 @@ msgid "Live transcript copied"
 msgstr "Live transcript copied"
 
 #: src/settings/ai/stt/select.tsx
-msgid "Live transcription model"
-msgstr "Live transcription model"
+msgid "Live transcription"
+msgstr "Live transcription"
+
+#: src/settings/ai/stt/select.tsx
+#~ msgid "Live transcription model"
+#~ msgstr "Live transcription model"
 
 #: src/onboarding/transcription.tsx
 msgid "Loading available models…"
@@ -1181,6 +1193,10 @@ msgstr "No matching languages found"
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 msgid "No matching people"
 msgstr "No matching people"
+
+#: src/settings/ai/stt/select.tsx
+msgid "No models are available for this provider."
+msgstr "No models are available for this provider."
 
 #: src/settings/ai/shared/model-combobox.tsx
 msgid "No models available."
@@ -1555,6 +1571,10 @@ msgstr "Resume listening"
 msgid "Retry"
 msgstr "Retry"
 
+#: src/settings/ai/stt/select.tsx
+msgid "Reuses the live model for the accurate pass."
+msgstr "Reuses the live model for the accurate pass."
+
 #: src/settings/ai/shared/index.tsx
 #: src/settings/ai/stt/select.tsx
 msgid "Runs after the recording finishes, not during the meeting."
@@ -1635,7 +1655,6 @@ msgid "See all templates"
 msgstr "See all templates"
 
 #: src/settings/ai/shared/model-combobox.tsx
-#: src/settings/ai/stt/select.tsx
 msgid "Select a model"
 msgstr "Select a model"
 
@@ -1739,6 +1758,9 @@ msgid "Show floating bar"
 msgstr "Show floating bar"
 
 #: src/settings/ai/stt/select.tsx
+msgid "Show in file manager"
+msgstr "Show in file manager"
+
 #: src/sidebar/timeline/item.tsx
 msgid "Show in Finder"
 msgstr "Show in Finder"
@@ -1999,6 +2021,10 @@ msgstr "Tip: The Notare team loves our users!"
 #: src/settings/ai/stt/shared.tsx
 msgid "Transcribes English only."
 msgstr "Transcribes English only."
+
+#: src/settings/ai/stt/select.tsx
+msgid "Transcribes while the meeting is happening. Pick a provider, then the model that listens live."
+msgstr "Transcribes while the meeting is happening. Pick a provider, then the model that listens live."
 
 #: src/session/components/note-input/header.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx

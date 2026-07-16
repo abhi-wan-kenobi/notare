@@ -17,33 +17,13 @@ import {
 } from "@hypr/ui/components/ui/tooltip";
 import { cn } from "@hypr/utils";
 
-import { type Tab, uniqueIdfromTab, useTabs } from "~/store/zustand/tabs";
-
-type SurfaceId = "notes" | "calendar" | "contacts" | "templates" | "settings";
-
-const SPECIAL_SURFACE_TYPES: Tab["type"][] = [
-  "calendar",
-  "contacts",
-  "templates",
-  "settings",
-];
-
-export const surfaceFromTabType = (
-  type: Tab["type"] | undefined,
-): SurfaceId => {
-  switch (type) {
-    case "calendar":
-      return "calendar";
-    case "contacts":
-      return "contacts";
-    case "templates":
-      return "templates";
-    case "settings":
-      return "settings";
-    default:
-      return "notes";
-  }
-};
+import {
+  goToNotesSurface,
+  openSurfaceTab,
+  surfaceFromTabType,
+  type SurfaceId,
+} from "~/sidebar/surface-navigation";
+import { useTabs } from "~/store/zustand/tabs";
 
 const isMacosPlatform = (): boolean => {
   try {
@@ -60,53 +40,11 @@ export function SidebarSurfaceNav() {
   );
 
   const goToNotes = useCallback(() => {
-    const { tabs, currentTab, select, openCurrent } = useTabs.getState();
-
-    if (!currentTab || !SPECIAL_SURFACE_TYPES.includes(currentTab.type)) {
-      return;
-    }
-
-    const returnToSlotId = currentTab.returnToSlotId;
-    const returnTab = returnToSlotId
-      ? tabs.find(
-          (tab) =>
-            tab.slotId === returnToSlotId &&
-            tab.slotId !== currentTab.slotId &&
-            (!currentTab.returnToTabId ||
-              uniqueIdfromTab(tab) === currentTab.returnToTabId),
-        )
-      : null;
-    if (returnTab) {
-      select(returnTab);
-      return;
-    }
-
-    const existingHomeTab = tabs.find((tab) => tab.type === "empty");
-    if (existingHomeTab) {
-      select(existingHomeTab);
-      return;
-    }
-
-    openCurrent({ type: "empty" });
+    goToNotesSurface();
   }, []);
 
   const openSurface = useCallback((surface: Exclude<SurfaceId, "notes">) => {
-    const { openNew } = useTabs.getState();
-
-    switch (surface) {
-      case "calendar":
-        openNew({ type: "calendar" });
-        return;
-      case "contacts":
-        openNew({ type: "contacts", state: { selected: null } });
-        return;
-      case "templates":
-        openNew({ type: "templates" });
-        return;
-      case "settings":
-        openNew({ type: "settings" });
-        return;
-    }
+    openSurfaceTab(surface);
   }, []);
 
   const settingsShortcutHint = isMacosPlatform() ? "⌘ ," : "Ctrl+,";
@@ -118,7 +56,12 @@ export function SidebarSurfaceNav() {
     shortcutHint?: string;
     onClick: () => void;
   }[] = [
-    { id: "notes", label: t`Notes`, icon: NotebookTextIcon, onClick: goToNotes },
+    {
+      id: "notes",
+      label: t`Notes`,
+      icon: NotebookTextIcon,
+      onClick: goToNotes,
+    },
     {
       id: "calendar",
       label: t`Calendar`,

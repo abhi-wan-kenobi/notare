@@ -178,8 +178,18 @@ export function formatModelSize(sizeBytes?: number | null) {
   })} ${unit}`;
 }
 
+// Token-only badge recipe (docs/DESIGN-DIRECTION.md §2): hairline border +
+// tinted fill. Cobalt = capability, violet (accent-glow-end) = top tier,
+// neutral = everything else. Works on both themes; no palette literals.
 const modelBadgeClassName =
   "inline-flex shrink-0 cursor-help items-center rounded-md border px-1.5 py-0.5 text-[10px] leading-none font-medium";
+
+export const modelBadgeNeutralClassName =
+  "border-border bg-muted text-muted-foreground";
+export const modelBadgeAccentClassName =
+  "border-primary/25 bg-primary/10 text-primary";
+export const modelBadgeTopTierClassName =
+  "border-accent-glow-end/30 bg-accent-glow-end/10 text-accent-glow-end";
 
 export function SttLanguageBadge({
   languages,
@@ -201,8 +211,8 @@ export function SttLanguageBadge({
           className={cn([
             modelBadgeClassName,
             isEnglishOnly
-              ? "border-border bg-muted text-muted-foreground"
-              : "border-blue-200 bg-blue-50 text-blue-700",
+              ? modelBadgeNeutralClassName
+              : modelBadgeAccentClassName,
           ])}
         >
           {isEnglishOnly ? "EN" : <Trans>Multilingual</Trans>}
@@ -244,8 +254,8 @@ export function SttTierBadge({ tier }: { tier?: SttModelTier }) {
           className={cn([
             modelBadgeClassName,
             tier === "best"
-              ? "border-violet-200 bg-violet-50 text-violet-700"
-              : "border-border bg-muted text-muted-foreground",
+              ? modelBadgeTopTierClassName
+              : modelBadgeNeutralClassName,
           ])}
         >
           {label}
@@ -294,7 +304,7 @@ export function SttModelUseHint({
     <span
       className={cn([
         "min-w-0 truncate text-[11px]",
-        matched ? "text-sky-700" : "text-muted-foreground",
+        matched ? "text-primary" : "text-muted-foreground",
         className,
       ])}
     >
