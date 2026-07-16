@@ -1,6 +1,7 @@
 import { commands as calendarCommands } from "@hypr/plugin-calendar";
 import type { GoogleAccountStatus } from "@hypr/plugin-calendar";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
+import { Trans } from "@lingui/react/macro";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { open as selectFile } from "@tauri-apps/plugin-dialog";
 import { useCallback, useMemo, useState } from "react";
@@ -200,6 +201,94 @@ export function GoogleDirectContent({ config }: { config: CalendarProvider }) {
   );
 }
 
+const GOOGLE_CREDENTIALS_URL =
+  "https://console.cloud.google.com/apis/credentials";
+
+/**
+ * Compact, collapsible in-app version of docs/GOOGLE-CALENDAR.md for the
+ * pre-connect state, so nobody has to leave the app to figure out where the
+ * client JSON comes from.
+ */
+function SetupGuide({ docsPath }: { docsPath: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="text-muted-foreground hover:text-foreground cursor-pointer self-start text-xs underline transition-colors"
+      >
+        {open ? (
+          <Trans>Hide setup steps</Trans>
+        ) : (
+          <Trans>How do I get this file?</Trans>
+        )}
+      </button>
+      {open && (
+        <div className="border-border bg-muted/40 flex flex-col gap-2 rounded-md border p-2">
+          <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-xs">
+            <li>
+              <Trans>
+                Create a project in the Google Cloud console (any name, it's
+                free).
+              </Trans>
+            </li>
+            <li>
+              <Trans>Enable the Google Calendar API for that project.</Trans>
+            </li>
+            <li>
+              <Trans>
+                Set up the OAuth consent screen: audience{" "}
+                <span className="text-foreground font-medium">External</span>,
+                then add your own Gmail address as a test user.
+              </Trans>
+            </li>
+            <li>
+              <Trans>
+                Go to Credentials → Create credentials → OAuth client ID.
+              </Trans>
+            </li>
+            <li>
+              <Trans>
+                Application type:{" "}
+                <span className="text-foreground font-medium">Desktop app</span>{" "}
+                — not “Web application”.
+              </Trans>
+            </li>
+            <li>
+              <Trans>Download the JSON, then select it here.</Trans>
+            </li>
+          </ol>
+          <p className="text-xs text-amber-700">
+            <Trans>
+              If you see redirect URI / JavaScript origin fields, you picked
+              Web — choose Desktop app instead.
+            </Trans>
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() =>
+                void openerCommands.openUrl(GOOGLE_CREDENTIALS_URL, null)
+              }
+              className="text-muted-foreground hover:text-foreground cursor-pointer text-xs underline transition-colors"
+            >
+              <Trans>Open Google Cloud console</Trans>
+            </button>
+            <span className="text-muted-foreground text-xs">·</span>
+            <button
+              onClick={() => void openerCommands.openUrl(docsPath, null)}
+              className="text-muted-foreground hover:text-foreground cursor-pointer text-xs underline transition-colors"
+            >
+              <Trans>Full setup guide</Trans>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ImportClientContent({
   onSelectFile,
   onPasteJson,
@@ -220,14 +309,9 @@ function ImportClientContent({
     <div className="flex flex-col gap-2 pt-1 pb-2">
       <p className="text-muted-foreground text-xs">
         Connect with your own Google OAuth client — no account with us, no
-        cloud.{" "}
-        <button
-          onClick={() => void openerCommands.openUrl(docsPath, null)}
-          className="cursor-pointer underline transition-colors hover:text-foreground"
-        >
-          Setup guide
-        </button>
+        cloud.
       </p>
+      <SetupGuide docsPath={docsPath} />
       <div className="flex items-center gap-2">
         <button
           onClick={onSelectFile}

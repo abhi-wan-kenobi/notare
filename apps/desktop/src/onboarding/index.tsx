@@ -97,10 +97,6 @@ function OnboardingScreenContent({
     if (prev) setCurrentStep(prev);
   }, [currentStep]);
 
-  // Cloud calendar providers (Google/Outlook) needed the upstream account
-  // system; there is nothing to sign in to anymore.
-  const handleCalendarSignIn = useCallback(() => {}, []);
-
   useEffect(() => {
     void analyticsCommands.event({
       event: "onboarding_step_viewed",
@@ -232,10 +228,7 @@ function OnboardingScreenContent({
             onBack={goBack}
             onNext={goNext}
           >
-            <CalendarSection
-              onContinue={goNext}
-              onSignIn={handleCalendarSignIn}
-            />
+            <CalendarSection onContinue={goNext} />
           </OnboardingSection>
 
           <OnboardingSection
