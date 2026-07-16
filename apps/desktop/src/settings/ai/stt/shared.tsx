@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { Trans } from "@lingui/react/macro";
 import {
   AssemblyAI,
   Cloudflare,
@@ -9,7 +10,18 @@ import {
 } from "@lobehub/icons";
 import type { ReactNode } from "react";
 
-import type { LocalModel } from "@hypr/plugin-local-stt";
+import type {
+  LocalModel,
+  SttModelLanguages,
+  SttModelTier,
+  SttRecommendedUse,
+} from "@hypr/plugin-local-stt";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@hypr/ui/components/ui/tooltip";
+import { cn } from "@hypr/utils";
 
 import { env } from "~/env";
 import { NotareProviderIcon, ProviderBrandImage } from "~/settings/ai/shared";
@@ -164,6 +176,137 @@ export function formatModelSize(sizeBytes?: number | null) {
   return `~${value.toLocaleString(undefined, {
     maximumFractionDigits: value >= 10 ? 0 : 1,
   })} ${unit}`;
+}
+
+const modelBadgeClassName =
+  "inline-flex shrink-0 cursor-help items-center rounded-md border px-1.5 py-0.5 text-[10px] leading-none font-medium";
+
+export function SttLanguageBadge({
+  languages,
+  languageCount,
+}: {
+  languages?: SttModelLanguages;
+  languageCount?: number | null;
+}) {
+  if (!languages) {
+    return null;
+  }
+
+  const isEnglishOnly = languages === "englishOnly";
+
+  return (
+    <Tooltip delayDuration={100}>
+      <TooltipTrigger asChild>
+        <span
+          className={cn([
+            modelBadgeClassName,
+            isEnglishOnly
+              ? "border-border bg-muted text-muted-foreground"
+              : "border-blue-200 bg-blue-50 text-blue-700",
+          ])}
+        >
+          {isEnglishOnly ? "EN" : <Trans>Multilingual</Trans>}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-64 text-xs">
+        {isEnglishOnly ? (
+          <Trans>Transcribes English only.</Trans>
+        ) : languageCount ? (
+          <Trans>Supports {languageCount} languages.</Trans>
+        ) : (
+          <Trans>Supports many languages.</Trans>
+        )}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function SttTierBadge({ tier }: { tier?: SttModelTier }) {
+  if (!tier) {
+    return null;
+  }
+
+  const label =
+    tier === "fastest" ? (
+      <Trans>Fastest</Trans>
+    ) : tier === "fast" ? (
+      <Trans>Fast</Trans>
+    ) : tier === "balanced" ? (
+      <Trans>Balanced</Trans>
+    ) : (
+      <Trans>Best quality</Trans>
+    );
+
+  return (
+    <Tooltip delayDuration={100}>
+      <TooltipTrigger asChild>
+        <span
+          className={cn([
+            modelBadgeClassName,
+            tier === "best"
+              ? "border-violet-200 bg-violet-50 text-violet-700"
+              : "border-border bg-muted text-muted-foreground",
+          ])}
+        >
+          {label}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-64 text-xs">
+        {tier === "best" ? (
+          <Trans>Highest accuracy; needs the most compute.</Trans>
+        ) : tier === "balanced" ? (
+          <Trans>Good accuracy at a moderate speed.</Trans>
+        ) : (
+          <Trans>Prioritizes speed over accuracy.</Trans>
+        )}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function sttPairingMatches(
+  use?: SttRecommendedUse,
+  pairing?: "live" | "final",
+) {
+  if (!use || !pairing) {
+    return false;
+  }
+
+  return use === "liveAndFinal" || use === pairing;
+}
+
+export function SttModelUseHint({
+  use,
+  pairing,
+  className,
+}: {
+  use?: SttRecommendedUse;
+  pairing?: "live" | "final";
+  className?: string;
+}) {
+  if (!use) {
+    return null;
+  }
+
+  const matched = sttPairingMatches(use, pairing);
+
+  return (
+    <span
+      className={cn([
+        "min-w-0 truncate text-[11px]",
+        matched ? "text-sky-700" : "text-muted-foreground",
+        className,
+      ])}
+    >
+      {use === "live" ? (
+        <Trans>Fast and light — a good pick for live transcription.</Trans>
+      ) : use === "final" ? (
+        <Trans>Most accurate — best as the final pass after recording.</Trans>
+      ) : (
+        <Trans>Balanced — works for live and the final pass.</Trans>
+      )}
+    </span>
+  );
 }
 
 const _PROVIDERS = [

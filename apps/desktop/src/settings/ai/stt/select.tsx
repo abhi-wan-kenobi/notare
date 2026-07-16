@@ -13,6 +13,9 @@ import { useRef } from "react";
 import {
   commands as localSttCommands,
   type LocalModel,
+  type SttModelLanguages,
+  type SttModelTier,
+  type SttRecommendedUse,
 } from "@hypr/plugin-local-stt";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
 import type { AIProviderStorage } from "@hypr/store";
@@ -37,11 +40,13 @@ import { LocalModelBackendBadge, LocalModelLabel } from "./model-icon";
 import { resolveLiveLanguageSupportMode } from "./selection";
 import {
   displayModelLabel,
-  displayModelTitle,
   formatModelSize,
   type ProviderId,
   PROVIDERS,
+  SttLanguageBadge,
+  SttModelUseHint,
   sttModelQueries,
+  SttTierBadge,
 } from "./shared";
 
 import { useBillingAccess } from "~/auth/billing";
@@ -276,6 +281,7 @@ export function SelectProviderAndModel() {
                       )}
                       <ModelSelectItem
                         model={model}
+                        pairing="live"
                         onDownload={() => startDownload(model.id as LocalModel)}
                         onStartTrial={startTrial}
                       />
@@ -375,6 +381,7 @@ export function SelectFinalModel() {
               <ModelSelectItem
                 key={model.id}
                 model={model}
+                pairing="final"
                 onDownload={() => startDownload(model.id as LocalModel)}
                 onStartTrial={startTrial}
               />
@@ -530,7 +537,18 @@ type ModelEntry = {
   category?: ModelCategory;
   sizeBytes?: number | null;
   mode?: "realtime" | "batch";
+  engine?: string;
+  languages?: SttModelLanguages;
+  languageCount?: number | null;
+  tier?: SttModelTier;
+  recommendedUse?: SttRecommendedUse;
 };
+
+// The "On device" placeholder label hides which model a row is; local rows
+// show the actual model name instead, with the engine as the hover title.
+function modelEntryLabel(model: ModelEntry) {
+  return model.displayName ?? displayModelLabel(model.id);
+}
 
 function getModelCategoryLabel(category?: ModelCategory) {
   if (category === "latest") {
@@ -660,6 +678,11 @@ function useConfiguredMapping(): Record<
           sizeBytes: model.size_bytes,
           mode: isRealtimeLocalModel(String(model.key)) ? "realtime" : "batch",
           category: "latest" as const,
+          engine: model.engine,
+          languages: model.languages,
+          languageCount: model.language_count,
+          tier: model.tier,
+          recommendedUse: model.recommended_use,
         }));
 
         return [provider.id, { configured: true, models }];
@@ -692,10 +715,12 @@ function useConfiguredMapping(): Record<
 
 function ModelSelectItem({
   model,
+  pairing,
   onDownload,
   onStartTrial,
 }: {
   model: ModelEntry;
+  pairing?: "live" | "final";
   onDownload: () => void;
   onStartTrial: () => void;
 }) {
@@ -704,26 +729,37 @@ function ModelSelectItem({
   const downloadInfo = activeDownloads.find((d) => d.model === model.id);
   const isDownloading = !!downloadInfo;
 
-  const label = displayModelLabel(model.id, model.displayName);
-  const title = displayModelTitle(model.id, model.displayName);
+  const label = modelEntryLabel(model);
   const sizeLabel = formatModelSize(model.sizeBytes);
   const showLocalActions = model.isDownloaded && isLocalModelId(model.id);
   const isDeprecated = model.isDeprecated === true;
   const content = (
-    <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
-      <LocalModelLabel
-        model={model.id}
-        label={label}
-        title={title}
-        className="min-w-0 flex-1"
-      />
-      <div className="flex shrink-0 items-center gap-2 text-[11px]">
-        <LocalModelBackendBadge model={model.id} />
-        <ModelModeBadge mode={model.mode} />
-        {!model.isDownloaded && sizeLabel && (
-          <span className="text-muted-foreground font-mono">{sizeLabel}</span>
-        )}
+    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <LocalModelLabel
+          model={model.id}
+          label={label}
+          title={model.engine}
+          className="min-w-0 flex-1"
+        />
+        <div className="flex shrink-0 items-center gap-2 text-[11px]">
+          <SttLanguageBadge
+            languages={model.languages}
+            languageCount={model.languageCount}
+          />
+          <SttTierBadge tier={model.tier} />
+          <LocalModelBackendBadge model={model.id} />
+          <ModelModeBadge mode={model.mode} />
+          {!model.isDownloaded && sizeLabel && (
+            <span className="text-muted-foreground font-mono">{sizeLabel}</span>
+          )}
+        </div>
       </div>
+      <SttModelUseHint
+        use={model.recommendedUse}
+        pairing={pairing}
+        className="pl-7"
+      />
     </div>
   );
 
@@ -810,10 +846,14 @@ function ModelSelectedValue({ model }: { model: ModelEntry }) {
     <div className="flex max-w-full min-w-0 items-center gap-2">
       <LocalModelLabel
         model={model.id}
-        label={displayModelLabel(model.id, model.displayName)}
-        title={displayModelTitle(model.id, model.displayName)}
+        label={modelEntryLabel(model)}
+        title={model.engine}
         className={cn(["min-w-0", isDeprecated && "opacity-60"])}
         labelClassName={cn([isDeprecated && "text-muted-foreground"])}
+      />
+      <SttLanguageBadge
+        languages={model.languages}
+        languageCount={model.languageCount}
       />
       <ModelModeBadge mode={model.mode} />
     </div>

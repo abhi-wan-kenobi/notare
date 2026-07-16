@@ -56,6 +56,16 @@ impl AmModel {
         }
     }
 
+    /// Parakeet V2 is an English-only checkpoint; the others are multilingual.
+    pub fn is_english_only(&self) -> bool {
+        matches!(self, AmModel::ParakeetV2)
+    }
+
+    /// Runtime that executes this model.
+    pub fn engine(&self) -> &'static str {
+        "Argmax"
+    }
+
     pub fn supported_languages(&self) -> Vec<hypr_language::Language> {
         use hypr_language::ISO639;
 

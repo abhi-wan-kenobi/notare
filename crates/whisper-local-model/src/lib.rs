@@ -126,4 +126,50 @@ impl WhisperModel {
             | WhisperModel::QuantizedLargeTurbo => hypr_language::whisper_multilingual(),
         }
     }
+
+    /// The `*.en` Whisper checkpoints are trained on English audio only.
+    pub fn is_english_only(&self) -> bool {
+        matches!(
+            self,
+            WhisperModel::QuantizedTinyEn
+                | WhisperModel::QuantizedBaseEn
+                | WhisperModel::QuantizedSmallEn
+        )
+    }
+
+    /// Runtime that executes this model.
+    pub fn engine(&self) -> &'static str {
+        "whisper.cpp"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const ALL: &[WhisperModel] = &[
+        WhisperModel::QuantizedTiny,
+        WhisperModel::QuantizedTinyEn,
+        WhisperModel::QuantizedBase,
+        WhisperModel::QuantizedBaseEn,
+        WhisperModel::QuantizedSmall,
+        WhisperModel::QuantizedSmallEn,
+        WhisperModel::QuantizedLargeTurbo,
+    ];
+
+    #[test]
+    fn english_only_flag_matches_supported_languages() {
+        for model in ALL {
+            let languages = model.supported_languages();
+            if model.is_english_only() {
+                assert_eq!(languages.len(), 1, "{model:?} must list exactly English");
+            } else {
+                assert!(
+                    languages.len() > 1,
+                    "{model:?} must be multilingual, got {} languages",
+                    languages.len()
+                );
+            }
+        }
+    }
 }

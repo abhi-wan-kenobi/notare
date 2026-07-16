@@ -131,6 +131,31 @@ impl SoniqoModel {
         }
     }
 
+    /// Every Soniqo model in the catalog is multilingual.
+    pub const fn is_english_only(self) -> bool {
+        false
+    }
+
+    /// How many languages the model supports, when the count is a documented
+    /// fact of the underlying checkpoint. `None` = multilingual, count not
+    /// pinned down.
+    pub const fn supported_language_count(self) -> Option<u32> {
+        match self {
+            // Parakeet TDT v3 family: 25 European languages.
+            Self::ParakeetStreaming | Self::ParakeetBatch => Some(25),
+            Self::Omnilingual | Self::Qwen3Small | Self::Qwen3Large => None,
+        }
+    }
+
+    /// Runtime/model family that executes this model.
+    pub const fn engine(self) -> &'static str {
+        match self {
+            Self::ParakeetStreaming | Self::ParakeetBatch => "Parakeet",
+            Self::Omnilingual => "Omnilingual",
+            Self::Qwen3Small | Self::Qwen3Large => "Qwen3",
+        }
+    }
+
     pub const fn size_bytes(self) -> u64 {
         match self {
             Self::ParakeetStreaming => 120 * 1024 * 1024,

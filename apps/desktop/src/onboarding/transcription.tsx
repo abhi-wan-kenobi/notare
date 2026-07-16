@@ -3,12 +3,17 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { CheckIcon, Loader2Icon } from "lucide-react";
 import { useCallback, useState } from "react";
 
-import type { LocalModel } from "@hypr/plugin-local-stt";
+import type { LocalModel, SttModelInfo } from "@hypr/plugin-local-stt";
 import { cn } from "@hypr/utils";
 
 import { OnboardingButton } from "./shared";
 
-import { formatModelSize } from "~/settings/ai/stt/shared";
+import {
+  formatModelSize,
+  SttLanguageBadge,
+  SttModelUseHint,
+  SttTierBadge,
+} from "~/settings/ai/stt/shared";
 import { useSetSettingValues } from "~/settings/queries";
 import {
   localSttQueries,
@@ -70,8 +75,7 @@ export function TranscriptionSection({
             <ModelRow
               key={model.key}
               model={model.key}
-              displayName={model.display_name}
-              sizeBytes={model.size_bytes}
+              info={model}
               isSelected={selectedModel === model.key}
               onSelect={selectModel}
             />
@@ -90,14 +94,12 @@ export function TranscriptionSection({
 
 function ModelRow({
   model,
-  displayName,
-  sizeBytes,
+  info,
   isSelected,
   onSelect,
 }: {
   model: LocalModel;
-  displayName: string;
-  sizeBytes: number | null;
+  info: SttModelInfo;
   isSelected: boolean;
   onSelect: (model: LocalModel) => void;
 }) {
@@ -111,7 +113,7 @@ function ModelRow({
     handleCancel,
   } = useLocalModelDownload(model, onSelect);
 
-  const sizeLabel = formatModelSize(sizeBytes);
+  const sizeLabel = formatModelSize(info.size_bytes);
 
   return (
     <div
@@ -122,15 +124,32 @@ function ModelRow({
       ])}
       onClick={isDownloaded ? () => onSelect(model) : undefined}
     >
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="text-foreground truncate text-sm">{displayName}</span>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className="text-foreground truncate text-sm"
+            title={info.engine}
+          >
+            {info.display_name}
+          </span>
+          <SttLanguageBadge
+            languages={info.languages}
+            languageCount={info.language_count}
+          />
+          <SttTierBadge tier={info.tier} />
+        </div>
         {errorMessage ? (
           <span className="truncate text-xs text-red-500">{errorMessage}</span>
-        ) : sizeLabel ? (
-          <span className="text-muted-foreground font-mono text-xs">
-            {sizeLabel}
-          </span>
-        ) : null}
+        ) : (
+          <div className="flex min-w-0 items-center gap-2">
+            <SttModelUseHint use={info.recommended_use} />
+            {sizeLabel ? (
+              <span className="text-muted-foreground shrink-0 font-mono text-xs">
+                {sizeLabel}
+              </span>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {isDownloaded ? (

@@ -1660,6 +1660,7 @@ dependencies = [
  "audioadapter-buffers",
  "bytes",
  "data",
+ "ebur128",
  "futures-util",
  "hound",
  "resampler",

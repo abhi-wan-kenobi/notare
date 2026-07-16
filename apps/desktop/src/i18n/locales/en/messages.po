@@ -235,9 +235,21 @@ msgstr "Automatically stop listening when the meeting app releases the microphon
 msgid "Back"
 msgstr "Back"
 
+#: src/settings/ai/stt/shared.tsx
+msgid "Balanced"
+msgstr "Balanced"
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Balanced — works for live and the final pass."
+msgstr "Balanced — works for live and the final pass."
+
 #: src/settings/ai/shared/index.tsx
 msgid "Base URL"
 msgstr "Base URL"
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Best quality"
+msgstr "Best quality"
 
 #: src/instruction/index.tsx
 msgid "Browser handoff not working? Paste the callback link instead"
@@ -680,6 +692,18 @@ msgstr "Failed to load issue"
 msgid "Failed to load pull request"
 msgstr "Failed to load pull request"
 
+#: src/settings/ai/stt/shared.tsx
+msgid "Fast"
+msgstr "Fast"
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Fast and light — a good pick for live transcription."
+msgstr "Fast and light — a good pick for live transcription."
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Fastest"
+msgstr "Fastest"
+
 #: src/templates/details.tsx
 msgid "Favorite template"
 msgstr "Favorite template"
@@ -790,6 +814,10 @@ msgstr "Go to previous section"
 msgid "Go to recent"
 msgstr "Go to recent"
 
+#: src/settings/ai/stt/shared.tsx
+msgid "Good accuracy at a moderate speed."
+msgstr "Good accuracy at a moderate speed."
+
 #: src/calendar/components/apple/permission.tsx
 msgid "Having trouble?"
 msgstr "Having trouble?"
@@ -813,6 +841,10 @@ msgstr "Hide Deleted Events"
 #: src/calendar/components/google/content.tsx
 msgid "Hide setup steps"
 msgstr "Hide setup steps"
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Highest accuracy; needs the most compute."
+msgstr "Highest accuracy; needs the most compute."
 
 #: src/calendar/components/google/content.tsx
 msgid "How do I get this file?"
@@ -1039,6 +1071,10 @@ msgstr "Monday"
 msgid "More options"
 msgstr "More options"
 
+#: src/settings/ai/stt/shared.tsx
+msgid "Most accurate — best as the final pass after recording."
+msgstr "Most accurate — best as the final pass after recording."
+
 #: src/templates/sections-editor.tsx
 msgid "Move down"
 msgstr "Move down"
@@ -1058,6 +1094,10 @@ msgstr "Move up"
 #: src/settings/general/storage/notes-location.tsx
 msgid "Moving..."
 msgstr "Moving..."
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Multilingual"
+msgstr "Multilingual"
 
 #: src/contacts/details.tsx
 #: src/contacts/organization-details.tsx
@@ -1373,6 +1413,10 @@ msgstr "Preparing transcript..."
 #: src/session/components/note-input/search/bar.tsx
 msgid "Previous match"
 msgstr "Previous match"
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Prioritizes speed over accuracy."
+msgstr "Prioritizes speed over accuracy."
 
 #: src/settings/ai/stt/select.tsx
 msgid "Pro"
@@ -1869,6 +1913,14 @@ msgstr "Summary instructions"
 msgid "Sunday"
 msgstr "Sunday"
 
+#: src/settings/ai/stt/shared.tsx
+msgid "Supports {languageCount} languages."
+msgstr "Supports {languageCount} languages."
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Supports many languages."
+msgstr "Supports many languages."
+
 #: src/sidebar/surface-nav.tsx
 msgid "Switch view"
 msgstr "Switch view"
@@ -1943,6 +1995,10 @@ msgstr "Timezone"
 #: src/session/components/note-input/enhanced/streaming.tsx
 msgid "Tip: The Notare team loves our users!"
 msgstr "Tip: The Notare team loves our users!"
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Transcribes English only."
+msgstr "Transcribes English only."
 
 #: src/session/components/note-input/header.tsx
 #: src/session/components/outer-header/overflow/export-modal.tsx
