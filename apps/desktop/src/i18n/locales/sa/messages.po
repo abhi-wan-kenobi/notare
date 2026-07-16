@@ -67,9 +67,7 @@ msgstr ""
 msgid "Accessibility"
 msgstr ""
 
-#: src/onboarding/index.tsx
 #: src/settings/general/account.tsx
-#: src/sidebar/settings.tsx
 msgid "Account"
 msgstr ""
 
@@ -161,26 +159,6 @@ msgstr "हस्तेन प्रक्षेपणं विना सर्
 msgid "Analyzing structure..."
 msgstr ""
 
-#: src/onboarding/permissions.tsx
-msgid "Notare can hear others"
-msgstr ""
-
-#: src/onboarding/permissions.tsx
-msgid "Notare can hear your voice"
-msgstr ""
-
-#: src/settings/general/storage/legacy-cleanup.tsx
-msgid "Notare could not verify the migration status"
-msgstr ""
-
-#: src/onboarding/index.tsx
-msgid "Notare needs access to your microphone and system audio to record and transcribe your meetings"
-msgstr ""
-
-#: src/onboarding/index.tsx
-msgid "Notare will sync your calendar to get meeting reminders"
-msgstr ""
-
 #: src/templates/template-icon-picker.tsx
 msgid "Animals & Nature"
 msgstr ""
@@ -210,13 +188,13 @@ msgstr ""
 msgid "Ask & search about anything, or be creative!"
 msgstr ""
 
-#: src/shared/chat-cta.tsx
-msgid "Ask Notare anything"
-msgstr ""
-
 #: src/chat/components/input/index.tsx
 #: src/shared/chat-cta.tsx
 msgid "Ask anything"
+msgstr ""
+
+#: src/shared/chat-cta.tsx
+msgid "Ask Notare anything"
 msgstr ""
 
 #: src/task/resource-view.tsx
@@ -276,8 +254,10 @@ msgstr ""
 msgid "Can transcribe while the meeting is happening."
 msgstr ""
 
+#: src/onboarding/transcription.tsx
 #: src/settings/general/account.tsx
 #: src/settings/general/storage/legacy-cleanup.tsx
+#: src/settings/general/storage/notes-location.tsx
 #: src/settings/todo/github.tsx
 msgid "Cancel"
 msgstr ""
@@ -287,6 +267,7 @@ msgid "Cancel date edit"
 msgstr ""
 
 #: src/onboarding/folder-location.tsx
+#: src/settings/general/storage/notes-location.tsx
 msgid "Change"
 msgstr ""
 
@@ -312,6 +293,10 @@ msgstr ""
 
 #: src/settings/general/theme.tsx
 msgid "Choose light, dark, or match your system setting."
+msgstr ""
+
+#: src/settings/general/storage/notes-location.tsx
+msgid "Choose notes folder"
 msgstr ""
 
 #: src/onboarding/folder-location.tsx
@@ -445,6 +430,7 @@ msgid "Context"
 msgstr ""
 
 #: src/onboarding/calendar.tsx
+#: src/onboarding/transcription.tsx
 msgid "Continue"
 msgstr ""
 
@@ -461,8 +447,8 @@ msgid "Could not start trial"
 msgstr ""
 
 #: src/onboarding/index.tsx
-msgid "Create account"
-msgstr ""
+#~ msgid "Create account"
+#~ msgstr ""
 
 #: src/templates/details.tsx
 msgid "Create template"
@@ -538,6 +524,10 @@ msgstr ""
 msgid "Disconnect private repo access."
 msgstr ""
 
+#: src/settings/general/storage/notes-location.tsx
+msgid "Don't move"
+msgstr ""
+
 #: src/settings/general/storage/index.tsx
 msgid "Don't save"
 msgstr ""
@@ -546,8 +536,17 @@ msgstr ""
 msgid "Don't show notifications when Do-Not-Disturb is enabled on your system"
 msgstr ""
 
+#: src/onboarding/transcription.tsx
 #: src/settings/ai/stt/select.tsx
 msgid "Download"
+msgstr ""
+
+#: src/onboarding/index.tsx
+msgid "Download a speech-to-text model — transcription runs entirely on your device"
+msgstr ""
+
+#: src/onboarding/transcription.tsx
+msgid "Downloaded"
 msgstr ""
 
 #: src/templates/details.tsx
@@ -852,6 +851,10 @@ msgstr ""
 msgid "Live"
 msgstr ""
 
+#: src/onboarding/transcription.tsx
+msgid "Loading available models…"
+msgstr ""
+
 #: src/calendar/components/calendar-selection.tsx
 msgid "Loading calendars..."
 msgstr ""
@@ -963,8 +966,20 @@ msgstr ""
 msgid "Move down"
 msgstr ""
 
+#: src/settings/general/storage/notes-location.tsx
+msgid "Move existing notes?"
+msgstr ""
+
+#: src/settings/general/storage/notes-location.tsx
+msgid "Move notes"
+msgstr ""
+
 #: src/templates/sections-editor.tsx
 msgid "Move up"
+msgstr ""
+
+#: src/settings/general/storage/notes-location.tsx
+msgid "Moving..."
 msgstr ""
 
 #: src/contacts/details.tsx
@@ -978,6 +993,11 @@ msgstr ""
 
 #: src/main/empty.tsx
 msgid "New Note"
+msgstr ""
+
+#. placeholder {0}: displayPath(pendingPath ?? undefined, home)
+#: src/settings/general/storage/notes-location.tsx
+msgid "New notes will be saved to {0}. You can also move your existing notes there. If the folder already contains files, your notes are copied and the originals stay in place. The app will restart to apply the change."
 msgstr ""
 
 #: src/contacts/shared.tsx
@@ -1026,6 +1046,10 @@ msgstr ""
 
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "No legacy JSON or Markdown files remain"
+msgstr ""
+
+#: src/onboarding/transcription.tsx
+msgid "No local transcription models are available."
 msgstr ""
 
 #: src/settings/personalization/index.tsx
@@ -1078,12 +1102,40 @@ msgstr ""
 msgid "No templates yet"
 msgstr ""
 
+#: src/onboarding/permissions.tsx
+msgid "Notare can hear others"
+msgstr ""
+
+#: src/onboarding/permissions.tsx
+msgid "Notare can hear your voice"
+msgstr ""
+
+#: src/settings/general/storage/legacy-cleanup.tsx
+msgid "Notare could not verify the migration status"
+msgstr ""
+
+#: src/onboarding/index.tsx
+msgid "Notare needs access to your microphone and system audio to record and transcribe your meetings"
+msgstr ""
+
+#: src/onboarding/index.tsx
+msgid "Notare will sync your calendar to get meeting reminders"
+msgstr ""
+
 #: src/session/components/title-breadcrumb.tsx
 msgid "Note breadcrumb"
 msgstr ""
 
 #: src/contacts/details.tsx
 msgid "Notes"
+msgstr ""
+
+#: src/settings/general/storage/notes-location.tsx
+msgid "Notes copied"
+msgstr ""
+
+#: src/settings/general/storage/notes-location.tsx
+msgid "Notes folder"
 msgstr ""
 
 #: src/settings/general/index.tsx
@@ -1121,10 +1173,6 @@ msgstr ""
 msgid "Open {0} settings"
 msgstr ""
 
-#: src/onboarding/final.tsx
-msgid "Open Notare"
-msgstr ""
-
 #: src/sidebar/timeline/index.tsx
 msgid "Open calendar"
 msgstr ""
@@ -1144,6 +1192,10 @@ msgstr ""
 
 #: src/chat/components/toolbar-controls.tsx
 msgid "Open in right panel"
+msgstr ""
+
+#: src/onboarding/final.tsx
+msgid "Open Notare"
 msgstr ""
 
 #: src/task/resource-view.tsx
@@ -1363,6 +1415,7 @@ msgid "Resume listening"
 msgstr ""
 
 #: src/chat/components/message/error.tsx
+#: src/onboarding/transcription.tsx
 #: src/session/components/note-input/enhanced/enhance-error.tsx
 msgid "Retry"
 msgstr ""
@@ -1480,6 +1533,10 @@ msgstr ""
 msgid "Select..."
 msgstr ""
 
+#: src/onboarding/transcription.tsx
+msgid "Selected"
+msgstr ""
+
 #: src/settings/general/app-settings.tsx
 msgid "Send anonymous usage analytics to help improve Notare."
 msgstr "Notare इत्यस्य उन्नयनार्थं सहायतार्थं अनामिकं उपयोगविश्लेषणं प्रेषयन्तु ।"
@@ -1518,10 +1575,6 @@ msgid "Show All Recurring Events"
 msgstr ""
 
 #: src/settings/general/app-settings.tsx
-msgid "Show Notare in the Dock and app switcher."
-msgstr ""
-
-#: src/settings/general/app-settings.tsx
 msgid "Show app in Dock"
 msgstr ""
 
@@ -1540,6 +1593,10 @@ msgstr ""
 #: src/settings/ai/stt/select.tsx
 #: src/sidebar/timeline/item.tsx
 msgid "Show in Finder"
+msgstr ""
+
+#: src/settings/general/app-settings.tsx
+msgid "Show Notare in the Dock and app switcher."
 msgstr ""
 
 #: src/settings/general/app-settings.tsx
@@ -1566,10 +1623,6 @@ msgstr ""
 msgid "Sign in for Pro"
 msgstr ""
 
-#: src/settings/general/account.tsx
-msgid "Sign in to Notare"
-msgstr ""
-
 #: src/onboarding/calendar.tsx
 msgid "Sign in to connect"
 msgstr ""
@@ -1580,12 +1633,16 @@ msgid "Sign in to connect {0}"
 msgstr ""
 
 #: src/settings/general/account.tsx
+msgid "Sign in to Notare"
+msgstr ""
+
+#: src/settings/general/account.tsx
 msgid "Sign in to unlock cloud transcription and AI models, plus Pro features like sharing."
 msgstr ""
 
 #: src/onboarding/index.tsx
-msgid "Sign in to unlock powerful AI models, sync across devices, and personalization."
-msgstr ""
+#~ msgid "Sign in to unlock powerful AI models, sync across devices, and personalization."
+#~ msgstr ""
 
 #: src/instruction/index.tsx
 msgid "Sign in to your account"
@@ -1596,7 +1653,6 @@ msgid "Sign out"
 msgstr ""
 
 #: src/onboarding/account/after-login.tsx
-#: src/onboarding/index.tsx
 #: src/settings/general/account.tsx
 msgid "Signed in"
 msgstr ""
@@ -1610,8 +1666,8 @@ msgid "Skip"
 msgstr ""
 
 #: src/onboarding/index.tsx
-msgid "Skipped"
-msgstr ""
+#~ msgid "Skipped"
+#~ msgstr ""
 
 #: src/templates/template-icon-picker.tsx
 msgid "Smileys & People"
@@ -1684,6 +1740,7 @@ msgid "Storage configured"
 msgstr ""
 
 #: src/onboarding/folder-location.tsx
+#: src/settings/general/storage/notes-location.tsx
 msgid "Storage Updated"
 msgstr ""
 
@@ -1736,12 +1793,17 @@ msgid "Templates"
 msgstr ""
 
 #: src/onboarding/folder-location.tsx
+#: src/settings/general/storage/notes-location.tsx
 msgid "The app will restart after onboarding to apply your storage changes"
 msgstr ""
 
 #: src/settings/general/spoken-languages.tsx
 msgid "The main language is always included for transcription"
 msgstr "प्रतिलेखनार्थं मुख्यभाषा सर्वदा समाविष्टा भवति"
+
+#: src/settings/general/storage/notes-location.tsx
+msgid "The new folder already contained files, so your notes were copied there. The originals were left at the old location."
+msgstr ""
 
 #: src/settings/personalization/index.tsx
 msgid "These instructions take priority over the selected template when they conflict. Clear them to use templates as written."
@@ -1777,6 +1839,14 @@ msgstr ""
 #: src/settings/ai/stt/index.tsx
 #: src/sidebar/settings.tsx
 msgid "Transcription"
+msgstr ""
+
+#: src/onboarding/index.tsx
+msgid "Transcription model"
+msgstr ""
+
+#: src/onboarding/index.tsx
+msgid "Transcription model configured"
 msgstr ""
 
 #: src/templates/template-icon-picker.tsx
@@ -1853,6 +1923,10 @@ msgstr ""
 msgid "Upload transcript"
 msgstr ""
 
+#: src/settings/general/storage/notes-location.tsx
+msgid "Use"
+msgstr ""
+
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Verifying the SQLite migration status"
 msgstr ""
@@ -1927,6 +2001,10 @@ msgstr ""
 
 #: src/session/components/note-input/enhanced/config-error.tsx
 msgid "Your Notare plan has expired. Configure another language model or renew your plan"
+msgstr ""
+
+#: src/settings/general/storage/notes-location.tsx
+msgid "Your notes, transcripts, and recordings are saved here as plain files. Pick an Obsidian vault or any other folder."
 msgstr ""
 
 #: src/templates/template-sidebar.tsx
