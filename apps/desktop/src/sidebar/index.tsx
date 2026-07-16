@@ -5,6 +5,7 @@ import { cn } from "@hypr/utils";
 import { CalendarNav } from "./calendar";
 import { ContactsNav } from "./contacts";
 import { SettingsNav } from "./settings";
+import { SidebarSurfaceNav } from "./surface-nav";
 import { TemplatesNav } from "./templates";
 import { TimelineView } from "./timeline";
 
@@ -60,6 +61,7 @@ export function LeftSidebar({
           )}
         </div>
       </div>
+      <SidebarSurfaceNav />
     </div>
   );
 }

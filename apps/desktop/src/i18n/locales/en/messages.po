@@ -247,6 +247,7 @@ msgstr "Browser handoff not working? Paste the callback link instead"
 #: src/settings/general/permissions.tsx
 #: src/sidebar/calendar.tsx
 #: src/sidebar/settings.tsx
+#: src/sidebar/surface-nav.tsx
 msgid "Calendar"
 msgstr "Calendar"
 
@@ -426,6 +427,7 @@ msgstr "Connect your integration"
 
 #: src/sidebar/contacts.tsx
 #: src/sidebar/settings.tsx
+#: src/sidebar/surface-nav.tsx
 msgid "Contacts"
 msgstr "Contacts"
 
@@ -1202,6 +1204,7 @@ msgid "Note breadcrumb"
 msgstr "Note breadcrumb"
 
 #: src/contacts/details.tsx
+#: src/sidebar/surface-nav.tsx
 msgid "Notes"
 msgstr "Notes"
 
@@ -1659,6 +1662,7 @@ msgstr "Set up the OAuth consent screen: audience <0>External</0>, then add your
 
 #: src/main/empty.tsx
 #: src/sidebar/settings.tsx
+#: src/sidebar/surface-nav.tsx
 msgid "Settings"
 msgstr "Settings"
 
@@ -1865,6 +1869,10 @@ msgstr "Summary instructions"
 msgid "Sunday"
 msgstr "Sunday"
 
+#: src/sidebar/surface-nav.tsx
+msgid "Switch view"
+msgstr "Switch view"
+
 #: src/templates/template-icon-picker.tsx
 msgid "Symbols"
 msgstr "Symbols"
@@ -1892,6 +1900,7 @@ msgid "Template content with Jinja2: {{ variable }}, {% if condition %}"
 msgstr "Template content with Jinja2: {{ variable }}, {% if condition %}"
 
 #: src/sidebar/settings.tsx
+#: src/sidebar/surface-nav.tsx
 #: src/templates/template-sidebar.tsx
 msgid "Templates"
 msgstr "Templates"

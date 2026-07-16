@@ -247,6 +247,7 @@ msgstr ""
 #: src/settings/general/permissions.tsx
 #: src/sidebar/calendar.tsx
 #: src/sidebar/settings.tsx
+#: src/sidebar/surface-nav.tsx
 msgid "Calendar"
 msgstr ""
 
@@ -426,6 +427,7 @@ msgstr ""
 
 #: src/sidebar/contacts.tsx
 #: src/sidebar/settings.tsx
+#: src/sidebar/surface-nav.tsx
 msgid "Contacts"
 msgstr ""
 
@@ -1202,6 +1204,7 @@ msgid "Note breadcrumb"
 msgstr ""
 
 #: src/contacts/details.tsx
+#: src/sidebar/surface-nav.tsx
 msgid "Notes"
 msgstr ""
 
@@ -1659,6 +1662,7 @@ msgstr ""
 
 #: src/main/empty.tsx
 #: src/sidebar/settings.tsx
+#: src/sidebar/surface-nav.tsx
 msgid "Settings"
 msgstr ""
 
@@ -1865,6 +1869,10 @@ msgstr ""
 msgid "Sunday"
 msgstr ""
 
+#: src/sidebar/surface-nav.tsx
+msgid "Switch view"
+msgstr ""
+
 #: src/templates/template-icon-picker.tsx
 msgid "Symbols"
 msgstr ""
@@ -1892,6 +1900,7 @@ msgid "Template content with Jinja2: {{ variable }}, {% if condition %}"
 msgstr ""
 
 #: src/sidebar/settings.tsx
+#: src/sidebar/surface-nav.tsx
 #: src/templates/template-sidebar.tsx
 msgid "Templates"
 msgstr ""
