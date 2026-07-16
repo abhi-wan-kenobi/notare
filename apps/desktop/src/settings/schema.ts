@@ -145,6 +145,13 @@ export const SETTING_DEFINITIONS = {
     type: "string",
     path: ["ai", "current_stt_model"],
   },
+  // Model used for the post-meeting ("final") transcription pass and manual
+  // re-transcription. Empty string = use the live model (current_stt_model).
+  final_stt_model: {
+    type: "string",
+    path: ["ai", "final_stt_model"],
+    default: "" as string,
+  },
   timezone: {
     type: "string",
     path: ["general", "timezone"],

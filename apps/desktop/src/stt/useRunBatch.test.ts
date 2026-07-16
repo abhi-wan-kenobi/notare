@@ -24,6 +24,9 @@ const {
   createTranscriptMock,
   appendTranscriptWordsAndHintsMock,
   idMock,
+  isModelDownloadedMock,
+  startServerMock,
+  stopServerMock,
 } = vi.hoisted(() => ({
   startTranscriptionMock: vi.fn(),
   useListenerMock: vi.fn(),
@@ -39,6 +42,17 @@ const {
   createTranscriptMock: vi.fn(),
   appendTranscriptWordsAndHintsMock: vi.fn(),
   idMock: vi.fn(),
+  isModelDownloadedMock: vi.fn(),
+  startServerMock: vi.fn(),
+  stopServerMock: vi.fn(),
+}));
+
+vi.mock("@hypr/plugin-local-stt", () => ({
+  commands: {
+    isModelDownloaded: isModelDownloadedMock,
+    startServer: startServerMock,
+    stopServer: stopServerMock,
+  },
 }));
 
 vi.mock("./contexts", () => ({
@@ -97,7 +111,18 @@ vi.mock("~/stt/capabilities", () => {
   const baseLanguageCode = (language: string) =>
     language.split(/[-_]/)[0]?.toLowerCase() ?? "";
 
+  const isSupportedLocalSttModel = (model?: string | null) =>
+    typeof model === "string" &&
+    (model.startsWith("soniqo-") ||
+      model.startsWith("am-") ||
+      model.startsWith("Quantized"));
+
   return {
+    isSupportedLocalSttModel,
+    isHyprnoteLocalSttModel: (
+      provider?: string | null,
+      model?: string | null,
+    ) => provider === "hyprnote" && isSupportedLocalSttModel(model),
     getTranscriptionLanguages: (
       mainLanguage: string | null | undefined,
       spokenLanguages: readonly string[] | null | undefined,
@@ -241,8 +266,14 @@ describe("useRunBatch", () => {
       isPaid: false,
     });
     useConfigValueMock.mockImplementation((key) =>
-      key === "ai_language" ? "en" : [],
+      key === "ai_language" ? "en" : key === "final_stt_model" ? "" : [],
     );
+    isModelDownloadedMock.mockResolvedValue({ status: "ok", data: true });
+    startServerMock.mockResolvedValue({
+      status: "ok",
+      data: "http://127.0.0.1:6666",
+    });
+    stopServerMock.mockResolvedValue({ status: "ok", data: true });
   });
 
   test("waits for streamed SQLite persists before retention", async () => {
@@ -419,6 +450,193 @@ describe("useRunBatch", () => {
           "nova-3 is not available for batch transcription. Using Pro cloud transcription instead.",
       }),
     );
+  });
+
+  test("uses the configured final model for the batch pass (external provider)", async () => {
+    useConfigValueMock.mockImplementation((key) =>
+      key === "ai_language"
+        ? "en"
+        : key === "final_stt_model"
+          ? "nova-2-medical"
+          : [],
+    );
+    startTranscriptionMock.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRunBatch("session-1"));
+
+    await act(async () => {
+      await result.current("/tmp/session.wav");
+    });
+
+    expect(startTranscriptionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "deepgram",
+        model: "nova-2-medical",
+        base_url: "https://api.deepgram.com/v1/listen",
+        api_key: "test-key",
+      }),
+      expect.any(Object),
+    );
+    expect(startServerMock).not.toHaveBeenCalled();
+    expect(stopServerMock).not.toHaveBeenCalled();
+  });
+
+  test("an explicit model option overrides the configured final model", async () => {
+    useConfigValueMock.mockImplementation((key) =>
+      key === "ai_language"
+        ? "en"
+        : key === "final_stt_model"
+          ? "nova-2-medical"
+          : [],
+    );
+    startTranscriptionMock.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRunBatch("session-1"));
+
+    await act(async () => {
+      await result.current("/tmp/session.wav", { model: "nova-3" });
+    });
+
+    expect(startTranscriptionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "deepgram",
+        model: "nova-3",
+      }),
+      expect.any(Object),
+    );
+  });
+
+  test("falls back to the live model when the final model matches it", async () => {
+    useConfigValueMock.mockImplementation((key) =>
+      key === "ai_language" ? "en" : key === "final_stt_model" ? "nova-3" : [],
+    );
+    startTranscriptionMock.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRunBatch("session-1"));
+
+    await act(async () => {
+      await result.current("/tmp/session.wav");
+    });
+
+    expect(startTranscriptionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "deepgram",
+        model: "nova-3",
+      }),
+      expect.any(Object),
+    );
+    expect(startServerMock).not.toHaveBeenCalled();
+  });
+
+  test("swaps the local server to the final model and restores the live one", async () => {
+    useSTTConnectionMock.mockReturnValue({
+      conn: {
+        provider: "hyprnote",
+        model: "QuantizedTiny",
+        baseUrl: "http://127.0.0.1:5555",
+        apiKey: "",
+      },
+    });
+    useConfigValueMock.mockImplementation((key) =>
+      key === "ai_language"
+        ? "en"
+        : key === "final_stt_model"
+          ? "QuantizedSmall"
+          : [],
+    );
+    startServerMock.mockResolvedValue({
+      status: "ok",
+      data: "http://127.0.0.1:6666",
+    });
+    startTranscriptionMock.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRunBatch("session-1"));
+
+    await act(async () => {
+      await result.current("/tmp/session.wav");
+    });
+
+    expect(isModelDownloadedMock).toHaveBeenCalledWith("QuantizedSmall");
+    expect(startServerMock).toHaveBeenNthCalledWith(1, "QuantizedSmall");
+    expect(startTranscriptionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "hyprnote",
+        model: "QuantizedSmall",
+        base_url: "http://127.0.0.1:6666",
+      }),
+      expect.any(Object),
+    );
+    // Restore happens after the batch run.
+    expect(startServerMock).toHaveBeenNthCalledWith(2, "QuantizedTiny");
+    expect(
+      startTranscriptionMock.mock.invocationCallOrder[0],
+    ).toBeLessThan(startServerMock.mock.invocationCallOrder[1]);
+  });
+
+  test("keeps the live local model when the final model is not downloaded", async () => {
+    useSTTConnectionMock.mockReturnValue({
+      conn: {
+        provider: "hyprnote",
+        model: "QuantizedTiny",
+        baseUrl: "http://127.0.0.1:5555",
+        apiKey: "",
+      },
+    });
+    useConfigValueMock.mockImplementation((key) =>
+      key === "ai_language"
+        ? "en"
+        : key === "final_stt_model"
+          ? "QuantizedSmall"
+          : [],
+    );
+    isModelDownloadedMock.mockResolvedValue({ status: "ok", data: false });
+    startTranscriptionMock.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useRunBatch("session-1"));
+
+    await act(async () => {
+      await result.current("/tmp/session.wav");
+    });
+
+    expect(startServerMock).not.toHaveBeenCalled();
+    expect(startTranscriptionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "hyprnote",
+        model: "QuantizedTiny",
+        base_url: "http://127.0.0.1:5555",
+      }),
+      expect.any(Object),
+    );
+  });
+
+  test("restores the live local server when batch transcription fails", async () => {
+    useSTTConnectionMock.mockReturnValue({
+      conn: {
+        provider: "hyprnote",
+        model: "QuantizedTiny",
+        baseUrl: "http://127.0.0.1:5555",
+        apiKey: "",
+      },
+    });
+    useConfigValueMock.mockImplementation((key) =>
+      key === "ai_language"
+        ? "en"
+        : key === "final_stt_model"
+          ? "QuantizedSmall"
+          : [],
+    );
+    startTranscriptionMock.mockRejectedValue(new Error("provider failed"));
+
+    const { result } = renderHook(() => useRunBatch("session-1"));
+
+    await expect(
+      act(async () => {
+        await result.current("/tmp/session.wav");
+      }),
+    ).rejects.toThrow("provider failed");
+
+    expect(startServerMock).toHaveBeenNthCalledWith(1, "QuantizedSmall");
+    expect(startServerMock).toHaveBeenNthCalledWith(2, "QuantizedTiny");
   });
 });
 

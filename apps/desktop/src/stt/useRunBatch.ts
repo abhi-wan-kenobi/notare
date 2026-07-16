@@ -4,6 +4,7 @@ import type { TranscriptionParams } from "@hypr/plugin-transcription";
 import { sonnerToast } from "@hypr/ui/components/ui/toast";
 
 import { useListener } from "./contexts";
+import { pickFinalSttModel, resolveFinalBatchTarget } from "./final-model";
 import { getSessionKeywords } from "./useKeywords";
 import { useSTTConnection } from "./useSTTConnection";
 
@@ -175,6 +176,7 @@ export const useRunBatch = (sessionId: string) => {
   const aiLanguage = useConfigValue("ai_language");
   const spokenLanguages = useConfigValue("spoken_languages");
   const dictionaryTerms = useConfigValue("personalization_dictionary_terms");
+  const finalSttModel = useConfigValue("final_stt_model");
   const audioRetention = normalizeAudioRetention(
     useConfigValue("audio_retention"),
   );
@@ -187,10 +189,29 @@ export const useRunBatch = (sessionId: string) => {
         );
       }
 
+      // Post-meeting passes prefer the configured final model; an explicit
+      // options.model always wins, and everything falls back to the live
+      // model (today's behavior) when no usable final model is configured.
+      const finalModelPick =
+        options?.model === undefined && conn
+          ? pickFinalSttModel({
+              finalSetting: finalSttModel,
+              liveModel: conn.model,
+            })
+          : null;
+      const finalTarget =
+        finalModelPick && conn
+          ? await resolveFinalBatchTarget({
+              provider: conn.provider,
+              liveModel: conn.model,
+              finalModel: finalModelPick,
+            })
+          : null;
+
       const languages =
         options?.languages ??
         getTranscriptionLanguages(aiLanguage, spokenLanguages);
-      const selectedModel = options?.model ?? conn?.model;
+      const selectedModel = options?.model ?? finalTarget?.model ?? conn?.model;
       const selectedProvider =
         conn && selectedModel
           ? getBatchProvider(conn.provider, selectedModel)
@@ -200,7 +221,7 @@ export const useRunBatch = (sessionId: string) => {
           ? {
               provider: selectedProvider,
               model: selectedModel,
-              baseUrl: options?.baseUrl ?? conn.baseUrl,
+              baseUrl: options?.baseUrl ?? finalTarget?.baseUrl ?? conn.baseUrl,
               apiKey: options?.apiKey ?? conn.apiKey,
               label: selectedModel,
             }
@@ -367,6 +388,9 @@ export const useRunBatch = (sessionId: string) => {
         await startTranscription(params, { handlePersist: persist });
       } finally {
         await lastTranscriptWrite;
+        // Bring the live model's local server back if the final pass swapped
+        // it out (no-op for external providers / unset final model).
+        await finalTarget?.restore();
       }
 
       if (transcriptWriteError) throw transcriptWriteError;
@@ -380,6 +404,7 @@ export const useRunBatch = (sessionId: string) => {
       audioRetention,
       billing.isPaid,
       dictionaryTerms,
+      finalSttModel,
       session,
       participants,
       spokenLanguages,
