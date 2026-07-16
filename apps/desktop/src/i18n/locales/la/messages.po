@@ -442,6 +442,20 @@ msgstr ""
 msgid "Continuing without trial"
 msgstr ""
 
+#: src/session/components/note-input/header.tsx
+msgid "Copy latest live chunk"
+msgstr ""
+
+#. placeholder {0}: shortcutHints.latest
+#. placeholder {1}: shortcutHints.full
+#: src/session/components/note-input/transcript/screens/listening.tsx
+msgid "Copy live text: {0} (latest chunk) · {1} (all so far)"
+msgstr ""
+
+#: src/session/components/note-input/header.tsx
+msgid "Copy live transcript so far"
+msgstr ""
+
 #: src/chat/components/message/normal.tsx
 msgid "Copy message"
 msgstr ""
@@ -786,6 +800,10 @@ msgstr ""
 msgid "Help Notare listen to you"
 msgstr ""
 
+#: src/meeting-float/window.tsx
+msgid "Hide captions"
+msgstr ""
+
 #: src/sidebar/timeline/index.tsx
 msgid "Hide Deleted Events"
 msgstr ""
@@ -871,6 +889,11 @@ msgstr "Lingua & Regio"
 msgid "Language for summaries, chats, and AI-generated responses"
 msgstr "Lingua pro summariis, confabulationibus, et responsis generatis AI"
 
+#: src/session/components/note-input/header.tsx
+#: src/stt/useLiveTranscriptCopyShortcuts.ts
+msgid "Latest transcript chunk copied"
+msgstr ""
+
 #: src/chat/components/message/error.tsx
 msgid "Learn how to fix this"
 msgstr ""
@@ -887,8 +910,17 @@ msgstr ""
 msgid "LinkedIn"
 msgstr ""
 
+#: src/meeting-float/window.tsx
+msgid "Listening..."
+msgstr ""
+
 #: src/settings/ai/stt/select.tsx
 msgid "Live"
+msgstr ""
+
+#: src/session/components/note-input/header.tsx
+#: src/stt/useLiveTranscriptCopyShortcuts.ts
+msgid "Live transcript copied"
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
@@ -1181,6 +1213,11 @@ msgstr ""
 msgid "Notes folder"
 msgstr ""
 
+#: src/session/components/note-input/header.tsx
+#: src/stt/useLiveTranscriptCopyShortcuts.ts
+msgid "Nothing transcribed yet"
+msgstr ""
+
 #: src/settings/general/index.tsx
 #: src/sidebar/settings.tsx
 msgid "Notifications"
@@ -1239,6 +1276,10 @@ msgstr ""
 
 #: src/chat/components/toolbar-controls.tsx
 msgid "Open in right panel"
+msgstr ""
+
+#: src/meeting-float/window.tsx
+msgid "Open main window"
 msgstr ""
 
 #: src/onboarding/final.tsx
@@ -1633,6 +1674,10 @@ msgstr ""
 msgid "Show app in Dock"
 msgstr ""
 
+#: src/meeting-float/window.tsx
+msgid "Show captions"
+msgstr ""
+
 #: src/sidebar/timeline/index.tsx
 msgid "Show Deleted Events"
 msgstr ""
@@ -1771,6 +1816,10 @@ msgstr ""
 #: src/session/components/outer-header/index.tsx
 #: src/sidebar/timeline/item.tsx
 msgid "Stop listening"
+msgstr ""
+
+#: src/meeting-float/window.tsx
+msgid "Stop recording"
 msgstr ""
 
 #: src/chat/components/input/index.tsx

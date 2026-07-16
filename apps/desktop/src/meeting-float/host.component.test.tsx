@@ -46,6 +46,7 @@ vi.mock("@hypr/plugin-windows", () => ({
   },
   events: {
     floatingBarOpenMain: { listen: mocks.listen },
+    floatingBarReady: { listen: mocks.listen },
     floatingBarSettingsChange: { listen: mocks.listen },
     floatingBarStop: { listen: mocks.listen },
   },
