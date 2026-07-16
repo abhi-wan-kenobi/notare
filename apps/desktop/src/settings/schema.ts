@@ -52,8 +52,8 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "dictation_cleanup"],
     default: "basic" as string,
   },
-  // Orb look: "cobalt" (the mini meeting orb) or "particles" (voice-reactive
-  // particle sphere).
+  // Orb look: "cobalt" (the mini meeting orb), "particles" (voice-reactive
+  // particle sphere) or "waveform" ("Pulse", the dancing-sticks waveform).
   dictation_orb_variant: {
     type: "string",
     path: ["general", "dictation_orb_variant"],

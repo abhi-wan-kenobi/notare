@@ -1,7 +1,12 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { DictationOrb, normalizeOrbVariant } from "./orb";
+import {
+  DictationOrb,
+  normalizeOrbVariant,
+  orbSizeForVariant,
+  orbWindowSizeForVariant,
+} from "./orb";
 
 describe("DictationOrb", () => {
   afterEach(() => {
@@ -58,13 +63,48 @@ describe("DictationOrb", () => {
     expect(screen.getByTestId("dictation-particle-orb")).not.toBeNull();
     expect(screen.queryByTestId("recording-orb")).toBeNull();
   });
+
+  it("renders the particle sphere 1.5x bigger than the base size", () => {
+    render(<DictationOrb phase="idle" size={40} variant="particles" />);
+
+    const canvas = screen.getByTestId("dictation-particle-orb");
+    expect(canvas.style.width).toBe("60px");
+    expect(canvas.style.height).toBe("60px");
+  });
+
+  it("renders the Pulse waveform for the waveform variant", () => {
+    render(<DictationOrb phase="listening" amplitude={0.5} variant="waveform" />);
+
+    expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+      "waveform",
+    );
+    expect(screen.getByTestId("dictation-waveform-orb")).not.toBeNull();
+    expect(screen.queryByTestId("recording-orb")).toBeNull();
+    expect(screen.queryByTestId("dictation-particle-orb")).toBeNull();
+  });
 });
 
 describe("normalizeOrbVariant", () => {
   it("maps stored strings onto known variants", () => {
     expect(normalizeOrbVariant("particles")).toBe("particles");
+    expect(normalizeOrbVariant("waveform")).toBe("waveform");
     expect(normalizeOrbVariant("cobalt")).toBe("cobalt");
     expect(normalizeOrbVariant(undefined)).toBe("cobalt");
     expect(normalizeOrbVariant("garbage")).toBe("cobalt");
+  });
+});
+
+describe("orb variant sizing", () => {
+  it("scales the orb 1.5x for particles only", () => {
+    expect(orbSizeForVariant("cobalt", 40)).toBe(40);
+    expect(orbSizeForVariant("waveform", 40)).toBe(40);
+    expect(orbSizeForVariant("particles", 40)).toBe(60);
+    expect(orbSizeForVariant("particles", 28)).toBe(42);
+  });
+
+  it("scales the orb window to match (Rust creates it at 56px)", () => {
+    expect(orbWindowSizeForVariant("cobalt")).toBe(56);
+    expect(orbWindowSizeForVariant("waveform")).toBe(56);
+    expect(orbWindowSizeForVariant("particles")).toBe(84);
   });
 });

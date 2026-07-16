@@ -14,6 +14,16 @@ const mocks = vi.hoisted(() => ({
   stateUnlisten: vi.fn(),
   emitClicked: vi.fn(async () => undefined),
   startDragging: vi.fn(async () => undefined),
+  scaleFactor: vi.fn(async () => 1),
+  // Rust creates the orb window at the cobalt size (56 logical px).
+  innerSize: vi.fn(async () => ({
+    toLogical: () => ({ width: 56, height: 56 }),
+  })),
+  outerPosition: vi.fn(async () => ({
+    toLogical: () => ({ x: 200, y: 300 }),
+  })),
+  setSize: vi.fn(async () => undefined),
+  setPosition: vi.fn(async () => undefined),
   config: {
     dictation_orb_variant: "cobalt",
     dictation_paste_at_cursor: true,
@@ -38,7 +48,14 @@ vi.mock("@hypr/plugin-dictation", () => ({
 }));
 
 vi.mock("@tauri-apps/api/webviewWindow", () => ({
-  getCurrentWebviewWindow: () => ({ startDragging: mocks.startDragging }),
+  getCurrentWebviewWindow: () => ({
+    startDragging: mocks.startDragging,
+    scaleFactor: mocks.scaleFactor,
+    innerSize: mocks.innerSize,
+    outerPosition: mocks.outerPosition,
+    setSize: mocks.setSize,
+    setPosition: mocks.setPosition,
+  }),
 }));
 
 import { DictationOrbWindow } from "./window";
@@ -192,6 +209,49 @@ describe("DictationOrbWindow", () => {
         screen.getByTestId("dictation-orb").dataset.dictationVariant,
       ).toBe("particles");
       expect(screen.getByTestId("dictation-particle-orb")).not.toBeNull();
+    } finally {
+      mocks.config.dictation_orb_variant = "cobalt";
+    }
+  });
+
+  it("renders the Pulse waveform variant when configured", async () => {
+    mocks.config.dictation_orb_variant = "waveform";
+    try {
+      render(<DictationOrbWindow />);
+      await act(async () => {});
+
+      expect(
+        screen.getByTestId("dictation-orb").dataset.dictationVariant,
+      ).toBe("waveform");
+      expect(screen.getByTestId("dictation-waveform-orb")).not.toBeNull();
+    } finally {
+      mocks.config.dictation_orb_variant = "cobalt";
+    }
+  });
+
+  it("keeps the created window size for the cobalt variant", async () => {
+    render(<DictationOrbWindow />);
+    await act(async () => {});
+
+    // Already 56x56 - no resize round-trip.
+    expect(mocks.setSize).not.toHaveBeenCalled();
+    expect(mocks.setPosition).not.toHaveBeenCalled();
+  });
+
+  it("grows the window around its center for the particles variant", async () => {
+    mocks.config.dictation_orb_variant = "particles";
+    try {
+      render(<DictationOrbWindow />);
+      await act(async () => {});
+
+      // 56 -> 84 logical px (1.5x), re-centered on the old spot.
+      expect(mocks.setSize).toHaveBeenCalledTimes(1);
+      expect(mocks.setSize).toHaveBeenCalledWith(
+        expect.objectContaining({ width: 84, height: 84 }),
+      );
+      expect(mocks.setPosition).toHaveBeenCalledWith(
+        expect.objectContaining({ x: 186, y: 286 }),
+      );
     } finally {
       mocks.config.dictation_orb_variant = "cobalt";
     }

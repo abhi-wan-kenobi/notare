@@ -29,6 +29,22 @@ import type { DictationPhase } from "@hypr/plugin-dictation";
 
 export const PARTICLE_ORB_PARTICLE_COUNT = 340;
 
+/** Orb diameter (px) the reference tuning above was made at. */
+export const PARTICLE_ORB_BASE_SIZE = 40;
+
+/**
+ * Particle count for an orb of `size` px: grows linearly with the diameter
+ * (340 at 40px -> 510 at 60px). Together with the sqrt sprite damping in
+ * `drawFrame` this keeps total glow ~ count x radius^2 proportional to the
+ * orb area, so density looks the same at every size.
+ */
+export function particleCountForSize(size: number): number {
+  return Math.max(
+    1,
+    Math.round((PARTICLE_ORB_PARTICLE_COUNT * size) / PARTICLE_ORB_BASE_SIZE),
+  );
+}
+
 /** Reference palette (indigo-500, purple-500, pink-500). */
 const COLOR_1: Rgb = [99, 102, 241];
 const COLOR_2: Rgb = [168, 85, 247];
@@ -194,6 +210,10 @@ function drawFrame(
 
   const center = size / 2;
   const unit = center / MAX_EXTENT;
+  // Sprites grow sub-linearly (sqrt) with the diameter while the particle
+  // count grows linearly (`particleCountForSize`), keeping the perceived
+  // density constant instead of turning bigger orbs into fewer, fatter blobs.
+  const spriteScale = Math.sqrt(PARTICLE_ORB_BASE_SIZE / size);
   const cosY = Math.cos(state.rotY);
   const sinY = Math.sin(state.rotY);
   const cosX = Math.cos(state.rotX);
@@ -220,7 +240,7 @@ function drawFrame(
     const sy = center + yr * unit * w;
 
     const radius =
-      p.size * (0.055 + intensity * 0.025) * unit * w;
+      p.size * (0.055 + intensity * 0.025) * unit * w * spriteScale;
     const spriteRadius = radius * 3.2;
 
     const alpha =
@@ -311,7 +331,7 @@ export function ParticleOrb({
     canvas.height = Math.round(size * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const particles = createParticles(PARTICLE_ORB_PARTICLE_COUNT);
+    const particles = createParticles(particleCountForSize(size));
     const sprites = createSprites();
     const state: RendererState = {
       time: 0,

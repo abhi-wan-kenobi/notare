@@ -6,13 +6,16 @@ import { cn } from "@hypr/utils";
 import { RecordingOrb } from "~/meeting-float/orb";
 
 import { ParticleOrb } from "./particle-orb";
+import { WaveformOrb } from "./waveform-orb";
 
 /**
  * Available orb looks, selected by the `dictation_orb_variant` setting:
  * - "cobalt": the mini meeting orb (Cobalt-on-graphite);
- * - "particles": the voice-reactive particle sphere (`particle-orb.tsx`).
+ * - "particles": the voice-reactive particle sphere (`particle-orb.tsx`);
+ * - "waveform": "Pulse" - the dancing-sticks amplitude waveform in a round
+ *   chassis (`waveform-orb.tsx`).
  */
-export type DictationOrbVariant = "cobalt" | "particles";
+export type DictationOrbVariant = "cobalt" | "particles" | "waveform";
 
 export const DEFAULT_ORB_VARIANT: DictationOrbVariant = "cobalt";
 
@@ -20,7 +23,41 @@ export const DEFAULT_ORB_VARIANT: DictationOrbVariant = "cobalt";
 export function normalizeOrbVariant(
   raw: string | undefined,
 ): DictationOrbVariant {
-  return raw === "particles" ? "particles" : DEFAULT_ORB_VARIANT;
+  return raw === "particles" || raw === "waveform"
+    ? raw
+    : DEFAULT_ORB_VARIANT;
+}
+
+/**
+ * Per-variant render scale over the caller's base size. The particle sphere
+ * reads too small at the cobalt size (most of its extent is a faint halo),
+ * so it renders 1.5x larger everywhere - orb window and settings previews
+ * alike.
+ */
+const ORB_VARIANT_SCALE: Record<DictationOrbVariant, number> = {
+  cobalt: 1,
+  particles: 1.5,
+  waveform: 1,
+};
+
+/** Orb pixel size for `variant`, scaled from the caller's base size. */
+export function orbSizeForVariant(
+  variant: DictationOrbVariant,
+  baseSize: number,
+): number {
+  return Math.round(baseSize * (ORB_VARIANT_SCALE[variant] ?? 1));
+}
+
+/**
+ * Mirror of `ORB_SIZE` in `plugins/dictation/src/orb.rs`: the Rust side
+ * always creates the orb window at the cobalt chassis size and the orb
+ * webview resizes itself per variant (it is the one that knows the setting).
+ */
+const ORB_WINDOW_BASE_SIZE = 56;
+
+/** Logical size of the dictation orb window for `variant`. */
+export function orbWindowSizeForVariant(variant: DictationOrbVariant): number {
+  return Math.round(ORB_WINDOW_BASE_SIZE * (ORB_VARIANT_SCALE[variant] ?? 1));
 }
 
 export interface DictationOrbVariantProps {
@@ -60,7 +97,11 @@ export function DictationOrb({
       data-dictation-variant={variant}
       className={cn(["inline-flex", className])}
     >
-      <Variant phase={phase} amplitude={amplitude} size={size} />
+      <Variant
+        phase={phase}
+        amplitude={amplitude}
+        size={orbSizeForVariant(variant, size)}
+      />
     </span>
   );
 }
@@ -71,6 +112,7 @@ const ORB_VARIANTS: Record<
 > = {
   cobalt: CobaltOrb,
   particles: ParticleOrb,
+  waveform: WaveformOrb,
 };
 
 function CobaltOrb({ phase, amplitude, size }: DictationOrbVariantProps) {
