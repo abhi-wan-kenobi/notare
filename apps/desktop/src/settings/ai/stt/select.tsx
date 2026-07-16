@@ -110,6 +110,7 @@ export function SelectProviderAndModel() {
   const handleSelectProvider = useSetSettingValue("current_stt_provider");
 
   const handleSelectModel = useSetSettingValue("current_stt_model");
+  const handleSelectFinalModel = useSetSettingValue("final_stt_model");
   const lastSelectedModelsRef = useRef<Record<string, string>>(
     current_stt_provider && selectedSttModel
       ? { [current_stt_provider]: selectedSttModel }
@@ -140,6 +141,9 @@ export function SelectProviderAndModel() {
     rememberModel(provider, nextModel);
     handleSelectProvider(provider);
     handleSelectModel(nextModel);
+    // The final model belongs to the previous provider's catalog; reset it to
+    // "same as live" so a stale id never leaks across providers.
+    handleSelectFinalModel("");
   };
 
   const handleModelChange = (model: string) => {
@@ -166,7 +170,7 @@ export function SelectProviderAndModel() {
       )}
 
       <h3 className="text-md font-sans font-semibold">
-        <Trans>Model being used</Trans>
+        <Trans>Live transcription model</Trans>
       </h3>
       <div className="flex flex-row items-center gap-4">
         <div className="min-w-0 flex-2" data-stt-provider-selector>
@@ -283,6 +287,101 @@ export function SelectProviderAndModel() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Sentinel Select value meaning "no dedicated final model" (Radix Select
+// items cannot use an empty-string value). Stored as "" in settings.
+const FINAL_MODEL_SAME_AS_LIVE = "__same_as_live__";
+
+export function SelectFinalModel() {
+  const { t } = useLingui();
+  const { current_stt_provider, final_stt_model } = useConfigValues([
+    "current_stt_provider",
+    "final_stt_model",
+  ] as const);
+  const configuredProviders = useConfiguredMapping();
+  const { startDownload, startTrial } = useSttSettings();
+  const handleSelectFinalModel = useSetSettingValue("final_stt_model");
+
+  const selectedProvider = current_stt_provider as ProviderId | undefined;
+  const providerModels = selectedProvider
+    ? (configuredProviders[selectedProvider]?.models ?? [])
+    : [];
+
+  if (!selectedProvider) {
+    return null;
+  }
+
+  const finalModel = final_stt_model?.trim() ?? "";
+  const selectedFinalModel = providerModels.find(
+    (model) => model.id === finalModel,
+  );
+  const selectValue = selectedFinalModel
+    ? selectedFinalModel.id
+    : FINAL_MODEL_SAME_AS_LIVE;
+
+  const handleChange = (value: string) => {
+    handleSelectFinalModel(value === FINAL_MODEL_SAME_AS_LIVE ? "" : value);
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-md font-sans font-semibold">
+        <Trans>Final & re-transcription model</Trans>
+      </h3>
+      <p className="text-muted-foreground text-sm">
+        <Trans>
+          Used for the accurate pass after a recording ends and when
+          re-transcribing a note. Pick a larger model than the live one for
+          better quality, or keep it the same as the live model.
+        </Trans>
+      </p>
+      {selectedProvider === "custom" ? (
+        <Input
+          value={finalModel}
+          onChange={(event) => handleSelectFinalModel(event.target.value)}
+          className="text-xs"
+          placeholder={t`Same as live model`}
+        />
+      ) : (
+        <Select
+          value={selectValue}
+          onValueChange={handleChange}
+          disabled={providerModels.length === 0}
+        >
+          <SelectTrigger
+            className={cn([
+              "bg-card text-left shadow-none focus:ring-0",
+              "[&>span]:!flex [&>span]:w-full [&>span]:min-w-0 [&>span]:items-center [&>span]:justify-start [&>span]:gap-2 [&>span]:overflow-visible [&>span]:[-webkit-line-clamp:unset]",
+            ])}
+          >
+            <SelectValue placeholder={t`Same as live model`}>
+              {selectedFinalModel ? (
+                <ModelSelectedValue model={selectedFinalModel} />
+              ) : (
+                <span>
+                  <Trans>Same as live model</Trans>
+                </span>
+              )}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent align="end">
+            <SelectItem value={FINAL_MODEL_SAME_AS_LIVE}>
+              <Trans>Same as live model</Trans>
+            </SelectItem>
+            {providerModels.map((model) => (
+              <ModelSelectItem
+                key={model.id}
+                model={model}
+                onDownload={() => startDownload(model.id as LocalModel)}
+                onStartTrial={startTrial}
+              />
+            ))}
+          </SelectContent>
+        </Select>
+      )}
     </div>
   );
 }

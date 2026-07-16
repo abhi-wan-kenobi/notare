@@ -417,8 +417,8 @@ msgstr "Connect GitHub for private repos."
 #~ msgstr "Connect Google Calendar"
 
 #: src/onboarding/calendar.tsx
-msgid "Connect Outlook"
-msgstr "Connect Outlook"
+#~ msgid "Connect Outlook"
+#~ msgstr "Connect Outlook"
 
 #: src/instruction/index.tsx
 msgid "Connect your integration"
@@ -657,8 +657,8 @@ msgid "Failed to load issue"
 msgstr "Failed to load issue"
 
 #: src/onboarding/calendar.tsx
-msgid "Failed to load Outlook Calendar"
-msgstr "Failed to load Outlook Calendar"
+#~ msgid "Failed to load Outlook Calendar"
+#~ msgstr "Failed to load Outlook Calendar"
 
 #: src/task/resource-view.tsx
 msgid "Failed to load pull request"
@@ -676,6 +676,10 @@ msgstr "File format"
 #: src/settings/todo/provider-content.tsx
 msgid "Filter synced items by {0}."
 msgstr "Filter synced items by {0}."
+
+#: src/settings/ai/stt/select.tsx
+msgid "Final & re-transcription model"
+msgstr "Final & re-transcription model"
 
 #: src/shared/open-note-dialog.tsx
 msgid "Find a note..."
@@ -887,6 +891,10 @@ msgstr "LinkedIn"
 msgid "Live"
 msgstr "Live"
 
+#: src/settings/ai/stt/select.tsx
+msgid "Live transcription model"
+msgstr "Live transcription model"
+
 #: src/onboarding/transcription.tsx
 msgid "Loading available models…"
 msgstr "Loading available models…"
@@ -986,7 +994,6 @@ msgid "Migration status unavailable"
 msgstr "Migration status unavailable"
 
 #: src/settings/ai/llm/select.tsx
-#: src/settings/ai/stt/select.tsx
 msgid "Model being used"
 msgstr "Model being used"
 
@@ -1465,6 +1472,10 @@ msgstr "Retry"
 msgid "Runs after the recording finishes, not during the meeting."
 msgstr "Runs after the recording finishes, not during the meeting."
 
+#: src/settings/ai/stt/select.tsx
+msgid "Same as live model"
+msgstr "Same as live model"
+
 #: src/settings/personalization/index.tsx
 msgid "Save"
 msgstr "Save"
@@ -1668,8 +1679,8 @@ msgid "Sign in for Pro"
 msgstr "Sign in for Pro"
 
 #: src/onboarding/calendar.tsx
-msgid "Sign in to connect"
-msgstr "Sign in to connect"
+#~ msgid "Sign in to connect"
+#~ msgstr "Sign in to connect"
 
 #. placeholder {0}: config.displayName
 #: src/settings/todo/provider-content.tsx
@@ -1970,6 +1981,10 @@ msgstr "Upload transcript"
 #: src/settings/general/storage/notes-location.tsx
 msgid "Use"
 msgstr "Use"
+
+#: src/settings/ai/stt/select.tsx
+msgid "Used for the accurate pass after a recording ends and when re-transcribing a note. Pick a larger model than the live one for better quality, or keep it the same as the live model."
+msgstr "Used for the accurate pass after a recording ends and when re-transcribing a note. Pick a larger model than the live one for better quality, or keep it the same as the live model."
 
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Verifying the SQLite migration status"

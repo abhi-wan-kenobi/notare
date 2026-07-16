@@ -417,8 +417,8 @@ msgstr ""
 #~ msgstr ""
 
 #: src/onboarding/calendar.tsx
-msgid "Connect Outlook"
-msgstr ""
+#~ msgid "Connect Outlook"
+#~ msgstr ""
 
 #: src/instruction/index.tsx
 msgid "Connect your integration"
@@ -657,8 +657,8 @@ msgid "Failed to load issue"
 msgstr ""
 
 #: src/onboarding/calendar.tsx
-msgid "Failed to load Outlook Calendar"
-msgstr ""
+#~ msgid "Failed to load Outlook Calendar"
+#~ msgstr ""
 
 #: src/task/resource-view.tsx
 msgid "Failed to load pull request"
@@ -675,6 +675,10 @@ msgstr ""
 #. placeholder {0}: (config.filterLabel ?? "repository").toLowerCase()
 #: src/settings/todo/provider-content.tsx
 msgid "Filter synced items by {0}."
+msgstr ""
+
+#: src/settings/ai/stt/select.tsx
+msgid "Final & re-transcription model"
 msgstr ""
 
 #: src/shared/open-note-dialog.tsx
@@ -887,6 +891,10 @@ msgstr ""
 msgid "Live"
 msgstr ""
 
+#: src/settings/ai/stt/select.tsx
+msgid "Live transcription model"
+msgstr ""
+
 #: src/onboarding/transcription.tsx
 msgid "Loading available models…"
 msgstr ""
@@ -986,7 +994,6 @@ msgid "Migration status unavailable"
 msgstr ""
 
 #: src/settings/ai/llm/select.tsx
-#: src/settings/ai/stt/select.tsx
 msgid "Model being used"
 msgstr ""
 
@@ -1465,6 +1472,10 @@ msgstr ""
 msgid "Runs after the recording finishes, not during the meeting."
 msgstr ""
 
+#: src/settings/ai/stt/select.tsx
+msgid "Same as live model"
+msgstr ""
+
 #: src/settings/personalization/index.tsx
 msgid "Save"
 msgstr ""
@@ -1668,8 +1679,8 @@ msgid "Sign in for Pro"
 msgstr ""
 
 #: src/onboarding/calendar.tsx
-msgid "Sign in to connect"
-msgstr ""
+#~ msgid "Sign in to connect"
+#~ msgstr ""
 
 #. placeholder {0}: config.displayName
 #: src/settings/todo/provider-content.tsx
@@ -1969,6 +1980,10 @@ msgstr ""
 
 #: src/settings/general/storage/notes-location.tsx
 msgid "Use"
+msgstr ""
+
+#: src/settings/ai/stt/select.tsx
+msgid "Used for the accurate pass after a recording ends and when re-transcribing a note. Pick a larger model than the live one for better quality, or keep it the same as the live model."
 msgstr ""
 
 #: src/settings/general/storage/legacy-cleanup.tsx

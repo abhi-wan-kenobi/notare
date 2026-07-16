@@ -3,6 +3,7 @@ import { Trans } from "@lingui/react/macro";
 import { ConfigureProviders } from "./configure";
 import { SttSettingsProvider } from "./context";
 import {
+  SelectFinalModel,
   SelectProviderAndModel,
   TranscriptionLanguageWarningToast,
 } from "./select";
@@ -16,6 +17,7 @@ export function STT() {
       <div className="flex flex-col gap-6">
         <SettingsPageTitle title={<Trans>Transcription</Trans>} />
         <SelectProviderAndModel />
+        <SelectFinalModel />
         <ConfigureProviders />
       </div>
     </SttSettingsProvider>
