@@ -235,8 +235,20 @@ msgstr "ຢຸດຟັງອັດຕະໂນມັດເມື່ອແອັ
 msgid "Back"
 msgstr ""
 
+#: src/settings/ai/stt/shared.tsx
+msgid "Balanced"
+msgstr ""
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Balanced — works for live and the final pass."
+msgstr ""
+
 #: src/settings/ai/shared/index.tsx
 msgid "Base URL"
+msgstr ""
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Best quality"
 msgstr ""
 
 #: src/instruction/index.tsx
@@ -680,6 +692,18 @@ msgstr ""
 msgid "Failed to load pull request"
 msgstr ""
 
+#: src/settings/ai/stt/shared.tsx
+msgid "Fast"
+msgstr ""
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Fast and light — a good pick for live transcription."
+msgstr ""
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Fastest"
+msgstr ""
+
 #: src/templates/details.tsx
 msgid "Favorite template"
 msgstr ""
@@ -790,6 +814,10 @@ msgstr ""
 msgid "Go to recent"
 msgstr ""
 
+#: src/settings/ai/stt/shared.tsx
+msgid "Good accuracy at a moderate speed."
+msgstr ""
+
 #: src/calendar/components/apple/permission.tsx
 msgid "Having trouble?"
 msgstr ""
@@ -812,6 +840,10 @@ msgstr ""
 
 #: src/calendar/components/google/content.tsx
 msgid "Hide setup steps"
+msgstr ""
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Highest accuracy; needs the most compute."
 msgstr ""
 
 #: src/calendar/components/google/content.tsx
@@ -1039,6 +1071,10 @@ msgstr ""
 msgid "More options"
 msgstr ""
 
+#: src/settings/ai/stt/shared.tsx
+msgid "Most accurate — best as the final pass after recording."
+msgstr ""
+
 #: src/templates/sections-editor.tsx
 msgid "Move down"
 msgstr ""
@@ -1057,6 +1093,10 @@ msgstr ""
 
 #: src/settings/general/storage/notes-location.tsx
 msgid "Moving..."
+msgstr ""
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Multilingual"
 msgstr ""
 
 #: src/contacts/details.tsx
@@ -1372,6 +1412,10 @@ msgstr ""
 
 #: src/session/components/note-input/search/bar.tsx
 msgid "Previous match"
+msgstr ""
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Prioritizes speed over accuracy."
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
@@ -1869,6 +1913,14 @@ msgstr ""
 msgid "Sunday"
 msgstr ""
 
+#: src/settings/ai/stt/shared.tsx
+msgid "Supports {languageCount} languages."
+msgstr ""
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Supports many languages."
+msgstr ""
+
 #: src/sidebar/surface-nav.tsx
 msgid "Switch view"
 msgstr ""
@@ -1942,6 +1994,10 @@ msgstr ""
 
 #: src/session/components/note-input/enhanced/streaming.tsx
 msgid "Tip: The Notare team loves our users!"
+msgstr ""
+
+#: src/settings/ai/stt/shared.tsx
+msgid "Transcribes English only."
 msgstr ""
 
 #: src/session/components/note-input/header.tsx

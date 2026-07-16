@@ -128,8 +128,29 @@ export type ServerInfo = { url: string | null; status: ServerStatus; model: Loca
 export type ServerStatus = "unreachable" | "loading" | "ready"
 export type ServerType = "internal" | "external"
 export type SoniqoModel = "soniqo-parakeet-streaming" | "soniqo-parakeet-batch" | "soniqo-omnilingual" | "soniqo-qwen3-small" | "soniqo-qwen3-large"
-export type SttModelInfo = { key: LocalModel; display_name: string; description: string; size_bytes: number | null; model_type: SttModelType }
+export type SttModelInfo = { key: LocalModel; display_name: string; description: string; size_bytes: number | null; model_type: SttModelType; 
+/**
+ * Runtime/model family, e.g. "whisper.cpp", "Parakeet", "Argmax".
+ */
+engine: string; languages: SttModelLanguages; 
+/**
+ * Number of supported languages, when known. `None` for English-only
+ * models and for multilingual models without a pinned-down count.
+ */
+language_count: number | null; tier: SttModelTier; recommended_use: SttRecommendedUse }
+/**
+ * Language coverage summary for a model.
+ */
+export type SttModelLanguages = "englishOnly" | "multilingual"
+/**
+ * Quality/speed trade-off tier, ordered fastest -> most accurate.
+ */
+export type SttModelTier = "fastest" | "fast" | "balanced" | "best"
 export type SttModelType = "soniqo" | "whispercpp" | "argmax"
+/**
+ * What the model is the right pick for, given the live/final model split.
+ */
+export type SttRecommendedUse = "live" | "final" | "liveAndFinal"
 export type WhisperModel = "QuantizedTiny" | "QuantizedTinyEn" | "QuantizedBase" | "QuantizedBaseEn" | "QuantizedSmall" | "QuantizedSmallEn" | "QuantizedLargeTurbo"
 
 /** tauri-specta globals **/
