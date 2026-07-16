@@ -68,6 +68,11 @@ pub const APP_MIGRATION_STEPS: &[hypr_db_migrate::MigrationStep] = &[
         scope: hypr_db_migrate::MigrationScope::Plain,
         sql: include_str!("../migrations/20260713164500_repair_empty_session_titles.sql"),
     },
+    hypr_db_migrate::MigrationStep {
+        id: "20260716120000_dictation_history",
+        scope: hypr_db_migrate::MigrationScope::Plain,
+        sql: include_str!("../migrations/20260716120000_dictation_history.sql"),
+    },
 ];
 
 pub fn schema() -> hypr_db_migrate::DbSchema {
@@ -248,6 +253,7 @@ mod tests {
                 "chat_groups",
                 "chat_messages",
                 "daily_notes",
+                "dictation_history",
                 "entity_mentions",
                 "events",
                 "humans",
@@ -270,11 +276,18 @@ mod tests {
 
     #[tokio::test]
     async fn migration_repairs_empty_titles_from_summary_headings() {
+        // Migrate up to (excluding) the title-repair step, so the broken rows
+        // inserted below exist before the repair runs.
+        let repair_index = APP_MIGRATION_STEPS
+            .iter()
+            .position(|step| step.id == "20260713164500_repair_empty_session_titles")
+            .unwrap();
+
         let db = Db::connect_memory_plain().await.unwrap();
         hypr_db_migrate::migrate(
             &db,
             hypr_db_migrate::DbSchema {
-                steps: &APP_MIGRATION_STEPS[..APP_MIGRATION_STEPS.len() - 1],
+                steps: &APP_MIGRATION_STEPS[..repair_index],
                 validate_cloudsync_table: cloudsync_alter_guard_required,
             },
         )

@@ -63,6 +63,10 @@ msgstr ""
 msgid "A to Z"
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "A voice-reactive particle sphere."
+msgstr ""
+
 #: src/settings/general/permissions.tsx
 msgid "Accessibility"
 msgstr ""
@@ -129,6 +133,14 @@ msgstr ""
 
 #: src/settings/ai/stt/select.tsx
 msgid "After recording"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "AI cleanup"
+msgstr ""
+
+#: src/dictation/host.tsx
+msgid "AI cleanup failed - used basic cleanup instead."
 msgstr ""
 
 #: src/contacts/details.tsx
@@ -247,6 +259,10 @@ msgstr ""
 msgid "Base URL"
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Basic"
+msgstr ""
+
 #: src/settings/ai/stt/shared.tsx
 msgid "Best quality"
 msgstr ""
@@ -336,6 +352,14 @@ msgstr ""
 msgid "Cleaning up..."
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Cleanup"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Clear all"
+msgstr ""
+
 #: src/contacts/shared.tsx
 #: src/templates/template-sidebar.tsx
 msgid "Clear search"
@@ -361,6 +385,14 @@ msgstr ""
 
 #: src/task/resource-view.tsx
 msgid "Closed"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Cobalt"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Collect and deliver when you stop"
 msgstr ""
 
 #: src/task/resource-view.tsx
@@ -460,6 +492,10 @@ msgstr ""
 msgid "Continuing without trial"
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Copied to clipboard"
+msgstr ""
+
 #: src/session/components/note-input/header.tsx
 msgid "Copy latest live chunk"
 msgstr ""
@@ -522,6 +558,10 @@ msgstr ""
 
 #: src/sidebar/timeline/item.tsx
 msgid "Delete Event"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Delete history entry"
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
@@ -763,6 +803,10 @@ msgstr ""
 msgid "First day of the week in the calendar view"
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Fix punctuation and remove fillers and false starts with your configured AI model. Falls back to basic cleanup when no model is available."
+msgstr ""
+
 #: src/templates/template-icon-picker.tsx
 msgid "Flags"
 msgstr ""
@@ -876,6 +920,10 @@ msgstr ""
 msgid "Highest accuracy; needs the most compute."
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "History"
+msgstr ""
+
 #: src/calendar/components/google/content.tsx
 msgid "How do I get this file?"
 msgstr ""
@@ -947,6 +995,10 @@ msgstr ""
 
 #: src/settings/general/app-settings.tsx
 msgid "Keep Notare available from the menu bar."
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Keep the transcript exactly as recognized."
 msgstr ""
 
 #: src/settings/general/index.tsx
@@ -1167,6 +1219,10 @@ msgstr ""
 msgid "Next match"
 msgstr ""
 
+#: src/dictation/host.tsx
+msgid "No AI model is configured for dictation cleanup - used basic cleanup instead."
+msgstr ""
+
 #: src/settings/general/notification.tsx
 msgid "No apps found."
 msgstr ""
@@ -1265,6 +1321,10 @@ msgstr ""
 msgid "No templates yet"
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "None"
+msgstr ""
+
 #: src/onboarding/permissions.tsx
 msgid "Notare can hear others"
 msgstr ""
@@ -1303,8 +1363,16 @@ msgid "Notes folder"
 msgstr ""
 
 #: src/settings/dictation/index.tsx
-msgid "Nothing is typed while you talk; stopping cleans up the transcript, copies it, and pastes it once. Best for terminals."
+msgid "Nothing here yet - finished dictations appear here so you can copy them again."
 msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Nothing is typed while you talk; stopping cleans up the transcript and copies it. Best for terminals."
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+#~ msgid "Nothing is typed while you talk; stopping cleans up the transcript, copies it, and pastes it once. Best for terminals."
+#~ msgstr ""
 
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
@@ -1396,6 +1464,10 @@ msgstr ""
 msgid "or"
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Orb style"
+msgstr ""
+
 #: src/contacts/details.tsx
 msgid "Organization"
 msgstr ""
@@ -1421,13 +1493,25 @@ msgstr ""
 msgid "Participants"
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Particles"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Paste at cursor"
+msgstr ""
+
 #: src/instruction/index.tsx
 msgid "Paste the browser URL here if the browser button did not reopen Notare."
 msgstr ""
 
 #: src/settings/dictation/index.tsx
-msgid "Paste when you stop"
+msgid "Paste the transcript into the focused app when you stop. When off it is only copied to the clipboard, so you paste it yourself."
 msgstr ""
+
+#: src/settings/dictation/index.tsx
+#~ msgid "Paste when you stop"
+#~ msgstr ""
 
 #: src/contacts/organization-details.tsx
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
@@ -1947,6 +2031,10 @@ msgid "Stop dictation"
 msgstr ""
 
 #: src/dictation/window.tsx
+msgid "Stop dictation and copy the transcript"
+msgstr ""
+
+#: src/dictation/window.tsx
 msgid "Stop dictation and paste the transcript"
 msgstr ""
 
@@ -2055,6 +2143,10 @@ msgstr ""
 msgid "The main language is always included for transcription"
 msgstr "Pääkieli on aina mukana transkriptiota varten"
 
+#: src/settings/dictation/index.tsx
+msgid "The minimal glowing orb."
+msgstr ""
+
 #: src/settings/general/storage/notes-location.tsx
 msgid "The new folder already contained files, so your notes were copied there. The originals were left at the old location."
 msgstr ""
@@ -2075,6 +2167,10 @@ msgstr ""
 
 #: src/settings/todo/index.tsx
 msgid "Ticket"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Tidy whitespace, capitalize sentences and drop trailing fragments. Instant and fully offline."
 msgstr ""
 
 #: src/settings/general/timezone.tsx

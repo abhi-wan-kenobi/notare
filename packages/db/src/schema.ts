@@ -372,6 +372,22 @@ export const dailyNotes = sqliteTable(
   (table) => [index("idx_daily_notes_note_date").on(table.noteDate)],
 );
 
+export const dictationHistory = sqliteTable(
+  "dictation_history",
+  {
+    id: text("id").primaryKey().notNull(),
+    text: text("text").notNull(),
+    // Output mode of the session that produced the text: "type" | "batch".
+    mode: text("mode").notNull().default("type"),
+    // Whether cleanup (basic or LLM) was applied to `text`.
+    cleaned: integer("cleaned", { mode: "boolean" }).notNull().default(false),
+    createdAt: text("created_at").notNull().default(currentTimestamp),
+  },
+  (table) => [
+    index("idx_dictation_history_created_at").on(table.createdAt),
+  ],
+);
+
 export const appSettings = sqliteTable("app_settings", {
   id: text("id").primaryKey().notNull(),
   valueJson: text("value_json").notNull().default("null"),

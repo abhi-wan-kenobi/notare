@@ -9,6 +9,8 @@ const COMMANDS: &[&str] = &[
     "stop_dictation",
     "is_dictating",
     "type_text",
+    "deliver_text",
+    "clean_text",
 ];
 
 fn main() {

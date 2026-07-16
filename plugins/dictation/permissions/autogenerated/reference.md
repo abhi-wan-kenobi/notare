@@ -14,6 +14,8 @@ Default permissions for the plugin
 - `allow-stop-dictation`
 - `allow-is-dictating`
 - `allow-type-text`
+- `allow-deliver-text`
+- `allow-clean-text`
 
 ## Permission Table
 
@@ -23,6 +25,58 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`dictation:allow-clean-text`
+
+</td>
+<td>
+
+Enables the clean_text command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:deny-clean-text`
+
+</td>
+<td>
+
+Denies the clean_text command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:allow-deliver-text`
+
+</td>
+<td>
+
+Enables the deliver_text command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:deny-deliver-text`
+
+</td>
+<td>
+
+Denies the deliver_text command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>

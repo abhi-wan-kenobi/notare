@@ -9,6 +9,7 @@ links = "tauri-plugin-dictation"
 tauri-plugin = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
+serde_json = { workspace = true }
 specta-typescript = { workspace = true }
 
 [dependencies]

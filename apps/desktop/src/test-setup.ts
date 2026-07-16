@@ -4,6 +4,13 @@ import { vi } from "vitest";
 
 Object.defineProperty(globalThis.crypto, "randomUUID", { value: randomUUID });
 
+// jsdom ships no canvas implementation and logs a noisy "Not implemented"
+// error on every getContext() call (e.g. the dictation particle orb, which
+// treats a null context as "render nothing"). Return null quietly instead.
+HTMLCanvasElement.prototype.getContext = vi.fn(
+  () => null,
+) as unknown as HTMLCanvasElement["getContext"];
+
 Object.defineProperty(globalThis.window, "__TAURI_INTERNALS__", {
   value: {
     metadata: {

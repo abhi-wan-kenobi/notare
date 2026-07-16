@@ -23,7 +23,7 @@ pub enum DictationPhase {
 }
 
 /// Where recognized speech goes (mirrors the `dictation_output_mode` setting;
-/// serialized as `"type"` / `"batch-paste"` so the two representations match).
+/// serialized as `"type"` / `"batch"` so the two representations match).
 #[derive(
     Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type,
 )]
@@ -33,10 +33,13 @@ pub enum DictationOutputMode {
     /// arrive (the original behavior).
     #[default]
     Type,
-    /// Nothing is typed while dictating; on stop the accumulated transcript
-    /// is cleaned, copied to the clipboard and pasted once (terminal-friendly;
-    /// the clipboard intentionally keeps the text for repeated pastes).
-    BatchPaste,
+    /// Nothing is typed while dictating; the transcript accumulates and is
+    /// delivered once at the end of the session. Whether the delivery pastes
+    /// at the cursor or only copies to the clipboard is the frontend's call
+    /// (`dictation_paste_at_cursor` setting). The pre-rework name of this
+    /// variant was `batch-paste`; the alias keeps old persisted values valid.
+    #[serde(alias = "batch-paste")]
+    Batch,
 }
 
 /// Broadcast by the Rust dictation session to every webview (the orb window
@@ -58,9 +61,48 @@ pub struct DictationStateEvent {
 pub struct DictationOrbClicked {}
 
 /// A final transcript segment that was delivered: typed into the focused app
-/// (`type` mode) or accumulated for the paste-on-stop buffer (`batch-paste`).
+/// (`type` mode) or accumulated for the deliver-on-stop buffer (`batch`).
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 #[serde(rename_all = "camelCase")]
 pub struct DictationTranscriptEvent {
     pub text: String,
+}
+
+/// Emitted exactly once when a dictation session ends, carrying the raw
+/// accumulated transcript of the whole session (all final segments, both
+/// modes). The main window finishes the job from here: cleanup per the
+/// `dictation_cleanup` setting (basic/LLM), delivery in batch mode
+/// (`deliver_text`) and the history entry. `failed` mirrors the session
+/// outcome so batch delivery can degrade to copy-only.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct DictationFinishedEvent {
+    pub raw_text: String,
+    pub mode: DictationOutputMode,
+    pub failed: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DictationOutputMode;
+
+    #[test]
+    fn output_mode_serializes_kebab_case() {
+        assert_eq!(
+            serde_json::to_string(&DictationOutputMode::Type).unwrap(),
+            "\"type\""
+        );
+        assert_eq!(
+            serde_json::to_string(&DictationOutputMode::Batch).unwrap(),
+            "\"batch\""
+        );
+    }
+
+    #[test]
+    fn output_mode_tolerates_the_legacy_batch_paste_value() {
+        assert_eq!(
+            serde_json::from_str::<DictationOutputMode>("\"batch-paste\"").unwrap(),
+            DictationOutputMode::Batch
+        );
+    }
 }
