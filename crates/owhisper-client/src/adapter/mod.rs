@@ -327,6 +327,18 @@ fn is_local_argmax(base_url: &str) -> bool {
     host_matches(base_url, is_local_host) && !is_hyprnote_local_proxy(base_url)
 }
 
+/// The desktop app's internal whisper.cpp server (`plugins/local-stt`) binds a
+/// random loopback port and serves the Deepgram-compatible `/v1/listen`
+/// endpoint via `hypr-transcribe-whisper-local`. Its models are the
+/// `WhisperModel` variants, which all serialize with a `Quantized` prefix.
+/// It must be driven by the Hyprnote adapter (native multichannel over a
+/// single websocket) rather than the Argmax adapter, whose split dual mode
+/// opens two connections that the internal server's single-connection
+/// manager would cancel.
+fn is_local_whisper(base_url: &str, model: Option<&str>) -> bool {
+    model.is_some_and(|m| m.starts_with("Quantized")) && host_matches(base_url, is_local_host)
+}
+
 pub(crate) fn build_ws_url_from_base_with(
     provider: crate::providers::Provider,
     api_base: &str,
@@ -432,11 +444,15 @@ impl AdapterKind {
     pub fn from_url_and_languages(
         base_url: &str,
         _languages: &[hypr_language::Language],
-        _model: Option<&str>,
+        model: Option<&str>,
     ) -> Self {
         use crate::providers::Provider;
 
         if is_hyprnote_proxy(base_url) {
+            return Self::Hyprnote;
+        }
+
+        if is_local_whisper(base_url, model) {
             return Self::Hyprnote;
         }
 
@@ -776,6 +792,33 @@ mod tests {
                 &[En],
                 None,
                 AdapterKind::Argmax,
+            ),
+            // localhost AM server keeps the Argmax adapter
+            (
+                "http://127.0.0.1:50060/v1",
+                &[En],
+                Some("am-parakeet-v3"),
+                AdapterKind::Argmax,
+            ),
+            // internal whisper server (random loopback port, Quantized* models)
+            (
+                "http://127.0.0.1:52693/v1",
+                &[En],
+                Some("QuantizedSmall"),
+                AdapterKind::Hyprnote,
+            ),
+            (
+                "http://127.0.0.1:52693/v1",
+                &[En, Ko],
+                Some("QuantizedLargeTurbo"),
+                AdapterKind::Hyprnote,
+            ),
+            // Quantized model name on a remote host is not the internal server
+            (
+                "https://api.deepgram.com/v1",
+                &[En],
+                Some("QuantizedSmall"),
+                AdapterKind::Deepgram,
             ),
         ];
 

@@ -47,6 +47,16 @@ describe("getOnDeviceTranscriptionMode", () => {
     expect(getOnDeviceTranscriptionMode("soniqo-qwen3-small")).toBe("batch");
   });
 
+  test("uses live mode for local whisper models", () => {
+    expect(getOnDeviceTranscriptionMode("QuantizedSmall")).toBe("live");
+    expect(getOnDeviceTranscriptionMode("QuantizedTinyEn")).toBe("live");
+    expect(getOnDeviceTranscriptionMode("QuantizedLargeTurbo")).toBe("live");
+  });
+
+  test("keeps am models batch", () => {
+    expect(getOnDeviceTranscriptionMode("am-parakeet-v3")).toBe("batch");
+  });
+
   test("keeps live mode when realtime local model has no Soniqo-supported language", () => {
     expect(
       getOnDeviceTranscriptionMode("soniqo-parakeet-streaming", ["ko"]),
@@ -112,6 +122,15 @@ describe("getOnDeviceTranscriptionConfig", () => {
       languages: [],
       transcriptionMode: "live",
     });
+  });
+
+  test("keeps all languages live for local whisper models", () => {
+    expect(getOnDeviceTranscriptionConfig("QuantizedSmall", ["en", "hi"])).toEqual(
+      {
+        languages: ["en", "hi"],
+        transcriptionMode: "live",
+      },
+    );
   });
 });
 
