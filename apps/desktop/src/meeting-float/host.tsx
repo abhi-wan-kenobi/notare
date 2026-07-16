@@ -288,7 +288,11 @@ function FloatingMeetingWindowSync({
     let syncQueued = false;
     let cancelled = false;
     let shownSessionId: string | null = null;
-    let nativeCommandsUnavailable = false;
+    // Session for which showing/updating the native floating bar failed. We
+    // stop syncing for that session (a single console.error, no per-amplitude
+    // spam) but retry when a new recording session starts, so one transient
+    // failure does not disable the floating bar until app restart.
+    let unavailableSessionId: string | null = null;
     let unsubscribeMeetingData: (() => Promise<void>) | null = null;
     const unlisteners: Array<() => void> = [];
 
@@ -319,7 +323,7 @@ function FloatingMeetingWindowSync({
         return;
       }
 
-      if (nativeCommandsUnavailable && routeState) {
+      if (routeState && unavailableSessionId === routeState.sessionId) {
         return;
       }
 
@@ -334,7 +338,7 @@ function FloatingMeetingWindowSync({
       }
 
       if (nextShownSessionId === "unavailable") {
-        nativeCommandsUnavailable = true;
+        unavailableSessionId = routeState?.sessionId ?? null;
         return;
       }
 

@@ -181,19 +181,43 @@ mod platform {
         (width, BAR_HEIGHT + caption_height)
     }
 
+    /// Route served by the SPA for the floating bar window. Must match a
+    /// route in `apps/desktop/src/routeTree.gen.ts` (`/app/floating`), same
+    /// `WebviewUrl::App` pattern the v1 windows use (e.g. `/app`).
+    const WINDOW_URL: &str = "/app/floating";
+
     fn get_or_create_window(
         app: &tauri::AppHandle<tauri::Wry>,
     ) -> Result<tauri::WebviewWindow<tauri::Wry>, Error> {
         use tauri::{WebviewUrl, WebviewWindow};
 
         if let Some(window) = app.get_webview_window(WINDOW_LABEL) {
-            return Ok(window);
+            // A window whose OS-side creation failed earlier stays registered
+            // in the manager as a "ghost": commands against it are silently
+            // dropped, so the bar would never appear and never error. Probe it
+            // through the event loop so we report that state instead.
+            return match window.is_visible() {
+                Ok(_) => Ok(window),
+                Err(error) => {
+                    tracing::error!(
+                        %error,
+                        label = WINDOW_LABEL,
+                        "existing floating bar window is not backed by an OS window; \
+                         its creation likely failed earlier (see `tauri_runtime_wry` \
+                         errors in the log). Restart the app to recover."
+                    );
+                    Err(Error::PanelError(format!(
+                        "floating bar window `{WINDOW_LABEL}` exists but is not \
+                         usable (earlier creation failed): {error}"
+                    )))
+                }
+            };
         }
 
         let window = WebviewWindow::builder(
             app,
             WINDOW_LABEL,
-            WebviewUrl::App("/app/floating".into()),
+            WebviewUrl::App(WINDOW_URL.into()),
         )
         .title(
             app.config()
@@ -214,7 +238,41 @@ mod platform {
         .visible(false)
         .inner_size(BAR_WIDTH, BAR_HEIGHT)
         .disable_drag_drop_handler()
-        .build()?;
+        .build()
+        .map_err(|error| {
+            tracing::error!(
+                %error,
+                label = WINDOW_LABEL,
+                url = WINDOW_URL,
+                "failed to build floating bar window"
+            );
+            Error::PanelError(format!(
+                "failed to create floating bar window `{WINDOW_LABEL}` \
+                 (url `{WINDOW_URL}`): {error}"
+            ))
+        })?;
+
+        // When `build()` runs off the main thread (async command), the actual
+        // OS window/webview creation is queued onto the event loop and its
+        // errors are only ever logged by `tauri_runtime_wry` - `build()` still
+        // returns `Ok`. Round-trip a getter through the event loop so a failed
+        // creation surfaces here as an error instead of an invisible window.
+        if let Err(error) = window.is_visible() {
+            tracing::error!(
+                %error,
+                label = WINDOW_LABEL,
+                url = WINDOW_URL,
+                "floating bar window did not materialize after build; check \
+                 the log for `tauri_runtime_wry` window/webview creation errors"
+            );
+            let _ = window.destroy();
+            return Err(Error::PanelError(format!(
+                "floating bar window `{WINDOW_LABEL}` was not created by the \
+                 OS event loop: {error}"
+            )));
+        }
+
+        tracing::info!(label = WINDOW_LABEL, url = WINDOW_URL, "created floating bar window");
 
         position_top_center(app, &window);
 
@@ -245,7 +303,10 @@ mod platform {
     pub fn show() -> Result<(), Error> {
         let app = app_handle()?;
         let window = get_or_create_window(app)?;
-        window.show()?;
+        window.show().map_err(|error| {
+            tracing::error!(%error, label = WINDOW_LABEL, "failed to show floating bar window");
+            Error::TauriError(error)
+        })?;
         let _ = window.set_always_on_top(true);
         Ok(())
     }
@@ -278,7 +339,10 @@ mod platform {
 
         crate::events::FloatingBarStateEvent { state }
             .emit(app)
-            .map_err(Error::TauriError)?;
+            .map_err(|error| {
+                tracing::error!(%error, "failed to emit floating bar state event");
+                Error::TauriError(error)
+            })?;
 
         Ok(())
     }
