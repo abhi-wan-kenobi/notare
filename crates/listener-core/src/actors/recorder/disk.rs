@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use hypr_audio_utils::{
-    decode_vorbis_to_mono_wav_file, decode_vorbis_to_wav_file, mix_audio_f32,
+    MonoMixdown, decode_vorbis_to_mono_wav_file, decode_vorbis_to_wav_file,
     ogg_has_identical_channels,
 };
 use ractor::ActorProcessingErr;
@@ -23,6 +23,7 @@ pub(super) struct DiskSink {
     wav_path: PathBuf,
     last_flush: Instant,
     is_stereo: bool,
+    mono_mixdown: MonoMixdown,
 }
 
 pub(super) fn create_disk_sink(session_dir: &Path) -> Result<DiskSink, ActorProcessingErr> {
@@ -80,6 +81,7 @@ pub(super) fn create_disk_sink(session_dir: &Path) -> Result<DiskSink, ActorProc
         wav_path,
         last_flush: Instant::now(),
         is_stereo,
+        mono_mixdown: MonoMixdown::new(super::super::SAMPLE_RATE),
     })
 }
 
@@ -105,7 +107,7 @@ pub(super) fn write_dual(
         if sink.is_stereo {
             write_interleaved_stereo(writer, mic, spk)?;
         } else {
-            let mixed = mix_audio_f32(mic, spk);
+            let mixed = sink.mono_mixdown.mix(mic, spk);
             write_mono_samples(writer, &mixed)?;
         }
     }

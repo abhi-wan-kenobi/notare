@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 audioadapter-buffers = "2.0"
 bytes = { workspace = true }
+ebur128 = "0.1.10"
 futures-util = { workspace = true }
 hypr-audio-interface = { workspace = true }
 hypr-audio-mime = { workspace = true }

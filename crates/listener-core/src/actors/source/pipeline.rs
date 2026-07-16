@@ -10,7 +10,7 @@ use crate::{
     ListenerRuntime, SessionDataEvent,
     actors::{ChannelMode, ListenerMsg, RecMsg, SAMPLE_RATE},
 };
-use hypr_audio_utils::f32_to_i16_bytes;
+use hypr_audio_utils::{LoudnessNormalizer, f32_to_i16_bytes};
 use hypr_vad_masking::VadMask;
 
 use super::{ListenerRefreshReplay, ListenerRouting, SourceFrame};
@@ -18,6 +18,7 @@ use super::{ListenerRefreshReplay, ListenerRouting, SourceFrame};
 const AUDIO_AMPLITUDE_THROTTLE: Duration = Duration::from_millis(100);
 const MAX_BUFFER_CHUNKS: usize = 150;
 const REPLAY_HISTORY_SECS: usize = 5;
+const NO_MIC_NORM_ENV: &str = "NO_MIC_NORM";
 
 #[derive(Clone)]
 struct BufferedAudio {
@@ -42,6 +43,9 @@ pub(in crate::actors) struct Pipeline {
     audio_buffer: AudioBuffer,
     replay_history: ReplayHistory,
     backlog_quota: f32,
+    /// Loudness normalization applied ONLY to the transcription-bound copy of
+    /// the mic track (the recorder always receives the unprocessed samples).
+    stt_mic_norm: Option<LoudnessNormalizer>,
 }
 
 impl Pipeline {
@@ -55,6 +59,7 @@ impl Pipeline {
             replay_history: ReplayHistory::new(SAMPLE_RATE as usize * REPLAY_HISTORY_SECS),
             backlog_quota: 0.0,
             vad_mask: VadMask::default(),
+            stt_mic_norm: build_stt_mic_norm(),
         }
     }
 
@@ -64,6 +69,7 @@ impl Pipeline {
         self.replay_history.clear();
         self.backlog_quota = 0.0;
         self.vad_mask = VadMask::default();
+        self.stt_mic_norm = build_stt_mic_norm();
     }
 
     pub(super) fn dispatch_frame(
@@ -169,7 +175,7 @@ impl Pipeline {
     }
 
     fn send_to_listener(
-        &self,
+        &mut self,
         actor: &ActorRef<ListenerMsg>,
         mic: &Arc<[f32]>,
         spk: &Arc<[f32]>,
@@ -177,7 +183,7 @@ impl Pipeline {
     ) {
         let result = match mode {
             ChannelMode::MicOnly => {
-                let bytes = f32_to_i16_bytes(mic.iter().copied());
+                let bytes = self.listener_mic_bytes(mic);
                 actor.cast(ListenerMsg::AudioSingle(bytes))
             }
             ChannelMode::SpeakerOnly => {
@@ -185,7 +191,7 @@ impl Pipeline {
                 actor.cast(ListenerMsg::AudioSingle(bytes))
             }
             ChannelMode::MicAndSpeaker => {
-                let mic_bytes = f32_to_i16_bytes(mic.iter().copied());
+                let mic_bytes = self.listener_mic_bytes(mic);
                 let spk_bytes = f32_to_i16_bytes(spk.iter().copied());
                 actor.cast(ListenerMsg::AudioDual(mic_bytes, spk_bytes))
             }
@@ -193,6 +199,16 @@ impl Pipeline {
 
         if result.is_err() {
             tracing::warn!("listener_cast_failed");
+        }
+    }
+
+    fn listener_mic_bytes(&mut self, mic: &Arc<[f32]>) -> bytes::Bytes {
+        match self.stt_mic_norm.as_mut() {
+            Some(normalizer) => {
+                let normalized = normalizer.process(mic);
+                f32_to_i16_bytes(normalized.into_iter())
+            }
+            None => f32_to_i16_bytes(mic.iter().copied()),
         }
     }
 
@@ -212,6 +228,16 @@ impl Pipeline {
 
         (mic, raw_speaker)
     }
+}
+
+/// Loudness normalization for the transcription-bound mic track (EBU R128,
+/// -23 LUFS with bounded, smoothed gain and a peak-limiter safety stage).
+/// Opt out with `NO_MIC_NORM=1`, mirroring the `NO_AEC` capture flag.
+fn build_stt_mic_norm() -> Option<LoudnessNormalizer> {
+    if std::env::var(NO_MIC_NORM_ENV).as_deref() == Ok("1") {
+        return None;
+    }
+    Some(LoudnessNormalizer::new(SAMPLE_RATE))
 }
 
 struct AudioBuffer {
@@ -660,6 +686,62 @@ mod tests {
         assert!(matches!(event, ProbeEvent::RecorderDual));
 
         handle.abort();
+    }
+
+    fn decode_i16_bytes(bytes: &bytes::Bytes) -> Vec<f32> {
+        bytes
+            .chunks_exact(2)
+            .map(|pair| i16::from_le_bytes([pair[0], pair[1]]) as f32 / 32768.0)
+            .collect()
+    }
+
+    #[test]
+    fn listener_mic_bytes_normalizes_quiet_mic_for_transcription_only() {
+        let mut pipeline = test_pipeline();
+        assert!(
+            pipeline.stt_mic_norm.is_some(),
+            "mic normalization should be enabled by default"
+        );
+
+        // ~4s of a quiet 400 Hz tone in pipeline-sized chunks; enough for the
+        // EBU R128 integrated loudness gate plus the gain-smoothing window.
+        let chunk_len = 512;
+        let chunks = (SAMPLE_RATE as usize * 4) / chunk_len;
+        let quiet_amplitude = 0.01_f32;
+
+        let mut last_peak = 0.0_f32;
+        for chunk_idx in 0..chunks {
+            let chunk: Vec<f32> = (0..chunk_len)
+                .map(|i| {
+                    let t = (chunk_idx * chunk_len + i) as f32 / SAMPLE_RATE as f32;
+                    quiet_amplitude * (2.0 * std::f32::consts::PI * 400.0 * t).sin()
+                })
+                .collect();
+            let mic = Arc::<[f32]>::from(chunk);
+            let bytes = pipeline.listener_mic_bytes(&mic);
+            let decoded = decode_i16_bytes(&bytes);
+            assert_eq!(decoded.len(), chunk_len);
+            last_peak = decoded.iter().fold(0.0_f32, |m, s| m.max(s.abs()));
+        }
+
+        assert!(
+            last_peak > quiet_amplitude * 2.0,
+            "transcription-bound mic should be boosted, last_peak = {last_peak}"
+        );
+    }
+
+    #[test]
+    fn listener_mic_bytes_is_passthrough_when_normalization_disabled() {
+        let mut pipeline = test_pipeline();
+        pipeline.stt_mic_norm = None;
+
+        let mic = Arc::<[f32]>::from(vec![0.01_f32; 512]);
+        let bytes = pipeline.listener_mic_bytes(&mic);
+        let decoded = decode_i16_bytes(&bytes);
+
+        for sample in decoded {
+            assert!((sample - 0.01).abs() < 1.0 / 32768.0 + 1e-6);
+        }
     }
 
     #[test]

@@ -9,7 +9,7 @@ use futures_util::{Stream, StreamExt, stream::SplitStream};
 use pin_project::pin_project;
 use tokio::sync::mpsc::{Receiver, Sender, channel};
 
-use hypr_audio_utils::{bytes_to_f32_samples, deinterleave_stereo_bytes, mix_audio_f32};
+use hypr_audio_utils::{MonoMixdown, bytes_to_f32_samples, deinterleave_stereo_bytes};
 use owhisper_interface::{ControlMessage, ListenInputChunk};
 
 pub enum ParsedWsMessage {
@@ -66,6 +66,7 @@ pub struct WebSocketAudioSource {
     sample_rate: u32,
     buffer: Vec<f32>,
     buffer_idx: usize,
+    mono_mixdown: MonoMixdown,
 }
 
 impl WebSocketAudioSource {
@@ -75,6 +76,7 @@ impl WebSocketAudioSource {
             sample_rate,
             buffer: Vec::new(),
             buffer_idx: 0,
+            mono_mixdown: MonoMixdown::new(sample_rate),
         }
     }
 }
@@ -109,7 +111,7 @@ impl Stream for WebSocketAudioSource {
                         *this.buffer_idx = 0;
                     }
                     ParsedWsMessage::AudioDual { ch0, ch1 } => {
-                        let mut mixed = mix_audio_f32(&ch0, &ch1);
+                        let mut mixed = this.mono_mixdown.mix(&ch0, &ch1);
                         if mixed.is_empty() {
                             continue;
                         }
