@@ -50,6 +50,10 @@ vi.mock("~/sidebar/templates", () => ({
   TemplatesNav: () => <div data-testid="templates-nav" />,
 }));
 
+vi.mock("~/sidebar/surface-nav", () => ({
+  SidebarSurfaceNav: () => <nav data-testid="sidebar-surface-nav" />,
+}));
+
 import { LeftSidebar } from "./index";
 
 describe("LeftSidebar", () => {
@@ -118,4 +122,21 @@ describe("LeftSidebar", () => {
     expect(classList).toContain("pr-1");
     expect(classList).not.toContain("pt-0");
   });
+
+  it("shows the surface nav in the timeline layout", () => {
+    render(<LeftSidebar />);
+
+    expect(screen.getByTestId("sidebar-surface-nav")).toBeTruthy();
+  });
+
+  it.each([["settings"], ["calendar"], ["contacts"], ["templates"]])(
+    "shows the surface nav in the %s layout",
+    (type) => {
+      mocks.currentTab = { type };
+
+      render(<LeftSidebar />);
+
+      expect(screen.getByTestId("sidebar-surface-nav")).toBeTruthy();
+    },
+  );
 });
