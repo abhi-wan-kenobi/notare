@@ -1,4 +1,5 @@
 import { useLingui } from "@lingui/react/macro";
+import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useEffect, useRef, useState } from "react";
 
@@ -10,7 +11,12 @@ import { cn } from "@hypr/utils";
 
 import { useConfigValues } from "~/shared/config";
 
-import { DictationOrb, normalizeOrbVariant } from "./orb";
+import {
+  DictationOrb,
+  type DictationOrbVariant,
+  normalizeOrbVariant,
+  orbWindowSizeForVariant,
+} from "./orb";
 
 const IDLE_STATE: DictationStateEvent = {
   phase: "idle",
@@ -62,6 +68,10 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
   }, [solid]);
+
+  useEffect(() => {
+    void syncOrbWindowSize(variant);
+  }, [variant]);
 
   const dictating = state.phase === "listening" || state.phase === "processing";
   const batchMode = state.mode === "batch";
@@ -152,6 +162,41 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
       </button>
     </div>
   );
+}
+
+/**
+ * The Rust side always creates the orb window at the cobalt chassis size
+ * (`ORB_SIZE` in `plugins/dictation/src/orb.rs`); variants that render larger
+ * (particles, 1.5x) are resized from here, where the variant setting lives -
+ * the same webview-drives-the-window pattern as the floating bar's `update`.
+ * The window grows/shrinks around its center so the orb never jumps, and the
+ * resulting `Moved` event lets the Rust side persist the adjusted position.
+ */
+async function syncOrbWindowSize(variant: DictationOrbVariant) {
+  try {
+    const window = getCurrentWebviewWindow();
+    const target = orbWindowSizeForVariant(variant);
+    const scale = await window.scaleFactor();
+    const inner = (await window.innerSize()).toLogical(scale);
+    if (
+      Math.abs(inner.width - target) < 1 &&
+      Math.abs(inner.height - target) < 1
+    ) {
+      return;
+    }
+
+    const position = (await window.outerPosition()).toLogical(scale);
+    await window.setSize(new LogicalSize(target, target));
+    await window.setPosition(
+      new LogicalPosition(
+        Math.round(position.x + (inner.width - target) / 2),
+        Math.round(position.y + (inner.height - target) / 2),
+      ),
+    );
+  } catch {
+    // Not running inside the orb webview (tests/storybook) or the window API
+    // is unavailable - keep whatever size the window was created with.
+  }
 }
 
 function useDictationState() {

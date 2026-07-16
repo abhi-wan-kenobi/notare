@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   createParticles,
+  PARTICLE_ORB_BASE_SIZE,
   PARTICLE_ORB_PARTICLE_COUNT,
+  particleCountForSize,
   ParticleOrb,
 } from "./particle-orb";
 
@@ -45,6 +47,22 @@ describe("createParticles", () => {
     expect(shell / particles.length).toBeGreaterThan(0.5);
     expect(inner / particles.length).toBeGreaterThan(0.2);
     expect(halo / particles.length).toBeGreaterThan(0.05);
+  });
+});
+
+describe("particleCountForSize", () => {
+  it("keeps the reference count at the base size", () => {
+    expect(particleCountForSize(PARTICLE_ORB_BASE_SIZE)).toBe(
+      PARTICLE_ORB_PARTICLE_COUNT,
+    );
+  });
+
+  it("scales the count linearly with the diameter", () => {
+    // The 1.5x dictation orb (40 -> 60px).
+    expect(particleCountForSize(60)).toBe(510);
+    // Settings preview (28px) and its 1.5x variant (42px).
+    expect(particleCountForSize(28)).toBe(238);
+    expect(particleCountForSize(42)).toBe(357);
   });
 });
 

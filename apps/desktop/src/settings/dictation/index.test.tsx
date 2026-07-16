@@ -58,7 +58,7 @@ describe("OrbVariantGroup", () => {
     cleanup();
   });
 
-  it("switches between the cobalt and particle orbs", () => {
+  it("switches between the cobalt, particle and Pulse orbs", () => {
     const onChange = vi.fn();
     render(<OrbVariantGroup value="cobalt" onChange={onChange} />);
 
@@ -69,6 +69,21 @@ describe("OrbVariantGroup", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: /Particles/ }));
     expect(onChange).toHaveBeenCalledWith("particles");
+
+    fireEvent.click(screen.getByRole("radio", { name: /Pulse/ }));
+    expect(onChange).toHaveBeenCalledWith("waveform");
+  });
+
+  it("previews every variant live, particles proportionally bigger", () => {
+    render(<OrbVariantGroup value="cobalt" onChange={vi.fn()} />);
+
+    expect(screen.getByTestId("recording-orb")).not.toBeNull();
+    expect(screen.getByTestId("dictation-waveform-orb")).not.toBeNull();
+
+    // The particle preview reflects the 1.5x scale (28 -> 42px).
+    const particleCanvas = screen.getByTestId("dictation-particle-orb");
+    expect(particleCanvas.style.width).toBe("42px");
+    expect(particleCanvas.style.height).toBe("42px");
   });
 });
 

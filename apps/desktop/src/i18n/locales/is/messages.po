@@ -67,6 +67,10 @@ msgstr ""
 msgid "A voice-reactive particle sphere."
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "A waveform of bars that dance as you speak."
+msgstr ""
+
 #: src/settings/general/permissions.tsx
 msgid "Accessibility"
 msgstr ""
@@ -1566,6 +1570,10 @@ msgstr ""
 
 #: src/settings/general/account.tsx
 msgid "Pro trial"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Pulse"
 msgstr ""
 
 #: src/onboarding/index.tsx

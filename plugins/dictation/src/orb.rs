@@ -26,6 +26,11 @@ use crate::error::Error;
 
 pub const WINDOW_LABEL: &str = "dictation";
 
+/// Logical window size the orb is CREATED at (the cobalt-variant chassis).
+/// The orb webview resizes the window per orb variant once it knows the
+/// `dictation_orb_variant` setting (`syncOrbWindowSize` in
+/// `apps/desktop/src/dictation/window.tsx`), so treat this as the default
+/// size, not an invariant.
 const ORB_SIZE: f64 = 56.0;
 const BOTTOM_MARGIN: f64 = 32.0;
 

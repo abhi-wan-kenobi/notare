@@ -15,7 +15,11 @@ import {
   type DictationHistoryEntry,
   useDictationHistory,
 } from "~/dictation/history";
-import { DictationOrb, normalizeOrbVariant } from "~/dictation/orb";
+import {
+  DictationOrb,
+  type DictationOrbVariant,
+  normalizeOrbVariant,
+} from "~/dictation/orb";
 import { normalizeOutputMode } from "~/dictation/output-mode";
 import { normalizeCleanupMode } from "~/dictation/finalize";
 import { SettingsPageTitle } from "~/settings/page-title";
@@ -287,12 +291,17 @@ export function CleanupGroup({
   );
 }
 
-/** Orb look, previewed live next to each option. */
+/**
+ * Orb look, previewed live next to each option. Previews share the same base
+ * size; `DictationOrb` applies the per-variant scale on top (the particle
+ * sphere previews proportionally bigger, exactly like the real orb). The
+ * Pulse preview uses a steady listening level so the sticks actually dance.
+ */
 export function OrbVariantGroup({
   value,
   onChange,
 }: {
-  value: "cobalt" | "particles";
+  value: DictationOrbVariant;
   onChange: (next: string) => void;
 }) {
   return (
@@ -313,6 +322,21 @@ export function OrbVariantGroup({
             <Trans>A voice-reactive particle sphere.</Trans>
           ),
           preview: <DictationOrb phase="idle" size={28} variant="particles" />,
+        },
+        {
+          value: "waveform",
+          title: <Trans>Pulse</Trans>,
+          description: (
+            <Trans>A waveform of bars that dance as you speak.</Trans>
+          ),
+          preview: (
+            <DictationOrb
+              phase="listening"
+              amplitude={0.55}
+              size={28}
+              variant="waveform"
+            />
+          ),
         },
       ]}
     />
