@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-hide-orb"
+description = "Enables the hide_orb command without any pre-configured scope."
+commands.allow = ["hide_orb"]
+
+[[permission]]
+identifier = "deny-hide-orb"
+description = "Denies the hide_orb command without any pre-configured scope."
+commands.deny = ["hide_orb"]

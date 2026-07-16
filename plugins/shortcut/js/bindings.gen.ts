@@ -21,6 +21,27 @@ async unregisterHotkey() : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Register a toggle-style global hotkey (Windows/Linux). Emits
+ * `GlobalHotkeyTriggered` on key-down. Not available on macOS, which keeps
+ * its native push-to-talk path.
+ */
+async registerGlobalHotkey(shortcut: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:shortcut|register_global_hotkey", { shortcut }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async unregisterGlobalHotkey() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:shortcut|unregister_global_hotkey") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -28,8 +49,10 @@ async unregisterHotkey() : Promise<Result<null, string>> {
 
 
 export const events = __makeEvents__<{
+globalHotkeyTriggered: GlobalHotkeyTriggered,
 shortcutEvent: ShortcutEvent
 }>({
+globalHotkeyTriggered: "plugin:shortcut:global-hotkey-triggered",
 shortcutEvent: "plugin:shortcut:shortcut-event"
 })
 
@@ -39,6 +62,13 @@ shortcutEvent: "plugin:shortcut:shortcut-event"
 
 /** user-defined types **/
 
+/**
+ * Fired when a toggle-style global hotkey registered via
+ * `register_global_hotkey` is pressed (Windows/Linux path, backed by
+ * `tauri-plugin-global-shortcut`). Distinct from `ShortcutEvent`, which
+ * is the macOS push-to-talk event-tap path.
+ */
+export type GlobalHotkeyTriggered = { shortcut: string }
 export type HotKey = { key: number | null; modifiers: Modifier[] }
 export type Modifier = "command" | "option" | "shift" | "control" | "fn"
 export type Options = { useDoubleTapOnly?: boolean; doubleTapLockEnabled?: boolean; minimumKeyTimeMs?: number }

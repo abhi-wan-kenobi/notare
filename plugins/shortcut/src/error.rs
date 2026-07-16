@@ -6,6 +6,10 @@ pub enum Error {
     TapStart(String),
     #[error("not supported on this platform")]
     Unsupported,
+    #[error("invalid shortcut: {0}")]
+    InvalidShortcut(String),
+    #[error("global shortcut error: {0}")]
+    GlobalShortcut(String),
 }
 
 impl Serialize for Error {

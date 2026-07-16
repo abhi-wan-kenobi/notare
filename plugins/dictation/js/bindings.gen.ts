@@ -37,12 +37,85 @@ async updateAmplitude(amplitude: number) : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Show the persistent dictation orb window (Windows/Linux webview path;
+ * unsupported on macOS, which keeps its native mini-panel).
+ */
+async showOrb() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|show_orb") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async hideOrb() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|hide_orb") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Start a dictation session against the local STT server. `base_url` is the
+ * port-bearing URL returned by the local-stt plugin (`http://127.0.0.1:<port>/v1`)
+ * and `model` the currently selected live STT model.
+ */
+async startDictation(baseUrl: string, model: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|start_dictation", { baseUrl, model }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async stopDictation() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|stop_dictation") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Whether a dictation session is currently running (listening/processing).
+ */
+async isDictating() : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|is_dictating") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Inject text into the currently focused app. Exposed mainly so the flow can
+ * be exercised without a live STT session (devtools/testing).
+ */
+async typeText(text: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|type_text", { text }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
 /** user-defined events **/
 
 
+export const events = __makeEvents__<{
+dictationOrbClicked: DictationOrbClicked,
+dictationStateEvent: DictationStateEvent,
+dictationTranscriptEvent: DictationTranscriptEvent
+}>({
+dictationOrbClicked: "plugin:dictation:dictation-orb-clicked",
+dictationStateEvent: "plugin:dictation:dictation-state-event",
+dictationTranscriptEvent: "plugin:dictation:dictation-transcript-event"
+})
 
 /** user-defined constants **/
 
@@ -50,6 +123,41 @@ async updateAmplitude(amplitude: number) : Promise<Result<null, string>> {
 
 /** user-defined types **/
 
+/**
+ * Emitted by the orb webview when the user clicks the orb; the main window
+ * host toggles the dictation session in response.
+ */
+export type DictationOrbClicked = Record<string, never>
+/**
+ * Lifecycle of the persistent dictation orb (Windows/Linux webview path).
+ * Distinct from [`Phase`], which drives the native macOS mini-panel.
+ */
+export type DictationPhase = 
+/**
+ * Orb visible, not dictating.
+ */
+"idle" | 
+/**
+ * Mic streaming to the local STT server; recognized text is being typed.
+ */
+"listening" | 
+/**
+ * Stop requested; waiting for the server to flush the final segments.
+ */
+"processing" | 
+/**
+ * The session died (mic/server/injection failure). Cleared on next start.
+ */
+"error"
+/**
+ * Broadcast by the Rust dictation session to every webview (the orb window
+ * renders it; the main window can observe it to track session state).
+ */
+export type DictationStateEvent = { phase: DictationPhase; amplitude: number }
+/**
+ * A final transcript segment that was injected into the focused app.
+ */
+export type DictationTranscriptEvent = { text: string }
 export type Phase = "recording" | "processing"
 
 /** tauri-specta globals **/

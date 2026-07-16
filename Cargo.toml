@@ -103,8 +103,8 @@ hypr-gguf = { path = "crates/gguf", package = "gguf" }
 hypr-github-issues = { path = "crates/github-issues", package = "github-issues" }
 hypr-google-calendar = { path = "crates/google-calendar", package = "google-calendar" }
 hypr-google-drive = { path = "crates/google-drive", package = "google-drive" }
-hypr-google-oauth = { path = "crates/google-oauth", package = "google-oauth" }
 hypr-google-mail = { path = "crates/google-mail", package = "google-mail" }
+hypr-google-oauth = { path = "crates/google-oauth", package = "google-oauth" }
 hypr-granola = { path = "crates/granola", package = "granola" }
 hypr-hf = { path = "crates/hf", package = "hf" }
 hypr-hid-host = { path = "crates/hid-host", package = "hid-host" }
@@ -204,6 +204,7 @@ tauri-plugin-autostart = "2.5"
 tauri-plugin-clipboard-manager = "2.3"
 tauri-plugin-deep-link = "2.4"
 tauri-plugin-dialog = "2.7"
+tauri-plugin-global-shortcut = "2.3"
 tauri-plugin-http = { version = "2.5", features = ["unsafe-headers"] }
 tauri-plugin-opener = "2.5"
 tauri-plugin-os = "2.3"
@@ -288,6 +289,7 @@ camino = "1"
 
 anyhow = "1"
 approx = "0.5.1"
+arboard = "3.6"
 backon = "1.6.0"
 base64 = "0.22.1"
 bytes = "1.11"
@@ -297,6 +299,7 @@ clap_complete = "4"
 codes-iso-639 = "0.1.5"
 dirs = "6.0.0"
 dotenvy = "0.15.7"
+enigo = "0.6"
 envy = "0.4"
 governor = "0.10.4"
 http = "1"

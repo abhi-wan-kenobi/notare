@@ -3,4 +3,6 @@ description = "Default permissions for the plugin"
 permissions = [
   "allow-register-hotkey",
   "allow-unregister-hotkey",
+  "allow-register-global-hotkey",
+  "allow-unregister-global-hotkey",
 ]

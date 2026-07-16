@@ -114,6 +114,9 @@ importers:
       '@hypr/plugin-detect':
         specifier: workspace:*
         version: link:../../plugins/detect
+      '@hypr/plugin-dictation':
+        specifier: workspace:*
+        version: link:../../plugins/dictation
       '@hypr/plugin-export':
         specifier: workspace:*
         version: link:../../plugins/export
@@ -159,6 +162,9 @@ importers:
       '@hypr/plugin-sfx':
         specifier: workspace:*
         version: link:../../plugins/sfx
+      '@hypr/plugin-shortcut':
+        specifier: workspace:*
+        version: link:../../plugins/shortcut
       '@hypr/plugin-store2':
         specifier: workspace:*
         version: link:../../plugins/store2

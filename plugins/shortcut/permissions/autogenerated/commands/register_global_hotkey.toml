@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-register-global-hotkey"
+description = "Enables the register_global_hotkey command without any pre-configured scope."
+commands.allow = ["register_global_hotkey"]
+
+[[permission]]
+identifier = "deny-register-global-hotkey"
+description = "Denies the register_global_hotkey command without any pre-configured scope."
+commands.deny = ["register_global_hotkey"]

@@ -4,6 +4,14 @@ use serde::{Serialize, ser::Serializer};
 pub enum Error {
     #[error("not supported on this platform")]
     Unsupported,
+    #[error("dictation orb window error: {0}")]
+    OrbWindow(String),
+    #[error("audio capture error: {0}")]
+    Audio(String),
+    #[error("dictation session error: {0}")]
+    Session(String),
+    #[error("text injection error: {0}")]
+    Inject(String),
 }
 
 impl Serialize for Error {
