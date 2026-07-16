@@ -22,3 +22,6 @@ tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 hypr-shortcut-macos = { workspace = true }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+tauri-plugin-global-shortcut = { workspace = true }

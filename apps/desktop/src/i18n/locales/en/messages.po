@@ -498,6 +498,10 @@ msgstr "Create template"
 msgid "Created"
 msgstr "Created"
 
+#: src/settings/dictation/index.tsx
+msgid "ctrl+alt+space"
+msgstr "ctrl+alt+space"
+
 #: src/settings/general/theme.tsx
 msgid "Dark"
 msgstr "Dark"
@@ -551,6 +555,20 @@ msgstr "Describe the template purpose..."
 #: src/settings/general/notification.tsx
 msgid "Detection delay"
 msgstr "Detection delay"
+
+#: src/settings/dictation/index.tsx
+#: src/sidebar/settings.tsx
+msgid "Dictation"
+msgstr "Dictation"
+
+#: src/settings/dictation/index.tsx
+msgid "Dictation needs a local transcription model. Select and download one in the Transcription settings first."
+msgstr "Dictation needs a local transcription model. Select and download one in the Transcription settings first."
+
+#. placeholder {0}: conn?.model
+#: src/settings/dictation/index.tsx
+msgid "Dictation uses your current local transcription model: <0>{0}</0>. Change it in the Transcription settings."
+msgstr "Dictation uses your current local transcription model: <0>{0}</0>. Change it in the Transcription settings."
 
 #: src/settings/personalization/index.tsx
 msgid "Dictionary"
@@ -798,6 +816,10 @@ msgstr "Get started"
 msgid "Get started for free"
 msgstr "Get started for free"
 
+#: src/settings/dictation/index.tsx
+msgid "Global shortcut that starts or stops dictation, e.g. ctrl+alt+space. Combine ctrl, alt, shift and super with a key."
+msgstr "Global shortcut that starts or stops dictation, e.g. ctrl+alt+space. Combine ctrl, alt, shift and super with a key."
+
 #: src/sidebar/timeline/index.tsx
 msgid "Go back to now"
 msgstr "Go back to now"
@@ -918,6 +940,10 @@ msgstr "Join meeting and record"
 #: src/onboarding/final.tsx
 msgid "Join our community and stay updated:"
 msgstr "Join our community and stay updated:"
+
+#: src/settings/dictation/index.tsx
+msgid "Keep a small always-on-top orb on screen. Click it, or press the shortcut, to start typing what you say into the focused app."
+msgstr "Keep a small always-on-top orb on screen. Click it, or press the shortcut, to start typing what you say into the focused app."
 
 #: src/settings/general/app-settings.tsx
 msgid "Keep Notare available from the menu bar."
@@ -1070,6 +1096,10 @@ msgstr "Migration needs attention"
 #: src/settings/general/storage/legacy-cleanup.tsx
 msgid "Migration status unavailable"
 msgstr "Migration status unavailable"
+
+#: src/settings/dictation/index.tsx
+msgid "Model"
+msgstr "Model"
 
 #: src/settings/ai/llm/select.tsx
 msgid "Model being used"
@@ -1749,6 +1779,10 @@ msgstr "Show captions"
 msgid "Show Deleted Events"
 msgstr "Show Deleted Events"
 
+#: src/settings/dictation/index.tsx
+msgid "Show dictation orb"
+msgstr "Show dictation orb"
+
 #: src/sidebar/timeline/item.tsx
 msgid "Show Event"
 msgstr "Show Event"
@@ -1859,6 +1893,10 @@ msgstr "Sort options"
 msgid "SQLite migration verification is incomplete"
 msgstr "SQLite migration verification is incomplete"
 
+#: src/dictation/window.tsx
+msgid "Start dictation"
+msgstr "Start dictation"
+
 #: src/settings/general/app-settings.tsx
 msgid "Start Notare at login"
 msgstr "Start Notare at login"
@@ -1882,6 +1920,10 @@ msgstr "Starting your trial..."
 #: src/session/components/outer-header/index.tsx
 msgid "Stop"
 msgstr "Stop"
+
+#: src/dictation/window.tsx
+msgid "Stop dictation"
+msgstr "Stop dictation"
 
 #: src/session/components/outer-header/index.tsx
 #: src/sidebar/timeline/item.tsx
@@ -2017,6 +2059,10 @@ msgstr "Timezone"
 #: src/session/components/note-input/enhanced/streaming.tsx
 msgid "Tip: The Notare team loves our users!"
 msgstr "Tip: The Notare team loves our users!"
+
+#: src/settings/dictation/index.tsx
+msgid "Toggle shortcut"
+msgstr "Toggle shortcut"
 
 #: src/settings/ai/stt/shared.tsx
 msgid "Transcribes English only."

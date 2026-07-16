@@ -4,6 +4,13 @@ mod events;
 mod ext;
 mod handler;
 
+#[cfg(not(target_os = "macos"))]
+mod inject;
+#[cfg(not(target_os = "macos"))]
+mod orb;
+#[cfg(not(target_os = "macos"))]
+mod session;
+
 pub use error::*;
 pub use events::*;
 pub use ext::*;
@@ -21,6 +28,17 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::hide::<tauri::Wry>,
             commands::set_phase::<tauri::Wry>,
             commands::update_amplitude::<tauri::Wry>,
+            commands::show_orb::<tauri::Wry>,
+            commands::hide_orb::<tauri::Wry>,
+            commands::start_dictation::<tauri::Wry>,
+            commands::stop_dictation::<tauri::Wry>,
+            commands::is_dictating::<tauri::Wry>,
+            commands::type_text::<tauri::Wry>,
+        ])
+        .events(tauri_specta::collect_events![
+            DictationStateEvent,
+            DictationOrbClicked,
+            DictationTranscriptEvent
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }
@@ -31,7 +49,13 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     tauri::plugin::Builder::new(PLUGIN_NAME)
         .invoke_handler(specta_builder.invoke_handler())
         .setup(move |app, _api| {
+            specta_builder.mount_events(app);
             app.manage(Handler::new());
+            #[cfg(not(target_os = "macos"))]
+            {
+                app.manage(session::SessionState::default());
+                orb::set_app_handle(app.clone());
+            }
             setup_shortcut_bridge(app);
             Ok(())
         })

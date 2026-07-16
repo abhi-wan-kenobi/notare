@@ -6,6 +6,8 @@ Default permissions for the plugin
 
 - `allow-register-hotkey`
 - `allow-unregister-hotkey`
+- `allow-register-global-hotkey`
+- `allow-unregister-global-hotkey`
 
 ## Permission Table
 
@@ -15,6 +17,32 @@ Default permissions for the plugin
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`shortcut:allow-register-global-hotkey`
+
+</td>
+<td>
+
+Enables the register_global_hotkey command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`shortcut:deny-register-global-hotkey`
+
+</td>
+<td>
+
+Denies the register_global_hotkey command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>
@@ -38,6 +66,32 @@ Enables the register_hotkey command without any pre-configured scope.
 <td>
 
 Denies the register_hotkey command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`shortcut:allow-unregister-global-hotkey`
+
+</td>
+<td>
+
+Enables the unregister_global_hotkey command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`shortcut:deny-unregister-global-hotkey`
+
+</td>
+<td>
+
+Denies the unregister_global_hotkey command without any pre-configured scope.
 
 </td>
 </tr>

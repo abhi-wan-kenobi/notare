@@ -19,6 +19,16 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "floating_bar_enabled"],
     default: true as boolean,
   },
+  dictation_enabled: {
+    type: "boolean",
+    path: ["general", "dictation_enabled"],
+    default: false as boolean,
+  },
+  dictation_shortcut: {
+    type: "string",
+    path: ["general", "dictation_shortcut"],
+    default: "ctrl+alt+space" as string,
+  },
   floating_bar_opacity: {
     type: "number",
     path: ["general", "floating_bar_opacity"],

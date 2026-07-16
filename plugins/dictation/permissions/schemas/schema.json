@@ -307,6 +307,30 @@
           "markdownDescription": "Denies the hide command without any pre-configured scope."
         },
         {
+          "description": "Enables the hide_orb command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-hide-orb",
+          "markdownDescription": "Enables the hide_orb command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the hide_orb command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-hide-orb",
+          "markdownDescription": "Denies the hide_orb command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the is_dictating command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-is-dictating",
+          "markdownDescription": "Enables the is_dictating command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the is_dictating command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-is-dictating",
+          "markdownDescription": "Denies the is_dictating command without any pre-configured scope."
+        },
+        {
           "description": "Enables the set_phase command without any pre-configured scope.",
           "type": "string",
           "const": "allow-set-phase",
@@ -331,6 +355,54 @@
           "markdownDescription": "Denies the show command without any pre-configured scope."
         },
         {
+          "description": "Enables the show_orb command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-show-orb",
+          "markdownDescription": "Enables the show_orb command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the show_orb command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-show-orb",
+          "markdownDescription": "Denies the show_orb command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the start_dictation command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-start-dictation",
+          "markdownDescription": "Enables the start_dictation command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the start_dictation command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-start-dictation",
+          "markdownDescription": "Denies the start_dictation command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the stop_dictation command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-stop-dictation",
+          "markdownDescription": "Enables the stop_dictation command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the stop_dictation command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-stop-dictation",
+          "markdownDescription": "Denies the stop_dictation command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the type_text command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-type-text",
+          "markdownDescription": "Enables the type_text command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the type_text command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-type-text",
+          "markdownDescription": "Denies the type_text command without any pre-configured scope."
+        },
+        {
           "description": "Enables the update_amplitude command without any pre-configured scope.",
           "type": "string",
           "const": "allow-update-amplitude",
@@ -343,10 +415,10 @@
           "markdownDescription": "Denies the update_amplitude command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`"
         }
       ]
     }

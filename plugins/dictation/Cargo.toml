@@ -24,3 +24,18 @@ tauri-plugin-shortcut = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 hypr-dictation-ui-macos = { workspace = true }
+
+# Windows/Linux dictation-orb path: mic -> local STT websocket -> text
+# injection into the focused app. macOS keeps its native panel and is not
+# affected by any of these.
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+arboard = { workspace = true }
+bytes = { workspace = true }
+enigo = { workspace = true }
+futures-util = { workspace = true }
+hypr-audio = { workspace = true }
+hypr-audio-utils = { workspace = true }
+owhisper-client = { workspace = true }
+owhisper-interface = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
+tokio-stream = { workspace = true }

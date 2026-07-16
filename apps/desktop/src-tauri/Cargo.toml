@@ -119,6 +119,9 @@ gpu-vulkan = ["tauri-plugin-local-stt/vulkan"]
 # GPU offload with `--features gpu-vulkan` (see [features] above).
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp"] }
+# Toggle hotkey for the dictation orb (the shortcut plugin's non-macOS
+# handler drives it; macOS uses its native event-tap path instead).
+tauri-plugin-global-shortcut = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-automation = { version = "0.1", optional = true }

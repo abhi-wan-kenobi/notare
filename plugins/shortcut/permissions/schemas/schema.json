@@ -295,6 +295,18 @@
       "type": "string",
       "oneOf": [
         {
+          "description": "Enables the register_global_hotkey command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-register-global-hotkey",
+          "markdownDescription": "Enables the register_global_hotkey command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the register_global_hotkey command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-register-global-hotkey",
+          "markdownDescription": "Denies the register_global_hotkey command without any pre-configured scope."
+        },
+        {
           "description": "Enables the register_hotkey command without any pre-configured scope.",
           "type": "string",
           "const": "allow-register-hotkey",
@@ -305,6 +317,18 @@
           "type": "string",
           "const": "deny-register-hotkey",
           "markdownDescription": "Denies the register_hotkey command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the unregister_global_hotkey command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-unregister-global-hotkey",
+          "markdownDescription": "Enables the unregister_global_hotkey command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the unregister_global_hotkey command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-unregister-global-hotkey",
+          "markdownDescription": "Denies the unregister_global_hotkey command without any pre-configured scope."
         },
         {
           "description": "Enables the unregister_hotkey command without any pre-configured scope.",
@@ -319,10 +343,10 @@
           "markdownDescription": "Denies the unregister_hotkey command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-register-hotkey`\n- `allow-unregister-hotkey`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-register-hotkey`\n- `allow-unregister-hotkey`\n- `allow-register-global-hotkey`\n- `allow-unregister-global-hotkey`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-register-hotkey`\n- `allow-unregister-hotkey`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-register-hotkey`\n- `allow-unregister-hotkey`\n- `allow-register-global-hotkey`\n- `allow-unregister-global-hotkey`"
         }
       ]
     }

@@ -18,6 +18,16 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Shortcut<'a, R, M> {
     pub fn unregister(&self) -> Result<(), Error> {
         self.manager.state::<Handler>().unregister()
     }
+
+    pub fn register_global(&self, shortcut: String) -> Result<(), Error> {
+        let handler = self.manager.state::<Handler>();
+        handler.register_global(self.manager.app_handle().clone(), shortcut)
+    }
+
+    pub fn unregister_global(&self) -> Result<(), Error> {
+        let handler = self.manager.state::<Handler>();
+        handler.unregister_global(self.manager.app_handle().clone())
+    }
 }
 
 pub trait ShortcutPluginExt<R: tauri::Runtime> {

@@ -5,4 +5,10 @@ permissions = [
   "allow-hide",
   "allow-set-phase",
   "allow-update-amplitude",
+  "allow-show-orb",
+  "allow-hide-orb",
+  "allow-start-dictation",
+  "allow-stop-dictation",
+  "allow-is-dictating",
+  "allow-type-text",
 ]

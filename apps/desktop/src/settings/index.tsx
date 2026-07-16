@@ -1,5 +1,6 @@
 import { cn } from "@hypr/utils";
 
+import { SettingsDictation } from "./dictation";
 import {
   SettingsAccount,
   SettingsApp,
@@ -46,6 +47,8 @@ function SettingsView({ tab }: { tab: Extract<Tab, { type: "settings" }> }) {
         return <STT />;
       case "intelligence":
         return <LLM />;
+      case "dictation":
+        return <SettingsDictation />;
       case "todo":
         return <SettingsTodo />;
       default:

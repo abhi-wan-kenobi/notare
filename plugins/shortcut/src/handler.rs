@@ -1,6 +1,8 @@
+#[cfg(target_os = "macos")]
+use crate::events::Modifier;
 use crate::{
     error::Error,
-    events::{HotKey, Modifier, Options},
+    events::{HotKey, Options},
 };
 
 #[cfg(target_os = "macos")]
@@ -86,21 +88,49 @@ mod macos {
             minimum_key_time: Duration::from_millis(options.minimum_key_time_ms),
         }
     }
+
+    impl Handler {
+        /// Toggle-style global hotkeys are the Windows/Linux dictation path;
+        /// macOS keeps its native event-tap flow untouched.
+        pub fn register_global<R: Runtime>(
+            &self,
+            _app: AppHandle<R>,
+            _shortcut: String,
+        ) -> Result<(), Error> {
+            Err(Error::Unsupported)
+        }
+
+        pub fn unregister_global<R: Runtime>(&self, _app: AppHandle<R>) -> Result<(), Error> {
+            Ok(())
+        }
+    }
 }
 
 #[cfg(not(target_os = "macos"))]
 mod stub {
+    use std::sync::Mutex;
+
     use tauri::{AppHandle, Runtime};
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
+    use tauri_specta::Event;
 
     use super::{Error, HotKey, Options};
+    use crate::events::GlobalHotkeyTriggered;
 
-    pub struct Handler;
+    pub struct Handler {
+        /// Currently registered toggle hotkey (Windows/Linux), kept so a
+        /// re-register or teardown can unregister the previous binding.
+        global: Mutex<Option<Shortcut>>,
+    }
 
     impl Handler {
         pub fn new() -> Self {
-            Self
+            Self {
+                global: Mutex::new(None),
+            }
         }
 
+        /// macOS push-to-talk hotkey path: not available off macOS.
         pub fn register<R: Runtime>(
             &self,
             _app: AppHandle<R>,
@@ -111,6 +141,50 @@ mod stub {
         }
 
         pub fn unregister(&self) -> Result<(), Error> {
+            Ok(())
+        }
+
+        /// Toggle-style global hotkey backed by `tauri-plugin-global-shortcut`
+        /// (must be registered on the app builder; the desktop app does this
+        /// for non-macOS targets). `shortcut` uses the plugin's string syntax,
+        /// e.g. `"ctrl+alt+space"`. Fires `GlobalHotkeyTriggered` on key-down.
+        pub fn register_global<R: Runtime>(
+            &self,
+            app: AppHandle<R>,
+            shortcut: String,
+        ) -> Result<(), Error> {
+            let parsed: Shortcut = shortcut
+                .parse()
+                .map_err(|e| Error::InvalidShortcut(format!("{shortcut}: {e}")))?;
+
+            let mut guard = self.global.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(previous) = guard.take() {
+                let _ = app.global_shortcut().unregister(previous);
+            }
+
+            let emitted = shortcut.clone();
+            app.global_shortcut()
+                .on_shortcut(parsed, move |app, _sc, event| {
+                    if event.state() == ShortcutState::Pressed {
+                        let _ = GlobalHotkeyTriggered {
+                            shortcut: emitted.clone(),
+                        }
+                        .emit(app);
+                    }
+                })
+                .map_err(|e| Error::GlobalShortcut(e.to_string()))?;
+
+            *guard = Some(parsed);
+            Ok(())
+        }
+
+        pub fn unregister_global<R: Runtime>(&self, app: AppHandle<R>) -> Result<(), Error> {
+            let mut guard = self.global.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(previous) = guard.take() {
+                app.global_shortcut()
+                    .unregister(previous)
+                    .map_err(|e| Error::GlobalShortcut(e.to_string()))?;
+            }
             Ok(())
         }
     }

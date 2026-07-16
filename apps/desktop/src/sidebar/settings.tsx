@@ -8,6 +8,7 @@ import {
   CalendarIcon,
   CogIcon,
   LockIcon,
+  MicIcon,
   SlidersHorizontalIcon,
   SparklesIcon,
   type LucideIcon,
@@ -110,6 +111,15 @@ export function SettingsNav() {
       id: "permissions" as const,
       label: t`Permissions`,
       icon: LockIcon,
+    });
+  }
+  // The dictation orb is the Windows/Linux path; macOS keeps its native
+  // dictation flow, so the section is hidden there.
+  if (!isMacos) {
+    groups[2].items.push({
+      id: "dictation" as const,
+      label: t`Dictation`,
+      icon: MicIcon,
     });
   }
 

@@ -8,6 +8,12 @@ Default permissions for the plugin
 - `allow-hide`
 - `allow-set-phase`
 - `allow-update-amplitude`
+- `allow-show-orb`
+- `allow-hide-orb`
+- `allow-start-dictation`
+- `allow-stop-dictation`
+- `allow-is-dictating`
+- `allow-type-text`
 
 ## Permission Table
 
@@ -40,6 +46,58 @@ Enables the hide command without any pre-configured scope.
 <td>
 
 Denies the hide command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:allow-hide-orb`
+
+</td>
+<td>
+
+Enables the hide_orb command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:deny-hide-orb`
+
+</td>
+<td>
+
+Denies the hide_orb command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:allow-is-dictating`
+
+</td>
+<td>
+
+Enables the is_dictating command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:deny-is-dictating`
+
+</td>
+<td>
+
+Denies the is_dictating command without any pre-configured scope.
 
 </td>
 </tr>
@@ -92,6 +150,110 @@ Enables the show command without any pre-configured scope.
 <td>
 
 Denies the show command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:allow-show-orb`
+
+</td>
+<td>
+
+Enables the show_orb command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:deny-show-orb`
+
+</td>
+<td>
+
+Denies the show_orb command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:allow-start-dictation`
+
+</td>
+<td>
+
+Enables the start_dictation command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:deny-start-dictation`
+
+</td>
+<td>
+
+Denies the start_dictation command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:allow-stop-dictation`
+
+</td>
+<td>
+
+Enables the stop_dictation command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:deny-stop-dictation`
+
+</td>
+<td>
+
+Denies the stop_dictation command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:allow-type-text`
+
+</td>
+<td>
+
+Enables the type_text command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`dictation:deny-type-text`
+
+</td>
+<td>
+
+Denies the type_text command without any pre-configured scope.
 
 </td>
 </tr>
