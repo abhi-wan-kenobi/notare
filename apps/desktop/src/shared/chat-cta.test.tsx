@@ -67,16 +67,16 @@ describe("ChatCTA", () => {
     expect(surface?.className).toContain("dark:h-3");
     expect(surface?.className).toContain("rounded-full");
     expect(surface?.className).toContain(
-      "bg-[linear-gradient(180deg,#faf8f6_0%,#e3e1df_100%)]",
+      "bg-[linear-gradient(180deg,#f7f8fa_0%,#e1e3e9_100%)]",
     );
     expect(surface?.className).toContain(
-      "dark:bg-[linear-gradient(180deg,#211d1d_0%,#574f3b_100%)]",
+      "dark:bg-[linear-gradient(180deg,#191d28_0%,#3b4460_100%)]",
     );
     expect(surface?.className).toContain(
       "shadow-[0_0_0_1px_rgba(0,0,0,0.1),0_4px_12px_rgba(0,0,0,0.16),0_4px_16px_rgba(0,0,0,0.1),inset_0_-1px_0_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.4)]",
     );
     expect(surface?.className).toContain(
-      "dark:shadow-[0_4px_12px_rgba(33,29,29,0.1),inset_0_-1px_0_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.4)]",
+      "dark:shadow-[0_4px_12px_rgba(11,13,18,0.1),inset_0_-1px_0_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.4)]",
     );
     expect(surface?.className).toContain(
       "group-hover/anarlog-chat-cta:shadow-[0_16px_42px_rgba(0,0,0,0.26)]",
@@ -92,10 +92,10 @@ describe("ChatCTA", () => {
       "group-hover/anarlog-chat-cta:border-border/70",
     );
     expect(surface?.className).toContain(
-      "group-hover/anarlog-chat-cta:bg-[#f4f4f5]",
+      "group-hover/anarlog-chat-cta:bg-[#eef0f4]",
     );
     expect(surface?.className).toContain(
-      "dark:group-hover/anarlog-chat-cta:bg-[#202020]",
+      "dark:group-hover/anarlog-chat-cta:bg-[#1a1e29]",
     );
     expect(surface?.className).toContain("group-hover/anarlog-chat-cta:h-10");
     expect(surface?.className).toContain(
