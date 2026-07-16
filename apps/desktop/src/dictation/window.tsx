@@ -1,5 +1,6 @@
 import { useLingui } from "@lingui/react/macro";
-import { useEffect, useState } from "react";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { useEffect, useRef, useState } from "react";
 
 import {
   type DictationStateEvent,
@@ -9,7 +10,19 @@ import { cn } from "@hypr/utils";
 
 import { DictationOrb } from "./orb";
 
-const IDLE_STATE: DictationStateEvent = { phase: "idle", amplitude: 0 };
+const IDLE_STATE: DictationStateEvent = {
+  phase: "idle",
+  amplitude: 0,
+  mode: "type",
+};
+
+/**
+ * Pointer travel (px) past which a press on the orb becomes a window drag
+ * instead of a click. Mirrors the usual drag-threshold pattern: we cannot use
+ * `data-tauri-drag-region` here because it eats the mousedown and the click
+ * would never toggle dictation.
+ */
+const DRAG_THRESHOLD_PX = 4;
 
 /**
  * Content of the persistent dictation-orb webview window (Windows/Linux; the
@@ -28,6 +41,8 @@ const IDLE_STATE: DictationStateEvent = { phase: "idle", amplitude: 0 };
 export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
   const { t } = useLingui();
   const state = useDictationState();
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+  const draggedRef = useRef(false);
 
   useEffect(() => {
     // The orb is designed on the graphite (dark) token set.
@@ -42,9 +57,47 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
   }, [solid]);
 
   const dictating = state.phase === "listening" || state.phase === "processing";
-  const label = dictating ? t`Stop dictation` : t`Start dictation`;
+  const batchMode = state.mode === "batch-paste";
+  const label = dictating
+    ? batchMode
+      ? t`Stop dictation and paste the transcript`
+      : t`Stop dictation`
+    : t`Start dictation`;
+
+  const handlePointerDown = (event: React.PointerEvent) => {
+    if (event.button !== 0) {
+      return;
+    }
+    draggedRef.current = false;
+    pointerStart.current = { x: event.screenX, y: event.screenY };
+  };
+
+  const handlePointerMove = (event: React.PointerEvent) => {
+    const start = pointerStart.current;
+    if (!start || draggedRef.current) {
+      return;
+    }
+    const dx = event.screenX - start.x;
+    const dy = event.screenY - start.y;
+    if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) {
+      return;
+    }
+    // Past the threshold: hand the gesture to the OS window-move loop. The
+    // click that would normally follow is suppressed via `draggedRef`.
+    draggedRef.current = true;
+    pointerStart.current = null;
+    void getCurrentWebviewWindow().startDragging();
+  };
+
+  const handlePointerEnd = () => {
+    pointerStart.current = null;
+  };
 
   const handleClick = () => {
+    if (draggedRef.current) {
+      draggedRef.current = false;
+      return;
+    }
     void dictationEvents.dictationOrbClicked.emit({});
   };
 
@@ -61,9 +114,14 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
         aria-label={label}
         title={label}
         aria-pressed={dictating}
+        data-dictation-mode={state.mode}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
         onClick={handleClick}
         className={cn([
-          "flex cursor-pointer items-center justify-center rounded-full",
+          "relative flex cursor-pointer items-center justify-center rounded-full",
           "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-hidden",
         ])}
       >
@@ -72,6 +130,15 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
           amplitude={state.amplitude}
           size={40}
         />
+        {batchMode && dictating ? (
+          // Subtle batch-mode hint: a small cobalt dot marks "collecting, will
+          // paste on stop" (the tooltip/aria label carries the full wording).
+          <span
+            data-testid="dictation-batch-hint"
+            aria-hidden
+            className="bg-primary shadow-glow-accent absolute right-0.5 bottom-0.5 size-1.5 rounded-full"
+          />
+        ) : null}
       </button>
     </div>
   );

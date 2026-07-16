@@ -5,6 +5,8 @@ mod ext;
 mod handler;
 
 #[cfg(not(target_os = "macos"))]
+mod clean;
+#[cfg(not(target_os = "macos"))]
 mod inject;
 #[cfg(not(target_os = "macos"))]
 mod orb;

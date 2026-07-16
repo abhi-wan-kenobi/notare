@@ -31,6 +31,7 @@ hypr-dictation-ui-macos = { workspace = true }
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 arboard = { workspace = true }
 bytes = { workspace = true }
+tauri-plugin-store2 = { workspace = true }
 enigo = { workspace = true }
 futures-util = { workspace = true }
 hypr-audio = { workspace = true }

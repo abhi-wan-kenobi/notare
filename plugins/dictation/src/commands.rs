@@ -1,4 +1,7 @@
-use crate::{events::Phase, ext::DictationPluginExt};
+use crate::{
+    events::{DictationOutputMode, Phase},
+    ext::DictationPluginExt,
+};
 
 #[tauri::command]
 #[specta::specta]
@@ -47,17 +50,19 @@ pub(crate) async fn hide_orb<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> Res
 }
 
 /// Start a dictation session against the local STT server. `base_url` is the
-/// port-bearing URL returned by the local-stt plugin (`http://127.0.0.1:<port>/v1`)
-/// and `model` the currently selected live STT model.
+/// port-bearing URL returned by the local-stt plugin (`http://127.0.0.1:<port>/v1`),
+/// `model` the currently selected live STT model and `output_mode` where the
+/// recognized text goes (typed live vs. paste-on-stop).
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn start_dictation<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     base_url: String,
     model: String,
+    output_mode: DictationOutputMode,
 ) -> Result<(), String> {
     app.dictation()
-        .start_dictation(base_url, model)
+        .start_dictation(base_url, model, output_mode)
         .await
         .map_err(|e| e.to_string())
 }

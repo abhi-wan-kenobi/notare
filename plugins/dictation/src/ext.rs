@@ -47,14 +47,19 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Dictation<'a, R, M> {
         }
     }
 
-    pub async fn start_dictation(&self, base_url: String, model: String) -> Result<(), Error> {
+    pub async fn start_dictation(
+        &self,
+        base_url: String,
+        model: String,
+        output_mode: crate::events::DictationOutputMode,
+    ) -> Result<(), Error> {
         #[cfg(not(target_os = "macos"))]
         {
-            crate::session::start(base_url, model).await
+            crate::session::start(base_url, model, output_mode).await
         }
         #[cfg(target_os = "macos")]
         {
-            let _ = (base_url, model);
+            let _ = (base_url, model, output_mode);
             Err(Error::Unsupported)
         }
     }
