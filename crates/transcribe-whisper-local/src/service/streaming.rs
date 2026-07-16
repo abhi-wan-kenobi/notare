@@ -229,6 +229,7 @@ async fn handle_websocket(
             let mut stop_reason = None;
             let mut receiving_input = true;
             let mut channel_audio_durations = vec![0.0_f64; total_channels];
+            let mut mono_mixdown = hypr_audio_utils::MonoMixdown::new(TARGET_SAMPLE_RATE);
             let mut stream_closed = false;
 
             while !stream_closed {
@@ -350,7 +351,7 @@ async fn handle_websocket(
                                         break;
                                     }
                                 } else {
-                                    let mixed = hypr_audio_utils::mix_audio_f32(&ch0, &ch1);
+                                    let mixed = mono_mixdown.mix(&ch0, &ch1);
                                     channel_audio_durations[0] += mixed.len() as f64 / TARGET_SAMPLE_RATE as f64;
                                     if !mixed.is_empty() && audio_txs[0].send(mixed).await.is_err() {
                                         send_ws_best_effort(

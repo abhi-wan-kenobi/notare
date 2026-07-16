@@ -4,10 +4,12 @@ use bytes::{BufMut, Bytes, BytesMut};
 use futures_util::{Stream, StreamExt};
 use hypr_audio_interface::AsyncSource;
 
+mod dsp;
 mod error;
 mod pcm;
 mod vorbis;
 
+pub use dsp::*;
 pub use error::*;
 pub use pcm::*;
 pub use vorbis::*;
