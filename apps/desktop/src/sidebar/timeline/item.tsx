@@ -28,6 +28,7 @@ import { useDeleteSession } from "~/session/hooks/useDeleteSession";
 import { useIsSessionEnhancing } from "~/session/hooks/useEnhancedNotes";
 import { getOrCreateSessionForEventId } from "~/session/queries";
 import { getSessionEvent } from "~/session/utils";
+import { fileManagerName } from "~/shared/file-manager";
 import { openStandaloneNoteWindow } from "~/session/window";
 import type { MenuItemDef } from "~/shared/hooks/useNativeContextMenu";
 import { InteractiveButton } from "~/shared/ui/interactive-button";
@@ -588,7 +589,7 @@ const SessionItem = memo(
         },
         {
           id: "show",
-          text: t`Show in Finder`,
+          text: t`Show in ${fileManagerName()}`,
           action: handleShowInFinder,
         },
         { separator: true as const },

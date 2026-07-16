@@ -33,6 +33,7 @@ import { migratePlaintextAiProviderApiKeys } from "./settings/providers";
 import { initializeApplicationSettings } from "./settings/queries";
 import { initializeAppExitFlush } from "./shared/app-exit";
 import { ErrorComponent, NotFoundComponent } from "./shared/control";
+import { RootErrorBoundary } from "./shared/root-error-boundary";
 import { bootstrapThemeFromSettings } from "./shared/theme/apply";
 import { AppThemeProvider } from "./shared/theme/provider";
 import { createAITaskStore } from "./store/zustand/ai-task";
@@ -145,7 +146,9 @@ async function renderApp() {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictMode>
-      <AppRoot />
+      <RootErrorBoundary>
+        <AppRoot />
+      </RootErrorBoundary>
     </StrictMode>,
   );
 }

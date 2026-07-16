@@ -6,6 +6,8 @@ import { commands as fsSyncCommands } from "@hypr/plugin-fs-sync";
 import { commands as openerCommands } from "@hypr/plugin-opener2";
 import { DropdownMenuItem } from "@hypr/ui/components/ui/dropdown-menu";
 
+import { fileManagerName } from "~/shared/file-manager";
+
 export function ShowInFinder({ sessionId }: { sessionId: string }) {
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
@@ -29,9 +31,15 @@ export function ShowInFinder({ sessionId }: { sessionId: string }) {
       {isPending ? (
         <Loader2Icon className="animate-spin" />
       ) : (
-        <Icon icon="ri:finder-line" />
+        <Icon
+          icon={
+            fileManagerName() === "Finder"
+              ? "ri:finder-line"
+              : "ri:folder-open-line"
+          }
+        />
       )}
-      <span>{isPending ? "Opening..." : "Show in Finder"}</span>
+      <span>{isPending ? "Opening..." : `Show in ${fileManagerName()}`}</span>
     </DropdownMenuItem>
   );
 }
