@@ -94,6 +94,20 @@ common_event_derives! {
     pub struct FloatingBarOpenMain {}
 }
 
+common_event_derives! {
+    /// Pushes the latest floating-bar state to the webview-based floating
+    /// window used on Windows/Linux (macOS renders a native panel instead).
+    pub struct FloatingBarStateEvent {
+        pub state: crate::window::floating_bar::FloatingBarState,
+    }
+}
+
+common_event_derives! {
+    /// Emitted by the webview-based floating window once it is listening for
+    /// state events, so the main window can push the current state again.
+    pub struct FloatingBarReady {}
+}
+
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, specta::Type, tauri_specta::Event)]
 #[serde(rename_all = "camelCase")]
 pub struct FloatingBarSettingsChange {

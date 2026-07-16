@@ -138,23 +138,152 @@ mod platform {
 
 #[cfg(not(target_os = "macos"))]
 mod platform {
+    use std::sync::OnceLock;
+
+    use tauri::Manager;
+    use tauri_specta::Event;
+
     use super::FloatingBarState;
     use crate::Error;
 
+    pub const WINDOW_LABEL: &str = "floating";
+
+    const BAR_WIDTH: f64 = 380.0;
+    const BAR_HEIGHT: f64 = 52.0;
+    const CAPTION_LINE_HEIGHT: f64 = 22.0;
+    const CAPTION_VERTICAL_PADDING: f64 = 26.0;
+    const MAX_CAPTION_WIDTH: f64 = 640.0;
+    const MAX_CAPTION_LINE_COUNT: u32 = 4;
+
+    static APP_HANDLE: OnceLock<tauri::AppHandle<tauri::Wry>> = OnceLock::new();
+
+    pub fn set_app_handle(app: tauri::AppHandle<tauri::Wry>) {
+        let _ = APP_HANDLE.set(app);
+    }
+
+    fn app_handle() -> Result<&'static tauri::AppHandle<tauri::Wry>, Error> {
+        APP_HANDLE.get().ok_or_else(|| {
+            Error::PanelError("floating bar app handle is not initialized".to_string())
+        })
+    }
+
+    fn target_size(state: &FloatingBarState) -> (f64, f64) {
+        if state.live_caption_minimized {
+            return (BAR_WIDTH, BAR_HEIGHT);
+        }
+
+        let width = state
+            .live_caption_width
+            .clamp(BAR_WIDTH, MAX_CAPTION_WIDTH);
+        let line_count = f64::from(state.live_caption_line_count.clamp(1, MAX_CAPTION_LINE_COUNT));
+        let caption_height = (line_count * CAPTION_LINE_HEIGHT) + CAPTION_VERTICAL_PADDING;
+
+        (width, BAR_HEIGHT + caption_height)
+    }
+
+    fn get_or_create_window(
+        app: &tauri::AppHandle<tauri::Wry>,
+    ) -> Result<tauri::WebviewWindow<tauri::Wry>, Error> {
+        use tauri::{WebviewUrl, WebviewWindow};
+
+        if let Some(window) = app.get_webview_window(WINDOW_LABEL) {
+            return Ok(window);
+        }
+
+        let window = WebviewWindow::builder(
+            app,
+            WINDOW_LABEL,
+            WebviewUrl::App("/app/floating".into()),
+        )
+        .title(
+            app.config()
+                .product_name
+                .clone()
+                .unwrap_or_else(|| "Notare".to_string()),
+        )
+        .decorations(false)
+        .resizable(false)
+        .maximizable(false)
+        .minimizable(false)
+        .always_on_top(true)
+        .visible_on_all_workspaces(true)
+        .skip_taskbar(true)
+        .shadow(false)
+        .transparent(true)
+        .focused(false)
+        .visible(false)
+        .inner_size(BAR_WIDTH, BAR_HEIGHT)
+        .disable_drag_drop_handler()
+        .build()?;
+
+        position_top_center(app, &window);
+
+        Ok(window)
+    }
+
+    fn position_top_center(
+        app: &tauri::AppHandle<tauri::Wry>,
+        window: &tauri::WebviewWindow<tauri::Wry>,
+    ) {
+        let monitor = window
+            .current_monitor()
+            .ok()
+            .flatten()
+            .or_else(|| app.primary_monitor().ok().flatten());
+        let Some(monitor) = monitor else {
+            return;
+        };
+
+        let scale = monitor.scale_factor();
+        let position = monitor.position().to_logical::<f64>(scale);
+        let size = monitor.size().to_logical::<f64>(scale);
+        let x = position.x + ((size.width - BAR_WIDTH) / 2.0);
+        let y = position.y + 24.0;
+        let _ = window.set_position(tauri::LogicalPosition::new(x, y));
+    }
+
     pub fn show() -> Result<(), Error> {
+        let app = app_handle()?;
+        let window = get_or_create_window(app)?;
+        window.show()?;
+        let _ = window.set_always_on_top(true);
         Ok(())
     }
 
     pub fn hide() -> Result<(), Error> {
+        let app = app_handle()?;
+        if let Some(window) = app.get_webview_window(WINDOW_LABEL) {
+            window.hide()?;
+        }
         Ok(())
     }
 
-    pub fn update(_state: FloatingBarState) -> Result<(), Error> {
+    pub fn update(state: FloatingBarState) -> Result<(), Error> {
+        let app = app_handle()?;
+        let Some(window) = app.get_webview_window(WINDOW_LABEL) else {
+            return Ok(());
+        };
+
+        let (width, height) = target_size(&state);
+        let needs_resize = match (window.scale_factor(), window.inner_size()) {
+            (Ok(scale), Ok(size)) => {
+                let size = size.to_logical::<f64>(scale);
+                (size.width - width).abs() > 1.0 || (size.height - height).abs() > 1.0
+            }
+            _ => true,
+        };
+        if needs_resize {
+            let _ = window.set_size(tauri::LogicalSize::new(width, height));
+        }
+
+        crate::events::FloatingBarStateEvent { state }
+            .emit(app)
+            .map_err(Error::TauriError)?;
+
         Ok(())
     }
 }
 
-#[cfg(target_os = "macos")]
 pub use platform::set_app_handle;
 
 pub fn show() -> Result<(), Error> {

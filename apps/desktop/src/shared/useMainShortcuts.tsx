@@ -5,11 +5,14 @@ import { useShell } from "~/contexts/shell";
 import { useMountEffect } from "~/shared/hooks/useMountEffect";
 import { useNewNote, useNewNoteAndListen } from "~/shared/useNewNote";
 import { uniqueIdfromTab, useTabs } from "~/store/zustand/tabs";
+import { useLiveTranscriptCopyShortcuts } from "~/stt/useLiveTranscriptCopyShortcuts";
 
 export function useMainShortcuts() {
   const runEscapeShortcut = useMainEscapeShortcutAction();
   const currentTab = useTabs((state) => state.currentTab);
   const { chat } = useShell();
+
+  useLiveTranscriptCopyShortcuts();
 
   const newNote = useNewNote();
   const newNoteCurrent = useNewNote({ behavior: "current" });

@@ -384,6 +384,22 @@ function FloatingMeetingWindowSync({
         unlisteners.push(unlisten);
       });
 
+    // The webview-based floating window (Windows/Linux) announces itself once
+    // it is listening; push the current state again so it never renders empty
+    // because it loaded after the initial updates were emitted.
+    windowsEvents.floatingBarReady
+      .listen(() => {
+        scheduleSync();
+      })
+      .then((unlisten) => {
+        if (cancelled) {
+          unlisten();
+          return;
+        }
+
+        unlisteners.push(unlisten);
+      });
+
     scheduleSync();
 
     const unsubscribe = listenerStore.subscribe((state, previousState) => {

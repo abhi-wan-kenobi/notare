@@ -52,6 +52,12 @@ import { type Tab, useTabs } from "~/store/zustand/tabs";
 import { type EditorView } from "~/store/zustand/tabs/schema";
 import { useListener } from "~/stt/contexts";
 import {
+  COPY_FULL_LIVE_TRANSCRIPT_ACCELERATOR,
+  COPY_LATEST_LIVE_CHUNK_ACCELERATOR,
+  copyLiveTranscript,
+  type LiveTranscriptCopyKind,
+} from "~/stt/live-transcript-clipboard";
+import {
   filterWebTemplatesAgainstUserTemplates,
   DEFAULT_TEMPLATE_ICON,
   parseWebTemplates,
@@ -745,6 +751,7 @@ function HeaderViewTranscriptActive({
     muted: boolean;
   };
 }) {
+  const { t } = useLingui();
   const regenerate = useRegenerateTranscript(sessionId);
   const { request: transcriptExportRequest } =
     useSessionTranscriptRenderData(sessionId);
@@ -777,6 +784,22 @@ function HeaderViewTranscriptActive({
   const handleDeleteRecording = useCallback(() => {
     void deleteRecording();
   }, [deleteRecording]);
+  const handleCopyLiveTranscript = useCallback(
+    async (kind: LiveTranscriptCopyKind) => {
+      const result = await copyLiveTranscript(kind);
+      if (result === "copied") {
+        sonnerToast.success(
+          kind === "latest"
+            ? t`Latest transcript chunk copied`
+            : t`Live transcript copied`,
+        );
+      } else if (result === "empty") {
+        sonnerToast.info(t`Nothing transcribed yet`);
+      }
+    },
+    [t],
+  );
+  const isLive = Boolean(live);
   const contextMenu = useMemo<MenuItemDef[]>(() => {
     const items: MenuItemDef[] = [
       {
@@ -788,6 +811,27 @@ function HeaderViewTranscriptActive({
         disabled: !canCopyTranscript,
       },
     ];
+
+    if (isLive) {
+      items.push(
+        {
+          id: `copy-live-latest-${sessionId}`,
+          text: t`Copy latest live chunk`,
+          accelerator: COPY_LATEST_LIVE_CHUNK_ACCELERATOR,
+          action: () => {
+            void handleCopyLiveTranscript("latest");
+          },
+        },
+        {
+          id: `copy-live-full-${sessionId}`,
+          text: t`Copy live transcript so far`,
+          accelerator: COPY_FULL_LIVE_TRANSCRIPT_ACCELERATOR,
+          action: () => {
+            void handleCopyLiveTranscript("full");
+          },
+        },
+      );
+    }
 
     if (audioExists) {
       items.push({
@@ -809,11 +853,14 @@ function HeaderViewTranscriptActive({
   }, [
     audioExists,
     canCopyTranscript,
+    handleCopyLiveTranscript,
     handleCopyTranscript,
     handleDeleteRecording,
     isDeletingRecording,
+    isLive,
     regenerate,
     sessionId,
+    t,
   ]);
   const showContextMenu = useNativeContextMenu(contextMenu);
 

@@ -442,6 +442,20 @@ msgstr "Continue"
 msgid "Continuing without trial"
 msgstr "Continuing without trial"
 
+#: src/session/components/note-input/header.tsx
+msgid "Copy latest live chunk"
+msgstr "Copy latest live chunk"
+
+#. placeholder {0}: shortcutHints.latest
+#. placeholder {1}: shortcutHints.full
+#: src/session/components/note-input/transcript/screens/listening.tsx
+msgid "Copy live text: {0} (latest chunk) · {1} (all so far)"
+msgstr "Copy live text: {0} (latest chunk) · {1} (all so far)"
+
+#: src/session/components/note-input/header.tsx
+msgid "Copy live transcript so far"
+msgstr "Copy live transcript so far"
+
 #: src/chat/components/message/normal.tsx
 msgid "Copy message"
 msgstr "Copy message"
@@ -786,6 +800,10 @@ msgstr "Help Notare listen to others"
 msgid "Help Notare listen to you"
 msgstr "Help Notare listen to you"
 
+#: src/meeting-float/window.tsx
+msgid "Hide captions"
+msgstr "Hide captions"
+
 #: src/sidebar/timeline/index.tsx
 msgid "Hide Deleted Events"
 msgstr "Hide Deleted Events"
@@ -871,6 +889,11 @@ msgstr "Language & Region"
 msgid "Language for summaries, chats, and AI-generated responses"
 msgstr "Language for summaries, chats, and AI-generated responses"
 
+#: src/session/components/note-input/header.tsx
+#: src/stt/useLiveTranscriptCopyShortcuts.ts
+msgid "Latest transcript chunk copied"
+msgstr "Latest transcript chunk copied"
+
 #: src/chat/components/message/error.tsx
 msgid "Learn how to fix this"
 msgstr "Learn how to fix this"
@@ -887,9 +910,18 @@ msgstr "Light"
 msgid "LinkedIn"
 msgstr "LinkedIn"
 
+#: src/meeting-float/window.tsx
+msgid "Listening..."
+msgstr "Listening..."
+
 #: src/settings/ai/stt/select.tsx
 msgid "Live"
 msgstr "Live"
+
+#: src/session/components/note-input/header.tsx
+#: src/stt/useLiveTranscriptCopyShortcuts.ts
+msgid "Live transcript copied"
+msgstr "Live transcript copied"
 
 #: src/settings/ai/stt/select.tsx
 msgid "Live transcription model"
@@ -1181,6 +1213,11 @@ msgstr "Notes copied"
 msgid "Notes folder"
 msgstr "Notes folder"
 
+#: src/session/components/note-input/header.tsx
+#: src/stt/useLiveTranscriptCopyShortcuts.ts
+msgid "Nothing transcribed yet"
+msgstr "Nothing transcribed yet"
+
 #: src/settings/general/index.tsx
 #: src/sidebar/settings.tsx
 msgid "Notifications"
@@ -1240,6 +1277,10 @@ msgstr "Open in New Window"
 #: src/chat/components/toolbar-controls.tsx
 msgid "Open in right panel"
 msgstr "Open in right panel"
+
+#: src/meeting-float/window.tsx
+msgid "Open main window"
+msgstr "Open main window"
 
 #: src/onboarding/final.tsx
 msgid "Open Notare"
@@ -1633,6 +1674,10 @@ msgstr "Show All Recurring Events"
 msgid "Show app in Dock"
 msgstr "Show app in Dock"
 
+#: src/meeting-float/window.tsx
+msgid "Show captions"
+msgstr "Show captions"
+
 #: src/sidebar/timeline/index.tsx
 msgid "Show Deleted Events"
 msgstr "Show Deleted Events"
@@ -1772,6 +1817,10 @@ msgstr "Stop"
 #: src/sidebar/timeline/item.tsx
 msgid "Stop listening"
 msgstr "Stop listening"
+
+#: src/meeting-float/window.tsx
+msgid "Stop recording"
+msgstr "Stop recording"
 
 #: src/chat/components/input/index.tsx
 msgid "Stop response"

@@ -88,6 +88,8 @@ fn make_specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             events::FloatingBarStop,
             events::FloatingBarOpenMain,
             events::FloatingBarSettingsChange,
+            events::FloatingBarStateEvent,
+            events::FloatingBarReady,
             events::DevtoolsPanelAction,
         ])
         .commands(tauri_specta::collect_commands![
@@ -124,9 +126,10 @@ pub fn init() -> tauri::plugin::TauriPlugin<tauri::Wry> {
         .setup(move |app, _api| {
             specta_builder.mount_events(app);
 
+            crate::window::floating_bar::set_app_handle(app.clone());
+
             #[cfg(target_os = "macos")]
             {
-                crate::window::floating_bar::set_app_handle(app.clone());
                 crate::window::devtools_panel::set_app_handle(app.clone());
             }
 
