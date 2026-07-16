@@ -61,6 +61,10 @@ jobs:
           CI: false
           LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
           CMAKE_GENERATOR: Ninja
+          # whisper.cpp's vulkan-shaders-gen nests ~230 chars of build dirs;
+          # under the repo's apps/desktop/src-tauri/target it exceeds Windows
+          # MAX_PATH. Same fix as local builds (docs/BUILDING.md).
+          CARGO_TARGET_DIR: 'D:\nb'
           CC: cl
           CXX: cl
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -70,8 +74,8 @@ jobs:
         with:
           name: bundles-windows
           path: |
-            apps/desktop/src-tauri/target/release/bundle/msi/*.msi
-            apps/desktop/src-tauri/target/release/bundle/msi/*.msi.sig
+            D:/nb/release/bundle/msi/*.msi
+            D:/nb/release/bundle/msi/*.msi.sig
           if-no-files-found: error
 
   build-linux:
