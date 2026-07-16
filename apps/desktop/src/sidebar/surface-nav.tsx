@@ -1,7 +1,7 @@
 import { useLingui } from "@lingui/react/macro";
 import { platform } from "@tauri-apps/plugin-os";
 import {
-  BookTextIcon,
+  LayoutTemplateIcon,
   CalendarDaysIcon,
   type LucideIcon,
   NotebookTextIcon,
@@ -134,7 +134,7 @@ export function SidebarSurfaceNav() {
     {
       id: "templates",
       label: t`Templates`,
-      icon: BookTextIcon,
+      icon: LayoutTemplateIcon,
       onClick: () => openSurface("templates"),
     },
     {
