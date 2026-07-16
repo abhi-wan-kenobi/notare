@@ -11,7 +11,10 @@ export type CalendarProvider = {
   badge?: string | null;
   platform?: "macos" | "all";
   docsPath: string;
+  /** Legacy cloud (Nango) integration id — dead in Notare, kept for Outlook. */
   nangoIntegrationId?: string;
+  /** Direct integration using the user's own OAuth client (no cloud). */
+  direct?: boolean;
 };
 
 const _PROVIDERS = [
@@ -38,8 +41,10 @@ const _PROVIDERS = [
     badge: "",
     icon: <Icon icon="logos:google-calendar" width={16} height={16} />,
     platform: "all",
-    docsPath: "https://docs.anarlog.so/calendar#google-calendar",
-    nangoIntegrationId: "google-calendar",
+    docsPath:
+      "https://github.com/abhi-wan-kenobi/notare/blob/main/docs/GOOGLE-CALENDAR.md",
+    nangoIntegrationId: undefined,
+    direct: true,
   },
   {
     disabled: false,

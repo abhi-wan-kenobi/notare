@@ -22,9 +22,16 @@ pub async fn is_provider_enabled<R: tauri::Runtime>(
     let config = app.state::<crate::PluginConfig>();
     let token = access_token(&app);
     let apple = is_apple_authorized(&app).await?;
-    hypr_calendar::is_provider_enabled(&config.api_base_url, token.as_deref(), apple, provider)
-        .await
-        .map_err(Into::into)
+    let google = crate::google::is_connected(&app).await;
+    hypr_calendar::is_provider_enabled(
+        &config.api_base_url,
+        token.as_deref(),
+        apple,
+        google,
+        provider,
+    )
+    .await
+    .map_err(Into::into)
 }
 
 #[tauri::command]
@@ -35,7 +42,8 @@ pub async fn list_connection_ids<R: tauri::Runtime>(
     let config = app.state::<crate::PluginConfig>();
     let token = access_token(&app);
     let apple = is_apple_authorized(&app).await?;
-    hypr_calendar::list_connection_ids(&config.api_base_url, token.as_deref(), apple)
+    let google = crate::google::is_connected(&app).await;
+    hypr_calendar::list_connection_ids(&config.api_base_url, token.as_deref(), apple, google)
         .await
         .map_err(Into::into)
 }
@@ -50,6 +58,7 @@ pub async fn list_calendars<R: tauri::Runtime>(
     let config = app.state::<crate::PluginConfig>();
     let token = match provider {
         CalendarProviderType::Apple => access_token(&app).unwrap_or_default(),
+        CalendarProviderType::Google => crate::google::access_token(&app).await?,
         _ => require_access_token(&app)?,
     };
     hypr_calendar::list_calendars(&config.api_base_url, &token, provider, &connection_id)
@@ -68,6 +77,7 @@ pub async fn list_events<R: tauri::Runtime>(
     let config = app.state::<crate::PluginConfig>();
     let token = match provider {
         CalendarProviderType::Apple => access_token(&app).unwrap_or_default(),
+        CalendarProviderType::Google => crate::google::access_token(&app).await?,
         _ => require_access_token(&app)?,
     };
     hypr_calendar::list_events(
@@ -104,6 +114,62 @@ pub fn create_event<R: tauri::Runtime>(
 #[specta::specta]
 pub fn parse_meeting_link(text: String) -> Option<String> {
     hypr_calendar::parse_meeting_link(&text)
+}
+
+// --- Direct (BYO OAuth client) Google integration ---
+
+#[tauri::command]
+#[specta::specta]
+pub async fn google_account_status<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<crate::google::GoogleAccountStatus, Error> {
+    crate::google::status(&app).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn google_import_client_json<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    json: String,
+) -> Result<crate::google::GoogleClientImportResult, Error> {
+    crate::google::import_client_json(&app, &json).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn google_import_client_file<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    path: String,
+) -> Result<crate::google::GoogleClientImportResult, Error> {
+    crate::google::import_client_file(&app, &path).await
+}
+
+/// Opens the browser consent screen and waits (up to 5 minutes) for the user
+/// to finish; returns the updated status.
+#[tauri::command]
+#[specta::specta]
+pub async fn google_connect<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<crate::google::GoogleAccountStatus, Error> {
+    crate::google::connect(&app).await
+}
+
+/// Revokes + forgets the session but keeps the imported client json.
+#[tauri::command]
+#[specta::specta]
+pub async fn google_disconnect<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<crate::google::GoogleAccountStatus, Error> {
+    crate::google::disconnect(&app).await
+}
+
+/// Removes the session AND the imported client json.
+#[tauri::command]
+#[specta::specta]
+pub async fn google_reset<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<crate::google::GoogleAccountStatus, Error> {
+    crate::google::reset(&app).await
 }
 
 fn access_token<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<String> {

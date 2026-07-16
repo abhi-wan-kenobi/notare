@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-google-import-client-json"
+description = "Enables the google_import_client_json command without any pre-configured scope."
+commands.allow = ["google_import_client_json"]
+
+[[permission]]
+identifier = "deny-google-import-client-json"
+description = "Denies the google_import_client_json command without any pre-configured scope."
+commands.deny = ["google_import_client_json"]

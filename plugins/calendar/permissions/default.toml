@@ -9,4 +9,10 @@ permissions = [
     "allow-open-calendar",
     "allow-create-event",
     "allow-parse-meeting-link",
+    "allow-google-account-status",
+    "allow-google-import-client-json",
+    "allow-google-import-client-file",
+    "allow-google-connect",
+    "allow-google-disconnect",
+    "allow-google-reset",
 ]

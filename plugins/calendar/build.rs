@@ -7,6 +7,12 @@ const COMMANDS: &[&str] = &[
     "open_calendar",
     "create_event",
     "parse_meeting_link",
+    "google_account_status",
+    "google_import_client_json",
+    "google_import_client_file",
+    "google_connect",
+    "google_disconnect",
+    "google_reset",
 ];
 
 fn main() {

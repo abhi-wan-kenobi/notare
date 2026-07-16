@@ -12,6 +12,12 @@ Default permissions for the plugin
 - `allow-open-calendar`
 - `allow-create-event`
 - `allow-parse-meeting-link`
+- `allow-google-account-status`
+- `allow-google-import-client-json`
+- `allow-google-import-client-file`
+- `allow-google-connect`
+- `allow-google-disconnect`
+- `allow-google-reset`
 
 ## Permission Table
 
@@ -70,6 +76,162 @@ Enables the create_event command without any pre-configured scope.
 <td>
 
 Denies the create_event command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-google-account-status`
+
+</td>
+<td>
+
+Enables the google_account_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-google-account-status`
+
+</td>
+<td>
+
+Denies the google_account_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-google-connect`
+
+</td>
+<td>
+
+Enables the google_connect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-google-connect`
+
+</td>
+<td>
+
+Denies the google_connect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-google-disconnect`
+
+</td>
+<td>
+
+Enables the google_disconnect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-google-disconnect`
+
+</td>
+<td>
+
+Denies the google_disconnect command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-google-import-client-file`
+
+</td>
+<td>
+
+Enables the google_import_client_file command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-google-import-client-file`
+
+</td>
+<td>
+
+Denies the google_import_client_file command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-google-import-client-json`
+
+</td>
+<td>
+
+Enables the google_import_client_json command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-google-import-client-json`
+
+</td>
+<td>
+
+Denies the google_import_client_json command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:allow-google-reset`
+
+</td>
+<td>
+
+Enables the google_reset command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`calendar:deny-google-reset`
+
+</td>
+<td>
+
+Denies the google_reset command without any pre-configured scope.
 
 </td>
 </tr>
