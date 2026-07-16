@@ -1302,6 +1302,10 @@ msgstr ""
 msgid "Notes folder"
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Nothing is typed while you talk; stopping cleans up the transcript, copies it, and pastes it once. Best for terminals."
+msgstr ""
+
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
 msgid "Nothing transcribed yet"
@@ -1404,6 +1408,10 @@ msgstr ""
 msgid "Others"
 msgstr ""
 
+#: src/settings/dictation/index.tsx
+msgid "Output"
+msgstr ""
+
 #: src/settings/general/timezone.tsx
 msgid "Override the timezone used for the sidebar timeline"
 msgstr ""
@@ -1415,6 +1423,10 @@ msgstr ""
 
 #: src/instruction/index.tsx
 msgid "Paste the browser URL here if the browser button did not reopen Notare."
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Paste when you stop"
 msgstr ""
 
 #: src/contacts/organization-details.tsx
@@ -1478,6 +1490,10 @@ msgstr ""
 
 #: src/shared/open-note-dialog.tsx
 msgid "Recent"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Recognized text is typed straight into the focused app while you talk."
 msgstr ""
 
 #: src/calendar/components/oauth/status.tsx
@@ -1791,13 +1807,18 @@ msgstr ""
 msgid "Show floating bar"
 msgstr ""
 
+#. placeholder {0}: fileManagerName()
+#: src/sidebar/timeline/item.tsx
+msgid "Show in {0}"
+msgstr ""
+
 #: src/settings/ai/stt/select.tsx
 msgid "Show in file manager"
 msgstr ""
 
 #: src/sidebar/timeline/item.tsx
-msgid "Show in Finder"
-msgstr ""
+#~ msgid "Show in Finder"
+#~ msgstr ""
 
 #: src/settings/general/app-settings.tsx
 msgid "Show Notare in the Dock and app switcher."
@@ -1923,6 +1944,10 @@ msgstr ""
 
 #: src/dictation/window.tsx
 msgid "Stop dictation"
+msgstr ""
+
+#: src/dictation/window.tsx
+msgid "Stop dictation and paste the transcript"
 msgstr ""
 
 #: src/session/components/outer-header/index.tsx
@@ -2100,6 +2125,10 @@ msgstr ""
 
 #: src/onboarding/account/after-login.tsx
 msgid "Trial activated - 14 days of Pro"
+msgstr ""
+
+#: src/settings/dictation/index.tsx
+msgid "Type as you speak"
 msgstr ""
 
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx

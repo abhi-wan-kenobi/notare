@@ -28,19 +28,19 @@ pub(crate) fn resolve_path(args: &Args) -> Result<PathBuf> {
 }
 
 fn resolve_default_path(data_dir: &Path) -> PathBuf {
-    let current = data_dir.join("anarlog").join("app.db");
+    // Newest folder name first; mirrors the desktop app's data-dir fallback
+    // (crates/storage/src/global.rs): keep reading older folders in place so
+    // pre-rename installs still work.
+    let current = data_dir.join("notare").join("app.db");
     if current.is_file() {
         return current;
     }
 
-    let legacy = data_dir.join("hyprnote").join("app.db");
-    if legacy.is_file() {
-        return legacy;
-    }
-
-    let identifier = data_dir.join("com.hyprnote.stable").join("app.db");
-    if identifier.is_file() {
-        return identifier;
+    for legacy_folder in ["anarlog", "hyprnote", "com.hyprnote.stable"] {
+        let legacy = data_dir.join(legacy_folder).join("app.db");
+        if legacy.is_file() {
+            return legacy;
+        }
     }
 
     current
@@ -53,17 +53,22 @@ mod tests {
     #[test]
     fn default_path_prefers_current_then_legacy_then_identifier() {
         let dir = tempfile::tempdir().unwrap();
-        let current = dir.path().join("anarlog/app.db");
-        let legacy = dir.path().join("hyprnote/app.db");
+        let current = dir.path().join("notare/app.db");
+        let anarlog = dir.path().join("anarlog/app.db");
+        let hyprnote = dir.path().join("hyprnote/app.db");
         let identifier = dir.path().join("com.hyprnote.stable/app.db");
 
         std::fs::create_dir_all(identifier.parent().unwrap()).unwrap();
         std::fs::write(&identifier, "").unwrap();
         assert_eq!(resolve_default_path(dir.path()), identifier);
 
-        std::fs::create_dir_all(legacy.parent().unwrap()).unwrap();
-        std::fs::write(&legacy, "").unwrap();
-        assert_eq!(resolve_default_path(dir.path()), legacy);
+        std::fs::create_dir_all(hyprnote.parent().unwrap()).unwrap();
+        std::fs::write(&hyprnote, "").unwrap();
+        assert_eq!(resolve_default_path(dir.path()), hyprnote);
+
+        std::fs::create_dir_all(anarlog.parent().unwrap()).unwrap();
+        std::fs::write(&anarlog, "").unwrap();
+        assert_eq!(resolve_default_path(dir.path()), anarlog);
 
         std::fs::create_dir_all(current.parent().unwrap()).unwrap();
         std::fs::write(&current, "").unwrap();
@@ -75,7 +80,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         assert_eq!(
             resolve_default_path(dir.path()),
-            dir.path().join("anarlog/app.db")
+            dir.path().join("notare/app.db")
         );
     }
 }

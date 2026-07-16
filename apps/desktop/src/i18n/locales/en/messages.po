@@ -1302,6 +1302,10 @@ msgstr "Notes copied"
 msgid "Notes folder"
 msgstr "Notes folder"
 
+#: src/settings/dictation/index.tsx
+msgid "Nothing is typed while you talk; stopping cleans up the transcript, copies it, and pastes it once. Best for terminals."
+msgstr "Nothing is typed while you talk; stopping cleans up the transcript, copies it, and pastes it once. Best for terminals."
+
 #: src/session/components/note-input/header.tsx
 #: src/stt/useLiveTranscriptCopyShortcuts.ts
 msgid "Nothing transcribed yet"
@@ -1404,6 +1408,10 @@ msgstr "Organization name"
 msgid "Others"
 msgstr "Others"
 
+#: src/settings/dictation/index.tsx
+msgid "Output"
+msgstr "Output"
+
 #: src/settings/general/timezone.tsx
 msgid "Override the timezone used for the sidebar timeline"
 msgstr "Override the timezone used for the sidebar timeline"
@@ -1416,6 +1424,10 @@ msgstr "Participants"
 #: src/instruction/index.tsx
 msgid "Paste the browser URL here if the browser button did not reopen Notare."
 msgstr "Paste the browser URL here if the browser button did not reopen Notare."
+
+#: src/settings/dictation/index.tsx
+msgid "Paste when you stop"
+msgstr "Paste when you stop"
 
 #: src/contacts/organization-details.tsx
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
@@ -1479,6 +1491,10 @@ msgstr "Ready to go"
 #: src/shared/open-note-dialog.tsx
 msgid "Recent"
 msgstr "Recent"
+
+#: src/settings/dictation/index.tsx
+msgid "Recognized text is typed straight into the focused app while you talk."
+msgstr "Recognized text is typed straight into the focused app while you talk."
 
 #: src/calendar/components/oauth/status.tsx
 #: src/settings/todo/provider-content.tsx
@@ -1791,13 +1807,18 @@ msgstr "Show Event"
 msgid "Show floating bar"
 msgstr "Show floating bar"
 
+#. placeholder {0}: fileManagerName()
+#: src/sidebar/timeline/item.tsx
+msgid "Show in {0}"
+msgstr "Show in {0}"
+
 #: src/settings/ai/stt/select.tsx
 msgid "Show in file manager"
 msgstr "Show in file manager"
 
 #: src/sidebar/timeline/item.tsx
-msgid "Show in Finder"
-msgstr "Show in Finder"
+#~ msgid "Show in Finder"
+#~ msgstr "Show in Finder"
 
 #: src/settings/general/app-settings.tsx
 msgid "Show Notare in the Dock and app switcher."
@@ -1924,6 +1945,10 @@ msgstr "Stop"
 #: src/dictation/window.tsx
 msgid "Stop dictation"
 msgstr "Stop dictation"
+
+#: src/dictation/window.tsx
+msgid "Stop dictation and paste the transcript"
+msgstr "Stop dictation and paste the transcript"
 
 #: src/session/components/outer-header/index.tsx
 #: src/sidebar/timeline/item.tsx
@@ -2101,6 +2126,10 @@ msgstr "Trial"
 #: src/onboarding/account/after-login.tsx
 msgid "Trial activated - 14 days of Pro"
 msgstr "Trial activated - 14 days of Pro"
+
+#: src/settings/dictation/index.tsx
+msgid "Type as you speak"
+msgstr "Type as you speak"
 
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 msgid "Unknown"

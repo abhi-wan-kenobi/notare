@@ -10,12 +10,14 @@ export const id = () => crypto.randomUUID() as string;
 
 export const getScheme = async (): Promise<string> => {
   const id = await getIdentifier();
+  // Must match the `deep-link` schemes registered in tauri.conf*.json.
   const schemes: Record<string, string> = {
-    "com.hyprnote.stable": "hyprnote",
-    "com.hyprnote.staging": "hyprnote-staging",
-    "com.hyprnote.dev": "hypr",
+    "be.abhishek.notare": "notare",
+    "be.abhishek.Notare": "notare",
+    "be.abhishek.notare.staging": "notare-staging",
+    "be.abhishek.notare.dev": "notare",
   };
-  return schemes[id] ?? "hypr";
+  return schemes[id] ?? "notare";
 };
 
 type DesktopFlowPath =

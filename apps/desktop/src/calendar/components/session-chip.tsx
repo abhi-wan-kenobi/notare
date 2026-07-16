@@ -15,6 +15,7 @@ import { cn } from "@hypr/utils";
 import { toTz, useTimezone } from "~/calendar/hooks";
 import { useDeleteSession } from "~/session/hooks/useDeleteSession";
 import { getSessionEvent } from "~/session/utils";
+import { fileManagerName } from "~/shared/file-manager";
 import {
   type MenuItemDef,
   useNativeContextMenu,
@@ -53,7 +54,7 @@ export function SessionChip({
     () => [
       {
         id: "show",
-        text: "Show in Finder",
+        text: `Show in ${fileManagerName()}`,
         action: handleShowInFinder,
       },
       { separator: true },
