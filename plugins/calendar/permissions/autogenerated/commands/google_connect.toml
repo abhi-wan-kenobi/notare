@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-google-connect"
+description = "Enables the google_connect command without any pre-configured scope."
+commands.allow = ["google_connect"]
+
+[[permission]]
+identifier = "deny-google-connect"
+description = "Denies the google_connect command without any pre-configured scope."
+commands.deny = ["google_connect"]

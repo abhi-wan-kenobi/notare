@@ -18,6 +18,7 @@ import {
   CalendarSelection,
 } from "~/calendar/components/calendar-selection";
 import { SyncProvider, useSync } from "~/calendar/components/context";
+import { GoogleDirectContent } from "~/calendar/components/google/content";
 import { useOAuthCalendarSelection } from "~/calendar/components/oauth/calendar-selection";
 import { ReconnectRequiredIndicator } from "~/calendar/components/oauth/status";
 import { PROVIDERS } from "~/calendar/components/shared";
@@ -114,83 +115,6 @@ function AppleCalendarProvider({
           Apple
         </OnboardingButton>
       )}
-    </div>
-  );
-}
-
-function GoogleCalendarConnectedContent({
-  providerConnections,
-}: {
-  providerConnections: ConnectionItem[];
-}) {
-  const { scheduleSync } = useSync();
-  const {
-    groups,
-    connectionSourceMap,
-    handleRefresh,
-    handleToggle,
-    isLoading,
-  } = useOAuthCalendarSelection(GOOGLE_PROVIDER!);
-  const reconnectRequiredConnections = useMemo(
-    () =>
-      providerConnections.filter(
-        (connection) => connection.status === "reconnect_required",
-      ),
-    [providerConnections],
-  );
-  const groupsWithMenus = useMemo(
-    () =>
-      addIntegrationMenus({
-        groups,
-        connections: providerConnections,
-        connectionSourceMap,
-        provider: GOOGLE_PROVIDER!,
-      }),
-    [connectionSourceMap, groups, providerConnections],
-  );
-
-  useMountEffect(() => {
-    scheduleSync();
-  });
-
-  return (
-    <div className="flex flex-col gap-3">
-      {reconnectRequiredConnections.length > 0 && (
-        <div className="flex items-start gap-2 text-sm text-amber-700">
-          <span className="pt-1">
-            <ReconnectRequiredIndicator />
-          </span>
-          <p>
-            Some Google Calendar accounts need attention. Open the account menu
-            to reconnect or disconnect them.
-          </p>
-        </div>
-      )}
-
-      <CalendarSelection
-        key={getCalendarSelectionKey(groupsWithMenus)}
-        groups={groupsWithMenus}
-        onToggle={handleToggle}
-        onRefresh={handleRefresh}
-        isLoading={isLoading}
-        disableHoverTone
-        className="border-border/45 bg-card/28 rounded-xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_8px_24px_-20px_rgba(87,83,78,0.35)] backdrop-blur-md backdrop-saturate-150"
-      />
-
-      <OnboardingButton
-        type="button"
-        onClick={() =>
-          void openOnboardingIntegrationUrl(
-            GOOGLE_PROVIDER?.nangoIntegrationId,
-            undefined,
-            "connect",
-          )
-        }
-        className="border-border bg-card text-foreground hover:bg-accent flex items-center gap-3 border shadow-[0_2px_6px_rgba(87,83,78,0.08),0_10px_18px_-10px_rgba(87,83,78,0.22)]"
-      >
-        {GOOGLE_PROVIDER?.icon}
-        Add another account
-      </OnboardingButton>
     </div>
   );
 }
@@ -425,109 +349,19 @@ function OutlookCalendarProvider({ onSignIn }: { onSignIn: () => void }) {
   );
 }
 
-function GoogleCalendarProvider({ onSignIn }: { onSignIn: () => void }) {
-  const auth = useAuth();
-  const { isPro, isReady, upgradeToPro } = useBillingAccess();
-  const { data: connections, isPending, isError } = useConnections(isPro);
-  const [isHovered, setHovered] = useState(false);
-  const providerConnections = useMemo(
-    () =>
-      connections?.filter(
-        (connection) =>
-          connection.integration_id === GOOGLE_PROVIDER?.nangoIntegrationId,
-      ) ?? [],
-    [connections],
-  );
-
-  const handleConnect = useCallback(() => {
-    if (!auth.session) {
-      onSignIn();
-      return;
-    }
-
-    if (!isPro) {
-      upgradeToPro();
-      return;
-    }
-
-    void openOnboardingIntegrationUrl(
-      GOOGLE_PROVIDER?.nangoIntegrationId,
-      undefined,
-      "connect",
-    );
-  }, [auth.session, isPro, onSignIn, upgradeToPro]);
-
+function GoogleCalendarProvider() {
   if (!GOOGLE_PROVIDER) {
     return null;
   }
 
-  if (isError) {
-    return (
-      <p className="text-sm text-red-600">
-        <Trans>Failed to load Google Calendar</Trans>
-      </p>
-    );
-  }
-
-  if (providerConnections.length > 0) {
-    return (
-      <GoogleCalendarConnectedContent
-        providerConnections={providerConnections}
-      />
-    );
-  }
-
-  const isSignedIn = !!auth.session;
-
+  // Direct (BYO OAuth client) integration — no Notare account involved.
   return (
-    <div className="flex h-full items-center gap-3">
-      <OnboardingButton
-        onClick={handleConnect}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        onFocus={() => setHovered(true)}
-        onBlur={() => setHovered(false)}
-        disabled={
-          isSignedIn && (isPending || (auth.session !== null && !isReady))
-        }
-        className={
-          isSignedIn
-            ? "border-border bg-card text-foreground hover:bg-accent disabled:hover:bg-card flex items-center gap-3 border shadow-[0_2px_6px_rgba(87,83,78,0.08),0_10px_18px_-10px_rgba(87,83,78,0.22)] disabled:cursor-not-allowed disabled:opacity-60"
-            : "border-border bg-muted text-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:border-primary focus-visible:bg-primary focus-visible:text-primary-foreground border-1 shadow-[0_2px_6px_rgba(87,83,78,0.01),0_10px_18px_-10px_rgba(87,83,78,0.1)] transition-all duration-150"
-        }
-      >
-        {!isSignedIn ? (
-          <span className="grid items-center overflow-hidden">
-            <span className="invisible col-start-1 row-start-1 flex items-center justify-center gap-3">
-              <Trans>Sign in to connect</Trans>
-            </span>
-
-            <motion.span
-              className="col-start-1 row-start-1 flex items-center justify-center gap-3"
-              animate={{ y: isHovered ? "100%" : "0%" }}
-              transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
-            >
-              {GOOGLE_PROVIDER.icon}
-              <div className="flex flex-col items-start justify-center">
-                <p className="text-md text-foreground font-normal">Google</p>
-              </div>
-            </motion.span>
-
-            <motion.span
-              className="col-start-1 row-start-1 flex items-center justify-center gap-3"
-              animate={{ y: isHovered ? "0%" : "-140%" }}
-              transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
-            >
-              <Trans>Sign in to connect</Trans>
-            </motion.span>
-          </span>
-        ) : (
-          <>
-            {GOOGLE_PROVIDER.icon}
-            <Trans>Connect Google Calendar</Trans>
-          </>
-        )}
-      </OnboardingButton>
+    <div className="border-border/45 bg-card/28 w-full max-w-md rounded-xl border p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_8px_24px_-20px_rgba(87,83,78,0.35)] backdrop-blur-md backdrop-saturate-150">
+      <div className="mb-1 flex items-center gap-2">
+        {GOOGLE_PROVIDER.icon}
+        <span className="text-md text-foreground font-normal">Google</span>
+      </div>
+      <GoogleDirectContent config={GOOGLE_PROVIDER} />
     </div>
   );
 }
@@ -561,7 +395,7 @@ function CalendarSectionContent({
             />
           )}
           <div className="flex flex-wrap items-center gap-4">
-            <GoogleCalendarProvider onSignIn={onSignIn} />
+            <GoogleCalendarProvider />
             <OutlookCalendarProvider onSignIn={onSignIn} />
           </div>
           {hasConnectedCalendar && (
@@ -582,7 +416,7 @@ function CalendarSectionContent({
             />
           )}
 
-          <GoogleCalendarProvider onSignIn={onSignIn} />
+          <GoogleCalendarProvider />
           <OutlookCalendarProvider onSignIn={onSignIn} />
         </div>
       )}

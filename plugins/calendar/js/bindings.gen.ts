@@ -59,6 +59,64 @@ async createEvent(provider: CalendarProviderType, input: CreateEventInput) : Pro
 },
 async parseMeetingLink(text: string) : Promise<string | null> {
     return await TAURI_INVOKE("plugin:calendar|parse_meeting_link", { text });
+},
+async googleAccountStatus() : Promise<Result<GoogleAccountStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|google_account_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async googleImportClientJson(json: string) : Promise<Result<GoogleClientImportResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|google_import_client_json", { json }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async googleImportClientFile(path: string) : Promise<Result<GoogleClientImportResult, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|google_import_client_file", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Opens the browser consent screen and waits (up to 5 minutes) for the user
+ * to finish; returns the updated status.
+ */
+async googleConnect() : Promise<Result<GoogleAccountStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|google_connect") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Revokes + forgets the session but keeps the imported client json.
+ */
+async googleDisconnect() : Promise<Result<GoogleAccountStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|google_disconnect") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Removes the session AND the imported client json.
+ */
+async googleReset() : Promise<Result<GoogleAccountStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:calendar|google_reset") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -160,6 +218,39 @@ email: string | null;
  */
 is_current_user: boolean }
 export type EventStatus = "confirmed" | "tentative" | "cancelled"
+/**
+ * Status surfaced to the frontend.
+ */
+export type GoogleAccountStatus = { 
+/**
+ * A client json has been imported.
+ */
+has_client: boolean; 
+/**
+ * A refresh token exists (i.e. the consent flow completed).
+ */
+connected: boolean; 
+/**
+ * `"installed"` or `"web"` (when a client is present).
+ */
+client_kind: string | null; 
+/**
+ * The client id, so the user can tell which GCP client is in use.
+ */
+client_id: string | null }
+/**
+ * Result of importing a client json.
+ */
+export type GoogleClientImportResult = { client_id: string; 
+/**
+ * `"installed"` or `"web"`.
+ */
+client_kind: string; 
+/**
+ * True when the json was a "web" client — loopback redirects may not
+ * work with those; the UI should warn but proceed.
+ */
+warning_web_client: boolean }
 export type ProviderConnectionIds = { provider: CalendarProviderType; connection_ids: string[] }
 
 /** tauri-specta globals **/

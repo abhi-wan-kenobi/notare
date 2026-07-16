@@ -103,6 +103,7 @@ hypr-gguf = { path = "crates/gguf", package = "gguf" }
 hypr-github-issues = { path = "crates/github-issues", package = "github-issues" }
 hypr-google-calendar = { path = "crates/google-calendar", package = "google-calendar" }
 hypr-google-drive = { path = "crates/google-drive", package = "google-drive" }
+hypr-google-oauth = { path = "crates/google-oauth", package = "google-oauth" }
 hypr-google-mail = { path = "crates/google-mail", package = "google-mail" }
 hypr-granola = { path = "crates/granola", package = "granola" }
 hypr-hf = { path = "crates/hf", package = "hf" }

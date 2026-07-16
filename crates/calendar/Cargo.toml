@@ -11,6 +11,7 @@ hypr-api-client = { workspace = true }
 hypr-apple-calendar = { workspace = true, features = ["specta"] }
 hypr-calendar-interface = { workspace = true }
 hypr-google-calendar = { workspace = true, features = ["specta"] }
+hypr-http = { workspace = true }
 hypr-outlook-calendar = { workspace = true, features = ["specta"] }
 
 chrono = { workspace = true, features = ["serde"] }
@@ -22,3 +23,7 @@ serde_json = { workspace = true }
 specta = { workspace = true, features = ["chrono"], optional = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+wiremock = { workspace = true }

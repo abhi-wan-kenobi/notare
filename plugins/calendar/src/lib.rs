@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod events;
+mod google;
 mod runtime;
 
 pub use error::Error;
@@ -25,6 +26,12 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::open_calendar::<tauri::Wry>,
             commands::create_event::<tauri::Wry>,
             commands::parse_meeting_link,
+            commands::google_account_status::<tauri::Wry>,
+            commands::google_import_client_json::<tauri::Wry>,
+            commands::google_import_client_file::<tauri::Wry>,
+            commands::google_connect::<tauri::Wry>,
+            commands::google_disconnect::<tauri::Wry>,
+            commands::google_reset::<tauri::Wry>,
         ])
         .events(tauri_specta::collect_events![CalendarChangedEvent])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
@@ -43,6 +50,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 
             use tauri::Manager;
             app.manage(PluginConfig { api_base_url });
+            app.manage(google::GoogleAuthState::default());
             Ok(())
         })
         .build()

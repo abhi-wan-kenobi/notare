@@ -2966,6 +2966,7 @@ dependencies = [
  "chrono",
  "chrono-tz 0.10.4",
  "google-calendar",
+ "hypr-http-utils",
  "outlook-calendar",
  "regex",
  "reqwest 0.13.2",
@@ -2973,7 +2974,9 @@ dependencies = [
  "serde_json",
  "specta",
  "thiserror 2.0.18",
+ "tokio",
  "tracing",
+ "wiremock",
 ]
 
 [[package]]
@@ -8211,6 +8214,23 @@ dependencies = [
  "tokio",
  "urlencoding",
  "utoipa",
+]
+
+[[package]]
+name = "google-oauth"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "urlencoding",
+ "uuid",
+ "wiremock",
 ]
 
 [[package]]
@@ -17921,15 +17941,22 @@ version = "0.1.0"
 dependencies = [
  "calendar",
  "calendar-interface",
+ "google-oauth",
+ "reqwest 0.13.2",
  "serde",
+ "serde_json",
  "specta",
  "specta-typescript",
  "tauri",
  "tauri-plugin",
  "tauri-plugin-auth",
+ "tauri-plugin-opener",
  "tauri-plugin-permissions",
+ "tauri-plugin-store2",
  "tauri-specta",
  "thiserror 2.0.18",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

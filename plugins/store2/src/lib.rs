@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod ext;
+pub mod secrets;
 
 pub use error::*;
 pub use ext::*;

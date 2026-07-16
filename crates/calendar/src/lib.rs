@@ -31,6 +31,10 @@ pub struct ProviderConnectionIds {
     pub connection_ids: Vec<String>,
 }
 
+/// The synthetic connection id used for the direct (BYO OAuth client) Google
+/// integration. There is exactly one Google connection at a time.
+pub const GOOGLE_DIRECT_CONNECTION_ID: &str = "google-direct";
+
 pub fn available_providers() -> Vec<CalendarProviderType> {
     #[cfg(target_os = "macos")]
     let providers = vec![
@@ -49,6 +53,7 @@ pub async fn list_connection_ids(
     api_base_url: &str,
     access_token: Option<&str>,
     apple_authorized: bool,
+    google_connected: bool,
 ) -> Result<Vec<ProviderConnectionIds>, Error> {
     use std::collections::HashMap;
 
@@ -66,16 +71,23 @@ pub async fn list_connection_ids(
     #[cfg(not(target_os = "macos"))]
     let _ = apple_authorized;
 
+    // Google runs directly against the Google Calendar API with the user's own
+    // OAuth client — no cloud connection involved.
+    map.entry(CalendarProviderType::Google).or_default();
+    if google_connected {
+        map.insert(
+            CalendarProviderType::Google,
+            vec![GOOGLE_DIRECT_CONNECTION_ID.to_string()],
+        );
+    }
+
     if let Some(token) = access_token.filter(|t| !t.is_empty()) {
         match fetch::list_all_connection_ids(api_base_url, token).await {
             Ok(all) => {
-                for provider in [CalendarProviderType::Google, CalendarProviderType::Outlook] {
-                    // empty vec = provider is available but has no connections (vs absent = unavailable)
-                    map.entry(provider).or_default();
-                }
+                // empty vec = provider is available but has no connections (vs absent = unavailable)
+                map.entry(CalendarProviderType::Outlook).or_default();
                 for (integration_id, connection_ids) in all {
                     let provider = match integration_id.as_str() {
-                        "google-calendar" => CalendarProviderType::Google,
                         "outlook" => CalendarProviderType::Outlook,
                         _ => continue,
                     };
@@ -119,9 +131,11 @@ pub async fn is_provider_enabled(
     api_base_url: &str,
     access_token: Option<&str>,
     apple_authorized: bool,
+    google_connected: bool,
     provider: CalendarProviderType,
 ) -> Result<bool, Error> {
-    let all = list_connection_ids(api_base_url, access_token, apple_authorized).await?;
+    let all =
+        list_connection_ids(api_base_url, access_token, apple_authorized, google_connected).await?;
     Ok(all
         .iter()
         .any(|p| p.provider == provider && !p.connection_ids.is_empty()))
@@ -139,8 +153,11 @@ pub async fn list_calendars(
             Ok(convert::convert_apple_calendars(calendars))
         }
         CalendarProviderType::Google => {
+            // `access_token` is a Google access token here (BYO OAuth client);
+            // the connection id is synthetic and unused.
+            let _ = connection_id;
             let calendars =
-                fetch::list_google_calendars(api_base_url, access_token, connection_id).await?;
+                fetch::list_google_calendars_direct(fetch::GOOGLE_API_BASE, access_token).await?;
             Ok(convert::convert_google_calendars(calendars))
         }
         CalendarProviderType::Outlook => {
@@ -164,9 +181,10 @@ pub async fn list_events(
             Ok(convert::convert_apple_events(events))
         }
         CalendarProviderType::Google => {
+            let _ = connection_id;
             let calendar_id = filter.calendar_tracking_id.clone();
             let events =
-                fetch::list_google_events(api_base_url, access_token, connection_id, filter)
+                fetch::list_google_events_direct(fetch::GOOGLE_API_BASE, access_token, filter)
                     .await?;
             Ok(convert::convert_google_events(events, &calendar_id))
         }

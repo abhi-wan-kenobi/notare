@@ -26,7 +26,8 @@ impl<C: HttpClient> GoogleCalendarClient<C> {
     }
 
     pub async fn list_events(&self, req: ListEventsRequest) -> Result<ListEventsResponse, Error> {
-        let calendar_id = &req.calendar_id;
+        // Calendar ids can contain '#' and '@' (e.g. "addressbook#contacts@group.v.calendar.google.com").
+        let calendar_id = urlencoding::encode(&req.calendar_id);
         let path = format!("/calendar/v3/calendars/{calendar_id}/events");
 
         let mut query_parts: Vec<String> = Vec::new();
@@ -110,7 +111,7 @@ impl<C: HttpClient> GoogleCalendarClient<C> {
     }
 
     pub async fn create_event(&self, req: CreateEventRequest) -> Result<Event, Error> {
-        let calendar_id = &req.calendar_id;
+        let calendar_id = urlencoding::encode(&req.calendar_id);
         let path = format!("/calendar/v3/calendars/{calendar_id}/events");
 
         let body = serde_json::to_vec(&req.event)?;
