@@ -176,6 +176,10 @@ msgstr "App"
 msgid "Appearance"
 msgstr "Appearance"
 
+#: src/calendar/components/google/content.tsx
+msgid "Application type: <0>Desktop app</0> — not “Web application”."
+msgstr "Application type: <0>Desktop app</0> — not “Web application”."
+
 #: src/settings/personalization/index.tsx
 msgid "Applied to every generated or regenerated meeting summary."
 msgstr "Applied to every generated or regenerated meeting summary."
@@ -409,8 +413,8 @@ msgid "Connect GitHub for private repos."
 msgstr "Connect GitHub for private repos."
 
 #: src/onboarding/calendar.tsx
-msgid "Connect Google Calendar"
-msgstr "Connect Google Calendar"
+#~ msgid "Connect Google Calendar"
+#~ msgstr "Connect Google Calendar"
 
 #: src/onboarding/calendar.tsx
 msgid "Connect Outlook"
@@ -445,6 +449,10 @@ msgstr "Copy message"
 #: src/onboarding/account/after-login.tsx
 msgid "Could not start trial"
 msgstr "Could not start trial"
+
+#: src/calendar/components/google/content.tsx
+msgid "Create a project in the Google Cloud console (any name, it's free)."
+msgstr "Create a project in the Google Cloud console (any name, it's free)."
 
 #: src/onboarding/index.tsx
 #~ msgid "Create account"
@@ -545,6 +553,10 @@ msgstr "Download"
 msgid "Download a speech-to-text model — transcription runs entirely on your device"
 msgstr "Download a speech-to-text model — transcription runs entirely on your device"
 
+#: src/calendar/components/google/content.tsx
+msgid "Download the JSON, then select it here."
+msgstr "Download the JSON, then select it here."
+
 #: src/onboarding/transcription.tsx
 msgid "Downloaded"
 msgstr "Downloaded"
@@ -578,6 +590,10 @@ msgstr "Emojis"
 #: src/onboarding/permissions.tsx
 msgid "Enable {0}"
 msgstr "Enable {0}"
+
+#: src/calendar/components/google/content.tsx
+msgid "Enable the Google Calendar API for that project."
+msgstr "Enable the Google Calendar API for that project."
 
 #: src/session/components/outer-header/metadata/participants/chip.tsx
 msgid "Enhance contact"
@@ -629,8 +645,8 @@ msgid "Exporting..."
 msgstr "Exporting..."
 
 #: src/onboarding/calendar.tsx
-msgid "Failed to load Google Calendar"
-msgstr "Failed to load Google Calendar"
+#~ msgid "Failed to load Google Calendar"
+#~ msgstr "Failed to load Google Calendar"
 
 #: src/settings/todo/provider-content.tsx
 msgid "Failed to load integration status"
@@ -705,6 +721,10 @@ msgstr "Free"
 msgid "Frequently used"
 msgstr "Frequently used"
 
+#: src/calendar/components/google/content.tsx
+msgid "Full setup guide"
+msgstr "Full setup guide"
+
 #: src/sidebar/settings.tsx
 msgid "General"
 msgstr "General"
@@ -734,6 +754,10 @@ msgstr "Go back to now"
 msgid "Go home"
 msgstr "Go home"
 
+#: src/calendar/components/google/content.tsx
+msgid "Go to Credentials → Create credentials → OAuth client ID."
+msgstr "Go to Credentials → Create credentials → OAuth client ID."
+
 #: src/onboarding/shared.tsx
 msgid "Go to next section"
 msgstr "Go to next section"
@@ -762,6 +786,14 @@ msgstr "Help Notare listen to you"
 msgid "Hide Deleted Events"
 msgstr "Hide Deleted Events"
 
+#: src/calendar/components/google/content.tsx
+msgid "Hide setup steps"
+msgstr "Hide setup steps"
+
+#: src/calendar/components/google/content.tsx
+msgid "How do I get this file?"
+msgstr "How do I get this file?"
+
 #: src/settings/general/notification.tsx
 msgid "How long the mic must be active before triggering"
 msgstr "How long the mic must be active before triggering"
@@ -777,6 +809,10 @@ msgstr "Icons"
 #: src/settings/general/account.tsx
 msgid "If the browser does not reopen Notare, use the paste-link fallback in the sign-in instruction window."
 msgstr "If the browser does not reopen Notare, use the paste-link fallback in the sign-in instruction window."
+
+#: src/calendar/components/google/content.tsx
+msgid "If you see redirect URI / JavaScript origin fields, you picked Web — choose Desktop app instead."
+msgstr "If you see redirect URI / JavaScript origin fields, you picked Web — choose Desktop app instead."
 
 #: src/sidebar/timeline/upcoming-meeting.ts
 msgid "In {minutes}m {seconds}s"
@@ -1185,6 +1221,10 @@ msgstr "Open calendar account actions"
 msgid "Open floating panel"
 msgstr "Open floating panel"
 
+#: src/calendar/components/google/content.tsx
+msgid "Open Google Cloud console"
+msgstr "Open Google Cloud console"
+
 #: src/session/components/outer-header/overflow/index.tsx
 #: src/sidebar/timeline/item.tsx
 msgid "Open in New Window"
@@ -1560,6 +1600,10 @@ msgstr "Session title"
 #: src/templates/details.tsx
 msgid "Set as default"
 msgstr "Set as default"
+
+#: src/calendar/components/google/content.tsx
+msgid "Set up the OAuth consent screen: audience <0>External</0>, then add your own Gmail address as a test user."
+msgstr "Set up the OAuth consent screen: audience <0>External</0>, then add your own Gmail address as a test user."
 
 #: src/main/empty.tsx
 #: src/sidebar/settings.tsx

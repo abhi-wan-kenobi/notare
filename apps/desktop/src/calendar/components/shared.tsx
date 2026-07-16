@@ -58,4 +58,10 @@ const _PROVIDERS = [
   },
 ] as const satisfies readonly CalendarProvider[];
 
-export const PROVIDERS = [..._PROVIDERS];
+// "outlook" (the dead upstream Nango/Pro cloud integration) is hidden from the
+// UI — same treatment as the "hyprnote" cloud LLM provider. Unlike Google it
+// has no direct BYO-OAuth path yet. The entry stays in _PROVIDERS so ids/types
+// stay intact for persisted settings; unhide it here once a direct path exists.
+export const PROVIDERS = _PROVIDERS.filter(
+  (provider) => provider.id !== "outlook",
+);
