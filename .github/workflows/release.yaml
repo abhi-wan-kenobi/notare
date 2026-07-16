@@ -50,10 +50,19 @@ jobs:
       # not build workspace packages the app imports (e.g. @hypr/ui).
       - run: pnpm exec turbo run build --filter=@hypr/ui
 
+      # whisper.cpp's vulkan-shaders-gen nested CMake fails under the default
+      # Visual Studio generator (VCTargetsPath probe). Ninja inside an MSVC
+      # dev environment is the proven fix (same as local builds; see
+      # docs/BUILDING.md "Windows Vulkan build gotchas").
+      - uses: ilammy/msvc-dev-cmd@v1
+
       - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan
         env:
           CI: false
           LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
+          CMAKE_GENERATOR: Ninja
+          CC: cl
+          CXX: cl
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
