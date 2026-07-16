@@ -122,3 +122,19 @@ matches GPU expectations before trusting the build.
 - `crates/api-client` generates code from `crates/api-client/openapi.upstream.json`
   (a snapshot of the upstream cloud API — the live `apps/api` was stripped from
   this fork; the crate disappears with the cloud client code).
+
+### Windows Vulkan build gotchas (all three bite in sequence)
+
+1. **Use the Ninja generator** (`$env:CMAKE_GENERATOR = 'Ninja'`, run inside a
+   VS developer shell): whisper.cpp's `vulkan-shaders-gen` subproject fails
+   under the default Visual Studio generator (MSBuild `VCTargetsPath` probe).
+2. **Use a short cargo target dir** (`$env:CARGO_TARGET_DIR = 'C:\nb'`): the
+   shader generator nests its build ~230 chars deep; under the default
+   `apps\desktop\src-tauri\target` it hits Windows' 260-char MAX_PATH and
+   fails with `ninja: error: mkdir ... No such file or directory`.
+3. **If switching generators, delete stale `whisper-rs-sys-*` build dirs**
+   first — a CMakeCache from a Visual Studio attempt makes Ninja fail with
+   "does not support instance specification".
+
+Verified working recipe (2026-07-16, RTX 4080 machine): VS dev shell +
+Ninja + `CARGO_TARGET_DIR=C:\nb` + `CC=cl CXX=cl` + `--features gpu-vulkan`.
