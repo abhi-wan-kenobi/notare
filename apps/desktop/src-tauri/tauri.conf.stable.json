@@ -3,12 +3,19 @@
   "productName": "Notare",
   "mainBinaryName": "notare",
   "identifier": "be.abhishek.notare",
+  "version": "0.1.0",
+  "bundle": {
+    "publisher": "Abhishek Gupta",
+    "createUpdaterArtifacts": true,
+    "targets": ["msi", "deb", "appimage"]
+  },
   "plugins": {
     "deep-link": {
       "desktop": { "schemes": ["notare"] }
     },
     "updater": {
       "active": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZCMDJGNTk5OTMzNDA0NTYKUldSV0JEU1RtZlVDKzFwMW9JSW92aVpWVFJUTUsrZWVEbVVLSFJhaHozeFVjNEV2ajY2WE1DK28K",
       "endpoints": [
         "https://github.com/abhi-wan-kenobi/notare/releases/latest/download/latest.json"
       ]

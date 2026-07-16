@@ -1,0 +1,177 @@
+name: release
+
+# Signed stable releases with updater artifacts, published to GitHub Releases.
+# Triggered by pushing a v* tag. macOS is intentionally skipped for now
+# (no Apple signing certificates yet).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      # Sets VULKAN_SDK and puts its Bin (glslc.exe) on PATH; whisper-rs-sys's
+      # cmake finds the SDK through VULKAN_SDK.
+      - uses: humbletim/install-vulkan-sdk@v1.2
+        with:
+          version: 1.4.309.0
+          cache: true
+
+      # LLVM (libclang for bindgen) is preinstalled on windows-latest runners;
+      # install it only if the image ever drops it.
+      - shell: pwsh
+        run: |
+          if (!(Test-Path "C:\Program Files\LLVM\bin\libclang.dll")) {
+            choco install llvm -y --no-progress
+          }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: corepack enable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-gpu-vulkan
+
+      - run: pnpm install
+        env:
+          NODE_OPTIONS: ""
+
+      # tauri's beforeBuildCommand runs `pnpm -F desktop build`, which does
+      # not build workspace packages the app imports (e.g. @hypr/ui).
+      - run: pnpm exec turbo run build --filter=@hypr/ui
+
+      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan
+        env:
+          CI: false
+          LIBCLANG_PATH: 'C:\Program Files\LLVM\bin'
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundles-windows
+          path: |
+            apps/desktop/src-tauri/target/release/bundle/msi/*.msi
+            apps/desktop/src-tauri/target/release/bundle/msi/*.msi.sig
+          if-no-files-found: error
+
+  build-linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential file libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev xdg-utils libgtk-3-dev libgtk-4-dev \
+            libasound2-dev libudev-dev libpulse-dev libpipewire-0.3-dev libgraphene-1.0-dev \
+            pkg-config patchelf cmake libclang-dev clang libvulkan-dev glslc
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: corepack enable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-gpu-vulkan
+
+      - run: pnpm install
+        env:
+          NODE_OPTIONS: ""
+
+      - run: pnpm exec turbo run build --filter=@hypr/ui
+
+      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.stable.json --features gpu-vulkan
+        env:
+          CI: false
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundles-linux
+          path: |
+            apps/desktop/src-tauri/target/release/bundle/deb/*.deb
+            apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
+            apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage.sig
+          if-no-files-found: error
+
+  publish:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      # Flatten (upload-artifact preserves the bundle/<kind>/ subdirs) and
+      # build the updater manifest latest.json that the app polls.
+      - name: Assemble assets + latest.json
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          find artifacts -type f \( -name '*.msi' -o -name '*.msi.sig' -o -name '*.deb' -o -name '*.AppImage' -o -name '*.AppImage.sig' \) -exec cp {} release-assets/ \;
+          ls -la release-assets/
+
+          VERSION="${GITHUB_REF_NAME#v}"
+          TAG="${GITHUB_REF_NAME}"
+          REPO="${GITHUB_REPOSITORY}"
+
+          cd release-assets
+          MSI=$(ls *.msi)
+          APPIMAGE=$(ls *.AppImage)
+          [ -f "${MSI}.sig" ] || { echo "missing ${MSI}.sig"; exit 1; }
+          [ -f "${APPIMAGE}.sig" ] || { echo "missing ${APPIMAGE}.sig"; exit 1; }
+
+          urlenc() { jq -rn --arg s "$1" '$s|@uri'; }
+          MSI_URL="https://github.com/${REPO}/releases/download/${TAG}/$(urlenc "$MSI")"
+          APPIMAGE_URL="https://github.com/${REPO}/releases/download/${TAG}/$(urlenc "$APPIMAGE")"
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg win_sig "$(cat "${MSI}.sig")" \
+            --arg win_url "$MSI_URL" \
+            --arg lin_sig "$(cat "${APPIMAGE}.sig")" \
+            --arg lin_url "$APPIMAGE_URL" \
+            '{
+              version: $version,
+              notes: "See the release notes on GitHub.",
+              pub_date: $pub_date,
+              platforms: {
+                "windows-x86_64": { signature: $win_sig, url: $win_url },
+                "linux-x86_64": { signature: $lin_sig, url: $lin_url }
+              }
+            }' > latest.json
+          cat latest.json
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Notare ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            > **Note:** macOS builds are not part of this release yet (no Apple
+            > signing certificates). Windows builds are unsigned — SmartScreen
+            > will warn; choose "More info → Run anyway".
+          files: |
+            release-assets/*.msi
+            release-assets/*.msi.sig
+            release-assets/*.deb
+            release-assets/*.AppImage
+            release-assets/*.AppImage.sig
+            release-assets/latest.json
+          fail_on_unmatched_files: true
