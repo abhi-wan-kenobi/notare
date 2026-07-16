@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useId, useState } from "react";
 
 import { Input } from "@hypr/ui/components/ui/input";
 import { Switch } from "@hypr/ui/components/ui/switch";
+import { cn } from "@hypr/utils";
 
 import { SettingsPageTitle } from "~/settings/page-title";
 import { useSetSettingValue } from "~/settings/queries";
@@ -15,12 +16,15 @@ import { useSTTConnection } from "~/stt/useSTTConnection";
  * section on macOS, which keeps its native dictation path.
  */
 export function SettingsDictation() {
-  const { dictation_enabled, dictation_shortcut } = useConfigValues([
-    "dictation_enabled",
-    "dictation_shortcut",
-  ] as const);
+  const { dictation_enabled, dictation_shortcut, dictation_output_mode } =
+    useConfigValues([
+      "dictation_enabled",
+      "dictation_shortcut",
+      "dictation_output_mode",
+    ] as const);
   const setEnabled = useSetSettingValue("dictation_enabled");
   const setShortcut = useSetSettingValue("dictation_shortcut");
+  const setOutputMode = useSetSettingValue("dictation_output_mode");
 
   const { conn, isLocalModel } = useSTTConnection();
   const modelReady = isLocalModel && !!conn;
@@ -48,6 +52,13 @@ export function SettingsDictation() {
 
       <section>
         <h2 className="mb-4 font-sans text-lg font-semibold">
+          <Trans>Output</Trans>
+        </h2>
+        <OutputModeGroup value={dictation_output_mode} onChange={setOutputMode} />
+      </section>
+
+      <section>
+        <h2 className="mb-4 font-sans text-lg font-semibold">
           <Trans>Model</Trans>
         </h2>
         <p className="text-muted-foreground text-xs">
@@ -65,6 +76,77 @@ export function SettingsDictation() {
           )}
         </p>
       </section>
+    </div>
+  );
+}
+
+/**
+ * Where recognized speech goes. `type` = segments are typed into the focused
+ * app as they arrive; `batch-paste` = nothing is typed while dictating and
+ * the cleaned transcript is pasted once on stop (terminal-friendly).
+ */
+function OutputModeGroup({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const groupName = useId();
+  const selected = value === "batch-paste" ? "batch-paste" : "type";
+
+  const options = [
+    {
+      mode: "type",
+      title: <Trans>Type as you speak</Trans>,
+      description: (
+        <Trans>
+          Recognized text is typed straight into the focused app while you
+          talk.
+        </Trans>
+      ),
+    },
+    {
+      mode: "batch-paste",
+      title: <Trans>Paste when you stop</Trans>,
+      description: (
+        <Trans>
+          Nothing is typed while you talk; stopping cleans up the transcript,
+          copies it, and pastes it once. Best for terminals.
+        </Trans>
+      ),
+    },
+  ] as const;
+
+  return (
+    <div role="radiogroup" className="flex flex-col gap-2">
+      {options.map((option) => (
+        <label
+          key={option.mode}
+          className={cn([
+            "flex cursor-pointer items-start gap-3 rounded-lg border p-3",
+            "transition-colors duration-(--motion-duration-state)",
+            selected === option.mode
+              ? "border-primary/60 bg-accent/40"
+              : "border-border hover:bg-accent/20",
+          ])}
+        >
+          <input
+            type="radio"
+            name={groupName}
+            value={option.mode}
+            checked={selected === option.mode}
+            onChange={() => onChange(option.mode)}
+            className="accent-primary mt-0.5 shrink-0"
+          />
+          <span className="flex flex-col gap-1">
+            <span className="text-sm font-medium">{option.title}</span>
+            <span className="text-muted-foreground text-xs">
+              {option.description}
+            </span>
+          </span>
+        </label>
+      ))}
     </div>
   );
 }

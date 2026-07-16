@@ -37,7 +37,7 @@ pub fn type_text(text: &str) -> Result<(), Error> {
                 error = %direct_error,
                 "direct text injection failed; falling back to clipboard paste"
             );
-            paste_via_clipboard(text).map_err(|paste_error| {
+            paste_via_clipboard(text, true).map_err(|paste_error| {
                 Error::Inject(format!(
                     "direct injection failed ({direct_error}); clipboard fallback failed ({paste_error})"
                 ))
@@ -46,17 +46,42 @@ pub fn type_text(text: &str) -> Result<(), Error> {
     }
 }
 
+/// Batch-paste delivery: put `text` on the clipboard and synthesize Ctrl+V.
+/// Unlike the type-mode fallback, the previous clipboard contents are NOT
+/// restored - the dictated text intentionally stays available for repeated
+/// pastes. Blocking, like [`type_text`].
+pub fn paste_text(text: &str) -> Result<(), Error> {
+    if text.is_empty() {
+        return Ok(());
+    }
+    paste_via_clipboard(text, false).map_err(Error::Inject)
+}
+
+/// Put `text` on the clipboard without pasting (used to preserve a batch
+/// transcript when the session died before a clean stop).
+pub fn copy_text(text: &str) -> Result<(), Error> {
+    if text.is_empty() {
+        return Ok(());
+    }
+    let mut clipboard = arboard::Clipboard::new().map_err(|e| Error::Inject(e.to_string()))?;
+    clipboard
+        .set_text(text.to_string())
+        .map_err(|e| Error::Inject(e.to_string()))
+}
+
 fn type_direct(text: &str) -> Result<(), String> {
     let mut enigo = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
     enigo.text(text).map_err(|e| e.to_string())
 }
 
-/// Save the current clipboard text, replace it with `text`, synthesize
-/// Ctrl+V, then restore. Non-text clipboard contents (images, files) are not
-/// restored - acceptable for a fallback path.
-fn paste_via_clipboard(text: &str) -> Result<(), String> {
+/// Replace the clipboard text with `text` and synthesize Ctrl+V. With
+/// `restore` the previous clipboard text is saved and put back afterwards
+/// (type-mode fallback); non-text clipboard contents (images, files) are not
+/// restored - acceptable for a fallback path. Without `restore` the pasted
+/// text stays on the clipboard (batch-paste mode).
+fn paste_via_clipboard(text: &str, restore: bool) -> Result<(), String> {
     let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
-    let saved = clipboard.get_text().ok();
+    let saved = if restore { clipboard.get_text().ok() } else { None };
 
     clipboard
         .set_text(text.to_string())
@@ -65,11 +90,13 @@ fn paste_via_clipboard(text: &str) -> Result<(), String> {
 
     let paste_result = send_paste_chord();
 
-    std::thread::sleep(POST_PASTE_DELAY);
-    if let Some(previous) = saved
-        && let Err(error) = clipboard.set_text(previous)
-    {
-        tracing::warn!(%error, "failed to restore previous clipboard contents");
+    if restore {
+        std::thread::sleep(POST_PASTE_DELAY);
+        if let Some(previous) = saved
+            && let Err(error) = clipboard.set_text(previous)
+        {
+            tracing::warn!(%error, "failed to restore previous clipboard contents");
+        }
     }
 
     paste_result

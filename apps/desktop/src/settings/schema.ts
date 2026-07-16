@@ -29,6 +29,13 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "dictation_shortcut"],
     default: "ctrl+alt+space" as string,
   },
+  // "type" (segments typed live into the focused app) or "batch-paste"
+  // (accumulate; on stop clean + copy + paste once - terminal-friendly).
+  dictation_output_mode: {
+    type: "string",
+    path: ["general", "dictation_output_mode"],
+    default: "type" as string,
+  },
   floating_bar_opacity: {
     type: "number",
     path: ["general", "floating_bar_opacity"],

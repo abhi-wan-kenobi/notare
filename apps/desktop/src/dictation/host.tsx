@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef } from "react";
 
 import {
   commands as dictationCommands,
+  type DictationOutputMode,
   type DictationPhase,
   events as dictationEvents,
 } from "@hypr/plugin-dictation";
@@ -30,11 +31,19 @@ import { useSTTConnection } from "~/stt/useSTTConnection";
  */
 export function DictationOrbHost() {
   const isMacos = platform() === "macos";
-  const { dictation_enabled, dictation_shortcut } = useConfigValues([
-    "dictation_enabled",
-    "dictation_shortcut",
-  ] as const);
+  const { dictation_enabled, dictation_shortcut, dictation_output_mode } =
+    useConfigValues([
+      "dictation_enabled",
+      "dictation_shortcut",
+      "dictation_output_mode",
+    ] as const);
   const enabled = !isMacos && dictation_enabled;
+
+  // Sanitize the stored string; unknown values fall back to live typing.
+  const outputMode: DictationOutputMode =
+    dictation_output_mode === "batch-paste" ? "batch-paste" : "type";
+  const outputModeRef = useRef(outputMode);
+  outputModeRef.current = outputMode;
 
   const { conn, isLocalModel } = useSTTConnection();
   // Dictation streams to the internal whisper server, so only local models
@@ -60,7 +69,11 @@ export function DictationOrbHost() {
       return;
     }
 
-    void dictationCommands.startDictation(conn.baseUrl, conn.model);
+    void dictationCommands.startDictation(
+      conn.baseUrl,
+      conn.model,
+      outputModeRef.current,
+    );
   }, []);
 
   // Orb window lifecycle.

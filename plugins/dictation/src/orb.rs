@@ -9,10 +9,18 @@
 //! One critical difference: the orb is created with `focusable(false)` so
 //! clicking it never steals keyboard focus from the app being dictated into —
 //! otherwise the injected text would lose its target.
+//!
+//! The orb is draggable (the webview calls `startDragging()` past a small
+//! pointer threshold); its position is persisted to the store2 store on move
+//! (debounced) and restored - clamped to a visible monitor - on creation.
 
-use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, OnceLock};
+use std::time::Duration;
 
+use serde::{Deserialize, Serialize};
 use tauri::Manager;
+use tauri_plugin_store2::Store2PluginExt;
 
 use crate::error::Error;
 
@@ -20,6 +28,22 @@ pub const WINDOW_LABEL: &str = "dictation";
 
 const ORB_SIZE: f64 = 56.0;
 const BOTTOM_MARGIN: f64 = 32.0;
+
+/// store2 scope + key holding the persisted orb position (logical pixels).
+const STORE_SCOPE: &str = "dictation";
+const STORE_KEY_ORB_POSITION: &str = "orb_position";
+/// Move events stream continuously during a drag; writes are coalesced.
+const POSITION_SAVE_DEBOUNCE: Duration = Duration::from_millis(400);
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+struct OrbPosition {
+    x: f64,
+    y: f64,
+}
+
+/// Latest not-yet-persisted position + whether a save task is running.
+static PENDING_POSITION: Mutex<Option<OrbPosition>> = Mutex::new(None);
+static SAVE_TASK_RUNNING: AtomicBool = AtomicBool::new(false);
 
 /// Route served by the SPA for the orb window. Must match a route in
 /// `apps/desktop/src/routeTree.gen.ts` (`/app/dictation`).
@@ -104,7 +128,8 @@ fn get_or_create_window(
         }
     };
 
-    position_bottom_center(app, &window);
+    restore_position(app, &window);
+    watch_moves(&window);
 
     Ok(window)
 }
@@ -233,4 +258,143 @@ fn position_bottom_center(
     let x = position.x + ((size.width - ORB_SIZE) / 2.0);
     let y = position.y + size.height - ORB_SIZE - BOTTOM_MARGIN;
     let _ = window.set_position(tauri::LogicalPosition::new(x, y));
+}
+
+/// Place a newly created orb window at the persisted position (clamped to a
+/// visible monitor), falling back to the default bottom-center spot when
+/// nothing usable was saved (first run, or the saved monitor is gone).
+fn restore_position(
+    app: &tauri::AppHandle<tauri::Wry>,
+    window: &tauri::WebviewWindow<tauri::Wry>,
+) {
+    if let Some(saved) = load_saved_position(app)
+        && let Some(clamped) = clamp_to_visible_monitor(window, saved)
+    {
+        let _ = window.set_position(tauri::LogicalPosition::new(clamped.x, clamped.y));
+        return;
+    }
+
+    position_bottom_center(app, window);
+}
+
+fn load_saved_position(app: &tauri::AppHandle<tauri::Wry>) -> Option<OrbPosition> {
+    let store = app.store2().scoped_store::<String>(STORE_SCOPE).ok()?;
+    store
+        .get::<OrbPosition>(STORE_KEY_ORB_POSITION.to_string())
+        .ok()
+        .flatten()
+}
+
+/// Clamp `saved` so the orb lands fully inside the monitor its center falls
+/// on. Returns `None` when the center is on no current monitor (unplugged
+/// screen, changed layout) - the caller then uses the default position.
+fn clamp_to_visible_monitor(
+    window: &tauri::WebviewWindow<tauri::Wry>,
+    saved: OrbPosition,
+) -> Option<OrbPosition> {
+    let monitors = window.available_monitors().ok()?;
+
+    let center_x = saved.x + ORB_SIZE / 2.0;
+    let center_y = saved.y + ORB_SIZE / 2.0;
+
+    for monitor in monitors {
+        let scale = monitor.scale_factor();
+        let position = monitor.position().to_logical::<f64>(scale);
+        let size = monitor.size().to_logical::<f64>(scale);
+
+        let on_monitor = center_x >= position.x
+            && center_x <= position.x + size.width
+            && center_y >= position.y
+            && center_y <= position.y + size.height;
+        if !on_monitor {
+            continue;
+        }
+
+        return Some(OrbPosition {
+            x: saved
+                .x
+                .clamp(position.x, position.x + size.width - ORB_SIZE),
+            y: saved
+                .y
+                .clamp(position.y, position.y + size.height - ORB_SIZE),
+        });
+    }
+
+    None
+}
+
+/// Persist the window position (debounced) whenever the OS moves it - which
+/// includes the user dragging the orb via `startDragging()`.
+fn watch_moves(window: &tauri::WebviewWindow<tauri::Wry>) {
+    let app = window.app_handle().clone();
+    let win = window.clone();
+
+    window.on_window_event(move |event| {
+        let tauri::WindowEvent::Moved(position) = event else {
+            return;
+        };
+        let scale = win.scale_factor().unwrap_or(1.0);
+        let logical = position.to_logical::<f64>(scale);
+        schedule_position_save(
+            &app,
+            OrbPosition {
+                x: logical.x,
+                y: logical.y,
+            },
+        );
+    });
+}
+
+fn schedule_position_save(app: &tauri::AppHandle<tauri::Wry>, position: OrbPosition) {
+    {
+        let mut pending = PENDING_POSITION.lock().unwrap_or_else(|e| e.into_inner());
+        *pending = Some(position);
+    }
+
+    if SAVE_TASK_RUNNING.swap(true, Ordering::SeqCst) {
+        return;
+    }
+
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        loop {
+            tokio::time::sleep(POSITION_SAVE_DEBOUNCE).await;
+            let position = PENDING_POSITION
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .take();
+            let Some(position) = position else {
+                break;
+            };
+            persist_position(&app, position);
+        }
+
+        SAVE_TASK_RUNNING.store(false, Ordering::SeqCst);
+        // A move that landed between the final take() and the flag clear
+        // would otherwise be lost until the next drag.
+        let straggler = PENDING_POSITION
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+        if let Some(position) = straggler {
+            persist_position(&app, position);
+        }
+    });
+}
+
+fn persist_position(app: &tauri::AppHandle<tauri::Wry>, position: OrbPosition) {
+    let store = match app.store2().scoped_store::<String>(STORE_SCOPE) {
+        Ok(store) => store,
+        Err(error) => {
+            tracing::warn!(%error, "failed to open the store for the dictation orb position");
+            return;
+        }
+    };
+
+    if let Err(error) = store
+        .set(STORE_KEY_ORB_POSITION.to_string(), position)
+        .and_then(|()| store.save())
+    {
+        tracing::warn!(%error, "failed to persist the dictation orb position");
+    }
 }

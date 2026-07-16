@@ -60,12 +60,13 @@ async hideOrb() : Promise<Result<null, string>> {
 },
 /**
  * Start a dictation session against the local STT server. `base_url` is the
- * port-bearing URL returned by the local-stt plugin (`http://127.0.0.1:<port>/v1`)
- * and `model` the currently selected live STT model.
+ * port-bearing URL returned by the local-stt plugin (`http://127.0.0.1:<port>/v1`),
+ * `model` the currently selected live STT model and `output_mode` where the
+ * recognized text goes (typed live vs. paste-on-stop).
  */
-async startDictation(baseUrl: string, model: string) : Promise<Result<null, string>> {
+async startDictation(baseUrl: string, model: string, outputMode: DictationOutputMode) : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|start_dictation", { baseUrl, model }) };
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|start_dictation", { baseUrl, model, outputMode }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -129,6 +130,22 @@ dictationTranscriptEvent: "plugin:dictation:dictation-transcript-event"
  */
 export type DictationOrbClicked = Record<string, never>
 /**
+ * Where recognized speech goes (mirrors the `dictation_output_mode` setting;
+ * serialized as `"type"` / `"batch-paste"` so the two representations match).
+ */
+export type DictationOutputMode = 
+/**
+ * Final transcript segments are typed into the focused app as they
+ * arrive (the original behavior).
+ */
+"type" | 
+/**
+ * Nothing is typed while dictating; on stop the accumulated transcript
+ * is cleaned, copied to the clipboard and pasted once (terminal-friendly;
+ * the clipboard intentionally keeps the text for repeated pastes).
+ */
+"batch-paste"
+/**
  * Lifecycle of the persistent dictation orb (Windows/Linux webview path).
  * Distinct from [`Phase`], which drives the native macOS mini-panel.
  */
@@ -153,9 +170,15 @@ export type DictationPhase =
  * Broadcast by the Rust dictation session to every webview (the orb window
  * renders it; the main window can observe it to track session state).
  */
-export type DictationStateEvent = { phase: DictationPhase; amplitude: number }
+export type DictationStateEvent = { phase: DictationPhase; amplitude: number; 
 /**
- * A final transcript segment that was injected into the focused app.
+ * Output mode of the running session (the orb shows a subtle hint while
+ * batch mode records). `type` when idle.
+ */
+mode: DictationOutputMode }
+/**
+ * A final transcript segment that was delivered: typed into the focused app
+ * (`type` mode) or accumulated for the paste-on-stop buffer (`batch-paste`).
  */
 export type DictationTranscriptEvent = { text: string }
 export type Phase = "recording" | "processing"

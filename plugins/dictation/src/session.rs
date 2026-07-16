@@ -19,7 +19,9 @@ use tauri::Manager;
 use tauri_specta::Event;
 
 use crate::error::Error;
-use crate::events::{DictationPhase, DictationStateEvent, DictationTranscriptEvent};
+use crate::events::{
+    DictationOutputMode, DictationPhase, DictationStateEvent, DictationTranscriptEvent,
+};
 use crate::orb;
 
 /// Matches the whisper server's expected input (`TARGET_SAMPLE_RATE`,
@@ -50,7 +52,11 @@ pub fn is_running(app: &tauri::AppHandle<tauri::Wry>) -> bool {
     guard.is_some()
 }
 
-pub async fn start(base_url: String, model: String) -> Result<(), Error> {
+pub async fn start(
+    base_url: String,
+    model: String,
+    mode: DictationOutputMode,
+) -> Result<(), Error> {
     let app = orb::app_handle()?.clone();
 
     {
@@ -112,7 +118,7 @@ pub async fn start(base_url: String, model: String) -> Result<(), Error> {
         *guard = Some(ActiveSession { stop_tx });
     }
 
-    emit_state(&app, DictationPhase::Listening, 0.0);
+    emit_state(&app, DictationPhase::Listening, 0.0, mode);
 
     tauri::async_runtime::spawn(run_session(
         app,
@@ -121,6 +127,7 @@ pub async fn start(base_url: String, model: String) -> Result<(), Error> {
         listen_stream,
         ws_handle,
         stop_rx,
+        mode,
     ));
 
     Ok(())
@@ -141,12 +148,15 @@ async fn run_session(
     listen_stream: impl futures_util::Stream<Item = Result<StreamResponse, hypr_ws_client::Error>>,
     ws_handle: impl owhisper_client::FinalizeHandle,
     mut stop_rx: tokio::sync::oneshot::Receiver<()>,
+    mode: DictationOutputMode,
 ) {
     futures_util::pin_mut!(listen_stream);
 
     let mut finalizing = false;
     let mut failed = false;
     let mut typed_any = false;
+    // Batch-paste mode: final segments accumulate here instead of being typed.
+    let mut batch_buffer = String::new();
     let mut last_amplitude_at = std::time::Instant::now() - AMPLITUDE_INTERVAL;
 
     let finalize_deadline = tokio::time::sleep(Duration::from_secs(86_400));
@@ -156,7 +166,7 @@ async fn run_session(
         tokio::select! {
             _ = &mut stop_rx, if !finalizing => {
                 finalizing = true;
-                emit_state(&app, DictationPhase::Processing, 0.0);
+                emit_state(&app, DictationPhase::Processing, 0.0, mode);
                 ws_handle.finalize().await;
                 finalize_deadline
                     .as_mut()
@@ -173,6 +183,7 @@ async fn run_session(
                                 &app,
                                 DictationPhase::Listening,
                                 normalized_amplitude(&samples),
+                                mode,
                             );
                         }
 
@@ -198,7 +209,9 @@ async fn run_session(
             response = listen_stream.next() => {
                 match response {
                     Some(Ok(response)) => {
-                        let from_finalize = handle_response(&app, response, &mut typed_any).await;
+                        let from_finalize =
+                            handle_response(&app, response, mode, &mut typed_any, &mut batch_buffer)
+                                .await;
                         if from_finalize && finalizing {
                             break;
                         }
@@ -224,24 +237,62 @@ async fn run_session(
 
     drop(audio_tx);
 
+    if mode == DictationOutputMode::BatchPaste {
+        deliver_batch(&batch_buffer, failed).await;
+    }
+
     // Clear the slot (a normal stop already cleared it; error paths land here
     // with the slot still occupied).
     let state = app.state::<SessionState>();
     let _ = state.take();
 
     if failed {
-        emit_state(&app, DictationPhase::Error, 0.0);
+        emit_state(&app, DictationPhase::Error, 0.0, mode);
     } else {
-        emit_state(&app, DictationPhase::Idle, 0.0);
+        emit_state(&app, DictationPhase::Idle, 0.0, mode);
+    }
+}
+
+/// Batch-paste delivery at the end of a session: clean the accumulated
+/// transcript, copy it to the clipboard and paste it into the focused app.
+/// The clipboard is intentionally NOT restored so the text stays available
+/// for repeated pastes. When the session `failed`, only copy (no paste): the
+/// dictated text is preserved without typing into whatever is focused.
+async fn deliver_batch(batch_buffer: &str, failed: bool) {
+    let cleaned = crate::clean::clean_transcript(batch_buffer);
+    if cleaned.is_empty() {
+        return;
+    }
+
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        if failed {
+            crate::inject::copy_text(&cleaned)
+        } else {
+            crate::inject::paste_text(&cleaned)
+        }
+    })
+    .await;
+
+    match result {
+        Ok(Ok(())) => {}
+        Ok(Err(error)) => {
+            tracing::error!(%error, failed, "failed to deliver batch dictation transcript");
+        }
+        Err(error) => {
+            tracing::error!(%error, "batch dictation delivery task panicked");
+        }
     }
 }
 
 /// Processes one server message: injects final transcript segments into the
-/// focused app. Returns whether this was the post-Finalize flush marker.
+/// focused app (`type` mode) or accumulates them (`batch-paste` mode).
+/// Returns whether this was the post-Finalize flush marker.
 async fn handle_response(
     app: &tauri::AppHandle<tauri::Wry>,
     response: StreamResponse,
+    mode: DictationOutputMode,
     typed_any: &mut bool,
+    batch_buffer: &mut String,
 ) -> bool {
     let StreamResponse::TranscriptResponse {
         is_final,
@@ -256,6 +307,15 @@ async fn handle_response(
     let text = response.text().unwrap_or_default().trim().to_string();
 
     if is_final && !text.is_empty() {
+        if mode == DictationOutputMode::BatchPaste {
+            if !batch_buffer.is_empty() {
+                batch_buffer.push(' ');
+            }
+            batch_buffer.push_str(&text);
+            let _ = DictationTranscriptEvent { text }.emit(app);
+            return from_finalize;
+        }
+
         // Join consecutive segments with a single space; the first segment is
         // typed as-is so dictation continues cleanly from the caret.
         let to_type = if *typed_any {
@@ -284,8 +344,18 @@ async fn handle_response(
     from_finalize
 }
 
-fn emit_state(app: &tauri::AppHandle<tauri::Wry>, phase: DictationPhase, amplitude: f32) {
-    let _ = DictationStateEvent { phase, amplitude }.emit(app);
+fn emit_state(
+    app: &tauri::AppHandle<tauri::Wry>,
+    phase: DictationPhase,
+    amplitude: f32,
+    mode: DictationOutputMode,
+) {
+    let _ = DictationStateEvent {
+        phase,
+        amplitude,
+        mode,
+    }
+    .emit(app);
 }
 
 /// RMS -> dB -> [0, 1], roughly matching the feel of the meeting pipeline's
