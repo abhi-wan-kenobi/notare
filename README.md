@@ -1,52 +1,84 @@
 # Notare
 
-**Open-source, local-first meeting notetaker + dictation for macOS, Windows, and Linux.**
+**Open-source, local-first meeting notetaker + push-to-talk dictation for Windows and Linux (macOS coming).**
 
-One app, two modes:
+Notare records your meetings **locally** (system audio + microphone — no bots
+join your calls), transcribes them live on your GPU with whisper.cpp, and uses
+the transcript to *enhance the rough notes you actually typed* — notepad-first,
+not summary-slop-first. Everything lands as plain Markdown in any folder you
+choose, so your Obsidian vault (or any notes app) is the database.
 
-- **Meeting mode** — captures system + microphone audio locally (no bots join your
-  calls), transcribes with a pluggable STT backend, and *enhances your own rough
-  notes* with the transcript as context. Notes land as plain Markdown in a folder
-  you choose (e.g. an Obsidian vault).
-- **Dictation mode** — push-to-talk anywhere: speak, and the text is typed into
-  whatever app you're using.
+Hold a hotkey anywhere and it's also a system-wide **dictation** tool: speak,
+release, and the text is typed into whatever app has focus.
 
-Plus a **companion STT server** (Docker, NVIDIA CUDA + AMD Vulkan) exposing an
-OpenAI-compatible `/v1/audio/transcriptions` API with a web page for model
-management — point the desktop app at it and any GPU box on your LAN does the
-heavy lifting.
+🌐 [notare.dev](https://notare.dev)
+
+## Download
+
+Grab the latest installer from **[GitHub Releases](https://github.com/abhi-wan-kenobi/notare/releases/latest)**:
+
+| Platform | File |
+|---|---|
+| Windows 10/11 (x64) | `.msi` |
+| Linux (x64) | `.AppImage` or `.deb` |
+| macOS | *not yet — no signing certs; build from source* |
+
+Auto-updates are built in — install once and the app keeps itself current.
+
+> **Windows SmartScreen:** builds are not (yet) code-signed, so SmartScreen
+> will warn on first run. Click **More info → Run anyway**.
+
+## Highlights
+
+| | |
+|---|---|
+| 🎙️ **Meeting mode** | Captures system + mic audio locally; live transcription; no bot joins your call |
+| ⚡ **GPU transcription** | whisper.cpp with Vulkan (AMD/Intel/NVIDIA) — fast local STT on Windows *and* Linux |
+| ⌨️ **Dictation mode** | Push-to-talk anywhere; text is typed at your cursor, with output cleanup options |
+| 📝 **Notepad-first AI** | Your own notes are enhanced with the transcript as context — bring your own LLM (Ollama / OpenAI-compatible / Anthropic) |
+| 📁 **Plain Markdown** | Notes written straight into any folder — point it at your Obsidian vault |
+| 📅 **Calendar context** | Google Calendar via **your own** OAuth client — no shared middleman app |
+| 🖥️ **Companion STT server** | Optional Docker server (NVIDIA CUDA + AMD Vulkan) with an OpenAI-compatible `/v1/audio/transcriptions` API and web model admin |
+| 🔒 **Zero telemetry** | Analytics compiled out at build time; no accounts; nothing leaves your machine unless *you* configure a remote backend |
+| 🪪 **MIT licensed** | Fork-friendly, forever |
+
+## Screenshots
+
+*TODO — coming with the next release.*
 
 ## Principles
 
 - **Local-first, privacy-first.** Audio and transcripts never leave your machine
-  unless *you* configure a remote backend. No telemetry, period — the analytics
-  backend is compiled out. No accounts.
-- **BYO everything.** Your own STT models (HuggingFace), your own LLM endpoint
-  (Ollama / OpenAI-compatible / Anthropic), your own Google OAuth client for
-  calendar. No hosted service, no vendor lock-in.
+  unless *you* configure a remote backend. No telemetry, period. No accounts.
+- **BYO everything.** Your own STT models (HuggingFace), your own LLM endpoint,
+  your own Google OAuth client for calendar. No hosted service, no lock-in.
 - **Plain Markdown output.** Your notes vault is the database.
 - **Never trust a flag over the filesystem.** Model state is reconciled against
-  on-disk reality (sha256-verified) on every launch.
+  on-disk reality (checksum-verified) on every launch; corrupt models are
+  quarantined automatically.
 
-## Status
+## Build from source
 
-🚧 **Pre-alpha.** The codebase was just forked from
-[anarlog](https://github.com/fastrepl/anarlog) (fork point `c92cbbadf`,
-2026-07-14) and is being reshaped. See [`docs/PROJECT-BRIEF.md`](docs/PROJECT-BRIEF.md)
-for the full brief and [`docs/adr/`](docs/adr/) for architecture decisions.
-
-Headline goals over upstream: **shipped Windows and Linux support**, a unified
-**dictation mode**, a rebuilt self-healing **model manager**, and the
-**companion GPU STT server**.
+See [`docs/BUILDING.md`](docs/BUILDING.md). Short version: Rust + pnpm +
+Tauri v2; `pnpm install && pnpm -F desktop tauri build`. macOS users can build
+and run locally today — only the signed distribution is pending.
 
 ## Lineage & credits
 
 Notare is a friendly MIT fork of **[anarlog](https://github.com/fastrepl/anarlog)**
 (which started life as **Hyprnote**) by [Fastrepl](https://github.com/fastrepl) —
 an excellent local-first notetaker whose audio-capture and session core this
-project builds on. Dictation-mode inspiration:
-[OpenWhispr](https://github.com/OpenWhispr/openwhispr) and
-[Handy](https://github.com/cjpais/Handy).
+project builds on. Headline additions over upstream: **shipped Windows and
+Linux support**, a unified **dictation mode**, a rebuilt self-healing **model
+manager**, and the **companion GPU STT server**.
+
+Further inspiration: [Meetily](https://github.com/Zackriya-Solutions/meeting-minutes)
+(meeting-capture UX), [Handy](https://github.com/cjpais/Handy) and
+[OpenWhispr](https://github.com/OpenWhispr/openwhispr) (dictation), and the
+voice-orb visualisation crowd.
+
+More background: [`docs/PROJECT-BRIEF.md`](docs/PROJECT-BRIEF.md) and
+[`docs/adr/`](docs/adr/) for architecture decisions.
 
 ## License
 
