@@ -1,4 +1,4 @@
-import { disable, enable } from "@tauri-apps/plugin-autostart";
+import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { useCallback } from "react";
 
 import { commands as analyticsCommands } from "@hypr/plugin-analytics";
@@ -392,9 +392,26 @@ function parseJsonValue(value: string | undefined): unknown {
   }
 }
 
+async function syncAutostart(desired: boolean): Promise<void> {
+  if (desired) {
+    await enable();
+    return;
+  }
+
+  // On Windows, `disable()` deletes the HKCU "Run" registry value and fails
+  // with a bare "The system cannot find the file specified. (os error 2)"
+  // when autostart was never enabled. Only disable when actually enabled to
+  // keep that noise out of the error log.
+  if (await isEnabled()) {
+    await disable();
+  }
+}
+
 function applySettingSideEffects(values: SettingValues): void {
   if (values.autostart !== undefined) {
-    void (values.autostart ? enable() : disable()).catch(console.error);
+    void syncAutostart(values.autostart).catch((error) =>
+      console.error("Failed to sync autostart setting:", error),
+    );
   }
   if (values.respect_dnd !== undefined) {
     void detectCommands
