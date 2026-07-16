@@ -9,6 +9,11 @@ on:
         type: choice
         default: windows
         options: [windows, macos, linux]
+      gpu:
+        description: "GPU acceleration for whisper.cpp (windows/linux only)"
+        type: choice
+        default: none
+        options: [none, vulkan]
 
 jobs:
   build:
@@ -25,6 +30,20 @@ jobs:
             libasound2-dev libudev-dev libpulse-dev libpipewire-0.3-dev libgraphene-1.0-dev \
             pkg-config patchelf cmake libclang-dev clang
 
+      # Vulkan build deps: loader headers for find_package(Vulkan) + glslc for
+      # whisper.cpp's shader compilation (GGML_VULKAN).
+      - if: inputs.os == 'linux' && inputs.gpu == 'vulkan'
+        run: sudo apt-get install -y libvulkan-dev glslc
+
+      # Sets VULKAN_SDK and puts its Bin (glslc.exe) on PATH; whisper-rs-sys's
+      # cmake finds the SDK through VULKAN_SDK. Same action meetily uses for
+      # their Windows release default.
+      - if: inputs.os == 'windows' && inputs.gpu == 'vulkan'
+        uses: humbletim/install-vulkan-sdk@v1.2
+        with:
+          version: 1.4.309.0
+          cache: true
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -32,6 +51,8 @@ jobs:
       - run: corepack enable
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: gpu-${{ inputs.gpu }}
 
       - run: pnpm install
         env:
@@ -41,14 +62,14 @@ jobs:
       # not build workspace packages the app imports (e.g. @hypr/ui).
       - run: pnpm exec turbo run build --filter=@hypr/ui
 
-      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.citest.json
+      - run: pnpm -F desktop tauri build --config ./src-tauri/tauri.conf.citest.json ${{ inputs.gpu == 'vulkan' && inputs.os != 'macos' && '--features gpu-vulkan' || '' }}
         env:
           CI: false
           LIBCLANG_PATH: ${{ inputs.os == 'windows' && 'C:\Program Files\LLVM\bin' || '' }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: notare-${{ inputs.os }}
+          name: notare-${{ inputs.os }}${{ inputs.gpu == 'vulkan' && '-vulkan' || '' }}
           path: |
             apps/desktop/src-tauri/target/release/bundle/msi/*.msi
             apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg

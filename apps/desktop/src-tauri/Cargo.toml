@@ -108,10 +108,15 @@ default = []
 dev = ["dep:hypr-audio-mock"]
 devtools = ["tauri/devtools", "dep:hypr-audio-mock"]
 automation = ["tauri-plugin-automation"]
+# Vulkan GPU offload for whisper.cpp (covers NVIDIA/AMD/Intel on Windows+Linux).
+# Opt-in — building with it requires the Vulkan SDK (headers + glslc) on the
+# build machine; default builds stay CPU-only and need no SDK. See
+# docs/BUILDING.md "GPU builds (Vulkan)".
+gpu-vulkan = ["tauri-plugin-local-stt/vulkan"]
 
 # Compile the whisper.cpp engine on platforms that have no Argmax/Soniqo
-# runtime (those are Apple-Silicon-only). CPU inference by default; GPU
-# offload features (vulkan/cuda) are added in the STT-server phase.
+# runtime (those are Apple-Silicon-only). CPU inference by default; opt into
+# GPU offload with `--features gpu-vulkan` (see [features] above).
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp"] }
 
