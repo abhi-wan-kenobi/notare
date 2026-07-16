@@ -223,10 +223,16 @@ describe("EventListeners notification events", () => {
 
     render(<EventListeners />);
 
-    await vi.waitFor(() =>
-      expect(liveQuerySubscribeMock).toHaveBeenCalledTimes(1),
-    );
-    const handlers = liveQuerySubscribeMock.mock.calls[0]?.[2];
+    await vi.waitFor(() => {
+      expect(
+        liveQuerySubscribeMock.mock.calls.some((call) =>
+          String(call[0]).includes("owner_user_id"),
+        ),
+      ).toBe(true);
+    });
+    const handlers = liveQuerySubscribeMock.mock.calls.find((call) =>
+      String(call[0]).includes("owner_user_id"),
+    )?.[2];
     handlers.onData([
       {
         session_id: "session-1",
