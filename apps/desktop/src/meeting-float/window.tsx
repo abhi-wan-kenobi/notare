@@ -1,36 +1,65 @@
 import { useLingui } from "@lingui/react/macro";
-import { AppWindowIcon, CaptionsIcon, CaptionsOffIcon, SquareIcon } from "lucide-react";
+import {
+  AppWindowIcon,
+  CaptionsIcon,
+  CaptionsOffIcon,
+  SquareIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 import {
   events as windowsEvents,
   type FloatingBarState,
 } from "@hypr/plugin-windows";
-import { DancingSticks } from "@hypr/ui/components/ui/dancing-sticks";
 import { cn } from "@hypr/utils";
 
+import { RecordingOrb } from "./orb";
+
 /**
- * Webview-based floating meeting bar used on Windows/Linux.
+ * Webview-based floating meeting widget used on Windows/Linux.
  *
  * macOS renders a native NSPanel instead; on other platforms the Rust side of
  * the windows plugin creates a small always-on-top webview window pointing at
  * `/app/floating` and streams `FloatingBarStateEvent`s to it. Buttons talk
  * back to the main window through the same plugin events the native macOS bar
  * uses (`floatingBarStop`, `floatingBarOpenMain`, `floatingBarSettingsChange`).
+ *
+ * Design: docs/DESIGN-DIRECTION.md §3b — the orb inside a glass bar, with an
+ * expandable caption bubble underneath. When the OS window could not be
+ * created with transparency (known Windows limitation), the Rust side loads
+ * `/app/floating?solid=1` and this component renders the solid-surface
+ * variant instead of glass.
  */
-export function FloatingBarWindow() {
+export function FloatingBarWindow({ solid = false }: { solid?: boolean }) {
   const state = useFloatingBarState();
 
   useEffect(() => {
+    if (solid) {
+      return;
+    }
+
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
-  }, []);
+  }, [solid]);
+
+  // The widget colors come from the shared theme tokens; mirror the main
+  // window's applied scheme onto this webview's root element.
+  useEffect(() => {
+    if (!state) {
+      return;
+    }
+
+    document.documentElement.classList.toggle(
+      "dark",
+      state.colorScheme === "dark",
+    );
+  }, [state?.colorScheme]);
 
   if (!state) {
     return null;
   }
 
-  return <FloatingBarContent state={state} />;
+  return <FloatingBarContent state={state} solid={solid} />;
 }
 
 function useFloatingBarState() {
@@ -67,9 +96,14 @@ function useFloatingBarState() {
   return state;
 }
 
-function FloatingBarContent({ state }: { state: FloatingBarState }) {
+export function FloatingBarContent({
+  state,
+  solid = false,
+}: {
+  state: FloatingBarState;
+  solid?: boolean;
+}) {
   const { t } = useLingui();
-  const isDark = state.colorScheme === "dark";
   const isError = state.status === "error";
   const captionsVisible = !state.liveCaptionMinimized;
 
@@ -92,73 +126,83 @@ function FloatingBarContent({ state }: { state: FloatingBarState }) {
 
   return (
     <div
+      data-testid={solid ? "floating-bar-solid" : "floating-bar-glass"}
       className={cn([
-        "flex h-screen w-screen flex-col overflow-hidden rounded-xl border",
-        isDark
-          ? "border-white/10 text-neutral-100"
-          : "border-black/10 text-neutral-900",
+        "text-foreground flex h-screen w-screen flex-col overflow-hidden",
+        solid && "bg-background border-border rounded-xl border",
       ])}
-      style={{
-        backgroundColor: isDark
-          ? `rgba(23, 23, 23, ${state.opacity})`
-          : `rgba(250, 250, 250, ${state.opacity})`,
-      }}
     >
       <div
         data-tauri-drag-region
-        className="flex h-[52px] shrink-0 items-center gap-2 px-3"
+        className={cn([
+          "group/bar flex h-[52px] shrink-0 items-center gap-2.5 px-2.5",
+          solid
+            ? "border-border/80 border-b"
+            : "border-border/70 rounded-full border backdrop-blur-xl",
+        ])}
+        style={
+          solid
+            ? undefined
+            : {
+                backgroundColor: `hsl(var(--popover) / ${state.opacity})`,
+              }
+        }
       >
-        <span
-          data-tauri-drag-region
-          className="pointer-events-none flex size-4 shrink-0 items-center justify-center"
-        >
-          <DancingSticks
+        <span data-tauri-drag-region className="pointer-events-none shrink-0">
+          <RecordingOrb
+            state={isError ? "error" : "listening"}
             amplitude={state.amplitude}
-            color={isError ? "#f59e0b" : "#ef4444"}
-            height={16}
-            width={16}
+            size={32}
           />
         </span>
+        {!isError && (
+          <span
+            aria-hidden
+            className="bg-rec animate-orb-pulse shadow-glow-rec size-1.5 shrink-0 rounded-full motion-reduce:animate-none"
+          />
+        )}
         <span
           data-tauri-drag-region
-          className="min-w-0 flex-1 truncate text-xs font-medium"
+          className="min-w-0 flex-1 truncate text-[13px] font-medium"
         >
           {state.title}
         </span>
-        {state.liveCaptionToggleVisible ? (
+        <div
+          className={cn([
+            "flex shrink-0 items-center gap-0.5",
+            "opacity-60 transition-opacity duration-(--motion-duration-state)",
+            "group-hover/bar:opacity-100 focus-within:opacity-100",
+          ])}
+        >
+          {state.liveCaptionToggleVisible ? (
+            <FloatingBarButton
+              label={captionsVisible ? t`Hide captions` : t`Show captions`}
+              onClick={handleToggleCaptions}
+              active={captionsVisible}
+            >
+              {captionsVisible ? (
+                <CaptionsIcon className="size-4" />
+              ) : (
+                <CaptionsOffIcon className="size-4" />
+              )}
+            </FloatingBarButton>
+          ) : null}
           <FloatingBarButton
-            isDark={isDark}
-            label={captionsVisible ? t`Hide captions` : t`Show captions`}
-            onClick={handleToggleCaptions}
-            active={captionsVisible}
+            label={t`Open main window`}
+            onClick={handleOpenMain}
           >
-            {captionsVisible ? (
-              <CaptionsIcon className="size-4" />
-            ) : (
-              <CaptionsOffIcon className="size-4" />
-            )}
+            <AppWindowIcon className="size-4" />
           </FloatingBarButton>
-        ) : null}
-        <FloatingBarButton
-          isDark={isDark}
-          label={t`Open main window`}
-          onClick={handleOpenMain}
-        >
-          <AppWindowIcon className="size-4" />
-        </FloatingBarButton>
-        <FloatingBarButton
-          isDark={isDark}
-          label={t`Stop recording`}
-          onClick={handleStop}
-        >
-          <SquareIcon className="size-3.5 fill-red-500 text-red-500" />
-        </FloatingBarButton>
+          <FloatingBarButton label={t`Stop recording`} onClick={handleStop}>
+            <SquareIcon className="fill-rec text-rec size-3.5" />
+          </FloatingBarButton>
+        </div>
       </div>
       {captionsVisible ? (
         <FloatingBarCaptions
           bubbles={state.transcriptBubbles}
           lineCount={state.liveCaptionLineCount}
-          isDark={isDark}
+          solid={solid}
         />
       ) : null}
     </div>
@@ -168,13 +212,11 @@ function FloatingBarContent({ state }: { state: FloatingBarState }) {
 function FloatingBarButton({
   active = false,
   children,
-  isDark,
   label,
   onClick,
 }: {
   active?: boolean;
   children: React.ReactNode;
-  isDark: boolean;
   label: string;
   onClick: () => void;
 }) {
@@ -186,11 +228,11 @@ function FloatingBarButton({
       aria-pressed={active}
       onClick={onClick}
       className={cn([
-        "flex size-7 shrink-0 items-center justify-center rounded-md transition-colors",
-        isDark
-          ? "text-neutral-300 hover:bg-white/10 hover:text-white"
-          : "text-neutral-600 hover:bg-black/10 hover:text-black",
-        active ? (isDark ? "bg-white/15 text-white" : "bg-black/10 text-black") : null,
+        "flex size-7 shrink-0 items-center justify-center rounded-full",
+        "transition-colors duration-(--motion-duration-state)",
+        "text-muted-foreground hover:bg-accent hover:text-foreground",
+        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-hidden",
+        active && "bg-accent text-foreground",
       ])}
     >
       {children}
@@ -200,14 +242,19 @@ function FloatingBarButton({
 
 const VISIBLE_CAPTION_BUBBLES = 3;
 
+/**
+ * Expandable caption bubble: last lines of the live transcript on a raised
+ * glass surface. The newest line carries a cobalt live edge (glow =
+ * information); older lines commit to muted text (§3a two-tone mechanics).
+ */
 function FloatingBarCaptions({
   bubbles,
-  isDark,
   lineCount,
+  solid,
 }: {
   bubbles: FloatingBarState["transcriptBubbles"];
-  isDark: boolean;
   lineCount: number;
+  solid: boolean;
 }) {
   const { t } = useLingui();
   const visibleBubbles = bubbles.slice(-VISIBLE_CAPTION_BUBBLES);
@@ -216,17 +263,17 @@ function FloatingBarCaptions({
     <div
       data-testid="floating-bar-captions"
       className={cn([
-        "flex min-h-0 flex-1 flex-col justify-end overflow-hidden border-t px-3 pt-1.5 pb-2",
-        isDark ? "border-white/10" : "border-black/10",
+        "flex min-h-0 flex-1 flex-col justify-end overflow-hidden px-3 pt-1 pb-1.5",
+        solid
+          ? "border-border/80 border-t"
+          : "border-border/70 mt-1 rounded-[10px] border backdrop-blur-xl",
       ])}
+      style={
+        solid ? undefined : { backgroundColor: "hsl(var(--popover) / 0.92)" }
+      }
     >
       {visibleBubbles.length === 0 ? (
-        <p
-          className={cn([
-            "text-xs",
-            isDark ? "text-neutral-400" : "text-neutral-500",
-          ])}
-        >
+        <p className="text-muted-foreground animate-orb-pulse text-xs motion-reduce:animate-none">
           {t`Listening...`}
         </p>
       ) : (
@@ -239,10 +286,12 @@ function FloatingBarCaptions({
               className={cn([
                 "text-xs leading-[22px]",
                 isLatest
-                  ? ["shrink-0", lineCount > 1 ? "line-clamp-2" : "truncate"]
+                  ? [
+                      "border-primary/70 shrink-0 border-l-2 pl-2",
+                      lineCount > 1 ? "line-clamp-2" : "truncate",
+                    ]
                   : [
-                      "truncate",
-                      isDark ? "text-neutral-400" : "text-neutral-500",
+                      "text-muted-foreground truncate border-l-2 border-transparent pl-2",
                     ],
               ])}
             >

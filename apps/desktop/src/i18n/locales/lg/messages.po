@@ -437,6 +437,10 @@ msgstr ""
 msgid "Connect your integration"
 msgstr ""
 
+#: src/settings/ai/stt/select.tsx
+msgid "Connected"
+msgstr ""
+
 #: src/sidebar/contacts.tsx
 #: src/sidebar/settings.tsx
 #: src/sidebar/surface-nav.tsx
@@ -718,7 +722,11 @@ msgid "Filter synced items by {0}."
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
-msgid "Final & re-transcription model"
+#~ msgid "Final & re-transcription model"
+#~ msgstr ""
+
+#: src/settings/ai/stt/select.tsx
+msgid "Final pass & re-transcription"
 msgstr ""
 
 #: src/shared/open-note-dialog.tsx
@@ -958,8 +966,12 @@ msgid "Live transcript copied"
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
-msgid "Live transcription model"
+msgid "Live transcription"
 msgstr ""
+
+#: src/settings/ai/stt/select.tsx
+#~ msgid "Live transcription model"
+#~ msgstr ""
 
 #: src/onboarding/transcription.tsx
 msgid "Loading available models…"
@@ -1180,6 +1192,10 @@ msgstr "Tewali nnimi zikwatagana zizuuliddwa"
 
 #: src/session/components/note-input/transcript/renderer/speaker-assign.tsx
 msgid "No matching people"
+msgstr ""
+
+#: src/settings/ai/stt/select.tsx
+msgid "No models are available for this provider."
 msgstr ""
 
 #: src/settings/ai/shared/model-combobox.tsx
@@ -1555,6 +1571,10 @@ msgstr ""
 msgid "Retry"
 msgstr ""
 
+#: src/settings/ai/stt/select.tsx
+msgid "Reuses the live model for the accurate pass."
+msgstr ""
+
 #: src/settings/ai/shared/index.tsx
 #: src/settings/ai/stt/select.tsx
 msgid "Runs after the recording finishes, not during the meeting."
@@ -1635,7 +1655,6 @@ msgid "See all templates"
 msgstr ""
 
 #: src/settings/ai/shared/model-combobox.tsx
-#: src/settings/ai/stt/select.tsx
 msgid "Select a model"
 msgstr ""
 
@@ -1739,6 +1758,9 @@ msgid "Show floating bar"
 msgstr ""
 
 #: src/settings/ai/stt/select.tsx
+msgid "Show in file manager"
+msgstr ""
+
 #: src/sidebar/timeline/item.tsx
 msgid "Show in Finder"
 msgstr ""
@@ -1998,6 +2020,10 @@ msgstr ""
 
 #: src/settings/ai/stt/shared.tsx
 msgid "Transcribes English only."
+msgstr ""
+
+#: src/settings/ai/stt/select.tsx
+msgid "Transcribes while the meeting is happening. Pick a provider, then the model that listens live."
 msgstr ""
 
 #: src/session/components/note-input/header.tsx

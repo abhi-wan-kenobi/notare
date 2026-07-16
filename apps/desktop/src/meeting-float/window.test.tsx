@@ -1,4 +1,10 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FloatingBarState } from "@hypr/plugin-windows";
@@ -27,13 +33,11 @@ vi.mock("@hypr/plugin-windows", () => ({
   },
 }));
 
-vi.mock("@hypr/ui/components/ui/dancing-sticks", () => ({
-  DancingSticks: () => <span data-testid="dancing-sticks" />,
-}));
-
 import { FloatingBarWindow } from "./window";
 
-function makeState(overrides: Partial<FloatingBarState> = {}): FloatingBarState {
+function makeState(
+  overrides: Partial<FloatingBarState> = {},
+): FloatingBarState {
   return {
     amplitude: 0.4,
     title: "Weekly sync",
@@ -152,6 +156,54 @@ describe("FloatingBarWindow", () => {
 
     expect(screen.queryByTestId("floating-bar-captions")).toBeNull();
     expect(screen.queryByLabelText("Show captions")).toBeNull();
+  });
+
+  it("renders the orb in the listening state while recording", async () => {
+    render(<FloatingBarWindow />);
+    await act(async () => {});
+
+    await pushState(makeState());
+
+    const orb = screen.getByTestId("recording-orb");
+    expect(orb.getAttribute("data-orb-state")).toBe("listening");
+    expect(screen.queryByTestId("recording-orb-error-badge")).toBeNull();
+    expect(screen.getByTestId("floating-bar-glass")).toBeTruthy();
+  });
+
+  it("switches the orb to the error state", async () => {
+    render(<FloatingBarWindow />);
+    await act(async () => {});
+
+    await pushState(makeState({ status: "error" }));
+
+    const orb = screen.getByTestId("recording-orb");
+    expect(orb.getAttribute("data-orb-state")).toBe("error");
+    expect(screen.getByTestId("recording-orb-error-badge")).toBeTruthy();
+  });
+
+  it("mirrors the main window color scheme onto the document root", async () => {
+    render(<FloatingBarWindow />);
+    await act(async () => {});
+
+    await pushState(makeState({ colorScheme: "dark" }));
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+
+    await pushState(makeState({ colorScheme: "light" }));
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+  });
+
+  it("renders the solid fallback variant when transparency is unavailable", async () => {
+    document.documentElement.style.background = "";
+    document.body.style.background = "";
+
+    render(<FloatingBarWindow solid />);
+    await act(async () => {});
+
+    await pushState(makeState());
+
+    expect(screen.getByTestId("floating-bar-solid")).toBeTruthy();
+    expect(screen.queryByTestId("floating-bar-glass")).toBeNull();
+    expect(document.documentElement.style.background).not.toBe("transparent");
   });
 
   it("emits plugin events from the bar buttons", async () => {

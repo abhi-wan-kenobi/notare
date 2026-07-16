@@ -4,6 +4,7 @@ import { arch } from "@tauri-apps/plugin-os";
 import {
   AlertTriangle,
   Check,
+  DownloadIcon,
   FolderOpen,
   Loader2,
   Trash2,
@@ -41,6 +42,8 @@ import { resolveLiveLanguageSupportMode } from "./selection";
 import {
   displayModelLabel,
   formatModelSize,
+  modelBadgeAccentClassName,
+  modelBadgeNeutralClassName,
   type ProviderId,
   PROVIDERS,
   SttLanguageBadge,
@@ -108,10 +111,6 @@ export function SelectProviderAndModel() {
       : getPreferredProviderModel(selectedSttModel, selectedModels, {
           keepUnavailableSavedModel: true,
         });
-  const selectedModel = selectedModels.find(
-    (model) => model.id === displayedSttModel,
-  );
-
   const handleSelectProvider = useSetSettingValue("current_stt_provider");
 
   const handleSelectModel = useSetSettingValue("current_stt_model");
@@ -174,125 +173,96 @@ export function SelectProviderAndModel() {
         <SettingsAlert>{health.message}</SettingsAlert>
       )}
 
-      <h3 className="text-md font-sans font-semibold">
-        <Trans>Live transcription model</Trans>
-      </h3>
-      <div className="flex flex-row items-center gap-4">
-        <div className="min-w-0 flex-2" data-stt-provider-selector>
-          <Select
-            value={current_stt_provider || ""}
-            onValueChange={handleProviderChange}
+      <div className="flex items-center gap-2">
+        <h3 className="text-md font-sans font-semibold">
+          <Trans>Live transcription</Trans>
+        </h3>
+        <HealthStatusIndicator />
+        {isConfigured && health.status === "success" && (
+          <span
+            data-testid="stt-live-connected"
+            className="text-ok flex items-center gap-1 text-[11px] font-medium"
           >
-            <SelectTrigger className="bg-card shadow-none focus:ring-0">
-              <SelectValue placeholder={t`Select a provider`} />
-            </SelectTrigger>
-            <SelectContent>
-              {PROVIDERS.filter(({ disabled }) => !disabled).map((provider) => {
-                const configured =
-                  configuredProviders[provider.id]?.configured ?? false;
-                const requiresPro = requiresEntitlement(
-                  provider.requirements,
-                  "pro",
-                );
-                const locked = requiresPro && !billing.isPaid;
-                return (
-                  <SelectItem
-                    key={provider.id}
-                    value={provider.id}
-                    disabled={provider.disabled || locked}
-                    className={cn([
-                      "data-disabled:text-muted-foreground data-disabled:!opacity-100",
-                      !configured && !locked && "text-muted-foreground",
-                    ])}
-                  >
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-2">
-                        <ProviderIconSlot>{provider.icon}</ProviderIconSlot>
-                        <span>{provider.displayName}</span>
-                        {requiresPro ? (
-                          <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] tracking-wide uppercase">
-                            <Trans>Pro</Trans>
-                          </span>
-                        ) : null}
-                      </div>
-                      {locked ? (
-                        <span className="text-muted-foreground text-[11px]">
-                          <Trans>Upgrade to Pro to use this provider.</Trans>
+            <Check className="size-3.5 shrink-0" />
+            <Trans>Connected</Trans>
+          </span>
+        )}
+      </div>
+      <p className="text-muted-foreground -mt-2 text-sm">
+        <Trans>
+          Transcribes while the meeting is happening. Pick a provider, then the
+          model that listens live.
+        </Trans>
+      </p>
+
+      <div className="max-w-md" data-stt-provider-selector>
+        <Select
+          value={current_stt_provider || ""}
+          onValueChange={handleProviderChange}
+        >
+          <SelectTrigger className="bg-card shadow-none focus:ring-0">
+            <SelectValue placeholder={t`Select a provider`} />
+          </SelectTrigger>
+          <SelectContent>
+            {PROVIDERS.filter(({ disabled }) => !disabled).map((provider) => {
+              const configured =
+                configuredProviders[provider.id]?.configured ?? false;
+              const requiresPro = requiresEntitlement(
+                provider.requirements,
+                "pro",
+              );
+              const locked = requiresPro && !billing.isPaid;
+              return (
+                <SelectItem
+                  key={provider.id}
+                  value={provider.id}
+                  disabled={provider.disabled || locked}
+                  className={cn([
+                    "data-disabled:text-muted-foreground data-disabled:!opacity-100",
+                    !configured && !locked && "text-muted-foreground",
+                  ])}
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <ProviderIconSlot>{provider.icon}</ProviderIconSlot>
+                      <span>{provider.displayName}</span>
+                      {requiresPro ? (
+                        <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] tracking-wide uppercase">
+                          <Trans>Pro</Trans>
                         </span>
                       ) : null}
                     </div>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <span className="text-muted-foreground">/</span>
-
-        {current_stt_provider === "custom" ? (
-          <div className="min-w-0 flex-3">
-            <Input
-              value={displayedSttModel || ""}
-              onChange={(event) => handleModelChange(event.target.value)}
-              className="text-xs"
-              placeholder={t`Enter a model identifier`}
-            />
-          </div>
-        ) : (
-          <div className="min-w-0 flex-3">
-            <Select
-              value={displayedSttModel || ""}
-              onValueChange={handleModelChange}
-              disabled={selectedModels.length === 0}
-            >
-              <SelectTrigger
-                className={cn([
-                  "bg-card text-left shadow-none focus:ring-0",
-                  "[&>span]:!flex [&>span]:w-full [&>span]:min-w-0 [&>span]:items-center [&>span]:justify-start [&>span]:gap-2 [&>span]:overflow-visible [&>span]:[-webkit-line-clamp:unset]",
-                  isConfigured && "[&>svg:last-child]:hidden",
-                ])}
-              >
-                <SelectValue placeholder={t`Select a model`}>
-                  {selectedModel ? (
-                    <ModelSelectedValue model={selectedModel} />
-                  ) : undefined}
-                </SelectValue>
-                {isConfigured && <HealthStatusIndicator />}
-                {isConfigured && health.status === "success" && (
-                  <Check className="-mr-1 h-4 w-4 shrink-0 text-green-600" />
-                )}
-              </SelectTrigger>
-              <SelectContent align="end">
-                {selectedModels.map((model, i) => {
-                  const prevCategory =
-                    i > 0 ? selectedModels[i - 1].category : null;
-                  const showHeader =
-                    model.category && model.category !== prevCategory;
-                  const categoryLabel = showHeader
-                    ? getModelCategoryLabel(model.category)
-                    : null;
-                  return (
-                    <span key={model.id}>
-                      {categoryLabel && (
-                        <div className="text-muted-foreground px-2 pt-2 pb-1 text-[11px] font-medium tracking-wide uppercase">
-                          {categoryLabel}
-                        </div>
-                      )}
-                      <ModelSelectItem
-                        model={model}
-                        pairing="live"
-                        onDownload={() => startDownload(model.id as LocalModel)}
-                        onStartTrial={startTrial}
-                      />
-                    </span>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+                    {locked ? (
+                      <span className="text-muted-foreground text-[11px]">
+                        <Trans>Upgrade to Pro to use this provider.</Trans>
+                      </span>
+                    ) : null}
+                  </div>
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
       </div>
+
+      {current_stt_provider === "custom" ? (
+        <Input
+          value={displayedSttModel || ""}
+          onChange={(event) => handleModelChange(event.target.value)}
+          className="text-xs"
+          placeholder={t`Enter a model identifier`}
+        />
+      ) : current_stt_provider ? (
+        <ModelRowList
+          testId="stt-live-model-list"
+          models={selectedModels}
+          selectedId={displayedSttModel}
+          pairing="live"
+          onSelect={handleModelChange}
+          onDownload={(model) => startDownload(model as LocalModel)}
+          onStartTrial={startTrial}
+        />
+      ) : null}
     </div>
   );
 }
@@ -324,18 +294,11 @@ export function SelectFinalModel() {
   const selectedFinalModel = providerModels.find(
     (model) => model.id === finalModel,
   );
-  const selectValue = selectedFinalModel
-    ? selectedFinalModel.id
-    : FINAL_MODEL_SAME_AS_LIVE;
-
-  const handleChange = (value: string) => {
-    handleSelectFinalModel(value === FINAL_MODEL_SAME_AS_LIVE ? "" : value);
-  };
 
   return (
     <div className="flex flex-col gap-2">
       <h3 className="text-md font-sans font-semibold">
-        <Trans>Final & re-transcription model</Trans>
+        <Trans>Final pass & re-transcription</Trans>
       </h3>
       <p className="text-muted-foreground text-sm">
         <Trans>
@@ -352,42 +315,26 @@ export function SelectFinalModel() {
           placeholder={t`Same as live model`}
         />
       ) : (
-        <Select
-          value={selectValue}
-          onValueChange={handleChange}
-          disabled={providerModels.length === 0}
-        >
-          <SelectTrigger
-            className={cn([
-              "bg-card text-left shadow-none focus:ring-0",
-              "[&>span]:!flex [&>span]:w-full [&>span]:min-w-0 [&>span]:items-center [&>span]:justify-start [&>span]:gap-2 [&>span]:overflow-visible [&>span]:[-webkit-line-clamp:unset]",
-            ])}
-          >
-            <SelectValue placeholder={t`Same as live model`}>
-              {selectedFinalModel ? (
-                <ModelSelectedValue model={selectedFinalModel} />
-              ) : (
-                <span>
-                  <Trans>Same as live model</Trans>
-                </span>
-              )}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent align="end">
-            <SelectItem value={FINAL_MODEL_SAME_AS_LIVE}>
-              <Trans>Same as live model</Trans>
-            </SelectItem>
-            {providerModels.map((model) => (
-              <ModelSelectItem
-                key={model.id}
-                model={model}
-                pairing="final"
-                onDownload={() => startDownload(model.id as LocalModel)}
-                onStartTrial={startTrial}
-              />
-            ))}
-          </SelectContent>
-        </Select>
+        <ModelRowList
+          testId="stt-final-model-list"
+          models={providerModels}
+          selectedId={
+            selectedFinalModel
+              ? selectedFinalModel.id
+              : FINAL_MODEL_SAME_AS_LIVE
+          }
+          pairing="final"
+          onSelect={(id) =>
+            handleSelectFinalModel(id === FINAL_MODEL_SAME_AS_LIVE ? "" : id)
+          }
+          onDownload={(model) => startDownload(model as LocalModel)}
+          onStartTrial={startTrial}
+          leadingRow={{
+            id: FINAL_MODEL_SAME_AS_LIVE,
+            label: <Trans>Same as live model</Trans>,
+            hint: <Trans>Reuses the live model for the accurate pass.</Trans>,
+          }}
+        />
       )}
     </div>
   );
@@ -424,7 +371,9 @@ function TranscriptionLanguageWarningToastLifecycle({
     showTransientToast(
       {
         id: TRANSCRIPTION_LANGUAGE_WARNING_TOAST_ID,
-        icon: <AlertTriangle className="size-4 shrink-0 text-amber-500" />,
+        icon: (
+          <AlertTriangle className="text-alert-foreground size-4 shrink-0" />
+        ),
         description: "Model doesn't support all languages.",
         anchor: "main-content-panel",
         actions: [
@@ -713,14 +662,154 @@ function useConfiguredMapping(): Record<
   >;
 }
 
-function ModelSelectItem({
-  model,
+/**
+ * Always-visible model list (docs/DESIGN-DIRECTION.md §4.6): rows with the
+ * full identity of each model — name, engine, language/tier/backend/mode
+ * badges and the recommended-use hint — instead of a dropdown that hid them.
+ */
+function ModelRowList({
+  models,
+  selectedId,
   pairing,
+  onSelect,
+  onDownload,
+  onStartTrial,
+  leadingRow,
+  testId,
+}: {
+  models: ModelEntry[];
+  selectedId?: string;
+  pairing: "live" | "final";
+  onSelect: (id: string) => void;
+  onDownload: (id: string) => void;
+  onStartTrial: () => void;
+  leadingRow?: {
+    id: string;
+    label: React.ReactNode;
+    hint: React.ReactNode;
+  };
+  testId?: string;
+}) {
+  if (models.length === 0 && !leadingRow) {
+    return (
+      <p className="text-muted-foreground text-[13px]">
+        <Trans>No models are available for this provider.</Trans>
+      </p>
+    );
+  }
+
+  return (
+    <div
+      role="radiogroup"
+      data-testid={testId}
+      className="border-border divide-border bg-card divide-y overflow-hidden rounded-[10px] border"
+    >
+      {leadingRow ? (
+        <ModelRowShell
+          selected={selectedId === leadingRow.id}
+          selectable
+          onActivate={() => onSelect(leadingRow.id)}
+        >
+          <div className="min-w-0 flex-1">
+            <span className="text-[13px] font-medium">{leadingRow.label}</span>
+            <span className="text-muted-foreground mt-0.5 block min-w-0 truncate text-[11px]">
+              {leadingRow.hint}
+            </span>
+          </div>
+        </ModelRowShell>
+      ) : null}
+      {models.map((model, i) => {
+        const prevCategory = i > 0 ? models[i - 1].category : null;
+        const showHeader = model.category && model.category !== prevCategory;
+        const categoryLabel = showHeader
+          ? getModelCategoryLabel(model.category)
+          : null;
+
+        return (
+          <div key={model.id} className="divide-border divide-y">
+            {categoryLabel && (
+              <div className="text-muted-foreground bg-background/40 px-3 pt-2 pb-1 text-[10px] font-medium tracking-wide uppercase">
+                {categoryLabel}
+              </div>
+            )}
+            <ModelRow
+              model={model}
+              selected={selectedId === model.id}
+              pairing={pairing}
+              onSelect={() => onSelect(model.id)}
+              onDownload={() => onDownload(model.id)}
+              onStartTrial={onStartTrial}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ModelRowShell({
+  selected,
+  selectable,
+  onActivate,
+  children,
+}: {
+  selected: boolean;
+  selectable: boolean;
+  onActivate: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      role="radio"
+      aria-checked={selected}
+      tabIndex={selectable ? 0 : -1}
+      onClick={selectable ? onActivate : undefined}
+      onKeyDown={
+        selectable
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onActivate();
+              }
+            }
+          : undefined
+      }
+      className={cn([
+        "group/model-row relative flex items-start gap-2.5 px-3 py-2 text-left outline-hidden",
+        "transition-colors duration-(--motion-duration-state)",
+        selectable && "hover:bg-accent/50 cursor-pointer",
+        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-inset",
+        selected && "bg-primary/5",
+      ])}
+    >
+      <span
+        aria-hidden
+        className={cn([
+          "mt-1 size-3.5 shrink-0 rounded-full border transition-colors duration-(--motion-duration-state)",
+          selected
+            ? "border-primary border-[4.5px]"
+            : selectable
+              ? "border-border group-hover/model-row:border-muted-foreground"
+              : "border-border border-dashed",
+        ])}
+      />
+      {children}
+    </div>
+  );
+}
+
+function ModelRow({
+  model,
+  selected,
+  pairing,
+  onSelect,
   onDownload,
   onStartTrial,
 }: {
   model: ModelEntry;
-  pairing?: "live" | "final";
+  selected: boolean;
+  pairing: "live" | "final";
+  onSelect: () => void;
   onDownload: () => void;
   onStartTrial: () => void;
 }) {
@@ -733,60 +822,12 @@ function ModelSelectItem({
   const sizeLabel = formatModelSize(model.sizeBytes);
   const showLocalActions = model.isDownloaded && isLocalModelId(model.id);
   const isDeprecated = model.isDeprecated === true;
-  const content = (
-    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-      <div className="flex min-w-0 items-center justify-between gap-3">
-        <LocalModelLabel
-          model={model.id}
-          label={label}
-          title={model.engine}
-          className="min-w-0 flex-1"
-        />
-        <div className="flex shrink-0 items-center gap-2 text-[11px]">
-          <SttLanguageBadge
-            languages={model.languages}
-            languageCount={model.languageCount}
-          />
-          <SttTierBadge tier={model.tier} />
-          <LocalModelBackendBadge model={model.id} />
-          <ModelModeBadge mode={model.mode} />
-          {!model.isDownloaded && sizeLabel && (
-            <span className="text-muted-foreground font-mono">{sizeLabel}</span>
-          )}
-        </div>
-      </div>
-      <SttModelUseHint
-        use={model.recommendedUse}
-        pairing={pairing}
-        className="pl-7"
-      />
-    </div>
-  );
 
-  if (model.isDownloaded) {
-    return (
-      <div className="group/model-row relative overflow-hidden rounded-full">
-        <SelectItem
-          key={model.id}
-          value={model.id}
-          className={cn([
-            "group-hover/model-row:bg-accent group-hover/model-row:text-accent-foreground",
-            showLocalActions && "pr-20",
-            isDeprecated && "text-muted-foreground focus:text-muted-foreground",
-          ])}
-        >
-          {content}
-        </SelectItem>
-        {showLocalActions && (
-          <LocalModelDropdownActions model={model.id as LocalModel} />
-        )}
-      </div>
-    );
-  }
-
-  const handleAction = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleActivate = () => {
+    if (model.isDownloaded) {
+      onSelect();
+      return;
+    }
     if (isDownloading) {
       return;
     }
@@ -798,65 +839,91 @@ function ModelSelectItem({
   };
 
   return (
-    <div
-      className={cn([
-        "relative flex items-center justify-between",
-        "rounded-full py-1.5 text-sm outline-hidden",
-        isCloud ? "pr-1.5 pl-2" : "px-2",
-        "cursor-pointer select-none",
-        "hover:bg-accent hover:text-accent-foreground",
-        "group",
-      ])}
+    <ModelRowShell
+      selected={selected}
+      selectable={model.isDownloaded}
+      onActivate={handleActivate}
     >
-      <div className="text-muted-foreground min-w-0 flex-1">{content}</div>
-      {isDownloading ? (
-        <span
-          className={cn([
-            "rounded-full px-2 py-0.5 text-[11px] font-medium",
-            "flex items-center gap-1",
-            "from-muted to-accent text-muted-foreground bg-linear-to-t",
-          ])}
-        >
-          <Loader2 className="size-3 animate-spin" />
-          <span>{Math.round(downloadInfo.progress)}%</span>
-        </span>
-      ) : (
-        <button
-          className={cn([
-            "rounded-full px-2 text-[11px] font-medium",
-            "opacity-0 group-hover:opacity-100",
-            "transition-all duration-150",
-            isCloud
-              ? "bg-primary text-primary-foreground hover:bg-primary/90 py-1 shadow-xs hover:shadow-md dark:!bg-white dark:!text-black dark:hover:!bg-white/90"
-              : "from-muted to-accent text-foreground bg-linear-to-t py-0.5 shadow-xs hover:shadow-md",
-          ])}
-          onClick={handleAction}
-        >
-          {isCloud ? <Trans>Upgrade to use</Trans> : <Trans>Download</Trans>}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function ModelSelectedValue({ model }: { model: ModelEntry }) {
-  const isDeprecated = model.isDeprecated === true;
-
-  return (
-    <div className="flex max-w-full min-w-0 items-center gap-2">
-      <LocalModelLabel
-        model={model.id}
-        label={modelEntryLabel(model)}
-        title={model.engine}
-        className={cn(["min-w-0", isDeprecated && "opacity-60"])}
-        labelClassName={cn([isDeprecated && "text-muted-foreground"])}
-      />
-      <SttLanguageBadge
-        languages={model.languages}
-        languageCount={model.languageCount}
-      />
-      <ModelModeBadge mode={model.mode} />
-    </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <LocalModelLabel
+            model={model.id}
+            label={label}
+            className={cn([
+              "min-w-0 text-[13px] font-medium",
+              (!model.isDownloaded || isDeprecated) && "text-muted-foreground",
+            ])}
+          />
+          {model.engine ? (
+            <span className="text-muted-foreground shrink-0 font-mono text-[11px]">
+              {model.engine}
+            </span>
+          ) : null}
+          <SttLanguageBadge
+            languages={model.languages}
+            languageCount={model.languageCount}
+          />
+          <SttTierBadge tier={model.tier} />
+          <LocalModelBackendBadge model={model.id} />
+          <ModelModeBadge mode={model.mode} />
+        </div>
+        <SttModelUseHint
+          use={model.recommendedUse}
+          pairing={pairing}
+          className="mt-0.5 block"
+        />
+      </div>
+      <div className="flex shrink-0 items-center gap-1 self-center">
+        {showLocalActions && (
+          <LocalModelRowActions model={model.id as LocalModel} />
+        )}
+        {!model.isDownloaded &&
+          (isDownloading ? (
+            <span
+              className={cn([
+                "flex items-center gap-1 rounded-full px-2 py-0.5",
+                "border-primary/25 bg-primary/10 text-primary border text-[11px] font-medium",
+              ])}
+            >
+              <Loader2 className="size-3 animate-spin" />
+              <span className="font-mono">
+                {Math.round(downloadInfo.progress)}%
+              </span>
+            </span>
+          ) : (
+            <>
+              {sizeLabel && (
+                <span className="text-muted-foreground font-mono text-[11px]">
+                  {sizeLabel}
+                </span>
+              )}
+              <button
+                type="button"
+                className={cn([
+                  "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                  "transition-colors duration-(--motion-duration-state)",
+                  isCloud
+                    ? "border-primary/25 bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "border-border text-foreground hover:border-primary/40 hover:text-primary",
+                ])}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleActivate();
+                }}
+              >
+                {isCloud ? (
+                  <Trans>Upgrade to use</Trans>
+                ) : (
+                  <>
+                    <DownloadIcon className="size-3" />
+                    <Trans>Download</Trans>
+                  </>
+                )}
+              </button>
+            </>
+          ))}
+      </div>
+    </ModelRowShell>
   );
 }
 
@@ -872,10 +939,8 @@ function ModelModeBadge({ mode }: { mode?: ModelEntry["mode"] }) {
       <TooltipTrigger asChild>
         <span
           className={cn([
-            "shrink-0 cursor-help rounded-md px-1.5 py-0.5 text-[11px] font-medium",
-            isRealtime
-              ? "bg-sky-50 text-sky-700"
-              : "bg-muted text-muted-foreground",
+            "shrink-0 cursor-help rounded-md border px-1.5 py-0.5 text-[10px] leading-none font-medium",
+            isRealtime ? modelBadgeAccentClassName : modelBadgeNeutralClassName,
           ])}
         >
           {isRealtime ? <Trans>Live</Trans> : <Trans>After recording</Trans>}
@@ -898,12 +963,11 @@ function isLocalModelId(model: string): model is LocalModel {
   return isSupportedLocalSttModel(model);
 }
 
-function LocalModelDropdownActions({ model }: { model: LocalModel }) {
+function LocalModelRowActions({ model }: { model: LocalModel }) {
   const { t } = useLingui();
   const queryClient = useQueryClient();
 
-  const stopSelect = (event: React.SyntheticEvent<HTMLButtonElement>) => {
-    event.preventDefault();
+  const stopActivate = (event: React.SyntheticEvent<HTMLButtonElement>) => {
     event.stopPropagation();
   };
 
@@ -932,22 +996,21 @@ function LocalModelDropdownActions({ model }: { model: LocalModel }) {
   return (
     <div
       className={cn([
-        "absolute top-0 right-0 bottom-0 z-10 flex items-center justify-end gap-1 rounded-r-full pl-6",
-        "pointer-events-none opacity-0 transition-opacity duration-150",
-        "group-hover/model-row:pointer-events-auto group-hover/model-row:opacity-100",
-        "group-focus-within/model-row:pointer-events-auto group-focus-within/model-row:opacity-100",
+        "flex items-center gap-1",
+        "opacity-0 transition-opacity duration-(--motion-duration-state)",
+        "group-hover/model-row:opacity-100",
+        "group-focus-within/model-row:opacity-100",
       ])}
     >
       <button
         type="button"
-        aria-label={t`Show in Finder`}
+        aria-label={t`Show in file manager`}
         className={cn([
           "flex size-6 items-center justify-center rounded-full",
           "text-muted-foreground hover:text-foreground",
         ])}
-        onPointerDown={stopSelect}
         onClick={(event) => {
-          stopSelect(event);
+          stopActivate(event);
           handleOpen();
         }}
       >
@@ -958,11 +1021,10 @@ function LocalModelDropdownActions({ model }: { model: LocalModel }) {
         aria-label={t`Delete model`}
         className={cn([
           "flex size-6 items-center justify-center rounded-full",
-          "text-red-500 hover:text-red-600",
+          "text-destructive hover:text-destructive/80",
         ])}
-        onPointerDown={stopSelect}
         onClick={(event) => {
-          stopSelect(event);
+          stopActivate(event);
           handleDelete();
         }}
       >

@@ -44,7 +44,11 @@
 
   /* Glow recipe: outer soft glow + 1px inset border, live states only */
   --shadow-glow-accent:
-    0 0 32px hsl(var(--primary) / 0.12), inset 0 0 0 1px hsl(var(--primary) / 0.4);
+    0 0 32px hsl(var(--primary) / 0.12), inset 0 0 0 1px hsl(
+    var(--primary)
+    /
+    0.4
+  );
   --shadow-glow-rec:
     0 0 32px hsl(var(--rec) / 0.15), inset 0 0 0 1px hsl(var(--rec) / 0.4);
   --shadow-glow-ok:
@@ -67,6 +71,27 @@
   --animate-kbd-press: kbd-press 0.4s ease-out forwards;
 
   --animate-wiggle: wiggle 1s ease-in-out infinite;
+
+  /* The orb (docs/DESIGN-DIRECTION.md §3b) — the one element allowed
+     continuous animation: slow idle hue drift + soft live pulse. */
+  --animate-orb-spin: orb-spin 7s linear infinite;
+  --animate-orb-pulse: orb-pulse 2.4s ease-in-out infinite;
+
+  @keyframes orb-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  @keyframes orb-pulse {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
 
   @keyframes wiggle {
     0%, 100% {

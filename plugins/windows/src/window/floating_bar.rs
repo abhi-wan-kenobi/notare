@@ -172,10 +172,12 @@ mod platform {
             return (BAR_WIDTH, BAR_HEIGHT);
         }
 
-        let width = state
-            .live_caption_width
-            .clamp(BAR_WIDTH, MAX_CAPTION_WIDTH);
-        let line_count = f64::from(state.live_caption_line_count.clamp(1, MAX_CAPTION_LINE_COUNT));
+        let width = state.live_caption_width.clamp(BAR_WIDTH, MAX_CAPTION_WIDTH);
+        let line_count = f64::from(
+            state
+                .live_caption_line_count
+                .clamp(1, MAX_CAPTION_LINE_COUNT),
+        );
         let caption_height = (line_count * CAPTION_LINE_HEIGHT) + CAPTION_VERTICAL_PADDING;
 
         (width, BAR_HEIGHT + caption_height)
@@ -185,70 +187,113 @@ mod platform {
     /// route in `apps/desktop/src/routeTree.gen.ts` (`/app/floating`), same
     /// `WebviewUrl::App` pattern the v1 windows use (e.g. `/app`).
     const WINDOW_URL: &str = "/app/floating";
+    /// Same route, telling the webview to render its solid-surface variant
+    /// (used when the OS refuses a transparent window; see
+    /// `get_or_create_window`).
+    const SOLID_WINDOW_URL: &str = "/app/floating?solid=1";
+
+    /// `bg` token of the dark theme (`#0B0D12`, docs/DESIGN-DIRECTION.md §2),
+    /// used as the window background of the solid fallback so the corners
+    /// blend with the widget surface.
+    const SOLID_BACKGROUND: tauri::window::Color = tauri::window::Color(0x0B, 0x0D, 0x12, 0xFF);
 
     fn get_or_create_window(
         app: &tauri::AppHandle<tauri::Wry>,
     ) -> Result<tauri::WebviewWindow<tauri::Wry>, Error> {
-        use tauri::{WebviewUrl, WebviewWindow};
-
         if let Some(window) = app.get_webview_window(WINDOW_LABEL) {
             // A window whose OS-side creation failed earlier stays registered
             // in the manager as a "ghost": commands against it are silently
             // dropped, so the bar would never appear and never error. Probe it
-            // through the event loop so we report that state instead.
-            return match window.is_visible() {
-                Ok(_) => Ok(window),
+            // through the event loop; if it is not backed by an OS window,
+            // destroy the ghost and recreate instead of failing until the app
+            // restarts.
+            match window.is_visible() {
+                Ok(_) => return Ok(window),
                 Err(error) => {
-                    tracing::error!(
+                    tracing::warn!(
                         %error,
                         label = WINDOW_LABEL,
-                        "existing floating bar window is not backed by an OS window; \
-                         its creation likely failed earlier (see `tauri_runtime_wry` \
-                         errors in the log). Restart the app to recover."
+                        "existing floating bar window is not backed by an OS window \
+                         (earlier creation failed; see `tauri_runtime_wry` errors in \
+                         the log); destroying the ghost and recreating"
                     );
-                    Err(Error::PanelError(format!(
-                        "floating bar window `{WINDOW_LABEL}` exists but is not \
-                         usable (earlier creation failed): {error}"
-                    )))
+                    destroy_and_wait_unregistered(app, &window);
                 }
-            };
+            }
         }
 
-        let window = WebviewWindow::builder(
-            app,
-            WINDOW_LABEL,
-            WebviewUrl::App(WINDOW_URL.into()),
-        )
-        .title(
-            app.config()
-                .product_name
-                .clone()
-                .unwrap_or_else(|| "Notare".to_string()),
-        )
-        .decorations(false)
-        .resizable(false)
-        .maximizable(false)
-        .minimizable(false)
-        .always_on_top(true)
-        .visible_on_all_workspaces(true)
-        .skip_taskbar(true)
-        .shadow(false)
-        .transparent(true)
-        .focused(false)
-        .visible(false)
-        .inner_size(BAR_WIDTH, BAR_HEIGHT)
-        .disable_drag_drop_handler()
-        .build()
-        .map_err(|error| {
+        let window = match build_window(app, true) {
+            Ok(window) => window,
+            Err(error) => {
+                // Known failure mode on Windows: transparent window creation
+                // can fail depending on the WebView2/compositor environment.
+                // Fall back to an opaque window and let the webview render
+                // the solid variant (`?solid=1`).
+                tracing::warn!(
+                    %error,
+                    label = WINDOW_LABEL,
+                    "transparent floating bar window failed to create; \
+                     retrying with a solid background"
+                );
+                if let Some(ghost) = app.get_webview_window(WINDOW_LABEL) {
+                    destroy_and_wait_unregistered(app, &ghost);
+                }
+                build_window(app, false)?
+            }
+        };
+
+        position_top_center(app, &window);
+
+        Ok(window)
+    }
+
+    fn build_window(
+        app: &tauri::AppHandle<tauri::Wry>,
+        transparent: bool,
+    ) -> Result<tauri::WebviewWindow<tauri::Wry>, Error> {
+        use tauri::{WebviewUrl, WebviewWindow};
+
+        let url = if transparent {
+            WINDOW_URL
+        } else {
+            SOLID_WINDOW_URL
+        };
+
+        let mut builder = WebviewWindow::builder(app, WINDOW_LABEL, WebviewUrl::App(url.into()))
+            .title(
+                app.config()
+                    .product_name
+                    .clone()
+                    .unwrap_or_else(|| "Notare".to_string()),
+            )
+            .decorations(false)
+            .resizable(false)
+            .maximizable(false)
+            .minimizable(false)
+            .always_on_top(true)
+            .visible_on_all_workspaces(true)
+            .skip_taskbar(true)
+            .shadow(false)
+            .transparent(transparent)
+            .focused(false)
+            .visible(false)
+            .inner_size(BAR_WIDTH, BAR_HEIGHT)
+            .disable_drag_drop_handler();
+        if !transparent {
+            builder = builder.background_color(SOLID_BACKGROUND);
+        }
+
+        let window = builder.build().map_err(|error| {
             tracing::error!(
                 %error,
                 label = WINDOW_LABEL,
-                url = WINDOW_URL,
+                url,
+                transparent,
                 "failed to build floating bar window"
             );
             Error::PanelError(format!(
                 "failed to create floating bar window `{WINDOW_LABEL}` \
-                 (url `{WINDOW_URL}`): {error}"
+                 (url `{url}`): {error}"
             ))
         })?;
 
@@ -261,7 +306,8 @@ mod platform {
             tracing::error!(
                 %error,
                 label = WINDOW_LABEL,
-                url = WINDOW_URL,
+                url,
+                transparent,
                 "floating bar window did not materialize after build; check \
                  the log for `tauri_runtime_wry` window/webview creation errors"
             );
@@ -272,11 +318,37 @@ mod platform {
             )));
         }
 
-        tracing::info!(label = WINDOW_LABEL, url = WINDOW_URL, "created floating bar window");
-
-        position_top_center(app, &window);
+        tracing::info!(
+            label = WINDOW_LABEL,
+            url,
+            transparent,
+            "created floating bar window"
+        );
 
         Ok(window)
+    }
+
+    /// `destroy()` is dispatched through the event loop, so the label can
+    /// still be registered for a short while afterwards; wait it out so an
+    /// immediate rebuild with the same label does not collide.
+    fn destroy_and_wait_unregistered(
+        app: &tauri::AppHandle<tauri::Wry>,
+        window: &tauri::WebviewWindow<tauri::Wry>,
+    ) {
+        let _ = window.destroy();
+
+        for _ in 0..25 {
+            if app.get_webview_window(WINDOW_LABEL).is_none() {
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+
+        tracing::warn!(
+            label = WINDOW_LABEL,
+            "floating bar window still registered after destroy; the rebuild \
+             may fail with a duplicate-label error"
+        );
     }
 
     fn position_top_center(
