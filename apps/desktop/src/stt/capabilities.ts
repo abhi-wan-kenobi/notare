@@ -49,6 +49,10 @@ export function isSupportedLocalSttModel(
   );
 }
 
+export function isWhisperLocalSttModel(model?: string | null) {
+  return typeof model === "string" && model.startsWith("Quantized");
+}
+
 export function isHyprnoteCloudSttModel(
   provider?: string | null,
   model?: string | null,
@@ -148,6 +152,17 @@ export function getOnDeviceTranscriptionConfig(
   model: string | null | undefined,
   languages: readonly string[],
 ): LiveTranscriptionConfig {
+  if (isWhisperLocalSttModel(model)) {
+    // The internal whisper server streams VAD-chunked final transcripts over
+    // the /v1/listen websocket, so whisper models support live transcription
+    // on every platform (falls back to batch automatically if the listener
+    // fails to connect).
+    return {
+      languages: [...languages],
+      transcriptionMode: "live",
+    };
+  }
+
   if (!isRealtimeLocalModel(model)) {
     return {
       languages: [...languages],

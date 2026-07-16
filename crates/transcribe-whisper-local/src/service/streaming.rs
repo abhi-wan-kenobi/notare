@@ -242,11 +242,13 @@ async fn handle_websocket(
                             Some(Ok((channel_idx, segment))) => {
                                 let channel_index = vec![channel_idx as i32, total_channels as i32];
                                 let channel = vec![channel_idx as u8];
-                                let transcript_kind = if stop_reason == Some(StopReason::Finalize) {
-                                    TranscriptKind::Finalized
-                                } else {
-                                    TranscriptKind::Confirmed
-                                };
+                                // Segments are always sent as confirmed; a single
+                                // empty `from_finalize` marker is sent once the
+                                // pipeline has fully drained (see below). Marking
+                                // every drained segment as finalized would make
+                                // clients stop reading after the first one and
+                                // drop the rest of the tail.
+                                let transcript_kind = TranscriptKind::Confirmed;
 
                                 if !send_ws(&mut ws_sender, &StreamResponse::SpeechStartedResponse {
                                     channel: channel.clone(),
@@ -399,6 +401,30 @@ async fn handle_websocket(
             }
 
             if stream_closed {
+                if stop_reason == Some(StopReason::Finalize) {
+                    // Empty flush marker: tells the client that every segment
+                    // produced before the Finalize control message has been
+                    // delivered. Clients count `from_finalize` responses to
+                    // know when the post-finalize drain is complete.
+                    let marker_segment = crate::service::Segment {
+                        text: String::new(),
+                        start: 0.0,
+                        duration: 0.0,
+                        confidence: 0.0,
+                        language: None,
+                    };
+                    send_ws_best_effort(
+                        &mut ws_sender,
+                        &build_transcript_response(
+                            &marker_segment,
+                            TranscriptKind::Finalized,
+                            &metadata,
+                            &[0, total_channels as i32],
+                        ),
+                    )
+                    .await;
+                }
+
                 let total_duration = channel_audio_durations.into_iter().fold(0.0_f64, f64::max);
                 send_ws_best_effort(
                     &mut ws_sender,
