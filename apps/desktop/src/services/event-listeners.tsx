@@ -9,6 +9,7 @@ import { getCurrentWebviewWindowLabel } from "@hypr/plugin-windows";
 
 import { getCalendarEventStartedAt } from "~/calendar/queries";
 import { liveQueryClient } from "~/db";
+import { SessionFsMaterializer } from "~/services/fs-materializer";
 import { createSession, getOrCreateSessionForEventId } from "~/session/queries";
 import { setSettingValue } from "~/settings/queries";
 import { useConfigValue, useConfigValues } from "~/shared/config";
@@ -476,6 +477,7 @@ export function EventListeners() {
     <>
       <EventListenersInner />
       <LiveCaptureConfigSync />
+      <SessionFsMaterializer />
     </>
   );
 }

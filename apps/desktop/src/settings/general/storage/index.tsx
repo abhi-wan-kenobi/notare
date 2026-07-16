@@ -10,6 +10,7 @@ import {
 } from "@hypr/ui/components/ui/select";
 
 import { LegacyMigrationCleanupRow } from "./legacy-cleanup";
+import { NotesLocationSection } from "./notes-location";
 
 import { useSetSettingValues } from "~/settings/queries";
 import { useConfigValue } from "~/shared/config";
@@ -48,6 +49,7 @@ export function StorageSettingsView() {
         <Trans>Storage</Trans>
       </h2>
       <div className="flex flex-col gap-3">
+        <NotesLocationSection />
         <AudioRetentionRow />
         <LegacyMigrationCleanupRow />
       </div>
