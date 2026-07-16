@@ -2,13 +2,17 @@ import { Outlet, useNavigate } from "@tanstack/react-router";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useEffect } from "react";
 
-import { events as windowsEvents } from "@hypr/plugin-windows";
+import {
+  events as windowsEvents,
+  getCurrentWebviewWindowLabel,
+} from "@hypr/plugin-windows";
 
 import { useNewNote } from "./useNewNote";
 
 import { AuthProvider } from "~/auth";
 import { BillingProvider } from "~/auth/billing";
 import { DevtoolsFloatingPanelHost } from "~/devtools-panel/host";
+import { DictationOrbHost } from "~/dictation/host";
 import { UndoDeleteToast } from "~/sidebar/toast/undo-delete-toast";
 import { isTabInputSupported, useTabs } from "~/store/zustand/tabs";
 
@@ -25,11 +29,17 @@ export default function MainAppLayout() {
 }
 
 function MainAppContent() {
+  // The dictation host needs the auth/billing providers above (it reads the
+  // STT connection), so it lives here rather than next to the other
+  // main-window hosts in main.tsx, which mount outside the router.
+  const isMainWindow = getCurrentWebviewWindowLabel() === "main";
+
   return (
     <>
       <Outlet />
       <UndoDeleteToast />
       <DevtoolsFloatingPanelHost />
+      {isMainWindow ? <DictationOrbHost /> : null}
     </>
   );
 }

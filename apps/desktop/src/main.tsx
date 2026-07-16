@@ -21,7 +21,6 @@ import { Toaster } from "@hypr/ui/components/ui/toast";
 
 import { AITaskWindowSyncBridge } from "./ai/task-window-sync";
 import { createToolRegistry } from "./contexts/tool-registry/core";
-import { DictationOrbHost } from "./dictation/host";
 import { env } from "./env";
 import { AppI18nProvider } from "./i18n/provider";
 import { FloatingMeetingWindowHost } from "./meeting-float/host";
@@ -102,7 +101,6 @@ function AppRoot() {
         <App />
         {isMainWindow ? <TaskManager /> : null}
         {isMainWindow ? <FloatingMeetingWindowHost /> : null}
-        {isMainWindow ? <DictationOrbHost /> : null}
         {isMainWindow ? <EventListeners /> : null}
         <Toaster />
       </TinyTickProvider>
