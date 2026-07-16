@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/target/debug/build/knf-rs-sys-606fe7301ac79f87/out/knf" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/target/debug/build/knf-rs-sys-927cda9bb731b974/out/knf" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/target/debug/build/knf-rs-sys-b126ac43da91ccb6/out/knf" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/target/debug/build/whisper-rs-sys-32886bd5a79c6f2e/out/whisper.cpp" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/target/debug/build/whisper-rs-sys-3c6ccb713e394688/out/whisper.cpp" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/target/debug/build/whisper-rs-sys-cbc38da362f5776a/out/whisper.cpp" vcs="Git" />
+  </component>
+</project>

@@ -36,9 +36,27 @@
 
   --color-sidebar-accent: hsl(var(--sidebar-accent));
 
+  /* State-channel tokens — docs/DESIGN-DIRECTION.md §2 (mirrors packages/ui) */
+  --color-rec: hsl(var(--rec));
+  --color-ok: hsl(var(--ok));
+  --color-accent-glow: hsl(var(--accent-glow));
+  --color-accent-glow-end: hsl(var(--accent-glow-end));
+
+  /* Glow recipe: outer soft glow + 1px inset border, live states only */
+  --shadow-glow-accent:
+    0 0 32px hsl(var(--primary) / 0.12), inset 0 0 0 1px hsl(var(--primary) / 0.4);
+  --shadow-glow-rec:
+    0 0 32px hsl(var(--rec) / 0.15), inset 0 0 0 1px hsl(var(--rec) / 0.4);
+  --shadow-glow-ok:
+    0 0 24px hsl(var(--ok) / 0.12), inset 0 0 0 1px hsl(var(--ok) / 0.4);
+
+  /* Motion tokens — 120–160ms state changes, 200–240ms panels */
+  --motion-duration-state: 140ms;
+  --motion-duration-panel: 220ms;
+
   --kbd-press-shadow-outer: rgba(0, 0, 0, 0.1);
   --kbd-press-shadow-inset: rgba(255, 255, 255, 0.8);
-  --selection-overlay: rgba(59, 130, 246, 0.3);
+  --selection-overlay: rgba(57, 71, 232, 0.25); /* cobalt #3947E8 */
 
   --animate-shimmer: shimmer 2s infinite;
   --animate-reveal-left: reveal-left 0.5s ease-out forwards;
