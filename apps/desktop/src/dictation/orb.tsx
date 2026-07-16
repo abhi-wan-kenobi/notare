@@ -5,13 +5,23 @@ import { cn } from "@hypr/utils";
 
 import { RecordingOrb } from "~/meeting-float/orb";
 
+import { ParticleOrb } from "./particle-orb";
+
 /**
- * Available orb looks. One style ships today; the component is structured so
- * a future style picker only has to add entries to `ORB_VARIANTS`.
+ * Available orb looks, selected by the `dictation_orb_variant` setting:
+ * - "cobalt": the mini meeting orb (Cobalt-on-graphite);
+ * - "particles": the voice-reactive particle sphere (`particle-orb.tsx`).
  */
-export type DictationOrbVariant = "cobalt";
+export type DictationOrbVariant = "cobalt" | "particles";
 
 export const DEFAULT_ORB_VARIANT: DictationOrbVariant = "cobalt";
+
+/** Map whatever the settings store holds onto a known variant. */
+export function normalizeOrbVariant(
+  raw: string | undefined,
+): DictationOrbVariant {
+  return raw === "particles" ? "particles" : DEFAULT_ORB_VARIANT;
+}
 
 export interface DictationOrbVariantProps {
   phase: DictationPhase;
@@ -60,6 +70,7 @@ const ORB_VARIANTS: Record<
   ComponentType<DictationOrbVariantProps>
 > = {
   cobalt: CobaltOrb,
+  particles: ParticleOrb,
 };
 
 function CobaltOrb({ phase, amplitude, size }: DictationOrbVariantProps) {

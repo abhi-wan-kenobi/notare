@@ -11,4 +11,6 @@ permissions = [
   "allow-stop-dictation",
   "allow-is-dictating",
   "allow-type-text",
+  "allow-deliver-text",
+  "allow-clean-text",
 ]

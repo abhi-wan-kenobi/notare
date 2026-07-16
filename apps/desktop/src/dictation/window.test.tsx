@@ -14,6 +14,15 @@ const mocks = vi.hoisted(() => ({
   stateUnlisten: vi.fn(),
   emitClicked: vi.fn(async () => undefined),
   startDragging: vi.fn(async () => undefined),
+  config: {
+    dictation_orb_variant: "cobalt",
+    dictation_paste_at_cursor: true,
+  } as Record<string, unknown>,
+}));
+
+vi.mock("~/shared/config", () => ({
+  useConfigValues: (keys: readonly string[]) =>
+    Object.fromEntries(keys.map((key) => [key, mocks.config[key]])),
 }));
 
 vi.mock("@hypr/plugin-dictation", () => ({
@@ -132,14 +141,14 @@ describe("DictationOrbWindow", () => {
     expect(mocks.emitClicked).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the batch-mode hint only while dictating in batch-paste mode", async () => {
+  it("shows the batch-mode hint only while dictating in batch mode", async () => {
     render(<DictationOrbWindow />);
     await act(async () => {});
 
     // Idle: no hint regardless of mode.
     expect(screen.queryByTestId("dictation-batch-hint")).toBeNull();
 
-    await pushState({ phase: "listening", amplitude: 0.4, mode: "batch-paste" });
+    await pushState({ phase: "listening", amplitude: 0.4, mode: "batch" });
     expect(screen.getByTestId("dictation-batch-hint")).not.toBeNull();
     expect(
       screen.getByRole("button", {
@@ -153,8 +162,39 @@ describe("DictationOrbWindow", () => {
       screen.getByRole("button", { name: "Stop dictation" }),
     ).not.toBeNull();
 
-    await pushState({ phase: "idle", amplitude: 0, mode: "batch-paste" });
+    await pushState({ phase: "idle", amplitude: 0, mode: "batch" });
     expect(screen.queryByTestId("dictation-batch-hint")).toBeNull();
+  });
+
+  it("labels a copy-only batch stop accordingly", async () => {
+    mocks.config.dictation_paste_at_cursor = false;
+    try {
+      render(<DictationOrbWindow />);
+      await pushState({ phase: "listening", amplitude: 0.4, mode: "batch" });
+
+      expect(
+        screen.getByRole("button", {
+          name: "Stop dictation and copy the transcript",
+        }),
+      ).not.toBeNull();
+    } finally {
+      mocks.config.dictation_paste_at_cursor = true;
+    }
+  });
+
+  it("renders the particle orb variant when configured", async () => {
+    mocks.config.dictation_orb_variant = "particles";
+    try {
+      render(<DictationOrbWindow />);
+      await act(async () => {});
+
+      expect(
+        screen.getByTestId("dictation-orb").dataset.dictationVariant,
+      ).toBe("particles");
+      expect(screen.getByTestId("dictation-particle-orb")).not.toBeNull();
+    } finally {
+      mocks.config.dictation_orb_variant = "cobalt";
+    }
   });
 
   it("starts a window drag once the pointer travels past the threshold", async () => {

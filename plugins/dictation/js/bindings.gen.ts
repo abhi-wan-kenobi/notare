@@ -102,6 +102,32 @@ async typeText(text: string) : Promise<Result<null, string>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Deliver a finished batch transcript: copy it to the clipboard and, with
+ * `paste_at_cursor`, also synthesize Ctrl+V into the focused app. The
+ * clipboard intentionally keeps the text for repeated pastes.
+ */
+async deliverText(text: string, pasteAtCursor: boolean) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|deliver_text", { text, pasteAtCursor }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Deterministic ("basic") transcript cleanup - pure string processing, no
+ * LLM (see `clean.rs`). Exposed so the frontend finalize pipeline reuses the
+ * exact same implementation the Rust side ships.
+ */
+async cleanText(text: string) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("plugin:dictation|clean_text", { text }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -109,10 +135,12 @@ async typeText(text: string) : Promise<Result<null, string>> {
 
 
 export const events = __makeEvents__<{
+dictationFinishedEvent: DictationFinishedEvent,
 dictationOrbClicked: DictationOrbClicked,
 dictationStateEvent: DictationStateEvent,
 dictationTranscriptEvent: DictationTranscriptEvent
 }>({
+dictationFinishedEvent: "plugin:dictation:dictation-finished-event",
 dictationOrbClicked: "plugin:dictation:dictation-orb-clicked",
 dictationStateEvent: "plugin:dictation:dictation-state-event",
 dictationTranscriptEvent: "plugin:dictation:dictation-transcript-event"
@@ -125,13 +153,22 @@ dictationTranscriptEvent: "plugin:dictation:dictation-transcript-event"
 /** user-defined types **/
 
 /**
+ * Emitted exactly once when a dictation session ends, carrying the raw
+ * accumulated transcript of the whole session (all final segments, both
+ * modes). The main window finishes the job from here: cleanup per the
+ * `dictation_cleanup` setting (basic/LLM), delivery in batch mode
+ * (`deliver_text`) and the history entry. `failed` mirrors the session
+ * outcome so batch delivery can degrade to copy-only.
+ */
+export type DictationFinishedEvent = { rawText: string; mode: DictationOutputMode; failed: boolean }
+/**
  * Emitted by the orb webview when the user clicks the orb; the main window
  * host toggles the dictation session in response.
  */
 export type DictationOrbClicked = Record<string, never>
 /**
  * Where recognized speech goes (mirrors the `dictation_output_mode` setting;
- * serialized as `"type"` / `"batch-paste"` so the two representations match).
+ * serialized as `"type"` / `"batch"` so the two representations match).
  */
 export type DictationOutputMode = 
 /**
@@ -140,11 +177,13 @@ export type DictationOutputMode =
  */
 "type" | 
 /**
- * Nothing is typed while dictating; on stop the accumulated transcript
- * is cleaned, copied to the clipboard and pasted once (terminal-friendly;
- * the clipboard intentionally keeps the text for repeated pastes).
+ * Nothing is typed while dictating; the transcript accumulates and is
+ * delivered once at the end of the session. Whether the delivery pastes
+ * at the cursor or only copies to the clipboard is the frontend's call
+ * (`dictation_paste_at_cursor` setting). The pre-rework name of this
+ * variant was `batch-paste`; the alias keeps old persisted values valid.
  */
-"batch-paste"
+"batch"
 /**
  * Lifecycle of the persistent dictation orb (Windows/Linux webview path).
  * Distinct from [`Phase`], which drives the native macOS mini-panel.
@@ -178,7 +217,7 @@ export type DictationStateEvent = { phase: DictationPhase; amplitude: number;
 mode: DictationOutputMode }
 /**
  * A final transcript segment that was delivered: typed into the focused app
- * (`type` mode) or accumulated for the paste-on-stop buffer (`batch-paste`).
+ * (`type` mode) or accumulated for the deliver-on-stop buffer (`batch`).
  */
 export type DictationTranscriptEvent = { text: string }
 export type Phase = "recording" | "processing"

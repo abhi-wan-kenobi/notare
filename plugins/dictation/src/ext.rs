@@ -100,6 +100,34 @@ impl<'a, R: tauri::Runtime, M: tauri::Manager<R>> Dictation<'a, R, M> {
             Err(Error::Unsupported)
         }
     }
+
+    /// Copy `text` to the clipboard; with `paste_at_cursor` also synthesize
+    /// Ctrl+V into the focused app (batch-mode delivery).
+    pub async fn deliver_text(&self, text: String, paste_at_cursor: bool) -> Result<(), Error> {
+        #[cfg(not(target_os = "macos"))]
+        {
+            tauri::async_runtime::spawn_blocking(move || {
+                if paste_at_cursor {
+                    crate::inject::paste_text(&text)
+                } else {
+                    crate::inject::copy_text(&text)
+                }
+            })
+            .await
+            .map_err(|e| Error::Inject(format!("delivery task panicked: {e}")))?
+        }
+        #[cfg(target_os = "macos")]
+        {
+            let _ = (text, paste_at_cursor);
+            Err(Error::Unsupported)
+        }
+    }
+
+    /// Deterministic transcript cleanup (`clean.rs`). Pure - available on
+    /// every platform.
+    pub fn clean_text(&self, text: &str) -> String {
+        crate::clean::clean_transcript(text)
+    }
 }
 
 pub trait DictationPluginExt<R: tauri::Runtime> {

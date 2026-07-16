@@ -97,3 +97,31 @@ pub(crate) async fn type_text<R: tauri::Runtime>(
         .await
         .map_err(|e| e.to_string())
 }
+
+/// Deliver a finished batch transcript: copy it to the clipboard and, with
+/// `paste_at_cursor`, also synthesize Ctrl+V into the focused app. The
+/// clipboard intentionally keeps the text for repeated pastes.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn deliver_text<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    text: String,
+    paste_at_cursor: bool,
+) -> Result<(), String> {
+    app.dictation()
+        .deliver_text(text, paste_at_cursor)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Deterministic ("basic") transcript cleanup - pure string processing, no
+/// LLM (see `clean.rs`). Exposed so the frontend finalize pipeline reuses the
+/// exact same implementation the Rust side ships.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn clean_text<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    text: String,
+) -> Result<String, String> {
+    Ok(app.dictation().clean_text(&text))
+}

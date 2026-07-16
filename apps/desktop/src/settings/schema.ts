@@ -29,12 +29,35 @@ export const SETTING_DEFINITIONS = {
     path: ["general", "dictation_shortcut"],
     default: "ctrl+alt+space" as string,
   },
-  // "type" (segments typed live into the focused app) or "batch-paste"
-  // (accumulate; on stop clean + copy + paste once - terminal-friendly).
+  // "type" (segments typed live into the focused app) or "batch" (accumulate;
+  // delivered once on stop - terminal-friendly). The pre-rework value
+  // "batch-paste" is tolerated and migrated to "batch" + paste-at-cursor on.
   dictation_output_mode: {
     type: "string",
     path: ["general", "dictation_output_mode"],
     default: "type" as string,
+  },
+  // Batch mode only: paste the transcript at the cursor on stop (true) or
+  // copy it to the clipboard only (false - the user pastes manually).
+  dictation_paste_at_cursor: {
+    type: "boolean",
+    path: ["general", "dictation_paste_at_cursor"],
+    default: true as boolean,
+  },
+  // Transcript cleanup applied when a dictation finishes ("none" | "basic" |
+  // "llm"). Applies to the batch-delivered text and to what history stores;
+  // type mode always types raw segments live.
+  dictation_cleanup: {
+    type: "string",
+    path: ["general", "dictation_cleanup"],
+    default: "basic" as string,
+  },
+  // Orb look: "cobalt" (the mini meeting orb) or "particles" (voice-reactive
+  // particle sphere).
+  dictation_orb_variant: {
+    type: "string",
+    path: ["general", "dictation_orb_variant"],
+    default: "cobalt" as string,
   },
   floating_bar_opacity: {
     type: "number",

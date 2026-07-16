@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-deliver-text"
+description = "Enables the deliver_text command without any pre-configured scope."
+commands.allow = ["deliver_text"]
+
+[[permission]]
+identifier = "deny-deliver-text"
+description = "Denies the deliver_text command without any pre-configured scope."
+commands.deny = ["deliver_text"]

@@ -20,7 +20,8 @@ use tauri_specta::Event;
 
 use crate::error::Error;
 use crate::events::{
-    DictationOutputMode, DictationPhase, DictationStateEvent, DictationTranscriptEvent,
+    DictationFinishedEvent, DictationOutputMode, DictationPhase, DictationStateEvent,
+    DictationTranscriptEvent,
 };
 use crate::orb;
 
@@ -155,8 +156,10 @@ async fn run_session(
     let mut finalizing = false;
     let mut failed = false;
     let mut typed_any = false;
-    // Batch-paste mode: final segments accumulate here instead of being typed.
-    let mut batch_buffer = String::new();
+    // The raw transcript of the whole session. In batch mode this is the
+    // text delivered at the end; in type mode it is what the history entry
+    // is built from (segments were already typed live).
+    let mut transcript = String::new();
     let mut last_amplitude_at = std::time::Instant::now() - AMPLITUDE_INTERVAL;
 
     let finalize_deadline = tokio::time::sleep(Duration::from_secs(86_400));
@@ -210,7 +213,7 @@ async fn run_session(
                 match response {
                     Some(Ok(response)) => {
                         let from_finalize =
-                            handle_response(&app, response, mode, &mut typed_any, &mut batch_buffer)
+                            handle_response(&app, response, mode, &mut typed_any, &mut transcript)
                                 .await;
                         if from_finalize && finalizing {
                             break;
@@ -237,8 +240,17 @@ async fn run_session(
 
     drop(audio_tx);
 
-    if mode == DictationOutputMode::BatchPaste {
-        deliver_batch(&batch_buffer, failed).await;
+    // Hand the accumulated raw transcript to the main window, which finishes
+    // the job (cleanup per settings, batch delivery via `deliver_text`,
+    // history entry). Emitted before the final state so listeners see the
+    // session end in order: finished -> idle/error.
+    if !transcript.is_empty() {
+        let _ = DictationFinishedEvent {
+            raw_text: transcript,
+            mode,
+            failed,
+        }
+        .emit(&app);
     }
 
     // Clear the slot (a normal stop already cleared it; error paths land here
@@ -253,46 +265,15 @@ async fn run_session(
     }
 }
 
-/// Batch-paste delivery at the end of a session: clean the accumulated
-/// transcript, copy it to the clipboard and paste it into the focused app.
-/// The clipboard is intentionally NOT restored so the text stays available
-/// for repeated pastes. When the session `failed`, only copy (no paste): the
-/// dictated text is preserved without typing into whatever is focused.
-async fn deliver_batch(batch_buffer: &str, failed: bool) {
-    let cleaned = crate::clean::clean_transcript(batch_buffer);
-    if cleaned.is_empty() {
-        return;
-    }
-
-    let result = tauri::async_runtime::spawn_blocking(move || {
-        if failed {
-            crate::inject::copy_text(&cleaned)
-        } else {
-            crate::inject::paste_text(&cleaned)
-        }
-    })
-    .await;
-
-    match result {
-        Ok(Ok(())) => {}
-        Ok(Err(error)) => {
-            tracing::error!(%error, failed, "failed to deliver batch dictation transcript");
-        }
-        Err(error) => {
-            tracing::error!(%error, "batch dictation delivery task panicked");
-        }
-    }
-}
-
-/// Processes one server message: injects final transcript segments into the
-/// focused app (`type` mode) or accumulates them (`batch-paste` mode).
-/// Returns whether this was the post-Finalize flush marker.
+/// Processes one server message: accumulates final transcript segments into
+/// the session transcript and, in `type` mode, also injects them into the
+/// focused app. Returns whether this was the post-Finalize flush marker.
 async fn handle_response(
     app: &tauri::AppHandle<tauri::Wry>,
     response: StreamResponse,
     mode: DictationOutputMode,
     typed_any: &mut bool,
-    batch_buffer: &mut String,
+    transcript: &mut String,
 ) -> bool {
     let StreamResponse::TranscriptResponse {
         is_final,
@@ -307,11 +288,12 @@ async fn handle_response(
     let text = response.text().unwrap_or_default().trim().to_string();
 
     if is_final && !text.is_empty() {
-        if mode == DictationOutputMode::BatchPaste {
-            if !batch_buffer.is_empty() {
-                batch_buffer.push(' ');
-            }
-            batch_buffer.push_str(&text);
+        if !transcript.is_empty() {
+            transcript.push(' ');
+        }
+        transcript.push_str(&text);
+
+        if mode == DictationOutputMode::Batch {
             let _ = DictationTranscriptEvent { text }.emit(app);
             return from_finalize;
         }

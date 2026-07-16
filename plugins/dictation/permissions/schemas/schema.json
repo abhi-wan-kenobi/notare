@@ -295,6 +295,30 @@
       "type": "string",
       "oneOf": [
         {
+          "description": "Enables the clean_text command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-clean-text",
+          "markdownDescription": "Enables the clean_text command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the clean_text command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-clean-text",
+          "markdownDescription": "Denies the clean_text command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the deliver_text command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-deliver-text",
+          "markdownDescription": "Enables the deliver_text command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the deliver_text command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-deliver-text",
+          "markdownDescription": "Denies the deliver_text command without any pre-configured scope."
+        },
+        {
           "description": "Enables the hide command without any pre-configured scope.",
           "type": "string",
           "const": "allow-hide",
@@ -415,10 +439,10 @@
           "markdownDescription": "Denies the update_amplitude command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`",
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`\n- `allow-deliver-text`\n- `allow-clean-text`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-show`\n- `allow-hide`\n- `allow-set-phase`\n- `allow-update-amplitude`\n- `allow-show-orb`\n- `allow-hide-orb`\n- `allow-start-dictation`\n- `allow-stop-dictation`\n- `allow-is-dictating`\n- `allow-type-text`\n- `allow-deliver-text`\n- `allow-clean-text`"
         }
       ]
     }

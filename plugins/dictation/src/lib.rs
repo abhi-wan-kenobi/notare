@@ -1,11 +1,10 @@
+mod clean;
 mod commands;
 mod error;
 mod events;
 mod ext;
 mod handler;
 
-#[cfg(not(target_os = "macos"))]
-mod clean;
 #[cfg(not(target_os = "macos"))]
 mod inject;
 #[cfg(not(target_os = "macos"))]
@@ -36,11 +35,14 @@ fn make_specta_builder<R: tauri::Runtime>() -> tauri_specta::Builder<R> {
             commands::stop_dictation::<tauri::Wry>,
             commands::is_dictating::<tauri::Wry>,
             commands::type_text::<tauri::Wry>,
+            commands::deliver_text::<tauri::Wry>,
+            commands::clean_text::<tauri::Wry>,
         ])
         .events(tauri_specta::collect_events![
             DictationStateEvent,
             DictationOrbClicked,
-            DictationTranscriptEvent
+            DictationTranscriptEvent,
+            DictationFinishedEvent
         ])
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
 }

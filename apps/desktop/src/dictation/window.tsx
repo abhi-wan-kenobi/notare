@@ -8,7 +8,9 @@ import {
 } from "@hypr/plugin-dictation";
 import { cn } from "@hypr/utils";
 
-import { DictationOrb } from "./orb";
+import { useConfigValues } from "~/shared/config";
+
+import { DictationOrb, normalizeOrbVariant } from "./orb";
 
 const IDLE_STATE: DictationStateEvent = {
   phase: "idle",
@@ -41,6 +43,11 @@ const DRAG_THRESHOLD_PX = 4;
 export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
   const { t } = useLingui();
   const state = useDictationState();
+  const { dictation_orb_variant, dictation_paste_at_cursor } = useConfigValues([
+    "dictation_orb_variant",
+    "dictation_paste_at_cursor",
+  ] as const);
+  const variant = normalizeOrbVariant(dictation_orb_variant);
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const draggedRef = useRef(false);
 
@@ -57,10 +64,12 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
   }, [solid]);
 
   const dictating = state.phase === "listening" || state.phase === "processing";
-  const batchMode = state.mode === "batch-paste";
+  const batchMode = state.mode === "batch";
   const label = dictating
     ? batchMode
-      ? t`Stop dictation and paste the transcript`
+      ? dictation_paste_at_cursor
+        ? t`Stop dictation and paste the transcript`
+        : t`Stop dictation and copy the transcript`
       : t`Stop dictation`
     : t`Start dictation`;
 
@@ -129,6 +138,7 @@ export function DictationOrbWindow({ solid = false }: { solid?: boolean }) {
           phase={state.phase}
           amplitude={state.amplitude}
           size={40}
+          variant={variant}
         />
         {batchMode && dictating ? (
           // Subtle batch-mode hint: a small cobalt dot marks "collecting, will

@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { DictationOrb } from "./orb";
+import { DictationOrb, normalizeOrbVariant } from "./orb";
 
 describe("DictationOrb", () => {
   afterEach(() => {
@@ -41,11 +41,30 @@ describe("DictationOrb", () => {
     expect(screen.getByTestId("recording-orb-error-badge")).not.toBeNull();
   });
 
-  it("records the rendered variant for the future style picker", () => {
+  it("records the rendered variant for the style picker", () => {
     render(<DictationOrb phase="idle" variant="cobalt" />);
 
     expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
       "cobalt",
     );
+  });
+
+  it("renders the particle sphere for the particles variant", () => {
+    render(<DictationOrb phase="listening" amplitude={0.5} variant="particles" />);
+
+    expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+      "particles",
+    );
+    expect(screen.getByTestId("dictation-particle-orb")).not.toBeNull();
+    expect(screen.queryByTestId("recording-orb")).toBeNull();
+  });
+});
+
+describe("normalizeOrbVariant", () => {
+  it("maps stored strings onto known variants", () => {
+    expect(normalizeOrbVariant("particles")).toBe("particles");
+    expect(normalizeOrbVariant("cobalt")).toBe("cobalt");
+    expect(normalizeOrbVariant(undefined)).toBe("cobalt");
+    expect(normalizeOrbVariant("garbage")).toBe("cobalt");
   });
 });
