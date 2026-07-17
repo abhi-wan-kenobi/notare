@@ -1,6 +1,7 @@
 pub mod admin;
 pub mod assets;
 pub mod config;
+pub mod probe;
 pub mod router;
 pub mod state;
 

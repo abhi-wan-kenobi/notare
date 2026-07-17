@@ -674,12 +674,20 @@
           '<span class="chip chip-muted" title="list_ggml_backends() only reports in release builds with a GPU feature compiled in (crates/whisper-local/src/ggml.rs). This image cannot see a GPU either way.">CPU (debug build)</span>';
         backendsRow.hidden = true;
       } else {
-        var hasGpu = backends.some(function (b) {
-          return b.kind === "GPU" || b.kind === "ACCEL";
-        });
-        gpuValue.innerHTML = hasGpu
-          ? '<span class="chip chip-ok">GPU offloaded</span>'
-          : '<span class="chip chip-rec">CPU fallback</span>';
+        var gpuOffload = status.gpuOffload || "unknown";
+        var offloadHtml = "";
+        if (gpuOffload === "verified") {
+          offloadHtml = '<span class="chip chip-ok">GPU Verified</span>';
+        } else if (gpuOffload === "cpu") {
+          offloadHtml = '<span class="chip chip-rec">CPU Fallback</span>';
+        } else {
+          offloadHtml = '<span class="chip chip-muted">Unknown</span>';
+        }
+
+        if (status.probeRealtimeFactor != null) {
+          offloadHtml += ' <span class="mono">' + status.probeRealtimeFactor.toFixed(1) + 'x realtime</span>';
+        }
+        gpuValue.innerHTML = offloadHtml;
         backendsRow.hidden = false;
         backendsValue.innerHTML = backends
           .map(function (b) {

@@ -34,13 +34,32 @@ pub async fn status_handler(State(state): State<Arc<AppState>>) -> impl IntoResp
         ModelIntegrity::NotInstalled | ModelIntegrity::Corrupt(_) => None,
     };
 
+    let probe_guard = state.probe_result.read().await;
+    let probe_realtime_factor = *probe_guard;
+    drop(probe_guard);
+
+    let backends = hypr_whisper_local::list_ggml_backends();
+    let has_gpu = backends.iter().any(|b| b.kind == "GPU" || b.kind == "ACCEL");
+
+    let gpu_offload = if !has_gpu {
+        "cpu"
+    } else {
+        match probe_realtime_factor {
+            Some(factor) if factor >= 1.5 => "verified",
+            Some(_) => "cpu",
+            None => "unknown",
+        }
+    };
+
     Json(json!({
         "version": env!("CARGO_PKG_VERSION"),
         "engine": <hypr_transcribe_whisper_local::LoadedWhisper as SttEngine>::arch(),
         "loadedModel": loaded_model,
         "modelIntegrity": integrity,
-        "backends": hypr_whisper_local::list_ggml_backends(),
+        "backends": backends,
         "requireGpu": state.config.require_gpu,
+        "gpuOffload": gpu_offload,
+        "probeRealtimeFactor": probe_realtime_factor,
         "uptimeSecs": state.start_time.elapsed().as_secs(),
     }))
 }
@@ -79,10 +98,12 @@ mod tests {
             .await
             .unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-        assert!(json["loadedModel"].is_null());
+        assert_eq!(json["loadedModel"].is_null());
         assert_eq!(json["modelIntegrity"]["state"], "notInstalled");
         assert_eq!(json["engine"], "whisper-local");
         assert!(json["backends"].is_array());
+        assert_eq!(json["gpuOffload"], "cpu");
+        assert!(json["probeRealtimeFactor"].is_null());
     }
 
     /// `/api/status.loadedModel` must track `AppState::active`, not the

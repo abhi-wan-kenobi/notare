@@ -64,6 +64,7 @@ pub struct AppState {
     pub(crate) downloader: ModelDownloadManager<LocalModel>,
     pub(crate) progress: Arc<StdMutex<HashMap<String, DownloadStatus>>>,
     pub(crate) active: RwLock<ActiveService>,
+    pub(crate) probe_result: RwLock<Option<f32>>,
 }
 
 /// `POST /api/models/{id}/activate` failure modes, mapped to HTTP status by
@@ -98,8 +99,59 @@ impl AppState {
             }),
             downloader,
             progress,
+            probe_result: RwLock::new(None),
             start_time: Instant::now(),
             config,
+        }
+    }
+
+    /// Runs the timed GPU offload verification probe on a blocking thread
+    /// and caches the calculated realtime factor in `AppState::probe_result`.
+    pub async fn run_probe_for_model(&self, model: WhisperModel) {
+        let model_path = self.model_path_for(&model);
+        if !model_path.is_file() {
+            tracing::warn!(
+                model = %model,
+                path = %model_path.display(),
+                "probe: model file not found; skipping probe"
+            );
+            return;
+        }
+
+        tracing::info!(
+            model = %model,
+            path = %model_path.display(),
+            "probe: starting GPU offload verification inference"
+        );
+
+        let result = tokio::task::spawn_blocking(move || {
+            crate::probe::run_probe(&model_path)
+        })
+        .await;
+
+        match result {
+            Ok(Some(factor)) => {
+                tracing::info!(
+                    model = %model,
+                    realtime_factor = factor,
+                    "probe: GPU offload verification inference completed"
+                );
+                let mut guard = self.probe_result.write().await;
+                *guard = Some(factor);
+            }
+            Ok(None) => {
+                tracing::warn!(
+                    model = %model,
+                    "probe: GPU offload verification inference returned no factor"
+                );
+            }
+            Err(error) => {
+                tracing::error!(
+                    model = %model,
+                    %error,
+                    "probe: GPU offload verification inference panicked"
+                );
+            }
         }
     }
 
@@ -135,6 +187,11 @@ impl AppState {
         let core = TranscribeService::builder()
             .model_path(self.model_path_for(&model))
             .build();
+
+        // Clear the probe result before swap
+        let mut probe_guard = self.probe_result.write().await;
+        *probe_guard = None;
+        drop(probe_guard);
 
         let mut guard = self.active.write().await;
         guard.core = core;

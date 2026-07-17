@@ -1,0 +1,72 @@
+# Notare STT companion server — CUDA GPU offloaded image.
+#
+# Build it with:
+#
+#   docker build -f apps/stt-server/Dockerfile.cuda -t notare-stt-server:cuda .
+#
+# Run it with NVIDIA container toolkit:
+#
+#   docker run --rm --gpus all -p 8383:8383 \
+#     -v notare-stt-models:/data/models \
+#     -e NOTARE_STT_MODEL_DIR=/data/models \
+#     notare-stt-server:cuda
+#
+
+# --- builder -----------------------------------------------------------
+FROM nvidia/cuda:12.4.1-devel-debian12 AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    clang \
+    libclang-dev \
+    pkg-config \
+    libssl-dev \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust toolchain (1.94.0) matching workspace requirement
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.94.0
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+WORKDIR /workspace
+
+# Copy the whole workspace (needed due to local workspace path dependencies)
+COPY . .
+
+RUN cargo build --release -p stt-server --features cuda && \
+    cp target/release/stt-server /usr/local/bin/stt-server
+
+# --- runtime -------------------------------------------------------------
+FROM nvidia/cuda:12.4.1-runtime-debian12 AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --create-home --uid 10001 notare
+
+COPY --from=builder /usr/local/bin/stt-server /usr/local/bin/stt-server
+
+# Storage layout:
+#   /data/models/stt/<file>            model catalog
+#   /data/models/stt/<file>.verified   CRC32 sidecar stamp
+RUN mkdir -p /data/models && chown -R notare:notare /data
+VOLUME ["/data"]
+USER notare
+
+ENV NOTARE_STT_HOST=0.0.0.0 \
+    NOTARE_STT_PORT=8383 \
+    NOTARE_STT_MODEL_DIR=/data/models \
+    NOTARE_STT_MODEL=QuantizedSmall \
+    NOTARE_STT_REQUIRE_GPU=false \
+    RUST_LOG=info
+
+EXPOSE 8383
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
+    CMD curl -f "http://localhost:${NOTARE_STT_PORT}/health" || exit 1
+
+ENTRYPOINT ["/usr/local/bin/stt-server"]
