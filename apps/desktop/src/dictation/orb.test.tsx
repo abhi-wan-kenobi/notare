@@ -57,7 +57,9 @@ describe("DictationOrb", () => {
   });
 
   it("renders the particle sphere for the particles variant", () => {
-    render(<DictationOrb phase="listening" amplitude={0.5} variant="particles" />);
+    render(
+      <DictationOrb phase="listening" amplitude={0.5} variant="particles" />,
+    );
 
     expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
       "particles",
@@ -75,7 +77,9 @@ describe("DictationOrb", () => {
   });
 
   it("renders the Pulse waveform for the waveform variant", () => {
-    render(<DictationOrb phase="listening" amplitude={0.5} variant="waveform" />);
+    render(
+      <DictationOrb phase="listening" amplitude={0.5} variant="waveform" />,
+    );
 
     expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
       "waveform",
@@ -83,6 +87,56 @@ describe("DictationOrb", () => {
     expect(screen.getByTestId("dictation-waveform-orb")).not.toBeNull();
     expect(screen.queryByTestId("recording-orb")).toBeNull();
     expect(screen.queryByTestId("dictation-particle-orb")).toBeNull();
+  });
+
+  it("renders the Bloom variant", () => {
+    render(<DictationOrb phase="listening" amplitude={0.5} variant="bloom" />);
+
+    expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+      "bloom",
+    );
+    expect(screen.getByTestId("dictation-bloom-orb")).not.toBeNull();
+    expect(screen.queryByTestId("recording-orb")).toBeNull();
+  });
+
+  it("renders the Halo variant", () => {
+    render(<DictationOrb phase="listening" amplitude={0.5} variant="halo" />);
+
+    expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+      "halo",
+    );
+    expect(screen.getByTestId("dictation-halo-orb")).not.toBeNull();
+    expect(screen.queryByTestId("recording-orb")).toBeNull();
+  });
+
+  it("renders the Ember variant", () => {
+    render(<DictationOrb phase="listening" amplitude={0.5} variant="ember" />);
+
+    expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+      "ember",
+    );
+    expect(screen.getByTestId("dictation-ember-orb")).not.toBeNull();
+    expect(screen.queryByTestId("recording-orb")).toBeNull();
+  });
+
+  it("renders the Silk variant", () => {
+    render(<DictationOrb phase="listening" amplitude={0.5} variant="silk" />);
+
+    expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+      "silk",
+    );
+    expect(screen.getByTestId("dictation-silk-orb")).not.toBeNull();
+    expect(screen.queryByTestId("recording-orb")).toBeNull();
+  });
+
+  it("renders the Pip variant", () => {
+    render(<DictationOrb phase="listening" amplitude={0.5} variant="pip" />);
+
+    expect(screen.getByTestId("dictation-orb").dataset.dictationVariant).toBe(
+      "pip",
+    );
+    expect(screen.getByTestId("dictation-pip-orb")).not.toBeNull();
+    expect(screen.queryByTestId("recording-orb")).toBeNull();
   });
 });
 
@@ -129,6 +183,11 @@ describe("orb variant registry", () => {
       "ring",
       "aurora",
       "mono",
+      "bloom",
+      "halo",
+      "ember",
+      "silk",
+      "pip",
     ]);
     for (const variant of ORB_VARIANT_ORDER) {
       const info = ORB_VARIANT_REGISTRY[variant];
@@ -147,6 +206,11 @@ describe("normalizeOrbVariant", () => {
     expect(normalizeOrbVariant("ring")).toBe("ring");
     expect(normalizeOrbVariant("aurora")).toBe("aurora");
     expect(normalizeOrbVariant("mono")).toBe("mono");
+    expect(normalizeOrbVariant("bloom")).toBe("bloom");
+    expect(normalizeOrbVariant("halo")).toBe("halo");
+    expect(normalizeOrbVariant("ember")).toBe("ember");
+    expect(normalizeOrbVariant("silk")).toBe("silk");
+    expect(normalizeOrbVariant("pip")).toBe("pip");
     expect(normalizeOrbVariant(undefined)).toBe("cobalt");
     expect(normalizeOrbVariant("garbage")).toBe("cobalt");
   });
@@ -159,6 +223,11 @@ describe("orb variant sizing", () => {
     expect(orbSizeForVariant("ring", 40)).toBe(40);
     expect(orbSizeForVariant("aurora", 40)).toBe(40);
     expect(orbSizeForVariant("mono", 40)).toBe(40);
+    expect(orbSizeForVariant("bloom", 40)).toBe(40);
+    expect(orbSizeForVariant("halo", 40)).toBe(40);
+    expect(orbSizeForVariant("ember", 40)).toBe(40);
+    expect(orbSizeForVariant("silk", 40)).toBe(40);
+    expect(orbSizeForVariant("pip", 40)).toBe(40);
     expect(orbSizeForVariant("particles", 40)).toBe(60);
     expect(orbSizeForVariant("particles", 28)).toBe(42);
   });
@@ -170,5 +239,10 @@ describe("orb variant sizing", () => {
     expect(orbWindowSizeForVariant("ring")).toBe(56);
     expect(orbWindowSizeForVariant("aurora")).toBe(56);
     expect(orbWindowSizeForVariant("mono")).toBe(56);
+    expect(orbWindowSizeForVariant("bloom")).toBe(56);
+    expect(orbWindowSizeForVariant("halo")).toBe(56);
+    expect(orbWindowSizeForVariant("ember")).toBe(56);
+    expect(orbWindowSizeForVariant("silk")).toBe(56);
+    expect(orbWindowSizeForVariant("pip")).toBe(56);
   });
 });
