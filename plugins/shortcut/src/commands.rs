@@ -23,9 +23,9 @@ pub(crate) async fn unregister_hotkey<R: tauri::Runtime>(
     app.shortcut().unregister().map_err(|e| e.to_string())
 }
 
-/// Register a toggle-style global hotkey (Windows/Linux). Emits
-/// `GlobalHotkeyTriggered` on key-down. Not available on macOS, which keeps
-/// its native push-to-talk path.
+/// Register a toggle-style global hotkey, backed by
+/// `tauri-plugin-global-shortcut` on every platform (macOS included, since
+/// #31). Emits `GlobalHotkeyTriggered` on key-down.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn register_global_hotkey<R: tauri::Runtime>(
@@ -49,8 +49,7 @@ pub(crate) async fn unregister_global_hotkey<R: tauri::Runtime>(
 
 /// Parse-validate a global-hotkey accelerator string (e.g. "ctrl+alt+space")
 /// WITHOUT registering it, so the settings recorder can show inline feedback
-/// before committing the `dictation_shortcut` setting. Always Ok on macOS,
-/// which keeps its native push-to-talk path and never parses these strings.
+/// before committing the `dictation_shortcut` setting.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn parse_global_hotkey(shortcut: String) -> Result<(), String> {

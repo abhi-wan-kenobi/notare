@@ -20,8 +20,13 @@ tracing = { workspace = true }
 tauri = { workspace = true, features = ["test"] }
 tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 
-[target.'cfg(target_os = "macos")'.dependencies]
-hypr-shortcut-macos = { workspace = true }
-
-[target.'cfg(not(target_os = "macos"))'.dependencies]
+# Toggle-style global hotkey (`register_global`/`unregister_global`), used on
+# every platform for the dictation-orb shortcut.
 tauri-plugin-global-shortcut = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Native push-to-talk event-tap hotkey path (`register`/`unregister`). Kept
+# for the macOS-only `Handler::register` API; not wired to any frontend
+# command today (see plugins/dictation - the dictation orb uses the toggle
+# path above on every platform since #31).
+hypr-shortcut-macos = { workspace = true }

@@ -23,13 +23,11 @@ tauri-specta = { workspace = true, features = ["derive", "typescript"] }
 
 tauri-plugin-shortcut = { workspace = true }
 
-[target.'cfg(target_os = "macos")'.dependencies]
-hypr-dictation-ui-macos = { workspace = true }
-
-# Windows/Linux dictation-orb path: mic -> local STT websocket -> text
-# injection into the focused app. macOS keeps its native panel and is not
-# affected by any of these.
-[target.'cfg(not(target_os = "macos"))'.dependencies]
+# The dictation-orb path: mic -> local STT websocket -> text injection into
+# the focused app. Available on every platform since #31 - macOS reaches
+# parity through this same webview orb instead of its unfinished native
+# panel (`hypr-dictation-ui-macos` below, kept for the `Handler` type but no
+# longer wired to anything live).
 arboard = { workspace = true }
 bytes = { workspace = true }
 tauri-plugin-store2 = { workspace = true }
@@ -41,3 +39,6 @@ owhisper-client = { workspace = true }
 owhisper-interface = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
 tokio-stream = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+hypr-dictation-ui-macos = { workspace = true }

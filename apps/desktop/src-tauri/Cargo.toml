@@ -42,6 +42,10 @@ tauri-plugin-flag = { workspace = true }
 tauri-plugin-fs-sync = { workspace = true }
 tauri-plugin-fs2 = { workspace = true }
 tauri-plugin-git = { workspace = true }
+# Toggle hotkey for the dictation orb, backed by `tauri-plugin-global-shortcut`
+# on every platform (macOS reaches dictation parity through the same webview
+# orb path as Windows/Linux since #31, instead of its unfinished native panel).
+tauri-plugin-global-shortcut = { workspace = true }
 tauri-plugin-hooks = { workspace = true }
 tauri-plugin-http = { workspace = true }
 tauri-plugin-icon = { workspace = true }
@@ -120,9 +124,6 @@ gpu-vulkan = ["tauri-plugin-local-stt/vulkan"]
 # above).
 [target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
 tauri-plugin-local-stt = { workspace = true, features = ["whisper-cpp", "parakeet-onnx"] }
-# Toggle hotkey for the dictation orb (the shortcut plugin's non-macOS
-# handler drives it; macOS uses its native event-tap path instead).
-tauri-plugin-global-shortcut = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-automation = { version = "0.1", optional = true }

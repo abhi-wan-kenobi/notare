@@ -1,13 +1,16 @@
-//! Text injection into the currently focused application (Windows/Linux).
+//! Text injection into the currently focused application (Windows/Linux/
+//! macOS).
 //!
 //! How text reaches the focused app depends on the [`InjectionStrategy`],
 //! resolved once per process:
 //!
-//! - **Enigo** (Windows, Linux/X11): `enigo` synthesizes the text directly
-//!   (Windows: `SendInput` with `KEYEVENTF_UNICODE`, layout-independent;
-//!   Linux X11: XTest via the pure-Rust `x11rb` backend). Fallback path: put
-//!   the text on the clipboard, synthesize Ctrl+V, then restore the previous
-//!   clipboard text.
+//! - **Enigo** (Windows, macOS, Linux/X11): `enigo` synthesizes the text
+//!   directly (Windows: `SendInput` with `KEYEVENTF_UNICODE`, layout-
+//!   independent; macOS: `CGEvent` unicode key events - requires the
+//!   Accessibility permission, see `plugins/permissions`; Linux X11: XTest
+//!   via the pure-Rust `x11rb` backend). Fallback path: put the text on the
+//!   clipboard, synthesize the platform paste chord (Cmd+V on macOS, Ctrl+V
+//!   elsewhere), then restore the previous clipboard text.
 //! - **Wtype** (Linux/Wayland with the `wtype` binary on `PATH`): Wayland
 //!   compositors don't implement XTEST, so enigo either errors or silently
 //!   no-ops there. `wtype` speaks the `zwp_virtual_keyboard_v1` protocol and
@@ -36,7 +39,8 @@ const CHORD_HOLD: Duration = Duration::from_millis(100);
 /// How dictated text reaches the focused app on this system.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InjectionStrategy {
-    /// Synthetic input via enigo (Windows `SendInput` / Linux X11 XTEST).
+    /// Synthetic input via enigo (Windows `SendInput` / macOS `CGEvent` /
+    /// Linux X11 XTEST).
     Enigo,
     /// Wayland session with the `wtype` virtual-keyboard tool on `PATH`.
     Wtype,
@@ -292,17 +296,25 @@ fn send_paste_chord() -> Result<(), String> {
     #[cfg(not(windows))]
     let v_key = Key::Unicode('v');
 
+    // The paste chord's modifier: macOS pastes with Cmd+V (enigo's `Meta`,
+    // not `Control` - the literal Control key is a different, unmapped
+    // shortcut in virtually every macOS app). Everywhere else it's Ctrl+V.
+    #[cfg(target_os = "macos")]
+    let modifier = Key::Meta;
+    #[cfg(not(target_os = "macos"))]
+    let modifier = Key::Control;
+
     enigo
-        .key(Key::Control, Direction::Press)
+        .key(modifier, Direction::Press)
         .map_err(|e| e.to_string())?;
     let click = enigo
         .key(v_key, Direction::Click)
         .map_err(|e| e.to_string());
-    // Hold the chord briefly so slow apps register it as Ctrl+V.
+    // Hold the chord briefly so slow apps register it as Ctrl+V/Cmd+V.
     std::thread::sleep(CHORD_HOLD);
     // Always release the modifier, even if the paste click failed.
     let release = enigo
-        .key(Key::Control, Direction::Release)
+        .key(modifier, Direction::Release)
         .map_err(|e| e.to_string());
 
     click.and(release)
