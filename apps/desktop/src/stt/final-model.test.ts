@@ -1,22 +1,50 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { pickFinalSttModel, resolveFinalBatchTarget } from "./final-model";
+import {
+  listDownloadedFinalSttModels,
+  pickFinalSttModel,
+  resolveFinalBatchTarget,
+} from "./final-model";
 
-const { isModelDownloadedMock, startServerMock, stopServerMock } = vi.hoisted(
-  () => ({
-    isModelDownloadedMock: vi.fn(),
-    startServerMock: vi.fn(),
-    stopServerMock: vi.fn(),
-  }),
-);
+const {
+  isModelDownloadedMock,
+  startServerMock,
+  stopServerMock,
+  listSupportedModelsMock,
+} = vi.hoisted(() => ({
+  isModelDownloadedMock: vi.fn(),
+  startServerMock: vi.fn(),
+  stopServerMock: vi.fn(),
+  listSupportedModelsMock: vi.fn(),
+}));
 
 vi.mock("@hypr/plugin-local-stt", () => ({
   commands: {
     isModelDownloaded: isModelDownloadedMock,
     startServer: startServerMock,
     stopServer: stopServerMock,
+    listSupportedModels: listSupportedModelsMock,
   },
 }));
+
+function modelInfo(
+  key: string,
+  recommendedUse: "live" | "final" | "liveAndFinal",
+  displayName = key,
+) {
+  return {
+    key,
+    display_name: displayName,
+    description: "",
+    size_bytes: null,
+    model_type: "whispercpp",
+    engine: "whisper.cpp",
+    languages: "multilingual",
+    language_count: null,
+    tier: "balanced",
+    recommended_use: recommendedUse,
+  };
+}
 
 describe("pickFinalSttModel", () => {
   test("returns null when no final model is configured", () => {
@@ -68,6 +96,7 @@ describe("resolveFinalBatchTarget", () => {
       data: "http://127.0.0.1:6666",
     });
     stopServerMock.mockResolvedValue({ status: "ok", data: true });
+    listSupportedModelsMock.mockResolvedValue({ status: "ok", data: [] });
   });
 
   test("external providers reuse the live connection with a new model id", async () => {
@@ -173,5 +202,108 @@ describe("resolveFinalBatchTarget", () => {
     startServerMock.mockRejectedValue(new Error("restart failed"));
 
     await expect(target!.restore()).resolves.toBeUndefined();
+  });
+
+  test("accepts non-prefix local models from the supported-model catalog", async () => {
+    listSupportedModelsMock.mockResolvedValue({
+      status: "ok",
+      data: [modelInfo("parakeet-v3", "final")],
+    });
+
+    const target = await resolveFinalBatchTarget({
+      provider: "hyprnote",
+      liveModel: "QuantizedTiny",
+      finalModel: "parakeet-v3",
+    });
+
+    expect(target).not.toBeNull();
+    expect(target!.model).toBe("parakeet-v3");
+    expect(startServerMock).toHaveBeenCalledWith("parakeet-v3");
+  });
+
+  test("restore restarts a non-prefix live model listed in the catalog", async () => {
+    listSupportedModelsMock.mockResolvedValue({
+      status: "ok",
+      data: [modelInfo("parakeet-v3", "liveAndFinal")],
+    });
+
+    const target = await resolveFinalBatchTarget({
+      provider: "hyprnote",
+      liveModel: "parakeet-v3",
+      finalModel: "QuantizedSmall",
+    });
+
+    expect(target).not.toBeNull();
+
+    await target!.restore();
+    expect(startServerMock).toHaveBeenLastCalledWith("parakeet-v3");
+    expect(stopServerMock).not.toHaveBeenCalled();
+  });
+
+  test("rejects models that are neither prefix-known nor in the catalog", async () => {
+    listSupportedModelsMock.mockResolvedValue({
+      status: "ok",
+      data: [modelInfo("parakeet-v3", "final")],
+    });
+
+    const target = await resolveFinalBatchTarget({
+      provider: "hyprnote",
+      liveModel: "QuantizedTiny",
+      finalModel: "nova-3",
+    });
+
+    expect(target).toBeNull();
+    expect(isModelDownloadedMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("listDownloadedFinalSttModels", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("returns downloaded models recommended for final transcription", async () => {
+    listSupportedModelsMock.mockResolvedValue({
+      status: "ok",
+      data: [
+        modelInfo("soniqo-parakeet-streaming", "live"),
+        modelInfo("QuantizedSmall", "final", "Whisper Small"),
+        modelInfo("QuantizedLargeTurbo", "final", "Whisper Large Turbo"),
+        modelInfo("am-parakeet-v3", "liveAndFinal", "Parakeet v3"),
+      ],
+    });
+    isModelDownloadedMock.mockImplementation(async (model: string) => ({
+      status: "ok",
+      data: model !== "QuantizedLargeTurbo",
+    }));
+
+    await expect(listDownloadedFinalSttModels()).resolves.toEqual([
+      { key: "QuantizedSmall", displayName: "Whisper Small" },
+      { key: "am-parakeet-v3", displayName: "Parakeet v3" },
+    ]);
+    expect(isModelDownloadedMock).not.toHaveBeenCalledWith(
+      "soniqo-parakeet-streaming",
+    );
+  });
+
+  test("returns an empty list when the catalog is unavailable", async () => {
+    listSupportedModelsMock.mockResolvedValue({
+      status: "error",
+      error: "no plugin",
+    });
+    await expect(listDownloadedFinalSttModels()).resolves.toEqual([]);
+
+    listSupportedModelsMock.mockRejectedValue(new Error("ipc down"));
+    await expect(listDownloadedFinalSttModels()).resolves.toEqual([]);
+  });
+
+  test("skips models whose download check fails", async () => {
+    listSupportedModelsMock.mockResolvedValue({
+      status: "ok",
+      data: [modelInfo("QuantizedSmall", "final")],
+    });
+    isModelDownloadedMock.mockRejectedValue(new Error("ipc down"));
+
+    await expect(listDownloadedFinalSttModels()).resolves.toEqual([]);
   });
 });

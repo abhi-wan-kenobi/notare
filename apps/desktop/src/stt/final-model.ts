@@ -1,9 +1,9 @@
-import { commands as localSttCommands } from "@hypr/plugin-local-stt";
-
 import {
-  isHyprnoteLocalSttModel,
-  isSupportedLocalSttModel,
-} from "~/stt/capabilities";
+  commands as localSttCommands,
+  type LocalModel,
+} from "@hypr/plugin-local-stt";
+
+import { isSupportedLocalSttModel } from "~/stt/capabilities";
 
 // The final ("post-meeting") transcription model. Batch transcription runs —
 // post-capture, file upload, and manual re-transcription — use this model
@@ -26,6 +26,74 @@ export type FinalBatchTarget = {
 };
 
 const noopRestore = async () => {};
+
+/**
+ * Checks whether a model id is a local ("hyprnote") model. Uses the fast
+ * prefix check first and falls back to the local-stt plugin's supported-model
+ * catalog, so new model families (e.g. future engines with unknown prefixes)
+ * work without hardcoding names here.
+ */
+async function isKnownLocalSttModel(model: string): Promise<boolean> {
+  if (isSupportedLocalSttModel(model)) {
+    return true;
+  }
+
+  try {
+    const supported = await localSttCommands.listSupportedModels();
+    return (
+      supported.status === "ok" &&
+      supported.data.some((info) => info.key === model)
+    );
+  } catch {
+    return false;
+  }
+}
+
+export type FinalSttModelOption = {
+  key: string;
+  displayName: string;
+};
+
+/**
+ * Lists the downloaded local models that are recommended for final-pass
+ * (batch) transcription — `recommended_use` of "final" or "liveAndFinal".
+ * Drives the "Re-transcribe with…" picker. Never throws; returns an empty
+ * list when the local-stt plugin is unavailable.
+ */
+export async function listDownloadedFinalSttModels(): Promise<
+  FinalSttModelOption[]
+> {
+  try {
+    const supported = await localSttCommands.listSupportedModels();
+    if (supported.status !== "ok") {
+      return [];
+    }
+
+    const finalModels = supported.data.filter(
+      (info) =>
+        info.recommended_use === "final" ||
+        info.recommended_use === "liveAndFinal",
+    );
+
+    const downloaded = await Promise.all(
+      finalModels.map(async (info) => {
+        try {
+          const result = await localSttCommands.isModelDownloaded(info.key);
+          return result.status === "ok" && result.data ? info : null;
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    return downloaded
+      .filter((info) => info !== null)
+      .map((info) => ({ key: info.key, displayName: info.display_name }));
+  } catch (error) {
+    console.warn("[stt] failed to list downloaded final models", error);
+    return [];
+  }
+}
 
 /**
  * Decides whether a distinct final-pass model should be used.
@@ -74,12 +142,14 @@ export async function resolveFinalBatchTarget({
     return { model: finalModel, restore: noopRestore };
   }
 
-  if (!isSupportedLocalSttModel(finalModel)) {
+  if (finalModel === "cloud" || !(await isKnownLocalSttModel(finalModel))) {
     return null;
   }
 
   try {
-    const downloaded = await localSttCommands.isModelDownloaded(finalModel);
+    const downloaded = await localSttCommands.isModelDownloaded(
+      finalModel as LocalModel,
+    );
     if (downloaded.status !== "ok" || !downloaded.data) {
       console.warn(
         `[stt] final model "${finalModel}" is not downloaded; using the live model instead`,
@@ -87,7 +157,9 @@ export async function resolveFinalBatchTarget({
       return null;
     }
 
-    const server = await localSttCommands.startServer(finalModel);
+    const server = await localSttCommands.startServer(
+      finalModel as LocalModel,
+    );
     if (server.status !== "ok") {
       console.warn(
         `[stt] failed to start server for final model "${finalModel}"; using the live model instead`,
@@ -96,13 +168,22 @@ export async function resolveFinalBatchTarget({
       return null;
     }
 
+    // Decide up front which server `restore` should bring back: the live
+    // local model when there is one, otherwise just stop the final server.
+    const restoreModel =
+      typeof liveModel === "string" &&
+      liveModel !== "cloud" &&
+      (await isKnownLocalSttModel(liveModel))
+        ? (liveModel as LocalModel)
+        : null;
+
     return {
       model: finalModel,
       baseUrl: server.data,
       restore: async () => {
         try {
-          if (isHyprnoteLocalSttModel(provider, liveModel)) {
-            await localSttCommands.startServer(liveModel);
+          if (restoreModel) {
+            await localSttCommands.startServer(restoreModel);
           } else {
             await localSttCommands.stopServer(null);
           }

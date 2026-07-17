@@ -19,9 +19,38 @@ type CapturedMenuItem =
     }
   | { separator: true };
 
+type CapturedNativeMenuItem =
+  | {
+      kind: "item";
+      id: string;
+      text: string;
+      enabled?: boolean;
+      accelerator?: string;
+      action?: () => void;
+    }
+  | {
+      kind: "submenu";
+      id: string;
+      text: string;
+      items: CapturedNativeMenuItem[];
+    }
+  | { kind: "separator" };
+
 const hoisted = vi.hoisted(() => ({
   enhance: vi.fn(),
   regenerateTranscript: vi.fn(),
+  regenerateTranscriptWithModel: vi.fn(),
+  finalSttModels: [] as Array<{ key: string; displayName: string }>,
+  nativeMenus: [] as Array<
+    Array<{
+      kind: string;
+      id?: string;
+      text?: string;
+      enabled?: boolean;
+      action?: () => void;
+      items?: unknown[];
+    }>
+  >,
   startListening: vi.fn(),
   stopListening: vi.fn(),
   stopTranscription: vi.fn(),
@@ -192,6 +221,38 @@ vi.mock("~/session/queries", () => ({
 
 vi.mock("~/session/components/note-input/transcript/actions", () => ({
   useRegenerateTranscript: () => hoisted.regenerateTranscript,
+  useRegenerateTranscriptWithModel: () =>
+    hoisted.regenerateTranscriptWithModel,
+}));
+
+vi.mock("~/stt/final-model", () => ({
+  listDownloadedFinalSttModels: vi.fn(async () => hoisted.finalSttModels),
+}));
+
+vi.mock("@tauri-apps/api/menu", () => ({
+  Menu: {
+    new: vi.fn(async (options: { items: unknown[] }) => {
+      hoisted.nativeMenus.push(
+        options.items as (typeof hoisted.nativeMenus)[number],
+      );
+      return { popup: vi.fn() };
+    }),
+  },
+  MenuItem: {
+    new: vi.fn(async (options: Record<string, unknown>) => ({
+      kind: "item",
+      ...options,
+    })),
+  },
+  Submenu: {
+    new: vi.fn(async (options: Record<string, unknown>) => ({
+      kind: "submenu",
+      ...options,
+    })),
+  },
+  PredefinedMenuItem: {
+    new: vi.fn(async () => ({ kind: "separator" })),
+  },
 }));
 
 vi.mock("~/session/components/note-input/transcript/export-data", () => ({
@@ -308,6 +369,9 @@ describe("Header", () => {
   beforeEach(() => {
     hoisted.enhance.mockReset();
     hoisted.regenerateTranscript.mockReset();
+    hoisted.regenerateTranscriptWithModel.mockReset();
+    hoisted.finalSttModels = [];
+    hoisted.nativeMenus = [];
     hoisted.startListening.mockReset();
     hoisted.stopListening.mockReset();
     hoisted.stopTranscription.mockReset();
@@ -498,7 +562,7 @@ describe("Header", () => {
     });
   });
 
-  it("adds recording actions to the transcript tab context menu", () => {
+  it("adds recording actions to the transcript tab context menu", async () => {
     const editorTabs: EditorView[] = [
       { type: "enhanced", id: "note-1" },
       { type: "raw" },
@@ -514,18 +578,63 @@ describe("Header", () => {
       />,
     );
 
-    const menu = findContextMenu("copy-transcript-session-1");
+    const menu = await openTranscriptContextMenu();
 
+    expect(menu.map((item) => item.text ?? "separator")).toEqual([
+      "Copy",
+      "Re-transcribe",
+      "Delete recording",
+    ]);
+    expect(menu[0]?.enabled).toBe(true);
     expect(
-      menu.map((item) => ("text" in item ? item.text : "separator")),
-    ).toEqual(["Copy", "Re-transcribe", "Delete recording"]);
-    expect(menu.find(isMenuItem)?.disabled).toBe(false);
+      menu.find((item) => item.id === "delete-recording-session-1")?.enabled,
+    ).toBe(true);
+  });
+
+  it("lists downloaded final models in a re-transcribe submenu", async () => {
+    hoisted.finalSttModels = [
+      { key: "QuantizedSmall", displayName: "Whisper Small" },
+      { key: "parakeet-v3", displayName: "Parakeet v3" },
+    ];
+    const editorTabs: EditorView[] = [
+      { type: "enhanced", id: "note-1" },
+      { type: "raw" },
+      { type: "transcript" },
+    ];
+
+    render(
+      <Header
+        sessionId="session-1"
+        editorTabs={editorTabs}
+        currentTab={{ type: "transcript" }}
+        handleTabChange={vi.fn()}
+      />,
+    );
+
+    const menu = await openTranscriptContextMenu();
+
+    expect(menu.map((item) => item.text ?? "separator")).toEqual([
+      "Copy",
+      "Re-transcribe",
+      "Re-transcribe with",
+      "Delete recording",
+    ]);
+
+    const submenu = menu.find((item) => item.kind === "submenu");
+    expect(submenu?.id).toBe("regenerate-transcript-with-session-1");
+    const submenuItems = (submenu?.items ?? []) as CapturedNativeMenuItem[];
     expect(
-      menu.find(
-        (item): item is Extract<CapturedMenuItem, { id: string }> =>
-          "id" in item && item.id === "delete-recording-session-1",
-      )?.disabled,
-    ).toBe(false);
+      submenuItems.map((item) => ("text" in item ? item.text : "separator")),
+    ).toEqual(["Whisper Small", "Parakeet v3"]);
+
+    const parakeetItem = submenuItems.find(
+      (item): item is Extract<CapturedNativeMenuItem, { kind: "item" }> =>
+        item.kind === "item" && item.text === "Parakeet v3",
+    );
+    parakeetItem?.action?.();
+    expect(hoisted.regenerateTranscriptWithModel).toHaveBeenCalledWith(
+      "parakeet-v3",
+    );
   });
 
   it("does not prepare transcript export data while the transcript tab is inactive", () => {
@@ -558,8 +667,11 @@ describe("Header", () => {
     expect(hoisted.transcriptRenderDataCalls).toBe(1);
   });
 
-  it("omits transcript recording actions when recording is missing", () => {
+  it("omits transcript recording actions when recording is missing", async () => {
     hoisted.audioExists = false;
+    hoisted.finalSttModels = [
+      { key: "QuantizedSmall", displayName: "Whisper Small" },
+    ];
     const editorTabs: EditorView[] = [
       { type: "enhanced", id: "note-1" },
       { type: "raw" },
@@ -575,11 +687,9 @@ describe("Header", () => {
       />,
     );
 
-    const menu = findContextMenu("copy-transcript-session-1");
+    const menu = await openTranscriptContextMenu();
 
-    expect(
-      menu.map((item) => ("text" in item ? item.text : "separator")),
-    ).toEqual(["Copy"]);
+    expect(menu.map((item) => item.text ?? "separator")).toEqual(["Copy"]);
   });
 
   it("replaces the current enhanced note when changing templates", async () => {
@@ -1043,18 +1153,11 @@ describe("Header", () => {
   });
 });
 
-function findContextMenu(id: string) {
-  const menu = hoisted.nativeContextMenus.find((items) =>
-    items.some((item) => "id" in item && item.id === id),
-  );
-  if (!menu) {
-    throw new Error(`Context menu not found: ${id}`);
-  }
-  return menu;
-}
-
-function isMenuItem(
-  item: CapturedMenuItem,
-): item is Extract<CapturedMenuItem, { id: string }> {
-  return "id" in item;
+async function openTranscriptContextMenu() {
+  const before = hoisted.nativeMenus.length;
+  fireEvent.contextMenu(screen.getByRole("button", { name: "Transcript" }));
+  await waitFor(() => {
+    expect(hoisted.nativeMenus.length).toBeGreaterThan(before);
+  });
+  return hoisted.nativeMenus[hoisted.nativeMenus.length - 1];
 }
