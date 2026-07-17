@@ -22,6 +22,7 @@ import {
   isSupportedLanguagesBatch,
   isSupportedLanguagesLive,
   isSupportedLocalSttModel,
+  isVoxtralLocalSttModel,
 } from "./capabilities";
 
 beforeEach(() => {
@@ -68,6 +69,12 @@ describe("getOnDeviceTranscriptionMode", () => {
       getOnDeviceTranscriptionMode("soniqo-parakeet-streaming", ["de"]),
     ).toBe("live");
   });
+
+  test("uses batch mode for the Voxtral (llama.cpp) model — no streaming decode", () => {
+    expect(
+      getOnDeviceTranscriptionMode("voxtral-mini-3b-2507-q4km"),
+    ).toBe("batch");
+  });
 });
 
 describe("isSupportedLocalSttModel", () => {
@@ -75,6 +82,8 @@ describe("isSupportedLocalSttModel", () => {
     expect(isSupportedLocalSttModel("soniqo-parakeet-streaming")).toBe(true);
     expect(isSupportedLocalSttModel("am-parakeet-v3")).toBe(true);
     expect(isSupportedLocalSttModel("QuantizedSmallEn")).toBe(true);
+    expect(isSupportedLocalSttModel("parakeet-tdt-v3-int8")).toBe(true);
+    expect(isSupportedLocalSttModel("voxtral-mini-3b-2507-q4km")).toBe(true);
   });
 
   test("rejects cloud, local LLM, and removed local model ids", () => {
@@ -84,10 +93,21 @@ describe("isSupportedLocalSttModel", () => {
   });
 });
 
+describe("isVoxtralLocalSttModel", () => {
+  test("recognizes the Voxtral (llama.cpp) model id prefix", () => {
+    expect(isVoxtralLocalSttModel("voxtral-mini-3b-2507-q4km")).toBe(true);
+    expect(isVoxtralLocalSttModel("parakeet-tdt-v3-int8")).toBe(false);
+    expect(isVoxtralLocalSttModel(undefined)).toBe(false);
+  });
+});
+
 describe("isConfiguredSttModel", () => {
   test("requires known model ids for Notare STT", () => {
     expect(isConfiguredSttModel("hyprnote", "cloud")).toBe(true);
     expect(isConfiguredSttModel("hyprnote", "soniqo-qwen3-small")).toBe(true);
+    expect(isConfiguredSttModel("hyprnote", "voxtral-mini-3b-2507-q4km")).toBe(
+      true,
+    );
     expect(isConfiguredSttModel("hyprnote", "removed-local-model")).toBe(false);
   });
 

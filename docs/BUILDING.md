@@ -113,6 +113,45 @@ have reports of ggml-vulkan silently falling back to CPU while everything
 the `ggml_vulkan: Found N Vulkan devices` line appears and transcription speed
 matches GPU expectations before trusting the build.
 
+## Voxtral (llama.cpp) engine — CPU vs CUDA
+
+Issue #16: a second on-device STT engine, `transcribe-voxtral-llama`, runs
+Voxtral Mini 2507 (a 3B-parameter multilingual LLM with an audio encoder,
+8 languages incl. **Hindi** — no other local engine covers Hindi) through
+`llama-cpp-2`'s `mtmd` (multimodal) path. It is served through the same
+in-process actor/`TranscribeService` seam as Parakeet ONNX (see
+`plugins/local-stt/src/server/internal.rs`), so it shows up in Settings and
+serves both batch and `/v1/listen` the same way. It is not a streaming
+architecture — see the `voxtral-llama` arm's doc comment in `internal.rs` for
+the chunking semantics (VAD-utterance-batched, same as every other engine on
+that seam; no partial/token-level output).
+
+- **CPU (default, ships to everyone):** the `voxtral-llama` cargo feature is
+  always on for Windows/Linux builds (same target-cfg block as `whisper-cpp`
+  and `parakeet-onnx` in `apps/desktop/src-tauri/Cargo.toml`) — no opt-in
+  flag needed, no extra build-time SDK. **Verified RTF ≈ 0.907** on CPU (see
+  the Phase A/B commits on issue #16) — real-time-ish but the slowest of the
+  local engines; the catalog marks it `recommended_use: final`, not `live`,
+  and it earns its keep on quality + language coverage rather than speed.
+- **CUDA (test-build only, never in a release):** the `voxtral-llama-cuda`
+  feature on `tauri-plugin-local-stt` (passthrough to `llama-cpp-2/cuda`) and
+  the `voxtral-cuda` feature on the `desktop` crate build llama.cpp's CUDA
+  backend instead of CPU. This is **not** part of any default feature set and
+  **not** added to `release.yaml` — it needs the CUDA toolkit + a matching
+  NVIDIA driver on both the build machine and the end user's machine, which
+  most users don't have, and bundling the CUDA DLLs into the MSI is unsolved.
+  Build/validate it via the `desktop_test_build` workflow's `gpu: voxtral-cuda`
+  option (Windows only — installs the CUDA toolkit on the runner via
+  `Jimver/cuda-toolkit`, cached) to get a clearly-labeled
+  `notare-windows-voxtral-cuda` test MSI. No Vulkan path for Voxtral: the
+  `mtmd`/audio path heap-corrupts on RDNA2 Vulkan
+  (ggml-org/llama.cpp#22128) — CPU or CUDA only.
+- Locally: `pnpm -F desktop tauri build --features voxtral-cuda` on a machine
+  with the CUDA toolkit installed (same `LIBCLANG_PATH`/Ninja/short-target-dir
+  caveats as the Vulkan section above likely apply on Windows — unverified
+  end-to-end on real CUDA hardware as of this writing; report back and fix
+  this note if the recipe needs adjusting).
+
 ## Known environment quirks
 
 - **WSL2 / hosts with broken IPv6:** Node's fetch (and pnpm's) can time out

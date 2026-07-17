@@ -10,6 +10,13 @@ describe("local model icons", () => {
     );
   });
 
+  test("recognizes the Voxtral (llama.cpp) model family", () => {
+    expect(getLocalModelIcon("voxtral-mini-3b-2507-q4km")?.title).toBe(
+      "Mistral Voxtral",
+    );
+    expect(getLocalModelIcon("voxtral-mini-3b-2507-q4km")?.label).toBe("V");
+  });
+
   test("uses researched logo assets for known model families", () => {
     expect(getLocalModelIcon("cloud")?.imageSrc).toBe(
       "/assets/anarlog-icon.png",
